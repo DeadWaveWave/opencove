@@ -12,6 +12,21 @@ const CODEX_APP_SERVER_TIMEOUT_MS = 8000
 const CLAUDE_MODELS_ENDPOINT = 'https://api.anthropic.com/v1/models'
 const CLAUDE_API_VERSION = '2023-06-01'
 
+function normalizeBaseUrl(value: string): string {
+  return value.replace(/\/+$/, '')
+}
+
+function resolveEnvValue(keys: string[]): string | null {
+  for (const key of keys) {
+    const value = process.env[key]
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return value.trim()
+    }
+  }
+
+  return null
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
 }
@@ -249,27 +264,46 @@ async function readClaudeApiKeyFromConfig(): Promise<string | null> {
 }
 
 async function resolveClaudeApiKey(): Promise<string | null> {
-  const envKeys = [process.env.ANTHROPIC_API_KEY, process.env.CLAUDE_API_KEY]
+  const envKey = resolveEnvValue([
+    'ANTHROPIC_API_KEY',
+    'CLAUDE_API_KEY',
+    'CLAUDE_CODE_API_KEY',
+    'CLAUDE_APIKEY',
+  ])
 
-  for (const envKey of envKeys) {
-    if (typeof envKey === 'string' && envKey.trim().length > 0) {
-      return envKey.trim()
-    }
+  if (envKey) {
+    return envKey
   }
 
   return await readClaudeApiKeyFromConfig()
 }
 
+function resolveClaudeModelsEndpoint(): string {
+  const baseUrl = resolveEnvValue([
+    'ANTHROPIC_BASE_URL',
+    'CLAUDE_BASE_URL',
+    'CLAUDE_CODE_BASE_URL',
+    'ANTHROPIC_API_BASE_URL',
+  ])
+
+  if (!baseUrl) {
+    return CLAUDE_MODELS_ENDPOINT
+  }
+
+  return `${normalizeBaseUrl(baseUrl)}/v1/models`
+}
+
 async function listClaudeModelsFromApi(): Promise<AgentModelOption[]> {
   const apiKey = await resolveClaudeApiKey()
+  const endpoint = resolveClaudeModelsEndpoint()
 
   if (!apiKey) {
     throw new Error(
-      'Claude API key not found (ANTHROPIC_API_KEY / CLAUDE_API_KEY / ~/.claude/config.json)',
+      'Claude API key not found (ANTHROPIC_API_KEY / CLAUDE_API_KEY / CLAUDE_CODE_API_KEY / CLAUDE_APIKEY / ~/.claude/config.json)',
     )
   }
 
-  const response = await fetch(CLAUDE_MODELS_ENDPOINT, {
+  const response = await fetch(endpoint, {
     method: 'GET',
     headers: {
       'x-api-key': apiKey,
