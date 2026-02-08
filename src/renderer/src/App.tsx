@@ -19,10 +19,19 @@ function App(): JSX.Element {
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
   const [agentSettings, setAgentSettings] = useState<AgentSettings>(DEFAULT_AGENT_SETTINGS)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isHydrated, setIsHydrated] = useState(false)
 
   useEffect(() => {
     const persisted = readPersistedState()
-    if (!persisted || persisted.workspaces.length === 0) {
+    if (!persisted) {
+      setIsHydrated(true)
+      return
+    }
+
+    setAgentSettings(persisted.settings)
+
+    if (persisted.workspaces.length === 0) {
+      setIsHydrated(true)
       return
     }
 
@@ -58,7 +67,6 @@ function App(): JSX.Element {
       )
 
       setWorkspaces(restoredWorkspaces)
-      setAgentSettings(persisted.settings)
 
       const hasActive = restoredWorkspaces.some(
         workspace => workspace.id === persisted.activeWorkspaceId,
@@ -66,14 +74,21 @@ function App(): JSX.Element {
       setActiveWorkspaceId(
         hasActive ? persisted.activeWorkspaceId : (restoredWorkspaces[0]?.id ?? null),
       )
+      setIsHydrated(true)
     }
 
-    void restore()
+    void restore().catch(() => {
+      setIsHydrated(true)
+    })
   }, [])
 
   useEffect(() => {
+    if (!isHydrated) {
+      return
+    }
+
     writePersistedState(toPersistedState(workspaces, activeWorkspaceId, agentSettings))
-  }, [activeWorkspaceId, agentSettings, workspaces])
+  }, [activeWorkspaceId, agentSettings, isHydrated, workspaces])
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
