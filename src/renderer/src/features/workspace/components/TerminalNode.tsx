@@ -26,6 +26,7 @@ const MIN_WIDTH = 320
 const MIN_HEIGHT = 220
 const MAX_SCROLLBACK_CHARS = 200_000
 const SCROLLBACK_PUBLISH_DELAY_MS = 800
+const RESIZE_SCROLLBACK_SETTLE_MS = 900
 const MAX_OVERLAP_PROBE_CHARS = 4096
 const TERMINAL_LAYOUT_SYNC_EVENT = 'cove:terminal-layout-sync'
 
@@ -166,6 +167,8 @@ export function TerminalNode({
   })
   const draftSizeRef = useRef<{ width: number; height: number } | null>(null)
   const publishTimerRef = useRef<number | null>(null)
+  const resizeScrollbackSettleTimerRef = useRef<number | null>(null)
+  const suppressScrollbackPublishUntilRef = useRef<number>(0)
   const latestScrollbackRef = useRef(truncateScrollback(scrollback ?? ''))
   const publishedScrollbackRef = useRef(truncateScrollback(scrollback ?? ''))
   const pendingPublishedScrollbackRef = useRef<string | null>(null)
@@ -193,10 +196,16 @@ export function TerminalNode({
     latestScrollbackRef.current = normalized
     publishedScrollbackRef.current = normalized
     pendingPublishedScrollbackRef.current = null
+    suppressScrollbackPublishUntilRef.current = 0
 
     if (publishTimerRef.current !== null) {
       window.clearTimeout(publishTimerRef.current)
       publishTimerRef.current = null
+    }
+
+    if (resizeScrollbackSettleTimerRef.current !== null) {
+      window.clearTimeout(resizeScrollbackSettleTimerRef.current)
+      resizeScrollbackSettleTimerRef.current = null
     }
   }, [scrollback, sessionId])
 
@@ -229,10 +238,22 @@ export function TerminalNode({
 
   const scheduleScrollbackPublish = useCallback(
     (immediate = false) => {
+      const now = Date.now()
+      const suppressUntil = suppressScrollbackPublishUntilRef.current
+      const suppressDelay = Math.max(0, suppressUntil - now)
+
       if (immediate) {
         if (publishTimerRef.current !== null) {
           window.clearTimeout(publishTimerRef.current)
           publishTimerRef.current = null
+        }
+
+        if (suppressDelay > 0) {
+          publishTimerRef.current = window.setTimeout(() => {
+            publishTimerRef.current = null
+            flushScrollback()
+          }, suppressDelay)
+          return
         }
 
         flushScrollback()
@@ -243,10 +264,11 @@ export function TerminalNode({
         return
       }
 
+      const delay = Math.max(SCROLLBACK_PUBLISH_DELAY_MS, suppressDelay)
       publishTimerRef.current = window.setTimeout(() => {
         publishTimerRef.current = null
         flushScrollback()
-      }, SCROLLBACK_PUBLISH_DELAY_MS)
+      }, delay)
     },
     [flushScrollback],
   )
@@ -256,6 +278,11 @@ export function TerminalNode({
       const normalized = truncateScrollback(nextSnapshot)
       latestScrollbackRef.current = normalized
       pendingPublishedScrollbackRef.current = normalized
+
+      if (isPointerResizingRef.current) {
+        return
+      }
+
       scheduleScrollbackPublish(immediate)
     },
     [scheduleScrollbackPublish],
@@ -275,10 +302,6 @@ export function TerminalNode({
       const viewportHeight = Math.round(container.clientHeight)
 
       if (viewportWidth <= 2 || viewportHeight <= 2) {
-        return
-      }
-
-      if (isPointerResizingRef.current && !force) {
         return
       }
 
@@ -469,6 +492,11 @@ export function TerminalNode({
       disposable.dispose()
       unsubscribeData?.()
       unsubscribeExit?.()
+      if (resizeScrollbackSettleTimerRef.current !== null) {
+        window.clearTimeout(resizeScrollbackSettleTimerRef.current)
+        resizeScrollbackSettleTimerRef.current = null
+      }
+      suppressScrollbackPublishUntilRef.current = 0
       scheduleScrollbackPublish(true)
       if (publishTimerRef.current !== null) {
         window.clearTimeout(publishTimerRef.current)
@@ -504,6 +532,12 @@ export function TerminalNode({
         axis,
       }
 
+      if (resizeScrollbackSettleTimerRef.current !== null) {
+        window.clearTimeout(resizeScrollbackSettleTimerRef.current)
+        resizeScrollbackSettleTimerRef.current = null
+      }
+
+      suppressScrollbackPublishUntilRef.current = 0
       isPointerResizingRef.current = true
       setDraftSize({ width, height })
       setIsResizing(true)
@@ -539,6 +573,19 @@ export function TerminalNode({
       const finalSize = draftSizeRef.current ?? { width, height }
       onResize(finalSize)
 
+      const settleAt = Date.now() + RESIZE_SCROLLBACK_SETTLE_MS
+      suppressScrollbackPublishUntilRef.current = settleAt
+
+      if (resizeScrollbackSettleTimerRef.current !== null) {
+        window.clearTimeout(resizeScrollbackSettleTimerRef.current)
+      }
+
+      resizeScrollbackSettleTimerRef.current = window.setTimeout(() => {
+        resizeScrollbackSettleTimerRef.current = null
+        suppressScrollbackPublishUntilRef.current = 0
+        scheduleScrollbackPublish(true)
+      }, RESIZE_SCROLLBACK_SETTLE_MS)
+
       resizeStartRef.current = null
       requestAnimationFrame(() => {
         scheduleSyncTerminalSize({ sendPtyResize: true, force: true })
@@ -552,7 +599,7 @@ export function TerminalNode({
       window.removeEventListener('pointermove', handlePointerMove)
       window.removeEventListener('pointerup', handlePointerUp)
     }
-  }, [height, isResizing, onResize, scheduleSyncTerminalSize, width])
+  }, [height, isResizing, onResize, scheduleScrollbackPublish, scheduleSyncTerminalSize, width])
 
   const isAgentNode = kind === 'agent'
   const canStop =
