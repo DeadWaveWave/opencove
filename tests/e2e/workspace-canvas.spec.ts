@@ -862,12 +862,34 @@ test.describe('Workspace Canvas Interactions', () => {
       const agentItem = window.locator('.workspace-agent-item').first()
       await expect(agentItem).toBeVisible()
 
-      const viewport = window.locator('.react-flow__viewport')
-      const beforeTransform = await viewport.getAttribute('style')
+      const zoomInButton = window.locator('.react-flow__controls-zoomin')
+      await expect(zoomInButton).toBeVisible()
+      await zoomInButton.click()
+      await zoomInButton.click()
+
+      const readZoom = async (): Promise<number> => {
+        return await window.evaluate(() => {
+          const viewport = document.querySelector('.react-flow__viewport') as HTMLElement | null
+          if (!viewport) {
+            return 1
+          }
+
+          const style = window.getComputedStyle(viewport)
+          const matrix = style.transform.match(/matrix\(([^)]+)\)/)
+          if (!matrix) {
+            return 1
+          }
+
+          const values = matrix[1].split(',').map(item => Number(item.trim()))
+          const zoom = values[0]
+          return Number.isFinite(zoom) ? zoom : 1
+        })
+      }
+
+      const zoomBefore = await readZoom()
+      expect(zoomBefore).toBeGreaterThan(1.01)
+
       await agentItem.click()
-      await window.waitForTimeout(350)
-      const afterTransform = await viewport.getAttribute('style')
-      expect(afterTransform).not.toBe(beforeTransform)
 
       const agentNode = window
         .locator('.terminal-node')
@@ -875,6 +897,48 @@ test.describe('Workspace Canvas Interactions', () => {
         .first()
 
       await expect(agentNode).toBeVisible()
+
+      await expect
+        .poll(async () => {
+          return await readZoom()
+        })
+        .toBeCloseTo(1, 2)
+
+      const readCenterDelta = async (): Promise<{ dx: number; dy: number }> => {
+        const canvasBox = await window.locator('.workspace-canvas .react-flow').boundingBox()
+        const terminalBox = await agentNode.boundingBox()
+
+        if (!canvasBox || !terminalBox) {
+          return {
+            dx: Number.POSITIVE_INFINITY,
+            dy: Number.POSITIVE_INFINITY,
+          }
+        }
+
+        const canvasCenterX = canvasBox.x + canvasBox.width / 2
+        const canvasCenterY = canvasBox.y + canvasBox.height / 2
+        const terminalCenterX = terminalBox.x + terminalBox.width / 2
+        const terminalCenterY = terminalBox.y + terminalBox.height / 2
+
+        return {
+          dx: Math.abs(canvasCenterX - terminalCenterX),
+          dy: Math.abs(canvasCenterY - terminalCenterY),
+        }
+      }
+
+      await expect
+        .poll(async () => {
+          const delta = await readCenterDelta()
+          return delta.dx
+        })
+        .toBeLessThan(140)
+
+      await expect
+        .poll(async () => {
+          const delta = await readCenterDelta()
+          return delta.dy
+        })
+        .toBeLessThan(140)
       await expect(agentNode.locator('.terminal-node__status')).toHaveText('Running')
 
       await agentNode.locator('.terminal-node__action', { hasText: 'Stop' }).click()

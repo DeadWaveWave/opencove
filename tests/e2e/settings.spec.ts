@@ -28,6 +28,16 @@ test.describe('Settings', () => {
       await expect(settingsButton).toBeVisible()
       await settingsButton.click()
 
+      const generalNav = window.locator('[data-testid="settings-section-nav-general"]')
+      const canvasNav = window.locator('[data-testid="settings-section-nav-canvas"]')
+      await expect(generalNav).toBeVisible()
+      await expect(canvasNav).toBeVisible()
+
+      await canvasNav.click()
+      await expect(
+        window.locator('[data-testid="settings-normalize-zoom-on-terminal-click"]'),
+      ).toBeVisible()
+
       const defaultProvider = window.locator('#settings-default-provider')
       await expect(defaultProvider).toBeVisible()
       await defaultProvider.selectOption('codex')

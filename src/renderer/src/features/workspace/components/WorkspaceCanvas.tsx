@@ -841,8 +841,8 @@ function WorkspaceCanvasInner({
       target.position.x + target.data.width / 2,
       target.position.y + target.data.height / 2,
       {
-        duration: 320,
-        zoom: Math.max(0.35, reactFlow.getZoom()),
+        duration: 220,
+        zoom: 1,
       },
     )
   }, [focusNodeId, focusSequence, nodes, reactFlow])
