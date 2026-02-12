@@ -47,17 +47,18 @@
 ## 4) 实现约定（当前）
 
 ### 4.1 通用样式类
-- `workspace-task-creator-backdrop`
-- `workspace-task-creator`
-- `workspace-task-creator__field-row`
-- `workspace-task-creator__actions`
-- `workspace-task-creator__action`
-- `workspace-task-creator__action--ghost|secondary|primary|danger`
-- `workspace-task-creator__error`
+- `cove-window-backdrop`
+- `cove-window`
+- `cove-window__field-row`
+- `cove-window__checkbox`
+- `cove-window__actions`
+- `cove-window__action`
+- `cove-window__action--ghost|secondary|primary|danger`
+- `cove-window__error`
 
 ### 4.2 各窗口复用策略
-- Agent Launcher / Delete Confirm 复用上面类，并保留自身语义类（便于测试和局部覆盖）。
-- Settings 保持布局独立，但视觉 token 与上述窗口一致。
+- Agent Launcher / Delete Confirm / Task dialogs 直接复用 `cove-window-*`。
+- Settings 使用同一视觉 token（遮罩、玻璃面板、输入焦点），布局结构保持独立。
 
 ## 5) 新窗口开发 Checklist
 

@@ -2465,13 +2465,13 @@ function WorkspaceCanvasInner({
 
       {taskCreator ? (
         <div
-          className="workspace-task-creator-backdrop"
+          className="cove-window-backdrop workspace-task-creator-backdrop"
           onClick={() => {
             closeTaskCreator()
           }}
         >
           <section
-            className="workspace-task-creator"
+            className="cove-window workspace-task-creator"
             data-testid="workspace-task-creator"
             onClick={event => {
               event.stopPropagation()
@@ -2607,7 +2607,7 @@ function WorkspaceCanvasInner({
               </div>
             </div>
 
-            <label className="workspace-task-creator__checkbox">
+            <label className="cove-window__checkbox workspace-task-creator__checkbox">
               <input
                 type="checkbox"
                 data-testid="workspace-task-auto-generate-title"
@@ -2628,13 +2628,15 @@ function WorkspaceCanvasInner({
             </label>
 
             {taskCreator.error ? (
-              <p className="workspace-task-creator__error">{taskCreator.error}</p>
+              <p className="cove-window__error workspace-task-creator__error">
+                {taskCreator.error}
+              </p>
             ) : null}
 
-            <div className="workspace-task-creator__actions">
+            <div className="cove-window__actions workspace-task-creator__actions">
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--ghost"
+                className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
                 data-testid="workspace-task-create-cancel"
                 disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
                 onClick={() => {
@@ -2645,7 +2647,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--secondary"
+                className="cove-window__action cove-window__action--secondary workspace-task-creator__action workspace-task-creator__action--secondary"
                 data-testid="workspace-task-generate-title"
                 disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
                 onClick={() => {
@@ -2656,7 +2658,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--primary"
+                className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
                 data-testid="workspace-task-create-submit"
                 disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
                 onClick={() => {
@@ -2672,13 +2674,13 @@ function WorkspaceCanvasInner({
 
       {taskEditor ? (
         <div
-          className="workspace-task-creator-backdrop"
+          className="cove-window-backdrop workspace-task-creator-backdrop"
           onClick={() => {
             closeTaskEditor()
           }}
         >
           <section
-            className="workspace-task-creator"
+            className="cove-window workspace-task-creator"
             data-testid="workspace-task-editor"
             onClick={event => {
               event.stopPropagation()
@@ -2817,7 +2819,7 @@ function WorkspaceCanvasInner({
               </div>
             </div>
 
-            <label className="workspace-task-creator__checkbox">
+            <label className="cove-window__checkbox workspace-task-creator__checkbox">
               <input
                 type="checkbox"
                 data-testid="workspace-task-editor-auto-generate-title"
@@ -2838,13 +2840,13 @@ function WorkspaceCanvasInner({
             </label>
 
             {taskEditor.error ? (
-              <p className="workspace-task-creator__error">{taskEditor.error}</p>
+              <p className="cove-window__error workspace-task-creator__error">{taskEditor.error}</p>
             ) : null}
 
-            <div className="workspace-task-creator__actions">
+            <div className="cove-window__actions workspace-task-creator__actions">
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--ghost"
+                className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
                 data-testid="workspace-task-edit-cancel"
                 disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
                 onClick={() => {
@@ -2855,7 +2857,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--secondary"
+                className="cove-window__action cove-window__action--secondary workspace-task-creator__action workspace-task-creator__action--secondary"
                 data-testid="workspace-task-edit-generate-title"
                 disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
                 onClick={() => {
@@ -2866,7 +2868,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--primary"
+                className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
                 data-testid="workspace-task-edit-submit"
                 disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
                 onClick={() => {
@@ -2882,13 +2884,13 @@ function WorkspaceCanvasInner({
 
       {taskAssigner ? (
         <div
-          className="workspace-task-creator-backdrop"
+          className="cove-window-backdrop workspace-task-creator-backdrop"
           onClick={() => {
             closeTaskAssigner()
           }}
         >
           <section
-            className="workspace-task-creator workspace-task-assigner"
+            className="cove-window workspace-task-creator workspace-task-assigner"
             data-testid="workspace-task-assigner"
             onClick={event => {
               event.stopPropagation()
@@ -2936,13 +2938,15 @@ function WorkspaceCanvasInner({
             </div>
 
             {taskAssigner.error ? (
-              <p className="workspace-task-creator__error">{taskAssigner.error}</p>
+              <p className="cove-window__error workspace-task-creator__error">
+                {taskAssigner.error}
+              </p>
             ) : null}
 
-            <div className="workspace-task-creator__actions">
+            <div className="cove-window__actions workspace-task-creator__actions">
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--ghost"
+                className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
                 data-testid="workspace-task-assign-cancel"
                 disabled={taskAssigner.isSaving}
                 onClick={() => {
@@ -2953,7 +2957,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--primary"
+                className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
                 data-testid="workspace-task-assign-submit"
                 disabled={taskAssigner.isSaving}
                 onClick={() => {
@@ -2969,13 +2973,13 @@ function WorkspaceCanvasInner({
 
       {taskDeleteConfirmation ? (
         <div
-          className="workspace-task-delete-backdrop workspace-task-creator-backdrop"
+          className="cove-window-backdrop workspace-task-delete-backdrop workspace-task-creator-backdrop"
           onClick={() => {
             setTaskDeleteConfirmation(null)
           }}
         >
           <section
-            className="workspace-task-delete workspace-task-creator"
+            className="cove-window workspace-task-delete workspace-task-creator"
             data-testid="workspace-task-delete-confirmation"
             onClick={event => {
               event.stopPropagation()
@@ -2985,10 +2989,10 @@ function WorkspaceCanvasInner({
             <p>
               This will permanently remove <strong>{taskDeleteConfirmation.title}</strong>.
             </p>
-            <div className="workspace-task-delete__actions workspace-task-creator__actions">
+            <div className="cove-window__actions workspace-task-delete__actions workspace-task-creator__actions">
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--ghost"
+                className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
                 data-testid="workspace-task-delete-cancel"
                 onClick={() => {
                   setTaskDeleteConfirmation(null)
@@ -2998,7 +3002,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--danger"
+                className="cove-window__action cove-window__action--danger workspace-task-creator__action workspace-task-creator__action--danger"
                 data-testid="workspace-task-delete-confirm"
                 onClick={() => {
                   void confirmTaskDelete()
@@ -3013,13 +3017,13 @@ function WorkspaceCanvasInner({
 
       {agentLauncher ? (
         <div
-          className="workspace-agent-launcher-backdrop workspace-task-creator-backdrop"
+          className="cove-window-backdrop workspace-agent-launcher-backdrop workspace-task-creator-backdrop"
           onClick={() => {
             closeAgentLauncher()
           }}
         >
           <section
-            className="workspace-agent-launcher workspace-task-creator"
+            className="cove-window workspace-agent-launcher workspace-task-creator"
             data-testid="workspace-agent-launcher"
             onClick={event => {
               event.stopPropagation()
@@ -3188,7 +3192,7 @@ function WorkspaceCanvasInner({
                     }}
                   />
 
-                  <label className="workspace-agent-launcher__checkbox workspace-task-creator__checkbox">
+                  <label className="cove-window__checkbox workspace-agent-launcher__checkbox workspace-task-creator__checkbox">
                     <input
                       type="checkbox"
                       checked={agentLauncher.shouldCreateDirectory}
@@ -3213,15 +3217,15 @@ function WorkspaceCanvasInner({
             </div>
 
             {agentLauncher.error ? (
-              <p className="workspace-agent-launcher__error workspace-task-creator__error">
+              <p className="cove-window__error workspace-agent-launcher__error workspace-task-creator__error">
                 {agentLauncher.error}
               </p>
             ) : null}
 
-            <div className="workspace-agent-launcher__actions workspace-task-creator__actions">
+            <div className="cove-window__actions workspace-agent-launcher__actions workspace-task-creator__actions">
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--ghost"
+                className="cove-window__action cove-window__action--ghost workspace-task-creator__action workspace-task-creator__action--ghost"
                 data-testid="workspace-agent-launch-cancel"
                 disabled={agentLauncher.isLaunching}
                 onClick={() => {
@@ -3232,7 +3236,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
-                className="workspace-task-creator__action workspace-task-creator__action--primary"
+                className="cove-window__action cove-window__action--primary workspace-task-creator__action workspace-task-creator__action--primary"
                 data-testid="workspace-agent-launch-submit"
                 disabled={agentLauncher.isLaunching}
                 onClick={() => {

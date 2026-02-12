@@ -448,7 +448,7 @@ body {
   z-index: 20;
 }
 
-.workspace-agent-launcher.workspace-task-creator {
+.workspace-agent-launcher.cove-window {
   width: min(560px, calc(100vw - 48px));
 }
 
@@ -1080,6 +1080,7 @@ body {
   background: rgba(40, 12, 18, 0.45);
 }
 
+.cove-window-backdrop,
 .workspace-task-creator-backdrop {
   position: fixed;
   inset: 0;
@@ -1090,6 +1091,7 @@ body {
   backdrop-filter: blur(4px);
 }
 
+.cove-window,
 .workspace-task-creator {
   width: min(680px, calc(100vw - 48px));
   border: 1px solid rgba(139, 171, 255, 0.45);
@@ -1106,12 +1108,14 @@ body {
   gap: 14px;
 }
 
+.cove-window h3,
 .workspace-task-creator h3 {
   font-size: 18px;
   font-weight: 600;
   color: #f0f6ff;
 }
 
+.cove-window__meta,
 .workspace-task-creator__meta {
   font-size: 12px;
   color: #a8c0ea;
@@ -1119,18 +1123,23 @@ body {
   border-bottom: 1px solid rgba(102, 137, 221, 0.26);
 }
 
+.cove-window__field-row,
 .workspace-task-creator__field-row {
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
 
+.cove-window__field-row label,
 .workspace-task-creator__field-row label {
   font-size: 12px;
   color: #c6d8fb;
   font-weight: 500;
 }
 
+.cove-window__field-row input,
+.cove-window__field-row textarea,
+.cove-window__field-row select,
 .workspace-task-creator__field-row input,
 .workspace-task-creator__field-row textarea,
 .workspace-task-creator__field-row select {
@@ -1146,6 +1155,9 @@ body {
     background 0.18s ease;
 }
 
+.cove-window__field-row input:focus,
+.cove-window__field-row textarea:focus,
+.cove-window__field-row select:focus,
 .workspace-task-creator__field-row input:focus,
 .workspace-task-creator__field-row textarea:focus,
 .workspace-task-creator__field-row select:focus {
@@ -1155,6 +1167,7 @@ body {
   background: rgba(12, 23, 45, 0.95);
 }
 
+.cove-window__field-row textarea,
 .workspace-task-creator__field-row textarea {
   min-height: 128px;
   resize: vertical;
@@ -1166,6 +1179,7 @@ body {
   gap: 12px;
 }
 
+.cove-window__checkbox,
 .workspace-task-creator__checkbox {
   display: inline-flex;
   align-items: center;
@@ -1174,6 +1188,7 @@ body {
   color: #bfd2f7;
 }
 
+.cove-window__error,
 .workspace-task-creator__error {
   font-size: 12px;
   color: #ffbaba;
@@ -1183,6 +1198,7 @@ body {
   padding: 8px 10px;
 }
 
+.cove-window__actions,
 .workspace-task-creator__actions {
   display: flex;
   justify-content: flex-end;
@@ -1190,6 +1206,7 @@ body {
   margin-top: 4px;
 }
 
+.cove-window__action,
 .workspace-task-creator__action {
   border-radius: 10px;
   padding: 7px 12px;
@@ -1203,52 +1220,62 @@ body {
     transform 0.16s ease;
 }
 
+.cove-window__action:active,
 .workspace-task-creator__action:active {
   transform: translateY(1px);
 }
 
+.cove-window__action:disabled,
 .workspace-task-creator__action:disabled {
   cursor: not-allowed;
   opacity: 0.58;
   transform: none;
 }
 
+.cove-window__action--ghost,
 .workspace-task-creator__action--ghost {
   border: 1px solid rgba(101, 133, 212, 0.45);
   background: rgba(17, 29, 54, 0.72);
   color: #d2e4ff;
 }
 
+.cove-window__action--ghost:hover:not(:disabled),
 .workspace-task-creator__action--ghost:hover:not(:disabled) {
   background: rgba(34, 52, 90, 0.86);
 }
 
+.cove-window__action--secondary,
 .workspace-task-creator__action--secondary {
   border: 1px solid rgba(94, 160, 255, 0.55);
   background: rgba(40, 69, 125, 0.46);
   color: #d9ebff;
 }
 
+.cove-window__action--secondary:hover:not(:disabled),
 .workspace-task-creator__action--secondary:hover:not(:disabled) {
   background: rgba(56, 93, 167, 0.58);
 }
 
+.cove-window__action--primary,
 .workspace-task-creator__action--primary {
   border: 1px solid rgba(120, 157, 255, 0.7);
   background: linear-gradient(180deg, rgba(84, 126, 235, 0.92), rgba(60, 99, 201, 0.92));
   color: #eff6ff;
 }
 
+.cove-window__action--primary:hover:not(:disabled),
 .workspace-task-creator__action--primary:hover:not(:disabled) {
   background: linear-gradient(180deg, rgba(103, 143, 245, 0.95), rgba(73, 113, 216, 0.95));
 }
 
+.cove-window__action--danger,
 .workspace-task-creator__action--danger {
   border: 1px solid rgba(232, 103, 120, 0.7);
   background: linear-gradient(180deg, rgba(177, 55, 76, 0.9), rgba(133, 40, 57, 0.9));
   color: #ffeef2;
 }
 
+.cove-window__action--danger:hover:not(:disabled),
 .workspace-task-creator__action--danger:hover:not(:disabled) {
   background: linear-gradient(180deg, rgba(199, 69, 92, 0.92), rgba(149, 48, 66, 0.92));
 }
@@ -1608,7 +1635,7 @@ body {
   z-index: 25;
 }
 
-.workspace-task-delete.workspace-task-creator {
+.workspace-task-delete.cove-window {
   width: min(460px, calc(100vw - 48px));
 }
 
