@@ -2969,13 +2969,13 @@ function WorkspaceCanvasInner({
 
       {taskDeleteConfirmation ? (
         <div
-          className="workspace-task-delete-backdrop"
+          className="workspace-task-delete-backdrop workspace-task-creator-backdrop"
           onClick={() => {
             setTaskDeleteConfirmation(null)
           }}
         >
           <section
-            className="workspace-task-delete"
+            className="workspace-task-delete workspace-task-creator"
             data-testid="workspace-task-delete-confirmation"
             onClick={event => {
               event.stopPropagation()
@@ -2985,9 +2985,10 @@ function WorkspaceCanvasInner({
             <p>
               This will permanently remove <strong>{taskDeleteConfirmation.title}</strong>.
             </p>
-            <div className="workspace-task-delete__actions">
+            <div className="workspace-task-delete__actions workspace-task-creator__actions">
               <button
                 type="button"
+                className="workspace-task-creator__action workspace-task-creator__action--ghost"
                 data-testid="workspace-task-delete-cancel"
                 onClick={() => {
                   setTaskDeleteConfirmation(null)
@@ -2997,6 +2998,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
+                className="workspace-task-creator__action workspace-task-creator__action--danger"
                 data-testid="workspace-task-delete-confirm"
                 onClick={() => {
                   void confirmTaskDelete()
@@ -3011,13 +3013,13 @@ function WorkspaceCanvasInner({
 
       {agentLauncher ? (
         <div
-          className="workspace-agent-launcher-backdrop"
+          className="workspace-agent-launcher-backdrop workspace-task-creator-backdrop"
           onClick={() => {
             closeAgentLauncher()
           }}
         >
           <section
-            className="workspace-agent-launcher"
+            className="workspace-agent-launcher workspace-task-creator"
             data-testid="workspace-agent-launcher"
             onClick={event => {
               event.stopPropagation()
@@ -3025,7 +3027,7 @@ function WorkspaceCanvasInner({
           >
             <h3>Run Agent</h3>
 
-            <div className="workspace-agent-launcher__field-row">
+            <div className="workspace-agent-launcher__field-row workspace-task-creator__field-row">
               <label htmlFor="workspace-agent-provider">Provider</label>
               <select
                 id="workspace-agent-provider"
@@ -3060,7 +3062,7 @@ function WorkspaceCanvasInner({
               </select>
             </div>
 
-            <div className="workspace-agent-launcher__field-row">
+            <div className="workspace-agent-launcher__field-row workspace-task-creator__field-row">
               <label htmlFor="workspace-agent-model">
                 Model (optional, empty = follow CLI/default)
               </label>
@@ -3091,7 +3093,7 @@ function WorkspaceCanvasInner({
               </datalist>
             </div>
 
-            <div className="workspace-agent-launcher__field-row">
+            <div className="workspace-agent-launcher__field-row workspace-task-creator__field-row">
               <label htmlFor="workspace-agent-prompt">Prompt</label>
               <textarea
                 id="workspace-agent-prompt"
@@ -3114,7 +3116,7 @@ function WorkspaceCanvasInner({
               />
             </div>
 
-            <div className="workspace-agent-launcher__field-row">
+            <div className="workspace-agent-launcher__field-row workspace-task-creator__field-row">
               <label>Execution Directory</label>
               <div className="workspace-agent-launcher__directory-mode">
                 <label>
@@ -3186,7 +3188,7 @@ function WorkspaceCanvasInner({
                     }}
                   />
 
-                  <label className="workspace-agent-launcher__checkbox">
+                  <label className="workspace-agent-launcher__checkbox workspace-task-creator__checkbox">
                     <input
                       type="checkbox"
                       checked={agentLauncher.shouldCreateDirectory}
@@ -3211,12 +3213,15 @@ function WorkspaceCanvasInner({
             </div>
 
             {agentLauncher.error ? (
-              <p className="workspace-agent-launcher__error">{agentLauncher.error}</p>
+              <p className="workspace-agent-launcher__error workspace-task-creator__error">
+                {agentLauncher.error}
+              </p>
             ) : null}
 
-            <div className="workspace-agent-launcher__actions">
+            <div className="workspace-agent-launcher__actions workspace-task-creator__actions">
               <button
                 type="button"
+                className="workspace-task-creator__action workspace-task-creator__action--ghost"
                 data-testid="workspace-agent-launch-cancel"
                 disabled={agentLauncher.isLaunching}
                 onClick={() => {
@@ -3227,6 +3232,7 @@ function WorkspaceCanvasInner({
               </button>
               <button
                 type="button"
+                className="workspace-task-creator__action workspace-task-creator__action--primary"
                 data-testid="workspace-agent-launch-submit"
                 disabled={agentLauncher.isLaunching}
                 onClick={() => {

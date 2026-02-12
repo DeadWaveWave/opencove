@@ -1,5 +1,7 @@
 # Task UI Standard
 
+> 关联全局窗口规范：`docs/WINDOW_UI_STANDARD.md`
+
 本规范约束 Cove 中 Task 卡片与 Task 编辑体验的交互与视觉，目标是：
 
 1. 让用户在画布内快速改任务（最少点击）；

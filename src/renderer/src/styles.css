@@ -56,8 +56,7 @@ body {
 .workspace-empty-state button,
 .workspace-context-menu button,
 .workspace-sidebar__settings,
-.settings-panel button,
-.workspace-agent-launcher button {
+.settings-panel button {
   border: 1px solid rgba(123, 157, 255, 0.5);
   background: rgba(58, 91, 182, 0.32);
   color: #e8f1ff;
@@ -71,8 +70,7 @@ body {
 .workspace-empty-state button:hover,
 .workspace-context-menu button:hover,
 .workspace-sidebar__settings:hover,
-.settings-panel button:hover,
-.workspace-agent-launcher button:hover {
+.settings-panel button:hover {
   background: rgba(84, 123, 238, 0.45);
 }
 
@@ -448,27 +446,10 @@ body {
   position: fixed;
   inset: 0;
   z-index: 20;
-  background: rgba(5, 10, 20, 0.5);
-  display: grid;
-  place-items: center;
 }
 
-.workspace-agent-launcher {
+.workspace-agent-launcher.workspace-task-creator {
   width: min(560px, calc(100vw - 48px));
-  border: 1px solid rgba(123, 157, 255, 0.42);
-  border-radius: 12px;
-  background: rgba(11, 18, 34, 0.96);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.workspace-agent-launcher h3 {
-  font-size: 18px;
-  color: #eff5ff;
 }
 
 .workspace-agent-launcher__meta {
@@ -476,32 +457,31 @@ body {
   color: #9eb6e4;
 }
 
-.workspace-agent-launcher textarea {
-  min-height: 120px;
-  resize: vertical;
-  border: 1px solid rgba(96, 130, 223, 0.55);
-  background: rgba(10, 18, 35, 0.85);
-  color: #eaf2ff;
-  border-radius: 8px;
-  padding: 10px;
-  font-size: 13px;
-}
-
-.workspace-agent-launcher__error {
-  font-size: 12px;
-  color: #ffb2b2;
-}
-
-.workspace-agent-launcher__actions {
+.workspace-agent-launcher__directory-mode {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: #bfd2f7;
+}
+
+.workspace-agent-launcher__directory-mode label,
+.workspace-agent-launcher__checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.workspace-agent-launcher__checkbox span {
+  font-size: 12px;
+  color: #bfd2f7;
 }
 
 .settings-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 10, 20, 0.45);
+  background: rgba(5, 10, 20, 0.58);
+  backdrop-filter: blur(4px);
   display: grid;
   place-items: center;
   z-index: 100;
@@ -511,11 +491,15 @@ body {
   width: min(760px, calc(100vw - 48px));
   max-height: calc(100vh - 48px);
   overflow: hidden;
-  border: 1px solid rgba(123, 157, 255, 0.35);
-  border-radius: 14px;
+  border: 1px solid rgba(139, 171, 255, 0.45);
+  border-radius: 16px;
   padding: 18px;
-  background: rgba(11, 18, 34, 0.95);
-  backdrop-filter: blur(14px);
+  background:
+    radial-gradient(circle at 20% 0%, rgba(84, 122, 228, 0.2), transparent 42%),
+    linear-gradient(180deg, rgba(13, 21, 40, 0.98) 0%, rgba(9, 15, 29, 0.98) 100%);
+  box-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(164, 196, 255, 0.16);
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -574,11 +558,21 @@ body {
   color: #f0f6ff;
 }
 
-.settings-panel__close {
-  min-width: 34px;
-  padding: 4px 8px;
-  font-size: 18px;
+.settings-panel .settings-panel__close {
+  min-width: 32px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  font-size: 17px;
   line-height: 1;
+  border-radius: 8px;
+  border: 1px solid rgba(104, 137, 219, 0.42);
+  background: rgba(17, 30, 56, 0.82);
+}
+
+.settings-panel .settings-panel__close:hover {
+  background: rgba(35, 54, 93, 0.94);
+  border-color: rgba(138, 173, 255, 0.55);
 }
 
 .settings-panel__section {
@@ -596,11 +590,24 @@ body {
 .settings-panel__section select,
 .settings-panel__section input,
 .settings-panel__row select {
-  border: 1px solid rgba(96, 130, 223, 0.55);
-  background: rgba(10, 18, 35, 0.85);
+  border: 1px solid rgba(98, 133, 226, 0.55);
+  background: rgba(9, 17, 33, 0.88);
   color: #eaf2ff;
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 10px;
+  padding: 9px 11px;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    background 0.18s ease;
+}
+
+.settings-panel__section select:focus,
+.settings-panel__section input:focus,
+.settings-panel__row select:focus {
+  outline: none;
+  border-color: rgba(134, 168, 255, 0.9);
+  box-shadow: 0 0 0 3px rgba(96, 141, 255, 0.2);
+  background: rgba(12, 23, 45, 0.95);
 }
 
 .settings-provider-card {
@@ -990,42 +997,6 @@ body {
   gap: 6px;
 }
 
-.workspace-agent-launcher__field-row label {
-  font-size: 12px;
-  color: #bcd1f7;
-}
-
-.workspace-agent-launcher__field-row select,
-.workspace-agent-launcher__field-row input,
-.workspace-agent-launcher__field-row textarea {
-  border: 1px solid rgba(96, 130, 223, 0.55);
-  background: rgba(10, 18, 35, 0.85);
-  color: #eaf2ff;
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 13px;
-}
-
-.workspace-agent-launcher__directory-mode {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: #bfd2f7;
-}
-
-.workspace-agent-launcher__directory-mode label,
-.workspace-agent-launcher__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.workspace-agent-launcher__checkbox span {
-  font-size: 12px;
-  color: #bfd2f7;
-}
-
 .terminal-node__title {
   font-size: 12px;
   color: #cfe0ff;
@@ -1270,6 +1241,16 @@ body {
 
 .workspace-task-creator__action--primary:hover:not(:disabled) {
   background: linear-gradient(180deg, rgba(103, 143, 245, 0.95), rgba(73, 113, 216, 0.95));
+}
+
+.workspace-task-creator__action--danger {
+  border: 1px solid rgba(232, 103, 120, 0.7);
+  background: linear-gradient(180deg, rgba(177, 55, 76, 0.9), rgba(133, 40, 57, 0.9));
+  color: #ffeef2;
+}
+
+.workspace-task-creator__action--danger:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(199, 69, 92, 0.92), rgba(149, 48, 66, 0.92));
 }
 
 .task-node {
@@ -1625,22 +1606,10 @@ body {
   position: fixed;
   inset: 0;
   z-index: 25;
-  background: rgba(5, 10, 20, 0.56);
-  display: grid;
-  place-items: center;
 }
 
-.workspace-task-delete {
-  width: min(440px, calc(100vw - 48px));
-  border: 1px solid rgba(123, 157, 255, 0.42);
-  border-radius: 12px;
-  background: rgba(11, 18, 34, 0.96);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.45);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+.workspace-task-delete.workspace-task-creator {
+  width: min(460px, calc(100vw - 48px));
 }
 
 .workspace-task-delete h3 {
