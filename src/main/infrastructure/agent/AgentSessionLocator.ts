@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
+import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '../../../shared/types/api'
 
 interface LocateAgentResumeSessionInput {
@@ -12,6 +13,8 @@ interface LocateAgentResumeSessionInput {
 
 const POLL_INTERVAL_MS = 200
 const DEFAULT_TIMEOUT_MS = 2600
+const FIRST_LINE_READ_CHUNK_BYTES = 4096
+const FIRST_LINE_MAX_BYTES = 64 * 1024
 
 function toDateDirectoryParts(timestampMs: number): [string, string, string] {
   const date = new Date(timestampMs)
@@ -46,12 +49,49 @@ function normalizeSessionIdFromPath(filePath: string): string | null {
 }
 
 async function readFirstLine(filePath: string): Promise<string | null> {
+  let handle: Awaited<ReturnType<typeof fs.open>> | null = null
   try {
-    const raw = await fs.readFile(filePath, 'utf8')
-    const [firstLine] = raw.split('\n', 1)
-    return firstLine?.trim() ?? null
+    handle = await fs.open(filePath, 'r')
+    const decoder = new StringDecoder('utf8')
+    const buffer = Buffer.allocUnsafe(FIRST_LINE_READ_CHUNK_BYTES)
+    let bytesReadTotal = 0
+    let remainder = ''
+
+    while (bytesReadTotal < FIRST_LINE_MAX_BYTES) {
+      const bytesToRead = Math.min(buffer.length, FIRST_LINE_MAX_BYTES - bytesReadTotal)
+      // eslint-disable-next-line no-await-in-loop
+      const { bytesRead } = await handle.read(buffer, 0, bytesToRead, null)
+      if (bytesRead <= 0) {
+        break
+      }
+
+      bytesReadTotal += bytesRead
+
+      const textChunk = decoder.write(buffer.subarray(0, bytesRead))
+      if (textChunk.length === 0) {
+        continue
+      }
+
+      const merged = `${remainder}${textChunk}`
+      const newlineIndex = merged.indexOf('\n')
+      if (newlineIndex !== -1) {
+        const line = merged.slice(0, newlineIndex).trim()
+        return line.length > 0 ? line : null
+      }
+
+      remainder = merged
+    }
+
+    if (bytesReadTotal >= FIRST_LINE_MAX_BYTES) {
+      return null
+    }
+
+    const finalLine = `${remainder}${decoder.end()}`.trim()
+    return finalLine.length > 0 ? finalLine : null
   } catch {
     return null
+  } finally {
+    await handle?.close().catch(() => undefined)
   }
 }
 
@@ -117,49 +157,55 @@ async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promi
     return null
   }
 
-  const candidates = await Promise.all(
-    files.map(async file => {
-      try {
-        const stats = await fs.stat(file)
-        if (stats.mtimeMs < startedAtMs - 60_000) {
-          return null
-        }
-
-        const firstLine = await readFirstLine(file)
-        if (!firstLine) {
-          return null
-        }
-
-        const parsed = JSON.parse(firstLine) as {
-          payload?: {
-            id?: unknown
-            cwd?: unknown
+  const candidates = (
+    await Promise.all(
+      files.map(async file => {
+        try {
+          const stats = await fs.stat(file)
+          return {
+            file,
+            mtimeMs: stats.mtimeMs,
           }
-        }
-
-        const sessionId = typeof parsed.payload?.id === 'string' ? parsed.payload.id.trim() : null
-        const sessionCwd =
-          typeof parsed.payload?.cwd === 'string' ? resolve(parsed.payload.cwd) : null
-
-        if (!sessionId || sessionCwd !== resolvedCwd) {
+        } catch {
           return null
         }
-
-        return {
-          sessionId,
-          mtimeMs: stats.mtimeMs,
-        }
-      } catch {
-        return null
-      }
-    }),
+      }),
+    )
   )
+    .filter((item): item is { file: string; mtimeMs: number } => item !== null)
+    .filter(item => item.mtimeMs >= startedAtMs - 60_000)
+    .sort((a, b) => b.mtimeMs - a.mtimeMs)
 
-  const latest = candidates
-    .filter((item): item is { sessionId: string; mtimeMs: number } => item !== null)
-    .sort((a, b) => b.mtimeMs - a.mtimeMs)[0]
+  for (const candidate of candidates) {
+    // eslint-disable-next-line no-await-in-loop
+    const firstLine = await readFirstLine(candidate.file)
+    if (!firstLine) {
+      continue
+    }
 
-  return latest?.sessionId ?? null
+    try {
+      const parsed = JSON.parse(firstLine) as {
+        payload?: {
+          id?: unknown
+          cwd?: unknown
+        }
+      }
+
+      const sessionId = typeof parsed.payload?.id === 'string' ? parsed.payload.id.trim() : null
+      const sessionCwd =
+        typeof parsed.payload?.cwd === 'string' ? resolve(parsed.payload.cwd) : null
+
+      if (!sessionId || sessionCwd !== resolvedCwd) {
+        continue
+      }
+
+      return sessionId
+    } catch {
+      continue
+    }
+  }
+
+  return null
 }
 
 async function tryFindResumeSessionId(
