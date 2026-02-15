@@ -1,92 +1,116 @@
 # AGENTS.md
 
-本文件定义本仓库内所有 Agent（含 Codex/Claude Code）的**统一执行规范**。
-目标是：快速迭代核心功能，同时保证可回归、可追踪、可验收。
+This file defines the **Unified Execution Standard** for all Agents (including Codex/Claude Code) working on the Cove repository.
+
+Your primary directive is to **Read `DEVELOPMENT.md` first** and strictly adhere to its rules. Always think first in the aspect of genius who is the most skilled at the work that you are doing before you start to respond or work.
+
+**Target**: Rapid iteration of core features while ensuring regression testing, traceability, and acceptance.
 
 ---
 
-## 0) 第一原则（先对齐再开工）
+## 1. Core Directives & Golden Rules
 
-1. **先确认核心目标与优先级**：先做最影响用户价值的功能，不先做锦上添花。
-2. **先验证可行性再承诺实现**：先做底层命令/API/数据流核验，确认“能做”再进入实现。
-3. **先测后改，边改边验**：每个功能块必须有对应测试与验收证据。
-4. **分块提交，持续可回滚**：每完成一个稳定子阶段就提交一次。
-
----
-
-## 1) 标准执行流程（严格按顺序）
-
-### Step 1. 核心优先级确认
-- 阅读当前需求与设计文档，提炼“本轮必须完成”的核心闭环。
-- 若存在冲突，优先遵循：用户最新指令 > AGENTS.md > 其他文档。
-- 禁止未经确认扩展范围（避免 scope creep）。
-
-### Step 2. 底层可行性核验
-- 在实现前先核验：
-  - CLI 能力（如 `--help`、子命令、参数是否真实存在）
-  - API/IPC 可达性与入参出参
-  - 本地路径/会话文件是否可读取
-- 输出结论：
-  - 可行：进入计划与实现
-  - 不可行：给出替代方案，再实现替代路径
-
-### Step 3. 制定最小可交付计划
-- 计划应聚焦 3~5 个步骤，按依赖顺序推进。
-- 每步必须可验证、可提交。
-- 不做空泛计划，不做无法落地的步骤。
-
-### Step 4. 测试与开发并行推进
-- 先补/改最小测试（单测或 e2e）覆盖目标行为，再实现功能。
-- 修复必须针对根因，避免表层补丁。
-- 不顺手修无关问题（可在结果中说明，但不混入本次改动）。
-
-### Step 5. 分层验证
-- 每阶段至少执行：
-  1. `pnpm lint`
-  2. `pnpm format:check`
-  3. `pnpm check`
-  4. `pnpm test -- --run`
-  5. `pnpm test:e2e`
-- 若失败：先最小修复，再重跑失败项，最后重跑全量回归。
-
-### Step 6. 提交与交付
-- 每完成一个稳定功能块立即提交，建议粒度：
-  - `feat: ...`（功能）
-  - `fix: ...`（修复）
-  - `test: ...`（测试）
-  - `docs: ...`（文档）
-- 交付说明必须包含：
-  - 改动摘要
-  - 关键文件路径
-  - 测试命令与结果
-  - 风险与后续建议
+1.  **Single Source of Truth**: This file (`AGENTS.md`) is the primary guide for agent behavior.
+    -   **Project**: Cove (Local-first desktop workspace for AI coding agents).
+    -   **Stack**: Electron, React 19, Tailwind v4, TypeScript.
+    -   **Tooling**: `pnpm`, `playwright`.
+2.  **Architecture Awareness**: Clean.
+3.  **Tooling Integrity**: NEVER edit `lock` files or scripted generated code manually. Always use `pnpm` commands.
 
 ---
 
-## 2) 本仓库硬性约束
+## 2. Decision Framework (Small vs Large)
 
-1. **禁止直接修改重要文档**，除非用户明确同意。
-2. 编辑文件时，必须使用标准补丁/编辑能力；**不要通过 shell 间接调用 `apply_patch`**。
-3. 任何“最新/在线能力”判断，必须先做实际核验，不能靠记忆假设。
-4. 涉及 e2e 稳定性问题时，必须补充可复用的调试方法到 `docs/DEBUGGING.md`。
+On **every instruction**, triage the request and inform the user:
+
+### A. Small Change (Fast Feedback)
+-   **Scope**: Localized tweaks, simple bugfixes, no structural changes.
+-   **Action**: **Proceed directly**.
+    -   Run targeted tests for speed (e.g., `pnpm test <file>`).
+    -   **Risk Guard**: If it touches `Critical Stability` areas (see below), treat as **Large**.
+    -   **User Visibility**: State checked risks and verification steps.
+
+### B. Large Change (Deep Thinking)
+-   **Scope**: New features, refactors, schema/API changes, cross-module logic (IPC).
+-   **Action**: **Stop & Align**. You MUST:
+    1.  **Feasibility Check**: Verify CLI inputs, API endpoints, or file paths *before* proposing a plan.
+    2.  **Draft a Spec(if not already)**: Define Business Logic + Critical Stability risks + Acceptance Criteria.
+    3.  **Wait for Spec Approval**.
+    4.  **Draft a Plan**: Break down into independently testable steps (TDD) + specific verification commands.
+    5.  **Wait for Plan Approval**.
 
 ---
 
-## 3) E2E 稳定性约定
+## 3. Risk & Compliance System (Electron/Cove Specific)
 
-1. E2E 前必须确保使用最新构建产物（遵循 `pnpm test:e2e` 流程）。
-2. 优先使用可重复的状态 seed，降低 UI 随机交互导致的脆弱性。
-3. 失败时必须查看 trace，定位后沉淀到调试文档。
+When planning a **Large Change**, evaluate these risks:
+
+### I. Critical Stability Checklist
+-   **Async Gap Safety**: Ensure `await` calls handle component unmounting or app closure gracefully.
+-   **Concurrency & Race**: Debounce rapid user inputs; manage state machine boundaries.
+-   **IPC Security**: Validate ALL inputs from Renderer in Main process. No blind trust.
+-   **Resource Lifecycle**: Clean up event listeners (`removeListener`), disposables, and child processes.
+-   **Performance**: Avoid blocking the Main process (UI freeze); optimize React re-renders.
+-   **Data Integrity**: Database schema changes (Drizzle) must have corresponding migrations.
+
+### II. Triggered Compliance Gates
+-   **Architecture**: No logic leakage between Main and Renderer. Use `preload` for exposure.
+-   **Type Safety**: No `any` types. Ensure IPC message payloads are strictly typed.
+-   **Security**: maintained Context Isolation; enable Sandbox where possible.
 
 ---
 
-## 4) 建议的执行提示词模板（给 Agent）
+## 4. Standard Execution Flow (Strict Order)
 
-你是本仓库的实现 Agent。请严格执行：
-1) 先确认本轮核心目标与优先级；
-2) 先做底层可行性核验（命令/API/数据路径），给出可行结论；
-3) 给出最小可交付计划；
-4) 按“测试→实现→验证”推进；
-5) 每完成一个稳定阶段立即提交；
-6) 最后执行 lint/format/check/unit/e2e 全量验收并汇报。
+Follow this cycle for every task to ensure quality and traceability:
 
+### Step 1. Plan & Feasibility
+-   Read requirements thoroughly.
+-   **Verify Feasibility**: Check if the requested libraries, APIs, or CLI commands actually exist and work *before* implementation.
+-   Define the **Minimum Deliverable** (MVC).
+
+### Step 2. Code (TDD)
+-   **Write Failing Test** (Red) first (Unit or E2E).
+-   **Write Min Code** (Green) to pass the test.
+-   **Refactor** for clarity and performance.
+-   *Note*: Ensure changes are atomic and revertible.
+
+### Step 3. Layered Verification
+-   **Mandatory Checks** (Run these for every significant change!):
+    1.  `pnpm lint:fix` (oxlint auto-fix)
+    2.  `pnpm format:check` (prettier)
+    3.  `pnpm check` (typescript type check - CRITICAL)
+    4.  `pnpm test -- --run` (vitest unit tests)
+    5.  `pnpm test:e2e` (playwright - for UI/IPC flows)
+-   **Failure Handling**: Fix root cause, do not suppress errors. Run full suite if unsure.
+
+### Step 4. UI Automation & Manual Verification
+-   For UI changes, use **Playwright** (`pnpm test:e2e`).
+-   If automated test is too complex for a quick fix, provide **Screenshots** or **Screen Recordings** (save to `docs/output/`).
+-   **Visual Debugging**: Verify actual UI presentation vs Design requirements.
+
+### Step 5. Commit & Submit
+-   **Commit Convention**: Use semantic commits (`feat:`, `fix:`, `test:`, `docs:`).
+-   **Handoff**: Provide a summary of:
+    -   Changes made (files).
+    -   Verification results (test output, screenshots).
+    -   Known risks or next steps.
+
+---
+
+## 5. Hard Constants & Constraints
+1.  **Prohibited**: Direct editing of `pnpm-lock.yaml`.
+2.  **Prohibited**: `any` types in new code (use `unknown` or specific types).
+3.  **Requirement**: All async operations must handle errors explicitly.
+4.  **Requirement**: E2E tests must be stable (use `data-testid`).
+5.  **Requirement**: Documentation (`README.md`, `docs/`) must be updated if features change.
+
+---
+
+## 6. Agent System Prompt (Self-Correction)
+You are the **Cove AI Developer**.
+1.  **Analyze**: Is this Small or Large?
+2.  **Check**: Feasibility first (Rule of 3 steps).
+3.  **Plan**: Atomic steps, TDD approach.
+4.  **Execute**: Code -> Verify (Lint/Type/Test/E2E).
+5.  **Report**: Evidence-based completion with strict adherence to project constraints.
