@@ -53,6 +53,15 @@ A **Deep Space Cyber-Glass** design language crafted for developers.
 
 Cove is currently in Alpha. Developers are welcome to try it out.
 
+## 📦 Downloads (macOS)
+
+Download `.dmg` / `.zip` from GitHub Releases.
+
+> Current releases are **NOT signed or notarized** with Apple Developer ID. If Gatekeeper blocks the app on first launch:
+>
+> - Finder: right-click `cove.app` → **Open** → confirm again
+> - Or in Terminal (after copying to Applications): `xattr -dr com.apple.quarantine /Applications/cove.app`
+
 ### Prerequisites
 - Node.js `>= 22`
 - pnpm `>= 9`
@@ -70,6 +79,8 @@ pnpm install
 # Start development environment
 pnpm dev
 ```
+
+See `docs/RELEASING.md` for release/packaging notes.
 
 ---
 

@@ -52,6 +52,15 @@
 
 Cove 目前处于 Alpha 阶段，建议开发者尝鲜。
 
+## 📦 下载与安装（macOS）
+
+建议从 GitHub Releases 下载 `.dmg` / `.zip`。
+
+> 当前 Release 构建**未做 Apple Developer ID 签名/公证**。首次打开若被 Gatekeeper 拦截，可用以下方式处理：
+>
+> - Finder：右键 `cove.app` → **打开** → 再次确认
+> - 或终端（拷贝到 Applications 后）：`xattr -dr com.apple.quarantine /Applications/cove.app`
+
 ### 前置要求
 - Node.js `>= 22`
 - pnpm `>= 9`
@@ -69,6 +78,8 @@ pnpm install
 # 启动开发环境
 pnpm dev
 ```
+
+更多发布/打包说明见 `docs/RELEASING.md`。
 
 ---
 
