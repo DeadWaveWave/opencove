@@ -19,6 +19,7 @@ export interface WorkspaceCanvasActionRefs {
   updateTaskStatusRef: React.MutableRefObject<(nodeId: string, status: TaskRuntimeStatus) => void>
   updateNodeScrollbackRef: React.MutableRefObject<(nodeId: string, scrollback: string) => void>
   updateTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
+  renameTerminalTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
   normalizeViewportForTerminalInteractionRef: React.MutableRefObject<(nodeId: string) => void>
 }
 
@@ -59,6 +60,9 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const updateTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
     (_nodeId: string, _title: string) => undefined,
   )
+  const renameTerminalTitleRef = useRef<(nodeId: string, title: string) => void>(
+    (_nodeId: string, _title: string) => undefined,
+  )
   const normalizeViewportForTerminalInteractionRef = useRef<(nodeId: string) => void>(
     (_nodeId: string) => undefined,
   )
@@ -78,6 +82,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     updateTaskStatusRef,
     updateNodeScrollbackRef,
     updateTerminalTitleRef,
+    renameTerminalTitleRef,
     normalizeViewportForTerminalInteractionRef,
   }
 }
@@ -90,6 +95,7 @@ interface SyncActionRefsParams {
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
+  renameTerminalTitle: (nodeId: string, title: string) => void
   normalizeZoomOnTerminalClick: boolean
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
@@ -103,6 +109,7 @@ export function useWorkspaceCanvasSyncActionRefs({
   launchAgentInNode,
   updateNodeScrollback,
   updateTerminalTitle,
+  renameTerminalTitle,
   normalizeZoomOnTerminalClick,
   nodesRef,
   reactFlow,
@@ -142,6 +149,12 @@ export function useWorkspaceCanvasSyncActionRefs({
       updateTerminalTitle(nodeId, title)
     }
   }, [actionRefs.updateTerminalTitleRef, updateTerminalTitle])
+
+  useEffect(() => {
+    actionRefs.renameTerminalTitleRef.current = (nodeId, title) => {
+      renameTerminalTitle(nodeId, title)
+    }
+  }, [actionRefs.renameTerminalTitleRef, renameTerminalTitle])
 
   useEffect(() => {
     actionRefs.normalizeViewportForTerminalInteractionRef.current = (nodeId: string) => {

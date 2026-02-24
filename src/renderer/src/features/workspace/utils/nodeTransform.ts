@@ -9,6 +9,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
     data: {
       sessionId: '',
       title: node.title,
+      titlePinnedByUser: node.titlePinnedByUser === true,
       width: node.width,
       height: node.height,
       kind: node.kind,

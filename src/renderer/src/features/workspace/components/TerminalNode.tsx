@@ -35,6 +35,7 @@ export function TerminalNode({
   onClose,
   onResize,
   onScrollbackChange,
+  onTitleCommit,
   onCommandRun,
   onInteractionStart,
   onStop,
@@ -54,6 +55,11 @@ export function TerminalNode({
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
   const commandInputStateRef = useRef(createTerminalCommandInputState())
+  const onCommandRunRef = useRef(onCommandRun)
+
+  useEffect(() => {
+    onCommandRunRef.current = onCommandRun
+  }, [onCommandRun])
 
   const {
     scrollbackBufferRef,
@@ -189,14 +195,15 @@ export function TerminalNode({
       ptyWriteQueue.enqueue(data)
       ptyWriteQueue.flush()
 
-      if (!onCommandRun) {
+      const commandRunHandler = onCommandRunRef.current
+      if (!commandRunHandler) {
         return
       }
 
       const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
       commandInputStateRef.current = parsed.nextState
       parsed.commands.forEach(command => {
-        onCommandRun(command)
+        commandRunHandler(command)
       })
     })
 
@@ -347,7 +354,6 @@ export function TerminalNode({
   }, [
     disposeScrollbackPublish,
     markScrollbackDirty,
-    onCommandRun,
     scrollbackBufferRef,
     sessionId,
     syncTerminalSize,
@@ -444,6 +450,7 @@ export function TerminalNode({
         title={title}
         kind={kind}
         status={status}
+        onTitleCommit={onTitleCommit}
         onClose={onClose}
         onStop={onStop}
         onRerun={onRerun}

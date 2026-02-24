@@ -43,6 +43,7 @@ export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
   title: string
+  titlePinnedByUser?: boolean
   width: number
   height: number
   kind: WorkspaceNodeKind
@@ -96,6 +97,7 @@ export interface WorkspaceSpaceState {
 export interface PersistedTerminalNode {
   id: string
   title: string
+  titlePinnedByUser?: boolean
   position: Point
   width: number
   height: number

@@ -140,6 +140,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   return {
     id,
     title,
+    titlePinnedByUser: record.titlePinnedByUser === true,
     width,
     height,
     kind,

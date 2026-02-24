@@ -12,6 +12,7 @@ export interface TerminalNodeProps {
   onClose: () => void
   onResize: (size: { width: number; height: number }) => void
   onScrollbackChange?: (scrollback: string) => void
+  onTitleCommit?: (title: string) => void
   onCommandRun?: (command: string) => void
   onInteractionStart?: () => void
   onStop?: () => void

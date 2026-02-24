@@ -27,6 +27,7 @@ interface WorkspaceCanvasNodeTypesParams {
   runTaskAgentRef: MutableRefObject<(nodeId: string) => Promise<void>>
   updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
+  renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }
 
 export function useWorkspaceCanvasNodeTypes({
@@ -46,6 +47,7 @@ export function useWorkspaceCanvasNodeTypes({
   runTaskAgentRef,
   updateTaskStatusRef,
   updateTerminalTitleRef,
+  renameTerminalTitleRef,
 }: WorkspaceCanvasNodeTypesParams): Record<
   string,
   (props: { data: TerminalNodeData; id: string }) => JSX.Element | null
@@ -71,6 +73,13 @@ export function useWorkspaceCanvasNodeTypes({
             data.kind === 'terminal'
               ? command => {
                   updateTerminalTitleRef.current(id, command)
+                }
+              : undefined
+          }
+          onTitleCommit={
+            data.kind === 'terminal'
+              ? nextTitle => {
+                  renameTerminalTitleRef.current(id, nextTitle)
                 }
               : undefined
           }
@@ -164,6 +173,7 @@ export function useWorkspaceCanvasNodeTypes({
       updateNodeScrollbackRef,
       updateTaskStatusRef,
       updateTerminalTitleRef,
+      renameTerminalTitleRef,
     ],
   )
 }

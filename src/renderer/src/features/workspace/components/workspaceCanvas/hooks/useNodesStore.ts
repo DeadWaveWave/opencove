@@ -35,6 +35,7 @@ export function useWorkspaceCanvasNodesStore({
   applyPendingScrollbacks: (targetNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
+  renameTerminalTitle: (nodeId: string, title: string) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createTaskNode: (
     anchor: Point,
@@ -287,6 +288,10 @@ export function useWorkspaceCanvasNodesStore({
               return node
             }
 
+            if (node.data.titlePinnedByUser === true) {
+              return node
+            }
+
             if (node.data.title === normalizedTitle) {
               return node
             }
@@ -307,6 +312,48 @@ export function useWorkspaceCanvasNodesStore({
       )
     },
     [setNodes],
+  )
+
+  const renameTerminalTitle = useCallback(
+    (nodeId: string, title: string) => {
+      const normalizedTitle = title.trim()
+      if (normalizedTitle.length === 0) {
+        return
+      }
+
+      setNodes(
+        prevNodes => {
+          let hasChanged = false
+
+          const nextNodes = prevNodes.map(node => {
+            if (node.id !== nodeId || node.data.kind !== 'terminal') {
+              return node
+            }
+
+            const isPinned = node.data.titlePinnedByUser === true
+            if (node.data.title === normalizedTitle && isPinned) {
+              return node
+            }
+
+            hasChanged = true
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                title: normalizedTitle,
+                titlePinnedByUser: true,
+              },
+            }
+          })
+
+          return hasChanged ? nextNodes : prevNodes
+        },
+        { syncLayout: false },
+      )
+
+      onRequestPersistFlush?.()
+    },
+    [onRequestPersistFlush, setNodes],
   )
 
   const createNodeForSession = useCallback(
@@ -336,6 +383,7 @@ export function useWorkspaceCanvasNodesStore({
         data: {
           sessionId,
           title,
+          titlePinnedByUser: false,
           width: DEFAULT_SIZE.width,
           height: DEFAULT_SIZE.height,
           kind,
@@ -386,6 +434,7 @@ export function useWorkspaceCanvasNodesStore({
         data: {
           sessionId: '',
           title,
+          titlePinnedByUser: false,
           width: TASK_SIZE.width,
           height: TASK_SIZE.height,
           kind: 'task',
@@ -434,6 +483,7 @@ export function useWorkspaceCanvasNodesStore({
     applyPendingScrollbacks,
     updateNodeScrollback,
     updateTerminalTitle,
+    renameTerminalTitle,
     createNodeForSession,
     createTaskNode,
   }

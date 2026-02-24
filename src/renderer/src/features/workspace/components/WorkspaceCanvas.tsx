@@ -92,6 +92,7 @@ function WorkspaceCanvasInner({
     applyPendingScrollbacks,
     updateNodeScrollback,
     updateTerminalTitle,
+    renameTerminalTitle,
     createNodeForSession,
     createTaskNode,
   } = useWorkspaceCanvasNodesStore({
@@ -285,6 +286,7 @@ function WorkspaceCanvasInner({
     launchAgentInNode,
     updateNodeScrollback,
     updateTerminalTitle,
+    renameTerminalTitle,
     normalizeZoomOnTerminalClick: agentSettings.normalizeZoomOnTerminalClick,
     nodesRef,
     reactFlow,

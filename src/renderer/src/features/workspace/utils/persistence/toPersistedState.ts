@@ -43,6 +43,7 @@ export function toPersistedState(
       nodes: workspace.nodes.map(node => ({
         id: node.id,
         title: node.data.title,
+        titlePinnedByUser: node.data.titlePinnedByUser === true,
         position: node.position,
         width: node.data.width,
         height: node.data.height,
