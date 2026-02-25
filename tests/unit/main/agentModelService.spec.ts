@@ -1,10 +1,61 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { spawn } from 'node:child_process'
+import { EventEmitter } from 'node:events'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { listAgentModels } from '../../../src/main/infrastructure/agent/AgentModelService'
+
+const { spawnMock } = vi.hoisted(() => ({
+  spawnMock: vi.fn<typeof import('node:child_process').spawn>(),
+}))
+
+vi.mock('node:child_process', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:child_process')>()
+
+  return {
+    ...actual,
+    spawn: spawnMock,
+    default: {
+      ...actual,
+      spawn: spawnMock,
+    },
+  }
+})
 
 const ORIGINAL_ENV = { ...process.env }
 
+type MockChildProcess = EventEmitter & {
+  stdout: EventEmitter
+  stderr: EventEmitter
+  stdin: {
+    write: ReturnType<typeof vi.fn>
+    end: ReturnType<typeof vi.fn>
+  }
+  killed: boolean
+  kill: ReturnType<typeof vi.fn>
+}
+
+function createMockChildProcess(): MockChildProcess {
+  const child = new EventEmitter() as MockChildProcess
+
+  child.stdout = new EventEmitter()
+  child.stderr = new EventEmitter()
+  child.killed = false
+  child.kill = vi.fn((_signal?: NodeJS.Signals) => {
+    child.killed = true
+    return true
+  })
+  child.stdin = {
+    write: vi.fn(() => true),
+    end: vi.fn(() => {
+      child.emit('exit', 0, null)
+    }),
+  }
+
+  return child
+}
+
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
+  vi.clearAllMocks()
 })
 
 describe('AgentModelService', () => {
@@ -27,5 +78,51 @@ describe('AgentModelService', () => {
     expect(result.models.find(model => model.id === 'claude-sonnet-4-5-20250929')?.isDefault).toBe(
       true,
     )
+  })
+
+  it('keeps stdin open while waiting for codex model/list response', async () => {
+    const mockedSpawn = vi.mocked(spawn)
+    const child = createMockChildProcess()
+
+    mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
+
+    const resultPromise = listAgentModels('codex')
+
+    expect(child.stdin.write).toHaveBeenCalledTimes(2)
+    expect(child.stdin.end).not.toHaveBeenCalled()
+
+    child.stdout.emit(
+      'data',
+      Buffer.from(
+        `${JSON.stringify({
+          id: '2',
+          result: {
+            data: [
+              {
+                id: 'gpt-5.2-codex',
+                displayName: 'gpt-5.2-codex',
+                description: 'Frontier model',
+                isDefault: true,
+              },
+            ],
+          },
+        })}\n`,
+      ),
+    )
+
+    const result = await resultPromise
+
+    expect(result.provider).toBe('codex')
+    expect(result.source).toBe('codex-cli')
+    expect(result.error).toBeNull()
+    expect(result.models).toEqual([
+      {
+        id: 'gpt-5.2-codex',
+        displayName: 'gpt-5.2-codex',
+        description: 'Frontier model',
+        isDefault: true,
+      },
+    ])
+    expect(child.stdin.end).not.toHaveBeenCalled()
   })
 })

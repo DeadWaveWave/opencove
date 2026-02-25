@@ -214,7 +214,8 @@ async function listCodexModelsFromCli(): Promise<AgentModelOption[]> {
 
     child.stdin.write(`${JSON.stringify(initializeMessage)}\n`)
     child.stdin.write(`${JSON.stringify(modelListMessage)}\n`)
-    child.stdin.end()
+    // Keep stdin open until we receive model/list response; premature EOF can make
+    // codex app-server exit before sending the result payload.
   })
 }
 
