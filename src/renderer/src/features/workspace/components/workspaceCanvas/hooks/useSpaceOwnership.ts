@@ -163,6 +163,155 @@ function resolveDeltaToKeepRectOutsideRects(
   return { dx: totalDx, dy: totalDy }
 }
 
+const WINDOW_GAP_PX = 24
+const GRID_STEP_PX = 40
+const MAX_SCAN_RADIUS = 80
+
+function compareOffsets(a: { x: number; y: number }, b: { x: number; y: number }): number {
+  const aMan = Math.abs(a.x) + Math.abs(a.y)
+  const bMan = Math.abs(b.x) + Math.abs(b.y)
+  if (aMan !== bMan) {
+    return aMan - bMan
+  }
+
+  const aXSign = a.x > 0 ? 0 : a.x === 0 ? 1 : 2
+  const bXSign = b.x > 0 ? 0 : b.x === 0 ? 1 : 2
+  if (aXSign !== bXSign) {
+    return aXSign - bXSign
+  }
+
+  const aYSign = a.y > 0 ? 0 : a.y === 0 ? 1 : 2
+  const bYSign = b.y > 0 ? 0 : b.y === 0 ? 1 : 2
+  if (aYSign !== bYSign) {
+    return aYSign - bYSign
+  }
+
+  const aAbsY = Math.abs(a.y)
+  const bAbsY = Math.abs(b.y)
+  if (aAbsY !== bAbsY) {
+    return aAbsY - bAbsY
+  }
+
+  return Math.abs(a.x) - Math.abs(b.x)
+}
+
+function candidateOffsets(radius: number): Array<{ x: number; y: number }> {
+  const points: Array<{ x: number; y: number }> = []
+
+  for (let y = -radius; y <= radius; y += 1) {
+    for (let x = -radius; x <= radius; x += 1) {
+      if (Math.max(Math.abs(x), Math.abs(y)) !== radius) {
+        continue
+      }
+
+      points.push({ x: x * GRID_STEP_PX, y: y * GRID_STEP_PX })
+    }
+  }
+
+  points.sort(compareOffsets)
+  return points
+}
+
+function resolveNearestNonOverlappingDropOffset({
+  draggedNodes,
+  otherNodes,
+  baseDx,
+  baseDy,
+  targetSpaceRect,
+  forbiddenSpaceRects,
+}: {
+  draggedNodes: Array<Node<TerminalNodeData>>
+  otherNodes: Array<Node<TerminalNodeData>>
+  baseDx: number
+  baseDy: number
+  targetSpaceRect: WorkspaceSpaceRect | null
+  forbiddenSpaceRects: WorkspaceSpaceRect[]
+}): { dx: number; dy: number } {
+  const otherRects: Rect[] = otherNodes.map(node => ({
+    x: node.position.x,
+    y: node.position.y,
+    width: node.data.width,
+    height: node.data.height,
+  }))
+
+  const forbiddenRects: Rect[] = forbiddenSpaceRects.map(rect => ({
+    x: rect.x,
+    y: rect.y,
+    width: rect.width,
+    height: rect.height,
+  }))
+
+  const targetRect: Rect | null = targetSpaceRect
+    ? {
+        x: targetSpaceRect.x,
+        y: targetSpaceRect.y,
+        width: targetSpaceRect.width,
+        height: targetSpaceRect.height,
+      }
+    : null
+
+  const candidateIsValid = (offset: { x: number; y: number }): boolean => {
+    for (const node of draggedNodes) {
+      const candidate: Rect = {
+        x: node.position.x + baseDx + offset.x,
+        y: node.position.y + baseDy + offset.y,
+        width: node.data.width,
+        height: node.data.height,
+      }
+
+      if (targetRect) {
+        const right = candidate.x + candidate.width
+        const bottom = candidate.y + candidate.height
+        const targetRight = targetRect.x + targetRect.width
+        const targetBottom = targetRect.y + targetRect.height
+
+        if (
+          candidate.x < targetRect.x ||
+          candidate.y < targetRect.y ||
+          right > targetRight ||
+          bottom > targetBottom
+        ) {
+          return false
+        }
+      } else {
+        for (const forbidden of forbiddenRects) {
+          if (rectIntersects(candidate, forbidden)) {
+            return false
+          }
+        }
+      }
+
+      const expandedCandidate = inflateRect(candidate, WINDOW_GAP_PX)
+
+      for (const other of otherRects) {
+        if (rectIntersects(expandedCandidate, inflateRect(other, WINDOW_GAP_PX))) {
+          return false
+        }
+      }
+    }
+
+    return true
+  }
+
+  const initial = { x: 0, y: 0 }
+  if (candidateIsValid(initial)) {
+    return { dx: 0, dy: 0 }
+  }
+
+  for (let radius = 1; radius <= MAX_SCAN_RADIUS; radius += 1) {
+    const offsets = candidateOffsets(radius)
+    for (const offset of offsets) {
+      if (!candidateIsValid(offset)) {
+        continue
+      }
+
+      return { dx: offset.x, dy: offset.y }
+    }
+  }
+
+  return { dx: 0, dy: 0 }
+}
+
 export function useWorkspaceCanvasSpaceOwnership({
   workspacePath,
   reactFlow,
@@ -334,25 +483,54 @@ export function useWorkspaceCanvasSpaceOwnership({
         onSpacesChange(nextSpaces)
       }
 
-      const dropRect = computeBoundingRect(draggedNodes)
-      const dropSpaceRect = targetSpace?.rect ?? null
+      setNodes(prevNodes => {
+          const dragged = prevNodes.filter(node => nodeIdSet.has(node.id))
+          if (dragged.length === 0) {
+            return prevNodes
+          }
 
-      const { dx, dy } =
-        dropRect && dropSpaceRect
-          ? resolveDeltaToKeepRectInsideRect(dropRect, dropSpaceRect, 0)
-          : dropRect
-            ? resolveDeltaToKeepRectOutsideRects(
-                dropRect,
-                spacesRef.current
-                  .map(space => space.rect)
-                  .filter((rect): rect is WorkspaceSpaceRect => Boolean(rect))
-                  .map(rect => inflateRect(rect, 0)),
-              )
-            : { dx: 0, dy: 0 }
+          const dropRect = computeBoundingRect(dragged)
+          const dropSpaceRect = targetSpace?.rect ?? null
 
-      if (dx !== 0 || dy !== 0) {
-        setNodes(prevNodes => {
+          const { dx: baseDx, dy: baseDy } =
+            dropRect && dropSpaceRect
+              ? resolveDeltaToKeepRectInsideRect(dropRect, dropSpaceRect, 0)
+              : dropRect
+                ? resolveDeltaToKeepRectOutsideRects(
+                    dropRect,
+                    spacesRef.current
+                      .map(space => space.rect)
+                      .filter((rect): rect is WorkspaceSpaceRect => Boolean(rect))
+                      .map(rect => inflateRect(rect, 0)),
+                  )
+                : { dx: 0, dy: 0 }
+
+          const others = prevNodes.filter(node => !nodeIdSet.has(node.id))
+
+          const forbiddenSpaceRects = dropSpaceRect
+            ? []
+            : spacesRef.current
+                .map(space => space.rect)
+                .filter((rect): rect is WorkspaceSpaceRect => Boolean(rect))
+
+          const { dx: extraDx, dy: extraDy } = resolveNearestNonOverlappingDropOffset({
+            draggedNodes: dragged,
+            otherNodes: others,
+            baseDx,
+            baseDy,
+            targetSpaceRect: dropSpaceRect,
+            forbiddenSpaceRects,
+          })
+
+          const dx = baseDx + extraDx
+          const dy = baseDy + extraDy
+
+          if (dx === 0 && dy === 0) {
+            return prevNodes
+          }
+
           let hasChanged = false
+
           const nextNodes = prevNodes.map(node => {
             if (!nodeIdSet.has(node.id)) {
               return node
@@ -377,7 +555,6 @@ export function useWorkspaceCanvasSpaceOwnership({
 
           return hasChanged ? nextNodes : prevNodes
         })
-      }
 
       applyDirectoryExpectation(nodeIds, targetSpace)
       if (hasSpaceChange || nodeIds.length > 0) {

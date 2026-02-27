@@ -230,6 +230,146 @@ test.describe('Workspace Canvas - Spaces (Ownership & Mismatch)', () => {
     }
   })
 
+  test('prevents overlaps when drop clamping moves nodes inside a space', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'space-overlap-static-node',
+            title: 'terminal-static',
+            position: { x: 360, y: 220 },
+            width: 460,
+            height: 300,
+          },
+          {
+            id: 'space-overlap-drag-node',
+            title: 'terminal-drag',
+            position: { x: 360, y: 260 },
+            width: 460,
+            height: 300,
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-overlap',
+              name: 'Overlap Scope',
+              directoryPath: testWorkspacePath,
+              nodeIds: ['space-overlap-static-node', 'space-overlap-drag-node'],
+              rect: { x: 200, y: 200, width: 1200, height: 600 },
+            },
+          ],
+          activeSpaceId: null,
+        },
+      )
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      const draggedNode = window.locator('.terminal-node').filter({ hasText: 'terminal-drag' }).first()
+      await expect(draggedNode).toBeVisible()
+
+      await draggedNode.locator('.terminal-node__header').dragTo(pane, {
+        sourcePosition: { x: 80, y: 16 },
+        targetPosition: { x: 440, y: 700 },
+      })
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(
+            ({ key, spaceId, nodeAId, nodeBId }) => {
+              const raw = window.localStorage.getItem(key)
+              if (!raw) {
+                return false
+              }
+
+              const parsed = JSON.parse(raw) as {
+                workspaces?: Array<{
+                  nodes?: Array<{
+                    id?: string
+                    position?: { x?: number; y?: number }
+                    width?: number
+                    height?: number
+                  }>
+                  spaces?: Array<{
+                    id?: string
+                    rect?: { x?: number; y?: number; width?: number; height?: number } | null
+                  }>
+                }>
+              }
+
+              const workspace = parsed.workspaces?.[0]
+              const space = workspace?.spaces?.find(item => item.id === spaceId)
+              const nodes = workspace?.nodes ?? []
+              const nodeA = nodes.find(item => item.id === nodeAId)
+              const nodeB = nodes.find(item => item.id === nodeBId)
+
+              if (
+                !space?.rect ||
+                typeof space.rect.x !== 'number' ||
+                typeof space.rect.y !== 'number' ||
+                typeof space.rect.width !== 'number' ||
+                typeof space.rect.height !== 'number' ||
+                !nodeA?.position ||
+                typeof nodeA.position.x !== 'number' ||
+                typeof nodeA.position.y !== 'number' ||
+                typeof nodeA.width !== 'number' ||
+                typeof nodeA.height !== 'number' ||
+                !nodeB?.position ||
+                typeof nodeB.position.x !== 'number' ||
+                typeof nodeB.position.y !== 'number' ||
+                typeof nodeB.width !== 'number' ||
+                typeof nodeB.height !== 'number'
+              ) {
+                return false
+              }
+
+              const spaceRight = space.rect.x + space.rect.width
+              const spaceBottom = space.rect.y + space.rect.height
+
+              const aLeft = nodeA.position.x
+              const aTop = nodeA.position.y
+              const aRight = nodeA.position.x + nodeA.width
+              const aBottom = nodeA.position.y + nodeA.height
+
+              const bLeft = nodeB.position.x
+              const bTop = nodeB.position.y
+              const bRight = nodeB.position.x + nodeB.width
+              const bBottom = nodeB.position.y + nodeB.height
+
+              const nodeAInside =
+                aLeft >= space.rect.x &&
+                aTop >= space.rect.y &&
+                aRight <= spaceRight &&
+                aBottom <= spaceBottom
+
+              const nodeBInside =
+                bLeft >= space.rect.x &&
+                bTop >= space.rect.y &&
+                bRight <= spaceRight &&
+                bBottom <= spaceBottom
+
+              const overlaps = !(aRight <= bLeft || aLeft >= bRight || aBottom <= bTop || aTop >= bBottom)
+
+              return nodeAInside && nodeBInside && !overlaps
+            },
+            {
+              key: storageKey,
+              spaceId: 'space-overlap',
+              nodeAId: 'space-overlap-static-node',
+              nodeBId: 'space-overlap-drag-node',
+            },
+          )
+        })
+        .toBe(true)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('creates new tasks in the space under the cursor (right-click anchor)', async () => {
     const { electronApp, window } = await launchApp()
 
