@@ -38,6 +38,24 @@ describe('parseTerminalCommandInput', () => {
     expect(parsed.commands).toEqual(['ls'])
   })
 
+  it('tracks cursor-left edits and emits the final submitted command', () => {
+    const parsed = parseTerminalCommandInput(
+      'echo wrld\u001b[3Do\r',
+      createTerminalCommandInputState(),
+    )
+
+    expect(parsed.commands).toEqual(['echo world'])
+  })
+
+  it('applies backspace at the cursor position after navigation', () => {
+    const parsed = parseTerminalCommandInput(
+      'gitx status\u001b[7D\u007f\r',
+      createTerminalCommandInputState(),
+    )
+
+    expect(parsed.commands).toEqual(['git status'])
+  })
+
   it('clears the pending line on Ctrl+C and captures the next command', () => {
     const parsed = parseTerminalCommandInput(
       'temporary\u0003pwd\r',
