@@ -55,6 +55,8 @@ export function toAgentRuntimeLabel(status: TerminalNodeData['status']): string 
   switch (status) {
     case 'running':
       return 'Working'
+    case 'standby':
+      return 'Standby'
     case 'restoring':
       return 'Restoring'
     case 'failed':

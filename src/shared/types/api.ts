@@ -105,9 +105,11 @@ export interface TerminalExitEvent {
   exitCode: number
 }
 
-export interface TerminalDoneEvent {
+export type TerminalSessionState = 'working' | 'standby'
+
+export interface TerminalSessionStateEvent {
   sessionId: string
-  signal: 'done'
+  state: TerminalSessionState
 }
 
 export type AgentProviderId = 'claude-code' | 'codex'

@@ -28,8 +28,8 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   TerminalDataEvent,
-  TerminalDoneEvent,
   TerminalExitEvent,
+  TerminalSessionStateEvent,
   WorkspaceDirectory,
   WriteAppStateInput,
   WriteNodeScrollbackInput,
@@ -113,15 +113,15 @@ const coveApi = {
         ipcRenderer.removeListener(IPC_CHANNELS.ptyExit, handler)
       }
     },
-    onDone: (listener: (event: TerminalDoneEvent) => void): UnsubscribeFn => {
-      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalDoneEvent) => {
+    onState: (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalSessionStateEvent) => {
         listener(payload)
       }
 
-      ipcRenderer.on(IPC_CHANNELS.ptyDone, handler)
+      ipcRenderer.on(IPC_CHANNELS.ptyState, handler)
 
       return () => {
-        ipcRenderer.removeListener(IPC_CHANNELS.ptyDone, handler)
+        ipcRenderer.removeListener(IPC_CHANNELS.ptyState, handler)
       }
     },
   },

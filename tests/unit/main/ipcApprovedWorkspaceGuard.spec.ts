@@ -37,7 +37,7 @@ function createPtyRuntimeMock(): PtyRuntime {
     attach: vi.fn(),
     detach: vi.fn(),
     snapshot: vi.fn(() => ''),
-    startSessionDoneWatcher: vi.fn(),
+    startSessionStateWatcher: vi.fn(),
     dispose: vi.fn(),
   }
 }

@@ -4,6 +4,8 @@ export function getStatusLabel(status: AgentRuntimeStatus | null): string {
   switch (status) {
     case 'running':
       return 'Running'
+    case 'standby':
+      return 'Standby'
     case 'exited':
       return 'Exited'
     case 'failed':
@@ -19,6 +21,8 @@ export function getStatusLabel(status: AgentRuntimeStatus | null): string {
 
 export function getStatusClassName(status: AgentRuntimeStatus | null): string {
   switch (status) {
+    case 'standby':
+      return 'terminal-node__status--standby'
     case 'exited':
       return 'terminal-node__status--exited'
     case 'failed':

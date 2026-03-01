@@ -21,7 +21,7 @@ export const IPC_CHANNELS = {
   ptySnapshot: 'pty:snapshot',
   ptyData: 'pty:data',
   ptyExit: 'pty:exit',
-  ptyDone: 'pty:done',
+  ptyState: 'pty:state',
   agentListModels: 'agent:list-models',
   agentLaunch: 'agent:launch',
   taskSuggestTitle: 'task:suggest-title',

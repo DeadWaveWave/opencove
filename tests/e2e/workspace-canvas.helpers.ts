@@ -48,7 +48,7 @@ export interface SeedNode {
   width: number
   height: number
   kind?: 'terminal' | 'agent' | 'task'
-  status?: 'running' | 'exited' | 'failed' | 'stopped' | 'restoring' | null
+  status?: 'running' | 'standby' | 'exited' | 'failed' | 'stopped' | 'restoring' | null
   startedAt?: string | null
   endedAt?: string | null
   exitCode?: number | null

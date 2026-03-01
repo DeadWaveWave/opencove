@@ -7,7 +7,6 @@ import type {
 } from '../../../../shared/types/api'
 import type { IpcRegistrationDisposable } from '../../../ipc/types'
 import { buildAgentLaunchCommand } from '../../../infrastructure/agent/AgentCommandFactory'
-import { buildDoneSignalPrompt } from '../../../infrastructure/agent/AgentDonePromptBuilder'
 import { listAgentModels } from '../../../infrastructure/agent/AgentModelService'
 import { locateAgentResumeSessionId } from '../../../infrastructure/agent/AgentSessionLocator'
 import type { PtyRuntime } from '../../pty/ipc/runtime'
@@ -35,15 +34,10 @@ export function registerAgentIpcHandlers(
       throw new Error('agent:launch cwd is outside approved workspaces')
     }
 
-    const launchPrompt =
-      (normalized.mode ?? 'new') === 'new'
-        ? buildDoneSignalPrompt(normalized.prompt)
-        : normalized.prompt
-
     const launchCommand = buildAgentLaunchCommand({
       provider: normalized.provider,
       mode: normalized.mode ?? 'new',
-      prompt: launchPrompt,
+      prompt: normalized.prompt,
       model: normalized.model ?? null,
       resumeSessionId: normalized.resumeSessionId ?? null,
     })
@@ -85,7 +79,7 @@ export function registerAgentIpcHandlers(
     }
 
     if (process.env.NODE_ENV !== 'test') {
-      ptyRuntime.startSessionDoneWatcher({
+      ptyRuntime.startSessionStateWatcher({
         sessionId,
         provider: normalized.provider,
         cwd: normalized.cwd,

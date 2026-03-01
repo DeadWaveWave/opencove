@@ -11,7 +11,10 @@ function createAgentSessionRecord(
 
   const boundDirectory = target.data.agent.executionDirectory
   const startedAt = target.data.startedAt ?? now
-  const shouldMarkStopped = target.data.status === 'running' || target.data.status === 'restoring'
+  const shouldMarkStopped =
+    target.data.status === 'running' ||
+    target.data.status === 'standby' ||
+    target.data.status === 'restoring'
 
   return {
     id: crypto.randomUUID(),

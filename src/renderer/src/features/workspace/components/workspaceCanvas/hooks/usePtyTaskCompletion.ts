@@ -11,60 +11,47 @@ export function useWorkspaceCanvasPtyTaskCompletion({
   ) => void
 }): void {
   useEffect(() => {
-    const ptyWithOptionalDone = window.coveApi.pty as typeof window.coveApi.pty & {
-      onDone?:
-        | ((listener: (event: { sessionId: string; signal: 'done' }) => void) => () => void)
+    const ptyWithOptionalState = window.coveApi.pty as typeof window.coveApi.pty & {
+      onState?:
+        | ((
+            listener: (event: { sessionId: string; state: 'working' | 'standby' }) => void,
+          ) => () => void)
         | undefined
     }
 
-    if (typeof ptyWithOptionalDone.onDone !== 'function') {
-      return
-    }
+    const unsubscribeState =
+      typeof ptyWithOptionalState.onState === 'function'
+        ? ptyWithOptionalState.onState(event => {
+            setNodes(prevNodes =>
+              prevNodes.map(node => {
+                if (node.data.kind !== 'agent' || node.data.sessionId !== event.sessionId) {
+                  return node
+                }
 
-    const unsubscribeDone = ptyWithOptionalDone.onDone(event => {
-      if (event.signal !== 'done') {
-        return
-      }
+                if (
+                  node.data.status === 'failed' ||
+                  node.data.status === 'stopped' ||
+                  node.data.status === 'exited'
+                ) {
+                  return node
+                }
 
-      setNodes(prevNodes => {
-        const taskNodeId = prevNodes.find(node => {
-          return node.data.kind === 'agent' && node.data.sessionId === event.sessionId
-        })?.data.agent?.taskId
+                const nextStatus = event.state === 'standby' ? 'standby' : 'running'
+                if (node.data.status === nextStatus) {
+                  return node
+                }
 
-        if (!taskNodeId) {
-          return prevNodes
-        }
-
-        return prevNodes.map(node => {
-          if (node.id !== taskNodeId || node.data.kind !== 'task' || !node.data.task) {
-            return node
-          }
-
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              task: {
-                ...node.data.task,
-                status: 'ai_done',
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          }
-        })
-      })
-    })
-
-    return () => {
-      unsubscribeDone()
-    }
-  }, [setNodes])
-
-  useEffect(() => {
-    const ptyWithOptionalDone = window.coveApi.pty as typeof window.coveApi.pty & {
-      onDone?: unknown
-    }
-    const shouldFallbackToExitDone = typeof ptyWithOptionalDone.onDone !== 'function'
+                return {
+                  ...node,
+                  data: {
+                    ...node.data,
+                    status: nextStatus,
+                  },
+                }
+              }),
+            )
+          })
+        : () => undefined
 
     const unsubscribeExit = window.coveApi.pty.onExit(event => {
       setNodes(prevNodes => {
@@ -92,7 +79,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
           }
         })
 
-        if (!shouldFallbackToExitDone || event.exitCode !== 0 || !relatedTaskNodeId) {
+        if (event.exitCode !== 0 || !relatedTaskNodeId) {
           return nextNodes
         }
 
@@ -117,6 +104,7 @@ export function useWorkspaceCanvasPtyTaskCompletion({
     })
 
     return () => {
+      unsubscribeState()
       unsubscribeExit()
     }
   }, [setNodes])

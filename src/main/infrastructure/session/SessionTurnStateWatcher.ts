@@ -1,14 +1,14 @@
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import { StringDecoder } from 'node:string_decoder'
-import type { AgentProviderId } from '../../../shared/types/api'
-import { detectDoneSignalFromSessionLine } from './DoneSignalDetector'
+import type { AgentProviderId, TerminalSessionState } from '../../../shared/types/api'
+import { detectTurnStateFromSessionLine } from './SessionTurnStateDetector'
 
-interface SessionDoneWatcherOptions {
+interface SessionTurnStateWatcherOptions {
   provider: AgentProviderId
   sessionId: string
   filePath: string
-  onDone: (sessionId: string) => void
+  onState: (sessionId: string, state: TerminalSessionState) => void
   onError?: (error: unknown) => void
 }
 
@@ -23,11 +23,11 @@ function isFileMissingError(error: unknown): boolean {
 
 const READ_CHUNK_BYTES = 64 * 1024
 
-export class SessionDoneWatcher {
+export class SessionTurnStateWatcher {
   private readonly provider: AgentProviderId
   private readonly sessionId: string
   private readonly filePath: string
-  private readonly onDone: (sessionId: string) => void
+  private readonly onState: (sessionId: string, state: TerminalSessionState) => void
   private readonly onError?: (error: unknown) => void
 
   private watcher: fs.FSWatcher | null = null
@@ -37,13 +37,13 @@ export class SessionDoneWatcher {
   private disposed = false
   private processing = false
   private hasPendingRead = false
-  private hasTriggeredDone = false
+  private lastState: TerminalSessionState | null = null
 
-  public constructor(options: SessionDoneWatcherOptions) {
+  public constructor(options: SessionTurnStateWatcherOptions) {
     this.provider = options.provider
     this.sessionId = options.sessionId
     this.filePath = options.filePath
-    this.onDone = options.onDone
+    this.onState = options.onState
     this.onError = options.onError
   }
 
@@ -81,7 +81,7 @@ export class SessionDoneWatcher {
   }
 
   private scheduleRead(): void {
-    if (this.disposed || this.hasTriggeredDone) {
+    if (this.disposed) {
       return
     }
 
@@ -91,7 +91,6 @@ export class SessionDoneWatcher {
     }
 
     this.processing = true
-
     void this.readLoop()
   }
 
@@ -111,7 +110,7 @@ export class SessionDoneWatcher {
     this.hasPendingRead = false
     await this.readFileDelta()
 
-    if (this.hasPendingRead && !this.disposed && !this.hasTriggeredDone) {
+    if (this.hasPendingRead && !this.disposed) {
       await this.readPendingChunks()
     }
   }
@@ -135,7 +134,7 @@ export class SessionDoneWatcher {
       const end = stats.size
       let position = this.offset
 
-      while (position < end && !this.disposed && !this.hasTriggeredDone) {
+      while (position < end && !this.disposed) {
         const bytesToRead = Math.min(READ_CHUNK_BYTES, end - position)
         const buffer = Buffer.allocUnsafe(bytesToRead)
         // eslint-disable-next-line no-await-in-loop
@@ -145,7 +144,6 @@ export class SessionDoneWatcher {
         }
 
         position += bytesRead
-
         const textChunk = this.decoder.write(buffer.subarray(0, bytesRead))
         if (textChunk.length === 0) {
           continue
@@ -156,14 +154,13 @@ export class SessionDoneWatcher {
         this.remainder = lines.pop() ?? ''
 
         for (const line of lines) {
-          if (!detectDoneSignalFromSessionLine(this.provider, line)) {
+          const state = detectTurnStateFromSessionLine(this.provider, line)
+          if (!state || state === this.lastState) {
             continue
           }
 
-          this.hasTriggeredDone = true
-          this.onDone(this.sessionId)
-          this.dispose()
-          return
+          this.lastState = state
+          this.onState(this.sessionId, state)
         }
       }
 

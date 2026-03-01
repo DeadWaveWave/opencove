@@ -3,7 +3,13 @@ import type { AgentSettings, AgentProvider } from '../settings/agentConfig'
 
 export type WorkspaceNodeKind = 'terminal' | 'agent' | 'task'
 
-export type AgentRuntimeStatus = 'running' | 'exited' | 'failed' | 'stopped' | 'restoring'
+export type AgentRuntimeStatus =
+  | 'running'
+  | 'standby'
+  | 'exited'
+  | 'failed'
+  | 'stopped'
+  | 'restoring'
 
 export type TaskRuntimeStatus = 'todo' | 'doing' | 'ai_done' | 'done'
 

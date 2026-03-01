@@ -92,7 +92,9 @@ export function useHydrateAppState({
 
           if (node.data.kind === 'agent' && node.data.agent) {
             const shouldAutoResumeAgent =
-              node.data.status === 'running' || node.data.status === 'restoring'
+              node.data.status === 'running' ||
+              node.data.status === 'standby' ||
+              node.data.status === 'restoring'
 
             if (shouldAutoResumeAgent) {
               try {

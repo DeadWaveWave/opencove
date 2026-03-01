@@ -337,6 +337,12 @@
   border: 1px solid rgba(122, 173, 255, 0.4);
 }
 
+.terminal-node__status--standby {
+  background: rgba(255, 190, 114, 0.2);
+  color: #ffe9c2;
+  border: 1px solid rgba(255, 190, 114, 0.4);
+}
+
 .terminal-node__status--exited,
 .terminal-node__status--stopped {
   background: rgba(169, 191, 234, 0.2);
