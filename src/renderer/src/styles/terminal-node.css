@@ -280,16 +280,16 @@
 }
 
 .terminal-node__title-input {
-  border: 1px solid rgba(110, 146, 237, 0.58);
-  background: rgba(14, 24, 44, 0.9);
-  border-radius: 6px;
-  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  padding: 0;
   min-width: 0;
+  font-family: inherit;
 }
 
 .terminal-node__title-input:focus {
   outline: none;
-  border-color: rgba(156, 191, 255, 0.9);
 }
 
 .terminal-node__header {

@@ -82,18 +82,18 @@
 
 .task-node__title-input {
   width: 100%;
-  border: 1px solid rgba(113, 154, 245, 0.68);
-  background: rgba(14, 26, 49, 0.95);
-  color: #e7f1ff;
-  border-radius: 8px;
-  padding: 4px 8px;
+  border: none;
+  background: transparent;
+  color: #d6e6ff;
+  border-radius: 0;
+  padding: 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
+  font-family: inherit;
 }
 
 .task-node__title-input:focus {
   outline: none;
-  border-color: rgba(144, 181, 255, 0.95);
-  box-shadow: 0 0 0 3px rgba(93, 140, 255, 0.24);
+  box-shadow: none;
 }
 
 .task-node__timestamps {
@@ -263,19 +263,20 @@
   flex: 1;
   min-height: 0;
   resize: none;
-  border: 1px solid rgba(113, 154, 245, 0.68);
-  background: rgba(14, 26, 49, 0.95);
-  color: #e7f1ff;
-  border-radius: 8px;
-  padding: 7px 9px;
+  border: none;
+  background: transparent;
+  color: #dbe7ff;
+  border-radius: 0;
+  padding: 4px 6px;
+  margin: -4px -6px 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.45;
+  font-family: inherit;
 }
 
 .task-node__requirement-input:focus {
   outline: none;
-  border-color: rgba(144, 181, 255, 0.95);
-  box-shadow: 0 0 0 3px rgba(93, 140, 255, 0.24);
+  box-shadow: none;
 }
 
 .task-node__inline-hint {
