@@ -180,14 +180,7 @@ function WorkspaceCanvasInner({
     agentFullAccess: agentSettings.agentFullAccess,
   })
 
-  const {
-    agentLauncher,
-    setAgentLauncher,
-    openAgentLauncher,
-    closeAgentLauncher,
-    launchAgentNode,
-    launcherModelOptions,
-  } = useWorkspaceCanvasAgentLauncher({
+  const { openAgentLauncher } = useWorkspaceCanvasAgentLauncher({
     agentSettings,
     workspacePath,
     nodesRef,
@@ -477,13 +470,8 @@ function WorkspaceCanvasInner({
       taskDeleteConfirmation={taskDeleteConfirmation}
       setTaskDeleteConfirmation={setTaskDeleteConfirmation}
       confirmTaskDelete={confirmTaskDelete}
-      agentLauncher={agentLauncher}
       agentSettings={agentSettings}
       workspacePath={workspacePath}
-      launcherModelOptions={launcherModelOptions}
-      setAgentLauncher={setAgentLauncher}
-      closeAgentLauncher={closeAgentLauncher}
-      launchAgentNode={launchAgentNode}
       spaceWorktreeSpaceId={spaceWorktreeSpaceId}
       worktreesRoot={worktreesRoot}
       openSpaceWorktree={spaceId => setSpaceWorktreeSpaceId(spaceId)}

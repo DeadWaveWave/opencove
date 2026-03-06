@@ -15,7 +15,6 @@ import {
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type {
-  AgentLauncherState,
   ContextMenuState,
   SpaceVisual,
   WorkspaceCanvasProps,
@@ -28,7 +27,6 @@ import { WorkspaceContextMenu } from './view/WorkspaceContextMenu'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
 import { WorkspaceSpaceSwitcher } from './view/WorkspaceSpaceSwitcher'
-import { AgentLauncherWindow } from './windows/AgentLauncherWindow'
 import { TaskAssignerWindow } from './windows/TaskAssignerWindow'
 import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
 import { TaskDeleteConfirmationWindow } from './windows/TaskDeleteConfirmationWindow'
@@ -137,13 +135,8 @@ interface WorkspaceCanvasViewProps {
   >
   confirmTaskDelete: () => Promise<void>
 
-  agentLauncher: AgentLauncherState | null
   agentSettings: WorkspaceCanvasProps['agentSettings']
   workspacePath: string
-  launcherModelOptions: string[]
-  setAgentLauncher: React.Dispatch<React.SetStateAction<AgentLauncherState | null>>
-  closeAgentLauncher: () => void
-  launchAgentNode: () => Promise<void>
 
   spaceWorktreeSpaceId: string | null
   worktreesRoot: string
@@ -231,13 +224,8 @@ export function WorkspaceCanvasView({
   taskDeleteConfirmation,
   setTaskDeleteConfirmation,
   confirmTaskDelete,
-  agentLauncher,
   agentSettings,
   workspacePath,
-  launcherModelOptions,
-  setAgentLauncher,
-  closeAgentLauncher,
-  launchAgentNode,
   spaceWorktreeSpaceId,
   worktreesRoot,
   openSpaceWorktree,
@@ -381,15 +369,6 @@ export function WorkspaceCanvasView({
         confirmTaskDelete={confirmTaskDelete}
       />
 
-      <AgentLauncherWindow
-        agentLauncher={agentLauncher}
-        agentSettings={agentSettings}
-        workspacePath={workspacePath}
-        launcherModelOptions={launcherModelOptions}
-        setAgentLauncher={setAgentLauncher}
-        closeAgentLauncher={closeAgentLauncher}
-        launchAgentNode={launchAgentNode}
-      />
 
       <SpaceWorktreeWindow
         spaceId={spaceWorktreeSpaceId}

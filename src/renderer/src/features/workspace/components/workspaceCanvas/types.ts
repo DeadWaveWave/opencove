@@ -9,7 +9,7 @@ import type {
   WorkspaceSpaceState,
   WorkspaceViewport,
 } from '../../types'
-import type { AgentProvider, AgentSettings } from '../../../settings/agentConfig'
+import type { AgentSettings } from '../../../settings/agentConfig'
 
 export interface WorkspaceCanvasProps {
   workspaceId: string
@@ -94,17 +94,6 @@ export interface TrackpadGestureLockState {
   lastTimestamp: number
 }
 
-export interface AgentLauncherState {
-  anchor: Point
-  provider: AgentProvider
-  prompt: string
-  model: string
-  directoryMode: 'workspace' | 'custom'
-  customDirectory: string
-  shouldCreateDirectory: boolean
-  isLaunching: boolean
-  error: string | null
-}
 
 export interface TaskCreatorState {
   anchor: Point

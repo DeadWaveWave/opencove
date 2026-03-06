@@ -341,37 +341,3 @@
     0 0 24px rgba(132, 214, 255, 0.4);
 }
 
-.workspace-agent-launcher-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-}
-
-.workspace-agent-launcher.cove-window {
-  width: min(560px, calc(100vw - 48px));
-}
-
-.workspace-agent-launcher__meta {
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #9eb6e4;
-}
-
-.workspace-agent-launcher__directory-mode {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #bfd2f7;
-}
-
-.workspace-agent-launcher__directory-mode label,
-.workspace-agent-launcher__checkbox {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.workspace-agent-launcher__checkbox span {
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #bfd2f7;
-}

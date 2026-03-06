@@ -280,12 +280,6 @@ button.workspace-agent-item:focus-visible {
   color: var(--cove-text-muted);
 }
 
-.workspace-agent-launcher__field-row {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
 .terminal-node__title {
   font-size: calc(12px * var(--cove-ui-font-scale));
   color: #cfe0ff;
