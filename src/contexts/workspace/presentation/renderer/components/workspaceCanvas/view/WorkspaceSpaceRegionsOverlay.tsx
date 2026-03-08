@@ -232,11 +232,20 @@ export function WorkspaceSpaceRegionsOverlay({
             : null
           const isSelected = selectedSpaceIdSet.has(space.id)
 
-          const resolvedBranchLabel = resolvedWorktreeInfo
-            ? (resolvedWorktreeInfo.branch ??
-              (resolvedWorktreeInfo.head
-                ? `detached@${toShortSha(resolvedWorktreeInfo.head)}`
-                : null))
+          const resolvedBranchBadge = resolvedWorktreeInfo
+            ? resolvedWorktreeInfo.branch
+              ? {
+                  kind: 'Branch',
+                  value: resolvedWorktreeInfo.branch,
+                  title: resolvedWorktreeInfo.branch,
+                }
+              : resolvedWorktreeInfo.head
+                ? {
+                    kind: 'Detached',
+                    value: toShortSha(resolvedWorktreeInfo.head),
+                    title: resolvedWorktreeInfo.head,
+                  }
+                : null
             : null
 
           return (
@@ -390,12 +399,12 @@ export function WorkspaceSpaceRegionsOverlay({
                     {space.name}
                   </button>
 
-                  {resolvedWorktreeInfo?.branch ? (
+                  {resolvedWorktreeInfo?.branch && resolvedBranchBadge ? (
                     <button
                       type="button"
                       className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
                       data-testid={`workspace-space-worktree-branch-${space.id}`}
-                      title={resolvedWorktreeInfo.branch}
+                      title={resolvedBranchBadge.title}
                       onClick={event => {
                         event.stopPropagation()
                         setBranchRename({
@@ -409,15 +418,25 @@ export function WorkspaceSpaceRegionsOverlay({
                         })
                       }}
                     >
-                      {resolvedBranchLabel}
+                      <span className="workspace-space-region__branch-badge-kind">
+                        {resolvedBranchBadge.kind}
+                      </span>
+                      <span className="workspace-space-region__branch-badge-value">
+                        {resolvedBranchBadge.value}
+                      </span>
                     </button>
-                  ) : resolvedBranchLabel ? (
+                  ) : resolvedBranchBadge ? (
                     <span
                       className="workspace-space-region__branch-badge"
                       data-testid={`workspace-space-worktree-branch-${space.id}`}
-                      title={resolvedWorktreeInfo?.head ?? 'Detached HEAD'}
+                      title={resolvedBranchBadge.title}
                     >
-                      {resolvedBranchLabel}
+                      <span className="workspace-space-region__branch-badge-kind">
+                        {resolvedBranchBadge.kind}
+                      </span>
+                      <span className="workspace-space-region__branch-badge-value">
+                        {resolvedBranchBadge.value}
+                      </span>
                     </span>
                   ) : null}
 

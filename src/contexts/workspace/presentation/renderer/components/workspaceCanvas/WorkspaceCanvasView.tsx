@@ -162,7 +162,11 @@ interface WorkspaceCanvasViewProps {
   updateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,
-    options?: { markNodeDirectoryMismatch?: boolean; archiveSpace?: boolean },
+    options?: {
+      markNodeDirectoryMismatch?: boolean
+      archiveSpace?: boolean
+      renameSpaceTo?: string
+    },
   ) => void
   getSpaceBlockingNodes: (spaceId: string) => { agentNodeIds: string[]; terminalNodeIds: string[] }
   closeNodesById: (nodeIds: string[]) => Promise<void>

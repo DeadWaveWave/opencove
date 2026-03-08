@@ -42,6 +42,7 @@ describe('SpaceWorktreeWindow create flow', () => {
       },
     }))
     const onClose = vi.fn()
+    const onUpdateSpaceDirectory = vi.fn()
 
     Object.defineProperty(window, 'coveApi', {
       configurable: true,
@@ -74,7 +75,7 @@ describe('SpaceWorktreeWindow create flow', () => {
         worktreesRoot=".cove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
-        onUpdateSpaceDirectory={() => undefined}
+        onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
       />,
@@ -100,6 +101,11 @@ describe('SpaceWorktreeWindow create flow', () => {
         worktreesRoot: '/repo/.cove/worktrees',
         branchMode: { kind: 'new', name: 'space/demo', startPoint: 'main' },
       })
+      expect(onUpdateSpaceDirectory).toHaveBeenCalledWith(
+        'space-1',
+        '/repo/.cove/worktrees/space-demo--1a2b3c4d',
+        { renameSpaceTo: 'space/demo' },
+      )
       expect(onClose).toHaveBeenCalledTimes(1)
     })
   })

@@ -108,6 +108,9 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
 
     expect(screen.queryByTestId('workspace-space-worktree-name-space-1')).not.toBeInTheDocument()
     expect(await screen.findByTestId('workspace-space-worktree-branch-space-1')).toHaveTextContent(
+      'Branch',
+    )
+    expect(screen.getByTestId('workspace-space-worktree-branch-space-1')).toHaveTextContent(
       'feat/infra-pill',
     )
   })

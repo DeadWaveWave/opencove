@@ -11,6 +11,7 @@ export interface BlockingNodesSnapshot {
 export interface UpdateSpaceDirectoryOptions {
   markNodeDirectoryMismatch?: boolean
   archiveSpace?: boolean
+  renameSpaceTo?: string
 }
 
 export type PendingOperation =

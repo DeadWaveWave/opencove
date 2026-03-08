@@ -196,7 +196,13 @@ export function SpaceWorktreeWindow({
           branchMode: pending.branchMode,
         })
 
-        onUpdateSpaceDirectory(targetSpaceId, created.worktree.path, options)
+        const resolvedSpaceName =
+          created.worktree.branch?.trim() || pending.branchMode.name.trim() || undefined
+
+        onUpdateSpaceDirectory(targetSpaceId, created.worktree.path, {
+          ...options,
+          renameSpaceTo: resolvedSpaceName,
+        })
         await refresh()
         return
       }
