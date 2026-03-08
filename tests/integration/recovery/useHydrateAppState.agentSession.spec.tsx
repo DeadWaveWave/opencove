@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { installMockStorage } from '../workspace/persistenceTestStorage'
+import { installMockStorage } from '../../support/persistenceTestStorage'
 
 function createPersistedState({
   prompt,

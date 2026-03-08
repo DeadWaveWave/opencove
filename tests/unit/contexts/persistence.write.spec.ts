@@ -4,7 +4,7 @@ import {
   toPersistedState,
   writePersistedState,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence'
-import { installMockStorage, MockStorage } from './persistenceTestStorage'
+import { installMockStorage, MockStorage } from '../../support/persistenceTestStorage'
 
 installMockStorage()
 

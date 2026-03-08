@@ -4,36 +4,36 @@ import {
   createIpcMainMock,
   createSpawnMock,
   restorePlatform,
-} from './workspacePathOpeners.testUtils'
+} from '../../support/workspacePathOpeners.testUtils'
 
-describe('workspace path openers IPC on Linux', () => {
+describe('workspace path openers IPC on Windows', () => {
   const originalPlatform = process.platform
 
   afterEach(() => {
     restorePlatform(originalPlatform)
   })
 
-  it('lists available openers and launches the resolved terminal command', async () => {
+  it('lists available openers and launches editors through cmd start', async () => {
     Object.defineProperty(process, 'platform', {
-      value: 'linux',
+      value: 'win32',
       configurable: true,
     })
 
-    const availableCommands = new Set(['xdg-terminal-exec', 'code'])
+    const availableCommands = new Set(['wt', 'code'])
     const execFile = vi.fn(
       (
         file: string,
         args: string[],
         callback: (error: Error | null, stdout?: string, stderr?: string) => void,
       ) => {
-        if (file !== 'which') {
+        if (file !== 'where.exe') {
           callback(new Error(`Unexpected command: ${file}`))
           return
         }
 
         const command = args[0]
         if (availableCommands.has(command)) {
-          callback(null, `/usr/bin/${command}`, '')
+          callback(null, `${command}.exe`, '')
           return
         }
 
@@ -69,20 +69,20 @@ describe('workspace path openers IPC on Linux', () => {
 
     expect(await listHandler?.()).toEqual({
       openers: [
-        { id: 'finder', label: 'File Manager' },
-        { id: 'terminal', label: 'Terminal' },
+        { id: 'finder', label: 'Explorer' },
+        { id: 'terminal', label: 'Windows Terminal' },
         { id: 'vscode', label: 'VS Code' },
       ],
     })
 
-    const targetPath = '/home/deadwave/project'
+    const targetPath = 'C:\\Users\\deadwave\\project'
     await expect(
-      openHandler?.(null, { path: targetPath, openerId: 'terminal' }),
+      openHandler?.(null, { path: targetPath, openerId: 'vscode' }),
     ).resolves.toBeUndefined()
 
     expect(spawn).toHaveBeenCalledWith(
-      'xdg-terminal-exec',
-      [`--dir=${targetPath}`],
+      'cmd.exe',
+      ['/C', 'start', '', '/D', targetPath, 'code', targetPath],
       expect.objectContaining({ detached: true, stdio: 'ignore', windowsHide: false }),
     )
   })

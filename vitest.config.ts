@@ -14,10 +14,15 @@ export default defineConfig({
     },
 
     // 自动加载 setup 文件
-    setupFiles: ['./tests/setup.ts'],
+    setupFiles: ['./tests/support/vitest.setup.ts'],
 
     // 包含的测试文件
-    include: ['src/**/*.{test,spec}.{ts,tsx}', 'tests/unit/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      'tests/unit/**/*.{test,spec}.{ts,tsx}',
+      'tests/contract/**/*.{test,spec}.{ts,tsx}',
+      'tests/integration/**/*.{test,spec}.{ts,tsx}',
+    ],
 
     // 排除目录
     exclude: ['node_modules', 'dist', 'tests/e2e'],
@@ -63,7 +68,6 @@ export default defineConfig({
       '@app': '/src/app',
       '@contexts': '/src/contexts',
       '@platform': '/src/platform',
-      '@renderer': '/src/renderer/src',
       '@shared': '/src/shared',
     },
   },

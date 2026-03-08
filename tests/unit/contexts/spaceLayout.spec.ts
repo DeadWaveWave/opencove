@@ -3,7 +3,7 @@ import {
   computeSpaceRectFromNodes,
   pushAwayLayout,
   resolveSpaceFrameHandle,
-} from '../../src/contexts/workspace/presentation/renderer/utils/spaceLayout'
+} from '../../../src/contexts/workspace/presentation/renderer/utils/spaceLayout'
 
 describe('spaceLayout', () => {
   it('computes an explicit space rect from owned nodes (padding + min size)', () => {

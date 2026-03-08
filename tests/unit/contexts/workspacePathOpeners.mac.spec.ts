@@ -4,52 +4,58 @@ import {
   createIpcMainMock,
   createSpawnMock,
   restorePlatform,
-} from './workspacePathOpeners.testUtils'
+} from '../../support/workspacePathOpeners.testUtils'
 
-describe('workspace path openers IPC on Windows', () => {
+describe('workspace path openers IPC on macOS', () => {
   const originalPlatform = process.platform
 
   afterEach(() => {
     restorePlatform(originalPlatform)
   })
 
-  it('lists available openers and launches editors through cmd start', async () => {
+  it('lists installed openers and opens paths with resolved aliases', async () => {
     Object.defineProperty(process, 'platform', {
-      value: 'win32',
+      value: 'darwin',
       configurable: true,
     })
 
-    const availableCommands = new Set(['wt', 'code'])
+    const installedApplications = new Set(['Visual Studio Code', 'Cursor', 'PyCharm CE'])
     const execFile = vi.fn(
       (
         file: string,
         args: string[],
         callback: (error: Error | null, stdout?: string, stderr?: string) => void,
       ) => {
-        if (file !== 'where.exe') {
+        if (file !== 'open') {
           callback(new Error(`Unexpected command: ${file}`))
           return
         }
 
-        const command = args[0]
-        if (availableCommands.has(command)) {
-          callback(null, `${command}.exe`, '')
+        if (args[0] === '-Ra') {
+          const application = args[1]
+          if (installedApplications.has(application)) {
+            callback(null, '', '')
+            return
+          }
+
+          callback(new Error(`Application not found: ${application}`))
           return
         }
 
-        callback(new Error(`Command not found: ${command}`))
+        callback(null, '', '')
       },
     )
 
     const spawn = createSpawnMock()
     const { handlers, ipcMain } = createIpcMainMock()
+    const shellOpenPath = vi.fn(async () => '')
 
     vi.doMock('node:child_process', () => ({ execFile, spawn, default: { execFile, spawn } }))
     vi.doMock('electron', () => ({
       ipcMain,
       clipboard: { writeText: vi.fn() },
       dialog: { showOpenDialog: vi.fn() },
-      shell: { openPath: vi.fn(async () => '') },
+      shell: { openPath: shellOpenPath },
     }))
 
     const store = {
@@ -69,21 +75,30 @@ describe('workspace path openers IPC on Windows', () => {
 
     expect(await listHandler?.()).toEqual({
       openers: [
-        { id: 'finder', label: 'Explorer' },
-        { id: 'terminal', label: 'Windows Terminal' },
+        { id: 'finder', label: 'Finder' },
         { id: 'vscode', label: 'VS Code' },
+        { id: 'cursor', label: 'Cursor' },
+        { id: 'pycharm', label: 'PyCharm' },
       ],
     })
 
-    const targetPath = 'C:\\Users\\deadwave\\project'
+    const targetPath = '/tmp/cove-approved-workspace/project'
     await expect(
-      openHandler?.(null, { path: targetPath, openerId: 'vscode' }),
+      openHandler?.(null, { path: targetPath, openerId: 'pycharm' }),
     ).resolves.toBeUndefined()
 
-    expect(spawn).toHaveBeenCalledWith(
-      'cmd.exe',
-      ['/C', 'start', '', '/D', targetPath, 'code', targetPath],
-      expect.objectContaining({ detached: true, stdio: 'ignore', windowsHide: false }),
-    )
+    expect(store.isPathApproved).toHaveBeenCalledWith(targetPath)
+    expect(shellOpenPath).not.toHaveBeenCalled()
+    expect(spawn).not.toHaveBeenCalled()
+    expect(
+      execFile.mock.calls.some(
+        ([file, args]) =>
+          file === 'open' &&
+          Array.isArray(args) &&
+          args[0] === '-a' &&
+          args[1] === 'PyCharm CE' &&
+          args[2] === targetPath,
+      ),
+    ).toBe(true)
   })
 })

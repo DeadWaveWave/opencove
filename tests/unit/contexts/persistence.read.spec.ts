@@ -7,7 +7,7 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence'
 import { DEFAULT_WORKSPACE_VIEWPORT } from '../../../src/contexts/workspace/presentation/renderer/types'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
-import { installMockStorage } from './persistenceTestStorage'
+import { installMockStorage } from '../../support/persistenceTestStorage'
 
 installMockStorage()
 
