@@ -30,8 +30,8 @@ importers:
         specifier: ^3.0.1
         version: 3.0.2(electron@35.7.5)
       '@electron-toolkit/utils':
-        specifier: ^3.0.0
-        version: 3.0.0(electron@35.7.5)
+        specifier: ^4.0.0
+        version: 4.0.0(electron@35.7.5)
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.11)(react@19.2.4)
@@ -322,8 +322,8 @@ packages:
     peerDependencies:
       '@types/node': '*'
 
-  '@electron-toolkit/utils@3.0.0':
-    resolution: {integrity: sha512-GaXHDhiT7KCvMJjXdp/QqpYinq69T/Pdl49Z1XLf8mKGf63dnsODMWyrmIjEQ0z/vG7dO8qF3fvmI6Eb2lUNZA==}
+  '@electron-toolkit/utils@4.0.0':
+    resolution: {integrity: sha512-qXSntwEzluSzKl4z5yFNBknmPGjPa3zFhE4mp9+h0cgokY5ornAeP+CJQDBhKsL1S58aOQfcwkD3NwLZCl+64g==}
     peerDependencies:
       electron: '>=13.0.0'
 
@@ -2583,6 +2583,7 @@ packages:
   prebuild-install@7.1.3:
     resolution: {integrity: sha512-8Mf2cbV7x1cXPUILADGI3wuhfqWvtiLA1iclTDbFRZkgRQS0NqsPZphna9V+HyTEadheuPmjaJMsbzKQFOzLug==}
     engines: {node: '>=10'}
+    deprecated: No longer maintained. Please contact the author of the relevant native addon; alternatives are available.
     hasBin: true
 
   prettier@3.8.1:
@@ -3455,7 +3456,7 @@ snapshots:
     dependencies:
       '@types/node': 22.19.8
 
-  '@electron-toolkit/utils@3.0.0(electron@35.7.5)':
+  '@electron-toolkit/utils@4.0.0(electron@35.7.5)':
     dependencies:
       electron: 35.7.5
 
