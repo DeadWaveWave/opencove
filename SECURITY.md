@@ -18,7 +18,7 @@ We strongly encourage you to report potential security vulnerabilities to our te
 - Disclose the vulnerability publicly before we have had a chance to address it.
 
 ### ✅ Please DO
-- Send a private report via **GitHub Security Advisories** (if enabled) or email the maintainers directly.
+- Send a private report via **GitHub Security Advisories** (if enabled) or email **deadwavewave@gmail.com** directly.
 - Include a Proof of Concept (PoC) or detailed reproduction steps.
 - Describe the impact of the vulnerability.
 

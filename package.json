@@ -4,7 +4,11 @@
   "productName": "OpenCove",
   "description": "An infinite canvas multi-agent workspace for AI coding.",
   "main": "./out/main/index.js",
-  "author": "deadwave",
+  "author": {
+    "name": "deadwavewave",
+    "email": "deadwavewave@gmail.com"
+  },
+  "publisher": "DeadWaveWave",
   "license": "MIT",
   "homepage": "https://github.com/DeadWaveWave/opencove#readme",
   "bugs": {

@@ -6,7 +6,11 @@ Use the right channel so questions, bugs, and security reports do not get mixed 
 
 - Usage questions, setup issues, and workflow discussions should go to GitHub Discussions.
 - Reproducible product bugs should go to GitHub Issues with the provided issue templates.
-- Security concerns must not be filed publicly. Use GitHub Security Advisories or the private maintainer contact listed in [SECURITY.md](./SECURITY.md).
+- Security concerns must not be filed publicly. Use GitHub Security Advisories or email **deadwavewave@gmail.com** as listed in [SECURITY.md](./SECURITY.md).
+
+## Contact
+
+- General maintainer contact: **deadwavewave@gmail.com**
 
 ## Before Opening an Issue
 
