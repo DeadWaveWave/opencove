@@ -1,13 +1,17 @@
 # Releasing / Packaging
 
-## macOS（本地打包）
+## 本地打包
 
 - 生成安装包：`pnpm build:mac`
+- 生成 Windows 安装包：`pnpm build:win`
+- 生成 Linux 安装包：`pnpm build:linux`
 - 生成“明确不签名”的安装包：`pnpm build:mac:unsigned`
 
 产物默认在 `dist/`：
 - `*.dmg`
 - `*-mac.zip`
+- `*.exe`
+- `*.AppImage` / 其他 Linux 包格式（取决于 electron-builder 实际输出）
 
 ## 发布渠道
 
@@ -28,10 +32,11 @@
 
 ## GitHub：打 Tag 自动打包（unsigned）
 
-本仓库已配置 GitHub Actions：当你 push 形如 `v*` 的 tag 时，会自动在 macOS runner 上打包并创建 GitHub Release，上传：
-- `dist/*.dmg`
-- `dist/*.zip`
-- `dist/SHA256SUMS.txt`
+本仓库已配置 GitHub Actions：当你 push 形如 `v*` 的 tag 时，会自动构建 `macOS / Windows / Linux` 三端产物，并创建同一个 GitHub Release，上传：
+- macOS 产物（如 `*.dmg`, `*.zip`）
+- Windows 产物（如 `*.exe`）
+- Linux 产物（如 `*.AppImage`）
+- 汇总校验文件 `SHA256SUMS.txt`
 
 其中：
 
