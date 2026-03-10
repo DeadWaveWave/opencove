@@ -4,6 +4,16 @@ import type { TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../
 import { TASK_PRIORITIES } from './constants'
 import type { TrackpadGestureAction, TrackpadGestureTarget } from './types'
 
+function isTestEnvironment(): boolean {
+  return typeof window !== 'undefined' && window.opencoveApi?.meta?.isTest === true
+}
+
+export function resolveWorkspaceCanvasAnimationDuration(duration: number): number {
+  // E2E runs in Electron where rAF can be throttled when the window is occluded on CI.
+  // Keeping animations instantaneous in tests reduces reliance on frame scheduling.
+  return isTestEnvironment() ? 0 : duration
+}
+
 export function focusNodeInViewport(
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
   node: Pick<Node<TerminalNodeData>, 'position' | 'data'>,
@@ -13,7 +23,7 @@ export function focusNodeInViewport(
     node.position.x + node.data.width / 2,
     node.position.y + node.data.height / 2,
     {
-      duration: options.duration ?? 120,
+      duration: resolveWorkspaceCanvasAnimationDuration(options.duration ?? 120),
       zoom: options.zoom ?? 1,
     },
   )

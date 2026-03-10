@@ -8,6 +8,7 @@ import type {
   SpaceVisual,
 } from '../types'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
+import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 
 interface UseWorkspaceCanvasSpacesParams {
@@ -230,7 +231,7 @@ export function useWorkspaceCanvasSpaces({
 
       void reactFlow.fitBounds(targetSpace.rect, {
         padding: 0.16,
-        duration: 220,
+        duration: resolveWorkspaceCanvasAnimationDuration(220),
         minZoom: 0.1,
         maxZoom: 2,
       })
@@ -245,7 +246,7 @@ export function useWorkspaceCanvasSpaces({
 
     void reactFlow.fitView({
       padding: 0.16,
-      duration: 220,
+      duration: resolveWorkspaceCanvasAnimationDuration(220),
       minZoom: 0.1,
       maxZoom: 2,
     })

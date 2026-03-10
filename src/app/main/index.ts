@@ -17,6 +17,20 @@ if (process.env['NODE_ENV'] === 'test') {
   app.commandLine.appendSwitch('disable-renderer-backgrounding')
   app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
   app.commandLine.appendSwitch('disable-background-timer-throttling')
+
+  const existingDisableFeatures =
+    typeof app.commandLine.getSwitchValue === 'function'
+      ? app.commandLine.getSwitchValue('disable-features')
+      : ''
+  const disableFeatures = new Set(
+    existingDisableFeatures
+      .split(',')
+      .map(value => value.trim())
+      .filter(value => value.length > 0),
+  )
+  // Native window occlusion can throttle/pause rAF in headful CI environments (notably macOS).
+  disableFeatures.add('CalculateNativeWinOcclusion')
+  app.commandLine.appendSwitch('disable-features', [...disableFeatures].join(','))
 }
 
 if (process.platform === 'linux' && process.env['NODE_ENV'] === 'test') {
