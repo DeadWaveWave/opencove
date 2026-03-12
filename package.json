@@ -109,7 +109,7 @@
     "@vitest/coverage-v8": "^4.0.18",
     "dmg-builder": "^26.8.1",
     "drizzle-kit": "^0.31.8",
-    "electron": "^35.7.5",
+    "electron": "^41.0.0",
     "electron-builder": "^26.8.1",
     "electron-builder-squirrel-windows": "^26.8.1",
     "electron-vite": "^5.0.0",
