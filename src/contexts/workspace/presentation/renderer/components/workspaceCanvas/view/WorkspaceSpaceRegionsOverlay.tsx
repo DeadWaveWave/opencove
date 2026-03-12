@@ -14,6 +14,7 @@ import {
   WorkspaceSpaceBranchRenameDialog,
   type BranchRenameState,
 } from './WorkspaceSpaceBranchRenameDialog'
+import { WorkspaceSpaceRegion } from './WorkspaceSpaceRegion'
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -225,9 +226,7 @@ export function WorkspaceSpaceRegionsOverlay({
 
   const updateHandleCursor = React.useCallback(
     (
-      event:
-        | React.PointerEvent<HTMLDivElement>
-        | React.MouseEvent<HTMLDivElement>,
+      event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
       rect: WorkspaceSpaceRect,
       mode: SpaceFrameHandleMode,
     ): void => {
@@ -278,247 +277,25 @@ export function WorkspaceSpaceRegionsOverlay({
             : null
 
           return (
-            <div
+            <WorkspaceSpaceRegion
               key={space.id}
-              className={
-                isSelected
-                  ? 'workspace-space-region workspace-space-region--selected'
-                  : 'workspace-space-region'
-              }
-              style={{
-                transform: `translate(${resolvedRect.x}px, ${resolvedRect.y}px)`,
-                width: resolvedRect.width,
-                height: resolvedRect.height,
-              }}
-            >
-              {isSelected ? (
-                <div
-                  className="workspace-space-region__move-handle"
-                  data-testid={`workspace-space-drag-${space.id}-move`}
-                  onPointerDown={event => {
-                    handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-                  }}
-                  onPointerMove={event => {
-                    updateHandleCursor(event, resolvedRect, 'region')
-                  }}
-                  onMouseDown={event => {
-                    handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-                  }}
-                  onMouseMove={event => {
-                    updateHandleCursor(event, resolvedRect, 'region')
-                  }}
-                />
-              ) : null}
-              <div
-                className="workspace-space-region__drag-handle workspace-space-region__drag-handle--top"
-                data-testid={`workspace-space-drag-${space.id}-top`}
-                onPointerDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onPointerMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-                onMouseDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onMouseMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-              />
-              <div
-                className="workspace-space-region__drag-handle workspace-space-region__drag-handle--right"
-                data-testid={`workspace-space-drag-${space.id}-right`}
-                onPointerDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onPointerMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-                onMouseDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onMouseMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-              />
-              <div
-                className="workspace-space-region__drag-handle workspace-space-region__drag-handle--bottom"
-                data-testid={`workspace-space-drag-${space.id}-bottom`}
-                onPointerDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onPointerMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-                onMouseDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onMouseMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-              />
-              <div
-                className="workspace-space-region__drag-handle workspace-space-region__drag-handle--left"
-                data-testid={`workspace-space-drag-${space.id}-left`}
-                onPointerDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onPointerMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-                onMouseDown={event => {
-                  handleSpaceDragHandlePointerDown(
-                    event,
-                    space.id,
-                    isSelected ? { mode: 'region' } : undefined,
-                  )
-                }}
-                onMouseMove={event => {
-                  updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
-                }}
-              />
-              {editingSpaceId === space.id ? (
-                <input
-                  ref={spaceRenameInputRef}
-                  className="workspace-space-region__label-input nodrag nowheel"
-                  data-testid={`workspace-space-label-input-${space.id}`}
-                  value={spaceRenameDraft}
-                  onPointerDown={event => {
-                    event.stopPropagation()
-                  }}
-                  onClick={event => {
-                    event.stopPropagation()
-                  }}
-                  onChange={event => {
-                    setSpaceRenameDraft(event.target.value)
-                  }}
-                  onBlur={() => {
-                    commitSpaceRename(space.id)
-                  }}
-                  onKeyDown={event => {
-                    if (event.key === 'Enter') {
-                      event.preventDefault()
-                      commitSpaceRename(space.id)
-                      return
-                    }
-
-                    if (event.key === 'Escape') {
-                      event.preventDefault()
-                      cancelSpaceRename()
-                    }
-                  }}
-                />
-              ) : (
-                <div
-                  className="workspace-space-region__label-group nodrag nowheel"
-                  onPointerDown={event => {
-                    event.stopPropagation()
-                  }}
-                  onClick={event => {
-                    event.stopPropagation()
-                  }}
-                >
-                  <button
-                    type="button"
-                    className="workspace-space-region__label"
-                    data-testid={`workspace-space-label-${space.id}`}
-                    onClick={event => {
-                      event.stopPropagation()
-                      startSpaceRename(space.id)
-                    }}
-                  >
-                    {space.name}
-                  </button>
-
-                  {resolvedWorktreeInfo?.branch && resolvedBranchBadge ? (
-                    <button
-                      type="button"
-                      className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
-                      data-testid={`workspace-space-worktree-branch-${space.id}`}
-                      title={resolvedBranchBadge.title}
-                      onClick={event => {
-                        event.stopPropagation()
-                        setBranchRename({
-                          spaceId: space.id,
-                          spaceName: space.name,
-                          worktreePath: resolvedWorktreeInfo.path,
-                          currentName: resolvedWorktreeInfo.branch,
-                          nextName: resolvedWorktreeInfo.branch,
-                          isSubmitting: false,
-                          error: null,
-                        })
-                      }}
-                    >
-                      <span className="workspace-space-region__branch-badge-kind">
-                        {resolvedBranchBadge.kind}
-                      </span>
-                      <span className="workspace-space-region__branch-badge-value">
-                        {resolvedBranchBadge.value}
-                      </span>
-                    </button>
-                  ) : resolvedBranchBadge ? (
-                    <span
-                      className="workspace-space-region__branch-badge"
-                      data-testid={`workspace-space-worktree-branch-${space.id}`}
-                      title={resolvedBranchBadge.title}
-                    >
-                      <span className="workspace-space-region__branch-badge-kind">
-                        {resolvedBranchBadge.kind}
-                      </span>
-                      <span className="workspace-space-region__branch-badge-value">
-                        {resolvedBranchBadge.value}
-                      </span>
-                    </span>
-                  ) : null}
-
-                  <button
-                    type="button"
-                    className="workspace-space-region__menu"
-                    data-testid={`workspace-space-menu-${space.id}`}
-                    aria-label={`Open ${space.name} space actions`}
-                    title="Space Actions"
-                    onClick={event => {
-                      event.stopPropagation()
-                      const rect = event.currentTarget.getBoundingClientRect()
-                      onOpenSpaceMenu?.(space.id, {
-                        x: Math.round(rect.left),
-                        y: Math.round(rect.bottom + 8),
-                      })
-                    }}
-                  >
-                    ...
-                  </button>
-                </div>
-              )}
-            </div>
+              space={space}
+              resolvedRect={resolvedRect}
+              isSelected={isSelected}
+              editingSpaceId={editingSpaceId}
+              spaceRenameInputRef={spaceRenameInputRef}
+              spaceRenameDraft={spaceRenameDraft}
+              setSpaceRenameDraft={setSpaceRenameDraft}
+              commitSpaceRename={commitSpaceRename}
+              cancelSpaceRename={cancelSpaceRename}
+              startSpaceRename={startSpaceRename}
+              resolvedWorktreeInfo={resolvedWorktreeInfo}
+              resolvedBranchBadge={resolvedBranchBadge}
+              handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
+              updateHandleCursor={updateHandleCursor}
+              onOpenSpaceMenu={onOpenSpaceMenu}
+              setBranchRename={setBranchRename}
+            />
           )
         })}
       </ViewportPortal>

@@ -89,18 +89,14 @@ describe('spaceLayout', () => {
 
   it('maps resize handles to the same directional cursors used by nodes', () => {
     expect(getSpaceFrameHandleCursor({ kind: 'move' })).toBe('grab')
-    expect(getSpaceFrameHandleCursor({ kind: 'resize', edges: { right: true } })).toBe(
-      'ew-resize',
+    expect(getSpaceFrameHandleCursor({ kind: 'resize', edges: { right: true } })).toBe('ew-resize')
+    expect(getSpaceFrameHandleCursor({ kind: 'resize', edges: { bottom: true } })).toBe('ns-resize')
+    expect(getSpaceFrameHandleCursor({ kind: 'resize', edges: { left: true, top: true } })).toBe(
+      'nwse-resize',
     )
-    expect(getSpaceFrameHandleCursor({ kind: 'resize', edges: { bottom: true } })).toBe(
-      'ns-resize',
+    expect(getSpaceFrameHandleCursor({ kind: 'resize', edges: { right: true, top: true } })).toBe(
+      'nesw-resize',
     )
-    expect(
-      getSpaceFrameHandleCursor({ kind: 'resize', edges: { left: true, top: true } }),
-    ).toBe('nwse-resize')
-    expect(
-      getSpaceFrameHandleCursor({ kind: 'resize', edges: { right: true, top: true } }),
-    ).toBe('nesw-resize')
   })
 
   it('pushes colliding groups away along the requested axis (with chain reactions)', () => {
