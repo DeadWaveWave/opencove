@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import type { ApprovedWorkspaceStore } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type { PtyRuntime } from '../../../src/contexts/terminal/presentation/main-ipc/runtime'
@@ -41,6 +41,16 @@ function createPtyRuntimeMock(): PtyRuntime {
     dispose: vi.fn(),
   }
 }
+
+const originalPlatform = process.platform
+
+afterEach(() => {
+  Object.defineProperty(process, 'platform', {
+    value: originalPlatform,
+    configurable: true,
+  })
+  vi.doUnmock('node:child_process')
+})
 
 describe('IPC approved workspace guards', () => {
   it('blocks pty:spawn outside approved roots', async () => {
@@ -182,6 +192,85 @@ describe('IPC approved workspace guards', () => {
       expect(store.isPathApproved).toHaveBeenCalledWith('/tmp/approved')
       expect(runtime.spawnSession).toHaveBeenCalledTimes(1)
       expect(result).toEqual(expect.objectContaining({ sessionId: 'session-1', provider: 'codex' }))
+    } finally {
+      if (typeof previousNodeEnv === 'string') {
+        process.env.NODE_ENV = previousNodeEnv
+      } else {
+        delete process.env.NODE_ENV
+      }
+    }
+  })
+
+  it('wraps Windows agent launches through cmd.exe when the CLI resolves to a .cmd shim', async () => {
+    vi.resetModules()
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+      configurable: true,
+    })
+
+    const previousNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'test'
+
+    try {
+      const { handlers, ipcMain } = createIpcHarness()
+      vi.doMock('electron', () => ({ ipcMain }))
+      vi.doMock('node:child_process', async importOriginal => {
+        const actual = await importOriginal<typeof import('node:child_process')>()
+
+        return {
+          ...actual,
+          execFile: vi.fn((_file, _args, options, callback) => {
+            const cb = typeof options === 'function' ? options : callback
+            cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
+          }),
+          default: {
+            ...actual,
+            execFile: vi.fn((_file, _args, options, callback) => {
+              const cb = typeof options === 'function' ? options : callback
+              cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
+            }),
+          },
+        }
+      })
+
+      const runtime = createPtyRuntimeMock()
+      const store = createApprovedWorkspaceStoreMock({ isPathApproved: true })
+
+      const { registerAgentIpcHandlers } =
+        await import('../../../src/contexts/agent/presentation/main-ipc/register')
+      registerAgentIpcHandlers(runtime, store)
+
+      const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
+      expect(launchHandler).toBeTypeOf('function')
+
+      const result = await launchHandler?.(null, {
+        provider: 'codex',
+        cwd: '/approved',
+        prompt: 'hello',
+        cols: 80,
+        rows: 24,
+      })
+
+      expect(runtime.spawnSession).toHaveBeenCalledWith(
+        expect.objectContaining({
+          command: 'cmd.exe',
+          args: expect.arrayContaining([
+            '/d',
+            '/c',
+            'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
+          ]),
+        }),
+      )
+      expect(result).toEqual(
+        expect.objectContaining({
+          command: 'cmd.exe',
+          args: expect.arrayContaining([
+            '/d',
+            '/c',
+            'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
+          ]),
+        }),
+      )
     } finally {
       if (typeof previousNodeEnv === 'string') {
         process.env.NODE_ENV = previousNodeEnv

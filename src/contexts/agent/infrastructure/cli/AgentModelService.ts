@@ -4,6 +4,7 @@ import type {
   AgentProviderId,
   ListAgentModelsResult,
 } from '../../../../../shared/contracts/dto'
+import { resolveAgentCliInvocation } from './AgentCliInvocation'
 
 const CODEX_APP_SERVER_TIMEOUT_MS = 8000
 const CODEX_APP_SERVER_SHUTDOWN_GRACE_MS = 500
@@ -181,8 +182,13 @@ function readCachedCodexModels(): ListAgentModelsResult | null {
 }
 
 async function listCodexModelsFromCli(): Promise<AgentModelOption[]> {
+  const invocation = await resolveAgentCliInvocation({
+    command: 'codex',
+    args: ['app-server'],
+  })
+
   return await new Promise<AgentModelOption[]>((resolve, reject) => {
-    const child = spawn('codex', ['app-server'], {
+    const child = spawn(invocation.command, invocation.args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       env: process.env,
     })

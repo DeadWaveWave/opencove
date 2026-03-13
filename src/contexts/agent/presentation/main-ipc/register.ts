@@ -9,6 +9,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { buildAgentLaunchCommand } from '../../infrastructure/cli/AgentCommandFactory'
+import { resolveAgentCliInvocation } from '../../infrastructure/cli/AgentCliInvocation'
 import {
   disposeAgentModelService,
   listAgentModels,
@@ -83,13 +84,17 @@ export function registerAgentIpcHandlers(
     )
 
     const launchStartedAtMs = Date.now()
+    const resolvedInvocation = await resolveAgentCliInvocation({
+      command: testStub?.command ?? launchCommand.command,
+      args: testStub?.args ?? launchCommand.args,
+    })
 
     const { sessionId } = ptyRuntime.spawnSession({
       cwd: normalized.cwd,
       cols: normalized.cols ?? 80,
       rows: normalized.rows ?? 24,
-      command: testStub?.command ?? launchCommand.command,
-      args: testStub?.args ?? launchCommand.args,
+      command: resolvedInvocation.command,
+      args: resolvedInvocation.args,
     })
 
     const resumeSessionId = launchCommand.resumeSessionId
@@ -111,8 +116,8 @@ export function registerAgentIpcHandlers(
     const result: LaunchAgentResult = {
       sessionId,
       provider: normalized.provider,
-      command: launchCommand.command,
-      args: launchCommand.args,
+      command: resolvedInvocation.command,
+      args: resolvedInvocation.args,
       launchMode: launchCommand.launchMode,
       effectiveModel: launchCommand.effectiveModel,
       resumeSessionId,

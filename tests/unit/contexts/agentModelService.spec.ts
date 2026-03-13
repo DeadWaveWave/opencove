@@ -10,14 +10,20 @@ const { spawnMock } = vi.hoisted(() => ({
   spawnMock: vi.fn<typeof import('node:child_process').spawn>(),
 }))
 
+const { execFileMock } = vi.hoisted(() => ({
+  execFileMock: vi.fn<typeof import('node:child_process').execFile>(),
+}))
+
 vi.mock('node:child_process', async importOriginal => {
   const actual = await importOriginal<typeof import('node:child_process')>()
 
   return {
     ...actual,
+    execFile: execFileMock,
     spawn: spawnMock,
     default: {
       ...actual,
+      execFile: execFileMock,
       spawn: spawnMock,
     },
   }
@@ -70,6 +76,15 @@ afterEach(() => {
 })
 
 describe('AgentModelService', () => {
+  const originalPlatform = process.platform
+
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', {
+      value: originalPlatform,
+      configurable: true,
+    })
+  })
+
   it('returns static Claude Code models without requiring api credentials', async () => {
     delete process.env.ANTHROPIC_API_KEY
     delete process.env.CLAUDE_API_KEY
@@ -95,9 +110,15 @@ describe('AgentModelService', () => {
     const mockedSpawn = vi.mocked(spawn)
     const child = createMockChildProcess()
 
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(new Error('not found'))
+      return {} as ReturnType<typeof execFileMock>
+    })
     mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
 
     const resultPromise = listAgentModels('codex')
+    await Promise.resolve()
 
     expect(child.stdin.write).toHaveBeenCalledTimes(2)
     expect(child.stdin.end).not.toHaveBeenCalled()
@@ -142,10 +163,16 @@ describe('AgentModelService', () => {
     const mockedSpawn = vi.mocked(spawn)
     const child = createMockChildProcess()
 
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(new Error('not found'))
+      return {} as ReturnType<typeof execFileMock>
+    })
     mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
 
     const firstPromise = listAgentModels('codex')
     const secondPromise = listAgentModels('codex')
+    await Promise.resolve()
 
     expect(mockedSpawn).toHaveBeenCalledTimes(1)
 
@@ -181,9 +208,15 @@ describe('AgentModelService', () => {
     const child = createMockChildProcess()
     child.stdin.end = vi.fn(() => undefined)
 
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(new Error('not found'))
+      return {} as ReturnType<typeof execFileMock>
+    })
     mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
 
     const resultPromise = listAgentModels('codex')
+    await Promise.resolve()
 
     child.stdout.emit(
       'data',
@@ -211,5 +244,63 @@ describe('AgentModelService', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     expect(child.kill).toHaveBeenCalledWith('SIGKILL')
+  })
+
+  it('uses the Windows cmd shim path when codex resolves to a .cmd launcher', async () => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+      configurable: true,
+    })
+
+    const mockedSpawn = vi.mocked(spawn)
+    const child = createMockChildProcess()
+
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
+      return {} as ReturnType<typeof execFileMock>
+    })
+    mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
+
+    const resultPromise = listAgentModels('codex')
+    await vi.waitFor(() => {
+      expect(mockedSpawn).toHaveBeenCalledTimes(1)
+    })
+
+    expect(mockedSpawn).toHaveBeenCalledWith(
+      'cmd.exe',
+      ['/d', '/c', 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd', 'app-server'],
+      expect.objectContaining({
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: process.env,
+      }),
+    )
+
+    child.stdout.emit(
+      'data',
+      Buffer.from(
+        `${JSON.stringify({
+          id: '2',
+          result: {
+            data: [
+              {
+                id: 'gpt-5.2-codex',
+                displayName: 'gpt-5.2-codex',
+                description: '',
+                isDefault: true,
+              },
+            ],
+          },
+        })}\n`,
+      ),
+    )
+
+    await expect(resultPromise).resolves.toEqual(
+      expect.objectContaining({
+        provider: 'codex',
+        source: 'codex-cli',
+        error: null,
+      }),
+    )
   })
 })
