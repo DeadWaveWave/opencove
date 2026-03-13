@@ -17,13 +17,13 @@ import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type {
   ContextMenuState,
+  NodeDeleteConfirmationState,
   SpaceActionMenuState,
   SpaceVisual,
   SelectionDraftState,
   SpaceWorktreeDialogState,
   WorkspaceCanvasProps,
   TaskCreatorState,
-  TaskDeleteConfirmationState,
   TaskEditorState,
 } from './types'
 import { WorkspaceContextMenu } from './view/WorkspaceContextMenu'
@@ -32,8 +32,8 @@ import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOv
 import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
 import { WorkspaceSpaceSwitcher } from './view/WorkspaceSpaceSwitcher'
+import { NodeDeleteConfirmationWindow } from './windows/NodeDeleteConfirmationWindow'
 import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
-import { TaskDeleteConfirmationWindow } from './windows/TaskDeleteConfirmationWindow'
 import { TaskEditorWindow } from './windows/TaskEditorWindow'
 import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
 
@@ -126,11 +126,11 @@ interface WorkspaceCanvasViewProps {
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
 
-  taskDeleteConfirmation: TaskDeleteConfirmationState | null
-  setTaskDeleteConfirmation: React.Dispatch<
-    React.SetStateAction<TaskDeleteConfirmationState | null>
+  nodeDeleteConfirmation: NodeDeleteConfirmationState | null
+  setNodeDeleteConfirmation: React.Dispatch<
+    React.SetStateAction<NodeDeleteConfirmationState | null>
   >
-  confirmTaskDelete: () => Promise<void>
+  confirmNodeDelete: () => Promise<void>
 
   agentSettings: WorkspaceCanvasProps['agentSettings']
   workspacePath: string
@@ -233,9 +233,9 @@ export function WorkspaceCanvasView({
   closeTaskEditor,
   generateTaskEditorTitle,
   saveTaskEdits,
-  taskDeleteConfirmation,
-  setTaskDeleteConfirmation,
-  confirmTaskDelete,
+  nodeDeleteConfirmation,
+  setNodeDeleteConfirmation,
+  confirmNodeDelete,
   agentSettings,
   workspacePath,
   spaceActionMenu,
@@ -310,6 +310,7 @@ export function WorkspaceCanvasView({
         onSelectionDragStop={onSelectionDragStop}
         onMoveEnd={onMoveEnd}
         selectionMode={SelectionMode.Partial}
+        deleteKeyCode={null}
         selectionKeyCode={null}
         multiSelectionKeyCode={null}
         selectionOnDrag={isTrackpadCanvasMode || isShiftPressed}
@@ -429,10 +430,10 @@ export function WorkspaceCanvasView({
         saveTaskEdits={saveTaskEdits}
       />
 
-      <TaskDeleteConfirmationWindow
-        taskDeleteConfirmation={taskDeleteConfirmation}
-        setTaskDeleteConfirmation={setTaskDeleteConfirmation}
-        confirmTaskDelete={confirmTaskDelete}
+      <NodeDeleteConfirmationWindow
+        nodeDeleteConfirmation={nodeDeleteConfirmation}
+        setNodeDeleteConfirmation={setNodeDeleteConfirmation}
+        confirmNodeDelete={confirmNodeDelete}
       />
 
       <SpaceWorktreeWindow

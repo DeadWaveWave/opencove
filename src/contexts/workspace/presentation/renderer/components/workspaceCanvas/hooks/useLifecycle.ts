@@ -47,6 +47,8 @@ interface UseWorkspaceCanvasLifecycleParams {
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressedRef: React.MutableRefObject<boolean>
   setIsShiftPressed: React.Dispatch<React.SetStateAction<boolean>>
+  selectedNodeIdsRef: React.MutableRefObject<string[]>
+  requestNodeDeleteRef: React.MutableRefObject<(nodeIds: string[]) => void>
   focusNodeId?: string | null
   focusSequence?: number
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -72,6 +74,8 @@ export function useWorkspaceCanvasLifecycle({
   setDetectedCanvasInputMode,
   isShiftPressedRef,
   setIsShiftPressed,
+  selectedNodeIdsRef,
+  requestNodeDeleteRef,
   focusNodeId,
   focusSequence,
   nodesRef,
@@ -122,6 +126,22 @@ export function useWorkspaceCanvasLifecycle({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        (event.key === 'Delete' || event.key === 'Backspace') &&
+        !event.metaKey &&
+        !event.ctrlKey &&
+        !event.altKey &&
+        !isEditableKeyboardTarget(event.target)
+      ) {
+        const selectedNodeIds = selectedNodeIdsRef.current
+        if (selectedNodeIds.length > 0) {
+          event.preventDefault()
+          event.stopPropagation()
+          requestNodeDeleteRef.current(selectedNodeIds)
+          return
+        }
+      }
+
       if (event.key === 'Shift' && !isEditableKeyboardTarget(event.target)) {
         isShiftPressedRef.current = true
         setIsShiftPressed(true)
@@ -156,7 +176,7 @@ export function useWorkspaceCanvasLifecycle({
         window.removeEventListener('blur', handleBlur)
       }
     }
-  }, [isShiftPressedRef, setIsShiftPressed])
+  }, [isShiftPressedRef, requestNodeDeleteRef, selectedNodeIdsRef, setIsShiftPressed])
 
   useEffect(() => {
     if (canvasInputModeSetting === 'auto') {

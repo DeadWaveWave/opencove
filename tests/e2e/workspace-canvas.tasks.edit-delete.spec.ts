@@ -129,16 +129,17 @@ test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
 
       await taskNode.locator('[data-testid="task-node-close"]').click()
 
-      const deleteDialog = window.locator('[data-testid="workspace-task-delete-confirmation"]')
+      const deleteDialog = window.locator('[data-testid="workspace-node-delete-confirmation"]')
       await expect(deleteDialog).toBeVisible()
 
-      await window.locator('[data-testid="workspace-task-delete-cancel"]').click()
+      await window.locator('[data-testid="workspace-node-delete-cancel"]').click()
       await expect(deleteDialog).toBeHidden()
       await expect(taskNode).toBeVisible()
 
-      await taskNode.locator('[data-testid="task-node-close"]').click()
+      await taskNode.locator('.task-node__header').click()
+      await window.keyboard.press('Backspace')
       await expect(deleteDialog).toBeVisible()
-      await window.locator('[data-testid="workspace-task-delete-confirm"]').click()
+      await window.locator('[data-testid="workspace-node-delete-confirm"]').click()
 
       await expect(window.locator('.task-node')).toHaveCount(0)
     } finally {

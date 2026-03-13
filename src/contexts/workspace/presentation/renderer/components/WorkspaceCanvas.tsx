@@ -214,9 +214,9 @@ function WorkspaceCanvasInner({
     closeTaskEditor,
     generateTaskEditorTitle,
     saveTaskEdits,
-    taskDeleteConfirmation,
-    setTaskDeleteConfirmation,
-    confirmTaskDelete,
+    nodeDeleteConfirmation,
+    setNodeDeleteConfirmation,
+    confirmNodeDelete,
   } = workspaceCanvasHooks.useWorkspaceCanvasTaskWindows({
     taskTagOptions,
     contextMenu,
@@ -270,6 +270,8 @@ function WorkspaceCanvasInner({
     setDetectedCanvasInputMode,
     isShiftPressedRef,
     setIsShiftPressed,
+    selectedNodeIdsRef,
+    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
     focusNodeId,
     focusSequence,
     nodesRef,
@@ -465,9 +467,9 @@ function WorkspaceCanvasInner({
       closeTaskEditor={closeTaskEditor}
       generateTaskEditorTitle={generateTaskEditorTitle}
       saveTaskEdits={saveTaskEdits}
-      taskDeleteConfirmation={taskDeleteConfirmation}
-      setTaskDeleteConfirmation={setTaskDeleteConfirmation}
-      confirmTaskDelete={confirmTaskDelete}
+      nodeDeleteConfirmation={nodeDeleteConfirmation}
+      setNodeDeleteConfirmation={setNodeDeleteConfirmation}
+      confirmNodeDelete={confirmNodeDelete}
       agentSettings={agentSettings}
       workspacePath={workspacePath}
       spaceActionMenu={spaceActionMenu}

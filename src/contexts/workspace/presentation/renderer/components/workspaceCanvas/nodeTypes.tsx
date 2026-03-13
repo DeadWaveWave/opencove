@@ -184,7 +184,7 @@ interface WorkspaceCanvasNodeTypesParams {
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-  requestTaskDeleteRef: MutableRefObject<(nodeId: string) => void>
+  requestNodeDeleteRef: MutableRefObject<(nodeIds: string[]) => void>
   openTaskEditorRef: MutableRefObject<(nodeId: string) => void>
   quickUpdateTaskTitleRef: MutableRefObject<QuickUpdateTaskTitle>
   quickUpdateTaskRequirementRef: MutableRefObject<QuickUpdateTaskRequirement>
@@ -209,7 +209,7 @@ export function useWorkspaceCanvasNodeTypes({
   updateNoteTextRef,
   updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
-  requestTaskDeleteRef,
+  requestNodeDeleteRef,
   openTaskEditorRef,
   quickUpdateTaskTitleRef,
   quickUpdateTaskRequirementRef,
@@ -285,7 +285,7 @@ export function useWorkspaceCanvasNodeTypes({
           width={data.width}
           height={data.height}
           onClose={() => {
-            requestTaskDeleteRef.current(id)
+            requestNodeDeleteRef.current([id])
           }}
           onOpenEditor={() => {
             openTaskEditorRef.current(id)
@@ -386,7 +386,7 @@ export function useWorkspaceCanvasNodeTypes({
     openTaskEditorRef,
     quickUpdateTaskRequirementRef,
     quickUpdateTaskTitleRef,
-    requestTaskDeleteRef,
+    requestNodeDeleteRef,
     resizeNodeRef,
     runTaskAgentRef,
     resumeTaskAgentSessionRef,

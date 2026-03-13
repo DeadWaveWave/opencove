@@ -5,6 +5,7 @@ import type {
   TaskPriority,
   TaskRuntimeStatus,
   TerminalNodeData,
+  WorkspaceNodeKind,
   WorkspaceSpaceRect,
   WorkspaceSpaceState,
   WorkspaceViewport,
@@ -145,9 +146,10 @@ export interface TaskEditorState {
   error: string | null
 }
 
-export interface TaskDeleteConfirmationState {
-  nodeId: string
-  title: string
+export interface NodeDeleteConfirmationState {
+  nodeIds: string[]
+  primaryNodeKind: WorkspaceNodeKind
+  primaryNodeTitle: string
 }
 
 export interface CreateNodeInput {
