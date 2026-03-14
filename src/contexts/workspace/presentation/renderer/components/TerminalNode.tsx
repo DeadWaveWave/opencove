@@ -10,11 +10,7 @@ import {
   createTerminalCommandInputState,
   parseTerminalCommandInput,
 } from './terminalNode/commandInput'
-import {
-  createPtyWriteQueue,
-  handleTerminalCustomKeyEvent,
-  registerXtermPasteGuards,
-} from './terminalNode/inputBridge'
+import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './terminalNode/inputBridge'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './terminalNode/scrollback'
 import {
   clearCachedTerminalScreenStateInvalidation,
@@ -150,7 +146,6 @@ export function TerminalNode({
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
 
-    let disposeXtermPasteGuards: () => void = () => undefined
     let disposeTerminalSelectionTestHandle: () => void = () => undefined
     const ptyWriteQueue = createPtyWriteQueue(data =>
       window.opencoveApi.pty.write({ sessionId, data }),
@@ -165,7 +160,6 @@ export function TerminalNode({
 
     if (containerRef.current) {
       terminal.open(containerRef.current)
-      disposeXtermPasteGuards = registerXtermPasteGuards(containerRef.current)
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
@@ -368,7 +362,6 @@ export function TerminalNode({
       disposable.dispose()
       unsubscribeData()
       unsubscribeExit()
-      disposeXtermPasteGuards()
       disposeTerminalSelectionTestHandle()
       ptyWriteQueue.dispose()
       if (isInvalidated) {

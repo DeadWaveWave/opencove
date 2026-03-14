@@ -67,6 +67,23 @@ describe('handleTerminalCustomKeyEvent', () => {
     expect(copySelectedText).not.toHaveBeenCalled()
   })
 
+  it('does not intercept Windows Ctrl+V so xterm can handle paste', () => {
+    const result = handleTerminalCustomKeyEvent({
+      event: new KeyboardEvent('keydown', { key: 'v', ctrlKey: true }),
+      platformInfo: { platform: 'Win32' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal: {
+        hasSelection: () => false,
+        getSelection: () => '',
+      },
+    })
+
+    expect(result).toBe(true)
+  })
+
   it('preserves Shift+Enter terminal input bridging', () => {
     const ptyWriteQueue = {
       enqueue: vi.fn(),
