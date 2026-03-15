@@ -1,10 +1,5 @@
-import { spawn } from 'node:child_process'
 import { EventEmitter } from 'node:events'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import {
-  disposeAgentModelService,
-  listAgentModels,
-} from '../../../src/contexts/agent/infrastructure/cli/AgentModelService'
 
 const { spawnMock } = vi.hoisted(() => ({
   spawnMock: vi.fn<typeof import('node:child_process').spawn>(),
@@ -14,15 +9,11 @@ const { execFileMock } = vi.hoisted(() => ({
   execFileMock: vi.fn<typeof import('node:child_process').execFile>(),
 }))
 
-vi.mock('node:child_process', async importOriginal => {
-  const actual = await importOriginal<typeof import('node:child_process')>()
-
+vi.mock('node:child_process', () => {
   return {
-    ...actual,
     execFile: execFileMock,
     spawn: spawnMock,
     default: {
-      ...actual,
       execFile: execFileMock,
       spawn: spawnMock,
     },
@@ -30,6 +21,10 @@ vi.mock('node:child_process', async importOriginal => {
 })
 
 const ORIGINAL_ENV = { ...process.env }
+
+async function importAgentModelService() {
+  return await import('../../../src/contexts/agent/infrastructure/cli/AgentModelService')
+}
 
 type MockChildProcess = EventEmitter & {
   stdout: EventEmitter
@@ -68,10 +63,12 @@ function createMockChildProcess(): MockChildProcess {
   return child
 }
 
-afterEach(() => {
+afterEach(async () => {
   process.env = { ...ORIGINAL_ENV }
+  const { disposeAgentModelService } = await importAgentModelService()
   disposeAgentModelService()
   vi.clearAllMocks()
+  vi.resetModules()
   vi.useRealTimers()
 })
 
@@ -91,6 +88,7 @@ describe('AgentModelService', () => {
     delete process.env.CLAUDE_CODE_API_KEY
     delete process.env.CLAUDE_APIKEY
 
+    const { listAgentModels } = await importAgentModelService()
     const result = await listAgentModels('claude-code')
 
     expect(result.provider).toBe('claude-code')
@@ -113,6 +111,7 @@ describe('AgentModelService', () => {
       return {} as ReturnType<typeof execFileMock>
     })
 
+    const { listAgentModels } = await importAgentModelService()
     const result = await listAgentModels('opencode')
 
     expect(result.provider).toBe('opencode')
@@ -125,6 +124,7 @@ describe('AgentModelService', () => {
   })
 
   it('returns an empty Gemini catalog when the CLI has no list endpoint', async () => {
+    const { listAgentModels } = await importAgentModelService()
     const result = await listAgentModels('gemini')
 
     expect(result).toEqual(
@@ -138,16 +138,16 @@ describe('AgentModelService', () => {
   })
 
   it('keeps stdin open while waiting for codex model/list response', async () => {
-    const mockedSpawn = vi.mocked(spawn)
+    Object.defineProperty(process, 'platform', {
+      value: 'darwin',
+      configurable: true,
+    })
+
     const child = createMockChildProcess()
 
-    execFileMock.mockImplementation((_file, _args, options, callback) => {
-      const cb = typeof options === 'function' ? options : callback
-      cb?.(new Error('not found'))
-      return {} as ReturnType<typeof execFileMock>
-    })
-    mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
+    spawnMock.mockReturnValue(child as never)
 
+    const { listAgentModels } = await importAgentModelService()
     const resultPromise = listAgentModels('codex')
     await Promise.resolve()
 
@@ -191,21 +191,21 @@ describe('AgentModelService', () => {
   })
 
   it('deduplicates concurrent codex model fetches', async () => {
-    const mockedSpawn = vi.mocked(spawn)
+    Object.defineProperty(process, 'platform', {
+      value: 'darwin',
+      configurable: true,
+    })
+
     const child = createMockChildProcess()
 
-    execFileMock.mockImplementation((_file, _args, options, callback) => {
-      const cb = typeof options === 'function' ? options : callback
-      cb?.(new Error('not found'))
-      return {} as ReturnType<typeof execFileMock>
-    })
-    mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
+    spawnMock.mockReturnValue(child as never)
 
+    const { listAgentModels } = await importAgentModelService()
     const firstPromise = listAgentModels('codex')
     const secondPromise = listAgentModels('codex')
     await Promise.resolve()
 
-    expect(mockedSpawn).toHaveBeenCalledTimes(1)
+    expect(spawnMock).toHaveBeenCalledTimes(1)
 
     child.stdout.emit(
       'data',
@@ -234,18 +234,17 @@ describe('AgentModelService', () => {
 
   it('falls back to SIGKILL when codex app-server ignores SIGTERM', async () => {
     vi.useFakeTimers()
+    Object.defineProperty(process, 'platform', {
+      value: 'darwin',
+      configurable: true,
+    })
 
-    const mockedSpawn = vi.mocked(spawn)
     const child = createMockChildProcess()
     child.stdin.end = vi.fn(() => undefined)
 
-    execFileMock.mockImplementation((_file, _args, options, callback) => {
-      const cb = typeof options === 'function' ? options : callback
-      cb?.(new Error('not found'))
-      return {} as ReturnType<typeof execFileMock>
-    })
-    mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
+    spawnMock.mockReturnValue(child as never)
 
+    const { listAgentModels } = await importAgentModelService()
     const resultPromise = listAgentModels('codex')
     await Promise.resolve()
 
@@ -283,7 +282,6 @@ describe('AgentModelService', () => {
       configurable: true,
     })
 
-    const mockedSpawn = vi.mocked(spawn)
     const child = createMockChildProcess()
 
     execFileMock.mockImplementation((_file, _args, options, callback) => {
@@ -291,14 +289,15 @@ describe('AgentModelService', () => {
       cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
       return {} as ReturnType<typeof execFileMock>
     })
-    mockedSpawn.mockReturnValue(child as unknown as ReturnType<typeof spawn>)
+    spawnMock.mockReturnValue(child as never)
 
+    const { listAgentModels } = await importAgentModelService()
     const resultPromise = listAgentModels('codex')
     await vi.waitFor(() => {
-      expect(mockedSpawn).toHaveBeenCalledTimes(1)
+      expect(spawnMock).toHaveBeenCalledTimes(1)
     })
 
-    expect(mockedSpawn).toHaveBeenCalledWith(
+    expect(spawnMock).toHaveBeenCalledWith(
       'cmd.exe',
       ['/d', '/c', 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd', 'app-server'],
       expect.objectContaining({

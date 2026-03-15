@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { buildNodeEvalCommand, clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Terminal Shift Enter', () => {
   test('writes escape-enter bytes for Shift+Enter inside terminal input', async () => {
@@ -26,16 +26,22 @@ test.describe('Workspace Canvas - Terminal Shift Enter', () => {
       await expect(terminalInput).toBeFocused()
 
       await window.keyboard.type(
-        `node -e 'process.stdin.setRawMode(true);process.stdin.resume();const bytes=[];const finish=()=>{console.log("OPENCOVE_SHIFT_ENTER_CODES:"+bytes.join(","));process.exit(0)};process.stdin.on("data",d=>{for(const b of d)bytes.push(b);if(bytes.length>=2){finish()}});setTimeout(finish,800)'`,
+        buildNodeEvalCommand(
+          'process.stdin.setRawMode(true);process.stdin.resume();console.log("OPENCOVE_SHIFT_ENTER_READY");const bytes=[];const finish=()=>{console.log("OPENCOVE_SHIFT_ENTER_CODES:"+bytes.join(","));process.exit(0)};process.stdin.on("data",d=>{for(const b of d)bytes.push(b);if(bytes.length>=2){finish()}});setTimeout(finish,3000)',
+        ),
       )
       await window.keyboard.press('Enter')
-      await expect(terminal).toContainText('OPENCOVE_SHIFT_ENTER_CODES')
+      await expect(terminal).toContainText('OPENCOVE_SHIFT_ENTER_READY')
 
       await window.keyboard.down('Shift')
       await window.keyboard.press('Enter')
       await window.keyboard.up('Shift')
 
-      await expect(terminal).toContainText('OPENCOVE_SHIFT_ENTER_CODES:27,10')
+      await expect(terminal).toContainText(
+        process.platform === 'win32'
+          ? 'OPENCOVE_SHIFT_ENTER_CODES:27,13'
+          : 'OPENCOVE_SHIFT_ENTER_CODES:27,10',
+      )
     } finally {
       await electronApp.close()
     }

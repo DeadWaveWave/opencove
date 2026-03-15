@@ -61,6 +61,9 @@ function normalizeGeminiProjectDirectoryName(cwd) {
   return name.length > 0 ? name.replace(/[^a-zA-Z0-9._-]/g, '-') : 'workspace'
 }
 
+const BRACKETED_PASTE_START = '\u001b[200~'
+const BRACKETED_PASTE_END = '\u001b[201~'
+
 function createGeminiTimestamp(timestampMs) {
   return new Date(timestampMs).toISOString()
 }
@@ -329,6 +332,68 @@ async function runCodexCommentaryThenFinalScenario(cwd) {
   await sleep(20_000)
 }
 
+function extractBracketedPastePayload(buffer) {
+  const startIndex = buffer.indexOf(BRACKETED_PASTE_START)
+  if (startIndex === -1) {
+    return null
+  }
+
+  const contentStartIndex = startIndex + BRACKETED_PASTE_START.length
+  const endIndex = buffer.indexOf(BRACKETED_PASTE_END, contentStartIndex)
+  if (endIndex === -1) {
+    return null
+  }
+
+  return buffer.slice(contentStartIndex, endIndex)
+}
+
+async function runRawBracketedPasteEchoScenario() {
+  process.stdout.write('\u001b[?2004h')
+
+  await new Promise(resolveScenario => {
+    let settled = false
+    let buffer = ''
+
+    const settle = message => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      clearTimeout(timeout)
+      process.stdout.write(`${message}\n`)
+      process.stdout.write('\u001b[?2004l')
+      resolveScenario()
+    }
+
+    const timeout = setTimeout(() => {
+      settle('[cove-test-paste] timeout')
+    }, 8_000)
+
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+      process.stdin.setRawMode(true)
+    }
+
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', chunk => {
+      buffer += chunk
+
+      const bracketedPayload = extractBracketedPastePayload(buffer)
+      if (typeof bracketedPayload === 'string') {
+        settle(`[cove-test-paste] ${bracketedPayload}`)
+        return
+      }
+
+      if (buffer.includes('\u0016')) {
+        settle('[cove-test-paste] ctrl-v')
+      }
+    })
+    process.stdin.resume()
+  })
+
+  await sleep(20_000)
+}
+
 async function main() {
   const [
     provider = 'codex',
@@ -348,6 +413,11 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-commentary-then-final') {
     await runCodexCommentaryThenFinalScenario(cwd)
+    return
+  }
+
+  if (scenario === 'raw-bracketed-paste-echo') {
+    await runRawBracketedPasteEchoScenario()
     return
   }
 

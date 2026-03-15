@@ -1,10 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
-import { rm } from 'node:fs/promises'
 import path from 'path'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,
   launchApp,
+  removePathWithRetry,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 
@@ -95,7 +95,7 @@ test.describe('Recovery - Agent reopen', () => {
         await restartedApp.close()
       }
     } finally {
-      await rm(userDataDir, { recursive: true, force: true })
+      await removePathWithRetry(userDataDir)
     }
   })
 
@@ -256,7 +256,7 @@ test.describe('Recovery - Agent reopen', () => {
         await restartedApp.close()
       }
     } finally {
-      await rm(userDataDir, { recursive: true, force: true })
+      await removePathWithRetry(userDataDir)
     }
   })
 
@@ -459,7 +459,7 @@ test.describe('Recovery - Agent reopen', () => {
         await restartedApp.close()
       }
     } finally {
-      await rm(userDataDir, { recursive: true, force: true })
+      await removePathWithRetry(userDataDir)
     }
   })
 })

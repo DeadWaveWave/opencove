@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
+import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 
 interface ResolveSessionFilePathInput {
   provider: AgentProviderId
@@ -98,7 +98,7 @@ async function readFirstLine(filePath: string): Promise<string | null> {
 }
 
 function resolveClaudeSessionFilePath(cwd: string, sessionId: string): string {
-  const claudeProjectsDir = join(os.homedir(), '.claude', 'projects')
+  const claudeProjectsDir = join(resolveHomeDirectory(), '.claude', 'projects')
   const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
   return join(claudeProjectsDir, encodedPath, `${sessionId}.jsonl`)
 }
@@ -117,7 +117,7 @@ async function findCodexSessionFilePath(
   sessionId: string,
   startedAtMs: number,
 ): Promise<string | null> {
-  const codexSessionsDir = join(os.homedir(), '.codex', 'sessions')
+  const codexSessionsDir = join(resolveHomeDirectory(), '.codex', 'sessions')
   const resolvedCwd = resolve(cwd)
 
   const dateCandidates = new Set<string>()
@@ -195,7 +195,7 @@ async function findCodexSessionFilePath(
 }
 
 async function findGeminiSessionFilePath(cwd: string, sessionId: string): Promise<string | null> {
-  const geminiTmpDir = join(os.homedir(), '.gemini', 'tmp')
+  const geminiTmpDir = join(resolveHomeDirectory(), '.gemini', 'tmp')
   const resolvedCwd = resolve(cwd)
   const projectDirectories = await listDirectories(geminiTmpDir)
 

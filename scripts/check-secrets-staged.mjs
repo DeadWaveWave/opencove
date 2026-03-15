@@ -81,9 +81,10 @@ for (const file of files) {
     continue
   }
 
-  const result = spawnSync('pnpm', ['exec', 'secretlint', '--stdinFileName', file], {
+  const result = spawnSync(`pnpm exec secretlint --stdinFileName "${file}"`, {
     input: content,
     encoding: 'utf8',
+    shell: true,
   })
 
   if (result.stdout) {

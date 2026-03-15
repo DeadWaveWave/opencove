@@ -1,6 +1,7 @@
-type TerminalClipboardReader = {
+type TerminalClipboardController = {
   getSelection: () => string
   hasSelection: () => boolean
+  paste: (data: string) => void
 }
 
 type PtyWriteQueue = {
@@ -33,6 +34,21 @@ export function isWindowsTerminalCopyShortcut(
     !event.altKey &&
     !event.shiftKey
   )
+}
+
+export function isWindowsTerminalPasteShortcut(
+  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  platformInfo: PlatformInfo | undefined = navigator,
+): boolean {
+  if (!isWindowsPlatform(platformInfo) || event.metaKey || event.altKey) {
+    return false
+  }
+
+  if (event.key.toLowerCase() === 'v') {
+    return event.ctrlKey && !event.shiftKey
+  }
+
+  return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
 }
 
 export async function copyTextToClipboard(text: string): Promise<void> {
@@ -74,18 +90,64 @@ export async function copyTextToClipboard(text: string): Promise<void> {
   }
 }
 
+export async function readTextFromClipboard(): Promise<string> {
+  if (
+    typeof window !== 'undefined' &&
+    typeof window.opencoveApi?.clipboard?.readText === 'function'
+  ) {
+    try {
+      return await window.opencoveApi.clipboard.readText()
+    } catch {
+      // Fall through to the browser Clipboard API.
+    }
+  }
+
+  if (
+    typeof navigator === 'undefined' ||
+    !navigator.clipboard ||
+    typeof navigator.clipboard.readText !== 'function'
+  ) {
+    return ''
+  }
+
+  try {
+    return await navigator.clipboard.readText()
+  } catch {
+    return ''
+  }
+}
+
+export async function pasteTextFromClipboard({
+  readClipboardText = readTextFromClipboard,
+  terminal,
+}: {
+  readClipboardText?: () => Promise<string> | string
+  terminal: Pick<TerminalClipboardController, 'paste'>
+}): Promise<void> {
+  const text = await readClipboardText()
+  if (text.length === 0) {
+    return
+  }
+
+  terminal.paste(text)
+}
+
 export function handleTerminalCustomKeyEvent({
   copySelectedText = copyTextToClipboard,
   event,
+  pasteClipboardText = pasteTextFromClipboard,
   platformInfo,
   ptyWriteQueue,
   terminal,
 }: {
   copySelectedText?: (text: string) => Promise<void> | void
   event: KeyboardEvent
+  pasteClipboardText?: (
+    options: Pick<Parameters<typeof pasteTextFromClipboard>[0], 'terminal'>,
+  ) => Promise<void> | void
   platformInfo?: PlatformInfo
   ptyWriteQueue: PtyWriteQueue
-  terminal: TerminalClipboardReader
+  terminal: TerminalClipboardController
 }): boolean {
   if (
     event.key === 'Enter' &&
@@ -103,6 +165,11 @@ export function handleTerminalCustomKeyEvent({
   }
 
   if (event.type !== 'keydown' || !isWindowsTerminalCopyShortcut(event, platformInfo)) {
+    if (event.type === 'keydown' && isWindowsTerminalPasteShortcut(event, platformInfo)) {
+      void pasteClipboardText({ terminal })
+      return false
+    }
+
     return true
   }
 

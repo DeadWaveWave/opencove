@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process'
-import os from 'node:os'
 import process from 'node:process'
+import { resolveHomeDirectory } from './HomeDirectory'
 
 const POSIX_FALLBACK_PATH_SEGMENTS = [
   '/opt/homebrew/bin',
@@ -121,7 +121,7 @@ export function hydrateCliPathForPackagedApp(isPackaged: boolean): void {
     isPackaged,
     platform: process.platform,
     currentPath,
-    homeDir: os.homedir(),
+    homeDir: resolveHomeDirectory(),
     shellPathFromLogin,
   })
 

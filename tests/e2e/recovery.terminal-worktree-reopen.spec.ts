@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir } from 'node:fs/promises'
 import path from 'path'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,
   launchApp,
+  removePathWithRetry,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 
@@ -125,8 +126,8 @@ test.describe('Recovery - Terminal worktree reopen', () => {
         await restartedApp.close()
       }
     } finally {
-      await rm(worktreePath, { recursive: true, force: true })
-      await rm(userDataDir, { recursive: true, force: true })
+      await removePathWithRetry(worktreePath)
+      await removePathWithRetry(userDataDir)
     }
   })
 })

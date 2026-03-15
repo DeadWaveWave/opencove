@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import { basename, join, resolve } from 'node:path'
+import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import { resolveAgentCliInvocation } from './AgentCliInvocation'
 
 interface GeminiSessionMeta {
@@ -200,7 +200,7 @@ function toGeminiSessionCandidate(meta: GeminiSessionMeta): GeminiSessionCandida
 }
 
 async function listGeminiSessionCandidates(cwd: string): Promise<GeminiSessionCandidate[]> {
-  const geminiTmpDir = join(os.homedir(), '.gemini', 'tmp')
+  const geminiTmpDir = join(resolveHomeDirectory(), '.gemini', 'tmp')
   const resolvedCwd = resolve(cwd)
   const projectDirectories = await listDirectories(geminiTmpDir)
   const matchingProjectDirectories = (

@@ -3,7 +3,7 @@
 import { spawn } from 'node:child_process'
 
 const forwardedArgs = process.argv.slice(2)
-const pnpmCommand = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+const pnpmCommand = 'pnpm'
 
 /**
  * Heuristic signatures for Electron/Chromium process-level crashes seen in Playwright output.
@@ -74,6 +74,8 @@ function runCommand(args, env = process.env) {
       cwd: process.cwd(),
       env,
       stdio: ['inherit', 'pipe', 'pipe'],
+      shell: process.platform === 'win32',
+      windowsHide: true,
     })
 
     let output = ''

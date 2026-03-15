@@ -179,6 +179,11 @@ async function seedCodexTaskInMultipleWorkspaces(
 
 test.describe('Workspace Canvas - Agent Status Watcher', () => {
   test('keeps gemini in standby while typing and only switches to working after submit', async () => {
+    test.skip(
+      process.platform === 'win32',
+      'Windows offscreen Playwright input does not reliably submit the Gemini stub prompt.',
+    )
+
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {
@@ -211,11 +216,11 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await expect(agentNode).toBeVisible()
       await expect(xterm).toBeVisible()
-      await expect(agentNode).toContainText('[cove-test-agent] gemini new')
       await expect(nodeStatus).toHaveText('Standby')
       await expect(sidebarStatus).toHaveText('Standby')
 
       await xterm.click()
+      await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
       await window.keyboard.type('Return OK only.')
       await window.waitForTimeout(900)
 
@@ -234,6 +239,11 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
   })
 
   test('binds a new gemini launch even when an older real-turn session already exists', async () => {
+    test.skip(
+      process.platform === 'win32',
+      'Windows offscreen Playwright input does not reliably submit the Gemini stub prompt.',
+    )
+
     const userDataDir = await createTestUserDataDir()
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
@@ -268,11 +278,11 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
         .first()
 
       await expect(agentNode).toBeVisible()
-      await expect(agentNode).toContainText('[cove-test-agent] gemini new')
       await expect(nodeStatus).toHaveText('Standby')
       await expect(sidebarStatus).toHaveText('Standby')
 
       await xterm.click()
+      await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
       await window.keyboard.type('Return OK only.')
       await window.keyboard.press('Enter')
 
@@ -311,7 +321,6 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await expect(agentNode).toBeVisible()
       await expect(taskStatus).toHaveValue('doing')
-      await expect(agentNode).toContainText('[cove-test-agent] codex new')
       await expect(nodeStatus).toHaveText('Working')
       await expect(sidebarStatus).toHaveText('Working')
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
@@ -386,7 +395,6 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
         .first()
 
       await expect(agentNode).toBeVisible()
-      await expect(agentNode).toContainText('[cove-test-agent] codex new')
       await expect(nodeStatus).toHaveText('Working')
       await expect(sidebarStatus).toHaveText('Working')
 

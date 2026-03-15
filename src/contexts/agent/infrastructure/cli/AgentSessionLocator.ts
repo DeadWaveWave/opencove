@@ -1,8 +1,8 @@
 import fs from 'node:fs/promises'
-import os from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
+import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import {
   findGeminiResumeSessionId,
   findOpenCodeResumeSessionId,
@@ -175,7 +175,7 @@ function resolveCodexSessionTimestampMs(meta: CodexSessionMeta, startedAtMs: num
 }
 
 async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
-  const claudeProjectsDir = join(os.homedir(), '.claude', 'projects')
+  const claudeProjectsDir = join(resolveHomeDirectory(), '.claude', 'projects')
   const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
   const projectDir = join(claudeProjectsDir, encodedPath)
 
@@ -211,7 +211,7 @@ async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Prom
 }
 
 async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
-  const codexSessionsDir = join(os.homedir(), '.codex', 'sessions')
+  const codexSessionsDir = join(resolveHomeDirectory(), '.codex', 'sessions')
   const resolvedCwd = resolve(cwd)
   const dateCandidates = new Set<string>()
   const now = Date.now()

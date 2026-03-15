@@ -1,6 +1,6 @@
 import type { Dirent } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const fsPromisesMock = vi.hoisted(() => ({
   readdir: vi.fn(),
@@ -45,10 +45,30 @@ function toClaudeProjectDir(cwd: string): string {
   return join('/Users/tester', '.claude', 'projects', encodedPath)
 }
 
+function toGeminiProjectDir(name = 'cove-worktree'): string {
+  return join('/Users/tester', '.gemini', 'tmp', name)
+}
+
 describe('locateAgentResumeSessionId', () => {
+  const originalHome = process.env.HOME
+  const originalUserProfile = process.env.USERPROFILE
+  const originalHomeDrive = process.env.HOMEDRIVE
+  const originalHomePath = process.env.HOMEPATH
+
   beforeEach(() => {
     vi.clearAllMocks()
+    process.env.HOME = '/Users/tester'
+    delete process.env.USERPROFILE
+    delete process.env.HOMEDRIVE
+    delete process.env.HOMEPATH
     osMock.homedir.mockReturnValue('/Users/tester')
+  })
+
+  afterEach(() => {
+    process.env.HOME = originalHome
+    process.env.USERPROFILE = originalUserProfile
+    process.env.HOMEDRIVE = originalHomeDrive
+    process.env.HOMEPATH = originalHomePath
   })
 
   it('uses latest claude jsonl filename as resume session id', async () => {
@@ -111,15 +131,15 @@ describe('locateAgentResumeSessionId', () => {
   it('locates a gemini session by matching the project root and chat metadata', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = Date.parse('2026-03-15T07:58:10.970Z')
-    const projectDirectory = '/Users/tester/.gemini/tmp/cove-worktree'
-    const chatPath = `${projectDirectory}/chats/session-2026-03-15T07-58-d7d89910.json`
+    const projectDirectory = toGeminiProjectDir()
+    const chatPath = join(projectDirectory, 'chats', 'session-2026-03-15T07-58-d7d89910.json')
 
     fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
-      if (directory === '/Users/tester/.gemini/tmp') {
+      if (directory === join('/Users/tester', '.gemini', 'tmp')) {
         return [createDirectoryEntry('cove-worktree')]
       }
 
-      if (directory === `${projectDirectory}/chats`) {
+      if (directory === join(projectDirectory, 'chats')) {
         return [createFileEntry('session-2026-03-15T07-58-d7d89910.json')]
       }
 
@@ -127,8 +147,8 @@ describe('locateAgentResumeSessionId', () => {
     })
 
     fsPromisesMock.readFile.mockImplementation(async (filePath: string) => {
-      if (filePath === `${projectDirectory}/.project_root`) {
-        return cwd
+      if (filePath === join(projectDirectory, '.project_root')) {
+        return resolve(cwd)
       }
 
       if (filePath === chatPath) {
@@ -165,16 +185,16 @@ describe('locateAgentResumeSessionId', () => {
   it('ignores gemini info-only sessions and resolves the real turn session', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = Date.parse('2026-03-15T09:40:57.900Z')
-    const projectDirectory = '/Users/tester/.gemini/tmp/cove-worktree'
-    const infoOnlyChatPath = `${projectDirectory}/chats/session-2026-03-15T09-40-info.json`
-    const turnChatPath = `${projectDirectory}/chats/session-2026-03-15T09-40-turn.json`
+    const projectDirectory = toGeminiProjectDir()
+    const infoOnlyChatPath = join(projectDirectory, 'chats', 'session-2026-03-15T09-40-info.json')
+    const turnChatPath = join(projectDirectory, 'chats', 'session-2026-03-15T09-40-turn.json')
 
     fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
-      if (directory === '/Users/tester/.gemini/tmp') {
+      if (directory === join('/Users/tester', '.gemini', 'tmp')) {
         return [createDirectoryEntry('cove-worktree')]
       }
 
-      if (directory === `${projectDirectory}/chats`) {
+      if (directory === join(projectDirectory, 'chats')) {
         return [
           createFileEntry('session-2026-03-15T09-40-info.json'),
           createFileEntry('session-2026-03-15T09-40-turn.json'),
@@ -185,8 +205,8 @@ describe('locateAgentResumeSessionId', () => {
     })
 
     fsPromisesMock.readFile.mockImplementation(async (filePath: string) => {
-      if (filePath === `${projectDirectory}/.project_root`) {
-        return cwd
+      if (filePath === join(projectDirectory, '.project_root')) {
+        return resolve(cwd)
       }
 
       if (filePath === infoOnlyChatPath) {
@@ -237,17 +257,17 @@ describe('locateAgentResumeSessionId', () => {
   it('prefers a new gemini session created after launch over older real-turn sessions', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = Date.parse('2026-03-15T10:10:00.000Z')
-    const projectDirectory = '/Users/tester/.gemini/tmp/cove-worktree'
-    const oldChatPath = `${projectDirectory}/chats/session-old.json`
-    const newChatPath = `${projectDirectory}/chats/session-new.json`
+    const projectDirectory = toGeminiProjectDir()
+    const oldChatPath = join(projectDirectory, 'chats', 'session-old.json')
+    const newChatPath = join(projectDirectory, 'chats', 'session-new.json')
     let phase: 'before-launch' | 'after-submit' = 'before-launch'
 
     fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
-      if (directory === '/Users/tester/.gemini/tmp') {
+      if (directory === join('/Users/tester', '.gemini', 'tmp')) {
         return [createDirectoryEntry('cove-worktree')]
       }
 
-      if (directory === `${projectDirectory}/chats`) {
+      if (directory === join(projectDirectory, 'chats')) {
         return phase === 'before-launch'
           ? [createFileEntry('session-old.json')]
           : [createFileEntry('session-old.json'), createFileEntry('session-new.json')]
@@ -257,8 +277,8 @@ describe('locateAgentResumeSessionId', () => {
     })
 
     fsPromisesMock.readFile.mockImplementation(async (filePath: string) => {
-      if (filePath === `${projectDirectory}/.project_root`) {
-        return cwd
+      if (filePath === join(projectDirectory, '.project_root')) {
+        return resolve(cwd)
       }
 
       if (filePath === oldChatPath) {
@@ -309,16 +329,16 @@ describe('locateAgentResumeSessionId', () => {
   it('accepts an info-only gemini session file once it becomes a real turn session', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = Date.parse('2026-03-15T10:25:00.000Z')
-    const projectDirectory = '/Users/tester/.gemini/tmp/cove-worktree'
-    const chatPath = `${projectDirectory}/chats/session-info-then-turn.json`
+    const projectDirectory = toGeminiProjectDir()
+    const chatPath = join(projectDirectory, 'chats', 'session-info-then-turn.json')
     let phase: 'info-only' | 'user-turn' = 'info-only'
 
     fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
-      if (directory === '/Users/tester/.gemini/tmp') {
+      if (directory === join('/Users/tester', '.gemini', 'tmp')) {
         return [createDirectoryEntry('cove-worktree')]
       }
 
-      if (directory === `${projectDirectory}/chats`) {
+      if (directory === join(projectDirectory, 'chats')) {
         return [createFileEntry('session-info-then-turn.json')]
       }
 
@@ -326,8 +346,8 @@ describe('locateAgentResumeSessionId', () => {
     })
 
     fsPromisesMock.readFile.mockImplementation(async (filePath: string) => {
-      if (filePath === `${projectDirectory}/.project_root`) {
-        return cwd
+      if (filePath === join(projectDirectory, '.project_root')) {
+        return resolve(cwd)
       }
 
       if (filePath === chatPath) {

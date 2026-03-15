@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  buildEchoSequenceCommand,
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
@@ -219,7 +220,7 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       await xterm.click()
       const terminalInput = terminal.locator('.xterm-helper-textarea')
       await expect(terminalInput).toBeFocused()
-      await window.keyboard.type('for i in $(seq 1 260); do echo TRACKPAD_SCROLL_$i; done')
+      await window.keyboard.type(buildEchoSequenceCommand('TRACKPAD_SCROLL', 260))
       await window.keyboard.press('Enter')
       await expect(terminal).toContainText('TRACKPAD_SCROLL_260')
 
@@ -290,7 +291,7 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       await xterm.click()
       const terminalInput = terminal.locator('.xterm-helper-textarea')
       await expect(terminalInput).toBeFocused()
-      await window.keyboard.type('for i in $(seq 1 260); do echo AUTO_WHEEL_SCROLL_$i; done')
+      await window.keyboard.type(buildEchoSequenceCommand('AUTO_WHEEL_SCROLL', 260))
       await window.keyboard.press('Enter')
       await expect(terminal).toContainText('AUTO_WHEEL_SCROLL_260')
 

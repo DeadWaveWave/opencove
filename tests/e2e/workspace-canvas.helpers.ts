@@ -1,7 +1,14 @@
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { mkdir } from 'node:fs/promises'
 import path from 'path'
+import {
+  buildEchoSequenceCommand,
+  buildNodeEvalCommand,
+  buildPaddedNumberSequenceCommand,
+  createTestUserDataDir,
+  delay,
+  removePathWithRetry,
+} from './workspace-canvas.testUtils'
 
 const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
@@ -74,14 +81,12 @@ function resolveElectronLaunchArgs(): string[] {
   return ['--no-sandbox', '--disable-dev-shm-usage', electronAppPath]
 }
 
-async function delay(ms: number): Promise<void> {
-  await new Promise(resolve => {
-    setTimeout(resolve, ms)
-  })
-}
-
-export async function createTestUserDataDir(): Promise<string> {
-  return await mkdtemp(path.join(tmpdir(), 'cove-e2e-user-data-'))
+export {
+  buildEchoSequenceCommand,
+  buildNodeEvalCommand,
+  buildPaddedNumberSequenceCommand,
+  createTestUserDataDir,
+  removePathWithRetry,
 }
 
 function isProcessAlive(pid: number): boolean {
@@ -136,7 +141,7 @@ async function closeElectronAppAndCleanup(
     }
 
     if (cleanupUserDataDir) {
-      await rm(userDataDir, { recursive: true, force: true })
+      await removePathWithRetry(userDataDir)
     }
   }
 }
@@ -168,17 +173,12 @@ export interface SeedTaskData {
   updatedAt?: string | null
 }
 
-export interface SeedNoteData {
-  text: string
-}
+export type SeedNoteData = { text: string }
 
 export interface SeedNode {
   id: string
   title: string
-  position: {
-    x: number
-    y: number
-  }
+  position: { x: number; y: number }
   width: number
   height: number
   kind?: 'terminal' | 'agent' | 'task' | 'note'
@@ -277,7 +277,7 @@ async function launchAppInMode(
     if (electronApp) {
       await electronApp.close().catch(() => undefined)
     } else if (cleanupUserDataDir) {
-      await rm(userDataDir, { recursive: true, force: true })
+      await removePathWithRetry(userDataDir)
     }
 
     const shouldRetryCurrentMode = isRetryableLaunchError(error) && attempt < 1

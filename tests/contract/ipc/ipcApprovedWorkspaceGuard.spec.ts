@@ -215,21 +215,15 @@ describe('IPC approved workspace guards', () => {
     try {
       const { handlers, ipcMain } = createIpcHarness()
       vi.doMock('electron', () => ({ ipcMain }))
-      vi.doMock('node:child_process', async importOriginal => {
-        const actual = await importOriginal<typeof import('node:child_process')>()
-
+      vi.doMock('node:child_process', () => {
+        const execFile = vi.fn((_file, _args, options, callback) => {
+          const cb = typeof options === 'function' ? options : callback
+          cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
+        })
         return {
-          ...actual,
-          execFile: vi.fn((_file, _args, options, callback) => {
-            const cb = typeof options === 'function' ? options : callback
-            cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
-          }),
+          execFile,
           default: {
-            ...actual,
-            execFile: vi.fn((_file, _args, options, callback) => {
-              const cb = typeof options === 'function' ? options : callback
-              cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
-            }),
+            execFile,
           },
         }
       })

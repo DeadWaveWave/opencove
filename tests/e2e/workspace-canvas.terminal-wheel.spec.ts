@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  buildEchoSequenceCommand,
+  clearAndSeedWorkspace,
+  launchApp,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Terminal Wheel', () => {
   test('wheel over terminal does not zoom canvas', async () => {
@@ -55,7 +59,7 @@ test.describe('Workspace Canvas - Terminal Wheel', () => {
       await xterm.click()
       const terminalInput = terminal.locator('.xterm-helper-textarea')
       await expect(terminalInput).toBeFocused()
-      await window.keyboard.type('for i in $(seq 1 260); do echo OPENCOVE_SCROLL_$i; done')
+      await window.keyboard.type(buildEchoSequenceCommand('OPENCOVE_SCROLL', 260))
       await window.keyboard.press('Enter')
       await expect(terminal).toContainText('OPENCOVE_SCROLL_260')
 

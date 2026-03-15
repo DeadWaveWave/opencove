@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { launchApp, seedWorkspaceState, testWorkspacePath } from './workspace-canvas.helpers'
+import {
+  buildNodeEvalCommand,
+  launchApp,
+  seedWorkspaceState,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
   test('preserves full-screen ANSI content after workspace switch', async () => {
@@ -44,18 +49,18 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       await expect(terminal).toBeVisible()
       await expect(terminal.locator('.xterm')).toBeVisible()
 
-      const command = [
-        "node -e '",
-        'const esc="\\x1b[";',
-        'process.stdout.write("\\x1b[?1049h\\x1b[2J\\x1b[H");',
-        'for (let row = 1; row <= 18; row += 1) {',
-        '  process.stdout.write(esc + row + ";1HROW_" + row + "_STATIC_" + ".".repeat(64));',
-        '}',
-        'for (let frame = 0; frame < 30000; frame += 1) {',
-        '  process.stdout.write(esc + "20;1HFRAME_" + String(frame).padStart(5, "0") + "_TOKEN");',
-        '}',
-        "'",
-      ].join('')
+      const command = buildNodeEvalCommand(
+        [
+          'const esc="\\x1b[";',
+          'process.stdout.write("\\x1b[?1049h\\x1b[2J\\x1b[H");',
+          'for (let row = 1; row <= 18; row += 1) {',
+          '  process.stdout.write(esc + row + ";1HROW_" + row + "_STATIC_" + ".".repeat(64));',
+          '}',
+          'for (let frame = 0; frame < 30000; frame += 1) {',
+          '  process.stdout.write(esc + "20;1HFRAME_" + String(frame).padStart(5, "0") + "_TOKEN");',
+          '}',
+        ].join(''),
+      )
 
       await terminal.locator('.xterm').click()
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()

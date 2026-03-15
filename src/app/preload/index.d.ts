@@ -53,6 +53,9 @@ export interface OpenCoveApi {
   meta: {
     isTest: boolean
   }
+  clipboard: {
+    readText: () => Promise<string>
+  }
   persistence: {
     readWorkspaceStateRaw: () => Promise<string | null>
     writeWorkspaceStateRaw: (payload: WriteWorkspaceStateRawInput) => Promise<PersistWriteResult>

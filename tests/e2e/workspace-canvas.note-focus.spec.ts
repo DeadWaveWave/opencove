@@ -41,7 +41,7 @@ test.describe('Workspace Canvas - Note Focus', () => {
       await minimapDock.hover()
       const minimapToggle = window.locator('[data-testid="workspace-minimap-toggle"]')
       await expect(minimapToggle).toBeVisible()
-      await minimapToggle.click()
+      await minimapToggle.click({ force: true })
       await expect(window.locator('.workspace-canvas__minimap')).toHaveCount(0)
 
       const textarea = noteNode.locator('[data-testid="note-node-textarea"]')

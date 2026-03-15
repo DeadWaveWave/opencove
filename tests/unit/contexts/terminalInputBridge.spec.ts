@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { handleTerminalCustomKeyEvent } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/inputBridge'
+import {
+  handleTerminalCustomKeyEvent,
+  pasteTextFromClipboard,
+} from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/inputBridge'
 
 describe('handleTerminalCustomKeyEvent', () => {
   it('copies the selected terminal text on Windows Ctrl+C', async () => {
@@ -17,6 +20,7 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => true,
         getSelection: () => 'selected output',
+        paste: vi.fn(),
       },
     })
 
@@ -39,6 +43,7 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => false,
         getSelection: () => '',
+        paste: vi.fn(),
       },
     })
 
@@ -60,6 +65,7 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => true,
         getSelection: () => 'selected output',
+        paste: vi.fn(),
       },
     })
 
@@ -67,21 +73,50 @@ describe('handleTerminalCustomKeyEvent', () => {
     expect(copySelectedText).not.toHaveBeenCalled()
   })
 
-  it('does not intercept Windows Ctrl+V so xterm can handle paste', () => {
+  it('pastes clipboard text on Windows Ctrl+V', () => {
+    const pasteClipboardText = vi.fn()
+    const terminal = {
+      hasSelection: () => false,
+      getSelection: () => '',
+      paste: vi.fn(),
+    }
+
     const result = handleTerminalCustomKeyEvent({
       event: new KeyboardEvent('keydown', { key: 'v', ctrlKey: true }),
+      pasteClipboardText,
       platformInfo: { platform: 'Win32' },
       ptyWriteQueue: {
         enqueue: vi.fn(),
         flush: vi.fn(),
       },
-      terminal: {
-        hasSelection: () => false,
-        getSelection: () => '',
-      },
+      terminal,
     })
 
-    expect(result).toBe(true)
+    expect(result).toBe(false)
+    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+  })
+
+  it('pastes clipboard text on Windows Shift+Insert', () => {
+    const pasteClipboardText = vi.fn()
+    const terminal = {
+      hasSelection: () => false,
+      getSelection: () => '',
+      paste: vi.fn(),
+    }
+
+    const result = handleTerminalCustomKeyEvent({
+      event: new KeyboardEvent('keydown', { key: 'Insert', shiftKey: true }),
+      pasteClipboardText,
+      platformInfo: { platform: 'Win32' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal,
+    })
+
+    expect(result).toBe(false)
+    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
   })
 
   it('preserves Shift+Enter terminal input bridging', () => {
@@ -96,11 +131,27 @@ describe('handleTerminalCustomKeyEvent', () => {
       terminal: {
         hasSelection: () => false,
         getSelection: () => '',
+        paste: vi.fn(),
       },
     })
 
     expect(result).toBe(false)
     expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b\r')
     expect(ptyWriteQueue.flush).toHaveBeenCalledTimes(1)
+  })
+
+  it('writes clipboard text through xterm paste', async () => {
+    const readClipboardText = vi.fn(async () => 'clipboard payload')
+    const terminal = {
+      paste: vi.fn(),
+    }
+
+    await pasteTextFromClipboard({
+      readClipboardText,
+      terminal,
+    })
+
+    expect(readClipboardText).toHaveBeenCalledTimes(1)
+    expect(terminal.paste).toHaveBeenCalledWith('clipboard payload')
   })
 })

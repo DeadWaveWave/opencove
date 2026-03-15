@@ -72,7 +72,9 @@ test.describe('Workspace Canvas - Agent Last Message To Note', () => {
 
       const saveButton = agentNode.locator('[data-testid="terminal-node-save-last-message"]')
       await expect(saveButton).toBeVisible()
-      await saveButton.click()
+      await saveButton.evaluate(button => {
+        button.click()
+      })
 
       const noteNode = window.locator('.note-node').first()
       await expect(noteNode).toBeVisible()

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  buildPaddedNumberSequenceCommand,
   clearAndSeedWorkspace,
   launchApp,
   seedWorkspaceState,
@@ -119,11 +120,9 @@ test.describe('Workspace Canvas - Persistence', () => {
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
 
       await window.keyboard.type(
-        [
-          `echo ${headToken}`,
-          `for i in $(seq 1 4500); do printf '%045d\\n' $i; done`,
-          `echo ${tailToken}`,
-        ].join('; '),
+        [`echo ${headToken}`, buildPaddedNumberSequenceCommand(4500, 45), `echo ${tailToken}`].join(
+          '; ',
+        ),
       )
       await window.keyboard.press('Enter')
       await expect(terminal).toContainText(tailToken, { timeout: 20_000 })
