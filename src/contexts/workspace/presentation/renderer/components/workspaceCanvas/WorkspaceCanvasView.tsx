@@ -371,13 +371,6 @@ export function WorkspaceCanvasView({
           onOpenSpaceMenu={openSpaceActionMenu}
         />
 
-        {selectedNodeCount > 0 ? (
-          <div className="workspace-selection-hint">
-            Selected {selectedNodeCount} node{selectedNodeCount > 1 ? 's' : ''}. Right-click to
-            manage workspace grouping.
-          </div>
-        ) : null}
-
         <WorkspaceMinimapDock
           isMinimapVisible={isMinimapVisible}
           minimapNodeColor={minimapNodeColor}
@@ -390,12 +383,22 @@ export function WorkspaceCanvasView({
 
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
 
-      <WorkspaceSpaceSwitcher
-        spaces={spaces}
-        focusSpaceInViewport={focusSpaceInViewport}
-        focusAllInViewport={focusAllInViewport}
-        cancelSpaceRename={cancelSpaceRename}
-      />
+      {selectedNodeCount > 0 || spaces.length > 0 ? (
+        <div className="workspace-canvas__top-bar">
+          <WorkspaceSpaceSwitcher
+            spaces={spaces}
+            focusSpaceInViewport={focusSpaceInViewport}
+            focusAllInViewport={focusAllInViewport}
+            cancelSpaceRename={cancelSpaceRename}
+          />
+          {selectedNodeCount > 0 ? (
+            <div className="workspace-selection-hint">
+              Selected {selectedNodeCount} node{selectedNodeCount > 1 ? 's' : ''}. Right-click to
+              manage workspace grouping.
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <WorkspaceContextMenu
         contextMenu={contextMenu}
