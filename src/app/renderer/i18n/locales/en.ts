@@ -115,6 +115,11 @@ export const en = {
       title: 'Canvas & UI',
       inputModeLabel: 'Input Mode',
       inputModeHelp: 'How interactions are handled on the canvas.',
+      terminalProfileLabel: 'Terminal Environment',
+      terminalProfileHelp:
+        'Choose the shell profile used for new Windows terminals. Auto falls back to {{defaultProfile}}.',
+      terminalProfileAuto: 'Automatic',
+      terminalProfileAutoWithDefault: 'Automatic ({{defaultProfile}})',
       inputMode: {
         auto: 'Auto (Smart)',
         trackpad: 'Trackpad',

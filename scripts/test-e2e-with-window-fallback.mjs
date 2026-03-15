@@ -73,6 +73,7 @@ function runCommand(args, env = process.env) {
     const child = spawn(pnpmCommand, args, {
       cwd: process.cwd(),
       env,
+      shell: process.platform === 'win32',
       stdio: ['inherit', 'pipe', 'pipe'],
     })
 

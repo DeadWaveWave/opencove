@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
   worktreeRenameBranch: 'worktree:rename-branch',
   worktreeSuggestNames: 'worktree:suggest-names',
   ptySpawn: 'pty:spawn',
+  ptyListProfiles: 'pty:list-profiles',
   ptyWrite: 'pty:write',
   ptyResize: 'pty:resize',
   ptyKill: 'pty:kill',

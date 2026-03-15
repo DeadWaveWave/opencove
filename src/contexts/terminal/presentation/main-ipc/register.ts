@@ -4,6 +4,7 @@ import type {
   AttachTerminalInput,
   DetachTerminalInput,
   KillTerminalInput,
+  ListTerminalProfilesResult,
   ResizeTerminalInput,
   SnapshotTerminalInput,
   SnapshotTerminalResult,
@@ -14,6 +15,7 @@ import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type { PtyRuntime } from './runtime'
+import type { SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
 import {
   normalizeAttachTerminalPayload,
   normalizeDetachTerminalPayload,
@@ -30,6 +32,15 @@ export function registerPtyIpcHandlers(
   approvedWorkspaces: ApprovedWorkspaceStore,
 ): IpcRegistrationDisposable {
   registerHandledIpc(
+    IPC_CHANNELS.ptyListProfiles,
+    async (): Promise<ListTerminalProfilesResult> =>
+      runtime.listProfiles
+        ? await runtime.listProfiles()
+        : { profiles: [], defaultProfileId: null },
+    { defaultErrorCode: 'terminal.spawn_failed' },
+  )
+
+  registerHandledIpc(
     IPC_CHANNELS.ptySpawn,
     async (_event, payload: SpawnTerminalInput) => {
       const normalized = normalizeSpawnTerminalPayload(payload)
@@ -41,7 +52,11 @@ export function registerPtyIpcHandlers(
         })
       }
 
-      return runtime.spawnSession(normalized)
+      if (runtime.spawnTerminalSession) {
+        return await runtime.spawnTerminalSession(normalized)
+      }
+
+      return runtime.spawnSession(normalized as SpawnPtyOptions)
     },
     { defaultErrorCode: 'terminal.spawn_failed' },
   )
@@ -103,6 +118,7 @@ export function registerPtyIpcHandlers(
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.ptySpawn)
+      ipcMain.removeHandler(IPC_CHANNELS.ptyListProfiles)
       ipcMain.removeHandler(IPC_CHANNELS.ptyWrite)
       ipcMain.removeHandler(IPC_CHANNELS.ptyResize)
       ipcMain.removeHandler(IPC_CHANNELS.ptyKill)

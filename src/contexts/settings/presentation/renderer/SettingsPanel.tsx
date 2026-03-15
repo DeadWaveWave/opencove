@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import {
@@ -10,6 +10,7 @@ import {
   type TaskTitleProvider,
   type UiLanguage,
 } from '@contexts/settings/domain/agentSettings'
+import type { TerminalProfile } from '@shared/contracts/dto'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
@@ -66,12 +67,18 @@ export function SettingsPanel({
   >(() => createInitialInputState())
   const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>('general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
+  const [terminalProfiles, setTerminalProfiles] = useState<TerminalProfile[]>([])
+  const [detectedDefaultTerminalProfileId, setDetectedDefaultTerminalProfileId] = useState<
+    string | null
+  >(null)
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
   const updateLanguage = (language: UiLanguage): void => onChange({ ...settings, language })
   const updateAgentFullAccess = (enabled: boolean): void =>
     onChange({ ...settings, agentFullAccess: enabled })
+  const updateDefaultTerminalProfileId = (profileId: string | null): void =>
+    onChange({ ...settings, defaultTerminalProfileId: profileId })
   const updateTaskTitleProvider = (provider: TaskTitleProvider): void =>
     onChange({ ...settings, taskTitleProvider: provider })
   const updateTaskTitleModel = (model: string): void =>
@@ -177,6 +184,41 @@ export function SettingsPanel({
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
 
+  useEffect(() => {
+    let cancelled = false
+    const listProfiles = window.opencoveApi.pty.listProfiles
+
+    if (typeof listProfiles !== 'function') {
+      setTerminalProfiles([])
+      setDetectedDefaultTerminalProfileId(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void listProfiles()
+      .then(result => {
+        if (cancelled) {
+          return
+        }
+
+        setTerminalProfiles(result.profiles)
+        setDetectedDefaultTerminalProfileId(result.defaultProfileId)
+      })
+      .catch(() => {
+        if (cancelled) {
+          return
+        }
+
+        setTerminalProfiles([])
+        setDetectedDefaultTerminalProfileId(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
   const scrollToSection = (id: SettingsSectionId, targetId: string): void => {
     setActiveSectionId(id)
     window.requestAnimationFrame(() => {
@@ -277,7 +319,11 @@ export function SettingsPanel({
               defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
               terminalFontSize={settings.terminalFontSize}
               uiFontSize={settings.uiFontSize}
+              defaultTerminalProfileId={settings.defaultTerminalProfileId}
+              terminalProfiles={terminalProfiles}
+              detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
               onChangeCanvasInputMode={updateCanvasInputMode}
+              onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
               onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
               onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
               onChangeTerminalFontSize={updateTerminalFontSize}

@@ -8,6 +8,7 @@ export interface SpawnPtyOptions {
   shell?: string
   command?: string
   args?: string[]
+  env?: NodeJS.ProcessEnv
   cols: number
   rows: number
 }
@@ -60,7 +61,7 @@ export class PtyManager {
       cols: options.cols,
       rows: options.rows,
       cwd: options.cwd,
-      env: process.env,
+      env: options.env ?? process.env,
       name: 'xterm-256color',
     })
 

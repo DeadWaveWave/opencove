@@ -16,6 +16,7 @@ import type {
   ListGitWorktreesResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
+  ListTerminalProfilesResult,
   ReadAgentLastMessageInput,
   ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
@@ -32,6 +33,7 @@ import type {
   SnapshotTerminalInput,
   SnapshotTerminalResult,
   SpawnTerminalInput,
+  SpawnTerminalResult,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -78,7 +80,8 @@ export interface OpenCoveApi {
     suggestNames: (payload: SuggestWorktreeNamesInput) => Promise<SuggestWorktreeNamesResult>
   }
   pty: {
-    spawn: (payload: SpawnTerminalInput) => Promise<{ sessionId: string }>
+    listProfiles?: () => Promise<ListTerminalProfilesResult>
+    spawn: (payload: SpawnTerminalInput) => Promise<SpawnTerminalResult>
     write: (payload: WriteTerminalInput) => Promise<void>
     resize: (payload: ResizeTerminalInput) => Promise<void>
     kill: (payload: KillTerminalInput) => Promise<void>

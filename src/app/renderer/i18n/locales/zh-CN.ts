@@ -117,6 +117,11 @@ export const zhCN = {
       title: '画布与界面',
       inputModeLabel: '输入模式',
       inputModeHelp: '画布交互的处理方式。',
+      terminalProfileLabel: '终端环境',
+      terminalProfileHelp:
+        '选择 Windows 新终端默认使用的 shell 配置。自动模式会回退到 {{defaultProfile}}。',
+      terminalProfileAuto: '自动',
+      terminalProfileAutoWithDefault: '自动（{{defaultProfile}}）',
       inputMode: {
         auto: '自动（智能）',
         trackpad: '触控板',

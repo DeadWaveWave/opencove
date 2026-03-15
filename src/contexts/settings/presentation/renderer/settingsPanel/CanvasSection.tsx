@@ -11,6 +11,7 @@ import {
   type CanvasInputMode,
 } from '@contexts/settings/domain/agentSettings'
 import { getCanvasInputModeLabel } from '@app/renderer/i18n/labels'
+import type { TerminalProfile } from '@shared/contracts/dto'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
@@ -18,7 +19,11 @@ export function CanvasSection(props: {
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   uiFontSize: number
+  defaultTerminalProfileId: string | null
+  terminalProfiles: TerminalProfile[]
+  detectedDefaultTerminalProfileId: string | null
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
+  onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeNormalizeZoomOnTerminalClick: (enabled: boolean) => void
   onChangeDefaultTerminalWindowScalePercent: (percent: number) => void
   onChangeTerminalFontSize: (size: number) => void
@@ -31,12 +36,21 @@ export function CanvasSection(props: {
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     uiFontSize,
+    defaultTerminalProfileId,
+    terminalProfiles,
+    detectedDefaultTerminalProfileId,
     onChangeCanvasInputMode,
+    onChangeDefaultTerminalProfileId,
     onChangeNormalizeZoomOnTerminalClick,
     onChangeDefaultTerminalWindowScalePercent,
     onChangeTerminalFontSize,
     onChangeUiFontSize,
   } = props
+  const selectedProfileId = terminalProfiles.some(
+    profile => profile.id === defaultTerminalProfileId,
+  )
+    ? defaultTerminalProfileId
+    : null
 
   return (
     <div className="settings-panel__section" id="settings-section-canvas">
@@ -62,6 +76,47 @@ export function CanvasSection(props: {
           </select>
         </div>
       </div>
+
+      {terminalProfiles.length > 0 ? (
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.canvas.terminalProfileLabel')}</strong>
+            <span>
+              {t('settingsPanel.canvas.terminalProfileHelp', {
+                defaultProfile:
+                  terminalProfiles.find(profile => profile.id === detectedDefaultTerminalProfileId)
+                    ?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
+              })}
+            </span>
+          </div>
+          <div className="settings-panel__control">
+            <select
+              id="settings-terminal-profile"
+              data-testid="settings-terminal-profile"
+              value={selectedProfileId ?? ''}
+              onChange={event =>
+                onChangeDefaultTerminalProfileId(
+                  event.target.value.trim().length > 0 ? event.target.value : null,
+                )
+              }
+            >
+              <option value="">
+                {t('settingsPanel.canvas.terminalProfileAutoWithDefault', {
+                  defaultProfile:
+                    terminalProfiles.find(
+                      profile => profile.id === detectedDefaultTerminalProfileId,
+                    )?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
+                })}
+              </option>
+              {terminalProfiles.map(profile => (
+                <option key={profile.id} value={profile.id}>
+                  {profile.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      ) : null}
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">

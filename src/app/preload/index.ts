@@ -18,6 +18,7 @@ import type {
   ListGitWorktreesResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
+  ListTerminalProfilesResult,
   ReadAgentLastMessageInput,
   ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
@@ -34,6 +35,7 @@ import type {
   SnapshotTerminalInput,
   SnapshotTerminalResult,
   SpawnTerminalInput,
+  SpawnTerminalResult,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -100,7 +102,9 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.worktreeSuggestNames, payload),
   },
   pty: {
-    spawn: (payload: SpawnTerminalInput): Promise<{ sessionId: string }> =>
+    listProfiles: (): Promise<ListTerminalProfilesResult> =>
+      invokeIpc(IPC_CHANNELS.ptyListProfiles),
+    spawn: (payload: SpawnTerminalInput): Promise<SpawnTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySpawn, payload),
     write: (payload: WriteTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyWrite, payload),

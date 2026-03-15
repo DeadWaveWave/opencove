@@ -3,6 +3,8 @@
 import { readFileSync } from 'node:fs'
 import { spawnSync } from 'node:child_process'
 
+const PNPM_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
+
 const CHECKED_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
@@ -81,9 +83,10 @@ for (const file of files) {
     continue
   }
 
-  const result = spawnSync('pnpm', ['exec', 'secretlint', '--stdinFileName', file], {
+  const result = spawnSync(PNPM_COMMAND, ['exec', 'secretlint', '--stdinFileName', file], {
     input: content,
     encoding: 'utf8',
+    shell: process.platform === 'win32',
   })
 
   if (result.stdout) {

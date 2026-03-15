@@ -2,11 +2,30 @@ export interface PseudoTerminalSession {
   sessionId: string
 }
 
+export type TerminalRuntimeKind = 'windows' | 'wsl' | 'posix'
+
+export interface TerminalProfile {
+  id: string
+  label: string
+  runtimeKind: TerminalRuntimeKind
+}
+
+export interface ListTerminalProfilesResult {
+  profiles: TerminalProfile[]
+  defaultProfileId: string | null
+}
+
 export interface SpawnTerminalInput {
   cwd: string
+  profileId?: string
   shell?: string
   cols: number
   rows: number
+}
+
+export interface SpawnTerminalResult extends PseudoTerminalSession {
+  profileId?: string | null
+  runtimeKind?: TerminalRuntimeKind
 }
 
 export interface WriteTerminalInput {
@@ -60,4 +79,6 @@ export interface TerminalSessionStateEvent {
 export interface TerminalSessionMetadataEvent {
   sessionId: string
   resumeSessionId: string | null
+  profileId?: string | null
+  runtimeKind?: TerminalRuntimeKind
 }

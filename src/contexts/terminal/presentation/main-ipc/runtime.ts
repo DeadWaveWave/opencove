@@ -4,10 +4,14 @@ import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   AgentLaunchMode,
   AgentProviderId,
+  ListTerminalProfilesResult,
+  SpawnTerminalInput,
+  SpawnTerminalResult,
   TerminalDataEvent,
   TerminalExitEvent,
 } from '../../../../shared/contracts/dto'
 import { PtyManager, type SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
+import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 
 const PTY_DATA_FLUSH_DELAY_MS = 32
@@ -26,6 +30,8 @@ export interface StartSessionStateWatcherInput {
 }
 
 export interface PtyRuntime {
+  listProfiles?: () => Promise<ListTerminalProfilesResult>
+  spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => { sessionId: string }
   write: (sessionId: string, data: string) => void
   resize: (sessionId: string, cols: number, rows: number) => void
@@ -47,6 +53,7 @@ function reportStateWatcherIssue(message: string): void {
 
 export function createPtyRuntime(): PtyRuntime {
   const ptyManager = new PtyManager()
+  const profileResolver = new TerminalProfileResolver()
   const terminalProbeBufferBySession = new Map<string, string>()
   const pendingPtyDataChunksBySession = new Map<string, string[]>()
   const pendingPtyDataCharsBySession = new Map<string, number>()
@@ -323,6 +330,26 @@ export function createPtyRuntime(): PtyRuntime {
   }
 
   return {
+    listProfiles: async () => await profileResolver.listProfiles(),
+    spawnTerminalSession: async input => {
+      const resolved = await profileResolver.resolveTerminalSpawn(input)
+      const { sessionId, pty } = ptyManager.spawnSession({
+        cwd: resolved.cwd,
+        command: resolved.command,
+        args: resolved.args,
+        env: resolved.env,
+        cols: input.cols,
+        rows: input.rows,
+      })
+      registerSessionProbeState(sessionId)
+      wirePtySessionEvents(sessionId, pty)
+
+      return {
+        sessionId,
+        profileId: resolved.profileId,
+        runtimeKind: resolved.runtimeKind,
+      }
+    },
     spawnSession: options => {
       const { sessionId, pty } = ptyManager.spawnSession(options)
       registerSessionProbeState(sessionId)

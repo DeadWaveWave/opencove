@@ -48,6 +48,7 @@ interface UseWorkspaceCanvasInteractionsParams {
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
   contextMenu: ContextMenuState | null
   workspacePath: string
+  defaultTerminalProfileId: string | null
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -72,6 +73,7 @@ export function useWorkspaceCanvasInteractions({
   selectedSpaceIdsRef,
   contextMenu,
   workspacePath,
+  defaultTerminalProfileId,
   spacesRef,
   onSpacesChange,
   nodesRef,
@@ -429,12 +431,15 @@ export function useWorkspaceCanvasInteractions({
 
     const spawned = await window.opencoveApi.pty.spawn({
       cwd: resolvedCwd,
+      profileId: defaultTerminalProfileId ?? undefined,
       cols: 80,
       rows: 24,
     })
 
     const created = await createNodeForSession({
       sessionId: spawned.sessionId,
+      profileId: spawned.profileId,
+      runtimeKind: spawned.runtimeKind,
       title: `terminal-${nodesRef.current.length + 1}`,
       anchor,
       kind: 'terminal',
@@ -462,6 +467,7 @@ export function useWorkspaceCanvasInteractions({
     setContextMenu,
     setNodes,
     spacesRef,
+    defaultTerminalProfileId,
     workspacePath,
   ])
 

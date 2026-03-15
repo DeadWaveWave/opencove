@@ -3,14 +3,14 @@ import type {
   DetachTerminalInput,
   KillTerminalInput,
   ResizeTerminalInput,
+  SpawnTerminalInput,
   SnapshotTerminalInput,
   WriteTerminalInput,
 } from '../../../../shared/contracts/dto'
-import type { SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
 import { isAbsolute } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
 
-export function normalizeSpawnTerminalPayload(payload: unknown): SpawnPtyOptions {
+export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalInput {
   if (!payload || typeof payload !== 'object') {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid payload for pty:spawn',
@@ -19,6 +19,7 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnPtyOptions
 
   const record = payload as Record<string, unknown>
   const cwd = typeof record.cwd === 'string' ? record.cwd.trim() : ''
+  const profileId = typeof record.profileId === 'string' ? record.profileId.trim() : ''
   const shell = typeof record.shell === 'string' ? record.shell.trim() : ''
 
   const cols =
@@ -44,6 +45,7 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnPtyOptions
 
   return {
     cwd,
+    profileId: profileId.length > 0 ? profileId : undefined,
     shell: shell.length > 0 ? shell : undefined,
     cols,
     rows,

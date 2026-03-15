@@ -11,6 +11,7 @@ import type {
   WorkspaceViewport,
 } from '../../types'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { TerminalRuntimeKind } from '@shared/contracts/dto'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
 
@@ -155,6 +156,8 @@ export interface NodeDeleteConfirmationState {
 
 export interface CreateNodeInput {
   sessionId: string
+  profileId?: string | null
+  runtimeKind?: TerminalRuntimeKind
   title: string
   anchor: Point
   kind: 'terminal' | 'agent'

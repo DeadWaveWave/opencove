@@ -61,14 +61,17 @@
     "lint:fix": "oxlint --fix .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "format-check:staged": "node scripts/check-format-staged.mjs",
     "secret-check:staged": "node scripts/check-secrets-staged.mjs",
     "secrets:scan": "secretlint \"**/*\"",
     "line-check:staged": "node scripts/check-max-lines.mjs",
+    "test:staged": "node scripts/run-vitest-related-staged.mjs",
+    "test:e2e:pre-commit": "node scripts/run-precommit-e2e.mjs",
     "release:patch": "node scripts/prepare-release.mjs patch",
     "release:minor": "node scripts/prepare-release.mjs minor",
     "release:major": "node scripts/prepare-release.mjs major",
     "release:version": "node scripts/prepare-release.mjs",
-    "pre-commit": "pnpm line-check:staged && pnpm secret-check:staged && pnpm lint:fix && pnpm format:check && pnpm check && pnpm test -- --run && pnpm test:e2e",
+    "pre-commit": "pnpm line-check:staged && pnpm secret-check:staged && pnpm lint:fix && pnpm format-check:staged && pnpm check && pnpm test:staged && pnpm test:e2e:pre-commit",
     "prepare": "husky"
   },
   "dependencies": {

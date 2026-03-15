@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { TerminalRuntimeKind } from '@shared/contracts/dto'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 
@@ -68,6 +69,8 @@ export interface NoteNodeData {
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
+  profileId?: string | null
+  runtimeKind?: TerminalRuntimeKind
   title: string
   titlePinnedByUser?: boolean
   width: number
@@ -133,6 +136,8 @@ export interface PersistedTerminalNode {
   width: number
   height: number
   kind: WorkspaceNodeKind
+  profileId?: string | null
+  runtimeKind?: TerminalRuntimeKind
   status: AgentRuntimeStatus | null
   startedAt: string | null
   endedAt: string | null
