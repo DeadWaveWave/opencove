@@ -128,10 +128,12 @@ describe('Pty runtime provider watchers', () => {
       once: vi.fn(),
     }
 
-    const locateAgentResumeSessionId = vi
+    const captureGeminiSessionDiscoveryCursor = vi.fn().mockResolvedValue({
+      entriesByFilePath: {},
+    })
+    const locateGeminiResumeSessionId = vi
       .fn()
       .mockResolvedValue('d7d89910-fa86-4253-a183-07db548da987')
-
     const resolveSessionFilePath = vi.fn().mockResolvedValue('/tmp/gemini-session.json')
     const geminiWatcherStart = vi.fn()
 
@@ -186,8 +188,16 @@ describe('Pty runtime provider watchers', () => {
       PtyManager: MockPtyManager,
     }))
 
+    vi.doMock(
+      '../../../src/contexts/agent/infrastructure/cli/AgentSessionLocatorProviders',
+      () => ({
+        captureGeminiSessionDiscoveryCursor,
+        locateGeminiResumeSessionId,
+      }),
+    )
+
     vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentSessionLocator', () => ({
-      locateAgentResumeSessionId,
+      locateAgentResumeSessionId: vi.fn(),
     }))
 
     vi.doMock('../../../src/contexts/agent/infrastructure/watchers/SessionFileResolver', () => ({
@@ -225,7 +235,8 @@ describe('Pty runtime provider watchers', () => {
     await vi.advanceTimersByTimeAsync(200)
     await vi.advanceTimersByTimeAsync(0)
 
-    expect(locateAgentResumeSessionId).toHaveBeenCalledTimes(1)
+    expect(captureGeminiSessionDiscoveryCursor).toHaveBeenCalledTimes(1)
+    expect(locateGeminiResumeSessionId).toHaveBeenCalledTimes(1)
     expect(resolveSessionFilePath).toHaveBeenCalledTimes(1)
     expect(geminiWatcherStart).toHaveBeenCalledTimes(1)
     expect(

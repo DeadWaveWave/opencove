@@ -5,12 +5,15 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
-import { locateAgentResumeSessionId } from '../../../agent/infrastructure/cli/AgentSessionLocator'
+import {
+  captureGeminiSessionDiscoveryCursor,
+  type GeminiSessionDiscoveryCursor,
+} from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { GeminiSessionStateWatcher } from '../../../agent/infrastructure/watchers/GeminiSessionStateWatcher'
-import { findOpenCodeSessionId } from '../../../agent/infrastructure/watchers/OpenCodeSessionApi'
 import { OpenCodeSessionStateWatcher } from '../../../agent/infrastructure/watchers/OpenCodeSessionStateWatcher'
 import { resolveSessionFilePath } from '../../../agent/infrastructure/watchers/SessionFileResolver'
 import { SessionTurnStateWatcher } from '../../../agent/infrastructure/watchers/SessionTurnStateWatcher'
+import { resolveDiscoveredSessionId } from './sessionStateWatcherDiscovery'
 
 const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
@@ -43,7 +46,7 @@ export function createSessionStateWatcherController({
   reportIssue: (message: string) => void
 }): {
   start: (input: SessionStateWatcherStartInput) => void
-  noteInteraction: (sessionId: string) => void
+  noteInteraction: (sessionId: string, data?: string) => void
   disposeSession: (sessionId: string) => void
   dispose: () => void
 } {
@@ -56,6 +59,9 @@ export function createSessionStateWatcherController({
   const stateWatcherRetryTimerBySession = new Map<string, NodeJS.Timeout>()
   const stateWatcherStartingSessionIds = new Set<string>()
   const stateWatcherLastBroadcastResumeSessionIdBySession = new Map<string, string>()
+  const geminiDiscoveryCursorBySession = new Map<string, GeminiSessionDiscoveryCursor>()
+  const geminiDiscoveryCursorPendingSessionIds = new Set<string>()
+  const stateWatcherPendingImmediateRetryBySession = new Set<string>()
 
   const bumpStateWatcherVersion = (sessionId: string): number => {
     const next = (stateWatcherVersionBySession.get(sessionId) ?? 0) + 1
@@ -110,6 +116,9 @@ export function createSessionStateWatcherController({
       stateWatcherResolvedResumeSessionIdBySession.delete(sessionId)
       stateWatcherRetryCountBySession.delete(sessionId)
       stateWatcherLastBroadcastResumeSessionIdBySession.delete(sessionId)
+      geminiDiscoveryCursorBySession.delete(sessionId)
+      geminiDiscoveryCursorPendingSessionIds.delete(sessionId)
+      stateWatcherPendingImmediateRetryBySession.delete(sessionId)
     }
   }
 
@@ -168,48 +177,6 @@ export function createSessionStateWatcherController({
     )
   }
 
-  const resolveDiscoveredSessionId = async (
-    input: SessionStateWatcherStartInput,
-    startedAtHints: number[],
-  ): Promise<string | null> => {
-    if (input.provider === 'opencode') {
-      if (!input.opencodeBaseUrl) {
-        return null
-      }
-
-      for (const startedAtMs of startedAtHints) {
-        // eslint-disable-next-line no-await-in-loop
-        const resolved = await findOpenCodeSessionId({
-          baseUrl: input.opencodeBaseUrl,
-          cwd: input.cwd,
-          startedAtMs,
-        })
-
-        if (resolved) {
-          return resolved
-        }
-      }
-
-      return null
-    }
-
-    for (const startedAtMs of startedAtHints) {
-      // eslint-disable-next-line no-await-in-loop
-      const resolved = await locateAgentResumeSessionId({
-        provider: input.provider,
-        cwd: input.cwd,
-        startedAtMs,
-        timeoutMs: SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS,
-      })
-
-      if (resolved) {
-        return resolved
-      }
-    }
-
-    return null
-  }
-
   async function attemptStartSessionStateWatcher(
     sessionId: string,
     watcherVersion: number,
@@ -241,13 +208,25 @@ export function createSessionStateWatcherController({
       const resolvedSessionId =
         input.resumeSessionId ??
         stateWatcherResolvedResumeSessionIdBySession.get(sessionId) ??
-        (await resolveDiscoveredSessionId(input, startedAtHints))
+        (await resolveDiscoveredSessionId({
+          sessionId,
+          input,
+          startedAtHints,
+          geminiDiscoveryCursorBySession,
+          locateTimeoutMs: SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS,
+        }))
 
       if ((stateWatcherVersionBySession.get(sessionId) ?? 0) !== watcherVersion) {
         return
       }
 
       if (!resolvedSessionId) {
+        if (stateWatcherPendingImmediateRetryBySession.delete(sessionId)) {
+          stateWatcherRetryCountBySession.set(sessionId, 0)
+          scheduleSessionStateWatcherAttempt(sessionId, watcherVersion, 0)
+          return
+        }
+
         scheduleRetry(sessionId, watcherVersion)
         return
       }
@@ -308,6 +287,12 @@ export function createSessionStateWatcherController({
       }
 
       if (!sessionFilePath) {
+        if (stateWatcherPendingImmediateRetryBySession.delete(sessionId)) {
+          stateWatcherRetryCountBySession.set(sessionId, 0)
+          scheduleSessionStateWatcherAttempt(sessionId, watcherVersion, 0)
+          return
+        }
+
         scheduleRetry(sessionId, watcherVersion)
         return
       }
@@ -362,10 +347,41 @@ export function createSessionStateWatcherController({
     stateWatcherLastInteractionAtMsBySession.set(input.sessionId, input.startedAtMs)
 
     const watcherVersion = stateWatcherVersionBySession.get(input.sessionId) ?? 0
+    if (input.provider === 'gemini' && input.launchMode === 'new' && !input.resumeSessionId) {
+      geminiDiscoveryCursorPendingSessionIds.add(input.sessionId)
+      void captureGeminiSessionDiscoveryCursor(input.cwd)
+        .then(cursor => {
+          if ((stateWatcherVersionBySession.get(input.sessionId) ?? 0) !== watcherVersion) {
+            return
+          }
+
+          if (stateWatcherStartInputBySession.get(input.sessionId) !== input) {
+            return
+          }
+
+          geminiDiscoveryCursorPendingSessionIds.delete(input.sessionId)
+          geminiDiscoveryCursorBySession.set(input.sessionId, cursor)
+          scheduleSessionStateWatcherAttempt(input.sessionId, watcherVersion, 0)
+        })
+        .catch(() => {
+          if ((stateWatcherVersionBySession.get(input.sessionId) ?? 0) !== watcherVersion) {
+            return
+          }
+
+          if (stateWatcherStartInputBySession.get(input.sessionId) !== input) {
+            return
+          }
+
+          geminiDiscoveryCursorPendingSessionIds.delete(input.sessionId)
+          scheduleSessionStateWatcherAttempt(input.sessionId, watcherVersion, 0)
+        })
+      return
+    }
+
     scheduleSessionStateWatcherAttempt(input.sessionId, watcherVersion, 0)
   }
 
-  const noteInteraction = (sessionId: string): void => {
+  const noteInteraction = (sessionId: string, data?: string): void => {
     const input = stateWatcherStartInputBySession.get(sessionId)
     if (!input) {
       return
@@ -374,13 +390,36 @@ export function createSessionStateWatcherController({
     const interactionAtMs = Date.now()
     stateWatcherLastInteractionAtMsBySession.set(sessionId, interactionAtMs)
 
+    const shouldForceImmediateRetry =
+      input.provider === 'gemini' &&
+      input.launchMode === 'new' &&
+      !stateWatcherResolvedResumeSessionIdBySession.has(sessionId) &&
+      typeof data === 'string' &&
+      /[\r\n]/.test(data)
+
     const watcher = stateWatcherBySession.get(sessionId)
     if (watcher?.noteInteraction) {
       watcher.noteInteraction()
       return
     }
 
-    if (watcher || stateWatcherStartingSessionIds.has(sessionId)) {
+    if (watcher) {
+      return
+    }
+
+    if (geminiDiscoveryCursorPendingSessionIds.has(sessionId)) {
+      if (shouldForceImmediateRetry) {
+        stateWatcherPendingImmediateRetryBySession.add(sessionId)
+      }
+
+      return
+    }
+
+    if (stateWatcherStartingSessionIds.has(sessionId)) {
+      if (shouldForceImmediateRetry) {
+        stateWatcherPendingImmediateRetryBySession.add(sessionId)
+      }
+
       return
     }
 
@@ -408,6 +447,9 @@ export function createSessionStateWatcherController({
     stateWatcherRetryCountBySession.clear()
     stateWatcherStartingSessionIds.clear()
     stateWatcherLastBroadcastResumeSessionIdBySession.clear()
+    geminiDiscoveryCursorBySession.clear()
+    geminiDiscoveryCursorPendingSessionIds.clear()
+    stateWatcherPendingImmediateRetryBySession.clear()
 
     stateWatcherRetryTimerBySession.forEach(timer => {
       clearTimeout(timer)

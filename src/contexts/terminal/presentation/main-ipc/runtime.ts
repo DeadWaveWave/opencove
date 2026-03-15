@@ -331,7 +331,7 @@ export function createPtyRuntime(): PtyRuntime {
     },
     write: (sessionId, data) => {
       ptyManager.write(sessionId, data)
-      sessionStateWatcher.noteInteraction(sessionId)
+      sessionStateWatcher.noteInteraction(sessionId, data)
     },
     resize: (sessionId, cols, rows) => {
       ptyManager.resize(sessionId, cols, rows)

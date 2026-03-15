@@ -6,10 +6,28 @@ import { resolveAgentCliInvocation } from './AgentCliInvocation'
 
 interface GeminiSessionMeta {
   sessionId: string
+  filePath: string
   startedAtMs: number | null
   updatedAtMs: number | null
   lastRelevantMessageAtMs: number | null
   lastRelevantMessageType: 'user' | 'gemini' | null
+}
+
+interface GeminiSessionCandidate extends GeminiSessionMeta {
+  discoverySignature: string
+}
+
+interface GeminiSessionDiscoveryCursorEntry {
+  signature: string
+  hadRelevantTurn: boolean
+}
+
+export interface GeminiSessionDiscoveryCursor {
+  entriesByFilePath: Record<string, GeminiSessionDiscoveryCursorEntry>
+}
+
+interface FindGeminiResumeSessionIdOptions {
+  discoveryCursor?: GeminiSessionDiscoveryCursor | null
 }
 
 interface OpenCodeSessionMeta {
@@ -19,9 +37,16 @@ interface OpenCodeSessionMeta {
 }
 
 const GEMINI_CANDIDATE_WINDOW_MS = 20_000
+const GEMINI_POLL_INTERVAL_MS = 200
 const OPENCODE_CANDIDATE_WINDOW_MS = 20_000
 const CLI_TIMEOUT_MS = 1_500
 const CLI_MAX_BUFFER_BYTES = 8 * 1024 * 1024
+
+function wait(durationMs: number): Promise<void> {
+  return new Promise(resolveWait => {
+    setTimeout(resolveWait, durationMs)
+  })
+}
 
 async function listFiles(directory: string): Promise<string[]> {
   try {
@@ -133,6 +158,7 @@ function parseGeminiSessionMeta(rawContents: string): GeminiSessionMeta | null {
 
     return {
       sessionId,
+      filePath: '',
       startedAtMs: parseTimestampMs(parsed.startTime),
       updatedAtMs: parseTimestampMs(parsed.lastUpdated),
       lastRelevantMessageAtMs: lastRelevantMessage?.timestampMs ?? null,
@@ -157,10 +183,23 @@ function resolveGeminiSessionTimestampMs(meta: GeminiSessionMeta, startedAtMs: n
   )[0]
 }
 
-export async function findGeminiResumeSessionId(
-  cwd: string,
-  startedAtMs: number,
-): Promise<string | null> {
+function createGeminiDiscoverySignature(meta: GeminiSessionMeta): string {
+  return JSON.stringify({
+    sessionId: meta.sessionId,
+    updatedAtMs: meta.updatedAtMs,
+    lastRelevantMessageAtMs: meta.lastRelevantMessageAtMs,
+    lastRelevantMessageType: meta.lastRelevantMessageType,
+  })
+}
+
+function toGeminiSessionCandidate(meta: GeminiSessionMeta): GeminiSessionCandidate {
+  return {
+    ...meta,
+    discoverySignature: createGeminiDiscoverySignature(meta),
+  }
+}
+
+async function listGeminiSessionCandidates(cwd: string): Promise<GeminiSessionCandidate[]> {
   const geminiTmpDir = join(os.homedir(), '.gemini', 'tmp')
   const resolvedCwd = resolve(cwd)
   const projectDirectories = await listDirectories(geminiTmpDir)
@@ -177,7 +216,7 @@ export async function findGeminiResumeSessionId(
     )
   ).filter((projectDirectory): projectDirectory is string => projectDirectory !== null)
 
-  const candidateSessionIds = (
+  const candidates = (
     await Promise.all(
       matchingProjectDirectories.map(async projectDirectory => {
         const chatFiles = (await listFiles(join(projectDirectory, 'chats'))).filter(file => {
@@ -196,23 +235,72 @@ export async function findGeminiResumeSessionId(
               return null
             }
 
-            if (parsed.lastRelevantMessageType === null) {
-              return null
-            }
-
-            const timestampMs = resolveGeminiSessionTimestampMs(parsed, startedAtMs)
-            if (Math.abs(timestampMs - startedAtMs) > GEMINI_CANDIDATE_WINDOW_MS) {
-              return null
-            }
-
-            return parsed.sessionId
+            return toGeminiSessionCandidate({
+              ...parsed,
+              filePath: chatFile,
+            })
           }),
         )
       }),
     )
   )
     .flat()
-    .filter((sessionId): sessionId is string => sessionId !== null)
+    .filter((candidate): candidate is GeminiSessionCandidate => candidate !== null)
+
+  return candidates
+}
+
+export async function captureGeminiSessionDiscoveryCursor(
+  cwd: string,
+): Promise<GeminiSessionDiscoveryCursor> {
+  const entriesByFilePath: Record<string, GeminiSessionDiscoveryCursorEntry> = {}
+
+  for (const candidate of await listGeminiSessionCandidates(cwd)) {
+    entriesByFilePath[candidate.filePath] = {
+      signature: candidate.discoverySignature,
+      hadRelevantTurn: candidate.lastRelevantMessageType !== null,
+    }
+  }
+
+  return { entriesByFilePath }
+}
+
+function shouldAcceptGeminiCandidateFromCursor(
+  candidate: GeminiSessionCandidate,
+  discoveryCursor: GeminiSessionDiscoveryCursor | null | undefined,
+): boolean {
+  if (!discoveryCursor) {
+    return true
+  }
+
+  const previous = discoveryCursor.entriesByFilePath[candidate.filePath]
+  if (!previous) {
+    return true
+  }
+
+  if (previous.hadRelevantTurn) {
+    return false
+  }
+
+  return (
+    candidate.lastRelevantMessageType !== null &&
+    previous.signature !== candidate.discoverySignature
+  )
+}
+
+export async function findGeminiResumeSessionId(
+  cwd: string,
+  startedAtMs: number,
+  options: FindGeminiResumeSessionIdOptions = {},
+): Promise<string | null> {
+  const candidateSessionIds = (await listGeminiSessionCandidates(cwd))
+    .filter(candidate => candidate.lastRelevantMessageType !== null)
+    .filter(candidate => shouldAcceptGeminiCandidateFromCursor(candidate, options.discoveryCursor))
+    .filter(candidate => {
+      const timestampMs = resolveGeminiSessionTimestampMs(candidate, startedAtMs)
+      return Math.abs(timestampMs - startedAtMs) <= GEMINI_CANDIDATE_WINDOW_MS
+    })
+    .map(candidate => candidate.sessionId)
 
   const matchingSessionIds = new Set(candidateSessionIds)
   if (matchingSessionIds.size > 1) {
@@ -221,6 +309,42 @@ export async function findGeminiResumeSessionId(
 
   const [sessionId] = candidateSessionIds
   return sessionId ?? null
+}
+
+async function pollGeminiResumeSessionId(
+  cwd: string,
+  startedAtMs: number,
+  deadline: number,
+  discoveryCursor: GeminiSessionDiscoveryCursor | null | undefined,
+): Promise<string | null> {
+  const detected = await findGeminiResumeSessionId(cwd, startedAtMs, {
+    discoveryCursor,
+  })
+  if (detected) {
+    return detected
+  }
+
+  if (Date.now() > deadline) {
+    return null
+  }
+
+  await wait(GEMINI_POLL_INTERVAL_MS)
+  return await pollGeminiResumeSessionId(cwd, startedAtMs, deadline, discoveryCursor)
+}
+
+export async function locateGeminiResumeSessionId({
+  cwd,
+  startedAtMs,
+  timeoutMs,
+  discoveryCursor,
+}: {
+  cwd: string
+  startedAtMs: number
+  timeoutMs: number
+  discoveryCursor?: GeminiSessionDiscoveryCursor | null
+}): Promise<string | null> {
+  const deadline = Date.now() + timeoutMs
+  return await pollGeminiResumeSessionId(cwd, startedAtMs, deadline, discoveryCursor)
 }
 
 function parseOpenCodeSessionList(rawOutput: string): OpenCodeSessionMeta[] {
