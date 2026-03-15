@@ -435,11 +435,12 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
         },
       )
 
-      const switcher = window.locator('.workspace-space-switcher')
-      await expect(switcher).toBeVisible()
+      await expect(window.locator('.workspace-space-switcher')).toBeVisible()
       const switcherLayoutBeforeSelection = await window.evaluate(() => {
         const container = document.querySelector('.workspace-space-switcher')
-        if (!(container instanceof HTMLElement)) return null
+        if (!(container instanceof HTMLElement)) {
+          return null
+        }
 
         const items = Array.from(container.querySelectorAll('.workspace-space-switcher__item'))
         const rowCount = new Set(
@@ -447,11 +448,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
         ).size
         const rect = container.getBoundingClientRect()
 
-        return {
-          rowCount,
-          top: rect.top,
-          bottom: rect.bottom,
-        }
+        return { rowCount, top: rect.top, bottom: rect.bottom }
       })
 
       if (!switcherLayoutBeforeSelection) {
@@ -469,7 +466,9 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
           return await window.evaluate(expectedLayout => {
             const container = document.querySelector('.workspace-space-switcher')
             const hint = document.querySelector('.workspace-selection-hint')
-            if (!(container instanceof HTMLElement) || !(hint instanceof HTMLElement)) return false
+            if (!(container instanceof HTMLElement) || !(hint instanceof HTMLElement)) {
+              return false
+            }
 
             const items = Array.from(container.querySelectorAll('.workspace-space-switcher__item'))
             const rowCount = new Set(
