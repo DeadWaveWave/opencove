@@ -49,6 +49,46 @@ describe('TerminalProfileResolver', () => {
     ])
   })
 
+  it('filters Windows bash shims and internal Docker WSL distros from the profile list', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      locateWindowsCommands: async commands => {
+        if (commands.includes('powershell.exe')) {
+          return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+        }
+
+        if (commands.includes('bash.exe')) {
+          return [
+            'C:\\Windows\\System32\\bash.exe',
+            'C:\\Users\\tester\\AppData\\Local\\Microsoft\\WindowsApps\\bash.exe',
+            'C:\\Program Files\\Git\\bin\\bash.exe',
+          ]
+        }
+
+        return []
+      },
+      listWslDistros: async () => [
+        'Ubuntu',
+        'docker-desktop',
+        'docker-desktop-data',
+        'Ubuntu-20.04',
+      ],
+    })
+
+    const result = await resolver.listProfiles()
+
+    expect(result.profiles).toEqual([
+      { id: 'powershell', label: 'PowerShell', runtimeKind: 'windows' },
+      {
+        id: 'bash:c:\\program files\\git\\bin\\bash.exe',
+        label: 'Bash (Git Bash)',
+        runtimeKind: 'windows',
+      },
+      { id: 'wsl:Ubuntu', label: 'WSL (Ubuntu)', runtimeKind: 'wsl' },
+      { id: 'wsl:Ubuntu-20.04', label: 'WSL (Ubuntu-20.04)', runtimeKind: 'wsl' },
+    ])
+  })
+
   it('resolves WSL sessions with linux cwd translation and Windows host cwd fallback', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',

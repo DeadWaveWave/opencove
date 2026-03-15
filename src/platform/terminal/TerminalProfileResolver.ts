@@ -178,6 +178,27 @@ function buildBashLabel(shellPath: string): string {
   return container.length > 0 ? `Bash (${container})` : 'Bash'
 }
 
+function shouldIncludeWindowsBashProfile(shellPath: string): boolean {
+  const normalized = shellPath.trim().toLowerCase()
+  if (normalized.length === 0) {
+    return false
+  }
+
+  return (
+    !normalized.endsWith('\\windows\\system32\\bash.exe') &&
+    !normalized.includes('\\windowsapps\\bash.exe')
+  )
+}
+
+function shouldIncludeWslDistro(distro: string): boolean {
+  const normalized = distro.trim().toLowerCase()
+  if (normalized.length === 0) {
+    return false
+  }
+
+  return normalized !== 'docker-desktop' && normalized !== 'docker-desktop-data'
+}
+
 function disambiguateProfileLabels<T extends TerminalProfile>(profiles: T[]): T[] {
   const counts = new Map<string, number>()
   const labels = profiles.map(profile => {
@@ -248,7 +269,9 @@ async function loadWindowsProfiles(
     })
   }
 
-  const bashCommands = await deps.locateWindowsCommands(['bash.exe', 'bash'])
+  const bashCommands = (await deps.locateWindowsCommands(['bash.exe', 'bash'])).filter(
+    shouldIncludeWindowsBashProfile,
+  )
   const bashProfiles = bashCommands.map<InternalTerminalProfile>(command => ({
     id: `bash:${command.toLowerCase()}`,
     label: buildBashLabel(command),
@@ -267,7 +290,7 @@ async function loadWindowsProfiles(
   }))
   profiles.push(...disambiguateProfileLabels(bashProfiles))
 
-  const distros = await deps.listWslDistros()
+  const distros = (await deps.listWslDistros()).filter(shouldIncludeWslDistro)
   for (const distro of distros) {
     profiles.push({
       id: `wsl:${distro}`,
