@@ -22,7 +22,7 @@ export async function resumeTaskAgentSessionAction(
   if (taskNode.data.task.linkedAgentNodeId) {
     setTaskLastError({
       taskNodeId,
-      message: '请先关闭当前关联的 Agent 窗口再继续。',
+      message: context.t('messages.taskLinkedAgentWindowOpen'),
       setNodes: context.setNodes,
     })
     context.onRequestPersistFlush?.()
@@ -37,7 +37,7 @@ export async function resumeTaskAgentSessionAction(
   if (!isResumeSessionBindingVerified(record)) {
     setTaskLastError({
       taskNodeId,
-      message: '该 Agent 记录没有已验证的 resumeSessionId，无法 Resume。',
+      message: context.t('messages.taskResumeSessionMissing'),
       setNodes: context.setNodes,
     })
     context.onRequestPersistFlush?.()
@@ -129,7 +129,7 @@ export async function resumeTaskAgentSessionAction(
   } catch (error) {
     setTaskLastError({
       taskNodeId,
-      message: `Agent Resume 失败：${toErrorMessage(error)}`,
+      message: context.t('messages.agentResumeFailed', { message: toErrorMessage(error) }),
       setNodes: context.setNodes,
     })
     context.onRequestPersistFlush?.()

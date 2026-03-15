@@ -34,9 +34,9 @@ export function useSpaceWorktreeRefresh({
     setError(null)
 
     try {
-      const listBranches = getWorktreeApiMethod('listBranches')
-      const listWorktrees = getWorktreeApiMethod('listWorktrees')
-      const statusSummary = getWorktreeApiMethod('statusSummary')
+      const listBranches = getWorktreeApiMethod('listBranches', t)
+      const listWorktrees = getWorktreeApiMethod('listWorktrees', t)
+      const statusSummary = getWorktreeApiMethod('statusSummary', t)
       const [branchesResult, worktreesResult, statusSummaryResult] = await Promise.all([
         listBranches({ repoPath: workspacePath }),
         listWorktrees({ repoPath: workspacePath }),

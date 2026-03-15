@@ -39,7 +39,7 @@ export function useSpaceWorktreeSuggestNames({
     try {
       const provider = agentSettings.defaultProvider
       const model = resolveAgentModel(agentSettings, provider)
-      const suggestWorktreeNames = getWorktreeApiMethod('suggestNames')
+      const suggestWorktreeNames = getWorktreeApiMethod('suggestNames', t)
 
       const suggested = await suggestWorktreeNames({
         provider,

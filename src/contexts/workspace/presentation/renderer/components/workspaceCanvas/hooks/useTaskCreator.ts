@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { normalizeTaskTagSelection, sanitizeSpaces, toErrorMessage } from '../helpers'
@@ -52,21 +53,25 @@ export function useWorkspaceCanvasTaskCreator({
   generateTaskTitle: () => Promise<void>
   createTask: () => Promise<void>
 } {
+  const { t } = useTranslation()
   const [taskCreator, setTaskCreator] = useState<TaskCreatorState | null>(null)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
 
-  const fallbackTaskTitle = useCallback((requirement: string): string => {
-    const cleaned = requirement.replace(/\s+/g, ' ').trim()
-    if (cleaned.length === 0) {
-      return 'New task'
-    }
+  const fallbackTaskTitle = useCallback(
+    (requirement: string): string => {
+      const cleaned = requirement.replace(/\s+/g, ' ').trim()
+      if (cleaned.length === 0) {
+        return t('taskWindow.defaultTaskTitle')
+      }
 
-    if (cleaned.length <= 24) {
-      return cleaned
-    }
+      if (cleaned.length <= 24) {
+        return cleaned
+      }
 
-    return `${cleaned.slice(0, 24)}...`
-  }, [])
+      return `${cleaned.slice(0, 24)}...`
+    },
+    [t],
+  )
 
   const openTaskCreator = useCallback(() => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
@@ -116,7 +121,7 @@ export function useWorkspaceCanvasTaskCreator({
         prev
           ? {
               ...prev,
-              error: '任务要求不能为空。',
+              error: t('messages.taskRequirementRequired'),
             }
           : prev,
       )
@@ -153,12 +158,12 @@ export function useWorkspaceCanvasTaskCreator({
           ? {
               ...prev,
               isGeneratingTitle: false,
-              error: `自动生成失败：${toErrorMessage(error)}`,
+              error: t('messages.taskTitleGenerateFailed', { message: toErrorMessage(error) }),
             }
           : prev,
       )
     }
-  }, [isTaskAiNamingEnabled, suggestTaskTitle, taskCreator])
+  }, [isTaskAiNamingEnabled, suggestTaskTitle, t, taskCreator])
 
   const createTask = useCallback(async () => {
     if (!taskCreator) {
@@ -175,7 +180,7 @@ export function useWorkspaceCanvasTaskCreator({
         prev
           ? {
               ...prev,
-              error: '任务要求不能为空。',
+              error: t('messages.taskRequirementRequired'),
             }
           : prev,
       )
@@ -219,7 +224,7 @@ export function useWorkspaceCanvasTaskCreator({
             ? {
                 ...prev,
                 isCreating: false,
-                error: '任务节点无法放置，请先整理画布后重试。',
+                error: t('messages.taskNodePlacementFailed'),
               }
             : prev,
         )
@@ -435,7 +440,7 @@ export function useWorkspaceCanvasTaskCreator({
           ? {
               ...prev,
               isCreating: false,
-              error: `创建任务失败：${toErrorMessage(error)}`,
+              error: t('messages.taskCreateFailed', { message: toErrorMessage(error) }),
             }
           : prev,
       )
@@ -450,6 +455,7 @@ export function useWorkspaceCanvasTaskCreator({
     spacesRef,
     isTaskAiNamingEnabled,
     suggestTaskTitle,
+    t,
     taskCreator,
     taskTagOptions,
   ])

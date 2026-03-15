@@ -1,5 +1,6 @@
 import React from 'react'
 import { ViewportPortal, useReactFlow } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
@@ -54,6 +55,7 @@ export function WorkspaceSpaceRegionsOverlay({
   startSpaceRename,
   onOpenSpaceMenu,
 }: WorkspaceSpaceRegionsOverlayProps): React.JSX.Element {
+  const { t } = useTranslation()
   const reactFlow = useReactFlow()
   const selectedSpaceIdSet = React.useMemo(() => new Set(selectedSpaceIds), [selectedSpaceIds])
   const branchRenameInputRef = React.useRef<HTMLInputElement | null>(null)
@@ -167,7 +169,7 @@ export function WorkspaceSpaceRegionsOverlay({
     }
 
     const nextName = branchRename.nextName.trim()
-    const validationError = getBranchNameValidationError(nextName)
+    const validationError = getBranchNameValidationError(nextName, t)
     if (validationError) {
       setBranchRename(previous =>
         previous
@@ -185,7 +187,7 @@ export function WorkspaceSpaceRegionsOverlay({
         previous
           ? {
               ...previous,
-              error: 'Branch name is unchanged.',
+              error: t('branchRenameDialog.unchanged'),
             }
           : previous,
       )
@@ -204,7 +206,7 @@ export function WorkspaceSpaceRegionsOverlay({
     )
 
     try {
-      const renameBranch = getWorktreeApiMethod('renameBranch')
+      const renameBranch = getWorktreeApiMethod('renameBranch', t)
       await renameBranch({
         repoPath: workspacePath,
         worktreePath: branchRename.worktreePath,
@@ -225,7 +227,7 @@ export function WorkspaceSpaceRegionsOverlay({
           : previous,
       )
     }
-  }, [branchRename, workspacePath])
+  }, [branchRename, t, workspacePath])
 
   const updateHandleCursor = React.useCallback(
     (

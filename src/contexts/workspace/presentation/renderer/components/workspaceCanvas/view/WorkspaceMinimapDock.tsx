@@ -1,5 +1,6 @@
 import React from 'react'
 import { MiniMap, type Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import { Map as MapIcon } from 'lucide-react'
 import type { TerminalNodeData } from '../../../types'
 
@@ -16,6 +17,8 @@ export function WorkspaceMinimapDock({
   setIsMinimapVisible,
   onMinimapVisibilityChange,
 }: WorkspaceMinimapDockProps): React.JSX.Element {
+  const { t } = useTranslation()
+
   return (
     <div
       className={`workspace-canvas__minimap-dock${isMinimapVisible ? ' workspace-canvas__minimap-dock--expanded' : ''}`}
@@ -35,8 +38,12 @@ export function WorkspaceMinimapDock({
         type="button"
         className="workspace-canvas__minimap-toggle"
         data-testid="workspace-minimap-toggle"
-        aria-label={isMinimapVisible ? 'Hide minimap' : 'Show minimap'}
-        title={isMinimapVisible ? 'Hide minimap' : 'Show minimap'}
+        aria-label={
+          isMinimapVisible ? t('workspaceCanvas.hideMinimap') : t('workspaceCanvas.showMinimap')
+        }
+        title={
+          isMinimapVisible ? t('workspaceCanvas.hideMinimap') : t('workspaceCanvas.showMinimap')
+        }
         onClick={event => {
           event.stopPropagation()
           setIsMinimapVisible(previous => {

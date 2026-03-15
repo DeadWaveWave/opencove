@@ -101,7 +101,7 @@ export async function runTaskAgentAction(
   if (requirement.length === 0) {
     setTaskLastError({
       taskNodeId,
-      message: '任务要求不能为空。',
+      message: context.t('messages.taskRequirementRequired'),
       setNodes: context.setNodes,
     })
     return
@@ -203,7 +203,7 @@ export async function runTaskAgentAction(
   } catch (error) {
     setTaskLastError({
       taskNodeId,
-      message: `Agent 启动失败：${toErrorMessage(error)}`,
+      message: context.t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
       setNodes: context.setNodes,
     })
     context.onRequestPersistFlush?.()

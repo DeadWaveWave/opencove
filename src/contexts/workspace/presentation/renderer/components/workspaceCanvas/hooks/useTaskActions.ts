@@ -1,5 +1,6 @@
 import { useCallback, useEffect, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import {
   resolveTaskTitleModel,
   resolveTaskTitleProvider,
@@ -71,6 +72,8 @@ export function useWorkspaceCanvasTaskActions({
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
 } {
+  const { t } = useTranslation()
+
   const runTaskAgent = useCallback(
     async (taskNodeId: string) => {
       await runTaskAgentAction(taskNodeId, {
@@ -83,6 +86,7 @@ export function useWorkspaceCanvasTaskActions({
         launchAgentInNode,
         agentSettings,
         workspacePath,
+        t,
         onRequestPersistFlush,
       })
     },
@@ -96,6 +100,7 @@ export function useWorkspaceCanvasTaskActions({
       onRequestPersistFlush,
       setNodes,
       spacesRef,
+      t,
       workspacePath,
     ],
   )
@@ -142,6 +147,7 @@ export function useWorkspaceCanvasTaskActions({
         buildAgentNodeTitle,
         agentSettings,
         workspacePath,
+        t,
         onRequestPersistFlush,
       })
     },
@@ -154,6 +160,7 @@ export function useWorkspaceCanvasTaskActions({
       onSpacesChange,
       setNodes,
       spacesRef,
+      t,
       workspacePath,
     ],
   )

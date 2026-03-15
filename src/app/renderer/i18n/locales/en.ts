@@ -21,6 +21,7 @@ export const en = {
     defaultFollowCli: 'Default (Follow CLI)',
     defaultModel: 'default model',
     followCliDefault: 'Follow CLI default',
+    unknownError: 'Unknown error',
     percentUnit: '%',
     pixelUnit: 'px',
   },
@@ -97,6 +98,7 @@ export const en = {
       tasks: 'Tasks',
       models: 'Models',
       projects: 'Projects',
+      sectionsLabel: 'Settings sections',
     },
     general: {
       title: 'General',
@@ -217,6 +219,8 @@ export const en = {
   workspaceCanvas: {
     selectionHint_one: 'Selected {{count}} window.',
     selectionHint_other: 'Selected {{count}} windows.',
+    showMinimap: 'Show minimap',
+    hideMinimap: 'Hide minimap',
   },
   space: {
     defaultName: 'Space {{count}}',
@@ -235,10 +239,12 @@ export const en = {
     prompt: 'Are you sure you want to rename this branch?',
     confirmRename: 'Confirm Rename',
     renaming: 'Renaming...',
+    unchanged: 'Branch name is unchanged.',
   },
   taskWindow: {
     newTask: 'New Task',
     editTask: 'Edit Task',
+    defaultTaskTitle: 'New task',
     describeTask: 'Describe the task',
     taskRequirementPrompt: 'Task Requirement (Prompt to Agent)',
     requirementPlaceholder: 'Describe what needs to be done...',
@@ -277,6 +283,7 @@ export const en = {
     archiveWorktreeSpace: 'Archive Worktree Space',
     closeWorktreeWindow: 'Close worktree window',
     clean: 'clean',
+    apiUnavailable: 'Worktree API is unavailable. Please restart OpenCove and try again.',
     changedFiles_one: '{{count}} change',
     changedFiles_other: '{{count}} changes',
     archiveAgents_one: '{{count}} agent',
@@ -289,6 +296,20 @@ export const en = {
     archiveNotes_other: '{{count}} notes',
     aiSuggestionFailed: 'AI suggestion failed: {{message}}',
     refreshFailed: 'Failed to load worktree info: {{message}}',
+    archiveBranchDeleteFailed: 'Space archived, but branch deletion failed: {{message}}',
+    branchValidation: {
+      empty: 'Branch name cannot be empty.',
+      atSymbol: 'Branch name cannot be "@".',
+      doubleDot: 'Branch name cannot contain "..".',
+      atBrace: 'Branch name cannot contain "@{".',
+      unsupportedCharacters: 'Branch name contains unsupported characters.',
+      slashBoundary: 'Branch name cannot start or end with "/".',
+      consecutiveSlash: 'Branch name cannot contain consecutive "/".',
+      trailingDot: 'Branch name cannot end with ".".',
+      emptySegment: 'Branch name cannot contain empty path segments.',
+      leadingDotSegment: 'Branch name segments cannot start with ".".',
+      trailingLock: 'Branch name segments cannot end with ".lock".',
+    },
   },
   worktreeGuard: {
     activeWindowsBound: 'Space {{name}} still has active windows bound to its current directory.',
@@ -297,11 +318,23 @@ export const en = {
       'Close those windows first. This action changes worktree binding and metadata for the space.',
     markMismatchAndContinue: 'Mark Mismatch & Continue',
     closeAllAndContinue: 'Close All & Continue',
+    closeFirstRequired: 'This action requires closing all windows first.',
+    closeFailed: 'Some windows could not be closed. Close them manually and try again.',
   },
   messages: {
     agentLaunchFailed: 'Agent launch failed: {{message}}',
     agentResumeFailed: 'Agent resume failed: {{message}}',
     agentPromptRequired: 'Agent prompt cannot be empty.',
+    taskRequirementRequired: 'Task requirement cannot be empty.',
+    taskTitleGenerateFailed: 'Auto-generation failed: {{message}}',
+    taskCreateFailed: 'Failed to create task: {{message}}',
+    taskUpdateFailed: 'Failed to update task: {{message}}',
+    taskNodePlacementFailed: 'Task node cannot be placed. Tidy the canvas and try again.',
+    taskTitleOrAutoGenerateRequired: 'Enter a task title or enable auto-generation.',
+    taskTitleRequired: 'Enter a task title.',
+    taskLinkedAgentWindowOpen: 'Close the currently linked agent window before continuing.',
+    taskResumeSessionMissing:
+      'This agent record does not have a verified resumeSessionId, so it cannot resume.',
     resumeSessionMissing: 'This agent does not have a verified resumeSessionId yet.',
     noTerminalSlotNearby:
       'No room nearby in the current view. Move or close some terminal windows first.',
@@ -309,6 +342,13 @@ export const en = {
       'No room to the right of the current agent. Move or close some windows first.',
     noWindowSlotNearby: 'No room nearby in the current view. Move or close some windows first.',
     noteToTaskRequiresContent: 'Cannot convert an empty note into a task.',
+    agentLastMessageUnavailable:
+      'The current agent is unavailable, so the last message cannot be extracted.',
+    agentLastMessageStartedAtMissing:
+      'The current agent is missing its session start time, so the last message cannot be extracted.',
+    agentLastMessageEmpty: 'The current agent does not have a last message to extract yet.',
+    agentLastMessageSavedToNote: 'The last agent message was extracted into a note.',
+    agentLastMessageReadFailed: 'Failed to extract the last agent message: {{message}}',
     agentSpaceDirectoryMismatch:
       'Agent windows cannot enter or leave a space with a different directory.',
     terminalSpaceDirectoryMismatch:

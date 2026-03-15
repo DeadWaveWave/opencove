@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { SpaceWorktreeGuardState } from './SpaceWorktreeGuardWindow'
 import type {
   BlockingNodesSnapshot,
@@ -33,6 +34,8 @@ export function useSpaceWorktreeGuardActions({
   applyPendingWithMismatch: () => Promise<void>
   applyPendingByClosingAll: () => Promise<void>
 } {
+  const { t } = useTranslation()
+
   const applyPendingWithMismatch = useCallback(async () => {
     if (!guard) {
       return
@@ -43,7 +46,7 @@ export function useSpaceWorktreeGuardActions({
         previous
           ? {
               ...previous,
-              error: 'This action requires closing all windows first.',
+              error: t('worktreeGuard.closeFirstRequired'),
             }
           : previous,
       )
@@ -71,7 +74,7 @@ export function useSpaceWorktreeGuardActions({
           : previous,
       )
     }
-  }, [executePendingOperation, guard, onClose, setGuard])
+  }, [executePendingOperation, guard, onClose, setGuard, t])
 
   const applyPendingByClosingAll = useCallback(async () => {
     if (!guard) {
@@ -97,7 +100,7 @@ export function useSpaceWorktreeGuardActions({
                 isBusy: false,
                 agentCount: nextBlocking.agentNodeIds.length,
                 terminalCount: nextBlocking.terminalNodeIds.length,
-                error: 'Some windows could not be closed. Close them manually and try again.',
+                error: t('worktreeGuard.closeFailed'),
               }
             : previous,
         )
@@ -120,7 +123,7 @@ export function useSpaceWorktreeGuardActions({
           : previous,
       )
     }
-  }, [closeNodesById, executePendingOperation, getBlockingNodes, guard, onClose, setGuard])
+  }, [closeNodesById, executePendingOperation, getBlockingNodes, guard, onClose, setGuard, t])
 
   return {
     applyPendingWithMismatch,

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type {
   TerminalNodeData,
@@ -55,6 +56,7 @@ export function SpaceWorktreeWindow({
   getBlockingNodes: (spaceId: string) => BlockingNodesSnapshot
   closeNodesById: (nodeIds: string[]) => Promise<void>
 }): React.JSX.Element | null {
+  const { t } = useTranslation()
   const space = useMemo(
     () => (spaceId ? (spaces.find(candidate => candidate.id === spaceId) ?? null) : null),
     [spaceId, spaces],
@@ -206,7 +208,7 @@ export function SpaceWorktreeWindow({
       options?: UpdateSpaceDirectoryOptions,
     ) => {
       if (pending.kind === 'create') {
-        const createWorktree = getWorktreeApiMethod('create')
+        const createWorktree = getWorktreeApiMethod('create', t)
         const created = await createWorktree({
           repoPath: workspacePath,
           worktreesRoot: pending.worktreesRoot,
@@ -235,7 +237,7 @@ export function SpaceWorktreeWindow({
       let removedBranchError: string | null = null
 
       if (pending.worktreePath) {
-        const removeWorktree = getWorktreeApiMethod('remove')
+        const removeWorktree = getWorktreeApiMethod('remove', t)
         const removed = await removeWorktree({
           repoPath: workspacePath,
           worktreePath: pending.worktreePath,
@@ -250,10 +252,10 @@ export function SpaceWorktreeWindow({
       await refresh()
 
       if (removedBranchError) {
-        throw new Error(`Space archived, but branch deletion failed: ${removedBranchError}`)
+        throw new Error(t('worktree.archiveBranchDeleteFailed', { message: removedBranchError }))
       }
     },
-    [onUpdateSpaceDirectory, refresh, workspacePath],
+    [onUpdateSpaceDirectory, refresh, t, workspacePath],
   )
 
   const runOperation = useCallback(
@@ -296,13 +298,13 @@ export function SpaceWorktreeWindow({
 
       const nextBlocking = getBlockingNodes(targetSpaceId)
       if (nextBlocking.agentNodeIds.length > 0 || nextBlocking.terminalNodeIds.length > 0) {
-        setError('Some windows could not be closed. Close them manually and try again.')
+        setError(t('worktreeGuard.closeFailed'))
         return false
       }
 
       return true
     },
-    [closeNodesById, getBlockingNodes],
+    [closeNodesById, getBlockingNodes, t],
   )
 
   const { applyPendingWithMismatch, applyPendingByClosingAll } = useSpaceWorktreeGuardActions({
@@ -339,7 +341,7 @@ export function SpaceWorktreeWindow({
             startPoint: startPoint.trim().length > 0 ? startPoint.trim() : 'HEAD',
           }
 
-    const branchValidationError = getBranchNameValidationError(branchModePayload.name)
+    const branchValidationError = getBranchNameValidationError(branchModePayload.name, t)
     if (branchValidationError) {
       setError(branchValidationError)
       return
@@ -351,7 +353,7 @@ export function SpaceWorktreeWindow({
         worktreesRoot: resolvedWorktreesRoot,
         branchMode: branchModePayload,
       },
-      'Create & bind worktree',
+      t('worktree.createAndBind'),
     )
   }, [
     branchMode,
@@ -361,6 +363,7 @@ export function SpaceWorktreeWindow({
     runOperation,
     space,
     startPoint,
+    t,
   ])
 
   const handleArchive = useCallback(async () => {

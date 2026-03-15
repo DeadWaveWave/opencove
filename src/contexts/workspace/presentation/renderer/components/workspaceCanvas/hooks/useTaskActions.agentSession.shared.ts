@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { TranslateFn } from '@app/renderer/i18n'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
@@ -20,6 +21,7 @@ export interface TaskActionContext {
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
   agentSettings: AgentSettings
   workspacePath: string
+  t: TranslateFn
   onRequestPersistFlush?: () => void
 }
 
