@@ -384,13 +384,15 @@ export function WorkspaceCanvasView({
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
 
       {selectedNodeCount > 0 || spaces.length > 0 ? (
-        <div className="workspace-canvas__top-bar">
-          <WorkspaceSpaceSwitcher
-            spaces={spaces}
-            focusSpaceInViewport={focusSpaceInViewport}
-            focusAllInViewport={focusAllInViewport}
-            cancelSpaceRename={cancelSpaceRename}
-          />
+        <div className="workspace-canvas__top-overlays">
+          {spaces.length > 0 ? (
+            <WorkspaceSpaceSwitcher
+              spaces={spaces}
+              focusSpaceInViewport={focusSpaceInViewport}
+              focusAllInViewport={focusAllInViewport}
+              cancelSpaceRename={cancelSpaceRename}
+            />
+          ) : null}
           {selectedNodeCount > 0 ? (
             <div className="workspace-selection-hint">
               Selected {selectedNodeCount} node{selectedNodeCount > 1 ? 's' : ''}. Right-click to

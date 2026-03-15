@@ -84,15 +84,14 @@
   flex: 1 1 auto;
 }
 
-.workspace-canvas__top-bar {
+.workspace-canvas__top-overlays {
   position: absolute;
   top: 12px;
   left: 12px;
   right: 12px;
   z-index: 9;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
+  flex-direction: column;
   gap: 12px;
   pointer-events: none;
 }
@@ -106,9 +105,8 @@
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.35;
   padding: 6px 10px;
-  flex: 0 1 min(340px, 40vw);
   max-width: min(340px, 40vw);
-  margin-left: auto;
+  align-self: flex-end;
   pointer-events: none;
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4);
 }
@@ -299,7 +297,7 @@
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 6px;
-  flex: 1 1 320px;
+  width: 100%;
   min-width: 0;
   max-height: min(132px, calc(100vh - 24px));
   overflow-x: hidden;
