@@ -1,7 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { Point, Size, TerminalNodeData } from '../types'
 
-const WINDOW_GAP = 24
 const GRID_STEP = 40
 const MAX_SCAN_RADIUS = 80
 
@@ -32,15 +31,6 @@ function toNodeRect(node: Node<TerminalNodeData>): Rect {
   }
 }
 
-function expandRect(rect: Rect): Rect {
-  return {
-    left: rect.left - WINDOW_GAP,
-    top: rect.top - WINDOW_GAP,
-    right: rect.right + WINDOW_GAP,
-    bottom: rect.bottom + WINDOW_GAP,
-  }
-}
-
 function intersects(a: Rect, b: Rect): boolean {
   return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom)
 }
@@ -51,14 +41,14 @@ export function isPositionAvailable(
   allNodes: Node<TerminalNodeData>[],
   ignoreNodeId?: string,
 ): boolean {
-  const target = expandRect(toRect(position, size))
+  const target = toRect(position, size)
 
   for (const node of allNodes) {
     if (node.id === ignoreNodeId) {
       continue
     }
 
-    const existing = expandRect(toNodeRect(node))
+    const existing = toNodeRect(node)
     if (intersects(target, existing)) {
       return false
     }
@@ -124,6 +114,37 @@ export function findNearestFreePosition(
   }
 
   return desired
+}
+
+export function findNearestFreePositionOnRight(
+  desired: Point,
+  size: Size,
+  allNodes: Node<TerminalNodeData>[],
+  ignoreNodeId?: string,
+): Point | null {
+  if (isPositionAvailable(desired, size, allNodes, ignoreNodeId)) {
+    return desired
+  }
+
+  for (let xRadius = 0; xRadius <= MAX_SCAN_RADIUS; xRadius += 1) {
+    const x = desired.x + xRadius * GRID_STEP
+
+    for (let yRadius = 0; yRadius <= MAX_SCAN_RADIUS; yRadius += 1) {
+      const yCandidates =
+        yRadius === 0
+          ? [desired.y]
+          : [desired.y + yRadius * GRID_STEP, desired.y - yRadius * GRID_STEP]
+
+      for (const y of yCandidates) {
+        const candidate = { x, y }
+        if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId)) {
+          return candidate
+        }
+      }
+    }
+  }
+
+  return null
 }
 
 export function clampSizeToNonOverlapping(

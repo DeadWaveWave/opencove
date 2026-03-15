@@ -154,7 +154,7 @@ export function useWorkspaceCanvasAgentLauncher({
               height: node.data.height,
             },
           })),
-          gap: 24,
+          gap: 0,
         })
 
         if (nodePositionById.size > 0) {

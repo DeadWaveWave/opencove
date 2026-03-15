@@ -231,12 +231,10 @@ function WorkspaceCanvasInner({
     closeNode,
     actionRefs,
   })
-  const resolvedCanvasInputMode = useMemo<DetectedCanvasInputMode>(() => {
-    if (agentSettings.canvasInputMode === 'auto') {
-      return detectedCanvasInputMode
-    }
-    return agentSettings.canvasInputMode
-  }, [agentSettings.canvasInputMode, detectedCanvasInputMode])
+  const resolvedCanvasInputMode =
+    agentSettings.canvasInputMode === 'auto'
+      ? detectedCanvasInputMode
+      : agentSettings.canvasInputMode
   const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
   const useManualCanvasWheelGestures = agentSettings.canvasInputMode !== 'mouse'
   const { handleCanvasWheelCapture } = workspaceCanvasHooks.useWorkspaceCanvasTrackpadGestures({
@@ -276,24 +274,7 @@ function WorkspaceCanvasInner({
     focusSequence,
     nodesRef,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
-    actionRefs,
-    closeNode,
-    resizeNode,
-    updateNoteText,
-    updateNodeScrollback,
-    updateTerminalTitle,
-    renameTerminalTitle,
-    normalizeZoomOnTerminalClick: agentSettings.normalizeZoomOnTerminalClick,
-    nodesRef,
-    reactFlow,
-  })
-
-  workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({
-    setNodes,
-    onRequestPersistFlush,
-  })
-
+  workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({ setNodes, onRequestPersistFlush })
   const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes,
     setSelectedNodeIds,
@@ -341,7 +322,6 @@ function WorkspaceCanvasInner({
     createNodeForSession,
     createNoteNode,
   })
-
   const {
     canConvertSelectedNoteToTask,
     isConvertSelectedNoteToTaskDisabled,
@@ -356,7 +336,26 @@ function WorkspaceCanvasInner({
     onShowMessage,
     setContextMenu,
   })
-
+  const saveAgentLastMessageToNote = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageToNote({
+    nodesRef,
+    createNoteNode,
+    updateNoteText,
+    onRequestPersistFlush,
+    onShowMessage,
+  })
+  workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
+    actionRefs,
+    closeNode,
+    resizeNode,
+    saveAgentLastMessageToNote,
+    updateNoteText,
+    updateNodeScrollback,
+    updateTerminalTitle,
+    renameTerminalTitle,
+    normalizeZoomOnTerminalClick: agentSettings.normalizeZoomOnTerminalClick,
+    nodesRef,
+    reactFlow,
+  })
   useLayoutEffect(() => {
     actionRefs.clearNodeSelectionRef.current = clearNodeSelection
   }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])

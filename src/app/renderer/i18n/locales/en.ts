@@ -194,6 +194,8 @@ export const en = {
     directoryMismatch: 'DIR MISMATCH',
     directoryMismatchTitle:
       'Bound directory: {{executionDirectory}}\nCurrent directory: {{expectedDirectory}}',
+    saveLastMessageToNote: 'Save last agent message as note',
+    savingLastMessageToNote: 'Saving last agent message as note',
   },
   nodeDeleteDialog: {
     deleteNodes_one: 'Delete {{count}} node?',
@@ -303,6 +305,8 @@ export const en = {
     resumeSessionMissing: 'This agent does not have a verified resumeSessionId yet.',
     noTerminalSlotNearby:
       'No room nearby in the current view. Move or close some terminal windows first.',
+    noWindowSlotOnRight:
+      'No room to the right of the current agent. Move or close some windows first.',
     noWindowSlotNearby: 'No room nearby in the current view. Move or close some windows first.',
     noteToTaskRequiresContent: 'Cannot convert an empty note into a task.',
     agentSpaceDirectoryMismatch:

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { FileText, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import { getStatusClassName } from './status'
 
@@ -10,6 +11,7 @@ interface TerminalNodeHeaderProps {
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   onTitleCommit?: (title: string) => void
   onClose: () => void
+  onSaveLastMessageToNote?: () => Promise<void>
 }
 
 export function TerminalNodeHeader({
@@ -19,13 +21,17 @@ export function TerminalNodeHeader({
   directoryMismatch,
   onTitleCommit,
   onClose,
+  onSaveLastMessageToNote,
 }: TerminalNodeHeaderProps): JSX.Element {
   const { t } = useTranslation()
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
+  const [isSavingLastMessageToNote, setIsSavingLastMessageToNote] = useState(false)
 
   const isTitleEditable = kind === 'terminal' && typeof onTitleCommit === 'function'
   const isAgentNode = kind === 'agent'
+  const canSaveLastMessageToNote =
+    isAgentNode && status === 'standby' && typeof onSaveLastMessageToNote === 'function'
 
   useEffect(() => {
     if (isTitleEditing) {
@@ -161,6 +167,41 @@ export function TerminalNodeHeader({
             </span>
           ) : null}
         </div>
+      ) : null}
+
+      {canSaveLastMessageToNote ? (
+        <button
+          type="button"
+          className="terminal-node__action terminal-node__action--icon nodrag"
+          data-testid="terminal-node-save-last-message"
+          aria-label={t('terminalNodeHeader.saveLastMessageToNote')}
+          title={
+            isSavingLastMessageToNote
+              ? t('terminalNodeHeader.savingLastMessageToNote')
+              : t('terminalNodeHeader.saveLastMessageToNote')
+          }
+          disabled={isSavingLastMessageToNote}
+          onClick={async event => {
+            event.stopPropagation()
+            if (isSavingLastMessageToNote || !onSaveLastMessageToNote) {
+              return
+            }
+
+            setIsSavingLastMessageToNote(true)
+
+            try {
+              await onSaveLastMessageToNote()
+            } finally {
+              setIsSavingLastMessageToNote(false)
+            }
+          }}
+        >
+          {isSavingLastMessageToNote ? (
+            <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+          ) : (
+            <FileText className="terminal-node__action-icon" />
+          )}
+        </button>
       ) : null}
 
       <button

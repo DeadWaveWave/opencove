@@ -1,5 +1,6 @@
 export { useWorkspaceCanvasAgentNodeLifecycle } from './useAgentNodeLifecycle'
 export { useWorkspaceCanvasAgentLauncher } from './useAgentLauncher'
+export { useWorkspaceCanvasAgentLastMessageToNote } from './useAgentLastMessageToNote'
 export {
   useWorkspaceCanvasActionRefs,
   useWorkspaceCanvasSyncActionRefs,

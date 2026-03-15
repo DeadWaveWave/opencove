@@ -193,6 +193,8 @@ export const zhCN = {
   terminalNodeHeader: {
     directoryMismatch: '目录不匹配',
     directoryMismatchTitle: '绑定目录：{{executionDirectory}}\n当前目录：{{expectedDirectory}}',
+    saveLastMessageToNote: '将上一条 Agent 消息保存为便签',
+    savingLastMessageToNote: '正在将上一条 Agent 消息保存为便签',
   },
   nodeDeleteDialog: {
     deleteNodes_one: '删除 {{count}} 个节点？',
@@ -300,6 +302,7 @@ export const zhCN = {
     agentPromptRequired: 'Agent 提示词不能为空。',
     resumeSessionMissing: '该 Agent 还没有已验证的 resumeSessionId。',
     noTerminalSlotNearby: '当前视图附近没有可用空位，请先移动或关闭部分终端窗口。',
+    noWindowSlotOnRight: '当前 Agent 右侧没有可用空位，请先移动或关闭部分窗口。',
     noWindowSlotNearby: '当前视图附近没有可用空位，请先移动或关闭部分窗口。',
     noteToTaskRequiresContent: 'Note 内容为空，无法转换为 Task。',
     agentSpaceDirectoryMismatch: 'Agent 窗口不能进入或离开目录不同的 Space。',

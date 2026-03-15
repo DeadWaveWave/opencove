@@ -173,7 +173,7 @@ export function useWorkspaceCanvasCreateSpace({
         pinnedGroupIds: [nextSpaceId],
         sourceGroupIds: [nextSpaceId],
         directions: ['x+'],
-        gap: 24,
+        gap: 0,
       })
 
       const nextSpaceRectById = new Map(

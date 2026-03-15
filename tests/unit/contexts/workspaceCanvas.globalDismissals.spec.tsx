@@ -125,6 +125,14 @@ vi.mock(
   },
 )
 
+const switcherSpace = {
+  id: 'space-1',
+  name: 'Space 1',
+  directoryPath: '/tmp/space-1',
+  nodeIds: [],
+  rect: null,
+} as const
+
 function createBaseProps(
   overrides: Partial<React.ComponentProps<typeof WorkspaceCanvasView>> = {},
 ): React.ComponentProps<typeof WorkspaceCanvasView> {
@@ -242,6 +250,7 @@ describe('WorkspaceCanvasView global pointer/click handlers', () => {
         {...createBaseProps({
           contextMenu: { kind: 'selection', x: 12, y: 12 },
           closeContextMenu,
+          spaces: [switcherSpace],
         })}
       />,
     )
@@ -265,6 +274,7 @@ describe('WorkspaceCanvasView global pointer/click handlers', () => {
         {...createBaseProps({
           selectedNodeCount: 1,
           clearNodeSelection,
+          spaces: [switcherSpace],
         })}
       />,
     )
