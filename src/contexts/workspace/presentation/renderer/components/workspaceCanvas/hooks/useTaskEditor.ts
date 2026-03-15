@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { TaskPriority, TerminalNodeData } from '../../../types'
 import { normalizeTaskTagSelection, toErrorMessage } from '../helpers'
@@ -35,6 +36,7 @@ export function useWorkspaceCanvasTaskEditor({
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
 } {
+  const { t } = useTranslation()
   const [taskEditor, setTaskEditor] = useState<TaskEditorState | null>(null)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
 
@@ -90,7 +92,7 @@ export function useWorkspaceCanvasTaskEditor({
         prev
           ? {
               ...prev,
-              error: '任务要求不能为空。',
+              error: t('messages.taskRequirementRequired'),
             }
           : prev,
       )
@@ -128,12 +130,12 @@ export function useWorkspaceCanvasTaskEditor({
           ? {
               ...prev,
               isGeneratingTitle: false,
-              error: `自动生成失败：${toErrorMessage(error)}`,
+              error: t('messages.taskTitleGenerateFailed', { message: toErrorMessage(error) }),
             }
           : prev,
       )
     }
-  }, [isTaskAiNamingEnabled, suggestTaskTitle, taskEditor])
+  }, [isTaskAiNamingEnabled, suggestTaskTitle, t, taskEditor])
 
   const saveTaskEdits = useCallback(async () => {
     if (!taskEditor) {
@@ -150,7 +152,7 @@ export function useWorkspaceCanvasTaskEditor({
         prev
           ? {
               ...prev,
-              error: '任务要求不能为空。',
+              error: t('messages.taskRequirementRequired'),
             }
           : prev,
       )
@@ -178,8 +180,8 @@ export function useWorkspaceCanvasTaskEditor({
                   ...prev,
                   isSaving: false,
                   error: isTaskAiNamingEnabled
-                    ? '请输入任务名称或开启自动生成。'
-                    : '请输入任务名称。',
+                    ? t('messages.taskTitleOrAutoGenerateRequired')
+                    : t('messages.taskTitleRequired'),
                 }
               : prev,
           )
@@ -230,7 +232,7 @@ export function useWorkspaceCanvasTaskEditor({
           ? {
               ...prev,
               isSaving: false,
-              error: `更新任务失败：${toErrorMessage(error)}`,
+              error: t('messages.taskUpdateFailed', { message: toErrorMessage(error) }),
             }
           : prev,
       )
@@ -240,6 +242,7 @@ export function useWorkspaceCanvasTaskEditor({
     onRequestPersistFlush,
     setNodes,
     suggestTaskTitle,
+    t,
     taskEditor,
     taskTagOptions,
   ])

@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import {
   CANVAS_INPUT_MODES,
   MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
@@ -9,6 +10,7 @@ import {
   MIN_UI_FONT_SIZE,
   type CanvasInputMode,
 } from '@contexts/settings/domain/agentSettings'
+import { getCanvasInputModeLabel } from '@app/renderer/i18n/labels'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
@@ -22,6 +24,7 @@ export function CanvasSection(props: {
   onChangeTerminalFontSize: (size: number) => void
   onChangeUiFontSize: (size: number) => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const {
     canvasInputMode,
     normalizeZoomOnTerminalClick,
@@ -37,12 +40,12 @@ export function CanvasSection(props: {
 
   return (
     <div className="settings-panel__section" id="settings-section-canvas">
-      <h3 className="settings-panel__section-title">Canvas & UI</h3>
+      <h3 className="settings-panel__section-title">{t('settingsPanel.canvas.title')}</h3>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>Input Mode</strong>
-          <span>How interactions are handled on the canvas.</span>
+          <strong>{t('settingsPanel.canvas.inputModeLabel')}</strong>
+          <span>{t('settingsPanel.canvas.inputModeHelp')}</span>
         </div>
         <div className="settings-panel__control">
           <select
@@ -53,7 +56,7 @@ export function CanvasSection(props: {
           >
             {CANVAS_INPUT_MODES.map(mode => (
               <option key={mode} value={mode}>
-                {mode === 'auto' ? 'Auto (Smart)' : mode === 'trackpad' ? 'Trackpad' : 'Mouse'}
+                {getCanvasInputModeLabel(t, mode)}
               </option>
             ))}
           </select>
@@ -62,7 +65,7 @@ export function CanvasSection(props: {
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>Initial Window Size</strong>
+          <strong>{t('settingsPanel.canvas.initialWindowSize')}</strong>
         </div>
         <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
           <input
@@ -75,13 +78,13 @@ export function CanvasSection(props: {
               onChangeDefaultTerminalWindowScalePercent(Number(event.target.value))
             }
           />
-          <span style={{ fontSize: '12px', color: '#666' }}>%</span>
+          <span style={{ fontSize: '12px', color: '#666' }}>{t('common.percentUnit')}</span>
         </div>
       </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>Terminal Font Size</strong>
+          <strong>{t('settingsPanel.canvas.terminalFontSize')}</strong>
         </div>
         <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
           <input
@@ -92,13 +95,13 @@ export function CanvasSection(props: {
             value={terminalFontSize}
             onChange={event => onChangeTerminalFontSize(Number(event.target.value))}
           />
-          <span style={{ fontSize: '12px', color: '#666' }}>px</span>
+          <span style={{ fontSize: '12px', color: '#666' }}>{t('common.pixelUnit')}</span>
         </div>
       </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>Interface Font Size</strong>
+          <strong>{t('settingsPanel.canvas.interfaceFontSize')}</strong>
         </div>
         <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
           <input
@@ -109,14 +112,14 @@ export function CanvasSection(props: {
             value={uiFontSize}
             onChange={event => onChangeUiFontSize(Number(event.target.value))}
           />
-          <span style={{ fontSize: '12px', color: '#666' }}>px</span>
+          <span style={{ fontSize: '12px', color: '#666' }}>{t('common.pixelUnit')}</span>
         </div>
       </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>Auto-zoom on Click</strong>
-          <span>Zoom to 100% when a node is clicked.</span>
+          <strong>{t('settingsPanel.canvas.autoZoomLabel')}</strong>
+          <span>{t('settingsPanel.canvas.autoZoomHelp')}</span>
         </div>
         <div className="settings-panel__control">
           <label className="cove-toggle">

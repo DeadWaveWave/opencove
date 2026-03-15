@@ -18,6 +18,8 @@ import type {
   ListGitWorktreesResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
+  ReadAgentLastMessageInput,
+  ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
   ResolveAgentResumeSessionResult,
   ListWorkspacePathOpenersResult,
@@ -164,6 +166,8 @@ const opencoveApi = {
       ipcRenderer.invoke(IPC_CHANNELS.agentListModels, payload),
     launch: (payload: LaunchAgentInput): Promise<LaunchAgentResult> =>
       ipcRenderer.invoke(IPC_CHANNELS.agentLaunch, payload),
+    readLastMessage: (payload: ReadAgentLastMessageInput): Promise<ReadAgentLastMessageResult> =>
+      ipcRenderer.invoke(IPC_CHANNELS.agentReadLastMessage, payload),
     resolveResumeSessionId: (
       payload: ResolveAgentResumeSessionInput,
     ): Promise<ResolveAgentResumeSessionResult> =>

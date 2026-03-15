@@ -7,7 +7,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
-  test('expands the space when creating a node would push members outside, and pushes away root windows', async () => {
+  test('expands the space when creating a node would push members outside', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -183,18 +183,12 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
                 )
               })
 
-              const rootNode = nodeById.get('root-near-space')
-              const rootPushed =
-                rootNode?.position && typeof rootNode.position.x === 'number'
-                  ? rootNode.position.x > 1240
-                  : false
-
-              return { expanded, membersInside, rootPushed }
+              return { expanded, membersInside }
             },
             { key: storageKey },
           )
         })
-        .toEqual({ expanded: true, membersInside: true, rootPushed: true })
+        .toEqual({ expanded: true, membersInside: true })
     } finally {
       await electronApp.close()
     }

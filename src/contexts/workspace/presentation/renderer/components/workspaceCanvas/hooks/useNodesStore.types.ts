@@ -3,6 +3,10 @@ import type { Point, Size, TerminalNodeData, TaskPriority } from '../../../types
 import type { WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 
+export interface CreateNoteNodeOptions {
+  placementStrategy?: 'default' | 'right-no-push'
+}
+
 export interface UseWorkspaceCanvasNodesStoreParams {
   nodes: Node<TerminalNodeData>[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -34,7 +38,7 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   renameTerminalTitle: (nodeId: string, title: string) => void
   updateNoteText: (nodeId: string, text: string) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  createNoteNode: (anchor: Point, options?: CreateNoteNodeOptions) => Node<TerminalNodeData> | null
   createTaskNode: (
     anchor: Point,
     title: string,

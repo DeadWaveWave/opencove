@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { Size } from '../types'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 
@@ -31,6 +32,7 @@ export function NoteNode({
   onTextChange,
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
+  const { t } = useTranslation()
   const resizeStartRef = useRef<{
     x: number
     y: number
@@ -156,7 +158,7 @@ export function NoteNode({
     >
       <div className="note-node__header" data-node-drag-handle="true">
         <span className="note-node__title" data-testid="note-node-title">
-          note
+          {t('noteNode.title')}
         </span>
         <button
           type="button"
@@ -165,8 +167,8 @@ export function NoteNode({
             event.stopPropagation()
             onClose()
           }}
-          aria-label="Delete note"
-          title="Delete note"
+          aria-label={t('noteNode.deleteNote')}
+          title={t('noteNode.deleteNote')}
         >
           ×
         </button>
@@ -194,14 +196,14 @@ export function NoteNode({
         type="button"
         className="task-node__resizer task-node__resizer--right nodrag"
         onPointerDown={handleResizePointerDown('horizontal')}
-        aria-label="Resize note width"
+        aria-label={t('noteNode.resizeWidth')}
         data-testid="note-resizer-right"
       />
       <button
         type="button"
         className="task-node__resizer task-node__resizer--bottom nodrag"
         onPointerDown={handleResizePointerDown('vertical')}
-        aria-label="Resize note height"
+        aria-label={t('noteNode.resizeHeight')}
         data-testid="note-resizer-bottom"
       />
     </div>

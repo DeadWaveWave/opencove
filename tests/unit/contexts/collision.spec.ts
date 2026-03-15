@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   findNearestFreePosition,
+  findNearestFreePositionOnRight,
   clampSizeToNonOverlapping,
   isPositionAvailable,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/collision'
@@ -55,6 +56,30 @@ describe('collision utils', () => {
     expect(next).toEqual({ x: 600, y: 20 })
   })
 
+  it('finds a free position on the right without falling back to the left side', () => {
+    const nodes = [
+      {
+        ...baseNode,
+        id: 'n1',
+        position: { x: 456, y: 140 },
+      },
+      {
+        ...baseNode,
+        id: 'n2',
+        position: { x: 456, y: 444 },
+      },
+    ]
+
+    const next = findNearestFreePositionOnRight(
+      { x: 456, y: 140 },
+      { width: 400, height: 280 },
+      nodes,
+    )
+
+    expect(next).not.toBeNull()
+    expect(next?.x).toBeGreaterThanOrEqual(456)
+  })
+
   it('clamps resize when desired size overlaps with other node', () => {
     const nodes = [
       {
@@ -77,7 +102,7 @@ describe('collision utils', () => {
       'n1',
     )
 
-    expect(nextSize.width).toBeLessThanOrEqual(400)
+    expect(nextSize.width).toBeLessThanOrEqual(420)
     expect(nextSize.height).toBeLessThanOrEqual(300)
     expect(nextSize.width).toBeGreaterThanOrEqual(320)
     expect(nextSize.height).toBeGreaterThanOrEqual(220)
@@ -97,7 +122,7 @@ describe('collision utils', () => {
     expect(available).toBe(false)
   })
 
-  it('returns true when position is separated by gap', () => {
+  it('returns true when position only touches the edge', () => {
     const nodes = [
       {
         ...baseNode,
@@ -106,7 +131,7 @@ describe('collision utils', () => {
       },
     ]
 
-    const available = isPositionAvailable({ x: 500, y: 0 }, { width: 300, height: 220 }, nodes)
+    const available = isPositionAvailable({ x: 400, y: 0 }, { width: 300, height: 220 }, nodes)
 
     expect(available).toBe(true)
   })

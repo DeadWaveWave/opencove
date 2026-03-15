@@ -398,4 +398,99 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       await electronApp.close()
     }
   })
+
+  test('keeps space switch pills stable when the selection hint appears', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      const spaces = Array.from({ length: 8 }, (_, index) => {
+        const nodeId = `space-wrap-node-${index + 1}`
+
+        return {
+          id: `space-wrap-${index + 1}`,
+          name: `Research Platform ${index + 1}`,
+          directoryPath: testWorkspacePath,
+          nodeIds: [nodeId],
+          rect: {
+            x: 160 + index * 320,
+            y: 160,
+            width: 280,
+            height: 220,
+          },
+        }
+      })
+
+      await clearAndSeedWorkspace(
+        window,
+        spaces.map((space, index) => ({
+          id: space.nodeIds[0],
+          title: `terminal-${space.id}`,
+          position: { x: 180 + index * 320, y: 180 },
+          width: 220,
+          height: 160,
+        })),
+        {
+          spaces,
+          activeSpaceId: null,
+        },
+      )
+
+      await expect(window.locator('.workspace-space-switcher')).toBeVisible()
+      const switcherLayoutBeforeSelection = await window.evaluate(() => {
+        const container = document.querySelector('.workspace-space-switcher')
+        if (!(container instanceof HTMLElement)) {
+          return null
+        }
+
+        const items = Array.from(container.querySelectorAll('.workspace-space-switcher__item'))
+        const rowCount = new Set(
+          items.map(item => (item instanceof HTMLElement ? item.offsetTop : 0)),
+        ).size
+        const rect = container.getBoundingClientRect()
+
+        return { rowCount, top: rect.top, bottom: rect.bottom }
+      })
+
+      if (!switcherLayoutBeforeSelection) {
+        throw new Error('workspace space switcher layout unavailable')
+      }
+
+      await window
+        .locator('.terminal-node__header')
+        .first()
+        .click({ position: { x: 40, y: 20 } })
+      await expect(window.locator('.workspace-selection-hint')).toBeVisible()
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(expectedLayout => {
+            const container = document.querySelector('.workspace-space-switcher')
+            const hint = document.querySelector('.workspace-selection-hint')
+            if (!(container instanceof HTMLElement) || !(hint instanceof HTMLElement)) {
+              return false
+            }
+
+            const items = Array.from(container.querySelectorAll('.workspace-space-switcher__item'))
+            const rowCount = new Set(
+              items.map(item => (item instanceof HTMLElement ? item.offsetTop : 0)),
+            ).size
+            const switcherRect = container.getBoundingClientRect()
+            const hintRect = hint.getBoundingClientRect()
+
+            return (
+              rowCount > 1 &&
+              rowCount === expectedLayout.rowCount &&
+              container.scrollWidth <= container.clientWidth + 2 &&
+              window.getComputedStyle(container).overflowX === 'hidden' &&
+              Math.abs(switcherRect.top - expectedLayout.top) <= 1 &&
+              Math.abs(switcherRect.bottom - expectedLayout.bottom) <= 1 &&
+              switcherRect.bottom <= hintRect.top
+            )
+          }, switcherLayoutBeforeSelection)
+        })
+        .toBe(true)
+    } finally {
+      await electronApp.close()
+    }
+  })
 })

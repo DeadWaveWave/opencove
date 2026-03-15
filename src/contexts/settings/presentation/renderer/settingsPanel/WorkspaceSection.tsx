@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 
 function resolveWorktreesRoot(workspacePath: string, worktreesRoot: string): string {
   const trimmed = worktreesRoot.trim()
@@ -44,6 +45,7 @@ export function WorkspaceSection({
   onChangeWorktreesRoot: (worktreesRoot: string) => void
   sectionId?: string
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const hasWorkspace = typeof workspacePath === 'string' && workspacePath.trim().length > 0
   const resolvedWorkspaceName = useMemo(() => {
     if (typeof workspaceName === 'string' && workspaceName.trim().length > 0) {
@@ -67,21 +69,23 @@ export function WorkspaceSection({
 
   return (
     <div className="settings-panel__section" id={sectionId}>
-      <h3 className="settings-panel__section-title">Workspace Worktree</h3>
+      <h3 className="settings-panel__section-title">{t('settingsPanel.workspace.title')}</h3>
 
       {!hasWorkspace ? (
         <div className="settings-panel__row">
           <div className="settings-panel__row-label">
-            <strong>Select a project first</strong>
-            <span>Choose a project in the sidebar to configure its worktree root.</span>
+            <strong>{t('settingsPanel.workspace.selectProjectFirst')}</strong>
+            <span>{t('settingsPanel.workspace.selectProjectFirstHelp')}</span>
           </div>
         </div>
       ) : (
         <>
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>Workspace Path</strong>
-              <span>Project root for {resolvedWorkspaceName}.</span>
+              <strong>{t('settingsPanel.workspace.workspacePathLabel')}</strong>
+              <span>
+                {t('settingsPanel.workspace.workspacePathHelp', { name: resolvedWorkspaceName })}
+              </span>
             </div>
             <div className="settings-panel__control">
               <span
@@ -96,14 +100,14 @@ export function WorkspaceSection({
 
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>Worktree Root</strong>
-              <span>Relative path is based on project root.</span>
+              <strong>{t('settingsPanel.workspace.worktreeRootLabel')}</strong>
+              <span>{t('settingsPanel.workspace.worktreeRootHelp')}</span>
             </div>
             <div className="settings-panel__control settings-panel__control--stack">
               <input
                 data-testid="settings-worktree-root"
                 value={worktreesRoot}
-                placeholder=".opencove/worktrees"
+                placeholder={t('settingsPanel.workspace.worktreeRootPlaceholder')}
                 onChange={event => onChangeWorktreesRoot(event.target.value)}
               />
               <button
@@ -112,15 +116,15 @@ export function WorkspaceSection({
                 disabled={worktreesRoot.trim().length === 0}
                 onClick={() => onChangeWorktreesRoot('')}
               >
-                Reset to Default
+                {t('common.resetToDefault')}
               </button>
             </div>
           </div>
 
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>Resolved Path</strong>
-              <span>Where new worktrees will be created.</span>
+              <strong>{t('settingsPanel.workspace.resolvedPathLabel')}</strong>
+              <span>{t('settingsPanel.workspace.resolvedPathHelp')}</span>
             </div>
             <div className="settings-panel__control">
               <span

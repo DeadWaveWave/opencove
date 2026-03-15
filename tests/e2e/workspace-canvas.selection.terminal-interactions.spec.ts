@@ -105,6 +105,18 @@ test.describe('Workspace Canvas - Selection', () => {
       const header = terminal.locator('.terminal-node__header')
       const terminalBody = terminal.locator('.terminal-node__terminal')
       const dragOverlay = terminal.locator('[data-testid="terminal-node-selected-drag-overlay"]')
+
+      const settingsButton = window.locator('.workspace-sidebar__settings')
+      await expect(settingsButton).toBeVisible()
+      await settingsButton.click({ noWaitAfter: true })
+
+      const languageSelect = window.locator('[data-testid="settings-language"]')
+      await expect(languageSelect).toBeVisible()
+      await languageSelect.selectOption('zh-CN')
+      await expect(settingsButton).toHaveText('设置')
+
+      await window.locator('.settings-panel__close').click()
+      await expect(settingsButton).toHaveText('设置')
       await expect(terminalBody).toBeVisible()
 
       await header.click({ position: { x: 40, y: 20 } })
@@ -122,7 +134,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       await terminalBody.click({ position: { x: 56, y: 56 }, modifiers: ['Shift'] })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
-      await expect(window.locator('.workspace-selection-hint')).toContainText('Selected 1 node')
+      await expect(window.locator('.workspace-selection-hint')).toContainText('已选中 1 个窗口。')
       await expect(dragOverlay).toBeVisible()
     } finally {
       await electronApp.close()

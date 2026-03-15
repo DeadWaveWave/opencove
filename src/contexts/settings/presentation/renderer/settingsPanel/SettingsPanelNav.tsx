@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 
 export interface SettingsSection<SectionId extends string> {
   id: SectionId
@@ -12,9 +13,10 @@ export function SettingsPanelNav<SectionId extends string>(props: {
   onSelect: (section: SettingsSection<SectionId>) => void
 }): React.JSX.Element {
   const { sections, activeSectionId, onSelect } = props
+  const { t } = useTranslation()
 
   return (
-    <aside className="settings-panel__sidebar" aria-label="Settings Sections">
+    <aside className="settings-panel__sidebar" aria-label={t('settingsPanel.nav.sectionsLabel')}>
       {sections.map(section => {
         const isActive = section.id === activeSectionId
 

@@ -1,6 +1,7 @@
 import React, { type JSX } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { TaskRuntimeStatus } from '@contexts/workspace/presentation/renderer/types'
-import { TASK_STATUS_OPTIONS } from './helpers'
+import { getTaskStatusLabel } from '@app/renderer/i18n/labels'
 
 export function TaskNodeFooter({
   status,
@@ -11,6 +12,9 @@ export function TaskNodeFooter({
   onStatusChange: (status: TaskRuntimeStatus) => void
   onRunAgent: () => void
 }): JSX.Element {
+  const { t } = useTranslation()
+  const taskStatusOptions: TaskRuntimeStatus[] = ['todo', 'doing', 'ai_done', 'done']
+
   return (
     <div className="task-node__footer nodrag">
       <select
@@ -20,9 +24,9 @@ export function TaskNodeFooter({
           onStatusChange(event.target.value as TaskRuntimeStatus)
         }}
       >
-        {TASK_STATUS_OPTIONS.map(option => (
-          <option value={option.value} key={option.value}>
-            {option.label}
+        {taskStatusOptions.map(option => (
+          <option value={option} key={option}>
+            {getTaskStatusLabel(t, option)}
           </option>
         ))}
       </select>
@@ -36,7 +40,7 @@ export function TaskNodeFooter({
           onRunAgent()
         }}
       >
-        Run Agent
+        {t('taskNode.runAgent')}
       </button>
     </div>
   )

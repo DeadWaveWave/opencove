@@ -1,32 +1,71 @@
 version: 2
 updates:
-  # npm 依赖检查 (每周)
+  # npm 依赖检查（按月集中处理，小版本分组，大版本对高风险包保守）
   - package-ecosystem: 'npm'
     directory: '/'
     schedule:
-      interval: 'weekly'
+      interval: 'monthly'
       day: 'monday'
       time: '09:00'
       timezone: 'Asia/Shanghai'
-    open-pull-requests-limit: 10
+    open-pull-requests-limit: 5
     groups:
-      # 将小的补丁更新分组
+      # 小版本合并成单个 PR，减少日常噪音
       minor-and-patch:
         patterns:
           - '*'
         update-types:
           - 'minor'
           - 'patch'
+    ignore:
+      # 这些大版本升级通常需要单独做兼容验证，不走日常 Dependabot 节奏
+      - dependency-name: 'electron'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@electron-toolkit/*'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@vitejs/plugin-react'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'vite'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'typescript'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: '@types/node'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'better-sqlite3'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'node-pty'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'electron-builder'
+        update-types:
+          - 'version-update:semver-major'
+      - dependency-name: 'electron-vite'
+        update-types:
+          - 'version-update:semver-major'
     labels:
       - 'dependencies'
       - 'npm'
 
-  # GitHub Actions 检查 (每月)
+  # GitHub Actions 检查（同样按月集中，并合并成单个 PR）
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'monthly'
-    open-pull-requests-limit: 5
+      day: 'monday'
+      time: '09:30'
+      timezone: 'Asia/Shanghai'
+    open-pull-requests-limit: 2
+    groups:
+      github-actions-rollup:
+        patterns:
+          - '*'
     labels:
       - 'dependencies'
       - 'github-actions'

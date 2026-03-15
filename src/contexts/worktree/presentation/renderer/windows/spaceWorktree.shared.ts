@@ -1,4 +1,5 @@
 import type { CreateGitWorktreeBranchMode } from '@shared/contracts/dto'
+import type { TranslateFn } from '@app/renderer/i18n'
 
 export type BranchMode = 'new' | 'existing'
 export type SpaceWorktreeViewMode = 'create' | 'archive'
@@ -28,14 +29,13 @@ export type PendingOperation =
       force: boolean
     }
 
-const WORKTREE_API_UNAVAILABLE_ERROR =
-  'Worktree API is unavailable. Please restart OpenCove and try again.'
 const DISALLOWED_BRANCH_CHARACTERS = [' ', '~', '^', ':', '?', '*', '[', '\\']
 
 type WorktreeApiClient = Window['opencoveApi']['worktree']
 
 export function getWorktreeApiMethod<K extends keyof WorktreeApiClient>(
   method: K,
+  t: TranslateFn,
 ): WorktreeApiClient[K] {
   const worktreeApi = (
     window as Window & {
@@ -45,7 +45,7 @@ export function getWorktreeApiMethod<K extends keyof WorktreeApiClient>(
 
   const candidate = worktreeApi?.[method]
   if (typeof candidate !== 'function') {
-    throw new Error(WORKTREE_API_UNAVAILABLE_ERROR)
+    throw new Error(t('worktree.apiUnavailable'))
   }
 
   return candidate as WorktreeApiClient[K]
@@ -81,54 +81,54 @@ function hasAsciiControlCharacter(value: string): boolean {
   })
 }
 
-export function getBranchNameValidationError(value: string): string | null {
+export function getBranchNameValidationError(value: string, t: TranslateFn): string | null {
   const trimmed = value.trim()
   if (trimmed.length === 0) {
-    return 'Branch name cannot be empty.'
+    return t('worktree.branchValidation.empty')
   }
 
   if (trimmed === '@') {
-    return 'Branch name cannot be "@".'
+    return t('worktree.branchValidation.atSymbol')
   }
 
   if (trimmed.includes('..')) {
-    return 'Branch name cannot contain "..".'
+    return t('worktree.branchValidation.doubleDot')
   }
 
   if (trimmed.includes('@{')) {
-    return 'Branch name cannot contain "@{".'
+    return t('worktree.branchValidation.atBrace')
   }
 
   if (
     hasAsciiControlCharacter(trimmed) ||
     DISALLOWED_BRANCH_CHARACTERS.some(character => trimmed.includes(character))
   ) {
-    return 'Branch name contains unsupported characters.'
+    return t('worktree.branchValidation.unsupportedCharacters')
   }
 
   if (trimmed.startsWith('/') || trimmed.endsWith('/')) {
-    return 'Branch name cannot start or end with "/".'
+    return t('worktree.branchValidation.slashBoundary')
   }
 
   if (trimmed.includes('//')) {
-    return 'Branch name cannot contain consecutive "/".'
+    return t('worktree.branchValidation.consecutiveSlash')
   }
 
   if (trimmed.endsWith('.')) {
-    return 'Branch name cannot end with ".".'
+    return t('worktree.branchValidation.trailingDot')
   }
 
   const segments = trimmed.split('/')
   if (segments.some(segment => segment.length === 0)) {
-    return 'Branch name cannot contain empty path segments.'
+    return t('worktree.branchValidation.emptySegment')
   }
 
   if (segments.some(segment => segment.startsWith('.'))) {
-    return 'Branch name segments cannot start with ".".'
+    return t('worktree.branchValidation.leadingDotSegment')
   }
 
   if (segments.some(segment => segment.endsWith('.lock'))) {
-    return 'Branch name segments cannot end with ".lock".'
+    return t('worktree.branchValidation.trailingLock')
   }
 
   return null

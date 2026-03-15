@@ -14,7 +14,6 @@ export interface Rect {
   height: number
 }
 
-const WINDOW_GAP_PX = 24
 const GRID_STEP_PX = 40
 const MAX_SCAN_RADIUS = 80
 
@@ -283,10 +282,8 @@ export function resolveNearestNonOverlappingDropOffset({
         }
       }
 
-      const expandedCandidate = inflateRect(candidate, WINDOW_GAP_PX)
-
       for (const other of otherRects) {
-        if (rectIntersects(expandedCandidate, inflateRect(other, WINDOW_GAP_PX))) {
+        if (rectIntersects(candidate, other)) {
           return false
         }
       }
@@ -330,10 +327,10 @@ export function computePushedPositionsToClearPinnedNodes({
     kind: 'node',
     groupId: node.id,
     rect: {
-      x: node.position.x - WINDOW_GAP_PX,
-      y: node.position.y - WINDOW_GAP_PX,
-      width: node.data.width + WINDOW_GAP_PX * 2,
-      height: node.data.height + WINDOW_GAP_PX * 2,
+      x: node.position.x,
+      y: node.position.y,
+      width: node.data.width,
+      height: node.data.height,
     },
   }))
 
@@ -345,15 +342,7 @@ export function computePushedPositionsToClearPinnedNodes({
     gap: 0,
   })
 
-  return new Map(
-    pushed.map(item => [
-      item.id,
-      {
-        x: item.rect.x + WINDOW_GAP_PX,
-        y: item.rect.y + WINDOW_GAP_PX,
-      },
-    ]),
-  )
+  return new Map(pushed.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]))
 }
 
 export function applyDirectoryExpectationForDrop({

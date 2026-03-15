@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import type { Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData } from '../../../types'
 import type { ContextMenuState, ShowWorkspaceCanvasMessage } from '../types'
 
@@ -44,6 +45,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
 } {
+  const { t } = useTranslation()
   const selectedNoteMeta = useMemo(() => {
     if (selectedNodeIds.length !== 1) {
       return { canConvert: false, isDisabled: false }
@@ -76,7 +78,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
 
     const requirement = selected.data.note.text.trim()
     if (requirement.length === 0) {
-      onShowMessage?.('Note 内容为空，无法转换为 Task。', 'warning')
+      onShowMessage?.(t('messages.noteToTaskRequiresContent'), 'warning')
       return
     }
 
@@ -125,7 +127,15 @@ export function useWorkspaceCanvasNoteToTaskConversion({
 
     onRequestPersistFlush?.()
     setContextMenu(null)
-  }, [nodesRef, onRequestPersistFlush, onShowMessage, selectedNodeIdsRef, setContextMenu, setNodes])
+  }, [
+    nodesRef,
+    onRequestPersistFlush,
+    onShowMessage,
+    selectedNodeIdsRef,
+    setContextMenu,
+    setNodes,
+    t,
+  ])
 
   return {
     canConvertSelectedNoteToTask: selectedNoteMeta.canConvert,

@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
+import { FileText, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
-import { getStatusClassName, getStatusLabel } from './status'
+import { getStatusClassName } from './status'
 
 interface TerminalNodeHeaderProps {
   title: string
@@ -9,6 +11,7 @@ interface TerminalNodeHeaderProps {
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   onTitleCommit?: (title: string) => void
   onClose: () => void
+  onSaveLastMessageToNote?: () => Promise<void>
 }
 
 export function TerminalNodeHeader({
@@ -18,12 +21,17 @@ export function TerminalNodeHeader({
   directoryMismatch,
   onTitleCommit,
   onClose,
+  onSaveLastMessageToNote,
 }: TerminalNodeHeaderProps): JSX.Element {
+  const { t } = useTranslation()
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
+  const [isSavingLastMessageToNote, setIsSavingLastMessageToNote] = useState(false)
 
   const isTitleEditable = kind === 'terminal' && typeof onTitleCommit === 'function'
   const isAgentNode = kind === 'agent'
+  const canSaveLastMessageToNote =
+    isAgentNode && status === 'standby' && typeof onSaveLastMessageToNote === 'function'
 
   useEffect(() => {
     if (isTitleEditing) {
@@ -70,6 +78,24 @@ export function TerminalNodeHeader({
     },
     [isTitleEditable, isTitleEditing],
   )
+
+  const statusLabel = (() => {
+    switch (status) {
+      case 'standby':
+        return t('agentRuntime.standby')
+      case 'exited':
+        return t('agentRuntime.exited')
+      case 'failed':
+        return t('agentRuntime.failed')
+      case 'stopped':
+        return t('agentRuntime.stopped')
+      case 'restoring':
+        return t('agentRuntime.restoring')
+      case 'running':
+      default:
+        return t('agentRuntime.working')
+    }
+  })()
 
   return (
     <div className="terminal-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
@@ -127,18 +153,55 @@ export function TerminalNodeHeader({
           {directoryMismatch ? (
             <span
               className="terminal-node__badge terminal-node__badge--warning"
-              title={`Bound directory: ${directoryMismatch.executionDirectory}
-Current directory: ${directoryMismatch.expectedDirectory}`}
+              title={t('terminalNodeHeader.directoryMismatchTitle', {
+                executionDirectory: directoryMismatch.executionDirectory,
+                expectedDirectory: directoryMismatch.expectedDirectory,
+              })}
             >
-              DIR MISMATCH
+              {t('terminalNodeHeader.directoryMismatch')}
             </span>
           ) : null}
           {isAgentNode ? (
             <span className={`terminal-node__status ${getStatusClassName(status)}`}>
-              {getStatusLabel(status)}
+              {statusLabel}
             </span>
           ) : null}
         </div>
+      ) : null}
+
+      {canSaveLastMessageToNote ? (
+        <button
+          type="button"
+          className="terminal-node__action terminal-node__action--icon nodrag"
+          data-testid="terminal-node-save-last-message"
+          aria-label={t('terminalNodeHeader.saveLastMessageToNote')}
+          title={
+            isSavingLastMessageToNote
+              ? t('terminalNodeHeader.savingLastMessageToNote')
+              : t('terminalNodeHeader.saveLastMessageToNote')
+          }
+          disabled={isSavingLastMessageToNote}
+          onClick={async event => {
+            event.stopPropagation()
+            if (isSavingLastMessageToNote || !onSaveLastMessageToNote) {
+              return
+            }
+
+            setIsSavingLastMessageToNote(true)
+
+            try {
+              await onSaveLastMessageToNote()
+            } finally {
+              setIsSavingLastMessageToNote(false)
+            }
+          }}
+        >
+          {isSavingLastMessageToNote ? (
+            <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+          ) : (
+            <FileText className="terminal-node__action-icon" />
+          )}
+        </button>
       ) : null}
 
       <button

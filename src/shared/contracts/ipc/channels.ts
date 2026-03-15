@@ -31,6 +31,7 @@ export const IPC_CHANNELS = {
   agentListModels: 'agent:list-models',
   agentLaunch: 'agent:launch',
   agentResolveResumeSession: 'agent:resolve-resume-session',
+  agentReadLastMessage: 'agent:read-last-message',
   taskSuggestTitle: 'task:suggest-title',
 } as const
 

@@ -154,7 +154,7 @@ export function finalizeWorkspaceSpaceDrag({
       pinnedGroupIds: [dragState.spaceId],
       sourceGroupIds: [dragState.spaceId],
       directions,
-      gap: 24,
+      gap: 0,
     })
 
     const nextSpaceRectById = new Map(
@@ -309,7 +309,7 @@ export function finalizeWorkspaceSpaceDrag({
     pinnedGroupIds: [dragState.spaceId],
     sourceGroupIds: [dragState.spaceId],
     directions,
-    gap: 24,
+    gap: 0,
   })
 
   const nextSpaceRectById = new Map(

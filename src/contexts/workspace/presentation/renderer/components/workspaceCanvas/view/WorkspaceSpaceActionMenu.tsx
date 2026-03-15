@@ -1,5 +1,6 @@
 import React from 'react'
 import { ChevronRight, Copy, FolderOpen, GitBranchPlus, Package } from 'lucide-react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { SpaceActionMenuState } from '../types'
 
@@ -56,6 +57,7 @@ export function WorkspaceSpaceActionMenu({
   onCopyPath,
   onOpenPath,
 }: WorkspaceSpaceActionMenuProps): React.JSX.Element | null {
+  const { t } = useTranslation()
   const [openSubmenu, setOpenSubmenu] = React.useState<'open' | null>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const sortedOpeners = React.useMemo(
@@ -127,7 +129,9 @@ export function WorkspaceSpaceActionMenu({
             }}
           >
             <GitBranchPlus className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">Create Worktree</span>
+            <span className="workspace-context-menu__label">
+              {t('spaceActions.createWorktree')}
+            </span>
           </button>
         ) : null}
 
@@ -141,7 +145,7 @@ export function WorkspaceSpaceActionMenu({
             }}
           >
             <Package className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">Archive</span>
+            <span className="workspace-context-menu__label">{t('spaceActions.archive')}</span>
           </button>
         ) : null}
 
@@ -153,7 +157,7 @@ export function WorkspaceSpaceActionMenu({
           }}
         >
           <Copy className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">Copy Path</span>
+          <span className="workspace-context-menu__label">{t('spaceActions.copyPath')}</span>
         </button>
 
         {sortedOpeners.length > 0 ? (
@@ -174,7 +178,7 @@ export function WorkspaceSpaceActionMenu({
             }}
           >
             <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">Open</span>
+            <span className="workspace-context-menu__label">{t('spaceActions.open')}</span>
             <ChevronRight
               className="workspace-context-menu__icon workspace-space-action-menu__chevron"
               aria-hidden="true"

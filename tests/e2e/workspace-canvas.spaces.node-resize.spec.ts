@@ -8,7 +8,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Node Resize)', () => {
-  test('expands the space and pushes away root windows when resizing a node outward', async () => {
+  test('expands the space and keeps root windows clear when resizing a node outward', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -174,7 +174,7 @@ test.describe('Workspace Canvas - Spaces (Node Resize)', () => {
                   nodeRight <= spaceRight &&
                   nodeBottom <= spaceBottom
 
-                const rootPushed = root.position.x >= spaceRight + 24
+                const rootPushed = root.position.x >= spaceRight
 
                 const ok =
                   node.position.x === 140 &&

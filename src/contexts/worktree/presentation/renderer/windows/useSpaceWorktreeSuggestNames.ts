@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import {
   resolveAgentModel,
   resolveWorktreeNameSuggestionProvider,
@@ -28,6 +29,8 @@ export function useSpaceWorktreeSuggestNames({
   setError: React.Dispatch<React.SetStateAction<string | null>>
   setNewBranchName: React.Dispatch<React.SetStateAction<string>>
 }): () => Promise<void> {
+  const { t } = useTranslation()
+
   return useCallback(async () => {
     if (!AI_NAMING_FEATURES.worktreeNameSuggestion || !space) {
       return
@@ -39,7 +42,7 @@ export function useSpaceWorktreeSuggestNames({
     try {
       const provider = resolveWorktreeNameSuggestionProvider(agentSettings.defaultProvider)
       const model = resolveAgentModel(agentSettings, provider)
-      const suggestWorktreeNames = getWorktreeApiMethod('suggestNames')
+      const suggestWorktreeNames = getWorktreeApiMethod('suggestNames', t)
 
       const suggested = await suggestWorktreeNames({
         provider,
@@ -52,7 +55,7 @@ export function useSpaceWorktreeSuggestNames({
 
       setNewBranchName(suggested.branchName)
     } catch (suggestError) {
-      setError(`AI suggestion failed: ${toErrorMessage(suggestError)}`)
+      setError(t('worktree.aiSuggestionFailed', { message: toErrorMessage(suggestError) }))
     } finally {
       setIsSuggesting(false)
     }
@@ -64,6 +67,7 @@ export function useSpaceWorktreeSuggestNames({
     space,
     spaceNotes,
     spaceTasks,
+    t,
     workspacePath,
   ])
 }
