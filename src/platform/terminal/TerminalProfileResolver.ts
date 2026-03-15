@@ -219,6 +219,25 @@ function disambiguateProfileLabels<T extends TerminalProfile>(profiles: T[]): T[
   })
 }
 
+function findProfileById(
+  profiles: InternalTerminalProfile[],
+  profileId: string | null | undefined,
+): InternalTerminalProfile | null {
+  const normalizedProfileId = typeof profileId === 'string' ? profileId.trim() : ''
+  if (normalizedProfileId.length === 0) {
+    return null
+  }
+
+  return (
+    profiles.find(profile => profile.id === normalizedProfileId) ??
+    profiles.find(
+      profile =>
+        profile.id.localeCompare(normalizedProfileId, undefined, { sensitivity: 'base' }) === 0,
+    ) ??
+    null
+  )
+}
+
 async function loadWindowsProfiles(
   deps: TerminalProfileResolverDeps,
 ): Promise<TerminalProfileSnapshot> {
@@ -389,8 +408,8 @@ export class TerminalProfileResolver {
 
     const snapshot = await loadWindowsProfiles(this.deps)
     const selectedProfile =
-      snapshot.profiles.find(profile => profile.id === input.profileId) ??
-      snapshot.profiles.find(profile => profile.id === snapshot.defaultProfileId) ??
+      findProfileById(snapshot.profiles, input.profileId) ??
+      findProfileById(snapshot.profiles, snapshot.defaultProfileId) ??
       null
 
     if (selectedProfile) {

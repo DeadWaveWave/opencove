@@ -143,4 +143,32 @@ describe('TerminalProfileResolver', () => {
     expect(result.env.CHERE_INVOKING).toBe('1')
     expect(result.env.FOO).toBe('bar')
   })
+
+  it('matches Windows profile ids case-insensitively during restore', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      locateWindowsCommands: async commands => {
+        if (commands.includes('powershell.exe')) {
+          return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+        }
+
+        return []
+      },
+      listWslDistros: async () => ['Ubuntu'],
+    })
+
+    const result = await resolver.resolveTerminalSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'wsl:ubuntu',
+      cols: 80,
+      rows: 24,
+    })
+
+    expect(result).toMatchObject({
+      command: 'wsl.exe',
+      args: ['--distribution', 'Ubuntu', '--cd', '/mnt/c/repo'],
+      profileId: 'wsl:Ubuntu',
+      runtimeKind: 'wsl',
+    })
+  })
 })
