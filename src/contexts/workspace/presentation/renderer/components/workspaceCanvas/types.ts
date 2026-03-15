@@ -72,6 +72,7 @@ export interface SelectionDraftState {
   startY: number
   currentX: number
   currentY: number
+  pointerId: number
   toggleSelection: boolean
   selectedNodeIdsAtStart: string[]
   selectedSpaceIdsAtStart: string[]

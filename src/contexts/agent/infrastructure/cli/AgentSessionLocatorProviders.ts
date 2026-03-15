@@ -105,7 +105,7 @@ async function executeCliCommand(
             return
           }
 
-          resolveOutput(typeof stdout === 'string' ? stdout : stdout.toString('utf8'))
+          resolveOutput(stdout)
         },
       )
     })

@@ -3,7 +3,7 @@ import type {
   AgentModelOption,
   AgentProviderId,
   ListAgentModelsResult,
-} from '../../../../../shared/contracts/dto'
+} from '@shared/contracts/dto'
 import { resolveAgentCliInvocation } from './AgentCliInvocation'
 
 const CODEX_APP_SERVER_TIMEOUT_MS = 8000
@@ -346,7 +346,7 @@ async function executeCliText(command: string, args: string[]): Promise<string> 
           return
         }
 
-        resolve(typeof stdout === 'string' ? stdout : stdout.toString('utf8'))
+        resolve(stdout)
       },
     )
   })

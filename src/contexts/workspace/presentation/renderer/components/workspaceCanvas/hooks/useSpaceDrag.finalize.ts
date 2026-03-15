@@ -302,7 +302,7 @@ export function finalizeWorkspaceSpaceDrag({
     })
   }
 
-  const directions = expandedDirections.length > 0 ? expandedDirections : ['x+']
+  const directions: LayoutDirection[] = expandedDirections.length > 0 ? expandedDirections : ['x+']
 
   const pushed = pushAwayLayout({
     items,

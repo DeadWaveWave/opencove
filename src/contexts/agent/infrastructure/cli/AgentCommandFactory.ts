@@ -1,4 +1,4 @@
-import type { AgentLaunchMode, AgentProviderId } from '../../../../../shared/contracts/dto'
+import type { AgentLaunchMode, AgentProviderId } from '@shared/contracts/dto'
 
 interface OpenCodeServerBinding {
   hostname: string

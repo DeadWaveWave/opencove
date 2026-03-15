@@ -1,4 +1,4 @@
-import type { AgentRuntimeStatus } from '../types'
+import type { AgentRuntimeStatus } from './types'
 
 export function resolveInitialAgentRuntimeStatus(
   prompt: string | null | undefined,

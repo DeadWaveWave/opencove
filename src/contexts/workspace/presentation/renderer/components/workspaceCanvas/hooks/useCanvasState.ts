@@ -41,7 +41,7 @@ export function useWorkspaceCanvasState({
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressed: boolean
   setIsShiftPressed: React.Dispatch<React.SetStateAction<boolean>>
-  canvasRef: React.RefObject<HTMLDivElement>
+  canvasRef: React.RefObject<HTMLDivElement | null>
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   selectedNodeIdsRef: React.MutableRefObject<string[]>
@@ -66,7 +66,7 @@ export function useWorkspaceCanvasState({
     useState<DetectedCanvasInputMode>('mouse')
   const [isShiftPressed, setIsShiftPressed] = useState(false)
 
-  const canvasRef = useRef<HTMLDivElement | null>(null)
+  const canvasRef = useRef<HTMLDivElement>(null)
   const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
   const spacesRef = useRef(spaces)
   const selectedNodeIdsRef = useRef<string[]>([])

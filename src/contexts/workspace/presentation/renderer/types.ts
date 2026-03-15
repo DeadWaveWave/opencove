@@ -1,15 +1,10 @@
 import type { Node } from '@xyflow/react'
+import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
 
-export type WorkspaceNodeKind = 'terminal' | 'agent' | 'task' | 'note'
+export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 
-export type AgentRuntimeStatus =
-  | 'running'
-  | 'standby'
-  | 'exited'
-  | 'failed'
-  | 'stopped'
-  | 'restoring'
+export type WorkspaceNodeKind = 'terminal' | 'agent' | 'task' | 'note'
 
 export type TaskRuntimeStatus = 'todo' | 'doing' | 'ai_done' | 'done'
 

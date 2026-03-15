@@ -96,7 +96,7 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
     expandedDirections.push('y+')
   }
 
-  const directions = expandedDirections.length > 0 ? expandedDirections : ['x+']
+  const directions: LayoutDirection[] = expandedDirections.length > 0 ? expandedDirections : ['x+']
 
   const owningSpaceIdByNodeId = new Map<string, string>()
   for (const space of draftSpaces) {

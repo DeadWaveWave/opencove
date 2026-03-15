@@ -7,7 +7,7 @@ type SelectionDraftUiState = Pick<
 >
 
 interface WorkspaceSelectionDraftOverlayProps {
-  canvasRef: React.RefObject<HTMLDivElement>
+  canvasRef: React.RefObject<HTMLDivElement | null>
   draft: SelectionDraftUiState | null
 }
 

@@ -1,4 +1,4 @@
-import type { Node, ReactFlowInstance } from '/react'
+import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { translate, type TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../types'

@@ -5,6 +5,13 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput } from '../types'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 
+type TaskRuntimeNode = Node<TerminalNodeData> & {
+  data: TerminalNodeData & {
+    kind: 'task'
+    task: NonNullable<TerminalNodeData['task']>
+  }
+}
+
 export interface TaskActionContext {
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -30,13 +37,13 @@ export type ResumeTaskAgentSessionContext = Omit<TaskActionContext, 'launchAgent
 export function findTaskNode(
   taskNodeId: string,
   nodesRef: TaskActionContext['nodesRef'] | ResumeTaskAgentSessionContext['nodesRef'],
-): Node<TerminalNodeData> | null {
+): TaskRuntimeNode | null {
   const taskNode = nodesRef.current.find(node => node.id === taskNodeId)
   if (!taskNode || taskNode.data.kind !== 'task' || !taskNode.data.task) {
     return null
   }
 
-  return taskNode
+  return taskNode as TaskRuntimeNode
 }
 
 export function findTaskSpace(

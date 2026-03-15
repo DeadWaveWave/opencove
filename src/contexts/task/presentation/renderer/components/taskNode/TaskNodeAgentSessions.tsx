@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, type JSX } from 'react'
+import { useEffect, useMemo, useState, type JSX } from 'react'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'

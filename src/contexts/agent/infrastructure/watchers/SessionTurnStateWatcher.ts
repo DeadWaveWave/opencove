@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import fsPromises from 'node:fs/promises'
 import { StringDecoder } from 'node:string_decoder'
-import type { AgentProviderId, TerminalSessionState } from '../../../../../../shared/contracts/dto'
+import type { AgentProviderId, TerminalSessionState } from '@shared/contracts/dto'
 import { detectTurnStateFromSessionLine } from './SessionTurnStateDetector'
 
 interface SessionTurnStateWatcherOptions {

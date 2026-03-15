@@ -33,7 +33,7 @@ export function WorkspaceSpaceRegionItem({
   resolvedRect: WorkspaceSpaceRect
   isSelected: boolean
   editingSpaceId: string | null
-  spaceRenameInputRef: React.RefObject<HTMLInputElement>
+  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
@@ -60,6 +60,8 @@ export function WorkspaceSpaceRegionItem({
   onOpenSpaceMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const branchName = resolvedWorktreeInfo?.branch ?? null
+  const worktreePath = resolvedWorktreeInfo?.path ?? null
   return (
     <div
       className={
@@ -171,7 +173,7 @@ export function WorkspaceSpaceRegionItem({
             {space.name}
           </button>
 
-          {resolvedWorktreeInfo?.branch && resolvedBranchBadge ? (
+          {branchName && resolvedBranchBadge && worktreePath ? (
             <button
               type="button"
               className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
@@ -182,8 +184,8 @@ export function WorkspaceSpaceRegionItem({
                 onStartBranchRename({
                   spaceId: space.id,
                   spaceName: space.name,
-                  worktreePath: resolvedWorktreeInfo.path,
-                  branchName: resolvedWorktreeInfo.branch,
+                  worktreePath,
+                  branchName,
                 })
               }}
             >

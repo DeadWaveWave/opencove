@@ -52,7 +52,7 @@ export function useWorkspaceCanvasSpaces({
   editingSpaceId: string | null
   spaceRenameDraft: string
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
-  spaceRenameInputRef: React.RefObject<HTMLInputElement>
+  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   startSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   commitSpaceRename: (spaceId: string) => void
@@ -63,7 +63,7 @@ export function useWorkspaceCanvasSpaces({
 } {
   const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
   const [spaceRenameDraft, setSpaceRenameDraft] = useState('')
-  const spaceRenameInputRef = useRef<HTMLInputElement | null>(null)
+  const spaceRenameInputRef = useRef<HTMLInputElement>(null)
 
   useLayoutEffect(() => {
     spacesRef.current = spaces
@@ -232,8 +232,6 @@ export function useWorkspaceCanvasSpaces({
       void reactFlow.fitBounds(targetSpace.rect, {
         padding: 0.16,
         duration: resolveWorkspaceCanvasAnimationDuration(220),
-        minZoom: 0.1,
-        maxZoom: 2,
       })
     },
     [reactFlow, spaceVisuals],
@@ -247,8 +245,6 @@ export function useWorkspaceCanvasSpaces({
     void reactFlow.fitView({
       padding: 0.16,
       duration: resolveWorkspaceCanvasAnimationDuration(220),
-      minZoom: 0.1,
-      maxZoom: 2,
     })
   }, [nodesRef, reactFlow])
 

@@ -1,7 +1,7 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { PersistWriteResult, ReadAppStateResult } from '../../../../shared/contracts/dto'
-import type { IpcRegistrationDisposable } from '../../../app/main/ipc/types'
+import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import type { PersistenceStore } from '../PersistenceStore'
 import {
   PayloadTooLargeError,

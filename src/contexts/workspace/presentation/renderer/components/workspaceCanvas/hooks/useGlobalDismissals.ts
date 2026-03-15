@@ -12,7 +12,7 @@ export function useWorkspaceCanvasGlobalDismissals({
   contextMenu: ContextMenuState | null
   spaceActionMenu: SpaceActionMenuState | null
   closeContextMenu: () => void
-  canvasRef: RefObject<HTMLDivElement>
+  canvasRef: RefObject<HTMLDivElement | null>
   selectedNodeCount: number
   clearNodeSelection: () => void
 }): void {

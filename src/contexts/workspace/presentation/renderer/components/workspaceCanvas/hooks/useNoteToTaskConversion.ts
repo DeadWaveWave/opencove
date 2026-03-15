@@ -95,7 +95,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
 
           hasChanged = true
 
-          return {
+          const convertedNode: Node<TerminalNodeData> = {
             ...node,
             type: 'taskNode',
             selectable: true,
@@ -118,6 +118,8 @@ export function useWorkspaceCanvasNoteToTaskConversion({
               note: null,
             },
           }
+
+          return convertedNode
         })
 
         return hasChanged ? nextNodes : prevNodes

@@ -1,4 +1,4 @@
-import type { en } from './en'
+import type { TranslationDictionary } from './schema'
 
 export const zhCN = {
   common: {
@@ -352,4 +352,4 @@ export const zhCN = {
     taskSpaceMoveBlocked: '带有活动 Agent 的任务不能在 Space 之间移动。',
     spaceRequiresNode: '空间至少要包含一个任务或 Agent。',
   },
-} as const satisfies typeof en
+} as const satisfies TranslationDictionary

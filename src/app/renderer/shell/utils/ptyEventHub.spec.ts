@@ -9,7 +9,7 @@ import { createPtyEventHub } from './ptyEventHub'
 
 describe('createPtyEventHub', () => {
   it('shares one low-level data subscription and routes by session id', () => {
-    let dataListener: ((event: TerminalDataEvent) => void) | null = null
+    let dataListener: ((event: TerminalDataEvent) => void) | undefined
     const unsubscribeDataSource = vi.fn()
 
     const source = {
@@ -35,7 +35,10 @@ describe('createPtyEventHub', () => {
 
     expect(source.onData).toHaveBeenCalledTimes(1)
 
-    dataListener?.({ sessionId: 'session-1', data: 'hello' })
+    if (typeof dataListener !== 'function') {
+      throw new Error('Expected data listener to be registered')
+    }
+    dataListener({ sessionId: 'session-1', data: 'hello' })
 
     expect(sessionOneListener).toHaveBeenCalledWith({ sessionId: 'session-1', data: 'hello' })
     expect(sessionTwoListener).not.toHaveBeenCalled()

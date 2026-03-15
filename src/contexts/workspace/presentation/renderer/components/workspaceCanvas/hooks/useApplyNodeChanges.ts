@@ -268,7 +268,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
           return change.dragging === false
         }
 
-        return change.type !== 'select'
+        return true
       })
 
       nodesRef.current = nextNodes

@@ -40,7 +40,7 @@ import { TaskEditorWindow } from './windows/TaskEditorWindow'
 import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
 
 interface WorkspaceCanvasViewProps {
-  canvasRef: React.RefObject<HTMLDivElement>
+  canvasRef: React.RefObject<HTMLDivElement | null>
   resolvedCanvasInputMode: string
   onCanvasClick: () => void
   handleCanvasPointerDownCapture: React.PointerEventHandler<HTMLDivElement>
@@ -87,7 +87,7 @@ interface WorkspaceCanvasViewProps {
     options?: { mode?: 'auto' | 'region' },
   ) => void
   editingSpaceId: string | null
-  spaceRenameInputRef: React.RefObject<HTMLInputElement>
+  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void

@@ -1,4 +1,4 @@
-import React, { type JSX } from 'react'
+import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TaskRuntimeStatus } from '@contexts/workspace/presentation/renderer/types'
 import { getTaskStatusLabel } from '@app/renderer/i18n/labels'

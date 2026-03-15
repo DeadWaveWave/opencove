@@ -5,12 +5,15 @@
     "src/app/main/**/*",
     "src/app/preload/**/*",
     "src/shared/**/*",
-    "src/contexts/**/*",
+    "src/contexts/**/domain/**/*",
+    "src/contexts/**/infrastructure/**/*",
+    "src/contexts/**/presentation/main-ipc/**/*",
     "src/platform/**/*"
   ],
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],
+    "moduleResolution": "bundler",
     "baseUrl": ".",
     "paths": {
       "@app/*": ["src/app/*"],

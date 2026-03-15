@@ -1,4 +1,4 @@
-import React, { useMemo, type MutableRefObject, type ReactElement } from 'react'
+import { useMemo, type MutableRefObject, type ReactElement } from 'react'
 import { useStore, type Node } from '@xyflow/react'
 import { NoteNode } from '../NoteNode'
 import { TaskNode } from '../TaskNode'

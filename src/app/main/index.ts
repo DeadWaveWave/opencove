@@ -305,7 +305,7 @@ app.whenReady().then(() => {
 
   const runtimeIconPath = resolveRuntimeIconPath()
   if (process.platform === 'darwin' && runtimeIconPath) {
-    app.dock.setIcon(nativeImage.createFromPath(runtimeIconPath))
+    app.dock?.setIcon(nativeImage.createFromPath(runtimeIconPath))
   }
 
   ipcDisposable = registerIpcHandlers()

@@ -20,7 +20,7 @@ export function WorkspaceSpaceBranchRenameDialog({
   submitBranchRename,
 }: {
   branchRename: BranchRenameState | null
-  branchRenameInputRef: React.RefObject<HTMLInputElement>
+  branchRenameInputRef: React.RefObject<HTMLInputElement | null>
   setBranchRename: React.Dispatch<React.SetStateAction<BranchRenameState | null>>
   closeBranchRename: () => void
   submitBranchRename: () => Promise<void>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { Handle, Position, useStore } from '@xyflow/react'
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'

@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { DEFAULT_UI_LANGUAGE, type UiLanguage } from '@contexts/settings/domain/agentSettings'
 import { en } from './locales/en'
+import type { TranslationDictionary } from './locales/schema'
 import { zhCN } from './locales/zh-CN'
-
-type TranslationDictionary = typeof en
 
 export type TranslateOptions = Record<string, string | number | boolean | null | undefined>
 export type TranslateFn = (key: string, options?: TranslateOptions) => string

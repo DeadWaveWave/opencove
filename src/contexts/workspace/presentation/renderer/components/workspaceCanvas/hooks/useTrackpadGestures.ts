@@ -1,9 +1,10 @@
 import { useCallback, type MutableRefObject } from 'react'
-import type { ReactFlowInstance, Viewport } from '@xyflow/react'
+import type { Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type {
   CanvasInputModalityState,
   DetectedCanvasInputMode,
 } from '../../../utils/inputModality'
+import type { TerminalNodeData } from '../../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM, TRACKPAD_PAN_SCROLL_SPEED } from '../constants'
 import { clampNumber, resolveWheelTarget } from '../helpers'
 import type { TrackpadGestureLockState } from '../types'
@@ -17,7 +18,7 @@ interface UseTrackpadGesturesParams {
   canvasRef: MutableRefObject<HTMLDivElement | null>
   trackpadGestureLockRef: MutableRefObject<TrackpadGestureLockState | null>
   viewportRef: MutableRefObject<Viewport>
-  reactFlow: ReactFlowInstance
+  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void
 }
 
@@ -26,8 +27,12 @@ function isMacLikePlatform(): boolean {
     return false
   }
 
+  const navigatorWithUserAgentData = navigator as Navigator & {
+    userAgentData?: { platform?: string }
+  }
   const platform =
-    (typeof navigator.userAgentData?.platform === 'string' && navigator.userAgentData.platform) ||
+    (typeof navigatorWithUserAgentData.userAgentData?.platform === 'string' &&
+      navigatorWithUserAgentData.userAgentData.platform) ||
     navigator.platform ||
     ''
 
@@ -42,7 +47,7 @@ function resolveWheelZoomDelta(event: WheelEvent): number {
 function applyViewport(
   nextViewport: Viewport,
   viewportRef: MutableRefObject<Viewport>,
-  reactFlow: ReactFlowInstance,
+  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
   onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void,
 ): void {
   viewportRef.current = nextViewport

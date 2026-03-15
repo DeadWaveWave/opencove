@@ -1,5 +1,5 @@
 import React, { type Dispatch, type SetStateAction } from 'react'
-import { useTranslation } from '@app/renderer/i18n'
+import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
 import type { NodeDeleteConfirmationState } from '../types'
 
 interface NodeDeleteConfirmationWindowProps {
@@ -10,7 +10,7 @@ interface NodeDeleteConfirmationWindowProps {
 
 function renderDescription(
   nodeDeleteConfirmation: NodeDeleteConfirmationState,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TranslateFn,
 ): React.JSX.Element | string {
   const { nodeIds, primaryNodeKind, primaryNodeTitle } = nodeDeleteConfirmation
   if (nodeIds.length > 1) {

@@ -31,7 +31,7 @@ interface WorkspaceSpaceRegionsOverlayProps {
     options?: { mode?: 'auto' | 'region' },
   ) => void
   editingSpaceId: string | null
-  spaceRenameInputRef: React.RefObject<HTMLInputElement>
+  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
   setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void

@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import { basename, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
-import type { AgentProviderId } from '../../../../../../shared/contracts/dto'
+import type { AgentProviderId } from '@shared/contracts/dto'
 
 interface ResolveSessionFilePathInput {
   provider: AgentProviderId
