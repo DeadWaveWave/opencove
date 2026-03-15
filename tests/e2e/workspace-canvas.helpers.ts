@@ -365,7 +365,7 @@ export async function seedWorkspaceState(
       nodeIds: workspace.nodes.map(node => node.id),
     }))
 
-    const seededReady = await window.evaluate(async expectedWorkspaces => {
+    const seededReady = await window.evaluate(async workspaceExpectations => {
       const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
       if (!raw) {
         return false
@@ -391,7 +391,7 @@ export async function seedWorkspaceState(
             .map(workspace => [workspace.id as string, workspace]),
         )
 
-        return expectedWorkspaces.every(expectedWorkspace => {
+        return workspaceExpectations.every(expectedWorkspace => {
           const loadedWorkspace = workspaceById.get(expectedWorkspace.id)
           if (!loadedWorkspace || !Array.isArray(loadedWorkspace.nodes)) {
             return false
