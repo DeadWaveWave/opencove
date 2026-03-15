@@ -4,7 +4,7 @@ export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
 
 export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
 
-export const EXPERIMENTAL_AGENT_PROVIDERS = ['gemini'] as const
+export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
 
 export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
 
@@ -33,7 +33,7 @@ export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
   'claude-code': 'Claude Code',
   codex: 'Codex',
   opencode: 'OpenCode',
-  gemini: 'Gemini CLI (Experimental)',
+  gemini: 'Gemini CLI',
 }
 
 export interface AgentProviderCapabilities {
@@ -66,7 +66,7 @@ export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCap
     taskTitle: false,
     worktreeNameSuggestion: false,
     runtimeObservation: 'none',
-    experimental: true,
+    experimental: false,
   },
 }
 
