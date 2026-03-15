@@ -4,6 +4,7 @@ import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { useTranslation } from '@app/renderer/i18n'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from './terminalNode/constants'
 import {
@@ -49,6 +50,7 @@ export function TerminalNode({
   onCommandRun,
   onInteractionStart,
 }: TerminalNodeProps): JSX.Element {
+  const { t } = useTranslation()
   const dragSurfaceSelectionMode = useStore(
     state => (state as { coveDragSurfaceSelectionMode?: boolean }).coveDragSurfaceSelectionMode,
   )
@@ -470,14 +472,14 @@ export function TerminalNode({
         type="button"
         className="terminal-node__resizer terminal-node__resizer--right nodrag"
         onPointerDown={handleResizePointerDown('horizontal')}
-        aria-label="Resize terminal width"
+        aria-label={t('terminalNode.resizeWidth')}
         data-testid="terminal-resizer-right"
       />
       <button
         type="button"
         className="terminal-node__resizer terminal-node__resizer--bottom nodrag"
         onPointerDown={handleResizePointerDown('vertical')}
-        aria-label="Resize terminal height"
+        aria-label={t('terminalNode.resizeHeight')}
         data-testid="terminal-resizer-bottom"
       />
     </div>

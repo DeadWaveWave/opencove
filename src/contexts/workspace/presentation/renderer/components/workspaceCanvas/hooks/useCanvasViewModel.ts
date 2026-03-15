@@ -1,5 +1,6 @@
 import { useMemo, type MutableRefObject } from 'react'
 import type { Node, Viewport } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDER_LABEL,
   resolveTaskTitleModel,
@@ -54,8 +55,9 @@ export function useWorkspaceCanvasViewModel({
   taskAgentEdges: ReturnType<typeof useWorkspaceCanvasTaskAgentEdges>
   spaceUi: ReturnType<typeof useWorkspaceCanvasSpaceUi>
 } {
+  const { t } = useTranslation()
   const taskTitleProviderLabel = AGENT_PROVIDER_LABEL[resolveTaskTitleProvider(agentSettings)]
-  const taskTitleModelLabel = resolveTaskTitleModel(agentSettings) ?? 'default model'
+  const taskTitleModelLabel = resolveTaskTitleModel(agentSettings) ?? t('common.defaultModel')
   const handleViewportMoveEnd = useWorkspaceCanvasViewportMoveEnd({ viewportRef, onViewportChange })
   const minimapNodeColor = resolveWorkspaceMinimapNodeColor
 

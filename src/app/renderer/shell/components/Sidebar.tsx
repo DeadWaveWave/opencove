@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
 import type { PersistNotice, ProjectContextMenuState } from '../types'
 import { toRelativeTime } from '../utils/format'
@@ -10,11 +11,6 @@ import type {
 type SidebarAgentStatus = 'working' | 'standby'
 
 type SidebarStatusTone = 'working' | 'standby'
-
-const SIDEBAR_AGENT_STATUS_LABEL: Record<SidebarAgentStatus, string> = {
-  working: 'Working',
-  standby: 'Standby',
-}
 
 function resolveSidebarAgentStatus(runtimeStatus: TerminalNodeData['status']): SidebarAgentStatus {
   if (runtimeStatus === 'running' || runtimeStatus === 'restoring') {
@@ -47,11 +43,13 @@ export function Sidebar({
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
   onOpenSettings: () => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
+
   return (
     <aside className="workspace-sidebar">
       <div className="workspace-sidebar__header">
         <div className="workspace-sidebar__header-main">
-          <h1>Projects</h1>
+          <h1>{t('sidebar.projects')}</h1>
         </div>
         <button
           type="button"
@@ -59,12 +57,12 @@ export function Sidebar({
             onAddWorkspace()
           }}
         >
-          Add
+          {t('sidebar.addProject')}
         </button>
       </div>
 
       <div className="workspace-sidebar__agent">
-        <span className="workspace-sidebar__agent-label">Default Agent</span>
+        <span className="workspace-sidebar__agent-label">{t('sidebar.defaultAgent')}</span>
         <strong className="workspace-sidebar__agent-provider">{activeProviderLabel}</strong>
         <span className="workspace-sidebar__agent-model">{activeProviderModel}</span>
       </div>
@@ -73,14 +71,14 @@ export function Sidebar({
         <div
           className={`workspace-sidebar__persist-alert workspace-sidebar__persist-alert--${persistNotice.tone}`}
         >
-          <strong>Persistence</strong>
+          <strong>{t('sidebar.persistence')}</strong>
           <span>{persistNotice.message}</span>
         </div>
       ) : null}
 
       <div className="workspace-sidebar__list">
         {workspaces.length === 0 ? (
-          <p className="workspace-sidebar__empty">No project yet.</p>
+          <p className="workspace-sidebar__empty">{t('sidebar.noProjectYet')}</p>
         ) : null}
 
         {workspaces.map(workspace => {
@@ -95,7 +93,11 @@ export function Sidebar({
           const terminalCount = workspace.nodes.filter(node => node.data.kind === 'terminal').length
           const agentCount = workspace.nodes.filter(node => node.data.kind === 'agent').length
           const taskCount = workspace.nodes.filter(node => node.data.kind === 'task').length
-          const metaText = `${terminalCount} terminals · ${agentCount} agents · ${taskCount} tasks`
+          const metaText = [
+            t('sidebar.terminals', { count: terminalCount }),
+            t('sidebar.agents', { count: agentCount }),
+            t('sidebar.tasks', { count: taskCount }),
+          ].join(' · ')
 
           return (
             <div className="workspace-item-group" key={workspace.id}>
@@ -124,7 +126,9 @@ export function Sidebar({
                 <div className="workspace-item__agents">
                   {workspaceAgents.map(node => {
                     const provider = node.data.agent?.provider
-                    const providerText = provider ? AGENT_PROVIDER_LABEL[provider] : 'Agent'
+                    const providerText = provider
+                      ? AGENT_PROVIDER_LABEL[provider]
+                      : t('sidebar.fallbackAgentLabel')
                     const linkedTaskNode =
                       (node.data.agent?.taskId
                         ? (workspace.nodes.find(
@@ -141,10 +145,13 @@ export function Sidebar({
                       ) ??
                       null
                     const sidebarAgentStatus = resolveSidebarAgentStatus(node.data.status)
-                    const sidebarAgentStatusText = SIDEBAR_AGENT_STATUS_LABEL[sidebarAgentStatus]
                     const sidebarAgentStatusTone: SidebarStatusTone =
                       sidebarAgentStatus === 'working' ? 'working' : 'standby'
                     const startedText = toRelativeTime(node.data.startedAt)
+                    const sidebarAgentStatusText =
+                      sidebarAgentStatus === 'working'
+                        ? t('sidebar.status.working')
+                        : t('sidebar.status.standby')
                     const taskTitle =
                       linkedTaskNode && linkedTaskNode.data.kind === 'task'
                         ? linkedTaskNode.data.title
@@ -196,7 +203,7 @@ export function Sidebar({
             onOpenSettings()
           }}
         >
-          Settings
+          {t('sidebar.settings')}
         </button>
       </div>
     </aside>

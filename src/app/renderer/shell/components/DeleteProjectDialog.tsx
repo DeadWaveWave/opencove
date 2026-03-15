@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 
 export function DeleteProjectDialog({
   workspaceName,
@@ -11,6 +12,8 @@ export function DeleteProjectDialog({
   onCancel: () => void
   onConfirm: () => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
+
   return (
     <div
       className="cove-window-backdrop workspace-task-delete-backdrop workspace-task-creator-backdrop"
@@ -29,10 +32,8 @@ export function DeleteProjectDialog({
           event.stopPropagation()
         }}
       >
-        <h3>Remove Project?</h3>
-        <p>
-          This will close all terminals and agents in <strong>{workspaceName}</strong>.
-        </p>
+        <h3>{t('deleteProjectDialog.title')}</h3>
+        <p>{t('deleteProjectDialog.description', { workspaceName })}</p>
         <div className="cove-window__actions workspace-task-delete__actions workspace-task-creator__actions">
           <button
             type="button"
@@ -43,7 +44,7 @@ export function DeleteProjectDialog({
               onCancel()
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -54,7 +55,7 @@ export function DeleteProjectDialog({
               onConfirm()
             }}
           >
-            {isRemoving ? 'Removing...' : 'Remove'}
+            {isRemoving ? t('common.removing') : t('deleteProjectDialog.remove')}
           </button>
         </div>
       </section>

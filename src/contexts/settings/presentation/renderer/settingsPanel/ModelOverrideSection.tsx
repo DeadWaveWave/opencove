@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDERS,
   AGENT_PROVIDER_LABEL,
@@ -24,6 +25,7 @@ export function ModelOverrideSection(props: {
   onChangeAddModelInput: (provider: AgentProvider, value: string) => void
   onAddCustomModelOption: (provider: AgentProvider) => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const {
     settings,
     onToggleCustomModelEnabled,
@@ -40,7 +42,7 @@ export function ModelOverrideSection(props: {
       className="settings-panel__section settings-panel__section--vertical"
       id="settings-section-model-override"
     >
-      <h3 className="settings-panel__section-title">Model Overrides</h3>
+      <h3 className="settings-panel__section-title">{t('settingsPanel.models.title')}</h3>
 
       {AGENT_PROVIDERS.map(provider => {
         const modelCatalog = modelCatalogByProvider[provider]
@@ -68,7 +70,7 @@ export function ModelOverrideSection(props: {
 
             <div className="settings-panel__row settings-panel__row--horizontal">
               <div className="settings-panel__row-label">
-                <strong>Use Custom Model</strong>
+                <strong>{t('settingsPanel.models.useCustomModel')}</strong>
               </div>
               <div className="settings-panel__control">
                 <label className="cove-toggle">
@@ -107,7 +109,7 @@ export function ModelOverrideSection(props: {
                           style={{ padding: '2px 8px', fontSize: '11px' }}
                           onClick={() => onRemoveCustomModelOption(provider, model)}
                         >
-                          Remove
+                          {t('common.remove')}
                         </button>
                       )}
                     </div>
@@ -119,7 +121,7 @@ export function ModelOverrideSection(props: {
                     type="text"
                     data-testid={`settings-custom-model-add-input-${provider}`}
                     value={addInputValue}
-                    placeholder="Add model..."
+                    placeholder={t('settingsPanel.models.addModelPlaceholder')}
                     onChange={event => onChangeAddModelInput(provider, event.target.value)}
                     onKeyDown={e => e.key === 'Enter' && onAddCustomModelOption(provider)}
                   />
@@ -130,7 +132,7 @@ export function ModelOverrideSection(props: {
                     disabled={addInputValue.trim().length === 0}
                     onClick={() => onAddCustomModelOption(provider)}
                   >
-                    Add
+                    {t('common.add')}
                   </button>
                 </div>
               </div>
@@ -138,7 +140,7 @@ export function ModelOverrideSection(props: {
 
             {modelCatalog.error && (
               <div style={{ marginTop: '12px', fontSize: '11px', color: '#ff4d4d' }}>
-                Error: {modelCatalog.error}
+                {t('settingsPanel.models.modelError', { message: modelCatalog.error })}
               </div>
             )}
           </div>

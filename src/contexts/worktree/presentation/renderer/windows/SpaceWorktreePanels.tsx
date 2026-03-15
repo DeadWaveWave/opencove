@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { BranchMode, SpaceWorktreeViewMode } from './spaceWorktree.shared'
@@ -50,19 +51,21 @@ export function SpaceWorktreePanels({
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
   onArchive: () => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
+
   return (
     <>
       {viewMode === 'create' ? (
         <div className="workspace-space-worktree__view" data-testid="space-worktree-create-view">
           <div className="workspace-space-worktree__view-header">
-            <h4>Create worktree</h4>
+            <h4>{t('worktree.createWorktree')}</h4>
           </div>
 
           <section className="workspace-space-worktree__surface workspace-space-worktree__surface--minimal">
             <div
               className="workspace-space-worktree__segment-control"
               role="tablist"
-              aria-label="Branch mode"
+              aria-label={t('worktree.branchMode')}
             >
               <button
                 type="button"
@@ -79,7 +82,7 @@ export function SpaceWorktreePanels({
                   onBranchModeChange('new')
                 }}
               >
-                New Branch
+                {t('worktree.newBranch')}
               </button>
               <button
                 type="button"
@@ -96,7 +99,7 @@ export function SpaceWorktreePanels({
                   onBranchModeChange('existing')
                 }}
               >
-                Existing Branch
+                {t('worktree.existingBranch')}
               </button>
             </div>
 
@@ -107,7 +110,7 @@ export function SpaceWorktreePanels({
                   data-testid="space-worktree-create-grid"
                 >
                   <div className="cove-window__field-row">
-                    <label htmlFor="space-worktree-start-point">Start point</label>
+                    <label htmlFor="space-worktree-start-point">{t('worktree.startPoint')}</label>
                     <select
                       id="space-worktree-start-point"
                       data-testid="space-worktree-start-point"
@@ -132,13 +135,13 @@ export function SpaceWorktreePanels({
                   </div>
 
                   <div className="cove-window__field-row workspace-space-worktree__create-grid-span-two">
-                    <label htmlFor="space-worktree-branch-name">Branch name</label>
+                    <label htmlFor="space-worktree-branch-name">{t('worktree.branchName')}</label>
                     <input
                       id="space-worktree-branch-name"
                       data-testid="space-worktree-branch-name"
                       value={newBranchName}
                       disabled={isBusy}
-                      placeholder="e.g. space/infra-core"
+                      placeholder={t('worktree.branchPlaceholder')}
                       onChange={event => {
                         onNewBranchNameChange(event.target.value)
                       }}
@@ -151,7 +154,7 @@ export function SpaceWorktreePanels({
                   data-testid="space-worktree-create-grid"
                 >
                   <div className="cove-window__field-row">
-                    <label htmlFor="space-worktree-existing-branch">Branch</label>
+                    <label htmlFor="space-worktree-existing-branch">{t('worktree.branch')}</label>
                     <select
                       id="space-worktree-existing-branch"
                       data-testid="space-worktree-existing-branch"
@@ -180,7 +183,7 @@ export function SpaceWorktreePanels({
                     disabled={isBusy}
                     onClick={onSuggestNames}
                   >
-                    {isSuggesting ? 'Generating...' : 'Generate by AI'}
+                    {isSuggesting ? t('common.generating') : t('common.generateByAi')}
                   </button>
                 ) : null}
                 <button
@@ -190,7 +193,7 @@ export function SpaceWorktreePanels({
                   disabled={isBusy}
                   onClick={onCreate}
                 >
-                  {isMutating ? 'Creating...' : 'Create & Bind'}
+                  {isMutating ? t('common.generating') : t('worktree.createAndBind')}
                 </button>
               </div>
             </div>
@@ -204,13 +207,13 @@ export function SpaceWorktreePanels({
             {isSpaceOnWorkspaceRoot ? (
               <div className="workspace-space-worktree__message-block">
                 <p className="workspace-space-worktree__lead">
-                  Remove <strong>{space.name}</strong> and everything inside it.
+                  {t('worktree.removeSpaceContents', { name: space.name })}
                 </p>
               </div>
             ) : (
               <div className="workspace-space-worktree__message-block">
                 <p className="workspace-space-worktree__lead">
-                  Remove <strong>{space.name}</strong>, its worktree, and everything inside it.
+                  {t('worktree.removeWorktreeContents', { name: space.name })}
                 </p>
 
                 <div className="workspace-space-worktree__option-list">
@@ -225,8 +228,8 @@ export function SpaceWorktreePanels({
                       }}
                     />
                     <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                      <strong>Delete branch</strong>
-                      <span>Also remove the current git branch.</span>
+                      <strong>{t('worktree.deleteBranch')}</strong>
+                      <span>{t('worktree.deleteBranchHelp')}</span>
                     </span>
                   </label>
                 </div>
@@ -241,7 +244,7 @@ export function SpaceWorktreePanels({
                 disabled={isBusy}
                 onClick={onClose}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -250,7 +253,7 @@ export function SpaceWorktreePanels({
                 disabled={isBusy}
                 onClick={onArchive}
               >
-                {isMutating ? 'Confirming...' : 'Confirm'}
+                {isMutating ? t('common.loading') : t('common.confirm')}
               </button>
             </div>
           </section>

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
-import { getStatusClassName, getStatusLabel } from './status'
+import { getStatusClassName } from './status'
 
 interface TerminalNodeHeaderProps {
   title: string
@@ -19,6 +20,7 @@ export function TerminalNodeHeader({
   onTitleCommit,
   onClose,
 }: TerminalNodeHeaderProps): JSX.Element {
+  const { t } = useTranslation()
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
 
@@ -70,6 +72,24 @@ export function TerminalNodeHeader({
     },
     [isTitleEditable, isTitleEditing],
   )
+
+  const statusLabel = (() => {
+    switch (status) {
+      case 'standby':
+        return t('agentRuntime.standby')
+      case 'exited':
+        return t('agentRuntime.exited')
+      case 'failed':
+        return t('agentRuntime.failed')
+      case 'stopped':
+        return t('agentRuntime.stopped')
+      case 'restoring':
+        return t('agentRuntime.restoring')
+      case 'running':
+      default:
+        return t('agentRuntime.working')
+    }
+  })()
 
   return (
     <div className="terminal-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
@@ -127,15 +147,17 @@ export function TerminalNodeHeader({
           {directoryMismatch ? (
             <span
               className="terminal-node__badge terminal-node__badge--warning"
-              title={`Bound directory: ${directoryMismatch.executionDirectory}
-Current directory: ${directoryMismatch.expectedDirectory}`}
+              title={t('terminalNodeHeader.directoryMismatchTitle', {
+                executionDirectory: directoryMismatch.executionDirectory,
+                expectedDirectory: directoryMismatch.expectedDirectory,
+              })}
             >
-              DIR MISMATCH
+              {t('terminalNodeHeader.directoryMismatch')}
             </span>
           ) : null}
           {isAgentNode ? (
             <span className={`terminal-node__status ${getStatusClassName(status)}`}>
-              {getStatusLabel(status)}
+              {statusLabel}
             </span>
           ) : null}
         </div>

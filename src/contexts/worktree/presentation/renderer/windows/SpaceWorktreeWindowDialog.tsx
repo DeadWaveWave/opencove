@@ -1,5 +1,6 @@
 import React from 'react'
 import { GitBranch, X } from 'lucide-react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 import { SpaceWorktreePanels } from './SpaceWorktreePanels'
@@ -70,28 +71,27 @@ export function SpaceWorktreeWindowDialog({
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
   onArchive: () => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const statusLabel = currentWorktree?.branch?.trim()
     ? currentWorktree.branch
     : isSpaceOnWorkspaceRoot
-      ? 'Workspace root'
+      ? t('worktree.workspaceRoot')
       : currentWorktree?.head?.trim()
         ? currentWorktree.head.slice(0, 7)
-        : 'Detached HEAD'
+        : t('worktree.detachedHead')
   const headerTitle =
     viewMode === 'archive'
       ? isSpaceOnWorkspaceRoot
-        ? 'Archive Space'
-        : 'Archive Worktree Space'
+        ? t('worktree.archiveSpace')
+        : t('worktree.archiveWorktreeSpace')
       : space.name
   const archiveSummary = [
-    archiveAgentCount > 0
-      ? `${archiveAgentCount} agent${archiveAgentCount === 1 ? '' : 's'}`
-      : null,
+    archiveAgentCount > 0 ? t('worktree.archiveAgents', { count: archiveAgentCount }) : null,
     archiveTerminalCount > 0
-      ? `${archiveTerminalCount} terminal${archiveTerminalCount === 1 ? '' : 's'}`
+      ? t('worktree.archiveTerminals', { count: archiveTerminalCount })
       : null,
-    archiveTaskCount > 0 ? `${archiveTaskCount} task${archiveTaskCount === 1 ? '' : 's'}` : null,
-    archiveNoteCount > 0 ? `${archiveNoteCount} note${archiveNoteCount === 1 ? '' : 's'}` : null,
+    archiveTaskCount > 0 ? t('worktree.archiveTasks', { count: archiveTaskCount }) : null,
+    archiveNoteCount > 0 ? t('worktree.archiveNotes', { count: archiveNoteCount }) : null,
   ]
     .filter(part => part !== null)
     .join(' · ')
@@ -148,8 +148,8 @@ export function SpaceWorktreeWindowDialog({
               </span>
               <span className="workspace-space-worktree__status-count">
                 {changedFileCount === 0
-                  ? 'clean'
-                  : `${changedFileCount} change${changedFileCount === 1 ? '' : 's'}`}
+                  ? t('worktree.clean')
+                  : t('worktree.changedFiles', { count: changedFileCount })}
               </span>
             </div>
             {viewMode === 'create' ? (
@@ -157,7 +157,7 @@ export function SpaceWorktreeWindowDialog({
                 type="button"
                 className="workspace-space-worktree__close"
                 data-testid="space-worktree-close"
-                aria-label="Close worktree window"
+                aria-label={t('worktree.closeWorktreeWindow')}
                 disabled={isBusy || guardIsBusy}
                 onClick={onClose}
               >

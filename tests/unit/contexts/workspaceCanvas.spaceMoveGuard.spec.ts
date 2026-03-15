@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import { describe, expect, it } from 'vitest'
+import type { TranslateFn } from '../../../src/app/renderer/i18n'
 import { validateSpaceTransfer } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 import type {
   TerminalNodeData,
@@ -49,6 +50,18 @@ const worktreeSpace: WorkspaceSpaceState = {
 }
 
 const rootSpace: WorkspaceSpaceState | null = null
+const t: TranslateFn = key => {
+  switch (key) {
+    case 'messages.agentSpaceDirectoryMismatch':
+      return 'Agent windows cannot enter or leave a space with a different directory.'
+    case 'messages.terminalSpaceDirectoryMismatch':
+      return 'Terminal windows cannot enter or leave a space with a different directory.'
+    case 'messages.taskSpaceMoveBlocked':
+      return 'Tasks with active agents cannot be moved between spaces.'
+    default:
+      return key
+  }
+}
 
 describe('workspaceCanvas space move guard', () => {
   it('blocks agent windows from entering a space with a different directory', () => {
@@ -73,7 +86,7 @@ describe('workspaceCanvas space move guard', () => {
       },
     })
 
-    expect(validateSpaceTransfer(['agent-1'], [agentNode], worktreeSpace, workspacePath)).toBe(
+    expect(validateSpaceTransfer(['agent-1'], [agentNode], worktreeSpace, workspacePath, t)).toBe(
       'Agent windows cannot enter or leave a space with a different directory.',
     )
   })
@@ -87,7 +100,7 @@ describe('workspaceCanvas space move guard', () => {
       expectedDirectory: worktreePath,
     })
 
-    expect(validateSpaceTransfer(['terminal-1'], [terminalNode], rootSpace, workspacePath)).toBe(
+    expect(validateSpaceTransfer(['terminal-1'], [terminalNode], rootSpace, workspacePath, t)).toBe(
       'Terminal windows cannot enter or leave a space with a different directory.',
     )
   })
@@ -132,7 +145,7 @@ describe('workspaceCanvas space move guard', () => {
     })
 
     expect(
-      validateSpaceTransfer(['task-1'], [taskNode, inactiveAgent], worktreeSpace, workspacePath),
+      validateSpaceTransfer(['task-1'], [taskNode, inactiveAgent], worktreeSpace, workspacePath, t),
     ).toBeNull()
   })
 
@@ -176,7 +189,7 @@ describe('workspaceCanvas space move guard', () => {
     })
 
     expect(
-      validateSpaceTransfer(['task-1'], [taskNode, activeAgent], worktreeSpace, workspacePath),
+      validateSpaceTransfer(['task-1'], [taskNode, activeAgent], worktreeSpace, workspacePath, t),
     ).toBe('Tasks with active agents cannot be moved between spaces.')
   })
 })

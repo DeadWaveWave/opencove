@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import { resolveAgentModel, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
@@ -44,6 +45,8 @@ export function useWorkspaceCanvasAgentLauncher({
 }: UseAgentLauncherParams): {
   openAgentLauncher: () => void
 } {
+  const { t } = useTranslation()
+
   const openAgentLauncher = useCallback(() => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
       return
@@ -184,7 +187,10 @@ export function useWorkspaceCanvasAgentLauncher({
         onSpacesChange(pushedSpaces)
         onRequestPersistFlush?.()
       } catch (error) {
-        onShowMessage?.(`Agent 启动失败：${toErrorMessage(error)}`, 'error')
+        onShowMessage?.(
+          t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
+          'error',
+        )
       }
     })()
   }, [
@@ -199,6 +205,7 @@ export function useWorkspaceCanvasAgentLauncher({
     setContextMenu,
     setNodes,
     spacesRef,
+    t,
     workspacePath,
   ])
 

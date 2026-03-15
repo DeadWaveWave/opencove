@@ -1,15 +1,13 @@
 import React, { useEffect, useMemo, useState, type JSX } from 'react'
 import { RotateCcw, Trash2 } from 'lucide-react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import type {
   AgentRuntimeStatus,
   TaskAgentSessionRecord,
 } from '@contexts/workspace/presentation/renderer/types'
-import {
-  providerLabel,
-  toAgentRuntimeLabel,
-} from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
+import { providerLabel } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 import { formatTaskTimestamp, resolveAgentSessionTone } from './helpers'
 
 interface LinkedAgentSummary {
@@ -33,6 +31,7 @@ export function TaskNodeAgentSessions({
   onResumeAgentSession: (recordId: string) => void
   onRemoveAgentSessionRecord: (recordId: string) => void
 }): JSX.Element {
+  const { t } = useTranslation()
   const [agentSessionMenu, setAgentSessionMenu] = useState<{
     recordId: string
     x: number
@@ -102,11 +101,28 @@ export function TaskNodeAgentSessions({
     return resumeConfirmRecord.boundDirectory !== currentDirectory
   }, [currentDirectory, resumeConfirmRecord])
 
+  const toRuntimeLabel = (status: AgentRuntimeStatus | null): string => {
+    switch (status) {
+      case 'running':
+        return t('sidebar.status.working')
+      case 'restoring':
+        return t('common.loading')
+      case 'failed':
+        return t('agentRuntime.failed')
+      case 'stopped':
+        return t('agentRuntime.stopped')
+      case 'exited':
+        return t('agentRuntime.exited')
+      default:
+        return t('sidebar.status.standby')
+    }
+  }
+
   return (
     <>
       <div className="task-node__agents nodrag" data-testid="task-node-agent-sessions">
         <div className="task-node__agents-header">
-          <span>Agents</span>
+          <span>{t('taskNode.agents')}</span>
           <span className="task-node__agents-count">
             {(linkedAgentNode ? 1 : 0) + sortedAgentSessions.length}
           </span>
@@ -124,7 +140,7 @@ export function TaskNodeAgentSessions({
                   <span
                     className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${resolveAgentSessionTone(linkedAgentNode.status)}`}
                   >
-                    {toAgentRuntimeLabel(linkedAgentNode.status)}
+                    {toRuntimeLabel(linkedAgentNode.status)}
                   </span>
                 </div>
                 <div className="workspace-agent-item__meta">
@@ -154,24 +170,24 @@ export function TaskNodeAgentSessions({
                 <div className="workspace-agent-item__headline">
                   <span className="workspace-agent-item__title">
                     {providerLabel(record.provider)} ·{' '}
-                    {record.effectiveModel ?? record.model ?? 'default-model'}
+                    {record.effectiveModel ?? record.model ?? t('taskNode.defaultModel')}
                   </span>
                   <span
                     className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${resolveAgentSessionTone(record.status)}`}
                   >
-                    {toAgentRuntimeLabel(record.status)}
+                    {toRuntimeLabel(record.status)}
                   </span>
                 </div>
                 <div className="workspace-agent-item__meta">
                   <span className="workspace-agent-item__meta-text">
-                    Last run · {formatTaskTimestamp(record.lastRunAt)}
+                    {t('taskNode.lastRun', { timestamp: formatTaskTimestamp(record.lastRunAt) })}
                   </span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="task-node__agents-empty">No agent sessions yet.</div>
+          <div className="task-node__agents-empty">{t('taskNode.noAgentSessionsYet')}</div>
         )}
       </div>
 
@@ -197,7 +213,7 @@ export function TaskNodeAgentSessions({
               }}
             >
               <RotateCcw className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">Resume</span>
+              <span className="workspace-context-menu__label">{t('taskNode.resume')}</span>
             </button>
           ) : null}
           <button
@@ -209,7 +225,7 @@ export function TaskNodeAgentSessions({
             }}
           >
             <Trash2 className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">Remove Record</span>
+            <span className="workspace-context-menu__label">{t('taskNode.removeRecord')}</span>
           </button>
         </div>
       ) : null}
@@ -228,31 +244,23 @@ export function TaskNodeAgentSessions({
               event.stopPropagation()
             }}
           >
-            <h3>Resume Agent Session</h3>
-            <p className="cove-window__meta">
-              Resuming continues the same CLI session and keeps its original bound directory.
-            </p>
+            <h3>{t('taskNode.resumeDialog.title')}</h3>
+            <p className="cove-window__meta">{t('taskNode.resumeDialog.description')}</p>
 
             <div className="cove-window__field-row">
-              <label>Bound directory</label>
+              <label>{t('taskNode.resumeDialog.boundDirectory')}</label>
               <input value={resumeConfirmRecord.boundDirectory} disabled />
             </div>
 
             <div className="cove-window__field-row">
-              <label>Current directory</label>
+              <label>{t('taskNode.resumeDialog.currentDirectory')}</label>
               <input value={currentDirectory} disabled />
             </div>
 
             {isResumeDirectoryMismatch ? (
-              <p className="cove-window__error">
-                Directory mismatch detected. The agent will still operate in the bound directory.
-                The agent window will be labeled to avoid mistakes.
-              </p>
+              <p className="cove-window__error">{t('taskNode.resumeDialog.mismatch')}</p>
             ) : (
-              <p className="cove-window__meta">
-                The agent window will be labeled if its bound directory differs from the current
-                directory.
-              </p>
+              <p className="cove-window__meta">{t('taskNode.resumeDialog.aligned')}</p>
             )}
 
             <div className="cove-window__actions">
@@ -263,7 +271,7 @@ export function TaskNodeAgentSessions({
                   setResumeConfirmRecordId(null)
                 }}
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -274,7 +282,7 @@ export function TaskNodeAgentSessions({
                   setResumeConfirmRecordId(null)
                 }}
               >
-                Resume
+                {t('taskNode.resume')}
               </button>
             </div>
           </section>

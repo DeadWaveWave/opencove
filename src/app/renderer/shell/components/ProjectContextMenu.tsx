@@ -1,5 +1,6 @@
 import React from 'react'
 import { FolderX } from 'lucide-react'
+import { useTranslation } from '@app/renderer/i18n'
 
 export function ProjectContextMenu({
   workspaceId,
@@ -12,6 +13,8 @@ export function ProjectContextMenu({
   y: number
   onRequestRemove: (workspaceId: string) => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
+
   return (
     <div
       className="workspace-context-menu workspace-project-context-menu"
@@ -34,7 +37,9 @@ export function ProjectContextMenu({
         }}
       >
         <FolderX className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">Remove Project</span>
+        <span className="workspace-context-menu__label">
+          {t('projectContextMenu.removeProject')}
+        </span>
       </button>
     </div>
   )

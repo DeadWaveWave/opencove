@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import {
   resolveTaskTitleProvider,
@@ -6,6 +7,7 @@ import {
   type AgentSettings,
   type CanvasInputMode,
   type TaskTitleProvider,
+  type UiLanguage,
 } from '@contexts/settings/domain/agentSettings'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
@@ -51,6 +53,7 @@ export function SettingsPanel({
   onChange,
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
+  const { t } = useTranslation()
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState())
@@ -59,6 +62,7 @@ export function SettingsPanel({
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
+  const updateLanguage = (language: UiLanguage): void => onChange({ ...settings, language })
   const updateAgentFullAccess = (enabled: boolean): void =>
     onChange({ ...settings, agentFullAccess: enabled })
   const updateTaskTitleProvider = (provider: TaskTitleProvider): void =>
@@ -206,30 +210,30 @@ export function SettingsPanel({
         <aside className="settings-panel__sidebar">
           <NavButton
             id="general"
-            label="General"
+            label={t('settingsPanel.nav.general')}
             targetId="settings-section-general"
             testId="settings-section-nav-general"
           />
           <NavButton
             id="canvas"
-            label="Canvas"
+            label={t('settingsPanel.nav.canvas')}
             targetId="settings-section-canvas"
             testId="settings-section-nav-canvas"
           />
           <NavButton
             id="task-configuration"
-            label="Tasks"
+            label={t('settingsPanel.nav.tasks')}
             targetId="settings-section-task-configuration"
             testId="settings-section-nav-task-configuration"
           />
           <NavButton
             id="model-overrides"
-            label="Models"
+            label={t('settingsPanel.nav.models')}
             targetId="settings-section-model-override"
             testId="settings-section-nav-model-overrides"
           />
 
-          <div className="settings-panel__nav-group-label">Projects</div>
+          <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
           <div className="settings-panel__nav-group">
             {workspaces.map(workspace => (
               <NavButton
@@ -246,15 +250,17 @@ export function SettingsPanel({
 
         <div className="settings-panel__content-wrapper">
           <div className="settings-panel__header">
-            <h2>Settings</h2>
+            <h2>{t('settingsPanel.title')}</h2>
             <button type="button" className="settings-panel__close" onClick={onClose}>
               ×
             </button>
           </div>
           <div className="settings-panel__content">
             <GeneralSection
+              language={settings.language}
               defaultProvider={settings.defaultProvider}
               agentFullAccess={settings.agentFullAccess}
+              onChangeLanguage={updateLanguage}
               onChangeDefaultProvider={updateDefaultProvider}
               onChangeAgentFullAccess={updateAgentFullAccess}
             />

@@ -37,6 +37,10 @@ test.describe('Settings', () => {
       await expect(
         window.locator('[data-testid="settings-normalize-zoom-on-terminal-click"]'),
       ).toBeVisible()
+      const languageSelect = window.locator('[data-testid="settings-language"]')
+      await expect(languageSelect).toBeVisible()
+      await languageSelect.selectOption('zh-CN')
+      await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
       await expect(canvasInputMode).toBeVisible()
       await canvasInputMode.selectOption('trackpad')
@@ -96,6 +100,7 @@ test.describe('Settings', () => {
           try {
             const parsed = JSON.parse(raw) as {
               settings?: {
+                language?: string
                 defaultProvider?: string
                 customModelEnabledByProvider?: {
                   codex?: boolean
@@ -119,18 +124,22 @@ test.describe('Settings', () => {
 
       await expect.poll(readPersistedSettings).toEqual(
         expect.objectContaining({
+          language: 'zh-CN',
           defaultProvider: 'codex',
           normalizeZoomOnTerminalClick: false,
           canvasInputMode: 'trackpad',
         }),
       )
 
+      await expect(window.locator('.workspace-sidebar__settings')).toHaveText('设置')
       await window.reload({ waitUntil: 'domcontentloaded' })
+      await expect(window.locator('.workspace-sidebar__settings')).toHaveText('设置')
       await expect(window.locator('.workspace-sidebar__agent-provider')).toHaveText('Codex')
       await expect(window.locator('.workspace-sidebar__agent-model')).toHaveText('gpt-5.2-codex')
 
       const persistedSettings = await readPersistedSettings()
 
+      expect(persistedSettings?.language).toBe('zh-CN')
       expect(persistedSettings?.defaultProvider).toBe('codex')
       expect(persistedSettings?.customModelEnabledByProvider?.codex).toBe(true)
       expect(persistedSettings?.customModelByProvider?.codex).toBe('gpt-5.2-codex')

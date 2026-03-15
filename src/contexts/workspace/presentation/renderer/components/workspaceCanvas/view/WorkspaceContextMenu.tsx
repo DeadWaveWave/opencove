@@ -1,5 +1,6 @@
 import React from 'react'
 import { ArrowRight, Group, ListTodo, Play, Terminal, X } from 'lucide-react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { ContextMenuState } from '../types'
 
 interface WorkspaceContextMenuProps {
@@ -27,6 +28,8 @@ export function WorkspaceContextMenu({
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
 }: WorkspaceContextMenuProps): React.JSX.Element | null {
+  const { t } = useTranslation()
+
   if (!contextMenu) {
     return null
   }
@@ -49,7 +52,9 @@ export function WorkspaceContextMenu({
             }}
           >
             <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">New Terminal</span>
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.newTerminal')}
+            </span>
           </button>
           <button
             type="button"
@@ -59,7 +64,9 @@ export function WorkspaceContextMenu({
             }}
           >
             <ListTodo className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">New Task</span>
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.newTask')}
+            </span>
           </button>
           <button
             type="button"
@@ -69,7 +76,9 @@ export function WorkspaceContextMenu({
             }}
           >
             <Play className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">Run Agent</span>
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.runAgent')}
+            </span>
           </button>
         </>
       ) : (
@@ -82,7 +91,9 @@ export function WorkspaceContextMenu({
             }}
           >
             <Group className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">Create Space with Selected</span>
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.createSpaceWithSelected')}
+            </span>
           </button>
           {canConvertSelectedNoteToTask ? (
             <button
@@ -94,7 +105,9 @@ export function WorkspaceContextMenu({
               }}
             >
               <ArrowRight className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">Convert to Task</span>
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.convertToTask')}
+              </span>
             </button>
           ) : null}
           <button
@@ -106,7 +119,9 @@ export function WorkspaceContextMenu({
             }}
           >
             <X className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">Clear Selection</span>
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.clearSelection')}
+            </span>
           </button>
         </>
       )}
