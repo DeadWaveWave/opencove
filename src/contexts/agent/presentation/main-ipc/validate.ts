@@ -7,10 +7,13 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { normalizeProvider } from '../../../../app/main/ipc/normalize'
 import { isAbsolute } from 'node:path'
+import { createAppError } from '../../../../shared/errors/appError'
 
 export function normalizeListModelsPayload(payload: unknown): ListAgentModelsInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid provider for agent:list-models')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid provider for agent:list-models',
+    })
   }
 
   const record = payload as Record<string, unknown>
@@ -24,7 +27,9 @@ export function normalizeResolveResumeSessionPayload(
   payload: unknown,
 ): ResolveAgentResumeSessionInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for agent:resolve-resume-session')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for agent:resolve-resume-session',
+    })
   }
 
   const record = payload as Record<string, unknown>
@@ -33,15 +38,21 @@ export function normalizeResolveResumeSessionPayload(
   const startedAt = typeof record.startedAt === 'string' ? record.startedAt.trim() : ''
 
   if (cwd.length === 0) {
-    throw new Error('Invalid cwd for agent:resolve-resume-session')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid cwd for agent:resolve-resume-session',
+    })
   }
 
   if (!isAbsolute(cwd)) {
-    throw new Error('agent:resolve-resume-session requires an absolute cwd')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'agent:resolve-resume-session requires an absolute cwd',
+    })
   }
 
   if (!Number.isFinite(Date.parse(startedAt))) {
-    throw new Error('agent:resolve-resume-session requires a valid startedAt')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'agent:resolve-resume-session requires a valid startedAt',
+    })
   }
 
   return { provider, cwd, startedAt }
@@ -133,7 +144,9 @@ export function resolveAgentTestStub(
 
 export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for agent:launch')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for agent:launch',
+    })
   }
 
   const record = payload as Record<string, unknown>
@@ -159,11 +172,15 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
       : 24
 
   if (cwd.length === 0) {
-    throw new Error('Invalid cwd for agent:launch')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid cwd for agent:launch',
+    })
   }
 
   if (!isAbsolute(cwd)) {
-    throw new Error('agent:launch requires an absolute cwd')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'agent:launch requires an absolute cwd',
+    })
   }
 
   return {

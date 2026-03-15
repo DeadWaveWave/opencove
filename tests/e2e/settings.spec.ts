@@ -19,7 +19,9 @@ test.describe('Settings', () => {
 
       if (!resetResult.ok) {
         throw new Error(
-          `Failed to reset workspace state: ${resetResult.reason}: ${resetResult.message}`,
+          `Failed to reset workspace state: ${resetResult.reason}: ${resetResult.error.code}${
+            resetResult.error.debugMessage ? `: ${resetResult.error.debugMessage}` : ''
+          }`,
         )
       }
       await window.reload({ waitUntil: 'domcontentloaded' })

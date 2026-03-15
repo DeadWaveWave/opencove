@@ -1,5 +1,10 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { getActiveUiLanguage, translate } from '@app/renderer/i18n'
+import {
+  formatAppErrorMessage,
+  isAppErrorDescriptor,
+  OpenCoveAppError,
+} from '@shared/errors/appError'
 
 const relativeTimeFormatterByLanguage = new Map<string, Intl.RelativeTimeFormat>()
 
@@ -15,6 +20,14 @@ function getRelativeTimeFormatter(language: string): Intl.RelativeTimeFormat {
 }
 
 export function toErrorMessage(error: unknown): string {
+  if (error instanceof OpenCoveAppError) {
+    return formatAppErrorMessage(error)
+  }
+
+  if (isAppErrorDescriptor(error)) {
+    return formatAppErrorMessage(error)
+  }
+
   if (error instanceof Error && error.message) {
     return error.message
   }

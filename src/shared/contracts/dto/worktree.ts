@@ -1,4 +1,5 @@
 import type { AgentProviderId } from './agent'
+import type { AppErrorDescriptor } from './error'
 
 export interface GitWorktreeInfo {
   path: string
@@ -54,7 +55,7 @@ export interface RemoveGitWorktreeInput {
 
 export interface RemoveGitWorktreeResult {
   deletedBranchName: string | null
-  branchDeleteError: string | null
+  branchDeleteError: AppErrorDescriptor | null
 }
 
 export interface RenameGitBranchInput {

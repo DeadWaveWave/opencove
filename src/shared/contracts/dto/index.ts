@@ -1,4 +1,5 @@
 export * from './agent'
+export * from './error'
 export * from './persistence'
 export * from './task'
 export * from './terminal'

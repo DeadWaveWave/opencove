@@ -353,7 +353,9 @@ export async function seedWorkspaceState(
 
     if (!writeResult.ok) {
       throw new Error(
-        `Failed to seed workspace state: ${writeResult.reason}: ${writeResult.message}`,
+        `Failed to seed workspace state: ${writeResult.reason}: ${writeResult.error.code}${
+          writeResult.error.debugMessage ? `: ${writeResult.error.debugMessage}` : ''
+        }`,
       )
     }
 

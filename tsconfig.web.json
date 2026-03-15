@@ -3,7 +3,7 @@
   "include": [
     "src/app/renderer/**/*",
     "src/app/renderer/*.d.ts",
-    "src/app/preload/*.d.ts",
+    "src/app/preload/**/*",
     "src/shared/**/*",
     "src/contexts/**/domain/**/*",
     "src/contexts/**/presentation/renderer/**/*"

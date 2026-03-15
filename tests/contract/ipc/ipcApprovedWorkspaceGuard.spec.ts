@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import type { ApprovedWorkspaceStore } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type { PtyRuntime } from '../../../src/contexts/terminal/presentation/main-ipc/runtime'
+import { invokeHandledIpc } from './ipcTestUtils'
 
 function createIpcHarness() {
   const handlers = new Map<string, (...args: unknown[]) => unknown>()
@@ -70,11 +71,11 @@ describe('IPC approved workspace guards', () => {
     expect(spawnHandler).toBeTypeOf('function')
 
     await expect(
-      spawnHandler?.(null, { cwd: 'relative/path', cols: 80, rows: 24 }),
-    ).rejects.toThrow(/absolute cwd/)
+      invokeHandledIpc(spawnHandler, null, { cwd: 'relative/path', cols: 80, rows: 24 }),
+    ).rejects.toMatchObject({ code: 'common.invalid_input' })
 
     await expect(
-      spawnHandler?.(null, { cwd: '/tmp/outside-approved', cols: 80, rows: 24 }),
+      invokeHandledIpc(spawnHandler, null, { cwd: '/tmp/outside-approved', cols: 80, rows: 24 }),
     ).rejects.toThrow(/outside approved workspaces/)
     expect(store.isPathApproved).toHaveBeenCalledWith('/tmp/outside-approved')
 
@@ -99,7 +100,7 @@ describe('IPC approved workspace guards', () => {
     expect(spawnHandler).toBeTypeOf('function')
 
     await expect(
-      spawnHandler?.(null, { cwd: '/tmp/approved', cols: 80, rows: 24 }),
+      invokeHandledIpc(spawnHandler, null, { cwd: '/tmp/approved', cols: 80, rows: 24 }),
     ).resolves.toEqual({ sessionId: 'session-1' })
 
     expect(store.isPathApproved).toHaveBeenCalledWith('/tmp/approved')
@@ -133,17 +134,17 @@ describe('IPC approved workspace guards', () => {
       expect(launchHandler).toBeTypeOf('function')
 
       await expect(
-        launchHandler?.(null, {
+        invokeHandledIpc(launchHandler, null, {
           provider: 'codex',
           cwd: 'relative/path',
           prompt: 'hello',
           cols: 80,
           rows: 24,
         }),
-      ).rejects.toThrow(/absolute cwd/)
+      ).rejects.toMatchObject({ code: 'common.invalid_input' })
 
       await expect(
-        launchHandler?.(null, {
+        invokeHandledIpc(launchHandler, null, {
           provider: 'codex',
           cwd: '/tmp/outside-approved',
           prompt: 'hello',
@@ -181,7 +182,7 @@ describe('IPC approved workspace guards', () => {
       const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
       expect(launchHandler).toBeTypeOf('function')
 
-      const result = await launchHandler?.(null, {
+      const result = await invokeHandledIpc(launchHandler, null, {
         provider: 'codex',
         cwd: '/tmp/approved',
         prompt: 'hello',
@@ -243,7 +244,7 @@ describe('IPC approved workspace guards', () => {
       const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
       expect(launchHandler).toBeTypeOf('function')
 
-      const result = await launchHandler?.(null, {
+      const result = await invokeHandledIpc(launchHandler, null, {
         provider: 'codex',
         cwd: '/approved',
         prompt: 'hello',
@@ -300,7 +301,7 @@ describe('IPC approved workspace guards', () => {
       const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
       expect(launchHandler).toBeTypeOf('function')
 
-      const result = await launchHandler?.(null, {
+      const result = await invokeHandledIpc(launchHandler, null, {
         provider: 'codex',
         cwd: '/tmp/approved',
         prompt: '',
@@ -352,15 +353,15 @@ describe('IPC approved workspace guards', () => {
       expect(suggestHandler).toBeTypeOf('function')
 
       await expect(
-        suggestHandler?.(null, {
+        invokeHandledIpc(suggestHandler, null, {
           provider: 'codex',
           cwd: 'relative/path',
           requirement: 'Add tests',
         }),
-      ).rejects.toThrow(/absolute cwd/)
+      ).rejects.toMatchObject({ code: 'common.invalid_input' })
 
       await expect(
-        suggestHandler?.(null, {
+        invokeHandledIpc(suggestHandler, null, {
           provider: 'codex',
           cwd: '/tmp/outside-approved',
           requirement: 'Add tests',
@@ -395,7 +396,7 @@ describe('IPC approved workspace guards', () => {
       const suggestHandler = handlers.get(IPC_CHANNELS.taskSuggestTitle)
       expect(suggestHandler).toBeTypeOf('function')
 
-      const result = await suggestHandler?.(null, {
+      const result = await invokeHandledIpc(suggestHandler, null, {
         provider: 'codex',
         cwd: '/tmp/approved',
         requirement: 'Add tests',

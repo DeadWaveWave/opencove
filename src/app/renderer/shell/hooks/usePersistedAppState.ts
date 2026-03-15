@@ -13,6 +13,7 @@ import {
 import type { PersistNotice } from '../types'
 import { useAppStore } from '../store/useAppStore'
 import { flushScheduledNodeScrollbackWrites } from '@contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
+import { toErrorMessage } from '../utils/format'
 
 export function usePersistedAppState({
   workspaces,
@@ -67,8 +68,8 @@ export function usePersistedAppState({
             : result.reason === 'quota' || result.reason === 'payload_too_large'
               ? t('persistence.limitExceeded')
               : result.reason === 'io'
-                ? t('persistence.ioFailed', { message: result.message })
-                : t('persistence.failed', { message: result.message })
+                ? t('persistence.ioFailed', { message: toErrorMessage(result.error) })
+                : t('persistence.failed', { message: toErrorMessage(result.error) })
 
         const next: PersistNotice = { tone: 'error', message, kind: 'write' }
         return previous?.tone === next.tone &&

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
+import { invokeHandledIpc } from './ipcTestUtils'
 
 function isPathWithinRoot(rootPath: string, targetPath: string): boolean {
   const relativePath = relative(rootPath, targetPath)
@@ -78,7 +79,7 @@ describe('workspace ensureDirectory IPC', () => {
       const selectHandler = handlers.get(IPC_CHANNELS.workspaceSelectDirectory)
       expect(selectHandler).toBeTypeOf('function')
 
-      const selected = await selectHandler?.()
+      const selected = await invokeHandledIpc(selectHandler)
       expect(selected).toEqual(
         expect.objectContaining({
           path: resolve('/tmp/cove-approved-workspace'),
@@ -88,17 +89,19 @@ describe('workspace ensureDirectory IPC', () => {
       const ensureHandler = handlers.get(IPC_CHANNELS.workspaceEnsureDirectory)
       expect(ensureHandler).toBeTypeOf('function')
 
-      await expect(ensureHandler?.(null, { path: 'relative/path' })).rejects.toThrow(
-        /requires an absolute path/,
-      )
+      await expect(
+        invokeHandledIpc(ensureHandler, null, { path: 'relative/path' }),
+      ).rejects.toMatchObject({ code: 'common.invalid_input' })
 
-      await expect(ensureHandler?.(null, { path: '/tmp/outside-approved' })).rejects.toThrow(
-        /outside approved workspaces/,
-      )
+      await expect(
+        invokeHandledIpc(ensureHandler, null, { path: '/tmp/outside-approved' }),
+      ).rejects.toThrow(/outside approved workspaces/)
       expect(mkdir).not.toHaveBeenCalled()
 
       await expect(
-        ensureHandler?.(null, { path: '/tmp/cove-approved-workspace/.opencove/worktrees/demo' }),
+        invokeHandledIpc(ensureHandler, null, {
+          path: '/tmp/cove-approved-workspace/.opencove/worktrees/demo',
+        }),
       ).resolves.toBeUndefined()
       expect(mkdir).toHaveBeenCalledWith(
         '/tmp/cove-approved-workspace/.opencove/worktrees/demo',

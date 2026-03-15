@@ -8,10 +8,13 @@ import type {
 } from '../../../../shared/contracts/dto'
 import type { SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
 import { isAbsolute } from 'node:path'
+import { createAppError } from '../../../../shared/errors/appError'
 
 export function normalizeSpawnTerminalPayload(payload: unknown): SpawnPtyOptions {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for pty:spawn')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for pty:spawn',
+    })
   }
 
   const record = payload as Record<string, unknown>
@@ -28,11 +31,15 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnPtyOptions
       : 24
 
   if (cwd.length === 0) {
-    throw new Error('Invalid cwd for pty:spawn')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid cwd for pty:spawn',
+    })
   }
 
   if (!isAbsolute(cwd)) {
-    throw new Error('pty:spawn requires an absolute cwd')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'pty:spawn requires an absolute cwd',
+    })
   }
 
   return {
@@ -45,13 +52,17 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnPtyOptions
 
 function normalizeSessionId(payload: unknown, channel: string): string {
   if (!payload || typeof payload !== 'object') {
-    throw new Error(`Invalid payload for ${channel}`)
+    throw createAppError('common.invalid_input', {
+      debugMessage: `Invalid payload for ${channel}`,
+    })
   }
 
   const record = payload as Record<string, unknown>
   const sessionId = typeof record.sessionId === 'string' ? record.sessionId.trim() : ''
   if (sessionId.length === 0) {
-    throw new Error(`Invalid sessionId for ${channel}`)
+    throw createAppError('common.invalid_input', {
+      debugMessage: `Invalid sessionId for ${channel}`,
+    })
   }
 
   return sessionId

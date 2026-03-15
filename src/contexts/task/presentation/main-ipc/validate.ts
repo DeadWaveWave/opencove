@@ -2,10 +2,13 @@ import type { SuggestTaskTitleInput } from '../../../../shared/contracts/dto'
 import { normalizeProvider, normalizeStringArray } from '../../../../app/main/ipc/normalize'
 import { isAbsolute } from 'node:path'
 import { isTaskTitleAgentProvider } from '../../../settings/domain/agentSettings'
+import { createAppError } from '../../../../shared/errors/appError'
 
 export function normalizeSuggestTaskTitlePayload(payload: unknown): SuggestTaskTitleInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for task:suggest-title')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for task:suggest-title',
+    })
   }
 
   const record = payload as Record<string, unknown>
@@ -17,19 +20,27 @@ export function normalizeSuggestTaskTitlePayload(payload: unknown): SuggestTaskT
   const availableTags = normalizeStringArray(record.availableTags)
 
   if (cwd.length === 0) {
-    throw new Error('Invalid cwd for task:suggest-title')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid cwd for task:suggest-title',
+    })
   }
 
   if (!isAbsolute(cwd)) {
-    throw new Error('task:suggest-title requires an absolute cwd')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'task:suggest-title requires an absolute cwd',
+    })
   }
 
   if (requirement.length === 0) {
-    throw new Error('Invalid requirement for task:suggest-title')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid requirement for task:suggest-title',
+    })
   }
 
   if (!isTaskTitleAgentProvider(provider)) {
-    throw new Error('Invalid provider for task:suggest-title')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid provider for task:suggest-title',
+    })
   }
 
   return {

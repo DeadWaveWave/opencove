@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import type { PersistWriteResult } from '../../../src/shared/types/api'
+import { invokeHandledIpc } from './ipcTestUtils'
 
 function createIpcHarness() {
   const handlers = new Map<string, (...args: unknown[]) => unknown>()
@@ -60,7 +61,7 @@ describe('persistence IPC handlers', () => {
     const readHandler = handlers.get(IPC_CHANNELS.persistenceReadWorkspaceStateRaw)
     expect(readHandler).toBeTypeOf('function')
 
-    await expect(readHandler?.()).resolves.toBe('{"formatVersion":1}')
+    await expect(invokeHandledIpc<string | null>(readHandler)).resolves.toBe('{"formatVersion":1}')
     expect(store.readWorkspaceStateRaw).toHaveBeenCalledTimes(1)
   })
 
@@ -95,7 +96,9 @@ describe('persistence IPC handlers', () => {
 
     const raw = JSON.stringify({ formatVersion: 1, activeWorkspaceId: null, workspaces: [] })
 
-    await expect(writeHandler?.(null, { raw })).resolves.toEqual(writeResult)
+    await expect(
+      invokeHandledIpc<PersistWriteResult>(writeHandler, null, { raw }),
+    ).resolves.toEqual(writeResult)
     expect(store.writeWorkspaceStateRaw).toHaveBeenCalledWith(raw)
   })
 
@@ -142,7 +145,9 @@ describe('persistence IPC handlers', () => {
     const writeHandler = handlers.get(IPC_CHANNELS.persistenceWriteWorkspaceStateRaw)
     expect(writeHandler).toBeTypeOf('function')
 
-    const result = (await writeHandler?.(null, { raw: '{not-json' })) as PersistWriteResult
+    const result = await invokeHandledIpc<PersistWriteResult>(writeHandler, null, {
+      raw: '{not-json',
+    })
 
     expect(result.ok).toBe(false)
     if (!result.ok) {
@@ -198,10 +203,15 @@ describe('persistence IPC handlers', () => {
     const raw = JSON.stringify({ formatVersion: 1, activeWorkspaceId: null, workspaces: [] })
     expect(raw.length).toBeGreaterThan(10)
 
-    await expect(writeHandler?.(null, { raw })).resolves.toEqual({
+    await expect(
+      invokeHandledIpc<PersistWriteResult>(writeHandler, null, { raw }),
+    ).resolves.toEqual({
       ok: false,
       reason: 'payload_too_large',
-      message: expect.stringContaining('too large'),
+      error: expect.objectContaining({
+        code: 'persistence.payload_too_large',
+        debugMessage: expect.stringContaining('too large'),
+      }),
     })
 
     expect(store.writeWorkspaceStateRaw).not.toHaveBeenCalled()
@@ -253,10 +263,15 @@ describe('persistence IPC handlers', () => {
     const writeHandler = handlers.get(IPC_CHANNELS.persistenceWriteWorkspaceStateRaw)
     expect(writeHandler).toBeTypeOf('function')
 
-    await expect(writeHandler?.(null, { raw })).resolves.toEqual({
+    await expect(
+      invokeHandledIpc<PersistWriteResult>(writeHandler, null, { raw }),
+    ).resolves.toEqual({
       ok: false,
       reason: 'payload_too_large',
-      message: expect.stringContaining(`${Buffer.byteLength(raw, 'utf8')} bytes`),
+      error: expect.objectContaining({
+        code: 'persistence.payload_too_large',
+        debugMessage: expect.stringContaining(`${Buffer.byteLength(raw, 'utf8')} bytes`),
+      }),
     })
 
     expect(store.writeWorkspaceStateRaw).not.toHaveBeenCalled()
@@ -367,7 +382,7 @@ describe('persistence IPC handlers', () => {
     const handler = handlers.get(IPC_CHANNELS.persistenceReadAppState)
     expect(handler).toBeTypeOf('function')
 
-    await expect(handler?.()).resolves.toEqual({ state, recovery: null })
+    await expect(invokeHandledIpc(handler)).resolves.toEqual({ state, recovery: null })
     expect(store.readAppState).toHaveBeenCalledTimes(1)
   })
 
@@ -406,7 +421,9 @@ describe('persistence IPC handlers', () => {
       settings: {},
     }
 
-    await expect(handler?.(null, { state })).resolves.toEqual(writeResult)
+    await expect(invokeHandledIpc<PersistWriteResult>(handler, null, { state })).resolves.toEqual(
+      writeResult,
+    )
     expect(store.writeAppState).toHaveBeenCalledWith(state)
   })
 
@@ -438,9 +455,12 @@ describe('persistence IPC handlers', () => {
     const handler = handlers.get(IPC_CHANNELS.persistenceWriteNodeScrollback)
     expect(handler).toBeTypeOf('function')
 
-    await expect(handler?.(null, { nodeId: 'node-1', scrollback: 'hello' })).resolves.toEqual(
-      writeResult,
-    )
+    await expect(
+      invokeHandledIpc<PersistWriteResult>(handler, null, {
+        nodeId: 'node-1',
+        scrollback: 'hello',
+      }),
+    ).resolves.toEqual(writeResult)
     expect(store.writeNodeScrollback).toHaveBeenCalledWith('node-1', 'hello')
   })
 })

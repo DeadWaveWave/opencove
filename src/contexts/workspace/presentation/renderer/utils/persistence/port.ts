@@ -1,5 +1,5 @@
 import type { PersistWriteResult, ReadAppStateResult } from '@shared/contracts/dto'
-import { translate } from '@app/renderer/i18n'
+import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/appError'
 import { STORAGE_KEY } from './constants'
 import { getStorage, isQuotaExceededError } from './storage'
 
@@ -16,15 +16,6 @@ export interface PersistencePort {
 }
 
 const NODE_SCROLLBACK_KEY_PREFIX = 'cove:m0:node-scrollback:'
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`
-  }
-
-  return typeof error === 'string' ? error : translate('common.unknownError')
-}
-
 function createIpcPort(): PersistencePort | null {
   if (typeof window === 'undefined') {
     return null
@@ -48,7 +39,13 @@ function createIpcPort(): PersistencePort | null {
       try {
         return await persistenceApi.writeAppState({ state })
       } catch (error) {
-        return { ok: false, reason: 'io', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
     },
     readNodeScrollback: async nodeId => {
@@ -62,7 +59,13 @@ function createIpcPort(): PersistencePort | null {
       try {
         return await persistenceApi.writeNodeScrollback({ nodeId, scrollback })
       } catch (error) {
-        return { ok: false, reason: 'io', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
     },
     readWorkspaceStateRaw: async () => {
@@ -76,7 +79,13 @@ function createIpcPort(): PersistencePort | null {
       try {
         return await persistenceApi.writeWorkspaceStateRaw({ raw })
       } catch (error) {
-        return { ok: false, reason: 'io', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
     },
   }
@@ -117,7 +126,14 @@ function createLocalStoragePort(): PersistencePort | null {
         return {
           ok: false,
           reason: isQuotaExceededError(error) ? 'quota' : 'unknown',
-          message: toErrorMessage(error),
+          error: createAppErrorDescriptor(
+            isQuotaExceededError(error)
+              ? 'persistence.quota_exceeded'
+              : 'persistence.invalid_state',
+            {
+              debugMessage: toAppErrorDescriptor(error).debugMessage,
+            },
+          ),
         }
       }
     },
@@ -137,7 +153,14 @@ function createLocalStoragePort(): PersistencePort | null {
         return {
           ok: false,
           reason: isQuotaExceededError(error) ? 'quota' : 'unknown',
-          message: toErrorMessage(error),
+          error: createAppErrorDescriptor(
+            isQuotaExceededError(error)
+              ? 'persistence.quota_exceeded'
+              : 'persistence.invalid_state',
+            {
+              debugMessage: toAppErrorDescriptor(error).debugMessage,
+            },
+          ),
         }
       }
     },
@@ -150,7 +173,14 @@ function createLocalStoragePort(): PersistencePort | null {
         return {
           ok: false,
           reason: isQuotaExceededError(error) ? 'quota' : 'unknown',
-          message: toErrorMessage(error),
+          error: createAppErrorDescriptor(
+            isQuotaExceededError(error)
+              ? 'persistence.quota_exceeded'
+              : 'persistence.invalid_state',
+            {
+              debugMessage: toAppErrorDescriptor(error).debugMessage,
+            },
+          ),
         }
       }
     },
