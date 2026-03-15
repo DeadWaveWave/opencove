@@ -1,8 +1,19 @@
-export const AGENT_PROVIDERS = ['claude-code', 'codex'] as const
+export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
+
+export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
+
+export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
+
+export const EXPERIMENTAL_AGENT_PROVIDERS = ['gemini'] as const
 
 export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
 
-export type TaskTitleProvider = 'default' | AgentProvider
+export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
+
+export type WorktreeNameSuggestionAgentProvider =
+  (typeof WORKTREE_NAME_SUGGESTION_PROVIDERS)[number]
+
+export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
 
@@ -21,7 +32,45 @@ const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
 export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
   'claude-code': 'Claude Code',
   codex: 'Codex',
+  opencode: 'OpenCode',
+  gemini: 'Gemini CLI (Experimental)',
 }
+
+export interface AgentProviderCapabilities {
+  taskTitle: boolean
+  worktreeNameSuggestion: boolean
+  runtimeObservation: 'jsonl' | 'provider-api' | 'none'
+  experimental: boolean
+}
+
+export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCapabilities> = {
+  'claude-code': {
+    taskTitle: true,
+    worktreeNameSuggestion: true,
+    runtimeObservation: 'jsonl',
+    experimental: false,
+  },
+  codex: {
+    taskTitle: true,
+    worktreeNameSuggestion: true,
+    runtimeObservation: 'jsonl',
+    experimental: false,
+  },
+  opencode: {
+    taskTitle: false,
+    worktreeNameSuggestion: false,
+    runtimeObservation: 'provider-api',
+    experimental: false,
+  },
+  gemini: {
+    taskTitle: false,
+    worktreeNameSuggestion: false,
+    runtimeObservation: 'none',
+    experimental: true,
+  },
+}
+
+const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
 
 export type AgentCustomModelEnabledByProvider = {
   [provider in AgentProvider]: boolean
@@ -57,14 +106,20 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   customModelEnabledByProvider: {
     'claude-code': false,
     codex: false,
+    opencode: false,
+    gemini: false,
   },
   customModelByProvider: {
     'claude-code': '',
     codex: '',
+    opencode: '',
+    gemini: '',
   },
   customModelOptionsByProvider: {
     'claude-code': [],
     codex: [],
+    opencode: [],
+    gemini: [],
   },
   taskTitleProvider: 'default',
   taskTitleModel: '',
@@ -84,8 +139,21 @@ function isValidProvider(value: unknown): value is AgentProvider {
   return typeof value === 'string' && AGENT_PROVIDERS.includes(value as AgentProvider)
 }
 
+export function isTaskTitleAgentProvider(value: unknown): value is TaskTitleAgentProvider {
+  return typeof value === 'string' && TASK_TITLE_PROVIDERS.includes(value as TaskTitleAgentProvider)
+}
+
+export function isWorktreeNameSuggestionProvider(
+  value: unknown,
+): value is WorktreeNameSuggestionAgentProvider {
+  return (
+    typeof value === 'string' &&
+    WORKTREE_NAME_SUGGESTION_PROVIDERS.includes(value as WorktreeNameSuggestionAgentProvider)
+  )
+}
+
 function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
-  return value === 'default' || isValidProvider(value)
+  return value === 'default' || isTaskTitleAgentProvider(value)
 }
 
 function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
@@ -175,12 +243,22 @@ export function resolveAgentModel(settings: AgentSettings, provider: AgentProvid
   return model.length > 0 ? model : null
 }
 
-export function resolveTaskTitleProvider(settings: AgentSettings): AgentProvider {
-  if (settings.taskTitleProvider === 'default') {
-    return settings.defaultProvider
+export function resolveTaskTitleProvider(settings: AgentSettings): TaskTitleAgentProvider {
+  if (settings.taskTitleProvider !== 'default') {
+    return settings.taskTitleProvider
   }
 
-  return settings.taskTitleProvider
+  return isTaskTitleAgentProvider(settings.defaultProvider)
+    ? settings.defaultProvider
+    : DEFAULT_TASK_TITLE_PROVIDER
+}
+
+export function resolveWorktreeNameSuggestionProvider(
+  defaultProvider: AgentProvider,
+): WorktreeNameSuggestionAgentProvider {
+  return isWorktreeNameSuggestionProvider(defaultProvider)
+    ? defaultProvider
+    : DEFAULT_TASK_TITLE_PROVIDER
 }
 
 export function resolveTaskTitleModel(settings: AgentSettings): string | null {
@@ -245,10 +323,13 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
       acc[provider] = options
       return acc
     },
-    {
-      'claude-code': [...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider['claude-code']],
-      codex: [...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider.codex],
-    },
+    AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
+      (acc, provider) => {
+        acc[provider] = [...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider[provider]]
+        return acc
+      },
+      { ...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider },
+    ),
   )
 
   const taskTitleProvider = isValidTaskTitleProvider(value.taskTitleProvider)

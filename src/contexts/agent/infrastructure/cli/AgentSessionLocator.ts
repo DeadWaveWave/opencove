@@ -3,6 +3,10 @@ import os from 'node:os'
 import { basename, extname, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '../../../../../shared/contracts/dto'
+import {
+  findGeminiResumeSessionId,
+  findOpenCodeResumeSessionId,
+} from './AgentSessionLocatorProviders'
 
 interface LocateAgentResumeSessionInput {
   provider: AgentProviderId
@@ -104,6 +108,10 @@ async function readFirstLine(filePath: string): Promise<string | null> {
 }
 
 function parseTimestampMs(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return Math.round(value)
+  }
+
   if (typeof value !== 'string') {
     return null
   }
@@ -269,7 +277,15 @@ async function tryFindResumeSessionId(
     return await findClaudeResumeSessionId(cwd, startedAtMs)
   }
 
-  return await findCodexResumeSessionId(cwd, startedAtMs)
+  if (provider === 'codex') {
+    return await findCodexResumeSessionId(cwd, startedAtMs)
+  }
+
+  if (provider === 'opencode') {
+    return await findOpenCodeResumeSessionId(cwd, startedAtMs)
+  }
+
+  return await findGeminiResumeSessionId(cwd, startedAtMs)
 }
 
 async function pollResumeSessionId(

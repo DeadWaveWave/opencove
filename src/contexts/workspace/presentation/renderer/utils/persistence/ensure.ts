@@ -7,6 +7,7 @@ import type {
   TaskNodeData,
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
+import type { AgentProviderId } from '../../../../../../shared/contracts/dto'
 import { clearResumeSessionBinding, isResumeSessionBindingVerified } from '../agentResumeBinding'
 import {
   normalizeAgentRuntimeStatus,
@@ -26,7 +27,7 @@ import {
 } from './normalize'
 
 function normalizeResumeSessionBinding(
-  provider: 'claude-code' | 'codex',
+  provider: AgentProviderId,
   record: Record<string, unknown>,
 ): {
   resumeSessionId: string | null

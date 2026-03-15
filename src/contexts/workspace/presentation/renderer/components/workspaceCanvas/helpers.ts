@@ -196,7 +196,19 @@ export function providerLabel(provider: AgentProvider): string {
 }
 
 export function providerTitlePrefix(provider: AgentProvider): string {
-  return provider === 'codex' ? 'codex' : 'claude'
+  if (provider === 'claude-code') {
+    return 'claude'
+  }
+
+  if (provider === 'opencode') {
+    return 'opencode'
+  }
+
+  if (provider === 'gemini') {
+    return 'gemini'
+  }
+
+  return 'codex'
 }
 
 export function normalizeDirectoryPath(workspacePath: string, customDirectory: string): string {

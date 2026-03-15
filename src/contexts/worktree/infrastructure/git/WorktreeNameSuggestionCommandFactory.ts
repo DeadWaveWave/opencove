@@ -1,7 +1,7 @@
-import type { AgentProviderId } from '../../../../shared/contracts/dto'
+import type { WorktreeNameSuggestionAgentProvider } from '../../../settings/domain/agentSettings'
 
 interface BuildSuggestionCommandInput {
-  provider: AgentProviderId
+  provider: WorktreeNameSuggestionAgentProvider
   prompt: string
   model: string | null
   outputFilePath: string
@@ -10,7 +10,7 @@ interface BuildSuggestionCommandInput {
 export interface WorktreeNameSuggestionCommand {
   command: string
   args: string[]
-  provider: AgentProviderId
+  provider: WorktreeNameSuggestionAgentProvider
   effectiveModel: string | null
   outputMode: 'stdout' | 'file'
 }

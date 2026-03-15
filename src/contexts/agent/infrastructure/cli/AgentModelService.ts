@@ -1,4 +1,4 @@
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
+import { execFile, spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import type {
   AgentModelOption,
   AgentProviderId,
@@ -10,6 +10,8 @@ const CODEX_APP_SERVER_TIMEOUT_MS = 8000
 const CODEX_APP_SERVER_SHUTDOWN_GRACE_MS = 500
 const CODEX_MODEL_CACHE_TTL_MS = 30_000
 const CODEX_MODEL_ERROR_CACHE_TTL_MS = 5_000
+const CLI_MODEL_LIST_TIMEOUT_MS = 8000
+const CLI_MODEL_LIST_MAX_BUFFER_BYTES = 16 * 1024 * 1024
 
 const activeCodexModelChildren = new Set<ChildProcessWithoutNullStreams>()
 
@@ -321,6 +323,50 @@ async function listCodexModelsFromCli(): Promise<AgentModelOption[]> {
   })
 }
 
+async function executeCliText(command: string, args: string[]): Promise<string> {
+  const invocation = await resolveAgentCliInvocation({ command, args })
+
+  return await new Promise((resolve, reject) => {
+    execFile(
+      invocation.command,
+      invocation.args,
+      {
+        env: process.env,
+        encoding: 'utf8',
+        windowsHide: true,
+        timeout: CLI_MODEL_LIST_TIMEOUT_MS,
+        maxBuffer: CLI_MODEL_LIST_MAX_BUFFER_BYTES,
+      },
+      (error, stdout, stderr) => {
+        if (error) {
+          const detail = typeof stderr === 'string' ? stderr.trim() : ''
+          reject(
+            new Error(detail.length > 0 ? detail : error.message || 'CLI command execution failed'),
+          )
+          return
+        }
+
+        resolve(typeof stdout === 'string' ? stdout : stdout.toString('utf8'))
+      },
+    )
+  })
+}
+
+async function listOpenCodeModelsFromCli(): Promise<AgentModelOption[]> {
+  const stdout = await executeCliText('opencode', ['models'])
+
+  return stdout
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(modelId => ({
+      id: modelId,
+      displayName: modelId,
+      description: '',
+      isDefault: false,
+    }))
+}
+
 function listClaudeCodeStaticModels(): AgentModelOption[] {
   return CLAUDE_CODE_STATIC_MODELS.map(model => ({ ...model }))
 }
@@ -369,6 +415,38 @@ export async function listAgentModels(provider: AgentProviderId): Promise<ListAg
     }
 
     return cloneListAgentModelsResult(await codexModelsRequestInFlight)
+  }
+
+  if (provider === 'opencode') {
+    const fetchedAt = new Date().toISOString()
+
+    try {
+      return {
+        provider,
+        source: 'opencode-cli',
+        fetchedAt,
+        models: await listOpenCodeModelsFromCli(),
+        error: null,
+      }
+    } catch (error) {
+      return {
+        provider,
+        source: 'opencode-cli',
+        fetchedAt,
+        models: [],
+        error: toErrorMessage(error),
+      }
+    }
+  }
+
+  if (provider === 'gemini') {
+    return {
+      provider,
+      source: 'gemini-cli',
+      fetchedAt: new Date().toISOString(),
+      models: [],
+      error: null,
+    }
   }
 
   const fetchedAt = new Date().toISOString()

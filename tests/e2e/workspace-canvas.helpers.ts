@@ -142,7 +142,7 @@ async function closeElectronAppAndCleanup(
 }
 
 export interface SeedAgentData {
-  provider: 'claude-code' | 'codex'
+  provider: 'claude-code' | 'codex' | 'opencode' | 'gemini'
   prompt: string
   model: string | null
   effectiveModel: string | null

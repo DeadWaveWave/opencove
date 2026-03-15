@@ -66,7 +66,7 @@ function updateWorkspacesWithAgentNodes(
   return { nextWorkspaces, didChange }
 }
 
-function updateWorkspacesWithAgentExit({
+export function updateWorkspacesWithAgentExit({
   workspaces,
   sessionId,
   excludeWorkspaceId,
@@ -87,9 +87,8 @@ function updateWorkspacesWithAgentExit({
     }
 
     let workspaceDidChange = false
-    let relatedTaskNodeId: string | null = null
 
-    let nextNodes = workspace.nodes.map(node => {
+    const nextNodes = workspace.nodes.map(node => {
       if (node.data.kind !== 'agent' || node.data.sessionId !== sessionId) {
         return node
       }
@@ -99,7 +98,6 @@ function updateWorkspacesWithAgentExit({
       }
 
       workspaceDidChange = true
-      relatedTaskNodeId = node.data.agent?.taskId ?? null
 
       return {
         ...node,
@@ -108,34 +106,6 @@ function updateWorkspacesWithAgentExit({
           status: exitCode === 0 ? ('exited' as const) : ('failed' as const),
           endedAt: now,
           exitCode,
-        },
-      }
-    })
-
-    if (exitCode !== 0 || !relatedTaskNodeId) {
-      if (!workspaceDidChange) {
-        return workspace
-      }
-
-      didChange = true
-      return { ...workspace, nodes: nextNodes }
-    }
-
-    nextNodes = nextNodes.map(node => {
-      if (node.id !== relatedTaskNodeId || node.data.kind !== 'task' || !node.data.task) {
-        return node
-      }
-
-      workspaceDidChange = true
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          task: {
-            ...node.data.task,
-            status: 'ai_done',
-            updatedAt: now,
-          },
         },
       }
     })

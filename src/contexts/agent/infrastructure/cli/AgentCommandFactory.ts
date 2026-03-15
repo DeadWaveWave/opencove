@@ -1,5 +1,10 @@
 import type { AgentLaunchMode, AgentProviderId } from '../../../../../shared/contracts/dto'
 
+interface OpenCodeServerBinding {
+  hostname: string
+  port: number
+}
+
 interface BuildAgentLaunchCommandInput {
   provider: AgentProviderId
   mode: AgentLaunchMode
@@ -7,6 +12,7 @@ interface BuildAgentLaunchCommandInput {
   model: string | null
   resumeSessionId: string | null
   agentFullAccess?: boolean
+  opencodeServer?: OpenCodeServerBinding | null
 }
 
 export interface AgentLaunchCommand {
@@ -76,6 +82,95 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
 
     return {
       command: 'claude',
+      args,
+      launchMode: 'new',
+      effectiveModel,
+      resumeSessionId: null,
+    }
+  }
+
+  if (input.provider === 'opencode') {
+    if (!input.opencodeServer) {
+      throw new Error('opencode launch requires a reserved local server port')
+    }
+
+    const args = [
+      '--hostname',
+      input.opencodeServer.hostname,
+      '--port',
+      String(input.opencodeServer.port),
+    ]
+
+    if (effectiveModel) {
+      args.push('--model', effectiveModel)
+    }
+
+    if (input.mode === 'resume') {
+      if (!resumeSessionId) {
+        throw new Error('opencode resume requires explicit session id')
+      }
+
+      args.push('--session', resumeSessionId, '.')
+
+      return {
+        command: 'opencode',
+        args,
+        launchMode: 'resume',
+        effectiveModel,
+        resumeSessionId,
+      }
+    }
+
+    const prompt = normalizePrompt(input.prompt)
+    if (prompt.length > 0) {
+      args.push('--prompt', prompt)
+    }
+
+    args.push('.')
+
+    return {
+      command: 'opencode',
+      args,
+      launchMode: 'new',
+      effectiveModel,
+      resumeSessionId: null,
+    }
+  }
+
+  if (input.provider === 'gemini') {
+    const args: string[] = []
+
+    if (agentFullAccess) {
+      args.push('--yolo')
+    }
+
+    if (effectiveModel) {
+      args.push('--model', effectiveModel)
+    }
+
+    if (input.mode === 'resume') {
+      if (!resumeSessionId) {
+        throw new Error('gemini resume requires explicit session id')
+      }
+
+      args.push('--resume', resumeSessionId)
+
+      return {
+        command: 'gemini',
+        args,
+        launchMode: 'resume',
+        effectiveModel,
+        resumeSessionId,
+      }
+    }
+
+    const prompt = normalizePrompt(input.prompt)
+    if (prompt.length > 0) {
+      args.push('--prompt-interactive', prompt)
+    }
+
+    return {
+      command: 'gemini',
       args,
       launchMode: 'new',
       effectiveModel,

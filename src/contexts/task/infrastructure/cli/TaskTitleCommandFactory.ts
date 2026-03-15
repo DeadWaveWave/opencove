@@ -1,7 +1,7 @@
-import type { AgentProviderId } from '../../../../shared/contracts/dto'
+import type { TaskTitleAgentProvider } from '../../../settings/domain/agentSettings'
 
 interface BuildTaskTitleCommandInput {
-  provider: AgentProviderId
+  provider: TaskTitleAgentProvider
   requirement: string
   model: string | null
   outputFilePath: string
@@ -11,7 +11,7 @@ interface BuildTaskTitleCommandInput {
 export interface TaskTitleCommand {
   command: string
   args: string[]
-  provider: AgentProviderId
+  provider: TaskTitleAgentProvider
   effectiveModel: string | null
   outputMode: 'stdout' | 'file'
 }

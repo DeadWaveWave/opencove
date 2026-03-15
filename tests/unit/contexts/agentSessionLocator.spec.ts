@@ -29,6 +29,13 @@ function createFileEntry(name: string): Dirent {
   } as unknown as Dirent
 }
 
+function createDirectoryEntry(name: string): Dirent {
+  return {
+    name,
+    isDirectory: () => true,
+  } as unknown as Dirent
+}
+
 function toClaudeProjectDir(cwd: string): string {
   const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
   return join('/Users/tester', '.claude', 'projects', encodedPath)
@@ -95,5 +102,131 @@ describe('locateAgentResumeSessionId', () => {
     })
 
     expect(detected).toBe(sessionId)
+  })
+
+  it('locates a gemini session by matching the project root and chat metadata', async () => {
+    const cwd = '/Users/tester/Development/cove'
+    const startedAtMs = Date.parse('2026-03-15T07:58:10.970Z')
+    const projectDirectory = '/Users/tester/.gemini/tmp/cove-worktree'
+    const chatPath = `${projectDirectory}/chats/session-2026-03-15T07-58-d7d89910.json`
+
+    fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
+      if (directory === '/Users/tester/.gemini/tmp') {
+        return [createDirectoryEntry('cove-worktree')]
+      }
+
+      if (directory === `${projectDirectory}/chats`) {
+        return [createFileEntry('session-2026-03-15T07-58-d7d89910.json')]
+      }
+
+      return []
+    })
+
+    fsPromisesMock.readFile.mockImplementation(async (filePath: string) => {
+      if (filePath === `${projectDirectory}/.project_root`) {
+        return cwd
+      }
+
+      if (filePath === chatPath) {
+        return JSON.stringify({
+          sessionId: 'd7d89910-fa86-4253-a183-07db548da987',
+          startTime: '2026-03-15T07:58:10.970Z',
+          lastUpdated: '2026-03-15T07:59:35.130Z',
+          messages: [
+            {
+              type: 'user',
+              timestamp: '2026-03-15T07:58:10.977Z',
+            },
+            {
+              type: 'gemini',
+              timestamp: '2026-03-15T07:59:35.130Z',
+            },
+          ],
+        })
+      }
+
+      throw new Error(`Unexpected readFile: ${filePath}`)
+    })
+
+    const detected = await locateAgentResumeSessionId({
+      provider: 'gemini',
+      cwd,
+      startedAtMs,
+      timeoutMs: 0,
+    })
+
+    expect(detected).toBe('d7d89910-fa86-4253-a183-07db548da987')
+  })
+
+  it('ignores gemini info-only sessions and resolves the real turn session', async () => {
+    const cwd = '/Users/tester/Development/cove'
+    const startedAtMs = Date.parse('2026-03-15T09:40:57.900Z')
+    const projectDirectory = '/Users/tester/.gemini/tmp/cove-worktree'
+    const infoOnlyChatPath = `${projectDirectory}/chats/session-2026-03-15T09-40-info.json`
+    const turnChatPath = `${projectDirectory}/chats/session-2026-03-15T09-40-turn.json`
+
+    fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
+      if (directory === '/Users/tester/.gemini/tmp') {
+        return [createDirectoryEntry('cove-worktree')]
+      }
+
+      if (directory === `${projectDirectory}/chats`) {
+        return [
+          createFileEntry('session-2026-03-15T09-40-info.json'),
+          createFileEntry('session-2026-03-15T09-40-turn.json'),
+        ]
+      }
+
+      return []
+    })
+
+    fsPromisesMock.readFile.mockImplementation(async (filePath: string) => {
+      if (filePath === `${projectDirectory}/.project_root`) {
+        return cwd
+      }
+
+      if (filePath === infoOnlyChatPath) {
+        return JSON.stringify({
+          sessionId: 'info-only-session',
+          startTime: '2026-03-15T09:40:56.000Z',
+          lastUpdated: '2026-03-15T09:40:56.000Z',
+          messages: [
+            {
+              type: 'info',
+              timestamp: '2026-03-15T09:40:56.000Z',
+            },
+          ],
+        })
+      }
+
+      if (filePath === turnChatPath) {
+        return JSON.stringify({
+          sessionId: 'real-turn-session',
+          startTime: '2026-03-15T09:40:57.800Z',
+          lastUpdated: '2026-03-15T09:40:59.400Z',
+          messages: [
+            {
+              type: 'user',
+              timestamp: '2026-03-15T09:40:57.957Z',
+            },
+            {
+              type: 'gemini',
+              timestamp: '2026-03-15T09:40:59.410Z',
+            },
+          ],
+        })
+      }
+
+      throw new Error(`Unexpected readFile: ${filePath}`)
+    })
+
+    const detected = await locateAgentResumeSessionId({
+      provider: 'gemini',
+      cwd,
+      startedAtMs,
+      timeoutMs: 0,
+    })
+
+    expect(detected).toBe('real-turn-session')
   })
 })

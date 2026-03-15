@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { isWorktreeNameSuggestionProvider } from '../../../settings/domain/agentSettings'
 import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
@@ -184,6 +185,10 @@ export async function suggestWorktreeNames(
 
   if (process.env.NODE_ENV === 'test') {
     return testModeSuggestion(input)
+  }
+
+  if (!isWorktreeNameSuggestionProvider(input.provider)) {
+    throw new Error(`Worktree name suggestion does not support provider: ${input.provider}`)
   }
 
   const prompt = buildPrompt(input)

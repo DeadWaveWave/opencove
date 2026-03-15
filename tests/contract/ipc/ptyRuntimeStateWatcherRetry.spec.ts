@@ -91,6 +91,7 @@ describe('Pty runtime session state watcher', () => {
       sessionId: 'session-1',
       provider: 'codex',
       cwd: '/tmp',
+      launchMode: 'new',
       resumeSessionId: null,
       startedAtMs: Date.now(),
     })

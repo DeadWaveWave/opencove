@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron'
+import { createServer } from 'node:net'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   LaunchAgentInput,
@@ -25,6 +26,32 @@ import {
 } from './validate'
 
 const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
+const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
+
+async function reserveLoopbackPort(hostname: string): Promise<number> {
+  return await new Promise((resolve, reject) => {
+    const server = createServer()
+    server.unref()
+
+    server.once('error', reject)
+    server.listen(0, hostname, () => {
+      const address = server.address()
+      if (!address || typeof address === 'string') {
+        server.close(() => reject(new Error('Failed to reserve local loopback port')))
+        return
+      }
+
+      server.close(error => {
+        if (error) {
+          reject(error)
+          return
+        }
+
+        resolve(address.port)
+      })
+    })
+  })
+}
 
 export function registerAgentIpcHandlers(
   ptyRuntime: PtyRuntime,
@@ -67,6 +94,14 @@ export function registerAgentIpcHandlers(
       throw new Error('agent:launch cwd is outside approved workspaces')
     }
 
+    const opencodeServer =
+      normalized.provider === 'opencode'
+        ? {
+            hostname: OPENCODE_SERVER_HOSTNAME,
+            port: await reserveLoopbackPort(OPENCODE_SERVER_HOSTNAME),
+          }
+        : null
+
     const launchCommand = buildAgentLaunchCommand({
       provider: normalized.provider,
       mode: normalized.mode ?? 'new',
@@ -74,6 +109,7 @@ export function registerAgentIpcHandlers(
       model: normalized.model ?? null,
       resumeSessionId: normalized.resumeSessionId ?? null,
       agentFullAccess: normalized.agentFullAccess ?? true,
+      opencodeServer,
     })
 
     const testStub = resolveAgentTestStub(
@@ -108,8 +144,12 @@ export function registerAgentIpcHandlers(
         sessionId,
         provider: normalized.provider,
         cwd: normalized.cwd,
+        launchMode: launchCommand.launchMode,
         resumeSessionId,
         startedAtMs: launchStartedAtMs,
+        opencodeBaseUrl: opencodeServer
+          ? `http://${opencodeServer.hostname}:${opencodeServer.port}`
+          : null,
       })
     }
 

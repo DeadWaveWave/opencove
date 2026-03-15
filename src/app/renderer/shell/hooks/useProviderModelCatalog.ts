@@ -5,22 +5,16 @@ import type { ProviderModelCatalog } from '../types'
 import { toErrorMessage } from '../utils/format'
 
 function createInitialModelCatalog(): ProviderModelCatalog {
-  return {
-    'claude-code': {
+  return AGENT_PROVIDERS.reduce<ProviderModelCatalog>((acc, provider) => {
+    acc[provider] = {
       models: [],
       source: null,
       fetchedAt: null,
       isLoading: false,
       error: null,
-    },
-    codex: {
-      models: [],
-      source: null,
-      fetchedAt: null,
-      isLoading: false,
-      error: null,
-    },
-  }
+    }
+    return acc
+  }, {} as ProviderModelCatalog)
 }
 
 export function useProviderModelCatalog({ isSettingsOpen }: { isSettingsOpen: boolean }): {

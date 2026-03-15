@@ -3,6 +3,40 @@ import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 
+export function applyAgentExitToNodes(
+  prevNodes: Node<TerminalNodeData>[],
+  event: { sessionId: string; exitCode: number },
+): { nextNodes: Node<TerminalNodeData>[]; didChange: boolean } {
+  let didChange = false
+
+  const nextNodes = prevNodes.map(node => {
+    if (node.data.sessionId !== event.sessionId || node.data.kind !== 'agent') {
+      return node
+    }
+
+    if (node.data.status === 'stopped') {
+      return node
+    }
+
+    didChange = true
+
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        status: event.exitCode === 0 ? ('exited' as const) : ('failed' as const),
+        endedAt: new Date().toISOString(),
+        exitCode: event.exitCode,
+      },
+    }
+  })
+
+  return {
+    nextNodes: didChange ? nextNodes : prevNodes,
+    didChange,
+  }
+}
+
 export function useWorkspaceCanvasPtyTaskCompletion({
   setNodes,
   onRequestPersistFlush,
@@ -103,55 +137,9 @@ export function useWorkspaceCanvasPtyTaskCompletion({
       let didChange = false
 
       setNodes(prevNodes => {
-        let relatedTaskNodeId: string | null = null
-
-        const nextNodes = prevNodes.map(node => {
-          if (node.data.sessionId !== event.sessionId || node.data.kind !== 'agent') {
-            return node
-          }
-
-          if (node.data.status === 'stopped') {
-            return node
-          }
-
-          didChange = true
-          relatedTaskNodeId = node.data.agent?.taskId ?? null
-
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              status: event.exitCode === 0 ? ('exited' as const) : ('failed' as const),
-              endedAt: new Date().toISOString(),
-              exitCode: event.exitCode,
-            },
-          }
-        })
-
-        if (event.exitCode !== 0 || !relatedTaskNodeId) {
-          return didChange ? nextNodes : prevNodes
-        }
-
-        const completedNodes = nextNodes.map(node => {
-          if (node.id !== relatedTaskNodeId || node.data.kind !== 'task' || !node.data.task) {
-            return node
-          }
-
-          didChange = true
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              task: {
-                ...node.data.task,
-                status: 'ai_done',
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          }
-        })
-
-        return didChange ? completedNodes : prevNodes
+        const result = applyAgentExitToNodes(prevNodes, event)
+        didChange = result.didChange
+        return result.nextNodes
       })
 
       if (didChange) {

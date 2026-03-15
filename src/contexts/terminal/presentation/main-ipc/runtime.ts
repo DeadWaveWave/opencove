@@ -2,6 +2,7 @@ import { webContents } from 'electron'
 import type { IPty } from 'node-pty'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
+  AgentLaunchMode,
   AgentProviderId,
   TerminalDataEvent,
   TerminalExitEvent,
@@ -18,8 +19,10 @@ export interface StartSessionStateWatcherInput {
   sessionId: string
   provider: AgentProviderId
   cwd: string
+  launchMode: AgentLaunchMode
   resumeSessionId: string | null
   startedAtMs: number
+  opencodeBaseUrl?: string | null
 }
 
 export interface PtyRuntime {
@@ -256,15 +259,19 @@ export function createPtyRuntime(): PtyRuntime {
     sessionId,
     provider,
     cwd,
+    launchMode,
     resumeSessionId,
     startedAtMs,
+    opencodeBaseUrl,
   }: StartSessionStateWatcherInput): void => {
     sessionStateWatcher.start({
       sessionId,
       provider,
       cwd,
+      launchMode,
       resumeSessionId,
       startedAtMs,
+      opencodeBaseUrl,
     })
   }
 

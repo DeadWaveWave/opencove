@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process'
 import { readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { isTaskTitleAgentProvider } from '../../../settings/domain/agentSettings'
 import type {
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
@@ -256,6 +257,10 @@ export async function suggestTaskTitle(
       provider: input.provider,
       effectiveModel: input.model ?? null,
     }
+  }
+
+  if (!isTaskTitleAgentProvider(input.provider)) {
+    throw new Error(`Task title generation does not support provider: ${input.provider}`)
   }
 
   const outputFilePath = join(tmpdir(), `cove-task-title-${crypto.randomUUID()}.txt`)

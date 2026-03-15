@@ -167,4 +167,68 @@ describe('buildAgentLaunchCommand', () => {
     expect(command.args).toEqual(['--dangerously-skip-permissions'])
     expect(command.launchMode).toBe('new')
   })
+
+  it('builds opencode command with local server metadata and prompt', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'opencode',
+      mode: 'new',
+      prompt: 'Ship the fix',
+      model: 'openrouter/gpt-5',
+      resumeSessionId: null,
+      opencodeServer: {
+        hostname: '127.0.0.1',
+        port: 43123,
+      },
+    })
+
+    expect(command.command).toBe('opencode')
+    expect(command.args).toEqual([
+      '--hostname',
+      '127.0.0.1',
+      '--port',
+      '43123',
+      '--model',
+      'openrouter/gpt-5',
+      '--prompt',
+      'Ship the fix',
+      '.',
+    ])
+    expect(command.launchMode).toBe('new')
+  })
+
+  it('builds gemini interactive prompt command', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'gemini',
+      mode: 'new',
+      prompt: 'Investigate the failing tests',
+      model: 'gemini-3-flash-preview',
+      resumeSessionId: null,
+      agentFullAccess: true,
+    })
+
+    expect(command.command).toBe('gemini')
+    expect(command.args).toEqual([
+      '--yolo',
+      '--model',
+      'gemini-3-flash-preview',
+      '--prompt-interactive',
+      'Investigate the failing tests',
+    ])
+    expect(command.launchMode).toBe('new')
+  })
+
+  it('builds gemini resume command with explicit session id', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'gemini',
+      mode: 'resume',
+      prompt: '',
+      model: null,
+      resumeSessionId: 'd7d89910-fa86-4253-a183-07db548da987',
+      agentFullAccess: false,
+    })
+
+    expect(command.command).toBe('gemini')
+    expect(command.args).toEqual(['--resume', 'd7d89910-fa86-4253-a183-07db548da987'])
+    expect(command.launchMode).toBe('resume')
+  })
 })

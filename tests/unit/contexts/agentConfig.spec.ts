@@ -5,6 +5,7 @@ import {
   resolveAgentModel,
   resolveTaskTitleModel,
   resolveTaskTitleProvider,
+  resolveWorktreeNameSuggestionProvider,
 } from '../../../src/contexts/settings/domain/agentSettings'
 
 describe('agent settings normalization', () => {
@@ -177,5 +178,19 @@ describe('agent settings normalization', () => {
     })
 
     expect(result.uiFontSize).toBe(20)
+  })
+
+  it('falls back to codex for task titles when default provider cannot name tasks', () => {
+    expect(
+      resolveTaskTitleProvider({
+        ...DEFAULT_AGENT_SETTINGS,
+        defaultProvider: 'opencode',
+        taskTitleProvider: 'default',
+      }),
+    ).toBe('codex')
+  })
+
+  it('falls back to codex for worktree naming when default provider cannot suggest names', () => {
+    expect(resolveWorktreeNameSuggestionProvider('gemini')).toBe('codex')
   })
 })

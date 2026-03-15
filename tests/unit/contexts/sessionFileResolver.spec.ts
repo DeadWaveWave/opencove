@@ -96,4 +96,41 @@ describe('resolveSessionFilePath', () => {
       process.env.HOME = previousHome
     }
   })
+
+  it('resolves gemini session files from the matching project workspace', async () => {
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const previousHome = process.env.HOME
+    process.env.HOME = tempHome
+
+    const cwd = join(tempHome, 'workspace')
+    const sessionId = 'gemini-session-123'
+    const startedAtMs = Date.now()
+    const projectDir = join(tempHome, '.gemini', 'tmp', 'workspace')
+    const expectedPath = join(projectDir, 'chats', 'session-2026-03-15T08-00-test.json')
+
+    try {
+      await fs.mkdir(join(projectDir, 'chats'), { recursive: true })
+      await fs.writeFile(join(projectDir, '.project_root'), resolvePath(cwd), 'utf8')
+      await fs.writeFile(
+        expectedPath,
+        JSON.stringify({
+          sessionId,
+          messages: [{ type: 'user', content: [{ text: 'hello' }] }],
+        }),
+        'utf8',
+      )
+
+      const resolved = await resolveSessionFilePath({
+        provider: 'gemini',
+        cwd,
+        sessionId,
+        startedAtMs,
+        timeoutMs: 0,
+      })
+
+      expect(resolved).toBe(expectedPath)
+    } finally {
+      process.env.HOME = previousHome
+    }
+  })
 })

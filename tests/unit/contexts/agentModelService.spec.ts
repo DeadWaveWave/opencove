@@ -106,6 +106,37 @@ describe('AgentModelService', () => {
     )
   })
 
+  it('lists OpenCode models from the CLI output', async () => {
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(null, 'opencode/gpt-5-nano\nopenrouter/gpt-5\n', '')
+      return {} as ReturnType<typeof execFileMock>
+    })
+
+    const result = await listAgentModels('opencode')
+
+    expect(result.provider).toBe('opencode')
+    expect(result.source).toBe('opencode-cli')
+    expect(result.error).toBeNull()
+    expect(result.models.map(model => model.id)).toEqual([
+      'opencode/gpt-5-nano',
+      'openrouter/gpt-5',
+    ])
+  })
+
+  it('returns an empty Gemini catalog when the CLI has no list endpoint', async () => {
+    const result = await listAgentModels('gemini')
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        provider: 'gemini',
+        source: 'gemini-cli',
+        error: null,
+        models: [],
+      }),
+    )
+  })
+
   it('keeps stdin open while waiting for codex model/list response', async () => {
     const mockedSpawn = vi.mocked(spawn)
     const child = createMockChildProcess()
