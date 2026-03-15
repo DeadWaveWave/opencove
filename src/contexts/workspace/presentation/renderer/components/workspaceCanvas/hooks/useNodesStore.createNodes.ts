@@ -164,7 +164,7 @@ export function useWorkspaceCanvasNodeCreation({
         position: resolvedPlacement.placement,
         data: {
           sessionId: '',
-          title: 'note',
+          title: t('noteNode.title'),
           titlePinnedByUser: false,
           width: DEFAULT_NOTE_WINDOW_SIZE.width,
           height: DEFAULT_NOTE_WINDOW_SIZE.height,

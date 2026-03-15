@@ -81,6 +81,8 @@ export const en = {
     limitExceeded: 'Storage limit exceeded; unable to persist workspace state.',
     ioFailed: 'Persistence I/O failed: {{message}}',
     failed: 'Persistence failed: {{message}}',
+    recoveryCorruptDb: 'Persistence database was corrupted and has been reset.',
+    recoveryMigrationFailed: 'Persistence migration failed and has been reset.',
   },
   projectContextMenu: {
     removeProject: 'Remove Project',
@@ -161,9 +163,9 @@ export const en = {
     deleteTask: 'Delete task',
     noTags: 'No tags',
     requirement: 'Task Requirement',
-    agents: 'Agents',
+    agents: 'Agent Sessions',
     noAgentSessionsYet: 'No agent sessions yet.',
-    defaultModel: 'default-model',
+    defaultModel: 'default model',
     lastRun: 'Last run · {{timestamp}}',
     resume: 'Resume',
     removeRecord: 'Remove Record',
@@ -271,6 +273,7 @@ export const en = {
     startPoint: 'Start point',
     branchName: 'Branch name',
     branch: 'Branch',
+    detached: 'Detached',
     branchPlaceholder: 'e.g. space/infra-core',
     createAndBind: 'Create & Bind',
     removeSpaceContents: 'Remove {{name}} and everything inside it.',
@@ -324,6 +327,8 @@ export const en = {
   messages: {
     agentLaunchFailed: 'Agent launch failed: {{message}}',
     agentResumeFailed: 'Agent resume failed: {{message}}',
+    terminalLaunchFailed: 'Terminal launch failed: {{message}}',
+    fallbackTerminalFailed: 'Fallback terminal launch also failed: {{message}}',
     agentPromptRequired: 'Agent prompt cannot be empty.',
     taskRequirementRequired: 'Task requirement cannot be empty.',
     taskTitleGenerateFailed: 'Auto-generation failed: {{message}}',
@@ -347,7 +352,7 @@ export const en = {
     agentLastMessageStartedAtMissing:
       'The current agent is missing its session start time, so the last message cannot be extracted.',
     agentLastMessageEmpty: 'The current agent does not have a last message to extract yet.',
-    agentLastMessageSavedToNote: 'The last agent message was extracted into a note.',
+    agentLastMessageSavedToNote: 'The last agent message was saved as a note.',
     agentLastMessageReadFailed: 'Failed to extract the last agent message: {{message}}',
     agentSpaceDirectoryMismatch:
       'Agent windows cannot enter or leave a space with a different directory.',

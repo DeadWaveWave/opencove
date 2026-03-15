@@ -3,6 +3,7 @@ import type {
   AgentNodeData,
   TerminalNodeData,
 } from '@contexts/workspace/presentation/renderer/types'
+import { translate } from '@app/renderer/i18n'
 import { toAgentNodeTitle, toErrorMessage } from '@app/renderer/shell/utils/format'
 import {
   clearResumeSessionBinding,
@@ -60,7 +61,10 @@ async function fallbackToFailedAgentTerminal({
         status: 'failed' as const,
         endedAt: now,
         exitCode: null,
-        lastError: `${errorMessage}. Fallback terminal failed: ${toErrorMessage(fallbackError)}`,
+        lastError: [
+          errorMessage,
+          translate('messages.fallbackTerminalFailed', { message: toErrorMessage(fallbackError) }),
+        ].join(' '),
         scrollback: node.data.scrollback,
         agent,
       },
@@ -176,7 +180,7 @@ export async function hydrateAgentNode({
         node,
         cwd: workspacePath,
         agent: sanitizedAgent,
-        errorMessage: `Resume failed: ${toErrorMessage(error)}`,
+        errorMessage: translate('messages.agentResumeFailed', { message: toErrorMessage(error) }),
       })
     }
   }
@@ -219,7 +223,7 @@ export async function hydrateAgentNode({
         node,
         cwd: sanitizedAgent.executionDirectory,
         agent: sanitizedAgent,
-        errorMessage: `Blank agent relaunch failed: ${toErrorMessage(error)}`,
+        errorMessage: translate('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
       })
     }
   }
@@ -249,7 +253,7 @@ export async function hydrateAgentNode({
       node,
       cwd: workspacePath,
       agent: sanitizedAgent,
-      errorMessage: `Terminal spawn failed: ${toErrorMessage(error)}`,
+      errorMessage: translate('messages.terminalLaunchFailed', { message: toErrorMessage(error) }),
     })
   }
 }

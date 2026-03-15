@@ -1,4 +1,5 @@
 import type { PersistedAppState } from '../../types'
+import { translate } from '@app/renderer/i18n'
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import type { PersistWriteResult } from './types'
 import { getPersistencePort } from './port'
@@ -8,7 +9,7 @@ function toErrorMessage(error: unknown): string {
     return `${error.name}: ${error.message}`
   }
 
-  return typeof error === 'string' ? error : 'Unknown error'
+  return typeof error === 'string' ? error : translate('common.unknownError')
 }
 
 function stripScrollbackFromState(state: PersistedAppState): PersistedAppState {
@@ -37,7 +38,7 @@ function unavailableResult(): PersistWriteResult {
   return {
     ok: false,
     reason: 'unavailable',
-    message: 'Storage is unavailable; changes will not be saved.',
+    message: translate('persistence.unavailable'),
   }
 }
 

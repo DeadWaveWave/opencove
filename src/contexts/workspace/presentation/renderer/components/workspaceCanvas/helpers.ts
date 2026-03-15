@@ -1,5 +1,5 @@
 import type { Node, ReactFlowInstance } from '/react'
-import type { TranslateFn } from '@app/renderer/i18n'
+import { translate, type TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import { TASK_PRIORITIES } from './constants'
@@ -162,25 +162,6 @@ export function validateSpaceTransfer(
   return null
 }
 
-export function toAgentRuntimeLabel(status: TerminalNodeData['status']): string {
-  switch (status) {
-    case 'running':
-      return 'Working'
-    case 'standby':
-      return 'Standby'
-    case 'restoring':
-      return 'Restoring'
-    case 'failed':
-      return 'Failed'
-    case 'stopped':
-      return 'Stopped'
-    case 'exited':
-      return 'Exited'
-    default:
-      return 'Idle'
-  }
-}
-
 export function toErrorMessage(error: unknown): string {
   if (error instanceof Error && error.message) {
     return error.message
@@ -190,7 +171,7 @@ export function toErrorMessage(error: unknown): string {
     return error
   }
 
-  return 'Unknown error'
+  return translate('common.unknownError')
 }
 
 export function providerLabel(provider: AgentProvider): string {

@@ -268,13 +268,13 @@ export function WorkspaceSpaceRegionsOverlay({
           const resolvedBranchBadge: WorkspaceSpaceBranchBadge | null = resolvedWorktreeInfo
             ? resolvedWorktreeInfo.branch
               ? {
-                  kind: 'Branch',
+                  kind: t('worktree.branch'),
                   value: resolvedWorktreeInfo.branch,
                   title: resolvedWorktreeInfo.branch,
                 }
               : resolvedWorktreeInfo.head
                 ? {
-                    kind: 'Detached',
+                    kind: t('worktree.detached'),
                     value: toShortSha(resolvedWorktreeInfo.head),
                     title: resolvedWorktreeInfo.head,
                   }

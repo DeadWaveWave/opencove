@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import { applyUiLanguage, translate } from '@app/renderer/i18n'
 import type {
   PersistedWorkspaceState,
   TerminalNodeData,
@@ -354,11 +355,15 @@ export function useHydrateAppState({
         return
       }
 
+      if (persisted) {
+        await applyUiLanguage(persisted.settings.language)
+      }
+
       if (recovery) {
         const recoveryMessage =
           recovery === 'corrupt_db'
-            ? 'Persistence database was corrupted and has been reset.'
-            : 'Persistence migration failed and has been reset.'
+            ? translate('persistence.recoveryCorruptDb')
+            : translate('persistence.recoveryMigrationFailed')
         useAppStore
           .getState()
           .setPersistNotice({ tone: 'warning', message: recoveryMessage, kind: 'recovery' })

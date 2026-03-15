@@ -1,4 +1,5 @@
 import type { PersistWriteResult, ReadAppStateResult } from '@shared/contracts/dto'
+import { translate } from '@app/renderer/i18n'
 import { STORAGE_KEY } from './constants'
 import { getStorage, isQuotaExceededError } from './storage'
 
@@ -21,7 +22,7 @@ function toErrorMessage(error: unknown): string {
     return `${error.name}: ${error.message}`
   }
 
-  return typeof error === 'string' ? error : 'Unknown error'
+  return typeof error === 'string' ? error : translate('common.unknownError')
 }
 
 function createIpcPort(): PersistencePort | null {
