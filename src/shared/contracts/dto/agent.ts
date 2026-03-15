@@ -52,3 +52,14 @@ export interface ResolveAgentResumeSessionInput {
 export interface ResolveAgentResumeSessionResult {
   resumeSessionId: string | null
 }
+
+export interface ReadAgentLastMessageInput {
+  provider: AgentProviderId
+  cwd: string
+  startedAt: string
+  resumeSessionId?: string | null
+}
+
+export interface ReadAgentLastMessageResult {
+  message: string | null
+}

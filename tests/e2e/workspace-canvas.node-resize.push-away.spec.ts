@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, storageKey } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Node Resize (Push-away)', () => {
-  test('pushes blocking root windows away when resizing a terminal outward', async () => {
+  test('keeps root windows non-overlapping when resizing a terminal outward', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -81,7 +81,7 @@ test.describe('Workspace Canvas - Node Resize (Push-away)', () => {
                 return false
               }
 
-              const gapSatisfied = blocked.position.x >= source.position.x + source.width + 24
+              const gapSatisfied = blocked.position.x >= source.position.x + source.width
 
               return (
                 source.position.x === 120 &&

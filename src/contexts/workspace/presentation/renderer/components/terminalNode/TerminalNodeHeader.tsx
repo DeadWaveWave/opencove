@@ -9,6 +9,7 @@ interface TerminalNodeHeaderProps {
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   onTitleCommit?: (title: string) => void
   onClose: () => void
+  onSaveLastMessageToNote?: () => Promise<void>
 }
 
 export function TerminalNodeHeader({
@@ -18,12 +19,16 @@ export function TerminalNodeHeader({
   directoryMismatch,
   onTitleCommit,
   onClose,
+  onSaveLastMessageToNote,
 }: TerminalNodeHeaderProps): JSX.Element {
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
+  const [isSavingLastMessageToNote, setIsSavingLastMessageToNote] = useState(false)
 
   const isTitleEditable = kind === 'terminal' && typeof onTitleCommit === 'function'
   const isAgentNode = kind === 'agent'
+  const canSaveLastMessageToNote =
+    isAgentNode && status === 'standby' && typeof onSaveLastMessageToNote === 'function'
 
   useEffect(() => {
     if (isTitleEditing) {
@@ -139,6 +144,33 @@ Current directory: ${directoryMismatch.expectedDirectory}`}
             </span>
           ) : null}
         </div>
+      ) : null}
+
+      {canSaveLastMessageToNote ? (
+        <button
+          type="button"
+          className="terminal-node__action nodrag"
+          data-testid="terminal-node-save-last-message"
+          aria-label="Save last agent message as note"
+          title="Save last agent message as note"
+          disabled={isSavingLastMessageToNote}
+          onClick={async event => {
+            event.stopPropagation()
+            if (isSavingLastMessageToNote || !onSaveLastMessageToNote) {
+              return
+            }
+
+            setIsSavingLastMessageToNote(true)
+
+            try {
+              await onSaveLastMessageToNote()
+            } finally {
+              setIsSavingLastMessageToNote(false)
+            }
+          }}
+        >
+          {isSavingLastMessageToNote ? 'Saving' : 'Note'}
+        </button>
       ) : null}
 
       <button

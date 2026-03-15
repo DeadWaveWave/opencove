@@ -2,8 +2,6 @@ import type { Node } from '@xyflow/react'
 import type { Point, Size, TerminalNodeData } from '../../../types'
 import { pushAwayLayout, type LayoutItem } from '../../../utils/spaceLayout'
 
-const WINDOW_PLACEMENT_GAP_PX = 24
-
 export function computePushBlockingWindowsRight({
   desired,
   size,
@@ -25,10 +23,10 @@ export function computePushBlockingWindowsRight({
       kind: 'node',
       groupId: placementId,
       rect: {
-        x: desired.x - WINDOW_PLACEMENT_GAP_PX,
-        y: desired.y - WINDOW_PLACEMENT_GAP_PX,
-        width: size.width + WINDOW_PLACEMENT_GAP_PX * 2,
-        height: size.height + WINDOW_PLACEMENT_GAP_PX * 2,
+        x: desired.x,
+        y: desired.y,
+        width: size.width,
+        height: size.height,
       },
     },
     ...nodes.map(node => ({
@@ -36,10 +34,10 @@ export function computePushBlockingWindowsRight({
       kind: 'node' as const,
       groupId: node.id,
       rect: {
-        x: node.position.x - WINDOW_PLACEMENT_GAP_PX,
-        y: node.position.y - WINDOW_PLACEMENT_GAP_PX,
-        width: node.data.width + WINDOW_PLACEMENT_GAP_PX * 2,
-        height: node.data.height + WINDOW_PLACEMENT_GAP_PX * 2,
+        x: node.position.x,
+        y: node.position.y,
+        width: node.data.width,
+        height: node.data.height,
       },
     })),
   ]
@@ -55,12 +53,6 @@ export function computePushBlockingWindowsRight({
   return new Map(
     pushed
       .filter(item => item.id !== placementId)
-      .map(item => [
-        item.id,
-        {
-          x: item.rect.x + WINDOW_PLACEMENT_GAP_PX,
-          y: item.rect.y + WINDOW_PLACEMENT_GAP_PX,
-        },
-      ]),
+      .map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
   )
 }

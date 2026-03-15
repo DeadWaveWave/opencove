@@ -116,7 +116,7 @@ export function useWorkspaceCanvasNodesStore({
         desiredSize: normalizedSize,
         nodes: nodesRef.current,
         spaces: spacesRef.current,
-        gap: 24,
+        gap: 0,
       })
 
       if (!resolved) {

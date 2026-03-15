@@ -21,6 +21,7 @@ export interface TerminalNodeProps {
   terminalFontSize: number
   scrollback: string | null
   onClose: () => void
+  onSaveLastMessageToNote?: () => Promise<void>
   onResize: (size: { width: number; height: number }) => void
   onScrollbackChange?: (scrollback: string) => void
   onTitleCommit?: (title: string) => void

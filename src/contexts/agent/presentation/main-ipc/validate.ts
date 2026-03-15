@@ -2,6 +2,7 @@ import type {
   AgentProviderId,
   LaunchAgentInput,
   ListAgentModelsInput,
+  ReadAgentLastMessageInput,
   ResolveAgentResumeSessionInput,
 } from '../../../../shared/contracts/dto'
 import { normalizeProvider } from '../../../../app/main/ipc/normalize'
@@ -44,6 +45,38 @@ export function normalizeResolveResumeSessionPayload(
   }
 
   return { provider, cwd, startedAt }
+}
+
+export function normalizeReadLastMessagePayload(payload: unknown): ReadAgentLastMessageInput {
+  if (!payload || typeof payload !== 'object') {
+    throw new Error('Invalid payload for agent:read-last-message')
+  }
+
+  const record = payload as Record<string, unknown>
+  const provider = normalizeProvider(record.provider)
+  const cwd = typeof record.cwd === 'string' ? record.cwd.trim() : ''
+  const startedAt = typeof record.startedAt === 'string' ? record.startedAt.trim() : ''
+  const resumeSessionId =
+    typeof record.resumeSessionId === 'string' ? record.resumeSessionId.trim() : ''
+
+  if (cwd.length === 0) {
+    throw new Error('Invalid cwd for agent:read-last-message')
+  }
+
+  if (!isAbsolute(cwd)) {
+    throw new Error('agent:read-last-message requires an absolute cwd')
+  }
+
+  if (!Number.isFinite(Date.parse(startedAt))) {
+    throw new Error('agent:read-last-message requires a valid startedAt')
+  }
+
+  return {
+    provider,
+    cwd,
+    startedAt,
+    resumeSessionId: resumeSessionId.length > 0 ? resumeSessionId : null,
+  }
 }
 
 export function resolveAgentTestStub(

@@ -4,6 +4,7 @@ import type {
   LaunchAgentInput,
   LaunchAgentResult,
   ListAgentModelsInput,
+  ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
   ResolveAgentResumeSessionResult,
 } from '../../../../shared/contracts/dto'
@@ -15,16 +16,21 @@ import {
   listAgentModels,
 } from '../../infrastructure/cli/AgentModelService'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
+import { readLastAssistantMessageFromSessionFile } from '../../infrastructure/watchers/SessionLastAssistantMessage'
+import { resolveSessionFilePath } from '../../infrastructure/watchers/SessionFileResolver'
 import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import {
   normalizeLaunchAgentPayload,
   normalizeListModelsPayload,
+  normalizeReadLastMessagePayload,
   normalizeResolveResumeSessionPayload,
   resolveAgentTestStub,
 } from './validate'
 
 const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
+const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
+const READ_LAST_MESSAGE_FILE_TIMEOUT_MS = 1_500
 
 export function registerAgentIpcHandlers(
   ptyRuntime: PtyRuntime,
@@ -56,6 +62,51 @@ export function registerAgentIpcHandlers(
       })
 
       return { resumeSessionId }
+    },
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.agentReadLastMessage,
+    async (_event, payload): Promise<ReadAgentLastMessageResult> => {
+      const normalized = normalizeReadLastMessagePayload(payload)
+
+      const isApproved = await approvedWorkspaces.isPathApproved(normalized.cwd)
+      if (!isApproved) {
+        throw new Error('agent:read-last-message cwd is outside approved workspaces')
+      }
+
+      const startedAtMs = Date.parse(normalized.startedAt)
+      const resumeSessionId =
+        normalized.resumeSessionId ??
+        (await locateAgentResumeSessionId({
+          provider: normalized.provider,
+          cwd: normalized.cwd,
+          startedAtMs,
+          timeoutMs: READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS,
+        }))
+
+      if (!resumeSessionId) {
+        return { message: null }
+      }
+
+      const sessionFilePath = await resolveSessionFilePath({
+        provider: normalized.provider,
+        cwd: normalized.cwd,
+        sessionId: resumeSessionId,
+        startedAtMs,
+        timeoutMs: READ_LAST_MESSAGE_FILE_TIMEOUT_MS,
+      })
+
+      if (!sessionFilePath) {
+        return { message: null }
+      }
+
+      const message = await readLastAssistantMessageFromSessionFile(
+        normalized.provider,
+        sessionFilePath,
+      )
+
+      return { message }
     },
   )
 
@@ -130,6 +181,7 @@ export function registerAgentIpcHandlers(
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
       ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
+      ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
       ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
       disposeAgentModelService()
     },

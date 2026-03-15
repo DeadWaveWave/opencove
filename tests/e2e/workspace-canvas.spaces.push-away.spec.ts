@@ -8,7 +8,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Push-away)', () => {
-  test('pushes blocking root windows away when moving a space over them', async () => {
+  test('keeps blocking root windows clear when moving a space over them', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -110,7 +110,7 @@ test.describe('Workspace Canvas - Spaces (Push-away)', () => {
             const rootRight = root.position.x + root.width
             const spaceRight = spaceRect.x + spaceRect.width
 
-            return rootLeft >= spaceRight + 24 && rootRight > rootLeft
+            return rootLeft >= spaceRight && rootRight > rootLeft
           }, storageKey)
         })
         .toBe(true)
@@ -119,7 +119,7 @@ test.describe('Workspace Canvas - Spaces (Push-away)', () => {
     }
   })
 
-  test('pushes blocking windows away when resizing a space outward', async () => {
+  test('keeps blocking windows clear when resizing a space outward', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -223,7 +223,7 @@ test.describe('Workspace Canvas - Spaces (Push-away)', () => {
             const rootRight = root.position.x + root.width
             const spaceRight = spaceRect.x + spaceRect.width
 
-            return ownedX === 80 && rootLeft >= spaceRight + 24 && rootRight > rootLeft
+            return ownedX === 80 && rootLeft >= spaceRight && rootRight > rootLeft
           }, storageKey)
         })
         .toBe(true)

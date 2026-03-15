@@ -16,6 +16,8 @@ import type {
   ListGitWorktreesResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
+  ReadAgentLastMessageInput,
+  ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
   ResolveAgentResumeSessionResult,
   ListWorkspacePathOpenersResult,
@@ -91,6 +93,7 @@ export interface OpenCoveApi {
   agent: {
     listModels: (payload: ListAgentModelsInput) => Promise<ListAgentModelsResult>
     launch: (payload: LaunchAgentInput) => Promise<LaunchAgentResult>
+    readLastMessage: (payload: ReadAgentLastMessageInput) => Promise<ReadAgentLastMessageResult>
     resolveResumeSessionId: (
       payload: ResolveAgentResumeSessionInput,
     ) => Promise<ResolveAgentResumeSessionResult>

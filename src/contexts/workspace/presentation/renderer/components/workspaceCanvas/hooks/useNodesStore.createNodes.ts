@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
 import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
+import { findNearestFreePositionOnRight } from '../../../utils/collision'
 import {
   DEFAULT_NOTE_WINDOW_SIZE,
   resolveDefaultAgentWindowSize,
@@ -10,7 +11,10 @@ import {
   resolveDefaultTerminalWindowSize,
 } from '../constants'
 import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
-import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
+import type {
+  CreateNoteNodeOptions,
+  UseWorkspaceCanvasNodesStoreResult,
+} from './useNodesStore.types'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 
 interface UseWorkspaceCanvasNodeCreationParams {
@@ -119,23 +123,42 @@ export function useWorkspaceCanvasNodeCreation({
   )
 
   const createNoteNode = useCallback(
-    (anchor: Point): Node<TerminalNodeData> | null => {
-      const { placement, canPlace } = resolveNodesPlacement({
-        anchor,
-        size: DEFAULT_NOTE_WINDOW_SIZE,
-        getNodes: () => nodesRef.current,
-        pushBlockingWindowsRight,
-      })
+    (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
+      const resolvedPlacement =
+        options.placementStrategy === 'right-no-push'
+          ? (() => {
+              const placement = findNearestFreePositionOnRight(
+                anchor,
+                DEFAULT_NOTE_WINDOW_SIZE,
+                nodesRef.current,
+              )
 
-      if (canPlace !== true) {
-        onShowMessage?.('当前视图附近没有可用空位，请先移动或关闭部分窗口。', 'warning')
+              return {
+                placement: placement ?? anchor,
+                canPlace: placement !== null,
+              }
+            })()
+          : resolveNodesPlacement({
+              anchor,
+              size: DEFAULT_NOTE_WINDOW_SIZE,
+              getNodes: () => nodesRef.current,
+              pushBlockingWindowsRight,
+            })
+
+      if (resolvedPlacement.canPlace !== true) {
+        onShowMessage?.(
+          options.placementStrategy === 'right-no-push'
+            ? '当前 Agent 右侧没有可用空位，请先移动或关闭部分窗口。'
+            : '当前视图附近没有可用空位，请先移动或关闭部分窗口。',
+          'warning',
+        )
         return null
       }
 
       const nextNode: Node<TerminalNodeData> = {
         id: crypto.randomUUID(),
         type: 'noteNode',
-        position: placement,
+        position: resolvedPlacement.placement,
         data: {
           sessionId: '',
           title: 'note',
