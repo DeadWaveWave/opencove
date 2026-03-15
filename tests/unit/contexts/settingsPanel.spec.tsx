@@ -1,11 +1,12 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import {
   AGENT_PROVIDERS,
   DEFAULT_AGENT_SETTINGS,
   type AgentProvider,
 } from '../../../src/contexts/settings/domain/agentSettings'
+import * as terminalProfilesHook from '../../../src/app/renderer/shell/hooks/useTerminalProfiles'
 import { SettingsPanel } from '../../../src/contexts/settings/presentation/renderer/SettingsPanel'
 
 function createModelCatalog() {
@@ -45,23 +46,15 @@ function createModelCatalog() {
 }
 
 describe('SettingsPanel', () => {
-  it('loads terminal profiles and persists the selected default profile', async () => {
+  it('persists the selected default profile', () => {
     const onChange = vi.fn()
-    const listProfiles = vi.fn(async () => ({
-      profiles: [
-        { id: 'powershell', label: 'PowerShell', runtimeKind: 'windows' as const },
-        { id: 'wsl:Ubuntu', label: 'WSL (Ubuntu)', runtimeKind: 'wsl' as const },
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [
+        { id: 'powershell', label: 'PowerShell', runtimeKind: 'windows' },
+        { id: 'wsl:Ubuntu', label: 'WSL (Ubuntu)', runtimeKind: 'wsl' },
       ],
-      defaultProfileId: 'powershell',
-    }))
-
-    Object.defineProperty(window, 'opencoveApi', {
-      configurable: true,
-      value: {
-        pty: {
-          listProfiles,
-        },
-      },
+      detectedDefaultTerminalProfileId: 'powershell',
+      refreshTerminalProfiles: async () => undefined,
     })
 
     render(
@@ -75,14 +68,10 @@ describe('SettingsPanel', () => {
       />,
     )
 
-    await waitFor(() => {
-      expect(listProfiles).toHaveBeenCalledTimes(1)
-    })
-
     const canvasNav = screen.getByTestId('settings-section-nav-canvas')
     fireEvent.click(canvasNav)
 
-    const select = await screen.findByTestId('settings-terminal-profile')
+    const select = screen.getByTestId('settings-terminal-profile')
     expect(select).toBeVisible()
     expect(screen.getByText('Automatic (PowerShell)')).toBeVisible()
 

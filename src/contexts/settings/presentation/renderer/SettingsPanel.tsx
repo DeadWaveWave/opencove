@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { useTerminalProfiles } from '@app/renderer/shell/hooks/useTerminalProfiles'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import {
   AGENT_PROVIDERS,
@@ -10,7 +11,6 @@ import {
   type TaskTitleProvider,
   type UiLanguage,
 } from '@contexts/settings/domain/agentSettings'
-import type { TerminalProfile } from '@shared/contracts/dto'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
@@ -62,15 +62,12 @@ export function SettingsPanel({
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
   const { t } = useTranslation()
+  const { terminalProfiles, detectedDefaultTerminalProfileId } = useTerminalProfiles()
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState())
   const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>('general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
-  const [terminalProfiles, setTerminalProfiles] = useState<TerminalProfile[]>([])
-  const [detectedDefaultTerminalProfileId, setDetectedDefaultTerminalProfileId] = useState<
-    string | null
-  >(null)
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
@@ -183,42 +180,6 @@ export function SettingsPanel({
   }
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
-
-  useEffect(() => {
-    let cancelled = false
-    const listProfiles = window.opencoveApi.pty.listProfiles
-
-    if (typeof listProfiles !== 'function') {
-      setTerminalProfiles([])
-      setDetectedDefaultTerminalProfileId(null)
-      return () => {
-        cancelled = true
-      }
-    }
-
-    void listProfiles()
-      .then(result => {
-        if (cancelled) {
-          return
-        }
-
-        setTerminalProfiles(result.profiles)
-        setDetectedDefaultTerminalProfileId(result.defaultProfileId)
-      })
-      .catch(() => {
-        if (cancelled) {
-          return
-        }
-
-        setTerminalProfiles([])
-        setDetectedDefaultTerminalProfileId(null)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   const scrollToSection = (id: SettingsSectionId, targetId: string): void => {
     setActiveSectionId(id)
     window.requestAnimationFrame(() => {
