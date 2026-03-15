@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type {
   PersistedAppState,
@@ -30,6 +31,7 @@ export function usePersistedAppState({
   requestPersistFlush: () => void
   flushPersistNow: () => void
 } {
+  const { t } = useTranslation()
   const persistNotice = useAppStore(state => state.persistNotice)
   const setPersistNotice = useAppStore(state => state.setPersistNotice)
   const persistFlushRequestedRef = useRef(false)
@@ -48,8 +50,8 @@ export function usePersistedAppState({
 
           const message =
             result.level === 'no_scrollback'
-              ? 'Storage quota reached; saved without terminal history.'
-              : 'Storage quota reached; saved settings only.'
+              ? t('persistence.savedWithoutScrollback')
+              : t('persistence.savedSettingsOnly')
 
           const next: PersistNotice = { tone: 'warning', message, kind: 'write' }
           return previous?.tone === next.tone &&
@@ -61,12 +63,12 @@ export function usePersistedAppState({
 
         const message =
           result.reason === 'unavailable'
-            ? 'Storage is unavailable; changes will not be saved.'
+            ? t('persistence.unavailable')
             : result.reason === 'quota' || result.reason === 'payload_too_large'
-              ? 'Storage limit exceeded; unable to persist workspace state.'
+              ? t('persistence.limitExceeded')
               : result.reason === 'io'
-                ? `Persistence I/O failed: ${result.message}`
-                : `Persistence failed: ${result.message}`
+                ? t('persistence.ioFailed', { message: result.message })
+                : t('persistence.failed', { message: result.message })
 
         const next: PersistNotice = { tone: 'error', message, kind: 'write' }
         return previous?.tone === next.tone &&
@@ -76,7 +78,7 @@ export function usePersistedAppState({
           : next
       })
     },
-    [setPersistNotice],
+    [setPersistNotice, t],
   )
 
   useEffect(() => {

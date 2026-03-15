@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 
 export interface SpaceWorktreeGuardState {
   spaceName: string
@@ -21,11 +22,16 @@ export function SpaceWorktreeGuardWindow({
   onMarkMismatchAndContinue: () => void
   onCloseAllAndContinue: () => void
 }): React.JSX.Element | null {
+  const { t } = useTranslation()
+
   if (!guard) {
     return null
   }
 
-  const windowSummary = `${guard.agentCount} agent${guard.agentCount === 1 ? '' : 's'} · ${guard.terminalCount} terminal${guard.terminalCount === 1 ? '' : 's'}`
+  const windowSummary = [
+    t('worktree.archiveAgents', { count: guard.agentCount }),
+    t('worktree.archiveTerminals', { count: guard.terminalCount }),
+  ].join(' · ')
 
   return (
     <div
@@ -48,13 +54,12 @@ export function SpaceWorktreeGuardWindow({
         <div className="workspace-space-worktree__message-block">
           <h3>{guard.pendingLabel}</h3>
           <p className="workspace-space-worktree__lead">
-            Space <strong>{guard.spaceName}</strong> still has active windows bound to its current
-            directory.
+            {t('worktreeGuard.activeWindowsBound', { name: guard.spaceName })}
           </p>
           <p className="workspace-space-worktree__supporting-text">
             {guard.allowMarkMismatch
-              ? 'Close them first, or continue by marking those windows as DIR MISMATCH.'
-              : 'Close those windows first. This action changes worktree binding and metadata for the space.'}
+              ? t('worktreeGuard.closeFirstOrMark')
+              : t('worktreeGuard.closeFirstOnly')}
           </p>
           <p className="workspace-space-worktree-guard__summary">{windowSummary}</p>
         </div>
@@ -73,7 +78,7 @@ export function SpaceWorktreeGuardWindow({
               onCancel()
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
 
           {guard.allowMarkMismatch ? (
@@ -86,7 +91,7 @@ export function SpaceWorktreeGuardWindow({
                 onMarkMismatchAndContinue()
               }}
             >
-              Mark Mismatch & Continue
+              {t('worktreeGuard.markMismatchAndContinue')}
             </button>
           ) : null}
 
@@ -99,7 +104,7 @@ export function SpaceWorktreeGuardWindow({
               onCloseAllAndContinue()
             }}
           >
-            Close All & Continue
+            {t('worktreeGuard.closeAllAndContinue')}
           </button>
         </div>
       </section>

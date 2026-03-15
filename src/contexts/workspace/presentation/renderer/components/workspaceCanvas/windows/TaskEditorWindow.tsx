@@ -1,9 +1,11 @@
 import React, { type Dispatch, type SetStateAction } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { TaskPriority } from '../../../types'
 import { TASK_PRIORITY_OPTIONS } from '../constants'
 import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskEditorState } from '../types'
+import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 
 interface TaskEditorWindowProps {
   taskEditor: TaskEditorState | null
@@ -26,6 +28,7 @@ export function TaskEditorWindow({
   generateTaskEditorTitle,
   saveTaskEdits,
 }: TaskEditorWindowProps): React.JSX.Element | null {
+  const { t } = useTranslation()
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
 
   if (!taskEditor) {
@@ -46,23 +49,30 @@ export function TaskEditorWindow({
           event.stopPropagation()
         }}
       >
-        <h3>Edit Task</h3>
+        <h3>{t('taskWindow.editTask')}</h3>
         {isTaskAiNamingEnabled ? (
           <p className="workspace-task-creator__meta">
-            Auto-task provider: {taskTitleProviderLabel} · Model: {taskTitleModelLabel}
+            {t('taskWindow.autoTaskProvider', {
+              provider: taskTitleProviderLabel,
+              model: taskTitleModelLabel,
+            })}
           </p>
         ) : null}
 
         <div className="workspace-task-creator__field-row">
           <label htmlFor="workspace-task-editor-title">
-            {isTaskAiNamingEnabled ? 'Task Name (optional)' : 'Task Name'}
+            {isTaskAiNamingEnabled ? t('taskWindow.taskNameOptional') : t('taskWindow.taskName')}
           </label>
           <input
             id="workspace-task-editor-title"
             data-testid="workspace-task-editor-title"
             value={taskEditor.title}
             disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-            placeholder={isTaskAiNamingEnabled ? 'Leave empty to auto-generate' : 'Enter task name'}
+            placeholder={
+              isTaskAiNamingEnabled
+                ? t('taskWindow.leaveEmptyAutoGenerate')
+                : t('taskWindow.enterTaskName')
+            }
             onChange={event => {
               const nextValue = event.target.value
               setTaskEditor(prev =>
@@ -81,14 +91,14 @@ export function TaskEditorWindow({
 
         <div className="workspace-task-creator__field-row">
           <label htmlFor="workspace-task-editor-requirement">
-            Task Requirement (Prompt to Agent)
+            {t('taskWindow.taskRequirementPrompt')}
           </label>
           <textarea
             id="workspace-task-editor-requirement"
             data-testid="workspace-task-editor-requirement"
             value={taskEditor.requirement}
             disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-            placeholder="输入任务要求..."
+            placeholder={t('taskWindow.requirementPlaceholder')}
             onChange={event => {
               const nextValue = event.target.value
               setTaskEditor(prev =>
@@ -106,7 +116,7 @@ export function TaskEditorWindow({
 
         <div className="workspace-task-creator__field-grid">
           <div className="workspace-task-creator__field-row">
-            <label htmlFor="workspace-task-editor-priority">Priority</label>
+            <label htmlFor="workspace-task-editor-priority">{t('taskWindow.priority')}</label>
             <select
               id="workspace-task-editor-priority"
               data-testid="workspace-task-editor-priority"
@@ -126,14 +136,14 @@ export function TaskEditorWindow({
             >
               {TASK_PRIORITY_OPTIONS.map(option => (
                 <option value={option.value} key={option.value}>
-                  {option.label}
+                  {getTaskPriorityLabel(t, option.value)}
                 </option>
               ))}
             </select>
           </div>
 
           <div className="workspace-task-creator__field-row">
-            <label>Tags (select from presets)</label>
+            <label>{t('taskWindow.tagsPreset')}</label>
             <div
               className="workspace-task-creator__tag-options"
               data-testid="workspace-task-editor-tag-options"
@@ -173,7 +183,7 @@ export function TaskEditorWindow({
                 })
               ) : (
                 <span className="workspace-task-creator__hint">
-                  No task tags configured. Add tags in Settings.
+                  {t('taskWindow.noTaskTagsConfigured')}
                 </span>
               )}
             </div>
@@ -198,7 +208,7 @@ export function TaskEditorWindow({
                 )
               }}
             />
-            <span>Auto-generate title/priority/tags when title is empty</span>
+            <span>{t('taskWindow.autoGenerateWhenEmpty')}</span>
           </label>
         ) : null}
 
@@ -216,7 +226,7 @@ export function TaskEditorWindow({
               closeTaskEditor()
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           {isTaskAiNamingEnabled ? (
             <button
@@ -228,7 +238,7 @@ export function TaskEditorWindow({
                 void generateTaskEditorTitle()
               }}
             >
-              {taskEditor.isGeneratingTitle ? 'Generating...' : 'Generate by AI'}
+              {taskEditor.isGeneratingTitle ? t('common.generating') : t('common.generateByAi')}
             </button>
           ) : null}
           <button
@@ -240,7 +250,7 @@ export function TaskEditorWindow({
               void saveTaskEdits()
             }}
           >
-            {taskEditor.isSaving ? 'Saving...' : 'Save'}
+            {taskEditor.isSaving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </section>

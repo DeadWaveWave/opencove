@@ -1,4 +1,5 @@
 import React, { type Dispatch, type SetStateAction } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { NodeDeleteConfirmationState } from '../types'
 
 interface NodeDeleteConfirmationWindowProps {
@@ -9,23 +10,25 @@ interface NodeDeleteConfirmationWindowProps {
 
 function renderDescription(
   nodeDeleteConfirmation: NodeDeleteConfirmationState,
+  t: (key: string, options?: Record<string, unknown>) => string,
 ): React.JSX.Element | string {
   const { nodeIds, primaryNodeKind, primaryNodeTitle } = nodeDeleteConfirmation
   if (nodeIds.length > 1) {
-    return `This will permanently remove ${nodeIds.length} selected nodes.`
+    return t('nodeDeleteDialog.multipleDescription', { count: nodeIds.length })
   }
 
   if (primaryNodeKind === 'task') {
     return (
       <>
-        This will permanently remove <strong>{primaryNodeTitle}</strong>.
+        {t('nodeDeleteDialog.taskDescriptionPrefix')} <strong>{primaryNodeTitle}</strong>.
       </>
     )
   }
 
   return (
     <>
-      This will permanently remove this {primaryNodeKind}: <strong>{primaryNodeTitle}</strong>.
+      {t('nodeDeleteDialog.nodeDescriptionPrefix', { kind: primaryNodeKind })}{' '}
+      <strong>{primaryNodeTitle}</strong>.
     </>
   )
 }
@@ -35,16 +38,18 @@ export function NodeDeleteConfirmationWindow({
   setNodeDeleteConfirmation,
   confirmNodeDelete,
 }: NodeDeleteConfirmationWindowProps): React.JSX.Element | null {
+  const { t } = useTranslation()
+
   if (!nodeDeleteConfirmation) {
     return null
   }
 
   const heading =
     nodeDeleteConfirmation.nodeIds.length > 1
-      ? `Delete ${nodeDeleteConfirmation.nodeIds.length} nodes?`
+      ? t('nodeDeleteDialog.deleteNodes', { count: nodeDeleteConfirmation.nodeIds.length })
       : nodeDeleteConfirmation.primaryNodeKind === 'task'
-        ? 'Delete Task?'
-        : 'Delete Node?'
+        ? t('nodeDeleteDialog.deleteTask')
+        : t('nodeDeleteDialog.deleteNode')
 
   return (
     <div
@@ -61,7 +66,7 @@ export function NodeDeleteConfirmationWindow({
         }}
       >
         <h3>{heading}</h3>
-        <p>{renderDescription(nodeDeleteConfirmation)}</p>
+        <p>{renderDescription(nodeDeleteConfirmation, t)}</p>
         <div className="cove-window__actions workspace-task-delete__actions workspace-task-creator__actions">
           <button
             type="button"
@@ -71,7 +76,7 @@ export function NodeDeleteConfirmationWindow({
               setNodeDeleteConfirmation(null)
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -82,7 +87,7 @@ export function NodeDeleteConfirmationWindow({
               void confirmNodeDelete()
             }}
           >
-            Delete
+            {t('common.delete')}
           </button>
         </div>
       </section>

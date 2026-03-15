@@ -3,25 +3,61 @@ import {
   AGENT_PROVIDERS,
   AGENT_PROVIDER_LABEL,
   type AgentProvider,
+  UI_LANGUAGES,
+  type UiLanguage,
 } from '@contexts/settings/domain/agentSettings'
+import { useTranslation } from '@app/renderer/i18n'
+import { getUiLanguageLabel } from '@app/renderer/i18n/labels'
 
 export function GeneralSection(props: {
+  language: UiLanguage
   defaultProvider: AgentProvider
   agentFullAccess: boolean
+  onChangeLanguage: (language: UiLanguage) => void
   onChangeDefaultProvider: (provider: AgentProvider) => void
   onChangeAgentFullAccess: (enabled: boolean) => void
 }): React.JSX.Element {
-  const { defaultProvider, agentFullAccess, onChangeDefaultProvider, onChangeAgentFullAccess } =
-    props
+  const { t } = useTranslation()
+  const {
+    language,
+    defaultProvider,
+    agentFullAccess,
+    onChangeLanguage,
+    onChangeDefaultProvider,
+    onChangeAgentFullAccess,
+  } = props
 
   return (
     <div className="settings-panel__section" id="settings-section-general">
-      <h3 className="settings-panel__section-title">Provider Settings</h3>
+      <h3 className="settings-panel__section-title">{t('settingsPanel.general.title')}</h3>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>Default Agent</strong>
-          <span>The default AI provider for new tasks and terminals.</span>
+          <strong>{t('settingsPanel.general.languageLabel')}</strong>
+          <span>{t('settingsPanel.general.languageHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <select
+            id="settings-language"
+            data-testid="settings-language"
+            value={language}
+            onChange={event => {
+              onChangeLanguage(event.target.value as UiLanguage)
+            }}
+          >
+            {UI_LANGUAGES.map(option => (
+              <option value={option} key={option}>
+                {getUiLanguageLabel(option)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.general.defaultAgentLabel')}</strong>
+          <span>{t('settingsPanel.general.defaultAgentHelp')}</span>
         </div>
         <div className="settings-panel__control">
           <select
@@ -42,8 +78,8 @@ export function GeneralSection(props: {
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>Full Access Mode</strong>
-          <span>Disable sandbox and manual approvals for agents.</span>
+          <strong>{t('settingsPanel.general.fullAccessLabel')}</strong>
+          <span>{t('settingsPanel.general.fullAccessHelp')}</span>
         </div>
         <div className="settings-panel__control">
           <label className="cove-toggle">

@@ -1,5 +1,6 @@
 import React from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from '@app/renderer/i18n'
 
 export interface BranchRenameState {
   spaceId: string
@@ -24,6 +25,8 @@ export function WorkspaceSpaceBranchRenameDialog({
   closeBranchRename: () => void
   submitBranchRename: () => Promise<void>
 }): React.JSX.Element | null {
+  const { t } = useTranslation()
+
   if (!branchRename || !document.body) {
     return null
   }
@@ -43,12 +46,14 @@ export function WorkspaceSpaceBranchRenameDialog({
         }}
       >
         <header className="workspace-space-branch-rename__header">
-          <h3>Rename Branch</h3>
+          <h3>{t('branchRenameDialog.title')}</h3>
           <p className="workspace-space-branch-rename__meta">{branchRename.spaceName}</p>
         </header>
 
         <div className="cove-window__field-row">
-          <label htmlFor="workspace-space-branch-rename-input">New branch name</label>
+          <label htmlFor="workspace-space-branch-rename-input">
+            {t('branchRenameDialog.fieldLabel')}
+          </label>
           <input
             id="workspace-space-branch-rename-input"
             ref={branchRenameInputRef}
@@ -75,7 +80,7 @@ export function WorkspaceSpaceBranchRenameDialog({
           />
         </div>
 
-        <p className="workspace-space-branch-rename__prompt">确定要更名吗？</p>
+        <p className="workspace-space-branch-rename__prompt">{t('branchRenameDialog.prompt')}</p>
 
         {branchRename.error ? (
           <p className="cove-window__error workspace-space-branch-rename__error">
@@ -93,7 +98,7 @@ export function WorkspaceSpaceBranchRenameDialog({
               closeBranchRename()
             }}
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -104,7 +109,9 @@ export function WorkspaceSpaceBranchRenameDialog({
               void submitBranchRename()
             }}
           >
-            {branchRename.isSubmitting ? 'Renaming...' : 'Confirm Rename'}
+            {branchRename.isSubmitting
+              ? t('branchRenameDialog.renaming')
+              : t('branchRenameDialog.confirmRename')}
           </button>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import type { Node, ReactFlowInstance } from '/react'
+import type { TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import { TASK_PRIORITIES } from './constants'
@@ -112,6 +113,7 @@ export function validateSpaceTransfer(
   nodes: Array<Node<TerminalNodeData>>,
   targetSpace: WorkspaceSpaceState | null,
   workspacePath: string,
+  t: TranslateFn,
 ): string | null {
   if (nodeIds.length === 0) {
     return null
@@ -128,7 +130,7 @@ export function validateSpaceTransfer(
 
     if (node.data.kind === 'agent' && node.data.agent) {
       if (resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory) {
-        return 'Agent windows cannot enter or leave a space with a different directory.'
+        return t('messages.agentSpaceDirectoryMismatch')
       }
 
       continue
@@ -136,7 +138,7 @@ export function validateSpaceTransfer(
 
     if (node.data.kind === 'terminal') {
       if (resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory) {
-        return 'Terminal windows cannot enter or leave a space with a different directory.'
+        return t('messages.terminalSpaceDirectoryMismatch')
       }
 
       continue
@@ -153,7 +155,7 @@ export function validateSpaceTransfer(
       linkedAgentNode?.data.kind === 'agent' && isAgentActive(linkedAgentNode.data.status)
 
     if (node.data.task.status === 'doing' || hasActiveLinkedAgent) {
-      return 'Tasks with active agents cannot be moved between spaces.'
+      return t('messages.taskSpaceMoveBlocked')
     }
   }
 

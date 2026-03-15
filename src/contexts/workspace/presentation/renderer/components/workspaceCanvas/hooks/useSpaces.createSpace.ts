@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type {
@@ -45,13 +46,15 @@ export function useWorkspaceCanvasCreateSpace({
 }): {
   createSpaceFromSelectedNodes: () => void
 } {
+  const { t } = useTranslation()
+
   const createSpace = useCallback(
     (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null }) => {
       const normalizedNodeIds = payload.nodeIds.filter(nodeId =>
         nodesRef.current.some(node => node.id === nodeId),
       )
       if (normalizedNodeIds.length === 0) {
-        onShowMessage?.('Space must include at least one task or agent.', 'warning')
+        onShowMessage?.(t('messages.spaceRequiresNode'), 'warning')
         setContextMenu(null)
         setEmptySelectionPrompt(null)
         return
@@ -62,6 +65,7 @@ export function useWorkspaceCanvasCreateSpace({
         nodesRef.current,
         null,
         workspacePath,
+        t,
       )
       if (validationError) {
         onShowMessage?.(validationError, 'warning')
@@ -70,10 +74,10 @@ export function useWorkspaceCanvasCreateSpace({
 
       const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
       let nextNumber = spacesRef.current.length + 1
-      let normalizedName = `Space ${nextNumber}`
+      let normalizedName = t('space.defaultName', { count: nextNumber })
       while (usedNames.has(normalizedName.toLowerCase())) {
         nextNumber += 1
-        normalizedName = `Space ${nextNumber}`
+        normalizedName = t('space.defaultName', { count: nextNumber })
       }
 
       const assignedNodeSet = new Set(normalizedNodeIds)
@@ -307,6 +311,7 @@ export function useWorkspaceCanvasCreateSpace({
       setNodes,
       spacesRef,
       workspacePath,
+      t,
     ],
   )
 

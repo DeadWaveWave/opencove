@@ -8,12 +8,17 @@ export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
 
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
 
+export const UI_LANGUAGES = ['en', 'zh-CN'] as const
+
+export type UiLanguage = (typeof UI_LANGUAGES)[number]
+
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
 export const MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 120
 export const MIN_TERMINAL_FONT_SIZE = 10
 export const MAX_TERMINAL_FONT_SIZE = 22
 export const MIN_UI_FONT_SIZE = 14
 export const MAX_UI_FONT_SIZE = 24
+export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
 
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
@@ -21,6 +26,11 @@ const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
 export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
   'claude-code': 'Claude Code',
   codex: 'Codex',
+}
+
+export const UI_LANGUAGE_NATIVE_LABEL: Record<UiLanguage, string> = {
+  en: 'English',
+  'zh-CN': '简体中文',
 }
 
 export type AgentCustomModelEnabledByProvider = {
@@ -36,6 +46,7 @@ export type AgentCustomModelOptionsByProvider = {
 }
 
 export interface AgentSettings {
+  language: UiLanguage
   defaultProvider: AgentProvider
   agentFullAccess: boolean
   customModelEnabledByProvider: AgentCustomModelEnabledByProvider
@@ -52,6 +63,7 @@ export interface AgentSettings {
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
+  language: DEFAULT_UI_LANGUAGE,
   defaultProvider: 'codex',
   agentFullAccess: true,
   customModelEnabledByProvider: {
@@ -90,6 +102,10 @@ function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
 
 function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
   return typeof value === 'string' && CANVAS_INPUT_MODES.includes(value as CanvasInputMode)
+}
+
+function isValidUiLanguage(value: unknown): value is UiLanguage {
+  return typeof value === 'string' && UI_LANGUAGES.includes(value as UiLanguage)
 }
 
 function normalizeTextValue(value: unknown): string {
@@ -196,6 +212,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const defaultProvider = isValidProvider(value.defaultProvider)
     ? value.defaultProvider
     : DEFAULT_AGENT_SETTINGS.defaultProvider
+  const language = isValidUiLanguage(value.language)
+    ? value.language
+    : DEFAULT_AGENT_SETTINGS.language
 
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess
@@ -293,6 +312,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   )
 
   return {
+    language,
     defaultProvider,
     agentFullAccess,
     customModelEnabledByProvider,

@@ -2,6 +2,7 @@ import { Handle, Position } from '@xyflow/react'
 import { Pencil } from 'lucide-react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type {
   AgentRuntimeStatus,
   Size,
@@ -12,12 +13,8 @@ import type {
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { TaskNodeAgentSessions } from './taskNode/TaskNodeAgentSessions'
 import { TaskNodeFooter } from './taskNode/TaskNodeFooter'
-import {
-  MIN_HEIGHT,
-  MIN_WIDTH,
-  shouldStopWheelPropagation,
-  TASK_PRIORITY_LABEL,
-} from './taskNode/helpers'
+import { MIN_HEIGHT, MIN_WIDTH, shouldStopWheelPropagation } from './taskNode/helpers'
+import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -80,6 +77,7 @@ export function TaskNode({
   onRemoveAgentSessionRecord,
   onInteractionStart,
 }: TaskNodeProps): JSX.Element {
+  const { t } = useTranslation()
   const resizeStartRef = useRef<{
     x: number
     y: number
@@ -344,8 +342,8 @@ export function TaskNode({
               event.stopPropagation()
               onOpenEditor()
             }}
-            aria-label="Open full task editor"
-            title="Open full task editor"
+            aria-label={t('taskNode.openFullTaskEditor')}
+            title={t('taskNode.openFullTaskEditor')}
           >
             <Pencil size={14} strokeWidth={2.2} />
           </button>
@@ -358,8 +356,8 @@ export function TaskNode({
               event.stopPropagation()
               onClose()
             }}
-            aria-label="Delete task"
-            title="Delete task"
+            aria-label={t('taskNode.deleteTask')}
+            title={t('taskNode.deleteTask')}
           >
             ×
           </button>
@@ -368,7 +366,7 @@ export function TaskNode({
 
       <div className="task-node__meta" data-testid="task-node-meta">
         <span className={`task-node__priority task-node__priority--${priority}`}>
-          {TASK_PRIORITY_LABEL[priority]}
+          {getTaskPriorityLabel(t, priority).toUpperCase()}
         </span>
 
         <span className="task-node__tags" data-testid="task-node-tags">
@@ -379,13 +377,13 @@ export function TaskNode({
               </span>
             ))
           ) : (
-            <span className="task-node__tag task-node__tag--empty">No tags</span>
+            <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
           )}
         </span>
       </div>
 
       <div className="task-node__content">
-        <label>Task Requirement</label>
+        <label>{t('taskNode.requirement')}</label>
         <div className="task-node__inline-editor">
           <textarea
             className="task-node__requirement-input nodrag nowheel"
@@ -438,14 +436,14 @@ export function TaskNode({
         type="button"
         className="task-node__resizer task-node__resizer--right nodrag"
         onPointerDown={handleResizePointerDown('horizontal')}
-        aria-label="Resize task width"
+        aria-label={t('taskNode.resizeWidth')}
         data-testid="task-resizer-right"
       />
       <button
         type="button"
         className="task-node__resizer task-node__resizer--bottom nodrag"
         onPointerDown={handleResizePointerDown('vertical')}
-        aria-label="Resize task height"
+        aria-label={t('taskNode.resizeHeight')}
         data-testid="task-resizer-bottom"
       />
     </div>

@@ -1,9 +1,11 @@
 import React, { useLayoutEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { TaskPriority } from '../../../types'
 import { TASK_PRIORITY_OPTIONS } from '../constants'
 import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskCreatorState } from '../types'
+import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 
 interface TaskCreatorWindowProps {
   taskCreator: TaskCreatorState | null
@@ -26,6 +28,7 @@ export function TaskCreatorWindow({
   generateTaskTitle,
   createTask,
 }: TaskCreatorWindowProps): React.JSX.Element | null {
+  const { t } = useTranslation()
   const [isAdvancedSettingsVisible, setIsAdvancedSettingsVisible] = useState(false)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
 
@@ -55,17 +58,17 @@ export function TaskCreatorWindow({
           event.stopPropagation()
         }}
       >
-        <h3>New Task</h3>
+        <h3>{t('taskWindow.newTask')}</h3>
 
         <div className="workspace-task-creator__field-row">
-          <label htmlFor="workspace-task-requirement">Describe the task</label>
+          <label htmlFor="workspace-task-requirement">{t('taskWindow.describeTask')}</label>
           <textarea
             id="workspace-task-requirement"
             data-testid="workspace-task-requirement"
             value={taskCreator.requirement}
             autoFocus
             disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
-            placeholder="输入任务要求..."
+            placeholder={t('taskWindow.requirementPlaceholder')}
             onChange={event => {
               const nextValue = event.target.value
               setTaskCreator(prev =>
@@ -85,15 +88,18 @@ export function TaskCreatorWindow({
           <>
             {isTaskAiNamingEnabled ? (
               <p className="workspace-task-creator__meta">
-                Auto-task provider: {taskTitleProviderLabel} · Model: {taskTitleModelLabel}
+                {t('taskWindow.autoTaskProvider', {
+                  provider: taskTitleProviderLabel,
+                  model: taskTitleModelLabel,
+                })}
               </p>
             ) : null}
 
             <div className="workspace-task-creator__field-row">
               <label htmlFor="workspace-task-title">
                 {isTaskAiNamingEnabled
-                  ? 'Task Name (optional)'
-                  : 'Task Name (optional, defaults to requirement summary)'}
+                  ? t('taskWindow.taskNameOptional')
+                  : t('taskWindow.taskNameOptionalSummary')}
               </label>
               <input
                 id="workspace-task-title"
@@ -102,8 +108,8 @@ export function TaskCreatorWindow({
                 disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
                 placeholder={
                   isTaskAiNamingEnabled
-                    ? 'Leave empty to auto-generate'
-                    : 'Leave empty to use a requirement summary'
+                    ? t('taskWindow.leaveEmptyAutoGenerate')
+                    : t('taskWindow.leaveEmptySummary')
                 }
                 onChange={event => {
                   const nextValue = event.target.value
@@ -122,7 +128,7 @@ export function TaskCreatorWindow({
 
             <div className="workspace-task-creator__field-grid">
               <div className="workspace-task-creator__field-row">
-                <label htmlFor="workspace-task-priority">Priority</label>
+                <label htmlFor="workspace-task-priority">{t('taskWindow.priority')}</label>
                 <select
                   id="workspace-task-priority"
                   data-testid="workspace-task-priority"
@@ -142,14 +148,14 @@ export function TaskCreatorWindow({
                 >
                   {TASK_PRIORITY_OPTIONS.map(option => (
                     <option value={option.value} key={option.value}>
-                      {option.label}
+                      {getTaskPriorityLabel(t, option.value)}
                     </option>
                   ))}
                 </select>
               </div>
 
               <div className="workspace-task-creator__field-row">
-                <label>Tags (select from presets)</label>
+                <label>{t('taskWindow.tagsPreset')}</label>
                 <div
                   className="workspace-task-creator__tag-options"
                   data-testid="workspace-task-tag-options"
@@ -192,7 +198,7 @@ export function TaskCreatorWindow({
                     })
                   ) : (
                     <span className="workspace-task-creator__hint">
-                      No task tags configured. Add tags in Settings.
+                      {t('taskWindow.noTaskTagsConfigured')}
                     </span>
                   )}
                 </div>
@@ -217,7 +223,7 @@ export function TaskCreatorWindow({
                     )
                   }}
                 />
-                <span>Auto-fill title/priority/tags by AI after creating</span>
+                <span>{t('taskWindow.autoFillByAi')}</span>
               </label>
             ) : null}
           </>
@@ -237,7 +243,7 @@ export function TaskCreatorWindow({
               setIsAdvancedSettingsVisible(prev => !prev)
             }}
           >
-            {isAdvancedSettingsVisible ? 'Hide Advanced' : 'Advanced'}
+            {isAdvancedSettingsVisible ? t('taskWindow.hideAdvanced') : t('taskWindow.advanced')}
           </button>
           {isAdvancedSettingsVisible && isTaskAiNamingEnabled ? (
             <button
@@ -249,7 +255,7 @@ export function TaskCreatorWindow({
                 void generateTaskTitle()
               }}
             >
-              {taskCreator.isGeneratingTitle ? 'Generating...' : 'Generate by AI'}
+              {taskCreator.isGeneratingTitle ? t('common.generating') : t('common.generateByAi')}
             </button>
           ) : null}
           <button
@@ -261,7 +267,7 @@ export function TaskCreatorWindow({
               void createTask()
             }}
           >
-            {taskCreator.isCreating ? 'Creating...' : 'Create'}
+            {taskCreator.isCreating ? t('common.generating') : t('common.create')}
           </button>
         </div>
       </section>

@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
@@ -55,6 +56,7 @@ export function WorkspaceSpaceRegion({
   onOpenSpaceMenu,
   setBranchRename,
 }: WorkspaceSpaceRegionProps): React.JSX.Element {
+  const { t } = useTranslation()
   return (
     <div
       className={
@@ -280,8 +282,8 @@ export function WorkspaceSpaceRegion({
             type="button"
             className="workspace-space-region__menu"
             data-testid={`workspace-space-menu-${space.id}`}
-            aria-label={`Open ${space.name} space actions`}
-            title="Space Actions"
+            aria-label={t('spaceActions.openSpaceActions', { name: space.name })}
+            title={t('spaceActions.title')}
             onClick={event => {
               event.stopPropagation()
               const rect = event.currentTarget.getBoundingClientRect()

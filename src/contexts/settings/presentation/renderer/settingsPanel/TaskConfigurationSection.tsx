@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import {
   AGENT_PROVIDERS,
   AGENT_PROVIDER_LABEL,
@@ -20,6 +21,7 @@ export function TaskConfigurationSection(props: {
   onAddTag: () => void
   onRemoveTag: (tag: string) => void
 }): React.JSX.Element {
+  const { t } = useTranslation()
   const {
     defaultProvider,
     taskTitleProvider,
@@ -36,14 +38,14 @@ export function TaskConfigurationSection(props: {
 
   return (
     <div className="settings-panel__section" id="settings-section-task-configuration">
-      <h3 className="settings-panel__section-title">Task Configuration</h3>
+      <h3 className="settings-panel__section-title">{t('settingsPanel.tasks.title')}</h3>
 
       {props.showTaskTitleGeneration ? (
         <>
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>Title Provider</strong>
-              <span>Provider used when OpenCove generates a title for a new task.</span>
+              <strong>{t('settingsPanel.tasks.titleProviderLabel')}</strong>
+              <span>{t('settingsPanel.tasks.titleProviderHelp')}</span>
             </div>
             <div className="settings-panel__control">
               <select
@@ -55,7 +57,9 @@ export function TaskConfigurationSection(props: {
                 }}
               >
                 <option value="default">
-                  Follow Default Agent ({AGENT_PROVIDER_LABEL[defaultProvider]})
+                  {t('settingsPanel.tasks.followDefaultAgent', {
+                    provider: AGENT_PROVIDER_LABEL[defaultProvider],
+                  })}
                 </option>
                 {AGENT_PROVIDERS.map(provider => (
                   <option value={provider} key={provider}>
@@ -68,8 +72,8 @@ export function TaskConfigurationSection(props: {
 
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>Title Model</strong>
-              <span>Optional override for task title generation.</span>
+              <strong>{t('settingsPanel.tasks.titleModelLabel')}</strong>
+              <span>{t('settingsPanel.tasks.titleModelHelp')}</span>
             </div>
             <div className="settings-panel__control">
               <input
@@ -77,7 +81,7 @@ export function TaskConfigurationSection(props: {
                 id="settings-task-title-model"
                 data-testid="settings-task-title-model"
                 value={taskTitleModel}
-                placeholder="Follow CLI default"
+                placeholder={t('common.followCliDefault')}
                 onChange={event => {
                   onChangeTaskTitleModel(event.target.value)
                 }}
@@ -87,8 +91,8 @@ export function TaskConfigurationSection(props: {
 
           <div className="settings-panel__row">
             <div className="settings-panel__row-label">
-              <strong>Effective Provider</strong>
-              <span>Resolved provider after applying the default fallback.</span>
+              <strong>{t('settingsPanel.tasks.effectiveProviderLabel')}</strong>
+              <span>{t('settingsPanel.tasks.effectiveProviderHelp')}</span>
             </div>
             <div className="settings-panel__control">
               <span className="settings-panel__value">
@@ -101,8 +105,8 @@ export function TaskConfigurationSection(props: {
 
       <div className="settings-panel__subsection">
         <div className="settings-panel__subsection-header">
-          <strong>Task Tags</strong>
-          <span>Common tags used to categorize and filter tasks.</span>
+          <strong>{t('settingsPanel.tasks.tagsLabel')}</strong>
+          <span>{t('settingsPanel.tasks.tagsHelp')}</span>
         </div>
 
         <div className="settings-list-container" data-testid="settings-task-tag-list">
@@ -117,7 +121,7 @@ export function TaskConfigurationSection(props: {
                 disabled={tags.length <= 1}
                 onClick={() => onRemoveTag(tag)}
               >
-                Remove
+                {t('common.remove')}
               </button>
             </div>
           ))}
@@ -128,7 +132,7 @@ export function TaskConfigurationSection(props: {
             type="text"
             data-testid="settings-task-tag-add-input"
             value={addTaskTagInput}
-            placeholder="Add tag"
+            placeholder={t('settingsPanel.tasks.addTagPlaceholder')}
             onChange={event => onChangeAddTaskTagInput(event.target.value)}
             onKeyDown={event => event.key === 'Enter' && onAddTag()}
           />
@@ -139,7 +143,7 @@ export function TaskConfigurationSection(props: {
             disabled={addTaskTagInput.trim().length === 0}
             onClick={() => onAddTag()}
           >
-            Add
+            {t('common.add')}
           </button>
         </div>
       </div>

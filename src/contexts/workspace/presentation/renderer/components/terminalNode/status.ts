@@ -1,24 +1,5 @@
 import type { AgentRuntimeStatus } from '../../types'
 
-export function getStatusLabel(status: AgentRuntimeStatus | null): string {
-  switch (status) {
-    case 'running':
-      return 'Working'
-    case 'standby':
-      return 'Standby'
-    case 'exited':
-      return 'Exited'
-    case 'failed':
-      return 'Failed'
-    case 'stopped':
-      return 'Stopped'
-    case 'restoring':
-      return 'Restoring'
-    default:
-      return 'Working'
-  }
-}
-
 export function getStatusClassName(status: AgentRuntimeStatus | null): string {
   switch (status) {
     case 'standby':

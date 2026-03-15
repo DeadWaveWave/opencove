@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
@@ -26,8 +27,10 @@ import {
   sanitizeWorkspaceSpaces,
 } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { cleanupNodeRuntimeArtifacts } from '@contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup'
+import { applyUiLanguage } from '../i18n'
 
 export default function App(): React.JSX.Element {
+  const { t } = useTranslation()
   const {
     workspaces,
     activeWorkspaceId,
@@ -55,12 +58,16 @@ export default function App(): React.JSX.Element {
   const { providerModelCatalog } = useProviderModelCatalog({
     isSettingsOpen,
   })
-
   useEffect(() => {
     const root = document.documentElement
     const uiFontScale = (agentSettings.uiFontSize / 16).toFixed(2)
     root.style.setProperty('--cove-ui-font-scale', uiFontScale)
   }, [agentSettings.uiFontSize])
+
+  useEffect(() => {
+    document.documentElement.lang = agentSettings.language
+    void applyUiLanguage(agentSettings.language)
+  }, [agentSettings.language])
 
   const producePersistedState = useCallback(() => {
     const state = useAppStore.getState()
@@ -111,8 +118,7 @@ export default function App(): React.JSX.Element {
 
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
-    resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? 'Default (Follow CLI)'
-
+    resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
   const handleAddWorkspace = useCallback(async (): Promise<void> => {
     const selected = await window.opencoveApi.workspace.selectDirectory()
     if (!selected) {
@@ -349,7 +355,6 @@ export default function App(): React.JSX.Element {
     projectContextMenu,
     setProjectContextMenu,
   })
-
   const handleSelectWorkspace = useCallback((workspaceId: string): void => {
     const store = useAppStore.getState()
     store.setActiveWorkspaceId(workspaceId)

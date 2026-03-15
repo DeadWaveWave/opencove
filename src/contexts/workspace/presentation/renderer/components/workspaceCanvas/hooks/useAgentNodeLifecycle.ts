@@ -1,5 +1,6 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { AgentNodeData, TerminalNodeData } from '../../../types'
 import {
   clearResumeSessionBinding,
@@ -34,11 +35,12 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
   stopAgentNode: (nodeId: string) => Promise<void>
 } {
+  const { t } = useTranslation()
   const buildAgentNodeTitle = useCallback(
     (provider: AgentNodeData['provider'], effectiveModel: string | null): string => {
-      return `${providerTitlePrefix(provider)} · ${effectiveModel ?? 'default-model'}`
+      return `${providerTitlePrefix(provider)} · ${effectiveModel ?? t('common.defaultModel')}`
     },
-    [],
+    [t],
   )
 
   const launchAgentInNode = useCallback(
@@ -62,7 +64,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               data: {
                 ...item.data,
                 status: 'failed',
-                lastError: '该 Agent 没有已验证的 resumeSessionId，无法 Resume。',
+                lastError: t('messages.resumeSessionMissing'),
               },
             }
           }),
@@ -82,7 +84,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               data: {
                 ...item.data,
                 status: 'failed',
-                lastError: '任务提示词不能为空。',
+                lastError: t('messages.agentPromptRequired'),
               },
             }
           }),
@@ -204,7 +206,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           return
         }
 
-        const errorMessage = `Agent 启动失败：${toErrorMessage(error)}`
+        const errorMessage = t('messages.agentLaunchFailed', { message: toErrorMessage(error) })
 
         setNodes(prevNodes =>
           prevNodes.map(item => {
@@ -232,6 +234,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       isAgentLaunchTokenCurrent,
       nodesRef,
       setNodes,
+      t,
     ],
   )
 

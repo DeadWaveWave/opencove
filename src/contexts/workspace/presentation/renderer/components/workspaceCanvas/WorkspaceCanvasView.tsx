@@ -12,6 +12,7 @@ import {
   type NodeTypes,
   type Viewport,
 } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
@@ -260,6 +261,8 @@ export function WorkspaceCanvasView({
   getSpaceBlockingNodes,
   closeNodesById,
 }: WorkspaceCanvasViewProps): React.JSX.Element {
+  const { t } = useTranslation()
+
   useWorkspaceCanvasGlobalDismissals({
     contextMenu,
     spaceActionMenu,
@@ -373,8 +376,7 @@ export function WorkspaceCanvasView({
 
         {selectedNodeCount > 0 ? (
           <div className="workspace-selection-hint">
-            Selected {selectedNodeCount} node{selectedNodeCount > 1 ? 's' : ''}. Right-click to
-            manage workspace grouping.
+            {t('workspaceCanvas.selectionHint', { count: selectedNodeCount })}
           </div>
         ) : null}
 
