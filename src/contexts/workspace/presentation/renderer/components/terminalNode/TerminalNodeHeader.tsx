@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
+import { FileText, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import { getStatusClassName, getStatusLabel } from './status'
 
@@ -149,10 +150,14 @@ Current directory: ${directoryMismatch.expectedDirectory}`}
       {canSaveLastMessageToNote ? (
         <button
           type="button"
-          className="terminal-node__action nodrag"
+          className="terminal-node__action terminal-node__action--icon nodrag"
           data-testid="terminal-node-save-last-message"
           aria-label="Save last agent message as note"
-          title="Save last agent message as note"
+          title={
+            isSavingLastMessageToNote
+              ? 'Saving last agent message as note'
+              : 'Save last agent message as note'
+          }
           disabled={isSavingLastMessageToNote}
           onClick={async event => {
             event.stopPropagation()
@@ -169,7 +174,11 @@ Current directory: ${directoryMismatch.expectedDirectory}`}
             }
           }}
         >
-          {isSavingLastMessageToNote ? 'Saving' : 'Note'}
+          {isSavingLastMessageToNote ? (
+            <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
+          ) : (
+            <FileText className="terminal-node__action-icon" />
+          )}
         </button>
       ) : null}
 

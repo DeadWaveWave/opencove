@@ -440,6 +440,39 @@ button.workspace-agent-item:focus-visible {
   cursor: default;
 }
 
+.terminal-node__action--icon {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-color: transparent;
+  background: transparent;
+  color: #b9cbef;
+}
+
+.terminal-node__action--icon:hover,
+.terminal-node__action--icon:focus-visible {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
+.terminal-node__action--icon:disabled {
+  border-color: transparent;
+  background: transparent;
+}
+
+.terminal-node__action-icon {
+  width: 13px;
+  height: 13px;
+}
+
+.terminal-node__action-icon--spinning {
+  animation: terminal-node-spin 0.8s linear infinite;
+}
+
 .terminal-node__close {
   margin-left: 4px;
 }
@@ -450,4 +483,14 @@ button.workspace-agent-item:focus-visible {
   border-bottom: 1px solid rgba(167, 77, 77, 0.38);
   padding: 6px 10px;
   background: rgba(40, 12, 18, 0.45);
+}
+
+@keyframes terminal-node-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
