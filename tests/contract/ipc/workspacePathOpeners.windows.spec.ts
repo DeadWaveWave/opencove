@@ -5,6 +5,7 @@ import {
   createSpawnMock,
   restorePlatform,
 } from '../../support/workspacePathOpeners.testUtils'
+import { invokeHandledIpc } from './ipcTestUtils'
 
 describe('workspace path openers IPC on Windows', () => {
   const originalPlatform = process.platform
@@ -67,7 +68,7 @@ describe('workspace path openers IPC on Windows', () => {
     expect(listHandler).toBeTypeOf('function')
     expect(openHandler).toBeTypeOf('function')
 
-    expect(await listHandler?.()).toEqual({
+    expect(await invokeHandledIpc(listHandler)).toEqual({
       openers: [
         { id: 'finder', label: 'Explorer' },
         { id: 'terminal', label: 'Windows Terminal' },
@@ -77,7 +78,7 @@ describe('workspace path openers IPC on Windows', () => {
 
     const targetPath = 'C:\\Users\\deadwave\\project'
     await expect(
-      openHandler?.(null, { path: targetPath, openerId: 'vscode' }),
+      invokeHandledIpc(openHandler, null, { path: targetPath, openerId: 'vscode' }),
     ).resolves.toBeUndefined()
 
     expect(spawn).toHaveBeenCalledWith(

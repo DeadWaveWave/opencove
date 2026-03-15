@@ -5,6 +5,7 @@ import type {
   WriteWorkspaceStateRawInput,
 } from '../../../../shared/contracts/dto'
 import { utf8ByteLength } from '../utils'
+import { createAppError } from '../../../../shared/errors/appError'
 
 const DEFAULT_MAX_RAW_BYTES = 50 * 1024 * 1024
 
@@ -25,14 +26,18 @@ export function normalizeWriteWorkspaceStateRawPayload(
   options: { maxRawBytes?: number } = {},
 ): WriteWorkspaceStateRawInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for persistence:write-workspace-state-raw')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for persistence:write-workspace-state-raw',
+    })
   }
 
   const record = payload as Record<string, unknown>
   const raw = typeof record.raw === 'string' ? record.raw : ''
 
   if (raw.length === 0) {
-    throw new Error('Invalid raw payload for persistence:write-workspace-state-raw')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid raw payload for persistence:write-workspace-state-raw',
+    })
   }
 
   const maxRawBytes = options.maxRawBytes ?? DEFAULT_MAX_RAW_BYTES
@@ -45,11 +50,15 @@ export function normalizeWriteWorkspaceStateRawPayload(
   try {
     parsed = JSON.parse(raw) as unknown
   } catch {
-    throw new Error('Invalid JSON payload for persistence:write-workspace-state-raw')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid JSON payload for persistence:write-workspace-state-raw',
+    })
   }
 
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new Error('Workspace state payload must be a JSON object')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Workspace state payload must be a JSON object',
+    })
   }
 
   return { raw }
@@ -57,13 +66,17 @@ export function normalizeWriteWorkspaceStateRawPayload(
 
 export function normalizeWriteAppStatePayload(payload: unknown): WriteAppStateInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for persistence:write-app-state')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for persistence:write-app-state',
+    })
   }
 
   const record = payload as Record<string, unknown>
   const state = record.state
   if (!state || typeof state !== 'object' || Array.isArray(state)) {
-    throw new Error('Invalid app state payload for persistence:write-app-state')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid app state payload for persistence:write-app-state',
+    })
   }
 
   return { state }
@@ -71,13 +84,17 @@ export function normalizeWriteAppStatePayload(payload: unknown): WriteAppStateIn
 
 export function normalizeReadNodeScrollbackPayload(payload: unknown): ReadNodeScrollbackInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for persistence:read-node-scrollback')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for persistence:read-node-scrollback',
+    })
   }
 
   const record = payload as Record<string, unknown>
   const nodeId = typeof record.nodeId === 'string' ? record.nodeId.trim() : ''
   if (nodeId.length === 0) {
-    throw new Error('Invalid nodeId payload for persistence:read-node-scrollback')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid nodeId payload for persistence:read-node-scrollback',
+    })
   }
 
   return { nodeId }
@@ -85,13 +102,17 @@ export function normalizeReadNodeScrollbackPayload(payload: unknown): ReadNodeSc
 
 export function normalizeWriteNodeScrollbackPayload(payload: unknown): WriteNodeScrollbackInput {
   if (!payload || typeof payload !== 'object') {
-    throw new Error('Invalid payload for persistence:write-node-scrollback')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for persistence:write-node-scrollback',
+    })
   }
 
   const record = payload as Record<string, unknown>
   const nodeId = typeof record.nodeId === 'string' ? record.nodeId.trim() : ''
   if (nodeId.length === 0) {
-    throw new Error('Invalid nodeId payload for persistence:write-node-scrollback')
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid nodeId payload for persistence:write-node-scrollback',
+    })
   }
 
   const scrollback =

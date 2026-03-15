@@ -1,15 +1,8 @@
 import type { PersistedAppState } from '../../types'
+import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/appError'
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import type { PersistWriteResult } from './types'
 import { getPersistencePort } from './port'
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`
-  }
-
-  return typeof error === 'string' ? error : 'Unknown error'
-}
 
 function stripScrollbackFromState(state: PersistedAppState): PersistedAppState {
   return {
@@ -37,7 +30,7 @@ function unavailableResult(): PersistWriteResult {
   return {
     ok: false,
     reason: 'unavailable',
-    message: 'Storage is unavailable; changes will not be saved.',
+    error: createAppErrorDescriptor('persistence.unavailable'),
   }
 }
 
@@ -56,7 +49,13 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   try {
     fullResult = await port.writeAppState(normalizedState)
   } catch (error) {
-    return { ok: false, reason: 'unknown', message: toErrorMessage(error) }
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: createAppErrorDescriptor('persistence.invalid_state', {
+        debugMessage: toAppErrorDescriptor(error).debugMessage,
+      }),
+    }
   }
 
   if (fullResult.ok) {
@@ -93,6 +92,12 @@ export async function writeRawPersistedState(raw: string): Promise<PersistWriteR
   try {
     return await port.writeWorkspaceStateRaw(raw)
   } catch (error) {
-    return { ok: false, reason: 'unknown', message: toErrorMessage(error) }
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: createAppErrorDescriptor('persistence.invalid_state', {
+        debugMessage: toAppErrorDescriptor(error).debugMessage,
+      }),
+    }
   }
 }

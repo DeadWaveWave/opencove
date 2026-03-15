@@ -1,3 +1,5 @@
+import type { AppErrorDescriptor } from './error'
+
 export type AgentProviderId = 'claude-code' | 'codex'
 
 export type AgentLaunchMode = 'new' | 'resume'
@@ -18,7 +20,7 @@ export interface ListAgentModelsResult {
   source: 'claude-static' | 'codex-cli'
   fetchedAt: string
   models: AgentModelOption[]
-  error: string | null
+  error: AppErrorDescriptor | null
 }
 
 export interface LaunchAgentInput {

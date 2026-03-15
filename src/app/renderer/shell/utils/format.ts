@@ -1,6 +1,19 @@
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  formatAppErrorMessage,
+  isAppErrorDescriptor,
+  OpenCoveAppError,
+} from '@shared/errors/appError'
 
 export function toErrorMessage(error: unknown): string {
+  if (error instanceof OpenCoveAppError) {
+    return formatAppErrorMessage(error)
+  }
+
+  if (isAppErrorDescriptor(error)) {
+    return formatAppErrorMessage(error)
+  }
+
   if (error instanceof Error && error.message) {
     return error.message
   }

@@ -1,6 +1,11 @@
 import type { Node, ReactFlowInstance } from '/react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  formatAppErrorMessage,
+  isAppErrorDescriptor,
+  OpenCoveAppError,
+} from '@shared/errors/appError'
 import type { TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import { TASK_PRIORITIES } from './constants'
 import type { TrackpadGestureAction, TrackpadGestureTarget } from './types'
@@ -182,6 +187,14 @@ export function toAgentRuntimeLabel(status: TerminalNodeData['status']): string 
 }
 
 export function toErrorMessage(error: unknown): string {
+  if (error instanceof OpenCoveAppError) {
+    return formatAppErrorMessage(error)
+  }
+
+  if (isAppErrorDescriptor(error)) {
+    return formatAppErrorMessage(error)
+  }
+
   if (error instanceof Error && error.message) {
     return error.message
   }

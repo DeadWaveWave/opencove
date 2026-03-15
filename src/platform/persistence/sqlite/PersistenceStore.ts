@@ -12,6 +12,7 @@ import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
 import { nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
+import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 
 export type PersistenceRecoveryReason = 'corrupt_db' | 'migration_failed'
 
@@ -105,7 +106,10 @@ export async function createPersistenceStore(options: {
       return {
         ok: false,
         reason: 'payload_too_large',
-        message: `Workspace state payload too large to persist (${rawBytes} bytes).`,
+        error: createAppErrorDescriptor('persistence.payload_too_large', {
+          params: { bytes: rawBytes, maxBytes: maxRawBytes },
+          debugMessage: `Workspace state payload too large to persist (${rawBytes} bytes).`,
+        }),
       }
     }
 
@@ -115,7 +119,9 @@ export async function createPersistenceStore(options: {
       return {
         ok: false,
         reason: 'unknown',
-        message: 'Workspace state payload must be a JSON object.',
+        error: createAppErrorDescriptor('persistence.invalid_state', {
+          debugMessage: 'Workspace state payload must be a JSON object.',
+        }),
       }
     }
 
@@ -127,14 +133,26 @@ export async function createPersistenceStore(options: {
 
       return { ok: true, level: 'full', bytes: rawBytes }
     } catch (error) {
-      return { ok: false, reason: 'io', message: toErrorMessage(error) }
+      return {
+        ok: false,
+        reason: 'io',
+        error: createAppErrorDescriptor('persistence.io_failed', {
+          debugMessage: toErrorMessage(error),
+        }),
+      }
     }
   }
 
   const writeAppState = async (state: unknown): Promise<PersistWriteResult> => {
     const normalized = normalizePersistedAppState(state)
     if (!normalized) {
-      return { ok: false, reason: 'unknown', message: 'Invalid app state payload.' }
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: createAppErrorDescriptor('persistence.invalid_state', {
+          debugMessage: 'Invalid app state payload.',
+        }),
+      }
     }
 
     try {
@@ -142,7 +160,13 @@ export async function createPersistenceStore(options: {
       const bytes = utf8ByteLength(safeJsonStringify(normalized))
       return { ok: true, level: 'full', bytes }
     } catch (error) {
-      return { ok: false, reason: 'io', message: toErrorMessage(error) }
+      return {
+        ok: false,
+        reason: 'io',
+        error: createAppErrorDescriptor('persistence.io_failed', {
+          debugMessage: toErrorMessage(error),
+        }),
+      }
     }
   }
 
@@ -165,7 +189,13 @@ export async function createPersistenceStore(options: {
   ): Promise<PersistWriteResult> => {
     const normalizedNodeId = nodeId.trim()
     if (normalizedNodeId.length === 0) {
-      return { ok: false, reason: 'unknown', message: 'Missing node id.' }
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: createAppErrorDescriptor('persistence.invalid_node_id', {
+          debugMessage: 'Missing node id.',
+        }),
+      }
     }
 
     const normalizedScrollback = normalizeScrollback(scrollback)
@@ -174,7 +204,13 @@ export async function createPersistenceStore(options: {
         db.delete(nodeScrollback).where(eq(nodeScrollback.nodeId, normalizedNodeId)).run()
         return { ok: true, level: 'full', bytes: 0 }
       } catch (error) {
-        return { ok: false, reason: 'io', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toErrorMessage(error),
+          }),
+        }
       }
     }
 
@@ -189,7 +225,13 @@ export async function createPersistenceStore(options: {
         .run()
       return { ok: true, level: 'full', bytes: utf8ByteLength(normalizedScrollback) }
     } catch (error) {
-      return { ok: false, reason: 'io', message: toErrorMessage(error) }
+      return {
+        ok: false,
+        reason: 'io',
+        error: createAppErrorDescriptor('persistence.io_failed', {
+          debugMessage: toErrorMessage(error),
+        }),
+      }
     }
   }
 

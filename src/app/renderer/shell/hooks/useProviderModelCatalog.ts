@@ -60,7 +60,7 @@ export function useProviderModelCatalog({ isSettingsOpen }: { isSettingsOpen: bo
           models: nextModels,
           source: result.source,
           fetchedAt: result.fetchedAt,
-          error: result.error,
+          error: result.error ? toErrorMessage(result.error) : null,
           isLoading: false,
         },
       }))

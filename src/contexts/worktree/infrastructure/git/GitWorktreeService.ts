@@ -8,6 +8,7 @@ import {
 } from './GitWorktreeService.shared'
 import { mkdir, readdir, stat } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'
+import { createAppErrorDescriptor } from '../../../../shared/errors/appError'
 export { getGitStatusSummary } from './GitWorktreeStatusSummary'
 
 export interface GitWorktreeEntry {
@@ -179,7 +180,7 @@ export interface RemoveGitWorktreeInput {
 
 export interface RemoveGitWorktreeResult {
   deletedBranchName: string | null
-  branchDeleteError: string | null
+  branchDeleteError: ReturnType<typeof createAppErrorDescriptor> | null
 }
 
 export interface RenameGitBranchInput {
@@ -380,7 +381,7 @@ export async function removeGitWorktree(
   }
 
   let deletedBranchName: string | null = null
-  let branchDeleteError: string | null = null
+  let branchDeleteError: ReturnType<typeof createAppErrorDescriptor> | null = null
 
   if (input.deleteBranch === true && targetWorktree.branch) {
     const deleteBranchResult = await runGit(
@@ -390,9 +391,11 @@ export async function removeGitWorktree(
     if (deleteBranchResult.exitCode === 0) {
       deletedBranchName = targetWorktree.branch
     } else {
-      branchDeleteError =
-        normalizeOptionalText(deleteBranchResult.stderr) ??
-        `Failed to delete branch "${targetWorktree.branch}"`
+      branchDeleteError = createAppErrorDescriptor('worktree.remove_branch_cleanup_failed', {
+        debugMessage:
+          normalizeOptionalText(deleteBranchResult.stderr) ??
+          `Failed to delete branch "${targetWorktree.branch}"`,
+      })
     }
   }
 

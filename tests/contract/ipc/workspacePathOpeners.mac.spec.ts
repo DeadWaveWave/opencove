@@ -5,6 +5,7 @@ import {
   createSpawnMock,
   restorePlatform,
 } from '../../support/workspacePathOpeners.testUtils'
+import { invokeHandledIpc } from './ipcTestUtils'
 
 describe('workspace path openers IPC on macOS', () => {
   const originalPlatform = process.platform
@@ -73,7 +74,7 @@ describe('workspace path openers IPC on macOS', () => {
     expect(listHandler).toBeTypeOf('function')
     expect(openHandler).toBeTypeOf('function')
 
-    expect(await listHandler?.()).toEqual({
+    expect(await invokeHandledIpc(listHandler)).toEqual({
       openers: [
         { id: 'finder', label: 'Finder' },
         { id: 'vscode', label: 'VS Code' },
@@ -84,7 +85,7 @@ describe('workspace path openers IPC on macOS', () => {
 
     const targetPath = '/tmp/cove-approved-workspace/project'
     await expect(
-      openHandler?.(null, { path: targetPath, openerId: 'pycharm' }),
+      invokeHandledIpc(openHandler, null, { path: targetPath, openerId: 'pycharm' }),
     ).resolves.toBeUndefined()
 
     expect(store.isPathApproved).toHaveBeenCalledWith(targetPath)

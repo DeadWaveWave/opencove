@@ -234,7 +234,7 @@ export function SpaceWorktreeWindow({
             }
           : options
 
-      let removedBranchError: string | null = null
+      let removedBranchError: Awaited<ReturnType<typeof removeWorktree>>['branchDeleteError'] = null
 
       if (pending.worktreePath) {
         const removeWorktree = getWorktreeApiMethod('remove', t)
@@ -252,7 +252,11 @@ export function SpaceWorktreeWindow({
       await refresh()
 
       if (removedBranchError) {
-        throw new Error(t('worktree.archiveBranchDeleteFailed', { message: removedBranchError }))
+        throw new Error(
+          t('worktree.archiveBranchDeleteFailed', {
+            message: toErrorMessage(removedBranchError),
+          }),
+        )
       }
     },
     [onUpdateSpaceDirectory, refresh, t, workspacePath],

@@ -1,7 +1,8 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { PersistWriteResult, ReadAppStateResult } from '../../../../shared/contracts/dto'
-import type { IpcRegistrationDisposable } from '../../../app/main/ipc/types'
+import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
+import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import type { PersistenceStore } from '../PersistenceStore'
 import {
   PayloadTooLargeError,
@@ -10,20 +11,13 @@ import {
   normalizeWriteNodeScrollbackPayload,
   normalizeWriteWorkspaceStateRawPayload,
 } from './validate'
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return `${error.name}: ${error.message}`
-  }
-
-  return typeof error === 'string' ? error : 'Unknown error'
-}
+import { createAppErrorDescriptor, toAppErrorDescriptor } from '../../../../shared/errors/appError'
 
 export function registerPersistenceIpcHandlers(
   getStore: () => Promise<PersistenceStore>,
   options: { maxRawBytes?: number } = {},
 ): IpcRegistrationDisposable {
-  ipcMain.handle(
+  registerHandledIpc(
     IPC_CHANNELS.persistenceReadWorkspaceStateRaw,
     async (): Promise<string | null> => {
       try {
@@ -33,9 +27,10 @@ export function registerPersistenceIpcHandlers(
         return null
       }
     },
+    { defaultErrorCode: 'persistence.io_failed' },
   )
 
-  ipcMain.handle(
+  registerHandledIpc(
     IPC_CHANNELS.persistenceWriteWorkspaceStateRaw,
     async (_event, payload: unknown): Promise<PersistWriteResult> => {
       let normalized: { raw: string }
@@ -46,7 +41,18 @@ export function registerPersistenceIpcHandlers(
         return {
           ok: false,
           reason: error instanceof PayloadTooLargeError ? 'payload_too_large' : 'unknown',
-          message: toErrorMessage(error),
+          error:
+            error instanceof PayloadTooLargeError
+              ? createAppErrorDescriptor('persistence.payload_too_large', {
+                  params: {
+                    bytes: error.bytes,
+                    maxBytes: error.maxBytes,
+                  },
+                  debugMessage: error.message,
+                })
+              : createAppErrorDescriptor('persistence.invalid_state', {
+                  debugMessage: toAppErrorDescriptor(error).debugMessage,
+                }),
         }
       }
 
@@ -54,23 +60,34 @@ export function registerPersistenceIpcHandlers(
         const store = await getStore()
         return await store.writeWorkspaceStateRaw(normalized.raw)
       } catch (error) {
-        return { ok: false, reason: 'io', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
     },
+    { defaultErrorCode: 'persistence.io_failed' },
   )
 
-  ipcMain.handle(IPC_CHANNELS.persistenceReadAppState, async (): Promise<ReadAppStateResult> => {
-    try {
-      const store = await getStore()
-      const state = await store.readAppState()
-      const recovery = store.consumeRecovery()
-      return { state, recovery }
-    } catch {
-      return { state: null, recovery: null }
-    }
-  })
+  registerHandledIpc(
+    IPC_CHANNELS.persistenceReadAppState,
+    async (): Promise<ReadAppStateResult> => {
+      try {
+        const store = await getStore()
+        const state = await store.readAppState()
+        const recovery = store.consumeRecovery()
+        return { state, recovery }
+      } catch {
+        return { state: null, recovery: null }
+      }
+    },
+    { defaultErrorCode: 'persistence.io_failed' },
+  )
 
-  ipcMain.handle(
+  registerHandledIpc(
     IPC_CHANNELS.persistenceWriteAppState,
     async (_event, payload: unknown): Promise<PersistWriteResult> => {
       let normalized: { state: unknown }
@@ -78,19 +95,32 @@ export function registerPersistenceIpcHandlers(
       try {
         normalized = normalizeWriteAppStatePayload(payload)
       } catch (error) {
-        return { ok: false, reason: 'unknown', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'unknown',
+          error: createAppErrorDescriptor('persistence.invalid_state', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
 
       try {
         const store = await getStore()
         return await store.writeAppState(normalized.state)
       } catch (error) {
-        return { ok: false, reason: 'io', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
     },
+    { defaultErrorCode: 'persistence.io_failed' },
   )
 
-  ipcMain.handle(
+  registerHandledIpc(
     IPC_CHANNELS.persistenceReadNodeScrollback,
     async (_event, payload: unknown): Promise<string | null> => {
       let normalized: { nodeId: string }
@@ -108,9 +138,10 @@ export function registerPersistenceIpcHandlers(
         return null
       }
     },
+    { defaultErrorCode: 'persistence.io_failed' },
   )
 
-  ipcMain.handle(
+  registerHandledIpc(
     IPC_CHANNELS.persistenceWriteNodeScrollback,
     async (_event, payload: unknown): Promise<PersistWriteResult> => {
       let normalized: { nodeId: string; scrollback: string | null }
@@ -118,16 +149,29 @@ export function registerPersistenceIpcHandlers(
       try {
         normalized = normalizeWriteNodeScrollbackPayload(payload)
       } catch (error) {
-        return { ok: false, reason: 'unknown', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'unknown',
+          error: createAppErrorDescriptor('persistence.invalid_node_id', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
 
       try {
         const store = await getStore()
         return await store.writeNodeScrollback(normalized.nodeId, normalized.scrollback)
       } catch (error) {
-        return { ok: false, reason: 'io', message: toErrorMessage(error) }
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
       }
     },
+    { defaultErrorCode: 'persistence.io_failed' },
   )
 
   return {

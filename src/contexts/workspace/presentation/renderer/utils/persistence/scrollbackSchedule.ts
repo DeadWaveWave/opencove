@@ -1,4 +1,5 @@
 import type { PersistWriteResult } from './types'
+import { createAppErrorDescriptor } from '@shared/errors/appError'
 import { getPersistencePort } from './port'
 import { normalizeScrollback } from './normalize'
 
@@ -99,7 +100,7 @@ function flushNodeScrollbackWrite(nodeId: string): void {
       : Promise.resolve<PersistWriteResult>({
           ok: false,
           reason: 'unavailable',
-          message: 'Storage is unavailable; changes will not be saved.',
+          error: createAppErrorDescriptor('persistence.unavailable'),
         })
   )
     .then(result => {

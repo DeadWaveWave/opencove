@@ -177,7 +177,14 @@ describe('PersistenceStore', () => {
       expect(oversizedResult).toEqual({
         ok: false,
         reason: 'payload_too_large',
-        message: `Workspace state payload too large to persist (${rawBytes} bytes).`,
+        error: {
+          code: 'persistence.payload_too_large',
+          params: {
+            bytes: rawBytes,
+            maxBytes: raw.length,
+          },
+          debugMessage: `Workspace state payload too large to persist (${rawBytes} bytes).`,
+        },
       })
       oversizedStore.dispose()
 

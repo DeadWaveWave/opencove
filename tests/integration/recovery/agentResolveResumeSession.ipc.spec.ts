@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import type { ResolveAgentResumeSessionResult } from '../../../src/shared/contracts/dto'
 import type { PtyRuntime } from '../../../src/contexts/terminal/presentation/main-ipc/runtime'
+import { invokeHandledIpc } from '../../contract/ipc/ipcTestUtils'
 
 function createIpcHarness() {
   const handlers = new Map<string, (...args: unknown[]) => unknown>()
@@ -87,11 +88,11 @@ describe('agent:resolve-resume-session IPC', () => {
       const handler = handlers.get(IPC_CHANNELS.agentResolveResumeSession)
       expect(handler).toBeTypeOf('function')
 
-      const resolvePromise = handler?.(null, {
+      const resolvePromise = invokeHandledIpc<ResolveAgentResumeSessionResult>(handler, null, {
         provider: 'codex',
         cwd,
         startedAt,
-      }) as Promise<ResolveAgentResumeSessionResult>
+      })
 
       timer = setTimeout(() => {
         void (async () => {

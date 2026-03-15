@@ -5,6 +5,7 @@ import type {
   ListAgentModelsResult,
 } from '../../../../../shared/contracts/dto'
 import { resolveAgentCliInvocation } from './AgentCliInvocation'
+import { createAppErrorDescriptor } from '../../../../shared/errors/appError'
 
 const CODEX_APP_SERVER_TIMEOUT_MS = 8000
 const CODEX_APP_SERVER_SHUTDOWN_GRACE_MS = 500
@@ -105,7 +106,7 @@ function cloneListAgentModelsResult(result: ListAgentModelsResult): ListAgentMod
     provider: result.provider,
     source: result.source,
     fetchedAt: result.fetchedAt,
-    error: result.error,
+    error: result.error ? { ...result.error } : null,
     models: result.models.map(cloneAgentModelOption),
   }
 }
@@ -360,7 +361,9 @@ export async function listAgentModels(provider: AgentProviderId): Promise<ListAg
             source: 'codex-cli',
             fetchedAt,
             models: [],
-            error: toErrorMessage(error),
+            error: createAppErrorDescriptor('agent.list_models_failed', {
+              debugMessage: toErrorMessage(error),
+            }),
           })
         } finally {
           codexModelsRequestInFlight = null

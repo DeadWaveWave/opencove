@@ -1,3 +1,5 @@
+import type { AppErrorDescriptor } from './error'
+
 export type PersistWriteLevel = 'full' | 'no_scrollback' | 'settings_only'
 
 export type PersistWriteFailureReason =
@@ -16,7 +18,7 @@ export type PersistWriteResult =
   | {
       ok: false
       reason: PersistWriteFailureReason
-      message: string
+      error: AppErrorDescriptor
     }
 
 export interface WriteWorkspaceStateRawInput {
