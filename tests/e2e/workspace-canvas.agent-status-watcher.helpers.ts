@@ -41,6 +41,8 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
       __opencoveSeenSessionIds?: string[]
       __opencovePtyCaptureInstalled?: boolean
       __opencoveResumeSessionIdByPtySessionId?: Record<string, string | null>
+      __opencoveOriginalPtySpawn?: typeof window.opencoveApi.pty.spawn
+      __opencoveOriginalAgentLaunch?: typeof window.opencoveApi.agent.launch
     }
 
     if (captureWindow.__opencovePtyCaptureInstalled) {
@@ -54,6 +56,20 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
       if (!seenSessionIds.includes(sessionId)) {
         seenSessionIds.push(sessionId)
       }
+    }
+
+    captureWindow.__opencoveOriginalPtySpawn ??= window.opencoveApi.pty.spawn
+    window.opencoveApi.pty.spawn = async payload => {
+      const result = await captureWindow.__opencoveOriginalPtySpawn!(payload)
+      rememberSessionId(result.sessionId)
+      return result
+    }
+
+    captureWindow.__opencoveOriginalAgentLaunch ??= window.opencoveApi.agent.launch
+    window.opencoveApi.agent.launch = async payload => {
+      const result = await captureWindow.__opencoveOriginalAgentLaunch!(payload)
+      rememberSessionId(result.sessionId)
+      return result
     }
 
     window.opencoveApi.pty.onData(event => {
