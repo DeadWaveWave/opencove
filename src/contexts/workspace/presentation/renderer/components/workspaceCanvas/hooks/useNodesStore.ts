@@ -6,6 +6,7 @@ import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollbackSchedule'
 import { MIN_SIZE } from '../constants'
+import { syncWorkspaceCanvasTestState } from '../testHarness'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { computePushBlockingWindowsRight } from './useNodesStore.pushBlockingWindowsRight'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
@@ -30,6 +31,9 @@ export function useWorkspaceCanvasNodesStore({
   const isNodeDraggingRef = useRef(false)
   useLayoutEffect(() => {
     nodesRef.current = nodes
+    if (window.opencoveApi.meta.isTest) {
+      syncWorkspaceCanvasTestState(nodes)
+    }
   }, [nodes])
   const setNodes = useCallback(
     (
@@ -42,6 +46,9 @@ export function useWorkspaceCanvasNodesStore({
         return
       }
       nodesRef.current = nextNodes
+      if (window.opencoveApi.meta.isTest) {
+        syncWorkspaceCanvasTestState(nextNodes)
+      }
       onNodesChange(nextNodes)
 
       if (options.syncLayout ?? true) {

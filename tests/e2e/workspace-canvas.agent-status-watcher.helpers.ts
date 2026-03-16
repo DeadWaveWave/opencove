@@ -18,6 +18,36 @@ async function readWorkspaceStateRaw(window: Page): Promise<unknown | null> {
   }
 }
 
+async function readFirstHarnessAgentSessionId(window: Page): Promise<string | null> {
+  return await window.evaluate(() => {
+    const currentWindow = window as typeof window & {
+      __opencoveWorkspaceCanvasTestApi?: {
+        getFirstAgentSessionId: () => string | null
+      }
+    }
+
+    return currentWindow.__opencoveWorkspaceCanvasTestApi?.getFirstAgentSessionId() ?? null
+  })
+}
+
+async function readHarnessResumeSessionId(
+  window: Page,
+  ptySessionId: string,
+): Promise<string | null> {
+  return await window.evaluate(sessionId => {
+    const currentWindow = window as typeof window & {
+      __opencoveWorkspaceCanvasTestApi?: {
+        getResumeSessionIdByPtySessionId: (ptySessionId: string) => string | null
+      }
+    }
+
+    return (
+      currentWindow.__opencoveWorkspaceCanvasTestApi?.getResumeSessionIdByPtySessionId(sessionId) ??
+      null
+    )
+  }, ptySessionId)
+}
+
 async function readFirstPersistedAgentSessionId(window: Page): Promise<string | null> {
   const parsed = (await readWorkspaceStateRaw(window)) as {
     workspaces?: Array<{
@@ -41,8 +71,6 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
       __opencoveSeenSessionIds?: string[]
       __opencovePtyCaptureInstalled?: boolean
       __opencoveResumeSessionIdByPtySessionId?: Record<string, string | null>
-      __opencoveOriginalPtySpawn?: typeof window.opencoveApi.pty.spawn
-      __opencoveOriginalAgentLaunch?: typeof window.opencoveApi.agent.launch
     }
 
     if (captureWindow.__opencovePtyCaptureInstalled) {
@@ -58,20 +86,6 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
       }
     }
 
-    captureWindow.__opencoveOriginalPtySpawn ??= window.opencoveApi.pty.spawn
-    window.opencoveApi.pty.spawn = async payload => {
-      const result = await captureWindow.__opencoveOriginalPtySpawn!(payload)
-      rememberSessionId(result.sessionId)
-      return result
-    }
-
-    captureWindow.__opencoveOriginalAgentLaunch ??= window.opencoveApi.agent.launch
-    window.opencoveApi.agent.launch = async payload => {
-      const result = await captureWindow.__opencoveOriginalAgentLaunch!(payload)
-      rememberSessionId(result.sessionId)
-      return result
-    }
-
     window.opencoveApi.pty.onData(event => {
       rememberSessionId(event.sessionId)
     })
@@ -85,6 +99,11 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
 }
 
 async function readFirstObservedAgentSessionId(window: Page): Promise<string | null> {
+  const harnessSessionId = await readFirstHarnessAgentSessionId(window)
+  if (harnessSessionId) {
+    return harnessSessionId
+  }
+
   return await window.evaluate(() => {
     const captureWindow = window as typeof window & {
       __opencoveSeenSessionIds?: string[]
@@ -105,6 +124,11 @@ export async function readObservedResumeSessionId(
   window: Page,
   ptySessionId: string,
 ): Promise<string | null> {
+  const harnessResumeSessionId = await readHarnessResumeSessionId(window, ptySessionId)
+  if (harnessResumeSessionId) {
+    return harnessResumeSessionId
+  }
+
   return await window.evaluate(sessionId => {
     const captureWindow = window as typeof window & {
       __opencoveResumeSessionIdByPtySessionId?: Record<string, string | null>
