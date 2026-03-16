@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,
@@ -8,51 +8,11 @@ import {
   seedWorkspaceState,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
-
-async function readWorkspaceStateRaw(window: Page): Promise<unknown | null> {
-  const raw = await window.evaluate(async () => {
-    return await window.opencoveApi.persistence.readWorkspaceStateRaw()
-  })
-
-  if (!raw) {
-    return null
-  }
-
-  try {
-    return JSON.parse(raw) as unknown
-  } catch {
-    return null
-  }
-}
-
-async function readFirstAgentSessionId(window: Page): Promise<string | null> {
-  const parsed = (await readWorkspaceStateRaw(window)) as {
-    workspaces?: Array<{
-      nodes?: Array<{
-        kind?: string
-        sessionId?: string
-      }>
-    }>
-  } | null
-
-  const nodes = parsed?.workspaces?.[0]?.nodes ?? []
-  const agentNode = nodes.find(node => node.kind === 'agent')
-  const sessionId = agentNode?.sessionId?.trim() ?? ''
-
-  return sessionId.length > 0 ? sessionId : null
-}
-
-async function writeToPty(
-  window: Page,
-  payload: {
-    sessionId: string
-    data: string
-  },
-): Promise<void> {
-  await window.evaluate(async ({ sessionId, data }) => {
-    await window.opencoveApi.pty.write({ sessionId, data })
-  }, payload)
-}
+import {
+  installPtySessionCapture,
+  resolveFirstAgentSessionId,
+  writeToPty,
+} from './workspace-canvas.agent-status-watcher.helpers'
 
 async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['window']) {
   await clearAndSeedWorkspace(
@@ -250,6 +210,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       const runButton = window.locator('[data-testid="workspace-context-run-default-agent"]')
       await expect(runButton).toBeVisible()
+      await installPtySessionCapture(window)
       await runButton.click()
 
       const agentNode = window.locator('.terminal-node').first()
@@ -266,11 +227,11 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await expect
         .poll(async () => {
-          return await readFirstAgentSessionId(window)
+          return await resolveFirstAgentSessionId(window)
         })
         .not.toBeNull()
 
-      const sessionId = await readFirstAgentSessionId(window)
+      const sessionId = await resolveFirstAgentSessionId(window)
       if (!sessionId) {
         throw new Error('Failed to resolve the launched Gemini session id')
       }
@@ -328,6 +289,7 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       const runButton = window.locator('[data-testid="workspace-context-run-default-agent"]')
       await expect(runButton).toBeVisible()
+      await installPtySessionCapture(window)
       await runButton.click()
 
       const agentNode = window.locator('.terminal-node').first()
@@ -342,11 +304,11 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
 
       await expect
         .poll(async () => {
-          return await readFirstAgentSessionId(window)
+          return await resolveFirstAgentSessionId(window)
         })
         .not.toBeNull()
 
-      const sessionId = await readFirstAgentSessionId(window)
+      const sessionId = await resolveFirstAgentSessionId(window)
       if (!sessionId) {
         throw new Error('Failed to resolve the launched Gemini session id')
       }
