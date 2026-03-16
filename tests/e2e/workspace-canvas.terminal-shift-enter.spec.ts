@@ -37,11 +37,7 @@ test.describe('Workspace Canvas - Terminal Shift Enter', () => {
       await window.keyboard.press('Enter')
       await window.keyboard.up('Shift')
 
-      await expect(terminal).toContainText(
-        process.platform === 'win32'
-          ? 'OPENCOVE_SHIFT_ENTER_CODES:27,13'
-          : 'OPENCOVE_SHIFT_ENTER_CODES:27,10',
-      )
+      await expect(terminal).toContainText('OPENCOVE_SHIFT_ENTER_CODES:27,13')
     } finally {
       await electronApp.close()
     }

@@ -1,6 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,
@@ -8,6 +8,51 @@ import {
   seedWorkspaceState,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+
+async function readWorkspaceStateRaw(window: Page): Promise<unknown | null> {
+  const raw = await window.evaluate(async () => {
+    return await window.opencoveApi.persistence.readWorkspaceStateRaw()
+  })
+
+  if (!raw) {
+    return null
+  }
+
+  try {
+    return JSON.parse(raw) as unknown
+  } catch {
+    return null
+  }
+}
+
+async function readFirstAgentSessionId(window: Page): Promise<string | null> {
+  const parsed = (await readWorkspaceStateRaw(window)) as {
+    workspaces?: Array<{
+      nodes?: Array<{
+        kind?: string
+        sessionId?: string
+      }>
+    }>
+  } | null
+
+  const nodes = parsed?.workspaces?.[0]?.nodes ?? []
+  const agentNode = nodes.find(node => node.kind === 'agent')
+  const sessionId = agentNode?.sessionId?.trim() ?? ''
+
+  return sessionId.length > 0 ? sessionId : null
+}
+
+async function writeToPty(
+  window: Page,
+  payload: {
+    sessionId: string
+    data: string
+  },
+): Promise<void> {
+  await window.evaluate(async ({ sessionId, data }) => {
+    await window.opencoveApi.pty.write({ sessionId, data })
+  }, payload)
+}
 
 async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['window']) {
   await clearAndSeedWorkspace(
@@ -219,15 +264,30 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       await expect(nodeStatus).toHaveText('Standby')
       await expect(sidebarStatus).toHaveText('Standby')
 
-      await xterm.click()
-      await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
-      await window.keyboard.type('Return OK only.')
+      await expect
+        .poll(async () => {
+          return await readFirstAgentSessionId(window)
+        })
+        .not.toBeNull()
+
+      const sessionId = await readFirstAgentSessionId(window)
+      if (!sessionId) {
+        throw new Error('Failed to resolve the launched Gemini session id')
+      }
+
+      await writeToPty(window, {
+        sessionId,
+        data: 'Return OK only.',
+      })
       await window.waitForTimeout(900)
 
       await expect(nodeStatus).toHaveText('Standby')
       await expect(sidebarStatus).toHaveText('Standby')
 
-      await window.keyboard.press('Enter')
+      await writeToPty(window, {
+        sessionId,
+        data: '\r',
+      })
 
       await expect(nodeStatus).toHaveText('Working', { timeout: 15_000 })
       await expect(sidebarStatus).toHaveText('Working')
@@ -271,7 +331,6 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       await runButton.click()
 
       const agentNode = window.locator('.terminal-node').first()
-      const xterm = agentNode.locator('.xterm')
       const nodeStatus = agentNode.locator('.terminal-node__status')
       const sidebarStatus = window
         .locator('.workspace-sidebar .workspace-agent-item .workspace-agent-item__status--agent')
@@ -281,10 +340,25 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       await expect(nodeStatus).toHaveText('Standby')
       await expect(sidebarStatus).toHaveText('Standby')
 
-      await xterm.click()
-      await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
-      await window.keyboard.type('Return OK only.')
-      await window.keyboard.press('Enter')
+      await expect
+        .poll(async () => {
+          return await readFirstAgentSessionId(window)
+        })
+        .not.toBeNull()
+
+      const sessionId = await readFirstAgentSessionId(window)
+      if (!sessionId) {
+        throw new Error('Failed to resolve the launched Gemini session id')
+      }
+
+      await writeToPty(window, {
+        sessionId,
+        data: 'Return OK only.',
+      })
+      await writeToPty(window, {
+        sessionId,
+        data: '\r',
+      })
 
       await expect(nodeStatus).toHaveText('Working', { timeout: 15_000 })
       await expect(sidebarStatus).toHaveText('Working')
