@@ -14,6 +14,7 @@ import { OpenCodeSessionStateWatcher } from '../../../agent/infrastructure/watch
 import { resolveSessionFilePath } from '../../../agent/infrastructure/watchers/SessionFileResolver'
 import { SessionTurnStateWatcher } from '../../../agent/infrastructure/watchers/SessionTurnStateWatcher'
 import { resolveDiscoveredSessionId } from './sessionStateWatcherDiscovery'
+import { shouldBroadcastOptimisticWorkingFromInteraction } from './sessionStateWatcherInteraction'
 
 const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
@@ -389,6 +390,10 @@ export function createSessionStateWatcherController({
 
     const interactionAtMs = Date.now()
     stateWatcherLastInteractionAtMsBySession.set(sessionId, interactionAtMs)
+
+    if (shouldBroadcastOptimisticWorkingFromInteraction({ provider: input.provider, data })) {
+      broadcastSessionState(sessionId, 'working')
+    }
 
     const shouldForceImmediateRetry =
       input.provider === 'gemini' &&
