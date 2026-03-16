@@ -31,7 +31,7 @@ export function useWorkspaceCanvasNodesStore({
   const isNodeDraggingRef = useRef(false)
   useLayoutEffect(() => {
     nodesRef.current = nodes
-    if (window.opencoveApi.meta.isTest) {
+    if (window.opencoveApi?.meta?.isTest === true) {
       syncWorkspaceCanvasTestState(nodes)
     }
   }, [nodes])
@@ -46,7 +46,7 @@ export function useWorkspaceCanvasNodesStore({
         return
       }
       nodesRef.current = nextNodes
-      if (window.opencoveApi.meta.isTest) {
+      if (window.opencoveApi?.meta?.isTest === true) {
         syncWorkspaceCanvasTestState(nextNodes)
       }
       onNodesChange(nextNodes)
