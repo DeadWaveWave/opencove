@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import type { Page } from '@playwright/test'
 
 async function readWorkspaceStateRaw(window: Page): Promise<unknown | null> {
@@ -38,6 +40,7 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
     const captureWindow = window as typeof window & {
       __opencoveSeenSessionIds?: string[]
       __opencovePtyCaptureInstalled?: boolean
+      __opencoveResumeSessionIdByPtySessionId?: Record<string, string | null>
     }
 
     if (captureWindow.__opencovePtyCaptureInstalled) {
@@ -45,11 +48,16 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
     }
 
     captureWindow.__opencoveSeenSessionIds = []
+    captureWindow.__opencoveResumeSessionIdByPtySessionId = {}
     const seenSessionIds = captureWindow.__opencoveSeenSessionIds
     window.opencoveApi.pty.onData(event => {
       if (!seenSessionIds.includes(event.sessionId)) {
         seenSessionIds.push(event.sessionId)
       }
+    })
+    window.opencoveApi.pty.onMetadata(event => {
+      captureWindow.__opencoveResumeSessionIdByPtySessionId![event.sessionId] =
+        event.resumeSessionId
     })
     captureWindow.__opencovePtyCaptureInstalled = true
   })
@@ -72,6 +80,21 @@ export async function resolveFirstAgentSessionId(window: Page): Promise<string |
   )
 }
 
+export async function readObservedResumeSessionId(
+  window: Page,
+  ptySessionId: string,
+): Promise<string | null> {
+  return await window.evaluate(sessionId => {
+    const captureWindow = window as typeof window & {
+      __opencoveResumeSessionIdByPtySessionId?: Record<string, string | null>
+    }
+    const resumeSessionId = captureWindow.__opencoveResumeSessionIdByPtySessionId?.[sessionId]
+    return typeof resumeSessionId === 'string' && resumeSessionId.trim().length > 0
+      ? resumeSessionId
+      : null
+  }, ptySessionId)
+}
+
 export async function writeToPty(
   window: Page,
   payload: {
@@ -82,4 +105,85 @@ export async function writeToPty(
   await window.evaluate(async ({ sessionId, data }) => {
     await window.opencoveApi.pty.write({ sessionId, data })
   }, payload)
+}
+
+function normalizeGeminiProjectDirectoryName(cwd: string): string {
+  const name = path.basename(cwd).trim()
+  return name.length > 0 ? name.replace(/[^a-zA-Z0-9._-]/g, '-') : 'workspace'
+}
+
+function createGeminiTimestamp(timestampMs: number): string {
+  return new Date(timestampMs).toISOString()
+}
+
+function createGeminiMessage(
+  type: 'user' | 'gemini' | 'info',
+  content: unknown,
+  timestampMs: number,
+): {
+  id: string
+  timestamp: string
+  type: 'user' | 'gemini' | 'info'
+  content: unknown
+} {
+  return {
+    id: `${type}-${timestampMs}`,
+    timestamp: createGeminiTimestamp(timestampMs),
+    type,
+    content,
+  }
+}
+
+export async function writeGeminiSessionFile({
+  cwd,
+  messages,
+  sessionId,
+  startedAtMs,
+  summary,
+  userDataDir,
+}: {
+  cwd: string
+  messages: Array<{
+    type: 'user' | 'gemini' | 'info'
+    content: unknown
+    timestampMs: number
+  }>
+  sessionId: string
+  startedAtMs: number
+  summary?: string
+  userDataDir: string
+}): Promise<string> {
+  const projectDirectory = path.join(
+    userDataDir,
+    'home',
+    '.gemini',
+    'tmp',
+    normalizeGeminiProjectDirectoryName(cwd),
+  )
+  const chatsDirectory = path.join(projectDirectory, 'chats')
+  const sessionFilePath = path.join(chatsDirectory, `session-${sessionId}.json`)
+
+  await mkdir(chatsDirectory, { recursive: true })
+  await writeFile(path.join(projectDirectory, '.project_root'), cwd, 'utf8')
+  await writeFile(
+    sessionFilePath,
+    JSON.stringify(
+      {
+        sessionId,
+        projectHash: 'cove-test-project-hash',
+        startTime: createGeminiTimestamp(startedAtMs),
+        lastUpdated: createGeminiTimestamp(messages.at(-1)?.timestampMs ?? startedAtMs),
+        kind: 'main',
+        messages: messages.map(message =>
+          createGeminiMessage(message.type, message.content, message.timestampMs),
+        ),
+        ...(summary ? { summary } : {}),
+      },
+      null,
+      2,
+    ),
+    'utf8',
+  )
+
+  return sessionFilePath
 }
