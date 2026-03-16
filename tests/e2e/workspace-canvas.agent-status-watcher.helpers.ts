@@ -50,12 +50,17 @@ export async function installPtySessionCapture(window: Page): Promise<void> {
     captureWindow.__opencoveSeenSessionIds = []
     captureWindow.__opencoveResumeSessionIdByPtySessionId = {}
     const seenSessionIds = captureWindow.__opencoveSeenSessionIds
-    window.opencoveApi.pty.onData(event => {
-      if (!seenSessionIds.includes(event.sessionId)) {
-        seenSessionIds.push(event.sessionId)
+    const rememberSessionId = (sessionId: string) => {
+      if (!seenSessionIds.includes(sessionId)) {
+        seenSessionIds.push(sessionId)
       }
+    }
+
+    window.opencoveApi.pty.onData(event => {
+      rememberSessionId(event.sessionId)
     })
     window.opencoveApi.pty.onMetadata(event => {
+      rememberSessionId(event.sessionId)
       captureWindow.__opencoveResumeSessionIdByPtySessionId![event.sessionId] =
         event.resumeSessionId
     })

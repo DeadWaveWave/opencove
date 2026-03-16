@@ -148,14 +148,15 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const handleWorkspaceNodesChange = useCallback((nodes: WorkspaceState['nodes']): void => {
-    const { activeWorkspaceId, setWorkspaces } = useAppStore.getState()
-    if (!activeWorkspaceId) {
+    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
+      useAppStore.getState()
+    if (!currentActiveWorkspaceId) {
       return
     }
 
-    setWorkspaces(prev =>
+    updateWorkspaces(prev =>
       prev.map(workspace => {
-        if (workspace.id !== activeWorkspaceId) {
+        if (workspace.id !== currentActiveWorkspaceId) {
           return workspace
         }
 
@@ -181,14 +182,15 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const handleWorkspaceViewportChange = useCallback((viewport: WorkspaceViewport): void => {
-    const { activeWorkspaceId, setWorkspaces } = useAppStore.getState()
-    if (!activeWorkspaceId) {
+    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
+      useAppStore.getState()
+    if (!currentActiveWorkspaceId) {
       return
     }
 
-    setWorkspaces(previous =>
+    updateWorkspaces(previous =>
       previous.map(workspace => {
-        if (workspace.id !== activeWorkspaceId) {
+        if (workspace.id !== currentActiveWorkspaceId) {
           return workspace
         }
 
@@ -213,14 +215,15 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const handleWorkspaceMinimapVisibilityChange = useCallback((isVisible: boolean): void => {
-    const { activeWorkspaceId, setWorkspaces } = useAppStore.getState()
-    if (!activeWorkspaceId) {
+    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
+      useAppStore.getState()
+    if (!currentActiveWorkspaceId) {
       return
     }
 
-    setWorkspaces(previous =>
+    updateWorkspaces(previous =>
       previous.map(workspace => {
-        if (workspace.id !== activeWorkspaceId) {
+        if (workspace.id !== currentActiveWorkspaceId) {
           return workspace
         }
 
@@ -237,14 +240,15 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const handleWorkspaceSpacesChange = useCallback((spaces: WorkspaceState['spaces']): void => {
-    const { activeWorkspaceId, setWorkspaces } = useAppStore.getState()
-    if (!activeWorkspaceId) {
+    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
+      useAppStore.getState()
+    if (!currentActiveWorkspaceId) {
       return
     }
 
-    setWorkspaces(previous =>
+    updateWorkspaces(previous =>
       previous.map(workspace => {
-        if (workspace.id !== activeWorkspaceId) {
+        if (workspace.id !== currentActiveWorkspaceId) {
           return workspace
         }
 
@@ -263,14 +267,15 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const handleWorkspaceActiveSpaceChange = useCallback((spaceId: string | null): void => {
-    const { activeWorkspaceId, setWorkspaces } = useAppStore.getState()
-    if (!activeWorkspaceId) {
+    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
+      useAppStore.getState()
+    if (!currentActiveWorkspaceId) {
       return
     }
 
-    setWorkspaces(previous =>
+    updateWorkspaces(previous =>
       previous.map(workspace => {
-        if (workspace.id !== activeWorkspaceId) {
+        if (workspace.id !== currentActiveWorkspaceId) {
           return workspace
         }
 
@@ -291,8 +296,8 @@ export default function App(): React.JSX.Element {
 
   const handleAnyWorkspaceWorktreesRootChange = useCallback(
     (workspaceId: string, worktreesRoot: string): void => {
-      const { setWorkspaces } = useAppStore.getState()
-      setWorkspaces(previous =>
+      const { setWorkspaces: updateWorkspaces } = useAppStore.getState()
+      updateWorkspaces(previous =>
         previous.map(workspace => {
           if (workspace.id !== workspaceId) {
             return workspace

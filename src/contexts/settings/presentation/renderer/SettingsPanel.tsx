@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { useTerminalProfiles } from '@app/renderer/shell/hooks/useTerminalProfiles'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import {
   AGENT_PROVIDERS,
@@ -61,6 +62,7 @@ export function SettingsPanel({
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
   const { t } = useTranslation()
+  const { terminalProfiles, detectedDefaultTerminalProfileId } = useTerminalProfiles()
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState())
@@ -72,6 +74,8 @@ export function SettingsPanel({
   const updateLanguage = (language: UiLanguage): void => onChange({ ...settings, language })
   const updateAgentFullAccess = (enabled: boolean): void =>
     onChange({ ...settings, agentFullAccess: enabled })
+  const updateDefaultTerminalProfileId = (profileId: string | null): void =>
+    onChange({ ...settings, defaultTerminalProfileId: profileId })
   const updateTaskTitleProvider = (provider: TaskTitleProvider): void =>
     onChange({ ...settings, taskTitleProvider: provider })
   const updateTaskTitleModel = (model: string): void =>
@@ -176,7 +180,6 @@ export function SettingsPanel({
   }
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
-
   const scrollToSection = (id: SettingsSectionId, targetId: string): void => {
     setActiveSectionId(id)
     window.requestAnimationFrame(() => {
@@ -277,7 +280,11 @@ export function SettingsPanel({
               defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
               terminalFontSize={settings.terminalFontSize}
               uiFontSize={settings.uiFontSize}
+              defaultTerminalProfileId={settings.defaultTerminalProfileId}
+              terminalProfiles={terminalProfiles}
+              detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
               onChangeCanvasInputMode={updateCanvasInputMode}
+              onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
               onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
               onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
               onChangeTerminalFontSize={updateTerminalFontSize}

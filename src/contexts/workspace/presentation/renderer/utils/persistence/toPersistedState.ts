@@ -50,6 +50,8 @@ export function toPersistedState(
         width: node.data.width,
         height: node.data.height,
         kind: node.data.kind,
+        profileId: normalizeOptionalString(node.data.profileId),
+        runtimeKind: node.data.runtimeKind,
         status: node.data.status,
         startedAt: node.data.startedAt,
         endedAt: node.data.endedAt,

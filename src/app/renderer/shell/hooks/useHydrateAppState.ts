@@ -84,6 +84,8 @@ function mergeHydratedNode(
       kind: hydratedNode.data.kind,
       title: hydratedNode.data.kind === 'agent' ? hydratedNode.data.title : currentNode.data.title,
       sessionId: hydratedNode.data.sessionId,
+      profileId: hydratedNode.data.profileId ?? currentNode.data.profileId ?? null,
+      runtimeKind: hydratedNode.data.runtimeKind ?? currentNode.data.runtimeKind,
       status: hydratedNode.data.status,
       startedAt: hydratedNode.data.startedAt,
       endedAt: hydratedNode.data.endedAt,
@@ -144,6 +146,7 @@ export async function hydrateRuntimeNode({
   try {
     const spawned = await window.opencoveApi.pty.spawn({
       cwd: resolveTerminalHydrationCwd(node, workspacePath),
+      profileId: node.data.profileId ?? undefined,
       cols: 80,
       rows: 24,
     })
@@ -153,6 +156,8 @@ export async function hydrateRuntimeNode({
       data: {
         ...node.data,
         sessionId: spawned.sessionId,
+        profileId: spawned.profileId,
+        runtimeKind: spawned.runtimeKind,
         kind: 'terminal' as const,
         status: null,
         startedAt: null,

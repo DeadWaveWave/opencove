@@ -43,6 +43,8 @@ export function useWorkspaceCanvasNodeCreation({
   const createNodeForSession = useCallback(
     async ({
       sessionId,
+      profileId,
+      runtimeKind,
       title,
       anchor,
       kind,
@@ -84,6 +86,8 @@ export function useWorkspaceCanvasNodeCreation({
         position: placement,
         data: {
           sessionId,
+          profileId: profileId ?? null,
+          runtimeKind,
           title,
           titlePinnedByUser: false,
           width: defaultSize.width,

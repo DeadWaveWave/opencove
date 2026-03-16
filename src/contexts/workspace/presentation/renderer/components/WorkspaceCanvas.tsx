@@ -316,6 +316,7 @@ function WorkspaceCanvasInner({
     selectedSpaceIdsRef,
     contextMenu,
     workspacePath,
+    defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     spacesRef,
     onSpacesChange,
     nodesRef,

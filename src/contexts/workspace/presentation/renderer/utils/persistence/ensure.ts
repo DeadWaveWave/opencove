@@ -7,7 +7,7 @@ import type {
   TaskNodeData,
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
-import type { AgentProviderId } from '../../../../../../shared/contracts/dto'
+import type { AgentProviderId, TerminalRuntimeKind } from '../../../../../../shared/contracts/dto'
 import { clearResumeSessionBinding, isResumeSessionBindingVerified } from '../agentResumeBinding'
 import {
   normalizeAgentRuntimeStatus,
@@ -236,6 +236,11 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   const agent = ensurePersistedAgentData(record.agent)
   const task = ensurePersistedTaskData(record.task)
   const note = ensurePersistedNoteData(record.task)
+  const runtimeKindInput = record.runtimeKind
+  const runtimeKind: TerminalRuntimeKind | undefined =
+    runtimeKindInput === 'windows' || runtimeKindInput === 'wsl' || runtimeKindInput === 'posix'
+      ? runtimeKindInput
+      : undefined
 
   return {
     id,
@@ -244,6 +249,8 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     width,
     height,
     kind,
+    profileId: normalizeOptionalString(record.profileId),
+    runtimeKind,
     status: normalizeAgentRuntimeStatus(record.status),
     startedAt: normalizeOptionalString(record.startedAt),
     endedAt: normalizeOptionalString(record.endedAt),

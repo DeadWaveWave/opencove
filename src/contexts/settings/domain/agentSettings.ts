@@ -23,6 +23,8 @@ export const UI_LANGUAGES = ['en', 'zh-CN'] as const
 
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
+export type TerminalProfileId = string | null
+
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
 export const MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 120
 export const MIN_TERMINAL_FONT_SIZE = 10
@@ -97,6 +99,7 @@ export interface AgentSettings {
   language: UiLanguage
   defaultProvider: AgentProvider
   agentFullAccess: boolean
+  defaultTerminalProfileId: TerminalProfileId
   customModelEnabledByProvider: AgentCustomModelEnabledByProvider
   customModelByProvider: AgentCustomModelByProvider
   customModelOptionsByProvider: AgentCustomModelOptionsByProvider
@@ -114,6 +117,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
   defaultProvider: 'codex',
   agentFullAccess: true,
+  defaultTerminalProfileId: null,
   customModelEnabledByProvider: {
     'claude-code': false,
     codex: false,
@@ -295,6 +299,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess
+  const defaultTerminalProfileId = normalizeTextValue(value.defaultTerminalProfileId)
 
   const enabledInput = isRecord(value.customModelEnabledByProvider)
     ? value.customModelEnabledByProvider
@@ -395,6 +400,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     language,
     defaultProvider,
     agentFullAccess,
+    defaultTerminalProfileId:
+      defaultTerminalProfileId.length > 0
+        ? defaultTerminalProfileId
+        : DEFAULT_AGENT_SETTINGS.defaultTerminalProfileId,
     customModelEnabledByProvider,
     customModelByProvider,
     customModelOptionsByProvider,
