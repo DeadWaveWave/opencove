@@ -110,8 +110,15 @@ export class PtyManager {
     }
 
     if (encoding === 'binary') {
-      // xterm onBinary emits byte-oriented strings; preserve those bytes for the PTY.
-      pty.write(Buffer.from(data, 'binary'))
+      if (process.platform === 'win32') {
+        // ConPTY consumes UTF-8 text input; raw bytes >= 0x80 can be treated as invalid UTF-8 and
+        // replaced. Writing the "binary string" as UTF-8 keeps byte values recoverable via
+        // `charCodeAt` in apps that decode UTF-8 input (common for Node TUIs).
+        pty.write(data)
+      } else {
+        // xterm onBinary emits byte-oriented strings; preserve those bytes for POSIX PTYs.
+        pty.write(Buffer.from(data, 'binary'))
+      }
       return
     }
 

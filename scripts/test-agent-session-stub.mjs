@@ -419,9 +419,9 @@ async function runRawAltScreenWheelEchoScenario() {
       buffer += chunk
       const wheelLabel = extractMouseWheelLabel(buffer)
       if (wheelLabel) {
-        const x10Bytes = extractX10MouseReportBytes(buffer)
-        const byteSuffix = Array.isArray(x10Bytes) ? ` bytes=${x10Bytes.join(',')}` : ''
-        settle(`[cove-test-wheel] ${wheelLabel}${byteSuffix}`)
+        const x10Codes = extractX10MouseReportBytes(buffer)
+        const codeSuffix = Array.isArray(x10Codes) ? ` codes=${x10Codes.join(',')}` : ''
+        settle(`[cove-test-wheel] ${wheelLabel}${codeSuffix}`)
       }
     }
 
@@ -433,7 +433,7 @@ async function runRawAltScreenWheelEchoScenario() {
       process.stdin.setRawMode(true)
     }
 
-    process.stdin.setEncoding('latin1')
+    process.stdin.setEncoding('utf8')
     process.stdin.on('data', handleData)
     process.stdin.resume()
   })
