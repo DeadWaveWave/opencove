@@ -1,17 +1,27 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 describe('GitWorktreeService (Windows cleanup warnings)', () => {
+  const originalPlatform = process.platform
+
   beforeEach(() => {
+    Object.defineProperty(process, 'platform', {
+      value: 'win32',
+      configurable: true,
+    })
     vi.resetModules()
     vi.restoreAllMocks()
   })
 
+  afterEach(() => {
+    Object.defineProperty(process, 'platform', {
+      value: originalPlatform,
+      configurable: true,
+    })
+  })
+
   it('returns a directory cleanup warning when git unregisters the worktree before reporting a delete failure', async () => {
-    const repoPath = process.platform === 'win32' ? 'C:/repo' : '/repo'
-    const worktreePath =
-      process.platform === 'win32'
-        ? 'C:/repo/.opencove/worktrees/space-1'
-        : '/repo/.opencove/worktrees/space-1'
+    const repoPath = '/repo'
+    const worktreePath = '/repo/.opencove/worktrees/space-1'
 
     const runGitMock = vi.fn()
     const ensureGitRepoMock = vi.fn(async () => undefined)
