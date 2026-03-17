@@ -181,6 +181,7 @@ test.describe('Workspace Canvas - Worktree Archive (Windows)', () => {
         backgroundPid = await readBackgroundPid()
         await window.waitForTimeout(1500)
 
+        await window.locator('[data-testid="workspace-space-switch-space-archive-warning"]').click()
         await window.locator('[data-testid="workspace-space-menu-space-archive-warning"]').click()
         await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
         await window.locator('[data-testid="workspace-space-action-archive"]').click()

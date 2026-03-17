@@ -7,6 +7,12 @@ describe('GitWorktreeService (Windows cleanup warnings)', () => {
   })
 
   it('returns a directory cleanup warning when git unregisters the worktree before reporting a delete failure', async () => {
+    const repoPath = process.platform === 'win32' ? 'C:/repo' : '/repo'
+    const worktreePath =
+      process.platform === 'win32'
+        ? 'C:/repo/.opencove/worktrees/space-1'
+        : '/repo/.opencove/worktrees/space-1'
+
     const runGitMock = vi.fn()
     const ensureGitRepoMock = vi.fn(async () => undefined)
     const toCanonicalPathMock = vi.fn(async (path: string) => path)
@@ -25,16 +31,16 @@ describe('GitWorktreeService (Windows cleanup warnings)', () => {
           stdout:
             worktreeListCallCount === 1
               ? [
-                  'worktree C:/repo',
+                  `worktree ${repoPath}`,
                   'HEAD abc123',
                   'branch refs/heads/main',
                   '',
-                  'worktree C:/repo/.opencove/worktrees/space-1',
+                  `worktree ${worktreePath}`,
                   'HEAD def456',
                   'branch refs/heads/feature/demo',
                   '',
                 ].join('\n')
-              : ['worktree C:/repo', 'HEAD abc123', 'branch refs/heads/main', ''].join('\n'),
+              : [`worktree ${repoPath}`, 'HEAD abc123', 'branch refs/heads/main', ''].join('\n'),
           stderr: '',
         }
       }
@@ -46,13 +52,12 @@ describe('GitWorktreeService (Windows cleanup warnings)', () => {
           ? {
               exitCode: 255,
               stdout: '',
-              stderr:
-                "error: failed to delete 'C:/repo/.opencove/worktrees/space-1': Permission denied",
+              stderr: `error: failed to delete '${worktreePath}': Permission denied`,
             }
           : {
               exitCode: 128,
               stdout: '',
-              stderr: "fatal: 'C:/repo/.opencove/worktrees/space-1' is not a working tree",
+              stderr: `fatal: '${worktreePath}' is not a working tree`,
             }
       }
 
@@ -102,8 +107,8 @@ describe('GitWorktreeService (Windows cleanup warnings)', () => {
       await import('../../../src/contexts/worktree/infrastructure/git/GitWorktreeService')
 
     const removed = await removeGitWorktree({
-      repoPath: 'C:/repo',
-      worktreePath: 'C:/repo/.opencove/worktrees/space-1',
+      repoPath,
+      worktreePath,
       force: false,
       deleteBranch: true,
     })
@@ -119,9 +124,9 @@ describe('GitWorktreeService (Windows cleanup warnings)', () => {
       }),
     })
     expect(runGitMock).toHaveBeenCalledWith(
-      ['worktree', 'remove', 'C:/repo/.opencove/worktrees/space-1'],
-      'C:/repo',
+      ['worktree', 'remove', worktreePath],
+      repoPath,
     )
-    expect(runGitMock).toHaveBeenCalledWith(['branch', '-D', 'feature/demo'], 'C:/repo')
+    expect(runGitMock).toHaveBeenCalledWith(['branch', '-D', 'feature/demo'], repoPath)
   })
 })
