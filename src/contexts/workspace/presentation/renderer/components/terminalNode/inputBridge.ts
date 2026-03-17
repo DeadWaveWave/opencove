@@ -1,3 +1,10 @@
+type PtyWriteEncoding = 'utf8' | 'binary'
+
+type PtyWritePayload = {
+  data: string
+  encoding: PtyWriteEncoding
+}
+
 type TerminalClipboardController = {
   getSelection: () => string
   hasSelection: () => boolean
@@ -5,7 +12,7 @@ type TerminalClipboardController = {
 }
 
 type PtyWriteQueue = {
-  enqueue: (data: string) => void
+  enqueue: (data: string, encoding?: PtyWriteEncoding) => void
   flush: () => void
 }
 
@@ -188,24 +195,43 @@ export function handleTerminalCustomKeyEvent({
   return false
 }
 
-export function createPtyWriteQueue(write: (data: string) => Promise<void>): {
-  enqueue: (data: string) => void
+export function createPtyWriteQueue(write: (payload: PtyWritePayload) => Promise<void>): {
+  enqueue: (data: string, encoding?: PtyWriteEncoding) => void
   flush: () => void
   dispose: () => void
 } {
   let isDisposed = false
-  const pendingChunks: string[] = []
+  const pendingWrites: PtyWritePayload[] = []
   let pendingWrite: Promise<void> | null = null
 
+  const takeNextPayload = (): PtyWritePayload | null => {
+    const firstPayload = pendingWrites.shift()
+    if (!firstPayload) {
+      return null
+    }
+
+    let data = firstPayload.data
+    while (pendingWrites.length > 0 && pendingWrites[0]?.encoding === firstPayload.encoding) {
+      data += pendingWrites.shift()?.data ?? ''
+    }
+
+    return {
+      data,
+      encoding: firstPayload.encoding,
+    }
+  }
+
   const flush = () => {
-    if (isDisposed || pendingWrite || pendingChunks.length === 0) {
+    if (isDisposed || pendingWrite) {
       return
     }
 
-    const dataToWrite = pendingChunks.join('')
-    pendingChunks.length = 0
+    const nextPayload = takeNextPayload()
+    if (!nextPayload) {
+      return
+    }
 
-    pendingWrite = write(dataToWrite)
+    pendingWrite = write(nextPayload)
       .catch(() => undefined)
       .finally(() => {
         pendingWrite = null
@@ -214,17 +240,17 @@ export function createPtyWriteQueue(write: (data: string) => Promise<void>): {
   }
 
   return {
-    enqueue: data => {
+    enqueue: (data, encoding = 'utf8') => {
       if (isDisposed || data.length === 0) {
         return
       }
 
-      pendingChunks.push(data)
+      pendingWrites.push({ data, encoding })
     },
     flush,
     dispose: () => {
       isDisposed = true
-      pendingChunks.length = 0
+      pendingWrites.length = 0
       pendingWrite = null
     },
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import {
+  createPtyWriteQueue,
   handleTerminalCustomKeyEvent,
   pasteTextFromClipboard,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/inputBridge'
@@ -177,5 +178,24 @@ describe('handleTerminalCustomKeyEvent', () => {
 
     expect(readClipboardText).toHaveBeenCalledTimes(1)
     expect(terminal.paste).toHaveBeenCalledWith('clipboard payload')
+  })
+
+  it('preserves binary writes as a separate PTY payload', async () => {
+    const writes: Array<{ data: string; encoding: 'utf8' | 'binary' }> = []
+    const ptyWriteQueue = createPtyWriteQueue(async payload => {
+      writes.push(payload)
+    })
+
+    ptyWriteQueue.enqueue('plain-text')
+    ptyWriteQueue.enqueue(String.fromCharCode(64, 80), 'binary')
+    ptyWriteQueue.flush()
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(writes).toEqual([
+      { data: 'plain-text', encoding: 'utf8' },
+      { data: String.fromCharCode(64, 80), encoding: 'binary' },
+    ])
   })
 })

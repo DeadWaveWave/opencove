@@ -36,6 +36,7 @@ vi.mock('@xterm/xterm', () => {
     public options = { fontSize: 13 }
     public written: string[] = []
     private dataListener: ((data: string) => void) | null = null
+    private binaryListener: ((data: string) => void) | null = null
 
     public constructor(options?: { cols?: number; rows?: number }) {
       MockTerminal.lastInstance = this
@@ -66,9 +67,22 @@ vi.mock('@xterm/xterm', () => {
       }
     }
 
+    public onBinary(listener: (data: string) => void) {
+      this.binaryListener = listener
+      return {
+        dispose: () => {
+          this.binaryListener = null
+        },
+      }
+    }
+
     public write(data: string, callback?: () => void): void {
       this.written.push(data)
       callback?.()
+    }
+
+    public emitBinary(data: string): void {
+      this.binaryListener?.(data)
     }
   }
 
@@ -287,5 +301,71 @@ describe('TerminalNode hydration buffering', () => {
     })
     expect(__getLastTerminal()?.cols).toBe(92)
     expect(__getLastTerminal()?.rows).toBe(28)
+  })
+
+  it('forwards xterm binary input to the pty bridge after hydration', async () => {
+    if (typeof window.ResizeObserver === 'undefined') {
+      window.ResizeObserver = class ResizeObserver {
+        public observe(): void {}
+        public disconnect(): void {}
+        public unobserve(): void {}
+      }
+    }
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        meta: {
+          isTest: true,
+        },
+        pty: {
+          attach: vi.fn(async () => undefined),
+          detach: vi.fn(async () => undefined),
+          snapshot: vi.fn(async () => ({ data: '' })),
+          onData: vi.fn(() => () => undefined),
+          onExit: vi.fn(() => () => undefined),
+          write: vi.fn(async () => undefined),
+          resize: vi.fn(async () => undefined),
+        },
+      },
+    })
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+
+    render(
+      <TerminalNode
+        nodeId="node-1"
+        sessionId="session-1"
+        title="t"
+        kind="terminal"
+        status={null}
+        lastError={null}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(window.opencoveApi.pty.snapshot).toHaveBeenCalledTimes(1)
+    })
+    await Promise.resolve()
+
+    const binaryInput = String.fromCharCode(0, 65, 255)
+    const { __getLastTerminal } = await import('@xterm/xterm')
+    __getLastTerminal()?.emitBinary(binaryInput)
+
+    await waitFor(() => {
+      expect(window.opencoveApi.pty.write).toHaveBeenCalledWith({
+        sessionId: 'session-1',
+        data: binaryInput,
+        encoding: 'binary',
+      })
+    })
   })
 })

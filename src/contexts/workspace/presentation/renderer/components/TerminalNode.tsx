@@ -65,7 +65,6 @@ export function TerminalNode({
   const onCommandRunRef = useRef(onCommandRun)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
-
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
   }, [onCommandRun])
@@ -148,10 +147,13 @@ export function TerminalNode({
 
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
-
     let disposeTerminalSelectionTestHandle: () => void = () => undefined
-    const ptyWriteQueue = createPtyWriteQueue(data =>
-      window.opencoveApi.pty.write({ sessionId, data }),
+    const ptyWriteQueue = createPtyWriteQueue(({ data, encoding }) =>
+      window.opencoveApi.pty.write({
+        sessionId,
+        data,
+        ...(encoding === 'binary' ? { encoding } : {}),
+      }),
     )
     terminal.attachCustomKeyEventHandler(event =>
       handleTerminalCustomKeyEvent({
@@ -174,8 +176,7 @@ export function TerminalNode({
 
     let isDisposed = false
     let shouldForwardTerminalData = false
-
-    const disposable = terminal.onData(data => {
+    const dataDisposable = terminal.onData(data => {
       if (!shouldForwardTerminalData) {
         return
       }
@@ -193,6 +194,14 @@ export function TerminalNode({
       parsed.commands.forEach(command => {
         commandRunHandler(command)
       })
+    })
+    const binaryDisposable = terminal.onBinary(data => {
+      if (!shouldForwardTerminalData) {
+        return
+      }
+
+      ptyWriteQueue.enqueue(data, 'binary')
+      ptyWriteQueue.flush()
     })
 
     let isHydrating = true
@@ -362,7 +371,8 @@ export function TerminalNode({
       window.removeEventListener('focus', handleWindowFocus)
       window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleLayoutSync)
       resizeObserver.disconnect()
-      disposable.dispose()
+      dataDisposable.dispose()
+      binaryDisposable.dispose()
       unsubscribeData()
       unsubscribeExit()
       disposeTerminalSelectionTestHandle()

@@ -65,7 +65,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyWrite,
     async (_event, payload: WriteTerminalInput) => {
       const normalized = normalizeWriteTerminalPayload(payload)
-      runtime.write(normalized.sessionId, normalized.data)
+      runtime.write(normalized.sessionId, normalized.data, normalized.encoding)
     },
     { defaultErrorCode: 'terminal.write_failed' },
   )

@@ -28,9 +28,12 @@ export interface SpawnTerminalResult extends PseudoTerminalSession {
   runtimeKind?: TerminalRuntimeKind
 }
 
+export type TerminalWriteEncoding = 'utf8' | 'binary'
+
 export interface WriteTerminalInput {
   sessionId: string
   data: string
+  encoding?: TerminalWriteEncoding
 }
 
 export interface ResizeTerminalInput {

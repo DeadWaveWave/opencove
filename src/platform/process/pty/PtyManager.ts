@@ -2,6 +2,7 @@ import os from 'node:os'
 import process from 'node:process'
 import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
+import type { TerminalWriteEncoding } from '../../../shared/contracts/dto'
 
 export interface SpawnPtyOptions {
   cwd: string
@@ -102,9 +103,15 @@ export class PtyManager {
     return snapshot.chunks.slice(snapshot.head).join('')
   }
 
-  public write(sessionId: string, data: string): void {
+  public write(sessionId: string, data: string, encoding: TerminalWriteEncoding = 'utf8'): void {
     const pty = this.sessions.get(sessionId)
     if (!pty) {
+      return
+    }
+
+    if (encoding === 'binary') {
+      // xterm onBinary emits byte-oriented strings; preserve those bytes for the PTY.
+      pty.write(Buffer.from(data, 'binary'))
       return
     }
 

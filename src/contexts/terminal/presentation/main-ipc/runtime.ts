@@ -9,6 +9,7 @@ import type {
   SpawnTerminalResult,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
 import { PtyManager, type SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
@@ -33,7 +34,7 @@ export interface PtyRuntime {
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => { sessionId: string }
-  write: (sessionId: string, data: string) => void
+  write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => void
   resize: (sessionId: string, cols: number, rows: number) => void
   kill: (sessionId: string) => void
   attach: (contentsId: number, sessionId: string) => void
@@ -356,8 +357,8 @@ export function createPtyRuntime(): PtyRuntime {
       wirePtySessionEvents(sessionId, pty)
       return { sessionId }
     },
-    write: (sessionId, data) => {
-      ptyManager.write(sessionId, data)
+    write: (sessionId, data, encoding = 'utf8') => {
+      ptyManager.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
     resize: (sessionId, cols, rows) => {

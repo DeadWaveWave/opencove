@@ -46,6 +46,12 @@ vi.mock('@xterm/xterm', () => {
       }
     }
 
+    public onBinary(): { dispose: () => void } {
+      return {
+        dispose: () => undefined,
+      }
+    }
+
     public write(_data: string, callback?: () => void): void {
       callback?.()
     }

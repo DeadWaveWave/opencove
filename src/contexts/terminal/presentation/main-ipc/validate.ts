@@ -5,6 +5,7 @@ import type {
   ResizeTerminalInput,
   SpawnTerminalInput,
   SnapshotTerminalInput,
+  TerminalWriteEncoding,
   WriteTerminalInput,
 } from '../../../../shared/contracts/dto'
 import { isAbsolute } from 'node:path'
@@ -74,7 +75,16 @@ export function normalizeWriteTerminalPayload(payload: unknown): WriteTerminalIn
   const sessionId = normalizeSessionId(payload, 'pty:write')
   const record = payload as Record<string, unknown>
   const data = typeof record.data === 'string' ? record.data : ''
-  return { sessionId, data }
+  const rawEncoding = record.encoding
+
+  if (rawEncoding !== undefined && rawEncoding !== 'utf8' && rawEncoding !== 'binary') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid encoding for pty:write',
+    })
+  }
+
+  const encoding: TerminalWriteEncoding = rawEncoding === 'binary' ? 'binary' : 'utf8'
+  return { sessionId, data, encoding }
 }
 
 export function normalizeResizeTerminalPayload(payload: unknown): ResizeTerminalInput {
