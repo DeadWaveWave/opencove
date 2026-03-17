@@ -328,6 +328,13 @@ function extractMouseWheelLabel(buffer) {
   return buttonCode % 2 === 0 ? 'wheel-up' : 'wheel-down'
 }
 
+function extractX10MouseReportBytes(buffer) {
+  const x10Index = buffer.indexOf('\u001b[M')
+  if (x10Index === -1 || buffer.length < x10Index + 6) return null
+  const report = buffer.slice(x10Index, x10Index + 6)
+  return Array.from(report, char => char.charCodeAt(0))
+}
+
 async function runRawBracketedPasteEchoScenario() {
   process.stdout.write('\u001b[?2004h')
 
@@ -410,7 +417,9 @@ async function runRawAltScreenWheelEchoScenario() {
       buffer += chunk
       const wheelLabel = extractMouseWheelLabel(buffer)
       if (wheelLabel) {
-        settle(`[cove-test-wheel] ${wheelLabel}`)
+        const x10Bytes = extractX10MouseReportBytes(buffer)
+        const byteSuffix = Array.isArray(x10Bytes) ? ` bytes=${x10Bytes.join(',')}` : ''
+        settle(`[cove-test-wheel] ${wheelLabel}${byteSuffix}`)
       }
     }
 
@@ -422,7 +431,7 @@ async function runRawAltScreenWheelEchoScenario() {
       process.stdin.setRawMode(true)
     }
 
-    process.stdin.setEncoding('utf8')
+    process.stdin.setEncoding('latin1')
     process.stdin.on('data', handleData)
     process.stdin.resume()
   })

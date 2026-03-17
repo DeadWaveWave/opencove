@@ -7,6 +7,7 @@ type TerminalSelectionHandle = Pick<
 
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
+  emitBinaryInput: (nodeId: string, data: string) => boolean
   getSelection: (nodeId: string) => string | null
   hasSelection: (nodeId: string) => boolean
   selectAll: (nodeId: string) => boolean
@@ -34,6 +35,18 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
 
         terminal.clearSelection()
+        return true
+      },
+      emitBinaryInput: (nodeId, data) => {
+        const terminal = terminalHandles.get(nodeId) as unknown as {
+          _core?: { coreService?: { triggerBinaryEvent?: (payload: string) => void } }
+        }
+        const trigger = terminal?._core?.coreService?.triggerBinaryEvent
+        if (typeof trigger !== 'function') {
+          return false
+        }
+
+        trigger(data)
         return true
       },
       getSelection: nodeId => terminalHandles.get(nodeId)?.getSelection() ?? null,

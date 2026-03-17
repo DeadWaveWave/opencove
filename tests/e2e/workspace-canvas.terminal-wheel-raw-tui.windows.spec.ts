@@ -9,18 +9,13 @@ test.describe('Workspace Canvas - Terminal Wheel Raw TUI (Windows)', () => {
   test.skip(windowsOnly, 'Windows only')
 
   test('forwards wheel input to an alternate-screen codex-style TUI', async () => {
-    const { electronApp, window } = await launchApp({
-      cleanupUserDataDir: false,
-      // Inactive/offscreen modes are fine for most Windows E2E coverage, but raw wheel
-      // injection into xterm alt-screen TUIs is only reliable when the window can receive
-      // foreground pointer input.
-      windowMode: 'normal',
-    })
+    const nodeId = 'node-raw-wheel-windows'
+    const { electronApp, window } = await launchApp({ cleanupUserDataDir: false })
 
     try {
       await clearAndSeedWorkspace(window, [
         {
-          id: 'node-raw-wheel-windows',
+          id: nodeId,
           title: 'terminal-raw-wheel-windows',
           position: { x: 120, y: 120 },
           width: 640,
@@ -42,10 +37,22 @@ test.describe('Workspace Canvas - Terminal Wheel Raw TUI (Windows)', () => {
 
       await expect(terminal).toContainText('ALT_SCREEN_WHEEL_READY')
 
-      await xterm.hover()
-      await window.mouse.wheel(0, -240)
+      const x10WheelReport = '\u001b[M' + String.fromCharCode(32 + 64, 32 + 120, 32 + 120)
+      const dispatched = await window.evaluate(
+        ({ currentNodeId, report }) => {
+          const api = window.__opencoveTerminalSelectionTestApi
+          if (!api || typeof api.emitBinaryInput !== 'function') {
+            return false
+          }
 
-      await expect(terminal).toContainText('[cove-test-wheel] wheel-up')
+          return api.emitBinaryInput(currentNodeId, report)
+        },
+        { currentNodeId: nodeId, report: x10WheelReport },
+      )
+
+      expect(dispatched).toBe(true)
+
+      await expect(terminal).toContainText('[cove-test-wheel] wheel-up bytes=27,91,77,96,152,152')
       await expect(terminal).not.toContainText('[cove-test-wheel] timeout')
     } finally {
       await electronApp.close()
