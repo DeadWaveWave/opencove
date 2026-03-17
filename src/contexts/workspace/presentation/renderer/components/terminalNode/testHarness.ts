@@ -41,12 +41,12 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         const terminal = terminalHandles.get(nodeId) as unknown as {
           _core?: { coreService?: { triggerBinaryEvent?: (payload: string) => void } }
         }
-        const trigger = terminal?._core?.coreService?.triggerBinaryEvent
-        if (typeof trigger !== 'function') {
+        const coreService = terminal?._core?.coreService
+        if (!coreService || typeof coreService.triggerBinaryEvent !== 'function') {
           return false
         }
 
-        trigger(data)
+        coreService.triggerBinaryEvent(data)
         return true
       },
       getSelection: nodeId => terminalHandles.get(nodeId)?.getSelection() ?? null,
