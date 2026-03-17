@@ -13,6 +13,8 @@ const E2E_APP_FORCE_KILL_POLL_MS = 50
 const E2E_USER_DATA_DIR_CLEANUP_RETRY_DELAY_MS = 100
 const E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS = 6
 
+let lastLaunchedWindowMode: E2EWindowMode | null = null
+
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
     return false
@@ -22,7 +24,10 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
 }
 
 export async function bringWindowToFrontForNormalMode(window: Page): Promise<void> {
-  if ((process.env['OPENCOVE_E2E_WINDOW_MODE'] as E2EWindowMode | undefined) !== 'normal') {
+  const resolvedMode =
+    lastLaunchedWindowMode ?? (process.env['OPENCOVE_E2E_WINDOW_MODE'] as E2EWindowMode | undefined)
+
+  if (resolvedMode !== 'normal') {
     return
   }
 
@@ -183,6 +188,7 @@ async function launchAppInMode(
   } = {},
   attempt = 0,
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
+  lastLaunchedWindowMode = launchMode
   const userDataDir = options.userDataDir ?? (await createTestUserDataDir())
   const cleanupUserDataDir = options.cleanupUserDataDir ?? true
   const testHomeDir = path.join(userDataDir, 'home')
