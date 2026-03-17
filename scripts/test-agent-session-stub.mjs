@@ -330,7 +330,9 @@ function extractMouseWheelLabel(buffer) {
 
 function extractX10MouseReportBytes(buffer) {
   const x10Index = buffer.indexOf('\u001b[M')
-  if (x10Index === -1 || buffer.length < x10Index + 6) return null
+  if (x10Index === -1 || buffer.length < x10Index + 6) {
+    return null
+  }
   const report = buffer.slice(x10Index, x10Index + 6)
   return Array.from(report, char => char.charCodeAt(0))
 }
