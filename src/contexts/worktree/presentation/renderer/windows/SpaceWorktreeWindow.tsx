@@ -394,7 +394,7 @@ export function SpaceWorktreeWindow({
         worktreePath: isSpaceOnWorkspaceRoot ? null : space.directoryPath,
         deleteBranch: isSpaceOnWorkspaceRoot ? false : deleteBranchOnArchive,
         archiveSpace: true,
-        force: false,
+        force: true,
       })
       onClose()
     } catch (operationError) {

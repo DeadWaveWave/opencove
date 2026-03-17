@@ -111,7 +111,7 @@ describe('SpaceWorktreeWindow flow', () => {
       expect(remove).toHaveBeenCalledWith({
         repoPath: '/repo',
         worktreePath: '/repo/.opencove/worktrees/space-1',
-        force: false,
+        force: true,
         deleteBranch: true,
       })
       expect(onUpdateSpaceDirectory).toHaveBeenCalledWith('space-1', '/repo', {
@@ -254,7 +254,7 @@ describe('SpaceWorktreeWindow flow', () => {
       expect(remove).toHaveBeenCalledWith({
         repoPath: '/repo',
         worktreePath: '/repo/.opencove/worktrees/space-1',
-        force: false,
+        force: true,
         deleteBranch: false,
       })
       expect(onUpdateSpaceDirectory).toHaveBeenCalledWith('space-1', '/repo', {
