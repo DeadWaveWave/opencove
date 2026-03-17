@@ -6,6 +6,7 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import type { ShowWorkspaceCanvasMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type {
   CreateGitWorktreeBranchMode,
   GitWorktreeInfo,
@@ -30,6 +31,7 @@ import { useSpaceWorktreeRefresh } from './useSpaceWorktreeRefresh'
 import { useSpaceWorktreeSuggestNames } from './useSpaceWorktreeSuggestNames'
 import { getSpaceArchiveCounts, resolveSpaceWorktreeStatusPath } from './spaceWorktreeWindowState'
 import { toErrorMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
+import { buildArchiveWarningMessage } from './spaceWorktreeWarnings'
 
 export function SpaceWorktreeWindow({
   spaceId,
@@ -40,6 +42,7 @@ export function SpaceWorktreeWindow({
   worktreesRoot,
   agentSettings,
   onClose,
+  onShowMessage,
   onUpdateSpaceDirectory,
   getBlockingNodes,
   closeNodesById,
@@ -52,6 +55,7 @@ export function SpaceWorktreeWindow({
   worktreesRoot: string
   agentSettings: AgentSettings
   onClose: () => void
+  onShowMessage?: ShowWorkspaceCanvasMessage
   onUpdateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,
@@ -238,32 +242,30 @@ export function SpaceWorktreeWindow({
             }
           : options
 
-      let removedBranchError: RemoveGitWorktreeResult['branchDeleteError'] = null
+      let removedWorktreeResult: RemoveGitWorktreeResult | null = null
 
       if (pending.worktreePath) {
         const removeWorktree = getWorktreeApiMethod('remove', t)
-        const removed = await removeWorktree({
+        removedWorktreeResult = await removeWorktree({
           repoPath: workspacePath,
           worktreePath: pending.worktreePath,
           force: pending.force,
           deleteBranch: pending.deleteBranch,
         })
-        removedBranchError = removed.branchDeleteError
       }
 
       onUpdateSpaceDirectory(targetSpaceId, workspacePath, nextUpdateOptions)
       setDeleteBranchOnArchive(false)
       await refresh()
 
-      if (removedBranchError) {
-        throw new Error(
-          t('worktree.archiveBranchDeleteFailed', {
-            message: toErrorMessage(removedBranchError),
-          }),
-        )
+      if (removedWorktreeResult) {
+        const warningMessage = buildArchiveWarningMessage(removedWorktreeResult, t)
+        if (warningMessage) {
+          onShowMessage?.(warningMessage, 'warning')
+        }
       }
     },
-    [onUpdateSpaceDirectory, refresh, t, workspacePath],
+    [onShowMessage, onUpdateSpaceDirectory, refresh, t, workspacePath],
   )
 
   const runOperation = useCallback(

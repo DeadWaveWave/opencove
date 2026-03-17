@@ -9,6 +9,10 @@ import {
 import { mkdir, readdir, stat } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'
 import { createAppErrorDescriptor } from '../../../../shared/errors/appError'
+import {
+  cleanupResidualWorktreeDirectory,
+  runGitWorktreeRemoveWithRetry,
+} from './GitWorktreeRemoveCleanup'
 export { getGitStatusSummary } from './GitWorktreeStatusSummary'
 
 export interface GitWorktreeEntry {
@@ -181,6 +185,7 @@ export interface RemoveGitWorktreeInput {
 export interface RemoveGitWorktreeResult {
   deletedBranchName: string | null
   branchDeleteError: ReturnType<typeof createAppErrorDescriptor> | null
+  directoryCleanupError: ReturnType<typeof createAppErrorDescriptor> | null
 }
 
 export interface RenameGitBranchInput {
@@ -375,13 +380,22 @@ export async function removeGitWorktree(
   }
   args.push(targetWorktree.path)
 
-  const result = await runGit(args, normalizedRepoPath)
-  if (result.exitCode !== 0) {
-    throw new Error(normalizeOptionalText(result.stderr) ?? 'git worktree remove failed')
+  const result = await runGitWorktreeRemoveWithRetry(args, normalizedRepoPath)
+  const worktreesAfterRemoval = await listGitWorktrees({ repoPath: normalizedRepoPath })
+  const isStillRegistered = worktreesAfterRemoval.worktrees.some(
+    entry => entry.path === comparableWorktreePath,
+  )
+  if (isStillRegistered) {
+    throw new Error(
+      result.exitCode !== 0
+        ? (normalizeOptionalText(result.stderr) ?? 'git worktree remove failed')
+        : `Worktree "${targetWorktree.path}" is still registered after removal`,
+    )
   }
 
   let deletedBranchName: string | null = null
   let branchDeleteError: ReturnType<typeof createAppErrorDescriptor> | null = null
+  const directoryCleanupError = await cleanupResidualWorktreeDirectory(targetWorktree.path)
 
   if (input.deleteBranch === true && targetWorktree.branch) {
     const deleteBranchResult = await runGit(
@@ -402,6 +416,7 @@ export async function removeGitWorktree(
   return {
     deletedBranchName,
     branchDeleteError,
+    directoryCleanupError,
   }
 }
 

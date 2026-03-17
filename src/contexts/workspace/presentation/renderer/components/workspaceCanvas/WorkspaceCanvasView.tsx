@@ -48,7 +48,6 @@ interface WorkspaceCanvasViewProps {
   handleCanvasPointerUpCapture: React.PointerEventHandler<HTMLDivElement>
   handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
   handleCanvasWheelCapture: (event: WheelEvent) => void
-
   nodes: Node<TerminalNodeData>[]
   edges: Edge[]
   nodeTypes: NodeTypes
@@ -77,7 +76,6 @@ interface WorkspaceCanvasViewProps {
   useManualCanvasWheelGestures: boolean
   isShiftPressed: boolean
   selectionDraft: SelectionDraftUiState | null
-
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: { spaceId: string; rect: WorkspaceSpaceRect } | null
   selectedSpaceIds: string[]
@@ -152,6 +150,7 @@ interface WorkspaceCanvasViewProps {
   openSpaceCreateWorktree: (spaceId: string) => void
   openSpaceArchive: (spaceId: string) => void
   closeSpaceWorktree: () => void
+  onShowMessage?: WorkspaceCanvasProps['onShowMessage']
   updateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,
@@ -257,6 +256,7 @@ export function WorkspaceCanvasView({
   openSpaceCreateWorktree,
   openSpaceArchive,
   closeSpaceWorktree,
+  onShowMessage,
   updateSpaceDirectory,
   getSpaceBlockingNodes,
   closeNodesById,
@@ -482,6 +482,7 @@ export function WorkspaceCanvasView({
         worktreesRoot={worktreesRoot}
         agentSettings={agentSettings}
         onClose={closeSpaceWorktree}
+        onShowMessage={onShowMessage}
         onUpdateSpaceDirectory={(spaceId, directoryPath, options) => {
           updateSpaceDirectory(spaceId, directoryPath, options)
         }}

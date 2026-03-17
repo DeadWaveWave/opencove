@@ -56,6 +56,7 @@ export interface RemoveGitWorktreeInput {
 export interface RemoveGitWorktreeResult {
   deletedBranchName: string | null
   branchDeleteError: AppErrorDescriptor | null
+  directoryCleanupError: AppErrorDescriptor | null
 }
 
 export interface RenameGitBranchInput {

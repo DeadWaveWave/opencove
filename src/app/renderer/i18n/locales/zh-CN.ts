@@ -303,7 +303,9 @@ export const zhCN = {
     archiveNotes_other: '{{count}} 个便签',
     aiSuggestionFailed: 'AI 建议失败：{{message}}',
     refreshFailed: '加载 worktree 信息失败：{{message}}',
-    archiveBranchDeleteFailed: 'Space 已归档，但删除分支失败：{{message}}',
+    archiveBranchDeleteFailed: 'Space 已归档，但分支未能删除。',
+    archiveDirectoryCleanupFailed:
+      'Space 已归档，但 worktree 目录未能删除。请关闭仍在使用它的进程，然后手动删除该目录。',
     branchValidation: {
       empty: '分支名不能为空。',
       atSymbol: '分支名不能是 "@".',

@@ -1,8 +1,12 @@
 /// <reference types="vitest/config" />
+import { realpathSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { availableParallelism } from 'node:os'
 import { defineConfig } from 'vitest/config'
 
 const maxVitestWorkers = Math.max(1, Math.min(4, availableParallelism()))
+const reactPath = realpathSync.native(resolve(__dirname, 'node_modules/react'))
+const reactDomPath = realpathSync.native(resolve(__dirname, 'node_modules/react-dom'))
 
 export default defineConfig({
   test: {
@@ -21,6 +25,20 @@ export default defineConfig({
 
     // Cap worker fan-out to avoid flaky fork startup timeouts on local and CI runs.
     maxWorkers: maxVitestWorkers,
+
+    server: {
+      deps: {
+        inline: [/^react($|\/)/, /^react-dom($|\/)/, /^@testing-library\/react$/],
+      },
+    },
+
+    deps: {
+      optimizer: {
+        client: {
+          include: ['react', 'react-dom', '@testing-library/react'],
+        },
+      },
+    },
 
     // 包含的测试文件
     include: [
@@ -69,7 +87,10 @@ export default defineConfig({
 
   // 路径别名（与项目 tsconfig 保持一致）
   resolve: {
+    dedupe: ['react', 'react-dom'],
     alias: {
+      react: reactPath,
+      'react-dom': reactDomPath,
       '@': '/src',
       '@app': '/src/app',
       '@contexts': '/src/contexts',

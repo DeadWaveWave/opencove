@@ -80,6 +80,7 @@ describe('SpaceWorktreeWindow flow', () => {
       remove: vi.fn(async () => ({
         deletedBranchName: 'feature/demo',
         branchDeleteError: null,
+        directoryCleanupError: null,
       })),
     })
 
@@ -93,6 +94,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
+        onShowMessage={undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -138,6 +140,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
+        onShowMessage={undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -180,6 +183,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
+        onShowMessage={undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: ['agent-1'], terminalNodeIds: ['terminal-1'] })}
         closeNodesById={closeNodesById}
@@ -233,6 +237,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
+        onShowMessage={undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={getBlockingNodes}
         closeNodesById={closeNodesById}
@@ -283,6 +288,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
+        onShowMessage={undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={getBlockingNodes}
         closeNodesById={closeNodesById}
@@ -318,6 +324,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={() => undefined}
+        onShowMessage={undefined}
         onUpdateSpaceDirectory={() => undefined}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -370,6 +377,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={() => undefined}
+        onShowMessage={undefined}
         onUpdateSpaceDirectory={() => undefined}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -386,5 +394,56 @@ describe('SpaceWorktreeWindow flow', () => {
         'Worktree API is unavailable. Please restart OpenCove and try again.',
       ),
     ).toBeVisible()
+  })
+
+  it('archives a managed worktree and surfaces cleanup warnings through app message', async () => {
+    const onClose = vi.fn()
+    const onShowMessage = vi.fn()
+    const onUpdateSpaceDirectory = vi.fn()
+
+    installWorktreeApi({
+      remove: vi.fn(async () => ({
+        deletedBranchName: null,
+        branchDeleteError: {
+          code: 'worktree.remove_branch_cleanup_failed',
+        },
+        directoryCleanupError: {
+          code: 'worktree.remove_directory_cleanup_failed',
+        },
+      })),
+    })
+
+    render(
+      <SpaceWorktreeWindow
+        spaceId="space-1"
+        initialViewMode="archive"
+        spaces={createSpaces()}
+        nodes={createNodes()}
+        workspacePath="/repo"
+        worktreesRoot=".opencove/worktrees"
+        agentSettings={DEFAULT_AGENT_SETTINGS}
+        onClose={onClose}
+        onShowMessage={onShowMessage}
+        onUpdateSpaceDirectory={onUpdateSpaceDirectory}
+        getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
+        closeNodesById={async () => undefined}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
+
+    await waitFor(() => {
+      expect(onUpdateSpaceDirectory).toHaveBeenCalledWith('space-1', '/repo', {
+        archiveSpace: true,
+      })
+      expect(onShowMessage).toHaveBeenCalledWith(
+        'Space archived, but the worktree directory could not be removed. Close any process still using it, then delete the directory manually. Space archived, but the branch could not be deleted.',
+        'warning',
+      )
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
   })
 })

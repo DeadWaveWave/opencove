@@ -304,7 +304,9 @@ export const en = {
     archiveNotes_other: '{{count}} notes',
     aiSuggestionFailed: 'AI suggestion failed: {{message}}',
     refreshFailed: 'Failed to load worktree info: {{message}}',
-    archiveBranchDeleteFailed: 'Space archived, but branch deletion failed: {{message}}',
+    archiveBranchDeleteFailed: 'Space archived, but the branch could not be deleted.',
+    archiveDirectoryCleanupFailed:
+      'Space archived, but the worktree directory could not be removed. Close any process still using it, then delete the directory manually.',
     branchValidation: {
       empty: 'Branch name cannot be empty.',
       atSymbol: 'Branch name cannot be "@".',

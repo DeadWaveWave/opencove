@@ -38,6 +38,7 @@ export function installWorktreeApi(overrides?: Record<string, unknown>): {
   const remove = vi.fn(async () => ({
     deletedBranchName: null,
     branchDeleteError: null,
+    directoryCleanupError: null,
   }))
 
   const worktreeApi = {

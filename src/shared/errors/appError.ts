@@ -23,6 +23,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'worktree.suggest_names_failed': 'Unable to suggest worktree names.',
     'worktree.remove_branch_cleanup_failed':
       'The worktree was archived, but the branch could not be deleted.',
+    'worktree.remove_directory_cleanup_failed':
+      'The worktree was archived, but the worktree directory could not be removed.',
     'terminal.spawn_failed': 'Unable to start the terminal.',
     'terminal.write_failed': 'Unable to write to the terminal.',
     'terminal.resize_failed': 'Unable to resize the terminal.',

@@ -106,6 +106,7 @@ describe('GitWorktreeService', () => {
       expect(removed).toEqual({
         deletedBranchName: 'space-remove',
         branchDeleteError: null,
+        directoryCleanupError: null,
       })
 
       const branchesAfter = await listGitBranches({ repoPath: canonicalRepoDir })

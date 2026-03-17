@@ -49,6 +49,7 @@ describe('SpaceWorktreeWindow create flow', () => {
           remove: vi.fn(async () => ({
             deletedBranchName: null,
             branchDeleteError: null,
+            directoryCleanupError: null,
           })),
         },
       },

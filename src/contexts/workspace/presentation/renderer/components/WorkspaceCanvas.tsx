@@ -484,6 +484,7 @@ function WorkspaceCanvasInner({
       openSpaceCreateWorktree={spaceUi.openSpaceCreateWorktree}
       openSpaceArchive={spaceUi.openSpaceArchive}
       closeSpaceWorktree={spaceUi.closeSpaceWorktree}
+      onShowMessage={onShowMessage}
       updateSpaceDirectory={updateSpaceDirectory}
       getSpaceBlockingNodes={getSpaceBlockingNodes}
       closeNodesById={closeNodesById}
@@ -491,9 +492,5 @@ function WorkspaceCanvasInner({
   )
 }
 export function WorkspaceCanvas(props: WorkspaceCanvasProps): React.JSX.Element {
-  return (
-    <ReactFlowProvider>
-      <WorkspaceCanvasInner {...props} />
-    </ReactFlowProvider>
-  )
+  return <ReactFlowProvider>{<WorkspaceCanvasInner {...props} />}</ReactFlowProvider>
 }
