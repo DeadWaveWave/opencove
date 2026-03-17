@@ -166,6 +166,8 @@ export function handleTerminalCustomKeyEvent({
 
   if (event.type !== 'keydown' || !isWindowsTerminalCopyShortcut(event, platformInfo)) {
     if (event.type === 'keydown' && isWindowsTerminalPasteShortcut(event, platformInfo)) {
+      event.preventDefault()
+      event.stopPropagation()
       void pasteClipboardText({ terminal })
       return false
     }

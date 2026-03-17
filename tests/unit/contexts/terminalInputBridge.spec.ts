@@ -75,6 +75,16 @@ describe('handleTerminalCustomKeyEvent', () => {
 
   it('pastes clipboard text on Windows Ctrl+V', () => {
     const pasteClipboardText = vi.fn()
+    const event = {
+      type: 'keydown',
+      key: 'v',
+      ctrlKey: true,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
     const terminal = {
       hasSelection: () => false,
       getSelection: () => '',
@@ -82,7 +92,7 @@ describe('handleTerminalCustomKeyEvent', () => {
     }
 
     const result = handleTerminalCustomKeyEvent({
-      event: new KeyboardEvent('keydown', { key: 'v', ctrlKey: true }),
+      event,
       pasteClipboardText,
       platformInfo: { platform: 'Win32' },
       ptyWriteQueue: {
@@ -94,10 +104,22 @@ describe('handleTerminalCustomKeyEvent', () => {
 
     expect(result).toBe(false)
     expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
 
   it('pastes clipboard text on Windows Shift+Insert', () => {
     const pasteClipboardText = vi.fn()
+    const event = {
+      type: 'keydown',
+      key: 'Insert',
+      ctrlKey: false,
+      shiftKey: true,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
     const terminal = {
       hasSelection: () => false,
       getSelection: () => '',
@@ -105,7 +127,7 @@ describe('handleTerminalCustomKeyEvent', () => {
     }
 
     const result = handleTerminalCustomKeyEvent({
-      event: new KeyboardEvent('keydown', { key: 'Insert', shiftKey: true }),
+      event,
       pasteClipboardText,
       platformInfo: { platform: 'Win32' },
       ptyWriteQueue: {
@@ -117,6 +139,8 @@ describe('handleTerminalCustomKeyEvent', () => {
 
     expect(result).toBe(false)
     expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
 
   it('preserves Shift+Enter terminal input bridging', () => {

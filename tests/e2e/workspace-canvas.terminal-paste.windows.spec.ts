@@ -4,6 +4,10 @@ import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 const windowsOnly = process.platform !== 'win32'
 const PASTED_TOKEN = 'OPENCOVE_WINDOWS_PASTE_TOKEN'
 
+function countTokenOccurrences(text: string, token: string): number {
+  return text.split(token).length - 1
+}
+
 test.describe('Workspace Canvas - Terminal Paste (Windows)', () => {
   test.skip(windowsOnly, 'Windows only')
 
@@ -40,6 +44,12 @@ test.describe('Workspace Canvas - Terminal Paste (Windows)', () => {
       await window.keyboard.press('Enter')
 
       await expect(terminal).toContainText(PASTED_TOKEN)
+      await expect
+        .poll(async () => {
+          const text = (await terminal.textContent()) ?? ''
+          return countTokenOccurrences(text, PASTED_TOKEN)
+        })
+        .toBe(2)
     } finally {
       await electronApp.close()
     }
