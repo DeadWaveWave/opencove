@@ -240,4 +240,194 @@ test.describe('Workspace Canvas - Spaces (Overlay & Drag)', () => {
       await electronApp.close()
     }
   })
+
+  test('resizes a space from the top-left corner while keeping owned nodes enclosed', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'space-corner-node',
+            title: 'terminal-space-corner',
+            position: { x: 420, y: 340 },
+            width: 460,
+            height: 300,
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-corner',
+              name: 'Corner Scope',
+              directoryPath: testWorkspacePath,
+              nodeIds: ['space-corner-node'],
+              rect: {
+                x: 340,
+                y: 280,
+                width: 620,
+                height: 420,
+              },
+            },
+          ],
+          activeSpaceId: null,
+        },
+      )
+
+      const topHandle = window.locator('[data-testid="workspace-space-drag-space-corner-top"]')
+      await expect(topHandle).toBeVisible()
+
+      const handleBox = await topHandle.boundingBox()
+      if (!handleBox) {
+        throw new Error('space top handle bounding box unavailable for corner resize')
+      }
+
+      const startX = handleBox.x + 4
+      const startY = handleBox.y + handleBox.height / 2
+
+      await dragMouse(window, {
+        start: { x: startX, y: startY },
+        end: { x: startX - 90, y: startY - 70 },
+        steps: 12,
+      })
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async key => {
+            void key
+
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                nodes?: Array<{
+                  id?: string
+                  position?: { x?: number; y?: number }
+                  width?: number
+                  height?: number
+                }>
+                spaces?: Array<{
+                  id?: string
+                  rect?: { x?: number; y?: number; width?: number; height?: number } | null
+                }>
+              }>
+            }
+
+            const workspace = parsed.workspaces?.[0]
+            const node = workspace?.nodes?.find(item => item.id === 'space-corner-node')
+            const rect = workspace?.spaces?.find(item => item.id === 'space-corner')?.rect ?? null
+
+            if (
+              !node?.position ||
+              typeof node.position.x !== 'number' ||
+              typeof node.position.y !== 'number' ||
+              typeof node.width !== 'number' ||
+              typeof node.height !== 'number' ||
+              !rect ||
+              typeof rect.x !== 'number' ||
+              typeof rect.y !== 'number' ||
+              typeof rect.width !== 'number' ||
+              typeof rect.height !== 'number'
+            ) {
+              return null
+            }
+
+            const nodeRight = node.position.x + node.width
+            const nodeBottom = node.position.y + node.height
+
+            return {
+              rectX: rect.x,
+              rectY: rect.y,
+              rectWidth: rect.width,
+              rectHeight: rect.height,
+              nodeInside:
+                node.position.x >= rect.x &&
+                node.position.y >= rect.y &&
+                nodeRight <= rect.x + rect.width &&
+                nodeBottom <= rect.y + rect.height,
+            }
+          }, storageKey)
+        })
+        .toEqual(
+          expect.objectContaining({
+            rectX: expect.any(Number),
+            rectY: expect.any(Number),
+            rectWidth: expect.any(Number),
+            rectHeight: expect.any(Number),
+            nodeInside: true,
+          }),
+        )
+
+      await expect
+        .poll(async () => {
+          const after = await window.evaluate(async key => {
+            void key
+
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                spaces?: Array<{
+                  id?: string
+                  rect?: { x?: number; y?: number; width?: number; height?: number } | null
+                }>
+              }>
+            }
+
+            return parsed.workspaces?.[0]?.spaces?.find(space => space.id === 'space-corner')?.rect
+          }, storageKey)
+
+          return after
+            ? {
+                x: after.x,
+                y: after.y,
+                width: after.width,
+                height: after.height,
+              }
+            : null
+        })
+        .toEqual(
+          expect.objectContaining({
+            x: expect.any(Number),
+            y: expect.any(Number),
+            width: expect.any(Number),
+            height: expect.any(Number),
+          }),
+        )
+
+      const finalRect = await window.evaluate(async key => {
+        void key
+
+        const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+        if (!raw) {
+          return null
+        }
+
+        const parsed = JSON.parse(raw) as {
+          workspaces?: Array<{
+            spaces?: Array<{
+              id?: string
+              rect?: { x?: number; y?: number; width?: number; height?: number } | null
+            }>
+          }>
+        }
+
+        return parsed.workspaces?.[0]?.spaces?.find(space => space.id === 'space-corner')?.rect
+      }, storageKey)
+
+      expect(finalRect?.x ?? Number.POSITIVE_INFINITY).toBeLessThan(340)
+      expect(finalRect?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(280)
+      expect(finalRect?.width ?? 0).toBeGreaterThan(620)
+      expect(finalRect?.height ?? 0).toBeGreaterThan(420)
+    } finally {
+      await electronApp.close()
+    }
+  })
 })

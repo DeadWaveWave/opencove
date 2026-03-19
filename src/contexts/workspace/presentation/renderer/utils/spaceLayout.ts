@@ -4,7 +4,6 @@ export const SPACE_NODE_PADDING = 24
 export const SPACE_MIN_SIZE = { width: 120, height: 100 }
 export const SPACE_CORNER_HITBOX_PX = 18
 export const SPACE_EDGE_HITBOX_PX = 8
-export const SPACE_EDGE_RESIZE_MID_RATIO = 0.2
 
 export type SpaceFrameHandle =
   | { kind: 'move' }
@@ -53,6 +52,10 @@ export function resolveSpaceFrameHandle({
   const width = rect.width
   const height = rect.height
 
+  if (width <= 0 || height <= 0) {
+    return { kind: 'move' }
+  }
+
   if (localX <= cornerSize && localY <= cornerSize) {
     return { kind: 'resize', edges: { left: true, top: true } }
   }
@@ -80,47 +83,22 @@ export function resolveSpaceFrameHandle({
   const closestEdge = distances[0]?.edge ?? 'top'
   const closestEdgeDist = distances[0]?.dist ?? Number.POSITIVE_INFINITY
 
-  if (width <= 0 || height <= 0) {
-    return { kind: 'move' }
-  }
-
   if (closestEdgeDist > edgeHitbox) {
     return { kind: 'move' }
   }
 
-  const midStart = 0.5 - SPACE_EDGE_RESIZE_MID_RATIO / 2
-  const midEnd = 0.5 + SPACE_EDGE_RESIZE_MID_RATIO / 2
-
-  if (closestEdge === 'top' || closestEdge === 'bottom') {
-    const ratio = localX / width
-    if (ratio >= midStart && ratio <= midEnd) {
-      return { kind: 'resize', edges: { [closestEdge]: true } }
-    }
-
+  if (closestEdge === 'top') {
     return { kind: 'move' }
   }
 
-  const ratio = localY / height
-  if (ratio >= midStart && ratio <= midEnd) {
-    return { kind: 'resize', edges: { [closestEdge]: true } }
-  }
-
-  return { kind: 'move' }
+  return { kind: 'resize', edges: { [closestEdge]: true } }
 }
 
 export function applySpaceFrameHandleMode(
   handle: SpaceFrameHandle,
   mode: SpaceFrameHandleMode = 'auto',
 ): SpaceFrameHandle {
-  if (mode !== 'region' || handle.kind !== 'resize') {
-    return handle
-  }
-
-  const edgeCount = Object.keys(handle.edges).length
-  if (edgeCount <= 1) {
-    return { kind: 'move' }
-  }
-
+  void mode
   return handle
 }
 

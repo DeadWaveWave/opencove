@@ -75,48 +75,22 @@ export function WorkspaceSpaceRegionItem({
         height: resolvedRect.height,
       }}
     >
-      {isSelected ? (
-        <div
-          className="workspace-space-region__move-handle"
-          data-testid={`workspace-space-drag-${space.id}-move`}
-          onPointerDown={event => {
-            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-          }}
-          onPointerMove={event => {
-            updateHandleCursor(event, resolvedRect, 'region')
-          }}
-          onMouseDown={event => {
-            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-          }}
-          onMouseMove={event => {
-            updateHandleCursor(event, resolvedRect, 'region')
-          }}
-        />
-      ) : null}
       {(['top', 'right', 'bottom', 'left'] as const).map(side => (
         <div
           key={side}
           className={`workspace-space-region__drag-handle workspace-space-region__drag-handle--${side}`}
           data-testid={`workspace-space-drag-${space.id}-${side}`}
           onPointerDown={event => {
-            handleSpaceDragHandlePointerDown(
-              event,
-              space.id,
-              isSelected ? { mode: 'region' } : undefined,
-            )
+            handleSpaceDragHandlePointerDown(event, space.id)
           }}
           onPointerMove={event => {
-            updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+            updateHandleCursor(event, resolvedRect, 'auto')
           }}
           onMouseDown={event => {
-            handleSpaceDragHandlePointerDown(
-              event,
-              space.id,
-              isSelected ? { mode: 'region' } : undefined,
-            )
+            handleSpaceDragHandlePointerDown(event, space.id)
           }}
           onMouseMove={event => {
-            updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+            updateHandleCursor(event, resolvedRect, 'auto')
           }}
         />
       ))}

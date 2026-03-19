@@ -180,3 +180,8 @@ export interface Point {
   x: number
   y: number
 }
+
+export interface NodeFrame {
+  position: Point
+  size: Size
+}

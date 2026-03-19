@@ -7,6 +7,10 @@ export function shouldFocusNodeFromClickTarget(target: EventTarget | null): bool
     return false
   }
 
+  if (target.closest('.nodrag')) {
+    return false
+  }
+
   if (target.closest('.terminal-node__terminal')) {
     return false
   }

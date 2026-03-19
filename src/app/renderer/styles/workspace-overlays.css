@@ -242,54 +242,42 @@
   z-index: 1;
 }
 
-.workspace-space-region__move-handle {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  pointer-events: auto;
-  cursor: grab;
-}
-
-.workspace-space-region__move-handle:active {
-  cursor: grabbing;
-}
-
 .workspace-space-region__drag-handle {
   position: absolute;
   pointer-events: auto;
-  cursor: grab;
-}
-
-.workspace-space-region__drag-handle:active {
-  cursor: grabbing;
 }
 
 .workspace-space-region__drag-handle--top {
   top: -8px;
-  left: 0;
-  right: 0;
-  height: 8px;
+  left: -8px;
+  right: -8px;
+  height: 16px;
+  cursor: grab;
+}
+
+.workspace-space-region__drag-handle--top:active {
+  cursor: grabbing;
 }
 
 .workspace-space-region__drag-handle--right {
-  top: 0;
+  top: -8px;
   right: -8px;
-  bottom: 0;
-  width: 8px;
+  bottom: -8px;
+  width: 16px;
 }
 
 .workspace-space-region__drag-handle--bottom {
-  left: 0;
-  right: 0;
+  left: -8px;
+  right: -8px;
   bottom: -8px;
-  height: 8px;
+  height: 16px;
 }
 
 .workspace-space-region__drag-handle--left {
-  top: 0;
+  top: -8px;
   left: -8px;
-  bottom: 0;
-  width: 8px;
+  bottom: -8px;
+  width: 16px;
 }
 
 .workspace-space-switcher {

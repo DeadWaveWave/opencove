@@ -104,7 +104,6 @@ test.describe('Workspace Canvas - Selection', () => {
         .first()
       const header = terminal.locator('.terminal-node__header')
       const terminalBody = terminal.locator('.terminal-node__terminal')
-      const dragOverlay = terminal.locator('[data-testid="terminal-node-selected-drag-overlay"]')
 
       const settingsButton = window.locator('.workspace-sidebar__settings')
       await expect(settingsButton).toBeVisible()
@@ -121,7 +120,6 @@ test.describe('Workspace Canvas - Selection', () => {
 
       await header.click({ position: { x: 40, y: 20 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
-      await expect(dragOverlay).toHaveCount(0)
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
@@ -135,13 +133,12 @@ test.describe('Workspace Canvas - Selection', () => {
       await terminalBody.click({ position: { x: 56, y: 56 }, modifiers: ['Shift'] })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(window.locator('.workspace-selection-hint')).toContainText('已选中 1 个窗口。')
-      await expect(dragOverlay).toBeVisible()
     } finally {
       await electronApp.close()
     }
   })
 
-  test('drags a selected terminal from the body overlay', async () => {
+  test('drags a selected terminal from the header after body selection', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -174,9 +171,6 @@ test.describe('Workspace Canvas - Selection', () => {
       await header.click({ position: { x: 40, y: 20 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
-      const dragOverlay = terminal.locator('[data-testid="terminal-node-selected-drag-overlay"]')
-      await expect(dragOverlay).toHaveCount(0)
-
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       await pane.click({ position: { x: 40, y: 40 } })
@@ -185,7 +179,6 @@ test.describe('Workspace Canvas - Selection', () => {
       await expect(terminalBody).toBeVisible()
       await terminalBody.click({ position: { x: 56, y: 56 }, modifiers: ['Shift'] })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
-      await expect(dragOverlay).toBeVisible()
 
       const readNodePosition = async (): Promise<{ x: number; y: number } | null> => {
         return await window.evaluate(async key => {
@@ -229,14 +222,14 @@ test.describe('Workspace Canvas - Selection', () => {
         throw new Error('node position unavailable before selected overlay drag')
       }
 
-      const dragOverlayBox = await dragOverlay.boundingBox()
+      const headerBox = await header.boundingBox()
       const paneBox = await pane.boundingBox()
-      if (!dragOverlayBox || !paneBox) {
-        throw new Error('drag overlay or pane bounding box unavailable')
+      if (!headerBox || !paneBox) {
+        throw new Error('header or pane bounding box unavailable')
       }
 
-      const startX = dragOverlayBox.x + 140
-      const startY = dragOverlayBox.y + 120
+      const startX = headerBox.x + 140
+      const startY = headerBox.y + 20
       const endX = paneBox.x + 760
       const endY = paneBox.y + 520
 
@@ -244,7 +237,6 @@ test.describe('Workspace Canvas - Selection', () => {
       await window.mouse.down()
       await window.mouse.move(endX, endY, { steps: 12 })
 
-      await expect(dragOverlay).toBeVisible()
       await expect(terminal).toHaveClass(/terminal-node--selected-surface/)
 
       await window.mouse.up()
@@ -262,7 +254,7 @@ test.describe('Workspace Canvas - Selection', () => {
     }
   })
 
-  test('enables body drag after shift marquee selects a single terminal', async () => {
+  test('keeps header drag after shift marquee selects a single terminal', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -305,9 +297,6 @@ test.describe('Workspace Canvas - Selection', () => {
         throw new Error('terminal bounding box unavailable for marquee drag')
       }
 
-      const dragOverlay = terminal.locator('[data-testid="terminal-node-selected-drag-overlay"]')
-      await expect(dragOverlay).toHaveCount(0)
-
       const startX = Math.max(paneBox.x + 40, terminalBox.x - 24)
       const startY = Math.max(paneBox.y + 40, terminalBox.y - 24)
       const endX = Math.min(paneBox.x + paneBox.width - 40, terminalBox.x + terminalBox.width - 24)
@@ -327,7 +316,6 @@ test.describe('Workspace Canvas - Selection', () => {
 
       await expect(window.locator('.workspace-selection-draft')).toHaveCount(0)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
-      await expect(dragOverlay).toBeVisible()
 
       const readNodePosition = async (): Promise<{ x: number; y: number } | null> => {
         return await window.evaluate(async key => {
@@ -371,9 +359,10 @@ test.describe('Workspace Canvas - Selection', () => {
         throw new Error('node position unavailable before marquee drag')
       }
 
-      await dragLocatorTo(window, dragOverlay, pane, {
-        sourcePosition: { x: 140, y: 120 },
-        targetPosition: { x: 760, y: 520 },
+      const header = terminal.locator('.terminal-node__header')
+      await dragLocatorTo(window, header, pane, {
+        sourcePosition: { x: 140, y: 16 },
+        targetPosition: { x: 760, y: 80 },
       })
 
       const afterDrag = await readNodePosition()
@@ -382,8 +371,7 @@ test.describe('Workspace Canvas - Selection', () => {
       }
 
       expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 120)
-      expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 120)
-      await expect(dragOverlay).toBeVisible()
+      expect(afterDrag.y).toBeLessThan(beforeDrag.y - 40)
     } finally {
       await electronApp.close()
     }

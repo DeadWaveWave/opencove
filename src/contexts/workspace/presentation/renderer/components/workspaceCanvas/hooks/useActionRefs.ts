@@ -1,12 +1,12 @@
 import { useLayoutEffect, useRef } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
-import type { Size, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
+import type { NodeFrame, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
 
 export interface WorkspaceCanvasActionRefs {
   clearNodeSelectionRef: React.MutableRefObject<() => void>
   closeNodeRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: React.MutableRefObject<(nodeId: string, desiredSize: Size) => void>
+  resizeNodeRef: React.MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   saveAgentLastMessageToNoteRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   updateNoteTextRef: React.MutableRefObject<(nodeId: string, text: string) => void>
   runTaskAgentRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
@@ -34,8 +34,8 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const closeNodeRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
   )
-  const resizeNodeRef = useRef<(nodeId: string, desiredSize: Size) => void>(
-    (_nodeId: string, _desiredSize: Size) => undefined,
+  const resizeNodeRef = useRef<(nodeId: string, desiredFrame: NodeFrame) => void>(
+    (_nodeId: string, _desiredFrame: NodeFrame) => undefined,
   )
   const saveAgentLastMessageToNoteRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
@@ -100,7 +100,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
 interface SyncActionRefsParams {
   actionRefs: WorkspaceCanvasActionRefs
   closeNode: (nodeId: string) => Promise<void>
-  resizeNode: (nodeId: string, desiredSize: Size) => void
+  resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   saveAgentLastMessageToNote: (nodeId: string) => Promise<void>
   updateNoteText: (nodeId: string, text: string) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void

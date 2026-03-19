@@ -1,15 +1,18 @@
 import { Handle, Position } from '@xyflow/react'
 import { Pencil } from 'lucide-react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   AgentRuntimeStatus,
-  Size,
+  NodeFrame,
+  Point,
   TaskAgentSessionRecord,
   TaskPriority,
   TaskRuntimeStatus,
 } from '@contexts/workspace/presentation/renderer/types'
+import { NodeResizeHandles } from '@contexts/workspace/presentation/renderer/components/shared/NodeResizeHandles'
+import { useNodeFrameResize } from '@contexts/workspace/presentation/renderer/utils/nodeFrameResize'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { TaskNodeAgentSessions } from './taskNode/TaskNodeAgentSessions'
 import { TaskNodeFooter } from './taskNode/TaskNodeFooter'
@@ -38,6 +41,7 @@ interface TaskNodeProps {
   } | null
   agentSessions: TaskAgentSessionRecord[]
   currentDirectory: string
+  position: Point
   width: number
   height: number
   onClose: () => void
@@ -45,14 +49,12 @@ interface TaskNodeProps {
   onQuickTitleSave: (title: string) => void
   onQuickRequirementSave: (requirement: string) => void
   onRunAgent: () => void
-  onResize: (size: Size) => void
+  onResize: (frame: NodeFrame) => void
   onStatusChange: (status: TaskRuntimeStatus) => void
   onResumeAgentSession: (recordId: string) => void
   onRemoveAgentSessionRecord: (recordId: string) => void
   onInteractionStart?: (options?: TaskNodeInteractionOptions) => void
 }
-
-type ResizeAxis = 'horizontal' | 'vertical'
 
 export function TaskNode({
   title,
@@ -64,6 +66,7 @@ export function TaskNode({
   linkedAgentNode,
   agentSessions,
   currentDirectory,
+  position,
   width,
   height,
   onClose,
@@ -78,35 +81,22 @@ export function TaskNode({
   onInteractionStart,
 }: TaskNodeProps): JSX.Element {
   const { t } = useTranslation()
-  const resizeStartRef = useRef<{
-    x: number
-    y: number
-    width: number
-    height: number
-    axis: ResizeAxis
-  } | null>(null)
-  const draftSizeRef = useRef<Size | null>(null)
-  const [isResizing, setIsResizing] = useState(false)
-  const [draftSize, setDraftSize] = useState<Size | null>(null)
 
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
   const [isRequirementEditing, setIsRequirementEditing] = useState(false)
   const [requirementDraft, setRequirementDraft] = useState(requirement)
 
-  useEffect(() => {
-    draftSizeRef.current = draftSize
-  }, [draftSize])
-
-  useEffect(() => {
-    if (!draftSize || isResizing) {
-      return
-    }
-
-    if (draftSize.width === width && draftSize.height === height) {
-      setDraftSize(null)
-    }
-  }, [draftSize, height, isResizing, width])
+  const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
+    position,
+    width,
+    height,
+    minSize: {
+      width: MIN_WIDTH,
+      height: MIN_HEIGHT,
+    },
+    onResize,
+  })
 
   useEffect(() => {
     if (isTitleEditing) {
@@ -123,65 +113,6 @@ export function TaskNode({
 
     setRequirementDraft(requirement)
   }, [isRequirementEditing, requirement])
-
-  const handleResizePointerDown = useCallback(
-    (axis: ResizeAxis) => (event: ReactPointerEvent<HTMLButtonElement>) => {
-      event.preventDefault()
-      event.stopPropagation()
-      event.currentTarget.setPointerCapture(event.pointerId)
-
-      resizeStartRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        width,
-        height,
-        axis,
-      }
-
-      setDraftSize({ width, height })
-      setIsResizing(true)
-    },
-    [height, width],
-  )
-
-  useEffect(() => {
-    if (!isResizing) {
-      return
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      const start = resizeStartRef.current
-      if (!start) {
-        return
-      }
-
-      if (start.axis === 'horizontal') {
-        const nextWidth = Math.max(MIN_WIDTH, Math.round(start.width + (event.clientX - start.x)))
-        setDraftSize({ width: nextWidth, height: start.height })
-        return
-      }
-
-      const nextHeight = Math.max(MIN_HEIGHT, Math.round(start.height + (event.clientY - start.y)))
-      setDraftSize({ width: start.width, height: nextHeight })
-    }
-
-    const handlePointerUp = () => {
-      setIsResizing(false)
-
-      const finalSize = draftSizeRef.current ?? { width, height }
-      onResize(finalSize)
-
-      resizeStartRef.current = null
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handlePointerUp, { once: true })
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerUp)
-    }
-  }, [height, isResizing, onResize, width])
 
   const commitTitleDraft = useCallback(() => {
     const normalized = titleDraft.trim()
@@ -228,10 +159,27 @@ export function TaskNode({
     setRequirementDraft(requirement)
   }, [requirement])
 
-  const renderedSize = draftSize ?? { width, height }
+  const renderedFrame = draftFrame ?? {
+    position,
+    size: { width, height },
+  }
   const style = useMemo(
-    () => ({ width: renderedSize.width, height: renderedSize.height }),
-    [renderedSize.height, renderedSize.width],
+    () => ({
+      width: renderedFrame.size.width,
+      height: renderedFrame.size.height,
+      transform:
+        renderedFrame.position.x !== position.x || renderedFrame.position.y !== position.y
+          ? `translate(${renderedFrame.position.x - position.x}px, ${renderedFrame.position.y - position.y}px)`
+          : undefined,
+    }),
+    [
+      position.x,
+      position.y,
+      renderedFrame.position.x,
+      renderedFrame.position.y,
+      renderedFrame.size.height,
+      renderedFrame.size.width,
+    ],
   )
 
   return (
@@ -432,19 +380,10 @@ export function TaskNode({
 
       <TaskNodeFooter status={status} onStatusChange={onStatusChange} onRunAgent={onRunAgent} />
 
-      <button
-        type="button"
-        className="task-node__resizer task-node__resizer--right nodrag"
-        onPointerDown={handleResizePointerDown('horizontal')}
-        aria-label={t('taskNode.resizeWidth')}
-        data-testid="task-resizer-right"
-      />
-      <button
-        type="button"
-        className="task-node__resizer task-node__resizer--bottom nodrag"
-        onPointerDown={handleResizePointerDown('vertical')}
-        aria-label={t('taskNode.resizeHeight')}
-        data-testid="task-resizer-bottom"
+      <NodeResizeHandles
+        classNamePrefix="task-node"
+        testIdPrefix="task-resizer"
+        handleResizePointerDown={handleResizePointerDown}
       />
     </div>
   )

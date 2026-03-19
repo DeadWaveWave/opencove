@@ -118,6 +118,49 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       expect(heightResizedNode?.height ?? 0).toBeGreaterThan(300)
       await expect(firstTerminal.locator('.xterm')).toBeVisible()
 
+      const topLeftResizer = firstTerminal.locator('[data-testid="terminal-resizer-top-left"]')
+      const topLeftBox = await topLeftResizer.boundingBox()
+      if (!topLeftBox) {
+        throw new Error('terminal top-left resizer bounding box unavailable')
+      }
+
+      const topLeftStartX = topLeftBox.x + topLeftBox.width / 2
+      const topLeftStartY = topLeftBox.y + topLeftBox.height / 2
+
+      await window.mouse.move(topLeftStartX, topLeftStartY)
+      await window.mouse.down()
+      await window.mouse.move(topLeftStartX - 140, topLeftStartY - 90, { steps: 12 })
+      await window.mouse.up()
+
+      const cornerResizedNode = await window.evaluate(async key => {
+        void key
+
+        const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+        if (!raw) {
+          return null
+        }
+
+        const state = JSON.parse(raw) as {
+          workspaces?: Array<{
+            nodes?: Array<{
+              id: string
+              position?: { x?: number; y?: number }
+              width: number
+              height: number
+            }>
+          }>
+        }
+
+        return state.workspaces?.[0]?.nodes?.find(node => node.id === 'node-1') ?? null
+      }, storageKey)
+
+      expect(cornerResizedNode).toBeTruthy()
+      expect(cornerResizedNode?.position?.x ?? Number.POSITIVE_INFINITY).toBeLessThan(120)
+      expect(cornerResizedNode?.position?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(120)
+      expect(cornerResizedNode?.width ?? 0).toBeGreaterThan(heightResizedNode?.width ?? 0)
+      expect(cornerResizedNode?.height ?? 0).toBeGreaterThan(heightResizedNode?.height ?? 0)
+      await expect(firstTerminal.locator('.xterm')).toBeVisible()
+
       const header = firstTerminal.locator('.terminal-node__header')
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()

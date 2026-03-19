@@ -1,4 +1,4 @@
-import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../types'
+import type { AgentRuntimeStatus, NodeFrame, Point, WorkspaceNodeKind } from '../types'
 
 export interface TerminalNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -16,13 +16,14 @@ export interface TerminalNodeProps {
   status: AgentRuntimeStatus | null
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null
+  position: Point
   width: number
   height: number
   terminalFontSize: number
   scrollback: string | null
   onClose: () => void
   onSaveLastMessageToNote?: () => Promise<void>
-  onResize: (size: { width: number; height: number }) => void
+  onResize: (frame: NodeFrame) => void
   onScrollbackChange?: (scrollback: string) => void
   onTitleCommit?: (title: string) => void
   onCommandRun?: (command: string) => void

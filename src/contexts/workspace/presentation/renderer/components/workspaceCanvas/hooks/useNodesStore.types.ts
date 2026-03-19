@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react'
-import type { Point, Size, TerminalNodeData, TaskPriority } from '../../../types'
+import type { NodeFrame, Point, Size, TerminalNodeData, TaskPriority } from '../../../types'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 
@@ -31,7 +31,7 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   closeNode: (nodeId: string) => Promise<void>
   normalizePosition: (nodeId: string, desired: Point, size: Size) => Point
-  resizeNode: (nodeId: string, desiredSize: Size) => void
+  resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   applyPendingScrollbacks: (targetNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
