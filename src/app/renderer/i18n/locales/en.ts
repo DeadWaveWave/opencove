@@ -115,6 +115,7 @@ export const en = {
         dark: 'Dark',
       },
       interfaceFontSize: 'Interface Font Size',
+      terminalFontSize: 'Terminal Font Size',
     },
     agent: {
       title: 'Agent',
@@ -142,7 +143,6 @@ export const en = {
         mouse: 'Mouse',
       },
       initialWindowSize: 'Initial Window Size',
-      terminalFontSize: 'Terminal Font Size',
       autoZoomLabel: 'Auto-zoom on Click',
       autoZoomHelp: 'Zoom to 100% when a node is clicked.',
     },

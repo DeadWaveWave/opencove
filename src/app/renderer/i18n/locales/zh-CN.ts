@@ -117,6 +117,7 @@ export const zhCN = {
         dark: '深色',
       },
       interfaceFontSize: '界面字体大小',
+      terminalFontSize: '终端字体大小',
     },
     agent: {
       title: 'Agent',
@@ -144,7 +145,6 @@ export const zhCN = {
         mouse: '鼠标',
       },
       initialWindowSize: '初始窗口大小',
-      terminalFontSize: '终端字体大小',
       autoZoomLabel: '点击自动缩放',
       autoZoomHelp: '点击节点时自动缩放到 100%。',
     },

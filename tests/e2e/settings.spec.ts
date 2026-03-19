@@ -60,6 +60,14 @@ test.describe('Settings', () => {
         )
         .toBe('light')
 
+      const uiFontSize = window.locator('[data-testid="settings-ui-font-size"]')
+      await expect(uiFontSize).toBeVisible()
+      await uiFontSize.fill('20')
+
+      const terminalFontSize = window.locator('[data-testid="settings-terminal-font-size"]')
+      await expect(terminalFontSize).toBeVisible()
+      await terminalFontSize.fill('15')
+
       await canvasNav.click()
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
       await expect(canvasInputMode).toBeVisible()
@@ -172,6 +180,8 @@ test.describe('Settings', () => {
                 normalizeZoomOnTerminalClick?: boolean
                 canvasInputMode?: string
                 uiTheme?: string
+                terminalFontSize?: number
+                uiFontSize?: number
               }
             }
             return parsed.settings ?? null
@@ -187,6 +197,8 @@ test.describe('Settings', () => {
           normalizeZoomOnTerminalClick: false,
           canvasInputMode: 'trackpad',
           uiTheme: 'light',
+          terminalFontSize: 15,
+          uiFontSize: 20,
         }),
       )
 
@@ -213,6 +225,8 @@ test.describe('Settings', () => {
       expect(persistedSettings?.taskTagOptions).not.toContain('feature')
       expect(persistedSettings?.normalizeZoomOnTerminalClick).toBe(false)
       expect(persistedSettings?.canvasInputMode).toBe('trackpad')
+      expect(persistedSettings?.terminalFontSize).toBe(15)
+      expect(persistedSettings?.uiFontSize).toBe(20)
     } finally {
       await electronApp.close()
     }

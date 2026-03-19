@@ -296,9 +296,11 @@ export function SettingsPanel({
                 language={settings.language}
                 uiTheme={settings.uiTheme}
                 uiFontSize={settings.uiFontSize}
+                terminalFontSize={settings.terminalFontSize}
                 onChangeLanguage={updateLanguage}
                 onChangeUiTheme={updateUiTheme}
                 onChangeUiFontSize={updateUiFontSize}
+                onChangeTerminalFontSize={updateTerminalFontSize}
               />
             ) : null}
 
@@ -330,7 +332,6 @@ export function SettingsPanel({
                 canvasInputMode={settings.canvasInputMode}
                 normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
                 defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
-                terminalFontSize={settings.terminalFontSize}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
@@ -338,7 +339,6 @@ export function SettingsPanel({
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
                 onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
-                onChangeTerminalFontSize={updateTerminalFontSize}
               />
             ) : null}
 
