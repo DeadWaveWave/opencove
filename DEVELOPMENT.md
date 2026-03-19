@@ -100,10 +100,11 @@
 对 UI 改动，尤其是 **Large Change**、高交互风险改动、或真实体验比纯逻辑更重要的改动，按以下方式选择验证手段：
 
 - **Web/Renderer 优先用 Playwright**：主路径走 `pnpm test:e2e` 或最低 meaningful layer 的 Playwright 用例。
+- **用户可感知变化必须跑 E2E**：新增功能、UX 改动、修复 bug、默认行为变化等，至少跑一条覆盖本次变更的 Playwright 用例（通常直接跑 `pnpm test:e2e`；或统一跑 `pnpm pre-commit`）。
 - **复杂交互辅以截图 / 录屏**：当行为依赖拖拽、滚动、动画、命中点或视觉反馈时，用截图或录屏帮助确认真实体验。
 - **提交前做一次 smoke 验证**：至少确认核心用户路径、关键视觉状态和交互目标没有回归。
 - **开发中用视觉调试**：必要时主动看截图、边框、命中区域、选择框、hover/active 状态，而不是只看日志和断言。
-- **小改动不强制全量 E2E**：除非 UI 回归风险很高，否则优先跑目标明确、成本更低的验证层。
+- **非用户可感知改动优先低成本验证层**：纯内部重构、类型收敛、工具链/脚本调整等，优先跑目标明确的 unit/contract 测试；UI 回归风险较高时再补 E2E。
 
 ## 全局硬规则（摘要）
 
@@ -115,7 +116,7 @@
         -   **Spec**：明确验收标准、风险点及验证手段，等待确认。
         -   **Feasibility Check**：针对新技术/高性能/核心重构，必须先调研并跑通 PoC。
         -   **Plan**：制定详细执行计划，等待确认。
-        -   **验证**：UI 变更需提供截图/录屏；重大功能需跑通 E2E。
+        -   **验证**：用户可感知变化必须跑 E2E；UI 变更需提供截图/录屏；重大功能需跑通 `pnpm test:e2e`。
         -   **兼容与迁移**：改动 IPC 接口或数据结构时，必须考虑对现有功能的影响。
         -   **跨平台兼容**：开发默认应考虑 `macOS / Windows / Linux` 三平台；如本次只支持部分平台，必须在方案与交付说明中明确标注差异、限制与后续补齐计划。凡修复平台特有 bug，必须补对应平台的 E2E，并在 CI 的该平台 runner 上执行验证；Windows / macOS / Linux 专属用例优先使用 `*.windows.spec.ts` / `*.mac.spec.ts` / `*.linux.spec.ts` 命名收口。
 -   **禁止手改**：
@@ -124,6 +125,8 @@
 -   **提交前检查（与 CI 对齐的最低门槛）**：
     -   运行 `pnpm pre-commit` 前，必须先 `git add` 本次改动，再执行 `pnpm line-check:staged`，因为行数门禁只检查 staged 文件。
     -   若 staged 文件中存在超过 500 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
+    -   创建/更新 PR 时：若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），必须同步更新 `CHANGELOG.md` 的 `## [Unreleased]`（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
+    -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑 Playwright E2E（通常 `pnpm test:e2e`，或统一跑 `pnpm pre-commit`）。
     -   若本次改动涉及 **Renderer 用户可见文案**，必须做好 i18n：禁止新增硬编码用户文案，新增/修改文案时同步更新 `src/app/renderer/i18n/locales/en.ts` 与 `src/app/renderer/i18n/locales/zh-CN.ts`，并在提交前做一次对应语言的最小 smoke/测试验证。
     -   通过上述检查后，再执行 `pnpm pre-commit` （type, lint, format, test）。
 -   **测试失败排查前置**：
