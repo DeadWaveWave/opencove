@@ -307,6 +307,10 @@ export const zhCN = {
     archiveBranchDeleteFailed: 'Space 已归档，但分支未能删除。',
     archiveDirectoryCleanupFailed:
       'Space 已归档，但 worktree 目录未能删除。请关闭仍在使用它的进程，然后手动删除该目录。',
+    archiveUncommittedChangesWarning:
+      '该 worktree 仍有未提交的改动。归档会丢弃这些改动；如需保留请先提交或暂存（stash）。',
+    forceArchiveConfirm: '强制归档确认',
+    forceArchiveConfirmHelp: '我已知晓未提交的改动将被丢弃。',
     branchValidation: {
       empty: '分支名不能为空。',
       atSymbol: '分支名不能是 "@".',

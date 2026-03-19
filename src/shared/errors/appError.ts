@@ -19,6 +19,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'worktree.status_summary_failed': 'Unable to load Git status.',
     'worktree.create_failed': 'Unable to create the worktree.',
     'worktree.remove_failed': 'Unable to archive the worktree.',
+    'worktree.remove_uncommitted_changes':
+      'This worktree has uncommitted changes. Commit or stash them before archiving.',
     'worktree.rename_branch_failed': 'Unable to rename the branch.',
     'worktree.suggest_names_failed': 'Unable to suggest worktree names.',
     'worktree.remove_branch_cleanup_failed':

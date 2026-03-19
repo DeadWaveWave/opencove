@@ -13,6 +13,8 @@ import {
   cleanupResidualWorktreeDirectory,
   runGitWorktreeRemoveWithRetry,
 } from './GitWorktreeRemoveCleanup'
+import { ensureGitWorktreeRemovable } from './GitWorktreeRemovePreflight'
+
 export { getGitStatusSummary } from './GitWorktreeStatusSummary'
 
 export interface GitWorktreeEntry {
@@ -373,6 +375,8 @@ export async function removeGitWorktree(
   if (!targetWorktree) {
     throw new Error('Worktree path is not registered in git worktrees')
   }
+
+  await ensureGitWorktreeRemovable({ worktreePath: targetWorktree.path, force: input.force })
 
   const args = ['worktree', 'remove']
   if (input.force) {

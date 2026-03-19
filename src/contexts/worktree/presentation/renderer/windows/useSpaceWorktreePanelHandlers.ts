@@ -4,6 +4,7 @@ import type { BranchMode } from './spaceWorktree.shared'
 export function useSpaceWorktreePanelHandlers({
   setError,
   setDeleteBranchOnArchive,
+  setForceArchiveConfirmed,
   setBranchMode,
   setNewBranchName,
   setStartPoint,
@@ -14,6 +15,7 @@ export function useSpaceWorktreePanelHandlers({
 }: {
   setError: React.Dispatch<React.SetStateAction<string | null>>
   setDeleteBranchOnArchive: React.Dispatch<React.SetStateAction<boolean>>
+  setForceArchiveConfirmed: React.Dispatch<React.SetStateAction<boolean>>
   setBranchMode: React.Dispatch<React.SetStateAction<BranchMode>>
   setNewBranchName: React.Dispatch<React.SetStateAction<string>>
   setStartPoint: React.Dispatch<React.SetStateAction<string>>
@@ -29,6 +31,7 @@ export function useSpaceWorktreePanelHandlers({
   onSuggestNames: () => void
   onCreate: () => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
+  onForceArchiveConfirmedChange: (checked: boolean) => void
   onArchive: () => void
 } {
   return useMemo(
@@ -59,6 +62,10 @@ export function useSpaceWorktreePanelHandlers({
         setDeleteBranchOnArchive(checked)
         setError(null)
       },
+      onForceArchiveConfirmedChange: (checked: boolean) => {
+        setForceArchiveConfirmed(checked)
+        setError(null)
+      },
       onArchive: () => {
         void handleArchive()
       },
@@ -69,6 +76,7 @@ export function useSpaceWorktreePanelHandlers({
       handleSuggestNames,
       setBranchMode,
       setDeleteBranchOnArchive,
+      setForceArchiveConfirmed,
       setError,
       setExistingBranchName,
       setNewBranchName,

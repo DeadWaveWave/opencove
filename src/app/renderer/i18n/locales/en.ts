@@ -308,6 +308,10 @@ export const en = {
     archiveBranchDeleteFailed: 'Space archived, but the branch could not be deleted.',
     archiveDirectoryCleanupFailed:
       'Space archived, but the worktree directory could not be removed. Close any process still using it, then delete the directory manually.',
+    archiveUncommittedChangesWarning:
+      'This worktree has uncommitted changes. Archiving will discard them; commit or stash to keep them.',
+    forceArchiveConfirm: 'Force archive confirmation',
+    forceArchiveConfirmHelp: 'I understand uncommitted changes will be discarded.',
     branchValidation: {
       empty: 'Branch name cannot be empty.',
       atSymbol: 'Branch name cannot be "@".',

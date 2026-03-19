@@ -160,6 +160,42 @@ describe('GitWorktreeService', () => {
   )
 
   it(
+    'refuses to remove a dirty worktree without force and surfaces an actionable error',
+    async () => {
+      repoDir = await createTempRepo()
+      const canonicalRepoDir = await realpath(repoDir)
+      const worktreesRoot = join(repoDir, '.opencove', 'worktrees')
+      await mkdir(worktreesRoot, { recursive: true })
+
+      const { createGitWorktree, listGitWorktrees, removeGitWorktree } =
+        await import('../../../src/contexts/worktree/infrastructure/git/GitWorktreeService')
+
+      const created = await createGitWorktree({
+        repoPath: canonicalRepoDir,
+        worktreesRoot,
+        branchMode: { kind: 'new', name: 'space-dirty-refuse', startPoint: 'HEAD' },
+      })
+
+      await writeFile(join(created.path, 'scratch.txt'), 'untracked\n', 'utf8')
+
+      await expect(
+        removeGitWorktree({
+          repoPath: canonicalRepoDir,
+          worktreePath: created.path,
+          force: false,
+          deleteBranch: false,
+        }),
+      ).rejects.toMatchObject({
+        code: 'worktree.remove_uncommitted_changes',
+      })
+
+      const worktreesAfter = await listGitWorktrees({ repoPath: canonicalRepoDir })
+      expect(worktreesAfter.worktrees.some(entry => entry.path === created.path)).toBe(true)
+    },
+    GIT_WORKTREE_TEST_TIMEOUT_MS,
+  )
+
+  it(
     'renames the branch checked out by a worktree',
     async () => {
       repoDir = await createTempRepo()

@@ -22,6 +22,7 @@ export function SpaceWorktreeWindowDialog({
   startPoint,
   existingBranchName,
   deleteBranchOnArchive,
+  forceArchiveConfirmed,
   archiveAgentCount,
   archiveTerminalCount,
   archiveTaskCount,
@@ -37,6 +38,7 @@ export function SpaceWorktreeWindowDialog({
   onSuggestNames,
   onCreate,
   onDeleteBranchOnArchiveChange,
+  onForceArchiveConfirmedChange,
   onArchive,
 }: {
   space: WorkspaceSpaceState
@@ -54,6 +56,7 @@ export function SpaceWorktreeWindowDialog({
   startPoint: string
   existingBranchName: string
   deleteBranchOnArchive: boolean
+  forceArchiveConfirmed: boolean
   archiveAgentCount: number
   archiveTerminalCount: number
   archiveTaskCount: number
@@ -69,6 +72,7 @@ export function SpaceWorktreeWindowDialog({
   onSuggestNames: () => void
   onCreate: () => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
+  onForceArchiveConfirmedChange: (checked: boolean) => void
   onArchive: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -174,6 +178,7 @@ export function SpaceWorktreeWindowDialog({
           isMutating={isMutating}
           isSuggesting={isSuggesting}
           isSpaceOnWorkspaceRoot={isSpaceOnWorkspaceRoot}
+          changedFileCount={changedFileCount}
           branches={branches}
           currentBranch={currentBranch}
           branchMode={branchMode}
@@ -181,6 +186,7 @@ export function SpaceWorktreeWindowDialog({
           startPoint={startPoint}
           existingBranchName={existingBranchName}
           deleteBranchOnArchive={deleteBranchOnArchive}
+          forceArchiveConfirmed={forceArchiveConfirmed}
           onClose={onClose}
           onBranchModeChange={onBranchModeChange}
           onNewBranchNameChange={onNewBranchNameChange}
@@ -189,6 +195,7 @@ export function SpaceWorktreeWindowDialog({
           onSuggestNames={onSuggestNames}
           onCreate={onCreate}
           onDeleteBranchOnArchiveChange={onDeleteBranchOnArchiveChange}
+          onForceArchiveConfirmedChange={onForceArchiveConfirmedChange}
           onArchive={onArchive}
         />
 

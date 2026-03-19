@@ -38,10 +38,18 @@ describe('SpaceWorktreeWindow flow', () => {
     expect(await screen.findByTestId('space-worktree-archive-view')).toBeVisible()
     expect(screen.getByTestId('space-worktree-status')).toHaveTextContent('feature/demo')
     expect(screen.getByTestId('space-worktree-status')).toHaveTextContent('3 changes')
+    expect(screen.getByTestId('space-worktree-archive-uncommitted-warning')).toHaveTextContent(
+      'uncommitted changes',
+    )
     expect(statusSummary).toHaveBeenCalledWith({
       repoPath: '/repo/.opencove/worktrees/space-1',
     })
     expect(screen.queryByTestId('space-worktree-home-view')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-force-confirm')).not.toBeDisabled()
+    })
+    expect(screen.getByTestId('space-worktree-archive-submit')).toBeDisabled()
+    fireEvent.click(screen.getByTestId('space-worktree-archive-force-confirm'))
     await waitFor(() => {
       expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
     })
@@ -101,6 +109,10 @@ describe('SpaceWorktreeWindow flow', () => {
       />,
     )
 
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-force-confirm')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-force-confirm'))
     await waitFor(() => {
       expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
     })
@@ -245,6 +257,10 @@ describe('SpaceWorktreeWindow flow', () => {
     )
 
     await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-force-confirm')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-force-confirm'))
+    await waitFor(() => {
       expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
     })
     fireEvent.click(screen.getByTestId('space-worktree-archive-submit'))
@@ -295,6 +311,7 @@ describe('SpaceWorktreeWindow flow', () => {
       />,
     )
 
+    expect(screen.queryByTestId('space-worktree-archive-force-confirm')).not.toBeInTheDocument()
     await waitFor(() => {
       expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
     })
@@ -350,6 +367,9 @@ describe('SpaceWorktreeWindow flow', () => {
           listWorktrees: vi.fn(async () => ({
             worktrees: [{ path: '/repo/.opencove/worktrees/space-1', head: 'def', branch: 'main' }],
           })),
+          statusSummary: vi.fn(async () => ({
+            changedFileCount: 3,
+          })),
           suggestNames: vi.fn(async () => ({
             branchName: 'space/demo',
             worktreeName: 'demo',
@@ -384,6 +404,10 @@ describe('SpaceWorktreeWindow flow', () => {
       />,
     )
 
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-force-confirm')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-force-confirm'))
     await waitFor(() => {
       expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
     })
@@ -430,6 +454,10 @@ describe('SpaceWorktreeWindow flow', () => {
       />,
     )
 
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-archive-force-confirm')).not.toBeDisabled()
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-archive-force-confirm'))
     await waitFor(() => {
       expect(screen.getByTestId('space-worktree-archive-submit')).not.toBeDisabled()
     })

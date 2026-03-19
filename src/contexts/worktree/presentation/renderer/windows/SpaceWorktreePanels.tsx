@@ -11,6 +11,8 @@ export function SpaceWorktreePanels({
   isMutating,
   isSuggesting,
   isSpaceOnWorkspaceRoot,
+  changedFileCount,
+  forceArchiveConfirmed,
   branches,
   currentBranch,
   branchMode,
@@ -26,6 +28,7 @@ export function SpaceWorktreePanels({
   onSuggestNames,
   onCreate,
   onDeleteBranchOnArchiveChange,
+  onForceArchiveConfirmedChange,
   onArchive,
 }: {
   space: WorkspaceSpaceState
@@ -34,6 +37,8 @@ export function SpaceWorktreePanels({
   isMutating: boolean
   isSuggesting: boolean
   isSpaceOnWorkspaceRoot: boolean
+  changedFileCount: number
+  forceArchiveConfirmed: boolean
   branches: string[]
   currentBranch: string | null
   branchMode: BranchMode
@@ -49,9 +54,11 @@ export function SpaceWorktreePanels({
   onSuggestNames: () => void
   onCreate: () => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
+  onForceArchiveConfirmedChange: (checked: boolean) => void
   onArchive: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const requiresForceArchiveConfirmation = !isSpaceOnWorkspaceRoot && changedFileCount > 0
 
   return (
     <>
@@ -216,7 +223,33 @@ export function SpaceWorktreePanels({
                   {t('worktree.removeWorktreeContents', { name: space.name })}
                 </p>
 
+                {changedFileCount > 0 ? (
+                  <p
+                    className="workspace-space-worktree__supporting-text"
+                    data-testid="space-worktree-archive-uncommitted-warning"
+                  >
+                    {t('worktree.archiveUncommittedChangesWarning')}
+                  </p>
+                ) : null}
+
                 <div className="workspace-space-worktree__option-list">
+                  {requiresForceArchiveConfirmation ? (
+                    <label className="cove-window__checkbox workspace-space-worktree__option-row">
+                      <input
+                        type="checkbox"
+                        data-testid="space-worktree-archive-force-confirm"
+                        checked={forceArchiveConfirmed}
+                        disabled={isBusy}
+                        onChange={event => {
+                          onForceArchiveConfirmedChange(event.target.checked)
+                        }}
+                      />
+                      <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
+                        <strong>{t('worktree.forceArchiveConfirm')}</strong>
+                        <span>{t('worktree.forceArchiveConfirmHelp')}</span>
+                      </span>
+                    </label>
+                  ) : null}
                   <label className="cove-window__checkbox workspace-space-worktree__option-row">
                     <input
                       type="checkbox"
@@ -250,7 +283,7 @@ export function SpaceWorktreePanels({
                 type="button"
                 className="cove-window__action cove-window__action--danger"
                 data-testid="space-worktree-archive-submit"
-                disabled={isBusy}
+                disabled={isBusy || (requiresForceArchiveConfirmation && !forceArchiveConfirmed)}
                 onClick={onArchive}
               >
                 {isMutating ? t('common.loading') : t('common.confirm')}

@@ -14,6 +14,7 @@ export const APP_ERROR_CODES = [
   'worktree.status_summary_failed',
   'worktree.create_failed',
   'worktree.remove_failed',
+  'worktree.remove_uncommitted_changes',
   'worktree.rename_branch_failed',
   'worktree.suggest_names_failed',
   'worktree.remove_branch_cleanup_failed',
