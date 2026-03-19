@@ -9,6 +9,8 @@ import type { CommandResult } from './githubIntegration.shared'
 import { normalizeText } from './githubIntegration.shared'
 
 const DEFAULT_TIMEOUT_MS = 30_000
+const HOST_CACHE_TTL_MS = 5 * 60_000
+const AUTH_CACHE_TTL_MS = 15_000
 
 export function buildGhEnv(): NodeJS.ProcessEnv {
   return {
@@ -87,6 +89,8 @@ export async function runCommand(
 }
 
 let ghExistsCache: { checkedAt: number; exists: boolean } | null = null
+const repoHostCache = new Map<string, { checkedAt: number; host: string | null }>()
+const ghAuthCache = new Map<string, { checkedAt: number; authed: boolean }>()
 
 export async function isGhAvailable(cwd: string): Promise<boolean> {
   const now = Date.now()
@@ -109,13 +113,26 @@ export async function isGhAvailable(cwd: string): Promise<boolean> {
 }
 
 export async function isGhAuthenticated(cwd: string): Promise<boolean> {
+  const host = await resolveGitHubHostForRepo(cwd)
+  const cacheKey = host ? `host:${host}` : 'default'
+
+  const now = Date.now()
+  const cached = ghAuthCache.get(cacheKey)
+  if (cached && now - cached.checkedAt < AUTH_CACHE_TTL_MS) {
+    return cached.authed
+  }
+
   try {
-    const result = await runCommand('gh', ['auth', 'status', '--json', 'hosts'], cwd, {
+    const args = host ? ['auth', 'status', '--hostname', host] : ['auth', 'status']
+    const result = await runCommand('gh', args, cwd, {
       timeoutMs: 8_000,
       env: buildGhEnv(),
     })
-    return result.exitCode === 0
+    const authed = result.exitCode === 0
+    ghAuthCache.set(cacheKey, { checkedAt: now, authed })
+    return authed
   } catch {
+    ghAuthCache.set(cacheKey, { checkedAt: now, authed: false })
     return false
   }
 }
@@ -180,6 +197,53 @@ export async function resolveDefaultRemote(repoPath: string): Promise<string | n
   }
 
   return remotes[0] ?? null
+}
+
+function parseHostFromGitRemoteUrl(remoteUrl: string): string | null {
+  const raw = remoteUrl.trim()
+  if (raw.length === 0) {
+    return null
+  }
+
+  if (/^[a-zA-Z]:[\\/]/.test(raw)) {
+    return null
+  }
+
+  if (raw.includes('://')) {
+    try {
+      const parsed = new URL(raw)
+      return parsed.hostname.trim() || null
+    } catch {
+      return null
+    }
+  }
+
+  const scpStyleMatch = raw.match(/^(?:[^@]+@)?([^:/]+):.+$/)
+  return scpStyleMatch?.[1]?.trim() || null
+}
+
+async function resolveGitHubHostForRepo(repoPath: string): Promise<string | null> {
+  const now = Date.now()
+  const cached = repoHostCache.get(repoPath)
+  if (cached && now - cached.checkedAt < HOST_CACHE_TTL_MS) {
+    return cached.host
+  }
+
+  const remote = await resolveDefaultRemote(repoPath)
+  if (!remote) {
+    repoHostCache.set(repoPath, { checkedAt: now, host: null })
+    return null
+  }
+
+  const urlResult = await runGit(repoPath, ['remote', 'get-url', remote])
+  if (urlResult.exitCode !== 0) {
+    repoHostCache.set(repoPath, { checkedAt: now, host: null })
+    return null
+  }
+
+  const host = parseHostFromGitRemoteUrl(urlResult.stdout.split(/\r?\n/)[0] ?? '')
+  repoHostCache.set(repoPath, { checkedAt: now, host })
+  return host
 }
 
 export function formatCommandError(result: CommandResult, fallback: string): string {
