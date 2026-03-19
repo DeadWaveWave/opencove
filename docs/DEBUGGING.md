@@ -35,7 +35,7 @@ pnpm test:e2e
 常用控制项：
 
 ```bash
-OPENCOVE_E2E_WINDOW_MODE=normal|inactive|offscreen|hidden pnpm test:e2e
+OPENCOVE_E2E_WINDOW_MODE=inactive|offscreen|hidden pnpm test:e2e
 OPENCOVE_E2E_DISABLE_CRASH_FALLBACK=1 pnpm test:e2e
 ```
 

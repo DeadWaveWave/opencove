@@ -194,6 +194,11 @@ function resolveE2EWindowMode(): E2EWindowMode {
 
   const explicitMode = parseE2EWindowMode(process.env['OPENCOVE_E2E_WINDOW_MODE'])
   if (explicitMode) {
+    // E2E runs must never steal OS focus. Treat explicit "normal" as "inactive".
+    if (explicitMode === 'normal') {
+      return 'inactive'
+    }
+
     return explicitMode
   }
 
@@ -202,7 +207,7 @@ function resolveE2EWindowMode(): E2EWindowMode {
     return 'inactive'
   }
 
-  return 'normal'
+  return 'offscreen'
 }
 
 function createWindow(): void {

@@ -1,10 +1,6 @@
 import type { Page } from '@playwright/test'
 import path from 'path'
-import {
-  bringWindowToFrontForNormalMode,
-  createTestUserDataDir,
-  launchApp,
-} from './workspace-canvas.app'
+import { createTestUserDataDir, launchApp } from './workspace-canvas.app'
 import {
   buildEchoSequenceCommand,
   buildNodeEvalCommand,
@@ -128,7 +124,6 @@ export async function seedWorkspaceState(
     }
 
     await window.reload({ waitUntil: 'domcontentloaded' })
-    await bringWindowToFrontForNormalMode(window)
 
     const expectedWorkspaces = payload.workspaces.map(workspace => ({
       id: workspace.id,
