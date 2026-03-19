@@ -162,11 +162,11 @@ function NoteNodeType({
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
 }): ReactElement | null {
+  const nodePosition = useNodePosition(id)
+
   if (!data.note) {
     return null
   }
-
-  const nodePosition = useNodePosition(id)
 
   return (
     <NoteNode

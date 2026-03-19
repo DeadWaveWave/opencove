@@ -102,10 +102,10 @@ async function cleanupUserDataDirWithRetry(userDataDir: string, attempt = 1): Pr
       if (isRetryableWindowsCleanupError) {
         // Chromium can release DIPS/shared-memory artifacts after Electron has already exited.
         // Each E2E run gets a unique temp dir, so a final cleanup miss is preferable to a false test failure.
-        console.warn(
+        process.stderr.write(
           `[e2e] Skipping locked Windows userData cleanup for ${userDataDir}: ${
             error instanceof Error ? error.message : String(error)
-          }`,
+          }\n`,
         )
         return
       }
