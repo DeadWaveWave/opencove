@@ -14,6 +14,7 @@ import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
+import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
 import {
   isCanvasDoubleClickCreateTarget,
@@ -26,10 +27,7 @@ type SetNodes = (
   options?: { syncLayout?: boolean },
 ) => void
 
-type SelectionDraftUiState = Pick<
-  SelectionDraftState,
-  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
->
+type SelectionDraftUiState = Pick<SelectionDraftState, 'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'>
 
 interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
@@ -83,10 +81,7 @@ export function useWorkspaceCanvasInteractions({
   clearNodeSelection: () => void
   handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
   handleNodeClick: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
-  handleSelectionContextMenu: (
-    event: React.MouseEvent,
-    selectedNodes: Node<TerminalNodeData>[],
-  ) => void
+  handleSelectionContextMenu: (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => void
   handleNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
   handlePaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
   handleSelectionChange: (params: { nodes: Node<TerminalNodeData>[] }) => void
@@ -95,6 +90,7 @@ export function useWorkspaceCanvasInteractions({
   handleCanvasPointerUpCapture: React.PointerEventHandler<HTMLDivElement>
   handlePaneClick: (_event: React.MouseEvent | MouseEvent) => void
   createTerminalNode: () => Promise<void>
+  createNoteNodeFromContextMenu: () => void
 } {
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
@@ -245,11 +241,7 @@ export function useWorkspaceCanvasInteractions({
     setEmptySelectionPrompt,
   })
 
-  const paneDragRef = useRef<{
-    startX: number
-    startY: number
-    didMove: boolean
-  } | null>(null)
+  const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)
 
   const ignoreNextPaneClickRef = useRef(false)
 
@@ -363,19 +355,9 @@ export function useWorkspaceCanvasInteractions({
         y: flowPosition.y,
       }
 
-      const created = createNoteNode(anchor)
-      if (!created) {
-        return
-      }
-
-      const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor)
-      if (!targetSpace) {
-        return
-      }
-
-      assignNodeToSpaceAndExpand({
-        createdNodeId: created.id,
-        targetSpaceId: targetSpace.id,
+      createNoteNodeAtAnchor({
+        anchor,
+        createNoteNode,
         spacesRef,
         nodesRef,
         setNodes,
@@ -471,6 +453,28 @@ export function useWorkspaceCanvasInteractions({
     workspacePath,
   ])
 
+  const createNoteNodeFromContextMenu = useCallback(() => {
+    if (!contextMenu || contextMenu.kind !== 'pane') {
+      return
+    }
+
+    const anchor = {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    }
+
+    setContextMenu(null)
+
+    createNoteNodeAtAnchor({
+      anchor,
+      createNoteNode,
+      spacesRef,
+      nodesRef,
+      setNodes,
+      onSpacesChange,
+    })
+  }, [contextMenu, createNoteNode, nodesRef, onSpacesChange, setContextMenu, setNodes, spacesRef])
+
   return {
     clearNodeSelection,
     handleCanvasDoubleClickCapture,
@@ -484,5 +488,6 @@ export function useWorkspaceCanvasInteractions({
     handleCanvasPointerUpCapture: handleCanvasPointerUpCaptureWithDragGuard,
     handlePaneClick,
     createTerminalNode,
+    createNoteNodeFromContextMenu,
   }
 }

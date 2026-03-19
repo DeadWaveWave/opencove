@@ -216,6 +216,7 @@ export const zhCN = {
   },
   workspaceContextMenu: {
     newTerminal: '新建终端',
+    newNote: '新建便签',
     newTask: '新建任务',
     runAgent: '运行 Agent',
     createSpaceWithSelected: '用所选节点创建 Space',

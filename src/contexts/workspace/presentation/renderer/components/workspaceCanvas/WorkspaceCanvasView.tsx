@@ -91,21 +91,18 @@ interface WorkspaceCanvasViewProps {
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   startSpaceRename: (spaceId: string) => void
-
   selectedNodeCount: number
-
   isMinimapVisible: boolean
   minimapNodeColor: (node: Node<TerminalNodeData>) => string
   setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   onMinimapVisibilityChange: (isVisible: boolean) => void
-
   spaces: WorkspaceSpaceState[]
   focusSpaceInViewport: (spaceId: string) => void
   focusAllInViewport: () => void
-
   contextMenu: ContextMenuState | null
   closeContextMenu: () => void
   createTerminalNode: () => Promise<void>
+  createNoteNodeFromContextMenu: () => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
   createSpaceFromSelectedNodes: () => void
@@ -113,7 +110,6 @@ interface WorkspaceCanvasViewProps {
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
-
   taskCreator: TaskCreatorState | null
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
@@ -122,7 +118,6 @@ interface WorkspaceCanvasViewProps {
   closeTaskCreator: () => void
   generateTaskTitle: () => Promise<void>
   createTask: () => Promise<void>
-
   taskEditor: TaskEditorState | null
   setTaskEditor: React.Dispatch<React.SetStateAction<TaskEditorState | null>>
   closeTaskEditor: () => void
@@ -220,6 +215,7 @@ export function WorkspaceCanvasView({
   contextMenu,
   closeContextMenu,
   createTerminalNode,
+  createNoteNodeFromContextMenu,
   openTaskCreator,
   openAgentLauncher,
   createSpaceFromSelectedNodes,
@@ -408,6 +404,7 @@ export function WorkspaceCanvasView({
         contextMenu={contextMenu}
         closeContextMenu={closeContextMenu}
         createTerminalNode={createTerminalNode}
+        createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
