@@ -62,6 +62,7 @@ export function WorkspaceSpaceRegionItem({
   const { t } = useTranslation()
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
+  const shouldShowSpaceLabel = resolvedBranchBadge === null
   return (
     <div
       className={
@@ -161,17 +162,19 @@ export function WorkspaceSpaceRegionItem({
             event.stopPropagation()
           }}
         >
-          <button
-            type="button"
-            className="workspace-space-region__label"
-            data-testid={`workspace-space-label-${space.id}`}
-            onClick={event => {
-              event.stopPropagation()
-              startSpaceRename(space.id)
-            }}
-          >
-            {space.name}
-          </button>
+          {shouldShowSpaceLabel ? (
+            <button
+              type="button"
+              className="workspace-space-region__label"
+              data-testid={`workspace-space-label-${space.id}`}
+              onClick={event => {
+                event.stopPropagation()
+                startSpaceRename(space.id)
+              }}
+            >
+              {space.name}
+            </button>
+          ) : null}
 
           {branchName && resolvedBranchBadge && worktreePath ? (
             <button

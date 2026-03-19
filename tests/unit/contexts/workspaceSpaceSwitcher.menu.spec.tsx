@@ -110,7 +110,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
       expect(listWorktrees).toHaveBeenCalledWith({ repoPath: '/tmp/repo' })
     })
 
-    expect(screen.queryByTestId('workspace-space-worktree-name-space-1')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('workspace-space-label-space-1')).not.toBeInTheDocument()
     expect(await screen.findByTestId('workspace-space-worktree-branch-space-1')).toHaveTextContent(
       'Branch',
     )
