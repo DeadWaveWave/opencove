@@ -4,6 +4,7 @@ import { clearAndSeedWorkspace, launchApp, storageKey } from './workspace-canvas
 test.describe('Workspace Canvas - Node Create (Push-away)', () => {
   test('pushes blocking windows to the right when creating a task in a crowded spot', async () => {
     const { electronApp, window } = await launchApp()
+    const clickPosition = { x: 280, y: 220 }
 
     try {
       await clearAndSeedWorkspace(window, [
@@ -35,7 +36,7 @@ test.describe('Workspace Canvas - Node Create (Push-away)', () => {
 
       await pane.click({
         button: 'right',
-        position: { x: 280, y: 220 },
+        position: clickPosition,
       })
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
@@ -94,7 +95,7 @@ test.describe('Workspace Canvas - Node Create (Push-away)', () => {
         throw new Error('failed to read persisted crowded create snapshot')
       }
 
-      expect(snapshot.createdX).toBe(280)
+      expect(snapshot.createdX).toBe(clickPosition.x - snapshot.createdWidth / 2)
       expect(snapshot.existingX).toBeGreaterThanOrEqual(snapshot.createdX + snapshot.createdWidth)
     } finally {
       await electronApp.close()

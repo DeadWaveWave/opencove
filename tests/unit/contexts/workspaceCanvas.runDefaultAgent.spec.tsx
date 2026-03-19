@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { resolveDefaultAgentWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -139,9 +140,11 @@ describe('WorkspaceCanvas run default agent', () => {
 
     const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
     const spaces: WorkspaceSpaceState[] = []
+    let latestNodes: Node<TerminalNodeData>[] = []
 
     function Harness() {
       const [nodes, setNodes] = useState<Node<TerminalNodeData>[]>([])
+      latestNodes = nodes
 
       return (
         <WorkspaceCanvas
@@ -204,6 +207,14 @@ describe('WorkspaceCanvas run default agent', () => {
       expect(screen.getByTestId('agent-node-status')).toHaveTextContent(
         'codex · gpt-5.2-codex:standby',
       )
+    })
+    const expectedSize = resolveDefaultAgentWindowSize(
+      DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
+    )
+    expect(latestNodes).toHaveLength(1)
+    expect(latestNodes[0]?.position).toEqual({
+      x: 320 - expectedSize.width / 2,
+      y: 220 - expectedSize.height / 2,
     })
     expect(screen.queryByTestId('workspace-agent-launcher')).toBeNull()
   })

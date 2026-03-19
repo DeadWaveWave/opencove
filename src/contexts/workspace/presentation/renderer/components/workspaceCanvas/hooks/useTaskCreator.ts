@@ -3,7 +3,13 @@ import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import { normalizeTaskTagSelection, sanitizeSpaces, toErrorMessage } from '../helpers'
+import { resolveDefaultTaskWindowSize } from '../constants'
+import {
+  normalizeTaskTagSelection,
+  resolveNodePlacementAnchorFromViewportCenter,
+  sanitizeSpaces,
+  toErrorMessage,
+} from '../helpers'
 import type { ContextMenuState, TaskCreatorState } from '../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 
@@ -208,9 +214,13 @@ export function useWorkspaceCanvasTaskCreator({
         (shouldAutoFillTitle || shouldAutoFillPriority || shouldAutoFillTags)
 
       const title = titleInput.length > 0 ? titleInput : fallbackTaskTitle(requirement)
+      const placementAnchor = resolveNodePlacementAnchorFromViewportCenter(
+        taskCreator.anchor,
+        resolveDefaultTaskWindowSize(),
+      )
 
       const created = createTaskNode(
-        taskCreator.anchor,
+        placementAnchor,
         title,
         requirement,
         false,

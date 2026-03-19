@@ -302,6 +302,7 @@ function WorkspaceCanvasInner({
   } = workspaceCanvasHooks.useWorkspaceCanvasInteractions({
     isTrackpadCanvasMode,
     normalizeZoomOnNodeClick: agentSettings.normalizeZoomOnTerminalClick,
+    defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
     isShiftPressedRef,
     selectionDraftRef,
     setSelectionDraftUi,
