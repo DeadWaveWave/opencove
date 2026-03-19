@@ -56,6 +56,7 @@ describe('TaskNode agent sessions', () => {
         }}
         agentSessions={sessions}
         currentDirectory="/repo"
+        position={{ x: 0, y: 0 }}
         width={420}
         height={260}
         onClose={() => undefined}
@@ -116,6 +117,7 @@ describe('TaskNode agent sessions', () => {
         linkedAgentNode={null}
         agentSessions={sessions}
         currentDirectory="/repo"
+        position={{ x: 0, y: 0 }}
         width={420}
         height={260}
         onClose={() => undefined}

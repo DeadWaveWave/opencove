@@ -67,12 +67,12 @@ describe('resolveTerminalNodeInteraction', () => {
     })
   })
 
-  it('keeps selected drag overlay in drag-only mode', () => {
+  it('treats non-terminal surfaces as selectable node interactions', () => {
     const { dragOverlay } = createTerminalNodeFixture()
 
     expect(resolveTerminalNodeInteraction(dragOverlay)).toEqual({
       normalizeViewport: false,
-      selectNode: false,
+      selectNode: true,
     })
   })
 
