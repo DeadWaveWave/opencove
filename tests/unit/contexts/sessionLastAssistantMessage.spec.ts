@@ -1,13 +1,41 @@
 import fs from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DatabaseSync } from 'node:sqlite'
 import {
   extractLastAssistantMessageFromSessionData,
   readLastAssistantMessageFromOpenCodeSession,
   readLastAssistantMessageFromSessionFile,
 } from '../../../src/contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
 import { afterEach, describe, expect, it } from 'vitest'
+
+interface SqliteWriteStatementLike {
+  run: (...params: unknown[]) => unknown
+}
+
+interface SqliteWriteDbLike {
+  exec: (sql: string) => void
+  prepare: (sql: string) => SqliteWriteStatementLike
+  close: () => void
+}
+
+async function openWritableSqliteDb(dbPath: string): Promise<SqliteWriteDbLike> {
+  try {
+    const module = await import('better-sqlite3')
+    const BetterSqlite3 = module.default as unknown as new (
+      filePath: string,
+      options?: Record<string, unknown>,
+    ) => SqliteWriteDbLike
+    return new BetterSqlite3(dbPath)
+  } catch {
+    // Avoid `import('node:sqlite')` in tests because Vite's client transformer can reject it.
+    const require = createRequire(import.meta.url)
+    const sqlite = require('node:sqlite') as {
+      DatabaseSync: new (filePath: string, options?: Record<string, unknown>) => unknown
+    }
+    return new sqlite.DatabaseSync(dbPath) as SqliteWriteDbLike
+  }
+}
 
 describe('readLastAssistantMessageFromSessionFile', () => {
   const tempDirs: string[] = []
@@ -160,12 +188,12 @@ describe('readLastAssistantMessageFromSessionFile', () => {
     const cwd = join(tempDir, 'workspace')
     const dbPath = join(xdgDataHome, 'opencode', 'opencode.db')
 
-    let db: DatabaseSync | null = null
+    let db: SqliteWriteDbLike | null = null
 
     try {
       await fs.mkdir(join(xdgDataHome, 'opencode'), { recursive: true })
 
-      db = new DatabaseSync(dbPath)
+      db = await openWritableSqliteDb(dbPath)
       db.exec(`
         CREATE TABLE session (id TEXT PRIMARY KEY, directory TEXT NOT NULL);
         CREATE TABLE message (
