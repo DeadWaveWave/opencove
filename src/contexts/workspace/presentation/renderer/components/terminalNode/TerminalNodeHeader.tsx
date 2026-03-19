@@ -30,8 +30,11 @@ export function TerminalNodeHeader({
 
   const isTitleEditable = kind === 'terminal' && typeof onTitleCommit === 'function'
   const isAgentNode = kind === 'agent'
-  const canCopyLastMessage =
-    isAgentNode && status === 'standby' && typeof onCopyLastMessage === 'function'
+  const shouldRenderCopyLastMessageButton =
+    isAgentNode &&
+    (status === 'standby' || status === 'running') &&
+    typeof onCopyLastMessage === 'function'
+  const isCopyLastMessageDisabled = isCopyingLastMessage || status !== 'standby'
 
   useEffect(() => {
     if (isTitleEditing) {
@@ -169,7 +172,7 @@ export function TerminalNodeHeader({
         </div>
       ) : null}
 
-      {canCopyLastMessage ? (
+      {shouldRenderCopyLastMessageButton ? (
         <button
           type="button"
           className="terminal-node__action terminal-node__action--icon nodrag"
@@ -180,10 +183,10 @@ export function TerminalNodeHeader({
               ? t('terminalNodeHeader.copyingLastMessage')
               : t('terminalNodeHeader.copyLastMessage')
           }
-          disabled={isCopyingLastMessage}
+          disabled={isCopyLastMessageDisabled}
           onClick={async event => {
             event.stopPropagation()
-            if (isCopyingLastMessage || !onCopyLastMessage) {
+            if (isCopyLastMessageDisabled || !onCopyLastMessage) {
               return
             }
 
