@@ -7,7 +7,7 @@ export interface WorkspaceCanvasActionRefs {
   clearNodeSelectionRef: React.MutableRefObject<() => void>
   closeNodeRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: React.MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
-  saveAgentLastMessageToNoteRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
+  copyAgentLastMessageRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   updateNoteTextRef: React.MutableRefObject<(nodeId: string, text: string) => void>
   runTaskAgentRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   resumeTaskAgentSessionRef: React.MutableRefObject<
@@ -37,7 +37,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const resizeNodeRef = useRef<(nodeId: string, desiredFrame: NodeFrame) => void>(
     (_nodeId: string, _desiredFrame: NodeFrame) => undefined,
   )
-  const saveAgentLastMessageToNoteRef = useRef<(nodeId: string) => Promise<void>>(
+  const copyAgentLastMessageRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
   )
   const updateNoteTextRef = useRef<(nodeId: string, text: string) => void>(
@@ -80,7 +80,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     clearNodeSelectionRef,
     closeNodeRef,
     resizeNodeRef,
-    saveAgentLastMessageToNoteRef,
+    copyAgentLastMessageRef,
     updateNoteTextRef,
     runTaskAgentRef,
     resumeTaskAgentSessionRef,
@@ -101,7 +101,7 @@ interface SyncActionRefsParams {
   actionRefs: WorkspaceCanvasActionRefs
   closeNode: (nodeId: string) => Promise<void>
   resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
-  saveAgentLastMessageToNote: (nodeId: string) => Promise<void>
+  copyAgentLastMessage: (nodeId: string) => Promise<void>
   updateNoteText: (nodeId: string, text: string) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
@@ -115,7 +115,7 @@ export function useWorkspaceCanvasSyncActionRefs({
   actionRefs,
   closeNode,
   resizeNode,
-  saveAgentLastMessageToNote,
+  copyAgentLastMessage,
   updateNoteText,
   updateNodeScrollback,
   updateTerminalTitle,
@@ -133,8 +133,8 @@ export function useWorkspaceCanvasSyncActionRefs({
   }, [actionRefs.resizeNodeRef, resizeNode])
 
   useLayoutEffect(() => {
-    actionRefs.saveAgentLastMessageToNoteRef.current = saveAgentLastMessageToNote
-  }, [actionRefs.saveAgentLastMessageToNoteRef, saveAgentLastMessageToNote])
+    actionRefs.copyAgentLastMessageRef.current = copyAgentLastMessage
+  }, [actionRefs.copyAgentLastMessageRef, copyAgentLastMessage])
 
   useLayoutEffect(() => {
     actionRefs.updateNoteTextRef.current = (nodeId, text) => {

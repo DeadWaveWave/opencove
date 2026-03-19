@@ -22,7 +22,7 @@ export interface TerminalNodeProps {
   terminalFontSize: number
   scrollback: string | null
   onClose: () => void
-  onSaveLastMessageToNote?: () => Promise<void>
+  onCopyLastMessage?: () => Promise<void>
   onResize: (frame: NodeFrame) => void
   onScrollbackChange?: (scrollback: string) => void
   onTitleCommit?: (title: string) => void

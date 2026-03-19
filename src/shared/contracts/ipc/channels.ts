@@ -1,4 +1,6 @@
 export const IPC_CHANNELS = {
+  clipboardReadText: 'clipboard:read-text',
+  clipboardWriteText: 'clipboard:write-text',
   workspaceSelectDirectory: 'workspace:select-directory',
   workspaceEnsureDirectory: 'workspace:ensure-directory',
   workspaceCopyPath: 'workspace:copy-path',

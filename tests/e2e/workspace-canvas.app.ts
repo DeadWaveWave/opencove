@@ -96,17 +96,17 @@ async function cleanupUserDataDirWithRetry(userDataDir: string, attempt = 1): Pr
   try {
     await rm(userDataDir, { recursive: true, force: true })
   } catch (error) {
-    const isRetryableWindowsCleanupError =
-      process.platform === 'win32' && isRetryableUserDataCleanupError(error)
-    const shouldRetry =
-      isRetryableWindowsCleanupError && attempt < E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS
+    const isRetryableCleanupError = isRetryableUserDataCleanupError(error)
+    const shouldRetry = isRetryableCleanupError && attempt < E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS
 
     if (!shouldRetry) {
-      if (isRetryableWindowsCleanupError) {
-        // Chromium can release DIPS/shared-memory artifacts after Electron has already exited.
-        // Each E2E run gets a unique temp dir, so a final cleanup miss is preferable to a false test failure.
+      if (isRetryableCleanupError) {
+        // Chromium (and external tools invoked by the app) can release/shared-memory artifacts after
+        // Electron has already exited, and some tools may still write into the temp config directory
+        // during shutdown. Each E2E run gets a unique temp dir, so a final cleanup miss is
+        // preferable to a false test failure.
         process.stderr.write(
-          `[e2e] Skipping locked Windows userData cleanup for ${userDataDir}: ${
+          `[e2e] Skipping locked userData cleanup for ${userDataDir}: ${
             error instanceof Error ? error.message : String(error)
           }\n`,
         )

@@ -31,8 +31,20 @@ describe('registerIpcHandlers', () => {
 
     let getStore: (() => Promise<typeof store>) | null = null
 
+    const ipcMain = {
+      handle: vi.fn(),
+      removeHandler: vi.fn(),
+    }
+
+    const clipboard = {
+      readText: vi.fn(() => ''),
+      writeText: vi.fn(),
+    }
+
     vi.doMock('electron', () => ({
       app: { getPath: vi.fn(() => '/tmp/opencove-user-data') },
+      ipcMain,
+      clipboard,
     }))
     vi.doMock('../../../src/contexts/agent/presentation/main-ipc/register', () => ({
       registerAgentIpcHandlers: () => ({ dispose: vi.fn() }),

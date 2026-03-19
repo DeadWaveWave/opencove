@@ -46,13 +46,13 @@ async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['wind
   )
 }
 
-test.describe('Workspace Canvas - Agent Last Message Copy', () => {
-  test('copies the last standby agent message to the clipboard', async () => {
+test.describe('Workspace Canvas - Agent Last Message Copy (Working Disabled)', () => {
+  test('renders the copy button disabled while working, then enables it on standby', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {
         OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
-        OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-standby-no-newline',
+        OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-commentary-then-final',
       },
     })
 
@@ -68,23 +68,24 @@ test.describe('Workspace Canvas - Agent Last Message Copy', () => {
 
       const agentNode = window.locator('.terminal-node').first()
       const nodeStatus = agentNode.locator('.terminal-node__status')
+      const copyButton = agentNode.locator('[data-testid="terminal-node-copy-last-message"]')
 
       await expect(agentNode).toBeVisible()
-      await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
-
-      const copyButton = agentNode.locator('[data-testid="terminal-node-copy-last-message"]')
+      await expect(nodeStatus).toHaveText('Working', { timeout: 15_000 })
       await expect(copyButton).toBeVisible()
+      await expect(copyButton).toBeDisabled()
+
+      await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
+      await expect(copyButton).toBeEnabled()
       await copyButton.evaluate(button => {
         button.click()
       })
-
-      await expect(window.locator('.note-node')).toHaveCount(0)
 
       await expect
         .poll(async () => {
           return await electronApp.evaluate(async ({ clipboard }) => clipboard.readText())
         })
-        .toBe('All set.')
+        .toBe('Done.')
     } finally {
       await electronApp.close()
     }

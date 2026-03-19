@@ -220,7 +220,8 @@ function createWindow(): void {
   const keepRendererActiveInBackground = e2eWindowMode !== 'normal' || isTestEnv
   const keepRendererActiveWhenHidden = e2eWindowMode === 'hidden'
   const placeWindowOffscreen = e2eWindowMode === 'offscreen'
-  const disableRendererSandboxForTests = isTestEnv
+  const disableRendererSandboxForTests =
+    isTestEnv && !isTruthyEnv(process.env['OPENCOVE_E2E_FORCE_RENDERER_SANDBOX'])
   const runtimeIconPath = resolveRuntimeIconPath()
   if (isTestEnv) {
     setRuntimeIconTestState(runtimeIconPath)
