@@ -132,6 +132,7 @@
     -   始终开启 Context Isolation。
     -   Renderer 进程禁止开启 Node Integration。
     -   IPC 通信必须校验参数类型 (validate ALL inputs)。
+    -   生产环境 CSP 禁止 `style-src 'unsafe-inline'`（仅开发环境允许），配置入口：`electron.vite.config.ts`。
 
 ## 快速开始
 

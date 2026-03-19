@@ -4,9 +4,10 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
 
-function buildCoveContentSecurityPolicy(isDev: boolean): string {
+export function buildCoveContentSecurityPolicy(isDev: boolean): string {
   const scriptSources = isDev ? ["'self'", "'unsafe-eval'"] : ["'self'"]
   const connectSources = isDev ? ["'self'", 'ws:', 'http:', 'https:'] : ["'self'"]
+  const styleSources = isDev ? ["'self'", "'unsafe-inline'"] : ["'self'"]
 
   return [
     `default-src 'self'`,
@@ -15,7 +16,7 @@ function buildCoveContentSecurityPolicy(isDev: boolean): string {
     `frame-ancestors 'none'`,
     `object-src 'none'`,
     `script-src ${scriptSources.join(' ')}`,
-    `style-src 'self' 'unsafe-inline'`,
+    `style-src ${styleSources.join(' ')}`,
     `img-src 'self' data: blob:`,
     `font-src 'self' data:`,
     `connect-src ${connectSources.join(' ')}`,
