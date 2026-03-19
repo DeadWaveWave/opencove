@@ -95,13 +95,12 @@ describe('AgentModelService', () => {
     expect(result.source).toBe('claude-static')
     expect(result.error).toBeNull()
     expect(result.models.map(model => model.id)).toEqual([
+      'claude-sonnet-4-6',
+      'claude-sonnet-4-6[1m]',
       'claude-opus-4-6',
-      'claude-sonnet-4-5-20250929',
-      'claude-haiku-4-5-20251001',
+      'claude-opus-4-6[1m]',
     ])
-    expect(result.models.find(model => model.id === 'claude-sonnet-4-5-20250929')?.isDefault).toBe(
-      true,
-    )
+    expect(result.models.find(model => model.id === 'claude-sonnet-4-6')?.isDefault).toBe(true)
   })
 
   it('lists OpenCode models from the CLI output', async () => {
@@ -123,18 +122,70 @@ describe('AgentModelService', () => {
     ])
   })
 
-  it('returns an empty Gemini catalog when the CLI has no list endpoint', async () => {
-    const { listAgentModels } = await importAgentModelService()
-    const result = await listAgentModels('gemini')
+  it('returns Gemini models parsed from the settings schema', async () => {
+    const fetchMock = vi.fn(async () => {
+      return {
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: async () => {
+          return {
+            properties: {
+              modelConfigs: {
+                default: {
+                  modelDefinitions: {
+                    'gemini-3.1-pro-preview': { isVisible: true },
+                    'gemini-3-pro-preview': { isVisible: true },
+                    'gemini-3-flash-preview': { isVisible: true },
+                    'gemini-2.5-pro': { isVisible: true },
+                    'gemini-2.5-flash': { isVisible: true },
+                    'gemini-2.5-flash-lite': { isVisible: true },
+                    'auto-gemini-3': { isVisible: true },
+                    'auto-gemini-2.5': { isVisible: true },
+                    internal: { isVisible: false },
+                  },
+                  modelIdResolutions: {
+                    auto: { default: 'gemini-3-pro-preview' },
+                    pro: { default: 'gemini-3-pro-preview' },
+                    flash: { default: 'gemini-3-flash-preview' },
+                    'flash-lite': { default: 'gemini-2.5-flash-lite' },
+                  },
+                },
+              },
+            },
+          }
+        },
+      }
+    })
 
-    expect(result).toEqual(
-      expect.objectContaining({
-        provider: 'gemini',
-        source: 'gemini-cli',
-        error: null,
-        models: [],
-      }),
-    )
+    vi.stubGlobal('fetch', fetchMock as never)
+
+    try {
+      const { listAgentModels } = await importAgentModelService()
+      const result = await listAgentModels('gemini')
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(result.provider).toBe('gemini')
+      expect(result.source).toBe('gemini-cli')
+      expect(result.error).toBeNull()
+      expect(result.models.map(model => model.id)).toEqual([
+        'auto',
+        'pro',
+        'flash',
+        'flash-lite',
+        'auto-gemini-3',
+        'auto-gemini-2.5',
+        'gemini-3.1-pro-preview',
+        'gemini-3-pro-preview',
+        'gemini-3-flash-preview',
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+        'gemini-2.5-flash-lite',
+      ])
+      expect(result.models.find(model => model.id === 'auto')?.isDefault).toBe(true)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('keeps stdin open while waiting for codex model/list response', async () => {
