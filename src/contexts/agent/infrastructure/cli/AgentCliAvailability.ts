@@ -28,4 +28,3 @@ export async function listInstalledAgentProviders(): Promise<AgentProviderId[]> 
 
   return availability.filter(result => result.available).map(result => result.provider)
 }
-

@@ -244,7 +244,9 @@ export function WorkspaceContextMenu({
                 ) : (
                   <ChevronRight
                     className={`workspace-context-menu__icon workspace-context-menu__chevron ${
-                      openSubmenu === 'agent-providers' ? 'workspace-context-menu__chevron--open' : ''
+                      openSubmenu === 'agent-providers'
+                        ? 'workspace-context-menu__chevron--open'
+                        : ''
                     }`}
                     aria-hidden="true"
                   />
