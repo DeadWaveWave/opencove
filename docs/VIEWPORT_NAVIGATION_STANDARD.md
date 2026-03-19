@@ -2,6 +2,8 @@
 
 本规范定义 OpenCove 画布中“定位 + 归一缩放”的统一行为，确保从不同入口进入目标窗口时体验一致、可预期。
 
+> 关联全局 UI 规范：`docs/UI_STANDARD.md`
+
 ## 1. 标准动作
 
 当触发“定位导航”时，统一执行：
@@ -83,7 +85,7 @@
 
 ## 7. 参考实现位置
 
-- `src/renderer/src/features/workspace/components/WorkspaceCanvas.tsx`
-- `src/renderer/src/features/workspace/components/TerminalNode.tsx`
-- `src/renderer/src/features/settings/agentConfig.ts`
-- `src/renderer/src/features/settings/components/SettingsPanel.tsx`
+- `src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas.tsx`
+- `src/contexts/workspace/presentation/renderer/components/TerminalNode.tsx`
+- `src/contexts/settings/domain/agentSettings.ts`
+- `src/contexts/settings/presentation/renderer/SettingsPanel.tsx`

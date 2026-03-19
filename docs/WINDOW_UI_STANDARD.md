@@ -2,6 +2,8 @@
 
 本规范定义 OpenCove 中所有“悬浮窗口/弹窗/面板”的统一视觉语言。
 
+> 关联全局 UI 规范：`docs/UI_STANDARD.md`
+
 目标：
 - 一眼识别为同一系统；
 - 操作层级一致（取消 / 辅助 / 主动作）；
@@ -18,18 +20,16 @@
 
 ### 2.1 Backdrop
 - 深色遮罩 + 轻微模糊
-- 推荐：`rgba(5,10,20,0.58)` + `backdrop-filter: blur(4px)`
+- 推荐：`background: var(--cove-backdrop)` + `backdrop-filter: blur(4px)`
 
 ### 2.2 Surface
 - 16px 圆角
-- 蓝色半透明边框
-- 顶部径向高光 + 深色纵向渐变
-- 双层阴影（外投影 + 内高光）
+- 边框/底色/阴影必须跟随主题 token（`--cove-surface*`、`--cove-border*`、`--cove-shadow-color-*`）
 
 ### 2.3 Input
 - 10px 圆角
-- 深色底 + 蓝色边框
-- Focus 有外发光 ring（3px）
+- `background: var(--cove-field)` + `border: 1px solid var(--cove-border)`
+- Focus 用 `--cove-accent` 的描边 + ring（避免刺眼）
 
 ### 2.4 Action Buttons
 - `ghost`：取消、关闭

@@ -7,14 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
-- (none)
+- Settings: UI theme selector (system/light/dark) with system follow. (#40)
 
 ### 💅 Changed
 - Workspace pane context menu: “Run Agent” can expand to pick an installed agent CLI.
 - Settings: reorganized into per-tab pages; added an Agent tab for provider defaults, menu order, and model overrides.
+- UI: refined light theme palette across canvas, nodes, and settings; minimap becomes subtle when idle and clearer on hover. (#40)
 
 ### 🐞 Fixed
-- (none)
+- Light theme: fix white text in Settings > Custom Model overrides. (#40)
 
 ---
 

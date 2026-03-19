@@ -1,5 +1,6 @@
 # Task UI Standard
 
+> 关联全局 UI 规范：`docs/UI_STANDARD.md`  
 > 关联全局窗口规范：`docs/WINDOW_UI_STANDARD.md`
 
 本规范约束 OpenCove 中 Task 卡片与 Task 编辑体验的交互与视觉，目标是：
@@ -87,7 +88,7 @@
 
 ## 6. 当前实现锚点（便于追踪）
 
-- 组件：`src/renderer/src/features/workspace/components/TaskNode.tsx`
-- 数据更新：`src/renderer/src/features/workspace/components/WorkspaceCanvas.tsx`
-- 样式：`src/renderer/src/styles.css`
-- E2E：`tests/e2e/workspace-canvas.spec.ts`
+- 组件：`src/contexts/task/presentation/renderer/components/TaskNode.tsx`
+- 数据编排：`src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas.tsx`
+- 样式：`src/app/renderer/styles/task-node.css`（弹窗复用 `src/app/renderer/styles/cove-window.css`）
+- E2E：`tests/e2e/workspace-canvas.tasks.edit-delete.spec.ts`
