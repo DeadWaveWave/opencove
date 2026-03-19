@@ -123,6 +123,8 @@ export const zhCN = {
     },
     canvas: {
       title: '画布与界面',
+      uiThemeLabel: '外观',
+      uiThemeHelp: '选择 OpenCove 的显示外观。',
       inputModeLabel: '输入模式',
       inputModeHelp: '画布交互的处理方式。',
       terminalProfileLabel: '终端环境',
@@ -130,6 +132,11 @@ export const zhCN = {
         '选择 Windows 新终端默认使用的 shell 配置。自动模式会回退到 {{defaultProfile}}。',
       terminalProfileAuto: '自动',
       terminalProfileAutoWithDefault: '自动（{{defaultProfile}}）',
+      uiTheme: {
+        system: '跟随系统（自动）',
+        light: '浅色',
+        dark: '深色',
+      },
       inputMode: {
         auto: '自动（智能）',
         trackpad: '触控板',

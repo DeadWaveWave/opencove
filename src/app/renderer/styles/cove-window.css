@@ -3,7 +3,7 @@
   position: fixed;
   inset: 0;
   z-index: 24;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--cove-backdrop);
   display: grid;
   place-items: center;
   backdrop-filter: blur(4px);
@@ -16,7 +16,7 @@
   border-radius: 16px;
   background: var(--cove-surface);
   backdrop-filter: blur(20px) saturate(130%);
-  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 24px 56px var(--cove-shadow-color-elevated);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -152,7 +152,7 @@
 .cove-window__action--ghost,
 .workspace-task-creator__action--ghost {
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--cove-field);
   color: var(--cove-text);
 }
 
@@ -168,7 +168,7 @@
 .cove-window__action--secondary,
 .workspace-task-creator__action--secondary {
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--cove-field);
   color: var(--cove-text);
 }
 

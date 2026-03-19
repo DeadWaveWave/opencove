@@ -1,7 +1,7 @@
 .settings-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
+  background: var(--cove-backdrop);
   backdrop-filter: blur(16px);
   display: grid;
   place-items: center;
@@ -11,21 +11,19 @@
 .settings-panel {
   width: min(980px, calc(100vw - 48px));
   height: min(760px, calc(100vh - 48px));
-  background:
-    radial-gradient(circle at top right, rgba(94, 156, 255, 0.1), transparent 30%),
-    linear-gradient(180deg, #111318 0%, #0c0f14 100%);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--cove-settings-panel-background);
+  border: 1px solid var(--cove-border-subtle);
   border-radius: 18px;
   display: grid;
   grid-template-columns: 208px minmax(0, 1fr);
   overflow: hidden;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 40px 100px var(--cove-shadow-color-panel);
 }
 
 /* --- Sidebar --- */
 .settings-panel__sidebar {
-  background: rgba(8, 10, 14, 0.92);
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--cove-settings-sidebar-background);
+  border-right: 1px solid var(--cove-border-subtle);
   padding: 28px 12px;
   display: flex;
   flex-direction: column;
@@ -37,19 +35,19 @@
   padding: 9px 14px;
   border-radius: 10px;
   font-size: 13px;
-  color: #888;
+  color: var(--cove-text-muted);
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
 }
 
 .settings-panel__nav-button:hover {
-  color: #eee;
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--cove-text);
+  background: var(--cove-surface-hover);
 }
 
 .settings-panel__nav-button--active {
-  color: #fff;
+  color: var(--cove-text);
   background: rgba(94, 156, 255, 0.12);
   font-weight: 500;
 }
@@ -70,7 +68,7 @@
   padding: 0 14px;
   font-size: 11px;
   font-weight: 600;
-  color: #585f6e;
+  color: var(--cove-text-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -93,25 +91,26 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--cove-border-subtle);
 }
 
 .settings-panel__header h2 {
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.01em;
+  color: var(--cove-text);
 }
 
 .settings-panel__close {
   all: unset;
-  color: #666;
+  color: var(--cove-text-faint);
   cursor: pointer;
   font-size: 20px;
   transition: color 0.2s;
 }
 
 .settings-panel__close:hover {
-  color: #fff;
+  color: var(--cove-text);
 }
 
 .settings-panel__content {
@@ -127,7 +126,7 @@
   flex-direction: column;
   gap: 18px;
   padding: 28px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--cove-border-subtle);
 }
 
 .settings-panel__content > .settings-panel__section:first-child {
@@ -161,12 +160,12 @@
 .settings-panel__row-label strong {
   font-size: 13px;
   font-weight: 500;
-  color: #eee;
+  color: var(--cove-text);
 }
 
 .settings-panel__row-label span {
   font-size: 12px;
-  color: #666;
+  color: var(--cove-text-muted);
   line-height: 1.4;
 }
 
@@ -185,7 +184,7 @@
 
 .settings-panel__value {
   font-size: 13px;
-  color: #ccd4e4;
+  color: var(--cove-text-muted);
 }
 
 .settings-panel__path-chip {
@@ -194,9 +193,9 @@
   max-width: min(100%, 360px);
   padding: 9px 12px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(255, 255, 255, 0.03);
-  color: #cfd7e6;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-field);
+  color: var(--cove-text);
   font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
@@ -219,13 +218,13 @@
 .settings-panel__subsection-header strong {
   font-size: 13px;
   font-weight: 500;
-  color: #eee;
+  color: var(--cove-text);
 }
 
 .settings-panel__subsection-header span {
   font-size: 12px;
   line-height: 1.4;
-  color: #666;
+  color: var(--cove-text-muted);
 }
 
 .settings-panel__input-row {
@@ -255,7 +254,7 @@
 .cove-toggle__slider {
   position: absolute;
   inset: 0;
-  background-color: #222;
+  background-color: var(--cove-border);
   transition: 0.2s;
   border-radius: 20px;
   pointer-events: none;
@@ -268,7 +267,7 @@
   width: 14px;
   left: 2px;
   bottom: 2px;
-  background-color: #888;
+  background-color: var(--cove-text-muted);
   transition: 0.2s;
   border-radius: 50%;
 }
@@ -313,10 +312,10 @@
 
 .settings-panel select,
 .settings-panel input {
-  background: #161616;
-  border: 1px solid #222;
-  border-radius: 6px;
-  color: #fff;
+  background: var(--cove-field);
+  border: 1px solid var(--cove-border);
+  border-radius: 10px;
+  color: var(--cove-text);
   padding: 8px 12px;
   font-size: 13px;
   width: 100%;
@@ -332,7 +331,7 @@
 
 .settings-panel select:hover,
 .settings-panel input:hover {
-  border-color: #333;
+  border-color: var(--cove-border);
 }
 
 .settings-panel select:focus,
@@ -357,12 +356,12 @@
   padding: 10px 12px;
   border-radius: 10px;
   transition: background 0.2s;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  background: var(--cove-field);
+  border: 1px solid var(--cove-border-subtle);
 }
 
 .settings-list-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--cove-surface-hover);
 }
 
 .settings-list-item__left {
@@ -370,7 +369,7 @@
   align-items: center;
   gap: 12px;
   font-size: 13px;
-  color: #ccc;
+  color: var(--cove-text-muted);
   cursor: pointer;
   flex: 1;
 }
@@ -383,13 +382,13 @@
 
 .settings-provider-card {
   padding: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--cove-border-subtle);
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--cove-field);
 }
 
 .settings-provider-card:last-child {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid var(--cove-border-subtle);
 }
 
 .settings-provider-card__header {
@@ -397,6 +396,18 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 18px;
+}
+
+.settings-provider-card__title {
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  color: var(--cove-text);
+}
+
+.settings-provider-card__error {
+  margin-top: 12px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: rgba(232, 103, 120, 0.92);
 }
 
 .settings-agent-order__actions {
@@ -420,8 +431,8 @@
 
 /* --- Buttons --- */
 .settings-panel button.primary {
-  background: #fff;
-  color: #000;
+  background: linear-gradient(180deg, rgba(84, 126, 235, 0.92), rgba(60, 99, 201, 0.92));
+  color: #eff6ff;
   border: none;
   padding: 8px 16px;
   border-radius: 6px;
@@ -432,7 +443,7 @@
 }
 
 .settings-panel button.primary:hover {
-  background: #e0e0e0;
+  background: linear-gradient(180deg, rgba(103, 143, 245, 0.95), rgba(73, 113, 216, 0.95));
 }
 
 .settings-panel button.primary:active {
@@ -440,15 +451,15 @@
 }
 
 .settings-panel button.primary:disabled {
-  background: #333;
-  color: #666;
+  background: var(--cove-border-subtle);
+  color: var(--cove-text-faint);
   cursor: not-allowed;
 }
 
 .settings-panel button.secondary {
   background: transparent;
-  border: 1px solid #333;
-  color: #eee;
+  border: 1px solid var(--cove-border);
+  color: var(--cove-text);
   padding: 6px 12px;
   border-radius: 6px;
   font-size: 12px;
@@ -457,8 +468,8 @@
 }
 
 .settings-panel button.secondary:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: #444;
+  background: var(--cove-surface-hover);
+  border-color: var(--cove-border);
 }
 
 @media (min-width: 900px) {
@@ -478,7 +489,7 @@
 
   .settings-panel__sidebar {
     border-right: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid var(--cove-border-subtle);
     padding: 20px 12px 14px;
     overflow-x: auto;
   }

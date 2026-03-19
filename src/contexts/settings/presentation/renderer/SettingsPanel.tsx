@@ -10,6 +10,7 @@ import {
   type CanvasInputMode,
   type TaskTitleProvider,
   type UiLanguage,
+  type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
@@ -85,6 +86,7 @@ export function SettingsPanel({
   const updateAgentProviderOrder = (providers: AgentProvider[]): void =>
     onChange({ ...settings, agentProviderOrder: providers })
   const updateLanguage = (language: UiLanguage): void => onChange({ ...settings, language })
+  const updateUiTheme = (uiTheme: UiTheme): void => onChange({ ...settings, uiTheme })
   const updateAgentFullAccess = (enabled: boolean): void =>
     onChange({ ...settings, agentFullAccess: enabled })
   const updateDefaultTerminalProfileId = (profileId: string | null): void =>
@@ -318,6 +320,7 @@ export function SettingsPanel({
 
             {activePageId === 'canvas' ? (
               <CanvasSection
+                uiTheme={settings.uiTheme}
                 canvasInputMode={settings.canvasInputMode}
                 normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
                 defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
@@ -326,6 +329,7 @@ export function SettingsPanel({
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
+                onChangeUiTheme={updateUiTheme}
                 onChangeCanvasInputMode={updateCanvasInputMode}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}

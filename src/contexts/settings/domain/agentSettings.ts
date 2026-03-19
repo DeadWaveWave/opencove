@@ -23,6 +23,10 @@ export const UI_LANGUAGES = ['en', 'zh-CN'] as const
 
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
+export const UI_THEMES = ['system', 'light', 'dark'] as const
+
+export type UiTheme = (typeof UI_THEMES)[number]
+
 export type TerminalProfileId = string | null
 
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
@@ -97,6 +101,7 @@ export type AgentCustomModelOptionsByProvider = {
 
 export interface AgentSettings {
   language: UiLanguage
+  uiTheme: UiTheme
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
@@ -116,6 +121,7 @@ export interface AgentSettings {
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
+  uiTheme: 'system',
   defaultProvider: 'codex',
   agentProviderOrder: [...AGENT_PROVIDERS],
   agentFullAccess: true,
@@ -179,6 +185,10 @@ function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
 
 function isValidUiLanguage(value: unknown): value is UiLanguage {
   return typeof value === 'string' && UI_LANGUAGES.includes(value as UiLanguage)
+}
+
+function isValidUiTheme(value: unknown): value is UiTheme {
+  return typeof value === 'string' && UI_THEMES.includes(value as UiTheme)
 }
 
 function normalizeTextValue(value: unknown): string {
@@ -331,6 +341,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const language = isValidUiLanguage(value.language)
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
+  const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
   const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
 
   const agentFullAccess =
@@ -434,6 +445,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   return {
     language,
+    uiTheme,
     defaultProvider,
     agentProviderOrder,
     agentFullAccess,

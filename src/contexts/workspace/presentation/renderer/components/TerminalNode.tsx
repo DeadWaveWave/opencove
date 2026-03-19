@@ -22,6 +22,7 @@ import { TerminalNodeHeader } from './terminalNode/TerminalNodeHeader'
 import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
+import { resolveTerminalTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
@@ -140,10 +141,7 @@ export function TerminalNode({
       cursorBlink: true,
       fontFamily:
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      theme: {
-        background: '#0a0f1d',
-        foreground: '#d6e4ff',
-      },
+      theme: resolveTerminalTheme(),
       allowProposedApi: true,
       convertEol: true,
       scrollback: 5000,
@@ -185,6 +183,12 @@ export function TerminalNode({
       }
     }
 
+    const handleThemeChange = (): void => {
+      terminal.options.theme = resolveTerminalTheme()
+    }
+
+    handleThemeChange()
+    window.addEventListener('opencove-theme-changed', handleThemeChange)
     let isDisposed = false
     let shouldForwardTerminalData = false
     const dataDisposable = terminal.onData(data => {
@@ -381,6 +385,7 @@ export function TerminalNode({
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleWindowFocus)
       window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleLayoutSync)
+      window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
       dataDisposable.dispose()
       binaryDisposable.dispose()

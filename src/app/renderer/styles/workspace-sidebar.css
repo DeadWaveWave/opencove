@@ -42,7 +42,7 @@
 .workspace-empty-selection-prompt button,
 .workspace-sidebar__settings {
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--cove-field);
   color: var(--cove-text);
   border-radius: 10px;
   padding: 6px 12px;
@@ -80,7 +80,7 @@
 
 .workspace-sidebar__agent {
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--cove-field);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
@@ -180,7 +180,7 @@
 }
 
 .workspace-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--cove-surface-hover);
 }
 
 .workspace-item:focus-visible {

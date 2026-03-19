@@ -9,21 +9,18 @@
 
 .terminal-node {
   border-radius: 14px;
-  border: 1px solid rgba(107, 138, 236, 0.65);
-  background: rgba(7, 12, 24, 0.9);
+  border: 1px solid var(--cove-node-border);
+  background: var(--cove-terminal-node-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 30px var(--cove-node-shadow-color);
   position: relative;
 }
 
 .terminal-node--selected-surface {
-  border-color: rgba(153, 223, 255, 0.9);
-  box-shadow:
-    0 0 0 1px rgba(168, 233, 255, 0.56),
-    0 16px 34px rgba(0, 0, 0, 0.52),
-    0 0 24px rgba(132, 214, 255, 0.4);
+  border-color: var(--cove-node-selection-border);
+  box-shadow: var(--cove-node-selection-shadow);
 }
 
 .terminal-node__header {
@@ -31,9 +28,10 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 0 10px;
-  background: rgba(18, 28, 50, 0.96);
-  border-bottom: 1px solid rgba(104, 137, 226, 0.45);
+  background: var(--cove-terminal-node-header-surface);
+  border-bottom: 1px solid var(--cove-node-header-border);
   cursor: grab;
 }
 
@@ -42,21 +40,26 @@
 }
 
 .terminal-node__title {
+  flex: 1;
+  min-width: 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #cfe0ff;
+  color: var(--cove-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .terminal-node__close {
   border: 0;
   background: transparent;
-  color: #9fb6e7;
+  color: var(--cove-text-muted);
   font-size: calc(18px * var(--cove-ui-font-scale));
   line-height: 1;
   cursor: pointer;
 }
 
 .terminal-node__close:hover {
-  color: #ffffff;
+  color: var(--cove-text);
 }
 
 .terminal-node__terminal {
@@ -145,7 +148,7 @@
 
 .workspace-sidebar__agents {
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--cove-field);
   border-radius: 12px;
   padding: 10px 12px;
   display: flex;
@@ -185,7 +188,7 @@
 }
 
 .workspace-agent-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--cove-surface-hover);
   border-color: var(--cove-border-subtle);
 }
 
@@ -196,7 +199,7 @@ button.workspace-agent-item:focus-visible {
 
 .workspace-agent-item--nested {
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--cove-field);
   padding: 7px 10px;
 }
 
@@ -218,7 +221,7 @@ button.workspace-agent-item:focus-visible {
 }
 
 .workspace-agent-item__status {
-  --cove-status-dot: rgba(255, 255, 255, 0.28);
+  --cove-status-dot: var(--cove-text-faint);
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -252,7 +255,7 @@ button.workspace-agent-item:focus-visible {
 }
 
 .workspace-agent-item__status--todo {
-  --cove-status-dot: rgba(255, 255, 255, 0.22);
+  --cove-status-dot: var(--cove-border);
 }
 
 .workspace-agent-item__status--done {
@@ -303,15 +306,6 @@ button.workspace-agent-item:focus-visible {
   color: var(--cove-text-muted);
 }
 
-.terminal-node__title {
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #cfe0ff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
-}
-
 .terminal-node__title-button {
   border: 0;
   background: transparent;
@@ -322,7 +316,7 @@ button.workspace-agent-item:focus-visible {
 }
 
 .terminal-node__title-button:hover {
-  color: #f0f6ff;
+  color: var(--cove-text);
 }
 
 .terminal-node__title-input {
@@ -334,7 +328,7 @@ button.workspace-agent-item:focus-visible {
   min-width: 0;
   font-family: inherit;
   font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #cfe0ff;
+  color: var(--cove-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -356,10 +350,6 @@ button.workspace-agent-item:focus-visible {
   outline: none;
 }
 
-.terminal-node__header {
-  gap: 8px;
-}
-
 .terminal-node__header-badges {
   display: inline-flex;
   align-items: center;
@@ -377,7 +367,7 @@ button.workspace-agent-item:focus-visible {
 
 .terminal-node__badge--warning {
   background: rgba(255, 190, 114, 0.18);
-  color: #ffe9c2;
+  color: var(--cove-text);
   border: 1px solid rgba(255, 190, 114, 0.45);
 }
 
@@ -391,39 +381,39 @@ button.workspace-agent-item:focus-visible {
 
 .terminal-node__status--running {
   background: rgba(42, 255, 140, 0.18);
-  color: #83ffbc;
+  color: var(--cove-text);
   border: 1px solid rgba(42, 255, 140, 0.35);
 }
 
 .terminal-node__status--restoring {
   background: rgba(122, 173, 255, 0.2);
-  color: #b6d4ff;
+  color: var(--cove-text);
   border: 1px solid rgba(122, 173, 255, 0.4);
 }
 
 .terminal-node__status--standby {
   background: rgba(255, 190, 114, 0.2);
-  color: #ffe9c2;
+  color: var(--cove-text);
   border: 1px solid rgba(255, 190, 114, 0.4);
 }
 
 .terminal-node__status--exited,
 .terminal-node__status--stopped {
   background: rgba(169, 191, 234, 0.2);
-  color: #c5d8ff;
+  color: var(--cove-text);
   border: 1px solid rgba(138, 164, 214, 0.4);
 }
 
 .terminal-node__status--failed {
   background: rgba(255, 115, 115, 0.2);
-  color: #ffc0c0;
+  color: var(--cove-text);
   border: 1px solid rgba(255, 115, 115, 0.45);
 }
 
 .terminal-node__action {
-  border: 1px solid rgba(106, 140, 231, 0.45);
-  background: rgba(17, 30, 55, 0.88);
-  color: #d6e6ff;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-field);
+  color: var(--cove-text);
   border-radius: 6px;
   padding: 2px 6px;
   font-size: calc(10px * var(--cove-ui-font-scale));
@@ -431,7 +421,7 @@ button.workspace-agent-item:focus-visible {
 }
 
 .terminal-node__action:hover {
-  background: rgba(36, 56, 98, 0.95);
+  background: var(--cove-surface-hover);
 }
 
 .terminal-node__action:disabled {
@@ -448,14 +438,14 @@ button.workspace-agent-item:focus-visible {
   justify-content: center;
   border-color: transparent;
   background: transparent;
-  color: #b9cbef;
+  color: var(--cove-text-muted);
 }
 
 .terminal-node__action--icon:hover,
 .terminal-node__action--icon:focus-visible {
   border-color: transparent;
-  background: rgba(255, 255, 255, 0.06);
-  color: #ffffff;
+  background: var(--cove-surface-hover);
+  color: var(--cove-text);
 }
 
 .terminal-node__action--icon:disabled {

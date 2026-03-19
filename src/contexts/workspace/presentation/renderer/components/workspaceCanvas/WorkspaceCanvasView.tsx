@@ -129,7 +129,6 @@ interface WorkspaceCanvasViewProps {
   closeTaskEditor: () => void
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
-
   nodeDeleteConfirmation: NodeDeleteConfirmationState | null
   setNodeDeleteConfirmation: React.Dispatch<
     React.SetStateAction<NodeDeleteConfirmationState | null>
@@ -360,7 +359,12 @@ export function WorkspaceCanvasView({
         maxZoom={MAX_CANVAS_ZOOM}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} size={1} gap={24} color="#20324f" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          size={1}
+          gap={24}
+          color="var(--cove-canvas-dot)"
+        />
         <WorkspaceSpaceRegionsOverlay
           workspacePath={workspacePath}
           spaceVisuals={spaceVisuals}

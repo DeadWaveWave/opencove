@@ -2,10 +2,13 @@ import { expect, test } from '@playwright/test'
 import { launchApp } from './workspace-canvas.helpers'
 
 test.describe('Settings', () => {
-  test('persists agent provider and list-based custom model options', async () => {
+  test('persists agent provider and list-based custom model options', async ({
+    browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp()
 
     try {
+      void browserName
       const resetResult = await window.evaluate(async () => {
         return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
           raw: JSON.stringify({
@@ -47,6 +50,17 @@ test.describe('Settings', () => {
       await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
 
       await canvasNav.click()
+      const uiThemeSelect = window.locator('[data-testid="settings-ui-theme"]')
+      await expect(uiThemeSelect).toBeVisible()
+      await uiThemeSelect.selectOption('light')
+      await expect
+        .poll(() =>
+          window.evaluate(() => {
+            return document.documentElement.dataset.coveTheme ?? null
+          }),
+        )
+        .toBe('light')
+
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
       await expect(canvasInputMode).toBeVisible()
       await canvasInputMode.selectOption('trackpad')
@@ -76,6 +90,44 @@ test.describe('Settings', () => {
       await expect(window.locator('[data-testid="settings-model-list-codex"]')).toContainText(
         'gpt-5.2-codex',
       )
+
+      const modelOverrideSection = window.locator('#settings-section-model-override')
+      await expect(modelOverrideSection).toBeVisible()
+      await modelOverrideSection.scrollIntoViewIfNeeded()
+
+      const providerTitle = modelOverrideSection
+        .locator('.settings-provider-card__title')
+        .filter({ hasText: 'Codex' })
+        .first()
+      await expect(providerTitle).toBeVisible()
+
+      const providerTitleColor = await providerTitle.evaluate(element => {
+        return window.getComputedStyle(element).color
+      })
+
+      const rgbMatch = providerTitleColor.match(
+        /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([0-9.]+)\s*)?\)/,
+      )
+      if (!rgbMatch) {
+        throw new Error(`Unable to parse provider title color: ${providerTitleColor}`)
+      }
+
+      const providerTitleRgb = {
+        r: Number.parseInt(rgbMatch[1], 10),
+        g: Number.parseInt(rgbMatch[2], 10),
+        b: Number.parseInt(rgbMatch[3], 10),
+      }
+
+      expect(providerTitleRgb.r).toBeLessThan(120)
+      expect(providerTitleRgb.g).toBeLessThan(120)
+      expect(providerTitleRgb.b).toBeLessThan(120)
+
+      const screenshotPath = testInfo.outputPath('settings-custom-model-light.png')
+      await window.screenshot({ path: screenshotPath })
+      await testInfo.attach('settings-custom-model-light', {
+        path: screenshotPath,
+        contentType: 'image/png',
+      })
 
       await taskConfigurationNav.click()
 
@@ -119,6 +171,7 @@ test.describe('Settings', () => {
                 taskTagOptions?: string[]
                 normalizeZoomOnTerminalClick?: boolean
                 canvasInputMode?: string
+                uiTheme?: string
               }
             }
             return parsed.settings ?? null
@@ -133,12 +186,18 @@ test.describe('Settings', () => {
           defaultProvider: 'codex',
           normalizeZoomOnTerminalClick: false,
           canvasInputMode: 'trackpad',
+          uiTheme: 'light',
         }),
       )
 
       await expect(window.locator('.workspace-sidebar__settings')).toHaveText('设置')
       await window.reload({ waitUntil: 'domcontentloaded' })
       await expect(window.locator('.workspace-sidebar__settings')).toHaveText('设置')
+      await expect(
+        window.evaluate(() => {
+          return document.documentElement.dataset.coveTheme
+        }),
+      ).resolves.toBe('light')
       await expect(window.locator('.workspace-sidebar__agent-provider')).toHaveText('Codex')
       await expect(window.locator('.workspace-sidebar__agent-model')).toHaveText('gpt-5.2-codex')
 
@@ -146,6 +205,7 @@ test.describe('Settings', () => {
 
       expect(persistedSettings?.language).toBe('zh-CN')
       expect(persistedSettings?.defaultProvider).toBe('codex')
+      expect(persistedSettings?.uiTheme).toBe('light')
       expect(persistedSettings?.customModelEnabledByProvider?.codex).toBe(true)
       expect(persistedSettings?.customModelByProvider?.codex).toBe('gpt-5.2-codex')
       expect(persistedSettings?.customModelOptionsByProvider?.codex).toContain('gpt-5.2-codex')

@@ -13,6 +13,7 @@ describe('agent settings normalization', () => {
     expect(normalizeAgentSettings(null)).toEqual(DEFAULT_AGENT_SETTINGS)
     expect(normalizeAgentSettings('invalid')).toEqual(DEFAULT_AGENT_SETTINGS)
     expect(DEFAULT_AGENT_SETTINGS.language).toBe('en')
+    expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('system')
     expect(DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
@@ -31,6 +32,7 @@ describe('agent settings normalization', () => {
   it('keeps valid provider, custom model, and model option fields', () => {
     const result = normalizeAgentSettings({
       language: 'zh-CN',
+      uiTheme: 'light',
       defaultProvider: 'codex',
       customModelEnabledByProvider: {
         'claude-code': true,
@@ -55,6 +57,7 @@ describe('agent settings normalization', () => {
     })
 
     expect(result.language).toBe('zh-CN')
+    expect(result.uiTheme).toBe('light')
     expect(result.defaultProvider).toBe('codex')
     expect(result.customModelEnabledByProvider['claude-code']).toBe(true)
     expect(result.customModelEnabledByProvider.codex).toBe(false)
@@ -120,10 +123,12 @@ describe('agent settings normalization', () => {
   it('falls back to auto canvas input mode when input is invalid', () => {
     const result = normalizeAgentSettings({
       language: 'fr-FR',
+      uiTheme: 'bold-blue',
       canvasInputMode: 'touchscreen',
     })
 
     expect(result.language).toBe('en')
+    expect(result.uiTheme).toBe('system')
     expect(result.canvasInputMode).toBe('auto')
   })
 

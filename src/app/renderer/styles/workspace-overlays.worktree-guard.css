@@ -9,7 +9,7 @@
 
 .workspace-space-worktree-guard__summary {
   margin: 2px 0 0;
-  color: rgba(214, 225, 245, 0.88);
+  color: var(--cove-text-muted);
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.4;
 }

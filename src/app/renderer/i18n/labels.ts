@@ -1,4 +1,4 @@
-import type { CanvasInputMode, UiLanguage } from '@contexts/settings/domain/agentSettings'
+import type { CanvasInputMode, UiLanguage, UiTheme } from '@contexts/settings/domain/agentSettings'
 import { UI_LANGUAGE_NATIVE_LABEL } from '@contexts/settings/domain/agentSettings'
 import type {
   TaskPriority,
@@ -16,6 +16,18 @@ export function getCanvasInputModeLabel(t: TranslateFn, mode: CanvasInputMode): 
   }
 
   return t('settingsPanel.canvas.inputMode.mouse')
+}
+
+export function getUiThemeLabel(t: TranslateFn, theme: UiTheme): string {
+  if (theme === 'system') {
+    return t('settingsPanel.canvas.uiTheme.system')
+  }
+
+  if (theme === 'light') {
+    return t('settingsPanel.canvas.uiTheme.light')
+  }
+
+  return t('settingsPanel.canvas.uiTheme.dark')
 }
 
 export function getTaskPriorityLabel(t: TranslateFn, priority: TaskPriority): string {

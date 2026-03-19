@@ -1,11 +1,11 @@
 .note-node {
   border-radius: 14px;
-  border: 1px solid rgba(107, 138, 236, 0.65);
-  background: rgba(10, 17, 33, 0.94);
+  border: 1px solid var(--cove-node-border);
+  background: var(--cove-node-surface);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 10px 30px var(--cove-node-shadow-color);
   position: relative;
 }
 
@@ -16,8 +16,8 @@
   justify-content: space-between;
   gap: 8px;
   padding: 0 10px;
-  background: rgba(23, 36, 66, 0.96);
-  border-bottom: 1px solid rgba(104, 137, 226, 0.45);
+  background: var(--cove-node-header-surface);
+  border-bottom: 1px solid var(--cove-node-header-border);
   cursor: grab;
 }
 
@@ -29,7 +29,7 @@
   flex: 1;
   min-width: 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
-  color: #d6e6ff;
+  color: var(--cove-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -43,7 +43,7 @@
   justify-content: center;
   border: 0;
   background: transparent;
-  color: #9fb6e7;
+  color: var(--cove-text-muted);
   cursor: pointer;
   padding: 0;
   transition: color 0.16s ease;
@@ -52,7 +52,7 @@
 }
 
 .note-node__close:hover {
-  color: #fff;
+  color: var(--cove-text);
 }
 
 .note-node__close:focus-visible {
@@ -69,7 +69,7 @@
   outline: none;
   padding: 10px;
   background: transparent;
-  color: #dbe7ff;
+  color: var(--cove-text);
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.45;
   font-family: inherit;

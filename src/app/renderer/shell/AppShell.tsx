@@ -16,6 +16,9 @@ import { ProjectContextMenu } from './components/ProjectContextMenu'
 import { Sidebar } from './components/Sidebar'
 import { WorkspaceEmptyState } from './components/WorkspaceEmptyState'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
+import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
+import { useApplyUiTheme } from './hooks/useApplyUiTheme'
+import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
@@ -27,7 +30,6 @@ import {
   sanitizeWorkspaceSpaces,
 } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { cleanupNodeRuntimeArtifacts } from '@contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup'
-import { applyUiLanguage } from '../i18n'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -58,16 +60,10 @@ export default function App(): React.JSX.Element {
   const { providerModelCatalog } = useProviderModelCatalog({
     isSettingsOpen,
   })
-  useEffect(() => {
-    const root = document.documentElement
-    const uiFontScale = (agentSettings.uiFontSize / 16).toFixed(2)
-    root.style.setProperty('--cove-ui-font-scale', uiFontScale)
-  }, [agentSettings.uiFontSize])
 
-  useEffect(() => {
-    document.documentElement.lang = agentSettings.language
-    void applyUiLanguage(agentSettings.language)
-  }, [agentSettings.language])
+  useApplyUiFontScale(agentSettings.uiFontSize)
+  useApplyUiTheme(agentSettings.uiTheme)
+  useApplyUiLanguage(agentSettings.language)
 
   const producePersistedState = useCallback(() => {
     const state = useAppStore.getState()

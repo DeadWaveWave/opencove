@@ -18,7 +18,7 @@
 }
 
 .workspace-empty-state p {
-  color: #93aad8;
+  color: var(--cove-text-muted);
   margin-bottom: 12px;
 }
 
@@ -75,12 +75,12 @@
 .workspace-canvas .react-flow__controls-button {
   width: 28px;
   height: 28px;
-  border: 1px solid rgba(106, 151, 255, 0.35);
+  border: 1px solid var(--cove-canvas-control-border);
   border-radius: 8px;
   margin: 0;
-  background: rgba(10, 18, 40, 0.72);
+  background: var(--cove-canvas-control-surface);
   backdrop-filter: blur(8px);
-  color: rgba(207, 224, 255, 0.68);
+  color: var(--cove-canvas-control-text);
   transition:
     border-color 160ms ease,
     background-color 160ms ease,
@@ -100,9 +100,9 @@
 
 .workspace-canvas .react-flow__controls-button:hover,
 .workspace-canvas .react-flow__controls-button:focus-visible {
-  border-color: rgba(124, 174, 255, 0.8);
-  background: rgba(16, 28, 58, 0.9);
-  color: rgba(233, 243, 255, 0.96);
+  border-color: var(--cove-canvas-control-border-hover);
+  background: var(--cove-canvas-control-surface-hover);
+  color: var(--cove-canvas-control-text-hover);
   box-shadow: 0 0 0 1px rgba(101, 151, 255, 0.35);
   transform: translateY(-1px);
 }
@@ -123,13 +123,13 @@
   bottom: 0;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid rgba(101, 148, 255, 0.32);
-  background: rgba(9, 16, 34, 0.75);
+  border: 1px solid var(--cove-canvas-minimap-border);
+  background: var(--cove-canvas-minimap-surface);
   backdrop-filter: blur(10px);
+  opacity: var(--cove-canvas-minimap-opacity-idle);
   box-shadow:
     0 16px 30px rgba(2, 6, 20, 0.42),
     inset 0 0 0 1px rgba(255, 255, 255, 0.02);
-  opacity: 0.32;
   transition:
     opacity 200ms ease,
     transform 200ms ease,
@@ -141,8 +141,13 @@
   background: transparent;
 }
 
+.workspace-canvas .react-flow__minimap-node {
+  stroke: var(--cove-canvas-minimap-node-stroke);
+  stroke-width: 0.85;
+}
+
 .workspace-canvas .react-flow__minimap-mask {
-  stroke: rgba(110, 170, 255, 0.84);
+  stroke: var(--cove-canvas-minimap-mask);
   stroke-width: 1.5;
 }
 
@@ -150,7 +155,7 @@
 .workspace-canvas .react-flow__minimap:focus-within,
 .workspace-canvas__minimap-dock:hover .react-flow__minimap,
 .workspace-canvas__minimap-dock:focus-within .react-flow__minimap {
-  opacity: 0.86;
+  opacity: var(--cove-canvas-minimap-opacity-hover);
   border-color: rgba(121, 176, 255, 0.82);
   transform: translateY(-1px);
   box-shadow:
@@ -178,11 +183,11 @@
   right: 8px;
   bottom: 8px;
   z-index: 8;
-  border: 1px solid rgba(100, 146, 252, 0.42);
+  border: 1px solid var(--cove-canvas-control-border);
   border-radius: 999px;
-  background: rgba(9, 16, 34, 0.78);
+  background: var(--cove-canvas-control-surface);
   backdrop-filter: blur(8px);
-  color: rgba(220, 235, 255, 0.82);
+  color: var(--cove-canvas-control-text);
   width: 30px;
   height: 30px;
   display: inline-flex;
@@ -224,9 +229,9 @@
 .workspace-canvas__minimap-toggle:hover,
 .workspace-canvas__minimap-toggle:focus-visible {
   opacity: 0.96;
-  border-color: rgba(123, 172, 255, 0.82);
-  background: rgba(14, 26, 52, 0.92);
-  color: rgba(237, 245, 255, 0.96);
+  border-color: var(--cove-canvas-control-border-hover);
+  background: var(--cove-canvas-control-surface-hover);
+  color: var(--cove-canvas-control-text-hover);
   transform: translateY(-1px);
 }
 

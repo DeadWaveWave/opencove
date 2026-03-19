@@ -4,10 +4,10 @@ import type { TerminalNodeData } from '../../types'
 export function resolveWorkspaceMinimapNodeColor(node: Node<TerminalNodeData>): string {
   switch (node.data.kind) {
     case 'agent':
-      return 'rgba(111, 188, 255, 0.72)'
+      return 'var(--cove-canvas-minimap-node-agent)'
     case 'task':
-      return 'rgba(168, 160, 255, 0.72)'
+      return 'var(--cove-canvas-minimap-node-task)'
     default:
-      return 'rgba(130, 156, 255, 0.72)'
+      return 'var(--cove-canvas-minimap-node-default)'
   }
 }

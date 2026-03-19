@@ -121,6 +121,8 @@ export const en = {
     },
     canvas: {
       title: 'Canvas & UI',
+      uiThemeLabel: 'Appearance',
+      uiThemeHelp: 'Choose how OpenCove looks.',
       inputModeLabel: 'Input Mode',
       inputModeHelp: 'How interactions are handled on the canvas.',
       terminalProfileLabel: 'Terminal Environment',
@@ -128,6 +130,11 @@ export const en = {
         'Choose the shell profile used for new Windows terminals. Auto falls back to {{defaultProfile}}.',
       terminalProfileAuto: 'Automatic',
       terminalProfileAutoWithDefault: 'Automatic ({{defaultProfile}})',
+      uiTheme: {
+        system: 'System (Auto)',
+        light: 'Light',
+        dark: 'Dark',
+      },
       inputMode: {
         auto: 'Auto (Smart)',
         trackpad: 'Trackpad',
