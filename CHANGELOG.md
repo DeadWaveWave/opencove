@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### 💅 Changed
 - Workspace pane context menu: “Run Agent” can expand to pick an installed agent CLI.
 - Settings: reorganized into per-tab pages; added an Agent tab for provider defaults, menu order, and model overrides.
+- Settings: panel typography (including model overrides) now follows the Interface Font Size setting. (#40)
 - UI: refined light theme palette across canvas, nodes, and settings; minimap becomes subtle when idle and clearer on hover. (#40)
 
 ### 🐞 Fixed

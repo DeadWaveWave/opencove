@@ -104,8 +104,7 @@ export function ModelOverrideSection(props: {
                       {customOptions.includes(model) && (
                         <button
                           type="button"
-                          className="secondary"
-                          style={{ padding: '2px 8px', fontSize: '11px' }}
+                          className="secondary settings-list-item__remove"
                           onClick={() => onRemoveCustomModelOption(provider, model)}
                         >
                           {t('common.remove')}
