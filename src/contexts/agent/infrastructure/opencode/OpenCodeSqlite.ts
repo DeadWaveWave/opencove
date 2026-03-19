@@ -92,7 +92,11 @@ export async function openReadOnlySqliteDb(
       timeout: timeoutMs,
     })
   } catch {
-    const sqlite = await import('node:sqlite')
+    // `node:sqlite` is a Node built-in that Vite's client transformer can reject (e.g. in Vitest's
+    // happy-dom environment). Using `createRequire` keeps the import runtime-only.
+    const { createRequire } = await import('node:module')
+    const require = createRequire(import.meta.url)
+    const sqlite = require('node:sqlite') as { DatabaseSync: new (...args: unknown[]) => unknown }
     return new sqlite.DatabaseSync(dbPath, {
       readOnly: true,
       timeout: timeoutMs,
