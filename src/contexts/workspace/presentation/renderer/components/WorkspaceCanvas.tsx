@@ -337,18 +337,15 @@ function WorkspaceCanvasInner({
     onShowMessage,
     setContextMenu,
   })
-  const saveAgentLastMessageToNote = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageToNote({
+  const copyAgentLastMessage = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageCopy({
     nodesRef,
-    createNoteNode,
-    updateNoteText,
-    onRequestPersistFlush,
     onShowMessage,
   })
   workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
     actionRefs,
     closeNode,
     resizeNode,
-    saveAgentLastMessageToNote,
+    copyAgentLastMessage,
     updateNoteText,
     updateNodeScrollback,
     updateTerminalTitle,

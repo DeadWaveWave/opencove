@@ -21,7 +21,7 @@ function TerminalNodeType({
   selectNode,
   closeNodeRef,
   resizeNodeRef,
-  saveAgentLastMessageToNoteRef,
+  copyAgentLastMessageRef,
   updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
   updateTerminalTitleRef,
@@ -35,7 +35,7 @@ function TerminalNodeType({
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredSize: Size) => void>
-  saveAgentLastMessageToNoteRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
@@ -78,10 +78,10 @@ function TerminalNodeType({
       onClose={() => {
         void closeNodeRef.current(id)
       }}
-      onSaveLastMessageToNote={
+      onCopyLastMessage={
         data.kind === 'agent' && data.agent && typeof data.startedAt === 'string'
           ? async () => {
-              await saveAgentLastMessageToNoteRef.current(id)
+              await copyAgentLastMessageRef.current(id)
             }
           : undefined
       }
@@ -190,7 +190,7 @@ interface WorkspaceCanvasNodeTypesParams {
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredSize: Size) => void>
-  saveAgentLastMessageToNoteRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
@@ -216,7 +216,7 @@ export function useWorkspaceCanvasNodeTypes({
   clearNodeSelectionRef,
   closeNodeRef,
   resizeNodeRef,
-  saveAgentLastMessageToNoteRef,
+  copyAgentLastMessageRef,
   updateNoteTextRef,
   updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
@@ -362,7 +362,7 @@ export function useWorkspaceCanvasNodeTypes({
             selectNode={selectNode}
             closeNodeRef={closeNodeRef}
             resizeNodeRef={resizeNodeRef}
-            saveAgentLastMessageToNoteRef={saveAgentLastMessageToNoteRef}
+            copyAgentLastMessageRef={copyAgentLastMessageRef}
             updateNodeScrollbackRef={updateNodeScrollbackRef}
             normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
             updateTerminalTitleRef={updateTerminalTitleRef}
@@ -401,7 +401,7 @@ export function useWorkspaceCanvasNodeTypes({
     requestNodeDeleteRef,
     resizeNodeRef,
     runTaskAgentRef,
-    saveAgentLastMessageToNoteRef,
+    copyAgentLastMessageRef,
     resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef,
     updateNodeScrollbackRef,

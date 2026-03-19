@@ -1,13 +1,18 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  installPtySessionCapture,
+  readObservedResumeSessionId,
+  resolveFirstAgentSessionId,
+} from './workspace-canvas.agent-status-watcher.helpers'
 
-async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['window']) {
+async function seedOpenCodeTask(window: Awaited<ReturnType<typeof launchApp>>['window']) {
   await clearAndSeedWorkspace(
     window,
     [
       {
         id: 'task-agent-last-message',
-        title: 'Capture agent answer',
+        title: 'Copy opencode answer',
         position: { x: 180, y: 140 },
         width: 460,
         height: 280,
@@ -28,48 +33,69 @@ async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['wind
     ],
     {
       settings: {
-        defaultProvider: 'codex',
+        defaultProvider: 'opencode',
         customModelEnabledByProvider: {
           'claude-code': false,
-          codex: true,
+          codex: false,
+          opencode: true,
+          gemini: false,
         },
         customModelByProvider: {
           'claude-code': '',
-          codex: 'gpt-5.2-codex',
+          codex: '',
+          opencode: 'opencode-e2e-model',
+          gemini: '',
         },
         customModelOptionsByProvider: {
           'claude-code': [],
-          codex: ['gpt-5.2-codex'],
+          codex: [],
+          opencode: ['opencode-e2e-model'],
+          gemini: [],
         },
       },
     },
   )
 }
 
-test.describe('Workspace Canvas - Agent Last Message Copy', () => {
-  test('copies the last standby agent message to the clipboard', async () => {
+test.describe('Workspace Canvas - Agent Last Message Copy (OpenCode)', () => {
+  test('copies the last standby agent message from the opencode session database', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {
         OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
-        OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-standby-no-newline',
+        OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'opencode-idle-with-message',
       },
     })
 
     try {
-      await seedCodexTask(window)
+      await seedOpenCodeTask(window)
       await electronApp.evaluate(async ({ clipboard }) => {
         clipboard.clear()
       })
 
       const taskNode = window.locator('.task-node').first()
       await expect(taskNode).toBeVisible()
+      await installPtySessionCapture(window)
       await taskNode.locator('[data-testid="task-node-run-agent"]').click()
+
+      let ptySessionId: string | null = null
+      await expect
+        .poll(async () => {
+          ptySessionId = await resolveFirstAgentSessionId(window)
+          return ptySessionId
+        })
+        .toBeTruthy()
+
+      if (!ptySessionId) {
+        throw new Error('Failed to resolve PTY session id')
+      }
+
+      await expect
+        .poll(async () => await readObservedResumeSessionId(window, ptySessionId))
+        .toBeTruthy()
 
       const agentNode = window.locator('.terminal-node').first()
       const nodeStatus = agentNode.locator('.terminal-node__status')
-
-      await expect(agentNode).toBeVisible()
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
 
       const copyButton = agentNode.locator('[data-testid="terminal-node-copy-last-message"]')
@@ -78,13 +104,11 @@ test.describe('Workspace Canvas - Agent Last Message Copy', () => {
         button.click()
       })
 
-      await expect(window.locator('.note-node')).toHaveCount(0)
-
       await expect
         .poll(async () => {
           return await electronApp.evaluate(async ({ clipboard }) => clipboard.readText())
         })
-        .toBe('All set.')
+        .toBe('OK')
     } finally {
       await electronApp.close()
     }

@@ -19,7 +19,10 @@ import {
   listAgentModels,
 } from '../../infrastructure/cli/AgentModelService'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
-import { readLastAssistantMessageFromSessionFile } from '../../infrastructure/watchers/SessionLastAssistantMessage'
+import {
+  readLastAssistantMessageFromOpenCodeSession,
+  readLastAssistantMessageFromSessionFile,
+} from '../../infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../infrastructure/watchers/SessionFileResolver'
 import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -128,6 +131,15 @@ export function registerAgentIpcHandlers(
         return { message: null }
       }
 
+      if (normalized.provider === 'opencode') {
+        const message = await readLastAssistantMessageFromOpenCodeSession(
+          resumeSessionId,
+          normalized.cwd,
+        )
+
+        return { message }
+      }
+
       const sessionFilePath = await resolveSessionFilePath({
         provider: normalized.provider,
         cwd: normalized.cwd,
@@ -193,12 +205,22 @@ export function registerAgentIpcHandlers(
         args: testStub?.args ?? launchCommand.args,
       })
 
+      const sessionEnv =
+        opencodeServer && normalized.provider === 'opencode'
+          ? {
+              ...process.env,
+              OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
+              OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
+            }
+          : undefined
+
       const { sessionId } = ptyRuntime.spawnSession({
         cwd: normalized.cwd,
         cols: normalized.cols ?? 80,
         rows: normalized.rows ?? 24,
         command: resolvedInvocation.command,
         args: resolvedInvocation.args,
+        ...(sessionEnv ? { env: sessionEnv } : {}),
       })
 
       const resumeSessionId = launchCommand.resumeSessionId

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { FileText, LoaderCircle } from 'lucide-react'
+import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import { getStatusClassName } from './status'
 
@@ -11,7 +11,7 @@ interface TerminalNodeHeaderProps {
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   onTitleCommit?: (title: string) => void
   onClose: () => void
-  onSaveLastMessageToNote?: () => Promise<void>
+  onCopyLastMessage?: () => Promise<void>
 }
 
 export function TerminalNodeHeader({
@@ -21,17 +21,17 @@ export function TerminalNodeHeader({
   directoryMismatch,
   onTitleCommit,
   onClose,
-  onSaveLastMessageToNote,
+  onCopyLastMessage,
 }: TerminalNodeHeaderProps): JSX.Element {
   const { t } = useTranslation()
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
-  const [isSavingLastMessageToNote, setIsSavingLastMessageToNote] = useState(false)
+  const [isCopyingLastMessage, setIsCopyingLastMessage] = useState(false)
 
   const isTitleEditable = kind === 'terminal' && typeof onTitleCommit === 'function'
   const isAgentNode = kind === 'agent'
-  const canSaveLastMessageToNote =
-    isAgentNode && status === 'standby' && typeof onSaveLastMessageToNote === 'function'
+  const canCopyLastMessage =
+    isAgentNode && status === 'standby' && typeof onCopyLastMessage === 'function'
 
   useEffect(() => {
     if (isTitleEditing) {
@@ -169,37 +169,37 @@ export function TerminalNodeHeader({
         </div>
       ) : null}
 
-      {canSaveLastMessageToNote ? (
+      {canCopyLastMessage ? (
         <button
           type="button"
           className="terminal-node__action terminal-node__action--icon nodrag"
-          data-testid="terminal-node-save-last-message"
-          aria-label={t('terminalNodeHeader.saveLastMessageToNote')}
+          data-testid="terminal-node-copy-last-message"
+          aria-label={t('terminalNodeHeader.copyLastMessage')}
           title={
-            isSavingLastMessageToNote
-              ? t('terminalNodeHeader.savingLastMessageToNote')
-              : t('terminalNodeHeader.saveLastMessageToNote')
+            isCopyingLastMessage
+              ? t('terminalNodeHeader.copyingLastMessage')
+              : t('terminalNodeHeader.copyLastMessage')
           }
-          disabled={isSavingLastMessageToNote}
+          disabled={isCopyingLastMessage}
           onClick={async event => {
             event.stopPropagation()
-            if (isSavingLastMessageToNote || !onSaveLastMessageToNote) {
+            if (isCopyingLastMessage || !onCopyLastMessage) {
               return
             }
 
-            setIsSavingLastMessageToNote(true)
+            setIsCopyingLastMessage(true)
 
             try {
-              await onSaveLastMessageToNote()
+              await onCopyLastMessage()
             } finally {
-              setIsSavingLastMessageToNote(false)
+              setIsCopyingLastMessage(false)
             }
           }}
         >
-          {isSavingLastMessageToNote ? (
+          {isCopyingLastMessage ? (
             <LoaderCircle className="terminal-node__action-icon terminal-node__action-icon--spinning" />
           ) : (
-            <FileText className="terminal-node__action-icon" />
+            <Copy className="terminal-node__action-icon" />
           )}
         </button>
       ) : null}

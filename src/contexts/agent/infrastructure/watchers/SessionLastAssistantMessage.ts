@@ -1,91 +1,317 @@
 import fs from 'node:fs/promises'
+import { resolve } from 'node:path'
 import type { AgentProviderId } from '@shared/contracts/dto'
+import { resolveOpenCodeDbPath } from '../opencode/OpenCodeDbLocator'
+import {
+  isSqliteBusyError,
+  listSqliteTableColumns,
+  openReadOnlySqliteDb,
+  pickFirstMatchingColumn,
+  quoteSqliteIdentifier,
+  resolveExistingTableName,
+  type SqliteDbLike,
+} from '../opencode/OpenCodeSqlite'
+import {
+  extractLastAssistantMessageFromSessionData,
+  normalizeMessageText,
+} from './SessionLastAssistantMessage.extractors'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object'
+const STRUCTURED_SESSION_READ_TIMEOUT_MS = 1_500
+const STRUCTURED_SESSION_READ_RETRY_INTERVAL_MS = 80
+
+const OPENCODE_DB_READ_TIMEOUT_MS = 1_500
+const OPENCODE_DB_BUSY_TIMEOUT_MS = 250
+const OPENCODE_DB_RETRY_INTERVAL_MS = 100
+
+function wait(durationMs: number): Promise<void> {
+  return new Promise(resolveWait => {
+    setTimeout(resolveWait, durationMs)
+  })
 }
 
-function normalizeMessageText(value: string): string | null {
-  const normalized = value.replace(/\r\n?/g, '\n').trim()
-  return normalized.length > 0 ? normalized : null
+async function readLastAssistantMessageFromStructuredSessionFile(
+  provider: AgentProviderId,
+  filePath: string,
+): Promise<string | null> {
+  const deadline = Date.now() + STRUCTURED_SESSION_READ_TIMEOUT_MS
+  return await pollStructuredSessionFileRead({
+    provider,
+    filePath,
+    deadline,
+    lastError: null,
+  })
 }
 
-function collectTextContent(content: unknown, blockType: string, textKey: string): string | null {
-  if (!Array.isArray(content)) {
+async function pollStructuredSessionFileRead({
+  provider,
+  filePath,
+  deadline,
+  lastError,
+}: {
+  provider: AgentProviderId
+  filePath: string
+  deadline: number
+  lastError: unknown
+}): Promise<string | null> {
+  if (Date.now() > deadline) {
+    if (lastError) {
+      throw lastError
+    }
+
     return null
   }
 
-  const blocks = content
-    .flatMap(block => {
-      if (!isRecord(block) || block.type !== blockType || typeof block[textKey] !== 'string') {
-        return []
-      }
+  try {
+    const content = await fs.readFile(filePath, 'utf8')
+    return extractLastAssistantMessageFromSessionData(provider, JSON.parse(content))
+  } catch (error) {
+    const shouldRetryBecauseIncompleteJson = error instanceof SyntaxError
+    const shouldRetryBecauseNotReady =
+      error && typeof error === 'object' && (error as { code?: unknown }).code === 'ENOENT'
 
-      const normalized = normalizeMessageText(block[textKey])
-      return normalized ? [normalized] : []
+    if (!shouldRetryBecauseIncompleteJson && !shouldRetryBecauseNotReady) {
+      throw error
+    }
+
+    await wait(STRUCTURED_SESSION_READ_RETRY_INTERVAL_MS)
+    return await pollStructuredSessionFileRead({
+      provider,
+      filePath,
+      deadline,
+      lastError: error,
     })
-    .filter(text => text.length > 0)
-
-  if (blocks.length === 0) {
-    return null
   }
-
-  return blocks.join('\n\n')
 }
 
-function extractClaudeAssistantMessage(parsed: unknown): string | null {
-  if (!isRecord(parsed) || parsed.type !== 'assistant' || !isRecord(parsed.message)) {
+export async function readLastAssistantMessageFromOpenCodeSession(
+  sessionId: string,
+  cwd: string,
+): Promise<string | null> {
+  const normalizedSessionId = sessionId.trim()
+  if (normalizedSessionId.length === 0) {
     return null
   }
 
-  return collectTextContent(parsed.message.content, 'text', 'text')
+  const resolvedCwd = resolve(cwd)
+
+  const dbPath = await resolveOpenCodeDbPath()
+
+  if (!dbPath) {
+    throw new Error('OpenCode session database not found')
+  }
+
+  const deadline = Date.now() + OPENCODE_DB_READ_TIMEOUT_MS
+  return await pollOpenCodeSessionDbRead({
+    normalizedSessionId,
+    resolvedCwd,
+    dbPath,
+    deadline,
+    lastError: null,
+  })
 }
 
-function extractCodexAssistantMessage(parsed: unknown): string | null {
-  if (!isRecord(parsed) || typeof parsed.type !== 'string') {
+async function pollOpenCodeSessionDbRead({
+  normalizedSessionId,
+  resolvedCwd,
+  dbPath,
+  deadline,
+  lastError,
+}: {
+  normalizedSessionId: string
+  resolvedCwd: string
+  dbPath: string
+  deadline: number
+  lastError: unknown
+}): Promise<string | null> {
+  if (Date.now() > deadline) {
+    if (lastError) {
+      throw lastError
+    }
+
     return null
   }
 
-  if (parsed.type === 'response_item') {
-    const payload = parsed.payload
-    if (!isRecord(payload) || payload.type !== 'message' || payload.role !== 'assistant') {
+  let db: SqliteDbLike | null = null
+
+  try {
+    db = await openReadOnlySqliteDb(dbPath, OPENCODE_DB_BUSY_TIMEOUT_MS)
+
+    const sessionTable = resolveExistingTableName(db, ['session', 'sessions'])
+    const messageTable = resolveExistingTableName(db, ['message', 'messages'])
+    const partTable = resolveExistingTableName(db, [
+      'part',
+      'parts',
+      'message_part',
+      'message_parts',
+    ])
+
+    if (!sessionTable || !messageTable || !partTable) {
       return null
     }
 
-    return collectTextContent(payload.content, 'output_text', 'text')
+    const sessionColumns = listSqliteTableColumns(db, sessionTable)
+    const sessionIdColumn = pickFirstMatchingColumn(sessionColumns, ['id', 'session_id'])
+    const sessionDirectoryColumn = pickFirstMatchingColumn(sessionColumns, [
+      'directory',
+      'cwd',
+      'workdir',
+      'path',
+    ])
+
+    if (!sessionIdColumn || !sessionDirectoryColumn) {
+      return null
+    }
+
+    const sessionMeta = db
+      .prepare(
+        `SELECT ${quoteSqliteIdentifier(sessionDirectoryColumn)} as directory FROM ${quoteSqliteIdentifier(sessionTable)} WHERE ${quoteSqliteIdentifier(sessionIdColumn)} = ? LIMIT 1`,
+      )
+      .get(normalizedSessionId) as { directory?: unknown } | undefined
+
+    const sessionDirectory =
+      typeof sessionMeta?.directory === 'string' ? resolve(sessionMeta.directory) : null
+
+    if (sessionDirectory !== resolvedCwd) {
+      return null
+    }
+
+    const messageColumns = listSqliteTableColumns(db, messageTable)
+    const messageIdColumn = pickFirstMatchingColumn(messageColumns, ['id', 'message_id'])
+    const messageSessionIdColumn = pickFirstMatchingColumn(messageColumns, [
+      'session_id',
+      'sessionId',
+      'session',
+    ])
+    const messageRoleColumn = pickFirstMatchingColumn(messageColumns, ['role'])
+    const messageDataColumn = pickFirstMatchingColumn(messageColumns, ['data', 'payload', 'json'])
+    const messageCreatedColumn = pickFirstMatchingColumn(messageColumns, [
+      'time_created',
+      'created_at',
+      'created',
+      'timestamp',
+    ])
+
+    if (!messageIdColumn || !messageSessionIdColumn) {
+      return null
+    }
+
+    const rolePredicate = messageRoleColumn
+      ? `${quoteSqliteIdentifier(messageRoleColumn)} IN ('assistant','model')`
+      : messageDataColumn
+        ? `json_extract(${quoteSqliteIdentifier(messageDataColumn)}, '$.role') IN ('assistant','model')`
+        : null
+
+    if (!rolePredicate) {
+      return null
+    }
+
+    const orderBy = messageCreatedColumn
+      ? `${quoteSqliteIdentifier(messageCreatedColumn)} DESC`
+      : 'rowid DESC'
+
+    const messageRow = db
+      .prepare(
+        `SELECT ${quoteSqliteIdentifier(messageIdColumn)} as id FROM ${quoteSqliteIdentifier(messageTable)} WHERE ${quoteSqliteIdentifier(messageSessionIdColumn)} = ? AND ${rolePredicate} ORDER BY ${orderBy} LIMIT 1`,
+      )
+      .get(normalizedSessionId) as { id?: unknown } | undefined
+
+    const assistantMessageId = typeof messageRow?.id === 'string' ? messageRow.id.trim() : ''
+    if (assistantMessageId.length === 0) {
+      await wait(OPENCODE_DB_RETRY_INTERVAL_MS)
+      return await pollOpenCodeSessionDbRead({
+        normalizedSessionId,
+        resolvedCwd,
+        dbPath,
+        deadline,
+        lastError,
+      })
+    }
+
+    const partColumns = listSqliteTableColumns(db, partTable)
+    const partMessageIdColumn = pickFirstMatchingColumn(partColumns, [
+      'message_id',
+      'messageId',
+      'message',
+    ])
+    const partTextColumn = pickFirstMatchingColumn(partColumns, ['text'])
+    const partTypeColumn = pickFirstMatchingColumn(partColumns, ['type'])
+    const partDataColumn = pickFirstMatchingColumn(partColumns, ['data', 'payload', 'json'])
+    const partCreatedColumn = pickFirstMatchingColumn(partColumns, [
+      'time_created',
+      'created_at',
+      'created',
+      'timestamp',
+    ])
+
+    if (!partMessageIdColumn) {
+      return null
+    }
+
+    const partOrderBy = partCreatedColumn
+      ? `${quoteSqliteIdentifier(partCreatedColumn)} ASC`
+      : 'rowid ASC'
+
+    const parts =
+      partTextColumn && partTypeColumn
+        ? (db
+            .prepare(
+              `SELECT ${quoteSqliteIdentifier(partTextColumn)} as text FROM ${quoteSqliteIdentifier(partTable)} WHERE ${quoteSqliteIdentifier(partMessageIdColumn)} = ? AND ${quoteSqliteIdentifier(partTypeColumn)} = 'text' ORDER BY ${partOrderBy}`,
+            )
+            .all(assistantMessageId) as Array<{ text?: unknown }>)
+        : partDataColumn
+          ? (db
+              .prepare(
+                `SELECT json_extract(${quoteSqliteIdentifier(partDataColumn)}, '$.text') as text FROM ${quoteSqliteIdentifier(partTable)} WHERE ${quoteSqliteIdentifier(partMessageIdColumn)} = ? AND json_extract(${quoteSqliteIdentifier(partDataColumn)}, '$.type') = 'text' ORDER BY ${partOrderBy}`,
+              )
+              .all(assistantMessageId) as Array<{ text?: unknown }>)
+          : []
+
+    const blocks = parts
+      .map(part => (typeof part.text === 'string' ? normalizeMessageText(part.text) : null))
+      .filter((item): item is string => typeof item === 'string' && item.length > 0)
+
+    if (blocks.length === 0) {
+      await wait(OPENCODE_DB_RETRY_INTERVAL_MS)
+      return await pollOpenCodeSessionDbRead({
+        normalizedSessionId,
+        resolvedCwd,
+        dbPath,
+        deadline,
+        lastError,
+      })
+    }
+
+    return blocks.join('\n\n')
+  } catch (error) {
+    if (isSqliteBusyError(error)) {
+      await wait(OPENCODE_DB_RETRY_INTERVAL_MS)
+      return await pollOpenCodeSessionDbRead({
+        normalizedSessionId,
+        resolvedCwd,
+        dbPath,
+        deadline,
+        lastError: error,
+      })
+    }
+
+    throw error
+  } finally {
+    try {
+      db?.close()
+    } catch {
+      // ignore
+    }
   }
-
-  if (parsed.type !== 'event_msg' || !isRecord(parsed.payload)) {
-    return null
-  }
-
-  const payload = parsed.payload
-  if (payload.type !== 'agent_message') {
-    return null
-  }
-
-  if (typeof payload.message === 'string') {
-    return normalizeMessageText(payload.message)
-  }
-
-  return null
-}
-
-export function extractLastAssistantMessageFromSessionRecord(
-  provider: AgentProviderId,
-  parsed: unknown,
-): string | null {
-  if (provider === 'claude-code') {
-    return extractClaudeAssistantMessage(parsed)
-  }
-
-  return extractCodexAssistantMessage(parsed)
 }
 
 export async function readLastAssistantMessageFromSessionFile(
   provider: AgentProviderId,
   filePath: string,
 ): Promise<string | null> {
+  if (provider === 'gemini') {
+    return await readLastAssistantMessageFromStructuredSessionFile(provider, filePath)
+  }
+
   const content = await fs.readFile(filePath, 'utf8')
   const lines = content.split('\n')
   let lastMessage: string | null = null
@@ -98,7 +324,7 @@ export async function readLastAssistantMessageFromSessionFile(
 
     try {
       const parsed = JSON.parse(line)
-      const extracted = extractLastAssistantMessageFromSessionRecord(provider, parsed)
+      const extracted = extractLastAssistantMessageFromSessionData(provider, parsed)
       if (extracted) {
         lastMessage = extracted
       }
@@ -109,3 +335,5 @@ export async function readLastAssistantMessageFromSessionFile(
 
   return lastMessage
 }
+
+export { extractLastAssistantMessageFromSessionData }

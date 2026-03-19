@@ -46,11 +46,12 @@ async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['wind
   )
 }
 
-test.describe('Workspace Canvas - Agent Last Message Copy', () => {
-  test('copies the last standby agent message to the clipboard', async () => {
+test.describe('Workspace Canvas - Agent Last Message Copy (Renderer Sandbox)', () => {
+  test('copies the last standby agent message even when renderer sandbox is enabled', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {
+        OPENCOVE_E2E_FORCE_RENDERER_SANDBOX: '1',
         OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
         OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-standby-no-newline',
       },
@@ -77,8 +78,6 @@ test.describe('Workspace Canvas - Agent Last Message Copy', () => {
       await copyButton.evaluate(button => {
         button.click()
       })
-
-      await expect(window.locator('.note-node')).toHaveCount(0)
 
       await expect
         .poll(async () => {

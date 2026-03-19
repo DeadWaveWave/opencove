@@ -57,6 +57,7 @@ export interface OpenCoveApi {
   }
   clipboard: {
     readText: () => Promise<string>
+    writeText: (text: string) => Promise<void>
   }
   persistence: {
     readWorkspaceStateRaw: () => Promise<string | null>

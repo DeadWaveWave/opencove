@@ -203,8 +203,8 @@ export const en = {
     directoryMismatch: 'DIR MISMATCH',
     directoryMismatchTitle:
       'Bound directory: {{executionDirectory}}\nCurrent directory: {{expectedDirectory}}',
-    saveLastMessageToNote: 'Save last agent message as note',
-    savingLastMessageToNote: 'Saving last agent message as note',
+    copyLastMessage: 'Copy last agent message',
+    copyingLastMessage: 'Copying last agent message',
   },
   nodeDeleteDialog: {
     deleteNodes_one: 'Delete {{count}} node?',
@@ -355,12 +355,12 @@ export const en = {
     noWindowSlotNearby: 'No room nearby in the current view. Move or close some windows first.',
     noteToTaskRequiresContent: 'Cannot convert an empty note into a task.',
     agentLastMessageUnavailable:
-      'The current agent is unavailable, so the last message cannot be extracted.',
+      'The current agent is unavailable, so the last message cannot be copied.',
     agentLastMessageStartedAtMissing:
-      'The current agent is missing its session start time, so the last message cannot be extracted.',
-    agentLastMessageEmpty: 'The current agent does not have a last message to extract yet.',
-    agentLastMessageSavedToNote: 'The last agent message was saved as a note.',
-    agentLastMessageReadFailed: 'Failed to extract the last agent message: {{message}}',
+      'The current agent is missing its session start time, so the last message cannot be copied.',
+    agentLastMessageEmpty: 'The current agent does not have a last message to copy yet.',
+    agentLastMessageCopied: 'The last agent message was copied.',
+    agentLastMessageCopyFailed: 'Failed to copy the last agent message: {{message}}',
     agentSpaceDirectoryMismatch:
       'Agent windows cannot enter or leave a space with a different directory.',
     terminalSpaceDirectoryMismatch:

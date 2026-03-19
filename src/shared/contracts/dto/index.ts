@@ -1,4 +1,5 @@
 export * from './agent'
+export * from './clipboard'
 export * from './error'
 export * from './persistence'
 export * from './task'

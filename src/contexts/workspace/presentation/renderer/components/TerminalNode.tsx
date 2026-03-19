@@ -44,7 +44,7 @@ export function TerminalNode({
   terminalFontSize,
   scrollback,
   onClose,
-  onSaveLastMessageToNote,
+  onCopyLastMessage,
   onResize,
   onScrollbackChange,
   onTitleCommit,
@@ -463,7 +463,7 @@ export function TerminalNode({
         directoryMismatch={directoryMismatch}
         onTitleCommit={onTitleCommit}
         onClose={onClose}
-        onSaveLastMessageToNote={onSaveLastMessageToNote}
+        onCopyLastMessage={onCopyLastMessage}
       />
 
       {isAgentNode && lastError ? <div className="terminal-node__error">{lastError}</div> : null}

@@ -36,12 +36,30 @@ function resolveLastRelevantMessageType(messages: unknown): 'user' | 'gemini' | 
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index]
-    if (!message || typeof message !== 'object' || !('type' in message)) {
+    if (!message || typeof message !== 'object') {
       continue
     }
 
-    if (message.type === 'user' || message.type === 'gemini') {
-      return message.type
+    const record = message as { type?: unknown; role?: unknown }
+    const raw =
+      typeof record.type === 'string'
+        ? record.type
+        : typeof record.role === 'string'
+          ? record.role
+          : null
+    const normalized = raw ? raw.trim().toLowerCase() : ''
+
+    if (normalized === 'user' || normalized === 'human') {
+      return 'user'
+    }
+
+    if (
+      normalized === 'gemini' ||
+      normalized === 'assistant' ||
+      normalized === 'model' ||
+      normalized === 'bot'
+    ) {
+      return 'gemini'
     }
   }
 
