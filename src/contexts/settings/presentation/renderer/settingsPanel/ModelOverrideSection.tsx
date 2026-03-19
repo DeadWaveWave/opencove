@@ -1,7 +1,6 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
-  AGENT_PROVIDERS,
   AGENT_PROVIDER_LABEL,
   type AgentProvider,
   type AgentSettings,
@@ -44,7 +43,7 @@ export function ModelOverrideSection(props: {
     >
       <h3 className="settings-panel__section-title">{t('settingsPanel.models.title')}</h3>
 
-      {AGENT_PROVIDERS.map(provider => {
+      {settings.agentProviderOrder.map(provider => {
         const modelCatalog = modelCatalogByProvider[provider]
         const customEnabled = settings.customModelEnabledByProvider[provider]
         const customModel = settings.customModelByProvider[provider]

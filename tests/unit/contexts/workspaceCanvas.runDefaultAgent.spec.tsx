@@ -331,4 +331,94 @@ describe('WorkspaceCanvas run default agent', () => {
       }),
     )
   })
+
+  it('orders the installed agent submenu based on agent settings', async () => {
+    const listInstalledProviders = vi.fn(async () => ({
+      providers: ['claude-code' as const, 'codex' as const],
+    }))
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        pty: {
+          kill: vi.fn(async () => undefined),
+          onExit: vi.fn(() => () => undefined),
+          onState: vi.fn(() => () => undefined),
+          onMetadata: vi.fn(() => () => undefined),
+        },
+        workspace: {
+          ensureDirectory: vi.fn(async () => undefined),
+        },
+        agent: {
+          launch: vi.fn(async () => ({
+            sessionId: 'new-session',
+            provider: 'codex' as const,
+            command: 'codex',
+            args: ['--dangerously-bypass-approvals-and-sandbox'],
+            launchMode: 'new' as const,
+            effectiveModel: null,
+            resumeSessionId: null,
+          })),
+          listInstalledProviders,
+        },
+        task: {
+          suggestTitle: vi.fn(async () => ({
+            title: 't',
+            provider: 'codex',
+            effectiveModel: null,
+          })),
+        },
+      },
+    })
+
+    const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
+    const spaces: WorkspaceSpaceState[] = []
+
+    function Harness() {
+      const [nodes, setNodes] = useState<Node<TerminalNodeData>[]>([])
+
+      return (
+        <WorkspaceCanvas
+          workspaceId="workspace-1"
+          workspacePath="/tmp/repo"
+          worktreesRoot=""
+          nodes={nodes}
+          onNodesChange={setNodes}
+          spaces={spaces}
+          activeSpaceId={null}
+          onSpacesChange={() => undefined}
+          onActiveSpaceChange={() => undefined}
+          viewport={viewport}
+          isMinimapVisible={false}
+          onViewportChange={() => undefined}
+          onMinimapVisibilityChange={() => undefined}
+          agentSettings={{
+            ...DEFAULT_AGENT_SETTINGS,
+            agentProviderOrder: ['codex', 'claude-code', 'opencode', 'gemini'],
+          }}
+        />
+      )
+    }
+
+    render(<Harness />)
+
+    fireEvent.contextMenu(screen.getByTestId('react-flow-pane'), {
+      clientX: 320,
+      clientY: 220,
+    })
+
+    fireEvent.click(await screen.findByTestId('workspace-context-run-agent-provider-toggle'))
+
+    const menu = await screen.findByTestId('workspace-context-run-agent-provider-menu')
+
+    const ids = Array.from(menu.querySelectorAll('button')).map(button =>
+      button.getAttribute('data-testid'),
+    )
+
+    expect(ids).toEqual([
+      'workspace-context-run-agent-codex',
+      'workspace-context-run-agent-claude-code',
+    ])
+  })
 })

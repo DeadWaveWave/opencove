@@ -414,6 +414,7 @@ export function WorkspaceCanvasView({
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
+        agentProviderOrder={agentSettings.agentProviderOrder}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
         clearNodeSelection={clearNodeSelection}

@@ -71,6 +71,8 @@ export function SettingsPanel({
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
+  const updateAgentProviderOrder = (providers: AgentProvider[]): void =>
+    onChange({ ...settings, agentProviderOrder: providers })
   const updateLanguage = (language: UiLanguage): void => onChange({ ...settings, language })
   const updateAgentFullAccess = (enabled: boolean): void =>
     onChange({ ...settings, agentFullAccess: enabled })
@@ -269,9 +271,11 @@ export function SettingsPanel({
             <GeneralSection
               language={settings.language}
               defaultProvider={settings.defaultProvider}
+              agentProviderOrder={settings.agentProviderOrder}
               agentFullAccess={settings.agentFullAccess}
               onChangeLanguage={updateLanguage}
               onChangeDefaultProvider={updateDefaultProvider}
+              onChangeAgentProviderOrder={updateAgentProviderOrder}
               onChangeAgentFullAccess={updateAgentFullAccess}
             />
             <CanvasSection

@@ -30,6 +30,7 @@ interface WorkspaceContextMenuProps {
   createNoteNodeFromContextMenu: () => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
+  agentProviderOrder: AgentProvider[]
   openAgentLauncherForProvider: (provider: AgentProvider) => void
   createSpaceFromSelectedNodes: () => void
   clearNodeSelection: () => void
@@ -45,6 +46,7 @@ export function WorkspaceContextMenu({
   createNoteNodeFromContextMenu,
   openTaskCreator,
   openAgentLauncher,
+  agentProviderOrder,
   openAgentLauncherForProvider,
   createSpaceFromSelectedNodes,
   clearNodeSelection,
@@ -64,8 +66,9 @@ export function WorkspaceContextMenu({
       return []
     }
 
-    return AGENT_PROVIDERS.filter(provider => installedProviders.includes(provider))
-  }, [installedProviders])
+    const effectiveOrder = agentProviderOrder.length > 0 ? agentProviderOrder : AGENT_PROVIDERS
+    return effectiveOrder.filter(provider => installedProviders.includes(provider))
+  }, [agentProviderOrder, installedProviders])
 
   const cancelScheduledSubmenuClose = useCallback(() => {
     if (closeSubmenuTimeoutRef.current === null) {

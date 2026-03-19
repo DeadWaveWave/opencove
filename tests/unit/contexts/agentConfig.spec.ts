@@ -20,6 +20,14 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.uiFontSize).toBe(18)
   })
 
+  it('normalizes the agent provider order and keeps all providers', () => {
+    const result = normalizeAgentSettings({
+      agentProviderOrder: ['gemini', 'codex', 'gemini', 'invalid'],
+    })
+
+    expect(result.agentProviderOrder).toEqual(['gemini', 'codex', 'claude-code', 'opencode'])
+  })
+
   it('keeps valid provider, custom model, and model option fields', () => {
     const result = normalizeAgentSettings({
       language: 'zh-CN',

@@ -82,4 +82,31 @@ describe('SettingsPanel', () => {
       defaultTerminalProfileId: 'wsl:Ubuntu',
     })
   })
+
+  it('allows reordering agent providers', () => {
+    const onChange = vi.fn()
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        onChange={onChange}
+        onClose={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('settings-agent-order-move-down-claude-code'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      agentProviderOrder: ['codex', 'claude-code', 'opencode', 'gemini'],
+    })
+  })
 })

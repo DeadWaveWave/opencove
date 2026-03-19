@@ -98,6 +98,7 @@ export type AgentCustomModelOptionsByProvider = {
 export interface AgentSettings {
   language: UiLanguage
   defaultProvider: AgentProvider
+  agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
   defaultTerminalProfileId: TerminalProfileId
   customModelEnabledByProvider: AgentCustomModelEnabledByProvider
@@ -116,6 +117,7 @@ export interface AgentSettings {
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
   defaultProvider: 'codex',
+  agentProviderOrder: [...AGENT_PROVIDERS],
   agentFullAccess: true,
   defaultTerminalProfileId: null,
   customModelEnabledByProvider: {
@@ -253,6 +255,39 @@ function normalizeTagOptions(value: unknown, fallback: string[]): string[] {
   return normalized.length > 0 ? normalized : [...fallback]
 }
 
+function normalizeAgentProviderOrder(value: unknown): AgentProvider[] {
+  if (!Array.isArray(value)) {
+    return [...AGENT_PROVIDERS]
+  }
+
+  const normalized: AgentProvider[] = []
+  const seen = new Set<AgentProvider>()
+
+  for (const item of value) {
+    if (!isValidProvider(item)) {
+      continue
+    }
+
+    if (seen.has(item)) {
+      continue
+    }
+
+    seen.add(item)
+    normalized.push(item)
+  }
+
+  for (const provider of AGENT_PROVIDERS) {
+    if (seen.has(provider)) {
+      continue
+    }
+
+    seen.add(provider)
+    normalized.push(provider)
+  }
+
+  return normalized
+}
+
 export function resolveAgentModel(settings: AgentSettings, provider: AgentProvider): string | null {
   if (!settings.customModelEnabledByProvider[provider]) {
     return null
@@ -296,6 +331,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const language = isValidUiLanguage(value.language)
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
+  const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
 
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess
@@ -399,6 +435,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   return {
     language,
     defaultProvider,
+    agentProviderOrder,
     agentFullAccess,
     defaultTerminalProfileId:
       defaultTerminalProfileId.length > 0

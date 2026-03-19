@@ -399,6 +399,25 @@
   margin-bottom: 18px;
 }
 
+.settings-agent-order__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-agent-order__action.secondary {
+  padding: 6px;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-agent-order__icon {
+  width: 14px;
+  height: 14px;
+}
+
 /* --- Buttons --- */
 .settings-panel button.primary {
   background: #fff;
