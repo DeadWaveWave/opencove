@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useTerminalProfiles } from '@app/renderer/shell/hooks/useTerminalProfiles'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
@@ -11,6 +11,7 @@ import {
   type TaskTitleProvider,
   type UiLanguage,
 } from '@contexts/settings/domain/agentSettings'
+import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
@@ -35,8 +36,17 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
-type CoreSectionId = 'general' | 'canvas' | 'task-configuration' | 'model-overrides'
-type SettingsSectionId = CoreSectionId | string
+type CorePageId = 'general' | 'agent' | 'canvas' | 'task-configuration'
+type WorkspacePageId = `workspace:${string}`
+type SettingsPageId = CorePageId | WorkspacePageId
+
+function getWorkspacePageId(workspaceId: string): WorkspacePageId {
+  return `workspace:${workspaceId}`
+}
+
+function isWorkspacePageId(pageId: SettingsPageId): pageId is WorkspacePageId {
+  return pageId.startsWith('workspace:')
+}
 
 function createInitialInputState(): Record<AgentProvider, string> {
   return AGENT_PROVIDERS.reduce<Record<AgentProvider, string>>(
@@ -63,10 +73,11 @@ export function SettingsPanel({
 }: SettingsPanelProps): React.JSX.Element {
   const { t } = useTranslation()
   const { terminalProfiles, detectedDefaultTerminalProfileId } = useTerminalProfiles()
+  const contentRef = useRef<HTMLDivElement | null>(null)
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState())
-  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>('general')
+  const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
@@ -182,33 +193,45 @@ export function SettingsPanel({
   }
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
-  const scrollToSection = (id: SettingsSectionId, targetId: string): void => {
-    setActiveSectionId(id)
-    window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({
-        block: 'start',
-        behavior: 'auto',
-      })
-    })
-  }
+
+  const activeWorkspace = useMemo(() => {
+    if (!isWorkspacePageId(activePageId)) {
+      return null
+    }
+
+    const workspaceId = activePageId.slice('workspace:'.length)
+    return workspaces.find(workspace => workspace.id === workspaceId) ?? null
+  }, [activePageId, workspaces])
+
+  useEffect(() => {
+    if (isWorkspacePageId(activePageId) && !activeWorkspace) {
+      setActivePageId('general')
+    }
+  }, [activePageId, activeWorkspace])
+
+  useEffect(() => {
+    if (!contentRef.current) {
+      return
+    }
+
+    contentRef.current.scrollTop = 0
+  }, [activePageId])
 
   const NavButton = ({
     id,
     label,
-    targetId,
     testId,
   }: {
-    id: SettingsSectionId
+    id: SettingsPageId
     label: string
-    targetId: string
     testId?: string
   }) => {
-    const isActive = activeSectionId === id
+    const isActive = activePageId === id
     return (
       <button
         type="button"
         data-testid={testId}
-        onClick={() => scrollToSection(id, targetId)}
+        onClick={() => setActivePageId(id)}
         className={`settings-panel__nav-button${isActive ? ' settings-panel__nav-button--active' : ''}`}
       >
         {label}
@@ -219,30 +242,29 @@ export function SettingsPanel({
   return (
     <div className="settings-backdrop" onClick={onClose}>
       <section className="settings-panel" onClick={e => e.stopPropagation()}>
-        <aside className="settings-panel__sidebar">
+        <aside
+          className="settings-panel__sidebar"
+          aria-label={t('settingsPanel.nav.sectionsLabel')}
+        >
           <NavButton
             id="general"
             label={t('settingsPanel.nav.general')}
-            targetId="settings-section-general"
             testId="settings-section-nav-general"
+          />
+          <NavButton
+            id="agent"
+            label={t('settingsPanel.nav.agent')}
+            testId="settings-section-nav-agent"
           />
           <NavButton
             id="canvas"
             label={t('settingsPanel.nav.canvas')}
-            targetId="settings-section-canvas"
             testId="settings-section-nav-canvas"
           />
           <NavButton
             id="task-configuration"
             label={t('settingsPanel.nav.tasks')}
-            targetId="settings-section-task-configuration"
             testId="settings-section-nav-task-configuration"
-          />
-          <NavButton
-            id="model-overrides"
-            label={t('settingsPanel.nav.models')}
-            targetId="settings-section-model-override"
-            testId="settings-section-nav-model-overrides"
           />
 
           <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
@@ -250,11 +272,10 @@ export function SettingsPanel({
             {workspaces.map(workspace => (
               <NavButton
                 key={workspace.id}
-                id={workspace.id}
+                id={getWorkspacePageId(workspace.id)}
                 label={
                   workspace.name.trim().length > 0 ? workspace.name : getFolderName(workspace.path)
                 }
-                targetId={`settings-section-workspace-${workspace.id}`}
               />
             ))}
           </div>
@@ -267,67 +288,81 @@ export function SettingsPanel({
               ×
             </button>
           </div>
-          <div className="settings-panel__content">
-            <GeneralSection
-              language={settings.language}
-              defaultProvider={settings.defaultProvider}
-              agentProviderOrder={settings.agentProviderOrder}
-              agentFullAccess={settings.agentFullAccess}
-              onChangeLanguage={updateLanguage}
-              onChangeDefaultProvider={updateDefaultProvider}
-              onChangeAgentProviderOrder={updateAgentProviderOrder}
-              onChangeAgentFullAccess={updateAgentFullAccess}
-            />
-            <CanvasSection
-              canvasInputMode={settings.canvasInputMode}
-              normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
-              defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
-              terminalFontSize={settings.terminalFontSize}
-              uiFontSize={settings.uiFontSize}
-              defaultTerminalProfileId={settings.defaultTerminalProfileId}
-              terminalProfiles={terminalProfiles}
-              detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
-              onChangeCanvasInputMode={updateCanvasInputMode}
-              onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
-              onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
-              onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
-              onChangeTerminalFontSize={updateTerminalFontSize}
-              onChangeUiFontSize={updateUiFontSize}
-            />
-            <TaskConfigurationSection
-              showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}
-              defaultProvider={settings.defaultProvider}
-              taskTitleProvider={settings.taskTitleProvider}
-              taskTitleModel={settings.taskTitleModel}
-              effectiveTaskTitleProvider={effectiveTaskTitleProvider}
-              tags={settings.taskTagOptions}
-              addTaskTagInput={addTaskTagInput}
-              onChangeTaskTitleProvider={updateTaskTitleProvider}
-              onChangeTaskTitleModel={updateTaskTitleModel}
-              onChangeAddTaskTagInput={setAddTaskTagInput}
-              onAddTag={addTaskTagOption}
-              onRemoveTag={removeTaskTagOption}
-            />
-            <ModelOverrideSection
-              settings={settings}
-              modelCatalogByProvider={modelCatalogByProvider}
-              addModelInputByProvider={addModelInputByProvider}
-              onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
-              onSelectProviderModel={selectProviderModel}
-              onRemoveCustomModelOption={removeCustomModelOption}
-              onChangeAddModelInput={updateAddModelInput}
-              onAddCustomModelOption={addCustomModelOption}
-            />
-            {workspaces.map(workspace => (
-              <WorkspaceSection
-                key={workspace.id}
-                sectionId={`settings-section-workspace-${workspace.id}`}
-                workspaceName={workspace.name}
-                workspacePath={workspace.path}
-                worktreesRoot={workspace.worktreesRoot}
-                onChangeWorktreesRoot={root => onWorkspaceWorktreesRootChange(workspace.id, root)}
+          <div className="settings-panel__content" ref={contentRef}>
+            {activePageId === 'general' ? (
+              <GeneralSection language={settings.language} onChangeLanguage={updateLanguage} />
+            ) : null}
+
+            {activePageId === 'agent' ? (
+              <>
+                <AgentSection
+                  defaultProvider={settings.defaultProvider}
+                  agentProviderOrder={settings.agentProviderOrder}
+                  agentFullAccess={settings.agentFullAccess}
+                  onChangeDefaultProvider={updateDefaultProvider}
+                  onChangeAgentProviderOrder={updateAgentProviderOrder}
+                  onChangeAgentFullAccess={updateAgentFullAccess}
+                />
+                <ModelOverrideSection
+                  settings={settings}
+                  modelCatalogByProvider={modelCatalogByProvider}
+                  addModelInputByProvider={addModelInputByProvider}
+                  onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
+                  onSelectProviderModel={selectProviderModel}
+                  onRemoveCustomModelOption={removeCustomModelOption}
+                  onChangeAddModelInput={updateAddModelInput}
+                  onAddCustomModelOption={addCustomModelOption}
+                />
+              </>
+            ) : null}
+
+            {activePageId === 'canvas' ? (
+              <CanvasSection
+                canvasInputMode={settings.canvasInputMode}
+                normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
+                defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
+                terminalFontSize={settings.terminalFontSize}
+                uiFontSize={settings.uiFontSize}
+                defaultTerminalProfileId={settings.defaultTerminalProfileId}
+                terminalProfiles={terminalProfiles}
+                detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
+                onChangeCanvasInputMode={updateCanvasInputMode}
+                onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
+                onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
+                onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
+                onChangeTerminalFontSize={updateTerminalFontSize}
+                onChangeUiFontSize={updateUiFontSize}
               />
-            ))}
+            ) : null}
+
+            {activePageId === 'task-configuration' ? (
+              <TaskConfigurationSection
+                showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}
+                defaultProvider={settings.defaultProvider}
+                taskTitleProvider={settings.taskTitleProvider}
+                taskTitleModel={settings.taskTitleModel}
+                effectiveTaskTitleProvider={effectiveTaskTitleProvider}
+                tags={settings.taskTagOptions}
+                addTaskTagInput={addTaskTagInput}
+                onChangeTaskTitleProvider={updateTaskTitleProvider}
+                onChangeTaskTitleModel={updateTaskTitleModel}
+                onChangeAddTaskTagInput={setAddTaskTagInput}
+                onAddTag={addTaskTagOption}
+                onRemoveTag={removeTaskTagOption}
+              />
+            ) : null}
+
+            {isWorkspacePageId(activePageId) && activeWorkspace ? (
+              <WorkspaceSection
+                sectionId={`settings-section-workspace-${activeWorkspace.id}`}
+                workspaceName={activeWorkspace.name}
+                workspacePath={activeWorkspace.path}
+                worktreesRoot={activeWorkspace.worktreesRoot}
+                onChangeWorktreesRoot={root =>
+                  onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+                }
+              />
+            ) : null}
           </div>
         </div>
       </section>

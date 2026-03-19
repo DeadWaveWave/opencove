@@ -96,6 +96,7 @@ export const en = {
     title: 'Settings',
     nav: {
       general: 'General',
+      agent: 'Agent',
       canvas: 'Canvas',
       tasks: 'Tasks',
       models: 'Models',
@@ -106,6 +107,9 @@ export const en = {
       title: 'General',
       languageLabel: 'Display Language',
       languageHelp: 'Language used for the OpenCove interface.',
+    },
+    agent: {
+      title: 'Agent',
       defaultAgentLabel: 'Default Agent',
       defaultAgentHelp: 'The default AI provider for new tasks and terminals.',
       agentProviderOrderLabel: 'Agent Menu Order',

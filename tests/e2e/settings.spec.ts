@@ -31,47 +31,36 @@ test.describe('Settings', () => {
       await settingsButton.click({ noWaitAfter: true })
 
       const generalNav = window.locator('[data-testid="settings-section-nav-general"]')
+      const agentNav = window.locator('[data-testid="settings-section-nav-agent"]')
       const canvasNav = window.locator('[data-testid="settings-section-nav-canvas"]')
+      const taskConfigurationNav = window.locator(
+        '[data-testid="settings-section-nav-task-configuration"]',
+      )
       await expect(generalNav).toBeVisible()
+      await expect(agentNav).toBeVisible()
       await expect(canvasNav).toBeVisible()
+      await expect(taskConfigurationNav).toBeVisible()
 
-      await canvasNav.click()
-      await expect(
-        window.locator('[data-testid="settings-normalize-zoom-on-terminal-click"]'),
-      ).toBeVisible()
       const languageSelect = window.locator('[data-testid="settings-language"]')
       await expect(languageSelect).toBeVisible()
       await languageSelect.selectOption('zh-CN')
       await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
+
+      await canvasNav.click()
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
       await expect(canvasInputMode).toBeVisible()
       await canvasInputMode.selectOption('trackpad')
 
-      const defaultProvider = window.locator('#settings-default-provider')
-      await expect(defaultProvider).toBeVisible()
-      await defaultProvider.selectOption('codex')
-
-      const taskConfigurationNav = window.locator(
-        '[data-testid="settings-section-nav-task-configuration"]',
-      )
-      await taskConfigurationNav.click()
-
-      const addTaskTagInput = window.locator('[data-testid="settings-task-tag-add-input"]')
-      await addTaskTagInput.fill('ops')
-      await window.locator('[data-testid="settings-task-tag-add-button"]').click()
-      await expect(window.locator('[data-testid="settings-task-tag-list"]')).toContainText('ops')
-
-      await window.locator('[data-testid="settings-task-tag-remove-feature"]').click()
-      await expect(window.locator('[data-testid="settings-task-tag-list"]')).not.toContainText(
-        'feature',
-      )
-
-      await expect(window.locator('#settings-section-task-title')).toHaveCount(0)
-
       const normalizeZoomToggle = window.locator(
         '[data-testid="settings-normalize-zoom-on-terminal-click"]',
       )
+      await expect(normalizeZoomToggle).toBeVisible()
       await normalizeZoomToggle.uncheck()
+
+      await agentNav.click()
+      const defaultProvider = window.locator('#settings-default-provider')
+      await expect(defaultProvider).toBeVisible()
+      await defaultProvider.selectOption('codex')
 
       const customModelEnabled = window.locator(
         '[data-testid="settings-custom-model-enabled-codex"]',
@@ -87,6 +76,20 @@ test.describe('Settings', () => {
       await expect(window.locator('[data-testid="settings-model-list-codex"]')).toContainText(
         'gpt-5.2-codex',
       )
+
+      await taskConfigurationNav.click()
+
+      const addTaskTagInput = window.locator('[data-testid="settings-task-tag-add-input"]')
+      await addTaskTagInput.fill('ops')
+      await window.locator('[data-testid="settings-task-tag-add-button"]').click()
+      await expect(window.locator('[data-testid="settings-task-tag-list"]')).toContainText('ops')
+
+      await window.locator('[data-testid="settings-task-tag-remove-feature"]').click()
+      await expect(window.locator('[data-testid="settings-task-tag-list"]')).not.toContainText(
+        'feature',
+      )
+
+      await expect(window.locator('#settings-section-task-title')).toHaveCount(0)
 
       await window.locator('.settings-panel__close').click()
       await expect(window.locator('.workspace-sidebar__agent-provider')).toHaveText('Codex')

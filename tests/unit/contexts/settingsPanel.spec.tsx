@@ -102,6 +102,7 @@ describe('SettingsPanel', () => {
       />,
     )
 
+    fireEvent.click(screen.getByTestId('settings-section-nav-agent'))
     fireEvent.click(screen.getByTestId('settings-agent-order-move-down-claude-code'))
 
     expect(onChange).toHaveBeenCalledWith({
