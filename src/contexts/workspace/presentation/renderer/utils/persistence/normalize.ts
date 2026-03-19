@@ -90,6 +90,18 @@ export function normalizeTaskTags(value: unknown): string[] {
   ]
 }
 
+export function normalizePullRequestBaseBranchOptions(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const normalized = [
+    ...new Set(value.map(item => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)),
+  ]
+
+  return normalized.slice(0, 50)
+}
+
 export function normalizeLaunchMode(value: unknown): AgentLaunchMode {
   if (typeof value !== 'string') {
     return 'new'

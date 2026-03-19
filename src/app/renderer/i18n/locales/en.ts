@@ -203,6 +203,11 @@ export const en = {
       worktreeRootPlaceholder: '.opencove/worktrees',
       resolvedPathLabel: 'Resolved Path',
       resolvedPathHelp: 'Where new worktrees will be created.',
+      pullRequestBaseBranchesLabel: 'Pull Request Base Branches',
+      pullRequestBaseBranchesHelp:
+        'Suggestions shown when creating PRs on the canvas. The repository default branch is always included.',
+      pullRequestBaseBranchesEmpty: 'No base branches configured.',
+      pullRequestBaseBranchesPlaceholder: 'e.g. develop',
     },
   },
   taskNode: {
@@ -410,6 +415,8 @@ export const en = {
     createBodyPlaceholder: 'Describe what changed...',
     createDraft: 'Create as draft',
     publishBranch: 'Publish branch',
+    advanced: 'Advanced',
+    hideAdvanced: 'Hide advanced',
     create: 'Create PR',
     noChecks: 'No checks to show.',
     noDiff: 'No diff to show.',

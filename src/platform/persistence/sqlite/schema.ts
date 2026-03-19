@@ -17,6 +17,7 @@ export const workspaces = sqliteTable('workspaces', {
   name: text('name').notNull(),
   path: text('path').notNull(),
   worktreesRoot: text('worktrees_root').notNull(),
+  pullRequestBaseBranchOptionsJson: text('pull_request_base_branch_options_json').notNull(),
   viewportX: real('viewport_x').notNull(),
   viewportY: real('viewport_y').notNull(),
   viewportZoom: real('viewport_zoom').notNull(),

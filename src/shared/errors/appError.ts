@@ -20,6 +20,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'worktree.list_branches_failed': 'Unable to load Git branches.',
     'worktree.list_worktrees_failed': 'Unable to load Git worktrees.',
     'worktree.status_summary_failed': 'Unable to load Git status.',
+    'worktree.get_default_branch_failed': 'Unable to determine the default branch.',
     'worktree.create_failed': 'Unable to create the worktree.',
     'worktree.remove_failed': 'Unable to archive the worktree.',
     'worktree.remove_uncommitted_changes':

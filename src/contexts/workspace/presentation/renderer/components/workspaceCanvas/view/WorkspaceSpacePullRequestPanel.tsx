@@ -14,6 +14,7 @@ import { WorkspaceSpacePullRequestPanelDiff } from './WorkspaceSpacePullRequestP
 import { WorkspaceSpacePullRequestPanelHeader } from './WorkspaceSpacePullRequestPanelHeader'
 import { WorkspaceSpacePullRequestPanelOverview } from './WorkspaceSpacePullRequestPanelOverview'
 import { WorkspaceSpacePullRequestPanelTabs } from './WorkspaceSpacePullRequestPanelTabs'
+import { usePullRequestBaseBranchSuggestions } from './usePullRequestBaseBranchSuggestions'
 
 export interface WorkspaceSpacePullRequestPanelState {
   spaceId: string
@@ -40,6 +41,7 @@ function canExecuteActions(availability: IntegrationProviderAvailability | null)
 export function WorkspaceSpacePullRequestPanel({
   panel,
   repoPath,
+  pullRequestBaseBranchOptions,
   availability,
   closePanel,
   onAvailabilityChange,
@@ -47,6 +49,7 @@ export function WorkspaceSpacePullRequestPanel({
 }: {
   panel: WorkspaceSpacePullRequestPanelState | null
   repoPath: string
+  pullRequestBaseBranchOptions: string[]
   availability: IntegrationProviderAvailability | null
   closePanel: () => void
   onAvailabilityChange?: (availability: IntegrationProviderAvailability) => void
@@ -80,6 +83,13 @@ export function WorkspaceSpacePullRequestPanel({
 
   const [commentBody, setCommentBody] = React.useState('')
   const [reviewBody, setReviewBody] = React.useState('')
+
+  const baseBranchSuggestions = usePullRequestBaseBranchSuggestions({
+    panel,
+    repoPath,
+    pullRequestBaseBranchOptions,
+    setCreateBase,
+  })
 
   React.useEffect(() => {
     setResolvedAvailability(availability)
@@ -439,6 +449,7 @@ export function WorkspaceSpacePullRequestPanel({
             setCreateBody={setCreateBody}
             createBase={createBase}
             setCreateBase={setCreateBase}
+            baseBranchSuggestions={baseBranchSuggestions}
             createDraft={createDraft}
             setCreateDraft={setCreateDraft}
             commentBody={commentBody}

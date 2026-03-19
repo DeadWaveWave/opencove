@@ -15,6 +15,7 @@ import {
   normalizeLaunchMode,
   normalizeNodeKind,
   normalizeOptionalString,
+  normalizePullRequestBaseBranchOptions,
   normalizeProvider,
   normalizeScrollback,
   normalizeTaskPriority,
@@ -278,6 +279,9 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   const name = record.name
   const path = record.path
   const worktreesRoot = normalizeOptionalString(record.worktreesRoot) ?? ''
+  const pullRequestBaseBranchOptions = normalizePullRequestBaseBranchOptions(
+    record.pullRequestBaseBranchOptions,
+  )
   const nodes = record.nodes
   const spaces = record.spaces
   const activeSpaceId = record.activeSpaceId
@@ -316,6 +320,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
     name,
     path,
     worktreesRoot,
+    pullRequestBaseBranchOptions,
     nodes: normalizedNodes,
     viewport: normalizeWorkspaceViewport(record.viewport),
     isMinimapVisible: normalizeWorkspaceMinimapVisible(record.isMinimapVisible),

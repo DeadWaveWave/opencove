@@ -7,6 +7,8 @@ import type {
   EnsureDirectoryInput,
   ExecuteGitHubPullRequestActionInput,
   ExecuteGitHubPullRequestActionResult,
+  GetGitDefaultBranchInput,
+  GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
   GetGitHubPullRequestChecksInput,
@@ -90,6 +92,7 @@ export interface OpenCoveApi {
     listBranches: (payload: ListGitBranchesInput) => Promise<ListGitBranchesResult>
     listWorktrees: (payload: ListGitWorktreesInput) => Promise<ListGitWorktreesResult>
     statusSummary: (payload: GetGitStatusSummaryInput) => Promise<GetGitStatusSummaryResult>
+    getDefaultBranch: (payload: GetGitDefaultBranchInput) => Promise<GetGitDefaultBranchResult>
     create: (payload: CreateGitWorktreeInput) => Promise<CreateGitWorktreeResult>
     remove: (payload: RemoveGitWorktreeInput) => Promise<RemoveGitWorktreeResult>
     renameBranch: (payload: RenameGitBranchInput) => Promise<void>

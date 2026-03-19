@@ -15,6 +15,7 @@ export const IPC_CHANNELS = {
   worktreeListBranches: 'worktree:list-branches',
   worktreeListWorktrees: 'worktree:list-worktrees',
   worktreeStatusSummary: 'worktree:list-status-summary',
+  worktreeGetDefaultBranch: 'worktree:get-default-branch',
   worktreeCreate: 'worktree:create',
   worktreeRemove: 'worktree:remove',
   worktreeRenameBranch: 'worktree:rename-branch',

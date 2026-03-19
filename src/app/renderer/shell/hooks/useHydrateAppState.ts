@@ -33,6 +33,7 @@ function toShellWorkspaceState(workspace: PersistedWorkspaceState): WorkspaceSta
     name: workspace.name,
     path: workspace.path,
     worktreesRoot: workspace.worktreesRoot,
+    pullRequestBaseBranchOptions: workspace.pullRequestBaseBranchOptions ?? [],
     nodes,
     viewport: {
       x: workspace.viewport.x,

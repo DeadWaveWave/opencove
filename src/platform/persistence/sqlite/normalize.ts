@@ -69,6 +69,7 @@ export type NormalizedPersistedWorkspace = {
   name: string
   path: string
   worktreesRoot: string
+  pullRequestBaseBranchOptions: string[]
   viewport: { x: number; y: number; zoom: number }
   isMinimapVisible: boolean
   spaces: NormalizedPersistedSpace[]
@@ -128,6 +129,18 @@ function normalizeNodeIds(value: unknown): string[] {
   }
 
   return value.filter((nodeId): nodeId is string => typeof nodeId === 'string' && nodeId.length > 0)
+}
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const normalized = value
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+
+  return [...new Set(normalized)].slice(0, 50)
 }
 
 export function normalizePersistedAppState(value: unknown): NormalizedPersistedAppState | null {
@@ -228,6 +241,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
       name: normalizeString(workspace.name),
       path: normalizeString(workspace.path),
       worktreesRoot: normalizeString(workspace.worktreesRoot),
+      pullRequestBaseBranchOptions: normalizeStringArray(workspace.pullRequestBaseBranchOptions),
       viewport: normalizeViewport(workspace.viewport),
       isMinimapVisible: normalizeBoolean(workspace.isMinimapVisible, true),
       spaces: normalizedSpaces,

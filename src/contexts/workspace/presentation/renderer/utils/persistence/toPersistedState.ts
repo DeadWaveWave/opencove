@@ -4,6 +4,7 @@ import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '../../types'
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import {
   normalizeOptionalString,
+  normalizePullRequestBaseBranchOptions,
   normalizeWorkspaceSpaceNodeIds,
   normalizeWorkspaceSpaceRect,
   normalizeWorkspaceViewport,
@@ -22,6 +23,9 @@ export function toPersistedState(
       name: workspace.name,
       path: workspace.path,
       worktreesRoot: normalizeOptionalString(workspace.worktreesRoot) ?? '',
+      pullRequestBaseBranchOptions: normalizePullRequestBaseBranchOptions(
+        workspace.pullRequestBaseBranchOptions,
+      ),
       viewport: normalizeWorkspaceViewport(workspace.viewport),
       isMinimapVisible:
         typeof workspace.isMinimapVisible === 'boolean'

@@ -94,6 +94,7 @@ export interface WorkspaceState {
   name: string
   path: string
   worktreesRoot: string
+  pullRequestBaseBranchOptions?: string[]
   nodes: Node<TerminalNodeData>[]
   viewport: WorkspaceViewport
   isMinimapVisible: boolean
@@ -106,6 +107,7 @@ export interface PersistedWorkspaceState {
   name: string
   path: string
   worktreesRoot: string
+  pullRequestBaseBranchOptions?: string[]
   nodes: PersistedTerminalNode[]
   viewport: WorkspaceViewport
   isMinimapVisible: boolean

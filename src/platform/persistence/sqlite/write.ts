@@ -26,11 +26,11 @@ export function writeNormalizedAppState(
   const insertWorkspace = db.prepare(
     `
       INSERT INTO workspaces (
-        id, name, path, worktrees_root,
+        id, name, path, worktrees_root, pull_request_base_branch_options_json,
         viewport_x, viewport_y, viewport_zoom,
         is_minimap_visible, active_space_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -82,6 +82,7 @@ export function writeNormalizedAppState(
         workspace.name,
         workspace.path,
         workspace.worktreesRoot,
+        safeJsonStringify(workspace.pullRequestBaseBranchOptions),
         workspace.viewport.x,
         workspace.viewport.y,
         workspace.viewport.zoom,

@@ -9,6 +9,8 @@ import type {
   EnsureDirectoryInput,
   ExecuteGitHubPullRequestActionInput,
   ExecuteGitHubPullRequestActionResult,
+  GetGitDefaultBranchInput,
+  GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
   GetGitHubPullRequestChecksInput,
@@ -109,6 +111,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.worktreeListWorktrees, payload),
     statusSummary: (payload: GetGitStatusSummaryInput): Promise<GetGitStatusSummaryResult> =>
       invokeIpc(IPC_CHANNELS.worktreeStatusSummary, payload),
+    getDefaultBranch: (payload: GetGitDefaultBranchInput): Promise<GetGitDefaultBranchResult> =>
+      invokeIpc(IPC_CHANNELS.worktreeGetDefaultBranch, payload),
     create: (payload: CreateGitWorktreeInput): Promise<CreateGitWorktreeResult> =>
       invokeIpc(IPC_CHANNELS.worktreeCreate, payload),
     remove: (payload: RemoveGitWorktreeInput): Promise<RemoveGitWorktreeResult> =>

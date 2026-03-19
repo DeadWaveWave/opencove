@@ -11,12 +11,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
 - In-canvas GitHub pull request chip + panel for worktree-bound Spaces (requires `gh`).
+- Per-project pull request base branch suggestions in Settings.
 
 ### 💅 Changed
-- (none)
+- PR base branch defaults to the repository default branch (with editable suggestions).
+- De-emphasized “Publish branch” by moving it under Advanced (Create PR auto-publishes).
 
 ### 🐞 Fixed
-- (none)
+- Improved `gh` authentication detection and PR action error reporting.
+- Prevented canvas zoom/pan when scrolling inside PR/overlay windows.
 
 ---
 

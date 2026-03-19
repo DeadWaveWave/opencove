@@ -69,7 +69,6 @@ export function SpaceWorktreeWindow({
     () => (spaceId ? (spaces.find(candidate => candidate.id === spaceId) ?? null) : null),
     [spaceId, spaces],
   )
-
   const [viewMode, setViewMode] = useState<SpaceWorktreeViewMode>(initialViewMode)
   const [branches, setBranches] = useState<string[]>([])
   const [currentBranch, setCurrentBranch] = useState<string | null>(null)
@@ -302,7 +301,7 @@ export function SpaceWorktreeWindow({
         onClose()
       }
     },
-    [executePendingOperation, onClose, queueGuardIfNeeded, space],
+    [executePendingOperation, onClose, queueGuardIfNeeded, space, t],
   )
 
   const closeBlockingNodesForArchive = useCallback(
@@ -423,6 +422,7 @@ export function SpaceWorktreeWindow({
     isSpaceOnWorkspaceRoot,
     onClose,
     space,
+    t,
   ])
 
   const panelHandlers = useSpaceWorktreePanelHandlers({

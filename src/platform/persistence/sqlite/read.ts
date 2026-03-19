@@ -12,6 +12,18 @@ import {
 } from './schema'
 import { safeJsonParse } from './utils'
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const normalized = value
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+
+  return [...new Set(normalized)].slice(0, 50)
+}
+
 export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersistedAppState | null {
   const metaRows = db.select().from(appMeta).all()
   if (metaRows.length === 0) {
@@ -117,6 +129,9 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         name: workspace.name,
         path: workspace.path,
         worktreesRoot: workspace.worktreesRoot,
+        pullRequestBaseBranchOptions: normalizeStringArray(
+          safeJsonParse(workspace.pullRequestBaseBranchOptionsJson),
+        ),
         viewport: { x: workspace.viewportX, y: workspace.viewportY, zoom: workspace.viewportZoom },
         isMinimapVisible: workspace.isMinimapVisible,
         spaces: workspaceSpaces,

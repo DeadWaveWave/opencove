@@ -27,6 +27,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
   setCreateBody,
   createBase,
   setCreateBase,
+  baseBranchSuggestions,
   createDraft,
   setCreateDraft,
   commentBody,
@@ -50,6 +51,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
   setCreateBody: (value: string) => void
   createBase: string
   setCreateBase: (value: string) => void
+  baseBranchSuggestions: string[]
   createDraft: boolean
   setCreateDraft: (value: boolean) => void
   commentBody: string
@@ -58,6 +60,11 @@ export function WorkspaceSpacePullRequestPanelOverview({
   setReviewBody: (value: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const [showAdvanced, setShowAdvanced] = React.useState(false)
+
+  React.useEffect(() => {
+    setShowAdvanced(false)
+  }, [panel.branch])
 
   if (summary) {
     return (
@@ -371,12 +378,24 @@ export function WorkspaceSpacePullRequestPanelOverview({
             id="workspace-space-pr-create-base"
             data-testid="workspace-space-pr-panel-create-base"
             value={createBase}
+            list={
+              baseBranchSuggestions.length > 0
+                ? 'workspace-space-pr-create-base-options'
+                : undefined
+            }
             disabled={!isAvailable || isExecutingAction}
             placeholder={t('githubPullRequest.createBasePlaceholder')}
             onChange={event => {
               setCreateBase(event.target.value)
             }}
           />
+          {baseBranchSuggestions.length > 0 ? (
+            <datalist id="workspace-space-pr-create-base-options">
+              {baseBranchSuggestions.map(option => (
+                <option key={option} value={option} />
+              ))}
+            </datalist>
+          ) : null}
         </div>
 
         <div className="cove-window__field-row">
@@ -411,15 +430,25 @@ export function WorkspaceSpacePullRequestPanelOverview({
         <div className="workspace-pr-panel__actions">
           <button
             type="button"
-            className="cove-window__action cove-window__action--secondary"
-            data-testid="workspace-space-pr-panel-action-publish-branch"
-            disabled={!isAvailable || isExecutingAction}
-            onClick={() => {
-              void executeAction({ kind: 'publish_branch', branch: panel.branch, remote: null })
-            }}
+            className="cove-window__action cove-window__action--ghost"
+            onClick={() => setShowAdvanced(previous => !previous)}
           >
-            {t('githubPullRequest.publishBranch')}
+            {showAdvanced ? t('githubPullRequest.hideAdvanced') : t('githubPullRequest.advanced')}
           </button>
+
+          {showAdvanced ? (
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--secondary"
+              data-testid="workspace-space-pr-panel-action-publish-branch"
+              disabled={!isAvailable || isExecutingAction}
+              onClick={() => {
+                void executeAction({ kind: 'publish_branch', branch: panel.branch, remote: null })
+              }}
+            >
+              {t('githubPullRequest.publishBranch')}
+            </button>
+          ) : null}
 
           <button
             type="button"

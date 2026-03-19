@@ -1,6 +1,7 @@
 import React from 'react'
 import { ViewportPortal, useReactFlow } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type {
   GitHubPullRequestSummary,
   GitWorktreeInfo,
@@ -27,6 +28,8 @@ import {
   WorkspaceSpacePullRequestPanel,
   type WorkspaceSpacePullRequestPanelState,
 } from './WorkspaceSpacePullRequestPanel'
+
+const EMPTY_BASE_BRANCH_OPTIONS: string[] = []
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -81,6 +84,13 @@ export function WorkspaceSpaceRegionsOverlay({
     () => normalizeComparablePath(workspacePath),
     [workspacePath],
   )
+
+  const pullRequestBaseBranchOptions = useAppStore(state => {
+    const workspace = state.workspaces.find(
+      candidate => normalizeComparablePath(candidate.path) === normalizedWorkspacePath,
+    )
+    return workspace?.pullRequestBaseBranchOptions ?? EMPTY_BASE_BRANCH_OPTIONS
+  })
 
   const worktreeDirectories = React.useMemo(() => {
     const unique = new Set<string>()
@@ -432,6 +442,7 @@ export function WorkspaceSpaceRegionsOverlay({
       <WorkspaceSpacePullRequestPanel
         panel={pullRequestPanel}
         repoPath={workspacePath}
+        pullRequestBaseBranchOptions={pullRequestBaseBranchOptions}
         availability={githubAvailability}
         closePanel={() => {
           setPullRequestPanel(null)
