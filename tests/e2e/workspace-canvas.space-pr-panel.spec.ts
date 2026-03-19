@@ -101,6 +101,19 @@ test.describe('Workspace Canvas - Space PR Panel', () => {
         const panel = window.locator('[data-testid="workspace-space-pr-panel-space-pr-panel"]')
         await expect(panel).toBeVisible()
 
+        const viewport = window.locator('.react-flow__viewport')
+        const viewportTransformBefore = await viewport.evaluate(
+          element => getComputedStyle(element as HTMLElement).transform,
+        )
+
+        await panel.hover()
+        await window.mouse.wheel(0, 360)
+
+        const viewportTransformAfter = await viewport.evaluate(
+          element => getComputedStyle(element as HTMLElement).transform,
+        )
+        expect(viewportTransformAfter).toBe(viewportTransformBefore)
+
         await expect(
           panel.locator('[data-testid="workspace-space-pr-panel-pr-title"]'),
         ).toContainText(`Test PR for ${branchName}`)

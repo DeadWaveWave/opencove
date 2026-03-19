@@ -44,6 +44,8 @@ import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
 import { TaskEditorWindow } from './windows/TaskEditorWindow'
 import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
 
+const WHEEL_BLOCK_SELECTOR = '.cove-window, .cove-window-backdrop, .workspace-context-menu'
+
 interface WorkspaceCanvasViewProps {
   canvasRef: React.RefObject<HTMLDivElement | null>
   resolvedCanvasInputMode: string
@@ -322,6 +324,9 @@ export function WorkspaceCanvasView({
       onPointerMoveCapture={handleCanvasPointerMoveCapture}
       onPointerUpCapture={handleCanvasPointerUpCapture}
       onWheelCapture={event => {
+        if (event.target instanceof Element && event.target.closest(WHEEL_BLOCK_SELECTOR)) {
+          return
+        }
         handleCanvasWheelCapture(event.nativeEvent)
       }}
     >
@@ -502,7 +507,6 @@ export function WorkspaceCanvasView({
     </div>
   )
 }
-
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
 }
