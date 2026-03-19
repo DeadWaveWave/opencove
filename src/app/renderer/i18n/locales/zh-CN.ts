@@ -109,6 +109,14 @@ export const zhCN = {
       title: '通用',
       languageLabel: '界面语言',
       languageHelp: 'OpenCove 界面使用的语言。',
+      uiThemeLabel: '外观',
+      uiThemeHelp: '选择 OpenCove 的显示外观。',
+      uiTheme: {
+        system: '跟随系统（自动）',
+        light: '浅色',
+        dark: '深色',
+      },
+      interfaceFontSize: '界面字体大小',
     },
     agent: {
       title: 'Agent',
@@ -122,9 +130,7 @@ export const zhCN = {
       fullAccessHelp: '为 Agent 关闭沙箱和人工审批。',
     },
     canvas: {
-      title: '画布与界面',
-      uiThemeLabel: '外观',
-      uiThemeHelp: '选择 OpenCove 的显示外观。',
+      title: '画布',
       inputModeLabel: '输入模式',
       inputModeHelp: '画布交互的处理方式。',
       terminalProfileLabel: '终端环境',
@@ -132,11 +138,6 @@ export const zhCN = {
         '选择 Windows 新终端默认使用的 shell 配置。自动模式会回退到 {{defaultProfile}}。',
       terminalProfileAuto: '自动',
       terminalProfileAutoWithDefault: '自动（{{defaultProfile}}）',
-      uiTheme: {
-        system: '跟随系统（自动）',
-        light: '浅色',
-        dark: '深色',
-      },
       inputMode: {
         auto: '自动（智能）',
         trackpad: '触控板',
@@ -144,7 +145,6 @@ export const zhCN = {
       },
       initialWindowSize: '初始窗口大小',
       terminalFontSize: '终端字体大小',
-      interfaceFontSize: '界面字体大小',
       autoZoomLabel: '点击自动缩放',
       autoZoomHelp: '点击节点时自动缩放到 100%。',
     },

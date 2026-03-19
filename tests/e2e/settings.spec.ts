@@ -49,7 +49,6 @@ test.describe('Settings', () => {
       await languageSelect.selectOption('zh-CN')
       await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
 
-      await canvasNav.click()
       const uiThemeSelect = window.locator('[data-testid="settings-ui-theme"]')
       await expect(uiThemeSelect).toBeVisible()
       await uiThemeSelect.selectOption('light')
@@ -61,6 +60,7 @@ test.describe('Settings', () => {
         )
         .toBe('light')
 
+      await canvasNav.click()
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
       await expect(canvasInputMode).toBeVisible()
       await canvasInputMode.selectOption('trackpad')

@@ -20,14 +20,14 @@ export function getCanvasInputModeLabel(t: TranslateFn, mode: CanvasInputMode): 
 
 export function getUiThemeLabel(t: TranslateFn, theme: UiTheme): string {
   if (theme === 'system') {
-    return t('settingsPanel.canvas.uiTheme.system')
+    return t('settingsPanel.general.uiTheme.system')
   }
 
   if (theme === 'light') {
-    return t('settingsPanel.canvas.uiTheme.light')
+    return t('settingsPanel.general.uiTheme.light')
   }
 
-  return t('settingsPanel.canvas.uiTheme.dark')
+  return t('settingsPanel.general.uiTheme.dark')
 }
 
 export function getTaskPriorityLabel(t: TranslateFn, priority: TaskPriority): string {

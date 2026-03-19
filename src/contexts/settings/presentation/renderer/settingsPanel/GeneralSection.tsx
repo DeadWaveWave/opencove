@@ -1,14 +1,26 @@
 import React from 'react'
-import { UI_LANGUAGES, type UiLanguage } from '@contexts/settings/domain/agentSettings'
+import {
+  UI_LANGUAGES,
+  UI_THEMES,
+  MAX_UI_FONT_SIZE,
+  MIN_UI_FONT_SIZE,
+  type UiLanguage,
+  type UiTheme,
+} from '@contexts/settings/domain/agentSettings'
 import { useTranslation } from '@app/renderer/i18n'
-import { getUiLanguageLabel } from '@app/renderer/i18n/labels'
+import { getUiLanguageLabel, getUiThemeLabel } from '@app/renderer/i18n/labels'
 
 export function GeneralSection(props: {
   language: UiLanguage
+  uiTheme: UiTheme
+  uiFontSize: number
   onChangeLanguage: (language: UiLanguage) => void
+  onChangeUiTheme: (theme: UiTheme) => void
+  onChangeUiFontSize: (size: number) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const { language, onChangeLanguage } = props
+  const { language, uiTheme, uiFontSize, onChangeLanguage, onChangeUiTheme, onChangeUiFontSize } =
+    props
 
   return (
     <div className="settings-panel__section" id="settings-section-general">
@@ -34,6 +46,46 @@ export function GeneralSection(props: {
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.general.uiThemeLabel')}</strong>
+          <span>{t('settingsPanel.general.uiThemeHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <select
+            id="settings-ui-theme"
+            data-testid="settings-ui-theme"
+            value={uiTheme}
+            onChange={event => onChangeUiTheme(event.target.value as UiTheme)}
+          >
+            {UI_THEMES.map(theme => (
+              <option key={theme} value={theme}>
+                {getUiThemeLabel(t, theme)}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.general.interfaceFontSize')}</strong>
+        </div>
+        <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
+          <input
+            style={{ width: '80px' }}
+            type="number"
+            min={MIN_UI_FONT_SIZE}
+            max={MAX_UI_FONT_SIZE}
+            value={uiFontSize}
+            onChange={event => onChangeUiFontSize(Number(event.target.value))}
+          />
+          <span style={{ fontSize: '12px', color: 'var(--cove-text-muted)' }}>
+            {t('common.pixelUnit')}
+          </span>
         </div>
       </div>
     </div>

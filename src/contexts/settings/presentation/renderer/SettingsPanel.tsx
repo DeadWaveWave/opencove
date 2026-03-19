@@ -292,7 +292,14 @@ export function SettingsPanel({
           </div>
           <div className="settings-panel__content" ref={contentRef}>
             {activePageId === 'general' ? (
-              <GeneralSection language={settings.language} onChangeLanguage={updateLanguage} />
+              <GeneralSection
+                language={settings.language}
+                uiTheme={settings.uiTheme}
+                uiFontSize={settings.uiFontSize}
+                onChangeLanguage={updateLanguage}
+                onChangeUiTheme={updateUiTheme}
+                onChangeUiFontSize={updateUiFontSize}
+              />
             ) : null}
 
             {activePageId === 'agent' ? (
@@ -320,22 +327,18 @@ export function SettingsPanel({
 
             {activePageId === 'canvas' ? (
               <CanvasSection
-                uiTheme={settings.uiTheme}
                 canvasInputMode={settings.canvasInputMode}
                 normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
                 defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
                 terminalFontSize={settings.terminalFontSize}
-                uiFontSize={settings.uiFontSize}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
-                onChangeUiTheme={updateUiTheme}
                 onChangeCanvasInputMode={updateCanvasInputMode}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
                 onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
                 onChangeTerminalFontSize={updateTerminalFontSize}
-                onChangeUiFontSize={updateUiFontSize}
               />
             ) : null}
 

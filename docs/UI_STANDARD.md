@@ -98,7 +98,7 @@
 
 实现锚点：
 - 面板样式：`src/app/renderer/styles/settings-panel.css`
-- 主题选择：`src/contexts/settings/presentation/renderer/settingsPanel/CanvasSection.tsx`
+- 主题选择：`src/contexts/settings/presentation/renderer/settingsPanel/GeneralSection.tsx`
 
 ---
 
