@@ -120,7 +120,8 @@ function rememberGeminiModels(
   cachedGeminiModels = {
     result: cloneListAgentModelsResult(result),
     expiresAtMs:
-      Date.now() + (options.isFallback ? GEMINI_MODEL_FALLBACK_CACHE_TTL_MS : GEMINI_MODEL_CACHE_TTL_MS),
+      Date.now() +
+      (options.isFallback ? GEMINI_MODEL_FALLBACK_CACHE_TTL_MS : GEMINI_MODEL_CACHE_TTL_MS),
     isFallback: options.isFallback,
   }
 

@@ -237,4 +237,3 @@ export async function listCodexModelsFromCli(): Promise<AgentModelOption[]> {
     // codex app-server exit before sending the result payload.
   })
 }
-

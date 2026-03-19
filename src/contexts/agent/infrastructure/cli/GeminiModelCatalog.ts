@@ -251,4 +251,3 @@ export async function listGeminiCliModelsFromSchema(): Promise<AgentModelOption[
   const schema = await fetchGeminiCliSettingsSchema()
   return extractGeminiModelOptionsFromSchema(schema)
 }
-
