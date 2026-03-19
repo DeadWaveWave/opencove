@@ -18,6 +18,27 @@ import {
 import { parsePullRequestDetails } from './GitHubPullRequestParse'
 import { executeStubAction, shouldUseTestStub } from './GitHubPullRequestTestStub'
 
+async function publishBranch(
+  repoPath: string,
+  branch: string,
+  remote: string | null,
+): Promise<void> {
+  const resolvedBranch = branch.trim()
+  if (resolvedBranch.length === 0) {
+    throw new Error('publishBranch requires branch')
+  }
+
+  const resolvedRemote = remote?.trim() || (await resolveDefaultRemote(repoPath))
+  if (!resolvedRemote) {
+    throw new Error('No git remote configured for this repository')
+  }
+
+  const result = await runGit(repoPath, ['push', '-u', resolvedRemote, resolvedBranch])
+  if (result.exitCode !== 0) {
+    throw new Error(normalizeText(result.stderr) || 'git push failed')
+  }
+}
+
 async function loadPullRequestByUrl(repoPath: string, url: string): Promise<unknown> {
   const result = await runCommand(
     'gh',
@@ -68,15 +89,7 @@ export async function executeGitHubPullRequestAction(
       throw new Error('publish_branch requires branch')
     }
 
-    const remote = action.remote?.trim() || (await resolveDefaultRemote(input.repoPath))
-    if (!remote) {
-      throw new Error('No git remote configured for this repository')
-    }
-
-    const result = await runGit(input.repoPath, ['push', '-u', remote, branch])
-    if (result.exitCode !== 0) {
-      throw new Error(normalizeText(result.stderr) || 'git push failed')
-    }
+    await publishBranch(input.repoPath, branch, action.remote)
 
     return { kind: 'completed' }
   }
@@ -87,6 +100,8 @@ export async function executeGitHubPullRequestAction(
     if (branch.length === 0 || title.length === 0) {
       throw new Error('create requires branch and title')
     }
+
+    await publishBranch(input.repoPath, branch, null)
 
     const args = ['pr', 'create', '--head', branch, '--title', title]
     if (action.base?.trim()) {

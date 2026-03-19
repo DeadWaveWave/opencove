@@ -3,6 +3,7 @@ import { translate, type TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import {
   formatAppErrorMessage,
+  getAppErrorDebugMessage,
   isAppErrorDescriptor,
   OpenCoveAppError,
 } from '@shared/errors/appError'
@@ -176,10 +177,20 @@ export function validateSpaceTransfer(
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError) {
+    const debug = getAppErrorDebugMessage(error)
+    if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
+      return normalizeIntegrationErrorMessage(debug)
+    }
+
     return formatAppErrorMessage(error)
   }
 
   if (isAppErrorDescriptor(error)) {
+    const debug = getAppErrorDebugMessage(error)
+    if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
+      return normalizeIntegrationErrorMessage(debug)
+    }
+
     return formatAppErrorMessage(error)
   }
 
@@ -192,6 +203,10 @@ export function toErrorMessage(error: unknown): string {
   }
 
   return translate('common.unknownError')
+}
+
+function normalizeIntegrationErrorMessage(message: string): string {
+  return message.replace(/^[A-Za-z0-9_]+Error:\s*/, '')
 }
 
 export function providerLabel(provider: AgentProvider): string {
