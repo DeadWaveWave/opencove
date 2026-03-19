@@ -1,6 +1,7 @@
 export * from './agent'
 export * from './clipboard'
 export * from './error'
+export * from './integration'
 export * from './persistence'
 export * from './task'
 export * from './terminal'

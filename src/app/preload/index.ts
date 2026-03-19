@@ -7,8 +7,16 @@ import type {
   CreateGitWorktreeResult,
   DetachTerminalInput,
   EnsureDirectoryInput,
+  ExecuteGitHubPullRequestActionInput,
+  ExecuteGitHubPullRequestActionResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
+  GetGitHubPullRequestChecksInput,
+  GetGitHubPullRequestChecksResult,
+  GetGitHubPullRequestDiffInput,
+  GetGitHubPullRequestDiffResult,
+  GetGitHubPullRequestInput,
+  GetGitHubPullRequestResult,
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
@@ -24,6 +32,8 @@ import type {
   ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
   ResolveAgentResumeSessionResult,
+  ResolveGitHubPullRequestsInput,
+  ResolveGitHubPullRequestsResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -107,6 +117,28 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.worktreeRenameBranch, payload),
     suggestNames: (payload: SuggestWorktreeNamesInput): Promise<SuggestWorktreeNamesResult> =>
       invokeIpc(IPC_CHANNELS.worktreeSuggestNames, payload),
+  },
+  integration: {
+    github: {
+      resolvePullRequests: (
+        payload: ResolveGitHubPullRequestsInput,
+      ): Promise<ResolveGitHubPullRequestsResult> =>
+        invokeIpc(IPC_CHANNELS.integrationGithubResolvePullRequests, payload),
+      getPullRequest: (payload: GetGitHubPullRequestInput): Promise<GetGitHubPullRequestResult> =>
+        invokeIpc(IPC_CHANNELS.integrationGithubGetPullRequest, payload),
+      getPullRequestChecks: (
+        payload: GetGitHubPullRequestChecksInput,
+      ): Promise<GetGitHubPullRequestChecksResult> =>
+        invokeIpc(IPC_CHANNELS.integrationGithubGetPullRequestChecks, payload),
+      getPullRequestDiff: (
+        payload: GetGitHubPullRequestDiffInput,
+      ): Promise<GetGitHubPullRequestDiffResult> =>
+        invokeIpc(IPC_CHANNELS.integrationGithubGetPullRequestDiff, payload),
+      executePullRequestAction: (
+        payload: ExecuteGitHubPullRequestActionInput,
+      ): Promise<ExecuteGitHubPullRequestActionResult> =>
+        invokeIpc(IPC_CHANNELS.integrationGithubExecutePullRequestAction, payload),
+    },
   },
   pty: {
     listProfiles: (): Promise<ListTerminalProfilesResult> =>

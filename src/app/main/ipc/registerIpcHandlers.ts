@@ -8,6 +8,7 @@ import { registerWorkspaceIpcHandlers } from '../../../contexts/workspace/presen
 import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { resolve } from 'node:path'
 import { registerWorktreeIpcHandlers } from '../../../contexts/worktree/presentation/main-ipc/register'
+import { registerIntegrationIpcHandlers } from '../../../contexts/integration/presentation/main-ipc/register'
 import { app } from 'electron'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createPersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
@@ -46,6 +47,7 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
     registerWorkspaceIpcHandlers(approvedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
     registerWorktreeIpcHandlers(approvedWorkspaces),
+    registerIntegrationIpcHandlers(approvedWorkspaces),
     registerPtyIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),

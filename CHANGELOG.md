@@ -10,15 +10,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings: UI theme selector (system/light/dark) with system follow. (#40)
 - UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
+- In-canvas GitHub pull request chip + panel for worktree-bound Spaces (requires `gh`).
 
 ### 💅 Changed
-- Workspace pane context menu: “Run Agent” can expand to pick an installed agent CLI.
-- Settings: reorganized into per-tab pages; added an Agent tab for provider defaults, menu order, and model overrides.
-- Settings: panel typography (including model overrides) now follows the Interface Font Size setting. (#40)
-- UI: refined light theme palette across canvas, nodes, and settings; minimap becomes subtle when idle and clearer on hover. (#40)
+- (none)
 
 ### 🐞 Fixed
-- Light theme: fix white text in Settings > Custom Model overrides. (#40)
+- (none)
 
 ---
 

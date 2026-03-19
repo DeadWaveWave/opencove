@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { GitWorktreeInfo } from '@shared/contracts/dto'
+import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import type { SpaceFrameHandleMode } from '../../../utils/spaceLayout'
@@ -26,6 +26,8 @@ export function WorkspaceSpaceRegionItem({
   updateHandleCursor,
   resolvedWorktreeInfo,
   resolvedBranchBadge,
+  resolvedPullRequestSummary,
+  onOpenPullRequestPanel,
   onStartBranchRename,
   onOpenSpaceMenu,
 }: {
@@ -51,6 +53,14 @@ export function WorkspaceSpaceRegionItem({
   ) => void
   resolvedWorktreeInfo: GitWorktreeInfo | null
   resolvedBranchBadge: WorkspaceSpaceBranchBadge | null
+  resolvedPullRequestSummary: GitHubPullRequestSummary | null
+  onOpenPullRequestPanel?: (payload: {
+    spaceId: string
+    spaceName: string
+    branchName: string
+    anchor: { x: number; y: number }
+    summary: GitHubPullRequestSummary | null
+  }) => void
   onStartBranchRename: (payload: {
     spaceId: string
     spaceName: string
@@ -63,6 +73,11 @@ export function WorkspaceSpaceRegionItem({
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
   const shouldShowSpaceLabel = resolvedBranchBadge === null
+  const [isLabelHovered, setIsLabelHovered] = React.useState(false)
+  const shouldShowPullRequestChip =
+    Boolean(branchName) &&
+    Boolean(worktreePath) &&
+    (resolvedPullRequestSummary !== null || isSelected || isLabelHovered)
   return (
     <div
       className={
@@ -129,6 +144,12 @@ export function WorkspaceSpaceRegionItem({
       ) : (
         <div
           className="workspace-space-region__label-group nodrag nowheel"
+          onMouseEnter={() => {
+            setIsLabelHovered(true)
+          }}
+          onMouseLeave={() => {
+            setIsLabelHovered(false)
+          }}
           onPointerDown={event => {
             event.stopPropagation()
           }}
@@ -205,6 +226,42 @@ export function WorkspaceSpaceRegionItem({
           >
             ...
           </button>
+
+          {branchName && worktreePath && shouldShowPullRequestChip ? (
+            <button
+              type="button"
+              className={
+                resolvedPullRequestSummary
+                  ? 'workspace-space-region__pr-chip workspace-space-region__pr-chip--linked'
+                  : 'workspace-space-region__pr-chip workspace-space-region__pr-chip--discover'
+              }
+              data-testid={`workspace-space-pr-chip-${space.id}`}
+              title={
+                resolvedPullRequestSummary
+                  ? `${resolvedPullRequestSummary.title} (#${resolvedPullRequestSummary.number})`
+                  : t('githubPullRequest.createFromBranch', { branch: branchName })
+              }
+              onClick={event => {
+                event.stopPropagation()
+                const rect = event.currentTarget.getBoundingClientRect()
+                onOpenPullRequestPanel?.({
+                  spaceId: space.id,
+                  spaceName: space.name,
+                  branchName,
+                  anchor: {
+                    x: Math.round(rect.left),
+                    y: Math.round(rect.bottom + 8),
+                  },
+                  summary: resolvedPullRequestSummary,
+                })
+              }}
+            >
+              <span className="workspace-space-region__pr-chip-kind">PR</span>
+              <span className="workspace-space-region__pr-chip-value">
+                {resolvedPullRequestSummary ? `#${resolvedPullRequestSummary.number}` : '+'}
+              </span>
+            </button>
+          ) : null}
         </div>
       )}
     </div>

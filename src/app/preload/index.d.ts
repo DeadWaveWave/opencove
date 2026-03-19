@@ -5,8 +5,16 @@ import type {
   CreateGitWorktreeResult,
   DetachTerminalInput,
   EnsureDirectoryInput,
+  ExecuteGitHubPullRequestActionInput,
+  ExecuteGitHubPullRequestActionResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
+  GetGitHubPullRequestChecksInput,
+  GetGitHubPullRequestChecksResult,
+  GetGitHubPullRequestDiffInput,
+  GetGitHubPullRequestDiffResult,
+  GetGitHubPullRequestInput,
+  GetGitHubPullRequestResult,
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
@@ -22,6 +30,8 @@ import type {
   ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
   ResolveAgentResumeSessionResult,
+  ResolveGitHubPullRequestsInput,
+  ResolveGitHubPullRequestsResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -84,6 +94,23 @@ export interface OpenCoveApi {
     remove: (payload: RemoveGitWorktreeInput) => Promise<RemoveGitWorktreeResult>
     renameBranch: (payload: RenameGitBranchInput) => Promise<void>
     suggestNames: (payload: SuggestWorktreeNamesInput) => Promise<SuggestWorktreeNamesResult>
+  }
+  integration: {
+    github: {
+      resolvePullRequests: (
+        payload: ResolveGitHubPullRequestsInput,
+      ) => Promise<ResolveGitHubPullRequestsResult>
+      getPullRequest: (payload: GetGitHubPullRequestInput) => Promise<GetGitHubPullRequestResult>
+      getPullRequestChecks: (
+        payload: GetGitHubPullRequestChecksInput,
+      ) => Promise<GetGitHubPullRequestChecksResult>
+      getPullRequestDiff: (
+        payload: GetGitHubPullRequestDiffInput,
+      ) => Promise<GetGitHubPullRequestDiffResult>
+      executePullRequestAction: (
+        payload: ExecuteGitHubPullRequestActionInput,
+      ) => Promise<ExecuteGitHubPullRequestActionResult>
+    }
   }
   pty: {
     listProfiles?: () => Promise<ListTerminalProfilesResult>

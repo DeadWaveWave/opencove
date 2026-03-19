@@ -22,8 +22,9 @@ import { TerminalNodeHeader } from './terminalNode/TerminalNodeHeader'
 import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
-import { resolveTerminalTheme } from './terminalNode/theme'
+import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
+import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { shouldStopWheelPropagation } from './terminalNode/wheel'
@@ -56,7 +57,6 @@ export function TerminalNode({
   const dragSurfaceSelectionMode = useStore(
     state => (state as { coveDragSurfaceSelectionMode?: boolean }).coveDragSurfaceSelectionMode,
   )
-
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -69,7 +69,6 @@ export function TerminalNode({
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
   }, [onCommandRun])
-
   const {
     scrollbackBufferRef,
     markScrollbackDirty,
@@ -82,14 +81,12 @@ export function TerminalNode({
     onScrollbackChange,
     isPointerResizingRef,
   })
-
   useEffect(() => {
     lastSyncedPtySizeRef.current = null
     commandInputStateRef.current = createTerminalCommandInputState()
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
-
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
       terminalRef,
@@ -100,7 +97,6 @@ export function TerminalNode({
       sessionId,
     })
   }, [sessionId])
-
   const { draftFrame, handleResizePointerDown } = useTerminalResize({
     position,
     width,
@@ -111,18 +107,12 @@ export function TerminalNode({
     isPointerResizingRef,
   })
 
-  const renderedFrame = draftFrame ?? {
+  const sizeStyle = resolveTerminalNodeFrameStyle({
+    draftFrame,
     position,
-    size: { width, height },
-  }
-  const sizeStyle = {
-    width: renderedFrame.size.width,
-    height: renderedFrame.size.height,
-    transform:
-      renderedFrame.position.x !== position.x || renderedFrame.position.y !== position.y
-        ? `translate(${renderedFrame.position.x - position.x}px, ${renderedFrame.position.y - position.y}px)`
-        : undefined,
-  }
+    width,
+    height,
+  })
 
   useEffect(() => {
     if (sessionId.trim().length === 0) {
@@ -141,7 +131,10 @@ export function TerminalNode({
       cursorBlink: true,
       fontFamily:
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      theme: resolveTerminalTheme(),
+      theme: {
+        background: '#0a0f1d',
+        foreground: '#d6e4ff',
+      },
       allowProposedApi: true,
       convertEol: true,
       scrollback: 5000,
@@ -183,12 +176,6 @@ export function TerminalNode({
       }
     }
 
-    const handleThemeChange = (): void => {
-      terminal.options.theme = resolveTerminalTheme()
-    }
-
-    handleThemeChange()
-    window.addEventListener('opencove-theme-changed', handleThemeChange)
     let isDisposed = false
     let shouldForwardTerminalData = false
     const dataDisposable = terminal.onData(data => {
@@ -385,7 +372,6 @@ export function TerminalNode({
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleWindowFocus)
       window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleLayoutSync)
-      window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
       dataDisposable.dispose()
       binaryDisposable.dispose()
@@ -432,11 +418,20 @@ export function TerminalNode({
 
   const isAgentNode = kind === 'agent'
   const hasSelectedDragSurface = dragSurfaceSelectionMode === true && (isSelected || isDragging)
+  const {
+    consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
+    handlePointerDownCapture: handleTerminalBodyPointerDownCapture,
+    handlePointerMoveCapture: handleTerminalBodyPointerMoveCapture,
+    handlePointerUp: handleTerminalBodyPointerUp,
+  } = useTerminalBodyClickFallback(onInteractionStart)
 
   return (
     <div
       className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
       style={sizeStyle}
+      onPointerDownCapture={handleTerminalBodyPointerDownCapture}
+      onPointerMoveCapture={handleTerminalBodyPointerMoveCapture}
+      onPointerUp={handleTerminalBodyPointerUp}
       onClickCapture={event => {
         if (event.button !== 0) {
           return
@@ -448,6 +443,11 @@ export function TerminalNode({
           event.target.closest('.terminal-node__header') &&
           !event.target.closest('.nodrag')
         ) {
+          return
+        }
+
+        if (consumeIgnoredTerminalBodyClick(event.target)) {
+          event.stopPropagation()
           return
         }
 
