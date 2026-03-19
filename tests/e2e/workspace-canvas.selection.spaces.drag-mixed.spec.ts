@@ -346,13 +346,14 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       }
 
       const selectedSpace = window.locator('.workspace-space-region--selected').first()
-      const selectedBox = await selectedSpace.boundingBox()
-      if (!selectedBox) {
-        throw new Error('selected space bounding box unavailable')
+      const selectedTopHandle = selectedSpace.locator('.workspace-space-region__drag-handle--top')
+      const topHandleBox = await selectedTopHandle.boundingBox()
+      if (!topHandleBox) {
+        throw new Error('selected space top handle bounding box unavailable')
       }
 
-      const dragStartX = selectedBox.x + 24
-      const dragStartY = selectedBox.y + 24
+      const dragStartX = topHandleBox.x + topHandleBox.width / 2
+      const dragStartY = topHandleBox.y + topHandleBox.height / 2
       const dragDx = 180
       const dragDy = 120
 

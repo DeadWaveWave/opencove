@@ -72,118 +72,68 @@ export function WorkspaceSpaceRegion({
         height: resolvedRect.height,
       }}
     >
-      {isSelected ? (
-        <div
-          className="workspace-space-region__move-handle"
-          data-testid={`workspace-space-drag-${space.id}-move`}
-          onPointerDown={event => {
-            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-          }}
-          onPointerMove={event => {
-            updateHandleCursor(event, resolvedRect, 'region')
-          }}
-          onMouseDown={event => {
-            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-          }}
-          onMouseMove={event => {
-            updateHandleCursor(event, resolvedRect, 'region')
-          }}
-        />
-      ) : null}
       <div
         className="workspace-space-region__drag-handle workspace-space-region__drag-handle--top"
         data-testid={`workspace-space-drag-${space.id}-top`}
         onPointerDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onPointerMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
         onMouseDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onMouseMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
       />
       <div
         className="workspace-space-region__drag-handle workspace-space-region__drag-handle--right"
         data-testid={`workspace-space-drag-${space.id}-right`}
         onPointerDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onPointerMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
         onMouseDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onMouseMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
       />
       <div
         className="workspace-space-region__drag-handle workspace-space-region__drag-handle--bottom"
         data-testid={`workspace-space-drag-${space.id}-bottom`}
         onPointerDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onPointerMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
         onMouseDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onMouseMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
       />
       <div
         className="workspace-space-region__drag-handle workspace-space-region__drag-handle--left"
         data-testid={`workspace-space-drag-${space.id}-left`}
         onPointerDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onPointerMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
         onMouseDown={event => {
-          handleSpaceDragHandlePointerDown(
-            event,
-            space.id,
-            isSelected ? { mode: 'region' } : undefined,
-          )
+          handleSpaceDragHandlePointerDown(event, space.id)
         }}
         onMouseMove={event => {
-          updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+          updateHandleCursor(event, resolvedRect, 'auto')
         }}
       />
       {editingSpaceId === space.id ? (

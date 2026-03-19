@@ -31,8 +31,7 @@ describe('spaceLayout', () => {
     })
 
     expect(resolveSpaceFrameHandle({ rect, point: { x: 100, y: 0 }, zoom: 1 })).toEqual({
-      kind: 'resize',
-      edges: { top: true },
+      kind: 'move',
     })
 
     expect(resolveSpaceFrameHandle({ rect, point: { x: 100, y: 60 }, zoom: 1 })).toEqual({

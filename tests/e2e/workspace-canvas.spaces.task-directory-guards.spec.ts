@@ -70,8 +70,9 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
       const taskNode = window.locator('.task-node').filter({ hasText: 'movable-task' }).first()
       await expect(taskNode).toBeVisible()
 
-      await taskNode.click()
-      await taskNode.click({ button: 'right' })
+      const header = taskNode.locator('.task-node__header')
+      await header.click({ position: { x: 80, y: 18 } })
+      await header.click({ button: 'right', position: { x: 80, y: 18 } })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
@@ -177,8 +178,9 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
       const taskNode = window.locator('.task-node').filter({ hasText: 'blocked-task' }).first()
       await expect(taskNode).toBeVisible()
 
-      await taskNode.click()
-      await taskNode.click({ button: 'right' })
+      const header = taskNode.locator('.task-node__header')
+      await header.click({ position: { x: 80, y: 18 } })
+      await header.click({ button: 'right', position: { x: 80, y: 18 } })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(

@@ -7,6 +7,7 @@ import {
   DEFAULT_TERMINAL_WINDOW_BASE_SIZE,
   DEFAULT_TERMINAL_WINDOW_MAX_SIZE,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
+import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 
 describe('workspace canvas default terminal sizing', () => {
   it('applies scale percent to default terminal/agent window size', () => {
@@ -54,6 +55,17 @@ describe('workspace canvas default agent sizing', () => {
     expect(size).toEqual({
       width: Math.round((DEFAULT_TERMINAL_WINDOW_BASE_SIZE.width * 80) / 100),
       height: resolveDefaultTaskWindowSize({ width: 1920, height: 1080 }).height,
+    })
+  })
+})
+
+describe('workspace canvas node placement anchor', () => {
+  it('converts a viewport center point into the node top-left anchor', () => {
+    expect(
+      resolveNodePlacementAnchorFromViewportCenter({ x: 320, y: 220 }, { width: 420, height: 280 }),
+    ).toEqual({
+      x: 110,
+      y: 80,
     })
   })
 })

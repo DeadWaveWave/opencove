@@ -3,7 +3,7 @@ import { useStore, type Node } from '@xyflow/react'
 import { NoteNode } from '../NoteNode'
 import { TaskNode } from '../TaskNode'
 import { TerminalNode } from '../TerminalNode'
-import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../../types'
+import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import type {
   QuickUpdateTaskRequirement,
@@ -11,6 +11,26 @@ import type {
   UpdateNodeScrollback,
   UpdateTaskStatus,
 } from './types'
+
+function useNodePosition(nodeId: string): { x: number; y: number } {
+  return useStore(storeState => {
+    const state = storeState as unknown as {
+      nodeLookup?: { get?: unknown }
+      nodeInternals?: { get?: unknown }
+      nodes?: Array<Node<TerminalNodeData>>
+    }
+
+    const lookup = state.nodeLookup ?? state.nodeInternals
+    if (lookup && typeof lookup.get === 'function') {
+      const node = (lookup as Map<string, Node<TerminalNodeData>>).get(nodeId) ?? null
+      if (node) {
+        return node.position
+      }
+    }
+
+    return state.nodes?.find(node => node.id === nodeId)?.position ?? { x: 0, y: 0 }
+  })
+}
 
 function TerminalNodeType({
   data,
@@ -34,7 +54,7 @@ function TerminalNodeType({
   terminalFontSize: number
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredSize: Size) => void>
+  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
@@ -42,6 +62,7 @@ function TerminalNodeType({
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
   const scrollback = useScrollbackStore(state => state.scrollbackByNodeId[id] ?? null)
+  const nodePosition = useNodePosition(id)
 
   return (
     <TerminalNode
@@ -71,6 +92,7 @@ function TerminalNodeType({
             : null
       }
       lastError={data.lastError}
+      position={nodePosition}
       width={data.width}
       height={data.height}
       terminalFontSize={terminalFontSize}
@@ -85,7 +107,7 @@ function TerminalNodeType({
             }
           : undefined
       }
-      onResize={size => resizeNodeRef.current(id, size)}
+      onResize={frame => resizeNodeRef.current(id, frame)}
       onScrollbackChange={nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)}
       onCommandRun={
         data.kind === 'terminal'
@@ -136,10 +158,12 @@ function NoteNodeType({
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredSize: Size) => void>
+  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
 }): ReactElement | null {
+  const nodePosition = useNodePosition(id)
+
   if (!data.note) {
     return null
   }
@@ -147,12 +171,13 @@ function NoteNodeType({
   return (
     <NoteNode
       text={data.note.text}
+      position={nodePosition}
       width={data.width}
       height={data.height}
       onClose={() => {
         void closeNodeRef.current(id)
       }}
-      onResize={size => resizeNodeRef.current(id, size)}
+      onResize={frame => resizeNodeRef.current(id, frame)}
       onTextChange={text => {
         updateNoteTextRef.current(id, text)
       }}
@@ -189,7 +214,7 @@ interface WorkspaceCanvasNodeTypesParams {
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredSize: Size) => void>
+  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
@@ -242,6 +267,7 @@ export function useWorkspaceCanvasNodeTypes({
   return useMemo(() => {
     const TaskNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
       const linkedAgentNodeId = data.task?.linkedAgentNodeId ?? null
+      const nodePosition = useNodePosition(id)
       const linkedAgentNode = useStore(storeState => {
         if (!linkedAgentNodeId) {
           return null
@@ -293,6 +319,7 @@ export function useWorkspaceCanvasNodeTypes({
           linkedAgentNode={linkedAgentSummary}
           agentSessions={data.task.agentSessions ?? []}
           currentDirectory={currentDirectory}
+          position={nodePosition}
           width={data.width}
           height={data.height}
           onClose={() => {
@@ -310,7 +337,7 @@ export function useWorkspaceCanvasNodeTypes({
           onRunAgent={() => {
             void runTaskAgentRef.current(id)
           }}
-          onResize={size => resizeNodeRef.current(id, size)}
+          onResize={frame => resizeNodeRef.current(id, frame)}
           onStatusChange={status => {
             updateTaskStatusRef.current(id, status)
           }}

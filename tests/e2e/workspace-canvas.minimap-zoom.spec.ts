@@ -189,9 +189,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
 
       const terminalBody = secondTerminal.locator('.terminal-node__terminal')
       await expect(terminalBody).toBeVisible()
-      // Prefer locator-driven clicks so Playwright picks a visible point even if the node is near
-      // the edge of the window on CI (mouse coordinates can land outside the content area).
-      await terminalBody.click({ position: { x: 12, y: 12 } })
+      // Click further inside the terminal surface to avoid edge resize handles after zoom.
+      const safeOffsetX = Math.ceil(16 + zoomBefore * 10)
+      await terminalBody.click({ position: { x: safeOffsetX, y: 24 } })
 
       await expect
         .poll(async () => {

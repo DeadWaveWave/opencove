@@ -1,11 +1,27 @@
 import { defineConfig } from '@playwright/test'
 
-// macOS 的 pointer / focus 语义在后台窗口模式下与前台窗口不一致。
-// 默认让 Darwin 走 normal，对齐本地开发与 macOS CI；其他平台保持 offscreen。
-// 可通过 OPENCOVE_E2E_WINDOW_MODE 覆盖：normal / inactive / offscreen / hidden。
-const defaultE2EWindowMode = process.platform === 'darwin' ? 'normal' : 'offscreen'
-process.env['OPENCOVE_E2E_WINDOW_MODE'] =
-  process.env['OPENCOVE_E2E_WINDOW_MODE'] ?? defaultE2EWindowMode
+// E2E 默认使用后台窗口模式，避免抢占焦点/干扰本地开发。
+// 可通过 OPENCOVE_E2E_WINDOW_MODE 覆盖：inactive / offscreen / hidden。
+type E2EWindowMode = 'inactive' | 'offscreen' | 'hidden'
+
+function resolveE2EWindowMode(rawValue: string | undefined): E2EWindowMode {
+  const normalized = rawValue?.trim().toLowerCase()
+  if (normalized === 'normal') {
+    throw new Error(
+      '[e2e] OPENCOVE_E2E_WINDOW_MODE=normal is not allowed because it steals OS focus. Use offscreen/inactive/hidden instead.',
+    )
+  }
+
+  if (normalized === 'inactive' || normalized === 'offscreen' || normalized === 'hidden') {
+    return normalized
+  }
+
+  return 'offscreen'
+}
+
+process.env['OPENCOVE_E2E_WINDOW_MODE'] = resolveE2EWindowMode(
+  process.env['OPENCOVE_E2E_WINDOW_MODE'],
+)
 const configuredTestMatch = process.env['OPENCOVE_E2E_TEST_MATCH']?.trim()
 
 /**

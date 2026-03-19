@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowRight, Group, ListTodo, Play, Terminal, X } from 'lucide-react'
+import { ArrowRight, FileText, Group, ListTodo, Play, Terminal, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { ContextMenuState } from '../types'
 
@@ -7,6 +7,7 @@ interface WorkspaceContextMenuProps {
   contextMenu: ContextMenuState | null
   closeContextMenu: () => void
   createTerminalNode: () => Promise<void>
+  createNoteNodeFromContextMenu: () => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
   createSpaceFromSelectedNodes: () => void
@@ -20,6 +21,7 @@ export function WorkspaceContextMenu({
   contextMenu,
   closeContextMenu,
   createTerminalNode,
+  createNoteNodeFromContextMenu,
   openTaskCreator,
   openAgentLauncher,
   createSpaceFromSelectedNodes,
@@ -54,6 +56,18 @@ export function WorkspaceContextMenu({
             <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
             <span className="workspace-context-menu__label">
               {t('workspaceContextMenu.newTerminal')}
+            </span>
+          </button>
+          <button
+            type="button"
+            data-testid="workspace-context-new-note"
+            onClick={() => {
+              createNoteNodeFromContextMenu()
+            }}
+          >
+            <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.newNote')}
             </span>
           </button>
           <button

@@ -98,11 +98,7 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
       await expect(window.locator('.react-flow__nodesselection-rect')).toHaveCount(1)
-
-      const rightOverlay = rightTerminal.locator(
-        '[data-testid="terminal-node-selected-drag-overlay"]',
-      )
-      await expect(rightOverlay).toBeVisible()
+      await expect(rightHeader).toBeVisible()
 
       const before = await readNodePositions(window)
       if (!before) {
@@ -114,19 +110,13 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       const paneBox = await pane.boundingBox()
-      const overlayBox = await rightOverlay.boundingBox()
-      if (!paneBox || !overlayBox) {
-        throw new Error('overlay/pane bounding box unavailable for multi-drag')
+      const headerBox = await rightHeader.boundingBox()
+      if (!paneBox || !headerBox) {
+        throw new Error('header/pane bounding box unavailable for multi-drag')
       }
 
-      const beforeLeftBox = await leftTerminal.boundingBox()
-      const beforeRightBox = await rightTerminal.boundingBox()
-      if (!beforeLeftBox || !beforeRightBox) {
-        throw new Error('terminal bounding boxes unavailable before multi-drag')
-      }
-
-      const startX = Math.min(paneBox.x + paneBox.width - 40, overlayBox.x + 140)
-      const startY = overlayBox.y + 120
+      const startX = Math.min(paneBox.x + paneBox.width - 40, headerBox.x + 140)
+      const startY = headerBox.y + 20
       const endX = Math.min(paneBox.x + paneBox.width - 60, startX + 240)
       const endY = Math.min(paneBox.y + paneBox.height - 60, startY + 220)
 
@@ -243,23 +233,21 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
 
-      const rightOverlay = rightTerminal.locator(
-        '[data-testid="terminal-node-selected-drag-overlay"]',
-      )
-      await expect(rightOverlay).toBeVisible()
+      const rightHeader = rightTerminal.locator('.terminal-node__header')
+      await expect(rightHeader).toBeVisible()
 
       const before = await readNodePositions(window)
       if (!before) {
         throw new Error('node positions unavailable before multi-drag')
       }
 
-      const overlayBox = await rightOverlay.boundingBox()
-      if (!overlayBox) {
-        throw new Error('overlay bounding box unavailable for multi-drag')
+      const headerBox = await rightHeader.boundingBox()
+      if (!headerBox) {
+        throw new Error('header bounding box unavailable for multi-drag')
       }
 
-      const startX = overlayBox.x + 140
-      const startY = overlayBox.y + 120
+      const startX = headerBox.x + 140
+      const startY = headerBox.y + 20
       const endX = Math.min(paneBox.x + paneBox.width - 60, startX + 240)
       const endY = Math.min(paneBox.y + paneBox.height - 60, startY + 220)
 

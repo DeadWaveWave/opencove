@@ -6,14 +6,12 @@ import path from 'path'
 const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const testWorkspacePath = path.resolve(__dirname, '../../')
-type E2EWindowMode = 'normal' | 'inactive' | 'offscreen' | 'hidden'
+type E2EWindowMode = 'inactive' | 'offscreen' | 'hidden'
 const E2E_APP_CLOSE_TIMEOUT_MS = 5_000
 const E2E_APP_FORCE_KILL_TIMEOUT_MS = 2_000
 const E2E_APP_FORCE_KILL_POLL_MS = 50
 const E2E_USER_DATA_DIR_CLEANUP_RETRY_DELAY_MS = 100
 const E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS = 6
-
-let lastLaunchedWindowMode: E2EWindowMode | null = null
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -21,18 +19,6 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
   }
 
   return rawValue === '1' || rawValue.toLowerCase() === 'true'
-}
-
-export async function bringWindowToFrontForNormalMode(window: Page): Promise<void> {
-  const resolvedMode =
-    lastLaunchedWindowMode ?? (process.env['OPENCOVE_E2E_WINDOW_MODE'] as E2EWindowMode | undefined)
-
-  if (resolvedMode !== 'normal') {
-    return
-  }
-
-  await window.bringToFront().catch(() => undefined)
-  await window.waitForTimeout(50)
 }
 
 function isRetryableLaunchError(error: unknown): boolean {
@@ -45,11 +31,28 @@ function isRetryableLaunchError(error: unknown): boolean {
   )
 }
 
+function parseWindowMode(rawValue: string | undefined): E2EWindowMode | null {
+  if (!rawValue) {
+    return null
+  }
+
+  const normalized = rawValue.trim().toLowerCase()
+  if (normalized === 'normal') {
+    throw new Error(
+      '[e2e] OPENCOVE_E2E_WINDOW_MODE=normal is not allowed because it steals OS focus. Use offscreen/inactive/hidden instead.',
+    )
+  }
+
+  if (normalized === 'inactive' || normalized === 'offscreen' || normalized === 'hidden') {
+    return normalized
+  }
+
+  return null
+}
+
 function resolveLaunchModes(windowMode?: E2EWindowMode): E2EWindowMode[] {
   const requestedMode =
-    windowMode ??
-    (process.env['OPENCOVE_E2E_WINDOW_MODE'] as E2EWindowMode | undefined) ??
-    'offscreen'
+    windowMode ?? parseWindowMode(process.env['OPENCOVE_E2E_WINDOW_MODE']) ?? 'offscreen'
 
   if (isTruthyEnv(process.env['OPENCOVE_E2E_DISABLE_CRASH_FALLBACK'])) {
     return [requestedMode]
@@ -58,9 +61,9 @@ function resolveLaunchModes(windowMode?: E2EWindowMode): E2EWindowMode[] {
   const candidates: E2EWindowMode[] = [requestedMode]
 
   if (requestedMode === 'hidden') {
-    candidates.push('offscreen', 'inactive', 'normal')
+    candidates.push('offscreen', 'inactive')
   } else if (requestedMode === 'offscreen') {
-    candidates.push('inactive', 'normal')
+    candidates.push('inactive')
   }
 
   return [...new Set(candidates)]
@@ -188,7 +191,6 @@ async function launchAppInMode(
   } = {},
   attempt = 0,
 ): Promise<{ electronApp: ElectronApplication; window: Page }> {
-  lastLaunchedWindowMode = launchMode
   const userDataDir = options.userDataDir ?? (await createTestUserDataDir())
   const cleanupUserDataDir = options.cleanupUserDataDir ?? true
   const testHomeDir = path.join(userDataDir, 'home')
@@ -235,7 +237,6 @@ async function launchAppInMode(
 
     const window = await electronApp.firstWindow()
     await window.waitForLoadState('domcontentloaded')
-    await bringWindowToFrontForNormalMode(window)
     return { electronApp, window }
   } catch (error) {
     if (electronApp) {

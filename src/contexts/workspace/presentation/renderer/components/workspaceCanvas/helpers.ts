@@ -6,7 +6,7 @@ import {
   isAppErrorDescriptor,
   OpenCoveAppError,
 } from '@shared/errors/appError'
-import type { TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../types'
+import type { Point, Size, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import { TASK_PRIORITIES } from './constants'
 import type { TrackpadGestureAction, TrackpadGestureTarget } from './types'
 
@@ -33,6 +33,13 @@ export function focusNodeInViewport(
       zoom: options.zoom ?? 1,
     },
   )
+}
+
+export function resolveNodePlacementAnchorFromViewportCenter(center: Point, size: Size): Point {
+  return {
+    x: center.x - size.width / 2,
+    y: center.y - size.height / 2,
+  }
 }
 
 export function clampNumber(value: number, min: number, max: number): number {

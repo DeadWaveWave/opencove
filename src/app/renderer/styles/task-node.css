@@ -402,30 +402,25 @@
 
 .task-node__resizer {
   position: absolute;
-  border: none;
   background: transparent;
   z-index: 2;
   touch-action: none;
 }
 
+.task-node__resizer--left,
 .task-node__resizer--right {
   top: 34px;
   bottom: 8px;
-  right: 0;
   width: 10px;
   cursor: ew-resize;
 }
 
-.task-node__resizer--right::before {
-  content: '';
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 52px;
-  border-radius: 999px;
-  background: rgba(167, 193, 255, 0.72);
+.task-node__resizer--left {
+  left: 0;
+}
+
+.task-node__resizer--right {
+  right: 0;
 }
 
 .task-node__resizer--bottom {
@@ -436,16 +431,36 @@
   cursor: ns-resize;
 }
 
-.task-node__resizer--bottom::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  transform: translateX(-50%);
-  width: 52px;
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(167, 193, 255, 0.72);
+.task-node__resizer--top-left,
+.task-node__resizer--top-right,
+.task-node__resizer--bottom-left,
+.task-node__resizer--bottom-right {
+  width: 14px;
+  height: 14px;
+}
+
+.task-node__resizer--top-left {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.task-node__resizer--top-right {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.task-node__resizer--bottom-left {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.task-node__resizer--bottom-right {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
 }
 
 .workspace-task-delete-backdrop {

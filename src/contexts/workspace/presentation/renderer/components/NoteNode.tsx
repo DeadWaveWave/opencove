@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { JSX, PointerEvent as ReactPointerEvent } from 'react'
+import { useMemo } from 'react'
+import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { Size } from '../types'
+import type { NodeFrame, Point } from '../types'
+import { NodeResizeHandles } from './shared/NodeResizeHandles'
+import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 
 interface NoteNodeInteractionOptions {
@@ -13,18 +15,18 @@ interface NoteNodeInteractionOptions {
 
 interface NoteNodeProps {
   text: string
+  position: Point
   width: number
   height: number
   onClose: () => void
-  onResize: (size: Size) => void
+  onResize: (frame: NodeFrame) => void
   onTextChange: (text: string) => void
   onInteractionStart?: (options?: NoteNodeInteractionOptions) => void
 }
 
-type ResizeAxis = 'horizontal' | 'vertical'
-
 export function NoteNode({
   text,
+  position,
   width,
   height,
   onClose,
@@ -33,94 +35,38 @@ export function NoteNode({
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
   const { t } = useTranslation()
-  const resizeStartRef = useRef<{
-    x: number
-    y: number
-    width: number
-    height: number
-    axis: ResizeAxis
-  } | null>(null)
-  const draftSizeRef = useRef<Size | null>(null)
-  const [isResizing, setIsResizing] = useState(false)
-  const [draftSize, setDraftSize] = useState<Size | null>(null)
-
-  useEffect(() => {
-    draftSizeRef.current = draftSize
-  }, [draftSize])
-
-  useEffect(() => {
-    if (!draftSize || isResizing) {
-      return
-    }
-
-    if (draftSize.width === width && draftSize.height === height) {
-      setDraftSize(null)
-    }
-  }, [draftSize, height, isResizing, width])
-
-  const handleResizePointerDown = useCallback(
-    (axis: ResizeAxis) => (event: ReactPointerEvent<HTMLButtonElement>) => {
-      event.preventDefault()
-      event.stopPropagation()
-      event.currentTarget.setPointerCapture(event.pointerId)
-
-      resizeStartRef.current = {
-        x: event.clientX,
-        y: event.clientY,
-        width,
-        height,
-        axis,
-      }
-
-      setDraftSize({ width, height })
-      setIsResizing(true)
+  const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
+    position,
+    width,
+    height,
+    minSize: {
+      width: 320,
+      height: 220,
     },
-    [height, width],
-  )
+    onResize,
+  })
 
-  useEffect(() => {
-    if (!isResizing) {
-      return
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      const start = resizeStartRef.current
-      if (!start) {
-        return
-      }
-
-      if (start.axis === 'horizontal') {
-        const nextWidth = Math.max(320, Math.round(start.width + (event.clientX - start.x)))
-        setDraftSize({ width: nextWidth, height: start.height })
-        return
-      }
-
-      const nextHeight = Math.max(220, Math.round(start.height + (event.clientY - start.y)))
-      setDraftSize({ width: start.width, height: nextHeight })
-    }
-
-    const handlePointerUp = () => {
-      setIsResizing(false)
-
-      const finalSize = draftSizeRef.current ?? { width, height }
-      onResize(finalSize)
-
-      resizeStartRef.current = null
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', handlePointerUp, { once: true })
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', handlePointerUp)
-    }
-  }, [height, isResizing, onResize, width])
-
-  const renderedSize = draftSize ?? { width, height }
+  const renderedFrame = draftFrame ?? {
+    position,
+    size: { width, height },
+  }
   const style = useMemo(
-    () => ({ width: renderedSize.width, height: renderedSize.height }),
-    [renderedSize.height, renderedSize.width],
+    () => ({
+      width: renderedFrame.size.width,
+      height: renderedFrame.size.height,
+      transform:
+        renderedFrame.position.x !== position.x || renderedFrame.position.y !== position.y
+          ? `translate(${renderedFrame.position.x - position.x}px, ${renderedFrame.position.y - position.y}px)`
+          : undefined,
+    }),
+    [
+      position.x,
+      position.y,
+      renderedFrame.position.x,
+      renderedFrame.position.y,
+      renderedFrame.size.height,
+      renderedFrame.size.width,
+    ],
   )
 
   return (
@@ -192,19 +138,10 @@ export function NoteNode({
         }}
       />
 
-      <button
-        type="button"
-        className="task-node__resizer task-node__resizer--right nodrag"
-        onPointerDown={handleResizePointerDown('horizontal')}
-        aria-label={t('noteNode.resizeWidth')}
-        data-testid="note-resizer-right"
-      />
-      <button
-        type="button"
-        className="task-node__resizer task-node__resizer--bottom nodrag"
-        onPointerDown={handleResizePointerDown('vertical')}
-        aria-label={t('noteNode.resizeHeight')}
-        data-testid="note-resizer-bottom"
+      <NodeResizeHandles
+        classNamePrefix="task-node"
+        testIdPrefix="note-resizer"
+        handleResizePointerDown={handleResizePointerDown}
       />
     </div>
   )

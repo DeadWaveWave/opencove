@@ -68,13 +68,13 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       await expect(window.locator('.workspace-space-region--selected')).toHaveCount(1)
 
-      const selectedMoveHandle = window.locator(
-        '[data-testid="workspace-space-drag-shift-click-space-move"]',
+      const selectedTopHandle = window.locator(
+        '[data-testid="workspace-space-drag-shift-click-space-top"]',
       )
-      await expect(selectedMoveHandle).toBeVisible()
+      await expect(selectedTopHandle).toBeVisible()
 
       await window.keyboard.down('Shift')
-      await selectedMoveHandle.click()
+      await selectedTopHandle.click()
       await window.keyboard.up('Shift')
 
       await expect(window.locator('.workspace-space-region--selected')).toHaveCount(0)
@@ -83,7 +83,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test('drags selected space by grabbing the region', async () => {
+  test('drags selected space from the top handle', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -211,15 +211,17 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await window.mouse.move(selectionEndX, selectionEndY, { steps: 10 })
       await window.mouse.up()
 
-      const selectedSpace = window.locator('.workspace-space-region--selected').first()
-      await expect(selectedSpace).toBeVisible()
-      const selectedBox = await selectedSpace.boundingBox()
-      if (!selectedBox) {
-        throw new Error('selected space bounding box unavailable')
+      const selectedTopHandle = window.locator(
+        '[data-testid="workspace-space-drag-marquee-drag-space-top"]',
+      )
+      await expect(selectedTopHandle).toBeVisible()
+      const handleBox = await selectedTopHandle.boundingBox()
+      if (!handleBox) {
+        throw new Error('selected space top handle bounding box unavailable')
       }
 
-      const dragStartX = selectedBox.x + selectedBox.width * 0.5
-      const dragStartY = selectedBox.y + selectedBox.height * 0.5
+      const dragStartX = handleBox.x + handleBox.width * 0.75
+      const dragStartY = handleBox.y + handleBox.height * 0.5
       const dragDx = 180
       const dragDy = 120
 
@@ -273,7 +275,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test('drags selected space from edge hitbox without resizing', async () => {
+  test('resizes selected space from edge hitbox', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -436,19 +438,19 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         })
         .toEqual(
           expect.objectContaining({
-            rectDx: expect.any(Number),
-            rectDy: expect.any(Number),
-            rectDw: 0,
+            rectDx: 0,
+            rectDy: 0,
+            rectDw: expect.any(Number),
             rectDh: 0,
-            nodeDx: expect.any(Number),
-            nodeDy: expect.any(Number),
+            nodeDx: 0,
+            nodeDy: 0,
           }),
         )
 
       await expect
         .poll(async () => {
           const after = await readSpaceAndNode()
-          return after ? after.rectX - before.rectX : Number.NaN
+          return after ? after.rectWidth - before.rectWidth : Number.NaN
         })
         .toBeGreaterThan(120)
 
@@ -457,7 +459,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
           const after = await readSpaceAndNode()
           return after ? after.nodeX - before.nodeX : Number.NaN
         })
-        .toBeGreaterThan(120)
+        .toBe(0)
     } finally {
       await electronApp.close()
     }

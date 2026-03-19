@@ -1,5 +1,10 @@
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type {
+  NodeFrame,
+  TerminalNodeData,
+  WorkspaceSpaceRect,
+  WorkspaceSpaceState,
+} from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { pushAwayLayout, type LayoutDirection, type LayoutItem } from '../../../utils/spaceLayout'
 
@@ -41,23 +46,31 @@ function applyNodePositions(
   return hasChanged ? nextNodes : nodes
 }
 
-function resolveResizeDirections(deltaWidth: number, deltaHeight: number): LayoutDirection[] {
-  const expandedWidth = deltaWidth > 0
-  const expandedHeight = deltaHeight > 0
+function resolveResizeDirections(
+  previousRect: WorkspaceSpaceRect,
+  nextRect: WorkspaceSpaceRect,
+): LayoutDirection[] {
+  const expansions: Array<{ direction: LayoutDirection; amount: number }> = [
+    {
+      direction: 'x-' as const,
+      amount: previousRect.x - nextRect.x,
+    },
+    {
+      direction: 'x+' as const,
+      amount: nextRect.x + nextRect.width - (previousRect.x + previousRect.width),
+    },
+    {
+      direction: 'y-' as const,
+      amount: previousRect.y - nextRect.y,
+    },
+    {
+      direction: 'y+' as const,
+      amount: nextRect.y + nextRect.height - (previousRect.y + previousRect.height),
+    },
+  ].filter(entry => entry.amount > 0)
 
-  if (!expandedWidth && !expandedHeight) {
-    return []
-  }
-
-  if (expandedWidth && !expandedHeight) {
-    return ['x+']
-  }
-
-  if (!expandedWidth && expandedHeight) {
-    return ['y+']
-  }
-
-  return Math.abs(deltaWidth) >= Math.abs(deltaHeight) ? ['x+', 'y+'] : ['y+', 'x+']
+  expansions.sort((left, right) => right.amount - left.amount)
+  return expansions.map(entry => entry.direction)
 }
 
 function pushAwayNodesInSpace({
@@ -201,13 +214,13 @@ function resolveRootResizePushAway({
 
 export function resolveWorkspaceLayoutAfterNodeResize({
   nodeId,
-  desiredSize,
+  desiredFrame,
   nodes,
   spaces,
   gap,
 }: {
   nodeId: string
-  desiredSize: { width: number; height: number }
+  desiredFrame: NodeFrame
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
   gap: number
@@ -217,14 +230,23 @@ export function resolveWorkspaceLayoutAfterNodeResize({
     return null
   }
 
-  if (target.data.width === desiredSize.width && target.data.height === desiredSize.height) {
+  if (
+    target.position.x === desiredFrame.position.x &&
+    target.position.y === desiredFrame.position.y &&
+    target.data.width === desiredFrame.size.width &&
+    target.data.height === desiredFrame.size.height
+  ) {
     return null
   }
 
-  const directions = resolveResizeDirections(
-    desiredSize.width - target.data.width,
-    desiredSize.height - target.data.height,
-  )
+  const previousRect = toNodeRect(target)
+  const nextRect: WorkspaceSpaceRect = {
+    x: desiredFrame.position.x,
+    y: desiredFrame.position.y,
+    width: desiredFrame.size.width,
+    height: desiredFrame.size.height,
+  }
+  const directions = resolveResizeDirections(previousRect, nextRect)
 
   const nodesWithResized = nodes.map(node => {
     if (node.id !== nodeId) {
@@ -233,10 +255,11 @@ export function resolveWorkspaceLayoutAfterNodeResize({
 
     return {
       ...node,
+      position: desiredFrame.position,
       data: {
         ...node.data,
-        width: desiredSize.width,
-        height: desiredSize.height,
+        width: desiredFrame.size.width,
+        height: desiredFrame.size.height,
       },
     }
   })

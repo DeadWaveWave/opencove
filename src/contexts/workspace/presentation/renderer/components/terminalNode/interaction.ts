@@ -14,13 +14,6 @@ export function resolveTerminalNodeInteraction(
     return null
   }
 
-  if (target.closest('.terminal-node__selected-drag-overlay')) {
-    return {
-      normalizeViewport: false,
-      selectNode: false,
-    }
-  }
-
   if (target.closest('.terminal-node__terminal')) {
     if (target.closest('button, input, select, a')) {
       return null

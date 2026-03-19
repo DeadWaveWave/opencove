@@ -4,7 +4,6 @@ import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
-import { useTranslation } from '@app/renderer/i18n'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from './terminalNode/constants'
 import {
@@ -27,6 +26,7 @@ import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { shouldStopWheelPropagation } from './terminalNode/wheel'
+import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
 export function TerminalNode({
@@ -39,6 +39,7 @@ export function TerminalNode({
   status,
   directoryMismatch,
   lastError,
+  position,
   width,
   height,
   terminalFontSize,
@@ -51,7 +52,6 @@ export function TerminalNode({
   onCommandRun,
   onInteractionStart,
 }: TerminalNodeProps): JSX.Element {
-  const { t } = useTranslation()
   const dragSurfaceSelectionMode = useStore(
     state => (state as { coveDragSurfaceSelectionMode?: boolean }).coveDragSurfaceSelectionMode,
   )
@@ -100,7 +100,8 @@ export function TerminalNode({
     })
   }, [sessionId])
 
-  const { draftSize, handleResizePointerDown } = useTerminalResize({
+  const { draftFrame, handleResizePointerDown } = useTerminalResize({
+    position,
     width,
     height,
     onResize,
@@ -109,8 +110,18 @@ export function TerminalNode({
     isPointerResizingRef,
   })
 
-  const renderedSize = draftSize ?? { width, height }
-  const sizeStyle = { width: renderedSize.width, height: renderedSize.height }
+  const renderedFrame = draftFrame ?? {
+    position,
+    size: { width, height },
+  }
+  const sizeStyle = {
+    width: renderedFrame.size.width,
+    height: renderedFrame.size.height,
+    transform:
+      renderedFrame.position.x !== position.x || renderedFrame.position.y !== position.y
+        ? `translate(${renderedFrame.position.x - position.x}px, ${renderedFrame.position.y - position.y}px)`
+        : undefined,
+  }
 
   useEffect(() => {
     if (sessionId.trim().length === 0) {
@@ -473,26 +484,10 @@ export function TerminalNode({
         className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
         aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
       />
-      {hasSelectedDragSurface ? (
-        <div
-          className="terminal-node__selected-drag-overlay"
-          data-testid="terminal-node-selected-drag-overlay"
-          aria-hidden="true"
-        />
-      ) : null}
-      <button
-        type="button"
-        className="terminal-node__resizer terminal-node__resizer--right nodrag"
-        onPointerDown={handleResizePointerDown('horizontal')}
-        aria-label={t('terminalNode.resizeWidth')}
-        data-testid="terminal-resizer-right"
-      />
-      <button
-        type="button"
-        className="terminal-node__resizer terminal-node__resizer--bottom nodrag"
-        onPointerDown={handleResizePointerDown('vertical')}
-        aria-label={t('terminalNode.resizeHeight')}
-        data-testid="terminal-resizer-bottom"
+      <NodeResizeHandles
+        classNamePrefix="terminal-node"
+        testIdPrefix="terminal-resizer"
+        handleResizePointerDown={handleResizePointerDown}
       />
     </div>
   )

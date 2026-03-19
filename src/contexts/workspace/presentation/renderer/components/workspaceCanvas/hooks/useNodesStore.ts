@@ -1,6 +1,6 @@
 import { useCallback, useLayoutEffect, useRef } from 'react'
 import type { Node } from '@xyflow/react'
-import type { Point, Size, TerminalNodeData } from '../../../types'
+import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
@@ -104,7 +104,7 @@ export function useWorkspaceCanvasNodesStore({
   }, [])
 
   const resizeNode = useCallback(
-    (nodeId: string, desiredSize: Size) => {
+    (nodeId: string, desiredFrame: NodeFrame) => {
       const node = nodesRef.current.find(item => item.id === nodeId)
       if (!node) {
         return
@@ -113,14 +113,26 @@ export function useWorkspaceCanvasNodesStore({
       const resolveDimension = (value: number, fallback: number): number =>
         typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
 
-      const normalizedSize: Size = {
-        width: Math.max(MIN_SIZE.width, resolveDimension(desiredSize.width, node.data.width)),
-        height: Math.max(MIN_SIZE.height, resolveDimension(desiredSize.height, node.data.height)),
+      const normalizedFrame: NodeFrame = {
+        position: {
+          x: resolveDimension(desiredFrame.position.x, node.position.x),
+          y: resolveDimension(desiredFrame.position.y, node.position.y),
+        },
+        size: {
+          width: Math.max(
+            MIN_SIZE.width,
+            resolveDimension(desiredFrame.size.width, node.data.width),
+          ),
+          height: Math.max(
+            MIN_SIZE.height,
+            resolveDimension(desiredFrame.size.height, node.data.height),
+          ),
+        },
       }
 
       const resolved = resolveWorkspaceLayoutAfterNodeResize({
         nodeId,
-        desiredSize: normalizedSize,
+        desiredFrame: normalizedFrame,
         nodes: nodesRef.current,
         spaces: spacesRef.current,
         gap: 0,

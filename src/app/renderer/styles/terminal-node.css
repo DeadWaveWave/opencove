@@ -80,68 +80,67 @@
   overscroll-behavior: contain;
 }
 
-.terminal-node__selected-drag-overlay {
-  position: absolute;
-  top: 34px;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 20;
-  cursor: grab;
-  background: transparent;
-  touch-action: none;
-}
-
-.terminal-node__selected-drag-overlay:active {
-  cursor: grabbing;
-}
-
 .terminal-node__resizer {
   position: absolute;
-  border: none;
   background: transparent;
   z-index: 22;
   touch-action: none;
 }
 
+.terminal-node__resizer--left,
 .terminal-node__resizer--right {
-  top: 44px;
-  bottom: 10px;
-  right: 0;
+  top: 34px;
+  bottom: 8px;
   width: 10px;
   cursor: ew-resize;
 }
 
-.terminal-node__resizer--right::before {
-  content: '';
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 2px;
-  height: 56px;
-  border-radius: 999px;
-  background: rgba(167, 193, 255, 0.72);
+.terminal-node__resizer--left {
+  left: 0;
+}
+
+.terminal-node__resizer--right {
+  right: 0;
 }
 
 .terminal-node__resizer--bottom {
-  left: 10px;
-  right: 10px;
+  left: 8px;
+  right: 8px;
   bottom: 0;
   height: 10px;
   cursor: ns-resize;
 }
 
-.terminal-node__resizer--bottom::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 2px;
-  transform: translateX(-50%);
-  width: 56px;
-  height: 2px;
-  border-radius: 999px;
-  background: rgba(167, 193, 255, 0.72);
+.terminal-node__resizer--top-left,
+.terminal-node__resizer--top-right,
+.terminal-node__resizer--bottom-left,
+.terminal-node__resizer--bottom-right {
+  width: 14px;
+  height: 14px;
+}
+
+.terminal-node__resizer--top-left {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.terminal-node__resizer--top-right {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.terminal-node__resizer--bottom-left {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.terminal-node__resizer--bottom-right {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
 }
 
 .workspace-sidebar__agents {

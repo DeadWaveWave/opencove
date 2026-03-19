@@ -62,6 +62,7 @@ export function WorkspaceSpaceRegionItem({
   const { t } = useTranslation()
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
+  const shouldShowSpaceLabel = resolvedBranchBadge === null
   return (
     <div
       className={
@@ -75,48 +76,22 @@ export function WorkspaceSpaceRegionItem({
         height: resolvedRect.height,
       }}
     >
-      {isSelected ? (
-        <div
-          className="workspace-space-region__move-handle"
-          data-testid={`workspace-space-drag-${space.id}-move`}
-          onPointerDown={event => {
-            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-          }}
-          onPointerMove={event => {
-            updateHandleCursor(event, resolvedRect, 'region')
-          }}
-          onMouseDown={event => {
-            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
-          }}
-          onMouseMove={event => {
-            updateHandleCursor(event, resolvedRect, 'region')
-          }}
-        />
-      ) : null}
       {(['top', 'right', 'bottom', 'left'] as const).map(side => (
         <div
           key={side}
           className={`workspace-space-region__drag-handle workspace-space-region__drag-handle--${side}`}
           data-testid={`workspace-space-drag-${space.id}-${side}`}
           onPointerDown={event => {
-            handleSpaceDragHandlePointerDown(
-              event,
-              space.id,
-              isSelected ? { mode: 'region' } : undefined,
-            )
+            handleSpaceDragHandlePointerDown(event, space.id)
           }}
           onPointerMove={event => {
-            updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+            updateHandleCursor(event, resolvedRect, 'auto')
           }}
           onMouseDown={event => {
-            handleSpaceDragHandlePointerDown(
-              event,
-              space.id,
-              isSelected ? { mode: 'region' } : undefined,
-            )
+            handleSpaceDragHandlePointerDown(event, space.id)
           }}
           onMouseMove={event => {
-            updateHandleCursor(event, resolvedRect, isSelected ? 'region' : 'auto')
+            updateHandleCursor(event, resolvedRect, 'auto')
           }}
         />
       ))}
@@ -161,17 +136,19 @@ export function WorkspaceSpaceRegionItem({
             event.stopPropagation()
           }}
         >
-          <button
-            type="button"
-            className="workspace-space-region__label"
-            data-testid={`workspace-space-label-${space.id}`}
-            onClick={event => {
-              event.stopPropagation()
-              startSpaceRename(space.id)
-            }}
-          >
-            {space.name}
-          </button>
+          {shouldShowSpaceLabel ? (
+            <button
+              type="button"
+              className="workspace-space-region__label"
+              data-testid={`workspace-space-label-${space.id}`}
+              onClick={event => {
+                event.stopPropagation()
+                startSpaceRename(space.id)
+              }}
+            >
+              {space.name}
+            </button>
+          ) : null}
 
           {branchName && resolvedBranchBadge && worktreePath ? (
             <button

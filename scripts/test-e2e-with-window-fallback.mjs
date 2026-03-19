@@ -30,13 +30,14 @@ function hasCrashSignature(output) {
 }
 
 function resolveWindowMode(rawValue) {
-  const normalized = rawValue?.toLowerCase()
-  if (
-    normalized === 'hidden' ||
-    normalized === 'offscreen' ||
-    normalized === 'inactive' ||
-    normalized === 'normal'
-  ) {
+  const normalized = rawValue?.trim().toLowerCase()
+  if (normalized === 'normal') {
+    throw new Error(
+      '[e2e] OPENCOVE_E2E_WINDOW_MODE=normal is not allowed because it steals OS focus. Use offscreen/inactive/hidden instead.',
+    )
+  }
+
+  if (normalized === 'hidden' || normalized === 'offscreen' || normalized === 'inactive') {
     return normalized
   }
 
@@ -50,10 +51,6 @@ function resolveFallbackWindowMode(windowMode) {
 
   if (windowMode === 'offscreen') {
     return 'inactive'
-  }
-
-  if (windowMode === 'inactive') {
-    return 'normal'
   }
 
   return null
@@ -106,15 +103,15 @@ function runCommand(args, env = process.env) {
 }
 
 async function main() {
+  const currentWindowMode = resolveWindowMode(process.env['OPENCOVE_E2E_WINDOW_MODE'])
+  const fallbackWindowMode = resolveFallbackWindowMode(currentWindowMode)
+
   if (!isTruthyEnv(process.env['OPENCOVE_E2E_SKIP_BUILD'])) {
     const buildResult = await runCommand(['build'])
     if (buildResult.code !== 0) {
       process.exit(buildResult.code)
     }
   }
-
-  const currentWindowMode = resolveWindowMode(process.env['OPENCOVE_E2E_WINDOW_MODE'])
-  const fallbackWindowMode = resolveFallbackWindowMode(currentWindowMode)
 
   const firstRunArgs = ['exec', 'playwright', 'test', ...forwardedArgs]
   const firstRun = await runCommand(firstRunArgs, {

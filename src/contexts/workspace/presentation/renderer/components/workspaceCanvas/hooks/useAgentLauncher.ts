@@ -4,7 +4,12 @@ import { useTranslation } from '@app/renderer/i18n'
 import { resolveAgentModel, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
-import { sanitizeSpaces, toErrorMessage } from '../helpers'
+import { resolveDefaultAgentWindowSize } from '../constants'
+import {
+  resolveNodePlacementAnchorFromViewportCenter,
+  sanitizeSpaces,
+  toErrorMessage,
+} from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 
@@ -52,10 +57,14 @@ export function useWorkspaceCanvasAgentLauncher({
       return
     }
 
-    const anchor: Point = {
+    const cursorAnchor: Point = {
       x: contextMenu.flowX,
       y: contextMenu.flowY,
     }
+    const anchor = resolveNodePlacementAnchorFromViewportCenter(
+      cursorAnchor,
+      resolveDefaultAgentWindowSize(agentSettings.defaultTerminalWindowScalePercent),
+    )
 
     const provider = agentSettings.defaultProvider
     const model = resolveAgentModel(agentSettings, provider)
@@ -67,10 +76,10 @@ export function useWorkspaceCanvasAgentLauncher({
         }
 
         return (
-          anchor.x >= space.rect.x &&
-          anchor.x <= space.rect.x + space.rect.width &&
-          anchor.y >= space.rect.y &&
-          anchor.y <= space.rect.y + space.rect.height
+          cursorAnchor.x >= space.rect.x &&
+          cursorAnchor.x <= space.rect.x + space.rect.width &&
+          cursorAnchor.y >= space.rect.y &&
+          cursorAnchor.y <= space.rect.y + space.rect.height
         )
       }) ?? null
 

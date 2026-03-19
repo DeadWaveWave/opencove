@@ -152,6 +152,7 @@ describe('TerminalNode invalidated scrollback cleanup', () => {
         kind="terminal"
         status={null}
         lastError={null}
+        position={{ x: 0, y: 0 }}
         width={520}
         height={360}
         terminalFontSize={13}

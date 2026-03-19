@@ -217,6 +217,7 @@ export const en = {
   },
   workspaceContextMenu: {
     newTerminal: 'New Terminal',
+    newNote: 'New Note',
     newTask: 'New Task',
     runAgent: 'Run Agent',
     createSpaceWithSelected: 'Create Space with Selected',

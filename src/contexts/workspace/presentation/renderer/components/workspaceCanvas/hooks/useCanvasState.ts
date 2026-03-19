@@ -5,6 +5,7 @@ import {
   createCanvasInputModalityState,
   type DetectedCanvasInputMode,
 } from '../../../utils/inputModality'
+import { NODE_DRAG_HANDLE_SELECTOR } from '../../../utils/nodeFrameResize'
 import type {
   ContextMenuState,
   EmptySelectionPromptState,
@@ -78,7 +79,10 @@ export function useWorkspaceCanvasState({
   const trackpadGestureLockRef = useRef<TrackpadGestureLockState | null>(null)
   const viewportRef = useRef<Viewport>(viewport)
 
-  const flowNodes = useMemo(() => nodes, [nodes])
+  const flowNodes = useMemo(
+    () => nodes.map(node => ({ ...node, dragHandle: NODE_DRAG_HANDLE_SELECTOR })),
+    [nodes],
+  )
 
   useLayoutEffect(() => {
     selectedNodeIdsRef.current = selectedNodeIds
