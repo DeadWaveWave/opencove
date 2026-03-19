@@ -13,6 +13,7 @@ type SetNodes = (
 
 export function createNoteNodeAtAnchor({
   anchor,
+  spaceAnchor = anchor,
   createNoteNode,
   spacesRef,
   nodesRef,
@@ -20,6 +21,7 @@ export function createNoteNodeAtAnchor({
   onSpacesChange,
 }: {
   anchor: Point
+  spaceAnchor?: Point
   createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -31,7 +33,7 @@ export function createNoteNodeAtAnchor({
     return
   }
 
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor)
+  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, spaceAnchor)
   if (!targetSpace) {
     return
   }

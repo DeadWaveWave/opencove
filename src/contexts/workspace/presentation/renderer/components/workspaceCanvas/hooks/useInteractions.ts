@@ -7,7 +7,8 @@ import type {
   EmptySelectionPromptState,
   SelectionDraftState,
 } from '../types'
-import { focusNodeInViewport } from '../helpers'
+import { DEFAULT_NOTE_WINDOW_SIZE, resolveDefaultTerminalWindowSize } from '../constants'
+import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import {
@@ -35,6 +36,7 @@ type SelectionDraftUiState = Pick<
 interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
   normalizeZoomOnNodeClick: boolean
+  defaultTerminalWindowScalePercent: number
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -60,6 +62,7 @@ interface UseWorkspaceCanvasInteractionsParams {
 export function useWorkspaceCanvasInteractions({
   isTrackpadCanvasMode,
   normalizeZoomOnNodeClick,
+  defaultTerminalWindowScalePercent,
   isShiftPressedRef,
   selectionDraftRef,
   setSelectionDraftUi,
@@ -165,7 +168,6 @@ export function useWorkspaceCanvasInteractions({
       if (!normalizeZoomOnNodeClick) {
         return
       }
-
       if (!shouldFocusNodeFromClickTarget(event.target)) {
         return
       }
@@ -356,13 +358,18 @@ export function useWorkspaceCanvasInteractions({
         y: event.clientY,
       })
 
-      const anchor: Point = {
+      const cursorAnchor: Point = {
         x: flowPosition.x,
         y: flowPosition.y,
       }
+      const anchor = resolveNodePlacementAnchorFromViewportCenter(
+        cursorAnchor,
+        DEFAULT_NOTE_WINDOW_SIZE,
+      )
 
       createNoteNodeAtAnchor({
         anchor,
+        spaceAnchor: cursorAnchor,
         createNoteNode,
         spacesRef,
         nodesRef,
@@ -403,14 +410,17 @@ export function useWorkspaceCanvasInteractions({
       return
     }
 
-    const anchor = {
+    const cursorAnchor = {
       x: contextMenu.flowX,
       y: contextMenu.flowY,
     }
+    const anchor = resolveNodePlacementAnchorFromViewportCenter(
+      cursorAnchor,
+      resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent),
+    )
 
     setContextMenu(null)
-
-    const targetSpace = findContainingSpaceByAnchor(spacesRef.current, anchor)
+    const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
 
     const resolvedCwd =
       targetSpace && targetSpace.directoryPath.trim().length > 0
@@ -456,6 +466,7 @@ export function useWorkspaceCanvasInteractions({
     setNodes,
     spacesRef,
     defaultTerminalProfileId,
+    defaultTerminalWindowScalePercent,
     workspacePath,
   ])
 
@@ -464,15 +475,20 @@ export function useWorkspaceCanvasInteractions({
       return
     }
 
-    const anchor = {
+    const cursorAnchor = {
       x: contextMenu.flowX,
       y: contextMenu.flowY,
     }
+    const anchor = resolveNodePlacementAnchorFromViewportCenter(
+      cursorAnchor,
+      DEFAULT_NOTE_WINDOW_SIZE,
+    )
 
     setContextMenu(null)
 
     createNoteNodeAtAnchor({
       anchor,
+      spaceAnchor: cursorAnchor,
       createNoteNode,
       spacesRef,
       nodesRef,

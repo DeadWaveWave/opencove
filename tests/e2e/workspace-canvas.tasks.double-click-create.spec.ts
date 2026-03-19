@@ -4,6 +4,7 @@ import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
   test('double-clicking pane creates a new note node', async () => {
     const { electronApp, window } = await launchApp()
+    const clickPosition = { x: 340, y: 240 }
 
     try {
       await clearAndSeedWorkspace(window, [])
@@ -11,7 +12,7 @@ test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      await pane.dblclick({ position: { x: 340, y: 240 } })
+      await pane.dblclick({ position: clickPosition })
 
       const noteNode = window.locator('.note-node').first()
       await expect(noteNode).toBeVisible()
@@ -33,6 +34,9 @@ test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
               workspaces?: Array<{
                 nodes?: Array<{
                   kind?: string
+                  position?: { x?: number; y?: number }
+                  width?: number
+                  height?: number
                   task?: { text?: string }
                 }>
               }>
@@ -40,10 +44,26 @@ test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
 
             const persistedNoteNode =
               parsed.workspaces?.[0]?.nodes?.find(node => node.kind === 'note') ?? null
-            return persistedNoteNode?.task?.text ?? null
+            if (!persistedNoteNode) {
+              return null
+            }
+
+            return {
+              text: persistedNoteNode.task?.text ?? null,
+              x: persistedNoteNode.position?.x ?? null,
+              y: persistedNoteNode.position?.y ?? null,
+              width: persistedNoteNode.width ?? null,
+              height: persistedNoteNode.height ?? null,
+            }
           })
         })
-        .toBe('hello note')
+        .toMatchObject({
+          text: 'hello note',
+          x: clickPosition.x - 210,
+          y: clickPosition.y - 140,
+          width: 420,
+          height: 280,
+        })
     } finally {
       await electronApp.close()
     }

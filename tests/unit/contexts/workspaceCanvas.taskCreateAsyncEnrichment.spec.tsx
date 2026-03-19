@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { resolveDefaultTaskWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import type { SuggestTaskTitleResult } from '../../../src/shared/contracts/dto/task'
 import type {
   TerminalNodeData,
@@ -154,9 +155,11 @@ describe('WorkspaceCanvas task creation async enrichment', () => {
     const spaces: WorkspaceSpaceState[] = []
     const requirement = 'Implement login retry with exponential backoff and jitter'
     const fallbackTitle = `${requirement.replace(/\s+/g, ' ').trim().slice(0, 24)}...`
+    let latestNodes: Node<TerminalNodeData>[] = []
 
     function Harness() {
       const [nodes, setNodes] = useState<Node<TerminalNodeData>[]>([])
+      latestNodes = nodes
 
       return (
         <WorkspaceCanvas
@@ -219,5 +222,11 @@ describe('WorkspaceCanvas task creation async enrichment', () => {
     expect(screen.getByTestId('task-node-priority')).toHaveTextContent('medium')
     expect(screen.getByTestId('task-node-tags')).toHaveTextContent('')
     expect(screen.queryByTestId('task-node-enrichment')).toBeNull()
+    const expectedSize = resolveDefaultTaskWindowSize()
+    expect(latestNodes).toHaveLength(1)
+    expect(latestNodes[0]?.position).toEqual({
+      x: 320 - expectedSize.width / 2,
+      y: 220 - expectedSize.height / 2,
+    })
   })
 })
