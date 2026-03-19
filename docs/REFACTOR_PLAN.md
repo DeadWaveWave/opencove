@@ -292,6 +292,8 @@ tests/
 
 以下目录在完成重构后应被清空并删除：
 
+> 注：此处列的是重构前 legacy 目录（例如旧 `main`/`preload` 结构）；当前目标入口目录见 §5 的 `src/app/*`。
+
 - `src/main/modules`
 - `src/main/infrastructure`
 - `src/main/ipc`

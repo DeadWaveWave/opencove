@@ -9,13 +9,13 @@
 
 路径参考：
 
-- Main store：`src/main/modules/persistence/PersistenceStore.ts`
-- Schema 定义（Drizzle）：`src/main/modules/persistence/schema.ts`
-- 迁移与建表（embedded SQL + user_version）：`src/main/modules/persistence/migrate.ts`
-- Schema 版本常量：`src/main/modules/persistence/constants.ts`（`DB_SCHEMA_VERSION`）
+- Main store：`src/platform/persistence/sqlite/PersistenceStore.ts`
+- Schema 定义（Drizzle）：`src/platform/persistence/sqlite/schema.ts`
+- 迁移与建表（embedded SQL + user_version）：`src/platform/persistence/sqlite/migrate.ts`
+- Schema 版本常量：`src/platform/persistence/sqlite/constants.ts`（`DB_SCHEMA_VERSION`）
 - IPC channels：`src/shared/constants/ipc.ts`
-- IPC handlers：`src/main/modules/persistence/ipc/register.ts`
-- Preload 暴露：`src/preload/index.ts`
+- IPC handlers：`src/platform/persistence/sqlite/ipc/register.ts`
+- Preload 暴露：`src/app/preload/index.ts`
 
 ## 2) Schema 版本机制（当前实现）
 
@@ -32,13 +32,13 @@
 
 ## 3) Schema 变更流程（必须执行）
 
-任何对 `src/main/modules/persistence/schema.ts` 中表结构的变更，都必须视为 **Large Change**（运行时高风险），并执行以下流程：
+任何对 `src/platform/persistence/sqlite/schema.ts` 中表结构的变更，都必须视为 **Large Change**（运行时高风险），并执行以下流程：
 
 ### 3.1 变更前：Spec & Plan
 
 - 写清楚变更原因、影响范围、回滚/恢复策略。
 - 明确旧版本数据如何迁移到新结构（包括边界数据与容错）。
-- 明确验证手段（至少包含 unit，必要时补 E2E 覆盖回归路径）。
+- 明确验证手段（至少包含平台层 contract/unit 测试，必要时补 E2E 覆盖回归路径）。
 
 ### 3.2 实现：迁移代码（核心）
 
@@ -56,8 +56,9 @@
 
 ### 3.3 测试：必须新增/更新
 
-- 为迁移行为添加/更新单元测试：
-  - `tests/unit/main/persistenceStore.spec.ts`（建议覆盖：备份触发、迁移结果、失败恢复路径）
+- 为迁移行为添加/更新平台层测试（优先 contract）：
+  - `tests/contract/platform/persistenceStore.spec.ts`（建议覆盖：备份触发、迁移结果、失败恢复路径）
+  - `tests/contract/ipc/persistenceIpcHandlers.spec.ts`（建议覆盖：IPC payload 校验与 max bytes 限制）
   - 若涉及数据搬运：新增用例验证关键字段的迁移正确性（例如 workspace/nodes/spaces/scrollback）。
 
 ### 3.4 提交前门禁（与 CI 对齐）

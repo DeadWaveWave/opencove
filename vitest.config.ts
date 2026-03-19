@@ -73,7 +73,7 @@ export default defineConfig({
         '**/*.d.ts',
         '**/*.config.{ts,js}',
         '**/types/**',
-        'src/main/**', // Electron 主进程代码通过 E2E 测试覆盖
+        'src/app/main/**', // Electron 主进程代码通过 E2E 测试覆盖
       ],
     },
 
