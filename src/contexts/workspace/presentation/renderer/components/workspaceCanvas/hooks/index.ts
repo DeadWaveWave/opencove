@@ -7,6 +7,7 @@ export {
   type WorkspaceCanvasActionRefs,
 } from './useActionRefs'
 export { useWorkspaceCanvasApplyNodeChanges } from './useApplyNodeChanges'
+export { useWorkspaceCanvasArrange } from './useArrange'
 export { useWorkspaceCanvasState } from './useCanvasState'
 export { useWorkspaceCanvasComposedNodeTypes } from './useCanvasNodeTypes'
 export { useWorkspaceCanvasTaskWindows } from './useCanvasTaskWindows'

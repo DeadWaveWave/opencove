@@ -1,5 +1,5 @@
 import React from 'react'
-import { ChevronRight, Copy, FolderOpen, GitBranchPlus, Package } from 'lucide-react'
+import { ChevronRight, Copy, FolderOpen, GitBranchPlus, LayoutGrid, Package } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { SpaceActionMenuState } from '../types'
@@ -7,9 +7,11 @@ import type { SpaceActionMenuState } from '../types'
 interface WorkspaceSpaceActionMenuProps {
   menu: SpaceActionMenuState | null
   availableOpeners: WorkspacePathOpener[]
+  canArrange?: boolean
   canCreateWorktree: boolean
   canArchive: boolean
   closeMenu: () => void
+  onArrange?: (spaceId: string) => void
   onCreateWorktree: () => void
   onArchive: () => void
   onCopyPath: () => void | Promise<void>
@@ -49,9 +51,11 @@ function sortWorkspacePathOpeners(openers: WorkspacePathOpener[]): WorkspacePath
 export function WorkspaceSpaceActionMenu({
   menu,
   availableOpeners,
+  canArrange = true,
   canCreateWorktree,
   canArchive,
   closeMenu,
+  onArrange,
   onCreateWorktree,
   onArchive,
   onCopyPath,
@@ -119,6 +123,27 @@ export function WorkspaceSpaceActionMenu({
         onMouseEnter={cancelScheduledSubmenuClose}
         onMouseLeave={scheduleSubmenuClose}
       >
+        {onArrange ? (
+          <>
+            <button
+              type="button"
+              data-testid="workspace-space-action-arrange"
+              disabled={!canArrange}
+              onClick={() => {
+                onArrange(menu.spaceId)
+                closeMenu()
+              }}
+            >
+              <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('spaceActions.arrangeInSpace')}
+              </span>
+            </button>
+
+            <div className="workspace-context-menu__separator" />
+          </>
+        ) : null}
+
         {canCreateWorktree ? (
           <button
             type="button"

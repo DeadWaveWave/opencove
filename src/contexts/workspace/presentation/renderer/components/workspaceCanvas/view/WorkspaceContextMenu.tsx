@@ -1,5 +1,5 @@
 import React from 'react'
-import { ArrowRight, FileText, Group, ListTodo, Play, Terminal, X } from 'lucide-react'
+import { ArrowRight, FileText, Group, LayoutGrid, ListTodo, Play, Terminal, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { ContextMenuState } from '../types'
 
@@ -10,6 +10,10 @@ interface WorkspaceContextMenuProps {
   createNoteNodeFromContextMenu: () => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
+  canArrangeAll: boolean
+  canArrangeCanvas: boolean
+  arrangeAll: () => void
+  arrangeCanvas: () => void
   createSpaceFromSelectedNodes: () => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
@@ -24,6 +28,10 @@ export function WorkspaceContextMenu({
   createNoteNodeFromContextMenu,
   openTaskCreator,
   openAgentLauncher,
+  canArrangeAll,
+  canArrangeCanvas,
+  arrangeAll,
+  arrangeCanvas,
   createSpaceFromSelectedNodes,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
@@ -92,6 +100,38 @@ export function WorkspaceContextMenu({
             <Play className="workspace-context-menu__icon" aria-hidden="true" />
             <span className="workspace-context-menu__label">
               {t('workspaceContextMenu.runAgent')}
+            </span>
+          </button>
+
+          <div className="workspace-context-menu__separator" />
+
+          <button
+            type="button"
+            data-testid="workspace-context-arrange-all"
+            disabled={!canArrangeAll}
+            onClick={() => {
+              closeContextMenu()
+              arrangeAll()
+            }}
+          >
+            <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.arrangeAll')}
+            </span>
+          </button>
+
+          <button
+            type="button"
+            data-testid="workspace-context-arrange-canvas"
+            disabled={!canArrangeCanvas}
+            onClick={() => {
+              closeContextMenu()
+              arrangeCanvas()
+            }}
+          >
+            <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">
+              {t('workspaceContextMenu.arrangeCanvas')}
             </span>
           </button>
         </>

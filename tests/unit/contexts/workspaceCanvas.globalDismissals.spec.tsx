@@ -108,10 +108,10 @@ vi.mock(
 )
 
 vi.mock(
-  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/TaskDeleteConfirmationWindow',
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/NodeDeleteConfirmationWindow',
   () => {
     return {
-      TaskDeleteConfirmationWindow: () => null,
+      NodeDeleteConfirmationWindow: () => null,
     }
   },
 )
@@ -189,6 +189,10 @@ function createBaseProps(
     contextMenu: null,
     closeContextMenu: () => undefined,
     createTerminalNode: async () => undefined,
+    createNoteNodeFromContextMenu: () => undefined,
+    arrangeAll: () => undefined,
+    arrangeCanvas: () => undefined,
+    arrangeInSpace: () => undefined,
     openTaskCreator: () => undefined,
     openAgentLauncher: () => undefined,
     createSpaceFromSelectedNodes: () => undefined,
@@ -209,9 +213,9 @@ function createBaseProps(
     closeTaskEditor: () => undefined,
     generateTaskEditorTitle: async () => undefined,
     saveTaskEdits: async () => undefined,
-    taskDeleteConfirmation: null,
-    setTaskDeleteConfirmation: () => undefined,
-    confirmTaskDelete: async () => undefined,
+    nodeDeleteConfirmation: null,
+    setNodeDeleteConfirmation: () => undefined,
+    confirmNodeDelete: async () => undefined,
     agentSettings: DEFAULT_AGENT_SETTINGS,
     workspacePath: '/tmp',
     spaceActionMenu: null,

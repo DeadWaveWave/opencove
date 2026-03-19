@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useMemo } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
-import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
+import * as hooks from './workspaceCanvas/hooks'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 function WorkspaceCanvasInner({
@@ -51,13 +51,13 @@ function WorkspaceCanvasInner({
     trackpadGestureLockRef,
     viewportRef,
     flowNodes,
-  } = workspaceCanvasHooks.useWorkspaceCanvasState({
+  } = hooks.useWorkspaceCanvasState({
     nodes,
     spaces,
     viewport,
     persistedMinimapVisible,
   })
-  const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
+  const actionRefs = hooks.useWorkspaceCanvasActionRefs()
   const {
     nodesRef,
     isNodeDraggingRef,
@@ -76,7 +76,7 @@ function WorkspaceCanvasInner({
     createNodeForSession,
     createNoteNode,
     createTaskNode,
-  } = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
+  } = hooks.useWorkspaceCanvasNodesStore({
     nodes: flowNodes,
     spacesRef,
     onNodesChange,
@@ -86,7 +86,7 @@ function WorkspaceCanvasInner({
     defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
   })
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
-    workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
+    hooks.useWorkspaceCanvasSpaceDirectoryOps({
       workspacePath,
       spacesRef,
       nodesRef,
@@ -107,7 +107,7 @@ function WorkspaceCanvasInner({
     spaceVisuals,
     focusSpaceInViewport,
     focusAllInViewport,
-  } = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
+  } = hooks.useWorkspaceCanvasSpaces({
     workspaceId,
     workspacePath,
     reactFlow,
@@ -124,8 +124,8 @@ function WorkspaceCanvasInner({
     setEmptySelectionPrompt,
     onShowMessage,
   })
-  const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
-    workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
+  const { spaceFramePreview, handleSpaceDragHandlePointerDown } = hooks.useWorkspaceCanvasSpaceDrag(
+    {
       workspaceId,
       reactFlow,
       nodesRef,
@@ -140,13 +140,9 @@ function WorkspaceCanvasInner({
       setContextMenu,
       cancelSpaceRename,
       setEmptySelectionPrompt,
-    })
-  const {
-    handleNodeDragStart,
-    handleSelectionDragStart,
-    handleNodeDragStop,
-    handleSelectionDragStop,
-  } = workspaceCanvasHooks.useWorkspaceCanvasSpaceOwnership({
+    },
+  )
+  const spaceOwnership = hooks.useWorkspaceCanvasSpaceOwnership({
     workspacePath,
     reactFlow,
     spacesRef,
@@ -157,15 +153,14 @@ function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
   })
-  const { buildAgentNodeTitle, launchAgentInNode } =
-    workspaceCanvasHooks.useWorkspaceCanvasAgentNodeLifecycle({
-      nodesRef,
-      setNodes,
-      bumpAgentLaunchToken,
-      isAgentLaunchTokenCurrent,
-      agentFullAccess: agentSettings.agentFullAccess,
-    })
-  const { openAgentLauncher } = workspaceCanvasHooks.useWorkspaceCanvasAgentLauncher({
+  const { buildAgentNodeTitle, launchAgentInNode } = hooks.useWorkspaceCanvasAgentNodeLifecycle({
+    nodesRef,
+    setNodes,
+    bumpAgentLaunchToken,
+    isAgentLaunchTokenCurrent,
+    agentFullAccess: agentSettings.agentFullAccess,
+  })
+  const { openAgentLauncher } = hooks.useWorkspaceCanvasAgentLauncher({
     agentSettings,
     workspacePath,
     nodesRef,
@@ -183,7 +178,7 @@ function WorkspaceCanvasInner({
     const fromSettings = agentSettings.taskTagOptions ?? []
     return [...new Set(fromSettings.map(tag => tag.trim()).filter(tag => tag.length > 0))]
   }, [agentSettings.taskTagOptions])
-  const { suggestTaskTitle } = workspaceCanvasHooks.useWorkspaceCanvasTaskActions({
+  const { suggestTaskTitle } = hooks.useWorkspaceCanvasTaskActions({
     nodesRef,
     spacesRef,
     onSpacesChange,
@@ -217,7 +212,7 @@ function WorkspaceCanvasInner({
     nodeDeleteConfirmation,
     setNodeDeleteConfirmation,
     confirmNodeDelete,
-  } = workspaceCanvasHooks.useWorkspaceCanvasTaskWindows({
+  } = hooks.useWorkspaceCanvasTaskWindows({
     taskTagOptions,
     contextMenu,
     setContextMenu,
@@ -237,7 +232,7 @@ function WorkspaceCanvasInner({
       : agentSettings.canvasInputMode
   const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
   const useManualCanvasWheelGestures = agentSettings.canvasInputMode !== 'mouse'
-  const { handleCanvasWheelCapture } = workspaceCanvasHooks.useWorkspaceCanvasTrackpadGestures({
+  const { handleCanvasWheelCapture } = hooks.useWorkspaceCanvasTrackpadGestures({
     canvasInputModeSetting: agentSettings.canvasInputMode,
     resolvedCanvasInputMode,
     inputModalityStateRef,
@@ -248,7 +243,7 @@ function WorkspaceCanvasInner({
     reactFlow,
     onViewportChange,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycle({
+  hooks.useWorkspaceCanvasLifecycle({
     workspaceId,
     persistedMinimapVisible,
     setIsMinimapVisible,
@@ -274,8 +269,8 @@ function WorkspaceCanvasInner({
     focusSequence,
     nodesRef,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({ setNodes, onRequestPersistFlush })
-  const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
+  hooks.useWorkspaceCanvasPtyTaskCompletion({ setNodes, onRequestPersistFlush })
+  const nodeTypes = hooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes,
     setSelectedNodeIds,
     setSelectedSpaceIds,
@@ -300,7 +295,7 @@ function WorkspaceCanvasInner({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
-  } = workspaceCanvasHooks.useWorkspaceCanvasInteractions({
+  } = hooks.useWorkspaceCanvasInteractions({
     isTrackpadCanvasMode,
     normalizeZoomOnNodeClick: agentSettings.normalizeZoomOnTerminalClick,
     defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
@@ -325,11 +320,7 @@ function WorkspaceCanvasInner({
     createNodeForSession,
     createNoteNode,
   })
-  const {
-    canConvertSelectedNoteToTask,
-    isConvertSelectedNoteToTaskDisabled,
-    convertSelectedNoteToTask,
-  } = workspaceCanvasHooks.useWorkspaceCanvasNoteToTaskConversion({
+  const noteToTaskConversion = hooks.useWorkspaceCanvasNoteToTaskConversion({
     selectedNodeIds,
     selectedNodeIdsRef,
     flowNodes,
@@ -339,11 +330,11 @@ function WorkspaceCanvasInner({
     onShowMessage,
     setContextMenu,
   })
-  const copyAgentLastMessage = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageCopy({
+  const copyAgentLastMessage = hooks.useWorkspaceCanvasAgentLastMessageCopy({
     nodesRef,
     onShowMessage,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
+  hooks.useWorkspaceCanvasSyncActionRefs({
     actionRefs,
     closeNode,
     resizeNode,
@@ -359,7 +350,7 @@ function WorkspaceCanvasInner({
   useLayoutEffect(() => {
     actionRefs.clearNodeSelectionRef.current = clearNodeSelection
   }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])
-  const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasApplyNodeChanges({
+  const applyChanges = hooks.useWorkspaceCanvasApplyNodeChanges({
     nodesRef,
     onNodesChange,
     clearAgentLaunchToken,
@@ -379,7 +370,7 @@ function WorkspaceCanvasInner({
     minimapNodeColor,
     taskAgentEdges,
     spaceUi,
-  } = workspaceCanvasHooks.useWorkspaceCanvasViewModel({
+  } = hooks.useWorkspaceCanvasViewModel({
     agentSettings,
     viewportRef,
     onViewportChange,
@@ -394,6 +385,15 @@ function WorkspaceCanvasInner({
     handlePaneContextMenu,
     handleNodeContextMenu,
     handleSelectionContextMenu,
+  })
+  const { arrangeAll, arrangeCanvas, arrangeInSpace } = hooks.useWorkspaceCanvasArrange({
+    reactFlow,
+    nodesRef,
+    spacesRef,
+    setNodes,
+    onSpacesChange,
+    onRequestPersistFlush,
+    onShowMessage,
   })
   return (
     <WorkspaceCanvasView
@@ -415,10 +415,10 @@ function WorkspaceCanvasInner({
       onNodeContextMenu={spaceUi.handleNodeContextMenuWithSpaceMenuClose}
       onSelectionContextMenu={spaceUi.handleSelectionContextMenuWithSpaceMenuClose}
       onSelectionChange={handleSelectionChange}
-      onNodeDragStart={handleNodeDragStart}
-      onSelectionDragStart={handleSelectionDragStart}
-      onNodeDragStop={handleNodeDragStop}
-      onSelectionDragStop={handleSelectionDragStop}
+      onNodeDragStart={spaceOwnership.handleNodeDragStart}
+      onSelectionDragStart={spaceOwnership.handleSelectionDragStart}
+      onNodeDragStop={spaceOwnership.handleNodeDragStop}
+      onSelectionDragStop={spaceOwnership.handleSelectionDragStop}
       onMoveEnd={handleViewportMoveEnd}
       viewport={viewport}
       isTrackpadCanvasMode={isTrackpadCanvasMode}
@@ -448,13 +448,16 @@ function WorkspaceCanvasInner({
       closeContextMenu={spaceUi.closeContextMenu}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+      arrangeAll={arrangeAll}
+      arrangeCanvas={arrangeCanvas}
+      arrangeInSpace={arrangeInSpace}
       openTaskCreator={openTaskCreator}
       openAgentLauncher={openAgentLauncher}
       createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
       clearNodeSelection={clearNodeSelection}
-      canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
-      isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
-      convertSelectedNoteToTask={convertSelectedNoteToTask}
+      canConvertSelectedNoteToTask={noteToTaskConversion.canConvertSelectedNoteToTask}
+      isConvertSelectedNoteToTaskDisabled={noteToTaskConversion.isConvertSelectedNoteToTaskDisabled}
+      convertSelectedNoteToTask={noteToTaskConversion.convertSelectedNoteToTask}
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}
       taskTitleModelLabel={taskTitleModelLabel}

@@ -38,7 +38,6 @@ import { NodeDeleteConfirmationWindow } from './windows/NodeDeleteConfirmationWi
 import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
 import { TaskEditorWindow } from './windows/TaskEditorWindow'
 import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
-
 interface WorkspaceCanvasViewProps {
   canvasRef: React.RefObject<HTMLDivElement | null>
   resolvedCanvasInputMode: string
@@ -103,6 +102,9 @@ interface WorkspaceCanvasViewProps {
   closeContextMenu: () => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
+  arrangeAll: () => void
+  arrangeCanvas: () => void
+  arrangeInSpace: (spaceId: string) => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
   createSpaceFromSelectedNodes: () => void
@@ -123,23 +125,19 @@ interface WorkspaceCanvasViewProps {
   closeTaskEditor: () => void
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
-
   nodeDeleteConfirmation: NodeDeleteConfirmationState | null
   setNodeDeleteConfirmation: React.Dispatch<
     React.SetStateAction<NodeDeleteConfirmationState | null>
   >
   confirmNodeDelete: () => Promise<void>
-
   agentSettings: WorkspaceCanvasProps['agentSettings']
   workspacePath: string
-
   spaceActionMenu: SpaceActionMenuState | null
   availablePathOpeners: WorkspacePathOpener[]
   openSpaceActionMenu: (spaceId: string, anchor: { x: number; y: number }) => void
   closeSpaceActionMenu: () => void
   copySpacePath: (spaceId: string) => Promise<void> | void
   openSpacePath: (spaceId: string, openerId: WorkspacePathOpenerId) => Promise<void> | void
-
   spaceWorktreeDialog: SpaceWorktreeDialogState | null
   worktreesRoot: string
   openSpaceCreateWorktree: (spaceId: string) => void
@@ -158,12 +156,10 @@ interface WorkspaceCanvasViewProps {
   getSpaceBlockingNodes: (spaceId: string) => { agentNodeIds: string[]; terminalNodeIds: string[] }
   closeNodesById: (nodeIds: string[]) => Promise<void>
 }
-
 type SelectionDraftUiState = Pick<
   SelectionDraftState,
   'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
 >
-
 export function WorkspaceCanvasView({
   canvasRef,
   resolvedCanvasInputMode,
@@ -252,13 +248,15 @@ export function WorkspaceCanvasView({
   openSpaceCreateWorktree,
   openSpaceArchive,
   closeSpaceWorktree,
+  arrangeAll,
+  arrangeCanvas,
+  arrangeInSpace,
   onShowMessage,
   updateSpaceDirectory,
   getSpaceBlockingNodes,
   closeNodesById,
 }: WorkspaceCanvasViewProps): React.JSX.Element {
   const { t } = useTranslation()
-
   useWorkspaceCanvasGlobalDismissals({
     contextMenu,
     spaceActionMenu,
@@ -267,7 +265,6 @@ export function WorkspaceCanvasView({
     selectedNodeCount,
     clearNodeSelection,
   })
-
   const activeMenuSpace = React.useMemo(
     () =>
       spaceActionMenu
@@ -275,12 +272,10 @@ export function WorkspaceCanvasView({
         : null,
     [spaceActionMenu, spaces],
   )
-
   const normalizedWorkspacePath = React.useMemo(
     () => normalizeComparablePath(workspacePath),
     [workspacePath],
   )
-
   const activeMenuSpacePath = React.useMemo(() => {
     if (!activeMenuSpace) {
       return workspacePath
@@ -289,10 +284,20 @@ export function WorkspaceCanvasView({
     const trimmed = activeMenuSpace.directoryPath.trim()
     return trimmed.length > 0 ? trimmed : workspacePath
   }, [activeMenuSpace, workspacePath])
-
   const isActiveMenuSpaceOnWorkspaceRoot =
     normalizeComparablePath(activeMenuSpacePath) === normalizedWorkspacePath
 
+  const ownedNodeIdSet = React.useMemo(
+    () => new Set(spaces.flatMap(space => space.nodeIds)),
+    [spaces],
+  )
+  const rootNodeCount = React.useMemo(
+    () => nodes.filter(node => !ownedNodeIdSet.has(node.id)).length,
+    [nodes, ownedNodeIdSet],
+  )
+  const canArrangeCanvas = spaces.length + rootNodeCount >= 2
+  const canArrangeAll = canArrangeCanvas || spaces.some(space => space.nodeIds.length >= 2)
+  const canArrangeActiveSpace = Boolean(activeMenuSpace && activeMenuSpace.nodeIds.length >= 2)
   return (
     <div
       ref={canvasRef}
@@ -310,7 +315,6 @@ export function WorkspaceCanvasView({
         ) {
           closeContextMenu()
         }
-
         handleCanvasPointerDownCapture(event)
       }}
       onPointerMoveCapture={handleCanvasPointerMoveCapture}
@@ -369,19 +373,15 @@ export function WorkspaceCanvasView({
           startSpaceRename={startSpaceRename}
           onOpenSpaceMenu={openSpaceActionMenu}
         />
-
         <WorkspaceMinimapDock
           isMinimapVisible={isMinimapVisible}
           minimapNodeColor={minimapNodeColor}
           setIsMinimapVisible={setIsMinimapVisible}
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
-
         <Controls className="workspace-canvas__controls" showInteractive={false} />
       </ReactFlow>
-
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
-
       {selectedNodeCount > 0 || spaces.length > 0 ? (
         <div className="workspace-canvas__top-overlays">
           {spaces.length > 0 ? (
@@ -399,12 +399,15 @@ export function WorkspaceCanvasView({
           ) : null}
         </div>
       ) : null}
-
       <WorkspaceContextMenu
         contextMenu={contextMenu}
         closeContextMenu={closeContextMenu}
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+        canArrangeAll={canArrangeAll}
+        canArrangeCanvas={canArrangeCanvas}
+        arrangeAll={arrangeAll}
+        arrangeCanvas={arrangeCanvas}
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
@@ -413,10 +416,11 @@ export function WorkspaceCanvasView({
         isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
         convertSelectedNoteToTask={convertSelectedNoteToTask}
       />
-
       <WorkspaceSpaceActionMenu
         menu={spaceActionMenu}
         availableOpeners={availablePathOpeners}
+        canArrange={canArrangeActiveSpace}
+        onArrange={arrangeInSpace}
         canCreateWorktree={activeMenuSpace !== null && isActiveMenuSpaceOnWorkspaceRoot}
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
@@ -441,7 +445,6 @@ export function WorkspaceCanvasView({
           }
         }}
       />
-
       <TaskCreatorWindow
         taskCreator={taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}
@@ -452,7 +455,6 @@ export function WorkspaceCanvasView({
         generateTaskTitle={generateTaskTitle}
         createTask={createTask}
       />
-
       <TaskEditorWindow
         taskEditor={taskEditor}
         taskTitleProviderLabel={taskTitleProviderLabel}
@@ -463,13 +465,11 @@ export function WorkspaceCanvasView({
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
       />
-
       <NodeDeleteConfirmationWindow
         nodeDeleteConfirmation={nodeDeleteConfirmation}
         setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}
       />
-
       <SpaceWorktreeWindow
         spaceId={spaceWorktreeDialog?.spaceId ?? null}
         initialViewMode={spaceWorktreeDialog?.initialViewMode ?? 'create'}
@@ -480,16 +480,13 @@ export function WorkspaceCanvasView({
         agentSettings={agentSettings}
         onClose={closeSpaceWorktree}
         onShowMessage={onShowMessage}
-        onUpdateSpaceDirectory={(spaceId, directoryPath, options) => {
-          updateSpaceDirectory(spaceId, directoryPath, options)
-        }}
-        getBlockingNodes={spaceId => getSpaceBlockingNodes(spaceId)}
-        closeNodesById={nodeIds => closeNodesById(nodeIds)}
+        onUpdateSpaceDirectory={updateSpaceDirectory}
+        getBlockingNodes={getSpaceBlockingNodes}
+        closeNodesById={closeNodesById}
       />
     </div>
   )
 }
-
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
 }
