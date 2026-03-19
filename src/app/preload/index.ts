@@ -12,6 +12,7 @@ import type {
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
+  ListInstalledAgentProvidersResult,
   ListGitBranchesInput,
   ListGitBranchesResult,
   ListGitWorktreesInput,
@@ -173,6 +174,8 @@ const opencoveApi = {
   agent: {
     listModels: (payload: ListAgentModelsInput): Promise<ListAgentModelsResult> =>
       invokeIpc(IPC_CHANNELS.agentListModels, payload),
+    listInstalledProviders: (): Promise<ListInstalledAgentProvidersResult> =>
+      invokeIpc(IPC_CHANNELS.agentListInstalledProviders),
     launch: (payload: LaunchAgentInput): Promise<LaunchAgentResult> =>
       invokeIpc(IPC_CHANNELS.agentLaunch, payload),
     readLastMessage: (payload: ReadAgentLastMessageInput): Promise<ReadAgentLastMessageResult> =>

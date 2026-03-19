@@ -165,20 +165,21 @@ function WorkspaceCanvasInner({
       isAgentLaunchTokenCurrent,
       agentFullAccess: agentSettings.agentFullAccess,
     })
-  const { openAgentLauncher } = workspaceCanvasHooks.useWorkspaceCanvasAgentLauncher({
-    agentSettings,
-    workspacePath,
-    nodesRef,
-    setNodes,
-    spacesRef,
+  const { openAgentLauncher, openAgentLauncherForProvider } =
+    workspaceCanvasHooks.useWorkspaceCanvasAgentLauncher({
+      agentSettings,
+      workspacePath,
+      nodesRef,
+      setNodes,
+      spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
     contextMenu,
     setContextMenu,
-    createNodeForSession,
-    buildAgentNodeTitle,
-  })
+      createNodeForSession,
+      buildAgentNodeTitle,
+    })
   const taskTagOptions = useMemo(() => {
     const fromSettings = agentSettings.taskTagOptions ?? []
     return [...new Set(fromSettings.map(tag => tag.trim()).filter(tag => tag.length > 0))]
@@ -450,6 +451,7 @@ function WorkspaceCanvasInner({
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
       openTaskCreator={openTaskCreator}
       openAgentLauncher={openAgentLauncher}
+      openAgentLauncherForProvider={openAgentLauncherForProvider}
       createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
       clearNodeSelection={clearNodeSelection}
       canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}

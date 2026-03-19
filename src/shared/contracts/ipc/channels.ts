@@ -32,6 +32,7 @@ export const IPC_CHANNELS = {
   ptyState: 'pty:state',
   ptySessionMetadata: 'pty:session-metadata',
   agentListModels: 'agent:list-models',
+  agentListInstalledProviders: 'agent:list-installed-providers',
   agentLaunch: 'agent:launch',
   agentResolveResumeSession: 'agent:resolve-resume-session',
   agentReadLastMessage: 'agent:read-last-message',

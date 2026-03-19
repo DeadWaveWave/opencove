@@ -23,6 +23,22 @@ export interface AgentLaunchCommand {
   resumeSessionId: string | null
 }
 
+export function resolveAgentCliCommand(provider: AgentProviderId): string {
+  if (provider === 'claude-code') {
+    return 'claude'
+  }
+
+  if (provider === 'opencode') {
+    return 'opencode'
+  }
+
+  if (provider === 'gemini') {
+    return 'gemini'
+  }
+
+  return 'codex'
+}
+
 function normalizeOptionalValue(value: string | null | undefined): string | null {
   if (typeof value !== 'string') {
     return null

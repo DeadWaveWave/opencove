@@ -14,7 +14,12 @@ import {
 } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../types'
+import type {
+  AgentNodeData,
+  TerminalNodeData,
+  WorkspaceSpaceRect,
+  WorkspaceSpaceState,
+} from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type {
   ContextMenuState,
@@ -105,6 +110,7 @@ interface WorkspaceCanvasViewProps {
   createNoteNodeFromContextMenu: () => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
+  openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
   createSpaceFromSelectedNodes: () => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
@@ -218,6 +224,7 @@ export function WorkspaceCanvasView({
   createNoteNodeFromContextMenu,
   openTaskCreator,
   openAgentLauncher,
+  openAgentLauncherForProvider,
   createSpaceFromSelectedNodes,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
@@ -407,6 +414,7 @@ export function WorkspaceCanvasView({
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
+        openAgentLauncherForProvider={openAgentLauncherForProvider}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
         clearNodeSelection={clearNodeSelection}
         canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}

@@ -49,176 +49,184 @@ export function useWorkspaceCanvasAgentLauncher({
   buildAgentNodeTitle,
 }: UseAgentLauncherParams): {
   openAgentLauncher: () => void
+  openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
 } {
   const { t } = useTranslation()
 
-  const openAgentLauncher = useCallback(() => {
-    if (!contextMenu || contextMenu.kind !== 'pane') {
-      return
-    }
+  const openAgentLauncherForProvider = useCallback(
+    (provider: AgentNodeData['provider']) => {
+      if (!contextMenu || contextMenu.kind !== 'pane') {
+        return
+      }
 
-    const cursorAnchor: Point = {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    }
-    const anchor = resolveNodePlacementAnchorFromViewportCenter(
-      cursorAnchor,
-      resolveDefaultAgentWindowSize(agentSettings.defaultTerminalWindowScalePercent),
-    )
+      const cursorAnchor: Point = {
+        x: contextMenu.flowX,
+        y: contextMenu.flowY,
+      }
+      const anchor = resolveNodePlacementAnchorFromViewportCenter(
+        cursorAnchor,
+        resolveDefaultAgentWindowSize(agentSettings.defaultTerminalWindowScalePercent),
+      )
 
-    const provider = agentSettings.defaultProvider
-    const model = resolveAgentModel(agentSettings, provider)
+      const model = resolveAgentModel(agentSettings, provider)
 
-    const anchorSpace =
-      spacesRef.current.find(space => {
-        if (!space.rect) {
-          return false
-        }
+      const anchorSpace =
+        spacesRef.current.find(space => {
+          if (!space.rect) {
+            return false
+          }
 
-        return (
-          cursorAnchor.x >= space.rect.x &&
-          cursorAnchor.x <= space.rect.x + space.rect.width &&
-          cursorAnchor.y >= space.rect.y &&
-          cursorAnchor.y <= space.rect.y + space.rect.height
-        )
-      }) ?? null
+          return (
+            cursorAnchor.x >= space.rect.x &&
+            cursorAnchor.x <= space.rect.x + space.rect.width &&
+            cursorAnchor.y >= space.rect.y &&
+            cursorAnchor.y <= space.rect.y + space.rect.height
+          )
+        }) ?? null
 
-    const executionDirectory =
-      anchorSpace && anchorSpace.directoryPath.trim().length > 0
-        ? anchorSpace.directoryPath
-        : workspacePath
+      const executionDirectory =
+        anchorSpace && anchorSpace.directoryPath.trim().length > 0
+          ? anchorSpace.directoryPath
+          : workspacePath
 
-    setContextMenu(null)
+      setContextMenu(null)
 
-    void (async () => {
-      try {
-        const launched = await window.opencoveApi.agent.launch({
-          provider,
-          cwd: executionDirectory,
-          prompt: '',
-          mode: 'new',
-          model,
-          agentFullAccess: agentSettings.agentFullAccess,
-          cols: 80,
-          rows: 24,
-        })
-
-        const modelLabel = launched.effectiveModel ?? model
-        const created = await createNodeForSession({
-          sessionId: launched.sessionId,
-          title: buildAgentNodeTitle(provider, modelLabel),
-          anchor,
-          kind: 'agent',
-          agent: {
+      void (async () => {
+        try {
+          const launched = await window.opencoveApi.agent.launch({
             provider,
+            cwd: executionDirectory,
             prompt: '',
+            mode: 'new',
             model,
-            effectiveModel: launched.effectiveModel,
-            launchMode: launched.launchMode,
-            ...clearResumeSessionBinding(),
-            executionDirectory,
-            expectedDirectory: executionDirectory,
-            directoryMode: 'workspace',
-            customDirectory: null,
-            shouldCreateDirectory: false,
-            taskId: null,
-          },
-        })
+            agentFullAccess: agentSettings.agentFullAccess,
+            cols: 80,
+            rows: 24,
+          })
 
-        if (!created) {
-          return
-        }
+          const modelLabel = launched.effectiveModel ?? model
+          const created = await createNodeForSession({
+            sessionId: launched.sessionId,
+            title: buildAgentNodeTitle(provider, modelLabel),
+            anchor,
+            kind: 'agent',
+            agent: {
+              provider,
+              prompt: '',
+              model,
+              effectiveModel: launched.effectiveModel,
+              launchMode: launched.launchMode,
+              ...clearResumeSessionBinding(),
+              executionDirectory,
+              expectedDirectory: executionDirectory,
+              directoryMode: 'workspace',
+              customDirectory: null,
+              shouldCreateDirectory: false,
+              taskId: null,
+            },
+          })
 
-        if (!anchorSpace) {
-          return
-        }
+          if (!created) {
+            return
+          }
 
-        const nextSpaces = sanitizeSpaces(
-          spacesRef.current.map(space => {
-            const filtered = space.nodeIds.filter(nodeId => nodeId !== created.id)
+          if (!anchorSpace) {
+            return
+          }
 
-            if (space.id !== anchorSpace.id) {
+          const nextSpaces = sanitizeSpaces(
+            spacesRef.current.map(space => {
+              const filtered = space.nodeIds.filter(nodeId => nodeId !== created.id)
+
+              if (space.id !== anchorSpace.id) {
+                return {
+                  ...space,
+                  nodeIds: filtered,
+                }
+              }
+
               return {
                 ...space,
-                nodeIds: filtered,
+                nodeIds: [...new Set([...filtered, created.id])],
               }
-            }
+            }),
+          )
 
-            return {
-              ...space,
-              nodeIds: [...new Set([...filtered, created.id])],
-            }
-          }),
-        )
+          const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
+            targetSpaceId: anchorSpace.id,
+            spaces: nextSpaces,
+            nodeRects: nodesRef.current.map(node => ({
+              id: node.id,
+              rect: {
+                x: node.position.x,
+                y: node.position.y,
+                width: node.data.width,
+                height: node.data.height,
+              },
+            })),
+            gap: 0,
+          })
 
-        const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
-          targetSpaceId: anchorSpace.id,
-          spaces: nextSpaces,
-          nodeRects: nodesRef.current.map(node => ({
-            id: node.id,
-            rect: {
-              x: node.position.x,
-              y: node.position.y,
-              width: node.data.width,
-              height: node.data.height,
-            },
-          })),
-          gap: 0,
-        })
+          if (nodePositionById.size > 0) {
+            setNodes(
+              prevNodes => {
+                let hasChanged = false
+                const next = prevNodes.map(node => {
+                  const nextPosition = nodePositionById.get(node.id)
+                  if (!nextPosition) {
+                    return node
+                  }
 
-        if (nodePositionById.size > 0) {
-          setNodes(
-            prevNodes => {
-              let hasChanged = false
-              const next = prevNodes.map(node => {
-                const nextPosition = nodePositionById.get(node.id)
-                if (!nextPosition) {
-                  return node
-                }
+                  if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
+                    return node
+                  }
 
-                if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-                  return node
-                }
+                  hasChanged = true
+                  return {
+                    ...node,
+                    position: nextPosition,
+                  }
+                })
 
-                hasChanged = true
-                return {
-                  ...node,
-                  position: nextPosition,
-                }
-              })
+                return hasChanged ? next : prevNodes
+              },
+              { syncLayout: false },
+            )
+          }
 
-              return hasChanged ? next : prevNodes
-            },
-            { syncLayout: false },
+          onSpacesChange(pushedSpaces)
+          onRequestPersistFlush?.()
+        } catch (error) {
+          onShowMessage?.(
+            t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
+            'error',
           )
         }
+      })()
+    },
+    [
+      agentSettings,
+      buildAgentNodeTitle,
+      contextMenu,
+      createNodeForSession,
+      nodesRef,
+      onRequestPersistFlush,
+      onShowMessage,
+      onSpacesChange,
+      setContextMenu,
+      setNodes,
+      spacesRef,
+      t,
+      workspacePath,
+    ],
+  )
 
-        onSpacesChange(pushedSpaces)
-        onRequestPersistFlush?.()
-      } catch (error) {
-        onShowMessage?.(
-          t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
-          'error',
-        )
-      }
-    })()
-  }, [
-    agentSettings,
-    buildAgentNodeTitle,
-    contextMenu,
-    createNodeForSession,
-    nodesRef,
-    onRequestPersistFlush,
-    onShowMessage,
-    onSpacesChange,
-    setContextMenu,
-    setNodes,
-    spacesRef,
-    t,
-    workspacePath,
-  ])
+  const openAgentLauncher = useCallback(() => {
+    openAgentLauncherForProvider(agentSettings.defaultProvider)
+  }, [agentSettings.defaultProvider, openAgentLauncherForProvider])
 
   return {
     openAgentLauncher,
+    openAgentLauncherForProvider,
   }
 }

@@ -10,7 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - (none)
 
 ### 💅 Changed
-- (none)
+- Workspace pane context menu: “Run Agent” can expand to pick an installed agent CLI.
 
 ### 🐞 Fixed
 - (none)

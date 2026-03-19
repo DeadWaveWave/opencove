@@ -84,6 +84,75 @@
   flex: 1 1 auto;
 }
 
+.workspace-context-menu__split {
+  width: 100%;
+  display: flex;
+}
+
+.workspace-context-menu__split button {
+  width: auto;
+}
+
+.workspace-context-menu__split-main {
+  flex: 1 1 auto;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.workspace-context-menu__split-toggle {
+  flex: 0 0 auto;
+  justify-content: center;
+  gap: 0;
+  padding: 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.workspace-context-menu__split-toggle:hover .workspace-context-menu__chevron,
+.workspace-context-menu__split-toggle:active .workspace-context-menu__chevron {
+  transform: rotate(0deg);
+}
+
+.workspace-context-menu__split-toggle:hover
+  .workspace-context-menu__chevron.workspace-context-menu__chevron--open,
+.workspace-context-menu__split-toggle:active
+  .workspace-context-menu__chevron.workspace-context-menu__chevron--open {
+  transform: rotate(90deg);
+}
+
+.workspace-context-menu__chevron {
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+.workspace-context-menu__chevron--open {
+  transform: rotate(90deg);
+}
+
+.workspace-canvas-context-menu {
+  z-index: 12;
+  min-width: 188px;
+}
+
+.workspace-canvas-context-menu--submenu {
+  z-index: 13;
+}
+
+.workspace-context-menu__spinner {
+  animation: workspace-context-menu-spin 0.8s linear infinite;
+}
+
+@keyframes workspace-context-menu-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .workspace-canvas__top-overlays {
   position: absolute;
   top: 12px;
