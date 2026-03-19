@@ -1,7 +1,10 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import { assignNodeToSpaceAndExpand, findContainingSpaceByAnchor } from './useInteractions.spaceAssignment'
+import {
+  assignNodeToSpaceAndExpand,
+  findContainingSpaceByAnchor,
+} from './useInteractions.spaceAssignment'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],

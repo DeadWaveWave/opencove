@@ -27,7 +27,10 @@ type SetNodes = (
   options?: { syncLayout?: boolean },
 ) => void
 
-type SelectionDraftUiState = Pick<SelectionDraftState, 'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'>
+type SelectionDraftUiState = Pick<
+  SelectionDraftState,
+  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
+>
 
 interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
@@ -81,7 +84,10 @@ export function useWorkspaceCanvasInteractions({
   clearNodeSelection: () => void
   handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
   handleNodeClick: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
-  handleSelectionContextMenu: (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => void
+  handleSelectionContextMenu: (
+    event: React.MouseEvent,
+    selectedNodes: Node<TerminalNodeData>[],
+  ) => void
   handleNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
   handlePaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
   handleSelectionChange: (params: { nodes: Node<TerminalNodeData>[] }) => void
