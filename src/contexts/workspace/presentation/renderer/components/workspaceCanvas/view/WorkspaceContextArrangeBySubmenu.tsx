@@ -3,6 +3,7 @@ import { Check } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceSpaceState } from '../../../types'
 import type {
+  WorkspaceArrangeLayout,
   WorkspaceArrangeOrder,
   WorkspaceArrangeSpaceFit,
 } from '../../../utils/workspaceArrange'
@@ -25,11 +26,13 @@ export function WorkspaceContextArrangeBySubmenu({
   canArrangeHitSpace,
   arrangeScope,
   arrangeOrder,
+  arrangeLayout,
   arrangeSpaceFit,
   alignStandardSizes,
   isDensePackingEnabled,
   onSelectScope,
   onSelectOrder,
+  onSelectLayout,
   onSelectSpaceFit,
   onToggleAlignStandardSizes,
   onToggleDense,
@@ -41,11 +44,13 @@ export function WorkspaceContextArrangeBySubmenu({
   canArrangeHitSpace: boolean
   arrangeScope: ArrangeScope
   arrangeOrder: WorkspaceArrangeOrder
+  arrangeLayout: WorkspaceArrangeLayout
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
   alignStandardSizes: boolean
   isDensePackingEnabled: boolean
   onSelectScope: (scope: ArrangeScope) => void
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
+  onSelectLayout: (layout: WorkspaceArrangeLayout) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
   onToggleAlignStandardSizes: () => void
   onToggleDense: () => void
@@ -154,6 +159,36 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <div className="workspace-context-menu__section-title">
         {t('workspaceArrangeMenu.layout')}
+      </div>
+      <button
+        type="button"
+        data-testid="workspace-context-arrange-layout-flow"
+        onClick={() => {
+          onSelectLayout('flow')
+        }}
+      >
+        {renderMark(arrangeLayout === 'flow')}
+        <span className="workspace-context-menu__label">
+          {t('workspaceArrangeMenu.layoutFlow')}
+        </span>
+      </button>
+      <button
+        type="button"
+        data-testid="workspace-context-arrange-layout-spiral"
+        onClick={() => {
+          onSelectLayout('spiral')
+        }}
+      >
+        {renderMark(arrangeLayout === 'spiral')}
+        <span className="workspace-context-menu__label">
+          {t('workspaceArrangeMenu.layoutSpiral')}
+        </span>
+      </button>
+
+      <div className="workspace-context-menu__separator" />
+
+      <div className="workspace-context-menu__section-title">
+        {t('workspaceArrangeMenu.spaceFit')}
       </div>
       <button
         type="button"

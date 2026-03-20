@@ -16,6 +16,45 @@ export interface WorkspaceArrangeItem {
   area: number
 }
 
+function createSpaceArrangeItem({
+  space,
+  nodeById,
+}: {
+  space: WorkspaceSpaceState
+  nodeById: Map<string, Node<TerminalNodeData>>
+}): WorkspaceArrangeItem | null {
+  if (!space.rect) {
+    return null
+  }
+
+  return {
+    key: `space:${space.id}`,
+    kind: 'space',
+    id: space.id,
+    rect: { ...space.rect },
+    createdAt: resolveSpaceCreatedAt({ space, nodeById }),
+    kindRank: 0,
+    area: space.rect.width * space.rect.height,
+  }
+}
+
+function createNodeArrangeItem(node: Node<TerminalNodeData>): WorkspaceArrangeItem {
+  return {
+    key: `node:${node.id}`,
+    kind: 'node',
+    id: node.id,
+    rect: {
+      x: node.position.x,
+      y: node.position.y,
+      width: node.data.width,
+      height: node.data.height,
+    },
+    createdAt: resolveNodeCreatedAt(node),
+    kindRank: resolveNodeKindRank(node.data.kind),
+    area: node.data.width * node.data.height,
+  }
+}
+
 function resolveNodeCreatedAt(node: Node<TerminalNodeData>): number | null {
   const taskCreatedAt =
     node.data.kind === 'task' && typeof node.data.task?.createdAt === 'string'
@@ -241,47 +280,50 @@ export function createArrangeItemsForCanvas({
   spaces: WorkspaceSpaceState[]
   order: WorkspaceArrangeOrder
 }): WorkspaceArrangeItem[] {
+  return sortWorkspaceArrangeItems(
+    [
+      ...createArrangeItemsForCanvasSpaces({ nodes, spaces, order }),
+      ...createArrangeItemsForCanvasRootNodes({ nodes, spaces, order }),
+    ],
+    order,
+  )
+}
+
+export function createArrangeItemsForCanvasSpaces({
+  nodes,
+  spaces,
+  order,
+}: {
+  nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+  order: WorkspaceArrangeOrder
+}): WorkspaceArrangeItem[] {
   const nodeById = new Map(nodes.map(node => [node.id, node]))
+  return sortWorkspaceArrangeItems(
+    spaces
+      .map(space =>
+        createSpaceArrangeItem({
+          space,
+          nodeById,
+        }),
+      )
+      .filter((item): item is WorkspaceArrangeItem => Boolean(item)),
+    order,
+  )
+}
+
+export function createArrangeItemsForCanvasRootNodes({
+  nodes,
+  spaces,
+  order,
+}: {
+  nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+  order: WorkspaceArrangeOrder
+}): WorkspaceArrangeItem[] {
   const ownedNodeIdSet = new Set(spaces.flatMap(space => space.nodeIds))
-
-  const items: WorkspaceArrangeItem[] = []
-
-  for (const space of spaces) {
-    if (!space.rect) {
-      continue
-    }
-
-    items.push({
-      key: `space:${space.id}`,
-      kind: 'space',
-      id: space.id,
-      rect: { ...space.rect },
-      createdAt: resolveSpaceCreatedAt({ space, nodeById }),
-      kindRank: 0,
-      area: space.rect.width * space.rect.height,
-    })
-  }
-
-  for (const node of nodes) {
-    if (ownedNodeIdSet.has(node.id)) {
-      continue
-    }
-
-    items.push({
-      key: `node:${node.id}`,
-      kind: 'node',
-      id: node.id,
-      rect: {
-        x: node.position.x,
-        y: node.position.y,
-        width: node.data.width,
-        height: node.data.height,
-      },
-      createdAt: resolveNodeCreatedAt(node),
-      kindRank: resolveNodeKindRank(node.data.kind),
-      area: node.data.width * node.data.height,
-    })
-  }
-
-  return sortWorkspaceArrangeItems(items, order)
+  return sortWorkspaceArrangeItems(
+    nodes.filter(node => !ownedNodeIdSet.has(node.id)).map(createNodeArrangeItem),
+    order,
+  )
 }

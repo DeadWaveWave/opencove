@@ -5,11 +5,17 @@ import {
   computeBoundingRect,
   resolveDensePacking,
   resolveFlowPacking,
+  resolveSpiralPacking,
   snapDown,
 } from './workspaceArrange.flowPacking'
-import { createArrangeItemsForCanvas } from './workspaceArrange.ordering'
+import {
+  createArrangeItemsForCanvasRootNodes,
+  createArrangeItemsForCanvasSpaces,
+  type WorkspaceArrangeItem,
+} from './workspaceArrange.ordering'
 import { normalizeWorkspaceNodesToStandardSizing } from './workspaceArrange.standardSizing'
 import {
+  WORKSPACE_ARRANGE_DENSE_STEP_PX,
   computeOwnedNodeIdSet,
   resolveArrangeStyle,
   unionSpaceRects,
@@ -18,6 +24,93 @@ import {
   type WorkspaceArrangeResult,
   type WorkspaceArrangeStyle,
 } from './workspaceArrange.shared'
+
+function resolveCanvasSectionPlacements({
+  items,
+  start,
+  wrapWidth,
+  gap,
+  grid,
+  style,
+}: {
+  items: WorkspaceArrangeItem[]
+  start: { x: number; y: number }
+  wrapWidth: number
+  gap: number
+  grid: number
+  style: Required<WorkspaceArrangeStyle>
+}): Map<string, { x: number; y: number }> {
+  if (items.length === 0) {
+    return new Map()
+  }
+
+  const placementItems = items.map(item => ({
+    id: item.key,
+    width: item.rect.width,
+    height: item.rect.height,
+  }))
+  const effectiveWrapWidth = Math.max(
+    wrapWidth,
+    Math.max(...placementItems.map(item => item.width)),
+  )
+
+  if (style.layout === 'spiral') {
+    return (
+      resolveSpiralPacking({
+        items: placementItems,
+        anchor: {
+          x: start.x + effectiveWrapWidth / 2,
+          y: start.y + placementItems[0]!.height / 2,
+        },
+        step: style.dense ? WORKSPACE_ARRANGE_DENSE_STEP_PX : grid,
+        gap,
+        bounds: {
+          minX: start.x,
+          minY: start.y,
+          maxX: start.x + effectiveWrapWidth,
+        },
+      }) ?? new Map()
+    )
+  }
+
+  if (style.dense) {
+    return resolveDensePacking({
+      items: placementItems,
+      start,
+      wrapWidth: effectiveWrapWidth,
+    })
+  }
+
+  return resolveFlowPacking({
+    items: placementItems,
+    start,
+    wrapWidth: effectiveWrapWidth,
+    gap,
+  })
+}
+
+function computePlacedBoundingRect(
+  items: WorkspaceArrangeItem[],
+  placements: Map<string, { x: number; y: number }>,
+) {
+  return computeBoundingRect(
+    items
+      .map(item => {
+        const placed = placements.get(item.key)
+        if (!placed) {
+          return null
+        }
+
+        return {
+          x: placed.x,
+          y: placed.y,
+          width: item.rect.width,
+          height: item.rect.height,
+        }
+      })
+      .filter((rect): rect is NonNullable<typeof rect> => rect !== null),
+  )
+}
 
 export function arrangeWorkspaceCanvas({
   nodes,
@@ -91,11 +184,17 @@ export function arrangeWorkspaceCanvas({
     return { ...space, rect: nextRect }
   })
 
-  const items = createArrangeItemsForCanvas({
+  const spaceItems = createArrangeItemsForCanvasSpaces({
     nodes: nodesWithStandardSizing,
     spaces: fittedSpaces,
     order: resolvedStyle.order,
   })
+  const rootItems = createArrangeItemsForCanvasRootNodes({
+    nodes: nodesWithStandardSizing,
+    spaces: fittedSpaces,
+    order: resolvedStyle.order,
+  })
+  const items = [...spaceItems, ...rootItems]
 
   const bounding = computeBoundingRect(items.map(item => item.rect))
   if (!bounding) {
@@ -105,31 +204,33 @@ export function arrangeWorkspaceCanvas({
   const start = { x: snapDown(bounding.x, grid), y: snapDown(bounding.y, grid) }
   const effectiveWrapWidth = snapDown(wrapWidth, grid)
   const effectiveGap = resolvedStyle.dense ? 0 : gap
-  const placementItems = items.map(item => ({
-    id: item.key,
-    width: item.rect.width,
-    height: item.rect.height,
-  }))
-  const placements = resolvedStyle.dense
-    ? resolveDensePacking({
-        items: placementItems,
-        start,
-        wrapWidth: effectiveWrapWidth,
-      })
-    : resolveFlowPacking({
-        items: placementItems,
-        start,
-        wrapWidth: effectiveWrapWidth,
-        gap: effectiveGap,
-      })
+  const spacePlacements = resolveCanvasSectionPlacements({
+    items: spaceItems,
+    start,
+    wrapWidth: effectiveWrapWidth,
+    gap: effectiveGap,
+    grid,
+    style: resolvedStyle,
+  })
+  const placedSpaceBounding = computePlacedBoundingRect(spaceItems, spacePlacements)
+  const rootStart = {
+    x: start.x,
+    y: placedSpaceBounding
+      ? placedSpaceBounding.y + placedSpaceBounding.height + effectiveGap
+      : start.y,
+  }
+  const rootPlacements = resolveCanvasSectionPlacements({
+    items: rootItems,
+    start: rootStart,
+    wrapWidth: effectiveWrapWidth,
+    gap: effectiveGap,
+    grid,
+    style: resolvedStyle,
+  })
 
   const spaceDeltaById = new Map<string, { dx: number; dy: number }>()
-  for (const item of items) {
-    if (item.kind !== 'space') {
-      continue
-    }
-
-    const placed = placements.get(item.key)
+  for (const item of spaceItems) {
+    const placed = spacePlacements.get(item.key)
     if (!placed) {
       continue
     }
@@ -144,12 +245,8 @@ export function arrangeWorkspaceCanvas({
   }
 
   const nodePlacementById = new Map<string, { x: number; y: number }>()
-  for (const item of items) {
-    if (item.kind !== 'node') {
-      continue
-    }
-
-    const placed = placements.get(item.key)
+  for (const item of rootItems) {
+    const placed = rootPlacements.get(item.key)
     if (!placed) {
       continue
     }

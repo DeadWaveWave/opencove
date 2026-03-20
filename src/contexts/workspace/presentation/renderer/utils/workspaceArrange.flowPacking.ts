@@ -11,6 +11,13 @@ export interface FlowItem {
   height: number
 }
 
+export interface SpiralBounds {
+  minX?: number
+  minY?: number
+  maxX?: number
+  maxY?: number
+}
+
 export function snapDown(value: number, grid: number): number {
   if (!Number.isFinite(value)) {
     return 0
@@ -109,6 +116,74 @@ function rectsOverlap(left: Rect, right: Rect): boolean {
   )
 }
 
+function rectsOverlapWithGap(left: Rect, right: Rect, gap: number): boolean {
+  if (gap <= 0) {
+    return rectsOverlap(left, right)
+  }
+
+  const halfGap = gap / 2
+  return !(
+    left.x + left.width + halfGap <= right.x - halfGap ||
+    left.x - halfGap >= right.x + right.width + halfGap ||
+    left.y + left.height + halfGap <= right.y - halfGap ||
+    left.y - halfGap >= right.y + right.height + halfGap
+  )
+}
+
+function isRectWithinSpiralBounds(rect: Rect, bounds?: SpiralBounds): boolean {
+  if (!bounds) {
+    return true
+  }
+
+  if (bounds.minX !== undefined && rect.x < bounds.minX) {
+    return false
+  }
+
+  if (bounds.minY !== undefined && rect.y < bounds.minY) {
+    return false
+  }
+
+  if (bounds.maxX !== undefined && rect.x + rect.width > bounds.maxX) {
+    return false
+  }
+
+  if (bounds.maxY !== undefined && rect.y + rect.height > bounds.maxY) {
+    return false
+  }
+
+  return true
+}
+
+function* createSquareSpiralOffsets(): Generator<{ x: number; y: number }, void> {
+  let x = 0
+  let y = 0
+  let stepLength = 1
+  let directionIndex = 0
+  const directions = [
+    { x: 1, y: 0 },
+    { x: 0, y: 1 },
+    { x: -1, y: 0 },
+    { x: 0, y: -1 },
+  ] as const
+
+  yield { x, y }
+
+  while (true) {
+    for (let repeat = 0; repeat < 2; repeat += 1) {
+      const direction = directions[directionIndex % directions.length]!
+      for (let index = 0; index < stepLength; index += 1) {
+        x += direction.x
+        y += direction.y
+        yield { x, y }
+      }
+
+      directionIndex += 1
+    }
+
+    stepLength += 1
+  }
+}
+
 function sortPoints(points: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
   return [...points].sort((left, right) => {
     if (left.y !== right.y) {
@@ -174,6 +249,108 @@ export function resolveDensePacking({
     placements.set(item.id, { x: fallback.x, y: fallback.y })
     candidatePoints.push({ x: fallback.x + fallback.width, y: fallback.y })
     candidatePoints.push({ x: fallback.x, y: fallback.y + fallback.height })
+  }
+
+  return placements
+}
+
+export function resolveSpiralPacking({
+  items,
+  anchor,
+  step,
+  gap,
+  bounds,
+}: {
+  items: FlowItem[]
+  anchor: { x: number; y: number }
+  step: number
+  gap: number
+  bounds?: SpiralBounds
+}): Map<string, { x: number; y: number }> | null {
+  const placements = new Map<string, { x: number; y: number }>()
+  if (items.length === 0) {
+    return placements
+  }
+
+  const placedRects: Rect[] = []
+  const safeStep = Math.max(1, Math.round(step))
+  const hardMaxRing = 4096
+
+  for (const item of items) {
+    const baseX = anchor.x - item.width / 2
+    const baseY = anchor.y - item.height / 2
+
+    const minOffsetX =
+      bounds?.minX !== undefined ? Math.ceil((bounds.minX - baseX) / safeStep) : -Infinity
+    const maxOffsetX =
+      bounds?.maxX !== undefined
+        ? Math.floor((bounds.maxX - item.width - baseX) / safeStep)
+        : Infinity
+    const minOffsetY =
+      bounds?.minY !== undefined ? Math.ceil((bounds.minY - baseY) / safeStep) : -Infinity
+    const maxOffsetY =
+      bounds?.maxY !== undefined
+        ? Math.floor((bounds.maxY - item.height - baseY) / safeStep)
+        : Infinity
+
+    if (minOffsetX > maxOffsetX || minOffsetY > maxOffsetY) {
+      return null
+    }
+
+    const boundedMaxRing =
+      Number.isFinite(minOffsetX) ||
+      Number.isFinite(maxOffsetX) ||
+      Number.isFinite(minOffsetY) ||
+      Number.isFinite(maxOffsetY)
+        ? Math.max(
+            Math.abs(Number.isFinite(minOffsetX) ? minOffsetX : 0),
+            Math.abs(Number.isFinite(maxOffsetX) ? maxOffsetX : 0),
+            Math.abs(Number.isFinite(minOffsetY) ? minOffsetY : 0),
+            Math.abs(Number.isFinite(maxOffsetY) ? maxOffsetY : 0),
+          )
+        : null
+    const maxRing = boundedMaxRing === null ? hardMaxRing : Math.min(hardMaxRing, boundedMaxRing)
+
+    let didPlace = false
+    for (const offset of createSquareSpiralOffsets()) {
+      const ring = Math.max(Math.abs(offset.x), Math.abs(offset.y))
+      if (ring > maxRing) {
+        break
+      }
+
+      if (
+        offset.x < minOffsetX ||
+        offset.x > maxOffsetX ||
+        offset.y < minOffsetY ||
+        offset.y > maxOffsetY
+      ) {
+        continue
+      }
+
+      const rect: Rect = {
+        x: Math.round(baseX + offset.x * safeStep),
+        y: Math.round(baseY + offset.y * safeStep),
+        width: item.width,
+        height: item.height,
+      }
+
+      if (!isRectWithinSpiralBounds(rect, bounds)) {
+        continue
+      }
+
+      if (placedRects.some(existing => rectsOverlapWithGap(rect, existing, gap))) {
+        continue
+      }
+
+      placements.set(item.id, { x: rect.x, y: rect.y })
+      placedRects.push(rect)
+      didPlace = true
+      break
+    }
+
+    if (!didPlace) {
+      return null
+    }
   }
 
   return placements

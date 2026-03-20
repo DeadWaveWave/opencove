@@ -221,14 +221,14 @@ describe('workspace arrange utils', () => {
     expect(result.warnings).toEqual([])
 
     const spaceAfter = result.spaces[0]!.rect
-    expect(spaceAfter).toEqual({ x: 1104, y: 48, width: 480, height: 336 })
+    expect(spaceAfter).toEqual({ x: 96, y: 48, width: 480, height: 336 })
 
     const dx = spaceAfter!.x - spaceBefore.x
     const dy = spaceAfter!.y - spaceBefore.y
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('r1')?.position).toEqual({ x: 96, y: 48 })
-    expect(nodeById.get('r2')?.position).toEqual({ x: 600, y: 48 })
+    expect(nodeById.get('r1')?.position).toEqual({ x: 96, y: 408 })
+    expect(nodeById.get('r2')?.position).toEqual({ x: 600, y: 408 })
 
     expect(nodeById.get('a')?.position).toEqual({
       x: ownedA.position.x + dx,
@@ -289,7 +289,7 @@ describe('workspace arrange utils', () => {
       nodes,
       spaces,
       wrapWidth: 5000,
-      style: { paper: 'a4' },
+      style: { alignStandardSizes: true },
     })
     expect(result.didChange).toBe(true)
     expect(result.spaces).toBe(spaces)
@@ -401,7 +401,7 @@ describe('workspace arrange utils', () => {
     expect(xs.agent).toBeLessThan(xs.terminal)
   })
 
-  it('normalizes nodes to paper sizes before arranging', () => {
+  it('normalizes nodes to standard sizes before arranging', () => {
     const nodes = [
       createTerminalNode({
         id: 'a',
@@ -429,7 +429,7 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
-      style: { paper: 'a4', spaceFit: 'keep' },
+      style: { alignStandardSizes: true, spaceFit: 'keep' },
     })
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))

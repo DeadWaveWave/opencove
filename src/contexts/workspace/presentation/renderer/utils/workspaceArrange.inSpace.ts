@@ -6,11 +6,13 @@ import {
   resolveDensePacking,
   resolveBoundedFlowPacking,
   resolveFlowPacking,
+  resolveSpiralPacking,
   type Rect,
 } from './workspaceArrange.flowPacking'
 import { createArrangeItemsForSpaceNodes } from './workspaceArrange.ordering'
 import { normalizeWorkspaceNodesToStandardSizing } from './workspaceArrange.standardSizing'
 import {
+  WORKSPACE_ARRANGE_DENSE_STEP_PX,
   resolveArrangeStyle,
   unionSpaceRects,
   WORKSPACE_ARRANGE_GAP_PX,
@@ -90,8 +92,49 @@ export function arrangeWorkspaceInSpace({
   const maxItemWidth = Math.max(...items.map(item => item.width))
   const wrapWidth = Math.max(innerRect.width, maxItemWidth)
   const start = { x: innerRect.x, y: innerRect.y }
+  const currentBounding = computeBoundingRect(
+    normalizedOwnedNodes.map(node => ({
+      x: node.position.x,
+      y: node.position.y,
+      width: node.data.width,
+      height: node.data.height,
+    })),
+  )
+  const spiralAnchor =
+    resolvedStyle.spaceFit === 'keep'
+      ? {
+          x: innerRect.x + innerRect.width / 2,
+          y: innerRect.y + innerRect.height / 2,
+        }
+      : currentBounding
+        ? {
+            x: currentBounding.x + currentBounding.width / 2,
+            y: currentBounding.y + currentBounding.height / 2,
+          }
+        : {
+            x: start.x + wrapWidth / 2,
+            y: start.y + items[0]!.height / 2,
+          }
 
   const placements = (() => {
+    if (resolvedStyle.layout === 'spiral') {
+      return resolveSpiralPacking({
+        items,
+        anchor: spiralAnchor,
+        step: resolvedStyle.dense ? WORKSPACE_ARRANGE_DENSE_STEP_PX : gap,
+        gap: effectiveGap,
+        bounds:
+          resolvedStyle.spaceFit === 'keep'
+            ? {
+                minX: innerRect.x,
+                minY: innerRect.y,
+                maxX: innerRect.x + innerRect.width,
+                maxY: innerRect.y + innerRect.height,
+              }
+            : undefined,
+      })
+    }
+
     if (resolvedStyle.spaceFit === 'keep') {
       if (items.some(item => item.width > innerRect.width || item.height > innerRect.height)) {
         return null

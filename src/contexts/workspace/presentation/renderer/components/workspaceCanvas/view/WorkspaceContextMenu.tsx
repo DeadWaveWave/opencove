@@ -15,6 +15,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState } from '../types'
 import type {
+  WorkspaceArrangeLayout,
   WorkspaceArrangeOrder,
   WorkspaceArrangeSpaceFit,
   WorkspaceArrangeStyle,
@@ -91,6 +92,8 @@ export function WorkspaceContextMenu({
   const arrangeScopeRef = React.useRef<ArrangeScope>('canvas')
   const [arrangeOrder, setArrangeOrder] = React.useState<WorkspaceArrangeOrder>('position')
   const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
+  const [arrangeLayout, setArrangeLayout] = React.useState<WorkspaceArrangeLayout>('flow')
+  const arrangeLayoutRef = React.useRef<WorkspaceArrangeLayout>('flow')
   const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
   const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
   const [alignStandardSizes, setAlignStandardSizes] = React.useState(false)
@@ -153,6 +156,7 @@ export function WorkspaceContextMenu({
   const resolveCurrentArrangeStyle = React.useCallback((): WorkspaceArrangeStyle => {
     return {
       order: arrangeOrderRef.current,
+      layout: arrangeLayoutRef.current,
       spaceFit: arrangeSpaceFitRef.current,
       alignStandardSizes: alignStandardSizesRef.current,
       dense: isDensePackingEnabledRef.current,
@@ -438,6 +442,7 @@ export function WorkspaceContextMenu({
           canArrangeHitSpace={canArrangeHitSpace}
           arrangeScope={arrangeScope}
           arrangeOrder={arrangeOrder}
+          arrangeLayout={arrangeLayout}
           arrangeSpaceFit={arrangeSpaceFit}
           alignStandardSizes={alignStandardSizes}
           isDensePackingEnabled={isDensePackingEnabled}
@@ -449,6 +454,11 @@ export function WorkspaceContextMenu({
           onSelectOrder={order => {
             arrangeOrderRef.current = order
             setArrangeOrder(order)
+            applyArrange()
+          }}
+          onSelectLayout={layout => {
+            arrangeLayoutRef.current = layout
+            setArrangeLayout(layout)
             applyArrange()
           }}
           onSelectSpaceFit={spaceFit => {

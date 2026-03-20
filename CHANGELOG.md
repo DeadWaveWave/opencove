@@ -8,10 +8,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 - Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
-- Workspace canvas: Arrange By submenu (scope, ordering, space fit, paper sizing, dense packing). (#42)
+- Workspace canvas: Arrange By submenu (scope, ordering, layout, space sizing, standard size alignment, dense packing). (#42)
+- Workspace canvas: spiral layout mode for canvas and space arranging. (#42)
 
 ### 💅 Changed
 - Workspace canvas: keep Arrange By submenu open while tweaking options (dismiss on outside click). (#42)
+- Workspace canvas: arrange spaces before root nodes during canvas/global arrange. (#42)
 
 ### 🐞 Fixed
 - Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)

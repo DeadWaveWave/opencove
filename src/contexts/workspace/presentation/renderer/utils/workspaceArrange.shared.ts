@@ -6,11 +6,14 @@ import type { WorkspaceArrangeOrder } from './workspaceArrange.ordering'
 export const WORKSPACE_ARRANGE_PADDING_PX = 24
 export const WORKSPACE_ARRANGE_GAP_PX = 24
 export const WORKSPACE_ARRANGE_GRID_PX = 24
+export const WORKSPACE_ARRANGE_DENSE_STEP_PX = 8
 
 export type WorkspaceArrangeSpaceFit = 'tight' | 'grow' | 'keep'
+export type WorkspaceArrangeLayout = 'flow' | 'spiral'
 
 export interface WorkspaceArrangeStyle {
   order?: WorkspaceArrangeOrder
+  layout?: WorkspaceArrangeLayout
   spaceFit?: WorkspaceArrangeSpaceFit
   alignStandardSizes?: boolean
   dense?: boolean
@@ -63,6 +66,7 @@ export function resolveArrangeStyle(
 ): Required<WorkspaceArrangeStyle> {
   return {
     order: style?.order ?? 'position',
+    layout: style?.layout ?? 'flow',
     spaceFit: style?.spaceFit ?? 'tight',
     alignStandardSizes: style?.alignStandardSizes ?? false,
     dense: style?.dense ?? false,
