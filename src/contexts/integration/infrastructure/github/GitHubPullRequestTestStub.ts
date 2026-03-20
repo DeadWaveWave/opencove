@@ -43,6 +43,16 @@ export function buildStubDetails(branch: string): GitHubPullRequestDetails {
     mergeable: 'MERGEABLE',
     reviewDecision: 'REVIEW_REQUIRED',
     commitCount: 1,
+    commits: [
+      {
+        oid: '1111111111111111111111111111111111111111',
+        headline: 'Test commit',
+        authorName: 'Test Author',
+        authorLogin: 'test',
+        committedDate: '2026-03-19T00:00:00.000Z',
+        url: 'https://example.com/commit/1111111',
+      },
+    ],
   }
 }
 

@@ -10,7 +10,7 @@ import type {
 } from '@shared/contracts/dto'
 import type { WorkspaceSpacePullRequestPanelState } from './WorkspaceSpacePullRequestPanel'
 import { WorkspaceSpacePullRequestPanelCiSummary } from './WorkspaceSpacePullRequestPanelCiSummary'
-import { WorkspaceSpacePullRequestPanelConversation } from './WorkspaceSpacePullRequestPanelConversation'
+import { WorkspaceSpacePullRequestPanelCommentComposer } from './WorkspaceSpacePullRequestPanelCommentComposer'
 
 export function WorkspaceSpacePullRequestPanelOverview({
   panel,
@@ -19,6 +19,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
   checks,
   isLoadingChecks,
   onOpenChecksTab,
+  onOpenCommitsTab,
   isAvailable,
   isExecutingAction,
   selectorForExisting,
@@ -37,8 +38,6 @@ export function WorkspaceSpacePullRequestPanelOverview({
   setCreateDraft,
   commentBody,
   setCommentBody,
-  reviewBody,
-  setReviewBody,
 }: {
   panel: WorkspaceSpacePullRequestPanelState
   summary: GitHubPullRequestSummary | null
@@ -46,6 +45,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
   checks: GitHubPullRequestCheck[] | null
   isLoadingChecks: boolean
   onOpenChecksTab?: () => void
+  onOpenCommitsTab?: () => void
   isAvailable: boolean
   isExecutingAction: boolean
   selectorForExisting: GitHubPullRequestSelector | null
@@ -64,8 +64,6 @@ export function WorkspaceSpacePullRequestPanelOverview({
   setCreateDraft: (value: boolean) => void
   commentBody: string
   setCommentBody: (value: string) => void
-  reviewBody: string
-  setReviewBody: (value: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [showAdvanced, setShowAdvanced] = React.useState(false)
@@ -119,6 +117,15 @@ export function WorkspaceSpacePullRequestPanelOverview({
           <div className="workspace-pr-panel__overview-row-value">
             {typeof details?.commitCount === 'number' ? details.commitCount : '—'}
           </div>
+          {onOpenCommitsTab ? (
+            <button
+              type="button"
+              className="workspace-pr-panel__overview-row-action"
+              onClick={onOpenCommitsTab}
+            >
+              {t('githubPullRequest.viewCommits')}
+            </button>
+          ) : null}
         </div>
 
         <WorkspaceSpacePullRequestPanelCiSummary
@@ -127,7 +134,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
           onOpenChecksTab={onOpenChecksTab}
         />
 
-        <WorkspaceSpacePullRequestPanelConversation
+        <WorkspaceSpacePullRequestPanelCommentComposer
           branch={panel.branch}
           isAvailable={isAvailable}
           isExecutingAction={isExecutingAction}
@@ -135,8 +142,6 @@ export function WorkspaceSpacePullRequestPanelOverview({
           executeAction={executeAction}
           commentBody={commentBody}
           setCommentBody={setCommentBody}
-          reviewBody={reviewBody}
-          setReviewBody={setReviewBody}
         />
 
         {pendingConfirmation ? (

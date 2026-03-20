@@ -233,7 +233,8 @@ export async function getGitHubPullRequest(
   )
 
   if (result.exitCode !== 0) {
-    if (isNoPullRequestError(result.stderr)) {
+    const combinedOutput = `${result.stderr}\n${result.stdout}`
+    if (isNoPullRequestError(combinedOutput)) {
       return { availability: toAvailable(), pullRequest: null }
     }
 

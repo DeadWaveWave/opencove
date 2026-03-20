@@ -1,0 +1,72 @@
+.workspace-pr-panel__commits {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-pr-panel__commit-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(10, 16, 30, 0.58);
+  border-radius: 12px;
+}
+
+.workspace-pr-panel__commit-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.workspace-pr-panel__commit-message {
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  font-weight: 700;
+  color: rgba(238, 245, 255, 0.96);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-pr-panel__commit-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: rgba(191, 213, 252, 0.9);
+}
+
+.workspace-pr-panel__commit-sha {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(236, 242, 255, 0.92);
+  font-family:
+    ui-monospace,
+    SFMono-Regular,
+    SF Mono,
+    Menlo,
+    Monaco,
+    Consolas,
+    'Liberation Mono',
+    'Courier New',
+    monospace;
+}
+
+.workspace-pr-panel__commit-link {
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(191, 213, 252, 0.92);
+  display: grid;
+  place-items: center;
+}
+
+.workspace-pr-panel__commit-link svg {
+  width: 14px;
+  height: 14px;
+}

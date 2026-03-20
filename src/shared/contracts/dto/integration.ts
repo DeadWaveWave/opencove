@@ -36,11 +36,21 @@ export interface GitHubPullRequestSummary {
   headRefName: string | null
 }
 
+export interface GitHubPullRequestCommit {
+  oid: string
+  headline: string
+  authorName: string | null
+  authorLogin: string | null
+  committedDate: string | null
+  url: string | null
+}
+
 export interface GitHubPullRequestDetails extends GitHubPullRequestSummary {
   body: string
   mergeable: string | null
   reviewDecision: string | null
   commitCount: number | null
+  commits: GitHubPullRequestCommit[] | null
 }
 
 export interface ResolveGitHubPullRequestsInput {

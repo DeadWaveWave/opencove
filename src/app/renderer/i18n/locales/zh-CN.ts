@@ -393,6 +393,7 @@ export const zhCN = {
     base: '目标：{{base}}',
     branchToBase: '{{branch}} → {{base}}',
     commits: 'Commits',
+    viewCommits: '查看提交',
     ci: 'CI',
     draft: 'Draft',
     state: {
@@ -425,6 +426,7 @@ export const zhCN = {
     advanced: '高级选项',
     hideAdvanced: '收起高级选项',
     create: '创建 PR',
+    noCommits: '暂无提交记录。',
     noChecks: '暂无 Checks。',
     noDiff: '暂无 Diff。',
     binaryDiff: '二进制文件有变更。',

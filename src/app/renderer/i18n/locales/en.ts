@@ -395,6 +395,7 @@ export const en = {
     base: 'Base: {{base}}',
     branchToBase: '{{branch}} → {{base}}',
     commits: 'Commits',
+    viewCommits: 'View commits',
     ci: 'CI',
     draft: 'Draft',
     state: {
@@ -427,6 +428,7 @@ export const en = {
     advanced: 'Advanced',
     hideAdvanced: 'Hide advanced',
     create: 'Create PR',
+    noCommits: 'No commits to show.',
     noChecks: 'No checks to show.',
     noDiff: 'No diff to show.',
     binaryDiff: 'Binary file changed.',

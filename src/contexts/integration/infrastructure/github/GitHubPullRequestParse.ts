@@ -1,5 +1,6 @@
 import type {
   GitHubPullRequestCheck,
+  GitHubPullRequestCommit,
   GitHubPullRequestDetails,
   GitHubPullRequestState,
   GitHubPullRequestSummary,
@@ -76,14 +77,82 @@ export function parsePullRequestDetails(raw: unknown): GitHubPullRequestDetails 
   }
 
   const record = raw as Record<string, unknown>
-  const commitCount = Array.isArray(record.commits) ? record.commits.length : null
+  const commits = parsePullRequestCommits(record.commits, summary.ref.url)
+  const commitCount = commits ? commits.length : null
   return {
     ...summary,
     body: typeof record.body === 'string' ? record.body : '',
     mergeable: normalizeText(record.mergeable) || null,
     reviewDecision: normalizeText(record.reviewDecision) || null,
     commitCount,
+    commits,
   }
+}
+
+function resolveCommitUrl(pullRequestUrl: string | null, oid: string): string | null {
+  const normalized = normalizeText(pullRequestUrl)
+  if (normalized.length === 0) {
+    return null
+  }
+
+  try {
+    const url = new URL(normalized)
+    const segments = url.pathname.split('/').filter(Boolean)
+    const pullIndex = segments.lastIndexOf('pull')
+    if (pullIndex < 0) {
+      return null
+    }
+
+    const baseSegments = segments.slice(0, pullIndex)
+    url.pathname = `/${[...baseSegments, 'commit', oid].join('/')}`
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+function parsePullRequestCommits(
+  raw: unknown,
+  pullRequestUrl: string | null,
+): GitHubPullRequestCommit[] | null {
+  if (!Array.isArray(raw)) {
+    return null
+  }
+
+  const commits: GitHubPullRequestCommit[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') {
+      continue
+    }
+
+    const record = item as Record<string, unknown>
+    const oid = normalizeText(record.oid)
+    const headline = normalizeText(record.messageHeadline) || normalizeText(record.message)
+    if (oid.length === 0 || headline.length === 0) {
+      continue
+    }
+
+    const author =
+      record.author && typeof record.author === 'object'
+        ? (record.author as { name?: unknown; login?: unknown })
+        : null
+
+    commits.push({
+      oid,
+      headline,
+      authorName: author ? normalizeText(author.name) || null : null,
+      authorLogin: author ? normalizeText(author.login) || null : null,
+      committedDate:
+        normalizeText(record.committedDate) || normalizeText(record.authoredDate) || null,
+      url: normalizeText(record.url) || resolveCommitUrl(pullRequestUrl, oid),
+    })
+
+    if (commits.length >= 250) {
+      break
+    }
+  }
+
+  return commits
 }
 
 function normalizeCheckBucket(value: unknown): GitHubPullRequestCheck['bucket'] {
@@ -250,11 +319,14 @@ export function parseStatusCheckRollup(raw: unknown): GitHubPullRequestCheck[] {
   return checks
 }
 
-export function isNoPullRequestError(stderr: string): boolean {
-  const normalized = stderr.toLowerCase()
+export function isNoPullRequestError(output: string): boolean {
+  const normalized = output.toLowerCase()
   return (
     normalized.includes('no pull requests found') ||
     normalized.includes('could not find any pull requests') ||
-    normalized.includes('no pull request found')
+    normalized.includes('no pull request found') ||
+    normalized.includes('pull request not found') ||
+    normalized.includes('could not resolve to a pull request') ||
+    normalized.includes('could not resolve to a pullrequest')
   )
 }

@@ -10,7 +10,8 @@ import type {
 } from '@shared/contracts/dto'
 import { toErrorMessage } from '../helpers'
 import { WorkspaceSpacePullRequestPanelChecks } from './WorkspaceSpacePullRequestPanelChecks'
-import { WorkspaceSpacePullRequestPanelDiff } from './WorkspaceSpacePullRequestPanelDiff'
+import { WorkspaceSpacePullRequestPanelCommits } from './WorkspaceSpacePullRequestPanelCommits'
+import { WorkspaceSpacePullRequestPanelDiffTab } from './WorkspaceSpacePullRequestPanelDiffTab'
 import { WorkspaceSpacePullRequestPanelHeader } from './WorkspaceSpacePullRequestPanelHeader'
 import { WorkspaceSpacePullRequestPanelOverview } from './WorkspaceSpacePullRequestPanelOverview'
 import { WorkspaceSpacePullRequestPanelTabs } from './WorkspaceSpacePullRequestPanelTabs'
@@ -24,7 +25,7 @@ export interface WorkspaceSpacePullRequestPanelState {
   summary: GitHubPullRequestSummary | null
 }
 
-export type WorkspaceSpacePullRequestPanelTab = 'overview' | 'checks' | 'diff'
+export type WorkspaceSpacePullRequestPanelTab = 'overview' | 'commits' | 'checks' | 'diff'
 
 const PANEL_WIDTH = 520
 const PANEL_MAX_HEIGHT = 560
@@ -446,6 +447,9 @@ export function WorkspaceSpacePullRequestPanel({
             onOpenChecksTab={() => {
               setTab('checks')
             }}
+            onOpenCommitsTab={() => {
+              setTab('commits')
+            }}
             isAvailable={isAvailable}
             isExecutingAction={isExecutingAction}
             selectorForExisting={selectorForExisting}
@@ -464,9 +468,11 @@ export function WorkspaceSpacePullRequestPanel({
             setCreateDraft={setCreateDraft}
             commentBody={commentBody}
             setCommentBody={setCommentBody}
-            reviewBody={reviewBody}
-            setReviewBody={setReviewBody}
           />
+        ) : null}
+
+        {tab === 'commits' ? (
+          <WorkspaceSpacePullRequestPanelCommits isLoading={isLoading} commits={details?.commits} />
         ) : null}
 
         {tab === 'checks' ? (
@@ -474,7 +480,18 @@ export function WorkspaceSpacePullRequestPanel({
         ) : null}
 
         {tab === 'diff' ? (
-          <WorkspaceSpacePullRequestPanelDiff isLoading={isLoadingDiff} diff={diff} />
+          <WorkspaceSpacePullRequestPanelDiffTab
+            branch={panel.branch}
+            summary={summary}
+            isLoadingDiff={isLoadingDiff}
+            diff={diff}
+            isAvailable={isAvailable}
+            isExecutingAction={isExecutingAction}
+            selectorForExisting={selectorForExisting}
+            executeAction={executeAction}
+            reviewBody={reviewBody}
+            setReviewBody={setReviewBody}
+          />
         ) : null}
       </div>
     </div>
