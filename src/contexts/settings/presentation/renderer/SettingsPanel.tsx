@@ -271,7 +271,11 @@ export function SettingsPanel({
             label={t('settingsPanel.nav.tasks')}
             testId="settings-section-nav-task-configuration"
           />
-          <NavButton id="models" label={t('settingsPanel.nav.models')} testId="settings-section-nav-models" />
+          <NavButton
+            id="models"
+            label={t('settingsPanel.nav.models')}
+            testId="settings-section-nav-models"
+          />
           <NavButton
             id="integrations"
             label={t('settingsPanel.nav.integrations')}
@@ -376,17 +380,17 @@ export function SettingsPanel({
               />
             ) : null}
 
-	            {isWorkspacePageId(activePageId) && activeWorkspace ? (
-	              <WorkspaceSection
-	                sectionId={`settings-section-workspace-${activeWorkspace.id}`}
-	                workspaceName={activeWorkspace.name}
-	                workspacePath={activeWorkspace.path}
-	                worktreesRoot={activeWorkspace.worktreesRoot}
-	                onChangeWorktreesRoot={root =>
-	                  onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
-	                }
-	              />
-	            ) : null}
+            {isWorkspacePageId(activePageId) && activeWorkspace ? (
+              <WorkspaceSection
+                sectionId={`settings-section-workspace-${activeWorkspace.id}`}
+                workspaceName={activeWorkspace.name}
+                workspacePath={activeWorkspace.path}
+                worktreesRoot={activeWorkspace.worktreesRoot}
+                onChangeWorktreesRoot={root =>
+                  onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+                }
+              />
+            ) : null}
           </div>
         </div>
       </section>
