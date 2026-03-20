@@ -240,7 +240,7 @@ export const zhCN = {
     spaceFitGrow: '仅扩张',
     spaceFitKeep: '保持不变',
     style: '样式',
-    paperA4: '纸张大小 (A4)',
+    paperA4: '对齐标准尺寸',
     dense: '密集排布',
   },
   workspaceCanvas: {
