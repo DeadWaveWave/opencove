@@ -45,6 +45,7 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
+  SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalSessionMetadataEvent,
@@ -64,6 +65,10 @@ const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
     platform: process.platform,
+  },
+  windowChrome: {
+    setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.windowChromeSetTheme, payload),
   },
   clipboard: {
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),

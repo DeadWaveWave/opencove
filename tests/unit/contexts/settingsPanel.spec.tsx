@@ -71,11 +71,12 @@ describe('SettingsPanel', () => {
     const canvasNav = screen.getByTestId('settings-section-nav-canvas')
     fireEvent.click(canvasNav)
 
-    const select = screen.getByTestId('settings-terminal-profile')
-    expect(select).toBeVisible()
+    const trigger = screen.getByTestId('settings-terminal-profile-trigger')
+    expect(trigger).toBeVisible()
     expect(screen.getByText('Automatic (PowerShell)')).toBeVisible()
 
-    fireEvent.change(select, { target: { value: 'wsl:Ubuntu' } })
+    fireEvent.click(trigger)
+    fireEvent.click(screen.getByRole('option', { name: 'WSL (Ubuntu)' }))
 
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_AGENT_SETTINGS,

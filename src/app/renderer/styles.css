@@ -1,6 +1,7 @@
 @import '@xyflow/react/dist/style.css';
 
 @import './styles/base.css';
+@import './styles/cove-fields.css';
 @import './styles/app-header.css';
 @import './styles/command-center.css';
 @import './styles/workspace-sidebar.css';

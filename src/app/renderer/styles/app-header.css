@@ -16,6 +16,10 @@
   padding-left: calc(10px + 72px);
 }
 
+.app-header--windows {
+  padding-right: calc(10px + env(titlebar-area-width, 138px));
+}
+
 .app-header__section {
   display: inline-flex;
   align-items: center;

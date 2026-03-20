@@ -23,6 +23,7 @@ import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
+import { resolveActiveUiTheme, resolveTerminalTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
@@ -99,6 +100,16 @@ export function TerminalNode({
       sessionId,
     })
   }, [sessionId])
+  const applyTerminalTheme = useCallback(() => {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+
+    terminal.options.theme = { ...resolveTerminalTheme() }
+    containerRef.current?.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
+    terminal.refresh(0, Math.max(0, terminal.rows - 1))
+  }, [])
   const { draftFrame, handleResizePointerDown } = useTerminalResize({
     position,
     width,
@@ -130,14 +141,12 @@ export function TerminalNode({
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
 
+    const initialTerminalTheme = resolveTerminalTheme()
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily:
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      theme: {
-        background: '#0a0f1d',
-        foreground: '#d6e4ff',
-      },
+      theme: initialTerminalTheme,
       allowProposedApi: true,
       convertEol: true,
       scrollback: 5000,
@@ -169,6 +178,7 @@ export function TerminalNode({
 
     if (containerRef.current) {
       terminal.open(containerRef.current)
+      containerRef.current.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
@@ -341,9 +351,15 @@ export function TerminalNode({
       syncTerminalSize()
     }
 
+    const handleThemeChange = () => {
+      applyTerminalTheme()
+      syncTerminalSize()
+    }
+
     document.addEventListener('visibilitychange', handleVisibilityChange)
     window.addEventListener('focus', handleWindowFocus)
     window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleLayoutSync)
+    window.addEventListener('opencove-theme-changed', handleThemeChange)
 
     return () => {
       const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
@@ -367,6 +383,7 @@ export function TerminalNode({
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleWindowFocus)
       window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleLayoutSync)
+      window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
       dataDisposable.dispose()
       binaryDisposable.dispose()
@@ -386,6 +403,7 @@ export function TerminalNode({
     }
   }, [
     cancelScrollbackPublish,
+    applyTerminalTheme,
     nodeId,
     disposeScrollbackPublish,
     markScrollbackDirty,

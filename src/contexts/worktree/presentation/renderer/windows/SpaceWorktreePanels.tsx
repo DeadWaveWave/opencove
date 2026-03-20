@@ -3,6 +3,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { BranchMode, SpaceWorktreeViewMode } from './spaceWorktree.shared'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function SpaceWorktreePanels({
   space,
@@ -118,27 +119,25 @@ export function SpaceWorktreePanels({
                 >
                   <div className="cove-window__field-row">
                     <label htmlFor="space-worktree-start-point">{t('worktree.startPoint')}</label>
-                    <select
+                    <CoveSelect
                       id="space-worktree-start-point"
-                      data-testid="space-worktree-start-point"
+                      testId="space-worktree-start-point"
                       value={startPoint}
                       disabled={isBusy}
-                      onChange={event => {
-                        onStartPointChange(event.target.value)
+                      options={[
+                        { value: 'HEAD', label: 'HEAD' },
+                        ...(currentBranch ? [{ value: currentBranch, label: currentBranch }] : []),
+                        ...branches
+                          .filter(branch => branch !== currentBranch)
+                          .map(branch => ({
+                            value: branch,
+                            label: branch,
+                          })),
+                      ]}
+                      onChange={nextValue => {
+                        onStartPointChange(nextValue)
                       }}
-                    >
-                      <option value="HEAD">HEAD</option>
-                      {currentBranch ? (
-                        <option value={currentBranch}>{currentBranch}</option>
-                      ) : null}
-                      {branches
-                        .filter(branch => branch !== currentBranch)
-                        .map(branch => (
-                          <option value={branch} key={branch}>
-                            {branch}
-                          </option>
-                        ))}
-                    </select>
+                    />
                   </div>
 
                   <div className="cove-window__field-row workspace-space-worktree__create-grid-span-two">
@@ -162,21 +161,19 @@ export function SpaceWorktreePanels({
                 >
                   <div className="cove-window__field-row">
                     <label htmlFor="space-worktree-existing-branch">{t('worktree.branch')}</label>
-                    <select
+                    <CoveSelect
                       id="space-worktree-existing-branch"
-                      data-testid="space-worktree-existing-branch"
+                      testId="space-worktree-existing-branch"
                       value={existingBranchName}
                       disabled={isBusy}
-                      onChange={event => {
-                        onExistingBranchNameChange(event.target.value)
+                      options={branches.map(branch => ({
+                        value: branch,
+                        label: branch,
+                      }))}
+                      onChange={nextValue => {
+                        onExistingBranchNameChange(nextValue)
                       }}
-                    >
-                      {branches.map(branch => (
-                        <option value={branch} key={branch}>
-                          {branch}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
               )}

@@ -7,6 +7,7 @@ import {
   type TaskTitleAgentProvider,
   type TaskTitleProvider,
 } from '@contexts/settings/domain/agentSettings'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function TaskConfigurationSection(props: {
   showTaskTitleGeneration: boolean
@@ -49,25 +50,26 @@ export function TaskConfigurationSection(props: {
               <span>{t('settingsPanel.tasks.titleProviderHelp')}</span>
             </div>
             <div className="settings-panel__control">
-              <select
+              <CoveSelect
                 id="settings-task-title-provider"
-                data-testid="settings-task-title-provider"
+                testId="settings-task-title-provider"
                 value={taskTitleProvider}
-                onChange={event => {
-                  onChangeTaskTitleProvider(event.target.value as TaskTitleProvider)
+                options={[
+                  {
+                    value: 'default',
+                    label: t('settingsPanel.tasks.followDefaultAgent', {
+                      provider: AGENT_PROVIDER_LABEL[defaultProvider],
+                    }),
+                  },
+                  ...TASK_TITLE_PROVIDERS.map(provider => ({
+                    value: provider,
+                    label: AGENT_PROVIDER_LABEL[provider],
+                  })),
+                ]}
+                onChange={nextValue => {
+                  onChangeTaskTitleProvider(nextValue as TaskTitleProvider)
                 }}
-              >
-                <option value="default">
-                  {t('settingsPanel.tasks.followDefaultAgent', {
-                    provider: AGENT_PROVIDER_LABEL[defaultProvider],
-                  })}
-                </option>
-                {TASK_TITLE_PROVIDERS.map(provider => (
-                  <option value={provider} key={provider}>
-                    {AGENT_PROVIDER_LABEL[provider]}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           </div>
 
@@ -81,6 +83,7 @@ export function TaskConfigurationSection(props: {
                 type="text"
                 id="settings-task-title-model"
                 data-testid="settings-task-title-model"
+                className="cove-field"
                 value={taskTitleModel}
                 placeholder={t('common.followCliDefault')}
                 onChange={event => {
@@ -132,6 +135,7 @@ export function TaskConfigurationSection(props: {
           <input
             type="text"
             data-testid="settings-task-tag-add-input"
+            className="cove-field"
             value={addTaskTagInput}
             placeholder={t('settingsPanel.tasks.addTagPlaceholder')}
             onChange={event => onChangeAddTaskTagInput(event.target.value)}

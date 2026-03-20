@@ -21,6 +21,7 @@ export function AppHeader({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const isMac = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'darwin'
+  const isWindows = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'win32'
   const commandCenterPrimaryHint = isMac ? '⌘K' : 'Ctrl K'
   const commandCenterSecondaryHint = isMac ? '⌘P' : 'Ctrl P'
   const ToggleIcon = useMemo(
@@ -29,7 +30,10 @@ export function AppHeader({
   )
 
   return (
-    <header className={`app-header ${isMac ? 'app-header--mac' : ''}`} role="banner">
+    <header
+      className={`app-header ${isMac ? 'app-header--mac' : ''} ${isWindows ? 'app-header--windows' : ''}`.trim()}
+      role="banner"
+    >
       <div className="app-header__section app-header__section--left">
         <button
           type="button"

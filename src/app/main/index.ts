@@ -6,6 +6,7 @@ import { hydrateCliPathForPackagedApp } from '../../platform/os/CliEnvironment'
 import { registerIpcHandlers } from './ipc/registerIpcHandlers'
 import { setRuntimeIconTestState } from './iconTestHarness'
 import { resolveRuntimeIconPath } from './runtimeIcon'
+import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 const APP_USER_DATA_DIRECTORY_NAME = 'opencove'
@@ -239,6 +240,12 @@ function createWindow(): void {
     ...(placeWindowOffscreen ? { x: E2E_OFFSCREEN_COORDINATE, y: E2E_OFFSCREEN_COORDINATE } : {}),
     autoHideMenuBar: true,
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
+    ...(process.platform === 'win32'
+      ? {
+          titleBarStyle: 'hidden',
+          titleBarOverlay: resolveTitleBarOverlay('dark'),
+        }
+      : {}),
     ...(runtimeIconPath ? { icon: runtimeIconPath } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
