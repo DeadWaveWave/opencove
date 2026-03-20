@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 - Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
-- Workspace canvas: arrange panel (scope, ordering, space fit, paper sizing, dense packing). (#42)
+- Workspace canvas: Arrange By submenu (scope, ordering, space fit, paper sizing, dense packing). (#42)
 
 ### 💅 Changed
 - (none)

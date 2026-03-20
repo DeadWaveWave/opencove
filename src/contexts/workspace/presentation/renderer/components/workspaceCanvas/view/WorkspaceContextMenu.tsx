@@ -1,7 +1,7 @@
 import React from 'react'
 import {
-  ArrowLeft,
   ArrowRight,
+  ChevronRight,
   FileText,
   Group,
   LayoutGrid,
@@ -12,14 +12,18 @@ import {
   X,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { ContextMenuState } from '../types'
 import type { WorkspaceSpaceState } from '../../../types'
+import type { ContextMenuState } from '../types'
 import type {
   WorkspaceArrangeOrder,
   WorkspaceArrangePaper,
   WorkspaceArrangeSpaceFit,
   WorkspaceArrangeStyle,
 } from '../../../utils/workspaceArrange'
+import {
+  WorkspaceContextArrangeBySubmenu,
+  type ArrangeScope,
+} from './WorkspaceContextArrangeBySubmenu'
 
 interface WorkspaceContextMenuProps {
   contextMenu: ContextMenuState | null
@@ -41,7 +45,11 @@ interface WorkspaceContextMenuProps {
   convertSelectedNoteToTask: () => void
 }
 
-type ArrangePanelScope = 'all' | 'canvas' | 'space'
+const VIEWPORT_PADDING_PX = 12
+const SUBMENU_GAP_PX = 6
+const SUBMENU_WIDTH_PX = 240
+const SUBMENU_MAX_HEIGHT_PX = 640
+const MENU_WIDTH_ESTIMATE_PX = 200
 
 function isPointWithinRect(
   point: { x: number; y: number },
@@ -75,7 +83,7 @@ export function WorkspaceContextMenu({
   convertSelectedNoteToTask,
 }: WorkspaceContextMenuProps): React.JSX.Element | null {
   const { t } = useTranslation()
-  const [activeView, setActiveView] = React.useState<'menu' | 'arrange'>('menu')
+
   const hitSpace = React.useMemo(() => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
       return null
@@ -84,16 +92,26 @@ export function WorkspaceContextMenu({
     const anchor = { x: contextMenu.flowX, y: contextMenu.flowY }
     return spaces.find(space => space.rect && isPointWithinRect(anchor, space.rect)) ?? null
   }, [contextMenu, spaces])
-  const [arrangeScope, setArrangeScope] = React.useState<ArrangePanelScope>('all')
+  const hitSpaceId = hitSpace?.id ?? null
+
+  const [arrangeScope, setArrangeScope] = React.useState<ArrangeScope>('canvas')
   const [arrangeOrder, setArrangeOrder] = React.useState<WorkspaceArrangeOrder>('position')
   const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
   const [arrangePaper, setArrangePaper] = React.useState<WorkspaceArrangePaper>('none')
   const [isDensePackingEnabled, setIsDensePackingEnabled] = React.useState(false)
-  const hitSpaceId = hitSpace?.id ?? null
+
+  const [openSubmenu, setOpenSubmenu] = React.useState<'arrangeBy' | null>(null)
+  const menuRef = React.useRef<HTMLDivElement | null>(null)
+  const arrangeByButtonRef = React.useRef<HTMLButtonElement | null>(null)
+  const [submenuLayout, setSubmenuLayout] = React.useState<{
+    left: number
+    top: number
+    maxHeight: number
+  } | null>(null)
 
   React.useEffect(() => {
-    setActiveView('menu')
-    setArrangeScope(hitSpaceId ? 'space' : 'all')
+    setOpenSubmenu(null)
+    setArrangeScope(hitSpaceId ? 'space' : 'canvas')
   }, [contextMenu?.kind, contextMenu?.x, contextMenu?.y, hitSpaceId])
 
   const arrangeStyle: WorkspaceArrangeStyle = React.useMemo(
@@ -106,31 +124,75 @@ export function WorkspaceContextMenu({
     [arrangeOrder, arrangePaper, arrangeSpaceFit, isDensePackingEnabled],
   )
 
-  const applyArrange = React.useCallback(() => {
-    closeContextMenu()
+  const commitArrange = React.useCallback(
+    (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
+      closeContextMenu()
+      setOpenSubmenu(null)
 
-    if (arrangeScope === 'all') {
-      arrangeAll(arrangeStyle)
+      const scope = options?.scope ?? arrangeScope
+      const style = options?.style ?? arrangeStyle
+
+      if (scope === 'all') {
+        arrangeAll(style)
+        return
+      }
+
+      if (scope === 'canvas') {
+        arrangeCanvas(style)
+        return
+      }
+
+      if (hitSpace) {
+        arrangeInSpace(hitSpace.id, style)
+      }
+    },
+    [
+      arrangeAll,
+      arrangeCanvas,
+      arrangeInSpace,
+      arrangeScope,
+      arrangeStyle,
+      closeContextMenu,
+      hitSpace,
+    ],
+  )
+
+  React.useLayoutEffect(() => {
+    if (!contextMenu || contextMenu.kind !== 'pane' || openSubmenu !== 'arrangeBy') {
+      setSubmenuLayout(null)
       return
     }
 
-    if (arrangeScope === 'canvas') {
-      arrangeCanvas(arrangeStyle)
+    const menuElement = menuRef.current
+    const anchorButton = arrangeByButtonRef.current
+    if (!menuElement || !anchorButton) {
+      setSubmenuLayout(null)
       return
     }
 
-    if (hitSpace) {
-      arrangeInSpace(hitSpace.id, arrangeStyle)
-    }
-  }, [
-    arrangeAll,
-    arrangeCanvas,
-    arrangeInSpace,
-    arrangeScope,
-    arrangeStyle,
-    closeContextMenu,
-    hitSpace,
-  ])
+    const menuRect = menuElement.getBoundingClientRect()
+    const anchorRect = anchorButton.getBoundingClientRect()
+
+    const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
+    const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
+    const maxHeight = Math.min(SUBMENU_MAX_HEIGHT_PX, viewportHeight - VIEWPORT_PADDING_PX * 2)
+
+    const wouldOverflowRight =
+      menuRect.right + SUBMENU_GAP_PX + SUBMENU_WIDTH_PX > viewportWidth - VIEWPORT_PADDING_PX
+    const left = wouldOverflowRight
+      ? Math.max(VIEWPORT_PADDING_PX, menuRect.left - SUBMENU_GAP_PX - SUBMENU_WIDTH_PX)
+      : Math.min(
+          viewportWidth - VIEWPORT_PADDING_PX - SUBMENU_WIDTH_PX,
+          menuRect.right + SUBMENU_GAP_PX,
+        )
+
+    const top = Math.max(
+      VIEWPORT_PADDING_PX,
+      Math.min(anchorRect.top, viewportHeight - VIEWPORT_PADDING_PX - maxHeight),
+    )
+
+    setSubmenuLayout({ left, top, maxHeight })
+  }, [contextMenu, openSubmenu])
 
   if (!contextMenu) {
     return null
@@ -138,350 +200,237 @@ export function WorkspaceContextMenu({
 
   const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : contextMenu.x
   const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : contextMenu.y
-  const margin = 12
   const anchorX = Math.min(
-    Math.max(contextMenu.x, margin),
-    Math.max(margin, viewportWidth - margin),
+    Math.max(contextMenu.x, VIEWPORT_PADDING_PX),
+    Math.max(VIEWPORT_PADDING_PX, viewportWidth - VIEWPORT_PADDING_PX),
   )
   const anchorY = Math.min(
-    Math.max(contextMenu.y, margin),
-    Math.max(margin, viewportHeight - margin),
+    Math.max(contextMenu.y, VIEWPORT_PADDING_PX),
+    Math.max(VIEWPORT_PADDING_PX, viewportHeight - VIEWPORT_PADDING_PX),
   )
   const flipX = contextMenu.x > viewportWidth / 2
   const flipY = contextMenu.y > viewportHeight / 2
   const transform =
     flipX || flipY ? `translate(${flipX ? '-100%' : '0'}, ${flipY ? '-100%' : '0'})` : undefined
 
-  const canArrangeHitSpace = Boolean(hitSpace && hitSpace.nodeIds.length >= 1)
-  const canApplyArrange = (() => {
-    if (arrangeScope === 'all') {
-      return canArrangeAll
-    }
+  const canArrangeHitSpace = Boolean(hitSpace && hitSpace.nodeIds.length >= 2)
+  const canArrangeCurrentScope =
+    arrangeScope === 'all'
+      ? canArrangeAll
+      : arrangeScope === 'canvas'
+        ? canArrangeCanvas
+        : canArrangeHitSpace
 
-    if (arrangeScope === 'canvas') {
-      return canArrangeCanvas
-    }
-
-    return canArrangeHitSpace
-  })()
+  const shouldShowArrangeSubmenu = openSubmenu === 'arrangeBy' && contextMenu.kind === 'pane'
+  const resolvedSubmenuMaxHeight = Math.min(
+    SUBMENU_MAX_HEIGHT_PX,
+    viewportHeight - VIEWPORT_PADDING_PX * 2,
+  )
+  const fallbackSubmenuTop = Math.max(
+    VIEWPORT_PADDING_PX,
+    Math.min(anchorY, viewportHeight - VIEWPORT_PADDING_PX - resolvedSubmenuMaxHeight),
+  )
+  const fallbackSubmenuLeft = flipX
+    ? Math.max(
+        VIEWPORT_PADDING_PX,
+        anchorX - MENU_WIDTH_ESTIMATE_PX - SUBMENU_GAP_PX - SUBMENU_WIDTH_PX,
+      )
+    : Math.min(
+        viewportWidth - VIEWPORT_PADDING_PX - SUBMENU_WIDTH_PX,
+        anchorX + MENU_WIDTH_ESTIMATE_PX + SUBMENU_GAP_PX,
+      )
+  const resolvedSubmenuTop = submenuLayout?.top ?? fallbackSubmenuTop
+  const resolvedSubmenuLeft = submenuLayout?.left ?? fallbackSubmenuLeft
 
   return (
-    <div
-      className="workspace-context-menu"
-      style={{ top: anchorY, left: anchorX, transform }}
-      onClick={event => {
-        event.stopPropagation()
-      }}
-    >
-      {contextMenu.kind === 'pane' ? (
-        <>
-          {activeView === 'menu' ? (
-            <>
-              <button
-                type="button"
-                data-testid="workspace-context-new-terminal"
-                onClick={() => {
-                  void createTerminalNode()
-                }}
-              >
-                <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.newTerminal')}
-                </span>
-              </button>
-              <button
-                type="button"
-                data-testid="workspace-context-new-note"
-                onClick={() => {
-                  createNoteNodeFromContextMenu()
-                }}
-              >
-                <FileText className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.newNote')}
-                </span>
-              </button>
-              <button
-                type="button"
-                data-testid="workspace-context-new-task"
-                onClick={() => {
-                  openTaskCreator()
-                }}
-              >
-                <ListTodo className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.newTask')}
-                </span>
-              </button>
-              <button
-                type="button"
-                data-testid="workspace-context-run-default-agent"
-                onClick={() => {
-                  openAgentLauncher()
-                }}
-              >
-                <Play className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.runAgent')}
-                </span>
-              </button>
-
-              <div className="workspace-context-menu__separator" />
-
-              {hitSpace ? (
-                <button
-                  type="button"
-                  data-testid="workspace-context-arrange-in-space"
-                  disabled={!canArrangeHitSpace}
-                  onClick={() => {
-                    closeContextMenu()
-                    arrangeInSpace(hitSpace.id)
-                  }}
-                >
-                  <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
-                  <span className="workspace-context-menu__label">
-                    {t('workspaceContextMenu.arrangeInSpace')}
-                  </span>
-                </button>
-              ) : null}
-
-              <button
-                type="button"
-                data-testid="workspace-context-arrange-all"
-                disabled={!canArrangeAll}
-                onClick={() => {
-                  closeContextMenu()
-                  arrangeAll()
-                }}
-              >
-                <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.arrangeAll')}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                data-testid="workspace-context-arrange-canvas"
-                disabled={!canArrangeCanvas}
-                onClick={() => {
-                  closeContextMenu()
-                  arrangeCanvas()
-                }}
-              >
-                <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.arrangeCanvas')}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                data-testid="workspace-context-arrange-panel-open"
-                onClick={() => {
-                  setActiveView('arrange')
-                }}
-              >
-                <SlidersHorizontal className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.arrangePanel')}
-                </span>
-              </button>
-            </>
-          ) : (
-            <div
-              className="workspace-arrange-panel"
-              data-testid="workspace-arrange-panel"
-              onClick={event => {
-                event.stopPropagation()
-              }}
-            >
-              <header className="workspace-arrange-panel__header">
-                <button
-                  type="button"
-                  className="workspace-arrange-panel__back"
-                  data-testid="workspace-arrange-panel-back"
-                  onClick={() => {
-                    setActiveView('menu')
-                  }}
-                >
-                  <ArrowLeft className="workspace-context-menu__icon" aria-hidden="true" />
-                </button>
-                <span className="workspace-arrange-panel__title">
-                  {t('workspaceArrangePanel.title')}
-                </span>
-              </header>
-
-              <div className="workspace-arrange-panel__section">
-                <div className="workspace-arrange-panel__label">
-                  {t('workspaceArrangePanel.scope')}
-                </div>
-                <div className="workspace-arrange-panel__segmented">
-                  <button
-                    type="button"
-                    data-testid="workspace-arrange-panel-scope-all"
-                    aria-pressed={arrangeScope === 'all'}
-                    disabled={!canArrangeAll}
-                    onClick={() => setArrangeScope('all')}
-                  >
-                    {t('workspaceArrangePanel.scopeAll')}
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="workspace-arrange-panel-scope-canvas"
-                    aria-pressed={arrangeScope === 'canvas'}
-                    disabled={!canArrangeCanvas}
-                    onClick={() => setArrangeScope('canvas')}
-                  >
-                    {t('workspaceArrangePanel.scopeCanvas')}
-                  </button>
-                  <button
-                    type="button"
-                    data-testid="workspace-arrange-panel-scope-space"
-                    aria-pressed={arrangeScope === 'space'}
-                    disabled={!canArrangeHitSpace}
-                    onClick={() => setArrangeScope('space')}
-                  >
-                    {t('workspaceArrangePanel.scopeSpace')}
-                  </button>
-                </div>
-              </div>
-
-              <div className="workspace-arrange-panel__section">
-                <label className="workspace-arrange-panel__field">
-                  <span className="workspace-arrange-panel__label">
-                    {t('workspaceArrangePanel.order')}
-                  </span>
-                  <select
-                    className="workspace-arrange-panel__select"
-                    data-testid="workspace-arrange-panel-order"
-                    value={arrangeOrder}
-                    onChange={event => setArrangeOrder(event.target.value as WorkspaceArrangeOrder)}
-                  >
-                    <option value="position">{t('workspaceArrangePanel.orderPosition')}</option>
-                    <option value="createdAt">{t('workspaceArrangePanel.orderCreatedAt')}</option>
-                    <option value="kind">{t('workspaceArrangePanel.orderKind')}</option>
-                    <option value="size">{t('workspaceArrangePanel.orderSize')}</option>
-                  </select>
-                </label>
-
-                <label className="workspace-arrange-panel__field">
-                  <span className="workspace-arrange-panel__label">
-                    {t('workspaceArrangePanel.spaceFit')}
-                  </span>
-                  <select
-                    className="workspace-arrange-panel__select"
-                    data-testid="workspace-arrange-panel-space-fit"
-                    value={arrangeSpaceFit}
-                    onChange={event =>
-                      setArrangeSpaceFit(event.target.value as WorkspaceArrangeSpaceFit)
-                    }
-                  >
-                    <option value="tight">{t('workspaceArrangePanel.spaceFitTight')}</option>
-                    <option value="grow">{t('workspaceArrangePanel.spaceFitGrow')}</option>
-                    <option value="keep">{t('workspaceArrangePanel.spaceFitKeep')}</option>
-                  </select>
-                </label>
-
-                <label className="workspace-arrange-panel__toggle">
-                  <input
-                    type="checkbox"
-                    data-testid="workspace-arrange-panel-paper-a4"
-                    checked={arrangePaper === 'a4'}
-                    onChange={event =>
-                      setArrangePaper(
-                        (event.target.checked ? 'a4' : 'none') as WorkspaceArrangePaper,
-                      )
-                    }
-                  />
-                  <span>{t('workspaceArrangePanel.paperA4')}</span>
-                </label>
-
-                <label className="workspace-arrange-panel__toggle">
-                  <input
-                    type="checkbox"
-                    data-testid="workspace-arrange-panel-dense"
-                    checked={isDensePackingEnabled}
-                    onChange={event => setIsDensePackingEnabled(event.target.checked)}
-                  />
-                  <span>{t('workspaceArrangePanel.dense')}</span>
-                </label>
-
-                {arrangePaper === 'a4' ? (
-                  <div className="workspace-arrange-panel__hint">
-                    {t('workspaceArrangePanel.paperHint')}
-                  </div>
-                ) : null}
-              </div>
-
-              <footer className="workspace-arrange-panel__footer">
-                <button
-                  type="button"
-                  data-testid="workspace-arrange-panel-cancel"
-                  className="workspace-arrange-panel__button workspace-arrange-panel__button--ghost"
-                  onClick={() => {
-                    setActiveView('menu')
-                  }}
-                >
-                  {t('workspaceArrangePanel.cancel')}
-                </button>
-                <button
-                  type="button"
-                  data-testid="workspace-arrange-panel-apply"
-                  className="workspace-arrange-panel__button workspace-arrange-panel__button--primary"
-                  disabled={!canApplyArrange}
-                  onClick={applyArrange}
-                >
-                  {t('workspaceArrangePanel.apply')}
-                </button>
-              </footer>
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <button
-            type="button"
-            data-testid="workspace-selection-create-space"
-            onClick={() => {
-              createSpaceFromSelectedNodes()
-            }}
-          >
-            <Group className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">
-              {t('workspaceContextMenu.createSpaceWithSelected')}
-            </span>
-          </button>
-          {canConvertSelectedNoteToTask ? (
+    <>
+      <div
+        ref={menuRef}
+        className="workspace-context-menu"
+        style={{ top: anchorY, left: anchorX, transform }}
+        onClick={event => {
+          event.stopPropagation()
+        }}
+      >
+        {contextMenu.kind === 'pane' ? (
+          <>
             <button
               type="button"
-              data-testid="workspace-selection-convert-note-to-task"
-              disabled={isConvertSelectedNoteToTaskDisabled}
+              data-testid="workspace-context-new-terminal"
               onClick={() => {
-                convertSelectedNoteToTask()
+                void createTerminalNode()
               }}
             >
-              <ArrowRight className="workspace-context-menu__icon" aria-hidden="true" />
+              <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
               <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.convertToTask')}
+                {t('workspaceContextMenu.newTerminal')}
               </span>
             </button>
-          ) : null}
-          <button
-            type="button"
-            data-testid="workspace-selection-clear"
-            onClick={() => {
-              clearNodeSelection()
-              closeContextMenu()
-            }}
-          >
-            <X className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">
-              {t('workspaceContextMenu.clearSelection')}
-            </span>
-          </button>
-        </>
-      )}
-    </div>
+            <button
+              type="button"
+              data-testid="workspace-context-new-note"
+              onClick={() => {
+                createNoteNodeFromContextMenu()
+              }}
+            >
+              <FileText className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.newNote')}
+              </span>
+            </button>
+            <button
+              type="button"
+              data-testid="workspace-context-new-task"
+              onClick={() => {
+                openTaskCreator()
+              }}
+            >
+              <ListTodo className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.newTask')}
+              </span>
+            </button>
+            <button
+              type="button"
+              data-testid="workspace-context-run-default-agent"
+              onClick={() => {
+                openAgentLauncher()
+              }}
+            >
+              <Play className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.runAgent')}
+              </span>
+            </button>
+
+            <div className="workspace-context-menu__separator" />
+
+            <button
+              type="button"
+              data-testid="workspace-context-arrange"
+              disabled={!canArrangeCurrentScope}
+              onClick={() => {
+                commitArrange()
+              }}
+            >
+              <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.arrange')}
+              </span>
+            </button>
+
+            <button
+              ref={arrangeByButtonRef}
+              type="button"
+              data-testid="workspace-context-arrange-by"
+              aria-haspopup="menu"
+              aria-expanded={openSubmenu === 'arrangeBy'}
+              onMouseEnter={() => {
+                setOpenSubmenu('arrangeBy')
+              }}
+              onFocus={() => {
+                setOpenSubmenu('arrangeBy')
+              }}
+              onClick={() => {
+                setOpenSubmenu('arrangeBy')
+              }}
+            >
+              <SlidersHorizontal className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.arrangeBy')}
+              </span>
+              <ChevronRight
+                className="workspace-context-menu__icon workspace-context-menu__chevron"
+                aria-hidden="true"
+              />
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              data-testid="workspace-selection-create-space"
+              onClick={() => {
+                createSpaceFromSelectedNodes()
+              }}
+            >
+              <Group className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.createSpaceWithSelected')}
+              </span>
+            </button>
+            {canConvertSelectedNoteToTask ? (
+              <button
+                type="button"
+                data-testid="workspace-selection-convert-note-to-task"
+                disabled={isConvertSelectedNoteToTaskDisabled}
+                onClick={() => {
+                  convertSelectedNoteToTask()
+                }}
+              >
+                <ArrowRight className="workspace-context-menu__icon" aria-hidden="true" />
+                <span className="workspace-context-menu__label">
+                  {t('workspaceContextMenu.convertToTask')}
+                </span>
+              </button>
+            ) : null}
+            <button
+              type="button"
+              data-testid="workspace-selection-clear"
+              onClick={() => {
+                clearNodeSelection()
+                closeContextMenu()
+              }}
+            >
+              <X className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceContextMenu.clearSelection')}
+              </span>
+            </button>
+          </>
+        )}
+      </div>
+
+      {shouldShowArrangeSubmenu ? (
+        <WorkspaceContextArrangeBySubmenu
+          style={{
+            top: resolvedSubmenuTop,
+            left: resolvedSubmenuLeft,
+            maxHeight: submenuLayout?.maxHeight ?? resolvedSubmenuMaxHeight,
+          }}
+          hitSpace={hitSpace}
+          canArrangeAll={canArrangeAll}
+          canArrangeCanvas={canArrangeCanvas}
+          canArrangeHitSpace={canArrangeHitSpace}
+          arrangeScope={arrangeScope}
+          arrangeOrder={arrangeOrder}
+          arrangeSpaceFit={arrangeSpaceFit}
+          arrangePaper={arrangePaper}
+          isDensePackingEnabled={isDensePackingEnabled}
+          onSelectScope={scope => {
+            setArrangeScope(scope)
+            commitArrange({ scope })
+          }}
+          onSelectOrder={order => {
+            setArrangeOrder(order)
+            commitArrange({ style: { ...arrangeStyle, order } })
+          }}
+          onSelectSpaceFit={spaceFit => {
+            setArrangeSpaceFit(spaceFit)
+            commitArrange({ style: { ...arrangeStyle, spaceFit } })
+          }}
+          onTogglePaperA4={() => {
+            const nextPaper: WorkspaceArrangePaper = arrangePaper === 'a4' ? 'none' : 'a4'
+            setArrangePaper(nextPaper)
+            commitArrange({ style: { ...arrangeStyle, paper: nextPaper } })
+          }}
+          onToggleDense={() => {
+            const nextDense = !isDensePackingEnabled
+            setIsDensePackingEnabled(nextDense)
+            commitArrange({ style: { ...arrangeStyle, dense: nextDense } })
+          }}
+        />
+      ) : null}
+    </>
   )
 }
