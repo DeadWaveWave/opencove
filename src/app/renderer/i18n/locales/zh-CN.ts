@@ -393,7 +393,6 @@ export const zhCN = {
     base: '目标：{{base}}',
     branchToBase: '{{branch}} → {{base}}',
     commits: 'Commits',
-    viewCommits: '查看提交',
     ci: 'CI',
     draft: 'Draft',
     state: {

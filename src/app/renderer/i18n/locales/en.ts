@@ -395,7 +395,6 @@ export const en = {
     base: 'Base: {{base}}',
     branchToBase: '{{branch}} → {{base}}',
     commits: 'Commits',
-    viewCommits: 'View commits',
     ci: 'CI',
     draft: 'Draft',
     state: {

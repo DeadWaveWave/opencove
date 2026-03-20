@@ -38,23 +38,6 @@ export function WorkspaceSpacePullRequestPanelTabs({
       <button
         type="button"
         role="tab"
-        aria-selected={tab === 'commits'}
-        className={
-          tab === 'commits'
-            ? 'workspace-pr-panel__tab workspace-pr-panel__tab--active'
-            : 'workspace-pr-panel__tab'
-        }
-        data-testid="workspace-space-pr-panel-tab-commits"
-        disabled={!hasPullRequest}
-        onClick={() => {
-          setTab('commits')
-        }}
-      >
-        {t('githubPullRequest.commits')}
-      </button>
-      <button
-        type="button"
-        role="tab"
         aria-selected={tab === 'checks'}
         className={
           tab === 'checks'

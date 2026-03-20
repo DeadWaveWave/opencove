@@ -1,6 +1,6 @@
 .workspace-pr-panel__commits {
   display: grid;
-  gap: 8px;
+  gap: 0;
 }
 
 .workspace-pr-panel__commit-row {
@@ -8,10 +8,12 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
-  padding: 8px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(10, 16, 30, 0.58);
-  border-radius: 12px;
+  padding: 8px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.workspace-pr-panel__commit-row:first-child {
+  border-top: none;
 }
 
 .workspace-pr-panel__commit-main {
@@ -59,11 +61,20 @@
   width: 26px;
   height: 26px;
   border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  background: transparent;
   color: rgba(191, 213, 252, 0.92);
   display: grid;
   place-items: center;
+  opacity: 0.75;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.workspace-pr-panel__commit-link:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .workspace-pr-panel__commit-link svg {

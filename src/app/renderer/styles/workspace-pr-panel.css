@@ -244,10 +244,6 @@
 }
 
 .workspace-pr-panel__body-text {
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(10, 16, 30, 0.64);
-  border-radius: 12px;
-  padding: 10px 12px;
   color: rgba(236, 242, 255, 0.92);
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.45;

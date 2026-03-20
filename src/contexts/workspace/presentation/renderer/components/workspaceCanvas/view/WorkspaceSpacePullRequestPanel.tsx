@@ -10,7 +10,6 @@ import type {
 } from '@shared/contracts/dto'
 import { toErrorMessage } from '../helpers'
 import { WorkspaceSpacePullRequestPanelChecks } from './WorkspaceSpacePullRequestPanelChecks'
-import { WorkspaceSpacePullRequestPanelCommits } from './WorkspaceSpacePullRequestPanelCommits'
 import { WorkspaceSpacePullRequestPanelDiffTab } from './WorkspaceSpacePullRequestPanelDiffTab'
 import { WorkspaceSpacePullRequestPanelHeader } from './WorkspaceSpacePullRequestPanelHeader'
 import { WorkspaceSpacePullRequestPanelOverview } from './WorkspaceSpacePullRequestPanelOverview'
@@ -25,7 +24,7 @@ export interface WorkspaceSpacePullRequestPanelState {
   summary: GitHubPullRequestSummary | null
 }
 
-export type WorkspaceSpacePullRequestPanelTab = 'overview' | 'commits' | 'checks' | 'diff'
+export type WorkspaceSpacePullRequestPanelTab = 'overview' | 'checks' | 'diff'
 
 const PANEL_WIDTH = 520
 const PANEL_MAX_HEIGHT = 560
@@ -447,9 +446,7 @@ export function WorkspaceSpacePullRequestPanel({
             onOpenChecksTab={() => {
               setTab('checks')
             }}
-            onOpenCommitsTab={() => {
-              setTab('commits')
-            }}
+            isLoadingPullRequest={isLoading}
             isAvailable={isAvailable}
             isExecutingAction={isExecutingAction}
             selectorForExisting={selectorForExisting}
@@ -469,10 +466,6 @@ export function WorkspaceSpacePullRequestPanel({
             commentBody={commentBody}
             setCommentBody={setCommentBody}
           />
-        ) : null}
-
-        {tab === 'commits' ? (
-          <WorkspaceSpacePullRequestPanelCommits isLoading={isLoading} commits={details?.commits} />
         ) : null}
 
         {tab === 'checks' ? (

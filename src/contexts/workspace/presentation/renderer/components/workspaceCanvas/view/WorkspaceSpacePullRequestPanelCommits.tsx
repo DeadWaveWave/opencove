@@ -28,13 +28,13 @@ export function WorkspaceSpacePullRequestPanelCommits({
   const { t } = useTranslation()
 
   if (isLoading) {
-    return <div className="workspace-pr-panel__loading">{t('common.loading')}</div>
+    return <div className="workspace-pr-panel__section-empty">{t('common.loading')}</div>
   }
 
   if (!commits || commits.length === 0) {
     return (
       <div
-        className="workspace-pr-panel__empty"
+        className="workspace-pr-panel__section-empty"
         data-testid="workspace-space-pr-panel-commits-empty"
       >
         {t('githubPullRequest.noCommits')}

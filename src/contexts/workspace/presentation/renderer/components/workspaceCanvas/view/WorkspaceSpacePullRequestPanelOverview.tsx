@@ -11,6 +11,7 @@ import type {
 import type { WorkspaceSpacePullRequestPanelState } from './WorkspaceSpacePullRequestPanel'
 import { WorkspaceSpacePullRequestPanelCiSummary } from './WorkspaceSpacePullRequestPanelCiSummary'
 import { WorkspaceSpacePullRequestPanelCommentComposer } from './WorkspaceSpacePullRequestPanelCommentComposer'
+import { WorkspaceSpacePullRequestPanelCommits } from './WorkspaceSpacePullRequestPanelCommits'
 
 export function WorkspaceSpacePullRequestPanelOverview({
   panel,
@@ -19,7 +20,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
   checks,
   isLoadingChecks,
   onOpenChecksTab,
-  onOpenCommitsTab,
+  isLoadingPullRequest,
   isAvailable,
   isExecutingAction,
   selectorForExisting,
@@ -45,7 +46,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
   checks: GitHubPullRequestCheck[] | null
   isLoadingChecks: boolean
   onOpenChecksTab?: () => void
-  onOpenCommitsTab?: () => void
+  isLoadingPullRequest: boolean
   isAvailable: boolean
   isExecutingAction: boolean
   selectorForExisting: GitHubPullRequestSelector | null
@@ -110,23 +111,20 @@ export function WorkspaceSpacePullRequestPanelOverview({
           </div>
         ) : null}
 
-        <div className="workspace-pr-panel__overview-row">
-          <div className="workspace-pr-panel__overview-row-label">
-            {t('githubPullRequest.commits')}
+        <section className="workspace-pr-panel__section" data-testid="workspace-space-pr-commits">
+          <div className="workspace-pr-panel__section-header">
+            <div className="workspace-pr-panel__section-title">
+              {t('githubPullRequest.commits')}
+            </div>
+            <div className="workspace-pr-panel__section-meta">
+              {typeof details?.commitCount === 'number' ? details.commitCount : '—'}
+            </div>
           </div>
-          <div className="workspace-pr-panel__overview-row-value">
-            {typeof details?.commitCount === 'number' ? details.commitCount : '—'}
-          </div>
-          {onOpenCommitsTab ? (
-            <button
-              type="button"
-              className="workspace-pr-panel__overview-row-action"
-              onClick={onOpenCommitsTab}
-            >
-              {t('githubPullRequest.viewCommits')}
-            </button>
-          ) : null}
-        </div>
+          <WorkspaceSpacePullRequestPanelCommits
+            isLoading={isLoadingPullRequest}
+            commits={details?.commits}
+          />
+        </section>
 
         <WorkspaceSpacePullRequestPanelCiSummary
           isLoading={isLoadingChecks}
