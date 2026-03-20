@@ -10,23 +10,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings: UI theme selector (system/light/dark) with system follow. (#40)
 - UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
-- In-canvas GitHub pull request chip + panel for worktree-bound Spaces (requires `gh`).
-- Per-project pull request base branch suggestions in Settings.
-- Settings → Integrations tab with a GitHub pull request toggle (default on).
+- In-canvas GitHub pull request chip for worktree-bound Spaces (opens on GitHub; requires `gh`).
+- Settings → Integrations tab with a GitHub PR links toggle (default on).
 
 ### 💅 Changed
-- PR base branch defaults to the repository default branch (with editable suggestions).
-- De-emphasized “Publish branch” by moving it under Advanced (Create PR auto-publishes).
-- PR Diff view now renders a visual, file-grouped unified diff.
-- PR panel now includes a Commits tab, and keeps comment/review composers collapsed by default.
+- Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
 
 ### 🐞 Fixed
-- Improved `gh` authentication detection and PR action error reporting.
-- Prevented canvas zoom/pan when scrolling inside PR/overlay windows.
-- `gh pr view` “no pull request” failures now fall back to the Create PR UI instead of showing a generic error.
-- Create PR now explains “no commits / nothing to compare” failures more clearly.
-- PR Checks no longer hang indefinitely (command timeouts now resolve properly).
-- Diff no longer renders the raw “\\ No newline at end of file” marker as a confusing line.
+- Prevented canvas zoom/pan when scrolling inside overlay windows.
 
 ---
 

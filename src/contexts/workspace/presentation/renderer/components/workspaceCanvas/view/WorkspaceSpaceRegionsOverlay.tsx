@@ -2,11 +2,7 @@ import React from 'react'
 import { ViewportPortal, useReactFlow } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
-import type {
-  GitHubPullRequestSummary,
-  GitWorktreeInfo,
-  IntegrationProviderAvailability,
-} from '@shared/contracts/dto'
+import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import { toErrorMessage } from '../helpers'
@@ -24,12 +20,7 @@ import {
   WorkspaceSpaceRegionItem,
   type WorkspaceSpaceBranchBadge,
 } from './WorkspaceSpaceRegionItem'
-import {
-  WorkspaceSpacePullRequestPanel,
-  type WorkspaceSpacePullRequestPanelState,
-} from './WorkspaceSpacePullRequestPanel'
 
-const EMPTY_BASE_BRANCH_OPTIONS: string[] = []
 const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
 
 interface WorkspaceSpaceRegionsOverlayProps {
@@ -73,10 +64,6 @@ export function WorkspaceSpaceRegionsOverlay({
   const branchRenameInputRef = React.useRef<HTMLInputElement | null>(null)
   const [refreshNonce, setRefreshNonce] = React.useState(0)
   const [branchRename, setBranchRename] = React.useState<BranchRenameState | null>(null)
-  const [pullRequestPanel, setPullRequestPanel] =
-    React.useState<WorkspaceSpacePullRequestPanelState | null>(null)
-  const [githubAvailability, setGitHubAvailability] =
-    React.useState<IntegrationProviderAvailability | null>(null)
   const [pullRequestsByBranch, setPullRequestsByBranch] = React.useState<
     Record<string, GitHubPullRequestSummary | null>
   >(() => ({}))
@@ -89,13 +76,6 @@ export function WorkspaceSpaceRegionsOverlay({
   const githubPullRequestsEnabled = useAppStore(
     state => state.agentSettings.githubPullRequestsEnabled,
   )
-
-  const pullRequestBaseBranchOptions = useAppStore(state => {
-    const workspace = state.workspaces.find(
-      candidate => normalizeComparablePath(candidate.path) === normalizedWorkspacePath,
-    )
-    return workspace?.pullRequestBaseBranchOptions ?? EMPTY_BASE_BRANCH_OPTIONS
-  })
 
   const worktreeDirectories = React.useMemo(() => {
     const unique = new Set<string>()
@@ -186,33 +166,19 @@ export function WorkspaceSpaceRegionsOverlay({
   }, [refreshNonce, worktreeDirectories.length, worktreeDirectoriesKey, workspacePath])
 
   React.useEffect(() => {
-    if (!githubPullRequestsEnabled) {
-      setPullRequestPanel(null)
-    }
-  }, [githubPullRequestsEnabled])
-
-  React.useEffect(() => {
     if (worktreeBranches.length === 0) {
       setPullRequestsByBranch({})
-      setGitHubAvailability(null)
       return
     }
 
     if (!githubPullRequestsEnabled) {
       setPullRequestsByBranch({})
-      setGitHubAvailability(null)
       return
     }
 
     const resolvePullRequests = window.opencoveApi?.integration?.github?.resolvePullRequests
     if (typeof resolvePullRequests !== 'function') {
       setPullRequestsByBranch(Object.fromEntries(worktreeBranches.map(branch => [branch, null])))
-      setGitHubAvailability({
-        providerId: 'github',
-        kind: 'unavailable',
-        reason: 'unknown',
-        message: t('githubPullRequest.apiUnavailable'),
-      })
       return
     }
 
@@ -230,19 +196,12 @@ export function WorkspaceSpaceRegionsOverlay({
           return
         }
 
-        setGitHubAvailability(result.availability)
         setPullRequestsByBranch(result.pullRequestsByBranch)
       } catch (error) {
         if (cancelled) {
           return
         }
 
-        setGitHubAvailability({
-          providerId: 'github',
-          kind: 'unavailable',
-          reason: 'unknown',
-          message: toErrorMessage(error),
-        })
         setPullRequestsByBranch(Object.fromEntries(worktreeBranches.map(branch => [branch, null])))
       }
     }
@@ -258,7 +217,7 @@ export function WorkspaceSpaceRegionsOverlay({
         window.clearInterval(intervalId)
       }
     }
-  }, [githubPullRequestsEnabled, t, worktreeBranches, worktreeBranchesKey, workspacePath])
+  }, [githubPullRequestsEnabled, worktreeBranches, worktreeBranchesKey, workspacePath])
 
   React.useEffect(() => {
     if (!branchRename?.spaceId) {
@@ -432,15 +391,6 @@ export function WorkspaceSpaceRegionsOverlay({
               resolvedWorktreeInfo={resolvedWorktreeInfo}
               resolvedBranchBadge={resolvedBranchBadge}
               resolvedPullRequestSummary={resolvedPullRequestSummary}
-              onOpenPullRequestPanel={({ spaceId, spaceName, branchName, anchor, summary }) => {
-                setPullRequestPanel({
-                  spaceId,
-                  spaceName,
-                  branch: branchName,
-                  anchor,
-                  summary,
-                })
-              }}
               onStartBranchRename={({ spaceId, spaceName, worktreePath, branchName }) => {
                 setBranchRename({
                   spaceId,
@@ -464,25 +414,6 @@ export function WorkspaceSpaceRegionsOverlay({
         setBranchRename={setBranchRename}
         closeBranchRename={closeBranchRename}
         submitBranchRename={submitBranchRename}
-      />
-
-      <WorkspaceSpacePullRequestPanel
-        panel={pullRequestPanel}
-        repoPath={workspacePath}
-        pullRequestBaseBranchOptions={pullRequestBaseBranchOptions}
-        availability={githubAvailability}
-        closePanel={() => {
-          setPullRequestPanel(null)
-        }}
-        onAvailabilityChange={availability => {
-          setGitHubAvailability(availability)
-        }}
-        onPullRequestSummaryChange={(branch, summary) => {
-          setPullRequestsByBranch(previous => ({
-            ...previous,
-            [branch]: summary,
-          }))
-        }}
       />
     </>
   )

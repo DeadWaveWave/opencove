@@ -20,7 +20,6 @@ import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 
 interface ProviderModelCatalogEntry {
   models: string[]
@@ -111,25 +110,6 @@ export function SettingsPanel({
     onChange({ ...settings, taskTagOptions: nextTags })
   const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
     onChange({ ...settings, githubPullRequestsEnabled: enabled })
-
-  const updateWorkspacePullRequestBaseBranchOptions = React.useCallback(
-    (workspaceId: string, options: string[]): void => {
-      const { setWorkspaces: updateWorkspaces } = useAppStore.getState()
-      updateWorkspaces(previous =>
-        previous.map(workspace => {
-          if (workspace.id !== workspaceId) {
-            return workspace
-          }
-
-          return {
-            ...workspace,
-            pullRequestBaseBranchOptions: options,
-          }
-        }),
-      )
-    },
-    [],
-  )
 
   const removeTaskTagOption = (tag: string): void => {
     const nextTags = settings.taskTagOptions.filter(option => option !== tag)
@@ -396,21 +376,17 @@ export function SettingsPanel({
               />
             ) : null}
 
-            {isWorkspacePageId(activePageId) && activeWorkspace ? (
-              <WorkspaceSection
-                sectionId={`settings-section-workspace-${activeWorkspace.id}`}
-                workspaceName={activeWorkspace.name}
-                workspacePath={activeWorkspace.path}
-                worktreesRoot={activeWorkspace.worktreesRoot}
-                onChangeWorktreesRoot={root =>
-                  onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
-                }
-                pullRequestBaseBranchOptions={activeWorkspace.pullRequestBaseBranchOptions ?? []}
-                onChangePullRequestBaseBranchOptions={options =>
-                  updateWorkspacePullRequestBaseBranchOptions(activeWorkspace.id, options)
-                }
-              />
-            ) : null}
+	            {isWorkspacePageId(activePageId) && activeWorkspace ? (
+	              <WorkspaceSection
+	                sectionId={`settings-section-workspace-${activeWorkspace.id}`}
+	                workspaceName={activeWorkspace.name}
+	                workspacePath={activeWorkspace.path}
+	                worktreesRoot={activeWorkspace.worktreesRoot}
+	                onChangeWorktreesRoot={root =>
+	                  onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+	                }
+	              />
+	            ) : null}
           </div>
         </div>
       </section>

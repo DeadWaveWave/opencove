@@ -46,8 +46,8 @@ async function removeGitWorktree(payload: {
   await removePathWithRetry(payload.worktreePath)
 }
 
-test.describe('Workspace Canvas - Space PR Panel', () => {
-  test('shows PR chip for worktree branch and opens panel', async () => {
+test.describe('Workspace Canvas - Space PR Chip', () => {
+  test('shows PR chip link for worktree branch', async () => {
     const userDataDir = await createTestUserDataDir()
     const stamp = Date.now()
     const branchName = `e2e/pr-panel-${stamp}`
@@ -96,35 +96,10 @@ test.describe('Workspace Canvas - Space PR Panel', () => {
 
         const chip = window.locator('[data-testid="workspace-space-pr-chip-space-pr-panel"]')
         await expect(chip).toBeVisible({ timeout: 15_000 })
-        await chip.click()
-
-        const panel = window.locator('[data-testid="workspace-space-pr-panel-space-pr-panel"]')
-        await expect(panel).toBeVisible()
-
-        const viewport = window.locator('.react-flow__viewport')
-        const viewportTransformBefore = await viewport.evaluate(
-          element => getComputedStyle(element as HTMLElement).transform,
-        )
-
-        await panel.hover()
-        await window.mouse.wheel(0, 360)
-
-        const viewportTransformAfter = await viewport.evaluate(
-          element => getComputedStyle(element as HTMLElement).transform,
-        )
-        expect(viewportTransformAfter).toBe(viewportTransformBefore)
-
-        await expect(
-          panel.locator('[data-testid="workspace-space-pr-panel-pr-title"]'),
-        ).toContainText(`Test PR for ${branchName}`)
-
-        await panel.locator('[data-testid="workspace-space-pr-panel-tab-checks"]').click()
-        await expect(panel.locator('[data-testid="workspace-space-pr-panel-checks"]')).toBeVisible()
-
-        await panel.locator('[data-testid="workspace-space-pr-panel-tab-diff"]').click()
-        await expect(panel.locator('[data-testid="workspace-space-pr-panel-diff"]')).toContainText(
-          'Hello from test diff',
-        )
+        await expect(chip).toHaveAttribute('href', 'https://example.com/pull/123')
+        await expect(chip).toHaveAttribute('target', '_blank')
+        await expect(chip).toHaveAttribute('title', `Test PR for ${branchName} (#123)`)
+        await expect(window.locator('[data-testid^="workspace-space-pr-panel-"]')).toHaveCount(0)
       } finally {
         await electronApp.close()
       }

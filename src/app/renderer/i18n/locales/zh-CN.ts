@@ -197,8 +197,8 @@ export const zhCN = {
     },
     integrations: {
       title: '集成',
-      githubPullRequestsLabel: 'GitHub Pull Requests',
-      githubPullRequestsHelp: '在画布中展示并管理 GitHub Pull Request。',
+      githubPullRequestsLabel: 'GitHub PR 链接',
+      githubPullRequestsHelp: '在画布中显示 PR 链接，点击后在 GitHub 打开（需要 `gh`）。',
     },
     workspace: {
       title: '工作区 Worktree',

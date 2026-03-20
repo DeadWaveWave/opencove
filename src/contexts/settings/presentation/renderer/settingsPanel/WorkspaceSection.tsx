@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 
 function resolveWorktreesRoot(workspacePath: string, worktreesRoot: string): string {
@@ -37,21 +37,16 @@ export function WorkspaceSection({
   workspacePath,
   worktreesRoot,
   onChangeWorktreesRoot,
-  pullRequestBaseBranchOptions,
-  onChangePullRequestBaseBranchOptions,
   sectionId = 'settings-section-workspace',
 }: {
   workspaceName?: string | null
   workspacePath: string | null
   worktreesRoot: string
   onChangeWorktreesRoot: (worktreesRoot: string) => void
-  pullRequestBaseBranchOptions: string[]
-  onChangePullRequestBaseBranchOptions: (options: string[]) => void
   sectionId?: string
 }): React.JSX.Element {
   const { t } = useTranslation()
   const hasWorkspace = typeof workspacePath === 'string' && workspacePath.trim().length > 0
-  const [addBaseBranchInput, setAddBaseBranchInput] = useState('')
   const resolvedWorkspaceName = useMemo(() => {
     if (typeof workspaceName === 'string' && workspaceName.trim().length > 0) {
       return workspaceName
@@ -71,24 +66,6 @@ export function WorkspaceSection({
 
     return resolveWorktreesRoot(workspacePath, worktreesRoot)
   }, [hasWorkspace, workspacePath, worktreesRoot])
-
-  const removeBaseBranchOption = (branch: string): void => {
-    const next = pullRequestBaseBranchOptions.filter(option => option !== branch)
-    onChangePullRequestBaseBranchOptions(next)
-  }
-
-  const addBaseBranchOption = (): void => {
-    const candidate = addBaseBranchInput.trim()
-    if (candidate.length === 0) {
-      return
-    }
-
-    const next = pullRequestBaseBranchOptions.includes(candidate)
-      ? pullRequestBaseBranchOptions
-      : [...pullRequestBaseBranchOptions, candidate]
-    onChangePullRequestBaseBranchOptions(next)
-    setAddBaseBranchInput('')
-  }
 
   return (
     <div className="settings-panel__section" id={sectionId}>
@@ -157,56 +134,6 @@ export function WorkspaceSection({
               >
                 {getTrailingPathSegments(resolvedRoot, 2)}
               </span>
-            </div>
-          </div>
-
-          <div className="settings-panel__subsection">
-            <div className="settings-panel__subsection-header">
-              <strong>{t('settingsPanel.workspace.pullRequestBaseBranchesLabel')}</strong>
-              <span>{t('settingsPanel.workspace.pullRequestBaseBranchesHelp')}</span>
-            </div>
-
-            <div
-              className="settings-list-container"
-              data-testid="settings-workspace-pr-base-branch-list"
-            >
-              {pullRequestBaseBranchOptions.length === 0 ? (
-                <div className="settings-panel__value">
-                  {t('settingsPanel.workspace.pullRequestBaseBranchesEmpty')}
-                </div>
-              ) : (
-                pullRequestBaseBranchOptions.map(branch => (
-                  <div className="settings-list-item" key={branch}>
-                    <span className="settings-panel__value">{branch}</span>
-                    <button
-                      type="button"
-                      className="secondary"
-                      style={{ padding: '2px 8px', fontSize: '11px' }}
-                      onClick={() => removeBaseBranchOption(branch)}
-                    >
-                      {t('common.remove')}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
-
-            <div className="settings-panel__input-row">
-              <input
-                type="text"
-                value={addBaseBranchInput}
-                placeholder={t('settingsPanel.workspace.pullRequestBaseBranchesPlaceholder')}
-                onChange={event => setAddBaseBranchInput(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && addBaseBranchOption()}
-              />
-              <button
-                type="button"
-                className="primary"
-                disabled={addBaseBranchInput.trim().length === 0}
-                onClick={() => addBaseBranchOption()}
-              >
-                {t('common.add')}
-              </button>
             </div>
           </div>
         </>

@@ -195,8 +195,9 @@ export const en = {
     },
     integrations: {
       title: 'Integrations',
-      githubPullRequestsLabel: 'GitHub Pull Requests',
-      githubPullRequestsHelp: 'Show and manage GitHub pull requests on the canvas.',
+      githubPullRequestsLabel: 'GitHub PR Links',
+      githubPullRequestsHelp:
+        'Show pull request links on the canvas and open them on GitHub (requires `gh`).',
     },
     workspace: {
       title: 'Workspace Worktree',
