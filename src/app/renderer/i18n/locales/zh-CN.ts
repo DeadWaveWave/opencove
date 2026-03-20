@@ -426,6 +426,7 @@ export const zhCN = {
     hideAdvanced: '收起高级选项',
     create: '创建 PR',
     noCommits: '暂无提交记录。',
+    commitsUnavailable: '提交记录暂不可用。',
     noChecks: '暂无 Checks。',
     noDiff: '暂无 Diff。',
     binaryDiff: '二进制文件有变更。',

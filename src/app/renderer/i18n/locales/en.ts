@@ -428,6 +428,7 @@ export const en = {
     hideAdvanced: 'Hide advanced',
     create: 'Create PR',
     noCommits: 'No commits to show.',
+    commitsUnavailable: 'Commits are unavailable.',
     noChecks: 'No checks to show.',
     noDiff: 'No diff to show.',
     binaryDiff: 'Binary file changed.',

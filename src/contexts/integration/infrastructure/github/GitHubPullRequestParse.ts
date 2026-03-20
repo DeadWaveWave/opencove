@@ -77,15 +77,19 @@ export function parsePullRequestDetails(raw: unknown): GitHubPullRequestDetails 
   }
 
   const record = raw as Record<string, unknown>
+  const rawCommitCount = Array.isArray(record.commits) ? record.commits.length : null
   const commits = parsePullRequestCommits(record.commits, summary.ref.url)
-  const commitCount = commits ? commits.length : null
+  const resolvedCommits =
+    typeof rawCommitCount === 'number' && rawCommitCount > 0 && commits?.length === 0
+      ? null
+      : commits
   return {
     ...summary,
     body: typeof record.body === 'string' ? record.body : '',
     mergeable: normalizeText(record.mergeable) || null,
     reviewDecision: normalizeText(record.reviewDecision) || null,
-    commitCount,
-    commits,
+    commitCount: rawCommitCount,
+    commits: resolvedCommits,
   }
 }
 
@@ -132,16 +136,13 @@ function parsePullRequestCommits(
       continue
     }
 
-    const author =
-      record.author && typeof record.author === 'object'
-        ? (record.author as { name?: unknown; login?: unknown })
-        : null
+    const author = parseCommitAuthor(record)
 
     commits.push({
       oid,
       headline,
-      authorName: author ? normalizeText(author.name) || null : null,
-      authorLogin: author ? normalizeText(author.login) || null : null,
+      authorName: author.name,
+      authorLogin: author.login,
       committedDate:
         normalizeText(record.committedDate) || normalizeText(record.authoredDate) || null,
       url: normalizeText(record.url) || resolveCommitUrl(pullRequestUrl, oid),
@@ -153,6 +154,38 @@ function parsePullRequestCommits(
   }
 
   return commits
+}
+
+function parseCommitAuthor(record: Record<string, unknown>): {
+  name: string | null
+  login: string | null
+} {
+  const direct = record.author
+  if (direct && typeof direct === 'object') {
+    const author = direct as { name?: unknown; login?: unknown }
+    return {
+      name: normalizeText(author.name) || null,
+      login: normalizeText(author.login) || null,
+    }
+  }
+
+  const authors = record.authors
+  if (Array.isArray(authors)) {
+    for (const candidate of authors) {
+      if (!candidate || typeof candidate !== 'object') {
+        continue
+      }
+
+      const author = candidate as { name?: unknown; login?: unknown }
+      const login = normalizeText(author.login) || null
+      const name = normalizeText(author.name) || null
+      if (login || name) {
+        return { name, login }
+      }
+    }
+  }
+
+  return { name: null, login: null }
 }
 
 function normalizeCheckBucket(value: unknown): GitHubPullRequestCheck['bucket'] {

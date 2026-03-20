@@ -27,40 +27,50 @@ export function WorkspaceSpacePullRequestPanelReviewComposer({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = React.useState(false)
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
 
   React.useEffect(() => {
     setIsExpanded(false)
     setReviewBody('')
   }, [branch, setReviewBody])
 
+  React.useEffect(() => {
+    if (!isExpanded) {
+      return
+    }
+
+    const handle = window.requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(handle)
+    }
+  }, [isExpanded])
+
   const canCompose = isAvailable && !isExecutingAction && Boolean(selector) && isReviewable
   const hasBody = reviewBody.trim().length > 0
 
   return (
     <div className="workspace-pr-panel__conversation">
-      <div className="workspace-pr-panel__conversation-header">
-        <div className="workspace-pr-panel__conversation-title">
-          {t('githubPullRequest.review')}
-        </div>
-        <div className="workspace-pr-panel__conversation-actions">
-          <button
-            type="button"
-            className="workspace-pr-panel__conversation-toggle"
-            disabled={!canCompose}
-            onClick={() => {
-              setIsExpanded(previous => !previous)
-            }}
-          >
-            {isExpanded ? t('common.cancel') : t('githubPullRequest.review')}
-          </button>
-        </div>
-      </div>
-
-      {isExpanded ? (
-        <div className="cove-window__field-row workspace-pr-panel__conversation-body">
+      {!isExpanded ? (
+        <button
+          type="button"
+          className="workspace-pr-panel__composer-collapsed"
+          disabled={!canCompose}
+          onClick={() => setIsExpanded(true)}
+        >
+          <span className="workspace-pr-panel__composer-placeholder">
+            {t('githubPullRequest.reviewPlaceholder')}
+          </span>
+          <span className="workspace-pr-panel__composer-cta">{t('githubPullRequest.review')}</span>
+        </button>
+      ) : (
+        <div className="cove-window__field-row workspace-pr-panel__composer-expanded">
           <textarea
             data-testid="workspace-space-pr-panel-review-input"
             value={reviewBody}
+            ref={textareaRef}
             disabled={!isAvailable || isExecutingAction}
             placeholder={t('githubPullRequest.reviewPlaceholder')}
             onChange={event => setReviewBody(event.target.value)}
@@ -114,7 +124,7 @@ export function WorkspaceSpacePullRequestPanelReviewComposer({
             </button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }

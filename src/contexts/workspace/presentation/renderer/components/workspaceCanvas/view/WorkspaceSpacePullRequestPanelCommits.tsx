@@ -31,7 +31,18 @@ export function WorkspaceSpacePullRequestPanelCommits({
     return <div className="workspace-pr-panel__section-empty">{t('common.loading')}</div>
   }
 
-  if (!commits || commits.length === 0) {
+  if (!commits) {
+    return (
+      <div
+        className="workspace-pr-panel__section-empty"
+        data-testid="workspace-space-pr-panel-commits-empty"
+      >
+        {t('githubPullRequest.commitsUnavailable')}
+      </div>
+    )
+  }
+
+  if (commits.length === 0) {
     return (
       <div
         className="workspace-pr-panel__section-empty"

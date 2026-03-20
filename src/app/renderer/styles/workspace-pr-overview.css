@@ -98,48 +98,57 @@
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.workspace-pr-panel__conversation-header {
+.workspace-pr-panel__composer-collapsed {
+  width: 100%;
+  min-height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--cove-border);
+  background: var(--cove-field);
+  color: rgba(238, 245, 255, 0.94);
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-}
-
-.workspace-pr-panel__conversation-title {
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  font-weight: 650;
-  color: rgba(238, 245, 255, 0.94);
-}
-
-.workspace-pr-panel__conversation-actions {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.workspace-pr-panel__conversation-toggle {
-  height: 28px;
-  border-radius: 10px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(191, 213, 252, 0.92);
+  gap: 12px;
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workspace-pr-panel__composer-collapsed:hover:not(:disabled) {
+  border-color: rgba(109, 157, 255, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.workspace-pr-panel__composer-collapsed:focus-visible {
+  outline: 2px solid rgba(172, 168, 255, 0.68);
+  outline-offset: 2px;
+}
+
+.workspace-pr-panel__composer-collapsed:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.workspace-pr-panel__composer-placeholder {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--cove-text-muted);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.workspace-pr-panel__composer-cta {
+  flex: 0 0 auto;
   font-size: calc(11px * var(--cove-ui-font-scale));
   font-weight: 650;
+  color: rgba(191, 213, 252, 0.92);
 }
 
-.workspace-pr-panel__conversation-toggle--active {
-  border-color: rgba(109, 157, 255, 0.6);
-  background: rgba(109, 157, 255, 0.14);
-  color: rgba(238, 245, 255, 0.95);
-}
-
-.workspace-pr-panel__conversation-toggle:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.workspace-pr-panel__conversation-body textarea {
+.workspace-pr-panel__composer-expanded textarea {
   min-height: 120px;
 }

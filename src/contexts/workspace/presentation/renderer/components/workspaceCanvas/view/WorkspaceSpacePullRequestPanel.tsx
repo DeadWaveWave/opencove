@@ -8,7 +8,7 @@ import type {
   GitHubPullRequestSummary,
   IntegrationProviderAvailability,
 } from '@shared/contracts/dto'
-import { toErrorMessage } from '../helpers'
+import { clampNumber, toErrorMessage } from '../helpers'
 import { WorkspaceSpacePullRequestPanelChecks } from './WorkspaceSpacePullRequestPanelChecks'
 import { WorkspaceSpacePullRequestPanelDiffTab } from './WorkspaceSpacePullRequestPanelDiffTab'
 import { WorkspaceSpacePullRequestPanelHeader } from './WorkspaceSpacePullRequestPanelHeader'
@@ -29,14 +29,6 @@ export type WorkspaceSpacePullRequestPanelTab = 'overview' | 'checks' | 'diff'
 const PANEL_WIDTH = 520
 const PANEL_MAX_HEIGHT = 560
 const VIEWPORT_PADDING = 12
-
-function clampNumber(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value))
-}
-
-function canExecuteActions(availability: IntegrationProviderAvailability | null): boolean {
-  return availability?.kind === 'available'
-}
 
 export function WorkspaceSpacePullRequestPanel({
   panel,
@@ -62,10 +54,13 @@ export function WorkspaceSpacePullRequestPanel({
   const [summary, setSummary] = React.useState<GitHubPullRequestSummary | null>(
     panel?.summary ?? null,
   )
+  const summaryRef = React.useRef<GitHubPullRequestSummary | null>(summary)
   const [details, setDetails] = React.useState<GitHubPullRequestDetails | null>(null)
   const [checks, setChecks] = React.useState<GitHubPullRequestCheck[] | null>(null)
   const [diff, setDiff] = React.useState<string | null>(null)
-  const [loadError, setLoadError] = React.useState<string | null>(null)
+  const [pullRequestError, setPullRequestError] = React.useState<string | null>(null)
+  const [checksError, setChecksError] = React.useState<string | null>(null)
+  const [diffError, setDiffError] = React.useState<string | null>(null)
   const [actionError, setActionError] = React.useState<string | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const [isLoadingChecks, setIsLoadingChecks] = React.useState(false)
@@ -75,12 +70,10 @@ export function WorkspaceSpacePullRequestPanel({
     label: string
     action: GitHubPullRequestAction
   } | null>(null)
-
   const [createTitle, setCreateTitle] = React.useState('')
   const [createBody, setCreateBody] = React.useState('')
   const [createBase, setCreateBase] = React.useState('')
   const [createDraft, setCreateDraft] = React.useState(true)
-
   const [commentBody, setCommentBody] = React.useState('')
   const [reviewBody, setReviewBody] = React.useState('')
 
@@ -94,6 +87,9 @@ export function WorkspaceSpacePullRequestPanel({
   React.useEffect(() => {
     setResolvedAvailability(availability)
   }, [availability])
+  React.useEffect(() => {
+    summaryRef.current = summary
+  }, [summary])
 
   React.useEffect(() => {
     if (!panel) {
@@ -105,7 +101,9 @@ export function WorkspaceSpacePullRequestPanel({
     setDetails(null)
     setChecks(null)
     setDiff(null)
-    setLoadError(null)
+    setPullRequestError(null)
+    setChecksError(null)
+    setDiffError(null)
     setActionError(null)
     setIsLoading(false)
     setIsLoadingChecks(false)
@@ -190,23 +188,30 @@ export function WorkspaceSpacePullRequestPanel({
           reason: 'unknown',
           message: t('githubPullRequest.apiUnavailable'),
         })
-        setLoadError(t('githubPullRequest.apiUnavailable'))
+        setPullRequestError(t('githubPullRequest.apiUnavailable'))
         return
       }
 
       setIsLoading(true)
-      setLoadError(null)
+      setPullRequestError(null)
       setPendingConfirmation(null)
 
       if (options?.clearSections) {
         setChecks(null)
         setDiff(null)
+        setChecksError(null)
+        setDiffError(null)
       }
 
       try {
+        const knownNumber = summaryRef.current?.number
+        const selector: GitHubPullRequestSelector =
+          typeof knownNumber === 'number' && Number.isFinite(knownNumber) && knownNumber > 0
+            ? { kind: 'number', number: knownNumber }
+            : { kind: 'branch', branch: panel.branch }
         const result = await getPullRequest({
           repoPath,
-          selector: { kind: 'branch', branch: panel.branch },
+          selector,
         })
         setAvailabilityFromResult(result.availability)
 
@@ -215,7 +220,7 @@ export function WorkspaceSpacePullRequestPanel({
         setSummary(nextDetails)
         onPullRequestSummaryChange?.(panel.branch, nextDetails)
       } catch (error) {
-        setLoadError(toErrorMessage(error))
+        setPullRequestError(toErrorMessage(error))
       } finally {
         setIsLoading(false)
       }
@@ -234,12 +239,12 @@ export function WorkspaceSpacePullRequestPanel({
 
     const getPullRequestChecks = window.opencoveApi?.integration?.github?.getPullRequestChecks
     if (typeof getPullRequestChecks !== 'function') {
-      setLoadError(t('githubPullRequest.apiUnavailable'))
+      setChecksError(t('githubPullRequest.apiUnavailable'))
       return
     }
 
     setIsLoadingChecks(true)
-    setLoadError(null)
+    setChecksError(null)
 
     try {
       const result = await getPullRequestChecks({
@@ -249,7 +254,7 @@ export function WorkspaceSpacePullRequestPanel({
       setAvailabilityFromResult(result.availability)
       setChecks(result.checks)
     } catch (error) {
-      setLoadError(toErrorMessage(error))
+      setChecksError(toErrorMessage(error))
     } finally {
       setIsLoadingChecks(false)
     }
@@ -266,12 +271,12 @@ export function WorkspaceSpacePullRequestPanel({
 
     const getPullRequestDiff = window.opencoveApi?.integration?.github?.getPullRequestDiff
     if (typeof getPullRequestDiff !== 'function') {
-      setLoadError(t('githubPullRequest.apiUnavailable'))
+      setDiffError(t('githubPullRequest.apiUnavailable'))
       return
     }
 
     setIsLoadingDiff(true)
-    setLoadError(null)
+    setDiffError(null)
 
     try {
       const result = await getPullRequestDiff({
@@ -281,7 +286,7 @@ export function WorkspaceSpacePullRequestPanel({
       setAvailabilityFromResult(result.availability)
       setDiff(result.diff)
     } catch (error) {
-      setLoadError(toErrorMessage(error))
+      setDiffError(toErrorMessage(error))
     } finally {
       setIsLoadingDiff(false)
     }
@@ -361,7 +366,7 @@ export function WorkspaceSpacePullRequestPanel({
     [loadPullRequest, onPullRequestSummaryChange, panel, repoPath, t],
   )
 
-  const isAvailable = canExecuteActions(resolvedAvailability)
+  const isAvailable = resolvedAvailability?.kind === 'available'
 
   if (!panel) {
     return null
@@ -384,6 +389,8 @@ export function WorkspaceSpacePullRequestPanel({
 
   const renderAvailability = resolvedAvailability?.kind === 'unavailable'
   const availabilityMessage = renderAvailability ? resolvedAvailability.message : null
+  const panelError =
+    tab === 'overview' ? pullRequestError : tab === 'checks' ? checksError : diffError
 
   return (
     <div
@@ -430,9 +437,9 @@ export function WorkspaceSpacePullRequestPanel({
           </div>
         ) : null}
 
-        {loadError ? (
+        {panelError ? (
           <div className="cove-window__error" data-testid="workspace-space-pr-panel-error">
-            {loadError}
+            {panelError}
           </div>
         ) : null}
 

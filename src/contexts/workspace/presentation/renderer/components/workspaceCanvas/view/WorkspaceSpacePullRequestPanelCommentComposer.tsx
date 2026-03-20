@@ -21,39 +21,49 @@ export function WorkspaceSpacePullRequestPanelCommentComposer({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = React.useState(false)
+  const textareaRef = React.useRef<HTMLTextAreaElement | null>(null)
 
   React.useEffect(() => {
     setIsExpanded(false)
     setCommentBody('')
   }, [branch, setCommentBody])
 
+  React.useEffect(() => {
+    if (!isExpanded) {
+      return
+    }
+
+    const handle = window.requestAnimationFrame(() => {
+      textareaRef.current?.focus()
+    })
+
+    return () => {
+      window.cancelAnimationFrame(handle)
+    }
+  }, [isExpanded])
+
   const canCompose = isAvailable && !isExecutingAction && Boolean(selector)
 
   return (
     <div className="workspace-pr-panel__conversation">
-      <div className="workspace-pr-panel__conversation-header">
-        <div className="workspace-pr-panel__conversation-title">
-          {t('githubPullRequest.comment')}
-        </div>
-        <div className="workspace-pr-panel__conversation-actions">
-          <button
-            type="button"
-            className="workspace-pr-panel__conversation-toggle"
-            disabled={!canCompose}
-            onClick={() => {
-              setIsExpanded(previous => !previous)
-            }}
-          >
-            {isExpanded ? t('common.cancel') : t('githubPullRequest.comment')}
-          </button>
-        </div>
-      </div>
-
-      {isExpanded ? (
-        <div className="cove-window__field-row workspace-pr-panel__conversation-body">
+      {!isExpanded ? (
+        <button
+          type="button"
+          className="workspace-pr-panel__composer-collapsed"
+          disabled={!canCompose}
+          onClick={() => setIsExpanded(true)}
+        >
+          <span className="workspace-pr-panel__composer-placeholder">
+            {t('githubPullRequest.commentPlaceholder')}
+          </span>
+          <span className="workspace-pr-panel__composer-cta">{t('githubPullRequest.comment')}</span>
+        </button>
+      ) : (
+        <div className="cove-window__field-row workspace-pr-panel__composer-expanded">
           <textarea
             data-testid="workspace-space-pr-panel-comment-input"
             value={commentBody}
+            ref={textareaRef}
             disabled={!isAvailable || isExecutingAction}
             placeholder={t('githubPullRequest.commentPlaceholder')}
             onChange={event => setCommentBody(event.target.value)}
@@ -94,7 +104,7 @@ export function WorkspaceSpacePullRequestPanelCommentComposer({
             </button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   )
 }
