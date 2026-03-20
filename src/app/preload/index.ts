@@ -7,18 +7,10 @@ import type {
   CreateGitWorktreeResult,
   DetachTerminalInput,
   EnsureDirectoryInput,
-  ExecuteGitHubPullRequestActionInput,
-  ExecuteGitHubPullRequestActionResult,
   GetGitDefaultBranchInput,
   GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
-  GetGitHubPullRequestChecksInput,
-  GetGitHubPullRequestChecksResult,
-  GetGitHubPullRequestDiffInput,
-  GetGitHubPullRequestDiffResult,
-  GetGitHubPullRequestInput,
-  GetGitHubPullRequestResult,
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
@@ -128,20 +120,6 @@ const opencoveApi = {
         payload: ResolveGitHubPullRequestsInput,
       ): Promise<ResolveGitHubPullRequestsResult> =>
         invokeIpc(IPC_CHANNELS.integrationGithubResolvePullRequests, payload),
-      getPullRequest: (payload: GetGitHubPullRequestInput): Promise<GetGitHubPullRequestResult> =>
-        invokeIpc(IPC_CHANNELS.integrationGithubGetPullRequest, payload),
-      getPullRequestChecks: (
-        payload: GetGitHubPullRequestChecksInput,
-      ): Promise<GetGitHubPullRequestChecksResult> =>
-        invokeIpc(IPC_CHANNELS.integrationGithubGetPullRequestChecks, payload),
-      getPullRequestDiff: (
-        payload: GetGitHubPullRequestDiffInput,
-      ): Promise<GetGitHubPullRequestDiffResult> =>
-        invokeIpc(IPC_CHANNELS.integrationGithubGetPullRequestDiff, payload),
-      executePullRequestAction: (
-        payload: ExecuteGitHubPullRequestActionInput,
-      ): Promise<ExecuteGitHubPullRequestActionResult> =>
-        invokeIpc(IPC_CHANNELS.integrationGithubExecutePullRequestAction, payload),
     },
   },
   pty: {

@@ -1,12 +1,6 @@
 import { spawn } from 'node:child_process'
-import { randomUUID } from 'node:crypto'
-import { writeFile, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import process from 'node:process'
-import type { GitHubPullRequestSelector } from '../../../../shared/contracts/dto'
 import type { CommandResult } from './githubIntegration.shared'
-import { normalizeText } from './githubIntegration.shared'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const HOST_CACHE_TTL_MS = 5 * 60_000
@@ -152,42 +146,7 @@ export async function isGhAuthenticated(cwd: string): Promise<boolean> {
     return false
   }
 }
-
-export function selectorToGhArg(selector: GitHubPullRequestSelector): string {
-  if (selector.kind === 'branch') {
-    return selector.branch
-  }
-
-  if (selector.kind === 'number') {
-    return String(selector.number)
-  }
-
-  return selector.url
-}
-
-export function parsePrUrlFromOutput(raw: string): string | null {
-  const match = raw.match(/https?:\/\/\S+/)
-  return match ? match[0] : null
-}
-
-export async function runGhWithBodyFile(
-  repoPath: string,
-  args: string[],
-  body: string,
-): Promise<CommandResult> {
-  const filePath = join(tmpdir(), `cove-gh-body-${randomUUID()}.txt`)
-  try {
-    await writeFile(filePath, body, 'utf8')
-    return await runCommand('gh', [...args, '--body-file', filePath], repoPath, {
-      env: buildGhEnv(),
-      timeoutMs: 60_000,
-    })
-  } finally {
-    await rm(filePath, { force: true }).catch(() => undefined)
-  }
-}
-
-export async function runGit(repoPath: string, args: string[]): Promise<CommandResult> {
+async function runGit(repoPath: string, args: string[]): Promise<CommandResult> {
   return await runCommand('git', args, repoPath, {
     env: {
       ...process.env,
@@ -197,7 +156,7 @@ export async function runGit(repoPath: string, args: string[]): Promise<CommandR
   })
 }
 
-export async function resolveDefaultRemote(repoPath: string): Promise<string | null> {
+async function resolveDefaultRemote(repoPath: string): Promise<string | null> {
   const result = await runGit(repoPath, ['remote'])
   if (result.exitCode !== 0) {
     return null
@@ -260,18 +219,4 @@ async function resolveGitHubHostForRepo(repoPath: string): Promise<string | null
   const host = parseHostFromGitRemoteUrl(urlResult.stdout.split(/\r?\n/)[0] ?? '')
   repoHostCache.set(repoPath, { checkedAt: now, host })
   return host
-}
-
-export function formatCommandError(result: CommandResult, fallback: string): string {
-  const stderr = normalizeText(result.stderr)
-  if (stderr) {
-    return stderr
-  }
-
-  const stdout = normalizeText(result.stdout)
-  if (stdout) {
-    return stdout
-  }
-
-  return fallback
 }

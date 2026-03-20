@@ -1,38 +1,13 @@
 import type {
-  GetGitHubPullRequestChecksInput,
-  GetGitHubPullRequestChecksResult,
-  GetGitHubPullRequestDiffInput,
-  GetGitHubPullRequestDiffResult,
-  GetGitHubPullRequestInput,
-  GetGitHubPullRequestResult,
   GitHubPullRequestSummary,
   IntegrationProviderAvailability,
   ResolveGitHubPullRequestsInput,
   ResolveGitHubPullRequestsResult,
 } from '../../../../shared/contracts/dto'
 import { normalizeComparablePath } from './githubIntegration.shared'
-import {
-  buildGhEnv,
-  formatCommandError,
-  isGhAuthenticated,
-  isGhAvailable,
-  runCommand,
-  selectorToGhArg,
-} from './GitHubGh'
-import {
-  isNoPullRequestError,
-  parseChecks,
-  parseStatusCheckRollup,
-  parsePullRequestDetails,
-  parsePullRequestSummary,
-} from './GitHubPullRequestParse'
-import {
-  buildStubChecks,
-  buildStubDetails,
-  buildStubDiff,
-  buildStubSummary,
-  shouldUseTestStub,
-} from './GitHubPullRequestTestStub'
+import { buildGhEnv, isGhAuthenticated, isGhAvailable, runCommand } from './GitHubGh'
+import { isNoPullRequestError, parsePullRequestSummary } from './GitHubPullRequestParse'
+import { buildStubSummary, shouldUseTestStub } from './GitHubPullRequestTestStub'
 
 const SUMMARY_CACHE_TTL_MS = 90_000
 const MAX_CONCURRENT_RESOLVE = 3
@@ -68,6 +43,7 @@ async function resolveSummaryForBranch(
 ): Promise<GitHubPullRequestSummary | null> {
   const cacheKey = `${normalizeComparablePath(repoPath)}|${branch}`
   const cached = summaryCache.get(cacheKey)
+  const cachedValue = cached?.value ?? null
   if (cached && cached.expiresAt > Date.now()) {
     return cached.value
   }
@@ -86,8 +62,15 @@ async function resolveSummaryForBranch(
   )
 
   if (result.exitCode !== 0) {
-    summaryCache.set(cacheKey, { value: null, expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS })
-    return null
+    const combinedOutput = `${result.stderr}\n${result.stdout}`
+    if (isNoPullRequestError(combinedOutput)) {
+      summaryCache.set(cacheKey, { value: null, expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS })
+      return null
+    }
+
+    const retryTtlMs = 10_000
+    summaryCache.set(cacheKey, { value: cachedValue, expiresAt: Date.now() + retryTtlMs })
+    return cachedValue
   }
 
   try {
@@ -184,198 +167,3 @@ export async function resolveGitHubPullRequests(
     pullRequestsByBranch,
   }
 }
-
-export async function getGitHubPullRequest(
-  input: GetGitHubPullRequestInput,
-): Promise<GetGitHubPullRequestResult> {
-  if (shouldUseTestStub()) {
-    const branch = input.selector.kind === 'branch' ? input.selector.branch : 'test-branch'
-    return {
-      availability: toAvailable(),
-      pullRequest: buildStubDetails(branch),
-    }
-  }
-
-  const ghAvailable = await isGhAvailable(input.repoPath)
-  if (!ghAvailable) {
-    return {
-      availability: toUnavailable(
-        'command_not_found',
-        'GitHub CLI (gh) was not found on PATH. Install it to enable GitHub integration.',
-      ),
-      pullRequest: null,
-    }
-  }
-
-  const authed = await isGhAuthenticated(input.repoPath)
-  if (!authed) {
-    return {
-      availability: toUnavailable(
-        'unauthenticated',
-        'GitHub CLI (gh) is not authenticated. Run `gh auth login` to enable GitHub integration.',
-      ),
-      pullRequest: null,
-    }
-  }
-
-  const selectorArg = selectorToGhArg(input.selector)
-  const result = await runCommand(
-    'gh',
-    [
-      'pr',
-      'view',
-      selectorArg,
-      '--json',
-      'number,title,url,state,isDraft,author,updatedAt,baseRefName,headRefName,body,mergeable,reviewDecision,commits',
-    ],
-    input.repoPath,
-    { env: buildGhEnv() },
-  )
-
-  if (result.exitCode !== 0) {
-    const combinedOutput = `${result.stderr}\n${result.stdout}`
-    if (isNoPullRequestError(combinedOutput)) {
-      return { availability: toAvailable(), pullRequest: null }
-    }
-
-    throw new Error(formatCommandError(result, 'Failed to load pull request'))
-  }
-
-  try {
-    const parsed = JSON.parse(result.stdout) as unknown
-    return {
-      availability: toAvailable(),
-      pullRequest: parsePullRequestDetails(parsed),
-    }
-  } catch {
-    throw new Error('Failed to parse pull request response')
-  }
-}
-
-export async function getGitHubPullRequestChecks(
-  input: GetGitHubPullRequestChecksInput,
-): Promise<GetGitHubPullRequestChecksResult> {
-  if (shouldUseTestStub()) {
-    return {
-      availability: toAvailable(),
-      checks: buildStubChecks(),
-    }
-  }
-
-  const ghAvailable = await isGhAvailable(input.repoPath)
-  if (!ghAvailable) {
-    return {
-      availability: toUnavailable(
-        'command_not_found',
-        'GitHub CLI (gh) was not found on PATH. Install it to enable GitHub integration.',
-      ),
-      checks: [],
-    }
-  }
-
-  const authed = await isGhAuthenticated(input.repoPath)
-  if (!authed) {
-    return {
-      availability: toUnavailable(
-        'unauthenticated',
-        'GitHub CLI (gh) is not authenticated. Run `gh auth login` to enable GitHub integration.',
-      ),
-      checks: [],
-    }
-  }
-
-  const selectorArg = selectorToGhArg(input.selector)
-  const result =
-    input.required === true
-      ? await runCommand(
-          'gh',
-          [
-            'pr',
-            'checks',
-            selectorArg,
-            '--required',
-            '--json',
-            'bucket,completedAt,description,link,name,startedAt,state,workflow',
-          ],
-          input.repoPath,
-          { env: buildGhEnv() },
-        )
-      : await runCommand(
-          'gh',
-          ['pr', 'view', selectorArg, '--json', 'statusCheckRollup'],
-          input.repoPath,
-          { env: buildGhEnv() },
-        )
-  if (result.exitCode !== 0) {
-    throw new Error(formatCommandError(result, 'Failed to load checks'))
-  }
-
-  try {
-    const parsed = JSON.parse(result.stdout) as unknown
-    return {
-      availability: toAvailable(),
-      checks:
-        input.required === true
-          ? parseChecks(parsed)
-          : parseStatusCheckRollup(
-              parsed && typeof parsed === 'object'
-                ? (parsed as { statusCheckRollup?: unknown }).statusCheckRollup
-                : null,
-            ),
-    }
-  } catch {
-    throw new Error('Failed to parse checks response')
-  }
-}
-
-export async function getGitHubPullRequestDiff(
-  input: GetGitHubPullRequestDiffInput,
-): Promise<GetGitHubPullRequestDiffResult> {
-  if (shouldUseTestStub()) {
-    return {
-      availability: toAvailable(),
-      diff: buildStubDiff(),
-    }
-  }
-
-  const ghAvailable = await isGhAvailable(input.repoPath)
-  if (!ghAvailable) {
-    return {
-      availability: toUnavailable(
-        'command_not_found',
-        'GitHub CLI (gh) was not found on PATH. Install it to enable GitHub integration.',
-      ),
-      diff: '',
-    }
-  }
-
-  const authed = await isGhAuthenticated(input.repoPath)
-  if (!authed) {
-    return {
-      availability: toUnavailable(
-        'unauthenticated',
-        'GitHub CLI (gh) is not authenticated. Run `gh auth login` to enable GitHub integration.',
-      ),
-      diff: '',
-    }
-  }
-
-  const selectorArg = selectorToGhArg(input.selector)
-  const result = await runCommand(
-    'gh',
-    ['pr', 'diff', selectorArg, '--patch', '--color', 'never'],
-    input.repoPath,
-    { env: buildGhEnv(), timeoutMs: 60_000 },
-  )
-
-  if (result.exitCode !== 0) {
-    throw new Error(formatCommandError(result, 'Failed to load diff'))
-  }
-
-  return {
-    availability: toAvailable(),
-    diff: result.stdout,
-  }
-}
-
-export { executeGitHubPullRequestAction } from './GitHubPullRequestActions'

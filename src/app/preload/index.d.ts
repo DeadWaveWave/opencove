@@ -5,18 +5,10 @@ import type {
   CreateGitWorktreeResult,
   DetachTerminalInput,
   EnsureDirectoryInput,
-  ExecuteGitHubPullRequestActionInput,
-  ExecuteGitHubPullRequestActionResult,
   GetGitDefaultBranchInput,
   GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
-  GetGitHubPullRequestChecksInput,
-  GetGitHubPullRequestChecksResult,
-  GetGitHubPullRequestDiffInput,
-  GetGitHubPullRequestDiffResult,
-  GetGitHubPullRequestInput,
-  GetGitHubPullRequestResult,
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
@@ -103,16 +95,6 @@ export interface OpenCoveApi {
       resolvePullRequests: (
         payload: ResolveGitHubPullRequestsInput,
       ) => Promise<ResolveGitHubPullRequestsResult>
-      getPullRequest: (payload: GetGitHubPullRequestInput) => Promise<GetGitHubPullRequestResult>
-      getPullRequestChecks: (
-        payload: GetGitHubPullRequestChecksInput,
-      ) => Promise<GetGitHubPullRequestChecksResult>
-      getPullRequestDiff: (
-        payload: GetGitHubPullRequestDiffInput,
-      ) => Promise<GetGitHubPullRequestDiffResult>
-      executePullRequestAction: (
-        payload: ExecuteGitHubPullRequestActionInput,
-      ) => Promise<ExecuteGitHubPullRequestActionResult>
     }
   }
   pty: {

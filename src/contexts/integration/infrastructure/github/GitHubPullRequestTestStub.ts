@@ -1,11 +1,5 @@
 import process from 'node:process'
-import type {
-  ExecuteGitHubPullRequestActionInput,
-  ExecuteGitHubPullRequestActionResult,
-  GitHubPullRequestCheck,
-  GitHubPullRequestDetails,
-  GitHubPullRequestSummary,
-} from '../../../../shared/contracts/dto'
+import type { GitHubPullRequestSummary } from '../../../../shared/contracts/dto'
 import { isTruthyEnv } from './githubIntegration.shared'
 
 export function shouldUseTestStub(): boolean {
@@ -33,62 +27,4 @@ export function buildStubSummary(branch: string): GitHubPullRequestSummary {
     baseRefName: 'main',
     headRefName: branch,
   }
-}
-
-export function buildStubDetails(branch: string): GitHubPullRequestDetails {
-  const summary = buildStubSummary(branch)
-  return {
-    ...summary,
-    body: 'This is a test pull request body.',
-    mergeable: 'MERGEABLE',
-    reviewDecision: 'REVIEW_REQUIRED',
-    commitCount: 1,
-    commits: [
-      {
-        oid: '1111111111111111111111111111111111111111',
-        headline: 'Test commit',
-        authorName: 'Test Author',
-        authorLogin: 'test',
-        committedDate: '2026-03-19T00:00:00.000Z',
-        url: 'https://example.com/commit/1111111',
-      },
-    ],
-  }
-}
-
-export function buildStubChecks(): GitHubPullRequestCheck[] {
-  return [
-    {
-      name: 'test-check',
-      bucket: 'pass',
-      state: 'completed',
-      link: 'https://example.com/check/1',
-      description: 'All good',
-      workflow: 'CI',
-      startedAt: '2026-03-19T00:00:00.000Z',
-      completedAt: '2026-03-19T00:00:10.000Z',
-    },
-  ]
-}
-
-export function buildStubDiff(): string {
-  return [
-    'diff --git a/README.md b/README.md',
-    'index 0000000..1111111 100644',
-    '--- a/README.md',
-    '+++ b/README.md',
-    '@@ -0,0 +1 @@',
-    '+Hello from test diff',
-    '',
-  ].join('\n')
-}
-
-export function executeStubAction(
-  input: ExecuteGitHubPullRequestActionInput,
-): ExecuteGitHubPullRequestActionResult {
-  if (input.action.kind === 'create') {
-    return { kind: 'created', pullRequest: buildStubSummary(input.action.branch) }
-  }
-
-  return { kind: 'completed' }
 }
