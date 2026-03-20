@@ -121,6 +121,7 @@ export function CommandCenter({
   const inputRef = useRef<HTMLInputElement | null>(null)
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
+  const interactionModeRef = useRef<'keyboard' | 'pointer'>('keyboard')
 
   const { space: activeSpace } = useMemo(
     () => resolveActiveSpace(activeWorkspace),
@@ -275,6 +276,10 @@ export function CommandCenter({
       return
     }
 
+    if (interactionModeRef.current !== 'keyboard') {
+      return
+    }
+
     const target = itemRefs.current.get(selectedItem.id)
     target?.scrollIntoView({ block: 'nearest' })
   }, [isOpen, selectedItem])
@@ -316,12 +321,14 @@ export function CommandCenter({
             }}
             onKeyDown={event => {
               if (event.key === 'Escape') {
+                interactionModeRef.current = 'keyboard'
                 event.preventDefault()
                 onClose()
                 return
               }
 
               if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                interactionModeRef.current = 'keyboard'
                 event.preventDefault()
                 if (flattenedItems.length === 0) {
                   return
@@ -343,6 +350,7 @@ export function CommandCenter({
                 if (!selectedItem) {
                   return
                 }
+                interactionModeRef.current = 'keyboard'
                 event.preventDefault()
                 selectedItem.onSelect()
                 onClose()
@@ -360,7 +368,13 @@ export function CommandCenter({
           </div>
         </div>
 
-        <div className="command-center__results" role="listbox">
+        <div
+          className="command-center__results"
+          role="listbox"
+          onMouseMove={() => {
+            interactionModeRef.current = 'pointer'
+          }}
+        >
           {sections.length === 0 ? (
             <div className="command-center__empty">{t('commandCenter.empty')}</div>
           ) : null}
@@ -387,6 +401,9 @@ export function CommandCenter({
                       role="option"
                       aria-selected={isSelected}
                       onMouseEnter={() => {
+                        if (interactionModeRef.current !== 'pointer') {
+                          return
+                        }
                         setActiveItemId(item.id)
                       }}
                       onClick={() => {

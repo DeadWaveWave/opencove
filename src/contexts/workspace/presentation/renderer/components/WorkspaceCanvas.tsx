@@ -13,6 +13,7 @@ function WorkspaceCanvasInner({
   onNodesChange,
   onRequestPersistFlush,
   spaces,
+  activeSpaceId,
   onSpacesChange,
   viewport,
   isMinimapVisible: persistedMinimapVisible,
@@ -109,6 +110,7 @@ function WorkspaceCanvasInner({
     focusAllInViewport,
   } = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
+    activeSpaceId,
     workspacePath,
     reactFlow,
     nodes: flowNodes,
@@ -232,14 +234,13 @@ function WorkspaceCanvasInner({
     closeNode,
     actionRefs,
   })
+  const canvasInputModeSetting = agentSettings.canvasInputMode
   const resolvedCanvasInputMode =
-    agentSettings.canvasInputMode === 'auto'
-      ? detectedCanvasInputMode
-      : agentSettings.canvasInputMode
+    canvasInputModeSetting === 'auto' ? detectedCanvasInputMode : canvasInputModeSetting
   const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
-  const useManualCanvasWheelGestures = agentSettings.canvasInputMode !== 'mouse'
+  const useManualCanvasWheelGestures = canvasInputModeSetting !== 'mouse'
   const { handleCanvasWheelCapture } = workspaceCanvasHooks.useWorkspaceCanvasTrackpadGestures({
-    canvasInputModeSetting: agentSettings.canvasInputMode,
+    canvasInputModeSetting,
     resolvedCanvasInputMode,
     inputModalityStateRef,
     setDetectedCanvasInputMode,
@@ -264,7 +265,7 @@ function WorkspaceCanvasInner({
     reactFlow,
     viewport,
     viewportRef,
-    canvasInputModeSetting: agentSettings.canvasInputMode,
+    canvasInputModeSetting,
     inputModalityStateRef,
     setDetectedCanvasInputMode,
     isShiftPressedRef,
