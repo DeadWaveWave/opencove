@@ -151,7 +151,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTitleModel: '',
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
   normalizeZoomOnTerminalClick: true,
-  canvasInputMode: 'auto',
+  canvasInputMode: 'mouse',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   uiFontSize: 18,

@@ -15,7 +15,7 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.language).toBe('en')
     expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('system')
     expect(DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick).toBe(true)
-    expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
+    expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('mouse')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
     expect(DEFAULT_AGENT_SETTINGS.uiFontSize).toBe(18)
@@ -110,7 +110,7 @@ describe('agent settings normalization', () => {
     expect(result.taskTitleModel).toBe('')
     expect(result.taskTagOptions).toEqual(['ops'])
     expect(result.normalizeZoomOnTerminalClick).toBe(true)
-    expect(result.canvasInputMode).toBe('auto')
+    expect(result.canvasInputMode).toBe('mouse')
     expect(result.defaultTerminalWindowScalePercent).toBe(80)
     expect(result.terminalFontSize).toBe(13)
     expect(result.uiFontSize).toBe(18)
@@ -120,7 +120,7 @@ describe('agent settings normalization', () => {
     expect(resolveTaskTitleModel(result)).toBeNull()
   })
 
-  it('falls back to auto canvas input mode when input is invalid', () => {
+  it('falls back to mouse canvas input mode when input is invalid', () => {
     const result = normalizeAgentSettings({
       language: 'fr-FR',
       uiTheme: 'bold-blue',
@@ -129,7 +129,7 @@ describe('agent settings normalization', () => {
 
     expect(result.language).toBe('en')
     expect(result.uiTheme).toBe('system')
-    expect(result.canvasInputMode).toBe('auto')
+    expect(result.canvasInputMode).toBe('mouse')
   })
 
   it('migrates legacy modelByProvider to custom override', () => {
