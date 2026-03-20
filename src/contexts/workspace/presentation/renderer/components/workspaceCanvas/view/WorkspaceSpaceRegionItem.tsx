@@ -199,24 +199,6 @@ export function WorkspaceSpaceRegionItem({
             </span>
           ) : null}
 
-          <button
-            type="button"
-            className="workspace-space-region__menu"
-            data-testid={`workspace-space-menu-${space.id}`}
-            aria-label={t('spaceActions.openSpaceActions', { name: space.name })}
-            title={t('spaceActions.title')}
-            onClick={event => {
-              event.stopPropagation()
-              const rect = event.currentTarget.getBoundingClientRect()
-              onOpenSpaceMenu?.(space.id, {
-                x: Math.round(rect.left),
-                y: Math.round(rect.bottom + 8),
-              })
-            }}
-          >
-            ...
-          </button>
-
           {branchName && worktreePath && shouldShowPullRequestChip && resolvedPullRequestSummary ? (
             <a
               className="workspace-space-region__pr-chip"
@@ -238,6 +220,24 @@ export function WorkspaceSpaceRegionItem({
               </span>
             </a>
           ) : null}
+
+          <button
+            type="button"
+            className="workspace-space-region__menu"
+            data-testid={`workspace-space-menu-${space.id}`}
+            aria-label={t('spaceActions.openSpaceActions', { name: space.name })}
+            title={t('spaceActions.title')}
+            onClick={event => {
+              event.stopPropagation()
+              const rect = event.currentTarget.getBoundingClientRect()
+              onOpenSpaceMenu?.(space.id, {
+                x: Math.round(rect.left),
+                y: Math.round(rect.bottom + 8),
+              })
+            }}
+          >
+            ...
+          </button>
         </div>
       )}
     </div>
