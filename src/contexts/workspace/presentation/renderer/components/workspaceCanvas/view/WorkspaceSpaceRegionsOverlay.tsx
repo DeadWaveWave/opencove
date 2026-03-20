@@ -30,6 +30,7 @@ import {
 } from './WorkspaceSpacePullRequestPanel'
 
 const EMPTY_BASE_BRANCH_OPTIONS: string[] = []
+const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -83,6 +84,10 @@ export function WorkspaceSpaceRegionsOverlay({
   const normalizedWorkspacePath = React.useMemo(
     () => normalizeComparablePath(workspacePath),
     [workspacePath],
+  )
+
+  const githubPullRequestsEnabled = useAppStore(
+    state => state.agentSettings.githubPullRequestsEnabled,
   )
 
   const pullRequestBaseBranchOptions = useAppStore(state => {
@@ -181,7 +186,19 @@ export function WorkspaceSpaceRegionsOverlay({
   }, [refreshNonce, worktreeDirectories.length, worktreeDirectoriesKey, workspacePath])
 
   React.useEffect(() => {
+    if (!githubPullRequestsEnabled) {
+      setPullRequestPanel(null)
+    }
+  }, [githubPullRequestsEnabled])
+
+  React.useEffect(() => {
     if (worktreeBranches.length === 0) {
+      setPullRequestsByBranch({})
+      setGitHubAvailability(null)
+      return
+    }
+
+    if (!githubPullRequestsEnabled) {
       setPullRequestsByBranch({})
       setGitHubAvailability(null)
       return
@@ -200,8 +217,9 @@ export function WorkspaceSpaceRegionsOverlay({
     }
 
     let cancelled = false
+    let intervalId: number | null = null
 
-    void (async () => {
+    const resolveAll = async (): Promise<void> => {
       try {
         const result = await resolvePullRequests({
           repoPath: workspacePath,
@@ -227,12 +245,20 @@ export function WorkspaceSpaceRegionsOverlay({
         })
         setPullRequestsByBranch(Object.fromEntries(worktreeBranches.map(branch => [branch, null])))
       }
-    })()
+    }
+
+    void resolveAll()
+    intervalId = window.setInterval(() => {
+      void resolveAll()
+    }, PULL_REQUEST_REFRESH_INTERVAL_MS)
 
     return () => {
       cancelled = true
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+      }
     }
-  }, [t, worktreeBranches, worktreeBranchesKey, workspacePath])
+  }, [githubPullRequestsEnabled, t, worktreeBranches, worktreeBranchesKey, workspacePath])
 
   React.useEffect(() => {
     if (!branchRename?.spaceId) {
@@ -393,6 +419,7 @@ export function WorkspaceSpaceRegionsOverlay({
               space={space}
               resolvedRect={resolvedRect}
               isSelected={isSelected}
+              githubPullRequestsEnabled={githubPullRequestsEnabled}
               editingSpaceId={editingSpaceId}
               spaceRenameInputRef={spaceRenameInputRef}
               spaceRenameDraft={spaceRenameDraft}

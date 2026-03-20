@@ -44,11 +44,31 @@ export async function runCommand(
 
     let stdout = ''
     let stderr = ''
-    let timedOut = false
+    let settled = false
+    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
 
-    const timeoutHandle = setTimeout(() => {
-      timedOut = true
-      child.kill('SIGKILL')
+    const finalize = (fn: () => void): void => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      if (timeoutHandle) {
+        clearTimeout(timeoutHandle)
+      }
+      fn()
+    }
+
+    timeoutHandle = setTimeout(() => {
+      try {
+        child.kill('SIGKILL')
+      } catch {
+        // Ignore kill errors (process may already be gone).
+      }
+
+      finalize(() => {
+        reject(new Error(`${command} command timed out`))
+      })
     }, timeoutMs)
 
     child.stdout.on('data', chunk => {
@@ -60,22 +80,18 @@ export async function runCommand(
     })
 
     child.on('error', error => {
-      clearTimeout(timeoutHandle)
-      reject(error)
+      finalize(() => {
+        reject(error)
+      })
     })
 
     child.on('close', exitCode => {
-      clearTimeout(timeoutHandle)
-
-      if (timedOut) {
-        reject(new Error(`${command} command timed out`))
-        return
-      }
-
-      resolvePromise({
-        exitCode: typeof exitCode === 'number' ? exitCode : 1,
-        stdout,
-        stderr,
+      finalize(() => {
+        resolvePromise({
+          exitCode: typeof exitCode === 'number' ? exitCode : 1,
+          stdout,
+          stderr,
+        })
       })
     })
 
@@ -247,5 +263,15 @@ async function resolveGitHubHostForRepo(repoPath: string): Promise<string | null
 }
 
 export function formatCommandError(result: CommandResult, fallback: string): string {
-  return normalizeText(result.stderr) || fallback
+  const stderr = normalizeText(result.stderr)
+  if (stderr) {
+    return stderr
+  }
+
+  const stdout = normalizeText(result.stdout)
+  if (stdout) {
+    return stdout
+  }
+
+  return fallback
 }

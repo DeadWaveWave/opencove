@@ -129,6 +129,7 @@ export const zhCN = {
       canvas: '画布',
       tasks: '任务',
       models: '模型',
+      integrations: '集成',
       projects: '项目',
       sectionsLabel: '设置分区',
     },
@@ -193,6 +194,11 @@ export const zhCN = {
       useCustomModel: '使用自定义模型',
       addModelPlaceholder: '添加模型...',
       modelError: '错误：{{message}}',
+    },
+    integrations: {
+      title: '集成',
+      githubPullRequestsLabel: 'GitHub Pull Requests',
+      githubPullRequestsHelp: '在画布中展示并管理 GitHub Pull Request。',
     },
     workspace: {
       title: '工作区 Worktree',
@@ -418,6 +424,7 @@ export const zhCN = {
     create: '创建 PR',
     noChecks: '暂无 Checks。',
     noDiff: '暂无 Diff。',
+    binaryDiff: '二进制文件有变更。',
   },
   worktreeGuard: {
     activeWindowsBound: 'Space {{name}} 仍有活动窗口绑定在当前目录上。',

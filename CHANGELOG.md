@@ -12,14 +12,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
 - In-canvas GitHub pull request chip + panel for worktree-bound Spaces (requires `gh`).
 - Per-project pull request base branch suggestions in Settings.
+- Settings → Integrations tab with a GitHub pull request toggle (default on).
 
 ### 💅 Changed
 - PR base branch defaults to the repository default branch (with editable suggestions).
 - De-emphasized “Publish branch” by moving it under Advanced (Create PR auto-publishes).
+- PR Diff view now renders a visual, file-grouped unified diff.
 
 ### 🐞 Fixed
 - Improved `gh` authentication detection and PR action error reporting.
 - Prevented canvas zoom/pan when scrolling inside PR/overlay windows.
+- Create PR now explains “no commits / nothing to compare” failures more clearly.
+- PR Checks no longer hang indefinitely (command timeouts now resolve properly).
 
 ---
 

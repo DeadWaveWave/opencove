@@ -15,6 +15,7 @@ import {
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
+import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
@@ -38,7 +39,7 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
-type CorePageId = 'general' | 'agent' | 'canvas' | 'task-configuration'
+type CorePageId = 'general' | 'agent' | 'canvas' | 'task-configuration' | 'models' | 'integrations'
 type WorkspacePageId = `workspace:${string}`
 type SettingsPageId = CorePageId | WorkspacePageId
 
@@ -108,6 +109,8 @@ export function SettingsPanel({
     onChange({ ...settings, uiFontSize: fontSize })
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
+  const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, githubPullRequestsEnabled: enabled })
 
   const updateWorkspacePullRequestBaseBranchOptions = React.useCallback(
     (workspaceId: string, options: string[]): void => {
@@ -288,6 +291,12 @@ export function SettingsPanel({
             label={t('settingsPanel.nav.tasks')}
             testId="settings-section-nav-task-configuration"
           />
+          <NavButton id="models" label={t('settingsPanel.nav.models')} testId="settings-section-nav-models" />
+          <NavButton
+            id="integrations"
+            label={t('settingsPanel.nav.integrations')}
+            testId="settings-section-nav-integrations"
+          />
 
           <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
           <div className="settings-panel__nav-group">
@@ -325,26 +334,34 @@ export function SettingsPanel({
             ) : null}
 
             {activePageId === 'agent' ? (
-              <>
-                <AgentSection
-                  defaultProvider={settings.defaultProvider}
-                  agentProviderOrder={settings.agentProviderOrder}
-                  agentFullAccess={settings.agentFullAccess}
-                  onChangeDefaultProvider={updateDefaultProvider}
-                  onChangeAgentProviderOrder={updateAgentProviderOrder}
-                  onChangeAgentFullAccess={updateAgentFullAccess}
-                />
-                <ModelOverrideSection
-                  settings={settings}
-                  modelCatalogByProvider={modelCatalogByProvider}
-                  addModelInputByProvider={addModelInputByProvider}
-                  onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
-                  onSelectProviderModel={selectProviderModel}
-                  onRemoveCustomModelOption={removeCustomModelOption}
-                  onChangeAddModelInput={updateAddModelInput}
-                  onAddCustomModelOption={addCustomModelOption}
-                />
-              </>
+              <AgentSection
+                defaultProvider={settings.defaultProvider}
+                agentProviderOrder={settings.agentProviderOrder}
+                agentFullAccess={settings.agentFullAccess}
+                onChangeDefaultProvider={updateDefaultProvider}
+                onChangeAgentProviderOrder={updateAgentProviderOrder}
+                onChangeAgentFullAccess={updateAgentFullAccess}
+              />
+            ) : null}
+
+            {activePageId === 'models' ? (
+              <ModelOverrideSection
+                settings={settings}
+                modelCatalogByProvider={modelCatalogByProvider}
+                addModelInputByProvider={addModelInputByProvider}
+                onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
+                onSelectProviderModel={selectProviderModel}
+                onRemoveCustomModelOption={removeCustomModelOption}
+                onChangeAddModelInput={updateAddModelInput}
+                onAddCustomModelOption={addCustomModelOption}
+              />
+            ) : null}
+
+            {activePageId === 'integrations' ? (
+              <IntegrationsSection
+                githubPullRequestsEnabled={settings.githubPullRequestsEnabled}
+                onChangeGitHubPullRequestsEnabled={updateGitHubPullRequestsEnabled}
+              />
             ) : null}
 
             {activePageId === 'canvas' ? (

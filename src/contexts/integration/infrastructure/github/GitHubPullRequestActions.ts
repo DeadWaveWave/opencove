@@ -2,7 +2,7 @@ import type {
   ExecuteGitHubPullRequestActionInput,
   ExecuteGitHubPullRequestActionResult,
 } from '../../../../shared/contracts/dto'
-import { normalizeText } from './githubIntegration.shared'
+import { normalizeText, type CommandResult } from './githubIntegration.shared'
 import {
   buildGhEnv,
   formatCommandError,
@@ -17,6 +17,26 @@ import {
 } from './GitHubGh'
 import { parsePullRequestDetails } from './GitHubPullRequestParse'
 import { executeStubAction, shouldUseTestStub } from './GitHubPullRequestTestStub'
+
+function formatPullRequestCreateErrorMessage(
+  result: CommandResult,
+  context: { branch: string; base: string | null },
+): string {
+  const raw = formatCommandError(result, 'Failed to create pull request')
+  const normalized = raw.toLowerCase()
+  const base = context.base?.trim().length ? context.base.trim() : null
+  const baseLabel = base ?? 'the base branch'
+
+  if (
+    normalized.includes('no commits between') ||
+    normalized.includes("there isn't anything to compare") ||
+    normalized.includes('nothing to compare')
+  ) {
+    return `Cannot create pull request: no commits between ${baseLabel} and ${context.branch}. Commit your changes first.`
+  }
+
+  return raw
+}
 
 async function publishBranch(
   repoPath: string,
@@ -113,7 +133,9 @@ export async function executeGitHubPullRequestAction(
 
     const result = await runGhWithBodyFile(input.repoPath, args, action.body ?? '')
     if (result.exitCode !== 0) {
-      throw new Error(formatCommandError(result, 'Failed to create pull request'))
+      throw new Error(
+        formatPullRequestCreateErrorMessage(result, { branch, base: action.base ?? null }),
+      )
     }
 
     const url = parsePrUrlFromOutput(result.stdout) ?? parsePrUrlFromOutput(result.stderr)

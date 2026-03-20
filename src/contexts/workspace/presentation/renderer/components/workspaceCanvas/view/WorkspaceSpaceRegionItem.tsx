@@ -15,6 +15,7 @@ export function WorkspaceSpaceRegionItem({
   space,
   resolvedRect,
   isSelected,
+  githubPullRequestsEnabled,
   editingSpaceId,
   spaceRenameInputRef,
   spaceRenameDraft,
@@ -34,6 +35,7 @@ export function WorkspaceSpaceRegionItem({
   space: SpaceVisual
   resolvedRect: WorkspaceSpaceRect
   isSelected: boolean
+  githubPullRequestsEnabled: boolean
   editingSpaceId: string | null
   spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
@@ -75,6 +77,7 @@ export function WorkspaceSpaceRegionItem({
   const shouldShowSpaceLabel = resolvedBranchBadge === null
   const [isLabelHovered, setIsLabelHovered] = React.useState(false)
   const shouldShowPullRequestChip =
+    githubPullRequestsEnabled &&
     Boolean(branchName) &&
     Boolean(worktreePath) &&
     (resolvedPullRequestSummary !== null || isSelected || isLabelHovered)

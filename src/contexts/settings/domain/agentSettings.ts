@@ -118,6 +118,7 @@ export interface AgentSettings {
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   uiFontSize: number
+  githubPullRequestsEnabled: boolean
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -154,6 +155,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   uiFontSize: 18,
+  githubPullRequestsEnabled: true,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -447,6 +449,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     MIN_UI_FONT_SIZE,
     MAX_UI_FONT_SIZE,
   )
+  const githubPullRequestsEnabled =
+    normalizeBoolean(value.githubPullRequestsEnabled) ??
+    DEFAULT_AGENT_SETTINGS.githubPullRequestsEnabled
 
   return {
     language,
@@ -470,5 +475,6 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     uiFontSize,
+    githubPullRequestsEnabled,
   }
 }

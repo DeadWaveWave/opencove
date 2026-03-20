@@ -127,6 +127,7 @@ export const en = {
       canvas: 'Canvas',
       tasks: 'Tasks',
       models: 'Models',
+      integrations: 'Integrations',
       projects: 'Projects',
       sectionsLabel: 'Settings sections',
     },
@@ -191,6 +192,11 @@ export const en = {
       useCustomModel: 'Use Custom Model',
       addModelPlaceholder: 'Add model...',
       modelError: 'Error: {{message}}',
+    },
+    integrations: {
+      title: 'Integrations',
+      githubPullRequestsLabel: 'GitHub Pull Requests',
+      githubPullRequestsHelp: 'Show and manage GitHub pull requests on the canvas.',
     },
     workspace: {
       title: 'Workspace Worktree',
@@ -420,6 +426,7 @@ export const en = {
     create: 'Create PR',
     noChecks: 'No checks to show.',
     noDiff: 'No diff to show.',
+    binaryDiff: 'Binary file changed.',
   },
   worktreeGuard: {
     activeWindowsBound: 'Space {{name}} still has active windows bound to its current directory.',
