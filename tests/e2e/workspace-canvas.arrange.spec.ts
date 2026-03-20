@@ -227,6 +227,9 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
       await window.locator('[data-testid="workspace-context-arrange-space-fit-keep"]').click()
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
+      ).toBeVisible()
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Not enough room to arrange this space. Resize the space and try again.',
@@ -250,6 +253,8 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
 
       await ensureArtifactsDir()
+      await pane.click({ position: { x: 10, y: 10 } })
+      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.in-space-no-room.png',
       })
@@ -338,19 +343,13 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
       await window.locator('[data-testid="workspace-context-arrange-space-fit-keep"]').click()
-      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
-
-      await openPaneContextMenu(window, pane, {
-        x: 50 * viewport.zoom + viewport.x,
-        y: 50 * viewport.zoom + viewport.y,
-      })
-
-      await expect(window.locator('.workspace-context-menu')).toBeVisible()
-      await window.locator('[data-testid="workspace-context-arrange-by"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
       await window.locator('[data-testid="workspace-context-arrange-scope-all"]').click()
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
+      ).toBeVisible()
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Skipped 1 space: not enough room to arrange.',
@@ -378,6 +377,8 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
 
       await ensureArtifactsDir()
+      await pane.click({ position: { x: 10, y: 10 } })
+      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.all-after.png' })
     } finally {
       await electronApp.close()

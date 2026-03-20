@@ -25,6 +25,23 @@ async function openPaneContextMenuAtFlowPoint(
   )
 }
 
+async function clickPaneAtFlowPoint(
+  window: Page,
+  pane: Locator,
+  point: { x: number; y: number },
+): Promise<void> {
+  const box = await pane.boundingBox()
+  if (!box) {
+    throw new Error('Pane bounding box not available')
+  }
+
+  const viewport = await readCanvasViewport(window)
+  await window.mouse.click(
+    box.x + point.x * viewport.zoom + viewport.x,
+    box.y + point.y * viewport.zoom + viewport.y,
+  )
+}
+
 async function openPaneContextMenuInSpace(
   window: Page,
   pane: Locator,
@@ -111,16 +128,21 @@ test.describe('Workspace Canvas - Arrange', () => {
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.png' })
 
       await window.locator('[data-testid="workspace-context-arrange-paper-a4"]').click()
-      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
-
-      await openPaneContextMenuInSpace(window, pane, 'space-tiles')
-
-      await expect(window.locator('.workspace-context-menu')).toBeVisible()
-      await window.locator('[data-testid="workspace-context-arrange-by"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
+
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-paper-a4"] svg'),
+      ).toHaveCount(1)
+      await window.screenshot({
+        path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.paper-a4.png',
+      })
+
       await window.locator('[data-testid="workspace-context-arrange-dense"]').click()
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
+      ).toBeVisible()
 
       await expect
         .poll(async () => {
@@ -141,6 +163,8 @@ test.describe('Workspace Canvas - Arrange', () => {
           },
         })
 
+      await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
+      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.paper-dense-tiles.png' })
     } finally {
       await electronApp.close()

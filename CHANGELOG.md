@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: Arrange By submenu (scope, ordering, space fit, paper sizing, dense packing). (#42)
 
 ### 💅 Changed
-- (none)
+- Workspace canvas: keep Arrange By submenu open while tweaking options (dismiss on outside click). (#42)
 
 ### 🐞 Fixed
 - Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)

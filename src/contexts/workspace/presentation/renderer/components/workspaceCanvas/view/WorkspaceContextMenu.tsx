@@ -84,21 +84,20 @@ export function WorkspaceContextMenu({
 }: WorkspaceContextMenuProps): React.JSX.Element | null {
   const { t } = useTranslation()
 
-  const hitSpace = React.useMemo(() => {
-    if (!contextMenu || contextMenu.kind !== 'pane') {
-      return null
-    }
-
-    const anchor = { x: contextMenu.flowX, y: contextMenu.flowY }
-    return spaces.find(space => space.rect && isPointWithinRect(anchor, space.rect)) ?? null
-  }, [contextMenu, spaces])
-  const hitSpaceId = hitSpace?.id ?? null
+  const [contextHitSpaceId, setContextHitSpaceId] = React.useState<string | null>(null)
+  const contextHitSpaceIdRef = React.useRef<string | null>(null)
+  const contextMenuSignatureRef = React.useRef<string | null>(null)
 
   const [arrangeScope, setArrangeScope] = React.useState<ArrangeScope>('canvas')
+  const arrangeScopeRef = React.useRef<ArrangeScope>('canvas')
   const [arrangeOrder, setArrangeOrder] = React.useState<WorkspaceArrangeOrder>('position')
+  const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
   const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
+  const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
   const [arrangePaper, setArrangePaper] = React.useState<WorkspaceArrangePaper>('none')
+  const arrangePaperRef = React.useRef<WorkspaceArrangePaper>('none')
   const [isDensePackingEnabled, setIsDensePackingEnabled] = React.useState(false)
+  const isDensePackingEnabledRef = React.useRef(false)
 
   const [openSubmenu, setOpenSubmenu] = React.useState<'arrangeBy' | null>(null)
   const menuRef = React.useRef<HTMLDivElement | null>(null)
@@ -110,27 +109,61 @@ export function WorkspaceContextMenu({
   } | null>(null)
 
   React.useEffect(() => {
+    const signature = contextMenu
+      ? `${contextMenu.kind}:${contextMenu.x}:${contextMenu.y}:${'flowX' in contextMenu ? contextMenu.flowX : 0}:${
+          'flowY' in contextMenu ? contextMenu.flowY : 0
+        }`
+      : 'null'
+
+    if (signature === contextMenuSignatureRef.current) {
+      return
+    }
+
+    contextMenuSignatureRef.current = signature
     setOpenSubmenu(null)
-    setArrangeScope(hitSpaceId ? 'space' : 'canvas')
-  }, [contextMenu?.kind, contextMenu?.x, contextMenu?.y, hitSpaceId])
 
-  const arrangeStyle: WorkspaceArrangeStyle = React.useMemo(
-    () => ({
-      order: arrangeOrder,
-      spaceFit: arrangeSpaceFit,
-      paper: arrangePaper,
-      dense: isDensePackingEnabled,
-    }),
-    [arrangeOrder, arrangePaper, arrangeSpaceFit, isDensePackingEnabled],
-  )
+    if (!contextMenu || contextMenu.kind !== 'pane') {
+      contextHitSpaceIdRef.current = null
+      setContextHitSpaceId(null)
+      arrangeScopeRef.current = 'canvas'
+      setArrangeScope('canvas')
+      return
+    }
 
-  const commitArrange = React.useCallback(
+    const anchor = { x: contextMenu.flowX, y: contextMenu.flowY }
+    const hitSpace =
+      spaces.find(space => space.rect && isPointWithinRect(anchor, space.rect)) ?? null
+    const nextHitSpaceId = hitSpace?.id ?? null
+
+    contextHitSpaceIdRef.current = nextHitSpaceId
+    setContextHitSpaceId(nextHitSpaceId)
+
+    const nextScope: ArrangeScope = nextHitSpaceId ? 'space' : 'canvas'
+    arrangeScopeRef.current = nextScope
+    setArrangeScope(nextScope)
+  }, [contextMenu, spaces])
+
+  const contextHitSpace = React.useMemo(() => {
+    if (!contextHitSpaceId) {
+      return null
+    }
+
+    return spaces.find(space => space.id === contextHitSpaceId) ?? null
+  }, [contextHitSpaceId, spaces])
+
+  const resolveCurrentArrangeStyle = React.useCallback((): WorkspaceArrangeStyle => {
+    return {
+      order: arrangeOrderRef.current,
+      spaceFit: arrangeSpaceFitRef.current,
+      paper: arrangePaperRef.current,
+      dense: isDensePackingEnabledRef.current,
+    }
+  }, [])
+
+  const applyArrange = React.useCallback(
     (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
-      closeContextMenu()
-      setOpenSubmenu(null)
-
-      const scope = options?.scope ?? arrangeScope
-      const style = options?.style ?? arrangeStyle
+      const scope = options?.scope ?? arrangeScopeRef.current
+      const style = options?.style ?? resolveCurrentArrangeStyle()
 
       if (scope === 'all') {
         arrangeAll(style)
@@ -142,19 +175,21 @@ export function WorkspaceContextMenu({
         return
       }
 
-      if (hitSpace) {
-        arrangeInSpace(hitSpace.id, style)
+      const spaceId = contextHitSpaceIdRef.current
+      if (spaceId) {
+        arrangeInSpace(spaceId, style)
       }
     },
-    [
-      arrangeAll,
-      arrangeCanvas,
-      arrangeInSpace,
-      arrangeScope,
-      arrangeStyle,
-      closeContextMenu,
-      hitSpace,
-    ],
+    [arrangeAll, arrangeCanvas, arrangeInSpace, resolveCurrentArrangeStyle],
+  )
+
+  const commitArrangeAndClose = React.useCallback(
+    (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
+      closeContextMenu()
+      setOpenSubmenu(null)
+      applyArrange(options)
+    },
+    [applyArrange, closeContextMenu],
   )
 
   React.useLayoutEffect(() => {
@@ -213,7 +248,7 @@ export function WorkspaceContextMenu({
   const transform =
     flipX || flipY ? `translate(${flipX ? '-100%' : '0'}, ${flipY ? '-100%' : '0'})` : undefined
 
-  const canArrangeHitSpace = Boolean(hitSpace && hitSpace.nodeIds.length >= 2)
+  const canArrangeHitSpace = Boolean(contextHitSpace && contextHitSpace.nodeIds.length >= 2)
   const canArrangeCurrentScope =
     arrangeScope === 'all'
       ? canArrangeAll
@@ -310,7 +345,7 @@ export function WorkspaceContextMenu({
               data-testid="workspace-context-arrange"
               disabled={!canArrangeCurrentScope}
               onClick={() => {
-                commitArrange()
+                commitArrangeAndClose()
               }}
             >
               <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
@@ -398,7 +433,7 @@ export function WorkspaceContextMenu({
             left: resolvedSubmenuLeft,
             maxHeight: submenuLayout?.maxHeight ?? resolvedSubmenuMaxHeight,
           }}
-          hitSpace={hitSpace}
+          hitSpace={contextHitSpace}
           canArrangeAll={canArrangeAll}
           canArrangeCanvas={canArrangeCanvas}
           canArrangeHitSpace={canArrangeHitSpace}
@@ -408,26 +443,32 @@ export function WorkspaceContextMenu({
           arrangePaper={arrangePaper}
           isDensePackingEnabled={isDensePackingEnabled}
           onSelectScope={scope => {
+            arrangeScopeRef.current = scope
             setArrangeScope(scope)
-            commitArrange({ scope })
+            applyArrange({ scope })
           }}
           onSelectOrder={order => {
+            arrangeOrderRef.current = order
             setArrangeOrder(order)
-            commitArrange({ style: { ...arrangeStyle, order } })
+            applyArrange()
           }}
           onSelectSpaceFit={spaceFit => {
+            arrangeSpaceFitRef.current = spaceFit
             setArrangeSpaceFit(spaceFit)
-            commitArrange({ style: { ...arrangeStyle, spaceFit } })
+            applyArrange()
           }}
           onTogglePaperA4={() => {
-            const nextPaper: WorkspaceArrangePaper = arrangePaper === 'a4' ? 'none' : 'a4'
+            const nextPaper: WorkspaceArrangePaper =
+              arrangePaperRef.current === 'a4' ? 'none' : 'a4'
+            arrangePaperRef.current = nextPaper
             setArrangePaper(nextPaper)
-            commitArrange({ style: { ...arrangeStyle, paper: nextPaper } })
+            applyArrange()
           }}
           onToggleDense={() => {
-            const nextDense = !isDensePackingEnabled
+            const nextDense = !isDensePackingEnabledRef.current
+            isDensePackingEnabledRef.current = nextDense
             setIsDensePackingEnabled(nextDense)
-            commitArrange({ style: { ...arrangeStyle, dense: nextDense } })
+            applyArrange()
           }}
         />
       ) : null}
