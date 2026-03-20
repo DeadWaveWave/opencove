@@ -197,12 +197,18 @@ export function WorkspaceSpaceRegionsOverlay({
         }
 
         setPullRequestsByBranch(result.pullRequestsByBranch)
-      } catch (error) {
+      } catch {
         if (cancelled) {
           return
         }
 
-        setPullRequestsByBranch(Object.fromEntries(worktreeBranches.map(branch => [branch, null])))
+        setPullRequestsByBranch(previous => {
+          const next: Record<string, GitHubPullRequestSummary | null> = {}
+          worktreeBranches.forEach(branch => {
+            next[branch] = previous[branch] ?? null
+          })
+          return next
+        })
       }
     }
 
