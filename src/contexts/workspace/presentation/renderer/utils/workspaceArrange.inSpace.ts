@@ -1,18 +1,15 @@
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../types'
+import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
 import {
   computeBoundingRect,
   resolveDensePacking,
   resolveBoundedFlowPacking,
   resolveFlowPacking,
-  resolveSpiralPacking,
   type Rect,
 } from './workspaceArrange.flowPacking'
 import { createArrangeItemsForSpaceNodes } from './workspaceArrange.ordering'
-import { normalizeWorkspaceNodesToStandardSizing } from './workspaceArrange.standardSizing'
 import {
-  WORKSPACE_ARRANGE_DENSE_STEP_PX,
   resolveArrangeStyle,
   unionSpaceRects,
   WORKSPACE_ARRANGE_GAP_PX,
@@ -20,11 +17,165 @@ import {
   type WorkspaceArrangeResult,
   type WorkspaceArrangeStyle,
 } from './workspaceArrange.shared'
+import {
+  normalizeWorkspaceNodesToCanonicalSizing,
+  resolveArrangeCanonicalBucket,
+} from './workspaceNodeSizing'
+
+function resolveViewportAspectRatio(viewport?: Partial<Size>): number {
+  const width =
+    typeof viewport?.width === 'number' && Number.isFinite(viewport.width) && viewport.width > 0
+      ? viewport.width
+      : typeof window !== 'undefined' && Number.isFinite(window.innerWidth) && window.innerWidth > 0
+        ? window.innerWidth
+        : 1440
+  const height =
+    typeof viewport?.height === 'number' && Number.isFinite(viewport.height) && viewport.height > 0
+      ? viewport.height
+      : typeof window !== 'undefined' &&
+          Number.isFinite(window.innerHeight) &&
+          window.innerHeight > 0
+        ? window.innerHeight
+        : 900
+
+  if (height <= 0) {
+    return 16 / 9
+  }
+
+  const ratio = width / height
+  if (!Number.isFinite(ratio) || ratio <= 0) {
+    return 16 / 9
+  }
+
+  return ratio
+}
+
+function resolveBestCompactDensePacking({
+  items,
+  start,
+  viewport,
+  wrapWidthHint,
+}: {
+  items: Array<{ id: string; width: number; height: number }>
+  start: { x: number; y: number }
+  viewport?: Partial<Size>
+  wrapWidthHint: number
+}): Map<string, { x: number; y: number }> {
+  if (items.length <= 1) {
+    return resolveDensePacking({ items, start, wrapWidth: wrapWidthHint })
+  }
+
+  const maxItemWidth = Math.max(...items.map(item => item.width))
+  const minWrapWidth = maxItemWidth
+
+  const totalArea = items.reduce((sum, item) => sum + item.width * item.height, 0)
+  const targetAspect = resolveViewportAspectRatio(viewport)
+  const desiredWrapWidth =
+    totalArea > 0 ? Math.max(minWrapWidth, Math.sqrt(totalArea * targetAspect)) : minWrapWidth
+
+  const idealColumns = Math.max(1, Math.round(desiredWrapWidth / maxItemWidth))
+  const maxColumns = Math.min(items.length, Math.max(8, idealColumns + 2))
+
+  const columnCandidates = new Set<number>([
+    1,
+    idealColumns - 2,
+    idealColumns - 1,
+    idealColumns,
+    idealColumns + 1,
+    idealColumns + 2,
+    Math.round(Math.sqrt(items.length)),
+    Math.ceil(items.length / 2),
+    items.length,
+  ])
+
+  const wrapWidthCandidates = [...columnCandidates]
+    .map(columns => Math.max(1, Math.min(maxColumns, columns)))
+    .map(columns => Math.max(minWrapWidth, columns * maxItemWidth))
+
+  wrapWidthCandidates.push(minWrapWidth)
+  wrapWidthCandidates.push(Math.max(minWrapWidth, wrapWidthHint))
+  wrapWidthCandidates.push(Math.max(minWrapWidth, Math.round(desiredWrapWidth)))
+
+  const uniqueCandidates = [...new Set(wrapWidthCandidates)].sort((a, b) => a - b)
+
+  let best: {
+    area: number
+    aspectDiff: number
+    height: number
+    width: number
+    placements: Map<string, { x: number; y: number }>
+  } | null = null
+
+  for (const wrapWidth of uniqueCandidates) {
+    const placements = resolveDensePacking({ items, start, wrapWidth })
+    const rects: Rect[] = []
+    for (const item of items) {
+      const placed = placements.get(item.id)
+      if (!placed) {
+        continue
+      }
+
+      rects.push({ x: placed.x, y: placed.y, width: item.width, height: item.height })
+    }
+
+    const bounding = computeBoundingRect(rects)
+    if (!bounding) {
+      continue
+    }
+
+    const width = bounding.width
+    const height = bounding.height
+    const area = width * height
+    const aspect = height > 0 ? width / height : Number.POSITIVE_INFINITY
+    const aspectDiff = Number.isFinite(aspect) ? Math.abs(aspect - targetAspect) : 0
+
+    const candidate = {
+      area,
+      aspectDiff,
+      width,
+      height,
+      placements,
+    }
+
+    if (!best) {
+      best = candidate
+      continue
+    }
+
+    if (candidate.aspectDiff !== best.aspectDiff) {
+      if (candidate.aspectDiff < best.aspectDiff) {
+        best = candidate
+      }
+      continue
+    }
+
+    if (candidate.area !== best.area) {
+      if (candidate.area < best.area) {
+        best = candidate
+      }
+      continue
+    }
+
+    if (candidate.height !== best.height) {
+      if (candidate.height < best.height) {
+        best = candidate
+      }
+      continue
+    }
+
+    if (candidate.width < best.width) {
+      best = candidate
+    }
+  }
+
+  return best?.placements ?? resolveDensePacking({ items, start, wrapWidth: minWrapWidth })
+}
 
 export function arrangeWorkspaceInSpace({
   spaceId,
   nodes,
   spaces,
+  viewport,
   style,
   padding = WORKSPACE_ARRANGE_PADDING_PX,
   gap = WORKSPACE_ARRANGE_GAP_PX,
@@ -32,6 +183,7 @@ export function arrangeWorkspaceInSpace({
   spaceId: string
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
+  viewport?: Partial<Size>
   style?: WorkspaceArrangeStyle
   padding?: number
   gap?: number
@@ -51,14 +203,25 @@ export function arrangeWorkspaceInSpace({
     return { nodes, spaces, warnings: [], didChange: false }
   }
 
-  const standardSizingNormalized = normalizeWorkspaceNodesToStandardSizing({
+  const ownedNodeIdSet = new Set(ownedNodes.map(node => node.id))
+  const canonicalBucket = resolvedStyle.alignCanonicalSizes
+    ? resolvedStyle.layout === 'compact'
+      ? 'compact'
+      : resolveArrangeCanonicalBucket({
+          nodes,
+          nodeIdSet: ownedNodeIdSet,
+          viewport,
+        })
+    : 'regular'
+  const canonicalSizingNormalized = normalizeWorkspaceNodesToCanonicalSizing({
     nodes,
-    enabled: resolvedStyle.alignStandardSizes,
-    nodeIdSet: new Set(ownedNodes.map(node => node.id)),
+    enabled: resolvedStyle.alignCanonicalSizes,
+    nodeIdSet: ownedNodeIdSet,
+    bucket: canonicalBucket,
   })
 
-  const normalizedNodes = standardSizingNormalized.nodes
-  const normalizedNodeById = standardSizingNormalized.didChange
+  const normalizedNodes = canonicalSizingNormalized.nodes
+  const normalizedNodeById = canonicalSizingNormalized.didChange
     ? new Map(normalizedNodes.map(node => [node.id, node]))
     : nodeById
   const normalizedOwnedNodes = targetSpace.nodeIds
@@ -83,7 +246,7 @@ export function arrangeWorkspaceInSpace({
     height: resolvedSpaceRect.height - padding * 2,
   }
 
-  const effectiveGap = resolvedStyle.dense ? 0 : gap
+  const effectiveGap = resolvedStyle.layout === 'compact' ? 0 : gap
   const items = createArrangeItemsForSpaceNodes({
     nodes: normalizedOwnedNodes,
     order: resolvedStyle.order,
@@ -92,55 +255,14 @@ export function arrangeWorkspaceInSpace({
   const maxItemWidth = Math.max(...items.map(item => item.width))
   const wrapWidth = Math.max(innerRect.width, maxItemWidth)
   const start = { x: innerRect.x, y: innerRect.y }
-  const currentBounding = computeBoundingRect(
-    normalizedOwnedNodes.map(node => ({
-      x: node.position.x,
-      y: node.position.y,
-      width: node.data.width,
-      height: node.data.height,
-    })),
-  )
-  const spiralAnchor =
-    resolvedStyle.spaceFit === 'keep'
-      ? {
-          x: innerRect.x + innerRect.width / 2,
-          y: innerRect.y + innerRect.height / 2,
-        }
-      : currentBounding
-        ? {
-            x: currentBounding.x + currentBounding.width / 2,
-            y: currentBounding.y + currentBounding.height / 2,
-          }
-        : {
-            x: start.x + wrapWidth / 2,
-            y: start.y + items[0]!.height / 2,
-          }
 
   const placements = (() => {
-    if (resolvedStyle.layout === 'spiral') {
-      return resolveSpiralPacking({
-        items,
-        anchor: spiralAnchor,
-        step: resolvedStyle.dense ? WORKSPACE_ARRANGE_DENSE_STEP_PX : gap,
-        gap: effectiveGap,
-        bounds:
-          resolvedStyle.spaceFit === 'keep'
-            ? {
-                minX: innerRect.x,
-                minY: innerRect.y,
-                maxX: innerRect.x + innerRect.width,
-                maxY: innerRect.y + innerRect.height,
-              }
-            : undefined,
-      })
-    }
-
     if (resolvedStyle.spaceFit === 'keep') {
       if (items.some(item => item.width > innerRect.width || item.height > innerRect.height)) {
         return null
       }
 
-      if (resolvedStyle.dense) {
+      if (resolvedStyle.layout === 'compact') {
         const packed = resolveDensePacking({ items, start, wrapWidth: innerRect.width })
         const rects: Rect[] = []
         for (const item of items) {
@@ -173,8 +295,13 @@ export function arrangeWorkspaceInSpace({
       })
     }
 
-    if (resolvedStyle.dense) {
-      return resolveDensePacking({ items, start, wrapWidth })
+    if (resolvedStyle.layout === 'compact') {
+      return resolveBestCompactDensePacking({
+        items,
+        start,
+        viewport,
+        wrapWidthHint: wrapWidth,
+      })
     }
 
     return resolveFlowPacking({
@@ -261,7 +388,7 @@ export function arrangeWorkspaceInSpace({
     didChange = true
   }
 
-  return didChange || standardSizingNormalized.didChange
+  return didChange || canonicalSizingNormalized.didChange
     ? { nodes: nextNodes, spaces: nextSpaces, warnings: [], didChange: true }
     : { nodes, spaces, warnings: [], didChange: false }
 }

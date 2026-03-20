@@ -6,8 +6,8 @@ import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import { findNearestFreePositionOnRight } from '../../../utils/collision'
 import {
-  DEFAULT_NOTE_WINDOW_SIZE,
   resolveDefaultAgentWindowSize,
+  resolveDefaultNoteWindowSize,
   resolveDefaultTaskWindowSize,
   resolveDefaultTerminalWindowSize,
 } from '../constants'
@@ -132,14 +132,11 @@ export function useWorkspaceCanvasNodeCreation({
 
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
+      const noteSize = resolveDefaultNoteWindowSize()
       const resolvedPlacement =
         options.placementStrategy === 'right-no-push'
           ? (() => {
-              const placement = findNearestFreePositionOnRight(
-                anchor,
-                DEFAULT_NOTE_WINDOW_SIZE,
-                nodesRef.current,
-              )
+              const placement = findNearestFreePositionOnRight(anchor, noteSize, nodesRef.current)
               return {
                 placement: placement ?? anchor,
                 canPlace: placement !== null,
@@ -147,7 +144,7 @@ export function useWorkspaceCanvasNodeCreation({
             })()
           : resolveNodesPlacement({
               anchor,
-              size: DEFAULT_NOTE_WINDOW_SIZE,
+              size: noteSize,
               getNodes: () => nodesRef.current,
               pushBlockingWindowsRight,
             })
@@ -170,8 +167,8 @@ export function useWorkspaceCanvasNodeCreation({
           sessionId: '',
           title: t('noteNode.title'),
           titlePinnedByUser: false,
-          width: DEFAULT_NOTE_WINDOW_SIZE.width,
-          height: DEFAULT_NOTE_WINDOW_SIZE.height,
+          width: noteSize.width,
+          height: noteSize.height,
           kind: 'note',
           status: null,
           startedAt: null,

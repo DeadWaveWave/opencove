@@ -1,7 +1,7 @@
 import { useCallback, useRef } from 'react'
 import { useStoreApi, type Node } from '@xyflow/react'
 import type { Point, TerminalNodeData } from '../../../types'
-import { DEFAULT_NOTE_WINDOW_SIZE, resolveDefaultTerminalWindowSize } from '../constants'
+import { resolveDefaultNoteWindowSize, resolveDefaultTerminalWindowSize } from '../constants'
 import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
@@ -330,10 +330,8 @@ export function useWorkspaceCanvasInteractions({
         x: flowPosition.x,
         y: flowPosition.y,
       }
-      const anchor = resolveNodePlacementAnchorFromViewportCenter(
-        cursorAnchor,
-        DEFAULT_NOTE_WINDOW_SIZE,
-      )
+      const noteSize = resolveDefaultNoteWindowSize()
+      const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
 
       createNoteNodeAtAnchor({
         anchor,
@@ -450,10 +448,8 @@ export function useWorkspaceCanvasInteractions({
       x: contextMenu.flowX,
       y: contextMenu.flowY,
     }
-    const anchor = resolveNodePlacementAnchorFromViewportCenter(
-      cursorAnchor,
-      DEFAULT_NOTE_WINDOW_SIZE,
-    )
+    const noteSize = resolveDefaultNoteWindowSize()
+    const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
 
     setContextMenu(null)
 

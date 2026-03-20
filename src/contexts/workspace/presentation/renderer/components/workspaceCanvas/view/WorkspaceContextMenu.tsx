@@ -92,14 +92,12 @@ export function WorkspaceContextMenu({
   const arrangeScopeRef = React.useRef<ArrangeScope>('canvas')
   const [arrangeOrder, setArrangeOrder] = React.useState<WorkspaceArrangeOrder>('position')
   const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
-  const [arrangeLayout, setArrangeLayout] = React.useState<WorkspaceArrangeLayout>('flow')
-  const arrangeLayoutRef = React.useRef<WorkspaceArrangeLayout>('flow')
+  const [arrangeLayout, setArrangeLayout] = React.useState<WorkspaceArrangeLayout>('shelf')
+  const arrangeLayoutRef = React.useRef<WorkspaceArrangeLayout>('shelf')
   const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
   const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
-  const [alignStandardSizes, setAlignStandardSizes] = React.useState(false)
-  const alignStandardSizesRef = React.useRef(false)
-  const [isDensePackingEnabled, setIsDensePackingEnabled] = React.useState(false)
-  const isDensePackingEnabledRef = React.useRef(false)
+  const [alignCanonicalSizes, setAlignCanonicalSizes] = React.useState(false)
+  const alignCanonicalSizesRef = React.useRef(false)
 
   const [openSubmenu, setOpenSubmenu] = React.useState<'arrangeBy' | null>(null)
   const menuRef = React.useRef<HTMLDivElement | null>(null)
@@ -158,8 +156,7 @@ export function WorkspaceContextMenu({
       order: arrangeOrderRef.current,
       layout: arrangeLayoutRef.current,
       spaceFit: arrangeSpaceFitRef.current,
-      alignStandardSizes: alignStandardSizesRef.current,
-      dense: isDensePackingEnabledRef.current,
+      alignCanonicalSizes: alignCanonicalSizesRef.current,
     }
   }, [])
 
@@ -444,8 +441,7 @@ export function WorkspaceContextMenu({
           arrangeOrder={arrangeOrder}
           arrangeLayout={arrangeLayout}
           arrangeSpaceFit={arrangeSpaceFit}
-          alignStandardSizes={alignStandardSizes}
-          isDensePackingEnabled={isDensePackingEnabled}
+          alignCanonicalSizes={alignCanonicalSizes}
           onSelectScope={scope => {
             arrangeScopeRef.current = scope
             setArrangeScope(scope)
@@ -466,16 +462,10 @@ export function WorkspaceContextMenu({
             setArrangeSpaceFit(spaceFit)
             applyArrange()
           }}
-          onToggleAlignStandardSizes={() => {
-            const nextValue = !alignStandardSizesRef.current
-            alignStandardSizesRef.current = nextValue
-            setAlignStandardSizes(nextValue)
-            applyArrange()
-          }}
-          onToggleDense={() => {
-            const nextDense = !isDensePackingEnabledRef.current
-            isDensePackingEnabledRef.current = nextDense
-            setIsDensePackingEnabled(nextDense)
+          onToggleAlignCanonicalSizes={() => {
+            const nextValue = !alignCanonicalSizesRef.current
+            alignCanonicalSizesRef.current = nextValue
+            setAlignCanonicalSizes(nextValue)
             applyArrange()
           }}
         />

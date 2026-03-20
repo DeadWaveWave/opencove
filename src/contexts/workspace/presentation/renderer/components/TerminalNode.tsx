@@ -27,6 +27,7 @@ import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { shouldStopWheelPropagation } from './terminalNode/wheel'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
+import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
 export function TerminalNode({
@@ -104,6 +105,7 @@ export function TerminalNode({
     position,
     width,
     height,
+    minSize: resolveCanonicalNodeMinSize(kind),
     onResize,
     syncTerminalSize,
     scheduleScrollbackPublish,

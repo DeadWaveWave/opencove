@@ -5,8 +5,8 @@ import { useScrollbackStore } from '../../../store/useScrollbackStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollbackSchedule'
-import { MIN_SIZE } from '../constants'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
+import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { computePushBlockingWindowsRight } from './useNodesStore.pushBlockingWindowsRight'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
@@ -110,6 +110,7 @@ export function useWorkspaceCanvasNodesStore({
         return
       }
 
+      const minSize = resolveCanonicalNodeMinSize(node.data.kind)
       const resolveDimension = (value: number, fallback: number): number =>
         typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
 
@@ -120,11 +121,11 @@ export function useWorkspaceCanvasNodesStore({
         },
         size: {
           width: Math.max(
-            MIN_SIZE.width,
+            minSize.width,
             resolveDimension(desiredFrame.size.width, node.data.width),
           ),
           height: Math.max(
-            MIN_SIZE.height,
+            minSize.height,
             resolveDimension(desiredFrame.size.height, node.data.height),
           ),
         },

@@ -13,8 +13,8 @@ export function shouldStopWheelPropagation(target: EventTarget | null): boolean 
   return canvas.dataset.canvasInputMode !== 'trackpad'
 }
 
-export const MIN_WIDTH = 320
-export const MIN_HEIGHT = 220
+export const MIN_WIDTH = 220
+export const MIN_HEIGHT = 260
 
 export function formatTaskTimestamp(timestamp: string | null): string {
   if (!timestamp) {

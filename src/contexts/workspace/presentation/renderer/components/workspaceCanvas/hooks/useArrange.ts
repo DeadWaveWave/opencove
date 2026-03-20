@@ -16,6 +16,19 @@ const DEFAULT_VIEWPORT_MARGIN_PX = 96
 const MIN_WRAP_WIDTH_PX = 720
 const MAX_WRAP_WIDTH_PX = 3200
 
+function resolveViewportSize(): { width: number; height: number } {
+  const width =
+    typeof window !== 'undefined' && Number.isFinite(window.innerWidth) && window.innerWidth > 0
+      ? window.innerWidth
+      : DEFAULT_VIEWPORT_WIDTH
+  const height =
+    typeof window !== 'undefined' && Number.isFinite(window.innerHeight) && window.innerHeight > 0
+      ? window.innerHeight
+      : 900
+
+  return { width: Math.round(width), height: Math.round(height) }
+}
+
 function resolveWrapWidth(reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>): number {
   const rawZoom = typeof reactFlow?.getZoom === 'function' ? reactFlow.getZoom() : 1
   const zoom = Number.isFinite(rawZoom) && rawZoom > 0 ? rawZoom : 1
@@ -92,10 +105,12 @@ export function useWorkspaceCanvasArrange({
   const arrangeAll = useCallback(
     (style?: WorkspaceArrangeStyle) => {
       const wrapWidth = resolveWrapWidth(reactFlow)
+      const viewport = resolveViewportSize()
       const result = arrangeWorkspaceAll({
         nodes: nodesRef.current,
         spaces: spacesRef.current,
         wrapWidth,
+        viewport,
         style,
       })
 
@@ -115,10 +130,12 @@ export function useWorkspaceCanvasArrange({
   const arrangeCanvas = useCallback(
     (style?: WorkspaceArrangeStyle) => {
       const wrapWidth = resolveWrapWidth(reactFlow)
+      const viewport = resolveViewportSize()
       const result = arrangeWorkspaceCanvas({
         nodes: nodesRef.current,
         spaces: spacesRef.current,
         wrapWidth,
+        viewport,
         style,
       })
 
@@ -129,10 +146,12 @@ export function useWorkspaceCanvasArrange({
 
   const arrangeInSpace = useCallback(
     (spaceId: string, style?: WorkspaceArrangeStyle) => {
+      const viewport = resolveViewportSize()
       const result = arrangeWorkspaceInSpace({
         spaceId,
         nodes: nodesRef.current,
         spaces: spacesRef.current,
+        viewport,
         style,
       })
 

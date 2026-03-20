@@ -289,14 +289,15 @@ describe('workspace arrange utils', () => {
       nodes,
       spaces,
       wrapWidth: 5000,
-      style: { alignStandardSizes: true },
+      viewport: { width: 1920, height: 1080 },
+      style: { alignCanonicalSizes: true },
     })
     expect(result.didChange).toBe(true)
     expect(result.spaces).toBe(spaces)
 
     const next = result.nodes.find(node => node.id === 'r1')!
-    expect(next.data.width).toBe(656)
-    expect(next.data.height).toBe(928)
+    expect(next.data.width).toBe(640)
+    expect(next.data.height).toBe(420)
   })
 
   it('orders nodes by createdAt when arranging inside a space', () => {
@@ -401,17 +402,17 @@ describe('workspace arrange utils', () => {
     expect(xs.agent).toBeLessThan(xs.terminal)
   })
 
-  it('normalizes nodes to standard sizes before arranging', () => {
+  it('normalizes nodes to canonical sizes before arranging', () => {
     const nodes = [
       createTerminalNode({
         id: 'a',
         position: { x: 10, y: 10 },
-        size: { width: 650, height: 920 },
+        size: { width: 520, height: 360 },
       }),
       createTerminalNode({
         id: 'b',
         position: { x: 10, y: 10 },
-        size: { width: 480, height: 660 },
+        size: { width: 510, height: 355 },
       }),
     ]
 
@@ -429,17 +430,18 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
-      style: { alignStandardSizes: true, spaceFit: 'keep' },
+      viewport: { width: 1920, height: 1080 },
+      style: { alignCanonicalSizes: true, spaceFit: 'keep' },
     })
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('a')?.data.width).toBe(656)
-    expect(nodeById.get('a')?.data.height).toBe(928)
-    expect(nodeById.get('b')?.data.width).toBe(464)
-    expect(nodeById.get('b')?.data.height).toBe(656)
+    expect(nodeById.get('a')?.data.width).toBe(560)
+    expect(nodeById.get('a')?.data.height).toBe(368)
+    expect(nodeById.get('b')?.data.width).toBe(560)
+    expect(nodeById.get('b')?.data.height).toBe(368)
   })
 
-  it('packs densely without overlaps', () => {
+  it('packs compactly without overlaps', () => {
     const nodes = [
       createTerminalNode({
         id: 'a',
@@ -472,7 +474,7 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
-      style: { dense: true },
+      style: { layout: 'compact' },
     })
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))

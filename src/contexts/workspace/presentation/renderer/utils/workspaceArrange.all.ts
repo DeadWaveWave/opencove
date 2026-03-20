@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../types'
+import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { arrangeWorkspaceCanvas } from './workspaceArrange.canvas'
 import { arrangeWorkspaceInSpace } from './workspaceArrange.inSpace'
 import {
@@ -15,6 +15,7 @@ export function arrangeWorkspaceAll({
   nodes,
   spaces,
   wrapWidth,
+  viewport,
   style,
   padding = WORKSPACE_ARRANGE_PADDING_PX,
   gap = WORKSPACE_ARRANGE_GAP_PX,
@@ -23,6 +24,7 @@ export function arrangeWorkspaceAll({
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
   wrapWidth: number
+  viewport?: Partial<Size>
   style?: WorkspaceArrangeStyle
   padding?: number
   gap?: number
@@ -38,6 +40,7 @@ export function arrangeWorkspaceAll({
       spaceId: space.id,
       nodes: nextNodes,
       spaces: nextSpaces,
+      viewport,
       style,
       padding,
       gap,
@@ -59,6 +62,7 @@ export function arrangeWorkspaceAll({
     nodes: nextNodes,
     spaces: nextSpaces,
     wrapWidth,
+    viewport,
     style,
     gap,
     grid,

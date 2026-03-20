@@ -40,8 +40,8 @@ export function NoteNode({
     width,
     height,
     minSize: {
-      width: 320,
-      height: 220,
+      width: 120,
+      height: 140,
     },
     onResize,
   })

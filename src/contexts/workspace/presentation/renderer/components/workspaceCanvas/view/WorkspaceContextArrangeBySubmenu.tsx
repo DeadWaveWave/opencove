@@ -28,14 +28,12 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeOrder,
   arrangeLayout,
   arrangeSpaceFit,
-  alignStandardSizes,
-  isDensePackingEnabled,
+  alignCanonicalSizes,
   onSelectScope,
   onSelectOrder,
   onSelectLayout,
   onSelectSpaceFit,
-  onToggleAlignStandardSizes,
-  onToggleDense,
+  onToggleAlignCanonicalSizes,
 }: {
   style: React.CSSProperties
   hitSpace: WorkspaceSpaceState | null
@@ -46,14 +44,12 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeOrder: WorkspaceArrangeOrder
   arrangeLayout: WorkspaceArrangeLayout
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
-  alignStandardSizes: boolean
-  isDensePackingEnabled: boolean
+  alignCanonicalSizes: boolean
   onSelectScope: (scope: ArrangeScope) => void
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
   onSelectLayout: (layout: WorkspaceArrangeLayout) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
-  onToggleAlignStandardSizes: () => void
-  onToggleDense: () => void
+  onToggleAlignCanonicalSizes: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
@@ -66,7 +62,6 @@ export function WorkspaceContextArrangeBySubmenu({
         event.stopPropagation()
       }}
     >
-      <div className="workspace-context-menu__section-title">{t('workspaceArrangeMenu.scope')}</div>
       <button
         type="button"
         data-testid="workspace-context-arrange-scope-all"
@@ -109,7 +104,6 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <div className="workspace-context-menu__separator" />
 
-      <div className="workspace-context-menu__section-title">{t('workspaceArrangeMenu.order')}</div>
       <button
         type="button"
         data-testid="workspace-context-arrange-order-position"
@@ -157,39 +151,33 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <div className="workspace-context-menu__separator" />
 
-      <div className="workspace-context-menu__section-title">
-        {t('workspaceArrangeMenu.layout')}
-      </div>
       <button
         type="button"
-        data-testid="workspace-context-arrange-layout-flow"
+        data-testid="workspace-context-arrange-layout-shelf"
         onClick={() => {
-          onSelectLayout('flow')
+          onSelectLayout('shelf')
         }}
       >
-        {renderMark(arrangeLayout === 'flow')}
+        {renderMark(arrangeLayout === 'shelf')}
         <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.layoutFlow')}
+          {t('workspaceArrangeMenu.layoutShelf')}
         </span>
       </button>
       <button
         type="button"
-        data-testid="workspace-context-arrange-layout-spiral"
+        data-testid="workspace-context-arrange-layout-compact"
         onClick={() => {
-          onSelectLayout('spiral')
+          onSelectLayout('compact')
         }}
       >
-        {renderMark(arrangeLayout === 'spiral')}
+        {renderMark(arrangeLayout === 'compact')}
         <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.layoutSpiral')}
+          {t('workspaceArrangeMenu.layoutCompact')}
         </span>
       </button>
 
       <div className="workspace-context-menu__separator" />
 
-      <div className="workspace-context-menu__section-title">
-        {t('workspaceArrangeMenu.spaceFit')}
-      </div>
       <button
         type="button"
         data-testid="workspace-context-arrange-space-fit-tight"
@@ -229,28 +217,17 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <div className="workspace-context-menu__separator" />
 
-      <div className="workspace-context-menu__section-title">{t('workspaceArrangeMenu.style')}</div>
       <button
         type="button"
-        data-testid="workspace-context-arrange-standard-sizes"
+        data-testid="workspace-context-arrange-canonical-sizes"
         onClick={() => {
-          onToggleAlignStandardSizes()
+          onToggleAlignCanonicalSizes()
         }}
       >
-        {renderMark(alignStandardSizes)}
+        {renderMark(alignCanonicalSizes)}
         <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.alignStandardSizes')}
+          {t('workspaceArrangeMenu.alignCanonicalSizes')}
         </span>
-      </button>
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-dense"
-        onClick={() => {
-          onToggleDense()
-        }}
-      >
-        {renderMark(isDensePackingEnabled)}
-        <span className="workspace-context-menu__label">{t('workspaceArrangeMenu.dense')}</span>
       </button>
     </div>
   )

@@ -84,7 +84,7 @@ function rectsOverlap(
 }
 
 test.describe('Workspace Canvas - Arrange', () => {
-  test('arrange-by menu can align standard sizes + dense packing for tight tiling', async () => {
+  test('arrange-by menu can align standard sizes + compact layout for tight tiling', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -150,19 +150,19 @@ test.describe('Workspace Canvas - Arrange', () => {
       await ensureArtifactsDir()
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.png' })
 
-      await window.locator('[data-testid="workspace-context-arrange-standard-sizes"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-canonical-sizes"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
 
       await expect(
-        window.locator('[data-testid="workspace-context-arrange-standard-sizes"] svg'),
+        window.locator('[data-testid="workspace-context-arrange-canonical-sizes"] svg'),
       ).toHaveCount(1)
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.standard-sizes.png',
       })
 
-      await window.locator('[data-testid="workspace-context-arrange-dense"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-layout-compact"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
@@ -176,27 +176,27 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toEqual({
           nodes: {
-            'tile-1': { x: 124, y: 124, width: 464, height: 656 },
-            'tile-2': { x: 588, y: 124, width: 464, height: 656 },
-            'tile-3': { x: 124, y: 780, width: 464, height: 656 },
-            'tile-4': { x: 588, y: 780, width: 464, height: 656 },
+            'tile-1': { x: 124, y: 124, width: 480, height: 320 },
+            'tile-2': { x: 604, y: 124, width: 480, height: 320 },
+            'tile-3': { x: 124, y: 444, width: 480, height: 320 },
+            'tile-4': { x: 604, y: 444, width: 480, height: 320 },
           },
           spaces: {
-            'space-tiles': { x: 100, y: 100, width: 976, height: 1360 },
+            'space-tiles': { x: 100, y: 100, width: 1008, height: 688 },
           },
         })
 
       await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.standard-dense-tiles.png',
+        path: 'artifacts/workspace-canvas-arrange.standard-compact-tiles.png',
       })
     } finally {
       await electronApp.close()
     }
   })
 
-  test('spiral layout keeps submenu open and places spaces above root nodes', async () => {
+  test('compact layout keeps submenu open and places spaces above root nodes', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -257,7 +257,7 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
 
-      await window.locator('[data-testid="workspace-context-arrange-layout-spiral"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-layout-compact"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
@@ -265,7 +265,7 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       await ensureArtifactsDir()
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.spiral-layout-menu.png',
+        path: 'artifacts/workspace-canvas-arrange.compact-layout-menu.png',
       })
 
       await expect
@@ -301,7 +301,7 @@ test.describe('Workspace Canvas - Arrange', () => {
       await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.spiral-layout-canvas.png',
+        path: 'artifacts/workspace-canvas-arrange.compact-layout-canvas.png',
       })
     } finally {
       await electronApp.close()
