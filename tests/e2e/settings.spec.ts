@@ -29,7 +29,7 @@ test.describe('Settings', () => {
       }
       await window.reload({ waitUntil: 'domcontentloaded' })
 
-      const settingsButton = window.locator('.workspace-sidebar__settings')
+      const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await expect(settingsButton).toBeVisible()
       await settingsButton.click({ noWaitAfter: true })
 
@@ -202,9 +202,15 @@ test.describe('Settings', () => {
         }),
       )
 
-      await expect(window.locator('.workspace-sidebar__settings')).toHaveText('设置')
+      await expect(window.locator('[data-testid="app-header-settings"]')).toHaveAttribute(
+        'aria-label',
+        '设置',
+      )
       await window.reload({ waitUntil: 'domcontentloaded' })
-      await expect(window.locator('.workspace-sidebar__settings')).toHaveText('设置')
+      await expect(window.locator('[data-testid="app-header-settings"]')).toHaveAttribute(
+        'aria-label',
+        '设置',
+      )
       await expect(
         window.evaluate(() => {
           return document.documentElement.dataset.coveTheme

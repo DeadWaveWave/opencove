@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 - Settings: UI theme selector (system/light/dark) with system follow. (#40)
+- UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 
 ### 💅 Changed
 - Workspace pane context menu: “Run Agent” can expand to pick an installed agent CLI.

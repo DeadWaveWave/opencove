@@ -55,6 +55,7 @@ type UnsubscribeFn = () => void
 export interface OpenCoveApi {
   meta: {
     isTest: boolean
+    platform: string
   }
   clipboard: {
     readText: () => Promise<string>

@@ -56,6 +56,9 @@ export const en = {
     tasks_one: '{{count}} task',
     tasks_other: '{{count}} tasks',
   },
+  appHeader: {
+    togglePrimarySidebar: 'Toggle Primary Sidebar',
+  },
   workspaceEmptyState: {
     title: 'Add a project to start',
     description: 'Each project has its own infinite canvas and terminals.',

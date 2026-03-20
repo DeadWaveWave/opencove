@@ -77,7 +77,7 @@ test.describe('Settings Terminal Profiles (Windows)', () => {
         throw new Error('Expected at least one available terminal profile on Windows')
       }
 
-      const settingsButton = window.locator('.workspace-sidebar__settings')
+      const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await expect(settingsButton).toBeVisible()
       await settingsButton.click({ noWaitAfter: true })
 

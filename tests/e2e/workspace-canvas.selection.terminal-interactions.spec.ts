@@ -105,17 +105,17 @@ test.describe('Workspace Canvas - Selection', () => {
       const header = terminal.locator('.terminal-node__header')
       const terminalBody = terminal.locator('.terminal-node__terminal')
 
-      const settingsButton = window.locator('.workspace-sidebar__settings')
+      const settingsButton = window.locator('[data-testid="app-header-settings"]')
       await expect(settingsButton).toBeVisible()
       await settingsButton.click({ noWaitAfter: true })
 
       const languageSelect = window.locator('[data-testid="settings-language"]')
       await expect(languageSelect).toBeVisible()
       await languageSelect.selectOption('zh-CN')
-      await expect(settingsButton).toHaveText('设置')
+      await expect(settingsButton).toHaveAttribute('aria-label', '设置')
 
       await window.locator('.settings-panel__close').click()
-      await expect(settingsButton).toHaveText('设置')
+      await expect(settingsButton).toHaveAttribute('aria-label', '设置')
       await expect(terminalBody).toBeVisible()
 
       await header.click({ position: { x: 40, y: 20 } })

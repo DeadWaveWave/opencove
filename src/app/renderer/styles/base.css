@@ -164,7 +164,14 @@ body {
 }
 
 .app-shell {
+  --cove-app-header-height: 36px;
+  --cove-primary-sidebar-width: 280px;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: var(--cove-primary-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--cove-app-header-height) minmax(0, 1fr);
   height: 100%;
+}
+
+.app-shell--sidebar-collapsed {
+  --cove-primary-sidebar-width: 0px;
 }

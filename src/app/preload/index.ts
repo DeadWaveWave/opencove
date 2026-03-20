@@ -59,6 +59,7 @@ type UnsubscribeFn = () => void
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
+    platform: process.platform,
   },
   clipboard: {
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),

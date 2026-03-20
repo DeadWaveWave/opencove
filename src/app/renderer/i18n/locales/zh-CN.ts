@@ -58,6 +58,9 @@ export const zhCN = {
     tasks_one: '{{count}} 个任务',
     tasks_other: '{{count}} 个任务',
   },
+  appHeader: {
+    togglePrimarySidebar: '切换主侧边栏',
+  },
   workspaceEmptyState: {
     title: '添加一个项目开始使用',
     description: '每个项目都有自己的无限画布和终端。',

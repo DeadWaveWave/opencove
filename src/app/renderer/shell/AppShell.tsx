@@ -11,6 +11,7 @@ import type {
 import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '@contexts/workspace/presentation/renderer/types'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { AppMessage } from './components/AppMessage'
+import { AppHeader } from './components/AppHeader'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { ProjectContextMenu } from './components/ProjectContextMenu'
 import { Sidebar } from './components/Sidebar'
@@ -29,7 +30,7 @@ import {
   createDefaultWorkspaceViewport,
   sanitizeWorkspaceSpaces,
 } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
-import { cleanupNodeRuntimeArtifacts } from '@contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup'
+import { removeWorkspace } from './utils/removeWorkspace'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -84,6 +85,8 @@ export default function App(): React.JSX.Element {
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
     [activeWorkspaceId, workspaces],
   )
+
+  const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
 
   const [floatingMessage, setFloatingMessage] = useState<{
     id: number
@@ -313,43 +316,7 @@ export default function App(): React.JSX.Element {
   )
 
   const handleRemoveWorkspace = useCallback(async (workspaceId: string): Promise<void> => {
-    useAppStore.getState().setIsRemovingProject(true)
-
-    const targetWorkspace = useAppStore
-      .getState()
-      .workspaces.find(workspace => workspace.id === workspaceId)
-    if (!targetWorkspace) {
-      useAppStore.getState().setProjectDeleteConfirmation(null)
-      useAppStore.getState().setIsRemovingProject(false)
-      return
-    }
-
-    try {
-      targetWorkspace.nodes.forEach(node => {
-        cleanupNodeRuntimeArtifacts(node.id, node.data.sessionId)
-      })
-
-      await Promise.allSettled(
-        targetWorkspace.nodes
-          .map(node => node.data.sessionId)
-          .filter(sessionId => sessionId.length > 0)
-          .map(sessionId => window.opencoveApi.pty.kill({ sessionId })),
-      )
-
-      const nextWorkspaces = useAppStore
-        .getState()
-        .workspaces.filter(workspace => workspace.id !== workspaceId)
-      useAppStore.getState().setWorkspaces(nextWorkspaces)
-      useAppStore
-        .getState()
-        .setActiveWorkspaceId(currentActiveId =>
-          currentActiveId === workspaceId ? (nextWorkspaces[0]?.id ?? null) : currentActiveId,
-        )
-      useAppStore.getState().setFocusRequest(null)
-      useAppStore.getState().setProjectDeleteConfirmation(null)
-    } finally {
-      useAppStore.getState().setIsRemovingProject(false)
-    }
+    await removeWorkspace(workspaceId)
   }, [])
 
   useProjectContextMenuDismiss({
@@ -389,29 +356,45 @@ export default function App(): React.JSX.Element {
 
   return (
     <>
-      <div className="app-shell">
-        <Sidebar
-          workspaces={workspaces}
-          activeWorkspaceId={activeWorkspaceId}
-          activeProviderLabel={activeProviderLabel}
-          activeProviderModel={activeProviderModel}
-          persistNotice={persistNotice}
-          onAddWorkspace={() => {
-            void handleAddWorkspace()
-          }}
-          onSelectWorkspace={workspaceId => {
-            handleSelectWorkspace(workspaceId)
-          }}
-          onOpenProjectContextMenu={(state: ProjectContextMenuState) => {
-            setProjectContextMenu(state)
-          }}
-          onSelectAgentNode={(workspaceId, nodeId) => {
-            handleSelectAgentNode(workspaceId, nodeId)
+      <div
+        className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}
+      >
+        <AppHeader
+          activeWorkspaceName={activeWorkspace?.name ?? null}
+          activeWorkspacePath={activeWorkspace?.path ?? null}
+          isSidebarCollapsed={isPrimarySidebarCollapsed}
+          onToggleSidebar={() => {
+            setAgentSettings(prev => ({
+              ...prev,
+              isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+            }))
           }}
           onOpenSettings={() => {
             setIsSettingsOpen(true)
           }}
         />
+
+        {isPrimarySidebarCollapsed ? null : (
+          <Sidebar
+            workspaces={workspaces}
+            activeWorkspaceId={activeWorkspaceId}
+            activeProviderLabel={activeProviderLabel}
+            activeProviderModel={activeProviderModel}
+            persistNotice={persistNotice}
+            onAddWorkspace={() => {
+              void handleAddWorkspace()
+            }}
+            onSelectWorkspace={workspaceId => {
+              handleSelectWorkspace(workspaceId)
+            }}
+            onOpenProjectContextMenu={(state: ProjectContextMenuState) => {
+              setProjectContextMenu(state)
+            }}
+            onSelectAgentNode={(workspaceId, nodeId) => {
+              handleSelectAgentNode(workspaceId, nodeId)
+            }}
+          />
+        )}
 
         <main className="workspace-main">
           {activeWorkspace ? (

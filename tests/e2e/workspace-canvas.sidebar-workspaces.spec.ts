@@ -23,7 +23,7 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
 
       const sidebar = window.locator('.workspace-sidebar')
       const sidebarList = window.locator('.workspace-sidebar__list')
-      const settingsButton = window.locator('.workspace-sidebar__settings')
+      const settingsButton = window.locator('[data-testid="app-header-settings"]')
       const lastWorkspaceName = window.locator('.workspace-item__name', {
         hasText: 'workspace-scroll-17',
       })
@@ -43,21 +43,8 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
       expect(sidebarMetrics.scrollHeight).toBeGreaterThan(sidebarMetrics.clientHeight)
       expect(sidebarMetrics.scrollTop).toBeGreaterThan(0)
       await expect(lastWorkspaceName).toBeVisible()
-
-      const [sidebarBox, settingsBox] = await Promise.all([
-        sidebar.boundingBox(),
-        settingsButton.boundingBox(),
-      ])
-
-      expect(sidebarBox).not.toBeNull()
-      expect(settingsBox).not.toBeNull()
-
-      if (sidebarBox && settingsBox) {
-        expect(settingsBox.y).toBeGreaterThanOrEqual(sidebarBox.y)
-        expect(settingsBox.y + settingsBox.height).toBeLessThanOrEqual(
-          sidebarBox.y + sidebarBox.height,
-        )
-      }
+      await expect(sidebar).toBeVisible()
+      await expect(settingsButton).toBeVisible()
     } finally {
       await electronApp.close()
     }

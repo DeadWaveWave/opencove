@@ -102,6 +102,7 @@ export type AgentCustomModelOptionsByProvider = {
 export interface AgentSettings {
   language: UiLanguage
   uiTheme: UiTheme
+  isPrimarySidebarCollapsed: boolean
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
@@ -122,6 +123,7 @@ export interface AgentSettings {
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
   uiTheme: 'system',
+  isPrimarySidebarCollapsed: false,
   defaultProvider: 'codex',
   agentProviderOrder: [...AGENT_PROVIDERS],
   agentFullAccess: true,
@@ -342,6 +344,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
   const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
+  const isPrimarySidebarCollapsed =
+    normalizeBoolean(value.isPrimarySidebarCollapsed) ??
+    DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed
   const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
 
   const agentFullAccess =
@@ -446,6 +451,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   return {
     language,
     uiTheme,
+    isPrimarySidebarCollapsed,
     defaultProvider,
     agentProviderOrder,
     agentFullAccess,

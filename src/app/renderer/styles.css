@@ -1,6 +1,7 @@
 @import '@xyflow/react/dist/style.css';
 
 @import './styles/base.css';
+@import './styles/app-header.css';
 @import './styles/workspace-sidebar.css';
 @import './styles/workspace-canvas.css';
 @import './styles/workspace-overlays.css';

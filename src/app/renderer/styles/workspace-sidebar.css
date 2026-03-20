@@ -1,4 +1,5 @@
 .workspace-sidebar {
+  grid-row: 2;
   border-right: 1px solid var(--cove-border-subtle);
   background: var(--cove-surface);
   backdrop-filter: blur(20px) saturate(130%);
@@ -39,8 +40,7 @@
 
 .workspace-sidebar__header button,
 .workspace-empty-state button,
-.workspace-empty-selection-prompt button,
-.workspace-sidebar__settings {
+.workspace-empty-selection-prompt button {
   border: 1px solid var(--cove-border-subtle);
   background: var(--cove-field);
   color: var(--cove-text);
@@ -57,24 +57,21 @@
 
 .workspace-sidebar__header button:focus-visible,
 .workspace-empty-state button:focus-visible,
-.workspace-empty-selection-prompt button:focus-visible,
-.workspace-sidebar__settings:focus-visible {
+.workspace-empty-selection-prompt button:focus-visible {
   outline: 2px solid rgba(94, 156, 255, 0.85);
   outline-offset: 2px;
 }
 
 .workspace-sidebar__header button:hover,
 .workspace-empty-state button:hover,
-.workspace-empty-selection-prompt button:hover,
-.workspace-sidebar__settings:hover {
+.workspace-empty-selection-prompt button:hover {
   background: var(--cove-surface-hover);
   border-color: var(--cove-border);
 }
 
 .workspace-sidebar__header button:active,
 .workspace-empty-state button:active,
-.workspace-empty-selection-prompt button:active,
-.workspace-sidebar__settings:active {
+.workspace-empty-selection-prompt button:active {
   transform: translateY(1px);
 }
 
@@ -218,13 +215,4 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.workspace-sidebar__footer {
-  margin-top: auto;
-  flex-shrink: 0;
-}
-
-.workspace-sidebar__settings {
-  width: 100%;
 }

@@ -238,6 +238,7 @@ function createWindow(): void {
     ...(keepRendererActiveWhenHidden ? { paintWhenInitiallyHidden: true } : {}),
     ...(placeWindowOffscreen ? { x: E2E_OFFSCREEN_COORDINATE, y: E2E_OFFSCREEN_COORDINATE } : {}),
     autoHideMenuBar: true,
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
     ...(runtimeIconPath ? { icon: runtimeIconPath } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
