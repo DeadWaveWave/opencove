@@ -18,11 +18,19 @@ async function openPaneContextMenuAtFlowPoint(
   }
 
   const viewport = await readCanvasViewport(window)
-  await window.mouse.click(
-    box.x + point.x * viewport.zoom + viewport.x,
-    box.y + point.y * viewport.zoom + viewport.y,
-    { button: 'right' },
-  )
+  const clientX = box.x + point.x * viewport.zoom + viewport.x
+  const clientY = box.y + point.y * viewport.zoom + viewport.y
+
+  await pane.evaluate((element, payload) => {
+    const event = new MouseEvent('contextmenu', {
+      button: 2,
+      clientX: payload.clientX,
+      clientY: payload.clientY,
+      bubbles: true,
+      cancelable: true,
+    })
+    element.dispatchEvent(event)
+  }, { clientX, clientY })
 }
 
 async function clickPaneAtFlowPoint(
