@@ -40,6 +40,19 @@
   text-decoration: none;
   font-size: calc(11px * var(--cove-ui-font-scale));
   font-weight: 600;
+  transition:
+    color 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.workspace-pr-panel__overview-row-action:hover {
+  color: rgba(238, 245, 255, 0.96);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.workspace-pr-panel__overview-row-action:focus-visible {
+  outline: 2px solid rgba(172, 168, 255, 0.68);
+  outline-offset: 2px;
 }
 
 .workspace-pr-panel__overview-row-action svg {
