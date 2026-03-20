@@ -78,7 +78,7 @@ test.describe('Settings', () => {
         '[data-testid="settings-canvas-input-mode-trigger"]',
       )
       await expect(canvasInputModeTrigger).toBeVisible()
-      await expect(canvasInputMode).toHaveValue('mouse')
+      await expect(canvasInputMode).toHaveValue('auto')
       await selectCoveOption(window, 'settings-canvas-input-mode', 'trackpad')
       await expect(canvasInputMode).toHaveValue('trackpad')
 

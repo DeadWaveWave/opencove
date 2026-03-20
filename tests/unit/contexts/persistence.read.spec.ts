@@ -238,7 +238,7 @@ describe('workspace persistence (read/normalize)', () => {
       'test',
     ])
     expect(restored?.settings.normalizeZoomOnTerminalClick).toBe(true)
-    expect(restored?.settings.canvasInputMode).toBe('mouse')
+    expect(restored?.settings.canvasInputMode).toBe('auto')
   })
 
   it('fills missing workspace viewport fields for legacy payload', async () => {
