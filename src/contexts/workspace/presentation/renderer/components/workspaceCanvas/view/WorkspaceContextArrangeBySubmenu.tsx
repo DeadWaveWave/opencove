@@ -4,7 +4,6 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceSpaceState } from '../../../types'
 import type {
   WorkspaceArrangeOrder,
-  WorkspaceArrangePaper,
   WorkspaceArrangeSpaceFit,
 } from '../../../utils/workspaceArrange'
 
@@ -27,12 +26,12 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope,
   arrangeOrder,
   arrangeSpaceFit,
-  arrangePaper,
+  alignStandardSizes,
   isDensePackingEnabled,
   onSelectScope,
   onSelectOrder,
   onSelectSpaceFit,
-  onTogglePaperA4,
+  onToggleAlignStandardSizes,
   onToggleDense,
 }: {
   style: React.CSSProperties
@@ -43,12 +42,12 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope: ArrangeScope
   arrangeOrder: WorkspaceArrangeOrder
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
-  arrangePaper: WorkspaceArrangePaper
+  alignStandardSizes: boolean
   isDensePackingEnabled: boolean
   onSelectScope: (scope: ArrangeScope) => void
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
-  onTogglePaperA4: () => void
+  onToggleAlignStandardSizes: () => void
   onToggleDense: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -198,13 +197,15 @@ export function WorkspaceContextArrangeBySubmenu({
       <div className="workspace-context-menu__section-title">{t('workspaceArrangeMenu.style')}</div>
       <button
         type="button"
-        data-testid="workspace-context-arrange-paper-a4"
+        data-testid="workspace-context-arrange-standard-sizes"
         onClick={() => {
-          onTogglePaperA4()
+          onToggleAlignStandardSizes()
         }}
       >
-        {renderMark(arrangePaper === 'a4')}
-        <span className="workspace-context-menu__label">{t('workspaceArrangeMenu.paperA4')}</span>
+        {renderMark(alignStandardSizes)}
+        <span className="workspace-context-menu__label">
+          {t('workspaceArrangeMenu.alignStandardSizes')}
+        </span>
       </button>
       <button
         type="button"

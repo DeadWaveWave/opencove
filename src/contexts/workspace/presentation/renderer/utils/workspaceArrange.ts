@@ -13,4 +13,3 @@ export { arrangeWorkspaceCanvas } from './workspaceArrange.canvas'
 export { arrangeWorkspaceInSpace } from './workspaceArrange.inSpace'
 
 export type { WorkspaceArrangeOrder } from './workspaceArrange.ordering'
-export type { WorkspaceArrangePaper } from './workspaceArrange.paper'

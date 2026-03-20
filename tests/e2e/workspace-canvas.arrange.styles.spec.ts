@@ -69,7 +69,7 @@ async function openPaneContextMenuInSpace(
 }
 
 test.describe('Workspace Canvas - Arrange', () => {
-  test('arrange-by menu can apply paper sizing + dense packing for tight tiling', async () => {
+  test('arrange-by menu can align standard sizes + dense packing for tight tiling', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -135,16 +135,16 @@ test.describe('Workspace Canvas - Arrange', () => {
       await ensureArtifactsDir()
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.png' })
 
-      await window.locator('[data-testid="workspace-context-arrange-paper-a4"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-standard-sizes"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
 
       await expect(
-        window.locator('[data-testid="workspace-context-arrange-paper-a4"] svg'),
+        window.locator('[data-testid="workspace-context-arrange-standard-sizes"] svg'),
       ).toHaveCount(1)
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.paper-a4.png',
+        path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.standard-sizes.png',
       })
 
       await window.locator('[data-testid="workspace-context-arrange-dense"]').click()

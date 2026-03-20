@@ -16,7 +16,6 @@ import type { WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState } from '../types'
 import type {
   WorkspaceArrangeOrder,
-  WorkspaceArrangePaper,
   WorkspaceArrangeSpaceFit,
   WorkspaceArrangeStyle,
 } from '../../../utils/workspaceArrange'
@@ -94,8 +93,8 @@ export function WorkspaceContextMenu({
   const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
   const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
   const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
-  const [arrangePaper, setArrangePaper] = React.useState<WorkspaceArrangePaper>('none')
-  const arrangePaperRef = React.useRef<WorkspaceArrangePaper>('none')
+  const [alignStandardSizes, setAlignStandardSizes] = React.useState(false)
+  const alignStandardSizesRef = React.useRef(false)
   const [isDensePackingEnabled, setIsDensePackingEnabled] = React.useState(false)
   const isDensePackingEnabledRef = React.useRef(false)
 
@@ -155,7 +154,7 @@ export function WorkspaceContextMenu({
     return {
       order: arrangeOrderRef.current,
       spaceFit: arrangeSpaceFitRef.current,
-      paper: arrangePaperRef.current,
+      alignStandardSizes: alignStandardSizesRef.current,
       dense: isDensePackingEnabledRef.current,
     }
   }, [])
@@ -440,7 +439,7 @@ export function WorkspaceContextMenu({
           arrangeScope={arrangeScope}
           arrangeOrder={arrangeOrder}
           arrangeSpaceFit={arrangeSpaceFit}
-          arrangePaper={arrangePaper}
+          alignStandardSizes={alignStandardSizes}
           isDensePackingEnabled={isDensePackingEnabled}
           onSelectScope={scope => {
             arrangeScopeRef.current = scope
@@ -457,11 +456,10 @@ export function WorkspaceContextMenu({
             setArrangeSpaceFit(spaceFit)
             applyArrange()
           }}
-          onTogglePaperA4={() => {
-            const nextPaper: WorkspaceArrangePaper =
-              arrangePaperRef.current === 'a4' ? 'none' : 'a4'
-            arrangePaperRef.current = nextPaper
-            setArrangePaper(nextPaper)
+          onToggleAlignStandardSizes={() => {
+            const nextValue = !alignStandardSizesRef.current
+            alignStandardSizesRef.current = nextValue
+            setAlignStandardSizes(nextValue)
             applyArrange()
           }}
           onToggleDense={() => {

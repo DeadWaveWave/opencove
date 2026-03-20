@@ -9,7 +9,7 @@ import {
   type Rect,
 } from './workspaceArrange.flowPacking'
 import { createArrangeItemsForSpaceNodes } from './workspaceArrange.ordering'
-import { normalizeWorkspaceNodesToPaperSizing } from './workspaceArrange.paper'
+import { normalizeWorkspaceNodesToStandardSizing } from './workspaceArrange.standardSizing'
 import {
   resolveArrangeStyle,
   unionSpaceRects,
@@ -49,14 +49,14 @@ export function arrangeWorkspaceInSpace({
     return { nodes, spaces, warnings: [], didChange: false }
   }
 
-  const paperNormalized = normalizeWorkspaceNodesToPaperSizing({
+  const standardSizingNormalized = normalizeWorkspaceNodesToStandardSizing({
     nodes,
-    paper: resolvedStyle.paper,
+    enabled: resolvedStyle.alignStandardSizes,
     nodeIdSet: new Set(ownedNodes.map(node => node.id)),
   })
 
-  const normalizedNodes = paperNormalized.nodes
-  const normalizedNodeById = paperNormalized.didChange
+  const normalizedNodes = standardSizingNormalized.nodes
+  const normalizedNodeById = standardSizingNormalized.didChange
     ? new Map(normalizedNodes.map(node => [node.id, node]))
     : nodeById
   const normalizedOwnedNodes = targetSpace.nodeIds
@@ -218,7 +218,7 @@ export function arrangeWorkspaceInSpace({
     didChange = true
   }
 
-  return didChange || paperNormalized.didChange
+  return didChange || standardSizingNormalized.didChange
     ? { nodes: nextNodes, spaces: nextSpaces, warnings: [], didChange: true }
     : { nodes, spaces, warnings: [], didChange: false }
 }

@@ -2,7 +2,6 @@ import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../types'
 import type { Rect } from './workspaceArrange.flowPacking'
 import type { WorkspaceArrangeOrder } from './workspaceArrange.ordering'
-import type { WorkspaceArrangePaper } from './workspaceArrange.paper'
 
 export const WORKSPACE_ARRANGE_PADDING_PX = 24
 export const WORKSPACE_ARRANGE_GAP_PX = 24
@@ -13,7 +12,7 @@ export type WorkspaceArrangeSpaceFit = 'tight' | 'grow' | 'keep'
 export interface WorkspaceArrangeStyle {
   order?: WorkspaceArrangeOrder
   spaceFit?: WorkspaceArrangeSpaceFit
-  paper?: WorkspaceArrangePaper
+  alignStandardSizes?: boolean
   dense?: boolean
 }
 
@@ -65,7 +64,7 @@ export function resolveArrangeStyle(
   return {
     order: style?.order ?? 'position',
     spaceFit: style?.spaceFit ?? 'tight',
-    paper: style?.paper ?? 'none',
+    alignStandardSizes: style?.alignStandardSizes ?? false,
     dense: style?.dense ?? false,
   }
 }

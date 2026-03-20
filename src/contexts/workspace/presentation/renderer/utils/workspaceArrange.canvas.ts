@@ -8,7 +8,7 @@ import {
   snapDown,
 } from './workspaceArrange.flowPacking'
 import { createArrangeItemsForCanvas } from './workspaceArrange.ordering'
-import { normalizeWorkspaceNodesToPaperSizing } from './workspaceArrange.paper'
+import { normalizeWorkspaceNodesToStandardSizing } from './workspaceArrange.standardSizing'
 import {
   computeOwnedNodeIdSet,
   resolveArrangeStyle,
@@ -39,14 +39,14 @@ export function arrangeWorkspaceCanvas({
   const rootNodeIdSet = new Set(
     nodes.filter(node => !ownedNodeIdSet.has(node.id)).map(node => node.id),
   )
-  const paperNormalized = normalizeWorkspaceNodesToPaperSizing({
+  const standardSizingNormalized = normalizeWorkspaceNodesToStandardSizing({
     nodes,
-    paper: resolvedStyle.paper,
+    enabled: resolvedStyle.alignStandardSizes,
     nodeIdSet: rootNodeIdSet,
   })
-  const nodesWithPaper = paperNormalized.nodes
+  const nodesWithStandardSizing = standardSizingNormalized.nodes
 
-  const nodeById = new Map(nodesWithPaper.map(node => [node.id, node]))
+  const nodeById = new Map(nodesWithStandardSizing.map(node => [node.id, node]))
 
   let didSpaceFitChange = false
   const fittedSpaces = spaces.map(space => {
@@ -92,7 +92,7 @@ export function arrangeWorkspaceCanvas({
   })
 
   const items = createArrangeItemsForCanvas({
-    nodes: nodesWithPaper,
+    nodes: nodesWithStandardSizing,
     spaces: fittedSpaces,
     order: resolvedStyle.order,
   })
@@ -167,7 +167,7 @@ export function arrangeWorkspaceCanvas({
   }
 
   let didChange = false
-  const nextNodes = nodesWithPaper.map(node => {
+  const nextNodes = nodesWithStandardSizing.map(node => {
     const rootPlacement = nodePlacementById.get(node.id)
     if (rootPlacement) {
       if (node.position.x === rootPlacement.x && node.position.y === rootPlacement.y) {
@@ -227,7 +227,7 @@ export function arrangeWorkspaceCanvas({
       })
     : fittedSpaces
 
-  const didChangeFromFitOrSizing = paperNormalized.didChange || didSpaceFitChange
+  const didChangeFromFitOrSizing = standardSizingNormalized.didChange || didSpaceFitChange
   const spacesOut = didSpaceFitChange || didSpaceMove ? nextSpaces : spaces
 
   return didChange || didChangeFromFitOrSizing
