@@ -29,17 +29,82 @@
   text-align: center;
 }
 
-.app-header__title {
-  display: inline-block;
-  max-width: 100%;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  letter-spacing: 0.2px;
-  font-weight: 500;
+.app-header__command-center {
+  max-width: min(520px, 100%);
+  height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 999px;
+  background: var(--cove-field);
   color: var(--cove-text-muted);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.app-header__command-center:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--cove-border);
+  color: var(--cove-text);
+}
+
+.app-header__command-center--open,
+.app-header__command-center:active {
+  background: rgba(94, 156, 255, 0.1);
+  border-color: rgba(94, 156, 255, 0.35);
+  transform: translateY(1px);
+}
+
+.app-header__command-center:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.app-header__command-center-icon {
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+
+.app-header__command-center-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  letter-spacing: 0.15px;
+  font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   user-select: none;
+  text-align: left;
+}
+
+.app-header__command-center-keycap {
+  flex: 0 0 auto;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  padding: 2px 6px;
+  border-radius: 7px;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-surface-hover);
+  color: var(--cove-text-faint);
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-header__command-center-chevron {
+  flex: 0 0 auto;
+  opacity: 0.65;
+  transition: transform 0.15s ease;
+}
+
+.app-header__command-center--open .app-header__command-center-chevron {
+  transform: rotate(180deg);
 }
 
 .app-header__icon-button {

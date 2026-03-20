@@ -58,6 +58,30 @@ export const en = {
   },
   appHeader: {
     togglePrimarySidebar: 'Toggle Primary Sidebar',
+    commandCenter: 'Command Center',
+    commandCenterHint: 'Command Center ({{primary}} / {{secondary}})',
+    commandCenterFallbackTitle: 'Search',
+  },
+  commandCenter: {
+    title: 'Command Center',
+    placeholder: 'Search projects, spaces, commands…',
+    empty: 'No results.',
+    metaEsc: 'Esc',
+    activeSpace: 'Space: {{name}}',
+    sections: {
+      commands: 'Commands',
+      spaces: 'Spaces',
+      projects: 'Projects',
+    },
+    commands: {
+      openSettings: 'Settings',
+      openSettingsHint: 'Open Settings',
+      showPrimarySidebar: 'Show Sidebar',
+      hidePrimarySidebar: 'Hide Sidebar',
+      togglePrimarySidebarHint: 'Toggle Primary Sidebar',
+      addProject: 'Add Project',
+      addProjectHint: 'Add a project folder',
+    },
   },
   workspaceEmptyState: {
     title: 'Add a project to start',
