@@ -28,6 +28,8 @@ import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClic
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { shouldStopWheelPropagation } from './terminalNode/wheel'
+import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
+import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
@@ -125,6 +127,7 @@ export function TerminalNode({
     }
 
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
+    const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
 
     const terminal = new Terminal({
@@ -138,8 +141,7 @@ export function TerminalNode({
       allowProposedApi: true,
       convertEol: true,
       scrollback: 5000,
-      cols: cachedScreenState?.cols,
-      rows: cachedScreenState?.rows,
+      ...(initialDimensions ?? {}),
     })
 
     const fitAddon = new FitAddon()
@@ -245,18 +247,6 @@ export function TerminalNode({
       isHydrating = false
       ptyWriteQueue.flush()
 
-      const revealTerminal = () => {
-        requestAnimationFrame(() => {
-          syncTerminalSize()
-          requestAnimationFrame(() => {
-            if (!isDisposed) {
-              isTerminalHydratedRef.current = true
-              setIsTerminalHydrated(true)
-            }
-          })
-        })
-      }
-
       const bufferedData = bufferedDataChunks.join('')
       bufferedDataChunks.length = 0
 
@@ -278,7 +268,12 @@ export function TerminalNode({
       }
 
       markScrollbackDirty(true)
-      revealTerminal()
+      revealHydratedTerminal(syncTerminalSize, () => {
+        if (!isDisposed) {
+          isTerminalHydratedRef.current = true
+          setIsTerminalHydrated(true)
+        }
+      })
     }
 
     const hydrateFromSnapshot = async () => {

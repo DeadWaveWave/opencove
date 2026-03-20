@@ -8,6 +8,8 @@ export function buildCoveContentSecurityPolicy(isDev: boolean): string {
   const scriptSources = isDev ? ["'self'", "'unsafe-eval'"] : ["'self'"]
   const connectSources = isDev ? ["'self'", 'ws:', 'http:', 'https:'] : ["'self'"]
   const styleSources = isDev ? ["'self'", "'unsafe-inline'"] : ["'self'"]
+  const styleAttributeSources = isDev ? null : ["'unsafe-inline'"]
+  const styleElementSources = isDev ? null : ["'self'", "'unsafe-inline'"]
 
   return [
     `default-src 'self'`,
@@ -17,6 +19,8 @@ export function buildCoveContentSecurityPolicy(isDev: boolean): string {
     `object-src 'none'`,
     `script-src ${scriptSources.join(' ')}`,
     `style-src ${styleSources.join(' ')}`,
+    ...(styleAttributeSources ? [`style-src-attr ${styleAttributeSources.join(' ')}`] : []),
+    ...(styleElementSources ? [`style-src-elem ${styleElementSources.join(' ')}`] : []),
     `img-src 'self' data: blob:`,
     `font-src 'self' data:`,
     `connect-src ${connectSources.join(' ')}`,
