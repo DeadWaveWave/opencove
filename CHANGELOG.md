@@ -7,14 +7,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
-- Workspace canvas: arrange all / arrange canvas / arrange in space actions.
-- Workspace canvas: arrange panel (scope, ordering, space fit, paper sizing, dense packing).
+- Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
+- Workspace canvas: arrange panel (scope, ordering, space fit, paper sizing, dense packing). (#42)
 
 ### 💅 Changed
 - (none)
 
 ### 🐞 Fixed
-- (none)
+- Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
 
 ---
 
