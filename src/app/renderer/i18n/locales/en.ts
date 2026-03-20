@@ -241,7 +241,7 @@ export const en = {
     spaceFitGrow: 'Grow only',
     spaceFitKeep: 'Keep size',
     style: 'Style',
-    paperA4: 'Paper sizing (A4)',
+    paperA4: 'Paper size (A4)',
     dense: 'Dense packing',
   },
   workspaceCanvas: {
