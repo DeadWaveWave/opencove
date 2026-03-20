@@ -77,6 +77,26 @@ export function WorkspaceSpacePullRequestPanelDiff({
                         <div className="workspace-pr-panel__diff-hunk-header">{hunk.header}</div>
                         <div className="workspace-pr-panel__diff-lines">
                           {hunk.lines.map(line => {
+                            const lineKey = `${line.type}:${line.oldLineNumber ?? ''}:${line.newLineNumber ?? ''}:${line.content}`
+
+                            if (line.type === 'meta') {
+                              const message = line.content.startsWith(
+                                '\\ No newline at end of file',
+                              )
+                                ? t('githubPullRequest.noNewlineAtEof')
+                                : line.content.replace(/^\\\s*/, '')
+
+                              return (
+                                <div
+                                  key={lineKey}
+                                  className="workspace-pr-panel__diff-meta"
+                                  aria-label={message}
+                                >
+                                  {message}
+                                </div>
+                              )
+                            }
+
                             const prefix =
                               line.type === 'add'
                                 ? '+'
@@ -85,7 +105,6 @@ export function WorkspaceSpacePullRequestPanelDiff({
                                   : line.type === 'context'
                                     ? ' '
                                     : ''
-                            const lineKey = `${line.type}:${line.oldLineNumber ?? ''}:${line.newLineNumber ?? ''}:${line.content}`
 
                             return (
                               <div

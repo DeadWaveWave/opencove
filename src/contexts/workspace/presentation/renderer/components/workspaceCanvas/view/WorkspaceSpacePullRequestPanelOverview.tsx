@@ -3,17 +3,22 @@ import { GitMerge } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   GitHubPullRequestAction,
+  GitHubPullRequestCheck,
   GitHubPullRequestDetails,
-  GitHubPullRequestReviewEvent,
   GitHubPullRequestSelector,
   GitHubPullRequestSummary,
 } from '@shared/contracts/dto'
 import type { WorkspaceSpacePullRequestPanelState } from './WorkspaceSpacePullRequestPanel'
+import { WorkspaceSpacePullRequestPanelCiSummary } from './WorkspaceSpacePullRequestPanelCiSummary'
+import { WorkspaceSpacePullRequestPanelConversation } from './WorkspaceSpacePullRequestPanelConversation'
 
 export function WorkspaceSpacePullRequestPanelOverview({
   panel,
   summary,
   details,
+  checks,
+  isLoadingChecks,
+  onOpenChecksTab,
   isAvailable,
   isExecutingAction,
   selectorForExisting,
@@ -38,6 +43,9 @@ export function WorkspaceSpacePullRequestPanelOverview({
   panel: WorkspaceSpacePullRequestPanelState
   summary: GitHubPullRequestSummary | null
   details: GitHubPullRequestDetails | null
+  checks: GitHubPullRequestCheck[] | null
+  isLoadingChecks: boolean
+  onOpenChecksTab?: () => void
   isAvailable: boolean
   isExecutingAction: boolean
   selectorForExisting: GitHubPullRequestSelector | null
@@ -67,6 +75,10 @@ export function WorkspaceSpacePullRequestPanelOverview({
   }, [panel.branch])
 
   if (summary) {
+    const metaLabel = summary.baseRefName
+      ? t('githubPullRequest.branchToBase', { branch: panel.branch, base: summary.baseRefName })
+      : t('githubPullRequest.branch', { branch: panel.branch })
+
     return (
       <>
         <div className="workspace-pr-panel__overview-header">
@@ -77,14 +89,7 @@ export function WorkspaceSpacePullRequestPanelOverview({
             {summary.title}
           </div>
           <div className="workspace-pr-panel__overview-meta">
-            <span className="workspace-pr-panel__overview-meta-item">
-              {t('githubPullRequest.branch', { branch: panel.branch })}
-            </span>
-            {summary.baseRefName ? (
-              <span className="workspace-pr-panel__overview-meta-item">
-                {t('githubPullRequest.base', { base: summary.baseRefName })}
-              </span>
-            ) : null}
+            <span className="workspace-pr-panel__overview-meta-item">{metaLabel}</span>
             {summary.isDraft ? (
               <span className="workspace-pr-panel__badge">{t('githubPullRequest.draft')}</span>
             ) : null}
@@ -106,6 +111,33 @@ export function WorkspaceSpacePullRequestPanelOverview({
             {details.body}
           </div>
         ) : null}
+
+        <div className="workspace-pr-panel__overview-row">
+          <div className="workspace-pr-panel__overview-row-label">
+            {t('githubPullRequest.commits')}
+          </div>
+          <div className="workspace-pr-panel__overview-row-value">
+            {typeof details?.commitCount === 'number' ? details.commitCount : '—'}
+          </div>
+        </div>
+
+        <WorkspaceSpacePullRequestPanelCiSummary
+          isLoading={isLoadingChecks}
+          checks={checks}
+          onOpenChecksTab={onOpenChecksTab}
+        />
+
+        <WorkspaceSpacePullRequestPanelConversation
+          branch={panel.branch}
+          isAvailable={isAvailable}
+          isExecutingAction={isExecutingAction}
+          selector={selectorForExisting}
+          executeAction={executeAction}
+          commentBody={commentBody}
+          setCommentBody={setCommentBody}
+          reviewBody={reviewBody}
+          setReviewBody={setReviewBody}
+        />
 
         {pendingConfirmation ? (
           <div className="workspace-pr-panel__confirm">
@@ -233,105 +265,6 @@ export function WorkspaceSpacePullRequestPanelOverview({
               {t('githubPullRequest.reopen')}
             </button>
           )}
-        </div>
-
-        <div className="workspace-pr-panel__form-grid">
-          <div className="cove-window__field-row">
-            <label htmlFor="workspace-space-pr-comment">{t('githubPullRequest.comment')}</label>
-            <textarea
-              id="workspace-space-pr-comment"
-              data-testid="workspace-space-pr-panel-comment-input"
-              value={commentBody}
-              disabled={!isAvailable || isExecutingAction}
-              placeholder={t('githubPullRequest.commentPlaceholder')}
-              onChange={event => {
-                setCommentBody(event.target.value)
-              }}
-            />
-            <div className="workspace-pr-panel__inline-actions">
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--secondary"
-                data-testid="workspace-space-pr-panel-action-comment"
-                disabled={
-                  !isAvailable ||
-                  isExecutingAction ||
-                  !selectorForExisting ||
-                  commentBody.trim().length === 0
-                }
-                onClick={() => {
-                  if (!selectorForExisting) {
-                    return
-                  }
-
-                  void executeAction({
-                    kind: 'comment',
-                    selector: selectorForExisting,
-                    body: commentBody.trim(),
-                  }).then(() => {
-                    setCommentBody('')
-                  })
-                }}
-              >
-                {t('githubPullRequest.addComment')}
-              </button>
-            </div>
-          </div>
-
-          <div className="cove-window__field-row">
-            <label htmlFor="workspace-space-pr-review">{t('githubPullRequest.review')}</label>
-            <textarea
-              id="workspace-space-pr-review"
-              data-testid="workspace-space-pr-panel-review-input"
-              value={reviewBody}
-              disabled={!isAvailable || isExecutingAction}
-              placeholder={t('githubPullRequest.reviewPlaceholder')}
-              onChange={event => {
-                setReviewBody(event.target.value)
-              }}
-            />
-            <div className="workspace-pr-panel__inline-actions">
-              {(['approve', 'request_changes', 'comment'] as const).map(eventName => {
-                const label =
-                  eventName === 'approve'
-                    ? t('githubPullRequest.approve')
-                    : eventName === 'request_changes'
-                      ? t('githubPullRequest.requestChanges')
-                      : t('githubPullRequest.reviewComment')
-
-                return (
-                  <button
-                    key={eventName}
-                    type="button"
-                    className="cove-window__action cove-window__action--secondary"
-                    data-testid={`workspace-space-pr-panel-action-review-${eventName}`}
-                    disabled={
-                      !isAvailable ||
-                      isExecutingAction ||
-                      !selectorForExisting ||
-                      reviewBody.trim().length === 0
-                    }
-                    onClick={() => {
-                      if (!selectorForExisting) {
-                        return
-                      }
-
-                      void executeAction({
-                        kind: 'review',
-                        selector: selectorForExisting,
-                        event: eventName as GitHubPullRequestReviewEvent,
-                        body: reviewBody.trim(),
-                      }).then(() => {
-                        setReviewBody('')
-                      })
-                    }}
-                  >
-                    {label}
-                  </button>
-                )
-              })}
-            </div>
-          </div>
         </div>
 
         {actionError ? (

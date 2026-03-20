@@ -391,6 +391,9 @@ export const zhCN = {
     refresh: '刷新',
     branch: '分支：{{branch}}',
     base: '目标：{{base}}',
+    branchToBase: '{{branch}} → {{base}}',
+    commits: 'Commits',
+    ci: 'CI',
     draft: 'Draft',
     state: {
       merged: '已合并',
@@ -425,6 +428,7 @@ export const zhCN = {
     noChecks: '暂无 Checks。',
     noDiff: '暂无 Diff。',
     binaryDiff: '二进制文件有变更。',
+    noNewlineAtEof: '文件末尾没有换行。',
   },
   worktreeGuard: {
     activeWindowsBound: 'Space {{name}} 仍有活动窗口绑定在当前目录上。',

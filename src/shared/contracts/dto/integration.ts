@@ -40,6 +40,7 @@ export interface GitHubPullRequestDetails extends GitHubPullRequestSummary {
   body: string
   mergeable: string | null
   reviewDecision: string | null
+  commitCount: number | null
 }
 
 export interface ResolveGitHubPullRequestsInput {

@@ -18,12 +18,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - PR base branch defaults to the repository default branch (with editable suggestions).
 - De-emphasized “Publish branch” by moving it under Advanced (Create PR auto-publishes).
 - PR Diff view now renders a visual, file-grouped unified diff.
+- PR Overview now surfaces commit count + CI summary, with comment/review forms collapsed by default.
 
 ### 🐞 Fixed
 - Improved `gh` authentication detection and PR action error reporting.
 - Prevented canvas zoom/pan when scrolling inside PR/overlay windows.
 - Create PR now explains “no commits / nothing to compare” failures more clearly.
 - PR Checks no longer hang indefinitely (command timeouts now resolve properly).
+- Diff no longer renders the raw “\\ No newline at end of file” marker as a confusing line.
 
 ---
 

@@ -393,6 +393,9 @@ export const en = {
     refresh: 'Refresh',
     branch: 'Branch: {{branch}}',
     base: 'Base: {{base}}',
+    branchToBase: '{{branch}} → {{base}}',
+    commits: 'Commits',
+    ci: 'CI',
     draft: 'Draft',
     state: {
       merged: 'Merged',
@@ -427,6 +430,7 @@ export const en = {
     noChecks: 'No checks to show.',
     noDiff: 'No diff to show.',
     binaryDiff: 'Binary file changed.',
+    noNewlineAtEof: 'No newline at end of file.',
   },
   worktreeGuard: {
     activeWindowsBound: 'Space {{name}} still has active windows bound to its current directory.',

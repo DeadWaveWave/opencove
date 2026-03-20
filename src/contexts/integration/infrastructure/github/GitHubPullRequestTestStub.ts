@@ -42,6 +42,7 @@ export function buildStubDetails(branch: string): GitHubPullRequestDetails {
     body: 'This is a test pull request body.',
     mergeable: 'MERGEABLE',
     reviewDecision: 'REVIEW_REQUIRED',
+    commitCount: 1,
   }
 }
 

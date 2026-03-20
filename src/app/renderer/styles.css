@@ -8,6 +8,7 @@
 @import './styles/workspace-overlays.css';
 @import './styles/workspace-pr-panel.css';
 @import './styles/workspace-pr-diff.css';
+@import './styles/workspace-pr-overview.css';
 @import './styles/terminal-node.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';

@@ -300,7 +300,12 @@ export function WorkspaceSpacePullRequestPanel({
       return
     }
 
-    if (tab === 'checks' && checks === null && summary !== null && !isLoadingChecks) {
+    if (
+      (tab === 'overview' || tab === 'checks') &&
+      checks === null &&
+      summary !== null &&
+      !isLoadingChecks
+    ) {
       void loadPullRequestChecks()
     }
 
@@ -436,6 +441,11 @@ export function WorkspaceSpacePullRequestPanel({
             panel={panel}
             summary={summary}
             details={details}
+            checks={checks}
+            isLoadingChecks={isLoadingChecks}
+            onOpenChecksTab={() => {
+              setTab('checks')
+            }}
             isAvailable={isAvailable}
             isExecutingAction={isExecutingAction}
             selectorForExisting={selectorForExisting}

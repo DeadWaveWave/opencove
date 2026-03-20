@@ -145,3 +145,14 @@
   min-width: 0;
   overflow: visible;
 }
+
+.workspace-pr-panel__diff-meta {
+  padding: 4px 10px 6px;
+  color: rgba(191, 213, 252, 0.9);
+  font-size: calc(10px * var(--cove-ui-font-scale));
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

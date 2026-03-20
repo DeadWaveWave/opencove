@@ -22,6 +22,7 @@ import {
 import {
   isNoPullRequestError,
   parseChecks,
+  parseStatusCheckRollup,
   parsePullRequestDetails,
   parsePullRequestSummary,
 } from './GitHubPullRequestParse'
@@ -225,7 +226,7 @@ export async function getGitHubPullRequest(
       'view',
       selectorArg,
       '--json',
-      'number,title,url,state,isDraft,author,updatedAt,baseRefName,headRefName,body,mergeable,reviewDecision',
+      'number,title,url,state,isDraft,author,updatedAt,baseRefName,headRefName,body,mergeable,reviewDecision,commits',
     ],
     input.repoPath,
     { env: buildGhEnv() },
@@ -283,18 +284,27 @@ export async function getGitHubPullRequestChecks(
   }
 
   const selectorArg = selectorToGhArg(input.selector)
-  const args = [
-    'pr',
-    'checks',
-    selectorArg,
-    '--json',
-    'bucket,completedAt,description,link,name,startedAt,state,workflow',
-  ]
-  if (input.required === true) {
-    args.push('--required')
-  }
-
-  const result = await runCommand('gh', args, input.repoPath, { env: buildGhEnv() })
+  const result =
+    input.required === true
+      ? await runCommand(
+          'gh',
+          [
+            'pr',
+            'checks',
+            selectorArg,
+            '--required',
+            '--json',
+            'bucket,completedAt,description,link,name,startedAt,state,workflow',
+          ],
+          input.repoPath,
+          { env: buildGhEnv() },
+        )
+      : await runCommand(
+          'gh',
+          ['pr', 'view', selectorArg, '--json', 'statusCheckRollup'],
+          input.repoPath,
+          { env: buildGhEnv() },
+        )
   if (result.exitCode !== 0) {
     throw new Error(formatCommandError(result, 'Failed to load checks'))
   }
@@ -303,7 +313,14 @@ export async function getGitHubPullRequestChecks(
     const parsed = JSON.parse(result.stdout) as unknown
     return {
       availability: toAvailable(),
-      checks: parseChecks(parsed),
+      checks:
+        input.required === true
+          ? parseChecks(parsed)
+          : parseStatusCheckRollup(
+              parsed && typeof parsed === 'object'
+                ? (parsed as { statusCheckRollup?: unknown }).statusCheckRollup
+                : null,
+            ),
     }
   } catch {
     throw new Error('Failed to parse checks response')

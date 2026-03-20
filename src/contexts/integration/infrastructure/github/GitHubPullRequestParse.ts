@@ -76,11 +76,13 @@ export function parsePullRequestDetails(raw: unknown): GitHubPullRequestDetails 
   }
 
   const record = raw as Record<string, unknown>
+  const commitCount = Array.isArray(record.commits) ? record.commits.length : null
   return {
     ...summary,
     body: typeof record.body === 'string' ? record.body : '',
     mergeable: normalizeText(record.mergeable) || null,
     reviewDecision: normalizeText(record.reviewDecision) || null,
+    commitCount,
   }
 }
 
@@ -94,6 +96,60 @@ function normalizeCheckBucket(value: unknown): GitHubPullRequestCheck['bucket'] 
     normalized === 'cancel'
   ) {
     return normalized
+  }
+
+  return null
+}
+
+function normalizeCheckRunBucket(raw: {
+  status?: unknown
+  conclusion?: unknown
+}): GitHubPullRequestCheck['bucket'] {
+  const status = normalizeText(raw.status).toUpperCase()
+  const conclusion = normalizeText(raw.conclusion).toUpperCase()
+
+  if (status && status !== 'COMPLETED') {
+    return 'pending'
+  }
+
+  if (conclusion === 'SUCCESS' || conclusion === 'NEUTRAL') {
+    return 'pass'
+  }
+
+  if (conclusion === 'CANCELLED') {
+    return 'cancel'
+  }
+
+  if (conclusion === 'SKIPPED') {
+    return 'skipping'
+  }
+
+  if (
+    conclusion === 'FAILURE' ||
+    conclusion === 'TIMED_OUT' ||
+    conclusion === 'ACTION_REQUIRED' ||
+    conclusion === 'STARTUP_FAILURE' ||
+    conclusion === 'STALE'
+  ) {
+    return 'fail'
+  }
+
+  return null
+}
+
+function normalizeStatusContextBucket(value: unknown): GitHubPullRequestCheck['bucket'] {
+  const normalized = normalizeText(value).toUpperCase()
+
+  if (normalized === 'SUCCESS') {
+    return 'pass'
+  }
+
+  if (normalized === 'PENDING') {
+    return 'pending'
+  }
+
+  if (normalized === 'FAILURE' || normalized === 'ERROR') {
+    return 'fail'
   }
 
   return null
@@ -126,6 +182,65 @@ export function parseChecks(raw: unknown): GitHubPullRequestCheck[] {
       startedAt: normalizeText(record.startedAt) || null,
       completedAt: normalizeText(record.completedAt) || null,
     })
+
+    if (checks.length >= 120) {
+      break
+    }
+  }
+
+  return checks
+}
+
+export function parseStatusCheckRollup(raw: unknown): GitHubPullRequestCheck[] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+
+  const checks: GitHubPullRequestCheck[] = []
+  for (const item of raw) {
+    if (!item || typeof item !== 'object') {
+      continue
+    }
+
+    const record = item as Record<string, unknown>
+    const typename = normalizeText(record.__typename)
+
+    if (typename === 'CheckRun') {
+      const name = normalizeText(record.name)
+      if (name.length === 0) {
+        continue
+      }
+
+      checks.push({
+        name,
+        bucket: normalizeCheckRunBucket({
+          status: record.status,
+          conclusion: record.conclusion,
+        }),
+        state: normalizeText(record.conclusion) || normalizeText(record.status) || null,
+        link: normalizeText(record.detailsUrl) || null,
+        description: null,
+        workflow: normalizeText(record.workflowName) || null,
+        startedAt: normalizeText(record.startedAt) || null,
+        completedAt: normalizeText(record.completedAt) || null,
+      })
+    } else if (typename === 'StatusContext') {
+      const name = normalizeText(record.context)
+      if (name.length === 0) {
+        continue
+      }
+
+      checks.push({
+        name,
+        bucket: normalizeStatusContextBucket(record.state),
+        state: normalizeText(record.state) || null,
+        link: normalizeText(record.targetUrl) || null,
+        description: normalizeText(record.description) || null,
+        workflow: null,
+        startedAt: null,
+        completedAt: null,
+      })
+    }
 
     if (checks.length >= 120) {
       break
