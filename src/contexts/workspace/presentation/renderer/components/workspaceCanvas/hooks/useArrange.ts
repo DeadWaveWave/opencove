@@ -6,6 +6,7 @@ import {
   arrangeWorkspaceAll,
   arrangeWorkspaceCanvas,
   arrangeWorkspaceInSpace,
+  type WorkspaceArrangeStyle,
   type WorkspaceArrangeWarning,
 } from '../../../utils/workspaceArrange'
 import type { ShowWorkspaceCanvasMessage } from '../types'
@@ -60,9 +61,9 @@ export function useWorkspaceCanvasArrange({
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
-  arrangeAll: () => void
-  arrangeCanvas: () => void
-  arrangeInSpace: (spaceId: string) => void
+  arrangeAll: (style?: WorkspaceArrangeStyle) => void
+  arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
+  arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
 } {
   const { t } = useTranslation()
 
@@ -88,42 +89,51 @@ export function useWorkspaceCanvasArrange({
     [onRequestPersistFlush, onSpacesChange, setNodes, spacesRef],
   )
 
-  const arrangeAll = useCallback(() => {
-    const wrapWidth = resolveWrapWidth(reactFlow)
-    const result = arrangeWorkspaceAll({
-      nodes: nodesRef.current,
-      spaces: spacesRef.current,
-      wrapWidth,
-    })
+  const arrangeAll = useCallback(
+    (style?: WorkspaceArrangeStyle) => {
+      const wrapWidth = resolveWrapWidth(reactFlow)
+      const result = arrangeWorkspaceAll({
+        nodes: nodesRef.current,
+        spaces: spacesRef.current,
+        wrapWidth,
+        style,
+      })
 
-    commitArrange(result)
+      commitArrange(result)
 
-    const { skippedSpaceCount } = summarizeWarnings(result.warnings)
-    if (skippedSpaceCount > 0) {
-      onShowMessage?.(
-        t('messages.arrangeAllSkippedSpaces', { count: skippedSpaceCount }),
-        'warning',
-      )
-    }
-  }, [commitArrange, nodesRef, onShowMessage, reactFlow, spacesRef, t])
+      const { skippedSpaceCount } = summarizeWarnings(result.warnings)
+      if (skippedSpaceCount > 0) {
+        onShowMessage?.(
+          t('messages.arrangeAllSkippedSpaces', { count: skippedSpaceCount }),
+          'warning',
+        )
+      }
+    },
+    [commitArrange, nodesRef, onShowMessage, reactFlow, spacesRef, t],
+  )
 
-  const arrangeCanvas = useCallback(() => {
-    const wrapWidth = resolveWrapWidth(reactFlow)
-    const result = arrangeWorkspaceCanvas({
-      nodes: nodesRef.current,
-      spaces: spacesRef.current,
-      wrapWidth,
-    })
+  const arrangeCanvas = useCallback(
+    (style?: WorkspaceArrangeStyle) => {
+      const wrapWidth = resolveWrapWidth(reactFlow)
+      const result = arrangeWorkspaceCanvas({
+        nodes: nodesRef.current,
+        spaces: spacesRef.current,
+        wrapWidth,
+        style,
+      })
 
-    commitArrange(result)
-  }, [commitArrange, nodesRef, reactFlow, spacesRef])
+      commitArrange(result)
+    },
+    [commitArrange, nodesRef, reactFlow, spacesRef],
+  )
 
   const arrangeInSpace = useCallback(
-    (spaceId: string) => {
+    (spaceId: string, style?: WorkspaceArrangeStyle) => {
       const result = arrangeWorkspaceInSpace({
         spaceId,
         nodes: nodesRef.current,
         spaces: spacesRef.current,
+        style,
       })
 
       if (result.warnings.some(warning => warning.kind === 'space_no_room')) {

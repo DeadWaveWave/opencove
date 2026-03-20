@@ -1,12 +1,6 @@
 import { useCallback, useRef } from 'react'
-import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type {
-  ContextMenuState,
-  CreateNodeInput,
-  EmptySelectionPromptState,
-  SelectionDraftState,
-} from '../types'
+import { useStoreApi, type Node } from '@xyflow/react'
+import type { Point, TerminalNodeData } from '../../../types'
 import { DEFAULT_NOTE_WINDOW_SIZE, resolveDefaultTerminalWindowSize } from '../constants'
 import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
@@ -22,42 +16,8 @@ import {
   isPanePointerDragStartTarget,
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
-
-type SelectionDraftUiState = Pick<
-  SelectionDraftState,
-  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
->
-
-interface UseWorkspaceCanvasInteractionsParams {
-  isTrackpadCanvasMode: boolean
-  normalizeZoomOnNodeClick: boolean
-  defaultTerminalWindowScalePercent: number
-  isShiftPressedRef: React.MutableRefObject<boolean>
-  selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
-  setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  setNodes: SetNodes
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
-  cancelSpaceRename: () => void
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
-  contextMenu: ContextMenuState | null
-  workspacePath: string
-  defaultTerminalProfileId: string | null
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
-}
+import { resolveMouseClientPoint } from './useInteractions.clientPoint'
+import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
 
 export function useWorkspaceCanvasInteractions({
   isTrackpadCanvasMode,
@@ -189,29 +149,46 @@ export function useWorkspaceCanvasInteractions({
     [openSelectionContextMenu, selectedNodeIdsRef],
   )
 
+  const ignoreNextPaneClickRef = useRef(false)
+
+  const queueIgnoreNextPaneClick = useCallback(() => {
+    ignoreNextPaneClickRef.current = true
+    window.setTimeout(() => {
+      ignoreNextPaneClickRef.current = false
+    }, 0)
+  }, [])
+
   const handlePaneContextMenu = useCallback(
     (event: React.MouseEvent | MouseEvent) => {
       event.preventDefault()
-      if (!('clientX' in event)) {
+      const clientPoint = resolveMouseClientPoint(event)
+      if (!clientPoint) {
         return
       }
 
+      queueIgnoreNextPaneClick()
       const flowPosition = reactFlow.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
+        x: clientPoint.x,
+        y: clientPoint.y,
       })
 
       setContextMenu({
         kind: 'pane',
-        x: event.clientX,
-        y: event.clientY,
+        x: clientPoint.x,
+        y: clientPoint.y,
         flowX: flowPosition.x,
         flowY: flowPosition.y,
       })
       setEmptySelectionPrompt(null)
       cancelSpaceRename()
     },
-    [cancelSpaceRename, reactFlow, setContextMenu, setEmptySelectionPrompt],
+    [
+      cancelSpaceRename,
+      queueIgnoreNextPaneClick,
+      reactFlow,
+      setContextMenu,
+      setEmptySelectionPrompt,
+    ],
   )
 
   const handleSelectionChange = useCallback(
@@ -250,15 +227,6 @@ export function useWorkspaceCanvasInteractions({
   })
 
   const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)
-
-  const ignoreNextPaneClickRef = useRef(false)
-
-  const queueIgnoreNextPaneClick = useCallback(() => {
-    ignoreNextPaneClickRef.current = true
-    window.setTimeout(() => {
-      ignoreNextPaneClickRef.current = false
-    }, 0)
-  }, [])
 
   const handleCanvasPointerDownCaptureWithDragGuard = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -391,18 +359,21 @@ export function useWorkspaceCanvasInteractions({
     ],
   )
   const handlePaneClick = useCallback(
-    (_event: React.MouseEvent | MouseEvent) => {
+    (event: React.MouseEvent | MouseEvent) => {
+      if ('button' in event && event.button !== 0) {
+        return
+      }
+
       if (ignoreNextPaneClickRef.current) {
         ignoreNextPaneClickRef.current = false
         return
       }
 
       clearNodeSelection()
-      setContextMenu(null)
       setEmptySelectionPrompt(null)
       cancelSpaceRename()
     },
-    [cancelSpaceRename, clearNodeSelection, setContextMenu, setEmptySelectionPrompt],
+    [cancelSpaceRename, clearNodeSelection, setEmptySelectionPrompt],
   )
 
   const createTerminalNode = useCallback(async () => {

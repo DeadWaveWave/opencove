@@ -100,6 +100,85 @@ export function resolveFlowPacking({
   return placements
 }
 
+function rectsOverlap(left: Rect, right: Rect): boolean {
+  return !(
+    left.x + left.width <= right.x ||
+    left.x >= right.x + right.width ||
+    left.y + left.height <= right.y ||
+    left.y >= right.y + right.height
+  )
+}
+
+function sortPoints(points: Array<{ x: number; y: number }>): Array<{ x: number; y: number }> {
+  return [...points].sort((left, right) => {
+    if (left.y !== right.y) {
+      return left.y - right.y
+    }
+
+    return left.x - right.x
+  })
+}
+
+export function resolveDensePacking({
+  items,
+  start,
+  wrapWidth,
+}: {
+  items: FlowItem[]
+  start: { x: number; y: number }
+  wrapWidth: number
+}): Map<string, { x: number; y: number }> {
+  const placements = new Map<string, { x: number; y: number }>()
+  if (items.length === 0) {
+    return placements
+  }
+
+  const maxItemWidth = Math.max(...items.map(item => item.width))
+  const effectiveWrapWidth = Math.max(maxItemWidth, wrapWidth)
+  const maxX = start.x + effectiveWrapWidth
+
+  const placedRects: Rect[] = []
+  const candidatePoints: Array<{ x: number; y: number }> = [{ x: start.x, y: start.y }]
+
+  for (const item of items) {
+    let placed: { x: number; y: number } | null = null
+
+    for (const point of sortPoints(candidatePoints)) {
+      if (point.x + item.width > maxX) {
+        continue
+      }
+
+      const rect: Rect = { x: point.x, y: point.y, width: item.width, height: item.height }
+      if (placedRects.some(existing => rectsOverlap(rect, existing))) {
+        continue
+      }
+
+      placed = { x: point.x, y: point.y }
+      placedRects.push(rect)
+      placements.set(item.id, placed)
+      candidatePoints.push({ x: rect.x + rect.width, y: rect.y })
+      candidatePoints.push({ x: rect.x, y: rect.y + rect.height })
+      break
+    }
+
+    if (placed) {
+      continue
+    }
+
+    const maxBottom = placedRects.reduce(
+      (acc, rect) => Math.max(acc, rect.y + rect.height),
+      start.y,
+    )
+    const fallback: Rect = { x: start.x, y: maxBottom, width: item.width, height: item.height }
+    placedRects.push(fallback)
+    placements.set(item.id, { x: fallback.x, y: fallback.y })
+    candidatePoints.push({ x: fallback.x + fallback.width, y: fallback.y })
+    candidatePoints.push({ x: fallback.x, y: fallback.y + fallback.height })
+  }
+
+  return placements
+}
+
 export function resolveBoundedFlowPacking({
   items,
   bounds,

@@ -102,9 +102,12 @@ interface WorkspaceCanvasViewProps {
   closeContextMenu: () => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
-  arrangeAll: () => void
-  arrangeCanvas: () => void
-  arrangeInSpace: (spaceId: string) => void
+  arrangeAll: (style?: import('../../utils/workspaceArrange').WorkspaceArrangeStyle) => void
+  arrangeCanvas: (style?: import('../../utils/workspaceArrange').WorkspaceArrangeStyle) => void
+  arrangeInSpace: (
+    spaceId: string,
+    style?: import('../../utils/workspaceArrange').WorkspaceArrangeStyle,
+  ) => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
   createSpaceFromSelectedNodes: () => void
@@ -404,10 +407,12 @@ export function WorkspaceCanvasView({
         closeContextMenu={closeContextMenu}
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+        spaces={spaces}
         canArrangeAll={canArrangeAll}
         canArrangeCanvas={canArrangeCanvas}
         arrangeAll={arrangeAll}
         arrangeCanvas={arrangeCanvas}
+        arrangeInSpace={arrangeInSpace}
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}

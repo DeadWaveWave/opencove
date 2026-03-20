@@ -4,6 +4,7 @@
 @import './styles/workspace-sidebar.css';
 @import './styles/workspace-canvas.css';
 @import './styles/workspace-overlays.css';
+@import './styles/workspace-arrange-panel.css';
 @import './styles/terminal-node.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';

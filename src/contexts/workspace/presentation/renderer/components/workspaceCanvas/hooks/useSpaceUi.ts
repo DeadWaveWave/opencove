@@ -87,11 +87,10 @@ export function useWorkspaceCanvasSpaceUi({
   )
 
   const handleCanvasClick = useCallback(() => {
-    setContextMenu(null)
     setSpaceActionMenu(null)
     setEmptySelectionPrompt(null)
     cancelSpaceRename()
-  }, [cancelSpaceRename, setContextMenu, setEmptySelectionPrompt])
+  }, [cancelSpaceRename, setEmptySelectionPrompt])
 
   const closeContextMenu = useCallback(() => {
     setContextMenu(null)

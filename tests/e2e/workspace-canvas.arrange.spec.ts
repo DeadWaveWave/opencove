@@ -1,83 +1,23 @@
-import { expect, test } from '@playwright/test'
-import { mkdir } from 'node:fs/promises'
-import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import {
+  clearAndSeedWorkspace,
+  launchApp,
+  readCanvasViewport,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
+import { ensureArtifactsDir, readSeededWorkspaceLayout } from './workspace-canvas.arrange.shared'
 
-async function ensureArtifactsDir(): Promise<void> {
-  await mkdir('artifacts', { recursive: true })
-}
+async function openPaneContextMenu(
+  window: Page,
+  pane: Locator,
+  position: { x: number; y: number },
+): Promise<void> {
+  const box = await pane.boundingBox()
+  if (!box) {
+    throw new Error('Pane bounding box not available')
+  }
 
-async function readSeededWorkspaceLayout(
-  window: Awaited<ReturnType<typeof launchApp>>['window'],
-  options: { nodeIds: string[]; spaceIds: string[] },
-): Promise<{
-  nodes: Record<string, { x: number; y: number; width: number; height: number }>
-  spaces: Record<string, { x: number; y: number; width: number; height: number } | null>
-}> {
-  return await window.evaluate(async ({ nodeIds, spaceIds }) => {
-    const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-    if (!raw) {
-      return { nodes: {}, spaces: {} }
-    }
-
-    const parsed = JSON.parse(raw) as {
-      workspaces?: Array<{
-        nodes?: Array<{
-          id?: string
-          position?: { x?: number; y?: number }
-          width?: number
-          height?: number
-        }>
-        spaces?: Array<{
-          id?: string
-          rect?: { x?: number; y?: number; width?: number; height?: number } | null
-        }>
-      }>
-    }
-
-    const workspace = parsed.workspaces?.[0]
-    const nodes = workspace?.nodes ?? []
-    const spaces = workspace?.spaces ?? []
-
-    const nextNodes: Record<string, { x: number; y: number; width: number; height: number }> = {}
-    for (const nodeId of nodeIds) {
-      const node = nodes.find(candidate => candidate.id === nodeId)
-      if (!node || !node.position) {
-        continue
-      }
-
-      nextNodes[nodeId] = {
-        x: node.position.x ?? 0,
-        y: node.position.y ?? 0,
-        width: node.width ?? 0,
-        height: node.height ?? 0,
-      }
-    }
-
-    const nextSpaces: Record<
-      string,
-      { x: number; y: number; width: number; height: number } | null
-    > = {}
-    for (const spaceId of spaceIds) {
-      const space = spaces.find(candidate => candidate.id === spaceId)
-      if (!space) {
-        continue
-      }
-
-      if (!space.rect) {
-        nextSpaces[spaceId] = null
-        continue
-      }
-
-      nextSpaces[spaceId] = {
-        x: space.rect.x ?? 0,
-        y: space.rect.y ?? 0,
-        width: space.rect.width ?? 0,
-        height: space.rect.height ?? 0,
-      }
-    }
-
-    return { nodes: nextNodes, spaces: nextSpaces }
-  }, options)
+  await window.mouse.click(box.x + position.x, box.y + position.y, { button: 'right' })
 }
 
 test.describe('Workspace Canvas - Arrange', () => {
@@ -104,12 +44,15 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      await expect(window.locator('.react-flow__node')).toHaveCount(2)
 
-      await pane.click({
-        button: 'right',
-        position: { x: 80, y: 80 },
+      const viewport = await readCanvasViewport(window)
+      await openPaneContextMenu(window, pane, {
+        x: 50 * viewport.zoom + viewport.x,
+        y: 50 * viewport.zoom + viewport.y,
       })
 
+      await expect(window.locator('.workspace-context-menu')).toBeVisible()
       await expect(window.locator('[data-testid="workspace-context-arrange-all"]')).toBeVisible()
       await expect(window.locator('[data-testid="workspace-context-arrange-canvas"]')).toBeVisible()
       await expect(window.locator('[data-testid="workspace-context-arrange-all"]')).toBeEnabled()
@@ -195,6 +138,7 @@ test.describe('Workspace Canvas - Arrange', () => {
       )
 
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+      await expect(window.locator('.react-flow__node')).toHaveCount(4)
 
       await window.locator('[data-testid="workspace-space-menu-space-1"]').click()
       await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
@@ -218,7 +162,7 @@ test.describe('Workspace Canvas - Arrange', () => {
             'space-node-c': { x: 124, y: 528, width: 420, height: 300 },
           },
           spaces: {
-            'space-1': { x: 100, y: 200, width: 1200, height: 800 },
+            'space-1': { x: 100, y: 200, width: 832, height: 652 },
           },
         })
 
@@ -229,7 +173,7 @@ test.describe('Workspace Canvas - Arrange', () => {
     }
   })
 
-  test('shows a warning and no-ops when a space has no room for arranging', async () => {
+  test('shows arrange-in-space in the pane menu and warns when keep-fit has no room', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -265,9 +209,26 @@ test.describe('Workspace Canvas - Arrange', () => {
         },
       )
 
-      await window.locator('[data-testid="workspace-space-menu-space-small"]').click()
-      await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
-      await window.locator('[data-testid="workspace-space-action-arrange"]').click()
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+      await expect(window.locator('.react-flow__node')).toHaveCount(2)
+      await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+
+      const viewport = await readCanvasViewport(window)
+      await openPaneContextMenu(window, pane, {
+        x: 110 * viewport.zoom + viewport.x,
+        y: 110 * viewport.zoom + viewport.y,
+      })
+
+      await expect(window.locator('.workspace-context-menu')).toBeVisible()
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-in-space"]'),
+      ).toBeVisible()
+
+      await window.locator('[data-testid="workspace-context-arrange-panel-open"]').click()
+      await expect(window.locator('[data-testid="workspace-arrange-panel"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-arrange-panel-space-fit"]').selectOption('keep')
+      await window.locator('[data-testid="workspace-arrange-panel-apply"]').click()
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Not enough room to arrange this space. Resize the space and try again.',
@@ -365,13 +326,19 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      await expect(window.locator('.workspace-space-region')).toHaveCount(2)
 
-      await pane.click({
-        button: 'right',
-        position: { x: 40, y: 40 },
+      const viewport = await readCanvasViewport(window)
+      await openPaneContextMenu(window, pane, {
+        x: 50 * viewport.zoom + viewport.x,
+        y: 50 * viewport.zoom + viewport.y,
       })
 
-      await window.locator('[data-testid="workspace-context-arrange-all"]').click()
+      await expect(window.locator('.workspace-context-menu')).toBeVisible()
+      await window.locator('[data-testid="workspace-context-arrange-panel-open"]').click()
+      await expect(window.locator('[data-testid="workspace-arrange-panel"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-arrange-panel-space-fit"]').selectOption('keep')
+      await window.locator('[data-testid="workspace-arrange-panel-apply"]').click()
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Skipped 1 space: not enough room to arrange.',
@@ -400,6 +367,103 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       await ensureArtifactsDir()
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.all-after.png' })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('arrange panel can apply paper sizing + dense packing for tight tiling', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'tile-1',
+            title: 'tile-1',
+            position: { x: 0, y: 0 },
+            width: 470,
+            height: 650,
+          },
+          {
+            id: 'tile-2',
+            title: 'tile-2',
+            position: { x: 0, y: 0 },
+            width: 468,
+            height: 660,
+          },
+          {
+            id: 'tile-3',
+            title: 'tile-3',
+            position: { x: 0, y: 0 },
+            width: 455,
+            height: 645,
+          },
+          {
+            id: 'tile-4',
+            title: 'tile-4',
+            position: { x: 0, y: 0 },
+            width: 480,
+            height: 670,
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-tiles',
+              name: 'Tiles',
+              directoryPath: testWorkspacePath,
+              nodeIds: ['tile-1', 'tile-2', 'tile-3', 'tile-4'],
+              rect: { x: 100, y: 100, width: 1024, height: 800 },
+            },
+          ],
+          activeSpaceId: null,
+        },
+      )
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+      await expect(window.locator('.react-flow__node')).toHaveCount(4)
+      await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+
+      const viewport = await readCanvasViewport(window)
+      await openPaneContextMenu(window, pane, {
+        x: 700 * viewport.zoom + viewport.x,
+        y: 200 * viewport.zoom + viewport.y,
+      })
+
+      await expect(window.locator('.workspace-context-menu')).toBeVisible()
+      await window.locator('[data-testid="workspace-context-arrange-panel-open"]').click()
+      await expect(window.locator('[data-testid="workspace-arrange-panel"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-arrange-panel-scope-space"]').click()
+      await window.locator('[data-testid="workspace-arrange-panel-paper-a4"]').check()
+      await window.locator('[data-testid="workspace-arrange-panel-dense"]').check()
+      await window.locator('[data-testid="workspace-arrange-panel-apply"]').click()
+
+      await expect
+        .poll(async () => {
+          return await readSeededWorkspaceLayout(window, {
+            nodeIds: ['tile-1', 'tile-2', 'tile-3', 'tile-4'],
+            spaceIds: ['space-tiles'],
+          })
+        })
+        .toEqual({
+          nodes: {
+            'tile-1': { x: 124, y: 124, width: 464, height: 656 },
+            'tile-2': { x: 588, y: 124, width: 464, height: 656 },
+            'tile-3': { x: 124, y: 780, width: 464, height: 656 },
+            'tile-4': { x: 588, y: 780, width: 464, height: 656 },
+          },
+          spaces: {
+            'space-tiles': { x: 100, y: 100, width: 976, height: 1360 },
+          },
+        })
+
+      await ensureArtifactsDir()
+      await window.screenshot({
+        path: 'artifacts/workspace-canvas-arrange.paper-dense-tiles.png',
+      })
     } finally {
       await electronApp.close()
     }
