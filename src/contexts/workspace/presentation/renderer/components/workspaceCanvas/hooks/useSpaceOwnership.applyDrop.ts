@@ -84,14 +84,14 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         .filter((node): node is Node<TerminalNodeData> => Boolean(node))
 
       const draggedDropRect = computeBoundingRect(draggedNodesForTarget)
-      const targetSpace = resolveSpaceAtPoint(
-        draggedDropRect
+      const dropTargetPoint =
+        draggedDropRect && nodeIds.length > 1
           ? {
               x: draggedDropRect.x + draggedDropRect.width / 2,
               y: draggedDropRect.y + draggedDropRect.height / 2,
             }
-          : dropFlowPoint,
-      )
+          : dropFlowPoint
+      const targetSpace = resolveSpaceAtPoint(dropTargetPoint)
       const targetSpaceId = targetSpace?.id ?? null
       const nodeIdSet = new Set(nodeIds)
 

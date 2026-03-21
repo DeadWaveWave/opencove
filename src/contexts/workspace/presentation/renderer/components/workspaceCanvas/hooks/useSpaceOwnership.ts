@@ -143,15 +143,18 @@ export function useWorkspaceCanvasSpaceOwnership({
       draggedNodePositionById,
       dragStartNodePositionById,
       dropFlowPoint,
+      fallbackNodes,
     }: {
       draggedNodeIds: string[]
       draggedNodePositionById: Map<string, { x: number; y: number }>
       dragStartNodePositionById: Map<string, { x: number; y: number }>
       dropFlowPoint: { x: number; y: number }
+      fallbackNodes: Array<Node<TerminalNodeData>>
     }): boolean => {
+      const fallbackNodeById = new Map(fallbackNodes.map(node => [node.id, node]))
       const draggedNodesForTarget = draggedNodeIds
         .map(nodeId => {
-          const node = reactFlow.getNode(nodeId)
+          const node = reactFlow.getNode(nodeId) ?? fallbackNodeById.get(nodeId)
           if (!node) {
             return null
           }
@@ -173,45 +176,43 @@ export function useWorkspaceCanvasSpaceOwnership({
         .filter((node): node is Node<TerminalNodeData> => Boolean(node))
 
       const draggedDropRect = computeBoundingRect(draggedNodesForTarget)
-      const targetSpace = resolveDropTargetSpaceAtPoint(
-        draggedDropRect
+      const dropTargetPoint =
+        draggedDropRect && draggedNodeIds.length > 1
           ? {
               x: draggedDropRect.x + draggedDropRect.width / 2,
               y: draggedDropRect.y + draggedDropRect.height / 2,
             }
-          : dropFlowPoint,
-      )
-
-      if (!targetSpace) {
-        return false
-      }
-
+          : dropFlowPoint
+      const targetSpace = resolveDropTargetSpaceAtPoint(dropTargetPoint)
+      const targetSpaceId = targetSpace?.id ?? null
       const targetDirectory =
-        targetSpace.directoryPath.trim().length > 0 ? targetSpace.directoryPath : workspacePath
-      const isWorktreeSpace =
-        normalizeComparablePath(targetDirectory) !== normalizeComparablePath(workspacePath)
+        targetSpace && targetSpace.directoryPath.trim().length > 0
+          ? targetSpace.directoryPath
+          : workspacePath
 
-      if (!isWorktreeSpace || hideWorktreeMismatchDropWarning) {
+      if (hideWorktreeMismatchDropWarning) {
         return false
       }
 
-      const incomingNodeIds = draggedNodeIds.filter(nodeId => !targetSpace.nodeIds.includes(nodeId))
-      if (incomingNodeIds.length === 0) {
-        return false
-      }
-
+      const normalizedTargetDirectory = normalizeComparablePath(targetDirectory)
+      const movedNodeIds: string[] = []
       let agentCount = 0
       let terminalCount = 0
 
-      for (const nodeId of incomingNodeIds) {
-        const node = reactFlow.getNode(nodeId)
+      for (const nodeId of draggedNodeIds) {
+        const node = reactFlow.getNode(nodeId) ?? fallbackNodeById.get(nodeId)
         if (!node) {
           continue
         }
 
         if (node.data.kind === 'agent' && node.data.agent) {
           const executionDirectory = node.data.agent.executionDirectory.trim() || workspacePath
-          if (executionDirectory !== targetDirectory) {
+          const expectedDirectory = node.data.agent.expectedDirectory?.trim() || executionDirectory
+          if (
+            normalizeComparablePath(expectedDirectory) !== normalizedTargetDirectory &&
+            normalizeComparablePath(executionDirectory) !== normalizedTargetDirectory
+          ) {
+            movedNodeIds.push(nodeId)
             agentCount += 1
           }
           continue
@@ -222,13 +223,21 @@ export function useWorkspaceCanvasSpaceOwnership({
             typeof node.data.executionDirectory === 'string' && node.data.executionDirectory.trim()
               ? node.data.executionDirectory.trim()
               : workspacePath
-          if (executionDirectory !== targetDirectory) {
+          const expectedDirectory =
+            typeof node.data.expectedDirectory === 'string' && node.data.expectedDirectory.trim()
+              ? node.data.expectedDirectory.trim()
+              : executionDirectory
+          if (
+            normalizeComparablePath(expectedDirectory) !== normalizedTargetDirectory &&
+            normalizeComparablePath(executionDirectory) !== normalizedTargetDirectory
+          ) {
+            movedNodeIds.push(nodeId)
             terminalCount += 1
           }
         }
       }
 
-      if (agentCount + terminalCount === 0) {
+      if (movedNodeIds.length === 0 || agentCount + terminalCount === 0) {
         return false
       }
 
@@ -240,8 +249,8 @@ export function useWorkspaceCanvasSpaceOwnership({
       }
 
       setSpaceWorktreeMismatchDropWarning({
-        spaceId: targetSpace.id,
-        spaceName: targetSpace.name,
+        spaceId: targetSpace?.id ?? '__workspace-root__',
+        spaceName: targetSpace?.name ?? t('worktree.workspaceRoot'),
         agentCount,
         terminalCount,
       })
@@ -286,6 +295,8 @@ export function useWorkspaceCanvasSpaceOwnership({
       reactFlow,
       resolveDropTargetSpaceAtPoint,
       setNodes,
+      spacesRef,
+      t,
       workspacePath,
     ],
   )
@@ -323,6 +334,7 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodePositionById,
         dragStartNodePositionById,
         dropFlowPoint: dropPoint,
+        fallbackNodes,
       })
 
       if (!shouldWarn) {
@@ -376,6 +388,7 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodePositionById,
         dragStartNodePositionById,
         dropFlowPoint: dropPoint,
+        fallbackNodes,
       })
 
       if (!shouldWarn) {
