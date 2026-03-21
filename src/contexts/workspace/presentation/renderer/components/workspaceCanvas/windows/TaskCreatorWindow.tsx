@@ -31,14 +31,13 @@ export function TaskCreatorWindow({
   const { t } = useTranslation()
   const [isAdvancedSettingsVisible, setIsAdvancedSettingsVisible] = useState(false)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
+  const isTaskCreatorOpen = taskCreator !== null
 
   useLayoutEffect(() => {
-    if (!taskCreator) {
-      return
+    if (isTaskCreatorOpen) {
+      setIsAdvancedSettingsVisible(false)
     }
-
-    setIsAdvancedSettingsVisible(false)
-  }, [taskCreator])
+  }, [isTaskCreatorOpen])
 
   if (!taskCreator) {
     return null

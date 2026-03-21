@@ -10,6 +10,7 @@
   --cove-app-background: radial-gradient(circle at 20% 20%, #101c35 0%, #060a14 55%, #04070f 100%);
   --cove-surface: rgba(10, 10, 10, 0.7);
   --cove-surface-strong: rgba(18, 18, 18, 0.85);
+  --cove-window-surface: rgb(18, 18, 18);
   --cove-surface-hover: rgba(255, 255, 255, 0.08);
   --cove-field: rgba(255, 255, 255, 0.04);
   --cove-border: rgba(255, 255, 255, 0.12);
@@ -79,6 +80,7 @@
   --cove-app-background: radial-gradient(circle at 20% 20%, #f4f8ff 0%, #edf2fb 55%, #e7edf8 100%);
   --cove-surface: rgba(255, 255, 255, 0.72);
   --cove-surface-strong: rgba(255, 255, 255, 0.92);
+  --cove-window-surface: rgb(255, 255, 255);
   --cove-surface-hover: rgba(17, 24, 39, 0.04);
   --cove-field: rgba(17, 24, 39, 0.035);
   --cove-border: rgba(17, 24, 39, 0.14);

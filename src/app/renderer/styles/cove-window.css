@@ -14,8 +14,7 @@
   width: min(680px, calc(100vw - 48px));
   border: 1px solid var(--cove-border-subtle);
   border-radius: 16px;
-  background: var(--cove-surface);
-  backdrop-filter: blur(20px) saturate(130%);
+  background: var(--cove-window-surface);
   box-shadow: 0 24px 56px var(--cove-shadow-color-elevated);
   padding: 18px;
   display: flex;
