@@ -51,6 +51,7 @@ interface UseWorkspaceCanvasLifecycleParams {
   requestNodeDeleteRef: React.MutableRefObject<(nodeIds: string[]) => void>
   focusNodeId?: string | null
   focusSequence?: number
+  focusNodeTargetZoom: number
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
 }
 
@@ -78,6 +79,7 @@ export function useWorkspaceCanvasLifecycle({
   requestNodeDeleteRef,
   focusNodeId,
   focusSequence,
+  focusNodeTargetZoom,
   nodesRef,
 }: UseWorkspaceCanvasLifecycleParams): void {
   useEffect(() => {
@@ -197,6 +199,6 @@ export function useWorkspaceCanvasLifecycle({
       return
     }
 
-    focusNodeInViewport(reactFlow, target, { duration: 220, zoom: 1 })
-  }, [focusNodeId, focusSequence, nodesRef, reactFlow])
+    focusNodeInViewport(reactFlow, target, { duration: 220, zoom: focusNodeTargetZoom })
+  }, [focusNodeId, focusNodeTargetZoom, focusSequence, nodesRef, reactFlow])
 }

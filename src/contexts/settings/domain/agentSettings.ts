@@ -27,6 +27,10 @@ export const UI_THEMES = ['system', 'light', 'dark'] as const
 
 export type UiTheme = (typeof UI_THEMES)[number]
 
+export const FOCUS_NODE_TARGET_ZOOM_PRESETS = [0.8, 1, 1.25, 1.5] as const
+
+export type FocusNodeTargetZoom = (typeof FOCUS_NODE_TARGET_ZOOM_PRESETS)[number]
+
 export type TerminalProfileId = string | null
 
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
@@ -113,7 +117,8 @@ export interface AgentSettings {
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
-  normalizeZoomOnTerminalClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: FocusNodeTargetZoom
   canvasInputMode: CanvasInputMode
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
@@ -150,7 +155,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTitleProvider: 'default',
   taskTitleModel: '',
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
-  normalizeZoomOnTerminalClick: true,
+  focusNodeOnClick: true,
+  focusNodeTargetZoom: 1,
   canvasInputMode: 'auto',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
@@ -193,6 +199,14 @@ function isValidUiLanguage(value: unknown): value is UiLanguage {
 
 function isValidUiTheme(value: unknown): value is UiTheme {
   return typeof value === 'string' && UI_THEMES.includes(value as UiTheme)
+}
+
+function isValidFocusNodeTargetZoom(value: unknown): value is FocusNodeTargetZoom {
+  return (
+    typeof value === 'number' &&
+    Number.isFinite(value) &&
+    FOCUS_NODE_TARGET_ZOOM_PRESETS.includes(value as FocusNodeTargetZoom)
+  )
 }
 
 function normalizeTextValue(value: unknown): string {
@@ -418,9 +432,13 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.taskTagOptions,
     DEFAULT_AGENT_SETTINGS.taskTagOptions,
   )
-  const normalizeZoomOnTerminalClick =
+  const focusNodeOnClick =
+    normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
-    DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick
+    DEFAULT_AGENT_SETTINGS.focusNodeOnClick
+  const focusNodeTargetZoom = isValidFocusNodeTargetZoom(value.focusNodeTargetZoom)
+    ? value.focusNodeTargetZoom
+    : DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
@@ -470,7 +488,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTitleProvider,
     taskTitleModel,
     taskTagOptions,
-    normalizeZoomOnTerminalClick,
+    focusNodeOnClick,
+    focusNodeTargetZoom,
     canvasInputMode,
     defaultTerminalWindowScalePercent,
     terminalFontSize,

@@ -8,6 +8,7 @@ import {
   type AgentProvider,
   type AgentSettings,
   type CanvasInputMode,
+  type FocusNodeTargetZoom,
   type TaskTitleProvider,
   type UiLanguage,
   type UiTheme,
@@ -96,8 +97,10 @@ export function SettingsPanel({
     onChange({ ...settings, taskTitleProvider: provider })
   const updateTaskTitleModel = (model: string): void =>
     onChange({ ...settings, taskTitleModel: model })
-  const updateNormalizeZoomOnTerminalClick = (enabled: boolean): void =>
-    onChange({ ...settings, normalizeZoomOnTerminalClick: enabled })
+  const updateFocusNodeOnClick = (enabled: boolean): void =>
+    onChange({ ...settings, focusNodeOnClick: enabled })
+  const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
+    onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
   const updateDefaultTerminalWindowScalePercent = (percent: number): void =>
@@ -345,14 +348,16 @@ export function SettingsPanel({
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}
-                normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
+                focusNodeOnClick={settings.focusNodeOnClick}
+                focusNodeTargetZoom={settings.focusNodeTargetZoom}
                 defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
                 onChangeCanvasInputMode={updateCanvasInputMode}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
-                onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
+                onChangeFocusNodeOnClick={updateFocusNodeOnClick}
+                onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
                 onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
               />
             ) : null}

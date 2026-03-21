@@ -127,7 +127,8 @@ describe('workspace persistence (read/normalize)', () => {
       taskTitleProvider: 'codex',
       taskTitleModel: 'gpt-5.2-codex',
       taskTagOptions: ['feature', 'bug'],
-      normalizeZoomOnTerminalClick: false,
+      focusNodeOnClick: false,
+      focusNodeTargetZoom: 1.25,
       canvasInputMode: 'trackpad',
     })
 
@@ -161,7 +162,8 @@ describe('workspace persistence (read/normalize)', () => {
     expect(restored?.settings.taskTitleProvider).toBe('codex')
     expect(restored?.settings.taskTitleModel).toBe('gpt-5.2-codex')
     expect(restored?.settings.taskTagOptions).toEqual(['feature', 'bug'])
-    expect(restored?.settings.normalizeZoomOnTerminalClick).toBe(false)
+    expect(restored?.settings.focusNodeOnClick).toBe(false)
+    expect(restored?.settings.focusNodeTargetZoom).toBe(1.25)
     expect(restored?.settings.canvasInputMode).toBe('trackpad')
   })
 
@@ -237,7 +239,8 @@ describe('workspace persistence (read/normalize)', () => {
       'docs',
       'test',
     ])
-    expect(restored?.settings.normalizeZoomOnTerminalClick).toBe(true)
+    expect(restored?.settings.focusNodeOnClick).toBe(true)
+    expect(restored?.settings.focusNodeTargetZoom).toBe(1)
     expect(restored?.settings.canvasInputMode).toBe('auto')
   })
 

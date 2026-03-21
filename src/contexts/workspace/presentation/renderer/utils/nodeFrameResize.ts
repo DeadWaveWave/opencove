@@ -133,7 +133,11 @@ export function useNodeFrameResize({
   const zoom = useStore(storeState => {
     const transform = (storeState as { transform?: [number, number, number] }).transform
     const currentZoom = transform?.[2]
-    return Number.isFinite(currentZoom) && currentZoom > 0 ? currentZoom : 1
+    if (typeof currentZoom !== 'number' || !Number.isFinite(currentZoom) || currentZoom <= 0) {
+      return 1
+    }
+
+    return currentZoom
   })
 
   useEffect(() => {

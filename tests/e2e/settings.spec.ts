@@ -73,11 +73,13 @@ test.describe('Settings', () => {
       await expect(canvasInputMode).toBeVisible()
       await canvasInputMode.selectOption('trackpad')
 
-      const normalizeZoomToggle = window.locator(
-        '[data-testid="settings-normalize-zoom-on-terminal-click"]',
-      )
-      await expect(normalizeZoomToggle).toBeVisible()
-      await normalizeZoomToggle.uncheck()
+      const focusTargetZoom = window.locator('[data-testid="settings-focus-node-target-zoom"]')
+      await expect(focusTargetZoom).toBeVisible()
+      await focusTargetZoom.selectOption('1.25')
+
+      const focusToggle = window.locator('[data-testid="settings-focus-node-on-click"]')
+      await expect(focusToggle).toBeVisible()
+      await focusToggle.uncheck()
 
       await agentNav.click()
       const defaultProvider = window.locator('#settings-default-provider')
@@ -177,7 +179,8 @@ test.describe('Settings', () => {
                   codex?: string[]
                 }
                 taskTagOptions?: string[]
-                normalizeZoomOnTerminalClick?: boolean
+                focusNodeOnClick?: boolean
+                focusNodeTargetZoom?: number
                 canvasInputMode?: string
                 uiTheme?: string
                 terminalFontSize?: number
@@ -194,7 +197,8 @@ test.describe('Settings', () => {
         expect.objectContaining({
           language: 'zh-CN',
           defaultProvider: 'codex',
-          normalizeZoomOnTerminalClick: false,
+          focusNodeOnClick: false,
+          focusNodeTargetZoom: 1.25,
           canvasInputMode: 'trackpad',
           uiTheme: 'light',
           terminalFontSize: 15,
@@ -229,7 +233,8 @@ test.describe('Settings', () => {
       expect(persistedSettings?.customModelOptionsByProvider?.codex).toContain('gpt-5.2-codex')
       expect(persistedSettings?.taskTagOptions).toContain('ops')
       expect(persistedSettings?.taskTagOptions).not.toContain('feature')
-      expect(persistedSettings?.normalizeZoomOnTerminalClick).toBe(false)
+      expect(persistedSettings?.focusNodeOnClick).toBe(false)
+      expect(persistedSettings?.focusNodeTargetZoom).toBe(1.25)
       expect(persistedSettings?.canvasInputMode).toBe('trackpad')
       expect(persistedSettings?.terminalFontSize).toBe(15)
       expect(persistedSettings?.uiFontSize).toBe(20)

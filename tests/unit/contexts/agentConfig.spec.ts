@@ -14,7 +14,8 @@ describe('agent settings normalization', () => {
     expect(normalizeAgentSettings('invalid')).toEqual(DEFAULT_AGENT_SETTINGS)
     expect(DEFAULT_AGENT_SETTINGS.language).toBe('en')
     expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('system')
-    expect(DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.focusNodeOnClick).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom).toBe(1)
     expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
@@ -49,7 +50,8 @@ describe('agent settings normalization', () => {
       taskTitleProvider: 'claude-code',
       taskTitleModel: 'claude-opus-4-6',
       taskTagOptions: ['feature', 'bug', 'feature', ''],
-      normalizeZoomOnTerminalClick: false,
+      focusNodeOnClick: false,
+      focusNodeTargetZoom: 1.25,
       canvasInputMode: 'trackpad',
       defaultTerminalWindowScalePercent: 95,
       terminalFontSize: 15,
@@ -71,7 +73,8 @@ describe('agent settings normalization', () => {
     expect(result.taskTitleProvider).toBe('claude-code')
     expect(result.taskTitleModel).toBe('claude-opus-4-6')
     expect(result.taskTagOptions).toEqual(['feature', 'bug'])
-    expect(result.normalizeZoomOnTerminalClick).toBe(false)
+    expect(result.focusNodeOnClick).toBe(false)
+    expect(result.focusNodeTargetZoom).toBe(1.25)
     expect(result.canvasInputMode).toBe('trackpad')
     expect(result.defaultTerminalWindowScalePercent).toBe(95)
     expect(result.terminalFontSize).toBe(15)
@@ -109,7 +112,8 @@ describe('agent settings normalization', () => {
     expect(result.taskTitleProvider).toBe('default')
     expect(result.taskTitleModel).toBe('')
     expect(result.taskTagOptions).toEqual(['ops'])
-    expect(result.normalizeZoomOnTerminalClick).toBe(true)
+    expect(result.focusNodeOnClick).toBe(true)
+    expect(result.focusNodeTargetZoom).toBe(1)
     expect(result.canvasInputMode).toBe('auto')
     expect(result.defaultTerminalWindowScalePercent).toBe(80)
     expect(result.terminalFontSize).toBe(13)
@@ -196,6 +200,22 @@ describe('agent settings normalization', () => {
     })
 
     expect(result.uiFontSize).toBe(20)
+  })
+
+  it('migrates legacy normalizeZoomOnTerminalClick to focusNodeOnClick', () => {
+    const result = normalizeAgentSettings({
+      normalizeZoomOnTerminalClick: false,
+    })
+
+    expect(result.focusNodeOnClick).toBe(false)
+  })
+
+  it('falls back to default focus zoom when target zoom is invalid', () => {
+    const result = normalizeAgentSettings({
+      focusNodeTargetZoom: 2,
+    })
+
+    expect(result.focusNodeTargetZoom).toBe(1)
   })
 
   it('falls back to codex for task titles when default provider cannot name tasks', () => {
