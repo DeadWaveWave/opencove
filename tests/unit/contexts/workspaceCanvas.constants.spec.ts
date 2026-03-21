@@ -25,7 +25,7 @@ describe('workspace canvas default sizing', () => {
     })
 
     expect(resolveDefaultNoteWindowSize({ width: 1920, height: 1080 })).toEqual({
-      width: 160,
+      width: 320,
       height: 210,
     })
   })

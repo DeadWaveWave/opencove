@@ -13,21 +13,21 @@ const KIND_UNITS: Record<TerminalNodeData['kind'], { col: number; row: number }>
   terminal: { col: 4, row: 4 },
   task: { col: 2, row: 4 },
   agent: { col: 4, row: 8 },
-  note: { col: 1, row: 2 },
+  note: { col: 2, row: 2 },
 }
 
 const MIN_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
   terminal: { width: 400, height: 260 },
   task: { width: 220, height: 260 },
   agent: { width: 400, height: 520 },
-  note: { width: 120, height: 140 },
+  note: { width: 220, height: 140 },
 }
 
 const MAX_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
   terminal: { width: 720, height: 520 },
   task: { width: 360, height: 520 },
   agent: { width: 720, height: 1040 },
-  note: { width: 180, height: 240 },
+  note: { width: 360, height: 260 },
 }
 
 function clampSize(size: Size, min: Size, max: Size): Size {

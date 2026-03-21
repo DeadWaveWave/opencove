@@ -59,9 +59,9 @@ test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
         })
         .toMatchObject({
           text: 'hello note',
-          x: clickPosition.x - 70,
+          x: clickPosition.x - 140,
           y: clickPosition.y - 92,
-          width: 140,
+          width: 280,
           height: 184,
         })
     } finally {

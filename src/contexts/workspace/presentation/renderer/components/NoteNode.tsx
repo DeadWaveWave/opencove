@@ -5,6 +5,7 @@ import type { NodeFrame, Point } from '../types'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
+import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -39,10 +40,7 @@ export function NoteNode({
     position,
     width,
     height,
-    minSize: {
-      width: 120,
-      height: 140,
-    },
+    minSize: resolveCanonicalNodeMinSize('note'),
     onResize,
   })
 
