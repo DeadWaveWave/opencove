@@ -30,6 +30,9 @@ import type {
   ResolveGitHubPullRequestsResult,
   AppUpdateState,
   ConfigureAppUpdatesInput,
+  GetReleaseNotesAutoRangeInput,
+  GetReleaseNotesRangeInput,
+  ReleaseNotesRangeResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -65,6 +68,7 @@ type UnsubscribeFn = () => void
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
+    allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     platform: process.platform,
   },
   clipboard: {
@@ -142,6 +146,12 @@ const opencoveApi = {
         ipcRenderer.removeListener(IPC_CHANNELS.appUpdateState, handler)
       }
     },
+  },
+  releaseNotes: {
+    getRange: (payload: GetReleaseNotesRangeInput): Promise<ReleaseNotesRangeResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetRange, payload),
+    getAutoRange: (payload: GetReleaseNotesAutoRangeInput): Promise<ReleaseNotesRangeResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetAutoRange, payload),
   },
   pty: {
     listProfiles: (): Promise<ListTerminalProfilesResult> =>

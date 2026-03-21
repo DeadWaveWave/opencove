@@ -69,6 +69,21 @@ export const zhCN = {
     restartToUpdateShort: '重启更新',
     restartToUpdateTitle: '版本 {{version}} 已准备好安装',
   },
+  whatsNew: {
+    title: '更新内容',
+    subtitleRange: '从 {{fromVersion}} 更新到 {{toVersion}}。',
+    loading: '正在加载更新内容…',
+    empty: '这次更新没有可显示的变更内容。',
+    viewCompare: '在 GitHub 查看完整对比',
+    truncated: '仅显示前 {{count}} 条变更。',
+    sections: {
+      added: '新增',
+      fixed: '修复',
+      changed: '改进',
+      docs: '文档',
+      other: '其他',
+    },
+  },
   commandCenter: {
     title: '命令中心',
     placeholder: '搜索项目、空间、命令…',

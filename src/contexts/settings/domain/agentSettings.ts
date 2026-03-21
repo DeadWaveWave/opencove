@@ -6,36 +6,26 @@ import {
 } from './updateSettings'
 
 export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
-
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
-
 export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
-
 export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
-
 export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
-
 export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
-
 export type WorktreeNameSuggestionAgentProvider =
   (typeof WORKTREE_NAME_SUGGESTION_PROVIDERS)[number]
 
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
-
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
 
 export const UI_LANGUAGES = ['en', 'zh-CN'] as const
-
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
 export const UI_THEMES = ['system', 'light', 'dark'] as const
-
 export type UiTheme = (typeof UI_THEMES)[number]
 
 export type TerminalProfileId = string | null
-
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
 export const MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 120
 export const MIN_TERMINAL_FONT_SIZE = 10
@@ -128,6 +118,7 @@ export interface AgentSettings {
   githubPullRequestsEnabled: boolean
   updatePolicy: AppUpdatePolicy
   updateChannel: AppUpdateChannel
+  releaseNotesSeenVersion: string | null
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -167,6 +158,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   githubPullRequestsEnabled: true,
   updatePolicy: 'prompt',
   updateChannel: 'stable',
+  releaseNotesSeenVersion: null,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -470,6 +462,11 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ? normalizeUpdatePolicyForChannel(value.updatePolicy, updateChannel)
     : DEFAULT_AGENT_SETTINGS.updatePolicy
   updatePolicy = normalizeUpdatePolicyForChannel(updatePolicy, updateChannel)
+  const releaseNotesSeenVersion =
+    typeof value.releaseNotesSeenVersion === 'string' &&
+    value.releaseNotesSeenVersion.trim().length > 0
+      ? value.releaseNotesSeenVersion.trim()
+      : DEFAULT_AGENT_SETTINGS.releaseNotesSeenVersion
 
   return {
     language,
@@ -496,5 +493,6 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     githubPullRequestsEnabled,
     updatePolicy,
     updateChannel,
+    releaseNotesSeenVersion,
   }
 }

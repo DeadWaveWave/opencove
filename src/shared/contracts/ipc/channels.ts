@@ -18,6 +18,8 @@ export const IPC_CHANNELS = {
   appUpdateDownload: 'app-update:download',
   appUpdateInstall: 'app-update:install',
   appUpdateState: 'app-update:state',
+  releaseNotesGetRange: 'release-notes:get-range',
+  releaseNotesGetAutoRange: 'release-notes:get-auto-range',
   worktreeListBranches: 'worktree:list-branches',
   worktreeListWorktrees: 'worktree:list-worktrees',
   worktreeStatusSummary: 'worktree:list-status-summary',

@@ -67,6 +67,21 @@ export const en = {
     restartToUpdateShort: 'Restart',
     restartToUpdateTitle: 'Version {{version}} is ready to install',
   },
+  whatsNew: {
+    title: "What's New",
+    subtitleRange: 'Updated from {{fromVersion}} to {{toVersion}}.',
+    loading: 'Loading release notes…',
+    empty: 'No release notes found for this update.',
+    viewCompare: 'View full compare on GitHub',
+    truncated: 'Showing the first {{count}} changes.',
+    sections: {
+      added: 'Added',
+      fixed: 'Fixed',
+      changed: 'Changed',
+      docs: 'Docs',
+      other: 'Other',
+    },
+  },
   commandCenter: {
     title: 'Command Center',
     placeholder: 'Search projects, spaces, commands…',

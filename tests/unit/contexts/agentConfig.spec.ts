@@ -21,6 +21,7 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.uiFontSize).toBe(18)
     expect(DEFAULT_AGENT_SETTINGS.updatePolicy).toBe('prompt')
     expect(DEFAULT_AGENT_SETTINGS.updateChannel).toBe('stable')
+    expect(DEFAULT_AGENT_SETTINGS.releaseNotesSeenVersion).toBeNull()
   })
 
   it('normalizes the agent provider order and keeps all providers', () => {

@@ -28,6 +28,9 @@ import type {
   ResolveGitHubPullRequestsResult,
   AppUpdateState,
   ConfigureAppUpdatesInput,
+  GetReleaseNotesAutoRangeInput,
+  GetReleaseNotesRangeInput,
+  ReleaseNotesRangeResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -61,6 +64,7 @@ type UnsubscribeFn = () => void
 export interface OpenCoveApi {
   meta: {
     isTest: boolean
+    allowWhatsNewInTests: boolean
     platform: string
   }
   clipboard: {
@@ -106,6 +110,10 @@ export interface OpenCoveApi {
     downloadUpdate: () => Promise<AppUpdateState>
     installUpdate: () => Promise<void>
     onState: (listener: (state: AppUpdateState) => void) => UnsubscribeFn
+  }
+  releaseNotes: {
+    getRange: (payload: GetReleaseNotesRangeInput) => Promise<ReleaseNotesRangeResult>
+    getAutoRange: (payload: GetReleaseNotesAutoRangeInput) => Promise<ReleaseNotesRangeResult>
   }
   pty: {
     listProfiles?: () => Promise<ListTerminalProfilesResult>
