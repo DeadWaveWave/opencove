@@ -5,7 +5,7 @@ import type { ContextMenuState, CreateNodeInput } from '../types'
 import { resolveDefaultTerminalWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import {
-  assignNodeToSpaceAndExpandIfInside,
+  assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 
@@ -84,7 +84,7 @@ export function useWorkspaceCanvasTerminalCreation({
       return
     }
 
-    assignNodeToSpaceAndExpandIfInside({
+    assignNodeToSpaceAndExpand({
       createdNodeId: created.id,
       targetSpaceId: targetSpace.id,
       spacesRef,

@@ -8,7 +8,7 @@ import { resolveDefaultAgentWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import {
-  assignNodeToSpaceAndExpandIfInside,
+  assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 
@@ -124,7 +124,7 @@ export function useWorkspaceCanvasAgentLauncher({
             return
           }
 
-          const assigned = assignNodeToSpaceAndExpandIfInside({
+          assignNodeToSpaceAndExpand({
             createdNodeId: created.id,
             targetSpaceId: anchorSpace.id,
             spacesRef,
@@ -133,9 +133,7 @@ export function useWorkspaceCanvasAgentLauncher({
             onSpacesChange,
           })
 
-          if (assigned) {
-            onRequestPersistFlush?.()
-          }
+          onRequestPersistFlush?.()
         } catch (error) {
           onShowMessage?.(
             t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),

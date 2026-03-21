@@ -12,7 +12,7 @@ import {
 import type { ContextMenuState, TaskCreatorState } from '../types'
 import type { NodePlacementOptions } from '../types'
 import {
-  assignNodeToSpaceAndExpandIfInside,
+  assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 
@@ -249,7 +249,7 @@ export function useWorkspaceCanvasTaskCreator({
         return
       }
       if (targetSpace) {
-        assignNodeToSpaceAndExpandIfInside({
+        assignNodeToSpaceAndExpand({
           createdNodeId: created.id,
           targetSpaceId: targetSpace.id,
           spacesRef,

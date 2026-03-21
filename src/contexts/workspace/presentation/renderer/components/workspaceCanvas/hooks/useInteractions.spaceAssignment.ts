@@ -11,25 +11,6 @@ interface SetNodes {
   ): void
 }
 
-function isNodeFullyInsideSpace(node: Node<TerminalNodeData>, space: WorkspaceSpaceState): boolean {
-  const rect = space.rect
-  if (!rect) {
-    return false
-  }
-
-  const left = node.position.x
-  const top = node.position.y
-  const right = left + node.data.width
-  const bottom = top + node.data.height
-
-  return (
-    left >= rect.x &&
-    top >= rect.y &&
-    right <= rect.x + rect.width &&
-    bottom <= rect.y + rect.height
-  )
-}
-
 export function findContainingSpaceByAnchor(
   spaces: WorkspaceSpaceState[],
   anchor: Point,
@@ -120,45 +101,4 @@ export function assignNodeToSpaceAndExpand({
   }
 
   onSpacesChange(pushedSpaces)
-}
-
-export function assignNodeToSpaceAndExpandIfInside({
-  createdNodeId,
-  targetSpaceId,
-  spacesRef,
-  nodesRef,
-  setNodes,
-  onSpacesChange,
-}: {
-  createdNodeId: string
-  targetSpaceId: string
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
-  setNodes: SetNodes
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-}): boolean {
-  const targetSpace = spacesRef.current.find(space => space.id === targetSpaceId) ?? null
-  if (!targetSpace) {
-    return false
-  }
-
-  const createdNode = nodesRef.current.find(node => node.id === createdNodeId) ?? null
-  if (!createdNode) {
-    return false
-  }
-
-  if (!isNodeFullyInsideSpace(createdNode, targetSpace)) {
-    return false
-  }
-
-  assignNodeToSpaceAndExpand({
-    createdNodeId,
-    targetSpaceId,
-    spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
-  })
-
-  return true
 }
