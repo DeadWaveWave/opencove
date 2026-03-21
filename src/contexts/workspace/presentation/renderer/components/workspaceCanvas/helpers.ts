@@ -164,6 +164,7 @@ export function validateSpaceTransfer(
   targetSpace: WorkspaceSpaceState | null,
   workspacePath: string,
   t: TranslateFn,
+  options?: { allowDirectoryMismatch?: boolean },
 ): string | null {
   if (nodeIds.length === 0) {
     return null
@@ -171,6 +172,7 @@ export function validateSpaceTransfer(
 
   const nodeById = new Map(nodes.map(node => [node.id, node]))
   const targetDirectory = resolveSpaceDirectoryPath(targetSpace, workspacePath)
+  const allowDirectoryMismatch = options?.allowDirectoryMismatch === true
 
   for (const nodeId of nodeIds) {
     const node = nodeById.get(nodeId)
@@ -179,7 +181,10 @@ export function validateSpaceTransfer(
     }
 
     if (node.data.kind === 'agent' && node.data.agent) {
-      if (resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory) {
+      if (
+        !allowDirectoryMismatch &&
+        resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory
+      ) {
         return t('messages.agentSpaceDirectoryMismatch')
       }
 
@@ -187,7 +192,10 @@ export function validateSpaceTransfer(
     }
 
     if (node.data.kind === 'terminal') {
-      if (resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory) {
+      if (
+        !allowDirectoryMismatch &&
+        resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory
+      ) {
         return t('messages.terminalSpaceDirectoryMismatch')
       }
 

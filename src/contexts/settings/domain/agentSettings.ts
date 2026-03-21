@@ -119,6 +119,7 @@ export interface AgentSettings {
   updatePolicy: AppUpdatePolicy
   updateChannel: AppUpdateChannel
   releaseNotesSeenVersion: string | null
+  hideWorktreeMismatchDropWarning: boolean
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -159,6 +160,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   updatePolicy: 'prompt',
   updateChannel: 'stable',
   releaseNotesSeenVersion: null,
+  hideWorktreeMismatchDropWarning: false,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -467,6 +469,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.releaseNotesSeenVersion.trim().length > 0
       ? value.releaseNotesSeenVersion.trim()
       : DEFAULT_AGENT_SETTINGS.releaseNotesSeenVersion
+  const hideWorktreeMismatchDropWarning =
+    normalizeBoolean(value.hideWorktreeMismatchDropWarning) ??
+    DEFAULT_AGENT_SETTINGS.hideWorktreeMismatchDropWarning
 
   return {
     language,
@@ -494,5 +499,6 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     updatePolicy,
     updateChannel,
     releaseNotesSeenVersion,
+    hideWorktreeMismatchDropWarning,
   }
 }

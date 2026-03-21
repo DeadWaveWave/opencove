@@ -148,12 +148,7 @@ function WorkspaceCanvasInner({
       cancelSpaceRename,
       setEmptySelectionPrompt,
     })
-  const {
-    handleNodeDragStart,
-    handleSelectionDragStart,
-    handleNodeDragStop,
-    handleSelectionDragStop,
-  } = workspaceCanvasHooks.useWorkspaceCanvasSpaceOwnership({
+  const spaceOwnership = workspaceCanvasHooks.useWorkspaceCanvasSpaceOwnership({
     workspacePath,
     reactFlow,
     spacesRef,
@@ -163,6 +158,7 @@ function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
+    hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
   })
   const { buildAgentNodeTitle, launchAgentInNode } =
     workspaceCanvasHooks.useWorkspaceCanvasAgentNodeLifecycle({
@@ -236,13 +232,12 @@ function WorkspaceCanvasInner({
     closeNode,
     actionRefs,
   })
-  const canvasInputModeSetting = agentSettings.canvasInputMode
   const resolvedCanvasInputMode =
-    canvasInputModeSetting === 'auto' ? detectedCanvasInputMode : canvasInputModeSetting
-  const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
-  const useManualCanvasWheelGestures = canvasInputModeSetting !== 'mouse'
+    agentSettings.canvasInputMode === 'auto'
+      ? detectedCanvasInputMode
+      : agentSettings.canvasInputMode
   const { handleCanvasWheelCapture } = workspaceCanvasHooks.useWorkspaceCanvasTrackpadGestures({
-    canvasInputModeSetting,
+    canvasInputModeSetting: agentSettings.canvasInputMode,
     resolvedCanvasInputMode,
     inputModalityStateRef,
     setDetectedCanvasInputMode,
@@ -267,7 +262,7 @@ function WorkspaceCanvasInner({
     reactFlow,
     viewport,
     viewportRef,
-    canvasInputModeSetting,
+    canvasInputModeSetting: agentSettings.canvasInputMode,
     inputModalityStateRef,
     setDetectedCanvasInputMode,
     isShiftPressedRef,
@@ -305,7 +300,7 @@ function WorkspaceCanvasInner({
     createTerminalNode,
     createNoteNodeFromContextMenu,
   } = workspaceCanvasHooks.useWorkspaceCanvasInteractions({
-    isTrackpadCanvasMode,
+    isTrackpadCanvasMode: resolvedCanvasInputMode === 'trackpad',
     normalizeZoomOnNodeClick: agentSettings.normalizeZoomOnTerminalClick,
     defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
     isShiftPressedRef,
@@ -417,14 +412,14 @@ function WorkspaceCanvasInner({
       onNodeContextMenu={spaceUi.handleNodeContextMenuWithSpaceMenuClose}
       onSelectionContextMenu={spaceUi.handleSelectionContextMenuWithSpaceMenuClose}
       onSelectionChange={handleSelectionChange}
-      onNodeDragStart={handleNodeDragStart}
-      onSelectionDragStart={handleSelectionDragStart}
-      onNodeDragStop={handleNodeDragStop}
-      onSelectionDragStop={handleSelectionDragStop}
+      onNodeDragStart={spaceOwnership.handleNodeDragStart}
+      onSelectionDragStart={spaceOwnership.handleSelectionDragStart}
+      onNodeDragStop={spaceOwnership.handleNodeDragStop}
+      onSelectionDragStop={spaceOwnership.handleSelectionDragStop}
       onMoveEnd={handleViewportMoveEnd}
       viewport={viewport}
-      isTrackpadCanvasMode={isTrackpadCanvasMode}
-      useManualCanvasWheelGestures={useManualCanvasWheelGestures}
+      isTrackpadCanvasMode={resolvedCanvasInputMode === 'trackpad'}
+      useManualCanvasWheelGestures={agentSettings.canvasInputMode !== 'mouse'}
       isShiftPressed={isShiftPressed}
       selectionDraft={selectionDraftUi}
       spaceVisuals={spaceVisuals}
@@ -474,6 +469,11 @@ function WorkspaceCanvasInner({
       nodeDeleteConfirmation={nodeDeleteConfirmation}
       setNodeDeleteConfirmation={setNodeDeleteConfirmation}
       confirmNodeDelete={confirmNodeDelete}
+      spaceWorktreeMismatchDropWarning={spaceOwnership.spaceWorktreeMismatchDropWarning}
+      cancelSpaceWorktreeMismatchDropWarning={spaceOwnership.cancelSpaceWorktreeMismatchDropWarning}
+      continueSpaceWorktreeMismatchDropWarning={
+        spaceOwnership.continueSpaceWorktreeMismatchDropWarning
+      }
       agentSettings={agentSettings}
       workspacePath={workspacePath}
       spaceActionMenu={spaceUi.spaceActionMenu}

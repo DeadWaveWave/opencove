@@ -110,7 +110,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
     }
   })
 
-  test('prevents agent windows from entering a space with a different directory', async () => {
+  test('warns before moving agent windows into a space with a different directory', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -205,11 +205,14 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
         steps: 18,
       })
 
-      await expect(window.locator('[data-testid="app-message"]')).toContainText(
-        'Agent windows cannot enter or leave a space with a different directory.',
-      )
-
+      const warningWindow = window.locator('[data-testid="space-worktree-mismatch-drop-warning"]')
+      await expect(warningWindow).toBeVisible()
       await expect(agentNode.locator('.terminal-node__badge--warning')).toHaveCount(0)
+      await warningWindow
+        .locator('[data-testid="space-worktree-mismatch-drop-warning-continue"]')
+        .click()
+      await expect(warningWindow).toBeHidden()
+      await expect(agentNode.locator('.terminal-node__badge--warning')).toHaveCount(1)
 
       await expect
         .poll(async () => {
@@ -248,8 +251,8 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
           )
         })
         .toEqual({
-          expectedDirectory: testWorkspacePath,
-          belongsToTarget: false,
+          expectedDirectory: worktreePath,
+          belongsToTarget: true,
         })
     } finally {
       await electronApp.close()

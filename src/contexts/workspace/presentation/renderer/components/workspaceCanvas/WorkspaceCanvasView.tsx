@@ -22,6 +22,7 @@ import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverla
 import { WorkspaceSpaceSwitcher } from './view/WorkspaceSpaceSwitcher'
 import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
 import { NodeDeleteConfirmationWindow } from './windows/NodeDeleteConfirmationWindow'
+import { SpaceWorktreeMismatchDropWarningWindow } from './windows/SpaceWorktreeMismatchDropWarningWindow'
 import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
 import { TaskEditorWindow } from './windows/TaskEditorWindow'
 import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
@@ -104,6 +105,9 @@ export function WorkspaceCanvasView({
   nodeDeleteConfirmation,
   setNodeDeleteConfirmation,
   confirmNodeDelete,
+  spaceWorktreeMismatchDropWarning,
+  cancelSpaceWorktreeMismatchDropWarning,
+  continueSpaceWorktreeMismatchDropWarning,
   agentSettings,
   workspacePath,
   spaceActionMenu,
@@ -354,6 +358,12 @@ export function WorkspaceCanvasView({
         nodeDeleteConfirmation={nodeDeleteConfirmation}
         setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}
+      />
+
+      <SpaceWorktreeMismatchDropWarningWindow
+        warning={spaceWorktreeMismatchDropWarning}
+        onCancel={cancelSpaceWorktreeMismatchDropWarning}
+        onContinue={continueSpaceWorktreeMismatchDropWarning}
       />
 
       <SpaceWorktreeWindow

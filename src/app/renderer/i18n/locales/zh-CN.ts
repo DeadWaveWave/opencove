@@ -308,7 +308,7 @@ export const zhCN = {
   },
   terminalNodeHeader: {
     directoryMismatch: '目录不匹配',
-    directoryMismatchTitle: '绑定目录：{{executionDirectory}}\n当前目录：{{expectedDirectory}}',
+    directoryMismatchTitle: '绑定目录：{{executionDirectory}}\n原目录：{{expectedDirectory}}',
     copyLastMessage: '复制上一条 Agent 消息',
     copyingLastMessage: '正在复制上一条 Agent 消息',
   },
@@ -440,6 +440,12 @@ export const zhCN = {
     closeAllAndContinue: '全部关闭并继续',
     closeFirstRequired: '这个操作要求先关闭所有窗口。',
     closeFailed: '部分窗口无法关闭。请手动关闭后再试。',
+  },
+  spaceDropGuard: {
+    title: '移动到“{{name}}”？',
+    description: '窗口仍在原目录运行，并会标记 {{badge}}。',
+    dontShowAgain: '不再提示',
+    move: '移动',
   },
   messages: {
     agentLaunchFailed: 'Agent 启动失败：{{message}}',
