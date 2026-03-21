@@ -1,5 +1,6 @@
 .app-header {
   grid-column: 1 / -1;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -17,7 +18,9 @@
 }
 
 .app-header--windows {
-  padding-right: calc(10px + env(titlebar-area-width, 138px));
+  /* env(titlebar-area-width) = 可用标题栏宽度（全宽 - 控制按钮宽度）
+   * 控制按钮宽度 = 100vw - env(titlebar-area-width)，标准 Windows 约 138px */
+  padding-right: calc(100vw - env(titlebar-area-width, calc(100vw - 138px)) + 10px);
 }
 
 .app-header__section {
@@ -27,10 +30,19 @@
   flex: 0 0 auto;
 }
 
+.app-header__section--right {
+  margin-left: auto;
+}
+
 .app-header__center {
-  flex: 1 1 auto;
-  min-width: 0;
-  text-align: center;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.app-header__center > * {
+  pointer-events: auto;
 }
 
 .app-header__command-center {
