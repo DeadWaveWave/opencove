@@ -24,6 +24,7 @@ import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
+import { patchXtermMouseService } from './terminalNode/patchXtermMouseService'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
@@ -169,6 +170,7 @@ export function TerminalNode({
 
     if (containerRef.current) {
       terminal.open(containerRef.current)
+      patchXtermMouseService(terminal)
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
