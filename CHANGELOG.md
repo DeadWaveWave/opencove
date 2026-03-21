@@ -18,6 +18,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
 - UI: Softened minimap node colors in light theme. (#47)
 - UI: Made modal dialogs opaque for clearer readability. (#48)
+- Spaces: dragging Terminal/Agent windows across directory-bound spaces now shows a compact confirmation, then moves with `DIR MISMATCH` labeling. (#51)
 
 ### 🐞 Fixed
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
