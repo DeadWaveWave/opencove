@@ -280,8 +280,7 @@ function createWindow(): void {
   })
 
   // 兜底：Electron #42409 - titleBarOverlay + show:false 时 ready-to-show 在 Windows 上可能不触发
-  const useReadyToShowFallback =
-    process.platform === 'win32' && e2eWindowMode === 'normal'
+  const useReadyToShowFallback = process.platform === 'win32' && e2eWindowMode === 'normal'
   if (useReadyToShowFallback) {
     const READY_TO_SHOW_FALLBACK_MS = 2000
     const fallbackTimer = setTimeout(() => {
