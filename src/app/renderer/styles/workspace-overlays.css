@@ -1,4 +1,5 @@
 @import './workspace-overlays.worktree.css';
+@import './workspace-overlays.worktree.light.css';
 @import './workspace-overlays.worktree-guard.css';
 
 .workspace-context-menu {
