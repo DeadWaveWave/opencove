@@ -256,7 +256,7 @@ function createWindow(): void {
     },
   })
 
-  mainWindow.on('ready-to-show', () => {
+  const showWindow = (): void => {
     if (e2eWindowMode === 'hidden') {
       return
     }
@@ -273,7 +273,26 @@ function createWindow(): void {
     }
 
     mainWindow.show()
+  }
+
+  mainWindow.on('ready-to-show', () => {
+    showWindow()
   })
+
+  // 兜底：Electron #42409 - titleBarOverlay + show:false 时 ready-to-show 在 Windows 上可能不触发
+  const useReadyToShowFallback =
+    process.platform === 'win32' && e2eWindowMode === 'normal'
+  if (useReadyToShowFallback) {
+    const READY_TO_SHOW_FALLBACK_MS = 2000
+    const fallbackTimer = setTimeout(() => {
+      if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+        showWindow()
+      }
+    }, READY_TO_SHOW_FALLBACK_MS)
+    const clearFallback = (): void => clearTimeout(fallbackTimer)
+    mainWindow.once('ready-to-show', clearFallback)
+    mainWindow.once('closed', clearFallback)
+  }
 
   mainWindow.webContents.setWindowOpenHandler(details => {
     if (shouldOpenUrlExternally(details.url)) {
