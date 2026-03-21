@@ -133,10 +133,10 @@
   --cove-canvas-minimap-mask-surface: rgba(94, 156, 255, 0.1);
   --cove-canvas-minimap-opacity-idle: 0.55;
   --cove-canvas-minimap-opacity-hover: 0.96;
-  --cove-canvas-minimap-node-agent: rgba(38, 145, 255, 0.92);
-  --cove-canvas-minimap-node-task: rgba(125, 94, 255, 0.9);
-  --cove-canvas-minimap-node-default: rgba(64, 124, 255, 0.9);
-  --cove-canvas-minimap-node-stroke: rgba(17, 24, 39, 0.2);
+  --cove-canvas-minimap-node-agent: rgba(78, 164, 255, 0.72);
+  --cove-canvas-minimap-node-task: rgba(152, 136, 255, 0.66);
+  --cove-canvas-minimap-node-default: rgba(94, 156, 255, 0.55);
+  --cove-canvas-minimap-node-stroke: rgba(17, 24, 39, 0.14);
 
   --cove-settings-panel-background:
     radial-gradient(circle at top right, rgba(94, 156, 255, 0.14), transparent 32%),
