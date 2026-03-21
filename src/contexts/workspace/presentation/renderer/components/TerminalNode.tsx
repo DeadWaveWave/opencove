@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
-import { Handle, Position, useStore } from '@xyflow/react'
+import { Handle, Position } from '@xyflow/react'
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -32,10 +32,7 @@ import { shouldStopWheelPropagation } from './terminalNode/wheel'
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
-import {
-  selectDragSurfaceSelectionMode,
-  selectViewportInteractionActive,
-} from './terminalNode/reactFlowState'
+import { selectViewportInteractionActive } from './terminalNode/reactFlowState'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
@@ -63,7 +60,6 @@ export function TerminalNode({
   onCommandRun,
   onInteractionStart,
 }: TerminalNodeProps): JSX.Element {
-  const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
   const outputSchedulerRef = useRef<ReturnType<typeof createTerminalOutputScheduler> | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
@@ -418,7 +414,7 @@ export function TerminalNode({
   }, [height, syncTerminalSize, width])
 
   const isAgentNode = kind === 'agent'
-  const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
+  const hasSelectedDragSurface = isSelected || isDragging
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
     handlePointerDownCapture: handleTerminalBodyPointerDownCapture,

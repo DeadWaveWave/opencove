@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
-  dragLocatorTo,
   launchApp,
   storageKey,
 } from './workspace-canvas.helpers'
@@ -85,10 +84,22 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      await dragLocatorTo(window, terminalBody, pane, {
-        sourcePosition: { x: 180, y: 120 },
-        targetPosition: { x: 760, y: 520 },
-      })
+      const paneBox = await pane.boundingBox()
+      const bodyBox = await terminalBody.boundingBox()
+      if (!paneBox || !bodyBox) {
+        throw new Error('pane/body bounding box unavailable for selected body drag')
+      }
+
+      const startX = bodyBox.x + bodyBox.width * 0.4
+      const startY = bodyBox.y + bodyBox.height * 0.4
+      const endX = Math.min(paneBox.x + paneBox.width - 60, startX + 260)
+      const endY = Math.min(paneBox.y + paneBox.height - 60, startY + 220)
+
+      await window.mouse.move(startX, startY)
+      await window.mouse.down()
+      await window.mouse.move(endX, endY, { steps: 12 })
+      await expect(terminal).toHaveClass(/terminal-node--selected-surface/)
+      await window.mouse.up()
 
       const afterDrag = await readNodePosition()
       if (!afterDrag) {
