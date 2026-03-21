@@ -8,7 +8,6 @@ import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollba
 import { MIN_SIZE } from '../constants'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
-import { computePushBlockingWindowsRight } from './useNodesStore.pushBlockingWindowsRight'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
 import type {
@@ -24,6 +23,7 @@ export function useWorkspaceCanvasNodesStore({
   onRequestPersistFlush,
   onShowMessage,
   defaultTerminalWindowScalePercent,
+  onNodeCreated,
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const nodesRef = useRef(nodes)
   const agentLaunchTokenByNodeIdRef = useRef<Map<string, number>>(new Map())
@@ -314,53 +314,13 @@ export function useWorkspaceCanvasNodesStore({
     [setNodes],
   )
 
-  const pushBlockingWindowsRight = useCallback(
-    (desired: Point, size: Size): void => {
-      const nextPositionByNodeId = computePushBlockingWindowsRight({
-        desired,
-        size,
-        nodes: nodesRef.current,
-      })
-
-      if (nextPositionByNodeId.size === 0) {
-        return
-      }
-
-      setNodes(
-        prevNodes => {
-          let hasChanged = false
-
-          const nextNodes = prevNodes.map(node => {
-            const nextPosition = nextPositionByNodeId.get(node.id)
-            if (!nextPosition) {
-              return node
-            }
-
-            if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-              return node
-            }
-
-            hasChanged = true
-            return {
-              ...node,
-              position: nextPosition,
-            }
-          })
-
-          return hasChanged ? nextNodes : prevNodes
-        },
-        { syncLayout: false },
-      )
-    },
-    [setNodes],
-  )
-
   const { createNodeForSession, createNoteNode, createTaskNode } = useWorkspaceCanvasNodeCreation({
     defaultTerminalWindowScalePercent,
     nodesRef,
+    spacesRef,
     onRequestPersistFlush,
     onShowMessage,
-    pushBlockingWindowsRight,
+    onNodeCreated,
     setNodes,
   })
 

@@ -164,6 +164,14 @@ export interface CreateNodeInput {
   agent?: AgentNodeData | null
   executionDirectory?: string | null
   expectedDirectory?: string | null
+  placement?: NodePlacementOptions
+}
+
+export type NodePlacementDirection = 'right' | 'down' | 'left' | 'up'
+
+export interface NodePlacementOptions {
+  targetSpaceRect?: WorkspaceSpaceRect | null
+  preferredDirection?: NodePlacementDirection
 }
 
 export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void

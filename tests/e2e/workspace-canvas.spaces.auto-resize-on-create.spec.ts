@@ -7,7 +7,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
-  test('expands the space when creating a node would push members outside', async () => {
+  test('keeps the space unchanged and creates outside when no slot exists inside', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -155,40 +155,58 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
                 return null
               }
 
-              const originalWidth = 1020
-              const expanded = rect.width > originalWidth
+              const originalRect = { x: 200, y: 220, width: 1020, height: 420 }
+              const isSpaceRectUnchanged =
+                rect.x === originalRect.x &&
+                rect.y === originalRect.y &&
+                rect.width === originalRect.width &&
+                rect.height === originalRect.height
 
-              const nodeById = new Map((workspace.nodes ?? []).map(node => [node.id ?? '', node]))
-              const membersInside = space.nodeIds.every(nodeId => {
-                const node = nodeById.get(nodeId)
-                if (
-                  !node?.position ||
-                  typeof node.position.x !== 'number' ||
-                  typeof node.position.y !== 'number' ||
-                  typeof node.width !== 'number' ||
-                  typeof node.height !== 'number'
-                ) {
-                  return false
-                }
+              const createdTask = (workspace.nodes ?? []).find(
+                node => node.kind === 'task' && node.task?.requirement === 'created-in-crowded',
+              )
 
-                const left = node.position.x
-                const top = node.position.y
-                const right = left + node.width
-                const bottom = top + node.height
-                const spaceRight = rect.x + rect.width
-                const spaceBottom = rect.y + rect.height
+              if (
+                !createdTask?.position ||
+                typeof createdTask.position.x !== 'number' ||
+                typeof createdTask.position.y !== 'number' ||
+                typeof createdTask.width !== 'number' ||
+                typeof createdTask.height !== 'number'
+              ) {
+                return null
+              }
 
-                return (
-                  left >= rect.x && top >= rect.y && right <= spaceRight && bottom <= spaceBottom
-                )
-              })
+              const createdTaskInSpace = space.nodeIds.includes(createdTask.id ?? '')
+              const taskRight = createdTask.position.x + createdTask.width
+              const taskBottom = createdTask.position.y + createdTask.height
+              const spaceRight = rect.x + rect.width
+              const spaceBottom = rect.y + rect.height
+              const intersects = !(
+                taskRight <= rect.x ||
+                createdTask.position.x >= spaceRight ||
+                taskBottom <= rect.y ||
+                createdTask.position.y >= spaceBottom
+              )
 
-              return { expanded, membersInside }
+              return {
+                isSpaceRectUnchanged,
+                isSpaceMembershipUnchanged:
+                  space.nodeIds.length === 2 &&
+                  space.nodeIds.includes('space-crowded-left') &&
+                  space.nodeIds.includes('space-crowded-right'),
+                createdTaskInSpace,
+                intersects,
+              }
             },
             { key: storageKey },
           )
         })
-        .toEqual({ expanded: true, membersInside: true })
+        .toEqual({
+          isSpaceRectUnchanged: true,
+          isSpaceMembershipUnchanged: true,
+          createdTaskInSpace: false,
+          intersects: false,
+        })
     } finally {
       await electronApp.close()
     }

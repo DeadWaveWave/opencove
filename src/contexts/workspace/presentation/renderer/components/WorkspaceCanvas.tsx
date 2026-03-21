@@ -1,7 +1,8 @@
-import React, { useLayoutEffect, useMemo } from 'react'
+import React, { useRef } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
+import { normalizeTaskTagOptions } from './workspaceCanvas/helpers'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 function WorkspaceCanvasInner({
@@ -24,6 +25,7 @@ function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
+  const createdNodeNodesRef = useRef<React.MutableRefObject<Node<TerminalNodeData>[]> | null>(null)
   const {
     contextMenu,
     setContextMenu,
@@ -59,6 +61,7 @@ function WorkspaceCanvasInner({
     persistedMinimapVisible,
   })
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
+  const centerCreatedNode = workspaceCanvasHooks.useWorkspaceCanvasCreatedNodeViewportCenter
   const {
     nodesRef,
     isNodeDraggingRef,
@@ -85,7 +88,9 @@ function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
+    onNodeCreated: centerCreatedNode(reactFlow, createdNodeNodesRef, viewportRef),
   })
+  createdNodeNodesRef.current = nodesRef
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
       workspacePath,
@@ -182,10 +187,7 @@ function WorkspaceCanvasInner({
       createNodeForSession,
       buildAgentNodeTitle,
     })
-  const taskTagOptions = useMemo(() => {
-    const fromSettings = agentSettings.taskTagOptions ?? []
-    return [...new Set(fromSettings.map(tag => tag.trim()).filter(tag => tag.length > 0))]
-  }, [agentSettings.taskTagOptions])
+  const taskTagOptions = normalizeTaskTagOptions(agentSettings.taskTagOptions)
   const { suggestTaskTitle } = workspaceCanvasHooks.useWorkspaceCanvasTaskActions({
     nodesRef,
     spacesRef,
@@ -358,9 +360,7 @@ function WorkspaceCanvasInner({
     nodesRef,
     reactFlow,
   })
-  useLayoutEffect(() => {
-    actionRefs.clearNodeSelectionRef.current = clearNodeSelection
-  }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])
+  actionRefs.clearNodeSelectionRef.current = clearNodeSelection
   const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasApplyNodeChanges({
     nodesRef,
     onNodesChange,

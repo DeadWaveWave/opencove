@@ -2,7 +2,7 @@ import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
-  assignNodeToSpaceAndExpand,
+  assignNodeToSpaceAndExpandIfInside,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 
@@ -22,23 +22,34 @@ export function createNoteNodeAtAnchor({
 }: {
   anchor: Point
   spaceAnchor?: Point
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  createNoteNode: (
+    anchor: Point,
+    options?: {
+      placement?: {
+        targetSpaceRect?: WorkspaceSpaceState['rect']
+      }
+    },
+  ) => Node<TerminalNodeData> | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
 }): void {
-  const created = createNoteNode(anchor)
+  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, spaceAnchor)
+  const created = createNoteNode(anchor, {
+    placement: {
+      targetSpaceRect: targetSpace?.rect ?? null,
+    },
+  })
   if (!created) {
     return
   }
 
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, spaceAnchor)
   if (!targetSpace) {
     return
   }
 
-  assignNodeToSpaceAndExpand({
+  assignNodeToSpaceAndExpandIfInside({
     createdNodeId: created.id,
     targetSpaceId: targetSpace.id,
     spacesRef,

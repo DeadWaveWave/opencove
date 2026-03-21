@@ -4,11 +4,21 @@ import type { Point, Size, TerminalNodeData } from '../types'
 const GRID_STEP = 40
 const MAX_SCAN_RADIUS = 80
 
-interface Rect {
+export interface Rect {
   left: number
   top: number
   right: number
   bottom: number
+}
+
+export function inflateRect(rect: Rect, padding: number): Rect {
+  const safePadding = Number.isFinite(padding) ? padding : 0
+  return {
+    left: rect.left - safePadding,
+    top: rect.top - safePadding,
+    right: rect.right + safePadding,
+    bottom: rect.bottom + safePadding,
+  }
 }
 
 function toRect(point: Point, size: Size): Rect {
@@ -40,6 +50,7 @@ export function isPositionAvailable(
   size: Size,
   allNodes: Node<TerminalNodeData>[],
   ignoreNodeId?: string,
+  obstacles?: Rect[],
 ): boolean {
   const target = toRect(position, size)
 
@@ -51,6 +62,14 @@ export function isPositionAvailable(
     const existing = toNodeRect(node)
     if (intersects(target, existing)) {
       return false
+    }
+  }
+
+  if (Array.isArray(obstacles) && obstacles.length > 0) {
+    for (const obstacle of obstacles) {
+      if (intersects(target, obstacle)) {
+        return false
+      }
     }
   }
 
@@ -76,13 +95,27 @@ function candidateOffsets(radius: number): Point[] {
   return points
 }
 
+function isRectWithinBounds(rect: Rect, bounds: Rect): boolean {
+  return (
+    rect.left >= bounds.left &&
+    rect.top >= bounds.top &&
+    rect.right <= bounds.right &&
+    rect.bottom <= bounds.bottom
+  )
+}
+
+function isPositionWithinBounds(position: Point, size: Size, bounds: Rect): boolean {
+  return isRectWithinBounds(toRect(position, size), bounds)
+}
+
 export function findNearestFreePosition(
   desired: Point,
   size: Size,
   allNodes: Node<TerminalNodeData>[],
   ignoreNodeId?: string,
+  obstacles?: Rect[],
 ): Point {
-  if (isPositionAvailable(desired, size, allNodes, ignoreNodeId)) {
+  if (isPositionAvailable(desired, size, allNodes, ignoreNodeId, obstacles)) {
     return desired
   }
 
@@ -97,7 +130,7 @@ export function findNearestFreePosition(
         y: desired.y + offset.y,
       }
 
-      if (!isPositionAvailable(candidate, size, allNodes, ignoreNodeId)) {
+      if (!isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
         continue
       }
 
@@ -116,13 +149,63 @@ export function findNearestFreePosition(
   return desired
 }
 
+export function findNearestFreePositionWithinBounds(
+  desired: Point,
+  size: Size,
+  bounds: Rect,
+  allNodes: Node<TerminalNodeData>[],
+  ignoreNodeId?: string,
+  obstacles?: Rect[],
+): Point | null {
+  if (
+    isPositionWithinBounds(desired, size, bounds) &&
+    isPositionAvailable(desired, size, allNodes, ignoreNodeId, obstacles)
+  ) {
+    return desired
+  }
+
+  let bestPosition: Point | null = null
+  let bestDistance = Number.POSITIVE_INFINITY
+
+  for (let radius = 1; radius <= MAX_SCAN_RADIUS; radius += 1) {
+    const offsets = candidateOffsets(radius)
+    for (const offset of offsets) {
+      const candidate = {
+        x: desired.x + offset.x,
+        y: desired.y + offset.y,
+      }
+
+      if (!isPositionWithinBounds(candidate, size, bounds)) {
+        continue
+      }
+
+      if (!isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
+        continue
+      }
+
+      const candidateDistance = distance(desired, candidate)
+      if (candidateDistance < bestDistance) {
+        bestDistance = candidateDistance
+        bestPosition = candidate
+      }
+    }
+
+    if (bestPosition) {
+      return bestPosition
+    }
+  }
+
+  return null
+}
+
 export function findNearestFreePositionOnRight(
   desired: Point,
   size: Size,
   allNodes: Node<TerminalNodeData>[],
   ignoreNodeId?: string,
+  obstacles?: Rect[],
 ): Point | null {
-  if (isPositionAvailable(desired, size, allNodes, ignoreNodeId)) {
+  if (isPositionAvailable(desired, size, allNodes, ignoreNodeId, obstacles)) {
     return desired
   }
 
@@ -137,7 +220,119 @@ export function findNearestFreePositionOnRight(
 
       for (const y of yCandidates) {
         const candidate = { x, y }
-        if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId)) {
+        if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
+          return candidate
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+function resolveAxisCandidates(base: number, radius: number): number[] {
+  const values = [base]
+
+  for (let offset = 1; offset <= radius; offset += 1) {
+    values.push(base + offset * GRID_STEP, base - offset * GRID_STEP)
+  }
+
+  return values
+}
+
+export function findNearestFreePositionAroundBounds({
+  desired,
+  size,
+  bounds,
+  allNodes,
+  directions,
+  gap = GRID_STEP,
+  ignoreNodeId,
+  obstacles,
+}: {
+  desired: Point
+  size: Size
+  bounds: Rect
+  allNodes: Node<TerminalNodeData>[]
+  directions: Array<'right' | 'down' | 'left' | 'up'>
+  gap?: number
+  ignoreNodeId?: string
+  obstacles?: Rect[]
+}): Point | null {
+  for (let layer = 0; layer <= MAX_SCAN_RADIUS; layer += 1) {
+    for (const direction of directions) {
+      if (direction === 'right') {
+        const x = bounds.right + gap + layer * GRID_STEP
+        for (const y of resolveAxisCandidates(desired.y, layer)) {
+          const candidate = { x, y }
+          if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
+            return candidate
+          }
+        }
+        continue
+      }
+
+      if (direction === 'left') {
+        const x = bounds.left - size.width - gap - layer * GRID_STEP
+        for (const y of resolveAxisCandidates(desired.y, layer)) {
+          const candidate = { x, y }
+          if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
+            return candidate
+          }
+        }
+        continue
+      }
+
+      if (direction === 'down') {
+        const y = bounds.bottom + gap + layer * GRID_STEP
+        for (const x of resolveAxisCandidates(desired.x, layer)) {
+          const candidate = { x, y }
+          if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
+            return candidate
+          }
+        }
+        continue
+      }
+
+      const y = bounds.top - size.height - gap - layer * GRID_STEP
+      for (const x of resolveAxisCandidates(desired.x, layer)) {
+        const candidate = { x, y }
+        if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
+          return candidate
+        }
+      }
+    }
+  }
+
+  return null
+}
+
+export function findCanvasOverflowPosition(
+  desired: Point,
+  size: Size,
+  allNodes: Node<TerminalNodeData>[],
+  ignoreNodeId?: string,
+  obstacles?: Rect[],
+): Point | null {
+  if (allNodes.length === 0) {
+    return desired
+  }
+
+  const maxRight = Math.max(...allNodes.map(node => node.position.x + node.data.width))
+  const baseX = maxRight + GRID_STEP
+
+  for (let xRadius = 0; xRadius <= MAX_SCAN_RADIUS; xRadius += 1) {
+    const x = baseX + xRadius * GRID_STEP
+
+    for (let yRadius = 0; yRadius <= MAX_SCAN_RADIUS; yRadius += 1) {
+      const yCandidates =
+        yRadius === 0
+          ? [desired.y]
+          : [desired.y + yRadius * GRID_STEP, desired.y - yRadius * GRID_STEP]
+
+      for (const y of yCandidates) {
+        const candidate = { x, y }
+        if (isPositionAvailable(candidate, size, allNodes, ignoreNodeId, obstacles)) {
           return candidate
         }
       }

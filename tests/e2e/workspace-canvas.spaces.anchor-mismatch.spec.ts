@@ -44,7 +44,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
               name: 'Anchor Scope',
               directoryPath: testWorkspacePath,
               nodeIds: ['space-anchor-placeholder'],
-              rect: { x: 340, y: 200, width: 700, height: 520 },
+              rect: { x: 340, y: 200, width: 1200, height: 1200 },
             },
           ],
           activeSpaceId: null,

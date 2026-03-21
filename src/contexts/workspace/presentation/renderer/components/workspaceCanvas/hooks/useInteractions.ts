@@ -7,15 +7,12 @@ import type {
   EmptySelectionPromptState,
   SelectionDraftState,
 } from '../types'
-import { DEFAULT_NOTE_WINDOW_SIZE, resolveDefaultTerminalWindowSize } from '../constants'
+import { DEFAULT_NOTE_WINDOW_SIZE } from '../constants'
 import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
-import {
-  assignNodeToSpaceAndExpand,
-  findContainingSpaceByAnchor,
-} from './useInteractions.spaceAssignment'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
+import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
 import {
   isCanvasDoubleClickCreateTarget,
@@ -56,7 +53,15 @@ interface UseWorkspaceCanvasInteractionsParams {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  createNoteNode: (
+    anchor: Point,
+    options?: {
+      placementStrategy?: 'default' | 'right-no-push'
+      placement?: {
+        targetSpaceRect?: WorkspaceSpaceState['rect']
+      }
+    },
+  ) => Node<TerminalNodeData> | null
 }
 
 export function useWorkspaceCanvasInteractions({
@@ -405,70 +410,18 @@ export function useWorkspaceCanvasInteractions({
     [cancelSpaceRename, clearNodeSelection, setContextMenu, setEmptySelectionPrompt],
   )
 
-  const createTerminalNode = useCallback(async () => {
-    if (!contextMenu || contextMenu.kind !== 'pane') {
-      return
-    }
-
-    const cursorAnchor = {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    }
-    const anchor = resolveNodePlacementAnchorFromViewportCenter(
-      cursorAnchor,
-      resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent),
-    )
-
-    setContextMenu(null)
-    const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-
-    const resolvedCwd =
-      targetSpace && targetSpace.directoryPath.trim().length > 0
-        ? targetSpace.directoryPath
-        : workspacePath
-
-    const spawned = await window.opencoveApi.pty.spawn({
-      cwd: resolvedCwd,
-      profileId: defaultTerminalProfileId ?? undefined,
-      cols: 80,
-      rows: 24,
-    })
-
-    const created = await createNodeForSession({
-      sessionId: spawned.sessionId,
-      profileId: spawned.profileId,
-      runtimeKind: spawned.runtimeKind,
-      title: `terminal-${nodesRef.current.length + 1}`,
-      anchor,
-      kind: 'terminal',
-      executionDirectory: resolvedCwd,
-      expectedDirectory: resolvedCwd,
-    })
-
-    if (!created || !targetSpace) {
-      return
-    }
-
-    assignNodeToSpaceAndExpand({
-      createdNodeId: created.id,
-      targetSpaceId: targetSpace.id,
-      spacesRef,
-      nodesRef,
-      setNodes,
-      onSpacesChange,
-    })
-  }, [
+  const createTerminalNode = useWorkspaceCanvasTerminalCreation({
     contextMenu,
-    createNodeForSession,
-    nodesRef,
-    onSpacesChange,
     setContextMenu,
-    setNodes,
-    spacesRef,
-    defaultTerminalProfileId,
     defaultTerminalWindowScalePercent,
+    spacesRef,
     workspacePath,
-  ])
+    nodesRef,
+    defaultTerminalProfileId,
+    createNodeForSession,
+    setNodes,
+    onSpacesChange,
+  })
 
   const createNoteNodeFromContextMenu = useCallback(() => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
