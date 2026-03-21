@@ -126,6 +126,54 @@
     transform 0.15s ease;
 }
 
+.app-header__update-button {
+  min-width: 0;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(94, 156, 255, 0.28);
+  background: rgba(94, 156, 255, 0.14);
+  color: var(--cove-text);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.app-header__update-button:hover {
+  background: rgba(94, 156, 255, 0.2);
+  border-color: rgba(94, 156, 255, 0.42);
+}
+
+.app-header__update-button:active {
+  transform: translateY(1px);
+}
+
+.app-header__update-button:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.app-header__update-button--disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.app-header__update-button span {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-header__update-icon--spinning {
+  animation: app-header-update-spin 1.2s linear infinite;
+}
+
 .app-header__icon-button:hover {
   background: var(--cove-surface-hover);
   color: var(--cove-text);
@@ -139,4 +187,14 @@
 .app-header__icon-button:focus-visible {
   outline: 2px solid rgba(94, 156, 255, 0.85);
   outline-offset: 2px;
+}
+
+@keyframes app-header-update-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }

@@ -19,6 +19,8 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
     expect(DEFAULT_AGENT_SETTINGS.uiFontSize).toBe(18)
+    expect(DEFAULT_AGENT_SETTINGS.updatePolicy).toBe('prompt')
+    expect(DEFAULT_AGENT_SETTINGS.updateChannel).toBe('stable')
   })
 
   it('normalizes the agent provider order and keeps all providers', () => {
@@ -54,6 +56,8 @@ describe('agent settings normalization', () => {
       defaultTerminalWindowScalePercent: 95,
       terminalFontSize: 15,
       uiFontSize: 21,
+      updatePolicy: 'auto',
+      updateChannel: 'nightly',
     })
 
     expect(result.language).toBe('zh-CN')
@@ -76,6 +80,8 @@ describe('agent settings normalization', () => {
     expect(result.defaultTerminalWindowScalePercent).toBe(95)
     expect(result.terminalFontSize).toBe(15)
     expect(result.uiFontSize).toBe(21)
+    expect(result.updatePolicy).toBe('prompt')
+    expect(result.updateChannel).toBe('nightly')
     expect(resolveTaskTitleProvider(result)).toBe('claude-code')
     expect(resolveTaskTitleModel(result)).toBe('claude-opus-4-6')
     expect(resolveAgentModel(result, 'claude-code')).toBe('claude-opus-4-6')
@@ -114,6 +120,8 @@ describe('agent settings normalization', () => {
     expect(result.defaultTerminalWindowScalePercent).toBe(80)
     expect(result.terminalFontSize).toBe(13)
     expect(result.uiFontSize).toBe(18)
+    expect(result.updatePolicy).toBe('prompt')
+    expect(result.updateChannel).toBe('stable')
     expect(resolveAgentModel(result, 'claude-code')).toBeNull()
     expect(resolveAgentModel(result, 'codex')).toBe('gpt-5.2-codex')
     expect(resolveTaskTitleProvider(result)).toBe('claude-code')
@@ -125,11 +133,15 @@ describe('agent settings normalization', () => {
       language: 'fr-FR',
       uiTheme: 'bold-blue',
       canvasInputMode: 'touchscreen',
+      updatePolicy: 'download-all',
+      updateChannel: 'beta',
     })
 
     expect(result.language).toBe('en')
     expect(result.uiTheme).toBe('system')
     expect(result.canvasInputMode).toBe('auto')
+    expect(result.updatePolicy).toBe('prompt')
+    expect(result.updateChannel).toBe('stable')
   })
 
   it('migrates legacy modelByProvider to custom override', () => {

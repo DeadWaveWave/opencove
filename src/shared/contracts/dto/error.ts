@@ -41,6 +41,11 @@ export const APP_ERROR_CODES = [
   'persistence.io_failed',
   'persistence.invalid_state',
   'persistence.invalid_node_id',
+  'update.get_state_failed',
+  'update.configure_failed',
+  'update.check_failed',
+  'update.download_failed',
+  'update.install_failed',
 ] as const
 
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number]

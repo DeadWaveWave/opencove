@@ -1,0 +1,52 @@
+name: Nightly (Scheduled)
+
+on:
+  schedule:
+    # 04:00 Asia/Shanghai = 20:00 UTC (previous day)
+    - cron: '0 20 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: nightly-scheduled
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve Nightly Tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.tag.outputs.tag_name }}
+      target_commitish: ${{ steps.sha.outputs.target_commitish }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Resolve target commit-ish
+        id: sha
+        run: |
+          echo "target_commitish=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve nightly tag
+        id: tag
+        run: |
+          TAG_NAME="$(node scripts/resolve-nightly-tag.mjs)"
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+
+  release:
+    name: Release Nightly
+    needs: resolve
+    uses: ./.github/workflows/release.yml
+    with:
+      tag_name: ${{ needs.resolve.outputs.tag_name }}
+      target_commitish: ${{ needs.resolve.outputs.target_commitish }}

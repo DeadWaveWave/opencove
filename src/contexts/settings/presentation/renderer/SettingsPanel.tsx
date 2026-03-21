@@ -12,6 +12,7 @@ import {
   type UiLanguage,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
+import type { AppUpdateState } from '@shared/contracts/dto'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
@@ -31,10 +32,14 @@ interface ProviderModelCatalogEntry {
 
 interface SettingsPanelProps {
   settings: AgentSettings
+  updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
   onChange: (settings: AgentSettings) => void
+  onCheckForUpdates: () => void
+  onDownloadUpdate: () => void
+  onInstallUpdate: () => void
   onClose: () => void
 }
 
@@ -67,10 +72,14 @@ function getFolderName(path: string): string {
 
 export function SettingsPanel({
   settings,
+  updateState,
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
   onChange,
+  onCheckForUpdates,
+  onDownloadUpdate,
+  onInstallUpdate,
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
   const { t } = useTranslation()
@@ -106,6 +115,16 @@ export function SettingsPanel({
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateUiFontSize = (fontSize: number): void =>
     onChange({ ...settings, uiFontSize: fontSize })
+  const updateUpdatePolicy = (policy: AgentSettings['updatePolicy']): void => {
+    const normalized = settings.updateChannel === 'nightly' && policy === 'auto' ? 'prompt' : policy
+    onChange({ ...settings, updatePolicy: normalized })
+  }
+
+  const updateUpdateChannel = (channel: AgentSettings['updateChannel']): void => {
+    const normalizedPolicy =
+      channel === 'nightly' && settings.updatePolicy === 'auto' ? 'prompt' : settings.updatePolicy
+    onChange({ ...settings, updateChannel: channel, updatePolicy: normalizedPolicy })
+  }
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
   const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
@@ -305,10 +324,18 @@ export function SettingsPanel({
                 uiTheme={settings.uiTheme}
                 uiFontSize={settings.uiFontSize}
                 terminalFontSize={settings.terminalFontSize}
+                updatePolicy={settings.updatePolicy}
+                updateChannel={settings.updateChannel}
+                updateState={updateState}
                 onChangeLanguage={updateLanguage}
                 onChangeUiTheme={updateUiTheme}
                 onChangeUiFontSize={updateUiFontSize}
                 onChangeTerminalFontSize={updateTerminalFontSize}
+                onChangeUpdatePolicy={updateUpdatePolicy}
+                onChangeUpdateChannel={updateUpdateChannel}
+                onCheckForUpdates={onCheckForUpdates}
+                onDownloadUpdate={onDownloadUpdate}
+                onInstallUpdate={onInstallUpdate}
               />
             ) : null}
 

@@ -28,6 +28,8 @@ import type {
   ResolveAgentResumeSessionResult,
   ResolveGitHubPullRequestsInput,
   ResolveGitHubPullRequestsResult,
+  AppUpdateState,
+  ConfigureAppUpdatesInput,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -120,6 +122,25 @@ const opencoveApi = {
         payload: ResolveGitHubPullRequestsInput,
       ): Promise<ResolveGitHubPullRequestsResult> =>
         invokeIpc(IPC_CHANNELS.integrationGithubResolvePullRequests, payload),
+    },
+  },
+  update: {
+    getState: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateGetState),
+    configure: (payload: ConfigureAppUpdatesInput): Promise<AppUpdateState> =>
+      invokeIpc(IPC_CHANNELS.appUpdateConfigure, payload),
+    checkForUpdates: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateCheck),
+    downloadUpdate: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateDownload),
+    installUpdate: (): Promise<void> => invokeIpc(IPC_CHANNELS.appUpdateInstall),
+    onState: (listener: (state: AppUpdateState) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: AppUpdateState) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.appUpdateState, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.appUpdateState, handler)
+      }
     },
   },
   pty: {

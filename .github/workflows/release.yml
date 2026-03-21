@@ -4,13 +4,35 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_call:
+    inputs:
+      tag_name:
+        required: true
+        type: string
+      target_commitish:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Tag to release (e.g. v0.2.0 or v0.2.0-nightly.20260321.1)
+        required: true
+        type: string
+      target_commitish:
+        description: Commit-ish to tag (branch or SHA)
+        required: true
+        type: string
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ inputs.tag_name || github.ref }}
   cancel-in-progress: false
+
+env:
+  OPENCOVE_RELEASE_TAG: ${{ inputs.tag_name || github.ref_name }}
+  OPENCOVE_RELEASE_TARGET: ${{ inputs.target_commitish || github.sha }}
 
 jobs:
   build:
@@ -39,6 +61,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.OPENCOVE_RELEASE_TARGET }}
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -62,6 +87,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Align package version with release tag
+        run: node scripts/apply-ci-release-version.mjs "${OPENCOVE_RELEASE_TAG}"
+
       - name: Build release artifacts
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -77,7 +105,7 @@ jobs:
             dist/*.dmg
             dist/*.exe
             dist/*.zip
-            dist/latest*.yml
+            dist/*.yml
           if-no-files-found: error
           retention-days: 7
 
@@ -91,16 +119,19 @@ jobs:
         id: channel
         shell: bash
         run: |
-          if [[ "${GITHUB_REF_NAME}" == *"-nightly."* ]]; then
+          if [[ "${OPENCOVE_RELEASE_TAG}" == *"-nightly."* ]]; then
             echo "is_nightly=true" >> "$GITHUB_OUTPUT"
-            echo "release_name=Nightly ${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_name=Nightly ${OPENCOVE_RELEASE_TAG}" >> "$GITHUB_OUTPUT"
           else
             echo "is_nightly=false" >> "$GITHUB_OUTPUT"
-            echo "release_name=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+            echo "release_name=${OPENCOVE_RELEASE_TAG}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          ref: ${{ env.OPENCOVE_RELEASE_TARGET }}
+          fetch-depth: 0
 
       - name: Download built artifacts
         uses: actions/download-artifact@v8
@@ -117,6 +148,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ env.OPENCOVE_RELEASE_TAG }}
+          target_commitish: ${{ env.OPENCOVE_RELEASE_TARGET }}
           name: ${{ steps.channel.outputs.release_name }}
           prerelease: true
           make_latest: false
@@ -129,6 +162,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ env.OPENCOVE_RELEASE_TAG }}
+          target_commitish: ${{ env.OPENCOVE_RELEASE_TARGET }}
           name: ${{ steps.channel.outputs.release_name }}
           prerelease: false
           make_latest: true

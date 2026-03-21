@@ -6,6 +6,7 @@ import {
   DEFAULT_AGENT_SETTINGS,
   type AgentProvider,
 } from '../../../src/contexts/settings/domain/agentSettings'
+import type { AppUpdateState } from '../../../src/shared/contracts/dto'
 import * as terminalProfilesHook from '../../../src/app/renderer/shell/hooks/useTerminalProfiles'
 import { SettingsPanel } from '../../../src/contexts/settings/presentation/renderer/SettingsPanel'
 
@@ -45,6 +46,25 @@ function createModelCatalog() {
   )
 }
 
+function createUpdateState(overrides: Partial<AppUpdateState> = {}): AppUpdateState {
+  return {
+    policy: DEFAULT_AGENT_SETTINGS.updatePolicy,
+    channel: DEFAULT_AGENT_SETTINGS.updateChannel,
+    currentVersion: '0.2.0',
+    status: 'idle',
+    latestVersion: null,
+    releaseName: null,
+    releaseDate: null,
+    releaseNotesUrl: null,
+    downloadPercent: null,
+    downloadedBytes: null,
+    totalBytes: null,
+    checkedAt: null,
+    message: null,
+    ...overrides,
+  }
+}
+
 describe('SettingsPanel', () => {
   it('persists the selected default profile', () => {
     const onChange = vi.fn()
@@ -60,10 +80,14 @@ describe('SettingsPanel', () => {
     render(
       <SettingsPanel
         settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
         onChange={onChange}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
         onClose={() => undefined}
       />,
     )
@@ -94,10 +118,14 @@ describe('SettingsPanel', () => {
     render(
       <SettingsPanel
         settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
         onChange={onChange}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
         onClose={() => undefined}
       />,
     )
@@ -109,5 +137,58 @@ describe('SettingsPanel', () => {
       ...DEFAULT_AGENT_SETTINGS,
       agentProviderOrder: ['codex', 'claude-code', 'opencode', 'gemini'],
     })
+  })
+
+  it('updates release channel settings and exposes update actions', () => {
+    const onChange = vi.fn()
+    const onCheckForUpdates = vi.fn()
+    const onDownloadUpdate = vi.fn()
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState({
+          status: 'available',
+          latestVersion: '0.2.1',
+          checkedAt: '2026-03-20T00:00:00.000Z',
+        })}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        onChange={onChange}
+        onCheckForUpdates={onCheckForUpdates}
+        onDownloadUpdate={onDownloadUpdate}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    fireEvent.change(screen.getByTestId('settings-update-policy'), {
+      target: { value: 'auto' },
+    })
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      updatePolicy: 'auto',
+    })
+
+    fireEvent.change(screen.getByTestId('settings-update-channel'), {
+      target: { value: 'nightly' },
+    })
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      updateChannel: 'nightly',
+      updatePolicy: 'prompt',
+    })
+
+    fireEvent.click(screen.getByTestId('settings-update-check'))
+    expect(onCheckForUpdates).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByTestId('settings-update-download'))
+    expect(onDownloadUpdate).toHaveBeenCalledTimes(1)
   })
 })

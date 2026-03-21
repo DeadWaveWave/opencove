@@ -1,3 +1,10 @@
+import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import {
+  isValidUpdateChannel,
+  isValidUpdatePolicy,
+  normalizeUpdatePolicyForChannel,
+} from './updateSettings'
+
 export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
 
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
@@ -119,6 +126,8 @@ export interface AgentSettings {
   terminalFontSize: number
   uiFontSize: number
   githubPullRequestsEnabled: boolean
+  updatePolicy: AppUpdatePolicy
+  updateChannel: AppUpdateChannel
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -156,6 +165,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   terminalFontSize: 13,
   uiFontSize: 18,
   githubPullRequestsEnabled: true,
+  updatePolicy: 'prompt',
+  updateChannel: 'stable',
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -452,6 +463,13 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const githubPullRequestsEnabled =
     normalizeBoolean(value.githubPullRequestsEnabled) ??
     DEFAULT_AGENT_SETTINGS.githubPullRequestsEnabled
+  const updateChannel = isValidUpdateChannel(value.updateChannel)
+    ? value.updateChannel
+    : DEFAULT_AGENT_SETTINGS.updateChannel
+  let updatePolicy = isValidUpdatePolicy(value.updatePolicy)
+    ? normalizeUpdatePolicyForChannel(value.updatePolicy, updateChannel)
+    : DEFAULT_AGENT_SETTINGS.updatePolicy
+  updatePolicy = normalizeUpdatePolicyForChannel(updatePolicy, updateChannel)
 
   return {
     language,
@@ -476,5 +494,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     terminalFontSize,
     uiFontSize,
     githubPullRequestsEnabled,
+    updatePolicy,
+    updateChannel,
   }
 }

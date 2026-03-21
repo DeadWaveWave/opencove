@@ -1,23 +1,41 @@
 import React, { useMemo } from 'react'
-import { ChevronDown, PanelLeftClose, PanelLeftOpen, Search, Settings } from 'lucide-react'
+import {
+  ChevronDown,
+  Download,
+  LoaderCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
+  RotateCcw,
+  Search,
+  Settings,
+} from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { AppUpdateState } from '@shared/contracts/dto'
 
 export function AppHeader({
   activeWorkspaceName,
   activeWorkspacePath,
   isSidebarCollapsed,
   isCommandCenterOpen,
+  updateState,
   onToggleSidebar,
   onToggleCommandCenter,
   onOpenSettings,
+  onCheckForUpdates,
+  onDownloadUpdate,
+  onInstallUpdate,
 }: {
   activeWorkspaceName: string | null
   activeWorkspacePath: string | null
   isSidebarCollapsed: boolean
   isCommandCenterOpen: boolean
+  updateState: AppUpdateState | null
   onToggleSidebar: () => void
   onToggleCommandCenter: () => void
   onOpenSettings: () => void
+  onCheckForUpdates: () => void
+  onDownloadUpdate: () => void
+  onInstallUpdate: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const isMac = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'darwin'
@@ -27,6 +45,51 @@ export function AppHeader({
     () => (isSidebarCollapsed ? PanelLeftOpen : PanelLeftClose),
     [isSidebarCollapsed],
   )
+  const updateAction = useMemo(() => {
+    if (!updateState) {
+      return null
+    }
+
+    if (updateState.status === 'available') {
+      return {
+        label: t('appHeader.updateAvailableShort'),
+        title: t('appHeader.updateAvailableTitle', {
+          version: updateState.latestVersion ?? updateState.currentVersion,
+        }),
+        icon: Download,
+        disabled: false,
+        onClick: onDownloadUpdate,
+      }
+    }
+
+    if (updateState.status === 'downloading') {
+      return {
+        label: `${Math.round(updateState.downloadPercent ?? 0)}%`,
+        title: t('appHeader.updateDownloadingTitle', {
+          version: updateState.latestVersion ?? updateState.currentVersion,
+          percent: `${Math.round(updateState.downloadPercent ?? 0)}%`,
+        }),
+        icon: LoaderCircle,
+        disabled: true,
+        onClick: onCheckForUpdates,
+      }
+    }
+
+    if (updateState.status === 'downloaded') {
+      return {
+        label: t('appHeader.restartToUpdateShort'),
+        title: t('appHeader.restartToUpdateTitle', {
+          version: updateState.latestVersion ?? updateState.currentVersion,
+        }),
+        icon: RotateCcw,
+        disabled: false,
+        onClick: onInstallUpdate,
+      }
+    }
+
+    return null
+  }, [onCheckForUpdates, onDownloadUpdate, onInstallUpdate, t, updateState])
+  const UpdateActionIcon = updateAction?.icon ?? Download
 
   return (
     <header className={`app-header ${isMac ? 'app-header--mac' : ''}`} role="banner">
@@ -82,6 +145,28 @@ export function AppHeader({
       </div>
 
       <div className="app-header__section app-header__section--right">
+        {updateAction ? (
+          <button
+            type="button"
+            className={`app-header__update-button${updateAction.disabled ? ' app-header__update-button--disabled' : ''}`}
+            data-testid="app-header-update"
+            aria-label={updateAction.title}
+            title={updateAction.title}
+            onClick={() => {
+              updateAction.onClick()
+            }}
+            disabled={updateAction.disabled}
+          >
+            <UpdateActionIcon
+              aria-hidden="true"
+              size={16}
+              className={
+                updateState?.status === 'downloading' ? 'app-header__update-icon--spinning' : ''
+              }
+            />
+            <span>{updateAction.label}</span>
+          </button>
+        ) : null}
         <button
           type="button"
           className="app-header__icon-button"

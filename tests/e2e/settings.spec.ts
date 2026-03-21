@@ -68,6 +68,14 @@ test.describe('Settings', () => {
       await expect(terminalFontSize).toBeVisible()
       await terminalFontSize.fill('15')
 
+      const updatePolicy = window.locator('[data-testid="settings-update-policy"]')
+      await expect(updatePolicy).toBeVisible()
+      await updatePolicy.selectOption('auto')
+
+      const updateChannel = window.locator('[data-testid="settings-update-channel"]')
+      await expect(updateChannel).toBeVisible()
+      await updateChannel.selectOption('nightly')
+
       await canvasNav.click()
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
       await expect(canvasInputMode).toBeVisible()
@@ -182,6 +190,8 @@ test.describe('Settings', () => {
                 uiTheme?: string
                 terminalFontSize?: number
                 uiFontSize?: number
+                updatePolicy?: string
+                updateChannel?: string
               }
             }
             return parsed.settings ?? null
@@ -199,6 +209,8 @@ test.describe('Settings', () => {
           uiTheme: 'light',
           terminalFontSize: 15,
           uiFontSize: 20,
+          updatePolicy: 'prompt',
+          updateChannel: 'nightly',
         }),
       )
 
@@ -233,6 +245,8 @@ test.describe('Settings', () => {
       expect(persistedSettings?.canvasInputMode).toBe('trackpad')
       expect(persistedSettings?.terminalFontSize).toBe(15)
       expect(persistedSettings?.uiFontSize).toBe(20)
+      expect(persistedSettings?.updatePolicy).toBe('prompt')
+      expect(persistedSettings?.updateChannel).toBe('nightly')
     } finally {
       await electronApp.close()
     }

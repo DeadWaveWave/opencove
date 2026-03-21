@@ -9,6 +9,8 @@ import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infras
 import { resolve } from 'node:path'
 import { registerWorktreeIpcHandlers } from '../../../contexts/worktree/presentation/main-ipc/register'
 import { registerIntegrationIpcHandlers } from '../../../contexts/integration/presentation/main-ipc/register'
+import { registerAppUpdateIpcHandlers } from '../../../contexts/update/presentation/main-ipc/register'
+import { createAppUpdateService } from '../../../contexts/update/infrastructure/main/AppUpdateService'
 import { app } from 'electron'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createPersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
@@ -19,6 +21,7 @@ export type { IpcRegistrationDisposable } from './types'
 export function registerIpcHandlers(): IpcRegistrationDisposable {
   const ptyRuntime = createPtyRuntime()
   const approvedWorkspaces = createApprovedWorkspaceStore()
+  const appUpdateService = createAppUpdateService()
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
@@ -44,6 +47,7 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
 
   const disposables: IpcRegistrationDisposable[] = [
     registerClipboardIpcHandlers(),
+    registerAppUpdateIpcHandlers(appUpdateService),
     registerWorkspaceIpcHandlers(approvedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
     registerWorktreeIpcHandlers(approvedWorkspaces),

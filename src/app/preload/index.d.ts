@@ -26,6 +26,8 @@ import type {
   ResolveAgentResumeSessionResult,
   ResolveGitHubPullRequestsInput,
   ResolveGitHubPullRequestsResult,
+  AppUpdateState,
+  ConfigureAppUpdatesInput,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -96,6 +98,14 @@ export interface OpenCoveApi {
         payload: ResolveGitHubPullRequestsInput,
       ) => Promise<ResolveGitHubPullRequestsResult>
     }
+  }
+  update: {
+    getState: () => Promise<AppUpdateState>
+    configure: (payload: ConfigureAppUpdatesInput) => Promise<AppUpdateState>
+    checkForUpdates: () => Promise<AppUpdateState>
+    downloadUpdate: () => Promise<AppUpdateState>
+    installUpdate: () => Promise<void>
+    onState: (listener: (state: AppUpdateState) => void) => UnsubscribeFn
   }
   pty: {
     listProfiles?: () => Promise<ListTerminalProfilesResult>

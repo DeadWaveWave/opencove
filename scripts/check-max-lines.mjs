@@ -55,6 +55,16 @@ function shouldCheck(filePath) {
     return false
   }
 
+  // Lockfiles are generated and can be large; line limits are for authored sources.
+  if (
+    filePath === 'pnpm-lock.yaml' ||
+    filePath === 'yarn.lock' ||
+    filePath === 'package-lock.json' ||
+    filePath === 'bun.lockb'
+  ) {
+    return false
+  }
+
   const dotIndex = filePath.lastIndexOf('.')
   if (dotIndex === -1) {
     return false
@@ -69,7 +79,9 @@ function countLines(content) {
     return 0
   }
 
-  return content.split(/\r\n|\r|\n/).length
+  const parts = content.split(/\r\n|\r|\n/)
+  // Ignore a trailing empty segment when the file ends with a newline.
+  return parts.length > 0 && parts[parts.length - 1] === '' ? parts.length - 1 : parts.length
 }
 
 const violations = []

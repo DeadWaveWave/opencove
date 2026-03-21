@@ -24,6 +24,7 @@ import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismi
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useCommandCenterShortcuts } from './hooks/useCommandCenterShortcuts'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
+import { useAppUpdates } from './hooks/useAppUpdates'
 import type { ProjectContextMenuState } from './types'
 import { useAppStore } from './store/useAppStore'
 import { createDefaultWorkspaceViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
@@ -141,6 +142,12 @@ export default function App(): React.JSX.Element {
     [],
   )
 
+  const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
+    policy: agentSettings.updatePolicy,
+    channel: agentSettings.updateChannel,
+    onShowMessage: handleShowMessage,
+  })
+
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
     resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
@@ -230,6 +237,7 @@ export default function App(): React.JSX.Element {
           activeWorkspacePath={activeWorkspace?.path ?? null}
           isSidebarCollapsed={isPrimarySidebarCollapsed}
           isCommandCenterOpen={isCommandCenterOpen}
+          updateState={updateState}
           onToggleSidebar={() => {
             setAgentSettings(prev => ({
               ...prev,
@@ -241,6 +249,15 @@ export default function App(): React.JSX.Element {
           }}
           onOpenSettings={() => {
             setIsSettingsOpen(true)
+          }}
+          onCheckForUpdates={() => {
+            void checkForUpdates()
+          }}
+          onDownloadUpdate={() => {
+            void downloadUpdate()
+          }}
+          onInstallUpdate={() => {
+            void installUpdate()
           }}
         />
 
@@ -361,6 +378,7 @@ export default function App(): React.JSX.Element {
       {isSettingsOpen ? (
         <SettingsPanel
           settings={agentSettings}
+          updateState={updateState}
           modelCatalogByProvider={providerModelCatalog}
           workspaces={workspaces}
           onWorkspaceWorktreesRootChange={(id, root) => {
@@ -368,6 +386,15 @@ export default function App(): React.JSX.Element {
           }}
           onChange={next => {
             setAgentSettings(next)
+          }}
+          onCheckForUpdates={() => {
+            void checkForUpdates()
+          }}
+          onDownloadUpdate={() => {
+            void downloadUpdate()
+          }}
+          onInstallUpdate={() => {
+            void installUpdate()
           }}
           onClose={() => {
             flushPersistNow()
