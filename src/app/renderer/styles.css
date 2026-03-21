@@ -11,6 +11,7 @@
 @import './styles/terminal-node.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';
+@import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';
 @import './styles/settings-panel.lists.css';
 @import './styles/settings-panel.buttons.css';

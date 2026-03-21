@@ -419,7 +419,6 @@ export function TerminalNode({
 
   const isAgentNode = kind === 'agent'
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
-  const shouldUseTerminalBodyNoDrag = !(isSelected || isDragging)
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
     handlePointerDownCapture: handleTerminalBodyPointerDownCapture,
@@ -489,7 +488,7 @@ export function TerminalNode({
 
       <div
         ref={containerRef}
-        className={`terminal-node__terminal ${shouldUseTerminalBodyNoDrag ? 'nodrag' : ''} ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
+        className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
         aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
       />
       <NodeResizeHandles
