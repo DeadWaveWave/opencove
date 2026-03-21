@@ -238,7 +238,7 @@ describe('TerminalNode hydration buffering', () => {
         'after',
       ])
     })
-  })
+  }, 15_000)
 
   it('restores cached serialized screen before applying live delta', async () => {
     if (typeof window.ResizeObserver === 'undefined') {

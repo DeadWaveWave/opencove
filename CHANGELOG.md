@@ -9,7 +9,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### 🚀 Added
 - Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
 - Workspace canvas: Arrange By menu (scope, ordering, layout, space sizing, standard size alignment). (#42)
-- Workspace canvas: compact layout mode for tight, gapless packing (no overlaps). (#42)
+- Workspace canvas: compact layout mode for tight, gapless packing (dense grid auto-placement, no overlaps). (#42)
 - Workspace canvas: standard node sizing ratios (terminal/task/agent/note) for node creation and optional arrange-time snapping. (#42)
 
 ### 💅 Changed

@@ -9,6 +9,8 @@ import {
   type Rect,
 } from './workspaceArrange.flowPacking'
 import { createArrangeItemsForSpaceNodes } from './workspaceArrange.ordering'
+import { resolveBestDenseGridPacking } from './workspaceArrange.gridPacking'
+import { resolveViewportAspectRatio } from './workspaceArrange.viewport'
 import {
   resolveArrangeStyle,
   unionSpaceRects,
@@ -20,35 +22,8 @@ import {
 import {
   normalizeWorkspaceNodesToCanonicalSizing,
   resolveArrangeCanonicalBucket,
+  resolveCanonicalBucketCellSize,
 } from './workspaceNodeSizing'
-
-function resolveViewportAspectRatio(viewport?: Partial<Size>): number {
-  const width =
-    typeof viewport?.width === 'number' && Number.isFinite(viewport.width) && viewport.width > 0
-      ? viewport.width
-      : typeof window !== 'undefined' && Number.isFinite(window.innerWidth) && window.innerWidth > 0
-        ? window.innerWidth
-        : 1440
-  const height =
-    typeof viewport?.height === 'number' && Number.isFinite(viewport.height) && viewport.height > 0
-      ? viewport.height
-      : typeof window !== 'undefined' &&
-          Number.isFinite(window.innerHeight) &&
-          window.innerHeight > 0
-        ? window.innerHeight
-        : 900
-
-  if (height <= 0) {
-    return 16 / 9
-  }
-
-  const ratio = width / height
-  if (!Number.isFinite(ratio) || ratio <= 0) {
-    return 16 / 9
-  }
-
-  return ratio
-}
 
 function resolveBestCompactDensePacking({
   items,
@@ -263,6 +238,25 @@ export function arrangeWorkspaceInSpace({
       }
 
       if (resolvedStyle.layout === 'compact') {
+        if (resolvedStyle.alignCanonicalSizes) {
+          const cell = resolveCanonicalBucketCellSize(canonicalBucket)
+          const maxColumns = Math.floor(innerRect.width / Math.max(1, cell.width))
+          const packed = resolveBestDenseGridPacking({
+            items: items.map(item => ({
+              id: item.id,
+              colSpan: Math.max(1, Math.round(item.width / cell.width)),
+              rowSpan: Math.max(1, Math.round(item.height / cell.height)),
+            })),
+            start,
+            cell,
+            targetAspect: resolveViewportAspectRatio(viewport),
+            maxColumns,
+            maxHeight: innerRect.height,
+          })
+
+          return packed?.placements ?? null
+        }
+
         const packed = resolveDensePacking({ items, start, wrapWidth: innerRect.width })
         const rects: Rect[] = []
         for (const item of items) {
@@ -296,6 +290,22 @@ export function arrangeWorkspaceInSpace({
     }
 
     if (resolvedStyle.layout === 'compact') {
+      if (resolvedStyle.alignCanonicalSizes) {
+        const cell = resolveCanonicalBucketCellSize(canonicalBucket)
+        const packed = resolveBestDenseGridPacking({
+          items: items.map(item => ({
+            id: item.id,
+            colSpan: Math.max(1, Math.round(item.width / cell.width)),
+            rowSpan: Math.max(1, Math.round(item.height / cell.height)),
+          })),
+          start,
+          cell,
+          targetAspect: resolveViewportAspectRatio(viewport),
+        })
+
+        return packed?.placements ?? resolveDensePacking({ items, start, wrapWidth })
+      }
+
       return resolveBestCompactDensePacking({
         items,
         start,

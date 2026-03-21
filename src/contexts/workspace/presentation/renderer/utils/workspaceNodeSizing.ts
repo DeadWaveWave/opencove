@@ -76,6 +76,11 @@ export function resolveCanvasCanonicalBucketFromViewport(
   return 'regular'
 }
 
+export function resolveCanonicalBucketCellSize(bucket: WorkspaceCanonicalSizeBucket): Size {
+  const tokens = CANONICAL_BUCKETS[bucket]
+  return { width: tokens.col, height: tokens.row }
+}
+
 export function resolveCanonicalNodeMinSize(kind: TerminalNodeData['kind']): Size {
   return MIN_SIZE_BY_KIND[kind]
 }

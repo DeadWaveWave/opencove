@@ -21,10 +21,13 @@ import {
   type WorkspaceArrangeResult,
   type WorkspaceArrangeStyle,
 } from './workspaceArrange.shared'
+import { resolveViewportAspectRatio } from './workspaceArrange.viewport'
 import {
   normalizeWorkspaceNodesToCanonicalSizing,
   resolveArrangeCanonicalBucket,
+  resolveCanonicalBucketCellSize,
 } from './workspaceNodeSizing'
+import { resolveBestDenseGridPacking } from './workspaceArrange.gridPacking'
 
 function resolveCanvasSectionPlacements({
   items,
@@ -197,6 +200,7 @@ export function arrangeWorkspaceCanvas({
   const effectiveWrapWidth = snapDown(wrapWidth, grid)
   const packingGap = resolvedStyle.layout === 'compact' ? 0 : gap
   const sectionGap = gap
+  const targetAspect = resolveViewportAspectRatio(viewport)
   const spacePlacements = resolveCanvasSectionPlacements({
     items: spaceItems,
     start,
@@ -211,13 +215,43 @@ export function arrangeWorkspaceCanvas({
       ? placedSpaceBounding.y + placedSpaceBounding.height + sectionGap
       : start.y,
   }
-  const rootPlacements = resolveCanvasSectionPlacements({
-    items: rootItems,
-    start: rootStart,
-    wrapWidth: effectiveWrapWidth,
-    gap: packingGap,
-    style: resolvedStyle,
-  })
+  const rootPlacements = (() => {
+    if (resolvedStyle.layout !== 'compact' || !resolvedStyle.alignCanonicalSizes) {
+      return resolveCanvasSectionPlacements({
+        items: rootItems,
+        start: rootStart,
+        wrapWidth: effectiveWrapWidth,
+        gap: packingGap,
+        style: resolvedStyle,
+      })
+    }
+
+    const cell = resolveCanonicalBucketCellSize(canonicalBucket)
+    const maxColumns = Math.floor(effectiveWrapWidth / Math.max(1, cell.width))
+    const packed = resolveBestDenseGridPacking({
+      items: rootItems.map(item => ({
+        id: item.key,
+        colSpan: Math.max(1, Math.round(item.rect.width / cell.width)),
+        rowSpan: Math.max(1, Math.round(item.rect.height / cell.height)),
+      })),
+      start: rootStart,
+      cell,
+      targetAspect,
+      maxColumns,
+    })
+
+    if (!packed) {
+      return resolveCanvasSectionPlacements({
+        items: rootItems,
+        start: rootStart,
+        wrapWidth: effectiveWrapWidth,
+        gap: packingGap,
+        style: resolvedStyle,
+      })
+    }
+
+    return new Map([...packed.placements.entries()])
+  })()
 
   const spaceDeltaById = new Map<string, { dx: number; dy: number }>()
   for (const item of spaceItems) {

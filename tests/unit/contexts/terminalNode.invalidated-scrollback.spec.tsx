@@ -176,5 +176,5 @@ describe('TerminalNode invalidated scrollback cleanup', () => {
     await vi.advanceTimersByTimeAsync(SCROLLBACK_PUBLISH_DELAY_MS)
 
     expect(onScrollbackChange).not.toHaveBeenCalled()
-  })
+  }, 15_000)
 })

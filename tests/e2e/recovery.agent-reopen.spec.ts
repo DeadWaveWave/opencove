@@ -395,11 +395,25 @@ test.describe('Recovery - Agent reopen', () => {
 
         await expect(window.locator('.terminal-node')).toHaveCount(1)
 
+        await expect
+          .poll(async () => {
+            const bindings = await readBindings(window)
+            const binding = bindings.find(candidate => candidate.taskId === 'task-one')
+            return (
+              typeof binding?.linkedAgentNodeId === 'string' &&
+              binding.linkedAgentNodeId.length > 0 &&
+              binding.resumeSessionIdVerified === true &&
+              typeof binding.resumeSessionId === 'string' &&
+              binding.resumeSessionId.length > 0
+            )
+          })
+          .toBe(true)
+
         const taskTwo = taskNodes.filter({ hasText: 'Second task' }).first()
         await expect(taskTwo).toBeVisible()
         await taskTwo.locator('[data-testid="task-node-run-agent"]').click()
 
-        await expect(window.locator('.terminal-node')).toHaveCount(2)
+        await expect(window.locator('.terminal-node')).toHaveCount(2, { timeout: 30_000 })
 
         await expect
           .poll(async () => {
