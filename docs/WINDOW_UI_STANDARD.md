@@ -24,7 +24,7 @@
 
 ### 2.2 Surface
 - 16px 圆角
-- 边框/底色/阴影必须跟随主题 token（`--cove-surface*`、`--cove-border*`、`--cove-shadow-color-*`）
+- 边框/底色/阴影必须跟随主题 token（例如 `--cove-window-surface`、`--cove-surface*`、`--cove-border*`、`--cove-shadow-color-*`）
 
 ### 2.3 Input
 - 10px 圆角
