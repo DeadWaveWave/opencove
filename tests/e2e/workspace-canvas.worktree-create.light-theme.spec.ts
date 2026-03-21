@@ -33,9 +33,7 @@ async function createTempRepo(): Promise<string> {
 }
 
 function parseCssRgb(value: string): { r: number; g: number; b: number } | null {
-  const match = value.match(
-    /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([0-9.]+)\s*)?\)/,
-  )
+  const match = value.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([0-9.]+)\s*)?\)/)
   if (!match) {
     return null
   }
