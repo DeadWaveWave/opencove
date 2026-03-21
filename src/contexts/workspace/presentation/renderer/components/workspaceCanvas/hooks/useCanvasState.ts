@@ -80,7 +80,11 @@ export function useWorkspaceCanvasState({
   const viewportRef = useRef<Viewport>(viewport)
 
   const flowNodes = useMemo(
-    () => nodes.map(node => ({ ...node, dragHandle: NODE_DRAG_HANDLE_SELECTOR })),
+    () =>
+      nodes.map(node => ({
+        ...node,
+        dragHandle: node.selected ? undefined : NODE_DRAG_HANDLE_SELECTOR,
+      })),
     [nodes],
   )
 

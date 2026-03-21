@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ShowWorkspaceCanvasMessage, SpaceWorktreeMismatchDropWarningState } from '../types'
@@ -13,6 +13,7 @@ import {
   type SetNodes,
 } from './useSpaceOwnership.helpers'
 import { useWorkspaceCanvasApplyOwnershipForDrop } from './useSpaceOwnership.applyDrop'
+import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
 
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
@@ -22,8 +23,12 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath,
   reactFlow,
   spacesRef,
+  selectedNodeIdsRef,
+  setSelectedNodeIds,
   selectedSpaceIdsRef,
+  setSelectedSpaceIds,
   dragSelectedSpaceIdsRef,
+  exclusiveNodeDragAnchorIdRef,
   setNodes,
   onSpacesChange,
   onRequestPersistFlush,
@@ -33,8 +38,12 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  selectedNodeIdsRef: React.MutableRefObject<string[]>
+  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
+  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   dragSelectedSpaceIdsRef: React.MutableRefObject<string[] | null>
+  exclusiveNodeDragAnchorIdRef: React.MutableRefObject<string | null>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
@@ -58,6 +67,7 @@ export function useWorkspaceCanvasSpaceOwnership({
   continueSpaceWorktreeMismatchDropWarning: () => void
 } {
   const { t } = useTranslation()
+  const reactFlowStore = useStoreApi()
   const dragStartNodeIdsRef = useRef<string[] | null>(null)
   const dragStartNodePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
   const pendingWorktreeMismatchDropRef = useRef<{
@@ -123,18 +133,63 @@ export function useWorkspaceCanvasSpaceOwnership({
   )
 
   const handleNodeDragStart = useCallback(
-    (_event: React.MouseEvent, node: Node<TerminalNodeData>, nodes: Node<TerminalNodeData>[]) => {
-      const draggedNodes = nodes.length > 0 ? nodes : [node]
+    (event: React.MouseEvent, node: Node<TerminalNodeData>, nodes: Node<TerminalNodeData>[]) => {
+      const shouldReplaceSelection =
+        !event.shiftKey && !selectedNodeIdsRef.current.includes(node.id)
+
+      if (shouldReplaceSelection) {
+        exclusiveNodeDragAnchorIdRef.current = node.id
+
+        setNodes(
+          prevNodes => {
+            let hasChanged = false
+            const nextNodes = prevNodes.map(item => {
+              const shouldSelect = item.id === node.id
+              if (item.selected === shouldSelect) {
+                return item
+              }
+
+              hasChanged = true
+              return { ...item, selected: shouldSelect }
+            })
+
+            return hasChanged ? nextNodes : prevNodes
+          },
+          { syncLayout: false },
+        )
+
+        selectedNodeIdsRef.current = [node.id]
+        setSelectedNodeIds([node.id])
+        setSortedSelectedSpaceIds([], selectedSpaceIdsRef, setSelectedSpaceIds)
+        reactFlowStore.setState({
+          nodesSelectionActive: true,
+          coveDragSurfaceSelectionMode: false,
+        } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+      } else {
+        exclusiveNodeDragAnchorIdRef.current = null
+      }
+
+      const draggedNodes = shouldReplaceSelection ? [node] : nodes.length > 0 ? nodes : [node]
       captureDragStartNodeIds(draggedNodes)
     },
-    [captureDragStartNodeIds],
+    [
+      captureDragStartNodeIds,
+      exclusiveNodeDragAnchorIdRef,
+      reactFlowStore,
+      selectedNodeIdsRef,
+      selectedSpaceIdsRef,
+      setNodes,
+      setSelectedNodeIds,
+      setSelectedSpaceIds,
+    ],
   )
 
   const handleSelectionDragStart = useCallback(
     (_event: React.MouseEvent, nodes: Node<TerminalNodeData>[]) => {
+      exclusiveNodeDragAnchorIdRef.current = null
       captureDragStartNodeIds(nodes)
     },
-    [captureDragStartNodeIds],
+    [captureDragStartNodeIds, exclusiveNodeDragAnchorIdRef],
   )
 
   const requestWorktreeMismatchDropWarning = useCallback(

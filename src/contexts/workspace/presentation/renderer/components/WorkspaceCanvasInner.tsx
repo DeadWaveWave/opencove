@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useLayoutEffect, useRef } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
@@ -58,6 +58,11 @@ export function WorkspaceCanvasInner({
     viewport,
     persistedMinimapVisible,
   })
+  const exclusiveNodeDragAnchorIdRef = useRef<string | null>(null)
+
+  useLayoutEffect(() => {
+    exclusiveNodeDragAnchorIdRef.current = null
+  }, [workspaceId])
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const {
     nodesRef,
@@ -157,8 +162,12 @@ export function WorkspaceCanvasInner({
     workspacePath,
     reactFlow,
     spacesRef,
+    selectedNodeIdsRef,
+    setSelectedNodeIds,
     selectedSpaceIdsRef,
+    setSelectedSpaceIds,
     dragSelectedSpaceIdsRef,
+    exclusiveNodeDragAnchorIdRef,
     setNodes,
     onSpacesChange,
     onRequestPersistFlush,
@@ -374,6 +383,7 @@ export function WorkspaceCanvasInner({
     spacesRef,
     selectedSpaceIdsRef,
     dragSelectedSpaceIdsRef,
+    exclusiveNodeDragAnchorIdRef,
     onSpacesChange,
     onRequestPersistFlush,
   })

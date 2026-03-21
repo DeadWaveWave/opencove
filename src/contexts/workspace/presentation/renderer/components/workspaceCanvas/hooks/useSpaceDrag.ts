@@ -417,6 +417,10 @@ export function useWorkspaceCanvasSpaceDrag({
         return
       }
 
+      if (!event.shiftKey && !selectedSpaceIdsRef.current.includes(spaceId)) {
+        applySpaceClickSelection(spaceId)
+      }
+
       event.preventDefault()
       event.stopPropagation()
 
@@ -457,10 +461,12 @@ export function useWorkspaceCanvasSpaceDrag({
       setEmptySelectionPrompt(null)
     },
     [
+      applySpaceClickSelection,
       cancelSpaceRename,
       nodesRef,
       reactFlow,
       selectedNodeIdsRef,
+      selectedSpaceIdsRef,
       setContextMenu,
       setEmptySelectionPrompt,
       spacesRef,

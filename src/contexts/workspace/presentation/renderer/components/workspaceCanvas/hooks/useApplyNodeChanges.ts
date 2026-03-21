@@ -22,6 +22,7 @@ interface UseApplyNodeChangesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   selectedSpaceIdsRef: MutableRefObject<string[]>
   dragSelectedSpaceIdsRef?: MutableRefObject<string[] | null>
+  exclusiveNodeDragAnchorIdRef?: MutableRefObject<string | null>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
 }
@@ -36,12 +37,22 @@ export function useWorkspaceCanvasApplyNodeChanges({
   spacesRef,
   selectedSpaceIdsRef,
   dragSelectedSpaceIdsRef,
+  exclusiveNodeDragAnchorIdRef,
   onSpacesChange,
   onRequestPersistFlush,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
   return useCallback(
     (changes: NodeChange<Node<TerminalNodeData>>[]) => {
-      const filteredChanges = changes.filter(change => change.type !== 'select')
+      const exclusiveAnchorId = exclusiveNodeDragAnchorIdRef?.current ?? null
+      const filteredChanges = changes
+        .filter(change => change.type !== 'select')
+        .filter(change => {
+          if (!exclusiveAnchorId) {
+            return true
+          }
+
+          return change.type !== 'position' || change.id === exclusiveAnchorId
+        })
 
       if (!filteredChanges.length) {
         return
@@ -112,10 +123,13 @@ export function useWorkspaceCanvasApplyNodeChanges({
       const anchorChange = positionChanges.find(change => change.position !== undefined) ?? null
       const activeSelectedSpaceIds = dragSelectedSpaceIdsRef?.current ?? selectedSpaceIdsRef.current
       const hasSelectedSpaces = activeSelectedSpaceIds.length > 0
-      const shouldSyncSelectedSpaces = hasSelectedSpaces && anchorChange !== null
+      const prevAnchor = anchorChange
+        ? (currentNodes.find(node => node.id === anchorChange.id) ?? null)
+        : null
+      const anchorIsSelected = prevAnchor?.selected === true
+      const shouldSyncSelectedSpaces = hasSelectedSpaces && anchorChange !== null && anchorIsSelected
 
       if (shouldSyncSelectedSpaces) {
-        const prevAnchor = currentNodes.find(node => node.id === anchorChange.id) ?? null
         const nextAnchor = nextNodes.find(node => node.id === anchorChange.id) ?? null
 
         if (prevAnchor && nextAnchor) {
@@ -209,6 +223,15 @@ export function useWorkspaceCanvasApplyNodeChanges({
         isNodeDraggingRef.current = isDraggingThisFrame
       }
 
+      if (
+        exclusiveAnchorId &&
+        exclusiveNodeDragAnchorIdRef &&
+        positionChanges.length > 0 &&
+        !isDraggingThisFrame
+      ) {
+        exclusiveNodeDragAnchorIdRef.current = null
+      }
+
       if (!isNodeDraggingRef.current) {
         nextNodes = applyPendingScrollbacks(nextNodes)
       }
@@ -280,6 +303,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
     [
       applyPendingScrollbacks,
       clearAgentLaunchToken,
+      exclusiveNodeDragAnchorIdRef,
       isNodeDraggingRef,
       nodesRef,
       normalizePosition,
