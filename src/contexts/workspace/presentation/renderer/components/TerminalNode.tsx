@@ -115,7 +115,6 @@ export function TerminalNode({
     if (!terminal) {
       return
     }
-
     terminal.options.theme = { ...resolveTerminalTheme() }
     containerRef.current?.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
     terminal.refresh(0, Math.max(0, terminal.rows - 1))
@@ -139,7 +138,6 @@ export function TerminalNode({
       attach?: (payload: { sessionId: string }) => Promise<void>
       detach?: (payload: { sessionId: string }) => Promise<void>
     }
-
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
@@ -154,7 +152,6 @@ export function TerminalNode({
       scrollback: 5000,
       ...(initialDimensions ?? {}),
     })
-
     const fitAddon = new FitAddon()
     const serializeAddon = new SerializeAddon()
     terminal.loadAddon(fitAddon)
@@ -177,7 +174,6 @@ export function TerminalNode({
         terminal,
       }),
     )
-
     if (containerRef.current) {
       terminal.open(containerRef.current)
       containerRef.current.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
