@@ -236,7 +236,9 @@ export function projectWorkspaceNodeDragLayout({
   let pushed = solveOnce(items)
 
   if (targetSpaceRect) {
-    const maxIterations = 6
+    // Clamp can introduce new overlaps (multiple nodes snapped to the same edge). Iterate a bit more
+    // and always finish on a push-away pass when clamp changes occur to reduce boundary stacking.
+    const maxIterations = 16
     for (let iteration = 0; iteration < maxIterations; iteration += 1) {
       const { items: clampedItems, hasClampChange } = clampItemsInsideTargetSpace({
         items: pushed,
@@ -244,18 +246,29 @@ export function projectWorkspaceNodeDragLayout({
         pinnedSet,
       })
       if (!hasClampChange) {
+        pushed = clampedItems
         break
       }
 
-      items = clampedItems
-      pushed = solveOnce(items)
+      pushed = solveOnce(clampedItems)
     }
 
-    pushed = clampItemsInsideTargetSpace({
+    const { items: finalClamped, hasClampChange: finalClampChanged } = clampItemsInsideTargetSpace({
       items: pushed,
       targetSpaceRect,
       pinnedSet,
-    }).items
+    })
+
+    pushed = finalClamped
+
+    if (finalClampChanged) {
+      pushed = solveOnce(pushed)
+      pushed = clampItemsInsideTargetSpace({
+        items: pushed,
+        targetSpaceRect,
+        pinnedSet,
+      }).items
+    }
   }
 
   const nextNodePositionById = new Map(
