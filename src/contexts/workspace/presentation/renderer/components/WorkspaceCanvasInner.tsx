@@ -150,6 +150,9 @@ export function WorkspaceCanvasInner({
     handleSelectionDragStart,
     handleNodeDragStop,
     handleSelectionDragStop,
+    spaceWorktreeMismatchDropWarning,
+    cancelSpaceWorktreeMismatchDropWarning,
+    continueSpaceWorktreeMismatchDropWarning,
   } = workspaceCanvasHooks.useWorkspaceCanvasSpaceOwnership({
     workspacePath,
     reactFlow,
@@ -160,6 +163,7 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
+    hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
   })
   const { buildAgentNodeTitle, launchAgentInNode } =
     workspaceCanvasHooks.useWorkspaceCanvasAgentNodeLifecycle({
@@ -477,6 +481,9 @@ export function WorkspaceCanvasInner({
       nodeDeleteConfirmation={nodeDeleteConfirmation}
       setNodeDeleteConfirmation={setNodeDeleteConfirmation}
       confirmNodeDelete={confirmNodeDelete}
+      spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
+      cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
+      continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
       agentSettings={agentSettings}
       workspacePath={workspacePath}
       spaceActionMenu={spaceUi.spaceActionMenu}
