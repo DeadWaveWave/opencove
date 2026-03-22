@@ -16,6 +16,7 @@ import {
   getUiLanguageLabel,
   getUiThemeLabel,
 } from '@app/renderer/i18n/labels'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import type { AppUpdateChannel, AppUpdatePolicy, AppUpdateState } from '@shared/contracts/dto'
 import { APP_UPDATE_CHANNELS, APP_UPDATE_POLICIES } from '@shared/contracts/dto'
 
@@ -106,20 +107,18 @@ export function GeneralSection(props: {
           <span>{t('settingsPanel.general.languageHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <select
+          <CoveSelect
             id="settings-language"
-            data-testid="settings-language"
+            testId="settings-language"
             value={language}
-            onChange={event => {
-              onChangeLanguage(event.target.value as UiLanguage)
+            options={UI_LANGUAGES.map(option => ({
+              value: option,
+              label: getUiLanguageLabel(option),
+            }))}
+            onChange={nextValue => {
+              onChangeLanguage(nextValue as UiLanguage)
             }}
-          >
-            {UI_LANGUAGES.map(option => (
-              <option value={option} key={option}>
-                {getUiLanguageLabel(option)}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
 
@@ -129,18 +128,16 @@ export function GeneralSection(props: {
           <span>{t('settingsPanel.general.uiThemeHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <select
+          <CoveSelect
             id="settings-ui-theme"
-            data-testid="settings-ui-theme"
+            testId="settings-ui-theme"
             value={uiTheme}
-            onChange={event => onChangeUiTheme(event.target.value as UiTheme)}
-          >
-            {UI_THEMES.map(theme => (
-              <option key={theme} value={theme}>
-                {getUiThemeLabel(t, theme)}
-              </option>
-            ))}
-          </select>
+            options={UI_THEMES.map(theme => ({
+              value: theme,
+              label: getUiThemeLabel(t, theme),
+            }))}
+            onChange={nextValue => onChangeUiTheme(nextValue as UiTheme)}
+          />
         </div>
       </div>
 
@@ -152,6 +149,7 @@ export function GeneralSection(props: {
           <input
             id="settings-ui-font-size"
             data-testid="settings-ui-font-size"
+            className="cove-field"
             style={{ width: '80px' }}
             type="number"
             min={MIN_UI_FONT_SIZE}
@@ -173,6 +171,7 @@ export function GeneralSection(props: {
           <input
             id="settings-terminal-font-size"
             data-testid="settings-terminal-font-size"
+            className="cove-field"
             style={{ width: '80px' }}
             type="number"
             min={MIN_TERMINAL_FONT_SIZE}

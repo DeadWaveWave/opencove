@@ -85,11 +85,11 @@ describe('canvas wheel gesture decisions', () => {
 
     expect(decision.canvasAction).toBe('zoom')
     expect(decision.nextDetectedCanvasInputMode).toBe('mouse')
-    expect(decision.nextInputModalityState.gestureLikeEventCount).toBe(1)
+    expect(decision.nextInputModalityState.gestureLikeEventCount).toBe(0)
     expect(decision.nextTrackpadGestureLock).toBeNull()
   })
 
-  it('promotes an ambiguous vertical burst to trackpad pan on the second sample', () => {
+  it('keeps ambiguous vertical wheel bursts in mouse zoom mode', () => {
     const firstDecision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
       resolvedCanvasInputMode: 'mouse',
@@ -109,6 +109,35 @@ describe('canvas wheel gesture decisions', () => {
       wheelTarget: 'canvas',
       isTargetWithinCanvas: true,
       sample: sample({ deltaY: 4.25, timeStamp: 316 }),
+      lockTimestamp: 316,
+    })
+
+    expect(firstDecision.canvasAction).toBe('zoom')
+    expect(secondDecision.canvasAction).toBe('zoom')
+    expect(secondDecision.nextDetectedCanvasInputMode).toBe('mouse')
+    expect(secondDecision.nextTrackpadGestureLock).toBeNull()
+  })
+
+  it('promotes repeated dual-axis gesture bursts to trackpad pan', () => {
+    const firstDecision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      resolvedCanvasInputMode: 'mouse',
+      inputModalityState: createCanvasInputModalityState('mouse'),
+      trackpadGestureLock: null,
+      wheelTarget: 'canvas',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaX: 4, deltaY: 20, timeStamp: 300 }),
+      lockTimestamp: 300,
+    })
+
+    const secondDecision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      resolvedCanvasInputMode: firstDecision.nextDetectedCanvasInputMode,
+      inputModalityState: firstDecision.nextInputModalityState,
+      trackpadGestureLock: firstDecision.nextTrackpadGestureLock,
+      wheelTarget: 'canvas',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaX: 5, deltaY: 20, timeStamp: 316 }),
       lockTimestamp: 316,
     })
 

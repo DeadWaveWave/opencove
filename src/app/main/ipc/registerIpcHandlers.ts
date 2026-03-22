@@ -17,6 +17,7 @@ import { app } from 'electron'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createPersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { registerPersistenceIpcHandlers } from '../../../platform/persistence/sqlite/ipc/register'
+import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandlers'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -56,6 +57,7 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
     registerPersistenceIpcHandlers(getPersistenceStore),
     registerWorktreeIpcHandlers(approvedWorkspaces),
     registerIntegrationIpcHandlers(approvedWorkspaces),
+    registerWindowChromeIpcHandlers(),
     registerPtyIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),

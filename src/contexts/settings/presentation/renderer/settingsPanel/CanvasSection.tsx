@@ -8,6 +8,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { getCanvasInputModeLabel } from '@app/renderer/i18n/labels'
 import type { TerminalProfile } from '@shared/contracts/dto'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
@@ -50,18 +51,16 @@ export function CanvasSection(props: {
           <span>{t('settingsPanel.canvas.inputModeHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <select
+          <CoveSelect
             id="settings-canvas-input-mode"
-            data-testid="settings-canvas-input-mode"
+            testId="settings-canvas-input-mode"
             value={canvasInputMode}
-            onChange={event => onChangeCanvasInputMode(event.target.value as CanvasInputMode)}
-          >
-            {CANVAS_INPUT_MODES.map(mode => (
-              <option key={mode} value={mode}>
-                {getCanvasInputModeLabel(t, mode)}
-              </option>
-            ))}
-          </select>
+            options={CANVAS_INPUT_MODES.map(mode => ({
+              value: mode,
+              label: getCanvasInputModeLabel(t, mode),
+            }))}
+            onChange={nextValue => onChangeCanvasInputMode(nextValue as CanvasInputMode)}
+          />
         </div>
       </div>
 
@@ -78,30 +77,29 @@ export function CanvasSection(props: {
             </span>
           </div>
           <div className="settings-panel__control">
-            <select
+            <CoveSelect
               id="settings-terminal-profile"
-              data-testid="settings-terminal-profile"
+              testId="settings-terminal-profile"
               value={selectedProfileId ?? ''}
-              onChange={event =>
-                onChangeDefaultTerminalProfileId(
-                  event.target.value.trim().length > 0 ? event.target.value : null,
-                )
+              options={[
+                {
+                  value: '',
+                  label: t('settingsPanel.canvas.terminalProfileAutoWithDefault', {
+                    defaultProfile:
+                      terminalProfiles.find(
+                        profile => profile.id === detectedDefaultTerminalProfileId,
+                      )?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
+                  }),
+                },
+                ...terminalProfiles.map(profile => ({
+                  value: profile.id,
+                  label: profile.label,
+                })),
+              ]}
+              onChange={nextValue =>
+                onChangeDefaultTerminalProfileId(nextValue.trim().length > 0 ? nextValue : null)
               }
-            >
-              <option value="">
-                {t('settingsPanel.canvas.terminalProfileAutoWithDefault', {
-                  defaultProfile:
-                    terminalProfiles.find(
-                      profile => profile.id === detectedDefaultTerminalProfileId,
-                    )?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
-                })}
-              </option>
-              {terminalProfiles.map(profile => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.label}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
       ) : null}
@@ -112,6 +110,7 @@ export function CanvasSection(props: {
         </div>
         <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
           <input
+            className="cove-field"
             style={{ width: '80px' }}
             type="number"
             min={MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT}

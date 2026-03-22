@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchApp } from './workspace-canvas.helpers'
+import { launchApp, selectCoveOption } from './workspace-canvas.helpers'
 
 test.describe('Settings', () => {
   test('persists agent provider and list-based custom model options', async ({
@@ -45,13 +45,17 @@ test.describe('Settings', () => {
       await expect(taskConfigurationNav).toBeVisible()
 
       const languageSelect = window.locator('[data-testid="settings-language"]')
-      await expect(languageSelect).toBeVisible()
-      await languageSelect.selectOption('zh-CN')
+      const languageTrigger = window.locator('[data-testid="settings-language-trigger"]')
+      await expect(languageTrigger).toBeVisible()
+      await selectCoveOption(window, 'settings-language', 'zh-CN')
+      await expect(languageSelect).toHaveValue('zh-CN')
       await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
 
       const uiThemeSelect = window.locator('[data-testid="settings-ui-theme"]')
-      await expect(uiThemeSelect).toBeVisible()
-      await uiThemeSelect.selectOption('light')
+      const uiThemeTrigger = window.locator('[data-testid="settings-ui-theme-trigger"]')
+      await expect(uiThemeTrigger).toBeVisible()
+      await selectCoveOption(window, 'settings-ui-theme', 'light')
+      await expect(uiThemeSelect).toHaveValue('light')
       await expect
         .poll(() =>
           window.evaluate(() => {
@@ -78,8 +82,13 @@ test.describe('Settings', () => {
 
       await canvasNav.click()
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
-      await expect(canvasInputMode).toBeVisible()
-      await canvasInputMode.selectOption('trackpad')
+      const canvasInputModeTrigger = window.locator(
+        '[data-testid="settings-canvas-input-mode-trigger"]',
+      )
+      await expect(canvasInputModeTrigger).toBeVisible()
+      await expect(canvasInputMode).toHaveValue('auto')
+      await selectCoveOption(window, 'settings-canvas-input-mode', 'trackpad')
+      await expect(canvasInputMode).toHaveValue('trackpad')
 
       const normalizeZoomToggle = window.locator(
         '[data-testid="settings-normalize-zoom-on-terminal-click"]',
@@ -88,9 +97,13 @@ test.describe('Settings', () => {
       await normalizeZoomToggle.uncheck()
 
       await agentNav.click()
-      const defaultProvider = window.locator('#settings-default-provider')
-      await expect(defaultProvider).toBeVisible()
-      await defaultProvider.selectOption('codex')
+      const defaultProvider = window.locator('[data-testid="settings-default-provider"]')
+      const defaultProviderTrigger = window.locator(
+        '[data-testid="settings-default-provider-trigger"]',
+      )
+      await expect(defaultProviderTrigger).toBeVisible()
+      await selectCoveOption(window, 'settings-default-provider', 'codex')
+      await expect(defaultProvider).toHaveValue('codex')
 
       const customModelEnabled = window.locator(
         '[data-testid="settings-custom-model-enabled-codex"]',

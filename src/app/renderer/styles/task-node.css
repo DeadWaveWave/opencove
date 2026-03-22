@@ -372,13 +372,8 @@
   gap: 8px;
 }
 
-.task-node__footer select {
-  border: 1px solid var(--cove-border);
-  background: var(--cove-field);
-  color: var(--cove-text);
-  border-radius: 8px;
-  padding: 6px 8px;
-  font-size: calc(12px * var(--cove-ui-font-scale));
+.task-node__footer-select {
+  width: 136px;
 }
 
 .task-node__run-agent {

@@ -312,18 +312,6 @@
   width: auto;
 }
 
-.settings-panel select,
-.settings-panel input {
-  background: var(--cove-field);
-  border: 1px solid var(--cove-border);
-  border-radius: 10px;
-  color: var(--cove-text);
-  padding: 8px 12px;
-  font-size: calc(13px * var(--cove-ui-font-scale));
-  width: 100%;
-  transition: all 0.2s;
-}
-
 .settings-panel input[type='checkbox'] {
   width: 16px;
   height: 16px;
@@ -331,16 +319,9 @@
   accent-color: #5e9cff;
 }
 
-.settings-panel select:hover,
-.settings-panel input:hover {
-  border-color: var(--cove-border);
-}
-
-.settings-panel select:focus,
-.settings-panel input:focus {
-  outline: none;
-  border-color: #5e9cff;
-  box-shadow: 0 0 0 2px rgba(94, 156, 255, 0.1);
+.settings-panel .cove-select,
+.settings-panel input:not([type='checkbox']) {
+  width: 100%;
 }
 
 @media (min-width: 900px) {

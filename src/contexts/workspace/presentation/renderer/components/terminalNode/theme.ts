@@ -1,3 +1,9 @@
+import type { ResolvedUiTheme } from '@shared/contracts/dto'
+
+export function resolveActiveUiTheme(): ResolvedUiTheme {
+  return document.documentElement.dataset.coveTheme === 'light' ? 'light' : 'dark'
+}
+
 export function resolveTerminalTheme() {
   const readRootCssVar = (name: string, fallback: string): string => {
     const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()

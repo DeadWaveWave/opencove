@@ -48,6 +48,7 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
+  SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalSessionMetadataEvent,
@@ -66,6 +67,9 @@ export interface OpenCoveApi {
     isTest: boolean
     allowWhatsNewInTests: boolean
     platform: string
+  }
+  windowChrome: {
+    setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
   }
   clipboard: {
     readText: () => Promise<string>

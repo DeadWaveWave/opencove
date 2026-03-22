@@ -106,6 +106,7 @@ export function WorkspaceSection({
             <div className="settings-panel__control settings-panel__control--stack">
               <input
                 data-testid="settings-worktree-root"
+                className="cove-field"
                 value={worktreesRoot}
                 placeholder={t('settingsPanel.workspace.worktreeRootPlaceholder')}
                 onChange={event => onChangeWorktreesRoot(event.target.value)}
