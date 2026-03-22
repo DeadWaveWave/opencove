@@ -41,6 +41,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         sessionId: '',
         profileId: node.profileId,
         runtimeKind: node.runtimeKind,
+        labelColorOverride: node.labelColorOverride ?? null,
         title: node.title,
         titlePinnedByUser: node.titlePinnedByUser === true,
         width: node.width,

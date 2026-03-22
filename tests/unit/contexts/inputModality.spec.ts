@@ -53,11 +53,11 @@ describe('canvas input modality inference', () => {
     })
 
     expect(state.mode).toBe('mouse')
-    expect(state.gestureLikeEventCount).toBe(1)
+    expect(state.gestureLikeEventCount).toBe(0)
     expect(state.burstMode).toBe('unknown')
   })
 
-  it('promotes an ambiguous vertical burst to trackpad mode on the second sample', () => {
+  it('keeps an ambiguous vertical burst in mouse mode', () => {
     const first = inferCanvasInputModalityFromWheel(createCanvasInputModalityState('mouse'), {
       deltaX: 0,
       deltaY: 4.5,
@@ -75,15 +75,15 @@ describe('canvas input modality inference', () => {
       timeStamp: 316,
     })
 
-    expect(second.mode).toBe('trackpad')
-    expect(second.burstMode).toBe('trackpad')
-    expect(second.gestureLikeEventCount).toBe(2)
+    expect(second.mode).toBe('mouse')
+    expect(second.burstMode).toBe('unknown')
+    expect(second.gestureLikeEventCount).toBe(0)
   })
 
-  it('resets ambiguous burst accumulation after a gesture gap', () => {
+  it('promotes a repeated dual-axis gesture burst to trackpad mode', () => {
     const first = inferCanvasInputModalityFromWheel(createCanvasInputModalityState('mouse'), {
-      deltaX: 0,
-      deltaY: 4.5,
+      deltaX: 4,
+      deltaY: 20,
       deltaMode: 0,
       ctrlKey: false,
       timeStamp: 360,
@@ -91,16 +91,16 @@ describe('canvas input modality inference', () => {
     expect(first.gestureLikeEventCount).toBe(1)
 
     const second = inferCanvasInputModalityFromWheel(first, {
-      deltaX: 0,
-      deltaY: 4.25,
+      deltaX: 5,
+      deltaY: 20,
       deltaMode: 0,
       ctrlKey: false,
-      timeStamp: 620,
+      timeStamp: 376,
     })
 
-    expect(second.mode).toBe('mouse')
-    expect(second.gestureLikeEventCount).toBe(1)
-    expect(second.burstMode).toBe('unknown')
+    expect(second.mode).toBe('trackpad')
+    expect(second.gestureLikeEventCount).toBe(2)
+    expect(second.burstMode).toBe('trackpad')
   })
 
   it('keeps trackpad mode stable across ambiguous follow-up samples in the same burst', () => {

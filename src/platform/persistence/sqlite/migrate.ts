@@ -43,6 +43,7 @@ function createTables(db: Database.Database): void {
       width INTEGER NOT NULL,
       height INTEGER NOT NULL,
       kind TEXT NOT NULL,
+      label_color_override TEXT,
       status TEXT,
       started_at TEXT,
       ended_at TEXT,
@@ -59,6 +60,7 @@ function createTables(db: Database.Database): void {
       workspace_id TEXT NOT NULL,
       name TEXT NOT NULL,
       directory_path TEXT NOT NULL,
+      label_color TEXT,
       rect_x REAL,
       rect_y REAL,
       rect_width REAL,
@@ -131,6 +133,31 @@ export function migrate(db: Database.Database): void {
       db.exec(`
         ALTER TABLE workspaces
         ADD COLUMN pull_request_base_branch_options_json TEXT NOT NULL DEFAULT '[]'
+      `)
+    } catch {
+      // ignore (column already exists)
+    }
+
+    db.pragma(`user_version = ${DB_SCHEMA_VERSION}`)
+    return
+  }
+
+  if (currentVersion === 3) {
+    createTables(db)
+
+    try {
+      db.exec(`
+        ALTER TABLE nodes
+        ADD COLUMN label_color_override TEXT
+      `)
+    } catch {
+      // ignore (column already exists)
+    }
+
+    try {
+      db.exec(`
+        ALTER TABLE workspace_spaces
+        ADD COLUMN label_color TEXT
       `)
     } catch {
       // ignore (column already exists)

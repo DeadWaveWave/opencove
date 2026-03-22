@@ -5,13 +5,12 @@ import { resolveAgentModel, type AgentSettings } from '@contexts/settings/domain
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { resolveDefaultAgentWindowSize } from '../constants'
-import {
-  resolveNodePlacementAnchorFromViewportCenter,
-  sanitizeSpaces,
-  toErrorMessage,
-} from '../helpers'
+import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
-import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
+import {
+  assignNodeToSpaceAndExpand,
+  findContainingSpaceByAnchor,
+} from './useInteractions.spaceAssignment'
 
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
@@ -70,19 +69,7 @@ export function useWorkspaceCanvasAgentLauncher({
 
       const model = resolveAgentModel(agentSettings, provider)
 
-      const anchorSpace =
-        spacesRef.current.find(space => {
-          if (!space.rect) {
-            return false
-          }
-
-          return (
-            cursorAnchor.x >= space.rect.x &&
-            cursorAnchor.x <= space.rect.x + space.rect.width &&
-            cursorAnchor.y >= space.rect.y &&
-            cursorAnchor.y <= space.rect.y + space.rect.height
-          )
-        }) ?? null
+      const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
 
       const executionDirectory =
         anchorSpace && anchorSpace.directoryPath.trim().length > 0
@@ -110,6 +97,9 @@ export function useWorkspaceCanvasAgentLauncher({
             title: buildAgentNodeTitle(provider, modelLabel),
             anchor,
             kind: 'agent',
+            placement: {
+              targetSpaceRect: anchorSpace?.rect ?? null,
+            },
             agent: {
               provider,
               prompt: '',
@@ -134,67 +124,15 @@ export function useWorkspaceCanvasAgentLauncher({
             return
           }
 
-          const nextSpaces = sanitizeSpaces(
-            spacesRef.current.map(space => {
-              const filtered = space.nodeIds.filter(nodeId => nodeId !== created.id)
-
-              if (space.id !== anchorSpace.id) {
-                return {
-                  ...space,
-                  nodeIds: filtered,
-                }
-              }
-
-              return {
-                ...space,
-                nodeIds: [...new Set([...filtered, created.id])],
-              }
-            }),
-          )
-
-          const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
+          assignNodeToSpaceAndExpand({
+            createdNodeId: created.id,
             targetSpaceId: anchorSpace.id,
-            spaces: nextSpaces,
-            nodeRects: nodesRef.current.map(node => ({
-              id: node.id,
-              rect: {
-                x: node.position.x,
-                y: node.position.y,
-                width: node.data.width,
-                height: node.data.height,
-              },
-            })),
-            gap: 0,
+            spacesRef,
+            nodesRef,
+            setNodes,
+            onSpacesChange,
           })
 
-          if (nodePositionById.size > 0) {
-            setNodes(
-              prevNodes => {
-                let hasChanged = false
-                const next = prevNodes.map(node => {
-                  const nextPosition = nodePositionById.get(node.id)
-                  if (!nextPosition) {
-                    return node
-                  }
-
-                  if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-                    return node
-                  }
-
-                  hasChanged = true
-                  return {
-                    ...node,
-                    position: nextPosition,
-                  }
-                })
-
-                return hasChanged ? next : prevNodes
-              },
-              { syncLayout: false },
-            )
-          }
-
-          onSpacesChange(pushedSpaces)
           onRequestPersistFlush?.()
         } catch (error) {
           onShowMessage?.(

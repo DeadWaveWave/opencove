@@ -7,6 +7,7 @@ import type {
   ShowWorkspaceCanvasMessage,
   SpaceVisual,
 } from '../types'
+import type { LabelColor } from '@shared/types/labelColor'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
@@ -58,6 +59,7 @@ export function useWorkspaceCanvasSpaces({
   startSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   commitSpaceRename: (spaceId: string) => void
+  setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
   spaceVisuals: SpaceVisual[]
   focusSpaceInViewport: (spaceId: string) => void
@@ -207,6 +209,23 @@ export function useWorkspaceCanvasSpaces({
     [cancelSpaceRename, onSpacesChange, spaceRenameDraft, spacesRef],
   )
 
+  const setSpaceLabelColor = useCallback(
+    (spaceId: string, labelColor: LabelColor | null) => {
+      const nextSpaces = spacesRef.current.map(space =>
+        space.id === spaceId
+          ? {
+              ...space,
+              labelColor,
+            }
+          : space,
+      )
+
+      onSpacesChange(nextSpaces)
+      onRequestPersistFlush?.()
+    },
+    [onRequestPersistFlush, onSpacesChange, spacesRef],
+  )
+
   const spaceVisuals = useMemo<SpaceVisual[]>(() => {
     return spaces
       .map(space => {
@@ -219,6 +238,7 @@ export function useWorkspaceCanvasSpaces({
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          labelColor: space.labelColor,
           rect,
           hasExplicitRect: true,
         }
@@ -285,6 +305,7 @@ export function useWorkspaceCanvasSpaces({
     startSpaceRename,
     cancelSpaceRename,
     commitSpaceRename,
+    setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     spaceVisuals,
     focusSpaceInViewport,

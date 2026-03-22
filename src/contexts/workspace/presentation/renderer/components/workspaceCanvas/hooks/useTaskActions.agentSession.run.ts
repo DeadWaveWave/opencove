@@ -6,6 +6,7 @@ import {
   clearStaleTaskLinkedAgent,
   createTaskAgentAnchor,
   findTaskNode,
+  findTaskSpace,
   resolveTaskDirectory,
   setTaskLastError,
   type TaskActionContext,
@@ -133,6 +134,7 @@ export async function runTaskAgentAction(
 
   const provider = context.agentSettings.defaultProvider
   const model = resolveAgentModel(context.agentSettings, provider)
+  const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
 
   try {
     const launched = await window.opencoveApi.agent.launch({
@@ -151,6 +153,10 @@ export async function runTaskAgentAction(
       title: context.buildAgentNodeTitle(provider, launched.effectiveModel),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',
+      placement: {
+        targetSpaceRect: taskSpace?.rect ?? null,
+        preferredDirection: 'right',
+      },
       agent: {
         provider,
         prompt: requirement,

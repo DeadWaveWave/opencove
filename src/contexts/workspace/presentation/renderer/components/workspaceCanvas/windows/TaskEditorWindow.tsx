@@ -6,6 +6,7 @@ import { TASK_PRIORITY_OPTIONS } from '../constants'
 import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskEditorState } from '../types'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 interface TaskEditorWindowProps {
   taskEditor: TaskEditorState | null
@@ -117,13 +118,17 @@ export function TaskEditorWindow({
         <div className="workspace-task-creator__field-grid">
           <div className="workspace-task-creator__field-row">
             <label htmlFor="workspace-task-editor-priority">{t('taskWindow.priority')}</label>
-            <select
+            <CoveSelect
               id="workspace-task-editor-priority"
-              data-testid="workspace-task-editor-priority"
+              testId="workspace-task-editor-priority"
               value={taskEditor.priority}
               disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
-              onChange={event => {
-                const nextPriority = event.target.value as TaskPriority
+              options={TASK_PRIORITY_OPTIONS.map(option => ({
+                value: option.value,
+                label: getTaskPriorityLabel(t, option.value),
+              }))}
+              onChange={nextValue => {
+                const nextPriority = nextValue as TaskPriority
                 setTaskEditor(prev =>
                   prev
                     ? {
@@ -133,13 +138,7 @@ export function TaskEditorWindow({
                     : prev,
                 )
               }}
-            >
-              {TASK_PRIORITY_OPTIONS.map(option => (
-                <option value={option.value} key={option.value}>
-                  {getTaskPriorityLabel(t, option.value)}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <div className="workspace-task-creator__field-row">

@@ -6,6 +6,7 @@ import { TASK_PRIORITY_OPTIONS } from '../constants'
 import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskCreatorState } from '../types'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 interface TaskCreatorWindowProps {
   taskCreator: TaskCreatorState | null
@@ -31,14 +32,13 @@ export function TaskCreatorWindow({
   const { t } = useTranslation()
   const [isAdvancedSettingsVisible, setIsAdvancedSettingsVisible] = useState(false)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
+  const isTaskCreatorOpen = taskCreator !== null
 
   useLayoutEffect(() => {
-    if (!taskCreator) {
-      return
+    if (isTaskCreatorOpen) {
+      setIsAdvancedSettingsVisible(false)
     }
-
-    setIsAdvancedSettingsVisible(false)
-  }, [taskCreator])
+  }, [isTaskCreatorOpen])
 
   if (!taskCreator) {
     return null
@@ -129,13 +129,17 @@ export function TaskCreatorWindow({
             <div className="workspace-task-creator__field-grid">
               <div className="workspace-task-creator__field-row">
                 <label htmlFor="workspace-task-priority">{t('taskWindow.priority')}</label>
-                <select
+                <CoveSelect
                   id="workspace-task-priority"
-                  data-testid="workspace-task-priority"
+                  testId="workspace-task-priority"
                   value={taskCreator.priority}
                   disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
-                  onChange={event => {
-                    const nextPriority = event.target.value as TaskPriority
+                  options={TASK_PRIORITY_OPTIONS.map(option => ({
+                    value: option.value,
+                    label: getTaskPriorityLabel(t, option.value),
+                  }))}
+                  onChange={nextValue => {
+                    const nextPriority = nextValue as TaskPriority
                     setTaskCreator(prev =>
                       prev
                         ? {
@@ -145,13 +149,7 @@ export function TaskCreatorWindow({
                         : prev,
                     )
                   }}
-                >
-                  {TASK_PRIORITY_OPTIONS.map(option => (
-                    <option value={option.value} key={option.value}>
-                      {getTaskPriorityLabel(t, option.value)}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div className="workspace-task-creator__field-row">

@@ -2,6 +2,7 @@ import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TaskRuntimeStatus } from '@contexts/workspace/presentation/renderer/types'
 import { getTaskStatusLabel } from '@app/renderer/i18n/labels'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function TaskNodeFooter({
   status,
@@ -17,19 +18,20 @@ export function TaskNodeFooter({
 
   return (
     <div className="task-node__footer nodrag">
-      <select
-        data-testid="task-node-status-select"
+      <CoveSelect
+        testId="task-node-status-select"
+        triggerTestId="task-node-status-select-trigger"
+        className="task-node__footer-select"
+        size="compact"
         value={status}
-        onChange={event => {
-          onStatusChange(event.target.value as TaskRuntimeStatus)
+        options={taskStatusOptions.map(option => ({
+          value: option,
+          label: getTaskStatusLabel(t, option),
+        }))}
+        onChange={nextValue => {
+          onStatusChange(nextValue as TaskRuntimeStatus)
         }}
-      >
-        {taskStatusOptions.map(option => (
-          <option value={option} key={option}>
-            {getTaskStatusLabel(t, option)}
-          </option>
-        ))}
-      </select>
+      />
 
       <button
         type="button"

@@ -2,6 +2,7 @@ import React from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function AgentSection(props: {
   defaultProvider: AgentProvider
@@ -54,19 +55,18 @@ export function AgentSection(props: {
           <span>{t('settingsPanel.agent.defaultAgentHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <select
+          <CoveSelect
             id="settings-default-provider"
+            testId="settings-default-provider"
             value={defaultProvider}
-            onChange={event => {
-              onChangeDefaultProvider(event.target.value as AgentProvider)
+            options={agentProviderOrder.map(provider => ({
+              value: provider,
+              label: AGENT_PROVIDER_LABEL[provider],
+            }))}
+            onChange={nextValue => {
+              onChangeDefaultProvider(nextValue as AgentProvider)
             }}
-          >
-            {agentProviderOrder.map(provider => (
-              <option value={provider} key={provider}>
-                {AGENT_PROVIDER_LABEL[provider]}
-              </option>
-            ))}
-          </select>
+          />
         </div>
       </div>
 

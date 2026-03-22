@@ -12,16 +12,14 @@ import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } fro
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
+import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
 import {
   isCanvasDoubleClickCreateTarget,
   isPanePointerDragStartTarget,
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
-import {
-  createNoteNodeFromPaneContextMenu,
-  createTerminalNodeFromPaneContextMenu,
-} from './useInteractions.paneNodeCreation'
+import { createNoteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -57,7 +55,15 @@ interface UseWorkspaceCanvasInteractionsParams {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  createNoteNode: (
+    anchor: Point,
+    options?: {
+      placementStrategy?: 'default' | 'right-no-push'
+      placement?: {
+        targetSpaceRect?: WorkspaceSpaceState['rect']
+      }
+    },
+  ) => Node<TerminalNodeData> | null
 }
 
 export function useWorkspaceCanvasInteractions({
@@ -407,31 +413,18 @@ export function useWorkspaceCanvasInteractions({
     [cancelSpaceRename, clearNodeSelection, setContextMenu, setEmptySelectionPrompt],
   )
 
-  const createTerminalNode = useCallback(() => {
-    return createTerminalNodeFromPaneContextMenu({
-      contextMenu,
-      defaultTerminalProfileId,
-      defaultTerminalWindowScalePercent,
-      workspacePath,
-      spacesRef,
-      nodesRef,
-      setNodes,
-      onSpacesChange,
-      createNodeForSession,
-      setContextMenu,
-    })
-  }, [
+  const createTerminalNode = useWorkspaceCanvasTerminalCreation({
     contextMenu,
-    createNodeForSession,
-    defaultTerminalProfileId,
-    defaultTerminalWindowScalePercent,
-    nodesRef,
-    onSpacesChange,
     setContextMenu,
-    setNodes,
+    defaultTerminalWindowScalePercent,
     spacesRef,
     workspacePath,
-  ])
+    nodesRef,
+    defaultTerminalProfileId,
+    createNodeForSession,
+    setNodes,
+    onSpacesChange,
+  })
 
   const createNoteNodeFromContextMenu = useCallback(() => {
     createNoteNodeFromPaneContextMenu({

@@ -12,6 +12,7 @@ import type {
 } from '../../types'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { TerminalRuntimeKind } from '@shared/contracts/dto'
+import type { LabelColor } from '@shared/types/labelColor'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
 
@@ -92,6 +93,7 @@ export interface SpaceVisual {
   id: string
   name: string
   directoryPath: string
+  labelColor: LabelColor | null
   rect: WorkspaceSpaceRect
   hasExplicitRect: boolean
 }
@@ -155,6 +157,13 @@ export interface NodeDeleteConfirmationState {
   primaryNodeTitle: string
 }
 
+export interface SpaceWorktreeMismatchDropWarningState {
+  spaceId: string
+  spaceName: string
+  agentCount: number
+  terminalCount: number
+}
+
 export interface CreateNodeInput {
   sessionId: string
   profileId?: string | null
@@ -165,6 +174,14 @@ export interface CreateNodeInput {
   agent?: AgentNodeData | null
   executionDirectory?: string | null
   expectedDirectory?: string | null
+  placement?: NodePlacementOptions
+}
+
+export type NodePlacementDirection = 'right' | 'down' | 'left' | 'up'
+
+export interface NodePlacementOptions {
+  targetSpaceRect?: WorkspaceSpaceRect | null
+  preferredDirection?: NodePlacementDirection
 }
 
 export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void

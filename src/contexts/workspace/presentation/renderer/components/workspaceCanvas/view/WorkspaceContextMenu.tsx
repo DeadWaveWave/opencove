@@ -7,6 +7,7 @@ import {
   ListTodo,
   LoaderCircle,
   Play,
+  Tag,
   Terminal,
   X,
 } from 'lucide-react'
@@ -16,6 +17,7 @@ import {
   AGENT_PROVIDER_LABEL,
   type AgentProvider,
 } from '@contexts/settings/domain/agentSettings'
+import { LABEL_COLORS, type NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { ContextMenuState } from '../types'
 
 const MENU_WIDTH = 188
@@ -37,6 +39,7 @@ interface WorkspaceContextMenuProps {
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
+  setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
 }
 
 export function WorkspaceContextMenu({
@@ -53,9 +56,10 @@ export function WorkspaceContextMenu({
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
+  setSelectedNodeLabelColorOverride,
 }: WorkspaceContextMenuProps): React.JSX.Element | null {
   const { t } = useTranslation()
-  const [openSubmenu, setOpenSubmenu] = useState<'agent-providers' | null>(null)
+  const [openSubmenu, setOpenSubmenu] = useState<'agent-providers' | 'label-color' | null>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [installedProviders, setInstalledProviders] = useState<AgentProvider[] | null>(null)
@@ -158,6 +162,8 @@ export function WorkspaceContextMenu({
     contextMenu.kind === 'pane' &&
     openSubmenu === 'agent-providers' &&
     sortedInstalledProviders.length > 0
+  const shouldShowLabelColorSubmenu =
+    contextMenu.kind === 'selection' && openSubmenu === 'label-color'
   const submenuWouldOverflow =
     menuLeft + MENU_WIDTH + SUBMENU_WIDTH > viewportWidth - VIEWPORT_PADDING
   const submenuLeft = submenuWouldOverflow ? menuLeft - SUBMENU_WIDTH : menuLeft + MENU_WIDTH
@@ -268,6 +274,29 @@ export function WorkspaceContextMenu({
                 {t('workspaceContextMenu.createSpaceWithSelected')}
               </span>
             </button>
+            <button
+              type="button"
+              data-testid="workspace-selection-label-color"
+              onMouseEnter={() => {
+                cancelScheduledSubmenuClose()
+                setOpenSubmenu('label-color')
+              }}
+              onFocus={() => {
+                cancelScheduledSubmenuClose()
+                setOpenSubmenu('label-color')
+              }}
+              onClick={() => {
+                cancelScheduledSubmenuClose()
+                setOpenSubmenu('label-color')
+              }}
+            >
+              <Tag className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">{t('labelColors.title')}</span>
+              <ChevronRight
+                className="workspace-context-menu__icon workspace-context-menu__chevron"
+                aria-hidden="true"
+              />
+            </button>
             {canConvertSelectedNoteToTask ? (
               <button
                 type="button"
@@ -330,6 +359,74 @@ export function WorkspaceContextMenu({
               <span className="workspace-context-menu__label">
                 {AGENT_PROVIDER_LABEL[provider]}
               </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      {shouldShowLabelColorSubmenu ? (
+        <div
+          className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
+          data-testid="workspace-selection-label-color-menu"
+          style={{ top: submenuTop, left: submenuLeft }}
+          onMouseDown={event => {
+            event.stopPropagation()
+          }}
+          onClick={event => {
+            event.stopPropagation()
+          }}
+          onMouseEnter={() => {
+            cancelScheduledSubmenuClose()
+            setOpenSubmenu('label-color')
+          }}
+          onMouseLeave={scheduleSubmenuClose}
+        >
+          <button
+            type="button"
+            data-testid="workspace-selection-label-color-auto-inherit"
+            onClick={() => {
+              setSelectedNodeLabelColorOverride(null)
+              closeContextMenu()
+            }}
+          >
+            <span
+              className="workspace-context-menu__icon workspace-label-color-menu__dot workspace-label-color-menu__dot--auto"
+              aria-hidden="true"
+            />
+            <span className="workspace-context-menu__label">{t('labelColors.autoInherit')}</span>
+          </button>
+
+          <button
+            type="button"
+            data-testid="workspace-selection-label-color-none"
+            onClick={() => {
+              setSelectedNodeLabelColorOverride('none')
+              closeContextMenu()
+            }}
+          >
+            <span
+              className="workspace-context-menu__icon workspace-label-color-menu__dot workspace-label-color-menu__dot--none"
+              aria-hidden="true"
+            />
+            <span className="workspace-context-menu__label">{t('labelColors.none')}</span>
+          </button>
+
+          {LABEL_COLORS.map(color => (
+            <button
+              key={color}
+              type="button"
+              data-testid={`workspace-selection-label-color-${color}`}
+              onClick={() => {
+                setSelectedNodeLabelColorOverride(color)
+                closeContextMenu()
+              }}
+            >
+              <span
+                className="workspace-context-menu__icon workspace-label-color-menu__dot"
+                data-cove-label-color={color}
+                aria-hidden="true"
+              />
+              <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
             </button>
           ))}
         </div>

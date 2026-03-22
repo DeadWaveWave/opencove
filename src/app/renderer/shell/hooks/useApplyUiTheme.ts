@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 import type { UiTheme } from '@contexts/settings/domain/agentSettings'
-
-type ResolvedUiTheme = 'light' | 'dark'
+import type { ResolvedUiTheme } from '@shared/contracts/dto'
 const SYSTEM_THEME_FALLBACK: ResolvedUiTheme = 'dark'
 
 export function useApplyUiTheme(uiTheme: UiTheme): void {
@@ -15,6 +14,7 @@ export function useApplyUiTheme(uiTheme: UiTheme): void {
 
       root.dataset.coveTheme = theme
       root.style.colorScheme = theme
+      void window.opencoveApi?.windowChrome?.setTheme?.({ theme }).catch(() => undefined)
       window.dispatchEvent(new CustomEvent('opencove-theme-changed', { detail: { theme } }))
     }
 

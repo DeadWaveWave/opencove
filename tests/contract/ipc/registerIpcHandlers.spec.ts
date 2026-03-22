@@ -61,6 +61,18 @@ describe('registerIpcHandlers', () => {
     vi.doMock('../../../src/contexts/workspace/presentation/main-ipc/register', () => ({
       registerWorkspaceIpcHandlers: () => ({ dispose: vi.fn() }),
     }))
+    vi.doMock('../../../src/contexts/update/presentation/main-ipc/register', () => ({
+      registerAppUpdateIpcHandlers: () => ({ dispose: vi.fn() }),
+    }))
+    vi.doMock('../../../src/contexts/update/infrastructure/main/AppUpdateService', () => ({
+      createAppUpdateService: () => ({ dispose: vi.fn() }),
+    }))
+    vi.doMock('../../../src/contexts/releaseNotes/presentation/main-ipc/register', () => ({
+      registerReleaseNotesIpcHandlers: () => ({ dispose: vi.fn() }),
+    }))
+    vi.doMock('../../../src/contexts/releaseNotes/infrastructure/main/ReleaseNotesService', () => ({
+      createReleaseNotesService: () => ({ getRange: vi.fn(async () => ({ items: [] })) }),
+    }))
     vi.doMock('../../../src/contexts/worktree/presentation/main-ipc/register', () => ({
       registerWorktreeIpcHandlers: () => ({ dispose: vi.fn() }),
     }))

@@ -130,7 +130,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       })
       expect(minimapNodeFill).not.toBe('none')
       const minimapNodeAlpha = parseAlpha(minimapNodeFill)
-      expect(minimapNodeAlpha).toBeGreaterThan(0.7)
+      // Light theme minimap nodes should be visible but not overly saturated.
+      expect(minimapNodeAlpha).toBeGreaterThan(0.45)
+      expect(minimapNodeAlpha).toBeLessThan(0.85)
 
       const screenshotPath = testInfo.outputPath('minimap-light.png')
       await window.screenshot({ path: screenshotPath })

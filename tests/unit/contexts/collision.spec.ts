@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  findCanvasOverflowPosition,
   findNearestFreePosition,
+  findNearestFreePositionAroundBounds,
   findNearestFreePositionOnRight,
+  findNearestFreePositionWithinBounds,
   clampSizeToNonOverlapping,
   isPositionAvailable,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/collision'
@@ -80,6 +83,70 @@ describe('collision utils', () => {
     expect(next?.x).toBeGreaterThanOrEqual(456)
   })
 
+  it('finds the nearest free position without leaving the target space bounds', () => {
+    const nodes = [
+      {
+        ...baseNode,
+        data: {
+          ...baseNode.data,
+          width: 120,
+          height: 120,
+        },
+        id: 'n1',
+        position: { x: 40, y: 40 },
+      },
+    ]
+
+    const next = findNearestFreePositionWithinBounds(
+      { x: 40, y: 40 },
+      { width: 120, height: 120 },
+      { left: 0, top: 0, right: 320, bottom: 320 },
+      nodes,
+    )
+
+    expect(next).toEqual({ x: 160, y: 40 })
+  })
+
+  it('falls back to a slot just outside the occupied space when the space interior is full', () => {
+    const nodes = [
+      {
+        ...baseNode,
+        id: 'n1',
+        position: { x: 0, y: 0 },
+      },
+    ]
+
+    const next = findNearestFreePositionAroundBounds({
+      desired: { x: 0, y: 0 },
+      size: { width: 400, height: 280 },
+      bounds: { left: 0, top: 0, right: 400, bottom: 280 },
+      allNodes: nodes,
+      directions: ['right', 'down', 'left', 'up'],
+      gap: 24,
+    })
+
+    expect(next).toEqual({ x: 424, y: 0 })
+  })
+
+  it('finds a deterministic canvas overflow slot without moving existing nodes', () => {
+    const nodes = [
+      {
+        ...baseNode,
+        id: 'n1',
+        position: { x: 0, y: 0 },
+      },
+      {
+        ...baseNode,
+        id: 'n2',
+        position: { x: 420, y: 0 },
+      },
+    ]
+
+    const next = findCanvasOverflowPosition({ x: 20, y: 20 }, { width: 400, height: 280 }, nodes)
+
+    expect(next).toEqual({ x: 860, y: 20 })
+  })
+
   it('clamps resize when desired size overlaps with other node', () => {
     const nodes = [
       {
@@ -134,5 +201,29 @@ describe('collision utils', () => {
     const available = isPositionAvailable({ x: 400, y: 0 }, { width: 300, height: 220 }, nodes)
 
     expect(available).toBe(true)
+  })
+
+  it('treats obstacles as blocking rects', () => {
+    const nodes: Array<typeof baseNode & { id: string; position: { x: number; y: number } }> = []
+    const obstacles = [{ left: 0, top: 0, right: 400, bottom: 280 }]
+
+    expect(
+      isPositionAvailable(
+        { x: 10, y: 10 },
+        { width: 120, height: 120 },
+        nodes,
+        undefined,
+        obstacles,
+      ),
+    ).toBe(false)
+    expect(
+      isPositionAvailable(
+        { x: 400, y: 0 },
+        { width: 120, height: 120 },
+        nodes,
+        undefined,
+        obstacles,
+      ),
+    ).toBe(true)
   })
 })

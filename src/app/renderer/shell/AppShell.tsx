@@ -24,10 +24,13 @@ import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismi
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useCommandCenterShortcuts } from './hooks/useCommandCenterShortcuts'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
+import { useAppUpdates } from './hooks/useAppUpdates'
+import { useWhatsNew } from './hooks/useWhatsNew'
 import type { ProjectContextMenuState } from './types'
 import { useAppStore } from './store/useAppStore'
 import { createDefaultWorkspaceViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { removeWorkspace } from './utils/removeWorkspace'
+import { WhatsNewDialog } from './components/WhatsNewDialog'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -148,6 +151,19 @@ export default function App(): React.JSX.Element {
     [],
   )
 
+  const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
+    policy: agentSettings.updatePolicy,
+    channel: agentSettings.updateChannel,
+    onShowMessage: handleShowMessage,
+  })
+
+  const whatsNew = useWhatsNew({
+    isPersistReady,
+    updateState,
+    settings: agentSettings,
+    onChangeSettings: setAgentSettings,
+  })
+
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
     resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
@@ -237,6 +253,7 @@ export default function App(): React.JSX.Element {
           activeWorkspacePath={activeWorkspace?.path ?? null}
           isSidebarCollapsed={isPrimarySidebarCollapsed}
           isCommandCenterOpen={isCommandCenterOpen}
+          updateState={updateState}
           onToggleSidebar={() => {
             setAgentSettings(prev => ({
               ...prev,
@@ -249,6 +266,15 @@ export default function App(): React.JSX.Element {
           onOpenSettings={() => {
             setIsFocusNodeTargetZoomPreviewing(false)
             setIsSettingsOpen(true)
+          }}
+          onCheckForUpdates={() => {
+            void checkForUpdates()
+          }}
+          onDownloadUpdate={() => {
+            void downloadUpdate()
+          }}
+          onInstallUpdate={() => {
+            void installUpdate()
           }}
         />
 
@@ -371,6 +397,7 @@ export default function App(): React.JSX.Element {
       {isSettingsOpen ? (
         <SettingsPanel
           settings={agentSettings}
+          updateState={updateState}
           modelCatalogByProvider={providerModelCatalog}
           workspaces={workspaces}
           onWorkspaceWorktreesRootChange={(id, root) => {
@@ -381,6 +408,15 @@ export default function App(): React.JSX.Element {
           onChange={next => {
             setAgentSettings(next)
           }}
+          onCheckForUpdates={() => {
+            void checkForUpdates()
+          }}
+          onDownloadUpdate={() => {
+            void downloadUpdate()
+          }}
+          onInstallUpdate={() => {
+            void installUpdate()
+          }}
           onClose={() => {
             flushPersistNow()
             setIsFocusNodeTargetZoomPreviewing(false)
@@ -388,6 +424,19 @@ export default function App(): React.JSX.Element {
           }}
         />
       ) : null}
+
+      <WhatsNewDialog
+        isOpen={whatsNew.isOpen}
+        fromVersion={whatsNew.fromVersion}
+        toVersion={whatsNew.toVersion}
+        notes={whatsNew.notes}
+        isLoading={whatsNew.isLoading}
+        error={whatsNew.error}
+        compareUrl={whatsNew.compareUrl}
+        onClose={() => {
+          whatsNew.close()
+        }}
+      />
     </>
   )
 }

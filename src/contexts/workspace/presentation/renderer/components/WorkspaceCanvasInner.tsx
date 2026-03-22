@@ -1,9 +1,9 @@
-import React, { useLayoutEffect, useMemo } from 'react'
+import React from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../../types'
-import * as workspaceCanvasHooks from './hooks'
-import { WorkspaceCanvasView } from './WorkspaceCanvasView'
-import type { WorkspaceCanvasProps } from './types'
+import type { TerminalNodeData } from '../types'
+import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
+import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
+import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
@@ -74,6 +74,7 @@ export function WorkspaceCanvasInner({
     updateNodeScrollback,
     updateTerminalTitle,
     renameTerminalTitle,
+    setNodeLabelColorOverride,
     updateNoteText,
     createNodeForSession,
     createNoteNode,
@@ -105,6 +106,7 @@ export function WorkspaceCanvasInner({
     startSpaceRename,
     cancelSpaceRename,
     commitSpaceRename,
+    setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     spaceVisuals,
     focusSpaceInViewport,
@@ -149,6 +151,9 @@ export function WorkspaceCanvasInner({
     handleSelectionDragStart,
     handleNodeDragStop,
     handleSelectionDragStop,
+    spaceWorktreeMismatchDropWarning,
+    cancelSpaceWorktreeMismatchDropWarning,
+    continueSpaceWorktreeMismatchDropWarning,
   } = workspaceCanvasHooks.useWorkspaceCanvasSpaceOwnership({
     workspacePath,
     reactFlow,
@@ -159,6 +164,7 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
+    hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
   })
   const { buildAgentNodeTitle, launchAgentInNode } =
     workspaceCanvasHooks.useWorkspaceCanvasAgentNodeLifecycle({
@@ -183,10 +189,9 @@ export function WorkspaceCanvasInner({
       createNodeForSession,
       buildAgentNodeTitle,
     })
-  const taskTagOptions = useMemo(() => {
-    const fromSettings = agentSettings.taskTagOptions ?? []
-    return [...new Set(fromSettings.map(tag => tag.trim()).filter(tag => tag.length > 0))]
-  }, [agentSettings.taskTagOptions])
+  const taskTagOptions = workspaceCanvasHooks.useWorkspaceCanvasTaskTagOptions(
+    agentSettings.taskTagOptions,
+  )
   const { suggestTaskTitle } = workspaceCanvasHooks.useWorkspaceCanvasTaskActions({
     nodesRef,
     spacesRef,
@@ -235,14 +240,14 @@ export function WorkspaceCanvasInner({
     closeNode,
     actionRefs,
   })
-  const canvasInputModeSetting = agentSettings.canvasInputMode
-  const resolvedCanvasInputMode =
-    canvasInputModeSetting === 'auto' ? detectedCanvasInputMode : canvasInputModeSetting
-  const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
-  const useManualCanvasWheelGestures = canvasInputModeSetting !== 'mouse'
-  const { handleCanvasWheelCapture } = workspaceCanvasHooks.useWorkspaceCanvasTrackpadGestures({
-    canvasInputModeSetting,
+  const {
     resolvedCanvasInputMode,
+    isTrackpadCanvasMode,
+    useManualCanvasWheelGestures,
+    handleCanvasWheelCapture,
+  } = workspaceCanvasHooks.useWorkspaceCanvasInputMode({
+    canvasInputModeSetting: agentSettings.canvasInputMode,
+    detectedCanvasInputMode,
     inputModalityStateRef,
     setDetectedCanvasInputMode,
     canvasRef,
@@ -266,7 +271,7 @@ export function WorkspaceCanvasInner({
     reactFlow,
     viewport,
     viewportRef,
-    canvasInputModeSetting,
+    canvasInputModeSetting: agentSettings.canvasInputMode,
     inputModalityStateRef,
     setDetectedCanvasInputMode,
     isShiftPressedRef,
@@ -345,10 +350,13 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     setContextMenu,
   })
-  const { useWorkspaceCanvasAgentLastMessageCopy } = workspaceCanvasHooks
-  const copyAgentLastMessage = useWorkspaceCanvasAgentLastMessageCopy({ nodesRef, onShowMessage })
+  const copyAgentLastMessage = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageCopy({
+    nodesRef,
+    onShowMessage,
+  })
   workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
     actionRefs,
+    clearNodeSelection,
     closeNode,
     resizeNode,
     copyAgentLastMessage,
@@ -361,9 +369,6 @@ export function WorkspaceCanvasInner({
     nodesRef,
     reactFlow,
   })
-  useLayoutEffect(() => {
-    actionRefs.clearNodeSelectionRef.current = clearNodeSelection
-  }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])
   const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasApplyNodeChanges({
     nodesRef,
     onNodesChange,
@@ -441,6 +446,7 @@ export function WorkspaceCanvasInner({
       commitSpaceRename={commitSpaceRename}
       cancelSpaceRename={cancelSpaceRename}
       startSpaceRename={startSpaceRename}
+      setSpaceLabelColor={setSpaceLabelColor}
       selectedNodeCount={selectedNodeIds.length}
       isMinimapVisible={isMinimapVisible}
       minimapNodeColor={minimapNodeColor}
@@ -461,6 +467,9 @@ export function WorkspaceCanvasInner({
       canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
+      setSelectedNodeLabelColorOverride={labelColorOverride =>
+        setNodeLabelColorOverride(selectedNodeIdsRef.current, labelColorOverride)
+      }
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}
       taskTitleModelLabel={taskTitleModelLabel}
@@ -477,6 +486,9 @@ export function WorkspaceCanvasInner({
       nodeDeleteConfirmation={nodeDeleteConfirmation}
       setNodeDeleteConfirmation={setNodeDeleteConfirmation}
       confirmNodeDelete={confirmNodeDelete}
+      spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
+      cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
+      continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
       agentSettings={agentSettings}
       workspacePath={workspacePath}
       spaceActionMenu={spaceUi.spaceActionMenu}

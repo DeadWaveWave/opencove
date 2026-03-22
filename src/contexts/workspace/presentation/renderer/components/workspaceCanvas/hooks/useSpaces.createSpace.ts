@@ -107,6 +107,7 @@ export function useWorkspaceCanvasCreateSpace({
         id: nextSpaceId,
         name: normalizedName,
         directoryPath: workspacePath,
+        labelColor: null,
         nodeIds: normalizedNodeIds,
         rect,
       }
