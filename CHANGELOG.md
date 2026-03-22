@@ -12,6 +12,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
 - In-canvas GitHub pull request chip for worktree-bound Spaces (opens on GitHub; requires `gh`).
 - Settings → Integrations tab with a GitHub PR links toggle (default on).
+- Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
 
 ### 💅 Changed
 - Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
@@ -19,6 +20,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### 🐞 Fixed
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
 - Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
+- Normalized node resize and terminal selection drags while the canvas is zoomed. (#56)
 
 ---
 
