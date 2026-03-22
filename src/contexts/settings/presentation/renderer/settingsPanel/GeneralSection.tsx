@@ -187,7 +187,9 @@ export function GeneralSection(props: {
 
       <div className="settings-panel__subsection">
         <div className="settings-panel__subsection-header">
-          <strong>{t('settingsPanel.general.updates.title')}</strong>
+          <h4 className="settings-panel__section-title">
+            {t('settingsPanel.general.updates.title')}
+          </h4>
           <span>{t('settingsPanel.general.updates.help')}</span>
         </div>
 
