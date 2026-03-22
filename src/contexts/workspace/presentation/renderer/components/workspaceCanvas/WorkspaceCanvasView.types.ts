@@ -147,4 +147,3 @@ export interface WorkspaceCanvasViewProps {
   getSpaceBlockingNodes: (spaceId: string) => { agentNodeIds: string[]; terminalNodeIds: string[] }
   closeNodesById: (nodeIds: string[]) => Promise<void>
 }
-
