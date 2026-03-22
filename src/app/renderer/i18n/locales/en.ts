@@ -338,6 +338,8 @@ export const en = {
     selectionHint_other: 'Selected {{count}} windows.',
     showMinimap: 'Show minimap',
     hideMinimap: 'Hide minimap',
+    labelColorFilterAll: 'Show all',
+    clearLabelColorFilter: 'Clear label filter',
   },
   labelColors: {
     title: 'Label Color',

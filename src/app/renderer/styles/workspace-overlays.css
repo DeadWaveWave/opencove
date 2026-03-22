@@ -204,51 +204,108 @@
   align-items: center;
   gap: 6px;
   align-self: flex-start;
-  padding: 6px 8px;
+  pointer-events: auto;
+}
+
+.workspace-label-color-filter__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 26px;
+  padding: 2px 10px;
   border: 1px solid var(--cove-border-subtle);
   border-radius: 999px;
   background: var(--cove-surface-strong);
   backdrop-filter: blur(18px) saturate(130%);
-  box-shadow: 0 12px 32px var(--cove-shadow-color-elevated);
-  pointer-events: auto;
-}
-
-.workspace-label-color-filter__item {
-  width: 26px;
-  height: 24px;
-  padding: 0;
-  border-radius: 999px;
-  border: 1px solid var(--cove-border);
-  background: transparent;
+  color: var(--cove-text-muted);
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  box-shadow: 0 12px 32px var(--cove-shadow-color-elevated);
   transition:
     background-color 0.15s ease,
-    border-color 0.15s ease,
-    box-shadow 0.15s ease,
-    transform 0.15s ease;
+    border-color 0.15s ease;
 }
 
-.workspace-label-color-filter__item:hover {
+.workspace-label-color-filter__trigger:hover {
   background: var(--cove-surface-hover);
-  border-color: color-mix(in srgb, var(--cove-label-color) 44%, var(--cove-border));
-  transform: translateY(-0.5px);
+  border-color: rgba(142, 210, 255, 0.9);
+  color: var(--cove-text);
 }
 
-.workspace-label-color-filter__item--active {
-  background: color-mix(in srgb, var(--cove-label-color) 12%, var(--cove-surface-strong));
-  border-color: color-mix(in srgb, var(--cove-label-color) 66%, var(--cove-border));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 32%, transparent);
+.workspace-label-color-filter__trigger--open {
+  border-color: rgba(142, 210, 255, 0.9);
+  background: rgba(94, 156, 255, 0.14);
+  color: var(--cove-text);
 }
 
-.workspace-label-color-filter__item:focus-visible {
+.workspace-label-color-filter__trigger:focus-visible {
   outline: 2px solid rgba(94, 156, 255, 0.85);
   outline-offset: 2px;
 }
 
-.workspace-label-color-filter__dot {
-  width: 10px;
-  height: 10px;
+.workspace-label-color-filter__icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.7;
+  flex: 0 0 auto;
+}
+
+.workspace-label-color-filter__label {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.workspace-label-color-filter__chevron {
+  width: 14px;
+  height: 14px;
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+  flex: 0 0 auto;
+}
+
+.workspace-label-color-filter__chevron--open {
+  transform: rotate(180deg);
+}
+
+.workspace-label-color-filter__clear {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-surface-strong);
+  backdrop-filter: blur(18px) saturate(130%);
+  color: var(--cove-text-muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 12px 32px var(--cove-shadow-color-elevated);
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workspace-label-color-filter__clear:hover {
+  background: var(--cove-surface-hover);
+  border-color: rgba(142, 210, 255, 0.9);
+  color: var(--cove-text);
+}
+
+.workspace-label-color-filter__clear:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.workspace-label-color-filter__clear-icon {
+  width: 14px;
+  height: 14px;
+  opacity: 0.85;
+}
+
+.workspace-label-color-filter__menu {
+  z-index: 11;
+  min-width: 196px;
+  pointer-events: auto;
 }

@@ -335,6 +335,8 @@ export const zhCN = {
     selectionHint_other: '已选中 {{count}} 个窗口。',
     showMinimap: '显示缩略图',
     hideMinimap: '隐藏缩略图',
+    labelColorFilterAll: '显示全部',
+    clearLabelColorFilter: '清除颜色过滤',
   },
   labelColors: {
     title: '颜色标注',

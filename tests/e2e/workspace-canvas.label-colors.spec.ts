@@ -194,6 +194,7 @@ test.describe('Workspace Canvas - Label Colors', () => {
       ])
 
       await expect(window.locator('[data-testid="workspace-label-color-filter"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-label-color-filter"]').click()
       await window.locator('[data-testid="workspace-label-color-filter-red"]').click()
 
       const redWrapper = window.locator('.react-flow__node', {
@@ -208,7 +209,7 @@ test.describe('Workspace Canvas - Label Colors', () => {
       await expect(blueWrapper).toHaveCSS('pointer-events', 'none')
       await expect(blueWrapper).toHaveCSS('opacity', '0.28')
 
-      await window.locator('[data-testid="workspace-label-color-filter-red"]').click()
+      await window.locator('[data-testid="workspace-label-color-filter-clear"]').click()
       await expect(blueWrapper).not.toHaveClass(/cove-node--filtered-out/)
     } finally {
       await electronApp.close()
