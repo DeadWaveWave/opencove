@@ -478,7 +478,7 @@ export function WorkspaceCanvasView({
 
       <SpaceWorktreeWindow
         spaceId={spaceWorktreeDialog?.spaceId ?? null}
-        initialViewMode={spaceWorktreeDialog?.initialViewMode}
+        initialViewMode={spaceWorktreeDialog?.initialViewMode ?? 'create'}
         spaces={spaces}
         nodes={nodes}
         workspacePath={workspacePath}
@@ -486,9 +486,11 @@ export function WorkspaceCanvasView({
         agentSettings={agentSettings}
         onClose={closeSpaceWorktree}
         onShowMessage={onShowMessage}
-        onUpdateSpaceDirectory={updateSpaceDirectory}
-        getBlockingNodes={getSpaceBlockingNodes}
-        closeNodesById={closeNodesById}
+        onUpdateSpaceDirectory={(spaceId, directoryPath, options) => {
+          updateSpaceDirectory(spaceId, directoryPath, options)
+        }}
+        getBlockingNodes={spaceId => getSpaceBlockingNodes(spaceId)}
+        closeNodesById={nodeIds => closeNodesById(nodeIds)}
       />
     </div>
   )

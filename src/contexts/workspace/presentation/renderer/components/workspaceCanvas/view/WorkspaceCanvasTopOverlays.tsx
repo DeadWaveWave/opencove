@@ -31,10 +31,6 @@ export function WorkspaceCanvasTopOverlays({
   const filterTriggerRef = React.useRef<HTMLButtonElement | null>(null)
   const filterMenuRef = React.useRef<HTMLDivElement | null>(null)
 
-  if (selectedNodeCount === 0 && spaces.length === 0 && usedLabelColors.length === 0) {
-    return null
-  }
-
   const orderedUsedLabelColors = React.useMemo(() => {
     const usedSet = new Set(usedLabelColors)
     const ordered = LABEL_COLORS.filter(color => usedSet.has(color))
@@ -69,6 +65,9 @@ export function WorkspaceCanvasTopOverlays({
     return { top, left }
   }, [isFilterMenuOpen])
 
+  const hasAnyOverlay =
+    selectedNodeCount > 0 || spaces.length > 0 || orderedUsedLabelColors.length > 0
+
   React.useEffect(() => {
     if (!isFilterMenuOpen) {
       return
@@ -101,6 +100,10 @@ export function WorkspaceCanvasTopOverlays({
       window.removeEventListener('keydown', onKeyDown, { capture: true })
     }
   }, [isFilterMenuOpen])
+
+  if (!hasAnyOverlay) {
+    return null
+  }
 
   return (
     <div className="workspace-canvas__top-overlays">
