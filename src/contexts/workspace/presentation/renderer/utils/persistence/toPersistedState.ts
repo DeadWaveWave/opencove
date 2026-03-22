@@ -9,6 +9,7 @@ import {
   normalizeWorkspaceSpaceRect,
   normalizeWorkspaceViewport,
 } from './normalize'
+import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 
 export function toPersistedState(
   workspaces: WorkspaceState[],
@@ -38,6 +39,7 @@ export function toPersistedState(
           normalizeOptionalString(space.directoryPath) ??
           normalizeOptionalString(workspace.path) ??
           workspace.path,
+        labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
         rect: normalizeWorkspaceSpaceRect(space.rect),
       })),
@@ -56,6 +58,7 @@ export function toPersistedState(
         kind: node.data.kind,
         profileId: normalizeOptionalString(node.data.profileId),
         runtimeKind: node.data.runtimeKind,
+        labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
         status: node.data.status,
         startedAt: node.data.startedAt,
         endedAt: node.data.endedAt,

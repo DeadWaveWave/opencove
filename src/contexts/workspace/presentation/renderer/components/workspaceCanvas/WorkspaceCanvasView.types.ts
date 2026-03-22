@@ -1,5 +1,7 @@
+import type * as React from 'react'
 import type { Edge, Node, NodeTypes, OnNodesChange, Viewport } from '@xyflow/react'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
+import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   AgentNodeData,
   TerminalNodeData,
@@ -76,6 +78,7 @@ export interface WorkspaceCanvasViewProps {
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   startSpaceRename: (spaceId: string) => void
+  setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   selectedNodeCount: number
   isMinimapVisible: boolean
   minimapNodeColor: (node: Node<TerminalNodeData>) => string
@@ -96,6 +99,7 @@ export interface WorkspaceCanvasViewProps {
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
+  setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
   taskCreator: TaskCreatorState | null
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
@@ -143,3 +147,4 @@ export interface WorkspaceCanvasViewProps {
   getSpaceBlockingNodes: (spaceId: string) => { agentNodeIds: string[]; terminalNodeIds: string[] }
   closeNodesById: (nodeIds: string[]) => Promise<void>
 }
+

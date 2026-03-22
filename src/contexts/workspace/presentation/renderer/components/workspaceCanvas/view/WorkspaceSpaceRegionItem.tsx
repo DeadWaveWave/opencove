@@ -81,6 +81,7 @@ export function WorkspaceSpaceRegionItem({
           ? 'workspace-space-region workspace-space-region--selected'
           : 'workspace-space-region'
       }
+      data-cove-label-color={space.labelColor ?? undefined}
       style={{
         transform: `translate(${resolvedRect.x}px, ${resolvedRect.y}px)`,
         width: resolvedRect.width,
@@ -157,6 +158,13 @@ export function WorkspaceSpaceRegionItem({
                 startSpaceRename(space.id)
               }}
             >
+              {space.labelColor ? (
+                <span
+                  className="cove-label-dot cove-label-dot--solid"
+                  data-cove-label-color={space.labelColor}
+                  aria-hidden="true"
+                />
+              ) : null}
               {space.name}
             </button>
           ) : null}

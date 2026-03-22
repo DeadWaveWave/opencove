@@ -42,11 +42,19 @@ export function WorkspaceSpaceSwitcher({
           key={space.id}
           className="workspace-space-switcher__item"
           data-testid={`workspace-space-switch-${space.id}`}
+          data-cove-label-color={space.labelColor ?? undefined}
           onClick={() => {
             focusSpaceInViewport(space.id)
             cancelSpaceRename()
           }}
         >
+          {space.labelColor ? (
+            <span
+              className="cove-label-dot cove-label-dot--solid"
+              data-cove-label-color={space.labelColor}
+              aria-hidden="true"
+            />
+          ) : null}
           <span className="workspace-space-switcher__item-label">{space.name}</span>
         </button>
       ))}

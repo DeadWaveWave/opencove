@@ -4,6 +4,7 @@ import { NoteNode } from '../NoteNode'
 import { TaskNode } from '../TaskNode'
 import { TerminalNode } from '../TerminalNode'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
+import type { LabelColor } from '@shared/types/labelColor'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import type {
   QuickUpdateTaskRequirement,
@@ -63,6 +64,9 @@ function TerminalNodeType({
 }): ReactElement {
   const scrollback = useScrollbackStore(state => state.scrollbackByNodeId[id] ?? null)
   const nodePosition = useNodePosition(id)
+  const labelColor =
+    (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
+    null
 
   return (
     <TerminalNode
@@ -70,6 +74,7 @@ function TerminalNodeType({
       sessionId={data.sessionId}
       title={data.title}
       kind={data.kind}
+      labelColor={labelColor}
       isSelected={selected === true}
       isDragging={dragging === true}
       status={data.status}
@@ -163,6 +168,9 @@ function NoteNodeType({
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
 }): ReactElement | null {
   const nodePosition = useNodePosition(id)
+  const labelColor =
+    (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
+    null
 
   if (!data.note) {
     return null
@@ -171,6 +179,7 @@ function NoteNodeType({
   return (
     <NoteNode
       text={data.note.text}
+      labelColor={labelColor}
       position={nodePosition}
       width={data.width}
       height={data.height}
@@ -268,6 +277,9 @@ export function useWorkspaceCanvasNodeTypes({
     const TaskNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
       const linkedAgentNodeId = data.task?.linkedAgentNodeId ?? null
       const nodePosition = useNodePosition(id)
+      const labelColor =
+        (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null })
+          .effectiveLabelColor ?? null
       const linkedAgentNode = useStore(storeState => {
         if (!linkedAgentNodeId) {
           return null
@@ -319,6 +331,7 @@ export function useWorkspaceCanvasNodeTypes({
           linkedAgentNode={linkedAgentSummary}
           agentSessions={data.task.agentSessions ?? []}
           currentDirectory={currentDirectory}
+          labelColor={labelColor}
           position={nodePosition}
           width={data.width}
           height={data.height}

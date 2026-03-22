@@ -18,6 +18,7 @@ import { TaskNodeAgentSessions } from './taskNode/TaskNodeAgentSessions'
 import { TaskNodeFooter } from './taskNode/TaskNodeFooter'
 import { MIN_HEIGHT, MIN_WIDTH, shouldStopWheelPropagation } from './taskNode/helpers'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
+import type { LabelColor } from '@shared/types/labelColor'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -32,6 +33,7 @@ interface TaskNodeProps {
   priority: TaskPriority
   tags: string[]
   isEnriching: boolean
+  labelColor?: LabelColor | null
   linkedAgentNode: {
     nodeId: string
     title: string
@@ -63,6 +65,7 @@ export function TaskNode({
   priority,
   tags,
   isEnriching,
+  labelColor,
   linkedAgentNode,
   agentSessions,
   currentDirectory,
@@ -235,50 +238,60 @@ export function TaskNode({
 
       <div className="task-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
         <div className="task-node__header-main">
-          {isTitleEditing ? (
-            <>
-              <span className="task-node__title task-node__title-proxy" aria-hidden="true">
-                {titleDraft}
-              </span>
-              <input
-                className="task-node__title-input nodrag nowheel"
-                data-testid="task-node-inline-title-input"
-                value={titleDraft}
-                autoFocus
-                onFocus={() => {
-                  setIsTitleEditing(true)
-                }}
-                onPointerDown={event => {
-                  event.stopPropagation()
-                }}
-                onClick={event => {
-                  event.stopPropagation()
-                }}
-                onChange={event => {
-                  setTitleDraft(event.target.value)
-                }}
-                onBlur={() => {
-                  commitTitleDraft()
-                  setIsTitleEditing(false)
-                }}
-                onKeyDown={event => {
-                  if (event.key === 'Escape') {
-                    event.preventDefault()
-                    cancelTitleEdit()
-                    event.currentTarget.blur()
-                    return
-                  }
-
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    event.currentTarget.blur()
-                  }
-                }}
+          <div className="task-node__title-row">
+            {labelColor ? (
+              <span
+                className="cove-label-dot cove-label-dot--solid"
+                data-cove-label-color={labelColor}
+                aria-hidden="true"
               />
-            </>
-          ) : (
-            <span className="task-node__title">{titleDraft}</span>
-          )}
+            ) : null}
+
+            {isTitleEditing ? (
+              <>
+                <span className="task-node__title task-node__title-proxy" aria-hidden="true">
+                  {titleDraft}
+                </span>
+                <input
+                  className="task-node__title-input nodrag nowheel"
+                  data-testid="task-node-inline-title-input"
+                  value={titleDraft}
+                  autoFocus
+                  onFocus={() => {
+                    setIsTitleEditing(true)
+                  }}
+                  onPointerDown={event => {
+                    event.stopPropagation()
+                  }}
+                  onClick={event => {
+                    event.stopPropagation()
+                  }}
+                  onChange={event => {
+                    setTitleDraft(event.target.value)
+                  }}
+                  onBlur={() => {
+                    commitTitleDraft()
+                    setIsTitleEditing(false)
+                  }}
+                  onKeyDown={event => {
+                    if (event.key === 'Escape') {
+                      event.preventDefault()
+                      cancelTitleEdit()
+                      event.currentTarget.blur()
+                      return
+                    }
+
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      event.currentTarget.blur()
+                    }
+                  }}
+                />
+              </>
+            ) : (
+              <span className="task-node__title">{titleDraft}</span>
+            )}
+          </div>
         </div>
 
         <div className="task-node__header-actions nodrag">

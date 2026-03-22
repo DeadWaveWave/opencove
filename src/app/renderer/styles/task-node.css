@@ -34,6 +34,13 @@
   gap: 0;
 }
 
+.task-node__title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
 .task-node--enriching .task-node__header-main {
   padding-left: 18px;
 }
@@ -61,6 +68,8 @@
 }
 
 .task-node__title {
+  flex: 1;
+  min-width: 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
   color: var(--cove-text);
   white-space: nowrap;
@@ -95,7 +104,9 @@
 }
 
 .task-node__title-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  width: auto;
   border: none;
   background: transparent;
   color: var(--cove-text);
@@ -447,7 +458,6 @@
   left: 0;
   cursor: nesw-resize;
 }
-
 .task-node__resizer--bottom-right {
   right: 0;
   bottom: 0;

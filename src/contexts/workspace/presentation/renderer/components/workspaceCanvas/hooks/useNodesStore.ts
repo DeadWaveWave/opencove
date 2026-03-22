@@ -10,6 +10,7 @@ import { syncWorkspaceCanvasTestState } from '../testHarness'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
+import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
@@ -314,6 +315,47 @@ export function useWorkspaceCanvasNodesStore({
     [setNodes],
   )
 
+  const setNodeLabelColorOverride = useCallback(
+    (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => {
+      const normalizedIds = nodeIds.map(id => id.trim()).filter(id => id.length > 0)
+      if (normalizedIds.length === 0) {
+        return
+      }
+
+      const idSet = new Set(normalizedIds)
+      setNodes(
+        prevNodes => {
+          let hasChanged = false
+
+          const nextNodes = prevNodes.map(node => {
+            if (!idSet.has(node.id)) {
+              return node
+            }
+
+            const previous = node.data.labelColorOverride ?? null
+            if (previous === labelColorOverride) {
+              return node
+            }
+
+            hasChanged = true
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                labelColorOverride,
+              },
+            }
+          })
+
+          return hasChanged ? nextNodes : prevNodes
+        },
+        { syncLayout: false },
+      )
+
+      onRequestPersistFlush?.()
+    },
+    [onRequestPersistFlush, setNodes],
+  )
   const { createNodeForSession, createNoteNode, createTaskNode } = useWorkspaceCanvasNodeCreation({
     defaultTerminalWindowScalePercent,
     nodesRef,
@@ -340,6 +382,7 @@ export function useWorkspaceCanvasNodesStore({
     updateNodeScrollback,
     updateTerminalTitle,
     renameTerminalTitle,
+    setNodeLabelColorOverride,
     updateNoteText,
     createNodeForSession,
     createNoteNode,

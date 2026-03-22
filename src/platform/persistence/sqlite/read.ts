@@ -2,6 +2,10 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq, inArray } from 'drizzle-orm'
 import type { NormalizedPersistedAppState } from './normalize'
 import {
+  normalizeLabelColor,
+  normalizeNodeLabelColorOverride,
+} from '../../../shared/types/labelColor'
+import {
   appMeta,
   appSettings,
   nodeScrollback,
@@ -81,6 +85,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         width: node.width,
         height: node.height,
         kind: node.kind,
+        labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         status: node.status,
         startedAt: node.startedAt,
         endedAt: node.endedAt,
@@ -102,6 +107,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          labelColor: normalizeLabelColor(space.labelColor),
           nodeIds: links.map(link => link.nodeId),
           rect:
             space.rectX !== null &&

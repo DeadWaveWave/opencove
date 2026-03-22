@@ -63,6 +63,7 @@ export interface SeedNode {
   exitCode?: number | null
   lastError?: string | null
   scrollback?: string | null
+  labelColorOverride?: string | null
   executionDirectory?: string | null
   expectedDirectory?: string | null
   agent?: SeedAgentData | null
@@ -78,6 +79,7 @@ export interface SeedWorkspace {
     id: string
     name: string
     directoryPath: string
+    labelColor?: string | null
     nodeIds: string[]
     rect?: {
       x: number

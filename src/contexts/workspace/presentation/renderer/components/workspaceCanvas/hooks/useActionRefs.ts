@@ -99,6 +99,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
 
 interface SyncActionRefsParams {
   actionRefs: WorkspaceCanvasActionRefs
+  clearNodeSelection: () => void
   closeNode: (nodeId: string) => Promise<void>
   resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   copyAgentLastMessage: (nodeId: string) => Promise<void>
@@ -113,6 +114,7 @@ interface SyncActionRefsParams {
 
 export function useWorkspaceCanvasSyncActionRefs({
   actionRefs,
+  clearNodeSelection,
   closeNode,
   resizeNode,
   copyAgentLastMessage,
@@ -124,6 +126,10 @@ export function useWorkspaceCanvasSyncActionRefs({
   nodesRef,
   reactFlow,
 }: SyncActionRefsParams): void {
+  useLayoutEffect(() => {
+    actionRefs.clearNodeSelectionRef.current = clearNodeSelection
+  }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])
+
   useLayoutEffect(() => {
     actionRefs.closeNodeRef.current = closeNode
   }, [actionRefs.closeNodeRef, closeNode])

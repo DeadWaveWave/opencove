@@ -52,6 +52,12 @@
   cursor: default;
 }
 
+.workspace-canvas .react-flow__node.cove-node--filtered-out {
+  opacity: 0.28;
+  filter: saturate(0.55) contrast(0.92);
+  pointer-events: none;
+}
+
 .workspace-canvas .react-flow__nodesselection-rect {
   pointer-events: none;
 }

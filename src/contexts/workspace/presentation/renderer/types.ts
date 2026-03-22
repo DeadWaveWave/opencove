@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { TerminalRuntimeKind } from '@shared/contracts/dto'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
@@ -71,6 +72,7 @@ export interface TerminalNodeData {
   sessionId: string
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  labelColorOverride?: NodeLabelColorOverride
   title: string
   titlePinnedByUser?: boolean
   width: number
@@ -126,6 +128,7 @@ export interface WorkspaceSpaceState {
   id: string
   name: string
   directoryPath: string
+  labelColor: LabelColor | null
   nodeIds: string[]
   rect: WorkspaceSpaceRect | null
 }
@@ -140,6 +143,7 @@ export interface PersistedTerminalNode {
   kind: WorkspaceNodeKind
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  labelColorOverride?: NodeLabelColorOverride
   status: AgentRuntimeStatus | null
   startedAt: string | null
   endedAt: string | null

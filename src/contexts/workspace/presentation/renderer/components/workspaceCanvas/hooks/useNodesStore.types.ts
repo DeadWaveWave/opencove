@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { NodeFrame, Point, Size, TerminalNodeData, TaskPriority } from '../../../types'
 import type { WorkspaceSpaceState } from '../../../types'
+import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { CreateNodeInput, NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
 
 export interface CreateNoteNodeOptions {
@@ -38,6 +39,7 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
+  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
   updateNoteText: (nodeId: string, text: string) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (anchor: Point, options?: CreateNoteNodeOptions) => Node<TerminalNodeData> | null

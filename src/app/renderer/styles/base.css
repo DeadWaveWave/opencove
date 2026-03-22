@@ -7,6 +7,13 @@
 :root {
   --cove-ui-font-scale: 1;
   --cove-accent: #5e9cff;
+  --cove-label-gray: #8e8e93;
+  --cove-label-red: #ff453a;
+  --cove-label-orange: #ff9f0a;
+  --cove-label-yellow: #ffd60a;
+  --cove-label-green: #32d74b;
+  --cove-label-blue: #0a84ff;
+  --cove-label-purple: #bf5af2;
   --cove-app-background: radial-gradient(circle at 20% 20%, #101c35 0%, #060a14 55%, #04070f 100%);
   --cove-surface: rgba(10, 10, 10, 0.7);
   --cove-surface-strong: rgba(18, 18, 18, 0.85);
@@ -119,6 +126,13 @@
   --cove-backdrop: rgba(10, 16, 32, 0.28);
   --cove-shadow-color-elevated: rgba(15, 23, 42, 0.18);
   --cove-shadow-color-panel: rgba(15, 23, 42, 0.22);
+  --cove-label-gray: #8e8e93;
+  --cove-label-red: #ff3b30;
+  --cove-label-orange: #ff9500;
+  --cove-label-yellow: #ffcc00;
+  --cove-label-green: #34c759;
+  --cove-label-blue: #007aff;
+  --cove-label-purple: #af52de;
 
   --cove-overlay-danger-backdrop: rgba(54, 12, 22, 0.24);
   --cove-overlay-danger-border: rgba(232, 103, 120, 0.22);
@@ -201,6 +215,46 @@
     radial-gradient(circle at top right, rgba(94, 156, 255, 0.14), transparent 32%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(243, 246, 252, 0.94) 100%);
   --cove-settings-sidebar-background: rgba(255, 255, 255, 0.78);
+}
+
+[data-cove-label-color='gray'] {
+  --cove-label-color: var(--cove-label-gray);
+}
+
+[data-cove-label-color='red'] {
+  --cove-label-color: var(--cove-label-red);
+}
+
+[data-cove-label-color='orange'] {
+  --cove-label-color: var(--cove-label-orange);
+}
+
+[data-cove-label-color='yellow'] {
+  --cove-label-color: var(--cove-label-yellow);
+}
+
+[data-cove-label-color='green'] {
+  --cove-label-color: var(--cove-label-green);
+}
+
+[data-cove-label-color='blue'] {
+  --cove-label-color: var(--cove-label-blue);
+}
+
+[data-cove-label-color='purple'] {
+  --cove-label-color: var(--cove-label-purple);
+}
+
+.cove-label-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.cove-label-dot--solid {
+  background: var(--cove-label-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 55%, transparent);
 }
 
 html,

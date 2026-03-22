@@ -339,6 +339,18 @@ export const en = {
     showMinimap: 'Show minimap',
     hideMinimap: 'Hide minimap',
   },
+  labelColors: {
+    title: 'Label Color',
+    autoInherit: 'Auto (inherit Space)',
+    none: 'None',
+    gray: 'Gray',
+    red: 'Red',
+    orange: 'Orange',
+    yellow: 'Yellow',
+    green: 'Green',
+    blue: 'Blue',
+    purple: 'Purple',
+  },
   space: {
     defaultName: 'Space {{count}}',
   },

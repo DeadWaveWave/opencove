@@ -8,6 +8,7 @@ import type {
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
 import type { AgentProviderId, TerminalRuntimeKind } from '../../../../../../shared/contracts/dto'
+import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { clearResumeSessionBinding, isResumeSessionBindingVerified } from '../agentResumeBinding'
 import {
   normalizeAgentRuntimeStatus,
@@ -127,6 +128,7 @@ function ensurePersistedWorkspaceSpace(
     id,
     name,
     directoryPath: normalizedDirectoryPath,
+    labelColor: normalizeLabelColor(record.labelColor),
     nodeIds: normalizeWorkspaceSpaceNodeIds(record.nodeIds),
     rect: normalizeWorkspaceSpaceRect(record.rect),
   }
@@ -252,6 +254,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     kind,
     profileId: normalizeOptionalString(record.profileId),
     runtimeKind,
+    labelColorOverride: normalizeNodeLabelColorOverride(record.labelColorOverride),
     status: normalizeAgentRuntimeStatus(record.status),
     startedAt: normalizeOptionalString(record.startedAt),
     endedAt: normalizeOptionalString(record.endedAt),

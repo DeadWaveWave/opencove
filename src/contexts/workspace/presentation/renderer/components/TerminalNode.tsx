@@ -44,6 +44,7 @@ export function TerminalNode({
   sessionId,
   title,
   kind,
+  labelColor,
   isSelected = false,
   isDragging = false,
   status,
@@ -476,6 +477,7 @@ export function TerminalNode({
         title={title}
         kind={kind}
         status={status}
+        labelColor={labelColor ?? null}
         directoryMismatch={directoryMismatch}
         onTitleCommit={onTitleCommit}
         onClose={onClose}
