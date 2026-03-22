@@ -10,9 +10,9 @@ import {
   computeBoundingRect,
   resolveDeltaToKeepRectInsideRect,
   resolveDeltaToKeepRectOutsideRects,
-  type Rect,
 } from './useSpaceOwnership.helpers'
 import { resolveSpaceAtPoint } from './useSpaceOwnership.drop.helpers'
+import { resolveBoundedSpaceNodeLayout } from './useSpaceOwnership.projectLayout.bounded'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
 
 export interface ProjectedNodeDragLayout {
@@ -84,47 +84,6 @@ function applyDelta(nodes: Array<Node<TerminalNodeData>>, delta: { dx: number; d
       y: node.position.y + delta.dy,
     },
   }))
-}
-
-function clampNodeRectInsideSpace(nodeRect: Rect, spaceRect: WorkspaceSpaceRect): Rect {
-  const { dx, dy } = resolveDeltaToKeepRectInsideRect(nodeRect, spaceRect, SPACE_NODE_PADDING)
-  if (dx === 0 && dy === 0) {
-    return nodeRect
-  }
-
-  return {
-    ...nodeRect,
-    x: nodeRect.x + dx,
-    y: nodeRect.y + dy,
-  }
-}
-
-function clampItemsInsideTargetSpace({
-  items,
-  targetSpaceRect,
-  pinnedSet,
-}: {
-  items: LayoutItem[]
-  targetSpaceRect: WorkspaceSpaceRect
-  pinnedSet: Set<string>
-}): { items: LayoutItem[]; hasClampChange: boolean } {
-  let hasClampChange = false
-
-  const nextItems = items.map(item => {
-    if (item.kind !== 'node' || pinnedSet.has(item.groupId)) {
-      return item
-    }
-
-    const clamped = clampNodeRectInsideSpace(item.rect, targetSpaceRect)
-    if (clamped.x === item.rect.x && clamped.y === item.rect.y) {
-      return item
-    }
-
-    hasClampChange = true
-    return { ...item, rect: clamped }
-  })
-
-  return { items: nextItems, hasClampChange }
 }
 
 export function projectWorkspaceNodeDragLayout({
@@ -208,7 +167,6 @@ export function projectWorkspaceNodeDragLayout({
   const constrainedDraggedNodes = applyDelta(draggedNodes, { dx: baseDx, dy: baseDy })
 
   const pinnedNodeIds = constrainedDraggedNodes.map(node => node.id)
-  const pinnedSet = new Set(pinnedNodeIds)
 
   const directions = buildDragDirectionPreference(dragDx, dragDy)
 
@@ -217,14 +175,13 @@ export function projectWorkspaceNodeDragLayout({
     ? []
     : spaces.filter(space => Boolean(space.rect)).map(space => space.id)
 
-  const solveOnce = (items: LayoutItem[]): LayoutItem[] =>
+  const solveOnceUnbounded = (items: LayoutItem[]): LayoutItem[] =>
     pushAwayLayout({
       items,
       pinnedGroupIds: [...pinnedNodeIds, ...pinnedSpaceIds],
       sourceGroupIds: pinnedNodeIds,
       directions,
       gap: 0,
-      bounds: targetSpaceRect ? { rect: targetSpaceRect, padding: SPACE_NODE_PADDING } : undefined,
     })
 
   const buildItems = (
@@ -232,44 +189,19 @@ export function projectWorkspaceNodeDragLayout({
     others: Array<Node<TerminalNodeData>>,
   ) => [...spaceItems, ...buildNodeItems([...dragged, ...others])]
 
-  let items = buildItems(constrainedDraggedNodes, otherNodes)
-  let pushed = solveOnce(items)
-
-  if (targetSpaceRect) {
-    // Clamp can introduce new overlaps (multiple nodes snapped to the same edge). Iterate a bit more
-    // and always finish on a push-away pass when clamp changes occur to reduce boundary stacking.
-    const maxIterations = 16
-    for (let iteration = 0; iteration < maxIterations; iteration += 1) {
-      const { items: clampedItems, hasClampChange } = clampItemsInsideTargetSpace({
-        items: pushed,
-        targetSpaceRect,
-        pinnedSet,
-      })
-      if (!hasClampChange) {
-        pushed = clampedItems
-        break
-      }
-
-      pushed = solveOnce(clampedItems)
-    }
-
-    const { items: finalClamped, hasClampChange: finalClampChanged } = clampItemsInsideTargetSpace({
-      items: pushed,
+  const items = buildItems(constrainedDraggedNodes, otherNodes)
+  const bounded =
+    targetSpaceRect &&
+    resolveBoundedSpaceNodeLayout({
+      items,
+      pinnedNodeIds,
       targetSpaceRect,
-      pinnedSet,
+      dropCenter,
+      directions,
+      dragDx,
+      dragDy,
     })
-
-    pushed = finalClamped
-
-    if (finalClampChanged) {
-      pushed = solveOnce(pushed)
-      pushed = clampItemsInsideTargetSpace({
-        items: pushed,
-        targetSpaceRect,
-        pinnedSet,
-      }).items
-    }
-  }
+  const pushed = bounded ?? solveOnceUnbounded(items)
 
   const nextNodePositionById = new Map(
     pushed
