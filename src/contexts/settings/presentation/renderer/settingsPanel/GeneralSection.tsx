@@ -206,21 +206,19 @@ export function GeneralSection(props: {
             <span>{t('settingsPanel.general.updates.policyHelp')}</span>
           </div>
           <div className="settings-panel__control">
-            <select
+            <CoveSelect
               id="settings-update-policy"
-              data-testid="settings-update-policy"
               value={updatePolicy}
-              onChange={event => onChangeUpdatePolicy(event.target.value as AppUpdatePolicy)}
-            >
-              {(updateChannel === 'nightly'
+              testId="settings-update-policy"
+              options={(updateChannel === 'nightly'
                 ? APP_UPDATE_POLICIES.filter(policy => policy !== 'auto')
                 : APP_UPDATE_POLICIES
-              ).map(policy => (
-                <option key={policy} value={policy}>
-                  {getAppUpdatePolicyLabel(t, policy)}
-                </option>
-              ))}
-            </select>
+              ).map(policy => ({
+                value: policy,
+                label: getAppUpdatePolicyLabel(t, policy),
+              }))}
+              onChange={nextValue => onChangeUpdatePolicy(nextValue as AppUpdatePolicy)}
+            />
           </div>
         </div>
 
@@ -230,18 +228,16 @@ export function GeneralSection(props: {
             <span>{t('settingsPanel.general.updates.channelHelp')}</span>
           </div>
           <div className="settings-panel__control">
-            <select
+            <CoveSelect
               id="settings-update-channel"
-              data-testid="settings-update-channel"
               value={updateChannel}
-              onChange={event => onChangeUpdateChannel(event.target.value as AppUpdateChannel)}
-            >
-              {APP_UPDATE_CHANNELS.map(channel => (
-                <option key={channel} value={channel}>
-                  {getAppUpdateChannelLabel(t, channel)}
-                </option>
-              ))}
-            </select>
+              testId="settings-update-channel"
+              options={APP_UPDATE_CHANNELS.map(channel => ({
+                value: channel,
+                label: getAppUpdateChannelLabel(t, channel),
+              }))}
+              onChange={nextValue => onChangeUpdateChannel(nextValue as AppUpdateChannel)}
+            />
           </div>
         </div>
 

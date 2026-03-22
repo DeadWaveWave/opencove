@@ -169,17 +169,15 @@ describe('SettingsPanel', () => {
       />,
     )
 
-    fireEvent.change(screen.getByTestId('settings-update-policy'), {
-      target: { value: 'auto' },
-    })
+    fireEvent.click(screen.getByTestId('settings-update-policy-trigger'))
+    fireEvent.click(screen.getByRole('option', { name: 'Auto Update' }))
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_AGENT_SETTINGS,
       updatePolicy: 'auto',
     })
 
-    fireEvent.change(screen.getByTestId('settings-update-channel'), {
-      target: { value: 'nightly' },
-    })
+    fireEvent.click(screen.getByTestId('settings-update-channel-trigger'))
+    fireEvent.click(screen.getByRole('option', { name: 'Nightly' }))
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_AGENT_SETTINGS,
       updateChannel: 'nightly',

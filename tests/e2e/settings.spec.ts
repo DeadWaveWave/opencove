@@ -73,12 +73,19 @@ test.describe('Settings', () => {
       await terminalFontSize.fill('15')
 
       const updatePolicy = window.locator('[data-testid="settings-update-policy"]')
-      await expect(updatePolicy).toBeVisible()
-      await updatePolicy.selectOption('auto')
+      const updatePolicyTrigger = window.locator('[data-testid="settings-update-policy-trigger"]')
+      await expect(updatePolicyTrigger).toBeVisible()
+      await expect(updatePolicy).toHaveValue('prompt')
+      await selectCoveOption(window, 'settings-update-policy', 'auto')
+      await expect(updatePolicy).toHaveValue('auto')
 
       const updateChannel = window.locator('[data-testid="settings-update-channel"]')
-      await expect(updateChannel).toBeVisible()
-      await updateChannel.selectOption('nightly')
+      const updateChannelTrigger = window.locator('[data-testid="settings-update-channel-trigger"]')
+      await expect(updateChannelTrigger).toBeVisible()
+      await expect(updateChannel).toHaveValue('stable')
+      await selectCoveOption(window, 'settings-update-channel', 'nightly')
+      await expect(updateChannel).toHaveValue('nightly')
+      await expect(updatePolicy).toHaveValue('prompt')
 
       await canvasNav.click()
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')

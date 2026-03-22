@@ -65,6 +65,10 @@ export function WhatsNewDialog({
 
   const items = notes?.items ?? []
   const grouped = groupItems(items)
+  const compareLinkLabel =
+    compareUrl && compareUrl.includes('/compare/')
+      ? t('whatsNew.viewCompare')
+      : t('whatsNew.viewChangelog')
 
   return (
     <div
@@ -154,7 +158,7 @@ export function WhatsNewDialog({
               target="_blank"
               rel="noreferrer"
             >
-              {t('whatsNew.viewCompare')}
+              {compareLinkLabel}
             </a>
           ) : null}
         </footer>

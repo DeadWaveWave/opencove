@@ -1,5 +1,5 @@
 import React from 'react'
-import type { ReleaseNotesRangeResult } from '@shared/contracts/dto'
+import type { AppUpdateState, ReleaseNotesRangeResult } from '@shared/contracts/dto'
 import type { UiLanguage } from '@contexts/settings/domain/agentSettings'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 
@@ -19,10 +19,8 @@ function buildCompareUrl(fromVersion: string, toVersion: string): string {
   return `${base}/${encodeURIComponent(fromTag)}...${encodeURIComponent(toTag)}`
 }
 
-function buildReleaseUrl(version: string): string {
-  const base = 'https://github.com/DeadWaveWave/opencove/releases/tag'
-  const tag = normalizeVersionTag(version)
-  return `${base}/${encodeURIComponent(tag)}`
+function buildChangelogUrl(): string {
+  return 'https://github.com/DeadWaveWave/opencove/blob/main/CHANGELOG.md'
 }
 
 function getErrorMessage(error: unknown): string {
@@ -40,7 +38,7 @@ export function useWhatsNew({
   onChangeSettings,
 }: {
   isPersistReady: boolean
-  updateState: { currentVersion: string } | null
+  updateState: AppUpdateState | null
   settings: AgentSettings
   onChangeSettings: (action: (prev: AgentSettings) => AgentSettings) => void
 }): {
@@ -65,6 +63,7 @@ export function useWhatsNew({
   const language = settings.language
   const seenVersion = settings.releaseNotesSeenVersion
   const currentVersion = updateState?.currentVersion ?? null
+  const updateStatus = updateState?.status ?? null
 
   React.useEffect(() => {
     if (!isPersistReady) {
@@ -76,6 +75,10 @@ export function useWhatsNew({
     }
 
     if (!currentVersion) {
+      return
+    }
+
+    if (updateStatus === 'unsupported' && !window.opencoveApi?.meta?.allowWhatsNewInTests) {
       return
     }
 
@@ -105,9 +108,7 @@ export function useWhatsNew({
       ? api.getRange({ fromVersion: seenVersion, toVersion: currentVersion })
       : api.getAutoRange({ toVersion: currentVersion })
 
-    setCompareUrl(
-      seenVersion ? buildCompareUrl(seenVersion, currentVersion) : buildReleaseUrl(currentVersion),
-    )
+    setCompareUrl(seenVersion ? buildCompareUrl(seenVersion, currentVersion) : buildChangelogUrl())
 
     void request
       .then(result => {
@@ -116,7 +117,7 @@ export function useWhatsNew({
         }
 
         setNotes(result)
-        setFromVersion(result.fromVersion)
+        setFromVersion(result.fromVersion !== result.toVersion ? result.fromVersion : null)
         setCompareUrl(result.compareUrl)
       })
       .catch(fetchError => {
@@ -135,7 +136,7 @@ export function useWhatsNew({
     return () => {
       active = false
     }
-  }, [currentVersion, isOpen, isPersistReady, onChangeSettings, seenVersion])
+  }, [currentVersion, isOpen, isPersistReady, onChangeSettings, seenVersion, updateStatus])
 
   const close = React.useCallback(() => {
     const version = toVersion ?? currentVersion

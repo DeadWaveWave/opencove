@@ -73,6 +73,7 @@ export const en = {
     loading: 'Loading release notes…',
     empty: 'No release notes found for this update.',
     viewCompare: 'View full compare on GitHub',
+    viewChangelog: 'View CHANGELOG on GitHub',
     truncated: 'Showing the first {{count}} changes.',
     sections: {
       added: 'Added',

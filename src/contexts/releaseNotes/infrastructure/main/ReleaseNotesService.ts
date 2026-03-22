@@ -149,6 +149,10 @@ function buildCompareUrl(owner: string, repo: string, fromTag: string, toTag: st
   )}...${encodeURIComponent(toTag)}`
 }
 
+function buildChangelogUrl(owner: string, repo: string): string {
+  return `https://github.com/${owner}/${repo}/blob/main/CHANGELOG.md`
+}
+
 function buildFixtureItems(owner: string, repo: string): ReleaseNotesItem[] {
   return [
     {
@@ -187,6 +191,32 @@ function buildFixtureItems(owner: string, repo: string): ReleaseNotesItem[] {
       url: null,
     },
   ]
+}
+
+function extractErrorDebugMessage(error: unknown): string {
+  if (error && typeof error === 'object') {
+    const debugMessage = (error as { debugMessage?: unknown }).debugMessage
+    if (typeof debugMessage === 'string' && debugMessage.trim().length > 0) {
+      return debugMessage
+    }
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === 'string') {
+    return error
+  }
+
+  return ''
+}
+
+function isMissingGitHubRefError(error: unknown): boolean {
+  const message = extractErrorDebugMessage(error)
+  return (
+    message.includes('GitHub request failed: 404') || message.includes('GitHub request failed: 422')
+  )
 }
 
 async function fetchJson(url: string): Promise<unknown> {
@@ -258,10 +288,6 @@ function normalizeTagName(tagName: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
-function buildReleaseUrl(owner: string, repo: string, tag: string): string {
-  return `https://github.com/${owner}/${repo}/releases/tag/${encodeURIComponent(tag)}`
-}
-
 function findPreviousTag(
   releases: GitHubRelease[],
   currentTag: string,
@@ -323,7 +349,23 @@ export function createReleaseNotesService(
       )}...${encodeURIComponent(toTag)}`
       const compareUrl = buildCompareUrl(owner, repo, fromTag, toTag)
 
-      const raw = ensureCompareResponse(await fetchJson(apiUrl))
+      let raw: ReleaseCompareResponse
+      try {
+        raw = ensureCompareResponse(await fetchJson(apiUrl))
+      } catch (error) {
+        if (isMissingGitHubRefError(error)) {
+          return {
+            fromVersion: input.fromVersion,
+            toVersion: input.toVersion,
+            compareUrl: buildChangelogUrl(owner, repo),
+            generatedAt: new Date().toISOString(),
+            truncated: false,
+            items: [],
+          }
+        }
+
+        throw error
+      }
       const commits = Array.isArray(raw.commits) ? raw.commits : []
       const totalCommits =
         typeof raw.total_commits === 'number' ? raw.total_commits : commits.length
@@ -410,7 +452,7 @@ export function createReleaseNotesService(
         return {
           fromVersion: input.toVersion,
           toVersion: input.toVersion,
-          compareUrl: buildReleaseUrl(owner, repo, toTag),
+          compareUrl: buildChangelogUrl(owner, repo),
           generatedAt: new Date().toISOString(),
           truncated: false,
           items: [],
