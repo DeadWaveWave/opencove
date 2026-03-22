@@ -12,6 +12,7 @@ import type {
   SelectionDraftState,
   SpaceActionMenuState,
   SpaceVisual,
+  SpaceWorktreeMismatchDropWarningState,
   SpaceWorktreeDialogState,
   TaskCreatorState,
   TaskEditorState,
@@ -113,6 +114,9 @@ export interface WorkspaceCanvasViewProps {
     React.SetStateAction<NodeDeleteConfirmationState | null>
   >
   confirmNodeDelete: () => Promise<void>
+  spaceWorktreeMismatchDropWarning: SpaceWorktreeMismatchDropWarningState | null
+  cancelSpaceWorktreeMismatchDropWarning: () => void
+  continueSpaceWorktreeMismatchDropWarning: () => void
   agentSettings: WorkspaceCanvasProps['agentSettings']
   workspacePath: string
   spaceActionMenu: SpaceActionMenuState | null

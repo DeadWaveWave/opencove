@@ -184,7 +184,6 @@ export function useWorkspaceCanvasSpaceOwnership({
             }
           : dropFlowPoint
       const targetSpace = resolveDropTargetSpaceAtPoint(dropTargetPoint)
-      const targetSpaceId = targetSpace?.id ?? null
       const targetDirectory =
         targetSpace && targetSpace.directoryPath.trim().length > 0
           ? targetSpace.directoryPath
@@ -295,7 +294,6 @@ export function useWorkspaceCanvasSpaceOwnership({
       reactFlow,
       resolveDropTargetSpaceAtPoint,
       setNodes,
-      spacesRef,
       t,
       workspacePath,
     ],
