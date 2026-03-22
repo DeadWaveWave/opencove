@@ -7,6 +7,7 @@ import {
 } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
+import { projectWorkspaceNodeDragLayout } from './useSpaceOwnership.projectLayout'
 
 interface UseApplyNodeChangesParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -41,6 +42,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
   return useCallback(
     (changes: NodeChange<Node<TerminalNodeData>>[]) => {
+      const wasDragging = isNodeDraggingRef.current
       const filteredChanges = changes.filter(change => change.type !== 'select')
 
       if (!filteredChanges.length) {
@@ -91,22 +93,24 @@ export function useWorkspaceCanvasApplyNodeChanges({
       )
 
       if (settledPositionChanges.length > 0) {
-        nextNodes = nextNodes.map(node => {
-          const settledChange = settledPositionChanges.find(change => change.id === node.id)
-          if (!settledChange || !settledChange.position) {
-            return node
-          }
+        if (!wasDragging) {
+          nextNodes = nextNodes.map(node => {
+            const settledChange = settledPositionChanges.find(change => change.id === node.id)
+            if (!settledChange || !settledChange.position) {
+              return node
+            }
 
-          const resolved = normalizePosition(node.id, settledChange.position, {
-            width: node.data.width,
-            height: node.data.height,
+            const resolved = normalizePosition(node.id, settledChange.position, {
+              width: node.data.width,
+              height: node.data.height,
+            })
+
+            return {
+              ...node,
+              position: resolved,
+            }
           })
-
-          return {
-            ...node,
-            position: resolved,
-          }
-        })
+        }
       }
 
       const anchorChange = positionChanges.find(change => change.position !== undefined) ?? null
@@ -202,6 +206,65 @@ export function useWorkspaceCanvasApplyNodeChanges({
               })
             }
           }
+        }
+      }
+
+      if (isDraggingThisFrame) {
+        const draggingIds = positionChanges
+          .filter(change => change.dragging !== false)
+          .map(change => change.id)
+        const draggedNodeIds = [...new Set(draggingIds)]
+
+        const draggedNodePositionById = new Map<string, { x: number; y: number }>()
+        for (const nodeId of draggedNodeIds) {
+          const node = nextNodes.find(candidate => candidate.id === nodeId)
+          if (!node) {
+            continue
+          }
+
+          draggedNodePositionById.set(nodeId, {
+            x: node.position.x,
+            y: node.position.y,
+          })
+        }
+
+        const anchorNodeId =
+          positionChanges.find(change => change.dragging !== false && change.position !== undefined)
+            ?.id ?? draggedNodeIds[0]
+        const prevAnchor = anchorNodeId
+          ? (currentNodes.find(node => node.id === anchorNodeId) ?? null)
+          : null
+        const nextAnchor = anchorNodeId
+          ? (nextNodes.find(node => node.id === anchorNodeId) ?? null)
+          : null
+        const dragDx = prevAnchor && nextAnchor ? nextAnchor.position.x - prevAnchor.position.x : 0
+        const dragDy = prevAnchor && nextAnchor ? nextAnchor.position.y - prevAnchor.position.y : 0
+
+        const projected = projectWorkspaceNodeDragLayout({
+          nodes: nextNodes,
+          spaces: spacesRef.current,
+          draggedNodeIds,
+          draggedNodePositionById,
+          dragDx,
+          dragDy,
+        })
+
+        if (projected) {
+          nextNodes = nextNodes.map(node => {
+            const nextPosition = projected.nextNodePositionById.get(node.id)
+            if (!nextPosition) {
+              return node
+            }
+
+            if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
+              return node
+            }
+
+            return {
+              ...node,
+              position: nextPosition,
+            }
+          })
         }
       }
 

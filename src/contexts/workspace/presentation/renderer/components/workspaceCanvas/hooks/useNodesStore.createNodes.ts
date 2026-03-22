@@ -2,9 +2,8 @@ import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
+import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
-import { findNearestFreePositionOnRight } from '../../../utils/collision'
 import {
   DEFAULT_NOTE_WINDOW_SIZE,
   resolveDefaultAgentWindowSize,
@@ -17,10 +16,19 @@ import type {
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
+import {
+  buildOwningSpaceIdByNodeId,
+  filterNodesForRegion,
+  resolveRegionAtPoint,
+} from './workspaceLayoutPolicy'
+
+const GRID_STEP_PX = 40
+const MAX_SCAN_RADIUS = 80
 
 interface UseWorkspaceCanvasNodeCreationParams {
   defaultTerminalWindowScalePercent: number
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   pushBlockingWindowsRight: (desired: Point, size: { width: number; height: number }) => void
@@ -30,6 +38,7 @@ interface UseWorkspaceCanvasNodeCreationParams {
 export function useWorkspaceCanvasNodeCreation({
   defaultTerminalWindowScalePercent,
   nodesRef,
+  spacesRef,
   onRequestPersistFlush,
   onShowMessage,
   pushBlockingWindowsRight,
@@ -61,6 +70,7 @@ export function useWorkspaceCanvasNodeCreation({
         anchor,
         size: defaultSize,
         getNodes: () => nodesRef.current,
+        getSpaces: () => spacesRef.current,
         pushBlockingWindowsRight,
       })
 
@@ -122,6 +132,7 @@ export function useWorkspaceCanvasNodeCreation({
     [
       defaultTerminalWindowScalePercent,
       nodesRef,
+      spacesRef,
       onRequestPersistFlush,
       pushBlockingWindowsRight,
       setNodes,
@@ -135,11 +146,114 @@ export function useWorkspaceCanvasNodeCreation({
       const resolvedPlacement =
         options.placementStrategy === 'right-no-push'
           ? (() => {
-              const placement = findNearestFreePositionOnRight(
-                anchor,
-                DEFAULT_NOTE_WINDOW_SIZE,
-                nodesRef.current,
-              )
+              const spaces = spacesRef.current
+              const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(spaces)
+              const desiredCenter = {
+                x: anchor.x + DEFAULT_NOTE_WINDOW_SIZE.width * 0.5,
+                y: anchor.y + DEFAULT_NOTE_WINDOW_SIZE.height * 0.5,
+              }
+              const region = resolveRegionAtPoint(spaces, desiredCenter)
+
+              const regionNodes = filterNodesForRegion({
+                nodes: nodesRef.current,
+                owningSpaceIdByNodeId,
+                region,
+              })
+
+              const rectIntersects = (
+                a: { x: number; y: number; width: number; height: number },
+                b: { x: number; y: number; width: number; height: number },
+              ): boolean => {
+                const aRight = a.x + a.width
+                const aBottom = a.y + a.height
+                const bRight = b.x + b.width
+                const bBottom = b.y + b.height
+
+                return !(aRight <= b.x || a.x >= bRight || aBottom <= b.y || a.y >= bBottom)
+              }
+
+              const candidateIsValid = (candidate: Point): boolean => {
+                const rect = {
+                  x: candidate.x,
+                  y: candidate.y,
+                  width: DEFAULT_NOTE_WINDOW_SIZE.width,
+                  height: DEFAULT_NOTE_WINDOW_SIZE.height,
+                }
+
+                if (region.kind === 'space') {
+                  const spaceRect = spaces.find(space => space.id === region.spaceId)?.rect ?? null
+                  if (!spaceRect) {
+                    return false
+                  }
+
+                  const center = {
+                    x: rect.x + rect.width * 0.5,
+                    y: rect.y + rect.height * 0.5,
+                  }
+
+                  if (
+                    center.x < spaceRect.x ||
+                    center.x > spaceRect.x + spaceRect.width ||
+                    center.y < spaceRect.y ||
+                    center.y > spaceRect.y + spaceRect.height
+                  ) {
+                    return false
+                  }
+                } else {
+                  for (const space of spaces) {
+                    if (!space.rect) {
+                      continue
+                    }
+
+                    if (rectIntersects(rect, space.rect)) {
+                      return false
+                    }
+                  }
+                }
+
+                for (const node of regionNodes) {
+                  const nodeRect = {
+                    x: node.position.x,
+                    y: node.position.y,
+                    width: node.data.width,
+                    height: node.data.height,
+                  }
+
+                  if (rectIntersects(rect, nodeRect)) {
+                    return false
+                  }
+                }
+
+                return true
+              }
+
+              const findRightPlacement = (): Point | null => {
+                if (candidateIsValid(anchor)) {
+                  return anchor
+                }
+
+                for (let xRadius = 0; xRadius <= MAX_SCAN_RADIUS; xRadius += 1) {
+                  const x = anchor.x + xRadius * GRID_STEP_PX
+
+                  for (let yRadius = 0; yRadius <= MAX_SCAN_RADIUS; yRadius += 1) {
+                    const yCandidates =
+                      yRadius === 0
+                        ? [anchor.y]
+                        : [anchor.y + yRadius * GRID_STEP_PX, anchor.y - yRadius * GRID_STEP_PX]
+
+                    for (const y of yCandidates) {
+                      const candidate = { x, y }
+                      if (candidateIsValid(candidate)) {
+                        return candidate
+                      }
+                    }
+                  }
+                }
+
+                return null
+              }
+
+              const placement = findRightPlacement()
               return {
                 placement: placement ?? anchor,
                 canPlace: placement !== null,
@@ -149,6 +263,7 @@ export function useWorkspaceCanvasNodeCreation({
               anchor,
               size: DEFAULT_NOTE_WINDOW_SIZE,
               getNodes: () => nodesRef.current,
+              getSpaces: () => spacesRef.current,
               pushBlockingWindowsRight,
             })
 
@@ -193,7 +308,15 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes, t],
+    [
+      nodesRef,
+      onRequestPersistFlush,
+      onShowMessage,
+      pushBlockingWindowsRight,
+      setNodes,
+      spacesRef,
+      t,
+    ],
   )
 
   const createTaskNode = useCallback(
@@ -211,6 +334,7 @@ export function useWorkspaceCanvasNodeCreation({
         anchor,
         size: defaultTaskSize,
         getNodes: () => nodesRef.current,
+        getSpaces: () => spacesRef.current,
         pushBlockingWindowsRight,
       })
 
@@ -261,7 +385,15 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes, t],
+    [
+      nodesRef,
+      onRequestPersistFlush,
+      onShowMessage,
+      pushBlockingWindowsRight,
+      setNodes,
+      spacesRef,
+      t,
+    ],
   )
 
   return {

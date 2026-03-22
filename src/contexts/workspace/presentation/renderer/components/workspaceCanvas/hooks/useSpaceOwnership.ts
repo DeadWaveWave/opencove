@@ -47,6 +47,7 @@ export function useWorkspaceCanvasSpaceOwnership({
   const { t } = useTranslation()
   const dragStartNodeIdsRef = useRef<string[] | null>(null)
   const dragStartNodePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
+  const dragStartAllNodePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
 
   const resolveDropTargetSpaceAtPoint = useCallback(
     (point: { x: number; y: number }): WorkspaceSpaceState | null =>
@@ -72,9 +73,12 @@ export function useWorkspaceCanvasSpaceOwnership({
       dragStartNodePositionByIdRef.current = new Map(
         nodes.map(node => [node.id, { x: node.position.x, y: node.position.y }]),
       )
+      dragStartAllNodePositionByIdRef.current = new Map(
+        reactFlow.getNodes().map(node => [node.id, { x: node.position.x, y: node.position.y }]),
+      )
       dragSelectedSpaceIdsRef.current = [...selectedSpaceIdsRef.current]
     },
-    [dragSelectedSpaceIdsRef, selectedSpaceIdsRef],
+    [dragSelectedSpaceIdsRef, reactFlow, selectedSpaceIdsRef],
   )
 
   const handleNodeDragStart = useCallback(
@@ -107,6 +111,8 @@ export function useWorkspaceCanvasSpaceOwnership({
       dragStartNodeIdsRef.current = null
       const dragStartNodePositionById = dragStartNodePositionByIdRef.current ?? new Map()
       dragStartNodePositionByIdRef.current = null
+      const dragStartAllNodePositionById = dragStartAllNodePositionByIdRef.current ?? undefined
+      dragStartAllNodePositionByIdRef.current = null
 
       const fallbackNodes = nodes.length > 0 ? nodes : [node]
       const draggedNodeIds =
@@ -124,6 +130,7 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodeIds,
         draggedNodePositionById,
         dragStartNodePositionById,
+        dragStartAllNodePositionById,
         dropFlowPoint: dropPoint,
       })
       dragSelectedSpaceIdsRef.current = null
@@ -146,6 +153,8 @@ export function useWorkspaceCanvasSpaceOwnership({
       dragStartNodeIdsRef.current = null
       const dragStartNodePositionById = dragStartNodePositionByIdRef.current ?? new Map()
       dragStartNodePositionByIdRef.current = null
+      const dragStartAllNodePositionById = dragStartAllNodePositionByIdRef.current ?? undefined
+      dragStartAllNodePositionByIdRef.current = null
 
       const fallbackNodes = nodes
       const draggedNodeIds =
@@ -165,6 +174,7 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodeIds,
         draggedNodePositionById,
         dragStartNodePositionById,
+        dragStartAllNodePositionById,
         dropFlowPoint: dropPoint,
       })
       dragSelectedSpaceIdsRef.current = null

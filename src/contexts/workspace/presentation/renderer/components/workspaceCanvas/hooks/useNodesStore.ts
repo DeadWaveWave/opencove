@@ -320,6 +320,7 @@ export function useWorkspaceCanvasNodesStore({
         desired,
         size,
         nodes: nodesRef.current,
+        spaces: spacesRef.current,
       })
 
       if (nextPositionByNodeId.size === 0) {
@@ -352,12 +353,13 @@ export function useWorkspaceCanvasNodesStore({
         { syncLayout: false },
       )
     },
-    [setNodes],
+    [setNodes, spacesRef],
   )
 
   const { createNodeForSession, createNoteNode, createTaskNode } = useWorkspaceCanvasNodeCreation({
     defaultTerminalWindowScalePercent,
     nodesRef,
+    spacesRef,
     onRequestPersistFlush,
     onShowMessage,
     pushBlockingWindowsRight,

@@ -102,6 +102,7 @@ export interface SpaceDragState {
   startClient: Point
   shiftKey: boolean
   initialRect: WorkspaceSpaceRect
+  allNodePositions: Map<string, Point>
   initialNodePositions: Map<string, Point>
   ownedBounds: { left: number; top: number; right: number; bottom: number } | null
   handle:

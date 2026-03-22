@@ -7,11 +7,10 @@ import { resolveDefaultTaskWindowSize } from '../constants'
 import {
   normalizeTaskTagSelection,
   resolveNodePlacementAnchorFromViewportCenter,
-  sanitizeSpaces,
   toErrorMessage,
 } from '../helpers'
 import type { ContextMenuState, TaskCreatorState } from '../types'
-import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
+import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -256,61 +255,14 @@ export function useWorkspaceCanvasTaskCreator({
         }) ?? null
 
       if (targetSpace) {
-        const nextSpaces = sanitizeSpaces(
-          spacesRef.current.map(space => {
-            const filtered = space.nodeIds.filter(nodeId => nodeId !== created.id)
-
-            if (space.id !== targetSpace.id) {
-              return { ...space, nodeIds: filtered }
-            }
-
-            return { ...space, nodeIds: [...new Set([...filtered, created.id])] }
-          }),
-        )
-
-        const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
+        assignNodeToSpaceAndExpand({
+          createdNodeId: created.id,
           targetSpaceId: targetSpace.id,
-          spaces: nextSpaces,
-          nodeRects: nodesRef.current.map(node => ({
-            id: node.id,
-            rect: {
-              x: node.position.x,
-              y: node.position.y,
-              width: node.data.width,
-              height: node.data.height,
-            },
-          })),
-          gap: 0,
+          spacesRef,
+          nodesRef,
+          setNodes,
+          onSpacesChange,
         })
-
-        if (nodePositionById.size > 0) {
-          setNodes(
-            prevNodes => {
-              let hasChanged = false
-              const next = prevNodes.map(node => {
-                const nextPosition = nodePositionById.get(node.id)
-                if (!nextPosition) {
-                  return node
-                }
-
-                if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-                  return node
-                }
-
-                hasChanged = true
-                return {
-                  ...node,
-                  position: nextPosition,
-                }
-              })
-
-              return hasChanged ? next : prevNodes
-            },
-            { syncLayout: false },
-          )
-        }
-
-        onSpacesChange(pushedSpaces)
         onRequestPersistFlush?.()
       }
 

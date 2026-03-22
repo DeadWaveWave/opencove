@@ -106,11 +106,30 @@ test.describe('Workspace Canvas - Spaces (Push-away)', () => {
               return false
             }
 
-            const rootLeft = root.position.x
-            const rootRight = root.position.x + root.width
-            const spaceRight = spaceRect.x + spaceRect.width
+            const rootRect = {
+              x: root.position.x,
+              y: root.position.y ?? 0,
+              width: root.width,
+              height: root.height ?? 0,
+            }
+            const movedSpaceRect = {
+              x: spaceRect.x,
+              y: spaceRect.y ?? 0,
+              width: spaceRect.width,
+              height: spaceRect.height ?? 0,
+            }
 
-            return rootLeft >= spaceRight && rootRight > rootLeft
+            const rootRight = rootRect.x + rootRect.width
+            const rootBottom = rootRect.y + rootRect.height
+            const spaceRight = movedSpaceRect.x + movedSpaceRect.width
+            const spaceBottom = movedSpaceRect.y + movedSpaceRect.height
+
+            return !(
+              rootRight > movedSpaceRect.x &&
+              rootRect.x < spaceRight &&
+              rootBottom > movedSpaceRect.y &&
+              rootRect.y < spaceBottom
+            )
           }, storageKey)
         })
         .toBe(true)
@@ -219,11 +238,33 @@ test.describe('Workspace Canvas - Spaces (Push-away)', () => {
             }
 
             const ownedX = owned.position.x
-            const rootLeft = root.position.x
-            const rootRight = root.position.x + root.width
-            const spaceRight = spaceRect.x + spaceRect.width
+            const rootRect = {
+              x: root.position.x,
+              y: root.position.y ?? 0,
+              width: root.width,
+              height: root.height ?? 0,
+            }
+            const movedSpaceRect = {
+              x: spaceRect.x,
+              y: spaceRect.y ?? 0,
+              width: spaceRect.width,
+              height: spaceRect.height ?? 0,
+            }
 
-            return ownedX === 80 && rootLeft >= spaceRight && rootRight > rootLeft
+            const rootRight = rootRect.x + rootRect.width
+            const rootBottom = rootRect.y + rootRect.height
+            const spaceRight = movedSpaceRect.x + movedSpaceRect.width
+            const spaceBottom = movedSpaceRect.y + movedSpaceRect.height
+
+            return (
+              ownedX === 80 &&
+              !(
+                rootRight > movedSpaceRect.x &&
+                rootRect.x < spaceRight &&
+                rootBottom > movedSpaceRect.y &&
+                rootRect.y < spaceBottom
+              )
+            )
           }, storageKey)
         })
         .toBe(true)
