@@ -2,6 +2,7 @@
   background: transparent;
   backdrop-filter: none;
   pointer-events: none;
+  transition: none;
 }
 
 .settings-panel--preview {
@@ -10,6 +11,7 @@
   border-color: transparent;
   box-shadow: none;
   pointer-events: none;
+  transition: none;
 }
 
 .settings-panel--preview .settings-panel__sidebar {
@@ -31,6 +33,13 @@
   .settings-panel__row:not(.settings-panel__row--focus-target-zoom) {
   visibility: hidden;
   pointer-events: none;
+}
+
+.settings-panel--preview
+  #settings-section-canvas
+  .settings-panel__row:not(.settings-panel__row--focus-target-zoom)
+  * {
+  transition: none;
 }
 
 .settings-panel--preview #settings-section-canvas .settings-panel__row--focus-target-zoom {
