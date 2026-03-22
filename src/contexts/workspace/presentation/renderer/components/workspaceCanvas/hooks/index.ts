@@ -16,6 +16,7 @@ export { useWorkspaceCanvasCreatedNodeViewportCenter } from './useCreatedNodeVie
 export { useWorkspaceCanvasInteractions } from './useInteractions'
 export { useWorkspaceCanvasLifecycle } from './useLifecycle'
 export { useWorkspaceCanvasNodeDeleteConfirmation } from './useNodeDeleteConfirmation'
+export { useWorkspaceCanvasNodesSelectionActive } from './useNodesSelectionActive'
 export { useWorkspaceCanvasNodesStore } from './useNodesStore'
 export { useWorkspaceCanvasNoteToTaskConversion } from './useNoteToTaskConversion'
 export { useWorkspaceCanvasPtyTaskCompletion } from './usePtyTaskCompletion'

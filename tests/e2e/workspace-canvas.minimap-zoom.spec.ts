@@ -215,6 +215,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
 
       await expect(window.locator('.react-flow__node.dragging')).toHaveCount(0)
 
+      await pane.click({ position: { x: 40, y: 40 } })
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
+
       const terminalBody = terminal.locator('.terminal-node__terminal')
       const terminalBox = await terminalBody.boundingBox()
       if (!terminalBox) {
@@ -377,6 +380,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
           return (await readCanvasViewport(window)).zoom
         })
         .toBeGreaterThan(1.01)
+
+      await pane.click({ position: { x: 40, y: 40 } })
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       await taskNode.locator('.task-node__requirement-input').click({
         position: { x: 48, y: 36 },

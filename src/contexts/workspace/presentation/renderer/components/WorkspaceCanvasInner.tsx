@@ -58,6 +58,7 @@ export function WorkspaceCanvasInner({
     viewport,
     persistedMinimapVisible,
   })
+  workspaceCanvasHooks.useWorkspaceCanvasNodesSelectionActive()
   const exclusiveNodeDragAnchorIdRef = useRef<string | null>(null)
 
   useLayoutEffect(() => {

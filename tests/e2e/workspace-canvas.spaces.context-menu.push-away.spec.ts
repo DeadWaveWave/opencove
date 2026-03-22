@@ -100,7 +100,7 @@ test.describe('Workspace Canvas - Spaces (Push Away)', () => {
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
 
-      await rightNode.locator('.terminal-node__header').click({ button: 'right' })
+      await rightNode.click({ button: 'right' })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
       await expect

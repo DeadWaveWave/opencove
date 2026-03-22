@@ -39,7 +39,7 @@ test.describe('Workspace Canvas - Note to Task', () => {
       await noteHeader.click({ position: { x: 40, y: 20 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
-      await noteHeader.click({ button: 'right', position: { x: 60, y: 16 } })
+      await noteNode.click({ button: 'right', position: { x: 60, y: 16 } })
       const convertButton = window.locator(
         '[data-testid="workspace-selection-convert-note-to-task"]',
       )
@@ -97,12 +97,10 @@ test.describe('Workspace Canvas - Note to Task', () => {
       await noteHeader.click({ position: { x: 40, y: 20 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
-      await noteHeader.click({ button: 'right', position: { x: 60, y: 16 } })
+      await noteNode.click({ button: 'right', position: { x: 60, y: 16 } })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(1)
 
-      const textarea = noteNode.locator('[data-testid="note-node-textarea"]')
-      await expect(textarea).toBeVisible()
-      await textarea.click({ position: { x: 48, y: 48 } })
+      await noteNode.click({ position: { x: 48, y: 64 } })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
     } finally {
       await electronApp.close()
