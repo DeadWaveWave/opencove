@@ -4,17 +4,13 @@
 }
 
 .workspace-space-worktree-backdrop--archive {
-  background: rgba(19, 5, 8, 0.72);
+  background: var(--cove-overlay-danger-backdrop);
 }
 
 .workspace-space-worktree--archive.cove-window {
-  border-color: rgba(147, 56, 72, 0.42);
-  background:
-    radial-gradient(circle at top right, rgba(118, 32, 48, 0.22), transparent 42%),
-    linear-gradient(180deg, rgba(32, 8, 13, 0.96), rgba(20, 6, 9, 0.96));
-  box-shadow:
-    0 24px 56px rgba(0, 0, 0, 0.58),
-    0 0 0 1px rgba(124, 40, 55, 0.18);
+  border-color: var(--cove-overlay-danger-border);
+  background: var(--cove-overlay-danger-surface);
+  box-shadow: var(--cove-overlay-danger-shadow);
 }
 
 .workspace-space-worktree__header {
@@ -47,7 +43,7 @@
 }
 
 .workspace-space-worktree--archive .workspace-space-worktree__header-main h3 {
-  color: rgba(255, 240, 242, 0.98);
+  color: var(--cove-overlay-danger-title);
 }
 
 .workspace-space-worktree__header-summary {
@@ -58,7 +54,7 @@
 }
 
 .workspace-space-worktree--archive .workspace-space-worktree__header-summary {
-  color: rgba(233, 193, 200, 0.76);
+  color: var(--cove-overlay-danger-summary);
 }
 
 .workspace-space-worktree__status-line {
@@ -92,9 +88,9 @@
 }
 
 .workspace-space-worktree--archive .workspace-space-worktree__status-line {
-  border-color: rgba(185, 95, 110, 0.44);
-  background: rgba(60, 18, 27, 0.66);
-  color: rgba(255, 226, 232, 0.94);
+  border-color: var(--cove-overlay-danger-status-border);
+  background: var(--cove-overlay-danger-status-surface);
+  color: var(--cove-overlay-danger-status-text);
 }
 
 .workspace-space-worktree__close {

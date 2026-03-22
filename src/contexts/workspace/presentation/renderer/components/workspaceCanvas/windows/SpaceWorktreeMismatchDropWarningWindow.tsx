@@ -37,14 +37,14 @@ export function SpaceWorktreeMismatchDropWarningWindow({
 
   return (
     <div
-      className="cove-window-backdrop workspace-space-worktree-guard-backdrop"
+      className="cove-window-backdrop workspace-space-drop-guard-backdrop"
       data-testid="space-worktree-mismatch-drop-warning"
       onClick={() => {
         onCancel()
       }}
     >
       <section
-        className="cove-window workspace-space-worktree-guard space-drop-guard-window"
+        className="cove-window workspace-space-drop-guard space-drop-guard-window"
         onClick={event => {
           event.stopPropagation()
         }}

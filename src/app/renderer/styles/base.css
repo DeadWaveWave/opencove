@@ -22,6 +22,28 @@
   --cove-shadow-color-elevated: rgba(0, 0, 0, 0.55);
   --cove-shadow-color-panel: rgba(0, 0, 0, 0.8);
 
+  --cove-overlay-danger-backdrop: rgba(19, 5, 8, 0.72);
+  --cove-overlay-danger-border: rgba(147, 56, 72, 0.42);
+  --cove-overlay-danger-surface:
+    radial-gradient(circle at top right, rgba(118, 32, 48, 0.22), transparent 42%),
+    linear-gradient(180deg, rgba(32, 8, 13, 0.96), rgba(20, 6, 9, 0.96));
+  --cove-overlay-danger-shadow: 0 24px 56px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(124, 40, 55, 0.18);
+  --cove-overlay-danger-title: rgba(255, 240, 242, 0.98);
+  --cove-overlay-danger-summary: rgba(233, 193, 200, 0.76);
+  --cove-overlay-danger-status-border: rgba(185, 95, 110, 0.44);
+  --cove-overlay-danger-status-surface: rgba(60, 18, 27, 0.66);
+  --cove-overlay-danger-status-text: rgba(255, 226, 232, 0.94);
+
+  --cove-overlay-warning-backdrop: rgba(12, 6, 9, 0.64);
+  --cove-overlay-warning-border: rgba(232, 103, 120, 0.34);
+  --cove-overlay-warning-surface:
+    radial-gradient(circle at top right, rgba(232, 103, 120, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(12, 10, 14, 0.96), rgba(10, 8, 12, 0.96));
+  --cove-overlay-warning-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(232, 103, 120, 0.12);
+  --cove-overlay-warning-pill-border: rgba(232, 103, 120, 0.38);
+  --cove-overlay-warning-pill-surface: rgba(232, 103, 120, 0.12);
+
   --cove-node-border: rgba(107, 138, 236, 0.65);
   --cove-node-surface: rgba(10, 17, 33, 0.94);
   --cove-node-header-surface: rgba(23, 36, 66, 0.96);
@@ -91,6 +113,29 @@
   --cove-backdrop: rgba(10, 16, 32, 0.28);
   --cove-shadow-color-elevated: rgba(15, 23, 42, 0.18);
   --cove-shadow-color-panel: rgba(15, 23, 42, 0.22);
+
+  --cove-overlay-danger-backdrop: rgba(54, 12, 22, 0.24);
+  --cove-overlay-danger-border: rgba(232, 103, 120, 0.22);
+  --cove-overlay-danger-surface:
+    radial-gradient(circle at top right, rgba(232, 103, 120, 0.16), transparent 56%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(252, 246, 248, 0.96));
+  --cove-overlay-danger-shadow:
+    0 24px 56px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(232, 103, 120, 0.08);
+  --cove-overlay-danger-title: rgba(17, 24, 39, 0.92);
+  --cove-overlay-danger-summary: rgba(127, 50, 63, 0.72);
+  --cove-overlay-danger-status-border: rgba(232, 103, 120, 0.32);
+  --cove-overlay-danger-status-surface: rgba(232, 103, 120, 0.12);
+  --cove-overlay-danger-status-text: rgba(127, 50, 63, 0.9);
+
+  --cove-overlay-warning-backdrop: rgba(15, 23, 42, 0.34);
+  --cove-overlay-warning-border: rgba(232, 103, 120, 0.2);
+  --cove-overlay-warning-surface:
+    radial-gradient(circle at top right, rgba(232, 103, 120, 0.16), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 249, 252, 0.96));
+  --cove-overlay-warning-shadow:
+    0 24px 56px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(232, 103, 120, 0.06);
+  --cove-overlay-warning-pill-border: rgba(232, 103, 120, 0.28);
+  --cove-overlay-warning-pill-surface: rgba(232, 103, 120, 0.1);
 
   --cove-node-border: rgba(94, 125, 208, 0.32);
   --cove-node-surface: rgba(255, 255, 255, 0.86);

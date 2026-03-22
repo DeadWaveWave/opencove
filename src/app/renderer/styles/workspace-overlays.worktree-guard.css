@@ -2,6 +2,17 @@
   width: min(520px, calc(100vw - 48px));
 }
 
+.workspace-space-drop-guard-backdrop {
+  background: var(--cove-overlay-warning-backdrop);
+}
+
+.workspace-space-drop-guard.cove-window {
+  width: min(520px, calc(100vw - 48px));
+  border-color: var(--cove-overlay-warning-border);
+  background: var(--cove-overlay-warning-surface);
+  box-shadow: var(--cove-overlay-warning-shadow);
+}
+
 .workspace-space-worktree-guard {
   display: grid;
   gap: 14px;
@@ -26,8 +37,8 @@
   width: fit-content;
   padding: 6px 10px;
   border-radius: 999px;
-  border: 1px solid rgba(232, 103, 120, 0.38);
-  background: rgba(232, 103, 120, 0.12);
+  border: 1px solid var(--cove-overlay-warning-pill-border);
+  background: var(--cove-overlay-warning-pill-surface);
   color: var(--cove-text);
   font-size: calc(11px * var(--cove-ui-font-scale));
   line-height: 1.3;
