@@ -176,7 +176,7 @@ export const zhCN = {
       focusOnClickLabel: '点击自动定位',
       focusOnClickHelp: '点击节点时自动将画布居中到该节点。',
       focusTargetZoomLabel: '定位缩放',
-      focusTargetZoomHelp: '自动定位后使用的缩放比例。',
+      focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
     },
     tasks: {
       title: '任务配置',

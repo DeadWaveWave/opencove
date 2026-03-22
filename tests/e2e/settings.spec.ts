@@ -75,7 +75,37 @@ test.describe('Settings', () => {
 
       const focusTargetZoom = window.locator('[data-testid="settings-focus-node-target-zoom"]')
       await expect(focusTargetZoom).toBeVisible()
-      await focusTargetZoom.selectOption('1.25')
+      const sliderBox = await focusTargetZoom.boundingBox()
+      if (!sliderBox) {
+        throw new Error('focus target zoom slider bounding box unavailable')
+      }
+
+      await window.mouse.move(
+        sliderBox.x + sliderBox.width * 0.6,
+        sliderBox.y + sliderBox.height / 2,
+      )
+      await window.mouse.down()
+      await expect(window.locator('.settings-panel')).toHaveClass(/settings-panel--preview/)
+
+      await window.mouse.up()
+      await expect(window.locator('.settings-panel')).not.toHaveClass(/settings-panel--preview/)
+
+      await focusTargetZoom.evaluate((element, value) => {
+        const input = element as HTMLInputElement
+        const next = String(value)
+        const prototype = Object.getPrototypeOf(input)
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
+        const setter = descriptor?.set
+        if (setter) {
+          setter.call(input, next)
+        } else {
+          input.value = next
+        }
+
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      }, 1.37)
+      await expect(window.locator('.settings-panel__range-value')).toContainText('137%')
 
       const focusToggle = window.locator('[data-testid="settings-focus-node-on-click"]')
       await expect(focusToggle).toBeVisible()
@@ -198,7 +228,7 @@ test.describe('Settings', () => {
           language: 'zh-CN',
           defaultProvider: 'codex',
           focusNodeOnClick: false,
-          focusNodeTargetZoom: 1.25,
+          focusNodeTargetZoom: 1.37,
           canvasInputMode: 'trackpad',
           uiTheme: 'light',
           terminalFontSize: 15,
@@ -234,7 +264,7 @@ test.describe('Settings', () => {
       expect(persistedSettings?.taskTagOptions).toContain('ops')
       expect(persistedSettings?.taskTagOptions).not.toContain('feature')
       expect(persistedSettings?.focusNodeOnClick).toBe(false)
-      expect(persistedSettings?.focusNodeTargetZoom).toBe(1.25)
+      expect(persistedSettings?.focusNodeTargetZoom).toBe(1.37)
       expect(persistedSettings?.canvasInputMode).toBe('trackpad')
       expect(persistedSettings?.terminalFontSize).toBe(15)
       expect(persistedSettings?.uiFontSize).toBe(20)

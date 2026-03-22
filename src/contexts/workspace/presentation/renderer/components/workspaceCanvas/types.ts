@@ -37,6 +37,7 @@ export interface WorkspaceCanvasProps {
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
   agentSettings: AgentSettings
+  isFocusNodeTargetZoomPreviewing?: boolean
   focusNodeId?: string | null
   focusSequence?: number
 }

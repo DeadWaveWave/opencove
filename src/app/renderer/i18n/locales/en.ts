@@ -174,7 +174,8 @@ export const en = {
       focusOnClickLabel: 'Auto-focus on Click',
       focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
       focusTargetZoomLabel: 'Target Zoom',
-      focusTargetZoomHelp: 'Zoom level used after auto-focus.',
+      focusTargetZoomHelp:
+        'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
     },
     tasks: {
       title: 'Task Configuration',

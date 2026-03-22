@@ -20,6 +20,7 @@ export function WorkspaceCanvasInner({
   onViewportChange,
   onMinimapVisibilityChange,
   agentSettings,
+  isFocusNodeTargetZoomPreviewing = false,
   focusNodeId,
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
@@ -275,6 +276,7 @@ export function WorkspaceCanvasInner({
     focusNodeId,
     focusSequence,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
+    isFocusNodeTargetZoomPreviewing,
     nodesRef,
   })
   workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({ setNodes, onRequestPersistFlush })
@@ -343,10 +345,8 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     setContextMenu,
   })
-  const copyAgentLastMessage = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageCopy({
-    nodesRef,
-    onShowMessage,
-  })
+  const { useWorkspaceCanvasAgentLastMessageCopy } = workspaceCanvasHooks
+  const copyAgentLastMessage = useWorkspaceCanvasAgentLastMessageCopy({ nodesRef, onShowMessage })
   workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
     actionRefs,
     closeNode,

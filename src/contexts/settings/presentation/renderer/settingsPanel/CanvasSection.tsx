@@ -2,7 +2,9 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   CANVAS_INPUT_MODES,
-  FOCUS_NODE_TARGET_ZOOM_PRESETS,
+  FOCUS_NODE_TARGET_ZOOM_STEP,
+  MAX_FOCUS_NODE_TARGET_ZOOM,
+  MIN_FOCUS_NODE_TARGET_ZOOM,
   MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
   MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
   type CanvasInputMode,
@@ -23,6 +25,7 @@ export function CanvasSection(props: {
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
+  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChangeDefaultTerminalWindowScalePercent: (percent: number) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -38,6 +41,7 @@ export function CanvasSection(props: {
     onChangeDefaultTerminalProfileId,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
+    onFocusNodeTargetZoomPreviewChange,
     onChangeDefaultTerminalWindowScalePercent,
   } = props
   const selectedProfileId = terminalProfiles.some(
@@ -157,22 +161,27 @@ export function CanvasSection(props: {
           <span>{t('settingsPanel.canvas.focusTargetZoomHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <select
-            id="settings-focus-node-target-zoom"
-            data-testid="settings-focus-node-target-zoom"
-            value={focusNodeTargetZoom}
-            disabled={!focusNodeOnClick}
-            onChange={event =>
-              onChangeFocusNodeTargetZoom(Number(event.target.value) as FocusNodeTargetZoom)
-            }
-          >
-            {FOCUS_NODE_TARGET_ZOOM_PRESETS.map(zoom => (
-              <option key={zoom} value={zoom}>
-                {Math.round(zoom * 100)}
-                {t('common.percentUnit')}
-              </option>
-            ))}
-          </select>
+          <div className="settings-panel__range">
+            <input
+              id="settings-focus-node-target-zoom"
+              data-testid="settings-focus-node-target-zoom"
+              value={focusNodeTargetZoom}
+              disabled={!focusNodeOnClick}
+              type="range"
+              min={MIN_FOCUS_NODE_TARGET_ZOOM}
+              max={MAX_FOCUS_NODE_TARGET_ZOOM}
+              step={FOCUS_NODE_TARGET_ZOOM_STEP}
+              onPointerDown={() => onFocusNodeTargetZoomPreviewChange(true)}
+              onPointerUp={() => onFocusNodeTargetZoomPreviewChange(false)}
+              onPointerCancel={() => onFocusNodeTargetZoomPreviewChange(false)}
+              onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
+              onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
+            />
+            <span className="settings-panel__range-value">
+              {Math.round(focusNodeTargetZoom * 100)}
+              {t('common.percentUnit')}
+            </span>
+          </div>
         </div>
       </div>
     </div>

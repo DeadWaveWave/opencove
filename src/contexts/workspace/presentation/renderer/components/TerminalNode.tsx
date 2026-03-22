@@ -24,7 +24,7 @@ import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
-import { patchXtermMouseService } from './terminalNode/patchXtermMouseService'
+import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
@@ -168,9 +168,10 @@ export function TerminalNode({
       }),
     )
 
+    let cancelMouseServicePatch: () => void = () => undefined
     if (containerRef.current) {
       terminal.open(containerRef.current)
-      patchXtermMouseService(terminal)
+      cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
@@ -363,6 +364,7 @@ export function TerminalNode({
         }
       }
 
+      cancelMouseServicePatch()
       isDisposed = true
       const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
       void detachPromise?.catch(() => undefined)

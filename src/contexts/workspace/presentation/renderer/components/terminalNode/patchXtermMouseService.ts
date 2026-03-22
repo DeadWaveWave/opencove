@@ -99,7 +99,7 @@ function getScaledTerminalCoords({
   return [clampedX, clampedY]
 }
 
-export function patchXtermMouseService(terminal: Terminal): void {
+export function patchXtermMouseService(terminal: Terminal): boolean {
   const core = terminal as unknown as {
     _core?: {
       _mouseService?: XtermMouseService
@@ -117,17 +117,17 @@ export function patchXtermMouseService(terminal: Terminal): void {
 
   const mouseService = core._core?._mouseService
   if (!mouseService || typeof mouseService.getCoords !== 'function') {
-    return
+    return false
   }
 
   if (mouseService.__opencovePatched) {
-    return
+    return true
   }
 
   const charSizeService = core._core?._charSizeService
   const renderService = core._core?._renderService
   if (!renderService || !charSizeService) {
-    return
+    return false
   }
 
   mouseService.__opencovePatched = true
@@ -160,7 +160,7 @@ export function patchXtermMouseService(terminal: Terminal): void {
       : null
 
   if (!originalGetMouseReportCoords) {
-    return
+    return true
   }
 
   mouseService.getMouseReportCoords = (event, element) => {
@@ -198,6 +198,49 @@ export function patchXtermMouseService(terminal: Terminal): void {
       row: Math.floor(clampedY / cssCellHeight),
       x: Math.floor(clampedX),
       y: Math.floor(clampedY),
+    }
+  }
+
+  return true
+}
+
+export function patchXtermMouseServiceWithRetry(
+  terminal: Terminal,
+  options: { maxAttempts?: number } = {},
+): () => void {
+  if (typeof window === 'undefined') {
+    patchXtermMouseService(terminal)
+    return () => undefined
+  }
+
+  const maxAttempts = options.maxAttempts ?? 30
+  let cancelled = false
+  let frame: number | null = null
+
+  const tryPatch = (attempt: number) => {
+    if (cancelled) {
+      return
+    }
+
+    if (patchXtermMouseService(terminal)) {
+      return
+    }
+
+    if (attempt >= maxAttempts) {
+      return
+    }
+
+    frame = window.requestAnimationFrame(() => {
+      tryPatch(attempt + 1)
+    })
+  }
+
+  tryPatch(0)
+
+  return () => {
+    cancelled = true
+    if (frame !== null) {
+      window.cancelAnimationFrame(frame)
     }
   }
 }

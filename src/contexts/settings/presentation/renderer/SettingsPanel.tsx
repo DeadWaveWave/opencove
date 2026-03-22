@@ -35,6 +35,8 @@ interface SettingsPanelProps {
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  isFocusNodeTargetZoomPreviewing: boolean
+  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChange: (settings: AgentSettings) => void
   onClose: () => void
 }
@@ -71,6 +73,8 @@ export function SettingsPanel({
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  isFocusNodeTargetZoomPreviewing,
+  onFocusNodeTargetZoomPreviewChange,
   onChange,
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
@@ -225,6 +229,12 @@ export function SettingsPanel({
     contentRef.current.scrollTop = 0
   }, [activePageId])
 
+  useEffect(() => {
+    if (activePageId !== 'canvas') {
+      onFocusNodeTargetZoomPreviewChange(false)
+    }
+  }, [activePageId, onFocusNodeTargetZoomPreviewChange])
+
   const NavButton = ({
     id,
     label,
@@ -248,8 +258,14 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="settings-backdrop" onClick={onClose}>
-      <section className="settings-panel" onClick={e => e.stopPropagation()}>
+    <div
+      className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
+      onClick={onClose}
+    >
+      <section
+        className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
+        onClick={e => e.stopPropagation()}
+      >
         <aside
           className="settings-panel__sidebar"
           aria-label={t('settingsPanel.nav.sectionsLabel')}
@@ -358,6 +374,7 @@ export function SettingsPanel({
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
+                onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
                 onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
               />
             ) : null}

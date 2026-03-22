@@ -212,10 +212,22 @@ describe('agent settings normalization', () => {
 
   it('falls back to default focus zoom when target zoom is invalid', () => {
     const result = normalizeAgentSettings({
-      focusNodeTargetZoom: 2,
+      focusNodeTargetZoom: Number.NaN,
     })
 
     expect(result.focusNodeTargetZoom).toBe(1)
+  })
+
+  it('clamps focus zoom setting to the supported canvas zoom range', () => {
+    const maxResult = normalizeAgentSettings({
+      focusNodeTargetZoom: 999,
+    })
+    expect(maxResult.focusNodeTargetZoom).toBe(2)
+
+    const minResult = normalizeAgentSettings({
+      focusNodeTargetZoom: 0.001,
+    })
+    expect(minResult.focusNodeTargetZoom).toBe(0.1)
   })
 
   it('falls back to codex for task titles when default provider cannot name tasks', () => {

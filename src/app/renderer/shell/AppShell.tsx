@@ -88,6 +88,7 @@ export default function App(): React.JSX.Element {
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
 
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
+  const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
 
   const toggleCommandCenter = useCallback((): void => {
     setIsCommandCenterOpen(open => !open)
@@ -109,6 +110,12 @@ export default function App(): React.JSX.Element {
 
     setIsCommandCenterOpen(false)
   }, [isSettingsOpen, projectDeleteConfirmation])
+
+  useEffect(() => {
+    if (!isSettingsOpen) {
+      setIsFocusNodeTargetZoomPreviewing(false)
+    }
+  }, [isSettingsOpen])
 
   useEffect(() => {
     document.title = activeWorkspaceName ? `${activeWorkspaceName} — OpenCove` : 'OpenCove'
@@ -240,6 +247,7 @@ export default function App(): React.JSX.Element {
             toggleCommandCenter()
           }}
           onOpenSettings={() => {
+            setIsFocusNodeTargetZoomPreviewing(false)
             setIsSettingsOpen(true)
           }}
         />
@@ -285,6 +293,7 @@ export default function App(): React.JSX.Element {
               onSpacesChange={handleWorkspaceSpacesChange}
               onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
               agentSettings={agentSettings}
+              isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
               focusNodeId={
                 focusRequest && focusRequest.workspaceId === activeWorkspace.id
                   ? focusRequest.nodeId
@@ -315,6 +324,7 @@ export default function App(): React.JSX.Element {
           closeCommandCenter()
         }}
         onOpenSettings={() => {
+          setIsFocusNodeTargetZoomPreviewing(false)
           setIsSettingsOpen(true)
         }}
         onTogglePrimarySidebar={() => {
@@ -366,11 +376,14 @@ export default function App(): React.JSX.Element {
           onWorkspaceWorktreesRootChange={(id, root) => {
             handleAnyWorkspaceWorktreesRootChange(id, root)
           }}
+          isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
+          onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
           onChange={next => {
             setAgentSettings(next)
           }}
           onClose={() => {
             flushPersistNow()
+            setIsFocusNodeTargetZoomPreviewing(false)
             setIsSettingsOpen(false)
           }}
         />

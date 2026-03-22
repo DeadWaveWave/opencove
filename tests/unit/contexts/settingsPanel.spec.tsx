@@ -63,6 +63,8 @@ describe('SettingsPanel', () => {
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
         onChange={onChange}
         onClose={() => undefined}
       />,
@@ -97,6 +99,8 @@ describe('SettingsPanel', () => {
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
         onChange={onChange}
         onClose={() => undefined}
       />,

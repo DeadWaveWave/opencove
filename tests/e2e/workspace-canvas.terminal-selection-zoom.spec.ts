@@ -48,31 +48,39 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
         })
         .toBeGreaterThan(1.01)
 
-      const dragPoints = await window.evaluate(nodeId => {
-        const api = window.__opencoveTerminalSelectionTestApi
-        if (!api) {
-          return null
-        }
+      const dragPoints = await window
+        .waitForFunction(
+          nodeId => {
+            const api = window.__opencoveTerminalSelectionTestApi
+            if (!api) {
+              return null
+            }
 
-        // Row 1 contains the printed alphabet after the ANSI clear + home.
-        const start = api.getCellCenter(nodeId, 2, 1)
-        const end = api.getCellCenter(nodeId, 6, 1)
-        if (!start || !end) {
-          return null
-        }
+            // Row 1 contains the printed alphabet after the ANSI clear + home.
+            const start = api.getCellCenter(nodeId, 2, 1)
+            const end = api.getCellCenter(nodeId, 6, 1)
+            if (!start || !end) {
+              return null
+            }
 
-        api.clearSelection(nodeId)
+            const startElement = document.elementFromPoint(start.x, start.y)
+            const endElement = document.elementFromPoint(end.x, end.y)
+            if (!startElement?.closest('.xterm-screen') || !endElement?.closest('.xterm-screen')) {
+              return null
+            }
 
-        return { start, end }
-      }, 'node-selection-zoom')
+            api.clearSelection(nodeId)
 
-      if (!dragPoints) {
-        throw new Error('Failed to resolve terminal drag coordinates')
-      }
+            return { start, end }
+          },
+          'node-selection-zoom',
+          { timeout: 15_000 },
+        )
+        .then(handle => handle.jsonValue())
 
       await window.mouse.move(dragPoints.start.x, dragPoints.start.y)
       await window.mouse.down()
-      await window.mouse.move(dragPoints.end.x, dragPoints.end.y)
+      await window.mouse.move(dragPoints.end.x, dragPoints.end.y, { steps: 8 })
       await window.mouse.up()
 
       await expect
