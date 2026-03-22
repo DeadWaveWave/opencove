@@ -455,6 +455,8 @@ export function WorkspaceCanvasView({
 
       <TaskEditorWindow
         taskEditor={taskEditor}
+        taskTitleProviderLabel={taskTitleProviderLabel}
+        taskTitleModelLabel={taskTitleModelLabel}
         taskTagOptions={taskTagOptions}
         setTaskEditor={setTaskEditor}
         closeTaskEditor={closeTaskEditor}
@@ -463,9 +465,9 @@ export function WorkspaceCanvasView({
       />
 
       <NodeDeleteConfirmationWindow
-        confirmation={nodeDeleteConfirmation}
-        setConfirmation={setNodeDeleteConfirmation}
-        confirmDelete={confirmNodeDelete}
+        nodeDeleteConfirmation={nodeDeleteConfirmation}
+        setNodeDeleteConfirmation={setNodeDeleteConfirmation}
+        confirmNodeDelete={confirmNodeDelete}
       />
 
       <SpaceWorktreeMismatchDropWarningWindow
@@ -475,17 +477,17 @@ export function WorkspaceCanvasView({
       />
 
       <SpaceWorktreeWindow
-        dialog={spaceWorktreeDialog}
-        closeDialog={closeSpaceWorktree}
-        worktreesRoot={worktreesRoot}
+        spaceId={spaceWorktreeDialog?.spaceId ?? null}
+        initialViewMode={spaceWorktreeDialog?.initialViewMode}
+        spaces={spaces}
+        nodes={nodes}
         workspacePath={workspacePath}
-        openSpacePath={openSpacePath}
-        openSpaceCreateWorktree={openSpaceCreateWorktree}
-        openSpaceArchive={openSpaceArchive}
+        worktreesRoot={worktreesRoot}
         agentSettings={agentSettings}
+        onClose={closeSpaceWorktree}
         onShowMessage={onShowMessage}
-        updateSpaceDirectory={updateSpaceDirectory}
-        getSpaceBlockingNodes={getSpaceBlockingNodes}
+        onUpdateSpaceDirectory={updateSpaceDirectory}
+        getBlockingNodes={getSpaceBlockingNodes}
         closeNodesById={closeNodesById}
       />
     </div>
@@ -495,4 +497,3 @@ export function WorkspaceCanvasView({
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/\\/g, '/').replace(/\/+$/g, '').toLowerCase()
 }
-
