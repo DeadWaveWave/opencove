@@ -46,6 +46,10 @@
   min-width: 0;
 }
 
+.workspace-space-worktree--archive .workspace-space-worktree__header-main h3 {
+  color: rgba(255, 240, 242, 0.98);
+}
+
 .workspace-space-worktree__header-summary {
   margin: 0;
   color: rgba(166, 188, 227, 0.76);
