@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useMemo } from 'react'
+import React, { useLayoutEffect } from 'react'
 import { ReactFlowProvider, useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as hooks from './workspaceCanvas/hooks'
@@ -37,6 +37,11 @@ function WorkspaceCanvasInner({
     setDetectedCanvasInputMode,
     isShiftPressed,
     setIsShiftPressed,
+    magneticSnappingEnabled,
+    setMagneticSnappingEnabled,
+    magneticSnappingEnabledRef,
+    snapGuides,
+    setSnapGuides,
     canvasRef,
     restoredViewportWorkspaceIdRef,
     spacesRef,
@@ -136,6 +141,8 @@ function WorkspaceCanvasInner({
       onSpacesChange,
       setSelectedNodeIds,
       setSelectedSpaceIds,
+      magneticSnappingEnabledRef,
+      setSnapGuides,
       onRequestPersistFlush,
       setContextMenu,
       cancelSpaceRename,
@@ -174,10 +181,15 @@ function WorkspaceCanvasInner({
     createNodeForSession,
     buildAgentNodeTitle,
   })
-  const taskTagOptions = useMemo(() => {
-    const fromSettings = agentSettings.taskTagOptions ?? []
-    return [...new Set(fromSettings.map(tag => tag.trim()).filter(tag => tag.length > 0))]
-  }, [agentSettings.taskTagOptions])
+  const {
+    taskTagOptions,
+    resolvedCanvasInputMode,
+    isTrackpadCanvasMode,
+    useManualCanvasWheelGestures,
+  } = hooks.useWorkspaceCanvasDerivedConfig({
+    agentSettings,
+    detectedCanvasInputMode,
+  })
   const { suggestTaskTitle } = hooks.useWorkspaceCanvasTaskActions({
     nodesRef,
     spacesRef,
@@ -197,22 +209,7 @@ function WorkspaceCanvasInner({
     quickUpdateTaskTitleRef: actionRefs.quickUpdateTaskTitleRef,
     quickUpdateTaskRequirementRef: actionRefs.quickUpdateTaskRequirementRef,
   })
-  const {
-    taskCreator,
-    setTaskCreator,
-    openTaskCreator,
-    closeTaskCreator,
-    generateTaskTitle,
-    createTask,
-    taskEditor,
-    setTaskEditor,
-    closeTaskEditor,
-    generateTaskEditorTitle,
-    saveTaskEdits,
-    nodeDeleteConfirmation,
-    setNodeDeleteConfirmation,
-    confirmNodeDelete,
-  } = hooks.useWorkspaceCanvasTaskWindows({
+  const taskWindows = hooks.useWorkspaceCanvasTaskWindows({
     taskTagOptions,
     contextMenu,
     setContextMenu,
@@ -226,12 +223,6 @@ function WorkspaceCanvasInner({
     closeNode,
     actionRefs,
   })
-  const resolvedCanvasInputMode =
-    agentSettings.canvasInputMode === 'auto'
-      ? detectedCanvasInputMode
-      : agentSettings.canvasInputMode
-  const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
-  const useManualCanvasWheelGestures = agentSettings.canvasInputMode !== 'mouse'
   const { handleCanvasWheelCapture } = hooks.useWorkspaceCanvasTrackpadGestures({
     canvasInputModeSetting: agentSettings.canvasInputMode,
     resolvedCanvasInputMode,
@@ -360,6 +351,8 @@ function WorkspaceCanvasInner({
     spacesRef,
     selectedSpaceIdsRef,
     dragSelectedSpaceIdsRef,
+    magneticSnappingEnabledRef,
+    setSnapGuides,
     onSpacesChange,
     onRequestPersistFlush,
   })
@@ -425,6 +418,7 @@ function WorkspaceCanvasInner({
       useManualCanvasWheelGestures={useManualCanvasWheelGestures}
       isShiftPressed={isShiftPressed}
       selectionDraft={selectionDraftUi}
+      snapGuides={snapGuides}
       spaceVisuals={spaceVisuals}
       spaceFramePreview={spaceFramePreview}
       selectedSpaceIds={selectedSpaceIds}
@@ -446,34 +440,39 @@ function WorkspaceCanvasInner({
       focusAllInViewport={focusAllInViewport}
       contextMenu={contextMenu}
       closeContextMenu={spaceUi.closeContextMenu}
+      magneticSnappingEnabled={magneticSnappingEnabled}
+      onToggleMagneticSnapping={() => {
+        setMagneticSnappingEnabled(previous => !previous)
+        setSnapGuides(null)
+      }}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
       arrangeAll={arrangeAll}
       arrangeCanvas={arrangeCanvas}
       arrangeInSpace={arrangeInSpace}
-      openTaskCreator={openTaskCreator}
+      openTaskCreator={taskWindows.openTaskCreator}
       openAgentLauncher={openAgentLauncher}
       createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
       clearNodeSelection={clearNodeSelection}
       canConvertSelectedNoteToTask={noteToTaskConversion.canConvertSelectedNoteToTask}
       isConvertSelectedNoteToTaskDisabled={noteToTaskConversion.isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={noteToTaskConversion.convertSelectedNoteToTask}
-      taskCreator={taskCreator}
+      taskCreator={taskWindows.taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}
       taskTitleModelLabel={taskTitleModelLabel}
       taskTagOptions={taskTagOptions}
-      setTaskCreator={setTaskCreator}
-      closeTaskCreator={closeTaskCreator}
-      generateTaskTitle={generateTaskTitle}
-      createTask={createTask}
-      taskEditor={taskEditor}
-      setTaskEditor={setTaskEditor}
-      closeTaskEditor={closeTaskEditor}
-      generateTaskEditorTitle={generateTaskEditorTitle}
-      saveTaskEdits={saveTaskEdits}
-      nodeDeleteConfirmation={nodeDeleteConfirmation}
-      setNodeDeleteConfirmation={setNodeDeleteConfirmation}
-      confirmNodeDelete={confirmNodeDelete}
+      setTaskCreator={taskWindows.setTaskCreator}
+      closeTaskCreator={taskWindows.closeTaskCreator}
+      generateTaskTitle={taskWindows.generateTaskTitle}
+      createTask={taskWindows.createTask}
+      taskEditor={taskWindows.taskEditor}
+      setTaskEditor={taskWindows.setTaskEditor}
+      closeTaskEditor={taskWindows.closeTaskEditor}
+      generateTaskEditorTitle={taskWindows.generateTaskEditorTitle}
+      saveTaskEdits={taskWindows.saveTaskEdits}
+      nodeDeleteConfirmation={taskWindows.nodeDeleteConfirmation}
+      setNodeDeleteConfirmation={taskWindows.setNodeDeleteConfirmation}
+      confirmNodeDelete={taskWindows.confirmNodeDelete}
       agentSettings={agentSettings}
       workspacePath={workspacePath}
       spaceActionMenu={spaceUi.spaceActionMenu}

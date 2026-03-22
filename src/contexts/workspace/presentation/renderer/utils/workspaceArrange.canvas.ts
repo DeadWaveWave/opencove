@@ -1,12 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
-import {
-  computeBoundingRect,
-  resolveDensePacking,
-  resolveFlowPacking,
-  snapDown,
-} from './workspaceArrange.flowPacking'
+import { computeBoundingRect, resolveFlowPacking, snapDown } from './workspaceArrange.flowPacking'
 import {
   createArrangeItemsForCanvasRootNodes,
   createArrangeItemsForCanvasSpaces,
@@ -26,6 +21,8 @@ import {
   normalizeWorkspaceNodesToCanonicalSizing,
   resolveArrangeCanonicalBucket,
   resolveCanonicalBucketCellSize,
+  resolveCanonicalNodeGridSpan,
+  WORKSPACE_CANONICAL_GUTTER_PX,
 } from './workspaceNodeSizing'
 import { resolveBestDenseGridPacking } from './workspaceArrange.gridPacking'
 
@@ -34,13 +31,11 @@ function resolveCanvasSectionPlacements({
   start,
   wrapWidth,
   gap,
-  style,
 }: {
   items: WorkspaceArrangeItem[]
   start: { x: number; y: number }
   wrapWidth: number
   gap: number
-  style: Required<WorkspaceArrangeStyle>
 }): Map<string, { x: number; y: number }> {
   if (items.length === 0) {
     return new Map()
@@ -55,14 +50,6 @@ function resolveCanvasSectionPlacements({
     wrapWidth,
     Math.max(...placementItems.map(item => item.width)),
   )
-
-  if (style.layout === 'compact') {
-    return resolveDensePacking({
-      items: placementItems,
-      start,
-      wrapWidth: effectiveWrapWidth,
-    })
-  }
 
   return resolveFlowPacking({
     items: placementItems,
@@ -118,13 +105,11 @@ export function arrangeWorkspaceCanvas({
     nodes.filter(node => !ownedNodeIdSet.has(node.id)).map(node => node.id),
   )
   const canonicalBucket = resolvedStyle.alignCanonicalSizes
-    ? resolvedStyle.layout === 'compact'
-      ? 'compact'
-      : resolveArrangeCanonicalBucket({
-          nodes,
-          nodeIdSet: rootNodeIdSet,
-          viewport,
-        })
+    ? resolveArrangeCanonicalBucket({
+        nodes,
+        nodeIdSet: rootNodeIdSet,
+        viewport,
+      })
     : 'regular'
   const canonicalSizingNormalized = normalizeWorkspaceNodesToCanonicalSizing({
     nodes,
@@ -135,6 +120,7 @@ export function arrangeWorkspaceCanvas({
   const nodesWithStandardSizing = canonicalSizingNormalized.nodes
 
   const nodeById = new Map(nodesWithStandardSizing.map(node => [node.id, node]))
+  const nodeKindById = new Map(nodesWithStandardSizing.map(node => [node.id, node.data.kind]))
 
   let didSpaceFitChange = false
   const fittedSpaces = spaces.map(space => {
@@ -198,7 +184,7 @@ export function arrangeWorkspaceCanvas({
 
   const start = { x: snapDown(bounding.x, grid), y: snapDown(bounding.y, grid) }
   const effectiveWrapWidth = snapDown(wrapWidth, grid)
-  const packingGap = resolvedStyle.layout === 'compact' ? 0 : gap
+  const packingGap = Math.round(gap / 2)
   const sectionGap = gap
   const targetAspect = resolveViewportAspectRatio(viewport)
   const spacePlacements = resolveCanvasSectionPlacements({
@@ -206,7 +192,6 @@ export function arrangeWorkspaceCanvas({
     start,
     wrapWidth: effectiveWrapWidth,
     gap: packingGap,
-    style: resolvedStyle,
   })
   const placedSpaceBounding = computePlacedBoundingRect(spaceItems, spacePlacements)
   const rootStart = {
@@ -216,26 +201,29 @@ export function arrangeWorkspaceCanvas({
       : start.y,
   }
   const rootPlacements = (() => {
-    if (resolvedStyle.layout !== 'compact' || !resolvedStyle.alignCanonicalSizes) {
+    if (!resolvedStyle.alignCanonicalSizes) {
       return resolveCanvasSectionPlacements({
         items: rootItems,
         start: rootStart,
         wrapWidth: effectiveWrapWidth,
         gap: packingGap,
-        style: resolvedStyle,
       })
     }
 
     const cell = resolveCanonicalBucketCellSize(canonicalBucket)
-    const maxColumns = Math.floor(effectiveWrapWidth / Math.max(1, cell.width))
+    const strideWidth = Math.max(1, cell.width) + WORKSPACE_CANONICAL_GUTTER_PX
+    const maxColumns = Math.max(
+      1,
+      Math.floor((effectiveWrapWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth),
+    )
     const packed = resolveBestDenseGridPacking({
       items: rootItems.map(item => ({
         id: item.key,
-        colSpan: Math.max(1, Math.round(item.rect.width / cell.width)),
-        rowSpan: Math.max(1, Math.round(item.rect.height / cell.height)),
+        ...resolveCanonicalNodeGridSpan(nodeKindById.get(item.id) ?? 'terminal'),
       })),
       start: rootStart,
       cell,
+      gap: WORKSPACE_CANONICAL_GUTTER_PX,
       targetAspect,
       maxColumns,
     })
@@ -246,7 +234,6 @@ export function arrangeWorkspaceCanvas({
         start: rootStart,
         wrapWidth: effectiveWrapWidth,
         gap: packingGap,
-        style: resolvedStyle,
       })
     }
 

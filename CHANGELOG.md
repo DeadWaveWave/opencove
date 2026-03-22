@@ -8,17 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 - Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
-- Workspace canvas: Arrange By menu (scope, ordering, layout, space sizing, standard size alignment). (#42)
-- Workspace canvas: compact layout mode for tight, gapless packing (dense grid auto-placement, no overlaps). (#42)
-- Workspace canvas: standard node sizing ratios (terminal/task/agent/note) for node creation and optional arrange-time snapping. (#42)
+- Workspace canvas: Arrange By menu (scope, ordering, space sizing, standard size alignment, magnetic snapping). (#42)
+- Workspace canvas: live magnetic snap guides for node dragging, aligned to the 24px canvas rhythm and enabled by default. (#42)
+- Workspace canvas: unified tiled arrange layout with standard node ratios (terminal/task/agent/note) and balanced dense packing. (#42)
 
 ### 💅 Changed
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
 - Workspace canvas: arrange spaces before root nodes during canvas/global arrange. (#42)
-- Workspace canvas: default node sizes now follow the standard sizing system (viewport-aware) to improve layout consistency. (#42)
+- Workspace canvas: default arrange now uses standard-size alignment by default and resizes spaces to the fitted tiled result. (#42)
+- Workspace canvas: dense packing now favors balanced aspect ratios over ultra-tall stacks for more shelf-like results. (#42)
 
 ### 🐞 Fixed
 - Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
+- Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
 
 ---
 

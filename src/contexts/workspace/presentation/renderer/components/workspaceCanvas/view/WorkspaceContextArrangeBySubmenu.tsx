@@ -3,7 +3,6 @@ import { Check } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceSpaceState } from '../../../types'
 import type {
-  WorkspaceArrangeLayout,
   WorkspaceArrangeOrder,
   WorkspaceArrangeSpaceFit,
 } from '../../../utils/workspaceArrange'
@@ -26,14 +25,14 @@ export function WorkspaceContextArrangeBySubmenu({
   canArrangeHitSpace,
   arrangeScope,
   arrangeOrder,
-  arrangeLayout,
   arrangeSpaceFit,
   alignCanonicalSizes,
+  magneticSnappingEnabled,
   onSelectScope,
   onSelectOrder,
-  onSelectLayout,
   onSelectSpaceFit,
   onToggleAlignCanonicalSizes,
+  onToggleMagneticSnapping,
 }: {
   style: React.CSSProperties
   hitSpace: WorkspaceSpaceState | null
@@ -42,14 +41,14 @@ export function WorkspaceContextArrangeBySubmenu({
   canArrangeHitSpace: boolean
   arrangeScope: ArrangeScope
   arrangeOrder: WorkspaceArrangeOrder
-  arrangeLayout: WorkspaceArrangeLayout
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
   alignCanonicalSizes: boolean
+  magneticSnappingEnabled: boolean
   onSelectScope: (scope: ArrangeScope) => void
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
-  onSelectLayout: (layout: WorkspaceArrangeLayout) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
   onToggleAlignCanonicalSizes: () => void
+  onToggleMagneticSnapping: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
@@ -153,33 +152,6 @@ export function WorkspaceContextArrangeBySubmenu({
 
       <button
         type="button"
-        data-testid="workspace-context-arrange-layout-shelf"
-        onClick={() => {
-          onSelectLayout('shelf')
-        }}
-      >
-        {renderMark(arrangeLayout === 'shelf')}
-        <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.layoutShelf')}
-        </span>
-      </button>
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-layout-compact"
-        onClick={() => {
-          onSelectLayout('compact')
-        }}
-      >
-        {renderMark(arrangeLayout === 'compact')}
-        <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.layoutCompact')}
-        </span>
-      </button>
-
-      <div className="workspace-context-menu__separator" />
-
-      <button
-        type="button"
         data-testid="workspace-context-arrange-space-fit-tight"
         onClick={() => {
           onSelectSpaceFit('tight')
@@ -227,6 +199,19 @@ export function WorkspaceContextArrangeBySubmenu({
         {renderMark(alignCanonicalSizes)}
         <span className="workspace-context-menu__label">
           {t('workspaceArrangeMenu.alignCanonicalSizes')}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        data-testid="workspace-context-arrange-magnetic-snapping"
+        onClick={() => {
+          onToggleMagneticSnapping()
+        }}
+      >
+        {renderMark(magneticSnappingEnabled)}
+        <span className="workspace-context-menu__label">
+          {t('workspaceArrangeMenu.magneticSnapping')}
         </span>
       </button>
     </div>

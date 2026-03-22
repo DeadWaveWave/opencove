@@ -84,7 +84,7 @@ function rectsOverlap(
 }
 
 test.describe('Workspace Canvas - Arrange', () => {
-  test('arrange-by menu can align standard sizes + compact layout for tight tiling', async () => {
+  test('arrange-by menu keeps toggles visible while applying the tiled layout', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -150,19 +150,24 @@ test.describe('Workspace Canvas - Arrange', () => {
       await ensureArtifactsDir()
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.png' })
 
-      await window.locator('[data-testid="workspace-context-arrange-canonical-sizes"]').click()
-      await expect(
-        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
-      ).toBeVisible()
-
       await expect(
         window.locator('[data-testid="workspace-context-arrange-canonical-sizes"] svg'),
       ).toHaveCount(1)
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"] svg'),
+      ).toHaveCount(1)
+
+      await window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"]').click()
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
+      ).toBeVisible()
+      await window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"]').click()
+
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.standard-sizes.png',
       })
 
-      await window.locator('[data-testid="workspace-context-arrange-layout-compact"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-space-fit-tight"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
@@ -176,27 +181,27 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toEqual({
           nodes: {
-            'tile-1': { x: 124, y: 124, width: 480, height: 320 },
-            'tile-2': { x: 604, y: 124, width: 480, height: 320 },
-            'tile-3': { x: 124, y: 444, width: 480, height: 320 },
-            'tile-4': { x: 604, y: 444, width: 480, height: 320 },
+            'tile-1': { x: 124, y: 124, width: 468, height: 324 },
+            'tile-2': { x: 604, y: 124, width: 468, height: 324 },
+            'tile-3': { x: 124, y: 460, width: 468, height: 324 },
+            'tile-4': { x: 604, y: 460, width: 468, height: 324 },
           },
           spaces: {
-            'space-tiles': { x: 100, y: 100, width: 1008, height: 688 },
+            'space-tiles': { x: 100, y: 100, width: 996, height: 708 },
           },
         })
 
       await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.standard-compact-tiles.png',
+        path: 'artifacts/workspace-canvas-arrange.standard-tiled-tiles.png',
       })
     } finally {
       await electronApp.close()
     }
   })
 
-  test('compact layout keeps submenu open and places spaces above root nodes', async () => {
+  test('arrange submenu stays open and places spaces above root nodes', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -257,7 +262,7 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
 
-      await window.locator('[data-testid="workspace-context-arrange-layout-compact"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-scope-all"]').click()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
@@ -265,7 +270,7 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       await ensureArtifactsDir()
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.compact-layout-menu.png',
+        path: 'artifacts/workspace-canvas-arrange.tiled-layout-menu.png',
       })
 
       await expect
@@ -277,10 +282,10 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toMatchObject({
           nodes: {
-            'root-a': { width: 320, height: 240 },
-            'root-b': { width: 320, height: 240 },
-            'space-a': { width: 320, height: 240 },
-            'space-b': { width: 320, height: 240 },
+            'root-a': { width: 468, height: 324 },
+            'root-b': { width: 468, height: 324 },
+            'space-a': { width: 468, height: 324 },
+            'space-b': { width: 468, height: 324 },
           },
         })
       const layout = await readSeededWorkspaceLayout(window, {
@@ -301,14 +306,14 @@ test.describe('Workspace Canvas - Arrange', () => {
       await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.compact-layout-canvas.png',
+        path: 'artifacts/workspace-canvas-arrange.tiled-layout-canvas.png',
       })
     } finally {
       await electronApp.close()
     }
   })
 
-  test('compact layout + standard sizes packs mixed nodes densely inside a space', async () => {
+  test('size ordering packs mixed nodes into the tiled layout inside a space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -419,8 +424,6 @@ test.describe('Workspace Canvas - Arrange', () => {
       ).toBeVisible()
 
       await window.locator('[data-testid="workspace-context-arrange-order-size"]').click()
-      await window.locator('[data-testid="workspace-context-arrange-canonical-sizes"]').click()
-      await window.locator('[data-testid="workspace-context-arrange-layout-compact"]').click()
 
       const layout = await readSeededWorkspaceLayout(window, {
         nodeIds: ['mixed-agent', 'mixed-terminal', 'mixed-task-1', 'mixed-task-2'],
@@ -428,17 +431,17 @@ test.describe('Workspace Canvas - Arrange', () => {
       })
 
       const spaceRect = layout.spaces['space-mixed']
-      expect(spaceRect).toEqual({ x: 100, y: 100, width: 1008, height: 688 })
+      expect(spaceRect).toEqual({ x: 100, y: 100, width: 996, height: 708 })
 
-      expect(layout.nodes['mixed-agent']).toMatchObject({ width: 480, height: 640 })
-      expect(layout.nodes['mixed-terminal']).toMatchObject({ width: 480, height: 320 })
-      expect(layout.nodes['mixed-task-1']).toMatchObject({ width: 240, height: 320 })
-      expect(layout.nodes['mixed-task-2']).toMatchObject({ width: 240, height: 320 })
+      expect(layout.nodes['mixed-agent']).toMatchObject({ width: 468, height: 660 })
+      expect(layout.nodes['mixed-terminal']).toMatchObject({ width: 468, height: 324 })
+      expect(layout.nodes['mixed-task-1']).toMatchObject({ width: 228, height: 324 })
+      expect(layout.nodes['mixed-task-2']).toMatchObject({ width: 228, height: 324 })
 
       expect(layout.nodes['mixed-agent']).toMatchObject({ x: 124, y: 124 })
       expect(layout.nodes['mixed-terminal']).toMatchObject({ x: 604, y: 124 })
-      expect(layout.nodes['mixed-task-1']).toMatchObject({ x: 604, y: 444 })
-      expect(layout.nodes['mixed-task-2']).toMatchObject({ x: 844, y: 444 })
+      expect(layout.nodes['mixed-task-1']).toMatchObject({ x: 604, y: 460 })
+      expect(layout.nodes['mixed-task-2']).toMatchObject({ x: 844, y: 460 })
 
       const rects = ['mixed-agent', 'mixed-terminal', 'mixed-task-1', 'mixed-task-2'].map(
         id => layout.nodes[id],
@@ -453,7 +456,7 @@ test.describe('Workspace Canvas - Arrange', () => {
       await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
-        path: 'artifacts/workspace-canvas-arrange.standard-compact-mixed.png',
+        path: 'artifacts/workspace-canvas-arrange.standard-tiled-mixed.png',
       })
     } finally {
       await electronApp.close()

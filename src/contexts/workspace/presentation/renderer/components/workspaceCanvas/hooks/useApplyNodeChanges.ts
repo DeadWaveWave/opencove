@@ -1,4 +1,4 @@
-import { useCallback, type MutableRefObject } from 'react'
+import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import {
   applyNodeChanges,
   type Node,
@@ -7,6 +7,12 @@ import {
 } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
+import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
+import {
+  resolveWorkspaceSnap,
+  type WorkspaceSnapGuide,
+  type WorkspaceSnapRect,
+} from '../../../utils/workspaceSnap'
 
 interface UseApplyNodeChangesParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -22,8 +28,108 @@ interface UseApplyNodeChangesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   selectedSpaceIdsRef: MutableRefObject<string[]>
   dragSelectedSpaceIdsRef?: MutableRefObject<string[] | null>
+  magneticSnappingEnabledRef: MutableRefObject<boolean>
+  setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
+}
+
+function toNodeRect(node: Node<TerminalNodeData>): WorkspaceSnapRect {
+  return {
+    x: node.position.x,
+    y: node.position.y,
+    width: node.data.width,
+    height: node.data.height,
+  }
+}
+
+function unionNodeRects(nodes: Node<TerminalNodeData>[]): WorkspaceSnapRect | null {
+  if (nodes.length === 0) {
+    return null
+  }
+
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  for (const node of nodes) {
+    minX = Math.min(minX, node.position.x)
+    minY = Math.min(minY, node.position.y)
+    maxX = Math.max(maxX, node.position.x + node.data.width)
+    maxY = Math.max(maxY, node.position.y + node.data.height)
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
+function buildNodeOwnerById(spaces: WorkspaceSpaceState[]): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const space of spaces) {
+    for (const nodeId of space.nodeIds) {
+      if (!map.has(nodeId)) {
+        map.set(nodeId, space.id)
+      }
+    }
+  }
+  return map
+}
+
+function resolveSnapCandidateRects({
+  movingNodeIds,
+  nodes,
+  spaces,
+}: {
+  movingNodeIds: Set<string>
+  nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+}): WorkspaceSnapRect[] {
+  const ownerByNodeId = buildNodeOwnerById(spaces)
+  const movingOwners = new Set<string | null>()
+
+  for (const nodeId of movingNodeIds) {
+    movingOwners.add(ownerByNodeId.get(nodeId) ?? null)
+  }
+
+  if (movingOwners.size !== 1) {
+    return []
+  }
+
+  const onlyOwner = [...movingOwners][0] ?? null
+  const candidateRects: WorkspaceSnapRect[] = []
+
+  for (const node of nodes) {
+    if (movingNodeIds.has(node.id)) {
+      continue
+    }
+
+    const owner = ownerByNodeId.get(node.id) ?? null
+    if (owner !== onlyOwner) {
+      continue
+    }
+
+    candidateRects.push(toNodeRect(node))
+  }
+
+  if (onlyOwner) {
+    const ownerSpace = spaces.find(space => space.id === onlyOwner)
+    if (ownerSpace?.rect) {
+      candidateRects.push(ownerSpace.rect)
+    }
+  } else {
+    for (const space of spaces) {
+      if (space.rect) {
+        candidateRects.push(space.rect)
+      }
+    }
+  }
+
+  return candidateRects
 }
 
 export function useWorkspaceCanvasApplyNodeChanges({
@@ -36,6 +142,8 @@ export function useWorkspaceCanvasApplyNodeChanges({
   spacesRef,
   selectedSpaceIdsRef,
   dragSelectedSpaceIdsRef,
+  magneticSnappingEnabledRef,
+  setSnapGuides,
   onSpacesChange,
   onRequestPersistFlush,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
@@ -81,6 +189,9 @@ export function useWorkspaceCanvasApplyNodeChanges({
           change.type === 'position' && !removedIds.has(change.id),
       )
       const isDraggingThisFrame = positionChanges.some(change => change.dragging !== false)
+      const movedNodeIds = new Set(
+        positionChanges.filter(change => change.position !== undefined).map(change => change.id),
+      )
 
       const settledPositionChanges: NodePositionChange[] = filteredChanges.filter(
         (change): change is NodePositionChange =>
@@ -90,14 +201,60 @@ export function useWorkspaceCanvasApplyNodeChanges({
           !removedIds.has(change.id),
       )
 
+      if (movedNodeIds.size > 0 && magneticSnappingEnabledRef.current) {
+        const movingNodes = nextNodes.filter(node => movedNodeIds.has(node.id))
+        const movingRect = unionNodeRects(movingNodes)
+
+        if (movingRect) {
+          const snapped = resolveWorkspaceSnap({
+            movingRect,
+            candidateRects: resolveSnapCandidateRects({
+              movingNodeIds: movedNodeIds,
+              nodes: nextNodes,
+              spaces: spacesRef.current,
+            }),
+            grid: WORKSPACE_ARRANGE_GRID_PX,
+            threshold: 8,
+            enableGrid: true,
+            enableObject: true,
+          })
+
+          if (snapped.dx !== 0 || snapped.dy !== 0) {
+            nextNodes = nextNodes.map(node =>
+              movedNodeIds.has(node.id)
+                ? {
+                    ...node,
+                    position: {
+                      x: node.position.x + snapped.dx,
+                      y: node.position.y + snapped.dy,
+                    },
+                  }
+                : node,
+            )
+          }
+
+          if (isDraggingThisFrame && snapped.guides.length > 0) {
+            setSnapGuides(snapped.guides)
+          } else if (!isDraggingThisFrame) {
+            setSnapGuides(null)
+          } else {
+            setSnapGuides(null)
+          }
+        } else {
+          setSnapGuides(null)
+        }
+      } else if (positionChanges.length > 0) {
+        setSnapGuides(null)
+      }
+
       if (settledPositionChanges.length > 0) {
+        const settledIds = new Set(settledPositionChanges.map(change => change.id))
         nextNodes = nextNodes.map(node => {
-          const settledChange = settledPositionChanges.find(change => change.id === node.id)
-          if (!settledChange || !settledChange.position) {
+          if (!settledIds.has(node.id)) {
             return node
           }
 
-          const resolved = normalizePosition(node.id, settledChange.position, {
+          const resolved = normalizePosition(node.id, node.position, {
             width: node.data.width,
             height: node.data.height,
           })
@@ -283,9 +440,11 @@ export function useWorkspaceCanvasApplyNodeChanges({
       isNodeDraggingRef,
       nodesRef,
       normalizePosition,
+      magneticSnappingEnabledRef,
       onNodesChange,
       onRequestPersistFlush,
       onSpacesChange,
+      setSnapGuides,
       dragSelectedSpaceIdsRef,
       selectedSpaceIdsRef,
       spacesRef,

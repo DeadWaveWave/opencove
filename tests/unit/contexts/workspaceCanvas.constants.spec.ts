@@ -10,35 +10,35 @@ import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/conte
 describe('workspace canvas default sizing', () => {
   it('resolves canonical window sizes from viewport bucket', () => {
     expect(resolveDefaultTerminalWindowSize(100, { width: 1920, height: 1080 })).toEqual({
-      width: 640,
-      height: 420,
+      width: 564,
+      height: 388,
     })
 
     expect(resolveDefaultTaskWindowSize({ width: 1920, height: 1080 })).toEqual({
-      width: 320,
-      height: 420,
+      width: 276,
+      height: 388,
     })
 
     expect(resolveDefaultAgentWindowSize(100, { width: 1920, height: 1080 })).toEqual({
-      width: 640,
-      height: 840,
+      width: 564,
+      height: 788,
     })
 
     expect(resolveDefaultNoteWindowSize({ width: 1920, height: 1080 })).toEqual({
-      width: 320,
-      height: 210,
+      width: 276,
+      height: 188,
     })
   })
 
   it('applies scale percent to default terminal/agent window size', () => {
     expect(resolveDefaultTerminalWindowSize(80, { width: 1920, height: 1080 })).toEqual({
-      width: 512,
-      height: 336,
+      width: 451,
+      height: 310,
     })
 
     expect(resolveDefaultAgentWindowSize(80, { width: 1920, height: 1080 })).toEqual({
-      width: 512,
-      height: 672,
+      width: 451,
+      height: 630,
     })
   })
 
@@ -49,8 +49,8 @@ describe('workspace canvas default sizing', () => {
     })
 
     expect(resolveDefaultTerminalWindowSize(999, { width: 1920, height: 1080 })).toEqual({
-      width: 720,
-      height: 504,
+      width: 677,
+      height: 466,
     })
   })
 })

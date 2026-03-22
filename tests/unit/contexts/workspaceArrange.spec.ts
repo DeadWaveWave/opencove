@@ -102,17 +102,22 @@ describe('workspace arrange utils', () => {
       },
     ]
 
-    const result = arrangeWorkspaceInSpace({ spaceId: 'space-1', nodes, spaces })
+    const result = arrangeWorkspaceInSpace({
+      spaceId: 'space-1',
+      nodes,
+      spaces,
+      style: { alignCanonicalSizes: false },
+    })
     expect(result.didChange).toBe(true)
     expect(result.warnings).toEqual([])
     expect(result.spaces).not.toBe(spaces)
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
     expect(nodeById.get('a')?.position).toEqual({ x: 124, y: 224 })
-    expect(nodeById.get('b')?.position).toEqual({ x: 548, y: 224 })
-    expect(nodeById.get('c')?.position).toEqual({ x: 124, y: 528 })
+    expect(nodeById.get('b')?.position).toEqual({ x: 536, y: 224 })
+    expect(nodeById.get('c')?.position).toEqual({ x: 124, y: 516 })
 
-    expect(result.spaces[0]?.rect).toEqual({ x: 100, y: 200, width: 832, height: 652 })
+    expect(result.spaces[0]?.rect).toEqual({ x: 100, y: 200, width: 820, height: 640 })
 
     const innerBounds = {
       x: (result.spaces[0]?.rect?.x ?? 0) + 24,
@@ -215,7 +220,7 @@ describe('workspace arrange utils', () => {
       nodes,
       spaces,
       wrapWidth: 5000,
-      style: { spaceFit: 'keep' },
+      style: { spaceFit: 'keep', alignCanonicalSizes: false },
     })
     expect(result.didChange).toBe(true)
     expect(result.warnings).toEqual([])
@@ -228,7 +233,7 @@ describe('workspace arrange utils', () => {
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
     expect(nodeById.get('r1')?.position).toEqual({ x: 96, y: 408 })
-    expect(nodeById.get('r2')?.position).toEqual({ x: 600, y: 408 })
+    expect(nodeById.get('r2')?.position).toEqual({ x: 588, y: 408 })
 
     expect(nodeById.get('a')?.position).toEqual({
       x: ownedA.position.x + dx,
@@ -296,8 +301,8 @@ describe('workspace arrange utils', () => {
     expect(result.spaces).toBe(spaces)
 
     const next = result.nodes.find(node => node.id === 'r1')!
-    expect(next.data.width).toBe(640)
-    expect(next.data.height).toBe(420)
+    expect(next.data.width).toBe(564)
+    expect(next.data.height).toBe(388)
   })
 
   it('orders nodes by createdAt when arranging inside a space', () => {
@@ -336,7 +341,7 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
-      style: { order: 'createdAt', spaceFit: 'keep' },
+      style: { order: 'createdAt', spaceFit: 'keep', alignCanonicalSizes: false },
     })
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
@@ -386,7 +391,7 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
-      style: { order: 'kind', spaceFit: 'keep' },
+      style: { order: 'kind', spaceFit: 'keep', alignCanonicalSizes: false },
     })
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
@@ -435,10 +440,10 @@ describe('workspace arrange utils', () => {
     })
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('a')?.data.width).toBe(560)
-    expect(nodeById.get('a')?.data.height).toBe(368)
-    expect(nodeById.get('b')?.data.width).toBe(560)
-    expect(nodeById.get('b')?.data.height).toBe(368)
+    expect(nodeById.get('a')?.data.width).toBe(564)
+    expect(nodeById.get('a')?.data.height).toBe(388)
+    expect(nodeById.get('b')?.data.width).toBe(564)
+    expect(nodeById.get('b')?.data.height).toBe(388)
   })
 
   it('packs compactly without overlaps', () => {
@@ -474,7 +479,7 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
-      style: { layout: 'compact' },
+      style: { alignCanonicalSizes: true },
     })
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
@@ -485,6 +490,6 @@ describe('workspace arrange utils', () => {
       }
     }
 
-    expect(nodeById.get('b')?.position.x).toBe(524)
+    expect(nodeById.get('b')?.position.x).toBe(604)
   })
 })

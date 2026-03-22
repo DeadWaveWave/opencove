@@ -17,8 +17,30 @@ export interface DenseGridPackingResult {
   rowsUsed: number
 }
 
+interface DenseGridCandidate {
+  placements: DenseGridPackingResult
+  area: number
+  aspectPenalty: number
+  width: number
+  height: number
+}
+
+const COMPACT_AREA_TOLERANCE = 1.25
+
 function createEmptyGridRow(columnCount: number): boolean[] {
   return Array.from({ length: columnCount }, () => false)
+}
+
+function resolveAspectPenalty(aspect: number, targetAspect: number): number {
+  if (!Number.isFinite(aspect) || aspect <= 0) {
+    return Number.POSITIVE_INFINITY
+  }
+
+  if (!Number.isFinite(targetAspect) || targetAspect <= 0) {
+    return 0
+  }
+
+  return Math.abs(Math.log(aspect / targetAspect))
 }
 
 export function resolveDenseGridAutoPlacement({
@@ -121,16 +143,20 @@ export function resolveBestDenseGridPacking({
   items,
   start,
   cell,
+  gap = 0,
   targetAspect,
   maxColumns,
   maxHeight,
+  compactAreaTolerance = COMPACT_AREA_TOLERANCE,
 }: {
   items: GridItem[]
   start: { x: number; y: number }
   cell: { width: number; height: number }
+  gap?: number
   targetAspect: number
   maxColumns?: number
   maxHeight?: number
+  compactAreaTolerance?: number
 }): { placements: Map<string, { x: number; y: number }>; bounding: Rect } | null {
   if (items.length === 0) {
     return { placements: new Map(), bounding: { x: start.x, y: start.y, width: 0, height: 0 } }
@@ -139,7 +165,12 @@ export function resolveBestDenseGridPacking({
   const safeCellWidth = Number.isFinite(cell.width) && cell.width > 0 ? Math.floor(cell.width) : 1
   const safeCellHeight =
     Number.isFinite(cell.height) && cell.height > 0 ? Math.floor(cell.height) : 1
+  const safeGap = Number.isFinite(gap) ? Math.max(0, Math.floor(gap)) : 0
   const safeAspect = Number.isFinite(targetAspect) && targetAspect > 0 ? targetAspect : 16 / 9
+  const safeCompactAreaTolerance =
+    Number.isFinite(compactAreaTolerance) && compactAreaTolerance >= 1
+      ? compactAreaTolerance
+      : COMPACT_AREA_TOLERANCE
 
   const minColumns = Math.max(1, ...items.map(item => Math.max(1, Math.floor(item.colSpan))))
   const areaCells = items.reduce(
@@ -166,18 +197,20 @@ export function resolveBestDenseGridPacking({
       return minColumns
     }
 
-    const estimated = Math.sqrt(areaCells * safeAspect * (safeCellHeight / safeCellWidth))
+    const strideWidth = safeCellWidth + safeGap
+    const strideHeight = safeCellHeight + safeGap
+    const estimated = Math.sqrt(areaCells * safeAspect * (strideHeight / strideWidth))
     return Math.max(minColumns, Math.min(maxColumnsLimit, Math.round(estimated)))
   })()
 
-  const candidates = new Set<number>()
+  const columnCandidates = new Set<number>()
   const addCandidate = (value: number) => {
     if (!Number.isFinite(value)) {
       return
     }
 
     const snapped = Math.max(minColumns, Math.min(maxColumnsLimit, Math.round(value)))
-    candidates.add(snapped)
+    columnCandidates.add(snapped)
   }
 
   addCandidate(minColumns)
@@ -194,15 +227,9 @@ export function resolveBestDenseGridPacking({
   addCandidate(Math.round(sqrtArea * 1.5))
   addCandidate(Math.round(sqrtArea * 2))
 
-  const sortedCandidates = [...candidates].sort((a, b) => a - b)
+  const sortedCandidates = [...columnCandidates].sort((a, b) => a - b)
 
-  let best: {
-    placements: DenseGridPackingResult
-    area: number
-    aspectDiff: number
-    width: number
-    height: number
-  } | null = null
+  const candidates: DenseGridCandidate[] = []
 
   for (const columnCount of sortedCandidates) {
     if (columnCount < minColumns) {
@@ -210,8 +237,14 @@ export function resolveBestDenseGridPacking({
     }
 
     const gridPlacement = resolveDenseGridAutoPlacement({ items, columnCount })
-    const width = gridPlacement.columnsUsed * safeCellWidth
-    const height = gridPlacement.rowsUsed * safeCellHeight
+    const width =
+      gridPlacement.columnsUsed > 0
+        ? gridPlacement.columnsUsed * safeCellWidth + (gridPlacement.columnsUsed - 1) * safeGap
+        : 0
+    const height =
+      gridPlacement.rowsUsed > 0
+        ? gridPlacement.rowsUsed * safeCellHeight + (gridPlacement.rowsUsed - 1) * safeGap
+        : 0
 
     if (typeof maxHeight === 'number' && Number.isFinite(maxHeight) && maxHeight >= 0) {
       if (height > maxHeight) {
@@ -219,48 +252,39 @@ export function resolveBestDenseGridPacking({
       }
     }
 
-    const area = width * height
-    const aspect = height > 0 ? width / height : Number.POSITIVE_INFINITY
-    const aspectDiff = Number.isFinite(aspect) ? Math.abs(aspect - safeAspect) : 0
-
-    const candidate = {
+    candidates.push({
       placements: gridPlacement,
-      area,
-      aspectDiff,
+      area: width * height,
+      aspectPenalty: resolveAspectPenalty(
+        height > 0 ? width / height : Number.POSITIVE_INFINITY,
+        safeAspect,
+      ),
       width,
       height,
-    }
-
-    if (!best) {
-      best = candidate
-      continue
-    }
-
-    if (candidate.area !== best.area) {
-      if (candidate.area < best.area) {
-        best = candidate
-      }
-      continue
-    }
-
-    if (candidate.aspectDiff !== best.aspectDiff) {
-      if (candidate.aspectDiff < best.aspectDiff) {
-        best = candidate
-      }
-      continue
-    }
-
-    if (candidate.height !== best.height) {
-      if (candidate.height < best.height) {
-        best = candidate
-      }
-      continue
-    }
-
-    if (candidate.width < best.width) {
-      best = candidate
-    }
+    })
   }
+
+  const minArea = Math.min(...candidates.map(candidate => candidate.area))
+  const compactCandidates = candidates.filter(
+    candidate => candidate.area <= minArea * safeCompactAreaTolerance,
+  )
+  const rankedCandidates = compactCandidates.length > 0 ? compactCandidates : candidates
+  const best =
+    rankedCandidates.sort((left, right) => {
+      if (left.aspectPenalty !== right.aspectPenalty) {
+        return left.aspectPenalty - right.aspectPenalty
+      }
+
+      if (left.height !== right.height) {
+        return left.height - right.height
+      }
+
+      if (left.area !== right.area) {
+        return left.area - right.area
+      }
+
+      return left.width - right.width
+    })[0] ?? null
 
   if (!best) {
     return null
@@ -274,8 +298,8 @@ export function resolveBestDenseGridPacking({
     }
 
     pixelPlacements.set(item.id, {
-      x: start.x + placed.col * safeCellWidth,
-      y: start.y + placed.row * safeCellHeight,
+      x: start.x + placed.col * (safeCellWidth + safeGap),
+      y: start.y + placed.row * (safeCellHeight + safeGap),
     })
   }
 

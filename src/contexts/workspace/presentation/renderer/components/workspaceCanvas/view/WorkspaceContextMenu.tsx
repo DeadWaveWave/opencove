@@ -15,7 +15,6 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState } from '../types'
 import type {
-  WorkspaceArrangeLayout,
   WorkspaceArrangeOrder,
   WorkspaceArrangeSpaceFit,
   WorkspaceArrangeStyle,
@@ -33,6 +32,8 @@ interface WorkspaceContextMenuProps {
   openTaskCreator: () => void
   openAgentLauncher: () => void
   spaces: WorkspaceSpaceState[]
+  magneticSnappingEnabled: boolean
+  onToggleMagneticSnapping: () => void
   canArrangeAll: boolean
   canArrangeCanvas: boolean
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
@@ -71,6 +72,8 @@ export function WorkspaceContextMenu({
   openTaskCreator,
   openAgentLauncher,
   spaces,
+  magneticSnappingEnabled,
+  onToggleMagneticSnapping,
   canArrangeAll,
   canArrangeCanvas,
   arrangeAll,
@@ -92,12 +95,10 @@ export function WorkspaceContextMenu({
   const arrangeScopeRef = React.useRef<ArrangeScope>('canvas')
   const [arrangeOrder, setArrangeOrder] = React.useState<WorkspaceArrangeOrder>('position')
   const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
-  const [arrangeLayout, setArrangeLayout] = React.useState<WorkspaceArrangeLayout>('shelf')
-  const arrangeLayoutRef = React.useRef<WorkspaceArrangeLayout>('shelf')
   const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
   const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
-  const [alignCanonicalSizes, setAlignCanonicalSizes] = React.useState(false)
-  const alignCanonicalSizesRef = React.useRef(false)
+  const [alignCanonicalSizes, setAlignCanonicalSizes] = React.useState(true)
+  const alignCanonicalSizesRef = React.useRef(true)
 
   const [openSubmenu, setOpenSubmenu] = React.useState<'arrangeBy' | null>(null)
   const menuRef = React.useRef<HTMLDivElement | null>(null)
@@ -154,7 +155,6 @@ export function WorkspaceContextMenu({
   const resolveCurrentArrangeStyle = React.useCallback((): WorkspaceArrangeStyle => {
     return {
       order: arrangeOrderRef.current,
-      layout: arrangeLayoutRef.current,
       spaceFit: arrangeSpaceFitRef.current,
       alignCanonicalSizes: alignCanonicalSizesRef.current,
     }
@@ -439,9 +439,9 @@ export function WorkspaceContextMenu({
           canArrangeHitSpace={canArrangeHitSpace}
           arrangeScope={arrangeScope}
           arrangeOrder={arrangeOrder}
-          arrangeLayout={arrangeLayout}
           arrangeSpaceFit={arrangeSpaceFit}
           alignCanonicalSizes={alignCanonicalSizes}
+          magneticSnappingEnabled={magneticSnappingEnabled}
           onSelectScope={scope => {
             arrangeScopeRef.current = scope
             setArrangeScope(scope)
@@ -450,11 +450,6 @@ export function WorkspaceContextMenu({
           onSelectOrder={order => {
             arrangeOrderRef.current = order
             setArrangeOrder(order)
-            applyArrange()
-          }}
-          onSelectLayout={layout => {
-            arrangeLayoutRef.current = layout
-            setArrangeLayout(layout)
             applyArrange()
           }}
           onSelectSpaceFit={spaceFit => {
@@ -468,6 +463,7 @@ export function WorkspaceContextMenu({
             setAlignCanonicalSizes(nextValue)
             applyArrange()
           }}
+          onToggleMagneticSnapping={onToggleMagneticSnapping}
         />
       ) : null}
     </>

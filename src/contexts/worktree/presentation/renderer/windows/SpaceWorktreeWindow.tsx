@@ -95,12 +95,10 @@ export function SpaceWorktreeWindow({
     () => resolveWorktreesRoot(workspacePath, worktreesRoot),
     [workspacePath, worktreesRoot],
   )
-
   const normalizedWorkspacePath = useMemo(
     () => normalizeComparablePath(workspacePath),
     [workspacePath],
   )
-
   const normalizedSpaceDirectory = useMemo(
     () => normalizeComparablePath(space?.directoryPath ?? workspacePath),
     [space?.directoryPath, workspacePath],
@@ -302,7 +300,7 @@ export function SpaceWorktreeWindow({
         onClose()
       }
     },
-    [executePendingOperation, onClose, queueGuardIfNeeded, space],
+    [executePendingOperation, onClose, queueGuardIfNeeded, space, t],
   )
 
   const closeBlockingNodesForArchive = useCallback(
@@ -423,6 +421,7 @@ export function SpaceWorktreeWindow({
     isSpaceOnWorkspaceRoot,
     onClose,
     space,
+    t,
   ])
 
   const panelHandlers = useSpaceWorktreePanelHandlers({

@@ -2,8 +2,6 @@ import type { Node } from '@xyflow/react'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
 import {
-  computeBoundingRect,
-  resolveDensePacking,
   resolveBoundedFlowPacking,
   resolveFlowPacking,
   type Rect,
@@ -23,128 +21,11 @@ import {
   normalizeWorkspaceNodesToCanonicalSizing,
   resolveArrangeCanonicalBucket,
   resolveCanonicalBucketCellSize,
+  resolveCanonicalNodeGridSpan,
+  WORKSPACE_CANONICAL_GUTTER_PX,
 } from './workspaceNodeSizing'
 
-function resolveBestCompactDensePacking({
-  items,
-  start,
-  viewport,
-  wrapWidthHint,
-}: {
-  items: Array<{ id: string; width: number; height: number }>
-  start: { x: number; y: number }
-  viewport?: Partial<Size>
-  wrapWidthHint: number
-}): Map<string, { x: number; y: number }> {
-  if (items.length <= 1) {
-    return resolveDensePacking({ items, start, wrapWidth: wrapWidthHint })
-  }
-
-  const maxItemWidth = Math.max(...items.map(item => item.width))
-  const minWrapWidth = maxItemWidth
-
-  const totalArea = items.reduce((sum, item) => sum + item.width * item.height, 0)
-  const targetAspect = resolveViewportAspectRatio(viewport)
-  const desiredWrapWidth =
-    totalArea > 0 ? Math.max(minWrapWidth, Math.sqrt(totalArea * targetAspect)) : minWrapWidth
-
-  const idealColumns = Math.max(1, Math.round(desiredWrapWidth / maxItemWidth))
-  const maxColumns = Math.min(items.length, Math.max(8, idealColumns + 2))
-
-  const columnCandidates = new Set<number>([
-    1,
-    idealColumns - 2,
-    idealColumns - 1,
-    idealColumns,
-    idealColumns + 1,
-    idealColumns + 2,
-    Math.round(Math.sqrt(items.length)),
-    Math.ceil(items.length / 2),
-    items.length,
-  ])
-
-  const wrapWidthCandidates = [...columnCandidates]
-    .map(columns => Math.max(1, Math.min(maxColumns, columns)))
-    .map(columns => Math.max(minWrapWidth, columns * maxItemWidth))
-
-  wrapWidthCandidates.push(minWrapWidth)
-  wrapWidthCandidates.push(Math.max(minWrapWidth, wrapWidthHint))
-  wrapWidthCandidates.push(Math.max(minWrapWidth, Math.round(desiredWrapWidth)))
-
-  const uniqueCandidates = [...new Set(wrapWidthCandidates)].sort((a, b) => a - b)
-
-  let best: {
-    area: number
-    aspectDiff: number
-    height: number
-    width: number
-    placements: Map<string, { x: number; y: number }>
-  } | null = null
-
-  for (const wrapWidth of uniqueCandidates) {
-    const placements = resolveDensePacking({ items, start, wrapWidth })
-    const rects: Rect[] = []
-    for (const item of items) {
-      const placed = placements.get(item.id)
-      if (!placed) {
-        continue
-      }
-
-      rects.push({ x: placed.x, y: placed.y, width: item.width, height: item.height })
-    }
-
-    const bounding = computeBoundingRect(rects)
-    if (!bounding) {
-      continue
-    }
-
-    const width = bounding.width
-    const height = bounding.height
-    const area = width * height
-    const aspect = height > 0 ? width / height : Number.POSITIVE_INFINITY
-    const aspectDiff = Number.isFinite(aspect) ? Math.abs(aspect - targetAspect) : 0
-
-    const candidate = {
-      area,
-      aspectDiff,
-      width,
-      height,
-      placements,
-    }
-
-    if (!best) {
-      best = candidate
-      continue
-    }
-
-    if (candidate.aspectDiff !== best.aspectDiff) {
-      if (candidate.aspectDiff < best.aspectDiff) {
-        best = candidate
-      }
-      continue
-    }
-
-    if (candidate.area !== best.area) {
-      if (candidate.area < best.area) {
-        best = candidate
-      }
-      continue
-    }
-
-    if (candidate.height !== best.height) {
-      if (candidate.height < best.height) {
-        best = candidate
-      }
-      continue
-    }
-
-    if (candidate.width < best.width) {
-      best = candidate
-    }
-  }
-
-  return best?.placements ?? resolveDensePacking({ items, start, wrapWidth: minWrapWidth })
-}
+const SPACE_CANONICAL_PACKING_AREA_TOLERANCE = 1.4
 
 export function arrangeWorkspaceInSpace({
   spaceId,
@@ -180,13 +61,11 @@ export function arrangeWorkspaceInSpace({
 
   const ownedNodeIdSet = new Set(ownedNodes.map(node => node.id))
   const canonicalBucket = resolvedStyle.alignCanonicalSizes
-    ? resolvedStyle.layout === 'compact'
-      ? 'compact'
-      : resolveArrangeCanonicalBucket({
-          nodes,
-          nodeIdSet: ownedNodeIdSet,
-          viewport,
-        })
+    ? resolveArrangeCanonicalBucket({
+        nodes,
+        nodeIdSet: ownedNodeIdSet,
+        viewport,
+      })
     : 'regular'
   const canonicalSizingNormalized = normalizeWorkspaceNodesToCanonicalSizing({
     nodes,
@@ -221,14 +100,24 @@ export function arrangeWorkspaceInSpace({
     height: resolvedSpaceRect.height - padding * 2,
   }
 
-  const effectiveGap = resolvedStyle.layout === 'compact' ? 0 : gap
+  const effectiveGap = Math.round(gap / 2)
   const items = createArrangeItemsForSpaceNodes({
     nodes: normalizedOwnedNodes,
     order: resolvedStyle.order,
   })
+  const kindById = new Map(normalizedOwnedNodes.map(node => [node.id, node.data.kind]))
+  const maxCanonicalColumns = (() => {
+    if (!resolvedStyle.alignCanonicalSizes) {
+      return undefined
+    }
 
-  const maxItemWidth = Math.max(...items.map(item => item.width))
-  const wrapWidth = Math.max(innerRect.width, maxItemWidth)
+    const cell = resolveCanonicalBucketCellSize(canonicalBucket)
+    const strideWidth = Math.max(1, cell.width) + WORKSPACE_CANONICAL_GUTTER_PX
+    return Math.max(1, Math.floor((innerRect.width + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth))
+  })()
+  const targetAspect =
+    innerRect.height > 0 ? innerRect.width / innerRect.height : resolveViewportAspectRatio(viewport)
+
   const start = { x: innerRect.x, y: innerRect.y }
 
   const placements = (() => {
@@ -237,49 +126,23 @@ export function arrangeWorkspaceInSpace({
         return null
       }
 
-      if (resolvedStyle.layout === 'compact') {
-        if (resolvedStyle.alignCanonicalSizes) {
-          const cell = resolveCanonicalBucketCellSize(canonicalBucket)
-          const maxColumns = Math.floor(innerRect.width / Math.max(1, cell.width))
-          const packed = resolveBestDenseGridPacking({
-            items: items.map(item => ({
-              id: item.id,
-              colSpan: Math.max(1, Math.round(item.width / cell.width)),
-              rowSpan: Math.max(1, Math.round(item.height / cell.height)),
-            })),
-            start,
-            cell,
-            targetAspect: resolveViewportAspectRatio(viewport),
-            maxColumns,
-            maxHeight: innerRect.height,
-          })
+      if (resolvedStyle.alignCanonicalSizes) {
+        const cell = resolveCanonicalBucketCellSize(canonicalBucket)
+        const packed = resolveBestDenseGridPacking({
+          items: items.map(item => ({
+            id: item.id,
+            ...resolveCanonicalNodeGridSpan(kindById.get(item.id) ?? 'terminal'),
+          })),
+          start,
+          cell,
+          gap: WORKSPACE_CANONICAL_GUTTER_PX,
+          targetAspect,
+          maxColumns: maxCanonicalColumns,
+          maxHeight: innerRect.height,
+          compactAreaTolerance: SPACE_CANONICAL_PACKING_AREA_TOLERANCE,
+        })
 
-          return packed?.placements ?? null
-        }
-
-        const packed = resolveDensePacking({ items, start, wrapWidth: innerRect.width })
-        const rects: Rect[] = []
-        for (const item of items) {
-          const placement = packed.get(item.id)
-          if (!placement) {
-            continue
-          }
-
-          rects.push({
-            x: placement.x,
-            y: placement.y,
-            width: item.width,
-            height: item.height,
-          })
-        }
-
-        const bounding = computeBoundingRect(rects)
-        if (!bounding) {
-          return packed
-        }
-
-        const fitsHeight = bounding.y + bounding.height <= innerRect.y + innerRect.height
-        return fitsHeight ? packed : null
+        return packed?.placements ?? null
       }
 
       return resolveBoundedFlowPacking({
@@ -289,37 +152,30 @@ export function arrangeWorkspaceInSpace({
       })
     }
 
-    if (resolvedStyle.layout === 'compact') {
-      if (resolvedStyle.alignCanonicalSizes) {
-        const cell = resolveCanonicalBucketCellSize(canonicalBucket)
-        const packed = resolveBestDenseGridPacking({
-          items: items.map(item => ({
-            id: item.id,
-            colSpan: Math.max(1, Math.round(item.width / cell.width)),
-            rowSpan: Math.max(1, Math.round(item.height / cell.height)),
-          })),
-          start,
-          cell,
-          targetAspect: resolveViewportAspectRatio(viewport),
-        })
-
-        return packed?.placements ?? resolveDensePacking({ items, start, wrapWidth })
-      }
-
-      return resolveBestCompactDensePacking({
-        items,
+    if (resolvedStyle.alignCanonicalSizes) {
+      const cell = resolveCanonicalBucketCellSize(canonicalBucket)
+      const packed = resolveBestDenseGridPacking({
+        items: items.map(item => ({
+          id: item.id,
+          ...resolveCanonicalNodeGridSpan(kindById.get(item.id) ?? 'terminal'),
+        })),
         start,
-        viewport,
-        wrapWidthHint: wrapWidth,
+        cell,
+        gap: WORKSPACE_CANONICAL_GUTTER_PX,
+        targetAspect,
+        maxColumns: maxCanonicalColumns,
+        compactAreaTolerance: SPACE_CANONICAL_PACKING_AREA_TOLERANCE,
       })
+
+      if (packed) {
+        return packed.placements
+      }
     }
 
-    return resolveFlowPacking({
-      items,
-      start,
-      wrapWidth,
-      gap: effectiveGap,
-    })
+    const maxItemWidth = Math.max(...items.map(item => item.width))
+    const wrapWidth = Math.max(innerRect.width, maxItemWidth)
+
+    return resolveFlowPacking({ items, start, wrapWidth, gap: effectiveGap })
   })()
 
   if (!placements) {

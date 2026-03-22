@@ -95,30 +95,30 @@ describe('workspace arrange - dense grid packing', () => {
       spaces,
       wrapWidth: 1008,
       viewport: { width: 1440, height: 900 },
-      style: { layout: 'compact', alignCanonicalSizes: true, order: 'size' },
+      style: { alignCanonicalSizes: true, order: 'size' },
     })
 
     expect(result.didChange).toBe(true)
     expect(result.spaces).toBe(spaces)
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('mixed-agent')?.data.width).toBe(480)
-    expect(nodeById.get('mixed-agent')?.data.height).toBe(640)
-    expect(nodeById.get('mixed-terminal')?.data.width).toBe(480)
-    expect(nodeById.get('mixed-terminal')?.data.height).toBe(320)
-    expect(nodeById.get('mixed-task-1')?.data.width).toBe(240)
-    expect(nodeById.get('mixed-task-1')?.data.height).toBe(320)
-    expect(nodeById.get('mixed-task-2')?.data.width).toBe(240)
-    expect(nodeById.get('mixed-task-2')?.data.height).toBe(320)
+    expect(nodeById.get('mixed-agent')?.data.width).toBe(468)
+    expect(nodeById.get('mixed-agent')?.data.height).toBe(660)
+    expect(nodeById.get('mixed-terminal')?.data.width).toBe(468)
+    expect(nodeById.get('mixed-terminal')?.data.height).toBe(324)
+    expect(nodeById.get('mixed-task-1')?.data.width).toBe(228)
+    expect(nodeById.get('mixed-task-1')?.data.height).toBe(324)
+    expect(nodeById.get('mixed-task-2')?.data.width).toBe(228)
+    expect(nodeById.get('mixed-task-2')?.data.height).toBe(324)
 
     expect(nodeById.get('mixed-agent')?.position).toEqual({ x: 0, y: 0 })
     expect(nodeById.get('mixed-terminal')?.position).toEqual({ x: 480, y: 0 })
-    expect(nodeById.get('mixed-task-1')?.position).toEqual({ x: 480, y: 320 })
-    expect(nodeById.get('mixed-task-2')?.position).toEqual({ x: 720, y: 320 })
+    expect(nodeById.get('mixed-task-1')?.position).toEqual({ x: 480, y: 336 })
+    expect(nodeById.get('mixed-task-2')?.position).toEqual({ x: 720, y: 336 })
   })
 
   it('packs nodes inside a space compactly on a canonical grid when standard sizes are aligned', () => {
-    const spaceRect = { x: 100, y: 200, width: 768, height: 800 }
+    const spaceRect = { x: 100, y: 200, width: 960, height: 1100 }
     const nodes = [
       createTerminalNode({
         id: 'a',
@@ -155,7 +155,7 @@ describe('workspace arrange - dense grid packing', () => {
       nodes,
       spaces,
       viewport: { width: 1440, height: 900 },
-      style: { layout: 'compact', alignCanonicalSizes: true, spaceFit: 'keep' },
+      style: { alignCanonicalSizes: true, spaceFit: 'keep' },
     })
 
     expect(result.didChange).toBe(true)
@@ -163,13 +163,13 @@ describe('workspace arrange - dense grid packing', () => {
     expect(result.spaces).toBe(spaces)
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('a')?.data.width).toBe(480)
-    expect(nodeById.get('a')?.data.height).toBe(320)
-    expect(nodeById.get('c')?.data.width).toBe(240)
-    expect(nodeById.get('c')?.data.height).toBe(160)
+    expect(nodeById.get('a')?.data.width).toBe(468)
+    expect(nodeById.get('a')?.data.height).toBe(324)
+    expect(nodeById.get('c')?.data.width).toBe(228)
+    expect(nodeById.get('c')?.data.height).toBe(156)
 
     expect(nodeById.get('a')?.position).toEqual({ x: 124, y: 224 })
     expect(nodeById.get('c')?.position).toEqual({ x: 604, y: 224 })
-    expect(nodeById.get('b')?.position).toEqual({ x: 124, y: 544 })
+    expect(nodeById.get('b')?.position).toEqual({ x: 124, y: 560 })
   })
 })

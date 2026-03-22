@@ -91,6 +91,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
+      const [, setSnapGuides] = useState(null)
+      const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>([])
       const selectedSpaceIdsRef = useRef<string[]>([])
 
@@ -106,6 +108,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         selectionDraftRef: useRef(null),
         spacesRef,
         selectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
         onSpacesChange: () => undefined,
       })
 
@@ -200,6 +204,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
+      const [, setSnapGuides] = useState(null)
+      const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>(initialSpaces)
       const selectedSpaceIdsRef = useRef<string[]>(['selected-space'])
 
@@ -215,6 +221,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         selectionDraftRef: useRef(null),
         spacesRef,
         selectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
         onSpacesChange,
         onRequestPersistFlush,
       })

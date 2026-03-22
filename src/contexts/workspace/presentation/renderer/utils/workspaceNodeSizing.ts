@@ -3,10 +3,12 @@ import type { Size, TerminalNodeData } from '../types'
 
 export type WorkspaceCanonicalSizeBucket = 'compact' | 'regular' | 'large'
 
+export const WORKSPACE_CANONICAL_GUTTER_PX = 12
+
 const CANONICAL_BUCKETS: Record<WorkspaceCanonicalSizeBucket, { col: number; row: number }> = {
-  compact: { col: 120, row: 80 },
-  regular: { col: 140, row: 92 },
-  large: { col: 160, row: 105 },
+  compact: { col: 108, row: 72 },
+  regular: { col: 120, row: 80 },
+  large: { col: 132, row: 88 },
 }
 
 const KIND_UNITS: Record<TerminalNodeData['kind'], { col: number; row: number }> = {
@@ -14,6 +16,14 @@ const KIND_UNITS: Record<TerminalNodeData['kind'], { col: number; row: number }>
   task: { col: 2, row: 4 },
   agent: { col: 4, row: 8 },
   note: { col: 2, row: 2 },
+}
+
+export function resolveCanonicalNodeGridSpan(kind: TerminalNodeData['kind']): {
+  colSpan: number
+  rowSpan: number
+} {
+  const units = KIND_UNITS[kind]
+  return { colSpan: units.col, rowSpan: units.row }
 }
 
 const MIN_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
@@ -63,17 +73,16 @@ export function resolveCanvasCanonicalBucketFromViewport(
   viewport?: Partial<Size>,
 ): WorkspaceCanonicalSizeBucket {
   const resolved = resolveViewportSize(viewport)
-  const minAxis = Math.min(resolved.width, resolved.height)
 
-  if (minAxis >= 980 && resolved.width >= 1680) {
+  if (resolved.width >= 1920 && resolved.height >= 1080) {
     return 'large'
   }
 
-  if (minAxis <= 720 || resolved.width <= 1280) {
-    return 'compact'
+  if (resolved.width >= 1600 && resolved.height >= 900) {
+    return 'regular'
   }
 
-  return 'regular'
+  return 'compact'
 }
 
 export function resolveCanonicalBucketCellSize(bucket: WorkspaceCanonicalSizeBucket): Size {
@@ -99,8 +108,12 @@ export function resolveCanonicalNodeSize({
   const tokens = CANONICAL_BUCKETS[bucket]
   const units = KIND_UNITS[kind]
   const desired = {
-    width: Math.round(tokens.col * units.col),
-    height: Math.round(tokens.row * units.row),
+    width: Math.round(
+      tokens.col * units.col + WORKSPACE_CANONICAL_GUTTER_PX * Math.max(0, units.col - 1),
+    ),
+    height: Math.round(
+      tokens.row * units.row + WORKSPACE_CANONICAL_GUTTER_PX * Math.max(0, units.row - 1),
+    ),
   }
 
   return clampSize(desired, MIN_SIZE_BY_KIND[kind], MAX_SIZE_BY_KIND[kind])
@@ -116,52 +129,11 @@ export function resolveArrangeCanonicalBucket({
   viewport?: Partial<Size>
 }): WorkspaceCanonicalSizeBucket {
   const viewportBucket = resolveCanvasCanonicalBucketFromViewport(viewport)
-  const resolvedViewport = resolveViewportSize(viewport)
-
-  const allowedBuckets: WorkspaceCanonicalSizeBucket[] = (() => {
-    if (resolvedViewport.width <= 1280 || resolvedViewport.height <= 720) {
-      return ['compact']
-    }
-
-    if (resolvedViewport.width >= 1680 && resolvedViewport.height >= 900) {
-      return ['compact', 'regular', 'large']
-    }
-
-    return ['compact', 'regular']
-  })()
-
-  if (nodeIdSet.size === 0 || allowedBuckets.length === 1) {
-    return allowedBuckets.includes(viewportBucket) ? viewportBucket : allowedBuckets[0]!
+  if (nodeIdSet.size === 0 || nodes.length === 0) {
+    return viewportBucket
   }
 
-  const candidates = nodes.filter(node => nodeIdSet.has(node.id))
-  if (candidates.length === 0) {
-    return allowedBuckets.includes(viewportBucket) ? viewportBucket : allowedBuckets[0]!
-  }
-
-  const scoreBucket = (bucket: WorkspaceCanonicalSizeBucket): number => {
-    let score = 0
-    for (const node of candidates) {
-      const desired = resolveCanonicalNodeSize({ kind: node.data.kind, bucket })
-      const dx = node.data.width - desired.width
-      const dy = node.data.height - desired.height
-      score += dx * dx + dy * dy
-    }
-    return score
-  }
-
-  let best = allowedBuckets[0]!
-  let bestScore = scoreBucket(best)
-
-  for (const bucket of allowedBuckets.slice(1)) {
-    const score = scoreBucket(bucket)
-    if (score < bestScore) {
-      bestScore = score
-      best = bucket
-    }
-  }
-
-  return best
+  return viewportBucket
 }
 
 export function normalizeWorkspaceNodesToCanonicalSizing({

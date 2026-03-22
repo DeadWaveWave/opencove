@@ -72,6 +72,15 @@ vi.mock(
 )
 
 vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSnapGuidesOverlay',
+  () => {
+    return {
+      WorkspaceSnapGuidesOverlay: () => null,
+    }
+  },
+)
+
+vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceActionMenu',
   () => {
     return {
@@ -167,6 +176,7 @@ function createBaseProps(
     useManualCanvasWheelGestures: false,
     isShiftPressed: false,
     selectionDraft: null,
+    snapGuides: null,
     spaceVisuals: [],
     spaceFramePreview: null,
     selectedSpaceIds: [],
@@ -188,6 +198,8 @@ function createBaseProps(
     focusAllInViewport: () => undefined,
     contextMenu: null,
     closeContextMenu: () => undefined,
+    magneticSnappingEnabled: true,
+    onToggleMagneticSnapping: () => undefined,
     createTerminalNode: async () => undefined,
     createNoteNodeFromContextMenu: () => undefined,
     arrangeAll: () => undefined,

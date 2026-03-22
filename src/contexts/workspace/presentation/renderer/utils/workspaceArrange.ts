@@ -2,7 +2,6 @@ export {
   WORKSPACE_ARRANGE_GAP_PX,
   WORKSPACE_ARRANGE_GRID_PX,
   WORKSPACE_ARRANGE_PADDING_PX,
-  type WorkspaceArrangeLayout,
   type WorkspaceArrangeResult,
   type WorkspaceArrangeSpaceFit,
   type WorkspaceArrangeStyle,

@@ -8,11 +8,9 @@ export const WORKSPACE_ARRANGE_GAP_PX = 24
 export const WORKSPACE_ARRANGE_GRID_PX = 24
 
 export type WorkspaceArrangeSpaceFit = 'tight' | 'grow' | 'keep'
-export type WorkspaceArrangeLayout = 'shelf' | 'compact'
 
 export interface WorkspaceArrangeStyle {
   order?: WorkspaceArrangeOrder
-  layout?: WorkspaceArrangeLayout
   spaceFit?: WorkspaceArrangeSpaceFit
   alignCanonicalSizes?: boolean
 }
@@ -64,8 +62,7 @@ export function resolveArrangeStyle(
 ): Required<WorkspaceArrangeStyle> {
   return {
     order: style?.order ?? 'position',
-    layout: style?.layout ?? 'shelf',
     spaceFit: style?.spaceFit ?? 'tight',
-    alignCanonicalSizes: style?.alignCanonicalSizes ?? false,
+    alignCanonicalSizes: style?.alignCanonicalSizes ?? true,
   }
 }

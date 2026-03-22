@@ -74,8 +74,8 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toEqual({
           nodes: {
-            'arrange-node-1': { x: 440, y: 96, width: 320, height: 240 },
-            'arrange-node-2': { x: 96, y: 96, width: 320, height: 240 },
+            'arrange-node-1': { x: 576, y: 96, width: 468, height: 324 },
+            'arrange-node-2': { x: 96, y: 96, width: 468, height: 324 },
           },
           spaces: {},
         })
@@ -156,12 +156,12 @@ test.describe('Workspace Canvas - Arrange', () => {
         .toEqual({
           nodes: {
             'root-1': { x: 980, y: 140, width: 320, height: 240 },
-            'space-node-a': { x: 124, y: 224, width: 400, height: 280 },
-            'space-node-b': { x: 548, y: 224, width: 360, height: 260 },
-            'space-node-c': { x: 124, y: 528, width: 420, height: 300 },
+            'space-node-a': { x: 124, y: 224, width: 468, height: 324 },
+            'space-node-b': { x: 604, y: 224, width: 468, height: 324 },
+            'space-node-c': { x: 124, y: 560, width: 468, height: 324 },
           },
           spaces: {
-            'space-1': { x: 100, y: 200, width: 832, height: 652 },
+            'space-1': { x: 100, y: 200, width: 996, height: 708 },
           },
         })
 
@@ -320,7 +320,7 @@ test.describe('Workspace Canvas - Arrange', () => {
               name: 'Space Big',
               directoryPath: testWorkspacePath,
               nodeIds: ['big-1', 'big-2', 'big-3'],
-              rect: { x: 440, y: 96, width: 320, height: 320 },
+              rect: { x: 440, y: 96, width: 996, height: 708 },
             },
           ],
           activeSpaceId: null,
@@ -366,13 +366,13 @@ test.describe('Workspace Canvas - Arrange', () => {
           nodes: {
             'small-1': { x: 120, y: 150, width: 280, height: 160 },
             'small-2': { x: 120, y: 200, width: 280, height: 160 },
-            'big-1': { x: 464, y: 120, width: 120, height: 120 },
-            'big-2': { x: 608, y: 120, width: 120, height: 120 },
-            'big-3': { x: 464, y: 264, width: 120, height: 120 },
+            'big-1': { x: 452, y: 120, width: 468, height: 324 },
+            'big-2': { x: 932, y: 120, width: 468, height: 324 },
+            'big-3': { x: 452, y: 456, width: 468, height: 324 },
           },
           spaces: {
             'space-small': { x: 96, y: 96, width: 320, height: 320 },
-            'space-big': { x: 440, y: 96, width: 320, height: 320 },
+            'space-big': { x: 428, y: 96, width: 996, height: 708 },
           },
         })
 
