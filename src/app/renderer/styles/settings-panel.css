@@ -364,8 +364,7 @@
     var(--cove-range-track-bg) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100%),
     var(--cove-text-faint) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100%),
     var(--cove-text-faint) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100% + 2px),
-    var(--cove-range-track-bg)
-      calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100% + 2px),
+    var(--cove-range-track-bg) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100% + 2px),
     var(--cove-range-track-bg) 100%
   );
 }
