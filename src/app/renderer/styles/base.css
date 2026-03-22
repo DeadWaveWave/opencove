@@ -33,6 +33,12 @@
   --cove-overlay-danger-status-border: rgba(185, 95, 110, 0.44);
   --cove-overlay-danger-status-surface: rgba(60, 18, 27, 0.66);
   --cove-overlay-danger-status-text: rgba(255, 226, 232, 0.94);
+  --cove-overlay-danger-divider: rgba(156, 68, 84, 0.24);
+  --cove-overlay-danger-lead: rgba(255, 240, 242, 0.98);
+  --cove-overlay-danger-supporting: rgba(236, 210, 216, 0.84);
+  --cove-overlay-danger-option-strong: rgba(255, 241, 244, 0.98);
+  --cove-overlay-danger-option-text: rgba(233, 208, 214, 0.8);
+  --cove-overlay-danger-path: rgba(255, 226, 232, 0.95);
 
   --cove-overlay-warning-backdrop: rgba(12, 6, 9, 0.64);
   --cove-overlay-warning-border: rgba(232, 103, 120, 0.34);
@@ -126,6 +132,12 @@
   --cove-overlay-danger-status-border: rgba(232, 103, 120, 0.32);
   --cove-overlay-danger-status-surface: rgba(232, 103, 120, 0.12);
   --cove-overlay-danger-status-text: rgba(127, 50, 63, 0.9);
+  --cove-overlay-danger-divider: rgba(232, 103, 120, 0.18);
+  --cove-overlay-danger-lead: rgba(17, 24, 39, 0.92);
+  --cove-overlay-danger-supporting: rgba(71, 85, 105, 0.88);
+  --cove-overlay-danger-option-strong: rgba(17, 24, 39, 0.92);
+  --cove-overlay-danger-option-text: rgba(71, 85, 105, 0.82);
+  --cove-overlay-danger-path: rgba(127, 50, 63, 0.92);
 
   --cove-overlay-warning-backdrop: rgba(15, 23, 42, 0.34);
   --cove-overlay-warning-border: rgba(232, 103, 120, 0.2);
