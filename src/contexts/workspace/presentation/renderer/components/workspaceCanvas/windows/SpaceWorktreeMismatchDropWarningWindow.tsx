@@ -50,13 +50,20 @@ export function SpaceWorktreeMismatchDropWarningWindow({
         }}
       >
         <div className="space-drop-guard-window__header">
-          <h3>{t('spaceDropGuard.title', { name: warning.spaceName })}</h3>
-          {windowSummary.length > 0 ? (
-            <p className="workspace-space-worktree-guard__summary">{windowSummary}</p>
-          ) : null}
-          <div className="space-drop-guard-window__status" aria-label="directory mismatch warning">
-            <AlertTriangle size={14} aria-hidden="true" />
-            <span>{t('terminalNodeHeader.directoryMismatch')}</span>
+          <div className="space-drop-guard-window__topline">
+            <div className="space-drop-guard-window__title-group">
+              <h3>{t('spaceDropGuard.title', { name: warning.spaceName })}</h3>
+              {windowSummary.length > 0 ? (
+                <p className="workspace-space-worktree-guard__summary">{windowSummary}</p>
+              ) : null}
+            </div>
+            <div
+              className="space-drop-guard-window__status"
+              aria-label="directory mismatch warning"
+            >
+              <AlertTriangle size={14} aria-hidden="true" />
+              <span>{t('terminalNodeHeader.directoryMismatch')}</span>
+            </div>
           </div>
         </div>
 
