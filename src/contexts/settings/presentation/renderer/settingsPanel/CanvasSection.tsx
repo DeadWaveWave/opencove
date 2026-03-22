@@ -44,6 +44,16 @@ export function CanvasSection(props: {
     onFocusNodeTargetZoomPreviewChange,
     onChangeDefaultTerminalWindowScalePercent,
   } = props
+  const neutralTargetZoom = 1
+  const neutralTargetZoomRatioRaw =
+    (neutralTargetZoom - MIN_FOCUS_NODE_TARGET_ZOOM) /
+    (MAX_FOCUS_NODE_TARGET_ZOOM - MIN_FOCUS_NODE_TARGET_ZOOM)
+  const neutralTargetZoomRatio = Number.isFinite(neutralTargetZoomRatioRaw)
+    ? Math.max(0, Math.min(1, neutralTargetZoomRatioRaw))
+    : 0.5
+  const focusTargetZoomRangeStyle: React.CSSProperties & Record<string, string | number> = {
+    '--settings-panel-range-neutral-ratio': neutralTargetZoomRatio,
+  }
   const selectedProfileId = terminalProfiles.some(
     profile => profile.id === defaultTerminalProfileId,
   )
@@ -161,7 +171,10 @@ export function CanvasSection(props: {
           <span>{t('settingsPanel.canvas.focusTargetZoomHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <div className="settings-panel__range">
+          <div
+            className="settings-panel__range settings-panel__range--neutral-marker"
+            style={focusTargetZoomRangeStyle}
+          >
             <input
               id="settings-focus-node-target-zoom"
               data-testid="settings-focus-node-target-zoom"
@@ -177,10 +190,6 @@ export function CanvasSection(props: {
               onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
               onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
             />
-            <span className="settings-panel__range-value">
-              {Math.round(focusNodeTargetZoom * 100)}
-              {t('common.percentUnit')}
-            </span>
           </div>
         </div>
       </div>

@@ -89,7 +89,7 @@ test.describe('Settings', () => {
       await expect(window.locator('.settings-panel__sidebar')).toBeHidden()
       await expect(window.locator('.settings-panel__header')).toBeHidden()
       await expect(
-        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__range-value'),
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
       ).toBeHidden()
 
       await window.mouse.up()
@@ -97,7 +97,7 @@ test.describe('Settings', () => {
       await expect(window.locator('.settings-panel__sidebar')).toBeVisible()
       await expect(window.locator('.settings-panel__header')).toBeVisible()
       await expect(
-        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__range-value'),
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
       ).toBeVisible()
 
       await focusTargetZoom.evaluate((element, value) => {
@@ -115,7 +115,7 @@ test.describe('Settings', () => {
         input.dispatchEvent(new Event('input', { bubbles: true }))
         input.dispatchEvent(new Event('change', { bubbles: true }))
       }, 1.37)
-      await expect(window.locator('.settings-panel__range-value')).toContainText('137%')
+      await expect(focusTargetZoom).toHaveValue('1.37')
 
       const focusToggle = window.locator('[data-testid="settings-focus-node-on-click"]')
       await expect(focusToggle).toBeVisible()

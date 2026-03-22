@@ -72,6 +72,6 @@
 .settings-panel--preview
   #settings-section-canvas
   .settings-panel__row--focus-target-zoom
-  input[type='range']::-webkit-slider-runnable-track {
-  background: color-mix(in srgb, var(--cove-border) 88%, transparent);
+  input[type='range'] {
+  --cove-range-track-bg: color-mix(in srgb, var(--cove-border) 88%, transparent);
 }
