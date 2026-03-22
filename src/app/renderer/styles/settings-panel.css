@@ -11,11 +11,6 @@
     backdrop-filter 180ms ease;
 }
 
-.settings-backdrop--preview {
-  background: color-mix(in srgb, var(--cove-backdrop) 40%, transparent);
-  backdrop-filter: blur(10px);
-}
-
 .settings-panel {
   width: min(980px, calc(100vw - 48px));
   height: min(760px, calc(100vh - 48px));
@@ -33,13 +28,6 @@
     border-color 180ms ease;
 }
 
-.settings-panel--preview {
-  background: color-mix(in srgb, var(--cove-surface) 82%, transparent);
-  backdrop-filter: blur(18px) saturate(125%);
-  border-color: color-mix(in srgb, var(--cove-border) 70%, transparent);
-  opacity: 0.92;
-}
-
 /* --- Sidebar --- */
 .settings-panel__sidebar {
   background: var(--cove-settings-sidebar-background);
@@ -53,11 +41,6 @@
   transition:
     background 180ms ease,
     backdrop-filter 180ms ease;
-}
-
-.settings-panel--preview .settings-panel__sidebar {
-  background: color-mix(in srgb, var(--cove-surface) 78%, transparent);
-  backdrop-filter: blur(18px) saturate(125%);
 }
 
 .settings-panel__nav-button {

@@ -155,7 +155,7 @@ export function CanvasSection(props: {
         </div>
       </div>
 
-      <div className="settings-panel__row">
+      <div className="settings-panel__row settings-panel__row--focus-target-zoom">
         <div className="settings-panel__row-label">
           <strong>{t('settingsPanel.canvas.focusTargetZoomLabel')}</strong>
           <span>{t('settingsPanel.canvas.focusTargetZoomHelp')}</span>

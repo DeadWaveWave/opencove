@@ -86,9 +86,19 @@ test.describe('Settings', () => {
       )
       await window.mouse.down()
       await expect(window.locator('.settings-panel')).toHaveClass(/settings-panel--preview/)
+      await expect(window.locator('.settings-panel__sidebar')).toBeHidden()
+      await expect(window.locator('.settings-panel__header')).toBeHidden()
+      await expect(
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__range-value'),
+      ).toBeHidden()
 
       await window.mouse.up()
       await expect(window.locator('.settings-panel')).not.toHaveClass(/settings-panel--preview/)
+      await expect(window.locator('.settings-panel__sidebar')).toBeVisible()
+      await expect(window.locator('.settings-panel__header')).toBeVisible()
+      await expect(
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__range-value'),
+      ).toBeVisible()
 
       await focusTargetZoom.evaluate((element, value) => {
         const input = element as HTMLInputElement
