@@ -77,7 +77,7 @@ export const zhCN = {
     loading: '正在加载更新内容…',
     empty: '这次更新没有可显示的变更内容。',
     viewCompare: '在 GitHub 查看完整对比',
-    viewChangelog: '在 GitHub 查看更新日志',
+    viewRelease: '在 GitHub 查看此版本',
     truncated: '仅显示前 {{count}} 条变更。',
     sections: {
       added: '新增',

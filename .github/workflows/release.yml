@@ -143,12 +143,23 @@ jobs:
           ref: ${{ env.OPENCOVE_RELEASE_TARGET }}
           fetch-depth: 0
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
       - name: Download built artifacts
         uses: actions/download-artifact@v8
         with:
           pattern: release-assets-*
           merge-multiple: true
           path: release-assets
+
+      - name: Align package version with release tag
+        run: node scripts/apply-ci-release-version.mjs "${{ env.OPENCOVE_RELEASE_TAG }}"
+
+      - name: Generate release manifest
+        run: node scripts/generate-release-manifest.mjs
 
       - name: Generate checksums
         run: node scripts/generate-checksums.mjs release-assets
@@ -166,6 +177,7 @@ jobs:
           generate_release_notes: true
           files: |
             release-assets/*
+            release/release-manifest.json
 
       - name: Publish stable release
         if: steps.channel.outputs.is_nightly != 'true'
@@ -180,3 +192,4 @@ jobs:
           generate_release_notes: true
           files: |
             release-assets/*
+            release/release-manifest.json
