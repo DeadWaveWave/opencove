@@ -252,7 +252,7 @@ test.describe('Workspace Canvas - Arrange', () => {
     }
   })
 
-  test('size ordering packs mixed nodes into the tiled layout inside a space', async () => {
+  test('created time ordering packs mixed nodes into the tiled layout inside a space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -362,7 +362,7 @@ test.describe('Workspace Canvas - Arrange', () => {
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
 
-      await window.locator('[data-testid="workspace-context-arrange-order-size"]').click()
+      await window.locator('[data-testid="workspace-context-arrange-order-created"]').click()
 
       const layout = await readSeededWorkspaceLayout(window, {
         nodeIds: ['mixed-agent', 'mixed-terminal', 'mixed-task-1', 'mixed-task-2'],

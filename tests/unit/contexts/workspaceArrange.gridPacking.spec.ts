@@ -109,7 +109,7 @@ describe('workspace arrange - dense grid packing', () => {
       spaces,
       wrapWidth: 1008,
       viewport: { width: 1440, height: 900 },
-      style: { alignCanonicalSizes: true, order: 'size' },
+      style: { alignCanonicalSizes: true },
     })
 
     expect(result.didChange).toBe(true)

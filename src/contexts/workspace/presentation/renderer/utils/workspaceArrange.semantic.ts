@@ -171,36 +171,6 @@ function compareSemanticGroupsByCreatedAt(
   return left.key.localeCompare(right.key)
 }
 
-function compareSemanticGroupsByKind(
-  left: WorkspaceArrangeSemanticGroup,
-  right: WorkspaceArrangeSemanticGroup,
-): number {
-  if (left.kindRank !== right.kindRank) {
-    return left.kindRank - right.kindRank
-  }
-
-  return compareSemanticGroupsByCreatedAt(left, right)
-}
-
-function compareSemanticGroupsBySize(
-  left: WorkspaceArrangeSemanticGroup,
-  right: WorkspaceArrangeSemanticGroup,
-): number {
-  if (left.area !== right.area) {
-    return right.area - left.area
-  }
-
-  const rectDiff = stableRectSort(
-    { id: left.key, rect: left.rect },
-    { id: right.key, rect: right.rect },
-  )
-  if (rectDiff !== 0) {
-    return rectDiff
-  }
-
-  return left.key.localeCompare(right.key)
-}
-
 function compareSemanticGroupsByPosition(
   left: WorkspaceArrangeSemanticGroup,
   right: WorkspaceArrangeSemanticGroup,
@@ -219,14 +189,6 @@ function compareSemanticGroups(
 
   if (order === 'createdAt') {
     return compareSemanticGroupsByCreatedAt(left, right)
-  }
-
-  if (order === 'kind') {
-    return compareSemanticGroupsByKind(left, right)
-  }
-
-  if (order === 'size') {
-    return compareSemanticGroupsBySize(left, right)
   }
 
   return compareSemanticGroupsByPosition(left, right)

@@ -122,26 +122,6 @@ export function WorkspaceContextArrangeBySubmenu({
           {t('workspaceArrangeMenu.orderCreatedAt')}
         </span>
       </button>
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-order-kind"
-        onClick={() => {
-          onSelectOrder('kind')
-        }}
-      >
-        {renderMark(arrangeOrder === 'kind')}
-        <span className="workspace-context-menu__label">{t('workspaceArrangeMenu.orderKind')}</span>
-      </button>
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-order-size"
-        onClick={() => {
-          onSelectOrder('size')
-        }}
-      >
-        {renderMark(arrangeOrder === 'size')}
-        <span className="workspace-context-menu__label">{t('workspaceArrangeMenu.orderSize')}</span>
-      </button>
 
       <div className="workspace-context-menu__separator" />
       <div className="workspace-context-menu__section-title">

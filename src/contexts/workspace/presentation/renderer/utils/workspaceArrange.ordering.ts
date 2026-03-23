@@ -2,7 +2,7 @@ import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { stableRectSort, type Rect } from './workspaceArrange.flowPacking'
 
-export type WorkspaceArrangeOrder = 'position' | 'createdAt' | 'kind' | 'size'
+export type WorkspaceArrangeOrder = 'position' | 'createdAt'
 
 export type WorkspaceArrangeItemKind = 'space' | 'node'
 
@@ -135,30 +135,6 @@ function compareNullLast(left: number | null, right: number | null): number {
   return left - right
 }
 
-function compareItemKindThenFallback(
-  left: WorkspaceArrangeItem,
-  right: WorkspaceArrangeItem,
-): number {
-  if (left.kindRank !== right.kindRank) {
-    return left.kindRank - right.kindRank
-  }
-
-  const createdDiff = compareNullLast(left.createdAt, right.createdAt)
-  if (createdDiff !== 0) {
-    return createdDiff
-  }
-
-  const rectDiff = stableRectSort(
-    { id: left.key, rect: left.rect },
-    { id: right.key, rect: right.rect },
-  )
-  if (rectDiff !== 0) {
-    return rectDiff
-  }
-
-  return left.key.localeCompare(right.key)
-}
-
 function compareItemCreatedThenFallback(
   left: WorkspaceArrangeItem,
   right: WorkspaceArrangeItem,
@@ -166,25 +142,6 @@ function compareItemCreatedThenFallback(
   const createdDiff = compareNullLast(left.createdAt, right.createdAt)
   if (createdDiff !== 0) {
     return createdDiff
-  }
-
-  const rectDiff = stableRectSort(
-    { id: left.key, rect: left.rect },
-    { id: right.key, rect: right.rect },
-  )
-  if (rectDiff !== 0) {
-    return rectDiff
-  }
-
-  return left.key.localeCompare(right.key)
-}
-
-function compareItemSizeThenFallback(
-  left: WorkspaceArrangeItem,
-  right: WorkspaceArrangeItem,
-): number {
-  if (left.area !== right.area) {
-    return right.area - left.area
   }
 
   const rectDiff = stableRectSort(
@@ -210,16 +167,6 @@ export function sortWorkspaceArrangeItems(
 
   if (order === 'createdAt') {
     next.sort(compareItemCreatedThenFallback)
-    return next
-  }
-
-  if (order === 'kind') {
-    next.sort(compareItemKindThenFallback)
-    return next
-  }
-
-  if (order === 'size') {
-    next.sort(compareItemSizeThenFallback)
     return next
   }
 
