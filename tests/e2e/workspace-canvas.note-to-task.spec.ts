@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test'
+import { resolveDefaultTaskWindowSize } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { readSeededWorkspaceLayout, rectsOverlap } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Note to Task', () => {
   test('converts selected note to task via context menu', async () => {
@@ -8,18 +10,33 @@ test.describe('Workspace Canvas - Note to Task', () => {
     try {
       const noteText = '  Convert this note into a task.\\n\\n- [ ] menu item\\n'
       const expectedRequirement = noteText.trim()
+      const sourcePosition = { x: 880, y: 420 }
+      const sourceNoteSize = { width: 220, height: 140 }
+      const blockerInitialY = 580
+      const viewportSize = await window.evaluate(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }))
+      const expectedTaskSize = resolveDefaultTaskWindowSize(viewportSize)
 
       await clearAndSeedWorkspace(window, [
         {
           id: 'note-to-task',
           title: 'note',
-          position: { x: 880, y: 420 },
-          width: 420,
-          height: 280,
+          position: sourcePosition,
+          width: sourceNoteSize.width,
+          height: sourceNoteSize.height,
           kind: 'note',
           task: {
             text: noteText,
           },
+        },
+        {
+          id: 'note-to-task-blocker',
+          title: 'blocker',
+          position: { x: 880, y: blockerInitialY },
+          width: 460,
+          height: 300,
         },
       ])
 
@@ -57,6 +74,40 @@ test.describe('Workspace Canvas - Note to Task', () => {
         '[data-testid="task-node-inline-requirement-input"]',
       )
       await expect(requirementInput).toHaveValue(expectedRequirement)
+      await expect
+        .poll(async () => {
+          const layout = await readSeededWorkspaceLayout(window, {
+            nodeIds: ['note-to-task', 'note-to-task-blocker'],
+            spaceIds: [],
+          })
+          const converted = layout.nodes['note-to-task']
+          const blocker = layout.nodes['note-to-task-blocker']
+
+          if (!converted || !blocker) {
+            return false
+          }
+
+          return (
+            converted.x === sourcePosition.x &&
+            converted.y === sourcePosition.y &&
+            converted.width === expectedTaskSize.width &&
+            converted.height === expectedTaskSize.height &&
+            blocker.x === 880 &&
+            blocker.width === 460 &&
+            blocker.height === 300 &&
+            blocker.y > blockerInitialY &&
+            rectsOverlap(converted, blocker) === false
+          )
+        })
+        .toBe(true)
+
+      const layout = await readSeededWorkspaceLayout(window, {
+        nodeIds: ['note-to-task', 'note-to-task-blocker'],
+        spaceIds: [],
+      })
+      const blocker = layout.nodes['note-to-task-blocker']
+      expect(blocker).toBeTruthy()
+      expect((blocker?.y ?? 0) > blockerInitialY).toBe(true)
     } finally {
       await electronApp.close()
     }
