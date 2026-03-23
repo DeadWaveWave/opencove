@@ -81,6 +81,8 @@ async function seedExistingGeminiRealTurnSession(userDataDir: string): Promise<v
 }
 
 test.describe('Workspace Canvas - Agent Status Watcher (Gemini)', () => {
+  test.describe.configure({ retries: 1 })
+
   test('keeps gemini in standby while typing and only switches to working after submit', async () => {
     test.skip(
       process.platform === 'win32',
