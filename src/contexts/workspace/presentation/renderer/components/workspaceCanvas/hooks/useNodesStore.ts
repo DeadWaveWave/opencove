@@ -33,6 +33,7 @@ export function useWorkspaceCanvasNodesStore({
   const pendingScrollbackByNodeRef = useRef<Map<string, string>>(new Map())
   const isNodeDraggingRef = useRef(false)
   const [fallbackCreatedNodeId, setFallbackCreatedNodeId] = useState<string | null>(null)
+  const createdNodeViewportSettleTimerRef = useRef<number | null>(null)
 
   const fallbackOnNodeCreated = useCallback((nodeId: string) => {
     const normalizedNodeId = nodeId.trim()
@@ -53,8 +54,8 @@ export function useWorkspaceCanvasNodesStore({
     }
 
     const targetNode =
-      reactFlow.getNode?.(fallbackCreatedNodeId) ??
       nodesRef.current.find(node => node.id === fallbackCreatedNodeId) ??
+      reactFlow.getNode?.(fallbackCreatedNodeId) ??
       null
 
     if (!targetNode) {
@@ -68,7 +69,23 @@ export function useWorkspaceCanvasNodesStore({
       duration: 180,
       zoom,
     })
-  }, [fallbackCreatedNodeId, onNodeCreated, reactFlow])
+
+    if (createdNodeViewportSettleTimerRef.current !== null) {
+      window.clearTimeout(createdNodeViewportSettleTimerRef.current)
+    }
+
+    createdNodeViewportSettleTimerRef.current = window.setTimeout(() => {
+      createdNodeViewportSettleTimerRef.current = null
+      setFallbackCreatedNodeId(current => (current === fallbackCreatedNodeId ? null : current))
+    }, 0)
+
+    return () => {
+      if (createdNodeViewportSettleTimerRef.current !== null) {
+        window.clearTimeout(createdNodeViewportSettleTimerRef.current)
+        createdNodeViewportSettleTimerRef.current = null
+      }
+    }
+  }, [fallbackCreatedNodeId, nodes, onNodeCreated, reactFlow])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes

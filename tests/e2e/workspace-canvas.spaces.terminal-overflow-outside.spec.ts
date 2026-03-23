@@ -145,6 +145,23 @@ test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
           hasCreatedTerminal: true,
           terminalInside: true,
         })
+
+      const createdTerminalNode = window.locator('.terminal-node').first()
+      await expect(createdTerminalNode).toBeVisible()
+      await expect(pane).toBeVisible()
+
+      const terminalBounds = await createdTerminalNode.boundingBox()
+      const paneBounds = await pane.boundingBox()
+
+      if (!terminalBounds || !paneBounds) {
+        throw new Error('failed to resolve created terminal or pane bounds')
+      }
+
+      const centeredX = terminalBounds.x + terminalBounds.width / 2
+      const centeredY = terminalBounds.y + terminalBounds.height / 2
+
+      expect(Math.abs(centeredX - (paneBounds.x + paneBounds.width / 2))).toBeLessThanOrEqual(48)
+      expect(Math.abs(centeredY - (paneBounds.y + paneBounds.height / 2))).toBeLessThanOrEqual(48)
     } finally {
       await electronApp.close()
     }
