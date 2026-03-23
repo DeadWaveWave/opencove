@@ -6,17 +6,15 @@ import {
   resolveFlowPacking,
   type Rect,
 } from './workspaceArrange.flowPacking'
-import { resolveBestDenseGridPacking } from './workspaceArrange.gridPacking'
 import {
   createWorkspaceArrangeSemanticFlowItems,
-  createWorkspaceArrangeSemanticGridItems,
   createWorkspaceArrangeSemanticGroups,
+  resolveWorkspaceArrangeSemanticGridPlacements,
   resolveWorkspaceArrangeSemanticNodePlacements,
 } from './workspaceArrange.semantic'
 import { resolveViewportAspectRatio } from './workspaceArrange.viewport'
 import {
   resolveArrangeStyle,
-  unionSpaceRects,
   WORKSPACE_ARRANGE_GAP_PX,
   WORKSPACE_ARRANGE_PADDING_PX,
   type WorkspaceArrangeResult,
@@ -30,6 +28,28 @@ import {
 } from './workspaceNodeSizing'
 
 const SPACE_CANONICAL_PACKING_AREA_TOLERANCE = 1.4
+
+function resolvePreferredFlowWrapWidth({
+  items,
+  targetAspect,
+}: {
+  items: Array<{ width: number; height: number }>
+  targetAspect: number
+}): number {
+  if (items.length === 0) {
+    return 0
+  }
+
+  const maxItemWidth = Math.max(...items.map(item => item.width))
+  const totalArea = items.reduce((sum, item) => sum + item.width * item.height, 0)
+  const safeAspect =
+    Number.isFinite(targetAspect) && targetAspect > 0 ? targetAspect : resolveViewportAspectRatio()
+  const estimatedWidth = Math.round(
+    Math.sqrt(Math.max(totalArea, maxItemWidth * maxItemWidth) * safeAspect),
+  )
+
+  return Math.max(maxItemWidth, estimatedWidth)
+}
 
 export function arrangeWorkspaceInSpace({
   spaceId,
@@ -114,12 +134,18 @@ export function arrangeWorkspaceInSpace({
       return undefined
     }
 
+    if (resolvedStyle.spaceFit !== 'keep') {
+      return undefined
+    }
+
     const cell = resolveCanonicalBucketCellSize(canonicalBucket)
     const strideWidth = Math.max(1, cell.width) + WORKSPACE_CANONICAL_GUTTER_PX
     return Math.max(1, Math.floor((innerRect.width + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth))
   })()
   const targetAspect =
-    innerRect.height > 0 ? innerRect.width / innerRect.height : resolveViewportAspectRatio(viewport)
+    resolvedStyle.spaceFit === 'keep' && innerRect.width > 0 && innerRect.height > 0
+      ? innerRect.width / innerRect.height
+      : resolveViewportAspectRatio(viewport)
 
   const start = { x: innerRect.x, y: innerRect.y }
   const semanticGroupGap = resolvedStyle.alignCanonicalSizes
@@ -141,11 +167,10 @@ export function arrangeWorkspaceInSpace({
       }
 
       if (resolvedStyle.alignCanonicalSizes) {
-        const cell = resolveCanonicalBucketCellSize(canonicalBucket)
-        const packed = resolveBestDenseGridPacking({
-          items: createWorkspaceArrangeSemanticGridItems(semanticGroups),
+        const packed = resolveWorkspaceArrangeSemanticGridPlacements({
+          groups: semanticGroups,
           start,
-          cell,
+          cell: resolveCanonicalBucketCellSize(canonicalBucket),
           gap: WORKSPACE_CANONICAL_GUTTER_PX,
           targetAspect,
           maxColumns: maxCanonicalColumns,
@@ -164,11 +189,10 @@ export function arrangeWorkspaceInSpace({
     }
 
     if (resolvedStyle.alignCanonicalSizes) {
-      const cell = resolveCanonicalBucketCellSize(canonicalBucket)
-      const packed = resolveBestDenseGridPacking({
-        items: createWorkspaceArrangeSemanticGridItems(semanticGroups),
+      const packed = resolveWorkspaceArrangeSemanticGridPlacements({
+        groups: semanticGroups,
         start,
-        cell,
+        cell: resolveCanonicalBucketCellSize(canonicalBucket),
         gap: WORKSPACE_CANONICAL_GUTTER_PX,
         targetAspect,
         maxColumns: maxCanonicalColumns,
@@ -182,7 +206,14 @@ export function arrangeWorkspaceInSpace({
 
     const maxItemWidth =
       semanticFlowItems.length > 0 ? Math.max(...semanticFlowItems.map(item => item.width)) : 0
-    const wrapWidth = Math.max(innerRect.width, maxItemWidth)
+    const wrapWidth = Math.max(
+      innerRect.width,
+      maxItemWidth,
+      resolvePreferredFlowWrapWidth({
+        items: semanticFlowItems,
+        targetAspect,
+      }),
+    )
 
     return resolveFlowPacking({ items: semanticFlowItems, start, wrapWidth, gap: effectiveGap })
   })()
@@ -240,10 +271,6 @@ export function arrangeWorkspaceInSpace({
         height: node.data.height,
       })),
     )
-
-    if (resolvedStyle.spaceFit === 'grow') {
-      return unionSpaceRects(resolvedSpaceRect, required)
-    }
 
     return required
   })()

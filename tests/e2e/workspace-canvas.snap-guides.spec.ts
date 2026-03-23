@@ -60,6 +60,17 @@ test.describe('Workspace Canvas - Snap Guides', () => {
       await expect(window.locator('[data-testid="workspace-snap-guide-v"]')).toBeVisible()
       await expect
         .poll(async () => {
+          return await window.evaluate(() => {
+            const doc = document.documentElement
+            return {
+              hasVerticalOverflow: doc.scrollHeight > doc.clientHeight,
+              hasHorizontalOverflow: doc.scrollWidth > doc.clientWidth,
+            }
+          })
+        })
+        .toEqual({ hasVerticalOverflow: false, hasHorizontalOverflow: false })
+      await expect
+        .poll(async () => {
           const layout = await readSeededWorkspaceLayout(window, {
             nodeIds: ['snap-a', 'snap-b'],
             spaceIds: [],

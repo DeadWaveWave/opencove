@@ -2,10 +2,14 @@ import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import type { Rect } from './workspaceArrange.flowPacking'
 import { stableRectSort } from './workspaceArrange.flowPacking'
-import type { GridItem } from './workspaceArrange.gridPacking'
 import type { WorkspaceArrangeOrder } from './workspaceArrange.ordering'
 import { resolveNodeCreatedAt, resolveNodeKindRank } from './workspaceArrange.ordering'
-import { resolveCanonicalNodeGridSpan } from './workspaceNodeSizing'
+export {
+  createWorkspaceArrangeSemanticFlowItems,
+  createWorkspaceArrangeSemanticGridItems,
+  resolveWorkspaceArrangeSemanticGridPlacements,
+  resolveWorkspaceArrangeSemanticNodePlacements,
+} from './workspaceArrange.semanticLayout'
 
 type WorkspaceArrangeSemanticGroupKind = 'single' | 'taskAgentPair'
 
@@ -23,6 +27,11 @@ export interface WorkspaceArrangeSemanticGroup {
   createdAt: number | null
   area: number
   members: WorkspaceArrangeSemanticMember[]
+}
+
+export interface WorkspaceArrangeSemanticGroupPartition {
+  planningGroups: WorkspaceArrangeSemanticGroup[]
+  contentGroups: WorkspaceArrangeSemanticGroup[]
 }
 
 function toNodeRect(node: Node<TerminalNodeData>): Rect {
@@ -57,18 +66,25 @@ function unionRects(rects: Rect[]): Rect {
 
 function resolveSemanticLaneRank(group: WorkspaceArrangeSemanticGroup): number {
   const leadKind = group.members[0]?.kind ?? 'terminal'
+  if (leadKind === 'note') {
+    return 0
+  }
+
+  if (group.kind === 'taskAgentPair' || leadKind === 'task') {
+    return 1
+  }
 
   switch (leadKind) {
-    case 'note':
-      return 0
-    case 'task':
-      return 1
     case 'agent':
       return 2
     case 'terminal':
     default:
       return 3
   }
+}
+
+export function isWorkspaceArrangePlanningGroup(group: WorkspaceArrangeSemanticGroup): boolean {
+  return group.kind === 'taskAgentPair' || group.members[0]?.kind === 'task'
 }
 
 function createSingleSemanticGroup(node: Node<TerminalNodeData>): WorkspaceArrangeSemanticGroup {
@@ -278,104 +294,20 @@ export function createWorkspaceArrangeSemanticGroups({
   return groups.sort((left, right) => compareSemanticGroups(left, right, order))
 }
 
-function resolveSemanticGroupSize({
-  group,
-  gap,
-}: {
-  group: WorkspaceArrangeSemanticGroup
-  gap: number
-}): { width: number; height: number } {
-  const [firstMember, secondMember] = group.members
-  if (!firstMember) {
-    return { width: 0, height: 0 }
-  }
-
-  if (group.kind !== 'taskAgentPair' || !secondMember) {
-    return {
-      width: firstMember.node.data.width,
-      height: firstMember.node.data.height,
-    }
-  }
-
-  return {
-    width: firstMember.node.data.width + gap + secondMember.node.data.width,
-    height: Math.max(firstMember.node.data.height, secondMember.node.data.height),
-  }
-}
-
-export function createWorkspaceArrangeSemanticFlowItems({
-  groups,
-  gap,
-}: {
-  groups: WorkspaceArrangeSemanticGroup[]
-  gap: number
-}): Array<{ id: string; width: number; height: number }> {
-  return groups.map(group => ({
-    id: group.key,
-    ...resolveSemanticGroupSize({ group, gap }),
-  }))
-}
-
-export function createWorkspaceArrangeSemanticGridItems(
+export function partitionWorkspaceArrangeSemanticGroups(
   groups: WorkspaceArrangeSemanticGroup[],
-): GridItem[] {
-  return groups.map(group => {
-    const [firstMember, secondMember] = group.members
-    const firstSpan = resolveCanonicalNodeGridSpan(firstMember?.kind ?? 'terminal')
-
-    if (group.kind !== 'taskAgentPair' || !secondMember) {
-      return {
-        id: group.key,
-        colSpan: firstSpan.colSpan,
-        rowSpan: firstSpan.rowSpan,
-      }
-    }
-
-    const secondSpan = resolveCanonicalNodeGridSpan(secondMember.kind)
-    return {
-      id: group.key,
-      colSpan: firstSpan.colSpan + secondSpan.colSpan,
-      rowSpan: Math.max(firstSpan.rowSpan, secondSpan.rowSpan),
-    }
-  })
-}
-
-export function resolveWorkspaceArrangeSemanticNodePlacements({
-  groups,
-  groupPlacements,
-  gap,
-}: {
-  groups: WorkspaceArrangeSemanticGroup[]
-  groupPlacements: Map<string, { x: number; y: number }>
-  gap: number
-}): Map<string, { x: number; y: number }> {
-  const placements = new Map<string, { x: number; y: number }>()
+): WorkspaceArrangeSemanticGroupPartition {
+  const planningGroups: WorkspaceArrangeSemanticGroup[] = []
+  const contentGroups: WorkspaceArrangeSemanticGroup[] = []
 
   for (const group of groups) {
-    const groupPlacement = groupPlacements.get(group.key)
-    if (!groupPlacement) {
+    if (isWorkspaceArrangePlanningGroup(group)) {
+      planningGroups.push(group)
       continue
     }
 
-    const [firstMember, secondMember] = group.members
-    if (!firstMember) {
-      continue
-    }
-
-    placements.set(firstMember.node.id, {
-      x: groupPlacement.x,
-      y: groupPlacement.y,
-    })
-
-    if (group.kind !== 'taskAgentPair' || !secondMember) {
-      continue
-    }
-
-    placements.set(secondMember.node.id, {
-      x: groupPlacement.x + firstMember.node.data.width + gap,
-      y: groupPlacement.y,
-    })
+    contentGroups.push(group)
   }
 
-  return placements
+  return { planningGroups, contentGroups }
 }

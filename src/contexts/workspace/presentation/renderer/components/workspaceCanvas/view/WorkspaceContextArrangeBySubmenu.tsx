@@ -26,11 +26,9 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope,
   arrangeOrder,
   arrangeSpaceFit,
-  magneticSnappingEnabled,
   onSelectScope,
   onSelectOrder,
   onSelectSpaceFit,
-  onToggleMagneticSnapping,
 }: {
   style: React.CSSProperties
   hitSpace: WorkspaceSpaceState | null
@@ -40,11 +38,9 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope: ArrangeScope
   arrangeOrder: WorkspaceArrangeOrder
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
-  magneticSnappingEnabled: boolean
   onSelectScope: (scope: ArrangeScope) => void
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
-  onToggleMagneticSnapping: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
@@ -145,6 +141,9 @@ export function WorkspaceContextArrangeBySubmenu({
       </button>
 
       <div className="workspace-context-menu__separator" />
+      <div className="workspace-context-menu__section-title">
+        {t('workspaceArrangeMenu.spaceFit')}
+      </div>
 
       <button
         type="button"
@@ -160,18 +159,6 @@ export function WorkspaceContextArrangeBySubmenu({
       </button>
       <button
         type="button"
-        data-testid="workspace-context-arrange-space-fit-grow"
-        onClick={() => {
-          onSelectSpaceFit('grow')
-        }}
-      >
-        {renderMark(arrangeSpaceFit === 'grow')}
-        <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.spaceFitGrow')}
-        </span>
-      </button>
-      <button
-        type="button"
         data-testid="workspace-context-arrange-space-fit-keep"
         onClick={() => {
           onSelectSpaceFit('keep')
@@ -180,21 +167,6 @@ export function WorkspaceContextArrangeBySubmenu({
         {renderMark(arrangeSpaceFit === 'keep')}
         <span className="workspace-context-menu__label">
           {t('workspaceArrangeMenu.spaceFitKeep')}
-        </span>
-      </button>
-
-      <div className="workspace-context-menu__separator" />
-
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-magnetic-snapping"
-        onClick={() => {
-          onToggleMagneticSnapping()
-        }}
-      >
-        {renderMark(magneticSnappingEnabled)}
-        <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.magneticSnapping')}
         </span>
       </button>
     </div>

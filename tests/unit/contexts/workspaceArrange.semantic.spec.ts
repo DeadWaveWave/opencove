@@ -67,7 +67,7 @@ function createTaskData({
 }
 
 describe('workspace arrange semantic grouping', () => {
-  it('keeps linked task and agent together while notes stay on the left', () => {
+  it('places ideas first, then task + linked agent, then fallback content below', () => {
     const nodes = [
       createTerminalNode({
         id: 'note',
@@ -112,11 +112,13 @@ describe('workspace arrange semantic grouping', () => {
     const agent = nodeById.get('agent')!
     const terminal = nodeById.get('terminal')!
 
-    expect(note.position.y).toBe(task.position.y)
-    expect(note.position.x).toBeLessThan(task.position.x)
+    expect(note.position).toEqual({
+      x: 288,
+      y: 192,
+    })
     expect(task.position).toEqual({
-      x: note.position.x + 240,
-      y: note.position.y,
+      x: 528,
+      y: 192,
     })
     expect(agent.position).toEqual({
       x: task.position.x + 240,
@@ -124,8 +126,69 @@ describe('workspace arrange semantic grouping', () => {
     })
     expect(terminal.position).toEqual({
       x: note.position.x,
-      y: note.position.y + 672,
+      y: task.position.y + 672,
     })
+  })
+
+  it('uses a two-column idea lane when the canvas is wide enough', () => {
+    const nodes = [
+      createTerminalNode({
+        id: 'note-a',
+        position: { x: 0, y: 0 },
+        size: { width: 220, height: 140 },
+        kind: 'note',
+      }),
+      createTerminalNode({
+        id: 'note-b',
+        position: { x: 0, y: 0 },
+        size: { width: 220, height: 140 },
+        kind: 'note',
+      }),
+      createTerminalNode({
+        id: 'task',
+        position: { x: 0, y: 0 },
+        size: { width: 220, height: 260 },
+        kind: 'task',
+        task: createTaskData({
+          linkedAgentNodeId: 'agent',
+          createdAt: '2026-02-09T00:00:00.000Z',
+        }),
+      }),
+      createTerminalNode({
+        id: 'agent',
+        position: { x: 0, y: 0 },
+        size: { width: 400, height: 520 },
+        kind: 'agent',
+      }),
+      createTerminalNode({
+        id: 'terminal',
+        position: { x: 0, y: 0 },
+        size: { width: 400, height: 260 },
+      }),
+    ]
+
+    const result = arrangeWorkspaceCanvas({
+      nodes,
+      spaces: [],
+      wrapWidth: 1404,
+      viewport: { width: 1728, height: 1117 },
+      style: { alignCanonicalSizes: true, order: 'createdAt' },
+    })
+
+    const nodeById = new Map(result.nodes.map(node => [node.id, node]))
+    const noteA = nodeById.get('note-a')!
+    const noteB = nodeById.get('note-b')!
+    const task = nodeById.get('task')!
+    const agent = nodeById.get('agent')!
+    const terminal = nodeById.get('terminal')!
+
+    expect(noteA.position.y).toBe(noteB.position.y)
+    expect(noteB.position.x).toBeGreaterThan(noteA.position.x)
+    expect(task.position.x).toBeGreaterThan(noteB.position.x)
+    expect(task.position.y).toBe(noteA.position.y)
+    expect(agent.position.x).toBeGreaterThan(task.position.x)
+    expect(agent.position.y).toBe(task.position.y)
+    expect(terminal.position.y).toBeGreaterThanOrEqual(task.position.y)
   })
 
   it('warns when keep-size space cannot fit a linked task-agent pair', () => {

@@ -123,10 +123,12 @@ export function resolveDensePacking({
   items,
   start,
   wrapWidth,
+  gap = 0,
 }: {
   items: FlowItem[]
   start: { x: number; y: number }
   wrapWidth: number
+  gap?: number
 }): Map<string, { x: number; y: number }> {
   const placements = new Map<string, { x: number; y: number }>()
   if (items.length === 0) {
@@ -135,20 +137,28 @@ export function resolveDensePacking({
 
   const maxItemWidth = Math.max(...items.map(item => item.width))
   const effectiveWrapWidth = Math.max(maxItemWidth, wrapWidth)
-  const maxX = start.x + effectiveWrapWidth
+  const safeGap = Number.isFinite(gap) ? Math.max(0, gap) : 0
+  const maxX = start.x + effectiveWrapWidth + safeGap
 
   const placedRects: Rect[] = []
   const candidatePoints: Array<{ x: number; y: number }> = [{ x: start.x, y: start.y }]
 
   for (const item of items) {
     let placed: { x: number; y: number } | null = null
+    const placementWidth = item.width + safeGap
+    const placementHeight = item.height + safeGap
 
     for (const point of sortPoints(candidatePoints)) {
-      if (point.x + item.width > maxX) {
+      if (point.x + placementWidth > maxX) {
         continue
       }
 
-      const rect: Rect = { x: point.x, y: point.y, width: item.width, height: item.height }
+      const rect: Rect = {
+        x: point.x,
+        y: point.y,
+        width: placementWidth,
+        height: placementHeight,
+      }
       if (placedRects.some(existing => rectsOverlap(rect, existing))) {
         continue
       }
@@ -169,7 +179,12 @@ export function resolveDensePacking({
       (acc, rect) => Math.max(acc, rect.y + rect.height),
       start.y,
     )
-    const fallback: Rect = { x: start.x, y: maxBottom, width: item.width, height: item.height }
+    const fallback: Rect = {
+      x: start.x,
+      y: maxBottom,
+      width: placementWidth,
+      height: placementHeight,
+    }
     placedRects.push(fallback)
     placements.set(item.id, { x: fallback.x, y: fallback.y })
     candidatePoints.push({ x: fallback.x + fallback.width, y: fallback.y })

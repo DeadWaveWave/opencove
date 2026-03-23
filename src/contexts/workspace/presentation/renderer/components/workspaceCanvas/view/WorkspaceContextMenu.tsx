@@ -1,11 +1,13 @@
 import React from 'react'
 import {
   ArrowRight,
+  Check,
   ChevronRight,
   FileText,
   Group,
   LayoutGrid,
   ListTodo,
+  Magnet,
   Play,
   SlidersHorizontal,
   Terminal,
@@ -51,6 +53,14 @@ const SUBMENU_GAP_PX = 6
 const SUBMENU_WIDTH_PX = 240
 const SUBMENU_MAX_HEIGHT_PX = 640
 const MENU_WIDTH_ESTIMATE_PX = 200
+
+function renderMark(checked: boolean): React.JSX.Element {
+  return checked ? (
+    <Check className="workspace-context-menu__mark" aria-hidden="true" />
+  ) : (
+    <span className="workspace-context-menu__mark" aria-hidden="true" />
+  )
+}
 
 function isPointWithinRect(
   point: { x: number; y: number },
@@ -376,6 +386,20 @@ export function WorkspaceContextMenu({
                 aria-hidden="true"
               />
             </button>
+
+            <button
+              type="button"
+              data-testid="workspace-context-magnetic-snapping"
+              onClick={() => {
+                onToggleMagneticSnapping()
+              }}
+            >
+              <Magnet className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('workspaceArrangeMenu.magneticSnapping')}
+              </span>
+              {renderMark(magneticSnappingEnabled)}
+            </button>
           </>
         ) : (
           <>
@@ -437,7 +461,6 @@ export function WorkspaceContextMenu({
           arrangeScope={arrangeScope}
           arrangeOrder={arrangeOrder}
           arrangeSpaceFit={arrangeSpaceFit}
-          magneticSnappingEnabled={magneticSnappingEnabled}
           onSelectScope={scope => {
             arrangeScopeRef.current = scope
             setArrangeScope(scope)
@@ -453,7 +476,6 @@ export function WorkspaceContextMenu({
             setArrangeSpaceFit(spaceFit)
             applyArrange()
           }}
-          onToggleMagneticSnapping={onToggleMagneticSnapping}
         />
       ) : null}
     </>

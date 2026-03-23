@@ -5,11 +5,7 @@ import type {
   WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
-import {
-  arrangeWorkspaceAll,
-  arrangeWorkspaceCanvas,
-  arrangeWorkspaceInSpace,
-} from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceArrange'
+import { arrangeWorkspaceInSpace } from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceArrange'
 
 function createTerminalNode({
   id,
@@ -175,134 +171,50 @@ describe('workspace arrange utils', () => {
     expect(result.warnings).toEqual([{ kind: 'space_no_room', spaceId: 'space-1' }])
   })
 
-  it('arranges canvas by moving spaces and root nodes, preserving owned offsets', () => {
-    const spaceBefore = {
-      x: 400,
-      y: 300,
-      width: 480,
-      height: 336,
-    }
-
-    const ownedA = createTerminalNode({
-      id: 'a',
-      position: { x: 424, y: 324 },
-      size: { width: 240, height: 240 },
-    })
-    const ownedB = createTerminalNode({
-      id: 'b',
-      position: { x: 688, y: 324 },
-      size: { width: 160, height: 240 },
-    })
-
-    const root1 = createTerminalNode({
-      id: 'r1',
-      position: { x: 100, y: 50 },
-      size: { width: 480, height: 336 },
-    })
-    const root2 = createTerminalNode({
-      id: 'r2',
-      position: { x: 700, y: 60 },
-      size: { width: 480, height: 336 },
-    })
-
-    const nodes = [root1, root2, ownedA, ownedB]
-    const spaces: WorkspaceSpaceState[] = [
-      {
-        id: 'space-1',
-        name: 'Space 1',
-        directoryPath: '/tmp',
-        nodeIds: ['a', 'b'],
-        rect: spaceBefore,
-      },
-    ]
-
-    const result = arrangeWorkspaceCanvas({
-      nodes,
-      spaces,
-      wrapWidth: 5000,
-      style: { spaceFit: 'keep', alignCanonicalSizes: false },
-    })
-    expect(result.didChange).toBe(true)
-    expect(result.warnings).toEqual([])
-
-    const spaceAfter = result.spaces[0]!.rect
-    expect(spaceAfter).toEqual({ x: 96, y: 48, width: 480, height: 336 })
-
-    const dx = spaceAfter!.x - spaceBefore.x
-    const dy = spaceAfter!.y - spaceBefore.y
-
-    const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('r1')?.position).toEqual({ x: 96, y: 408 })
-    expect(nodeById.get('r2')?.position).toEqual({ x: 588, y: 408 })
-
-    expect(nodeById.get('a')?.position).toEqual({
-      x: ownedA.position.x + dx,
-      y: ownedA.position.y + dy,
-    })
-    expect(nodeById.get('b')?.position).toEqual({
-      x: ownedB.position.x + dx,
-      y: ownedB.position.y + dy,
-    })
-
-    const ownedAfterA = nodeById.get('a')!
-    expect(ownedAfterA.position.x - spaceAfter!.x).toBe(ownedA.position.x - spaceBefore.x)
-    expect(ownedAfterA.position.y - spaceAfter!.y).toBe(ownedA.position.y - spaceBefore.y)
-  })
-
-  it('is deterministic for the same input', () => {
-    const nodes = [
+  it('reflows a tight space into multiple columns instead of preserving a narrow single column', () => {
+    const nodes = Array.from({ length: 6 }, (_, index) =>
       createTerminalNode({
-        id: 'r1',
-        position: { x: 100, y: 50 },
-        size: { width: 480, height: 336 },
+        id: `terminal-${index + 1}`,
+        position: { x: 0, y: 0 },
+        size: { width: 420, height: 260 },
       }),
-      createTerminalNode({
-        id: 'r2',
-        position: { x: 700, y: 60 },
-        size: { width: 480, height: 336 },
-      }),
-    ]
+    )
 
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-1',
         name: 'Space 1',
         directoryPath: '/tmp',
-        nodeIds: [],
-        rect: { x: 400, y: 300, width: 480, height: 336 },
+        nodeIds: nodes.map(node => node.id),
+        rect: { x: 100, y: 100, width: 540, height: 2200 },
       },
     ]
 
-    const first = arrangeWorkspaceAll({ nodes, spaces, wrapWidth: 5000 })
-    const second = arrangeWorkspaceAll({ nodes, spaces, wrapWidth: 5000 })
-
-    expect(first).toEqual(second)
-  })
-
-  it('preserves spaces reference when only root nodes change', () => {
-    const nodes = [
-      createTerminalNode({
-        id: 'r1',
-        position: { x: 96, y: 96 },
-        size: { width: 640, height: 920 },
-      }),
-    ]
-
-    const spaces: WorkspaceSpaceState[] = []
-
-    const result = arrangeWorkspaceCanvas({
+    const result = arrangeWorkspaceInSpace({
+      spaceId: 'space-1',
       nodes,
       spaces,
-      wrapWidth: 5000,
-      viewport: { width: 1920, height: 1080 },
+      viewport: { width: 1440, height: 900 },
       style: { alignCanonicalSizes: true },
     })
-    expect(result.didChange).toBe(true)
-    expect(result.spaces).toBe(spaces)
 
-    const next = result.nodes.find(node => node.id === 'r1')!
-    expect(next.data.width).toBe(564)
-    expect(next.data.height).toBe(388)
+    const nodeById = new Map(result.nodes.map(node => [node.id, node]))
+    const uniqueColumns = new Set(
+      nodes
+        .map(node => nodeById.get(node.id)?.position.x)
+        .filter((x): x is number => x !== undefined),
+    )
+    const rects = nodes.map(node => rectFromNode(nodeById.get(node.id)!))
+    const nextSpaceRect = result.spaces[0]?.rect
+
+    expect(uniqueColumns.size).toBeGreaterThan(1)
+    expect(nextSpaceRect?.width).toBeGreaterThan(spaces[0]!.rect!.width)
+
+    for (let i = 0; i < rects.length; i += 1) {
+      for (let j = i + 1; j < rects.length; j += 1) {
+        expect(rectsOverlap(rects[i]!, rects[j]!)).toBe(false)
+      }
+    }
   })
 
   it('orders nodes by createdAt when arranging inside a space', () => {
@@ -401,11 +313,20 @@ describe('workspace arrange utils', () => {
       agent: nodeById.get('agent')!.position.x,
       terminal: nodeById.get('terminal')!.position.x,
     }
+    const ys = {
+      note: nodeById.get('note')!.position.y,
+      task: nodeById.get('task')!.position.y,
+      agent: nodeById.get('agent')!.position.y,
+      terminal: nodeById.get('terminal')!.position.y,
+    }
 
     expect(xs.note).toBeLessThan(xs.task)
-    expect(xs.note).toBeLessThan(xs.agent)
+    expect(xs.task).toBeLessThan(xs.agent)
     expect(xs.task).toBeLessThan(xs.agent)
     expect(xs.agent).toBeLessThan(xs.terminal)
+    expect(ys.note).toBe(ys.task)
+    expect(ys.task).toBe(ys.agent)
+    expect(ys.agent).toBe(ys.terminal)
   })
 
   it('normalizes nodes to canonical sizes before arranging', () => {

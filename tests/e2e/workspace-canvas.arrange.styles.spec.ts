@@ -10,7 +10,7 @@ import {
 } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Arrange', () => {
-  test('arrange-by menu keeps toggles visible while applying the tiled layout', async () => {
+  test('arrange menus keep toggles visible while applying the tiled layout', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -77,17 +77,30 @@ test.describe('Workspace Canvas - Arrange', () => {
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.png' })
 
       await expect(
+        window.locator('[data-testid="workspace-context-magnetic-snapping"]'),
+      ).toBeVisible()
+      await expect(
         window.locator('[data-testid="workspace-context-arrange-canonical-sizes"]'),
       ).toHaveCount(0)
       await expect(
-        window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"] svg'),
-      ).toHaveCount(1)
+        window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"]'),
+      ).toHaveCount(0)
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-space-fit-grow"]'),
+      ).toHaveCount(0)
 
-      await window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"]').click()
+      await window.locator('[data-testid="workspace-context-magnetic-snapping"]').click()
+      await expect(window.locator('[data-testid="workspace-context-arrange"]')).toBeVisible()
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
-      await window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"]').click()
+      await window.locator('[data-testid="workspace-context-magnetic-snapping"]').click()
+      await expect(window.locator('[data-testid="workspace-context-arrange"]')).toBeVisible()
+      await expect(
+        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
+      ).toBeVisible()
+
+      await expect(window.locator('.workspace-context-menu__section-title')).toContainText('Space')
 
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.standard-sizes.png',
@@ -357,7 +370,7 @@ test.describe('Workspace Canvas - Arrange', () => {
       })
 
       const spaceRect = layout.spaces['space-mixed']
-      expect(spaceRect).toEqual({ x: 100, y: 100, width: 996, height: 708 })
+      expect(spaceRect).toEqual({ x: 100, y: 100, width: 1236, height: 708 })
 
       expect(layout.nodes['mixed-agent']).toMatchObject({ width: 468, height: 660 })
       expect(layout.nodes['mixed-terminal']).toMatchObject({ width: 468, height: 324 })
@@ -365,9 +378,9 @@ test.describe('Workspace Canvas - Arrange', () => {
       expect(layout.nodes['mixed-task-2']).toMatchObject({ width: 228, height: 324 })
 
       expect(layout.nodes['mixed-task-1']).toMatchObject({ x: 124, y: 124 })
-      expect(layout.nodes['mixed-task-2']).toMatchObject({ x: 364, y: 124 })
-      expect(layout.nodes['mixed-agent']).toMatchObject({ x: 604, y: 124 })
-      expect(layout.nodes['mixed-terminal']).toMatchObject({ x: 124, y: 460 })
+      expect(layout.nodes['mixed-task-2']).toMatchObject({ x: 124, y: 460 })
+      expect(layout.nodes['mixed-agent']).toMatchObject({ x: 364, y: 124 })
+      expect(layout.nodes['mixed-terminal']).toMatchObject({ x: 844, y: 124 })
 
       const rects = ['mixed-agent', 'mixed-terminal', 'mixed-task-1', 'mixed-task-2'].map(
         id => layout.nodes[id],

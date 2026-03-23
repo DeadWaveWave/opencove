@@ -4,11 +4,12 @@ import {
   clickPaneAtFlowPoint,
   ensureArtifactsDir,
   openPaneContextMenuAtFlowPoint,
+  rectsOverlap,
   readSeededWorkspaceLayout,
 } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Arrange Semantics', () => {
-  test('keeps note left and task-linked agent on the same row', async () => {
+  test('places ideas first, then task-linked agent, then the remaining canvas content', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -93,22 +94,59 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
 
       await window.locator('[data-testid="workspace-context-arrange-order-created"]').click()
 
+      let layout: Awaited<ReturnType<typeof readSeededWorkspaceLayout>> | null = null
       await expect
         .poll(async () => {
-          return await readSeededWorkspaceLayout(window, {
+          layout = await readSeededWorkspaceLayout(window, {
             nodeIds: ['note-lane', 'task-lane', 'agent-lane', 'terminal-lane'],
             spaceIds: [],
           })
+
+          const note = layout.nodes['note-lane']
+          const task = layout.nodes['task-lane']
+          const agent = layout.nodes['agent-lane']
+          const terminal = layout.nodes['terminal-lane']
+          if (!note || !task || !agent || !terminal) {
+            return false
+          }
+
+          return (
+            note.x < task.x &&
+            agent.x === task.x + 240 &&
+            agent.y === task.y &&
+            note.y === task.y &&
+            task.y < terminal.y &&
+            terminal.x === note.x
+          )
         })
-        .toEqual({
-          nodes: {
-            'note-lane': { x: 0, y: 0, width: 228, height: 156 },
-            'task-lane': { x: 240, y: 0, width: 228, height: 324 },
-            'agent-lane': { x: 480, y: 0, width: 468, height: 660 },
-            'terminal-lane': { x: 0, y: 672, width: 468, height: 324 },
-          },
-          spaces: {},
-        })
+        .toBe(true)
+
+      if (!layout) {
+        throw new Error('Semantic arrange layout not available')
+      }
+
+      const note = layout.nodes['note-lane']!
+      const task = layout.nodes['task-lane']!
+      const agent = layout.nodes['agent-lane']!
+      const terminal = layout.nodes['terminal-lane']!
+
+      expect(note).toMatchObject({ width: 228, height: 156 })
+      expect(task).toMatchObject({ width: 228, height: 324 })
+      expect(agent).toMatchObject({ width: 468, height: 660 })
+      expect(terminal).toMatchObject({ width: 468, height: 324 })
+
+      expect(note.x).toBeLessThan(task.x)
+      expect(note.y).toBe(task.y)
+      expect(agent.x).toBe(task.x + 240)
+      expect(agent.y).toBe(task.y)
+      expect(terminal.x).toBe(note.x)
+      expect(terminal.y).toBeGreaterThan(task.y)
+      expect(rectsOverlap(task, agent)).toBe(false)
+      expect(rectsOverlap(task, note)).toBe(false)
+      expect(rectsOverlap(task, terminal)).toBe(false)
+      expect(rectsOverlap(agent, note)).toBe(false)
+      expect(rectsOverlap(agent, terminal)).toBe(false)
+      expect(rectsOverlap(note, terminal)).toBe(false)
 
       await ensureArtifactsDir()
       await clickPaneAtFlowPoint(window, pane, { x: 960, y: 760 })

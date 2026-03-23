@@ -11,6 +11,11 @@ export interface GridPlacement {
   row: number
 }
 
+export interface GridOccupiedRegion extends GridPlacement {
+  colSpan: number
+  rowSpan: number
+}
+
 export interface DenseGridPackingResult {
   placements: Map<string, GridPlacement>
   columnsUsed: number
@@ -46,9 +51,11 @@ function resolveAspectPenalty(aspect: number, targetAspect: number): number {
 export function resolveDenseGridAutoPlacement({
   items,
   columnCount,
+  occupiedRegions = [],
 }: {
   items: GridItem[]
   columnCount: number
+  occupiedRegions?: GridOccupiedRegion[]
 }): DenseGridPackingResult {
   const placements = new Map<string, GridPlacement>()
   if (items.length === 0) {
@@ -108,6 +115,21 @@ export function resolveDenseGridAutoPlacement({
 
   let columnsUsed = 0
   let rowsUsed = 0
+
+  for (const region of occupiedRegions) {
+    const colSpan = Math.max(1, Math.floor(region.colSpan))
+    const rowSpan = Math.max(1, Math.floor(region.rowSpan))
+    const col = Math.max(0, Math.floor(region.col))
+    const row = Math.max(0, Math.floor(region.row))
+
+    if (col + colSpan > safeColumnCount) {
+      throw new Error(`Occupied region exceeds columnCount (${col + colSpan} > ${safeColumnCount})`)
+    }
+
+    occupyRegion({ col, row, colSpan, rowSpan })
+    columnsUsed = Math.max(columnsUsed, col + colSpan)
+    rowsUsed = Math.max(rowsUsed, row + rowSpan)
+  }
 
   for (const item of items) {
     const colSpan = Math.max(1, Math.floor(item.colSpan))

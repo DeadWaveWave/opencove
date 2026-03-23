@@ -60,6 +60,20 @@ describe('workspace arrange - dense grid packing', () => {
     expect(result.placements.get('c')).toEqual({ col: 4, row: 0 })
   })
 
+  it('fills semantic gaps after anchored planning items', () => {
+    const result = resolveDenseGridAutoPlacement({
+      items: [
+        { id: 'note', colSpan: 2, rowSpan: 2 },
+        { id: 'terminal', colSpan: 4, rowSpan: 4 },
+      ],
+      columnCount: 8,
+      occupiedRegions: [{ col: 0, row: 0, colSpan: 6, rowSpan: 8 }],
+    })
+
+    expect(result.placements.get('note')).toEqual({ col: 6, row: 0 })
+    expect(result.placements.get('terminal')).toEqual({ col: 0, row: 8 })
+  })
+
   it('packs root nodes compactly on a canonical grid when standard sizes are aligned', () => {
     const nodes = [
       createTerminalNode({
@@ -112,9 +126,9 @@ describe('workspace arrange - dense grid packing', () => {
     expect(nodeById.get('mixed-task-2')?.data.height).toBe(324)
 
     expect(nodeById.get('mixed-task-1')?.position).toEqual({ x: 0, y: 0 })
-    expect(nodeById.get('mixed-task-2')?.position).toEqual({ x: 240, y: 0 })
-    expect(nodeById.get('mixed-agent')?.position).toEqual({ x: 480, y: 0 })
-    expect(nodeById.get('mixed-terminal')?.position).toEqual({ x: 0, y: 336 })
+    expect(nodeById.get('mixed-task-2')?.position).toEqual({ x: 0, y: 336 })
+    expect(nodeById.get('mixed-agent')?.position).toEqual({ x: 240, y: 0 })
+    expect(nodeById.get('mixed-terminal')?.position).toEqual({ x: 240, y: 672 })
   })
 
   it('packs nodes inside a space compactly on a canonical grid when standard sizes are aligned', () => {
@@ -170,6 +184,6 @@ describe('workspace arrange - dense grid packing', () => {
 
     expect(nodeById.get('c')?.position).toEqual({ x: 124, y: 224 })
     expect(nodeById.get('a')?.position).toEqual({ x: 364, y: 224 })
-    expect(nodeById.get('b')?.position).toEqual({ x: 124, y: 560 })
+    expect(nodeById.get('b')?.position).toEqual({ x: 364, y: 560 })
   })
 })

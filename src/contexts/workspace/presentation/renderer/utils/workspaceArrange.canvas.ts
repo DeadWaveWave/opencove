@@ -1,21 +1,25 @@
 import type { Node } from '@xyflow/react'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
-import { computeBoundingRect, resolveFlowPacking, snapDown } from './workspaceArrange.flowPacking'
+import {
+  computeBoundingRect,
+  resolveDensePacking,
+  resolveFlowPacking,
+  snapDown,
+} from './workspaceArrange.flowPacking'
 import {
   createArrangeItemsForCanvasSpaces,
   type WorkspaceArrangeItem,
 } from './workspaceArrange.ordering'
 import {
   createWorkspaceArrangeSemanticFlowItems,
-  createWorkspaceArrangeSemanticGridItems,
   createWorkspaceArrangeSemanticGroups,
+  resolveWorkspaceArrangeSemanticGridPlacements,
   resolveWorkspaceArrangeSemanticNodePlacements,
 } from './workspaceArrange.semantic'
 import {
   computeOwnedNodeIdSet,
   resolveArrangeStyle,
-  unionSpaceRects,
   WORKSPACE_ARRANGE_GAP_PX,
   WORKSPACE_ARRANGE_GRID_PX,
   type WorkspaceArrangeResult,
@@ -28,18 +32,18 @@ import {
   resolveCanonicalBucketCellSize,
   WORKSPACE_CANONICAL_GUTTER_PX,
 } from './workspaceNodeSizing'
-import { resolveBestDenseGridPacking } from './workspaceArrange.gridPacking'
-
 function resolveCanvasSectionPlacements({
   items,
   start,
   wrapWidth,
   gap,
+  packing = 'flow',
 }: {
   items: WorkspaceArrangeItem[]
   start: { x: number; y: number }
   wrapWidth: number
   gap: number
+  packing?: 'dense' | 'flow'
 }): Map<string, { x: number; y: number }> {
   if (items.length === 0) {
     return new Map()
@@ -54,6 +58,15 @@ function resolveCanvasSectionPlacements({
     wrapWidth,
     Math.max(...placementItems.map(item => item.width)),
   )
+
+  if (packing === 'dense') {
+    return resolveDensePacking({
+      items: placementItems,
+      start,
+      wrapWidth: effectiveWrapWidth,
+      gap,
+    })
+  }
 
   return resolveFlowPacking({
     items: placementItems,
@@ -153,8 +166,7 @@ export function arrangeWorkspaceCanvas({
       return { ...space, rect: required }
     }
 
-    const nextRect =
-      resolvedStyle.spaceFit === 'grow' ? unionSpaceRects(space.rect, required) : required
+    const nextRect = required
     if (
       nextRect.x === space.rect.x &&
       nextRect.y === space.rect.y &&
@@ -203,6 +215,7 @@ export function arrangeWorkspaceCanvas({
     start,
     wrapWidth: effectiveWrapWidth,
     gap: packingGap,
+    packing: 'dense',
   })
   const placedSpaceBounding = computePlacedBoundingRect(spaceItems, spacePlacements)
   const rootStart = {
@@ -248,8 +261,8 @@ export function arrangeWorkspaceCanvas({
       1,
       Math.floor((effectiveWrapWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth),
     )
-    const packed = resolveBestDenseGridPacking({
-      items: createWorkspaceArrangeSemanticGridItems(rootGroups),
+    const packed = resolveWorkspaceArrangeSemanticGridPlacements({
+      groups: rootGroups,
       start: rootStart,
       cell,
       gap: WORKSPACE_CANONICAL_GUTTER_PX,

@@ -1,5 +1,5 @@
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../types'
+import type { TerminalNodeData, WorkspaceSpaceState } from '../types'
 import type { Rect } from './workspaceArrange.flowPacking'
 import type { WorkspaceArrangeOrder } from './workspaceArrange.ordering'
 
@@ -7,7 +7,7 @@ export const WORKSPACE_ARRANGE_PADDING_PX = 24
 export const WORKSPACE_ARRANGE_GAP_PX = 24
 export const WORKSPACE_ARRANGE_GRID_PX = 24
 
-export type WorkspaceArrangeSpaceFit = 'tight' | 'grow' | 'keep'
+export type WorkspaceArrangeSpaceFit = 'tight' | 'keep'
 
 export interface WorkspaceArrangeStyle {
   order?: WorkspaceArrangeOrder
@@ -33,18 +33,6 @@ export function toNodeRect(node: Node<TerminalNodeData>): Rect {
     width: node.data.width,
     height: node.data.height,
   }
-}
-
-export function unionSpaceRects(
-  left: WorkspaceSpaceRect,
-  right: WorkspaceSpaceRect,
-): WorkspaceSpaceRect {
-  const minX = Math.min(left.x, right.x)
-  const minY = Math.min(left.y, right.y)
-  const maxX = Math.max(left.x + left.width, right.x + right.width)
-  const maxY = Math.max(left.y + left.height, right.y + right.height)
-
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
 }
 
 export function computeOwnedNodeIdSet(spaces: WorkspaceSpaceState[]): Set<string> {
