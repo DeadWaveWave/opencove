@@ -436,7 +436,7 @@ export function TerminalNode({
       labelColor={labelColor}
       terminalThemeMode={terminalThemeMode}
       isSelected={hasSelectedDragSurface}
-      isDragging={false}
+      isDragging={isDragging}
       status={status}
       directoryMismatch={directoryMismatch}
       lastError={lastError}
