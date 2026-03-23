@@ -60,7 +60,6 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
-    defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
   })
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
@@ -281,7 +280,6 @@ export function WorkspaceCanvasInner({
     isTrackpadCanvasMode,
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
-    defaultTerminalWindowScalePercent: agentSettings.defaultTerminalWindowScalePercent,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     selectionDraftRef: canvasState.selectionDraftRef,
     setSelectionDraftUi: canvasState.setSelectionDraftUi,

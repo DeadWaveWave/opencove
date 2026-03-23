@@ -17,7 +17,6 @@ type SetNodes = (
 export function useWorkspaceCanvasTerminalCreation({
   contextMenu,
   setContextMenu,
-  defaultTerminalWindowScalePercent,
   spacesRef,
   workspacePath,
   defaultTerminalProfileId,
@@ -28,7 +27,6 @@ export function useWorkspaceCanvasTerminalCreation({
 }: {
   contextMenu: ContextMenuState | null
   setContextMenu: (next: ContextMenuState | null) => void
-  defaultTerminalWindowScalePercent: number
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   defaultTerminalProfileId: string | null
@@ -48,7 +46,7 @@ export function useWorkspaceCanvasTerminalCreation({
     }
     const anchor = resolveNodePlacementAnchorFromViewportCenter(
       cursorAnchor,
-      resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent),
+      resolveDefaultTerminalWindowSize(),
     )
 
     setContextMenu(null)
@@ -101,7 +99,6 @@ export function useWorkspaceCanvasTerminalCreation({
     setNodes,
     spacesRef,
     defaultTerminalProfileId,
-    defaultTerminalWindowScalePercent,
     workspacePath,
   ])
 }

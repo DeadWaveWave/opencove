@@ -64,7 +64,7 @@ export function useWorkspaceCanvasAgentLauncher({
       }
       const anchor = resolveNodePlacementAnchorFromViewportCenter(
         cursorAnchor,
-        resolveDefaultAgentWindowSize(agentSettings.defaultTerminalWindowScalePercent),
+        resolveDefaultAgentWindowSize(),
       )
 
       const model = resolveAgentModel(agentSettings, provider)

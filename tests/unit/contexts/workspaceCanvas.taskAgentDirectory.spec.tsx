@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { resolveDefaultAgentWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -177,6 +178,7 @@ describe('WorkspaceCanvas task agent directory', () => {
 
     function Harness() {
       const [nodes, setNodes] = useState(initialNodes)
+      latestNodes = nodes
 
       return (
         <WorkspaceCanvas
@@ -193,10 +195,15 @@ describe('WorkspaceCanvas task agent directory', () => {
           isMinimapVisible={false}
           onViewportChange={() => undefined}
           onMinimapVisibilityChange={() => undefined}
-          agentSettings={DEFAULT_AGENT_SETTINGS}
+          agentSettings={{
+            ...DEFAULT_AGENT_SETTINGS,
+            defaultTerminalWindowScalePercent: 120,
+          }}
         />
       )
     }
+
+    let latestNodes: Node<TerminalNodeData>[] = initialNodes
 
     render(<Harness />)
 
@@ -211,5 +218,10 @@ describe('WorkspaceCanvas task agent directory', () => {
         cwd: worktreeDirectory,
       }),
     )
+
+    const createdAgentNode = latestNodes.find(node => node.data.kind === 'agent')
+    const expectedSize = resolveDefaultAgentWindowSize()
+    expect(createdAgentNode?.data.width).toBe(expectedSize.width)
+    expect(createdAgentNode?.data.height).toBe(expectedSize.height)
   })
 })

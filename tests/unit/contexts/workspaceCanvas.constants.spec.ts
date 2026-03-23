@@ -9,7 +9,7 @@ import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/conte
 
 describe('workspace canvas default sizing', () => {
   it('resolves canonical window sizes from viewport bucket', () => {
-    expect(resolveDefaultTerminalWindowSize(100, { width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultTerminalWindowSize({ width: 1920, height: 1080 })).toEqual({
       width: 564,
       height: 388,
     })
@@ -19,7 +19,7 @@ describe('workspace canvas default sizing', () => {
       height: 388,
     })
 
-    expect(resolveDefaultAgentWindowSize(100, { width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultAgentWindowSize({ width: 1920, height: 1080 })).toEqual({
       width: 564,
       height: 788,
     })
@@ -30,27 +30,15 @@ describe('workspace canvas default sizing', () => {
     })
   })
 
-  it('applies scale percent to default terminal/agent window size', () => {
-    expect(resolveDefaultTerminalWindowSize(80, { width: 1920, height: 1080 })).toEqual({
-      width: 451,
-      height: 310,
+  it('keeps new terminal and agent sizes on canonical grid for smaller viewports too', () => {
+    expect(resolveDefaultTerminalWindowSize({ width: 1440, height: 900 })).toEqual({
+      width: 468,
+      height: 324,
     })
 
-    expect(resolveDefaultAgentWindowSize(80, { width: 1920, height: 1080 })).toEqual({
-      width: 451,
-      height: 630,
-    })
-  })
-
-  it('clamps invalid scale values to allowed range', () => {
-    expect(resolveDefaultTerminalWindowSize(-1, { width: 1920, height: 1080 })).toEqual({
-      width: 400,
-      height: 260,
-    })
-
-    expect(resolveDefaultTerminalWindowSize(999, { width: 1920, height: 1080 })).toEqual({
-      width: 677,
-      height: 466,
+    expect(resolveDefaultAgentWindowSize({ width: 1440, height: 900 })).toEqual({
+      width: 468,
+      height: 660,
     })
   })
 })

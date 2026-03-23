@@ -16,7 +16,6 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
-  defaultTerminalWindowScalePercent: number
   onNodeCreated?: (nodeId: string) => void
 }
 

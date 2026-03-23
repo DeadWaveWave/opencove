@@ -5,8 +5,6 @@ import {
   FOCUS_NODE_TARGET_ZOOM_STEP,
   MAX_FOCUS_NODE_TARGET_ZOOM,
   MIN_FOCUS_NODE_TARGET_ZOOM,
-  MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
-  MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
   type CanvasInputMode,
   type FocusNodeTargetZoom,
 } from '@contexts/settings/domain/agentSettings'
@@ -18,7 +16,6 @@ export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
-  defaultTerminalWindowScalePercent: number
   defaultTerminalProfileId: string | null
   terminalProfiles: TerminalProfile[]
   detectedDefaultTerminalProfileId: string | null
@@ -27,14 +24,12 @@ export function CanvasSection(props: {
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
-  onChangeDefaultTerminalWindowScalePercent: (percent: number) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const {
     canvasInputMode,
     focusNodeOnClick,
     focusNodeTargetZoom,
-    defaultTerminalWindowScalePercent,
     defaultTerminalProfileId,
     terminalProfiles,
     detectedDefaultTerminalProfileId,
@@ -43,7 +38,6 @@ export function CanvasSection(props: {
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
     onFocusNodeTargetZoomPreviewChange,
-    onChangeDefaultTerminalWindowScalePercent,
   } = props
   const neutralTargetZoom = 1
   const neutralTargetZoomRatioRaw =
@@ -123,28 +117,6 @@ export function CanvasSection(props: {
           </div>
         </div>
       ) : null}
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.initialWindowSize')}</strong>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
-          <input
-            className="cove-field"
-            style={{ width: '80px' }}
-            type="number"
-            min={MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT}
-            max={MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT}
-            value={defaultTerminalWindowScalePercent}
-            onChange={event =>
-              onChangeDefaultTerminalWindowScalePercent(Number(event.target.value))
-            }
-          />
-          <span style={{ fontSize: '12px', color: 'var(--cove-text-muted)' }}>
-            {t('common.percentUnit')}
-          </span>
-        </div>
-      </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">

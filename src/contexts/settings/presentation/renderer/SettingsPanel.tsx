@@ -123,8 +123,6 @@ export function SettingsPanel({
     onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
-  const updateDefaultTerminalWindowScalePercent = (percent: number): void =>
-    onChange({ ...settings, defaultTerminalWindowScalePercent: percent })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateUiFontSize = (fontSize: number): void =>
@@ -409,7 +407,6 @@ export function SettingsPanel({
                 canvasInputMode={settings.canvasInputMode}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
-                defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
@@ -418,7 +415,6 @@ export function SettingsPanel({
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
-                onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
               />
             ) : null}
 

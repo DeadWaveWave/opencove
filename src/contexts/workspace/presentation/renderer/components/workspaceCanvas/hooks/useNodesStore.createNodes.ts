@@ -20,7 +20,6 @@ import type {
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 
 interface UseWorkspaceCanvasNodeCreationParams {
-  defaultTerminalWindowScalePercent: number
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
@@ -30,7 +29,6 @@ interface UseWorkspaceCanvasNodeCreationParams {
 }
 
 export function useWorkspaceCanvasNodeCreation({
-  defaultTerminalWindowScalePercent,
   nodesRef,
   spacesRef,
   onRequestPersistFlush,
@@ -57,9 +55,7 @@ export function useWorkspaceCanvasNodeCreation({
       placement,
     }: CreateNodeInput): Promise<Node<TerminalNodeData> | null> => {
       const defaultSize =
-        kind === 'agent'
-          ? resolveDefaultAgentWindowSize(defaultTerminalWindowScalePercent)
-          : resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent)
+        kind === 'agent' ? resolveDefaultAgentWindowSize() : resolveDefaultTerminalWindowSize()
 
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
@@ -132,16 +128,7 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [
-      defaultTerminalWindowScalePercent,
-      nodesRef,
-      spacesRef,
-      onRequestPersistFlush,
-      onNodeCreated,
-      setNodes,
-      onShowMessage,
-      t,
-    ],
+    [nodesRef, spacesRef, onRequestPersistFlush, onNodeCreated, setNodes, onShowMessage, t],
   )
 
   const createNoteNode = useCallback(

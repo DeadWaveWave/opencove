@@ -18,7 +18,6 @@ type SetNodes = (
 export async function createTerminalNodeFromPaneContextMenu({
   contextMenu,
   defaultTerminalProfileId,
-  defaultTerminalWindowScalePercent,
   workspacePath,
   spacesRef,
   nodesRef,
@@ -29,7 +28,6 @@ export async function createTerminalNodeFromPaneContextMenu({
 }: {
   contextMenu: ContextMenuState | null
   defaultTerminalProfileId: string | null
-  defaultTerminalWindowScalePercent: number
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -48,7 +46,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   }
   const anchor = resolveNodePlacementAnchorFromViewportCenter(
     cursorAnchor,
-    resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent),
+    resolveDefaultTerminalWindowSize(),
   )
 
   setContextMenu(null)

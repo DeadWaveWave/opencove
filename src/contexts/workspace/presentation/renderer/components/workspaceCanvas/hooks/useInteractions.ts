@@ -36,7 +36,6 @@ interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
   focusNodeOnClick: boolean
   focusNodeTargetZoom: number
-  defaultTerminalWindowScalePercent: number
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -71,7 +70,6 @@ export function useWorkspaceCanvasInteractions({
   isTrackpadCanvasMode,
   focusNodeOnClick,
   focusNodeTargetZoom,
-  defaultTerminalWindowScalePercent,
   isShiftPressedRef,
   selectionDraftRef,
   setSelectionDraftUi,
@@ -426,7 +424,6 @@ export function useWorkspaceCanvasInteractions({
   const createTerminalNode = useWorkspaceCanvasTerminalCreation({
     contextMenu,
     setContextMenu,
-    defaultTerminalWindowScalePercent,
     spacesRef,
     workspacePath,
     nodesRef,

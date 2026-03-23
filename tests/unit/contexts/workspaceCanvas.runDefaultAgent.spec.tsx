@@ -3,7 +3,10 @@ import type { Node } from '@xyflow/react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import { resolveDefaultAgentWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
+import {
+  resolveDefaultAgentWindowSize,
+  resolveDefaultTerminalWindowSize,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -164,6 +167,7 @@ describe('WorkspaceCanvas run default agent', () => {
           agentSettings={{
             ...DEFAULT_AGENT_SETTINGS,
             defaultProvider: 'codex',
+            defaultTerminalWindowScalePercent: 120,
             customModelEnabledByProvider: {
               ...DEFAULT_AGENT_SETTINGS.customModelEnabledByProvider,
               codex: true,
@@ -208,15 +212,105 @@ describe('WorkspaceCanvas run default agent', () => {
         'codex · gpt-5.2-codex:standby',
       )
     })
-    const expectedSize = resolveDefaultAgentWindowSize(
-      DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
-    )
+    const expectedSize = resolveDefaultAgentWindowSize()
     expect(latestNodes).toHaveLength(1)
     expect(latestNodes[0]?.position).toEqual({
       x: 320 - expectedSize.width / 2,
       y: 220 - expectedSize.height / 2,
     })
+    expect(latestNodes[0]?.data.width).toBe(expectedSize.width)
+    expect(latestNodes[0]?.data.height).toBe(expectedSize.height)
     expect(screen.queryByTestId('workspace-agent-launcher')).toBeNull()
+  })
+
+  it('creates pane terminals at canonical size even when legacy window scale is larger', async () => {
+    const spawn = vi.fn(async () => ({
+      sessionId: 'terminal-session',
+      profileId: 'profile-1',
+      runtimeKind: 'process' as const,
+    }))
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        pty: {
+          spawn,
+          kill: vi.fn(async () => undefined),
+          onExit: vi.fn(() => () => undefined),
+          onState: vi.fn(() => () => undefined),
+          onMetadata: vi.fn(() => () => undefined),
+        },
+        workspace: {
+          ensureDirectory: vi.fn(async () => undefined),
+        },
+        agent: {
+          launch: vi.fn(),
+        },
+        task: {
+          suggestTitle: vi.fn(async () => ({
+            title: 't',
+            provider: 'codex',
+            effectiveModel: null,
+          })),
+        },
+      },
+    })
+
+    const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
+    const spaces: WorkspaceSpaceState[] = []
+    let latestNodes: Node<TerminalNodeData>[] = []
+
+    function Harness() {
+      const [nodes, setNodes] = useState<Node<TerminalNodeData>[]>([])
+      latestNodes = nodes
+
+      return (
+        <WorkspaceCanvas
+          workspaceId="workspace-1"
+          workspacePath="/tmp/repo"
+          worktreesRoot=""
+          nodes={nodes}
+          onNodesChange={setNodes}
+          spaces={spaces}
+          activeSpaceId={null}
+          onSpacesChange={() => undefined}
+          onActiveSpaceChange={() => undefined}
+          viewport={viewport}
+          isMinimapVisible={false}
+          onViewportChange={() => undefined}
+          onMinimapVisibilityChange={() => undefined}
+          agentSettings={{
+            ...DEFAULT_AGENT_SETTINGS,
+            defaultTerminalWindowScalePercent: 120,
+          }}
+        />
+      )
+    }
+
+    render(<Harness />)
+
+    fireEvent.contextMenu(screen.getByTestId('react-flow-pane'), {
+      clientX: 320,
+      clientY: 220,
+    })
+
+    fireEvent.click(await screen.findByTestId('workspace-context-new-terminal'))
+
+    await waitFor(() => {
+      expect(spawn).toHaveBeenCalledTimes(1)
+    })
+
+    const expectedSize = resolveDefaultTerminalWindowSize()
+    await waitFor(() => {
+      expect(latestNodes).toHaveLength(1)
+    })
+    expect(latestNodes[0]?.position).toEqual({
+      x: 320 - expectedSize.width / 2,
+      y: 220 - expectedSize.height / 2,
+    })
+    expect(latestNodes[0]?.data.width).toBe(expectedSize.width)
+    expect(latestNodes[0]?.data.height).toBe(expectedSize.height)
   })
 
   it('can expand the pane context menu to launch a specific installed agent CLI', async () => {

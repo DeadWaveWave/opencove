@@ -16,7 +16,6 @@ export type SelectionDraftUiState = Pick<
 export interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
   normalizeZoomOnNodeClick: boolean
-  defaultTerminalWindowScalePercent: number
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
