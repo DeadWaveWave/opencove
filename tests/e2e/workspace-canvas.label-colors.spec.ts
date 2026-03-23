@@ -20,6 +20,15 @@ test.describe('Workspace Canvas - Label Colors', () => {
       const header = terminalNode.locator('.terminal-node__header')
       await expect(terminalNode).toBeVisible()
 
+      // Keep the interactive minimap overlay from stealing clicks in smaller CI windows.
+      const minimapDock = window.locator('.workspace-canvas__minimap-dock')
+      await expect(minimapDock).toBeVisible()
+      await minimapDock.hover()
+      const minimapToggle = window.locator('[data-testid="workspace-minimap-toggle"]')
+      await expect(minimapToggle).toBeVisible()
+      await minimapToggle.click()
+      await expect(window.locator('.workspace-canvas__minimap')).toHaveCount(0)
+
       await header.click({ position: { x: 40, y: 20 } })
       await terminalNode.click({ button: 'right', position: { x: 240, y: 150 } })
 
