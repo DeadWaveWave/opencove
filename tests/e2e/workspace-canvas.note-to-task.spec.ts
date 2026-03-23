@@ -40,6 +40,16 @@ test.describe('Workspace Canvas - Note to Task', () => {
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       await noteNode.click({ button: 'right', position: { x: 60, y: 16 } })
+      const selectionMenu = window.locator('.workspace-context-menu').first()
+      const menuIds = await selectionMenu
+        .locator('button')
+        .evaluateAll(buttons => buttons.map(button => button.getAttribute('data-testid')))
+      expect(menuIds.slice(0, 3)).toEqual([
+        'workspace-selection-create-space',
+        'workspace-selection-convert-note-to-task',
+        'workspace-selection-label-color',
+      ])
+
       const convertButton = window.locator(
         '[data-testid="workspace-selection-convert-note-to-task"]',
       )

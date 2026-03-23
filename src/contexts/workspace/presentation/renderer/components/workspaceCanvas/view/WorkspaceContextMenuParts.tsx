@@ -215,6 +215,19 @@ export function WorkspaceContextSelectionMenuContent({
           {t('workspaceContextMenu.createSpaceWithSelected')}
         </span>
       </button>
+      {canConvertSelectedNoteToTask ? (
+        <button
+          type="button"
+          data-testid="workspace-selection-convert-note-to-task"
+          disabled={isConvertSelectedNoteToTaskDisabled}
+          onClick={convertSelectedNoteToTask}
+        >
+          <ArrowRight className="workspace-context-menu__icon" aria-hidden="true" />
+          <span className="workspace-context-menu__label">
+            {t('workspaceContextMenu.convertToTask')}
+          </span>
+        </button>
+      ) : null}
       <button
         ref={labelColorButtonRef}
         type="button"
@@ -230,19 +243,6 @@ export function WorkspaceContextSelectionMenuContent({
           aria-hidden="true"
         />
       </button>
-      {canConvertSelectedNoteToTask ? (
-        <button
-          type="button"
-          data-testid="workspace-selection-convert-note-to-task"
-          disabled={isConvertSelectedNoteToTaskDisabled}
-          onClick={convertSelectedNoteToTask}
-        >
-          <ArrowRight className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">
-            {t('workspaceContextMenu.convertToTask')}
-          </span>
-        </button>
-      ) : null}
       <button
         type="button"
         data-testid="workspace-selection-clear"
