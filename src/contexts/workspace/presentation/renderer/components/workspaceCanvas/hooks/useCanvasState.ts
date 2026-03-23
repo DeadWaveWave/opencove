@@ -6,6 +6,7 @@ import {
   type DetectedCanvasInputMode,
 } from '../../../utils/inputModality'
 import { NODE_DRAG_HANDLE_SELECTOR } from '../../../utils/nodeFrameResize'
+import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type {
   ContextMenuState,
   EmptySelectionPromptState,
@@ -42,6 +43,11 @@ export function useWorkspaceCanvasState({
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   isShiftPressed: boolean
   setIsShiftPressed: React.Dispatch<React.SetStateAction<boolean>>
+  magneticSnappingEnabled: boolean
+  setMagneticSnappingEnabled: React.Dispatch<React.SetStateAction<boolean>>
+  magneticSnappingEnabledRef: React.MutableRefObject<boolean>
+  snapGuides: WorkspaceSnapGuide[] | null
+  setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
   canvasRef: React.RefObject<HTMLDivElement | null>
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -66,6 +72,8 @@ export function useWorkspaceCanvasState({
   const [detectedCanvasInputMode, setDetectedCanvasInputMode] =
     useState<DetectedCanvasInputMode>('mouse')
   const [isShiftPressed, setIsShiftPressed] = useState(false)
+  const [magneticSnappingEnabled, setMagneticSnappingEnabled] = useState(true)
+  const [snapGuides, setSnapGuides] = useState<WorkspaceSnapGuide[] | null>(null)
 
   const canvasRef = useRef<HTMLDivElement>(null)
   const restoredViewportWorkspaceIdRef = useRef<string | null>(null)
@@ -76,6 +84,7 @@ export function useWorkspaceCanvasState({
   const selectionDraftRef = useRef<SelectionDraftState | null>(null)
   const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
   const isShiftPressedRef = useRef(false)
+  const magneticSnappingEnabledRef = useRef(true)
   const trackpadGestureLockRef = useRef<TrackpadGestureLockState | null>(null)
   const viewportRef = useRef<Viewport>(viewport)
 
@@ -96,6 +105,10 @@ export function useWorkspaceCanvasState({
     selectedSpaceIdsRef.current = selectedSpaceIds
   }, [selectedSpaceIds])
 
+  useLayoutEffect(() => {
+    magneticSnappingEnabledRef.current = magneticSnappingEnabled
+  }, [magneticSnappingEnabled])
+
   return {
     contextMenu,
     setContextMenu,
@@ -110,6 +123,11 @@ export function useWorkspaceCanvasState({
     setDetectedCanvasInputMode,
     isShiftPressed,
     setIsShiftPressed,
+    magneticSnappingEnabled,
+    setMagneticSnappingEnabled,
+    magneticSnappingEnabledRef,
+    snapGuides,
+    setSnapGuides,
     canvasRef,
     restoredViewportWorkspaceIdRef,
     spacesRef,

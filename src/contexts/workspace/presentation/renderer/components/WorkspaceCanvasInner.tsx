@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useRef } from 'react'
+import React from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
@@ -31,12 +31,8 @@ export function WorkspaceCanvasInner({
     viewport,
     persistedMinimapVisible,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasNodesSelectionActive()
-  const exclusiveNodeDragAnchorIdRef = useRef<string | null>(null)
-
-  useLayoutEffect(() => {
-    exclusiveNodeDragAnchorIdRef.current = null
-  }, [workspaceId])
+  const exclusiveNodeDragAnchorIdRef =
+    workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const {
     nodesRef,
@@ -119,6 +115,8 @@ export function WorkspaceCanvasInner({
       onSpacesChange,
       setSelectedNodeIds: canvasState.setSelectedNodeIds,
       setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
+      magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
+      setSnapGuides: canvasState.setSnapGuides,
       onRequestPersistFlush,
       setContextMenu: canvasState.setContextMenu,
       cancelSpaceRename,
@@ -148,52 +146,28 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
   })
-  const { buildAgentNodeTitle, launchAgentInNode } =
-    workspaceCanvasHooks.useWorkspaceCanvasAgentNodeLifecycle({
-      nodesRef,
-      setNodes,
-      bumpAgentLaunchToken,
-      isAgentLaunchTokenCurrent,
-      agentFullAccess: agentSettings.agentFullAccess,
-    })
-  const { openAgentLauncher, openAgentLauncherForProvider } =
-    workspaceCanvasHooks.useWorkspaceCanvasAgentLauncher({
-      agentSettings,
-      workspacePath,
-      nodesRef,
-      setNodes,
-      spacesRef: canvasState.spacesRef,
-      onSpacesChange,
-      onRequestPersistFlush,
-      onShowMessage,
-      contextMenu: canvasState.contextMenu,
-      setContextMenu: canvasState.setContextMenu,
-      createNodeForSession,
-      buildAgentNodeTitle,
-    })
-  const taskTagOptions = workspaceCanvasHooks.useWorkspaceCanvasTaskTagOptions(
-    agentSettings.taskTagOptions,
-  )
-  const { suggestTaskTitle } = workspaceCanvasHooks.useWorkspaceCanvasTaskActions({
-    nodesRef,
-    spacesRef: canvasState.spacesRef,
-    onSpacesChange,
-    setNodes,
-    createNodeForSession,
+  const {
     buildAgentNodeTitle,
     launchAgentInNode,
+    openAgentLauncher,
+    openAgentLauncherForProvider,
+  } = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
+    nodesRef,
+    setNodes,
+    bumpAgentLaunchToken,
+    isAgentLaunchTokenCurrent,
     agentSettings,
     workspacePath,
-    taskTagOptions,
+    spacesRef: canvasState.spacesRef,
+    onSpacesChange,
     onRequestPersistFlush,
-    runTaskAgentRef: actionRefs.runTaskAgentRef,
-    resumeTaskAgentSessionRef: actionRefs.resumeTaskAgentSessionRef,
-    removeTaskAgentSessionRecordRef: actionRefs.removeTaskAgentSessionRecordRef,
-    updateTaskStatusRef: actionRefs.updateTaskStatusRef,
-    quickUpdateTaskTitleRef: actionRefs.quickUpdateTaskTitleRef,
-    quickUpdateTaskRequirementRef: actionRefs.quickUpdateTaskRequirementRef,
+    onShowMessage,
+    contextMenu: canvasState.contextMenu,
+    setContextMenu: canvasState.setContextMenu,
+    createNodeForSession,
   })
   const {
+    taskTagOptions,
     taskCreator,
     setTaskCreator,
     openTaskCreator,
@@ -208,8 +182,8 @@ export function WorkspaceCanvasInner({
     nodeDeleteConfirmation,
     setNodeDeleteConfirmation,
     confirmNodeDelete,
-  } = workspaceCanvasHooks.useWorkspaceCanvasTaskWindows({
-    taskTagOptions,
+  } = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
+    agentTaskTagOptions: agentSettings.taskTagOptions,
     contextMenu: canvasState.contextMenu,
     setContextMenu: canvasState.setContextMenu,
     nodesRef,
@@ -217,10 +191,22 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
-    suggestTaskTitle,
+    createNodeForSession,
+    buildAgentNodeTitle,
+    launchAgentInNode,
+    agentSettings,
+    workspacePath,
     createTaskNode,
     closeNode,
-    actionRefs,
+    actionRefs: {
+      ...actionRefs,
+      runTaskAgentRef: actionRefs.runTaskAgentRef,
+      resumeTaskAgentSessionRef: actionRefs.resumeTaskAgentSessionRef,
+      removeTaskAgentSessionRecordRef: actionRefs.removeTaskAgentSessionRecordRef,
+      updateTaskStatusRef: actionRefs.updateTaskStatusRef,
+      quickUpdateTaskTitleRef: actionRefs.quickUpdateTaskTitleRef,
+      quickUpdateTaskRequirementRef: actionRefs.quickUpdateTaskRequirementRef,
+    },
   })
   const {
     resolvedCanvasInputMode,
@@ -266,7 +252,6 @@ export function WorkspaceCanvasInner({
     isFocusNodeTargetZoomPreviewing,
     nodesRef,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasPtyTaskCompletion({ setNodes, onRequestPersistFlush })
   const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
@@ -322,7 +307,10 @@ export function WorkspaceCanvasInner({
     canConvertSelectedNoteToTask,
     isConvertSelectedNoteToTaskDisabled,
     convertSelectedNoteToTask,
-  } = workspaceCanvasHooks.useWorkspaceCanvasNoteToTaskConversion({
+    arrangeAll,
+    arrangeCanvas,
+    arrangeInSpace,
+  } = workspaceCanvasHooks.useWorkspaceCanvasMenuActions({
     selectedNodeIds: canvasState.selectedNodeIds,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     flowNodes: canvasState.flowNodes,
@@ -331,17 +319,17 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     setContextMenu: canvasState.setContextMenu,
+    reactFlow,
+    spacesRef: canvasState.spacesRef,
+    onSpacesChange,
   })
-  const copyAgentLastMessage = workspaceCanvasHooks.useWorkspaceCanvasAgentLastMessageCopy({
-    nodesRef,
-    onShowMessage,
-  })
-  workspaceCanvasHooks.useWorkspaceCanvasSyncActionRefs({
+  workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
+    setNodes,
+    onRequestPersistFlush,
     actionRefs,
     clearNodeSelection,
     closeNode,
     resizeNode,
-    copyAgentLastMessage,
     updateNoteText,
     updateNodeScrollback,
     updateTerminalTitle,
@@ -350,6 +338,7 @@ export function WorkspaceCanvasInner({
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     nodesRef,
     reactFlow,
+    onShowMessage,
   })
   const applyChanges = workspaceCanvasHooks.useWorkspaceCanvasApplyNodeChanges({
     nodesRef,
@@ -361,6 +350,8 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
+    magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
+    setSnapGuides: canvasState.setSnapGuides,
     exclusiveNodeDragAnchorIdRef,
     onSpacesChange,
     onRequestPersistFlush,
@@ -418,6 +409,7 @@ export function WorkspaceCanvasInner({
       useManualCanvasWheelGestures={useManualCanvasWheelGestures}
       isShiftPressed={canvasState.isShiftPressed}
       selectionDraft={canvasState.selectionDraftUi}
+      snapGuides={canvasState.snapGuides}
       spaceVisuals={spaceVisuals}
       spaceFramePreview={spaceFramePreview}
       selectedSpaceIds={canvasState.selectedSpaceIds}
@@ -440,8 +432,15 @@ export function WorkspaceCanvasInner({
       focusAllInViewport={focusAllInViewport}
       contextMenu={canvasState.contextMenu}
       closeContextMenu={spaceUi.closeContextMenu}
+      magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
+      onToggleMagneticSnapping={() => {
+        canvasState.setMagneticSnappingEnabled(enabled => !enabled)
+      }}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+      arrangeAll={arrangeAll}
+      arrangeCanvas={arrangeCanvas}
+      arrangeInSpace={arrangeInSpace}
       openTaskCreator={openTaskCreator}
       openAgentLauncher={openAgentLauncher}
       openAgentLauncherForProvider={openAgentLauncherForProvider}

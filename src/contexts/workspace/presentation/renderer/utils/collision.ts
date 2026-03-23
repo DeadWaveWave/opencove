@@ -1,7 +1,8 @@
 import type { Node } from '@xyflow/react'
 import type { Point, Size, TerminalNodeData } from '../types'
+import { WORKSPACE_ARRANGE_GRID_PX } from './workspaceArrange.shared'
 
-const GRID_STEP = 40
+const GRID_STEP = WORKSPACE_ARRANGE_GRID_PX
 const MAX_SCAN_RADIUS = 80
 
 export interface Rect {

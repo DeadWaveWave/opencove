@@ -7,7 +7,7 @@ import type {
   EmptySelectionPromptState,
   SelectionDraftState,
 } from '../types'
-import { DEFAULT_NOTE_WINDOW_SIZE } from '../constants'
+import { resolveDefaultNoteWindowSize } from '../constants'
 import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
@@ -19,6 +19,7 @@ import {
   isPanePointerDragStartTarget,
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
+import { resolveMouseClientPoint } from './useInteractions.clientPoint'
 import { createNoteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
 
 type SetNodes = (
@@ -197,29 +198,46 @@ export function useWorkspaceCanvasInteractions({
     [openSelectionContextMenu, selectedNodeIdsRef],
   )
 
+  const ignoreNextPaneClickRef = useRef(false)
+
+  const queueIgnoreNextPaneClick = useCallback(() => {
+    ignoreNextPaneClickRef.current = true
+    window.setTimeout(() => {
+      ignoreNextPaneClickRef.current = false
+    }, 0)
+  }, [])
+
   const handlePaneContextMenu = useCallback(
     (event: React.MouseEvent | MouseEvent) => {
       event.preventDefault()
-      if (!('clientX' in event)) {
+      const clientPoint = resolveMouseClientPoint(event)
+      if (!clientPoint) {
         return
       }
 
+      queueIgnoreNextPaneClick()
       const flowPosition = reactFlow.screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
+        x: clientPoint.x,
+        y: clientPoint.y,
       })
 
       setContextMenu({
         kind: 'pane',
-        x: event.clientX,
-        y: event.clientY,
+        x: clientPoint.x,
+        y: clientPoint.y,
         flowX: flowPosition.x,
         flowY: flowPosition.y,
       })
       setEmptySelectionPrompt(null)
       cancelSpaceRename()
     },
-    [cancelSpaceRename, reactFlow, setContextMenu, setEmptySelectionPrompt],
+    [
+      cancelSpaceRename,
+      queueIgnoreNextPaneClick,
+      reactFlow,
+      setContextMenu,
+      setEmptySelectionPrompt,
+    ],
   )
 
   const handleSelectionChange = useCallback(
@@ -258,15 +276,6 @@ export function useWorkspaceCanvasInteractions({
   })
 
   const paneDragRef = useRef<{ startX: number; startY: number; didMove: boolean } | null>(null)
-
-  const ignoreNextPaneClickRef = useRef(false)
-
-  const queueIgnoreNextPaneClick = useCallback(() => {
-    ignoreNextPaneClickRef.current = true
-    window.setTimeout(() => {
-      ignoreNextPaneClickRef.current = false
-    }, 0)
-  }, [])
 
   const handleCanvasPointerDownCaptureWithDragGuard = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -370,10 +379,8 @@ export function useWorkspaceCanvasInteractions({
         x: flowPosition.x,
         y: flowPosition.y,
       }
-      const anchor = resolveNodePlacementAnchorFromViewportCenter(
-        cursorAnchor,
-        DEFAULT_NOTE_WINDOW_SIZE,
-      )
+      const noteSize = resolveDefaultNoteWindowSize()
+      const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
 
       createNoteNodeAtAnchor({
         anchor,
@@ -399,18 +406,21 @@ export function useWorkspaceCanvasInteractions({
     ],
   )
   const handlePaneClick = useCallback(
-    (_event: React.MouseEvent | MouseEvent) => {
+    (event: React.MouseEvent | MouseEvent) => {
+      if ('button' in event && event.button !== 0) {
+        return
+      }
+
       if (ignoreNextPaneClickRef.current) {
         ignoreNextPaneClickRef.current = false
         return
       }
 
       clearNodeSelection()
-      setContextMenu(null)
       setEmptySelectionPrompt(null)
       cancelSpaceRename()
     },
-    [cancelSpaceRename, clearNodeSelection, setContextMenu, setEmptySelectionPrompt],
+    [cancelSpaceRename, clearNodeSelection, setEmptySelectionPrompt],
   )
 
   const createTerminalNode = useWorkspaceCanvasTerminalCreation({

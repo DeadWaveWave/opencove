@@ -91,6 +91,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
+      const [, setSnapGuides] = useState(null)
+      const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>([])
       const selectedSpaceIdsRef = useRef<string[]>([])
 
@@ -106,6 +108,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         selectionDraftRef: useRef(null),
         spacesRef,
         selectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
         onSpacesChange: () => undefined,
       })
 
@@ -200,6 +204,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const [nodes, setNodes] = useState(initialNodes)
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
+      const [, setSnapGuides] = useState(null)
+      const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>(initialSpaces)
       const selectedSpaceIdsRef = useRef<string[]>(['selected-space'])
 
@@ -215,6 +221,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         selectionDraftRef: useRef(null),
         spacesRef,
         selectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
         onSpacesChange,
         onRequestPersistFlush,
       })
@@ -252,5 +260,137 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       },
     ])
     expect(onRequestPersistFlush).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps live guides during drag and commits snapping on release', async () => {
+    const { useWorkspaceCanvasApplyNodeChanges } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges')
+
+    const initialNodes: Node<TerminalNodeData>[] = [
+      {
+        id: 'snap-a',
+        type: 'terminalNode',
+        position: { x: 100, y: 100 },
+        data: {
+          sessionId: 'snap-a-session',
+          title: 'snap-a',
+          width: 220,
+          height: 140,
+          kind: 'note',
+          status: null,
+          startedAt: null,
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: null,
+          agent: null,
+          task: null,
+          note: { text: 'snap-a' },
+        },
+        draggable: true,
+        selectable: true,
+      },
+      {
+        id: 'snap-b',
+        type: 'terminalNode',
+        position: { x: 620, y: 420 },
+        data: {
+          sessionId: 'snap-b-session',
+          title: 'snap-b',
+          width: 220,
+          height: 140,
+          kind: 'note',
+          status: null,
+          startedAt: null,
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: null,
+          agent: null,
+          task: null,
+          note: { text: 'snap-b' },
+        },
+        draggable: true,
+        selectable: true,
+      },
+    ]
+
+    function Harness() {
+      const [nodes, setNodes] = useState(initialNodes)
+      const nodesRef = useRef(nodes)
+      nodesRef.current = nodes
+      const [snapGuides, setSnapGuides] = useState<unknown[] | null>(null)
+      const magneticSnappingEnabledRef = useRef(true)
+      const spacesRef = useRef<WorkspaceSpaceState[]>([])
+      const selectedSpaceIdsRef = useRef<string[]>([])
+      const isNodeDraggingRef = useRef(false)
+
+      const apply = useWorkspaceCanvasApplyNodeChanges({
+        nodesRef,
+        onNodesChange: next => {
+          setNodes(next)
+        },
+        clearAgentLaunchToken: () => undefined,
+        normalizePosition: (_nodeId, desired) => desired,
+        applyPendingScrollbacks: next => next,
+        isNodeDraggingRef,
+        spacesRef,
+        selectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
+        onSpacesChange: () => undefined,
+      })
+
+      const movedNode = nodes.find(node => node.id === 'snap-b')
+
+      return (
+        <div>
+          <div data-testid="node-position">
+            {movedNode?.position.x},{movedNode?.position.y}
+          </div>
+          <div data-testid="guide-count">{snapGuides?.length ?? 0}</div>
+          <button
+            type="button"
+            onClick={() =>
+              apply([
+                {
+                  type: 'position',
+                  id: 'snap-b',
+                  position: { x: 104, y: 430 },
+                  dragging: true,
+                } as never,
+              ])
+            }
+          >
+            Drag
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              apply([
+                {
+                  type: 'position',
+                  id: 'snap-b',
+                  position: { x: 104, y: 430 },
+                  dragging: false,
+                } as never,
+              ])
+            }
+          >
+            Drop
+          </button>
+        </div>
+      )
+    }
+
+    render(<Harness />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Drag' }))
+    expect(screen.getByTestId('node-position')).toHaveTextContent('104,430')
+    expect(screen.getByTestId('guide-count')).toHaveTextContent('1')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Drop' }))
+    expect(screen.getByTestId('node-position')).toHaveTextContent('100,432')
+    expect(screen.getByTestId('guide-count')).toHaveTextContent('0')
   })
 })

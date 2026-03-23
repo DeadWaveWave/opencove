@@ -6,6 +6,7 @@ import type { LabelColor } from '@shared/types/labelColor'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
+import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -42,10 +43,7 @@ export function NoteNode({
     position,
     width,
     height,
-    minSize: {
-      width: 320,
-      height: 220,
-    },
+    minSize: resolveCanonicalNodeMinSize('note'),
     onResize,
   })
 

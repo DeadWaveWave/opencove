@@ -1,60 +1,56 @@
 import { describe, expect, it } from 'vitest'
 import {
-  DEFAULT_TASK_WINDOW_MAX_SIZE,
   resolveDefaultAgentWindowSize,
+  resolveDefaultNoteWindowSize,
   resolveDefaultTerminalWindowSize,
   resolveDefaultTaskWindowSize,
-  DEFAULT_TERMINAL_WINDOW_BASE_SIZE,
-  DEFAULT_TERMINAL_WINDOW_MAX_SIZE,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 
-describe('workspace canvas default terminal sizing', () => {
-  it('applies scale percent to default terminal/agent window size', () => {
-    const size = resolveDefaultTerminalWindowSize(80)
+describe('workspace canvas default sizing', () => {
+  it('resolves canonical window sizes from viewport bucket', () => {
+    expect(resolveDefaultTerminalWindowSize(100, { width: 1920, height: 1080 })).toEqual({
+      width: 564,
+      height: 388,
+    })
 
-    expect(size).toEqual({
-      width: Math.round((DEFAULT_TERMINAL_WINDOW_BASE_SIZE.width * 80) / 100),
-      height: Math.round((DEFAULT_TERMINAL_WINDOW_BASE_SIZE.height * 80) / 100),
+    expect(resolveDefaultTaskWindowSize({ width: 1920, height: 1080 })).toEqual({
+      width: 276,
+      height: 388,
+    })
+
+    expect(resolveDefaultAgentWindowSize(100, { width: 1920, height: 1080 })).toEqual({
+      width: 564,
+      height: 788,
+    })
+
+    expect(resolveDefaultNoteWindowSize({ width: 1920, height: 1080 })).toEqual({
+      width: 276,
+      height: 188,
+    })
+  })
+
+  it('applies scale percent to default terminal/agent window size', () => {
+    expect(resolveDefaultTerminalWindowSize(80, { width: 1920, height: 1080 })).toEqual({
+      width: 451,
+      height: 310,
+    })
+
+    expect(resolveDefaultAgentWindowSize(80, { width: 1920, height: 1080 })).toEqual({
+      width: 451,
+      height: 630,
     })
   })
 
   it('clamps invalid scale values to allowed range', () => {
-    const tooSmall = resolveDefaultTerminalWindowSize(-1)
-    const tooLarge = resolveDefaultTerminalWindowSize(999)
-
-    expect(tooSmall).toEqual({
-      width: 468,
-      height: 360,
+    expect(resolveDefaultTerminalWindowSize(-1, { width: 1920, height: 1080 })).toEqual({
+      width: 400,
+      height: 260,
     })
-    expect(tooLarge).toEqual(DEFAULT_TERMINAL_WINDOW_MAX_SIZE)
-  })
-})
 
-describe('workspace canvas default task sizing', () => {
-  it('resolves task window size from viewport ratio', () => {
-    const size = resolveDefaultTaskWindowSize({ width: 1920, height: 1080 })
-
-    expect(size).toEqual({
-      width: 576,
-      height: 864,
-    })
-  })
-
-  it('clamps task window defaults to the maximum pixel limit', () => {
-    const size = resolveDefaultTaskWindowSize({ width: 6000, height: 3000 })
-
-    expect(size).toEqual(DEFAULT_TASK_WINDOW_MAX_SIZE)
-  })
-})
-
-describe('workspace canvas default agent sizing', () => {
-  it('matches task default height while keeping terminal default width', () => {
-    const size = resolveDefaultAgentWindowSize(80, { width: 1920, height: 1080 })
-
-    expect(size).toEqual({
-      width: Math.round((DEFAULT_TERMINAL_WINDOW_BASE_SIZE.width * 80) / 100),
-      height: resolveDefaultTaskWindowSize({ width: 1920, height: 1080 }).height,
+    expect(resolveDefaultTerminalWindowSize(999, { width: 1920, height: 1080 })).toEqual({
+      width: 677,
+      height: 466,
     })
   })
 })

@@ -133,7 +133,12 @@ test.describe('Workspace Canvas - Selection', () => {
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
       await expect(window.locator('.workspace-selection-hint')).toHaveCount(0)
 
-      await terminalBody.click({ position: { x: 56, y: 56 }, modifiers: ['Shift'] })
+      await window.keyboard.down('Shift')
+      try {
+        await terminalBody.click({ position: { x: 56, y: 56 } })
+      } finally {
+        await window.keyboard.up('Shift')
+      }
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(window.locator('.workspace-selection-hint')).toContainText('已选中 1 个窗口。')
     } finally {
@@ -180,7 +185,15 @@ test.describe('Workspace Canvas - Selection', () => {
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       await expect(terminalBody).toBeVisible()
-      await terminalBody.click({ position: { x: 56, y: 56 }, modifiers: ['Shift'] })
+      await terminalBody.click({ position: { x: 48, y: 48 } })
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
+
+      await window.keyboard.down('Shift')
+      try {
+        await terminalBody.click({ position: { x: 56, y: 56 } })
+      } finally {
+        await window.keyboard.up('Shift')
+      }
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       const readNodePosition = async (): Promise<{ x: number; y: number } | null> => {

@@ -2,7 +2,7 @@ import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, CreateNodeInput } from '../types'
-import { DEFAULT_NOTE_WINDOW_SIZE, resolveDefaultTerminalWindowSize } from '../constants'
+import { resolveDefaultNoteWindowSize, resolveDefaultTerminalWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import {
   assignNodeToSpaceAndExpand,
@@ -118,7 +118,7 @@ export function createNoteNodeFromPaneContextMenu({
   }
   const anchor = resolveNodePlacementAnchorFromViewportCenter(
     cursorAnchor,
-    DEFAULT_NOTE_WINDOW_SIZE,
+    resolveDefaultNoteWindowSize(),
   )
 
   setContextMenu(null)

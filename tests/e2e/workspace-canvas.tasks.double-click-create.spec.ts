@@ -59,10 +59,10 @@ test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
         })
         .toMatchObject({
           text: 'hello note',
-          x: clickPosition.x - 210,
-          y: clickPosition.y - 140,
-          width: 420,
-          height: 280,
+          x: clickPosition.x - 114,
+          y: clickPosition.y - 78,
+          width: 228,
+          height: 156,
         })
     } finally {
       await electronApp.close()

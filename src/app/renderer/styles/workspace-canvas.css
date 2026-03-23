@@ -40,6 +40,33 @@
   box-shadow: inset 0 0 0 1px rgba(94, 156, 255, 0.18);
 }
 
+.workspace-snap-guides {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  pointer-events: none;
+  overflow: hidden;
+  contain: layout paint;
+}
+
+.workspace-snap-guide {
+  position: absolute;
+  background: rgba(142, 210, 255, 0.92);
+  box-shadow:
+    0 0 0 1px rgba(142, 210, 255, 0.28),
+    0 0 22px rgba(95, 178, 255, 0.22);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.workspace-snap-guide--v {
+  width: 1px;
+}
+
+.workspace-snap-guide--h {
+  height: 1px;
+}
+
 .workspace-canvas .react-flow__pane,
 .workspace-canvas .react-flow__pane.selection {
   cursor: default;

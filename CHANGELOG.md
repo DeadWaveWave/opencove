@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
+- Workspace canvas: Arrange By menu (scope, ordering, space sizing, magnetic snapping). (#42)
+- Workspace canvas: live magnetic snap guides for node dragging, aligned to the 24px canvas rhythm and enabled by default. (#42)
+- Workspace canvas: unified tiled arrange layout with standard node ratios (terminal/task/agent/note) and balanced dense packing. (#42)
 - Settings: UI theme selector (system/light/dark) with system follow. (#40)
 - UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
@@ -17,6 +21,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
 
 ### 💅 Changed
+- Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
+- Workspace canvas: arrange spaces before root nodes during canvas/global arrange. (#42)
+- Workspace canvas: default arrange now keeps standard-size alignment always on and resizes spaces to the fitted tiled result. (#42)
+- Workspace canvas: tiled arrange now keeps an idea lane first, can open that lane into two note columns when space allows, then places task + linked agent groups before standalone agents / terminals. (#42)
+- Workspace canvas: dense packing now favors balanced aspect ratios over ultra-tall stacks for more shelf-like results. (#42)
+- Workspace canvas: drag now previews live snap guides continuously and only commits magnetic snapping on release for steadier pointer movement. (#42)
+- Workspace canvas: Arrange By now simplifies Space sizing to `Tighten Space` / `Keep Space size`, defaults to `Tighten Space`, and moves magnetic snapping to the top-level context menu. (#42)
 - Shortcuts: Yield app shortcuts to the terminal when it’s focused (configurable), and allow customizing keybindings in Settings → Shortcuts. (#59)
 - Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
 - UI: Softened minimap node colors in light theme. (#47)
@@ -24,6 +35,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: dragging Terminal/Agent windows across directory-bound spaces now shows a compact confirmation, then moves with `DIR MISMATCH` labeling. (#51)
 
 ### 🐞 Fixed
+- Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
+- Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
+- Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
 - Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
 - Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)

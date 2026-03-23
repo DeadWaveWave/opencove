@@ -1,17 +1,17 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
+import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollbackSchedule'
-import { MIN_SIZE } from '../constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
+import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
-import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
@@ -151,6 +151,7 @@ export function useWorkspaceCanvasNodesStore({
         return
       }
 
+      const minSize = resolveCanonicalNodeMinSize(node.data.kind)
       const resolveDimension = (value: number, fallback: number): number =>
         typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
 
@@ -161,11 +162,11 @@ export function useWorkspaceCanvasNodesStore({
         },
         size: {
           width: Math.max(
-            MIN_SIZE.width,
+            minSize.width,
             resolveDimension(desiredFrame.size.width, node.data.width),
           ),
           height: Math.max(
-            MIN_SIZE.height,
+            minSize.height,
             resolveDimension(desiredFrame.size.height, node.data.height),
           ),
         },

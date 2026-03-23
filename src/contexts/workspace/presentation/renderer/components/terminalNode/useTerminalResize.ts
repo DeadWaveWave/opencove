@@ -1,5 +1,5 @@
 import type { MutableRefObject, PointerEvent as ReactPointerEvent } from 'react'
-import type { NodeFrame, Point } from '../../types'
+import type { NodeFrame, Point, Size } from '../../types'
 import { useNodeFrameResize, type ResizeEdges } from '../../utils/nodeFrameResize'
 import { MIN_HEIGHT, MIN_WIDTH } from './constants'
 
@@ -7,6 +7,7 @@ export function useTerminalResize({
   position,
   width,
   height,
+  minSize,
   onResize,
   syncTerminalSize,
   scheduleScrollbackPublish,
@@ -15,6 +16,7 @@ export function useTerminalResize({
   position: Point
   width: number
   height: number
+  minSize?: Size
   onResize: (frame: NodeFrame) => void
   syncTerminalSize: () => void
   scheduleScrollbackPublish: (force?: boolean) => void
@@ -28,8 +30,8 @@ export function useTerminalResize({
     width,
     height,
     minSize: {
-      width: MIN_WIDTH,
-      height: MIN_HEIGHT,
+      width: minSize?.width ?? MIN_WIDTH,
+      height: minSize?.height ?? MIN_HEIGHT,
     },
     onResize,
     onResizeStart: () => {

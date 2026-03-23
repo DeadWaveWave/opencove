@@ -7,6 +7,7 @@
 @import './styles/workspace-sidebar.css';
 @import './styles/workspace-canvas.css';
 @import './styles/workspace-overlays.css';
+@import './styles/workspace-context-menu.css';
 @import './styles/workspace-pr-chip.css';
 @import './styles/terminal-node.css';
 @import './styles/terminal-node.theme-opencode.css';

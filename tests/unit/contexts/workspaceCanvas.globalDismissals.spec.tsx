@@ -77,6 +77,15 @@ vi.mock(
 )
 
 vi.mock(
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSnapGuidesOverlay',
+  () => {
+    return {
+      WorkspaceSnapGuidesOverlay: () => null,
+    }
+  },
+)
+
+vi.mock(
   '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceActionMenu',
   () => {
     return {
@@ -113,10 +122,10 @@ vi.mock(
 )
 
 vi.mock(
-  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/TaskDeleteConfirmationWindow',
+  '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/NodeDeleteConfirmationWindow',
   () => {
     return {
-      TaskDeleteConfirmationWindow: () => null,
+      NodeDeleteConfirmationWindow: () => null,
     }
   },
 )
@@ -172,6 +181,7 @@ function createBaseProps(
     useManualCanvasWheelGestures: false,
     isShiftPressed: false,
     selectionDraft: null,
+    snapGuides: null,
     spaceVisuals: [],
     spaceFramePreview: null,
     selectedSpaceIds: [],
@@ -193,7 +203,13 @@ function createBaseProps(
     focusAllInViewport: () => undefined,
     contextMenu: null,
     closeContextMenu: () => undefined,
+    magneticSnappingEnabled: true,
+    onToggleMagneticSnapping: () => undefined,
     createTerminalNode: async () => undefined,
+    createNoteNodeFromContextMenu: () => undefined,
+    arrangeAll: () => undefined,
+    arrangeCanvas: () => undefined,
+    arrangeInSpace: () => undefined,
     openTaskCreator: () => undefined,
     openAgentLauncher: () => undefined,
     createSpaceFromSelectedNodes: () => undefined,
@@ -214,9 +230,9 @@ function createBaseProps(
     closeTaskEditor: () => undefined,
     generateTaskEditorTitle: async () => undefined,
     saveTaskEdits: async () => undefined,
-    taskDeleteConfirmation: null,
-    setTaskDeleteConfirmation: () => undefined,
-    confirmTaskDelete: async () => undefined,
+    nodeDeleteConfirmation: null,
+    setNodeDeleteConfirmation: () => undefined,
+    confirmNodeDelete: async () => undefined,
     agentSettings: DEFAULT_AGENT_SETTINGS,
     workspacePath: '/tmp',
     spaceActionMenu: null,

@@ -14,24 +14,23 @@ import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
 import type { TerminalNodeData } from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
+import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
+import { useWorkspaceCanvasSpaceMenuState } from './hooks/useCanvasSpaceMenuState'
+import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceContextMenu } from './view/WorkspaceContextMenu'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
 import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOverlay'
-import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
+import { WorkspaceSnapGuidesOverlay } from './view/WorkspaceSnapGuidesOverlay'
 import { WorkspaceCanvasTopOverlays } from './view/WorkspaceCanvasTopOverlays'
+import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
-import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
-import { NodeDeleteConfirmationWindow } from './windows/NodeDeleteConfirmationWindow'
-import { SpaceWorktreeMismatchDropWarningWindow } from './windows/SpaceWorktreeMismatchDropWarningWindow'
-import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
-import { TaskEditorWindow } from './windows/TaskEditorWindow'
-import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
 
 const WHEEL_BLOCK_SELECTOR = '.cove-window, .cove-window-backdrop, .workspace-context-menu'
 
 type NodeWithEffectiveLabelColor = Node<TerminalNodeData> & {
   data: TerminalNodeData & { effectiveLabelColor?: LabelColor | null }
 }
+
 export function WorkspaceCanvasView({
   canvasRef,
   resolvedCanvasInputMode,
@@ -61,6 +60,7 @@ export function WorkspaceCanvasView({
   useManualCanvasWheelGestures,
   isShiftPressed,
   selectionDraft,
+  snapGuides,
   spaceVisuals,
   spaceFramePreview,
   selectedSpaceIds,
@@ -83,8 +83,13 @@ export function WorkspaceCanvasView({
   focusAllInViewport,
   contextMenu,
   closeContextMenu,
+  magneticSnappingEnabled,
+  onToggleMagneticSnapping,
   createTerminalNode,
   createNoteNodeFromContextMenu,
+  arrangeAll,
+  arrangeCanvas,
+  arrangeInSpace,
   openTaskCreator,
   openAgentLauncher,
   openAgentLauncherForProvider,
@@ -247,30 +252,18 @@ export function WorkspaceCanvasView({
     return edges.filter(edge => allowedNodeIds.has(edge.source) && allowedNodeIds.has(edge.target))
   }, [edges, labelColorFilter, nodesWithEffectiveLabelColor])
 
-  const activeMenuSpace = React.useMemo(
-    () =>
-      spaceActionMenu
-        ? (spaces.find(candidate => candidate.id === spaceActionMenu.spaceId) ?? null)
-        : null,
-    [spaceActionMenu, spaces],
-  )
-
-  const normalizedWorkspacePath = React.useMemo(
-    () => normalizeComparablePath(workspacePath),
-    [workspacePath],
-  )
-
-  const activeMenuSpacePath = React.useMemo(() => {
-    if (!activeMenuSpace) {
-      return workspacePath
-    }
-
-    const trimmed = activeMenuSpace.directoryPath.trim()
-    return trimmed.length > 0 ? trimmed : workspacePath
-  }, [activeMenuSpace, workspacePath])
-
-  const isActiveMenuSpaceOnWorkspaceRoot =
-    normalizeComparablePath(activeMenuSpacePath) === normalizedWorkspacePath
+  const {
+    activeMenuSpace,
+    isActiveMenuSpaceOnWorkspaceRoot,
+    canArrangeCanvas,
+    canArrangeAll,
+    canArrangeActiveSpace,
+  } = useWorkspaceCanvasSpaceMenuState({
+    spaceActionMenu,
+    spaces,
+    workspacePath,
+    nodes,
+  })
 
   return (
     <div
@@ -377,6 +370,7 @@ export function WorkspaceCanvasView({
         <Controls className="workspace-canvas__controls" showInteractive={false} />
       </ReactFlow>
 
+      <WorkspaceSnapGuidesOverlay guides={snapGuides} />
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
 
       <WorkspaceCanvasTopOverlays
@@ -404,6 +398,14 @@ export function WorkspaceCanvasView({
         openAgentLauncher={openAgentLauncher}
         agentProviderOrder={agentSettings.agentProviderOrder}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
+        spaces={spaces}
+        magneticSnappingEnabled={magneticSnappingEnabled}
+        onToggleMagneticSnapping={onToggleMagneticSnapping}
+        canArrangeAll={canArrangeAll}
+        canArrangeCanvas={canArrangeCanvas}
+        arrangeAll={arrangeAll}
+        arrangeCanvas={arrangeCanvas}
+        arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
         clearNodeSelection={clearNodeSelection}
         canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
@@ -415,10 +417,12 @@ export function WorkspaceCanvasView({
       <WorkspaceSpaceActionMenu
         menu={spaceActionMenu}
         availableOpeners={availablePathOpeners}
+        canArrange={canArrangeActiveSpace}
         canCreateWorktree={activeMenuSpace !== null && isActiveMenuSpaceOnWorkspaceRoot}
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
+        onArrange={arrangeInSpace}
         onCreateWorktree={() => {
           if (activeMenuSpace) {
             openSpaceCreateWorktree(activeMenuSpace.id)
@@ -441,7 +445,7 @@ export function WorkspaceCanvasView({
         }}
       />
 
-      <TaskCreatorWindow
+      <WorkspaceCanvasWindows
         taskCreator={taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
@@ -450,51 +454,29 @@ export function WorkspaceCanvasView({
         closeTaskCreator={closeTaskCreator}
         generateTaskTitle={generateTaskTitle}
         createTask={createTask}
-      />
-
-      <TaskEditorWindow
         taskEditor={taskEditor}
-        taskTitleProviderLabel={taskTitleProviderLabel}
-        taskTitleModelLabel={taskTitleModelLabel}
-        taskTagOptions={taskTagOptions}
         setTaskEditor={setTaskEditor}
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
-      />
-
-      <NodeDeleteConfirmationWindow
         nodeDeleteConfirmation={nodeDeleteConfirmation}
         setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}
-      />
-
-      <SpaceWorktreeMismatchDropWarningWindow
-        warning={spaceWorktreeMismatchDropWarning}
-        onCancel={cancelSpaceWorktreeMismatchDropWarning}
-        onContinue={continueSpaceWorktreeMismatchDropWarning}
-      />
-
-      <SpaceWorktreeWindow
-        spaceId={spaceWorktreeDialog?.spaceId ?? null}
-        initialViewMode={spaceWorktreeDialog?.initialViewMode ?? 'create'}
+        spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
+        cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
+        continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
+        spaceWorktreeDialog={spaceWorktreeDialog}
         spaces={spaces}
         nodes={nodes}
         workspacePath={workspacePath}
         worktreesRoot={worktreesRoot}
         agentSettings={agentSettings}
-        onClose={closeSpaceWorktree}
+        closeSpaceWorktree={closeSpaceWorktree}
         onShowMessage={onShowMessage}
-        onUpdateSpaceDirectory={(spaceId, directoryPath, options) => {
-          updateSpaceDirectory(spaceId, directoryPath, options)
-        }}
-        getBlockingNodes={spaceId => getSpaceBlockingNodes(spaceId)}
-        closeNodesById={nodeIds => closeNodesById(nodeIds)}
+        updateSpaceDirectory={updateSpaceDirectory}
+        getSpaceBlockingNodes={getSpaceBlockingNodes}
+        closeNodesById={closeNodesById}
       />
     </div>
   )
-}
-
-function normalizeComparablePath(pathValue: string): string {
-  return pathValue.trim().replace(/\\/g, '/').replace(/\/+$/g, '').toLowerCase()
 }

@@ -36,6 +36,7 @@ import {
   selectViewportInteractionActive,
 } from './terminalNode/reactFlowState'
 import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
+import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
 export function TerminalNode({
@@ -120,6 +121,7 @@ export function TerminalNode({
     position,
     width,
     height,
+    minSize: resolveCanonicalNodeMinSize(kind),
     onResize,
     syncTerminalSize,
     scheduleScrollbackPublish,

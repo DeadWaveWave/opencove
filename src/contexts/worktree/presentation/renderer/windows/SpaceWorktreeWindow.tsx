@@ -94,12 +94,10 @@ export function SpaceWorktreeWindow({
     () => resolveWorktreesRoot(workspacePath, worktreesRoot),
     [workspacePath, worktreesRoot],
   )
-
   const normalizedWorkspacePath = useMemo(
     () => normalizeComparablePath(workspacePath),
     [workspacePath],
   )
-
   const normalizedSpaceDirectory = useMemo(
     () => normalizeComparablePath(space?.directoryPath ?? workspacePath),
     [space?.directoryPath, workspacePath],

@@ -8,6 +8,7 @@ import {
   clampSizeToNonOverlapping,
   isPositionAvailable,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/collision'
+import { WORKSPACE_ARRANGE_GRID_PX } from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceArrange.shared'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 const baseNode = {
@@ -144,7 +145,7 @@ describe('collision utils', () => {
 
     const next = findCanvasOverflowPosition({ x: 20, y: 20 }, { width: 400, height: 280 }, nodes)
 
-    expect(next).toEqual({ x: 860, y: 20 })
+    expect(next).toEqual({ x: 820 + WORKSPACE_ARRANGE_GRID_PX, y: 20 })
   })
 
   it('clamps resize when desired size overlaps with other node', () => {

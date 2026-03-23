@@ -1,17 +1,27 @@
 import React from 'react'
-import { ChevronRight, Copy, FolderOpen, GitBranchPlus, Package, Tag } from 'lucide-react'
+import {
+  ChevronRight,
+  Copy,
+  FolderOpen,
+  GitBranchPlus,
+  LayoutGrid,
+  Package,
+  Tag,
+} from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
-import type { SpaceActionMenuState } from '../types'
 import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
+import type { SpaceActionMenuState } from '../types'
 
 interface WorkspaceSpaceActionMenuProps {
   menu: SpaceActionMenuState | null
   availableOpeners: WorkspacePathOpener[]
+  canArrange?: boolean
   canCreateWorktree: boolean
   canArchive: boolean
   closeMenu: () => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
+  onArrange?: (spaceId: string) => void
   onCreateWorktree: () => void
   onArchive: () => void
   onCopyPath: () => void | Promise<void>
@@ -51,10 +61,12 @@ function sortWorkspacePathOpeners(openers: WorkspacePathOpener[]): WorkspacePath
 export function WorkspaceSpaceActionMenu({
   menu,
   availableOpeners,
+  canArrange = true,
   canCreateWorktree,
   canArchive,
   closeMenu,
   setSpaceLabelColor,
+  onArrange,
   onCreateWorktree,
   onArchive,
   onCopyPath,
@@ -123,6 +135,27 @@ export function WorkspaceSpaceActionMenu({
         onMouseEnter={cancelScheduledSubmenuClose}
         onMouseLeave={scheduleSubmenuClose}
       >
+        {onArrange ? (
+          <>
+            <button
+              type="button"
+              data-testid="workspace-space-action-arrange"
+              disabled={!canArrange}
+              onClick={() => {
+                onArrange(menu.spaceId)
+                closeMenu()
+              }}
+            >
+              <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('spaceActions.arrangeInSpace')}
+              </span>
+            </button>
+
+            <div className="workspace-context-menu__separator" />
+          </>
+        ) : null}
+
         <button
           type="button"
           data-testid="workspace-space-action-label-color"

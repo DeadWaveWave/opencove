@@ -1,4 +1,4 @@
-import { useCallback, type MutableRefObject } from 'react'
+import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react'
 import {
   applyNodeChanges,
   type Node,
@@ -7,6 +7,16 @@ import {
 } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
+import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
+import {
+  resolveWorkspaceNodeSnapCandidateRects,
+  unionWorkspaceNodeRects,
+} from '../../../utils/workspaceSnap.nodes'
+import {
+  areWorkspaceSnapGuidesEqual,
+  resolveWorkspaceSnap,
+  type WorkspaceSnapGuide,
+} from '../../../utils/workspaceSnap'
 import { projectWorkspaceNodeDragLayout } from './useSpaceOwnership.projectLayout'
 
 interface UseApplyNodeChangesParams {
@@ -23,9 +33,18 @@ interface UseApplyNodeChangesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   selectedSpaceIdsRef: MutableRefObject<string[]>
   dragSelectedSpaceIdsRef?: MutableRefObject<string[] | null>
+  magneticSnappingEnabledRef: MutableRefObject<boolean>
+  setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>
   exclusiveNodeDragAnchorIdRef?: MutableRefObject<string | null>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
+}
+
+function setResolvedSnapGuides(
+  setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>,
+  guides: WorkspaceSnapGuide[] | null,
+): void {
+  setSnapGuides(current => (areWorkspaceSnapGuidesEqual(current, guides) ? current : guides))
 }
 
 export function useWorkspaceCanvasApplyNodeChanges({
@@ -38,6 +57,8 @@ export function useWorkspaceCanvasApplyNodeChanges({
   spacesRef,
   selectedSpaceIdsRef,
   dragSelectedSpaceIdsRef,
+  magneticSnappingEnabledRef,
+  setSnapGuides,
   exclusiveNodeDragAnchorIdRef,
   onSpacesChange,
   onRequestPersistFlush,
@@ -94,6 +115,9 @@ export function useWorkspaceCanvasApplyNodeChanges({
           change.type === 'position' && !removedIds.has(change.id),
       )
       const isDraggingThisFrame = positionChanges.some(change => change.dragging !== false)
+      const movedNodeIds = new Set(
+        positionChanges.filter(change => change.position !== undefined).map(change => change.id),
+      )
 
       const settledPositionChanges: NodePositionChange[] = filteredChanges.filter(
         (change): change is NodePositionChange =>
@@ -102,6 +126,50 @@ export function useWorkspaceCanvasApplyNodeChanges({
           change.position !== undefined &&
           !removedIds.has(change.id),
       )
+
+      if (movedNodeIds.size > 0 && magneticSnappingEnabledRef.current) {
+        const movingNodes = nextNodes.filter(node => movedNodeIds.has(node.id))
+        const movingRect = unionWorkspaceNodeRects(movingNodes)
+
+        if (movingRect) {
+          const snapped = resolveWorkspaceSnap({
+            movingRect,
+            candidateRects: resolveWorkspaceNodeSnapCandidateRects({
+              movingNodeIds: movedNodeIds,
+              nodes: nextNodes,
+              spaces: spacesRef.current,
+            }),
+            grid: WORKSPACE_ARRANGE_GRID_PX,
+            threshold: 8,
+            enableGrid: true,
+            enableObject: true,
+          })
+
+          if (isDraggingThisFrame) {
+            setResolvedSnapGuides(setSnapGuides, snapped.guides.length > 0 ? snapped.guides : null)
+          } else if (snapped.dx !== 0 || snapped.dy !== 0) {
+            nextNodes = nextNodes.map(node =>
+              movedNodeIds.has(node.id)
+                ? {
+                    ...node,
+                    position: {
+                      x: node.position.x + snapped.dx,
+                      y: node.position.y + snapped.dy,
+                    },
+                  }
+                : node,
+            )
+          }
+
+          if (!isDraggingThisFrame) {
+            setResolvedSnapGuides(setSnapGuides, null)
+          }
+        } else {
+          setResolvedSnapGuides(setSnapGuides, null)
+        }
+      } else if (positionChanges.length > 0) {
+        setResolvedSnapGuides(setSnapGuides, null)
+      }
 
       if (settledPositionChanges.length > 0) {
         if (!wasDragging) {
@@ -377,9 +445,11 @@ export function useWorkspaceCanvasApplyNodeChanges({
       isNodeDraggingRef,
       nodesRef,
       normalizePosition,
+      magneticSnappingEnabledRef,
       onNodesChange,
       onRequestPersistFlush,
       onSpacesChange,
+      setSnapGuides,
       dragSelectedSpaceIdsRef,
       selectedSpaceIdsRef,
       spacesRef,

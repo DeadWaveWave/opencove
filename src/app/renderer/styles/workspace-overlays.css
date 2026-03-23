@@ -103,6 +103,12 @@
   flex: 1 1 auto;
 }
 
+.workspace-context-menu__separator {
+  height: 1px;
+  margin: 4px 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
 .workspace-context-menu__split {
   width: 100%;
   display: flex;

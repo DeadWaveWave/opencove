@@ -8,6 +8,8 @@ import type {
   WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../types'
+import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
+import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type {
   ContextMenuState,
   NodeDeleteConfirmationState,
@@ -63,6 +65,7 @@ export interface WorkspaceCanvasViewProps {
   useManualCanvasWheelGestures: boolean
   isShiftPressed: boolean
   selectionDraft: SelectionDraftUiState | null
+  snapGuides: WorkspaceSnapGuide[] | null
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
@@ -89,8 +92,13 @@ export interface WorkspaceCanvasViewProps {
   focusAllInViewport: () => void
   contextMenu: ContextMenuState | null
   closeContextMenu: () => void
+  magneticSnappingEnabled: boolean
+  onToggleMagneticSnapping: () => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
+  arrangeAll: (style?: WorkspaceArrangeStyle) => void
+  arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
+  arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void

@@ -20,6 +20,9 @@ export const enMessages = {
   noWindowSlotOnRight:
     'No room to the right of the current agent. Move or close some windows first.',
   noWindowSlotNearby: 'No room nearby in the current view. Move or close some windows first.',
+  arrangeAllSkippedSpaces_one: 'Skipped {{count}} space: not enough room to arrange.',
+  arrangeAllSkippedSpaces_other: 'Skipped {{count}} spaces: not enough room to arrange.',
+  arrangeSpaceNoRoom: 'Not enough room to arrange this space. Resize the space and try again.',
   noteToTaskRequiresContent: 'Cannot convert an empty note into a task.',
   agentLastMessageUnavailable:
     'The current agent is unavailable, so the last message cannot be copied.',
