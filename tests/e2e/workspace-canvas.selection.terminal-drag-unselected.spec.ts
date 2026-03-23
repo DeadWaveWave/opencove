@@ -150,4 +150,3 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
     }
   })
 })
-

@@ -127,7 +127,8 @@ export function useWorkspaceCanvasApplyNodeChanges({
         ? (currentNodes.find(node => node.id === anchorChange.id) ?? null)
         : null
       const anchorIsSelected = prevAnchor?.selected === true
-      const shouldSyncSelectedSpaces = hasSelectedSpaces && anchorChange !== null && anchorIsSelected
+      const shouldSyncSelectedSpaces =
+        hasSelectedSpaces && anchorChange !== null && anchorIsSelected
 
       if (shouldSyncSelectedSpaces) {
         const nextAnchor = nextNodes.find(node => node.id === anchorChange.id) ?? null
