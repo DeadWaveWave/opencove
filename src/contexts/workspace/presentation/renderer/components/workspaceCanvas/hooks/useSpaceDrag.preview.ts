@@ -1,7 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
-import { resolveWorkspaceSnap, type WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
+import {
+  areWorkspaceSnapGuidesEqual,
+  resolveWorkspaceSnap,
+  type WorkspaceSnapGuide,
+} from '../../../utils/workspaceSnap'
 import { SPACE_MIN_SIZE } from '../../../utils/spaceLayout'
 import type { SpaceDragState } from '../types'
 
@@ -83,15 +87,17 @@ export function resolveSnappedSpaceMoveRect({
   spaces,
   magneticSnappingEnabled,
   setSnapGuides,
+  commit = false,
 }: {
   spaceId: string
   desiredRect: WorkspaceSpaceRect
   spaces: WorkspaceSpaceState[]
   magneticSnappingEnabled: boolean
   setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>
+  commit?: boolean
 }): WorkspaceSpaceRect {
   if (!magneticSnappingEnabled) {
-    setSnapGuides(null)
+    setSnapGuides(current => (areWorkspaceSnapGuidesEqual(current, null) ? current : null))
     return desiredRect
   }
 
@@ -108,9 +114,12 @@ export function resolveSnappedSpaceMoveRect({
     enableObject: true,
   })
 
-  setSnapGuides(snapped.guides)
+  const nextGuides = snapped.guides.length > 0 ? snapped.guides : null
+  setSnapGuides(current =>
+    areWorkspaceSnapGuidesEqual(current, nextGuides) ? current : nextGuides,
+  )
 
-  if (snapped.dx === 0 && snapped.dy === 0) {
+  if (!commit || (snapped.dx === 0 && snapped.dy === 0)) {
     return desiredRect
   }
 

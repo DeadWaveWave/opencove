@@ -149,17 +149,6 @@ function WorkspaceCanvasInner({
       setEmptySelectionPrompt,
     },
   )
-  const spaceOwnership = hooks.useWorkspaceCanvasSpaceOwnership({
-    workspacePath,
-    reactFlow,
-    spacesRef,
-    selectedSpaceIdsRef,
-    dragSelectedSpaceIdsRef,
-    setNodes,
-    onSpacesChange,
-    onRequestPersistFlush,
-    onShowMessage,
-  })
   const { buildAgentNodeTitle, launchAgentInNode } = hooks.useWorkspaceCanvasAgentNodeLifecycle({
     nodesRef,
     setNodes,
@@ -355,6 +344,17 @@ function WorkspaceCanvasInner({
     setSnapGuides,
     onSpacesChange,
     onRequestPersistFlush,
+  })
+  const spaceOwnership = hooks.useWorkspaceCanvasSpaceOwnership({
+    workspacePath,
+    reactFlow,
+    spacesRef,
+    selectedSpaceIdsRef,
+    dragSelectedSpaceIdsRef,
+    setNodes,
+    onSpacesChange,
+    onRequestPersistFlush,
+    onShowMessage,
   })
   const {
     taskTitleProviderLabel,

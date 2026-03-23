@@ -26,12 +26,10 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope,
   arrangeOrder,
   arrangeSpaceFit,
-  alignCanonicalSizes,
   magneticSnappingEnabled,
   onSelectScope,
   onSelectOrder,
   onSelectSpaceFit,
-  onToggleAlignCanonicalSizes,
   onToggleMagneticSnapping,
 }: {
   style: React.CSSProperties
@@ -42,12 +40,10 @@ export function WorkspaceContextArrangeBySubmenu({
   arrangeScope: ArrangeScope
   arrangeOrder: WorkspaceArrangeOrder
   arrangeSpaceFit: WorkspaceArrangeSpaceFit
-  alignCanonicalSizes: boolean
   magneticSnappingEnabled: boolean
   onSelectScope: (scope: ArrangeScope) => void
   onSelectOrder: (order: WorkspaceArrangeOrder) => void
   onSelectSpaceFit: (fit: WorkspaceArrangeSpaceFit) => void
-  onToggleAlignCanonicalSizes: () => void
   onToggleMagneticSnapping: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -188,19 +184,6 @@ export function WorkspaceContextArrangeBySubmenu({
       </button>
 
       <div className="workspace-context-menu__separator" />
-
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-canonical-sizes"
-        onClick={() => {
-          onToggleAlignCanonicalSizes()
-        }}
-      >
-        {renderMark(alignCanonicalSizes)}
-        <span className="workspace-context-menu__label">
-          {t('workspaceArrangeMenu.alignCanonicalSizes')}
-        </span>
-      </button>
 
       <button
         type="button"

@@ -9,9 +9,13 @@ import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
 import {
+  resolveWorkspaceNodeSnapCandidateRects,
+  unionWorkspaceNodeRects,
+} from '../../../utils/workspaceSnap.nodes'
+import {
+  areWorkspaceSnapGuidesEqual,
   resolveWorkspaceSnap,
   type WorkspaceSnapGuide,
-  type WorkspaceSnapRect,
 } from '../../../utils/workspaceSnap'
 
 interface UseApplyNodeChangesParams {
@@ -34,102 +38,11 @@ interface UseApplyNodeChangesParams {
   onRequestPersistFlush?: () => void
 }
 
-function toNodeRect(node: Node<TerminalNodeData>): WorkspaceSnapRect {
-  return {
-    x: node.position.x,
-    y: node.position.y,
-    width: node.data.width,
-    height: node.data.height,
-  }
-}
-
-function unionNodeRects(nodes: Node<TerminalNodeData>[]): WorkspaceSnapRect | null {
-  if (nodes.length === 0) {
-    return null
-  }
-
-  let minX = Number.POSITIVE_INFINITY
-  let minY = Number.POSITIVE_INFINITY
-  let maxX = Number.NEGATIVE_INFINITY
-  let maxY = Number.NEGATIVE_INFINITY
-
-  for (const node of nodes) {
-    minX = Math.min(minX, node.position.x)
-    minY = Math.min(minY, node.position.y)
-    maxX = Math.max(maxX, node.position.x + node.data.width)
-    maxY = Math.max(maxY, node.position.y + node.data.height)
-  }
-
-  return {
-    x: minX,
-    y: minY,
-    width: maxX - minX,
-    height: maxY - minY,
-  }
-}
-
-function buildNodeOwnerById(spaces: WorkspaceSpaceState[]): Map<string, string> {
-  const map = new Map<string, string>()
-  for (const space of spaces) {
-    for (const nodeId of space.nodeIds) {
-      if (!map.has(nodeId)) {
-        map.set(nodeId, space.id)
-      }
-    }
-  }
-  return map
-}
-
-function resolveSnapCandidateRects({
-  movingNodeIds,
-  nodes,
-  spaces,
-}: {
-  movingNodeIds: Set<string>
-  nodes: Node<TerminalNodeData>[]
-  spaces: WorkspaceSpaceState[]
-}): WorkspaceSnapRect[] {
-  const ownerByNodeId = buildNodeOwnerById(spaces)
-  const movingOwners = new Set<string | null>()
-
-  for (const nodeId of movingNodeIds) {
-    movingOwners.add(ownerByNodeId.get(nodeId) ?? null)
-  }
-
-  if (movingOwners.size !== 1) {
-    return []
-  }
-
-  const onlyOwner = [...movingOwners][0] ?? null
-  const candidateRects: WorkspaceSnapRect[] = []
-
-  for (const node of nodes) {
-    if (movingNodeIds.has(node.id)) {
-      continue
-    }
-
-    const owner = ownerByNodeId.get(node.id) ?? null
-    if (owner !== onlyOwner) {
-      continue
-    }
-
-    candidateRects.push(toNodeRect(node))
-  }
-
-  if (onlyOwner) {
-    const ownerSpace = spaces.find(space => space.id === onlyOwner)
-    if (ownerSpace?.rect) {
-      candidateRects.push(ownerSpace.rect)
-    }
-  } else {
-    for (const space of spaces) {
-      if (space.rect) {
-        candidateRects.push(space.rect)
-      }
-    }
-  }
-
-  return candidateRects
+function setResolvedSnapGuides(
+  setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>,
+  guides: WorkspaceSnapGuide[] | null,
+): void {
+  setSnapGuides(current => (areWorkspaceSnapGuidesEqual(current, guides) ? current : guides))
 }
 
 export function useWorkspaceCanvasApplyNodeChanges({
@@ -203,12 +116,12 @@ export function useWorkspaceCanvasApplyNodeChanges({
 
       if (movedNodeIds.size > 0 && magneticSnappingEnabledRef.current) {
         const movingNodes = nextNodes.filter(node => movedNodeIds.has(node.id))
-        const movingRect = unionNodeRects(movingNodes)
+        const movingRect = unionWorkspaceNodeRects(movingNodes)
 
         if (movingRect) {
           const snapped = resolveWorkspaceSnap({
             movingRect,
-            candidateRects: resolveSnapCandidateRects({
+            candidateRects: resolveWorkspaceNodeSnapCandidateRects({
               movingNodeIds: movedNodeIds,
               nodes: nextNodes,
               spaces: spacesRef.current,
@@ -219,7 +132,9 @@ export function useWorkspaceCanvasApplyNodeChanges({
             enableObject: true,
           })
 
-          if (snapped.dx !== 0 || snapped.dy !== 0) {
+          if (isDraggingThisFrame) {
+            setResolvedSnapGuides(setSnapGuides, snapped.guides.length > 0 ? snapped.guides : null)
+          } else if (snapped.dx !== 0 || snapped.dy !== 0) {
             nextNodes = nextNodes.map(node =>
               movedNodeIds.has(node.id)
                 ? {
@@ -233,18 +148,14 @@ export function useWorkspaceCanvasApplyNodeChanges({
             )
           }
 
-          if (isDraggingThisFrame && snapped.guides.length > 0) {
-            setSnapGuides(snapped.guides)
-          } else if (!isDraggingThisFrame) {
-            setSnapGuides(null)
-          } else {
-            setSnapGuides(null)
+          if (!isDraggingThisFrame) {
+            setResolvedSnapGuides(setSnapGuides, null)
           }
         } else {
-          setSnapGuides(null)
+          setResolvedSnapGuides(setSnapGuides, null)
         }
       } else if (positionChanges.length > 0) {
-        setSnapGuides(null)
+        setResolvedSnapGuides(setSnapGuides, null)
       }
 
       if (settledPositionChanges.length > 0) {

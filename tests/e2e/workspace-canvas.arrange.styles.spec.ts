@@ -151,8 +151,8 @@ test.describe('Workspace Canvas - Arrange', () => {
       await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.arrange-by-menu.png' })
 
       await expect(
-        window.locator('[data-testid="workspace-context-arrange-canonical-sizes"] svg'),
-      ).toHaveCount(1)
+        window.locator('[data-testid="workspace-context-arrange-canonical-sizes"]'),
+      ).toHaveCount(0)
       await expect(
         window.locator('[data-testid="workspace-context-arrange-magnetic-snapping"] svg'),
       ).toHaveCount(1)

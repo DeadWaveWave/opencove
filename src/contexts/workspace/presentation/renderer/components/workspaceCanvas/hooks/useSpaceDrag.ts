@@ -75,13 +75,18 @@ export function useWorkspaceCanvasSpaceDrag({
   }, [setSnapGuides, workspaceId])
 
   const resolveSnappedSpaceMove = useCallback(
-    (spaceId: string, desiredRect: WorkspaceSpaceRect): WorkspaceSpaceRect => {
+    (
+      spaceId: string,
+      desiredRect: WorkspaceSpaceRect,
+      options?: { commit?: boolean },
+    ): WorkspaceSpaceRect => {
       return resolveSnappedSpaceMoveRect({
         spaceId,
         desiredRect,
         spaces: spacesRef.current,
         magneticSnappingEnabled: magneticSnappingEnabledRef.current,
         setSnapGuides,
+        commit: options?.commit,
       })
     },
     [magneticSnappingEnabledRef, setSnapGuides, spacesRef],
@@ -220,11 +225,15 @@ export function useWorkspaceCanvasSpaceDrag({
       const dy = endFlow.y - dragState.startFlow.y
       const resolvedMoveRect =
         dragState.handle.kind === 'move'
-          ? resolveSnappedSpaceMove(dragState.spaceId, {
-              ...dragState.initialRect,
-              x: dragState.initialRect.x + dx,
-              y: dragState.initialRect.y + dy,
-            })
+          ? resolveSnappedSpaceMove(
+              dragState.spaceId,
+              {
+                ...dragState.initialRect,
+                x: dragState.initialRect.x + dx,
+                y: dragState.initialRect.y + dy,
+              },
+              { commit: true },
+            )
           : null
 
       finalizeSpaceDrag(

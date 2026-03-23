@@ -97,8 +97,6 @@ export function WorkspaceContextMenu({
   const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
   const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
   const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
-  const [alignCanonicalSizes, setAlignCanonicalSizes] = React.useState(true)
-  const alignCanonicalSizesRef = React.useRef(true)
 
   const [openSubmenu, setOpenSubmenu] = React.useState<'arrangeBy' | null>(null)
   const menuRef = React.useRef<HTMLDivElement | null>(null)
@@ -156,7 +154,6 @@ export function WorkspaceContextMenu({
     return {
       order: arrangeOrderRef.current,
       spaceFit: arrangeSpaceFitRef.current,
-      alignCanonicalSizes: alignCanonicalSizesRef.current,
     }
   }, [])
 
@@ -440,7 +437,6 @@ export function WorkspaceContextMenu({
           arrangeScope={arrangeScope}
           arrangeOrder={arrangeOrder}
           arrangeSpaceFit={arrangeSpaceFit}
-          alignCanonicalSizes={alignCanonicalSizes}
           magneticSnappingEnabled={magneticSnappingEnabled}
           onSelectScope={scope => {
             arrangeScopeRef.current = scope
@@ -455,12 +451,6 @@ export function WorkspaceContextMenu({
           onSelectSpaceFit={spaceFit => {
             arrangeSpaceFitRef.current = spaceFit
             setArrangeSpaceFit(spaceFit)
-            applyArrange()
-          }}
-          onToggleAlignCanonicalSizes={() => {
-            const nextValue = !alignCanonicalSizesRef.current
-            alignCanonicalSizesRef.current = nextValue
-            setAlignCanonicalSizes(nextValue)
             applyArrange()
           }}
           onToggleMagneticSnapping={onToggleMagneticSnapping}

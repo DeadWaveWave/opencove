@@ -25,6 +25,7 @@ import { NodeDeleteConfirmationWindow } from './windows/NodeDeleteConfirmationWi
 import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
 import { TaskEditorWindow } from './windows/TaskEditorWindow'
 import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
+
 export function WorkspaceCanvasView({
   canvasRef,
   resolvedCanvasInputMode,

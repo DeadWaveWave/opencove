@@ -2,6 +2,12 @@ import { useCallback, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
+import { resolveWorkspaceSnap } from '../../../utils/workspaceSnap'
+import {
+  resolveWorkspaceNodeSnapCandidateRects,
+  unionWorkspaceNodeRects,
+} from '../../../utils/workspaceSnap.nodes'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import {
   collectDraggedNodePositions,
@@ -66,6 +72,166 @@ export function useWorkspaceCanvasSpaceOwnership({
     t,
   })
 
+  const resolveSnappedDraggedNodePositions = useCallback(
+    (
+      draggedNodeIds: string[],
+      draggedNodePositionById: Map<string, { x: number; y: number }>,
+      fallbackNodes: Node<TerminalNodeData>[],
+    ): Map<string, { x: number; y: number }> => {
+      if (draggedNodeIds.length === 0) {
+        return draggedNodePositionById
+      }
+
+      const movingNodeIds = new Set(draggedNodeIds)
+      const currentNodes = reactFlow.getNodes().map(node => {
+        const draggedPosition = draggedNodePositionById.get(node.id)
+        if (!draggedPosition) {
+          return node
+        }
+
+        return {
+          ...node,
+          position: draggedPosition,
+        }
+      })
+
+      const movingNodes = currentNodes.filter(node => movingNodeIds.has(node.id))
+      const movingRect = unionWorkspaceNodeRects(movingNodes)
+      if (!movingRect) {
+        return draggedNodePositionById
+      }
+
+      const snapped = resolveWorkspaceSnap({
+        movingRect,
+        candidateRects: resolveWorkspaceNodeSnapCandidateRects({
+          movingNodeIds,
+          nodes: currentNodes,
+          spaces: spacesRef.current,
+        }),
+        grid: WORKSPACE_ARRANGE_GRID_PX,
+        threshold: 8,
+        enableGrid: true,
+        enableObject: true,
+      })
+
+      if (snapped.dx === 0 && snapped.dy === 0) {
+        return draggedNodePositionById
+      }
+
+      const snappedPositionById = new Map<string, { x: number; y: number }>()
+
+      for (const nodeId of draggedNodeIds) {
+        const basePosition =
+          draggedNodePositionById.get(nodeId) ??
+          fallbackNodes.find(node => node.id === nodeId)?.position ??
+          reactFlow.getNode(nodeId)?.position
+
+        if (!basePosition) {
+          continue
+        }
+
+        const nextPosition = {
+          x: basePosition.x + snapped.dx,
+          y: basePosition.y + snapped.dy,
+        }
+
+        snappedPositionById.set(nodeId, nextPosition)
+      }
+
+      const selectedSpaceIds = dragSelectedSpaceIdsRef.current ?? selectedSpaceIdsRef.current
+      const selectedSpaceIdSet = new Set(selectedSpaceIds)
+      const movedSpaceIds = new Set<string>()
+
+      if (selectedSpaceIdSet.size > 0) {
+        const previousSpaces = spacesRef.current
+        let hasSpaceMoved = false
+
+        const nextSpaces = previousSpaces.map(space => {
+          if (!selectedSpaceIdSet.has(space.id) || !space.rect) {
+            return space
+          }
+
+          movedSpaceIds.add(space.id)
+          hasSpaceMoved = true
+          return {
+            ...space,
+            rect: {
+              ...space.rect,
+              x: space.rect.x + snapped.dx,
+              y: space.rect.y + snapped.dy,
+            },
+          }
+        })
+
+        if (hasSpaceMoved) {
+          onSpacesChange(nextSpaces)
+        }
+      }
+
+      const ownedNodeIdsToShift = new Set<string>()
+      if (movedSpaceIds.size > 0) {
+        for (const space of spacesRef.current) {
+          if (!movedSpaceIds.has(space.id)) {
+            continue
+          }
+
+          for (const nodeId of space.nodeIds) {
+            if (movingNodeIds.has(nodeId)) {
+              continue
+            }
+
+            ownedNodeIdsToShift.add(nodeId)
+          }
+        }
+      }
+
+      setNodes(
+        prevNodes => {
+          let hasChanged = false
+          const nextNodes = prevNodes.map(node => {
+            const snappedPosition = snappedPositionById.get(node.id)
+            if (snappedPosition) {
+              if (node.position.x === snappedPosition.x && node.position.y === snappedPosition.y) {
+                return node
+              }
+
+              hasChanged = true
+              return {
+                ...node,
+                position: snappedPosition,
+              }
+            }
+
+            if (!ownedNodeIdsToShift.has(node.id)) {
+              return node
+            }
+
+            const nextPosition = {
+              x: node.position.x + snapped.dx,
+              y: node.position.y + snapped.dy,
+            }
+
+            if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
+              return node
+            }
+
+            hasChanged = true
+            return {
+              ...node,
+              position: nextPosition,
+            }
+          })
+
+          return hasChanged ? nextNodes : prevNodes
+        },
+        { syncLayout: false },
+      )
+
+      return snappedPositionById.size > 0 ? snappedPositionById : draggedNodePositionById
+    },
+    [dragSelectedSpaceIdsRef, onSpacesChange, reactFlow, selectedSpaceIdsRef, setNodes, spacesRef],
+  )
+
   const captureDragStartNodeIds = useCallback(
     (nodes: Node<TerminalNodeData>[]) => {
       dragStartNodeIdsRef.current = nodes.map(node => node.id)
@@ -79,7 +245,8 @@ export function useWorkspaceCanvasSpaceOwnership({
 
   const handleNodeDragStart = useCallback(
     (_event: React.MouseEvent, node: Node<TerminalNodeData>, nodes: Node<TerminalNodeData>[]) => {
-      const draggedNodes = nodes.length > 0 ? nodes : [node]
+      const selectedNodes = nodes.filter(candidate => candidate.selected)
+      const draggedNodes = selectedNodes.length > 0 ? selectedNodes : [node]
       captureDragStartNodeIds(draggedNodes)
     },
     [captureDragStartNodeIds],
@@ -119,16 +286,21 @@ export function useWorkspaceCanvasSpaceOwnership({
         fallbackNodes,
         getNode: nodeId => reactFlow.getNode(nodeId) ?? undefined,
       })
+      const snappedNodePositionById = resolveSnappedDraggedNodePositions(
+        draggedNodeIds,
+        draggedNodePositionById,
+        fallbackNodes,
+      )
 
       applyOwnershipForDrop({
         draggedNodeIds,
-        draggedNodePositionById,
+        draggedNodePositionById: snappedNodePositionById,
         dragStartNodePositionById,
         dropFlowPoint: dropPoint,
       })
       dragSelectedSpaceIdsRef.current = null
     },
-    [applyOwnershipForDrop, dragSelectedSpaceIdsRef, reactFlow],
+    [applyOwnershipForDrop, dragSelectedSpaceIdsRef, reactFlow, resolveSnappedDraggedNodePositions],
   )
 
   const handleSelectionDragStop = useCallback(
@@ -160,16 +332,21 @@ export function useWorkspaceCanvasSpaceOwnership({
         fallbackNodes,
         getNode: nodeId => reactFlow.getNode(nodeId) ?? undefined,
       })
+      const snappedNodePositionById = resolveSnappedDraggedNodePositions(
+        draggedNodeIds,
+        draggedNodePositionById,
+        fallbackNodes,
+      )
 
       applyOwnershipForDrop({
         draggedNodeIds,
-        draggedNodePositionById,
+        draggedNodePositionById: snappedNodePositionById,
         dragStartNodePositionById,
         dropFlowPoint: dropPoint,
       })
       dragSelectedSpaceIdsRef.current = null
     },
-    [applyOwnershipForDrop, dragSelectedSpaceIdsRef, reactFlow],
+    [applyOwnershipForDrop, dragSelectedSpaceIdsRef, reactFlow, resolveSnappedDraggedNodePositions],
   )
 
   return {

@@ -3,7 +3,7 @@ import { beginDragMouse, clearAndSeedWorkspace, launchApp } from './workspace-ca
 import { ensureArtifactsDir, readSeededWorkspaceLayout } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Snap Guides', () => {
-  test('shows live guides and snaps nodes by default', async () => {
+  test('shows live guides during drag and clears them on release', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -58,22 +58,27 @@ test.describe('Workspace Canvas - Snap Guides', () => {
       await drag.moveTo({ x: paneBox.x + 184, y: paneBox.y + 450 }, { settleAfterMoveMs: 64 })
 
       await expect(window.locator('[data-testid="workspace-snap-guide-v"]')).toBeVisible()
-
-      await ensureArtifactsDir()
-      await window.screenshot({ path: 'artifacts/workspace-canvas-snap-guides.visible.png' })
-
-      await drag.release()
-
       await expect
         .poll(async () => {
           const layout = await readSeededWorkspaceLayout(window, {
             nodeIds: ['snap-a', 'snap-b'],
             spaceIds: [],
           })
+          const node = layout.nodes['snap-b']
 
-          return layout.nodes['snap-b']
+          return {
+            x: node?.x ?? null,
+            y: node?.y ?? null,
+            isStillRaw: node?.x !== 100 && node?.y !== 432,
+          }
         })
-        .toMatchObject({ x: 100, y: 432 })
+        .toMatchObject({ isStillRaw: true })
+
+      await ensureArtifactsDir()
+      await window.screenshot({ path: 'artifacts/workspace-canvas-snap-guides.visible.png' })
+
+      await drag.release()
+      await expect(window.locator('[data-testid="workspace-snap-guides"]')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

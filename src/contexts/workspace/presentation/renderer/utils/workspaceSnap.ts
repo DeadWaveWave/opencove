@@ -23,6 +23,9 @@ export interface WorkspaceSnapResult {
   guides: WorkspaceSnapGuide[]
 }
 
+const WORKSPACE_SNAP_MAX_CANDIDATES = 96
+const WORKSPACE_SNAP_SEARCH_PADDING_PX = 288
+
 function clampGuideRange(value1: number, value2: number): { min: number; max: number } {
   const min = Math.min(value1, value2)
   const max = Math.max(value1, value2)
@@ -47,6 +50,93 @@ function rectEdges(rect: WorkspaceSnapRect) {
   const centerY = rect.y + rect.height / 2
 
   return { left, right, centerX, top, bottom, centerY }
+}
+
+function resolveAxisDistance(leftValues: number[], rightValues: number[]): number {
+  let best = Number.POSITIVE_INFINITY
+
+  for (const leftValue of leftValues) {
+    for (const rightValue of rightValues) {
+      best = Math.min(best, Math.abs(leftValue - rightValue))
+    }
+  }
+
+  return best
+}
+
+function intersectsExpandedRect(
+  movingRect: WorkspaceSnapRect,
+  candidateRect: WorkspaceSnapRect,
+  padding: number,
+): boolean {
+  const movingLeft = movingRect.x - padding
+  const movingTop = movingRect.y - padding
+  const movingRight = movingRect.x + movingRect.width + padding
+  const movingBottom = movingRect.y + movingRect.height + padding
+
+  return (
+    candidateRect.x <= movingRight &&
+    candidateRect.x + candidateRect.width >= movingLeft &&
+    candidateRect.y <= movingBottom &&
+    candidateRect.y + candidateRect.height >= movingTop
+  )
+}
+
+function filterSnapCandidateRects({
+  movingRect,
+  candidateRects,
+  threshold,
+}: {
+  movingRect: WorkspaceSnapRect
+  candidateRects: WorkspaceSnapRect[]
+  threshold: number
+}): WorkspaceSnapRect[] {
+  if (candidateRects.length <= WORKSPACE_SNAP_MAX_CANDIDATES) {
+    return candidateRects
+  }
+
+  const moving = rectEdges(movingRect)
+  const maxAxisDistance = threshold + WORKSPACE_SNAP_SEARCH_PADDING_PX
+
+  const rankedCandidates = candidateRects
+    .map(candidateRect => {
+      const candidate = rectEdges(candidateRect)
+      const xDistance = resolveAxisDistance(
+        [moving.left, moving.centerX, moving.right],
+        [candidate.left, candidate.centerX, candidate.right],
+      )
+      const yDistance = resolveAxisDistance(
+        [moving.top, moving.centerY, moving.bottom],
+        [candidate.top, candidate.centerY, candidate.bottom],
+      )
+      const isNearby =
+        xDistance <= maxAxisDistance ||
+        yDistance <= maxAxisDistance ||
+        intersectsExpandedRect(movingRect, candidateRect, WORKSPACE_SNAP_SEARCH_PADDING_PX)
+
+      return {
+        candidateRect,
+        distance: Math.min(xDistance, yDistance),
+        area: candidateRect.width * candidateRect.height,
+        isNearby,
+      }
+    })
+    .filter(candidate => candidate.isNearby)
+
+  if (rankedCandidates.length <= WORKSPACE_SNAP_MAX_CANDIDATES) {
+    return rankedCandidates.map(candidate => candidate.candidateRect)
+  }
+
+  return rankedCandidates
+    .sort((left, right) => {
+      if (left.distance !== right.distance) {
+        return left.distance - right.distance
+      }
+
+      return left.area - right.area
+    })
+    .slice(0, WORKSPACE_SNAP_MAX_CANDIDATES)
+    .map(candidate => candidate.candidateRect)
 }
 
 function pickBestAxisSnap(candidates: AxisSnapResult[]): AxisSnapResult {
@@ -76,6 +166,44 @@ function pickBestAxisSnap(candidates: AxisSnapResult[]): AxisSnapResult {
   return best
 }
 
+export function areWorkspaceSnapGuidesEqual(
+  left: WorkspaceSnapGuide[] | null,
+  right: WorkspaceSnapGuide[] | null,
+): boolean {
+  if (left === right) {
+    return true
+  }
+
+  if (!left || !right) {
+    return left === right
+  }
+
+  if (left.length !== right.length) {
+    return false
+  }
+
+  return left.every((guide, index) => {
+    const otherGuide = right[index]
+    if (!otherGuide || guide.kind !== otherGuide.kind) {
+      return false
+    }
+
+    if (guide.kind === 'v') {
+      if (otherGuide.kind !== 'v') {
+        return false
+      }
+
+      return guide.x === otherGuide.x && guide.y1 === otherGuide.y1 && guide.y2 === otherGuide.y2
+    }
+
+    if (otherGuide.kind !== 'h') {
+      return false
+    }
+
+    return guide.y === otherGuide.y && guide.x1 === otherGuide.x1 && guide.x2 === otherGuide.x2
+  })
+}
+
 export function resolveWorkspaceSnap({
   movingRect,
   candidateRects,
@@ -96,6 +224,9 @@ export function resolveWorkspaceSnap({
   }
 
   const moving = rectEdges(movingRect)
+  const filteredCandidateRects = enableObject
+    ? filterSnapCandidateRects({ movingRect, candidateRects, threshold })
+    : []
 
   const xCandidates: AxisSnapResult[] = []
   const yCandidates: AxisSnapResult[] = []
@@ -113,17 +244,10 @@ export function resolveWorkspaceSnap({
   }
 
   if (enableObject) {
-    for (const rect of candidateRects) {
+    for (const rect of filteredCandidateRects) {
       const edges = rectEdges(rect)
-
-      const yRange = clampGuideRange(
-        Math.min(moving.top, edges.top),
-        Math.max(moving.bottom, edges.bottom),
-      )
-      const xRange = clampGuideRange(
-        Math.min(moving.left, edges.left),
-        Math.max(moving.right, edges.right),
-      )
+      let yRange: { min: number; max: number } | null = null
+      let xRange: { min: number; max: number } | null = null
 
       const axisPairsX: Array<[number, number]> = [
         [moving.left, edges.left],
@@ -137,6 +261,10 @@ export function resolveWorkspaceSnap({
           continue
         }
 
+        yRange ??= clampGuideRange(
+          Math.min(moving.top, edges.top),
+          Math.max(moving.bottom, edges.bottom),
+        )
         xCandidates.push({
           kind: 'object',
           delta,
@@ -156,6 +284,10 @@ export function resolveWorkspaceSnap({
           continue
         }
 
+        xRange ??= clampGuideRange(
+          Math.min(moving.left, edges.left),
+          Math.max(moving.right, edges.right),
+        )
         yCandidates.push({
           kind: 'object',
           delta,
