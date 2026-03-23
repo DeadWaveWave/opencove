@@ -40,6 +40,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
 - Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
+- Terminal: Hydrate UTF-8 locale for GUI-launched terminals on macOS/Linux and enable Wayland IME integration on Linux. (#65)
+- Terminal: Preserve shell history arrow keys after terminal restore by avoiding stale xterm mode replay. (#65)
 - Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)
 - Windows: Fixed native select dropdown styling issues (notably dark mode) by using a custom select component across the UI. (#47)
 - Terminal: Fixed theme glitches when switching light/dark by syncing xterm theme with CSS tokens and reacting to theme change events. (#47)
