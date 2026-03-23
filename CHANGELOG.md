@@ -11,6 +11,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: Arrange By menu (scope, ordering, space sizing, magnetic snapping). (#42)
 - Workspace canvas: live magnetic snap guides for node dragging, aligned to the 24px canvas rhythm and enabled by default. (#42)
 - Workspace canvas: unified tiled arrange layout with standard node ratios (terminal/task/agent/note) and balanced dense packing. (#42)
+- Settings: UI theme selector (system/light/dark) with system follow. (#40)
+- UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
+- UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
+- In-canvas GitHub pull request chip for worktree-bound Spaces (opens on GitHub; requires `gh`).
+- Settings → Integrations tab with a GitHub PR links toggle (default on).
+- In-app update checker with stable/nightly tracking (nightly supports prompt only) plus a first-launch “What’s New” sheet after updates. (#49)
+- Workspace canvas: Label colors for Spaces and windows, plus a single-color filter. (#54)
+- Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
 
 ### 💅 Changed
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
@@ -20,11 +28,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: dense packing now favors balanced aspect ratios over ultra-tall stacks for more shelf-like results. (#42)
 - Workspace canvas: drag now previews live snap guides continuously and only commits magnetic snapping on release for steadier pointer movement. (#42)
 - Workspace canvas: Arrange By now simplifies Space sizing to `Tighten Space` / `Keep Space size`, defaults to `Tighten Space`, and moves magnetic snapping to the top-level context menu. (#42)
+- Shortcuts: Yield app shortcuts to the terminal when it’s focused (configurable), and allow customizing keybindings in Settings → Shortcuts. (#59)
+- Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
+- UI: Softened minimap node colors in light theme. (#47)
+- UI: Made modal dialogs opaque for clearer readability. (#48)
+- Spaces: dragging Terminal/Agent windows across directory-bound spaces now shows a compact confirmation, then moves with `DIR MISMATCH` labeling. (#51)
 
 ### 🐞 Fixed
 - Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
 - Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
 - Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
+- Prevented canvas zoom/pan when scrolling inside overlay windows.
+- Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
+- Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)
+- Windows: Fixed native select dropdown styling issues (notably dark mode) by using a custom select component across the UI. (#47)
+- Terminal: Fixed theme glitches when switching light/dark by syncing xterm theme with CSS tokens and reacting to theme change events. (#47)
+- Canvas: Stabilized auto input-mode detection to default to mouse semantics until high-confidence trackpad gestures are observed. (#47)
+- Worktree window: Fixed light theme text colors in the create/archive dialog. (#47)
+- Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)
+- Improved canvas drag smoothness under heavy terminal output by throttling terminal screen writes during viewport interaction while keeping output live. (#50)
+- Normalized node resize and terminal selection drags while the canvas is zoomed. (#56)
+- Stabilized and optimized space-bounded push-away reflow during node dragging to prevent edge overlaps/stacking. (#57)
 
 ---
 

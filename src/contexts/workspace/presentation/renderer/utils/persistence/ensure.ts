@@ -8,6 +8,7 @@ import type {
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
 import type { AgentProviderId, TerminalRuntimeKind } from '../../../../../../shared/contracts/dto'
+import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { clearResumeSessionBinding, isResumeSessionBindingVerified } from '../agentResumeBinding'
 import {
   normalizeAgentRuntimeStatus,
@@ -15,6 +16,7 @@ import {
   normalizeLaunchMode,
   normalizeNodeKind,
   normalizeOptionalString,
+  normalizePullRequestBaseBranchOptions,
   normalizeProvider,
   normalizeScrollback,
   normalizeTaskPriority,
@@ -126,6 +128,7 @@ function ensurePersistedWorkspaceSpace(
     id,
     name,
     directoryPath: normalizedDirectoryPath,
+    labelColor: normalizeLabelColor(record.labelColor),
     nodeIds: normalizeWorkspaceSpaceNodeIds(record.nodeIds),
     rect: normalizeWorkspaceSpaceRect(record.rect),
   }
@@ -251,6 +254,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     kind,
     profileId: normalizeOptionalString(record.profileId),
     runtimeKind,
+    labelColorOverride: normalizeNodeLabelColorOverride(record.labelColorOverride),
     status: normalizeAgentRuntimeStatus(record.status),
     startedAt: normalizeOptionalString(record.startedAt),
     endedAt: normalizeOptionalString(record.endedAt),
@@ -278,6 +282,9 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   const name = record.name
   const path = record.path
   const worktreesRoot = normalizeOptionalString(record.worktreesRoot) ?? ''
+  const pullRequestBaseBranchOptions = normalizePullRequestBaseBranchOptions(
+    record.pullRequestBaseBranchOptions,
+  )
   const nodes = record.nodes
   const spaces = record.spaces
   const activeSpaceId = record.activeSpaceId
@@ -316,6 +323,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
     name,
     path,
     worktreesRoot,
+    pullRequestBaseBranchOptions,
     nodes: normalizedNodes,
     viewport: normalizeWorkspaceViewport(record.viewport),
     isMinimapVisible: normalizeWorkspaceMinimapVisible(record.isMinimapVisible),

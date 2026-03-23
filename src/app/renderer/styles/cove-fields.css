@@ -1,0 +1,128 @@
+.cove-field {
+  width: 100%;
+  min-height: 38px;
+  border: 1px solid var(--cove-border);
+  background: var(--cove-field);
+  color: var(--cove-text);
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    color 0.18s ease;
+  color-scheme: inherit;
+}
+
+.cove-field::placeholder {
+  color: var(--cove-text-faint);
+}
+
+.cove-field:hover:enabled,
+.cove-field:hover:not(:disabled) {
+  border-color: var(--cove-border);
+}
+
+.cove-field:focus,
+.cove-field:focus-visible {
+  outline: none;
+  border-color: var(--cove-accent);
+  box-shadow: 0 0 0 1px var(--cove-accent);
+}
+
+.cove-field:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.cove-field--compact {
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.cove-select {
+  position: relative;
+  width: 100%;
+}
+
+.cove-select__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cove-select--compact .cove-select__trigger {
+  min-height: 34px;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.cove-select__label {
+  min-width: 0;
+  flex: 1 1 auto;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cove-select__chevron {
+  flex: 0 0 auto;
+  color: var(--cove-text-faint);
+  transition: transform 0.16s ease;
+}
+
+.cove-select__chevron--open {
+  transform: rotate(180deg);
+}
+
+.cove-select__menu {
+  position: fixed;
+  z-index: 140;
+  overflow-y: auto;
+  border: 1px solid var(--cove-border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cove-surface-strong) 88%, transparent);
+  backdrop-filter: blur(18px) saturate(130%);
+  box-shadow: 0 22px 48px var(--cove-shadow-color-elevated);
+  padding: 6px;
+}
+
+.cove-select__option {
+  width: 100%;
+  min-height: 36px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--cove-text);
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+}
+
+.cove-select__option:hover:not(:disabled),
+.cove-select__option--highlighted {
+  background: var(--cove-surface-hover);
+}
+
+.cove-select__option--selected {
+  color: var(--cove-text);
+  background: color-mix(in srgb, var(--cove-accent) 16%, transparent);
+}
+
+.cove-select__option:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cove-select__option:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--cove-accent) 80%, white);
+  outline-offset: -1px;
+}

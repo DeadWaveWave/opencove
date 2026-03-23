@@ -6,25 +6,30 @@ import {
   PanOnScrollMode,
   ReactFlow,
   SelectionMode,
+  useStoreApi,
   type Edge,
   type Node,
 } from '@xyflow/react'
-import { useTranslation } from '@app/renderer/i18n'
+import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
 import type { TerminalNodeData } from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
+import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
+import { useWorkspaceCanvasSpaceMenuState } from './hooks/useCanvasSpaceMenuState'
+import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceContextMenu } from './view/WorkspaceContextMenu'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
 import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOverlay'
 import { WorkspaceSnapGuidesOverlay } from './view/WorkspaceSnapGuidesOverlay'
+import { WorkspaceCanvasTopOverlays } from './view/WorkspaceCanvasTopOverlays'
 import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
-import { WorkspaceSpaceSwitcher } from './view/WorkspaceSpaceSwitcher'
-import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
-import { NodeDeleteConfirmationWindow } from './windows/NodeDeleteConfirmationWindow'
-import { TaskCreatorWindow } from './windows/TaskCreatorWindow'
-import { TaskEditorWindow } from './windows/TaskEditorWindow'
-import { SpaceWorktreeWindow } from './windows/SpaceWorktreeWindow'
+
+const WHEEL_BLOCK_SELECTOR = '.cove-window, .cove-window-backdrop, .workspace-context-menu'
+
+type NodeWithEffectiveLabelColor = Node<TerminalNodeData> & {
+  data: TerminalNodeData & { effectiveLabelColor?: LabelColor | null }
+}
 
 export function WorkspaceCanvasView({
   canvasRef,
@@ -67,6 +72,7 @@ export function WorkspaceCanvasView({
   commitSpaceRename,
   cancelSpaceRename,
   startSpaceRename,
+  setSpaceLabelColor,
   selectedNodeCount,
   isMinimapVisible,
   minimapNodeColor,
@@ -81,13 +87,18 @@ export function WorkspaceCanvasView({
   onToggleMagneticSnapping,
   createTerminalNode,
   createNoteNodeFromContextMenu,
+  arrangeAll,
+  arrangeCanvas,
+  arrangeInSpace,
   openTaskCreator,
   openAgentLauncher,
+  openAgentLauncherForProvider,
   createSpaceFromSelectedNodes,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
+  setSelectedNodeLabelColorOverride,
   taskCreator,
   taskTitleProviderLabel,
   taskTitleModelLabel,
@@ -104,6 +115,9 @@ export function WorkspaceCanvasView({
   nodeDeleteConfirmation,
   setNodeDeleteConfirmation,
   confirmNodeDelete,
+  spaceWorktreeMismatchDropWarning,
+  cancelSpaceWorktreeMismatchDropWarning,
+  continueSpaceWorktreeMismatchDropWarning,
   agentSettings,
   workspacePath,
   spaceActionMenu,
@@ -117,15 +131,14 @@ export function WorkspaceCanvasView({
   openSpaceCreateWorktree,
   openSpaceArchive,
   closeSpaceWorktree,
-  arrangeAll,
-  arrangeCanvas,
-  arrangeInSpace,
   onShowMessage,
   updateSpaceDirectory,
   getSpaceBlockingNodes,
   closeNodesById,
 }: WorkspaceCanvasViewProps): React.JSX.Element {
-  const { t } = useTranslation()
+  const reactFlowStore = useStoreApi()
+  const [labelColorFilter, setLabelColorFilter] = React.useState<LabelColor | null>(null)
+
   useWorkspaceCanvasGlobalDismissals({
     contextMenu,
     spaceActionMenu,
@@ -134,39 +147,124 @@ export function WorkspaceCanvasView({
     selectedNodeCount,
     clearNodeSelection,
   })
-  const activeMenuSpace = React.useMemo(
-    () =>
-      spaceActionMenu
-        ? (spaces.find(candidate => candidate.id === spaceActionMenu.spaceId) ?? null)
-        : null,
-    [spaceActionMenu, spaces],
-  )
-  const normalizedWorkspacePath = React.useMemo(
-    () => normalizeComparablePath(workspacePath),
-    [workspacePath],
-  )
-  const activeMenuSpacePath = React.useMemo(() => {
-    if (!activeMenuSpace) {
-      return workspacePath
+
+  const inheritedLabelColorByNodeId = React.useMemo(() => {
+    const map = new Map<string, LabelColor>()
+
+    for (const space of spaces) {
+      if (!space.labelColor) {
+        continue
+      }
+
+      for (const nodeId of space.nodeIds) {
+        if (!map.has(nodeId)) {
+          map.set(nodeId, space.labelColor)
+        }
+      }
     }
 
-    const trimmed = activeMenuSpace.directoryPath.trim()
-    return trimmed.length > 0 ? trimmed : workspacePath
-  }, [activeMenuSpace, workspacePath])
-  const isActiveMenuSpaceOnWorkspaceRoot =
-    normalizeComparablePath(activeMenuSpacePath) === normalizedWorkspacePath
+    return map
+  }, [spaces])
 
-  const ownedNodeIdSet = React.useMemo(
-    () => new Set(spaces.flatMap(space => space.nodeIds)),
-    [spaces],
-  )
-  const rootNodeCount = React.useMemo(
-    () => nodes.filter(node => !ownedNodeIdSet.has(node.id)).length,
-    [nodes, ownedNodeIdSet],
-  )
-  const canArrangeCanvas = spaces.length + rootNodeCount >= 2
-  const canArrangeAll = canArrangeCanvas || spaces.some(space => space.nodeIds.length >= 2)
-  const canArrangeActiveSpace = Boolean(activeMenuSpace && activeMenuSpace.nodeIds.length >= 2)
+  const nodesWithEffectiveLabelColor = React.useMemo<NodeWithEffectiveLabelColor[]>(() => {
+    return nodes.map(node => {
+      const override = node.data.labelColorOverride ?? null
+      const effectiveLabelColor: LabelColor | null =
+        override === 'none'
+          ? null
+          : override
+            ? override
+            : (inheritedLabelColorByNodeId.get(node.id) ?? null)
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          effectiveLabelColor,
+        },
+      }
+    })
+  }, [inheritedLabelColorByNodeId, nodes])
+
+  const usedLabelColors = React.useMemo(() => {
+    const seen = new Set<LabelColor>()
+    for (const node of nodesWithEffectiveLabelColor) {
+      const color = node.data.effectiveLabelColor ?? null
+      if (color) {
+        seen.add(color)
+      }
+    }
+
+    return LABEL_COLORS.filter(color => seen.has(color))
+  }, [nodesWithEffectiveLabelColor])
+
+  React.useEffect(() => {
+    if (!labelColorFilter) {
+      return
+    }
+
+    if (!usedLabelColors.includes(labelColorFilter)) {
+      setLabelColorFilter(null)
+    }
+  }, [labelColorFilter, usedLabelColors])
+
+  const filteredNodes = React.useMemo(() => {
+    if (!labelColorFilter) {
+      return nodesWithEffectiveLabelColor
+    }
+
+    return nodesWithEffectiveLabelColor.map(node => {
+      const effectiveLabelColor = node.data.effectiveLabelColor ?? null
+      if (effectiveLabelColor === labelColorFilter) {
+        return node
+      }
+
+      const className =
+        typeof node.className === 'string' && node.className.trim().length > 0
+          ? `${node.className} cove-node--filtered-out`
+          : 'cove-node--filtered-out'
+
+      return {
+        ...node,
+        className,
+        style: {
+          ...node.style,
+          pointerEvents: 'none' as const,
+        },
+        draggable: false,
+        selectable: false,
+        focusable: false,
+      }
+    })
+  }, [labelColorFilter, nodesWithEffectiveLabelColor])
+
+  const filteredEdges = React.useMemo(() => {
+    if (!labelColorFilter) {
+      return edges
+    }
+
+    const allowedNodeIds = new Set(
+      nodesWithEffectiveLabelColor
+        .filter(node => (node.data.effectiveLabelColor ?? null) === labelColorFilter)
+        .map(node => node.id),
+    )
+
+    return edges.filter(edge => allowedNodeIds.has(edge.source) && allowedNodeIds.has(edge.target))
+  }, [edges, labelColorFilter, nodesWithEffectiveLabelColor])
+
+  const {
+    activeMenuSpace,
+    isActiveMenuSpaceOnWorkspaceRoot,
+    canArrangeCanvas,
+    canArrangeAll,
+    canArrangeActiveSpace,
+  } = useWorkspaceCanvasSpaceMenuState({
+    spaceActionMenu,
+    spaces,
+    workspacePath,
+    nodes,
+  })
+
   return (
     <div
       ref={canvasRef}
@@ -184,17 +282,21 @@ export function WorkspaceCanvasView({
         ) {
           closeContextMenu()
         }
+
         handleCanvasPointerDownCapture(event)
       }}
       onPointerMoveCapture={handleCanvasPointerMoveCapture}
       onPointerUpCapture={handleCanvasPointerUpCapture}
       onWheelCapture={event => {
+        if (event.target instanceof Element && event.target.closest(WHEEL_BLOCK_SELECTOR)) {
+          return
+        }
         handleCanvasWheelCapture(event.nativeEvent)
       }}
     >
       <ReactFlow<Node<TerminalNodeData>, Edge>
-        nodes={nodes}
-        edges={edges}
+        nodes={filteredNodes}
+        edges={filteredEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onPaneClick={onPaneClick}
@@ -207,7 +309,17 @@ export function WorkspaceCanvasView({
         onSelectionDragStart={onSelectionDragStart}
         onNodeDragStop={onNodeDragStop}
         onSelectionDragStop={onSelectionDragStop}
-        onMoveEnd={onMoveEnd}
+        onMoveStart={() => {
+          reactFlowStore.setState({
+            coveViewportInteractionActive: true,
+          } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+        }}
+        onMoveEnd={(event, nextViewport) => {
+          reactFlowStore.setState({
+            coveViewportInteractionActive: false,
+          } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+          onMoveEnd(event, nextViewport)
+        }}
         selectionMode={SelectionMode.Partial}
         deleteKeyCode={null}
         selectionKeyCode={null}
@@ -226,7 +338,12 @@ export function WorkspaceCanvasView({
         maxZoom={MAX_CANVAS_ZOOM}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} size={1} gap={24} color="#20324f" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          size={1}
+          gap={24}
+          color="var(--cove-canvas-dot)"
+        />
         <WorkspaceSpaceRegionsOverlay
           workspacePath={workspacePath}
           spaceVisuals={spaceVisuals}
@@ -242,38 +359,45 @@ export function WorkspaceCanvasView({
           startSpaceRename={startSpaceRename}
           onOpenSpaceMenu={openSpaceActionMenu}
         />
+
         <WorkspaceMinimapDock
           isMinimapVisible={isMinimapVisible}
           minimapNodeColor={minimapNodeColor}
           setIsMinimapVisible={setIsMinimapVisible}
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
+
         <Controls className="workspace-canvas__controls" showInteractive={false} />
       </ReactFlow>
+
       <WorkspaceSnapGuidesOverlay guides={snapGuides} />
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
-      {selectedNodeCount > 0 || spaces.length > 0 ? (
-        <div className="workspace-canvas__top-overlays">
-          {spaces.length > 0 ? (
-            <WorkspaceSpaceSwitcher
-              spaces={spaces}
-              focusSpaceInViewport={focusSpaceInViewport}
-              focusAllInViewport={focusAllInViewport}
-              cancelSpaceRename={cancelSpaceRename}
-            />
-          ) : null}
-          {selectedNodeCount > 0 ? (
-            <div className="workspace-selection-hint">
-              {t('workspaceCanvas.selectionHint', { count: selectedNodeCount })}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+
+      <WorkspaceCanvasTopOverlays
+        spaces={spaces}
+        focusSpaceInViewport={focusSpaceInViewport}
+        focusAllInViewport={focusAllInViewport}
+        cancelSpaceRename={cancelSpaceRename}
+        usedLabelColors={usedLabelColors}
+        activeLabelColorFilter={labelColorFilter}
+        onToggleLabelColorFilter={color => {
+          closeContextMenu()
+          closeSpaceActionMenu()
+          clearNodeSelection()
+          setLabelColorFilter(previous => (previous === color ? null : color))
+        }}
+        selectedNodeCount={selectedNodeCount}
+      />
+
       <WorkspaceContextMenu
         contextMenu={contextMenu}
         closeContextMenu={closeContextMenu}
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+        openTaskCreator={openTaskCreator}
+        openAgentLauncher={openAgentLauncher}
+        agentProviderOrder={agentSettings.agentProviderOrder}
+        openAgentLauncherForProvider={openAgentLauncherForProvider}
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
         onToggleMagneticSnapping={onToggleMagneticSnapping}
@@ -282,22 +406,23 @@ export function WorkspaceCanvasView({
         arrangeAll={arrangeAll}
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
-        openTaskCreator={openTaskCreator}
-        openAgentLauncher={openAgentLauncher}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
         clearNodeSelection={clearNodeSelection}
         canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
         isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
         convertSelectedNoteToTask={convertSelectedNoteToTask}
+        setSelectedNodeLabelColorOverride={setSelectedNodeLabelColorOverride}
       />
+
       <WorkspaceSpaceActionMenu
         menu={spaceActionMenu}
         availableOpeners={availablePathOpeners}
         canArrange={canArrangeActiveSpace}
-        onArrange={arrangeInSpace}
         canCreateWorktree={activeMenuSpace !== null && isActiveMenuSpaceOnWorkspaceRoot}
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
+        setSpaceLabelColor={setSpaceLabelColor}
+        onArrange={arrangeInSpace}
         onCreateWorktree={() => {
           if (activeMenuSpace) {
             openSpaceCreateWorktree(activeMenuSpace.id)
@@ -319,7 +444,8 @@ export function WorkspaceCanvasView({
           }
         }}
       />
-      <TaskCreatorWindow
+
+      <WorkspaceCanvasWindows
         taskCreator={taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}
         taskTitleModelLabel={taskTitleModelLabel}
@@ -328,39 +454,29 @@ export function WorkspaceCanvasView({
         closeTaskCreator={closeTaskCreator}
         generateTaskTitle={generateTaskTitle}
         createTask={createTask}
-      />
-      <TaskEditorWindow
         taskEditor={taskEditor}
-        taskTitleProviderLabel={taskTitleProviderLabel}
-        taskTitleModelLabel={taskTitleModelLabel}
-        taskTagOptions={taskTagOptions}
         setTaskEditor={setTaskEditor}
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
-      />
-      <NodeDeleteConfirmationWindow
         nodeDeleteConfirmation={nodeDeleteConfirmation}
         setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}
-      />
-      <SpaceWorktreeWindow
-        spaceId={spaceWorktreeDialog?.spaceId ?? null}
-        initialViewMode={spaceWorktreeDialog?.initialViewMode ?? 'create'}
+        spaceWorktreeMismatchDropWarning={spaceWorktreeMismatchDropWarning}
+        cancelSpaceWorktreeMismatchDropWarning={cancelSpaceWorktreeMismatchDropWarning}
+        continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
+        spaceWorktreeDialog={spaceWorktreeDialog}
         spaces={spaces}
         nodes={nodes}
         workspacePath={workspacePath}
         worktreesRoot={worktreesRoot}
         agentSettings={agentSettings}
-        onClose={closeSpaceWorktree}
+        closeSpaceWorktree={closeSpaceWorktree}
         onShowMessage={onShowMessage}
-        onUpdateSpaceDirectory={updateSpaceDirectory}
-        getBlockingNodes={getSpaceBlockingNodes}
+        updateSpaceDirectory={updateSpaceDirectory}
+        getSpaceBlockingNodes={getSpaceBlockingNodes}
         closeNodesById={closeNodesById}
       />
     </div>
   )
-}
-function normalizeComparablePath(pathValue: string): string {
-  return pathValue.trim().replace(/[\\/]+$/, '')
 }

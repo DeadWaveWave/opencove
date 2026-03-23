@@ -7,8 +7,17 @@
 :root {
   --cove-ui-font-scale: 1;
   --cove-accent: #5e9cff;
+  --cove-label-gray: #8e8e93;
+  --cove-label-red: #ff453a;
+  --cove-label-orange: #ff9f0a;
+  --cove-label-yellow: #ffd60a;
+  --cove-label-green: #32d74b;
+  --cove-label-blue: #0a84ff;
+  --cove-label-purple: #bf5af2;
+  --cove-app-background: radial-gradient(circle at 20% 20%, #101c35 0%, #060a14 55%, #04070f 100%);
   --cove-surface: rgba(10, 10, 10, 0.7);
   --cove-surface-strong: rgba(18, 18, 18, 0.85);
+  --cove-window-surface: rgb(18, 18, 18);
   --cove-surface-hover: rgba(255, 255, 255, 0.08);
   --cove-field: rgba(255, 255, 255, 0.04);
   --cove-border: rgba(255, 255, 255, 0.12);
@@ -16,6 +25,236 @@
   --cove-text: rgba(255, 255, 255, 0.92);
   --cove-text-muted: rgba(255, 255, 255, 0.6);
   --cove-text-faint: rgba(255, 255, 255, 0.4);
+  --cove-backdrop: rgba(5, 10, 20, 0.58);
+  --cove-shadow-color-elevated: rgba(0, 0, 0, 0.55);
+  --cove-shadow-color-panel: rgba(0, 0, 0, 0.8);
+
+  --cove-overlay-danger-backdrop: rgba(19, 5, 8, 0.72);
+  --cove-overlay-danger-border: rgba(147, 56, 72, 0.42);
+  --cove-overlay-danger-surface:
+    radial-gradient(circle at top right, rgba(118, 32, 48, 0.22), transparent 42%),
+    linear-gradient(180deg, rgba(32, 8, 13, 0.96), rgba(20, 6, 9, 0.96));
+  --cove-overlay-danger-shadow: 0 24px 56px rgba(0, 0, 0, 0.58), 0 0 0 1px rgba(124, 40, 55, 0.18);
+  --cove-overlay-danger-title: rgba(255, 240, 242, 0.98);
+  --cove-overlay-danger-summary: rgba(233, 193, 200, 0.76);
+  --cove-overlay-danger-status-border: rgba(185, 95, 110, 0.44);
+  --cove-overlay-danger-status-surface: rgba(60, 18, 27, 0.66);
+  --cove-overlay-danger-status-text: rgba(255, 226, 232, 0.94);
+  --cove-overlay-danger-divider: rgba(156, 68, 84, 0.24);
+  --cove-overlay-danger-lead: rgba(255, 240, 242, 0.98);
+  --cove-overlay-danger-supporting: rgba(236, 210, 216, 0.84);
+  --cove-overlay-danger-option-strong: rgba(255, 241, 244, 0.98);
+  --cove-overlay-danger-option-text: rgba(233, 208, 214, 0.8);
+  --cove-overlay-danger-path: rgba(255, 226, 232, 0.95);
+
+  --cove-overlay-warning-backdrop: rgba(12, 6, 9, 0.64);
+  --cove-overlay-warning-border: rgba(232, 103, 120, 0.34);
+  --cove-overlay-warning-surface:
+    radial-gradient(circle at top right, rgba(232, 103, 120, 0.18), transparent 52%),
+    linear-gradient(180deg, rgba(12, 10, 14, 0.96), rgba(10, 8, 12, 0.96));
+  --cove-overlay-warning-shadow:
+    0 24px 56px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(232, 103, 120, 0.12);
+  --cove-overlay-warning-pill-border: rgba(232, 103, 120, 0.38);
+  --cove-overlay-warning-pill-surface: rgba(232, 103, 120, 0.12);
+
+  --cove-node-border: rgba(107, 138, 236, 0.65);
+  --cove-node-surface: rgba(10, 17, 33, 0.94);
+  --cove-node-header-surface: rgba(23, 36, 66, 0.96);
+  --cove-node-header-border: rgba(104, 137, 226, 0.45);
+  --cove-node-shadow-color: rgba(0, 0, 0, 0.45);
+  --cove-node-selection-border: rgba(153, 223, 255, 0.88);
+  --cove-node-selection-shadow:
+    0 0 0 1px rgba(168, 233, 255, 0.42), 0 18px 40px rgba(0, 0, 0, 0.52);
+
+  --cove-terminal-node-surface: rgba(7, 12, 24, 0.9);
+  --cove-terminal-node-header-surface: rgba(18, 28, 50, 0.96);
+  --cove-terminal-background: #0a0f1d;
+  --cove-terminal-foreground: #d6e4ff;
+  --cove-terminal-selection: rgba(94, 156, 255, 0.35);
+  --cove-terminal-cursor: #d6e4ff;
+
+  --cove-canvas-control-surface: rgba(10, 18, 40, 0.72);
+  --cove-canvas-control-surface-hover: rgba(16, 28, 58, 0.9);
+  --cove-canvas-control-border: rgba(106, 151, 255, 0.35);
+  --cove-canvas-control-border-hover: rgba(124, 174, 255, 0.8);
+  --cove-canvas-control-text: rgba(207, 224, 255, 0.68);
+  --cove-canvas-control-text-hover: rgba(233, 243, 255, 0.96);
+  --cove-canvas-dot: rgba(122, 172, 255, 0.16);
+
+  --cove-space-region-border: rgba(122, 172, 255, 0.78);
+  --cove-space-region-surface: rgba(69, 123, 216, 0.12);
+  --cove-space-region-shadow: inset 0 0 0 1px rgba(122, 172, 255, 0.1);
+  --cove-space-region-border-active: rgba(140, 210, 255, 0.95);
+  --cove-space-region-surface-active: rgba(80, 141, 232, 0.18);
+  --cove-space-region-shadow-active:
+    inset 0 0 0 1px rgba(140, 210, 255, 0.28), 0 0 0 1px rgba(95, 178, 255, 0.38);
+  --cove-space-region-border-selected: rgba(170, 235, 255, 0.98);
+  --cove-space-region-surface-selected: rgba(80, 141, 232, 0.22);
+  --cove-space-region-shadow-selected:
+    inset 0 0 0 1px rgba(170, 235, 255, 0.34), 0 0 0 1px rgba(95, 178, 255, 0.44),
+    0 0 22px rgba(95, 178, 255, 0.38);
+
+  --cove-canvas-minimap-surface: rgba(9, 16, 34, 0.75);
+  --cove-canvas-minimap-border: rgba(101, 148, 255, 0.32);
+  --cove-canvas-minimap-mask: rgba(110, 170, 255, 0.84);
+  --cove-canvas-minimap-mask-surface: rgba(73, 132, 255, 0.16);
+  --cove-canvas-minimap-opacity-idle: 0.42;
+  --cove-canvas-minimap-opacity-hover: 0.96;
+  --cove-canvas-minimap-node-agent: rgba(111, 188, 255, 0.78);
+  --cove-canvas-minimap-node-task: rgba(173, 166, 255, 0.78);
+  --cove-canvas-minimap-node-default: rgba(130, 156, 255, 0.78);
+  --cove-canvas-minimap-node-stroke: rgba(0, 0, 0, 0.18);
+
+  --cove-settings-panel-background:
+    radial-gradient(circle at top right, rgba(94, 156, 255, 0.1), transparent 30%),
+    linear-gradient(180deg, #111318 0%, #0c0f14 100%);
+  --cove-settings-sidebar-background: rgba(8, 10, 14, 0.92);
+}
+
+:root[data-cove-theme='light'] {
+  --cove-app-background: radial-gradient(circle at 20% 20%, #f4f8ff 0%, #edf2fb 55%, #e7edf8 100%);
+  --cove-surface: rgba(255, 255, 255, 0.72);
+  --cove-surface-strong: rgba(255, 255, 255, 0.92);
+  --cove-window-surface: rgb(255, 255, 255);
+  --cove-surface-hover: rgba(17, 24, 39, 0.04);
+  --cove-field: rgba(17, 24, 39, 0.035);
+  --cove-border: rgba(17, 24, 39, 0.14);
+  --cove-border-subtle: rgba(17, 24, 39, 0.08);
+  --cove-text: rgba(17, 24, 39, 0.92);
+  --cove-text-muted: rgba(17, 24, 39, 0.6);
+  --cove-text-faint: rgba(17, 24, 39, 0.42);
+  --cove-backdrop: rgba(10, 16, 32, 0.28);
+  --cove-shadow-color-elevated: rgba(15, 23, 42, 0.18);
+  --cove-shadow-color-panel: rgba(15, 23, 42, 0.22);
+  --cove-label-gray: #8e8e93;
+  --cove-label-red: #ff3b30;
+  --cove-label-orange: #ff9500;
+  --cove-label-yellow: #ffcc00;
+  --cove-label-green: #34c759;
+  --cove-label-blue: #007aff;
+  --cove-label-purple: #af52de;
+
+  --cove-overlay-danger-backdrop: rgba(54, 12, 22, 0.24);
+  --cove-overlay-danger-border: rgba(232, 103, 120, 0.22);
+  --cove-overlay-danger-surface:
+    radial-gradient(circle at top right, rgba(232, 103, 120, 0.16), transparent 56%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(252, 246, 248, 0.96));
+  --cove-overlay-danger-shadow:
+    0 24px 56px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(232, 103, 120, 0.08);
+  --cove-overlay-danger-title: rgba(17, 24, 39, 0.92);
+  --cove-overlay-danger-summary: rgba(127, 50, 63, 0.72);
+  --cove-overlay-danger-status-border: rgba(232, 103, 120, 0.32);
+  --cove-overlay-danger-status-surface: rgba(232, 103, 120, 0.12);
+  --cove-overlay-danger-status-text: rgba(127, 50, 63, 0.9);
+  --cove-overlay-danger-divider: rgba(232, 103, 120, 0.18);
+  --cove-overlay-danger-lead: rgba(17, 24, 39, 0.92);
+  --cove-overlay-danger-supporting: rgba(71, 85, 105, 0.88);
+  --cove-overlay-danger-option-strong: rgba(17, 24, 39, 0.92);
+  --cove-overlay-danger-option-text: rgba(71, 85, 105, 0.82);
+  --cove-overlay-danger-path: rgba(127, 50, 63, 0.92);
+
+  --cove-overlay-warning-backdrop: rgba(15, 23, 42, 0.34);
+  --cove-overlay-warning-border: rgba(232, 103, 120, 0.2);
+  --cove-overlay-warning-surface:
+    radial-gradient(circle at top right, rgba(232, 103, 120, 0.16), transparent 58%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(250, 249, 252, 0.96));
+  --cove-overlay-warning-shadow:
+    0 24px 56px rgba(15, 23, 42, 0.18), 0 0 0 1px rgba(232, 103, 120, 0.06);
+  --cove-overlay-warning-pill-border: rgba(232, 103, 120, 0.28);
+  --cove-overlay-warning-pill-surface: rgba(232, 103, 120, 0.1);
+
+  --cove-node-border: rgba(94, 125, 208, 0.32);
+  --cove-node-surface: rgba(255, 255, 255, 0.86);
+  --cove-node-header-surface: rgba(246, 249, 255, 0.92);
+  --cove-node-header-border: rgba(94, 125, 208, 0.22);
+  --cove-node-shadow-color: rgba(15, 23, 42, 0.14);
+  --cove-node-selection-border: rgba(94, 156, 255, 0.72);
+  --cove-node-selection-shadow:
+    0 0 0 1px rgba(94, 156, 255, 0.18), 0 18px 40px rgba(15, 23, 42, 0.18);
+
+  --cove-terminal-node-surface: rgba(255, 255, 255, 0.9);
+  --cove-terminal-node-header-surface: rgba(246, 249, 255, 0.96);
+  --cove-terminal-background: #fbfcff;
+  --cove-terminal-foreground: rgba(17, 24, 39, 0.92);
+  --cove-terminal-selection: rgba(94, 156, 255, 0.24);
+  --cove-terminal-cursor: rgba(17, 24, 39, 0.92);
+
+  --cove-canvas-control-surface: rgba(255, 255, 255, 0.74);
+  --cove-canvas-control-surface-hover: rgba(255, 255, 255, 0.9);
+  --cove-canvas-control-border: rgba(17, 24, 39, 0.18);
+  --cove-canvas-control-border-hover: rgba(94, 156, 255, 0.65);
+  --cove-canvas-control-text: rgba(17, 24, 39, 0.62);
+  --cove-canvas-control-text-hover: rgba(17, 24, 39, 0.92);
+  --cove-canvas-dot: rgba(17, 24, 39, 0.14);
+
+  --cove-space-region-border: rgba(94, 156, 255, 0.36);
+  --cove-space-region-surface: rgba(94, 156, 255, 0.05);
+  --cove-space-region-shadow: inset 0 0 0 1px rgba(94, 156, 255, 0.08);
+  --cove-space-region-border-active: rgba(94, 156, 255, 0.54);
+  --cove-space-region-surface-active: rgba(94, 156, 255, 0.07);
+  --cove-space-region-shadow-active:
+    inset 0 0 0 1px rgba(94, 156, 255, 0.18), 0 0 0 1px rgba(94, 156, 255, 0.18);
+  --cove-space-region-border-selected: rgba(94, 156, 255, 0.72);
+  --cove-space-region-surface-selected: rgba(94, 156, 255, 0.09);
+  --cove-space-region-shadow-selected:
+    inset 0 0 0 1px rgba(94, 156, 255, 0.22), 0 0 0 1px rgba(94, 156, 255, 0.24),
+    0 0 18px rgba(94, 156, 255, 0.16);
+
+  --cove-canvas-minimap-surface: rgba(255, 255, 255, 0.72);
+  --cove-canvas-minimap-border: rgba(17, 24, 39, 0.12);
+  --cove-canvas-minimap-mask: rgba(94, 156, 255, 0.8);
+  --cove-canvas-minimap-mask-surface: rgba(94, 156, 255, 0.1);
+  --cove-canvas-minimap-opacity-idle: 0.55;
+  --cove-canvas-minimap-opacity-hover: 0.96;
+  --cove-canvas-minimap-node-agent: rgba(78, 164, 255, 0.72);
+  --cove-canvas-minimap-node-task: rgba(152, 136, 255, 0.66);
+  --cove-canvas-minimap-node-default: rgba(94, 156, 255, 0.55);
+  --cove-canvas-minimap-node-stroke: rgba(17, 24, 39, 0.14);
+
+  --cove-settings-panel-background:
+    radial-gradient(circle at top right, rgba(94, 156, 255, 0.14), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(243, 246, 252, 0.94) 100%);
+  --cove-settings-sidebar-background: rgba(255, 255, 255, 0.78);
+}
+
+[data-cove-label-color='gray'] {
+  --cove-label-color: var(--cove-label-gray);
+}
+
+[data-cove-label-color='red'] {
+  --cove-label-color: var(--cove-label-red);
+}
+
+[data-cove-label-color='orange'] {
+  --cove-label-color: var(--cove-label-orange);
+}
+
+[data-cove-label-color='yellow'] {
+  --cove-label-color: var(--cove-label-yellow);
+}
+
+[data-cove-label-color='green'] {
+  --cove-label-color: var(--cove-label-green);
+}
+
+[data-cove-label-color='blue'] {
+  --cove-label-color: var(--cove-label-blue);
+}
+
+[data-cove-label-color='purple'] {
+  --cove-label-color: var(--cove-label-purple);
+}
+
+.cove-label-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.cove-label-dot--solid {
+  background: var(--cove-label-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 55%, transparent);
 }
 
 html,
@@ -33,12 +272,19 @@ body {
     Roboto,
     sans-serif;
   font-size: calc(16px * var(--cove-ui-font-scale));
-  background: radial-gradient(circle at 20% 20%, #101c35 0%, #060a14 55%, #04070f 100%);
-  color: #e5edff;
+  background: var(--cove-app-background);
+  color: var(--cove-text);
 }
 
 .app-shell {
+  --cove-app-header-height: 36px;
+  --cove-primary-sidebar-width: 280px;
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: var(--cove-primary-sidebar-width) minmax(0, 1fr);
+  grid-template-rows: var(--cove-app-header-height) minmax(0, 1fr);
   height: 100%;
+}
+
+.app-shell--sidebar-collapsed {
+  --cove-primary-sidebar-width: 0px;
 }

@@ -1,0 +1,42 @@
+/* --- Settings Buttons --- */
+.settings-panel button.primary {
+  background: linear-gradient(180deg, rgba(84, 126, 235, 0.92), rgba(60, 99, 201, 0.92));
+  color: #eff6ff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-panel button.primary:hover {
+  background: linear-gradient(180deg, rgba(103, 143, 245, 0.95), rgba(73, 113, 216, 0.95));
+}
+
+.settings-panel button.primary:active {
+  transform: scale(0.98);
+}
+
+.settings-panel button.primary:disabled {
+  background: var(--cove-border-subtle);
+  color: var(--cove-text-faint);
+  cursor: not-allowed;
+}
+
+.settings-panel button.secondary {
+  background: transparent;
+  border: 1px solid var(--cove-border);
+  color: var(--cove-text);
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-panel button.secondary:hover {
+  background: var(--cove-surface-hover);
+  border-color: var(--cove-border);
+}

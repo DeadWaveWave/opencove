@@ -5,6 +5,8 @@ import type {
   CreateGitWorktreeResult,
   DetachTerminalInput,
   EnsureDirectoryInput,
+  GetGitDefaultBranchInput,
+  GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
   KillTerminalInput,
@@ -16,11 +18,19 @@ import type {
   ListGitWorktreesResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
+  ListInstalledAgentProvidersResult,
   ListTerminalProfilesResult,
   ReadAgentLastMessageInput,
   ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
   ResolveAgentResumeSessionResult,
+  ResolveGitHubPullRequestsInput,
+  ResolveGitHubPullRequestsResult,
+  AppUpdateState,
+  ConfigureAppUpdatesInput,
+  GetReleaseNotesAutoRangeInput,
+  GetReleaseNotesRangeInput,
+  ReleaseNotesRangeResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -38,6 +48,7 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
+  SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalSessionMetadataEvent,
@@ -54,6 +65,11 @@ type UnsubscribeFn = () => void
 export interface OpenCoveApi {
   meta: {
     isTest: boolean
+    allowWhatsNewInTests: boolean
+    platform: string
+  }
+  windowChrome: {
+    setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
   }
   clipboard: {
     readText: () => Promise<string>
@@ -78,10 +94,30 @@ export interface OpenCoveApi {
     listBranches: (payload: ListGitBranchesInput) => Promise<ListGitBranchesResult>
     listWorktrees: (payload: ListGitWorktreesInput) => Promise<ListGitWorktreesResult>
     statusSummary: (payload: GetGitStatusSummaryInput) => Promise<GetGitStatusSummaryResult>
+    getDefaultBranch: (payload: GetGitDefaultBranchInput) => Promise<GetGitDefaultBranchResult>
     create: (payload: CreateGitWorktreeInput) => Promise<CreateGitWorktreeResult>
     remove: (payload: RemoveGitWorktreeInput) => Promise<RemoveGitWorktreeResult>
     renameBranch: (payload: RenameGitBranchInput) => Promise<void>
     suggestNames: (payload: SuggestWorktreeNamesInput) => Promise<SuggestWorktreeNamesResult>
+  }
+  integration: {
+    github: {
+      resolvePullRequests: (
+        payload: ResolveGitHubPullRequestsInput,
+      ) => Promise<ResolveGitHubPullRequestsResult>
+    }
+  }
+  update: {
+    getState: () => Promise<AppUpdateState>
+    configure: (payload: ConfigureAppUpdatesInput) => Promise<AppUpdateState>
+    checkForUpdates: () => Promise<AppUpdateState>
+    downloadUpdate: () => Promise<AppUpdateState>
+    installUpdate: () => Promise<void>
+    onState: (listener: (state: AppUpdateState) => void) => UnsubscribeFn
+  }
+  releaseNotes: {
+    getRange: (payload: GetReleaseNotesRangeInput) => Promise<ReleaseNotesRangeResult>
+    getAutoRange: (payload: GetReleaseNotesAutoRangeInput) => Promise<ReleaseNotesRangeResult>
   }
   pty: {
     listProfiles?: () => Promise<ListTerminalProfilesResult>
@@ -99,6 +135,7 @@ export interface OpenCoveApi {
   }
   agent: {
     listModels: (payload: ListAgentModelsInput) => Promise<ListAgentModelsResult>
+    listInstalledProviders: () => Promise<ListInstalledAgentProvidersResult>
     launch: (payload: LaunchAgentInput) => Promise<LaunchAgentResult>
     readLastMessage: (payload: ReadAgentLastMessageInput) => Promise<ReadAgentLastMessageResult>
     resolveResumeSessionId: (

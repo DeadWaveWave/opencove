@@ -1,0 +1,77 @@
+.settings-backdrop--preview {
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
+  transition: none;
+}
+
+.settings-panel--preview {
+  background: transparent;
+  backdrop-filter: none;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+  transition: none;
+}
+
+.settings-panel--preview .settings-panel__sidebar {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settings-panel--preview .settings-panel__header {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settings-panel--preview #settings-section-canvas .settings-panel__section-title {
+  visibility: hidden;
+}
+
+.settings-panel--preview
+  #settings-section-canvas
+  .settings-panel__row:not(.settings-panel__row--focus-target-zoom) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settings-panel--preview
+  #settings-section-canvas
+  .settings-panel__row:not(.settings-panel__row--focus-target-zoom)
+  * {
+  transition: none;
+}
+
+.settings-panel--preview #settings-section-canvas .settings-panel__row--focus-target-zoom {
+  pointer-events: auto;
+}
+
+.settings-panel--preview
+  #settings-section-canvas
+  .settings-panel__row--focus-target-zoom
+  input[type='range'] {
+  pointer-events: auto;
+}
+
+.settings-panel--preview
+  #settings-section-canvas
+  .settings-panel__row--focus-target-zoom
+  .settings-panel__row-label,
+.settings-panel--preview
+  #settings-section-canvas
+  .settings-panel__row--focus-target-zoom
+  .settings-panel__range-value {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.settings-panel--preview .settings-panel__content {
+  overflow: hidden;
+}
+
+.settings-panel--preview
+  #settings-section-canvas
+  .settings-panel__row--focus-target-zoom
+  input[type='range'] {
+  --cove-range-track-bg: color-mix(in srgb, var(--cove-border) 88%, transparent);
+}

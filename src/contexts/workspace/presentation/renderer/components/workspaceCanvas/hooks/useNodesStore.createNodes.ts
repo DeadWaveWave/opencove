@@ -2,16 +2,17 @@ import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { Point, TaskPriority, TerminalNodeData } from '../../../types'
+import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
-import { findNearestFreePositionOnRight } from '../../../utils/collision'
+import { findNearestFreePositionOnRight, inflateRect, type Rect } from '../../../utils/collision'
+import { SPACE_NODE_PADDING } from '../../../utils/spaceLayout'
 import {
   resolveDefaultAgentWindowSize,
   resolveDefaultNoteWindowSize,
   resolveDefaultTaskWindowSize,
   resolveDefaultTerminalWindowSize,
 } from '../constants'
-import type { CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
+import type { CreateNodeInput, NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
 import type {
   CreateNoteNodeOptions,
   UseWorkspaceCanvasNodesStoreResult,
@@ -21,18 +22,20 @@ import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 interface UseWorkspaceCanvasNodeCreationParams {
   defaultTerminalWindowScalePercent: number
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
-  pushBlockingWindowsRight: (desired: Point, size: { width: number; height: number }) => void
+  onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
 }
 
 export function useWorkspaceCanvasNodeCreation({
   defaultTerminalWindowScalePercent,
   nodesRef,
+  spacesRef,
   onRequestPersistFlush,
   onShowMessage,
-  pushBlockingWindowsRight,
+  onNodeCreated,
   setNodes,
 }: UseWorkspaceCanvasNodeCreationParams): Pick<
   UseWorkspaceCanvasNodesStoreResult,
@@ -51,20 +54,29 @@ export function useWorkspaceCanvasNodeCreation({
       agent,
       executionDirectory,
       expectedDirectory,
+      placement,
     }: CreateNodeInput): Promise<Node<TerminalNodeData> | null> => {
       const defaultSize =
         kind === 'agent'
           ? resolveDefaultAgentWindowSize(defaultTerminalWindowScalePercent)
           : resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent)
 
-      const { placement, canPlace } = resolveNodesPlacement({
+      const resolvedPlacement = resolveNodesPlacement({
         anchor,
         size: defaultSize,
         getNodes: () => nodesRef.current,
-        pushBlockingWindowsRight,
+        getSpaceRects: () =>
+          spacesRef.current
+            .map(space => space.rect)
+            .filter(
+              (rect): rect is { x: number; y: number; width: number; height: number } =>
+                rect !== null,
+            ),
+        targetSpaceRect: placement?.targetSpaceRect ?? null,
+        preferredDirection: placement?.preferredDirection,
       })
 
-      if (canPlace !== true) {
+      if (resolvedPlacement.canPlace !== true) {
         await window.opencoveApi.pty.kill({ sessionId })
         onShowMessage?.(t('messages.noTerminalSlotNearby'), 'warning')
         return null
@@ -83,7 +95,7 @@ export function useWorkspaceCanvasNodeCreation({
       const nextNode: Node<TerminalNodeData> = {
         id: crypto.randomUUID(),
         type: 'terminalNode',
-        position: placement,
+        position: resolvedPlacement.placement,
         data: {
           sessionId,
           profileId: profileId ?? null,
@@ -116,14 +128,16 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       setNodes(prevNodes => [...prevNodes, nextNode])
+      onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
       return nextNode
     },
     [
       defaultTerminalWindowScalePercent,
       nodesRef,
+      spacesRef,
       onRequestPersistFlush,
-      pushBlockingWindowsRight,
+      onNodeCreated,
       setNodes,
       onShowMessage,
       t,
@@ -133,10 +147,33 @@ export function useWorkspaceCanvasNodeCreation({
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
       const noteSize = resolveDefaultNoteWindowSize()
+      const spaceObstacles: Rect[] = spacesRef.current
+        .map(space => space.rect)
+        .filter((rect): rect is { x: number; y: number; width: number; height: number } =>
+          Boolean(rect),
+        )
+        .map(rect =>
+          inflateRect(
+            {
+              left: rect.x,
+              top: rect.y,
+              right: rect.x + rect.width,
+              bottom: rect.y + rect.height,
+            },
+            SPACE_NODE_PADDING,
+          ),
+        )
+
       const resolvedPlacement =
         options.placementStrategy === 'right-no-push'
           ? (() => {
-              const placement = findNearestFreePositionOnRight(anchor, noteSize, nodesRef.current)
+              const placement = findNearestFreePositionOnRight(
+                anchor,
+                noteSize,
+                nodesRef.current,
+                undefined,
+                spaceObstacles,
+              )
               return {
                 placement: placement ?? anchor,
                 canPlace: placement !== null,
@@ -146,7 +183,15 @@ export function useWorkspaceCanvasNodeCreation({
               anchor,
               size: noteSize,
               getNodes: () => nodesRef.current,
-              pushBlockingWindowsRight,
+              getSpaceRects: () =>
+                spacesRef.current
+                  .map(space => space.rect)
+                  .filter(
+                    (rect): rect is { x: number; y: number; width: number; height: number } =>
+                      rect !== null,
+                  ),
+              targetSpaceRect: options.placement?.targetSpaceRect ?? null,
+              preferredDirection: options.placement?.preferredDirection,
             })
 
       if (resolvedPlacement.canPlace !== true) {
@@ -187,10 +232,11 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       setNodes(prevNodes => [...prevNodes, nextNode])
+      onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes, t],
+    [nodesRef, onNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
   )
 
   const createTaskNode = useCallback(
@@ -201,17 +247,26 @@ export function useWorkspaceCanvasNodeCreation({
       autoGeneratedTitle: boolean,
       priority: TaskPriority,
       tags: string[],
+      placementOptions?: NodePlacementOptions,
     ): Node<TerminalNodeData> | null => {
       const defaultTaskSize = resolveDefaultTaskWindowSize()
 
-      const { placement, canPlace } = resolveNodesPlacement({
+      const resolvedPlacement = resolveNodesPlacement({
         anchor,
         size: defaultTaskSize,
         getNodes: () => nodesRef.current,
-        pushBlockingWindowsRight,
+        getSpaceRects: () =>
+          spacesRef.current
+            .map(space => space.rect)
+            .filter(
+              (rect): rect is { x: number; y: number; width: number; height: number } =>
+                rect !== null,
+            ),
+        targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
+        preferredDirection: placementOptions?.preferredDirection,
       })
 
-      if (canPlace !== true) {
+      if (resolvedPlacement.canPlace !== true) {
         onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
         return null
       }
@@ -221,7 +276,7 @@ export function useWorkspaceCanvasNodeCreation({
       const nextNode: Node<TerminalNodeData> = {
         id: crypto.randomUUID(),
         type: 'taskNode',
-        position: placement,
+        position: resolvedPlacement.placement,
         data: {
           sessionId: '',
           title,
@@ -255,10 +310,11 @@ export function useWorkspaceCanvasNodeCreation({
       }
 
       setNodes(prevNodes => [...prevNodes, nextNode])
+      onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onRequestPersistFlush, onShowMessage, pushBlockingWindowsRight, setNodes, t],
+    [nodesRef, onNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
   )
 
   return {

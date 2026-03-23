@@ -4,30 +4,34 @@ import { SettingsPanel } from '@contexts/settings/presentation/renderer/Settings
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import type { WorkspaceCanvasMessageTone } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
-import type {
-  WorkspaceViewport,
-  WorkspaceState,
-} from '@contexts/workspace/presentation/renderer/types'
+import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '@contexts/workspace/presentation/renderer/types'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { AppMessage } from './components/AppMessage'
+import { AppHeader } from './components/AppHeader'
+import { CommandCenter } from './components/CommandCenter'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { ProjectContextMenu } from './components/ProjectContextMenu'
 import { Sidebar } from './components/Sidebar'
 import { WorkspaceEmptyState } from './components/WorkspaceEmptyState'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
+import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
+import { useApplyUiTheme } from './hooks/useApplyUiTheme'
+import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
+import { useAppKeybindings } from './hooks/useAppKeybindings'
+import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
+import { useAppUpdates } from './hooks/useAppUpdates'
+import { useWhatsNew } from './hooks/useWhatsNew'
 import type { ProjectContextMenuState } from './types'
 import { useAppStore } from './store/useAppStore'
-import {
-  createDefaultWorkspaceViewport,
-  sanitizeWorkspaceSpaces,
-} from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
-import { cleanupNodeRuntimeArtifacts } from '@contexts/workspace/presentation/renderer/utils/nodeRuntimeCleanup'
-import { applyUiLanguage } from '../i18n'
+import { createDefaultWorkspaceViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
+import { removeWorkspace } from './utils/removeWorkspace'
+import { WhatsNewDialog } from './components/WhatsNewDialog'
+import { formatKeyChord, resolveCommandKeybindings } from '@contexts/settings/domain/keybindings'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -58,16 +62,10 @@ export default function App(): React.JSX.Element {
   const { providerModelCatalog } = useProviderModelCatalog({
     isSettingsOpen,
   })
-  useEffect(() => {
-    const root = document.documentElement
-    const uiFontScale = (agentSettings.uiFontSize / 16).toFixed(2)
-    root.style.setProperty('--cove-ui-font-scale', uiFontScale)
-  }, [agentSettings.uiFontSize])
 
-  useEffect(() => {
-    document.documentElement.lang = agentSettings.language
-    void applyUiLanguage(agentSettings.language)
-  }, [agentSettings.language])
+  useApplyUiFontScale(agentSettings.uiFontSize)
+  useApplyUiTheme(agentSettings.uiTheme)
+  useApplyUiLanguage(agentSettings.language)
 
   const producePersistedState = useCallback(() => {
     const state = useAppStore.getState()
@@ -88,6 +86,80 @@ export default function App(): React.JSX.Element {
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
     [activeWorkspaceId, workspaces],
   )
+
+  const activeWorkspaceName = activeWorkspace?.name ?? null
+
+  const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
+
+  const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
+  const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
+
+  const toggleCommandCenter = useCallback((): void => {
+    setIsCommandCenterOpen(open => !open)
+  }, [])
+
+  const closeCommandCenter = useCallback((): void => {
+    setIsCommandCenterOpen(false)
+  }, [])
+
+  useAppKeybindings({
+    enabled: !isSettingsOpen && projectDeleteConfirmation === null,
+    settings: {
+      disableAppShortcutsWhenTerminalFocused: agentSettings.disableAppShortcutsWhenTerminalFocused,
+      keybindings: agentSettings.keybindings,
+    },
+    onToggleCommandCenter: toggleCommandCenter,
+    onOpenSettings: () => {
+      closeCommandCenter()
+      setIsSettingsOpen(true)
+    },
+    onTogglePrimarySidebar: () => {
+      closeCommandCenter()
+      setAgentSettings(prev => ({
+        ...prev,
+        isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+      }))
+    },
+    onAddProject: () => {
+      closeCommandCenter()
+      void handleAddWorkspace()
+    },
+  })
+
+  useEffect(() => {
+    if (!isSettingsOpen && projectDeleteConfirmation === null) {
+      return
+    }
+
+    setIsCommandCenterOpen(false)
+  }, [isSettingsOpen, projectDeleteConfirmation])
+
+  useEffect(() => {
+    if (!isSettingsOpen) {
+      setIsFocusNodeTargetZoomPreviewing(false)
+    }
+  }, [isSettingsOpen])
+
+  useEffect(() => {
+    document.title = activeWorkspaceName ? `${activeWorkspaceName} — OpenCove` : 'OpenCove'
+  }, [activeWorkspaceName])
+
+  const platform =
+    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
+      ? window.opencoveApi.meta.platform
+      : undefined
+  const commandCenterBindings = useMemo(
+    () =>
+      resolveCommandKeybindings({
+        commandId: 'commandCenter.toggle',
+        overrides: agentSettings.keybindings,
+        platform,
+      }),
+    [agentSettings.keybindings, platform],
+  )
+  const commandCenterPrimaryHint = formatKeyChord(platform, commandCenterBindings.primary) || '—'
+  const commandCenterSecondaryHint =
+    formatKeyChord(platform, commandCenterBindings.secondary) || '—'
 
   const [floatingMessage, setFloatingMessage] = useState<{
     id: number
@@ -115,6 +187,19 @@ export default function App(): React.JSX.Element {
     },
     [],
   )
+
+  const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
+    policy: agentSettings.updatePolicy,
+    channel: agentSettings.updateChannel,
+    onShowMessage: handleShowMessage,
+  })
+
+  const whatsNew = useWhatsNew({
+    isPersistReady,
+    updateState,
+    settings: agentSettings,
+    onChangeSettings: setAgentSettings,
+  })
 
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
@@ -147,213 +232,17 @@ export default function App(): React.JSX.Element {
     store.setFocusRequest(null)
   }, [])
 
-  const handleWorkspaceNodesChange = useCallback((nodes: WorkspaceState['nodes']): void => {
-    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
-      useAppStore.getState()
-    if (!currentActiveWorkspaceId) {
-      return
-    }
-
-    updateWorkspaces(prev =>
-      prev.map(workspace => {
-        if (workspace.id !== currentActiveWorkspaceId) {
-          return workspace
-        }
-
-        const nodeIds = new Set(nodes.map(node => node.id))
-        const nextSpaces = sanitizeWorkspaceSpaces(
-          workspace.spaces.map(space => ({
-            ...space,
-            nodeIds: space.nodeIds.filter(nodeId => nodeIds.has(nodeId)),
-          })),
-        )
-        const hasActiveSpace =
-          workspace.activeSpaceId !== null &&
-          nextSpaces.some(space => space.id === workspace.activeSpaceId)
-
-        return {
-          ...workspace,
-          nodes,
-          spaces: nextSpaces,
-          activeSpaceId: hasActiveSpace ? workspace.activeSpaceId : null,
-        }
-      }),
-    )
-  }, [])
-
-  const handleWorkspaceViewportChange = useCallback((viewport: WorkspaceViewport): void => {
-    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
-      useAppStore.getState()
-    if (!currentActiveWorkspaceId) {
-      return
-    }
-
-    updateWorkspaces(previous =>
-      previous.map(workspace => {
-        if (workspace.id !== currentActiveWorkspaceId) {
-          return workspace
-        }
-
-        if (
-          workspace.viewport.x === viewport.x &&
-          workspace.viewport.y === viewport.y &&
-          workspace.viewport.zoom === viewport.zoom
-        ) {
-          return workspace
-        }
-
-        return {
-          ...workspace,
-          viewport: {
-            x: viewport.x,
-            y: viewport.y,
-            zoom: viewport.zoom,
-          },
-        }
-      }),
-    )
-  }, [])
-
-  const handleWorkspaceMinimapVisibilityChange = useCallback((isVisible: boolean): void => {
-    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
-      useAppStore.getState()
-    if (!currentActiveWorkspaceId) {
-      return
-    }
-
-    updateWorkspaces(previous =>
-      previous.map(workspace => {
-        if (workspace.id !== currentActiveWorkspaceId) {
-          return workspace
-        }
-
-        if (workspace.isMinimapVisible === isVisible) {
-          return workspace
-        }
-
-        return {
-          ...workspace,
-          isMinimapVisible: isVisible,
-        }
-      }),
-    )
-  }, [])
-
-  const handleWorkspaceSpacesChange = useCallback((spaces: WorkspaceState['spaces']): void => {
-    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
-      useAppStore.getState()
-    if (!currentActiveWorkspaceId) {
-      return
-    }
-
-    updateWorkspaces(previous =>
-      previous.map(workspace => {
-        if (workspace.id !== currentActiveWorkspaceId) {
-          return workspace
-        }
-
-        const sanitizedSpaces = sanitizeWorkspaceSpaces(spaces)
-        const hasActiveSpace =
-          workspace.activeSpaceId !== null &&
-          sanitizedSpaces.some(space => space.id === workspace.activeSpaceId)
-
-        return {
-          ...workspace,
-          spaces: sanitizedSpaces,
-          activeSpaceId: hasActiveSpace ? workspace.activeSpaceId : null,
-        }
-      }),
-    )
-  }, [])
-
-  const handleWorkspaceActiveSpaceChange = useCallback((spaceId: string | null): void => {
-    const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
-      useAppStore.getState()
-    if (!currentActiveWorkspaceId) {
-      return
-    }
-
-    updateWorkspaces(previous =>
-      previous.map(workspace => {
-        if (workspace.id !== currentActiveWorkspaceId) {
-          return workspace
-        }
-
-        const hasTargetSpace =
-          spaceId !== null && workspace.spaces.some(space => space.id === spaceId)
-        const nextSpaceId = hasTargetSpace ? spaceId : null
-        if (workspace.activeSpaceId === nextSpaceId) {
-          return workspace
-        }
-
-        return {
-          ...workspace,
-          activeSpaceId: nextSpaceId,
-        }
-      }),
-    )
-  }, [])
-
-  const handleAnyWorkspaceWorktreesRootChange = useCallback(
-    (workspaceId: string, worktreesRoot: string): void => {
-      const { setWorkspaces: updateWorkspaces } = useAppStore.getState()
-      updateWorkspaces(previous =>
-        previous.map(workspace => {
-          if (workspace.id !== workspaceId) {
-            return workspace
-          }
-          if (workspace.worktreesRoot === worktreesRoot) {
-            return workspace
-          }
-          return {
-            ...workspace,
-            worktreesRoot,
-          }
-        }),
-      )
-      requestPersistFlush()
-    },
-    [requestPersistFlush],
-  )
+  const {
+    handleWorkspaceNodesChange,
+    handleWorkspaceViewportChange,
+    handleWorkspaceMinimapVisibilityChange,
+    handleWorkspaceSpacesChange,
+    handleWorkspaceActiveSpaceChange,
+    handleAnyWorkspaceWorktreesRootChange,
+  } = useWorkspaceStateHandlers({ requestPersistFlush })
 
   const handleRemoveWorkspace = useCallback(async (workspaceId: string): Promise<void> => {
-    useAppStore.getState().setIsRemovingProject(true)
-
-    const targetWorkspace = useAppStore
-      .getState()
-      .workspaces.find(workspace => workspace.id === workspaceId)
-    if (!targetWorkspace) {
-      useAppStore.getState().setProjectDeleteConfirmation(null)
-      useAppStore.getState().setIsRemovingProject(false)
-      return
-    }
-
-    try {
-      targetWorkspace.nodes.forEach(node => {
-        cleanupNodeRuntimeArtifacts(node.id, node.data.sessionId)
-      })
-
-      await Promise.allSettled(
-        targetWorkspace.nodes
-          .map(node => node.data.sessionId)
-          .filter(sessionId => sessionId.length > 0)
-          .map(sessionId => window.opencoveApi.pty.kill({ sessionId })),
-      )
-
-      const nextWorkspaces = useAppStore
-        .getState()
-        .workspaces.filter(workspace => workspace.id !== workspaceId)
-      useAppStore.getState().setWorkspaces(nextWorkspaces)
-      useAppStore
-        .getState()
-        .setActiveWorkspaceId(currentActiveId =>
-          currentActiveId === workspaceId ? (nextWorkspaces[0]?.id ?? null) : currentActiveId,
-        )
-      useAppStore.getState().setFocusRequest(null)
-      useAppStore.getState().setProjectDeleteConfirmation(null)
-    } finally {
-      useAppStore.getState().setIsRemovingProject(false)
-    }
+    await removeWorkspace(workspaceId)
   }, [])
 
   useProjectContextMenuDismiss({
@@ -393,29 +282,62 @@ export default function App(): React.JSX.Element {
 
   return (
     <>
-      <div className="app-shell">
-        <Sidebar
-          workspaces={workspaces}
-          activeWorkspaceId={activeWorkspaceId}
-          activeProviderLabel={activeProviderLabel}
-          activeProviderModel={activeProviderModel}
-          persistNotice={persistNotice}
-          onAddWorkspace={() => {
-            void handleAddWorkspace()
+      <div
+        className={`app-shell ${isPrimarySidebarCollapsed ? 'app-shell--sidebar-collapsed' : ''}`}
+      >
+        <AppHeader
+          activeWorkspaceName={activeWorkspace?.name ?? null}
+          activeWorkspacePath={activeWorkspace?.path ?? null}
+          isSidebarCollapsed={isPrimarySidebarCollapsed}
+          isCommandCenterOpen={isCommandCenterOpen}
+          commandCenterPrimaryHint={commandCenterPrimaryHint}
+          commandCenterSecondaryHint={commandCenterSecondaryHint}
+          updateState={updateState}
+          onToggleSidebar={() => {
+            setAgentSettings(prev => ({
+              ...prev,
+              isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+            }))
           }}
-          onSelectWorkspace={workspaceId => {
-            handleSelectWorkspace(workspaceId)
-          }}
-          onOpenProjectContextMenu={(state: ProjectContextMenuState) => {
-            setProjectContextMenu(state)
-          }}
-          onSelectAgentNode={(workspaceId, nodeId) => {
-            handleSelectAgentNode(workspaceId, nodeId)
+          onToggleCommandCenter={() => {
+            toggleCommandCenter()
           }}
           onOpenSettings={() => {
+            setIsFocusNodeTargetZoomPreviewing(false)
             setIsSettingsOpen(true)
           }}
+          onCheckForUpdates={() => {
+            void checkForUpdates()
+          }}
+          onDownloadUpdate={() => {
+            void downloadUpdate()
+          }}
+          onInstallUpdate={() => {
+            void installUpdate()
+          }}
         />
+
+        {isPrimarySidebarCollapsed ? null : (
+          <Sidebar
+            workspaces={workspaces}
+            activeWorkspaceId={activeWorkspaceId}
+            activeProviderLabel={activeProviderLabel}
+            activeProviderModel={activeProviderModel}
+            persistNotice={persistNotice}
+            onAddWorkspace={() => {
+              void handleAddWorkspace()
+            }}
+            onSelectWorkspace={workspaceId => {
+              handleSelectWorkspace(workspaceId)
+            }}
+            onOpenProjectContextMenu={(state: ProjectContextMenuState) => {
+              setProjectContextMenu(state)
+            }}
+            onSelectAgentNode={(workspaceId, nodeId) => {
+              handleSelectAgentNode(workspaceId, nodeId)
+            }}
+          />
+        )}
 
         <main className="workspace-main">
           {activeWorkspace ? (
@@ -436,6 +358,7 @@ export default function App(): React.JSX.Element {
               onSpacesChange={handleWorkspaceSpacesChange}
               onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
               agentSettings={agentSettings}
+              isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
               focusNodeId={
                 focusRequest && focusRequest.workspaceId === activeWorkspace.id
                   ? focusRequest.nodeId
@@ -456,6 +379,35 @@ export default function App(): React.JSX.Element {
       {floatingMessage ? (
         <AppMessage tone={floatingMessage.tone} text={floatingMessage.text} />
       ) : null}
+
+      <CommandCenter
+        isOpen={isCommandCenterOpen}
+        activeWorkspace={activeWorkspace}
+        workspaces={workspaces}
+        isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
+        onClose={() => {
+          closeCommandCenter()
+        }}
+        onOpenSettings={() => {
+          setIsFocusNodeTargetZoomPreviewing(false)
+          setIsSettingsOpen(true)
+        }}
+        onTogglePrimarySidebar={() => {
+          setAgentSettings(prev => ({
+            ...prev,
+            isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+          }))
+        }}
+        onAddWorkspace={() => {
+          void handleAddWorkspace()
+        }}
+        onSelectWorkspace={workspaceId => {
+          handleSelectWorkspace(workspaceId)
+        }}
+        onSelectSpace={spaceId => {
+          handleWorkspaceActiveSpaceChange(spaceId)
+        }}
+      />
 
       {projectContextMenu ? (
         <ProjectContextMenu
@@ -484,20 +436,46 @@ export default function App(): React.JSX.Element {
       {isSettingsOpen ? (
         <SettingsPanel
           settings={agentSettings}
+          updateState={updateState}
           modelCatalogByProvider={providerModelCatalog}
           workspaces={workspaces}
           onWorkspaceWorktreesRootChange={(id, root) => {
             handleAnyWorkspaceWorktreesRootChange(id, root)
           }}
+          isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
+          onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
           onChange={next => {
             setAgentSettings(next)
           }}
+          onCheckForUpdates={() => {
+            void checkForUpdates()
+          }}
+          onDownloadUpdate={() => {
+            void downloadUpdate()
+          }}
+          onInstallUpdate={() => {
+            void installUpdate()
+          }}
           onClose={() => {
             flushPersistNow()
+            setIsFocusNodeTargetZoomPreviewing(false)
             setIsSettingsOpen(false)
           }}
         />
       ) : null}
+
+      <WhatsNewDialog
+        isOpen={whatsNew.isOpen}
+        fromVersion={whatsNew.fromVersion}
+        toVersion={whatsNew.toVersion}
+        notes={whatsNew.notes}
+        isLoading={whatsNew.isLoading}
+        error={whatsNew.error}
+        compareUrl={whatsNew.compareUrl}
+        onClose={() => {
+          whatsNew.close()
+        }}
+      />
     </>
   )
 }

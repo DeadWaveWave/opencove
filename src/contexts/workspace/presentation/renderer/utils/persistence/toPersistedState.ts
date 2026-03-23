@@ -4,10 +4,12 @@ import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '../../types'
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import {
   normalizeOptionalString,
+  normalizePullRequestBaseBranchOptions,
   normalizeWorkspaceSpaceNodeIds,
   normalizeWorkspaceSpaceRect,
   normalizeWorkspaceViewport,
 } from './normalize'
+import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 
 export function toPersistedState(
   workspaces: WorkspaceState[],
@@ -22,6 +24,9 @@ export function toPersistedState(
       name: workspace.name,
       path: workspace.path,
       worktreesRoot: normalizeOptionalString(workspace.worktreesRoot) ?? '',
+      pullRequestBaseBranchOptions: normalizePullRequestBaseBranchOptions(
+        workspace.pullRequestBaseBranchOptions,
+      ),
       viewport: normalizeWorkspaceViewport(workspace.viewport),
       isMinimapVisible:
         typeof workspace.isMinimapVisible === 'boolean'
@@ -34,6 +39,7 @@ export function toPersistedState(
           normalizeOptionalString(space.directoryPath) ??
           normalizeOptionalString(workspace.path) ??
           workspace.path,
+        labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
         rect: normalizeWorkspaceSpaceRect(space.rect),
       })),
@@ -52,6 +58,7 @@ export function toPersistedState(
         kind: node.data.kind,
         profileId: normalizeOptionalString(node.data.profileId),
         runtimeKind: node.data.runtimeKind,
+        labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
         status: node.data.status,
         startedAt: node.data.startedAt,
         endedAt: node.data.endedAt,

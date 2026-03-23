@@ -1,6 +1,7 @@
 import type {
   CreateGitWorktreeBranchMode,
   CreateGitWorktreeInput,
+  GetGitDefaultBranchInput,
   GetGitStatusSummaryInput,
   ListGitBranchesInput,
   ListGitWorktreesInput,
@@ -139,6 +140,19 @@ export function normalizeGetGitStatusSummaryPayload(payload: unknown): GetGitSta
   if (!payload || typeof payload !== 'object') {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid payload for worktree:list-status-summary',
+    })
+  }
+
+  const record = payload as Record<string, unknown>
+  return {
+    repoPath: normalizeAbsolutePath(record.repoPath, 'repoPath'),
+  }
+}
+
+export function normalizeGetGitDefaultBranchPayload(payload: unknown): GetGitDefaultBranchInput {
+  if (!payload || typeof payload !== 'object') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for worktree:get-default-branch',
     })
   }
 

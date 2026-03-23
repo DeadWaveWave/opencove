@@ -3,7 +3,7 @@
   position: fixed;
   inset: 0;
   z-index: 24;
-  background: rgba(0, 0, 0, 0.55);
+  background: var(--cove-backdrop);
   display: grid;
   place-items: center;
   backdrop-filter: blur(4px);
@@ -14,9 +14,8 @@
   width: min(680px, calc(100vw - 48px));
   border: 1px solid var(--cove-border-subtle);
   border-radius: 16px;
-  background: var(--cove-surface);
-  backdrop-filter: blur(20px) saturate(130%);
-  box-shadow: 0 24px 56px rgba(0, 0, 0, 0.55);
+  background: var(--cove-window-surface);
+  box-shadow: 0 24px 56px var(--cove-shadow-color-elevated);
   padding: 18px;
   display: flex;
   flex-direction: column;
@@ -54,10 +53,8 @@
 
 .cove-window__field-row input,
 .cove-window__field-row textarea,
-.cove-window__field-row select,
 .workspace-task-creator__field-row input,
-.workspace-task-creator__field-row textarea,
-.workspace-task-creator__field-row select {
+.workspace-task-creator__field-row textarea {
   border: 1px solid var(--cove-border);
   background: var(--cove-field);
   color: var(--cove-text);
@@ -74,10 +71,8 @@
 
 .cove-window__field-row input:focus,
 .cove-window__field-row textarea:focus,
-.cove-window__field-row select:focus,
 .workspace-task-creator__field-row input:focus,
-.workspace-task-creator__field-row textarea:focus,
-.workspace-task-creator__field-row select:focus {
+.workspace-task-creator__field-row textarea:focus {
   outline: none;
   border-color: var(--cove-accent);
   box-shadow: 0 0 0 1px var(--cove-accent);
@@ -94,6 +89,11 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.cove-window__field-row .cove-select,
+.workspace-task-creator__field-row .cove-select {
+  width: 100%;
 }
 
 .cove-window__checkbox,
@@ -152,7 +152,7 @@
 .cove-window__action--ghost,
 .workspace-task-creator__action--ghost {
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--cove-field);
   color: var(--cove-text);
 }
 
@@ -168,7 +168,7 @@
 .cove-window__action--secondary,
 .workspace-task-creator__action--secondary {
   border: 1px solid var(--cove-border-subtle);
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--cove-field);
   color: var(--cove-text);
 }
 

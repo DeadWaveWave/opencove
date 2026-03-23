@@ -26,11 +26,11 @@ export function writeNormalizedAppState(
   const insertWorkspace = db.prepare(
     `
       INSERT INTO workspaces (
-        id, name, path, worktrees_root,
+        id, name, path, worktrees_root, pull_request_base_branch_options_json,
         viewport_x, viewport_y, viewport_zoom,
         is_minimap_visible, active_space_id
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -39,20 +39,21 @@ export function writeNormalizedAppState(
       INSERT INTO nodes (
         id, workspace_id, title, title_pinned_by_user,
         position_x, position_y, width, height,
-        kind, status, started_at, ended_at, exit_code, last_error,
+        kind, label_color_override,
+        status, started_at, ended_at, exit_code, last_error,
         execution_directory, expected_directory, agent_json, task_json
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
   const insertSpace = db.prepare(
     `
       INSERT INTO workspace_spaces (
-        id, workspace_id, name, directory_path,
+        id, workspace_id, name, directory_path, label_color,
         rect_x, rect_y, rect_width, rect_height
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -82,6 +83,7 @@ export function writeNormalizedAppState(
         workspace.name,
         workspace.path,
         workspace.worktreesRoot,
+        safeJsonStringify(workspace.pullRequestBaseBranchOptions),
         workspace.viewport.x,
         workspace.viewport.y,
         workspace.viewport.zoom,
@@ -100,6 +102,7 @@ export function writeNormalizedAppState(
           node.width,
           node.height,
           node.kind,
+          node.labelColorOverride,
           node.status,
           node.startedAt,
           node.endedAt,
@@ -118,6 +121,7 @@ export function writeNormalizedAppState(
           workspace.id,
           space.name,
           space.directoryPath,
+          space.labelColor,
           space.rect?.x ?? null,
           space.rect?.y ?? null,
           space.rect?.width ?? null,

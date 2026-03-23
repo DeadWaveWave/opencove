@@ -1,0 +1,95 @@
+/* --- Settings Lists & Cards --- */
+.settings-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+}
+
+.settings-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-radius: 10px;
+  transition: background 0.2s;
+  background: var(--cove-field);
+  border: 1px solid var(--cove-border-subtle);
+}
+
+.settings-list-item:hover {
+  background: var(--cove-surface-hover);
+}
+
+.settings-list-item__left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+  cursor: pointer;
+  flex: 1;
+}
+
+.settings-list-item__left input[type='radio'] {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
+.settings-provider-card {
+  padding: 18px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 14px;
+  background: var(--cove-field);
+}
+
+.settings-provider-card:last-child {
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.settings-provider-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.settings-provider-card__title {
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  color: var(--cove-text);
+}
+
+.settings-provider-card__error {
+  margin-top: 12px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: rgba(232, 103, 120, 0.92);
+}
+
+.settings-provider-card .settings-list-item__left {
+  color: var(--cove-text);
+}
+
+.settings-panel .settings-list-item__remove.secondary {
+  padding: 4px 10px;
+}
+
+.settings-agent-order__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-agent-order__action.secondary {
+  padding: 6px;
+  line-height: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-agent-order__icon {
+  width: 14px;
+  height: 14px;
+}

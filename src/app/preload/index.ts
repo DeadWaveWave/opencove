@@ -7,11 +7,14 @@ import type {
   CreateGitWorktreeResult,
   DetachTerminalInput,
   EnsureDirectoryInput,
+  GetGitDefaultBranchInput,
+  GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
+  ListInstalledAgentProvidersResult,
   ListGitBranchesInput,
   ListGitBranchesResult,
   ListGitWorktreesInput,
@@ -23,6 +26,13 @@ import type {
   ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
   ResolveAgentResumeSessionResult,
+  ResolveGitHubPullRequestsInput,
+  ResolveGitHubPullRequestsResult,
+  AppUpdateState,
+  ConfigureAppUpdatesInput,
+  GetReleaseNotesAutoRangeInput,
+  GetReleaseNotesRangeInput,
+  ReleaseNotesRangeResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -40,6 +50,7 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
+  SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalSessionMetadataEvent,
@@ -58,6 +69,12 @@ type UnsubscribeFn = () => void
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
+    allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
+    platform: process.platform,
+  },
+  windowChrome: {
+    setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.windowChromeSetTheme, payload),
   },
   clipboard: {
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),
@@ -97,6 +114,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.worktreeListWorktrees, payload),
     statusSummary: (payload: GetGitStatusSummaryInput): Promise<GetGitStatusSummaryResult> =>
       invokeIpc(IPC_CHANNELS.worktreeStatusSummary, payload),
+    getDefaultBranch: (payload: GetGitDefaultBranchInput): Promise<GetGitDefaultBranchResult> =>
+      invokeIpc(IPC_CHANNELS.worktreeGetDefaultBranch, payload),
     create: (payload: CreateGitWorktreeInput): Promise<CreateGitWorktreeResult> =>
       invokeIpc(IPC_CHANNELS.worktreeCreate, payload),
     remove: (payload: RemoveGitWorktreeInput): Promise<RemoveGitWorktreeResult> =>
@@ -105,6 +124,39 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.worktreeRenameBranch, payload),
     suggestNames: (payload: SuggestWorktreeNamesInput): Promise<SuggestWorktreeNamesResult> =>
       invokeIpc(IPC_CHANNELS.worktreeSuggestNames, payload),
+  },
+  integration: {
+    github: {
+      resolvePullRequests: (
+        payload: ResolveGitHubPullRequestsInput,
+      ): Promise<ResolveGitHubPullRequestsResult> =>
+        invokeIpc(IPC_CHANNELS.integrationGithubResolvePullRequests, payload),
+    },
+  },
+  update: {
+    getState: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateGetState),
+    configure: (payload: ConfigureAppUpdatesInput): Promise<AppUpdateState> =>
+      invokeIpc(IPC_CHANNELS.appUpdateConfigure, payload),
+    checkForUpdates: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateCheck),
+    downloadUpdate: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateDownload),
+    installUpdate: (): Promise<void> => invokeIpc(IPC_CHANNELS.appUpdateInstall),
+    onState: (listener: (state: AppUpdateState) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: AppUpdateState) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.appUpdateState, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.appUpdateState, handler)
+      }
+    },
+  },
+  releaseNotes: {
+    getRange: (payload: GetReleaseNotesRangeInput): Promise<ReleaseNotesRangeResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetRange, payload),
+    getAutoRange: (payload: GetReleaseNotesAutoRangeInput): Promise<ReleaseNotesRangeResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetAutoRange, payload),
   },
   pty: {
     listProfiles: (): Promise<ListTerminalProfilesResult> =>
@@ -173,6 +225,8 @@ const opencoveApi = {
   agent: {
     listModels: (payload: ListAgentModelsInput): Promise<ListAgentModelsResult> =>
       invokeIpc(IPC_CHANNELS.agentListModels, payload),
+    listInstalledProviders: (): Promise<ListInstalledAgentProvidersResult> =>
+      invokeIpc(IPC_CHANNELS.agentListInstalledProviders),
     launch: (payload: LaunchAgentInput): Promise<LaunchAgentResult> =>
       invokeIpc(IPC_CHANNELS.agentLaunch, payload),
     readLastMessage: (payload: ReadAgentLastMessageInput): Promise<ReadAgentLastMessageResult> =>

@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import path from 'path'
 import { createTestUserDataDir, launchApp } from './workspace-canvas.app'
 import {
@@ -63,6 +63,7 @@ export interface SeedNode {
   exitCode?: number | null
   lastError?: string | null
   scrollback?: string | null
+  labelColorOverride?: string | null
   executionDirectory?: string | null
   expectedDirectory?: string | null
   agent?: SeedAgentData | null
@@ -78,6 +79,7 @@ export interface SeedWorkspace {
     id: string
     name: string
     directoryPath: string
+    labelColor?: string | null
     nodeIds: string[]
     rect?: {
       x: number
@@ -258,4 +260,20 @@ export async function readCanvasViewport(
 
     return { x, y, zoom }
   })
+}
+
+export async function selectCoveOption(
+  window: Page,
+  testId: string,
+  optionValue: string,
+): Promise<void> {
+  const trigger = window.locator(`[data-testid="${testId}-trigger"]`)
+  await expect(trigger).toBeVisible()
+  await trigger.click()
+
+  const menu = window.locator(`[data-testid="${testId}-menu"]`)
+  await expect(menu).toBeVisible()
+  await menu
+    .locator(`[data-cove-select-option-value="${optionValue.replaceAll('"', '\\"')}"]`)
+    .click()
 }

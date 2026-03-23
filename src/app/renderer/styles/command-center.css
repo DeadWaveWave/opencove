@@ -1,0 +1,189 @@
+.command-center-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(5, 10, 20, 0.28);
+  backdrop-filter: blur(10px) saturate(130%);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: calc(var(--cove-app-header-height) + 14px);
+}
+
+.command-center {
+  width: min(720px, calc(100vw - 48px));
+  max-height: min(560px, calc(100vh - 120px));
+  background: var(--cove-surface-strong);
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 18px;
+  box-shadow: 0 34px 90px var(--cove-shadow-color-panel);
+  overflow: hidden;
+  transform-origin: top center;
+  animation: command-center-in 0.14s ease-out;
+}
+
+@keyframes command-center-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.command-center__input-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.command-center__search-icon {
+  flex: 0 0 auto;
+  color: var(--cove-text-muted);
+}
+
+.command-center__input {
+  flex: 1 1 auto;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--cove-text);
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  line-height: 1.2;
+}
+
+.command-center__input::placeholder {
+  color: var(--cove-text-faint);
+}
+
+.command-center__meta {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  letter-spacing: 0.2px;
+}
+
+.command-center__meta-item {
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cove-border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  white-space: nowrap;
+}
+
+.command-center__results {
+  padding: 8px;
+  overflow-y: auto;
+  max-height: min(500px, calc(100vh - 190px));
+}
+
+.command-center__empty {
+  padding: 22px 10px;
+  color: var(--cove-text-muted);
+  font-size: calc(13px * var(--cove-ui-font-scale));
+}
+
+.command-center__section + .command-center__section {
+  margin-top: 10px;
+}
+
+.command-center__section-label {
+  padding: 8px 10px 6px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  color: var(--cove-text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.command-center__section-items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.command-center__item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--cove-text);
+  text-align: left;
+  transition:
+    background-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.command-center__item:hover {
+  background: var(--cove-surface-hover);
+}
+
+.command-center__item:active {
+  transform: translateY(1px);
+}
+
+.command-center__item:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.command-center__item--selected {
+  background: rgba(94, 156, 255, 0.12);
+}
+
+.command-center__item-icon {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  color: var(--cove-text-muted);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.command-center__item--selected .command-center__item-icon {
+  color: rgba(94, 156, 255, 0.95);
+  background: rgba(94, 156, 255, 0.1);
+  border-color: rgba(94, 156, 255, 0.22);
+}
+
+.command-center__item-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.command-center__item-title {
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  line-height: 1.15;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-center__item-subtitle {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+  line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

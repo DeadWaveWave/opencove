@@ -1,13 +1,22 @@
 @import '@xyflow/react/dist/style.css';
 
 @import './styles/base.css';
+@import './styles/cove-fields.css';
+@import './styles/app-header.css';
+@import './styles/command-center.css';
 @import './styles/workspace-sidebar.css';
 @import './styles/workspace-canvas.css';
 @import './styles/workspace-overlays.css';
 @import './styles/workspace-context-menu.css';
+@import './styles/workspace-pr-chip.css';
 @import './styles/terminal-node.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';
+@import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';
+@import './styles/settings-panel.preview.css';
+@import './styles/settings-panel.lists.css';
+@import './styles/settings-panel.buttons.css';
 @import './styles/cove-window.css';
 @import './styles/app-message.css';
+@import './styles/whats-new.css';

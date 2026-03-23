@@ -33,15 +33,20 @@ vi.mock('@xterm/xterm', () => {
 
     public cols = 80
     public rows = 24
-    public options = { fontSize: 13 }
+    public options: { fontSize: number; theme?: unknown } = { fontSize: 13 }
     public written: string[] = []
+    public refreshCalls = 0
     private dataListener: ((data: string) => void) | null = null
     private binaryListener: ((data: string) => void) | null = null
 
-    public constructor(options?: { cols?: number; rows?: number }) {
+    public constructor(options?: { cols?: number; rows?: number; theme?: unknown }) {
       MockTerminal.lastInstance = this
       this.cols = options?.cols ?? 80
       this.rows = options?.rows ?? 24
+      this.options = {
+        ...this.options,
+        ...(options?.theme ? { theme: options.theme } : {}),
+      }
     }
 
     public loadAddon(addon: { activate?: (terminal: MockTerminal) => void }): void {
@@ -52,7 +57,9 @@ vi.mock('@xterm/xterm', () => {
 
     public focus(): void {}
 
-    public refresh(): void {}
+    public refresh(): void {
+      this.refreshCalls += 1
+    }
 
     public dispose(): void {}
 
@@ -129,6 +136,14 @@ vi.mock('@xyflow/react', () => {
 describe('TerminalNode hydration buffering', () => {
   beforeEach(() => {
     clearCachedTerminalScreenStates()
+    document.documentElement.dataset.coveTheme = 'dark'
+    document.documentElement.style.setProperty('--cove-terminal-background', '#0a0f1d')
+    document.documentElement.style.setProperty('--cove-terminal-foreground', '#d6e4ff')
+    document.documentElement.style.setProperty('--cove-terminal-cursor', '#d6e4ff')
+    document.documentElement.style.setProperty(
+      '--cove-terminal-selection',
+      'rgba(94, 156, 255, 0.35)',
+    )
   })
 
   it('subscribes before attach and flushes buffered output without duplication', async () => {
@@ -369,6 +384,95 @@ describe('TerminalNode hydration buffering', () => {
         data: binaryInput,
         encoding: 'binary',
       })
+    })
+  })
+
+  it('synchronizes the runtime xterm theme when the app theme changes', async () => {
+    if (typeof window.ResizeObserver === 'undefined') {
+      window.ResizeObserver = class ResizeObserver {
+        public observe(): void {}
+        public disconnect(): void {}
+        public unobserve(): void {}
+      }
+    }
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        meta: {
+          isTest: true,
+        },
+        pty: {
+          attach: vi.fn(async () => undefined),
+          detach: vi.fn(async () => undefined),
+          snapshot: vi.fn(async () => ({ data: '' })),
+          onData: vi.fn(() => () => undefined),
+          onExit: vi.fn(() => () => undefined),
+          write: vi.fn(async () => undefined),
+          resize: vi.fn(async () => undefined),
+        },
+      },
+    })
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+
+    const { container } = render(
+      <TerminalNode
+        nodeId="node-1"
+        sessionId="session-1"
+        title="t"
+        kind="terminal"
+        status={null}
+        lastError={null}
+        position={{ x: 0, y: 0 }}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />,
+    )
+
+    const { __getLastTerminal } = await import('@xterm/xterm')
+    await waitFor(() => {
+      expect(__getLastTerminal()?.options.theme).toEqual(
+        expect.objectContaining({
+          background: '#0a0f1d',
+          foreground: '#d6e4ff',
+        }),
+      )
+    })
+
+    document.documentElement.dataset.coveTheme = 'light'
+    document.documentElement.style.setProperty('--cove-terminal-background', '#fbfcff')
+    document.documentElement.style.setProperty(
+      '--cove-terminal-foreground',
+      'rgba(17, 24, 39, 0.92)',
+    )
+    document.documentElement.style.setProperty('--cove-terminal-cursor', 'rgba(17, 24, 39, 0.92)')
+    document.documentElement.style.setProperty(
+      '--cove-terminal-selection',
+      'rgba(94, 156, 255, 0.24)',
+    )
+    window.dispatchEvent(new CustomEvent('opencove-theme-changed', { detail: { theme: 'light' } }))
+
+    await waitFor(() => {
+      expect(__getLastTerminal()?.options.theme).toEqual(
+        expect.objectContaining({
+          background: '#fbfcff',
+          foreground: 'rgba(17, 24, 39, 0.92)',
+          cursor: 'rgba(17, 24, 39, 0.92)',
+          selectionBackground: 'rgba(94, 156, 255, 0.24)',
+        }),
+      )
+      expect(__getLastTerminal()?.refreshCalls ?? 0).toBeGreaterThan(0)
+      expect(container.querySelector('.terminal-node__terminal')).toHaveAttribute(
+        'data-cove-terminal-theme',
+        'light',
+      )
     })
   })
 })

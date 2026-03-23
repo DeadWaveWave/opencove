@@ -101,6 +101,7 @@
 
 - **Web/Renderer 优先用 Playwright**：主路径走 `pnpm test:e2e` 或最低 meaningful layer 的 Playwright 用例。
 - **用户可感知变化必须跑 E2E**：新增功能、UX 改动、修复 bug、默认行为变化等，至少跑一条覆盖本次变更的 Playwright 用例（通常直接跑 `pnpm test:e2e`；或统一跑 `pnpm pre-commit`）。
+- **主题/样式改动必须遵守 UI 规范**：新增颜色走 token，Light/Dark 都要验收可读性；优先在 E2E 中附带截图。详见 `docs/UI_STANDARD.md`。
 - **复杂交互辅以截图 / 录屏**：当行为依赖拖拽、滚动、动画、命中点或视觉反馈时，用截图或录屏帮助确认真实体验。
 - **提交前做一次 smoke 验证**：至少确认核心用户路径、关键视觉状态和交互目标没有回归。
 - **开发中用视觉调试**：必要时主动看截图、边框、命中区域、选择框、hover/active 状态，而不是只看日志和断言。
@@ -125,7 +126,7 @@
 -   **提交前检查（与 CI 对齐的最低门槛）**：
     -   运行 `pnpm pre-commit` 前，必须先 `git add` 本次改动，再执行 `pnpm line-check:staged`，因为行数门禁只检查 staged 文件。
     -   若 staged 文件中存在超过 500 行的文件，先重构/拆分，过门禁后再继续，不要带着超长文件直接运行 `pnpm pre-commit`。
-    -   创建/更新 PR 时：若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），必须同步更新 `CHANGELOG.md` 的 `## [Unreleased]`（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
+    -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑 Playwright E2E（通常 `pnpm test:e2e`，或统一跑 `pnpm pre-commit`）。
     -   若本次改动涉及 **Renderer 用户可见文案**，必须做好 i18n：禁止新增硬编码用户文案，新增/修改文案时同步更新 `src/app/renderer/i18n/locales/en.ts` 与 `src/app/renderer/i18n/locales/zh-CN.ts`，并在提交前做一次对应语言的最小 smoke/测试验证。
     -   通过上述检查后，再执行 `pnpm pre-commit` （type, lint, format, test）。
@@ -159,6 +160,7 @@
 -   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/PERSISTENCE.md`
 -   **UI 开发标准**：
+    -   总体 UI 规范：`docs/UI_STANDARD.md`
     -   窗口 UI 标准：`docs/WINDOW_UI_STANDARD.md`
     -   任务 UI 标准：`docs/TASK_UI_STANDARD.md`
     -   视口导航标准：`docs/VIEWPORT_NAVIGATION_STANDARD.md`

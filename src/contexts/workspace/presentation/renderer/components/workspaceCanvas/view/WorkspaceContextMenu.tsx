@@ -1,19 +1,6 @@
-import React from 'react'
-import {
-  ArrowRight,
-  Check,
-  ChevronRight,
-  FileText,
-  Group,
-  LayoutGrid,
-  ListTodo,
-  Magnet,
-  Play,
-  SlidersHorizontal,
-  Terminal,
-  X,
-} from 'lucide-react'
-import { useTranslation } from '@app/renderer/i18n'
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
+import { AGENT_PROVIDERS, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState } from '../types'
 import type {
@@ -25,6 +12,23 @@ import {
   WorkspaceContextArrangeBySubmenu,
   type ArrangeScope,
 } from './WorkspaceContextArrangeBySubmenu'
+import {
+  WorkspaceContextAgentProviderSubmenu,
+  WorkspaceContextLabelColorSubmenu,
+  WorkspaceContextPaneMenuContent,
+  WorkspaceContextSelectionMenuContent,
+} from './WorkspaceContextMenuParts'
+import {
+  MENU_WIDTH,
+  SUBMENU_CLOSE_DELAY_MS,
+  SUBMENU_GAP,
+  SUBMENU_MAX_HEIGHT,
+  SUBMENU_WIDTH,
+  VIEWPORT_PADDING,
+  isPointWithinRect,
+} from './WorkspaceContextMenu.helpers'
+
+type OpenSubmenu = 'arrangeBy' | 'agent-providers' | 'label-color' | null
 
 interface WorkspaceContextMenuProps {
   contextMenu: ContextMenuState | null
@@ -33,6 +37,8 @@ interface WorkspaceContextMenuProps {
   createNoteNodeFromContextMenu: () => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
+  agentProviderOrder: AgentProvider[]
+  openAgentLauncherForProvider: (provider: AgentProvider) => void
   spaces: WorkspaceSpaceState[]
   magneticSnappingEnabled: boolean
   onToggleMagneticSnapping: () => void
@@ -46,32 +52,7 @@ interface WorkspaceContextMenuProps {
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
-}
-
-const VIEWPORT_PADDING_PX = 12
-const SUBMENU_GAP_PX = 6
-const SUBMENU_WIDTH_PX = 240
-const SUBMENU_MAX_HEIGHT_PX = 640
-const MENU_WIDTH_ESTIMATE_PX = 200
-
-function renderMark(checked: boolean): React.JSX.Element {
-  return checked ? (
-    <Check className="workspace-context-menu__mark" aria-hidden="true" />
-  ) : (
-    <span className="workspace-context-menu__mark" aria-hidden="true" />
-  )
-}
-
-function isPointWithinRect(
-  point: { x: number; y: number },
-  rect: { x: number; y: number; width: number; height: number },
-): boolean {
-  return (
-    point.x >= rect.x &&
-    point.y >= rect.y &&
-    point.x <= rect.x + rect.width &&
-    point.y <= rect.y + rect.height
-  )
+  setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
 }
 
 export function WorkspaceContextMenu({
@@ -81,6 +62,8 @@ export function WorkspaceContextMenu({
   createNoteNodeFromContextMenu,
   openTaskCreator,
   openAgentLauncher,
+  agentProviderOrder,
+  openAgentLauncherForProvider,
   spaces,
   magneticSnappingEnabled,
   onToggleMagneticSnapping,
@@ -94,30 +77,109 @@ export function WorkspaceContextMenu({
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
+  setSelectedNodeLabelColorOverride,
 }: WorkspaceContextMenuProps): React.JSX.Element | null {
-  const { t } = useTranslation()
+  const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu>(null)
+  const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [installedProviders, setInstalledProviders] = useState<AgentProvider[] | null>(null)
+  const [isLoadingInstalledProviders, setIsLoadingInstalledProviders] = useState(false)
 
-  const [contextHitSpaceId, setContextHitSpaceId] = React.useState<string | null>(null)
+  const sortedInstalledProviders = useMemo(() => {
+    if (!installedProviders) {
+      return []
+    }
+
+    const effectiveOrder = agentProviderOrder.length > 0 ? agentProviderOrder : AGENT_PROVIDERS
+    return effectiveOrder.filter(provider => installedProviders.includes(provider))
+  }, [agentProviderOrder, installedProviders])
+
+  const cancelScheduledSubmenuClose = useCallback(() => {
+    if (closeSubmenuTimeoutRef.current === null) {
+      return
+    }
+
+    clearTimeout(closeSubmenuTimeoutRef.current)
+    closeSubmenuTimeoutRef.current = null
+  }, [])
+
+  const scheduleSubmenuClose = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    closeSubmenuTimeoutRef.current = setTimeout(() => {
+      closeSubmenuTimeoutRef.current = null
+      setOpenSubmenu(previous => (previous === 'arrangeBy' ? previous : null))
+    }, SUBMENU_CLOSE_DELAY_MS)
+  }, [cancelScheduledSubmenuClose])
+
+  const loadInstalledProviders = useCallback(async () => {
+    if (installedProviders !== null || isLoadingInstalledProviders) {
+      return
+    }
+
+    setIsLoadingInstalledProviders(true)
+
+    try {
+      const result = await window.opencoveApi.agent.listInstalledProviders()
+      setInstalledProviders(result.providers)
+    } catch {
+      setInstalledProviders([])
+    } finally {
+      setIsLoadingInstalledProviders(false)
+    }
+  }, [installedProviders, isLoadingInstalledProviders])
+
+  const openAgentProviderSubmenu = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('agent-providers')
+
+    if (installedProviders === null && !isLoadingInstalledProviders) {
+      void loadInstalledProviders()
+    }
+  }, [
+    cancelScheduledSubmenuClose,
+    installedProviders,
+    isLoadingInstalledProviders,
+    loadInstalledProviders,
+  ])
+
+  const openArrangeSubmenu = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('arrangeBy')
+  }, [cancelScheduledSubmenuClose])
+
+  const openLabelColorSubmenu = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('label-color')
+  }, [cancelScheduledSubmenuClose])
+
+  useEffect(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu(null)
+  }, [cancelScheduledSubmenuClose, contextMenu?.kind, contextMenu?.x, contextMenu?.y])
+
+  useEffect(() => {
+    return () => {
+      cancelScheduledSubmenuClose()
+    }
+  }, [cancelScheduledSubmenuClose])
+
+  const [contextHitSpaceId, setContextHitSpaceId] = useState<string | null>(null)
   const contextHitSpaceIdRef = React.useRef<string | null>(null)
   const contextMenuSignatureRef = React.useRef<string | null>(null)
-
-  const [arrangeScope, setArrangeScope] = React.useState<ArrangeScope>('canvas')
+  const [arrangeScope, setArrangeScope] = useState<ArrangeScope>('canvas')
   const arrangeScopeRef = React.useRef<ArrangeScope>('canvas')
-  const [arrangeOrder, setArrangeOrder] = React.useState<WorkspaceArrangeOrder>('position')
+  const [arrangeOrder, setArrangeOrder] = useState<WorkspaceArrangeOrder>('position')
   const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
-  const [arrangeSpaceFit, setArrangeSpaceFit] = React.useState<WorkspaceArrangeSpaceFit>('tight')
+  const [arrangeSpaceFit, setArrangeSpaceFit] = useState<WorkspaceArrangeSpaceFit>('tight')
   const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
-
-  const [openSubmenu, setOpenSubmenu] = React.useState<'arrangeBy' | null>(null)
   const menuRef = React.useRef<HTMLDivElement | null>(null)
   const arrangeByButtonRef = React.useRef<HTMLButtonElement | null>(null)
-  const [submenuLayout, setSubmenuLayout] = React.useState<{
+  const [arrangeSubmenuLayout, setArrangeSubmenuLayout] = React.useState<{
     left: number
     top: number
     maxHeight: number
   } | null>(null)
 
-  React.useEffect(() => {
+  useEffect(() => {
     const signature = contextMenu
       ? `${contextMenu.kind}:${contextMenu.x}:${contextMenu.y}:${'flowX' in contextMenu ? contextMenu.flowX : 0}:${
           'flowY' in contextMenu ? contextMenu.flowY : 0
@@ -152,7 +214,7 @@ export function WorkspaceContextMenu({
     setArrangeScope(nextScope)
   }, [contextMenu, spaces])
 
-  const contextHitSpace = React.useMemo(() => {
+  const contextHitSpace = useMemo(() => {
     if (!contextHitSpaceId) {
       return null
     }
@@ -160,14 +222,14 @@ export function WorkspaceContextMenu({
     return spaces.find(space => space.id === contextHitSpaceId) ?? null
   }, [contextHitSpaceId, spaces])
 
-  const resolveCurrentArrangeStyle = React.useCallback((): WorkspaceArrangeStyle => {
+  const resolveCurrentArrangeStyle = useCallback((): WorkspaceArrangeStyle => {
     return {
       order: arrangeOrderRef.current,
       spaceFit: arrangeSpaceFitRef.current,
     }
   }, [])
 
-  const applyArrange = React.useCallback(
+  const applyArrange = useCallback(
     (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
       const scope = options?.scope ?? arrangeScopeRef.current
       const style = options?.style ?? resolveCurrentArrangeStyle()
@@ -190,7 +252,7 @@ export function WorkspaceContextMenu({
     [arrangeAll, arrangeCanvas, arrangeInSpace, resolveCurrentArrangeStyle],
   )
 
-  const commitArrangeAndClose = React.useCallback(
+  const commitArrangeAndClose = useCallback(
     (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
       closeContextMenu()
       setOpenSubmenu(null)
@@ -199,62 +261,115 @@ export function WorkspaceContextMenu({
     [applyArrange, closeContextMenu],
   )
 
-  React.useLayoutEffect(() => {
+  const keepAgentProviderSubmenuOpen = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('agent-providers')
+  }, [cancelScheduledSubmenuClose])
+
+  const keepLabelColorSubmenuOpen = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('label-color')
+  }, [cancelScheduledSubmenuClose])
+
+  const handleArrangeScopeSelect = useCallback(
+    (scope: ArrangeScope) => {
+      arrangeScopeRef.current = scope
+      setArrangeScope(scope)
+      applyArrange({ scope })
+    },
+    [applyArrange],
+  )
+
+  const handleArrangeOrderSelect = useCallback(
+    (order: WorkspaceArrangeOrder) => {
+      arrangeOrderRef.current = order
+      setArrangeOrder(order)
+      applyArrange()
+    },
+    [applyArrange],
+  )
+
+  const handleArrangeSpaceFitSelect = useCallback(
+    (spaceFit: WorkspaceArrangeSpaceFit) => {
+      arrangeSpaceFitRef.current = spaceFit
+      setArrangeSpaceFit(spaceFit)
+      applyArrange()
+    },
+    [applyArrange],
+  )
+
+  useLayoutEffect(() => {
     if (!contextMenu || contextMenu.kind !== 'pane' || openSubmenu !== 'arrangeBy') {
-      setSubmenuLayout(null)
+      setArrangeSubmenuLayout(null)
       return
     }
 
     const menuElement = menuRef.current
     const anchorButton = arrangeByButtonRef.current
     if (!menuElement || !anchorButton) {
-      setSubmenuLayout(null)
+      setArrangeSubmenuLayout(null)
       return
     }
 
     const menuRect = menuElement.getBoundingClientRect()
     const anchorRect = anchorButton.getBoundingClientRect()
-
     const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
     const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
-    const maxHeight = Math.min(SUBMENU_MAX_HEIGHT_PX, viewportHeight - VIEWPORT_PADDING_PX * 2)
-
+    const maxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
     const wouldOverflowRight =
-      menuRect.right + SUBMENU_GAP_PX + SUBMENU_WIDTH_PX > viewportWidth - VIEWPORT_PADDING_PX
+      menuRect.right + SUBMENU_GAP + SUBMENU_WIDTH > viewportWidth - VIEWPORT_PADDING
     const left = wouldOverflowRight
-      ? Math.max(VIEWPORT_PADDING_PX, menuRect.left - SUBMENU_GAP_PX - SUBMENU_WIDTH_PX)
-      : Math.min(
-          viewportWidth - VIEWPORT_PADDING_PX - SUBMENU_WIDTH_PX,
-          menuRect.right + SUBMENU_GAP_PX,
-        )
-
+      ? Math.max(VIEWPORT_PADDING, menuRect.left - SUBMENU_GAP - SUBMENU_WIDTH)
+      : Math.min(viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH, menuRect.right + SUBMENU_GAP)
     const top = Math.max(
-      VIEWPORT_PADDING_PX,
-      Math.min(anchorRect.top, viewportHeight - VIEWPORT_PADDING_PX - maxHeight),
+      VIEWPORT_PADDING,
+      Math.min(anchorRect.top, viewportHeight - VIEWPORT_PADDING - maxHeight),
     )
 
-    setSubmenuLayout({ left, top, maxHeight })
+    setArrangeSubmenuLayout({ left, top, maxHeight })
   }, [contextMenu, openSubmenu])
 
   if (!contextMenu) {
     return null
   }
 
-  const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : contextMenu.x
-  const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : contextMenu.y
+  const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
+  const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
   const anchorX = Math.min(
-    Math.max(contextMenu.x, VIEWPORT_PADDING_PX),
-    Math.max(VIEWPORT_PADDING_PX, viewportWidth - VIEWPORT_PADDING_PX),
+    Math.max(contextMenu.x, VIEWPORT_PADDING),
+    Math.max(VIEWPORT_PADDING, viewportWidth - VIEWPORT_PADDING),
   )
   const anchorY = Math.min(
-    Math.max(contextMenu.y, VIEWPORT_PADDING_PX),
-    Math.max(VIEWPORT_PADDING_PX, viewportHeight - VIEWPORT_PADDING_PX),
+    Math.max(contextMenu.y, VIEWPORT_PADDING),
+    Math.max(VIEWPORT_PADDING, viewportHeight - VIEWPORT_PADDING),
   )
   const flipX = contextMenu.x > viewportWidth / 2
   const flipY = contextMenu.y > viewportHeight / 2
-  const transform =
+  const menuTransform =
     flipX || flipY ? `translate(${flipX ? '-100%' : '0'}, ${flipY ? '-100%' : '0'})` : undefined
-
+  const measuredMenuRect = menuRef.current?.getBoundingClientRect() ?? null
+  const submenuMaxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
+  const fallbackSubmenuLeft = flipX
+    ? Math.max(VIEWPORT_PADDING, anchorX - MENU_WIDTH - SUBMENU_GAP - SUBMENU_WIDTH)
+    : Math.min(viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH, anchorX + MENU_WIDTH + SUBMENU_GAP)
+  const fallbackSubmenuTop = Math.max(
+    VIEWPORT_PADDING,
+    Math.min(anchorY, viewportHeight - VIEWPORT_PADDING - submenuMaxHeight),
+  )
+  const submenuLeft = measuredMenuRect
+    ? measuredMenuRect.right + SUBMENU_GAP + SUBMENU_WIDTH > viewportWidth - VIEWPORT_PADDING
+      ? Math.max(VIEWPORT_PADDING, measuredMenuRect.left - SUBMENU_GAP - SUBMENU_WIDTH)
+      : Math.min(
+          viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH,
+          measuredMenuRect.right + SUBMENU_GAP,
+        )
+    : fallbackSubmenuLeft
+  const submenuTop = measuredMenuRect
+    ? Math.max(
+        VIEWPORT_PADDING,
+        Math.min(measuredMenuRect.top, viewportHeight - VIEWPORT_PADDING - submenuMaxHeight),
+      )
+    : fallbackSubmenuTop
   const canArrangeHitSpace = Boolean(contextHitSpace && contextHitSpace.nodeIds.length >= 2)
   const canArrangeCurrentScope =
     arrangeScope === 'all'
@@ -262,197 +377,72 @@ export function WorkspaceContextMenu({
       : arrangeScope === 'canvas'
         ? canArrangeCanvas
         : canArrangeHitSpace
-
-  const shouldShowArrangeSubmenu = openSubmenu === 'arrangeBy' && contextMenu.kind === 'pane'
-  const resolvedSubmenuMaxHeight = Math.min(
-    SUBMENU_MAX_HEIGHT_PX,
-    viewportHeight - VIEWPORT_PADDING_PX * 2,
-  )
-  const fallbackSubmenuTop = Math.max(
-    VIEWPORT_PADDING_PX,
-    Math.min(anchorY, viewportHeight - VIEWPORT_PADDING_PX - resolvedSubmenuMaxHeight),
-  )
-  const fallbackSubmenuLeft = flipX
-    ? Math.max(
-        VIEWPORT_PADDING_PX,
-        anchorX - MENU_WIDTH_ESTIMATE_PX - SUBMENU_GAP_PX - SUBMENU_WIDTH_PX,
-      )
-    : Math.min(
-        viewportWidth - VIEWPORT_PADDING_PX - SUBMENU_WIDTH_PX,
-        anchorX + MENU_WIDTH_ESTIMATE_PX + SUBMENU_GAP_PX,
-      )
-  const resolvedSubmenuTop = submenuLayout?.top ?? fallbackSubmenuTop
-  const resolvedSubmenuLeft = submenuLayout?.left ?? fallbackSubmenuLeft
+  const shouldShowArrangeSubmenu = contextMenu.kind === 'pane' && openSubmenu === 'arrangeBy'
+  const shouldShowAgentProviderSubmenu =
+    contextMenu.kind === 'pane' &&
+    openSubmenu === 'agent-providers' &&
+    sortedInstalledProviders.length > 0
+  const shouldShowLabelColorSubmenu =
+    contextMenu.kind === 'selection' && openSubmenu === 'label-color'
+  const sharedSubmenuStyle = {
+    top: submenuTop,
+    left: submenuLeft,
+    maxHeight: submenuMaxHeight,
+  }
 
   return (
     <>
       <div
         ref={menuRef}
-        className="workspace-context-menu"
-        style={{ top: anchorY, left: anchorX, transform }}
+        className="workspace-context-menu workspace-canvas-context-menu"
+        style={{ top: anchorY, left: anchorX, transform: menuTransform }}
+        onMouseDown={event => {
+          event.stopPropagation()
+        }}
         onClick={event => {
           event.stopPropagation()
         }}
+        onMouseEnter={cancelScheduledSubmenuClose}
+        onMouseLeave={scheduleSubmenuClose}
       >
         {contextMenu.kind === 'pane' ? (
-          <>
-            <button
-              type="button"
-              data-testid="workspace-context-new-terminal"
-              onClick={() => {
-                void createTerminalNode()
-              }}
-            >
-              <Terminal className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.newTerminal')}
-              </span>
-            </button>
-            <button
-              type="button"
-              data-testid="workspace-context-new-note"
-              onClick={() => {
-                createNoteNodeFromContextMenu()
-              }}
-            >
-              <FileText className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.newNote')}
-              </span>
-            </button>
-            <button
-              type="button"
-              data-testid="workspace-context-new-task"
-              onClick={() => {
-                openTaskCreator()
-              }}
-            >
-              <ListTodo className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.newTask')}
-              </span>
-            </button>
-            <button
-              type="button"
-              data-testid="workspace-context-run-default-agent"
-              onClick={() => {
-                openAgentLauncher()
-              }}
-            >
-              <Play className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.runAgent')}
-              </span>
-            </button>
-
-            <div className="workspace-context-menu__separator" />
-
-            <button
-              type="button"
-              data-testid="workspace-context-arrange"
-              disabled={!canArrangeCurrentScope}
-              onClick={() => {
-                commitArrangeAndClose()
-              }}
-            >
-              <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.arrange')}
-              </span>
-            </button>
-
-            <button
-              ref={arrangeByButtonRef}
-              type="button"
-              data-testid="workspace-context-arrange-by"
-              aria-haspopup="menu"
-              aria-expanded={openSubmenu === 'arrangeBy'}
-              onMouseEnter={() => {
-                setOpenSubmenu('arrangeBy')
-              }}
-              onFocus={() => {
-                setOpenSubmenu('arrangeBy')
-              }}
-              onClick={() => {
-                setOpenSubmenu('arrangeBy')
-              }}
-            >
-              <SlidersHorizontal className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.arrangeBy')}
-              </span>
-              <ChevronRight
-                className="workspace-context-menu__icon workspace-context-menu__chevron"
-                aria-hidden="true"
-              />
-            </button>
-
-            <button
-              type="button"
-              data-testid="workspace-context-magnetic-snapping"
-              onClick={() => {
-                onToggleMagneticSnapping()
-              }}
-            >
-              <Magnet className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceArrangeMenu.magneticSnapping')}
-              </span>
-              {renderMark(magneticSnappingEnabled)}
-            </button>
-          </>
+          <WorkspaceContextPaneMenuContent
+            createTerminalNode={createTerminalNode}
+            createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+            openTaskCreator={openTaskCreator}
+            openAgentLauncher={openAgentLauncher}
+            openAgentProviderSubmenu={openAgentProviderSubmenu}
+            isLoadingInstalledProviders={isLoadingInstalledProviders}
+            isAgentProviderSubmenuOpen={openSubmenu === 'agent-providers'}
+            canArrangeCurrentScope={canArrangeCurrentScope}
+            commitArrangeAndClose={() => {
+              commitArrangeAndClose()
+            }}
+            arrangeByButtonRef={arrangeByButtonRef}
+            openArrangeSubmenu={openArrangeSubmenu}
+            isArrangeSubmenuOpen={openSubmenu === 'arrangeBy'}
+            magneticSnappingEnabled={magneticSnappingEnabled}
+            onToggleMagneticSnapping={onToggleMagneticSnapping}
+          />
         ) : (
-          <>
-            <button
-              type="button"
-              data-testid="workspace-selection-create-space"
-              onClick={() => {
-                createSpaceFromSelectedNodes()
-              }}
-            >
-              <Group className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.createSpaceWithSelected')}
-              </span>
-            </button>
-            {canConvertSelectedNoteToTask ? (
-              <button
-                type="button"
-                data-testid="workspace-selection-convert-note-to-task"
-                disabled={isConvertSelectedNoteToTaskDisabled}
-                onClick={() => {
-                  convertSelectedNoteToTask()
-                }}
-              >
-                <ArrowRight className="workspace-context-menu__icon" aria-hidden="true" />
-                <span className="workspace-context-menu__label">
-                  {t('workspaceContextMenu.convertToTask')}
-                </span>
-              </button>
-            ) : null}
-            <button
-              type="button"
-              data-testid="workspace-selection-clear"
-              onClick={() => {
-                clearNodeSelection()
-                closeContextMenu()
-              }}
-            >
-              <X className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('workspaceContextMenu.clearSelection')}
-              </span>
-            </button>
-          </>
+          <WorkspaceContextSelectionMenuContent
+            createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+            openLabelColorSubmenu={openLabelColorSubmenu}
+            canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
+            isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
+            convertSelectedNoteToTask={convertSelectedNoteToTask}
+            clearNodeSelection={clearNodeSelection}
+            closeContextMenu={closeContextMenu}
+          />
         )}
       </div>
 
       {shouldShowArrangeSubmenu ? (
         <WorkspaceContextArrangeBySubmenu
           style={{
-            top: resolvedSubmenuTop,
-            left: resolvedSubmenuLeft,
-            maxHeight: submenuLayout?.maxHeight ?? resolvedSubmenuMaxHeight,
+            top: arrangeSubmenuLayout?.top ?? submenuTop,
+            left: arrangeSubmenuLayout?.left ?? submenuLeft,
+            maxHeight: arrangeSubmenuLayout?.maxHeight ?? submenuMaxHeight,
           }}
           hitSpace={contextHitSpace}
           canArrangeAll={canArrangeAll}
@@ -461,21 +451,29 @@ export function WorkspaceContextMenu({
           arrangeScope={arrangeScope}
           arrangeOrder={arrangeOrder}
           arrangeSpaceFit={arrangeSpaceFit}
-          onSelectScope={scope => {
-            arrangeScopeRef.current = scope
-            setArrangeScope(scope)
-            applyArrange({ scope })
-          }}
-          onSelectOrder={order => {
-            arrangeOrderRef.current = order
-            setArrangeOrder(order)
-            applyArrange()
-          }}
-          onSelectSpaceFit={spaceFit => {
-            arrangeSpaceFitRef.current = spaceFit
-            setArrangeSpaceFit(spaceFit)
-            applyArrange()
-          }}
+          onSelectScope={handleArrangeScopeSelect}
+          onSelectOrder={handleArrangeOrderSelect}
+          onSelectSpaceFit={handleArrangeSpaceFitSelect}
+        />
+      ) : null}
+
+      {shouldShowAgentProviderSubmenu ? (
+        <WorkspaceContextAgentProviderSubmenu
+          sortedInstalledProviders={sortedInstalledProviders}
+          style={sharedSubmenuStyle}
+          keepSubmenuOpen={keepAgentProviderSubmenuOpen}
+          scheduleSubmenuClose={scheduleSubmenuClose}
+          openAgentLauncherForProvider={openAgentLauncherForProvider}
+        />
+      ) : null}
+
+      {shouldShowLabelColorSubmenu ? (
+        <WorkspaceContextLabelColorSubmenu
+          style={sharedSubmenuStyle}
+          keepSubmenuOpen={keepLabelColorSubmenuOpen}
+          scheduleSubmenuClose={scheduleSubmenuClose}
+          setSelectedNodeLabelColorOverride={setSelectedNodeLabelColorOverride}
+          closeContextMenu={closeContextMenu}
         />
       ) : null}
     </>

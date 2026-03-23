@@ -3,6 +3,8 @@ import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   CreateGitWorktreeInput,
   CreateGitWorktreeResult,
+  GetGitDefaultBranchInput,
+  GetGitDefaultBranchResult,
   GetGitStatusSummaryInput,
   GetGitStatusSummaryResult,
   ListGitBranchesInput,
@@ -26,9 +28,11 @@ import {
   removeGitWorktree,
   renameGitBranch,
 } from '../../infrastructure/git/GitWorktreeService'
+import { getGitDefaultBranch } from '../../infrastructure/git/GitWorktreeDefaultBranch'
 import { suggestWorktreeNames } from '../../infrastructure/git/WorktreeNameSuggester'
 import {
   normalizeCreateGitWorktreePayload,
+  normalizeGetGitDefaultBranchPayload,
   normalizeGetGitStatusSummaryPayload,
   normalizeListGitBranchesPayload,
   normalizeListGitWorktreesPayload,
@@ -87,6 +91,23 @@ export function registerWorktreeIpcHandlers(
       return await getGitStatusSummary({ repoPath: normalized.repoPath })
     },
     { defaultErrorCode: 'worktree.status_summary_failed' },
+  )
+
+  registerHandledIpc<GetGitDefaultBranchResult, GetGitDefaultBranchInput>(
+    IPC_CHANNELS.worktreeGetDefaultBranch,
+    async (_event, payload: GetGitDefaultBranchInput): Promise<GetGitDefaultBranchResult> => {
+      const normalized = normalizeGetGitDefaultBranchPayload(payload)
+      const isApproved = await approvedWorkspaces.isPathApproved(normalized.repoPath)
+      if (!isApproved) {
+        throw createAppError('common.approved_path_required', {
+          debugMessage: 'worktree:get-default-branch repoPath is outside approved workspaces',
+        })
+      }
+
+      const branch = await getGitDefaultBranch({ repoPath: normalized.repoPath })
+      return { branch }
+    },
+    { defaultErrorCode: 'worktree.get_default_branch_failed' },
   )
 
   registerHandledIpc(
@@ -174,6 +195,7 @@ export function registerWorktreeIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.worktreeListBranches)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeListWorktrees)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeStatusSummary)
+      ipcMain.removeHandler(IPC_CHANNELS.worktreeGetDefaultBranch)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeCreate)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeRemove)
       ipcMain.removeHandler(IPC_CHANNELS.worktreeRenameBranch)

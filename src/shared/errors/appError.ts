@@ -7,6 +7,9 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.approved_path_required': 'The selected path is outside approved workspaces.',
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
+    'integration.github.unavailable': 'GitHub integration is unavailable.',
+    'integration.github.resolve_failed': 'Unable to load pull request info.',
+    'integration.github.action_failed': 'Unable to run pull request action.',
     'workspace.select_directory_failed': 'Unable to open the directory picker.',
     'workspace.ensure_directory_failed': 'Unable to create the directory.',
     'workspace.copy_path_failed': 'Unable to copy the path.',
@@ -17,6 +20,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'worktree.list_branches_failed': 'Unable to load Git branches.',
     'worktree.list_worktrees_failed': 'Unable to load Git worktrees.',
     'worktree.status_summary_failed': 'Unable to load Git status.',
+    'worktree.get_default_branch_failed': 'Unable to determine the default branch.',
     'worktree.create_failed': 'Unable to create the worktree.',
     'worktree.remove_failed': 'Unable to archive the worktree.',
     'worktree.remove_uncommitted_changes':
@@ -45,6 +49,12 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'persistence.io_failed': 'Unable to save data to storage.',
     'persistence.invalid_state': 'The workspace state could not be saved.',
     'persistence.invalid_node_id': 'The terminal history could not be saved.',
+    'update.get_state_failed': 'Unable to read the update status.',
+    'update.configure_failed': 'Unable to apply update settings.',
+    'update.check_failed': 'Unable to check for updates.',
+    'update.download_failed': 'Unable to download the update.',
+    'update.install_failed': 'Unable to install the update.',
+    'release_notes.get_range_failed': 'Unable to load release notes.',
   }
 }
 

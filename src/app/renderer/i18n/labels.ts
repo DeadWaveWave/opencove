@@ -1,5 +1,6 @@
-import type { CanvasInputMode, UiLanguage } from '@contexts/settings/domain/agentSettings'
+import type { CanvasInputMode, UiLanguage, UiTheme } from '@contexts/settings/domain/agentSettings'
 import { UI_LANGUAGE_NATIVE_LABEL } from '@contexts/settings/domain/agentSettings'
+import type { AppUpdateChannel, AppUpdatePolicy } from '@shared/contracts/dto'
 import type {
   TaskPriority,
   TaskRuntimeStatus,
@@ -16,6 +17,38 @@ export function getCanvasInputModeLabel(t: TranslateFn, mode: CanvasInputMode): 
   }
 
   return t('settingsPanel.canvas.inputMode.mouse')
+}
+
+export function getUiThemeLabel(t: TranslateFn, theme: UiTheme): string {
+  if (theme === 'system') {
+    return t('settingsPanel.general.uiTheme.system')
+  }
+
+  if (theme === 'light') {
+    return t('settingsPanel.general.uiTheme.light')
+  }
+
+  return t('settingsPanel.general.uiTheme.dark')
+}
+
+export function getAppUpdatePolicyLabel(t: TranslateFn, policy: AppUpdatePolicy): string {
+  if (policy === 'off') {
+    return t('settingsPanel.general.updates.policy.off')
+  }
+
+  if (policy === 'auto') {
+    return t('settingsPanel.general.updates.policy.auto')
+  }
+
+  return t('settingsPanel.general.updates.policy.prompt')
+}
+
+export function getAppUpdateChannelLabel(t: TranslateFn, channel: AppUpdateChannel): string {
+  if (channel === 'nightly') {
+    return t('settingsPanel.general.updates.channel.nightly')
+  }
+
+  return t('settingsPanel.general.updates.channel.stable')
 }
 
 export function getTaskPriorityLabel(t: TranslateFn, priority: TaskPriority): string {

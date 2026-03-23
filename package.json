@@ -32,6 +32,14 @@
     "productName": "OpenCove",
     "executableName": "OpenCove",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "generateUpdatesFilesForAllChannels": true,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "DeadWaveWave",
+        "repo": "opencove"
+      }
+    ],
     "win": {
       "icon": "build/icon.ico"
     },
@@ -91,6 +99,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
+    "electron-updater": "^6.8.3",
     "lucide-react": "^0.577.0",
     "node-pty": "^1.1.0",
     "react": "^19.0.0",

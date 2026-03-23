@@ -1,15 +1,13 @@
-import type {
-  Dispatch,
-  MouseEvent as ReactMouseEvent,
-  MouseEventHandler,
-  PointerEvent as ReactPointerEvent,
-  PointerEventHandler,
-  RefObject,
-  SetStateAction,
-} from 'react'
+import type * as React from 'react'
 import type { Edge, Node, NodeTypes, OnNodesChange, Viewport } from '@xyflow/react'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../types'
+import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import type {
+  AgentNodeData,
+  TerminalNodeData,
+  WorkspaceSpaceRect,
+  WorkspaceSpaceState,
+} from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
 import type {
@@ -18,6 +16,7 @@ import type {
   SelectionDraftState,
   SpaceActionMenuState,
   SpaceVisual,
+  SpaceWorktreeMismatchDropWarningState,
   SpaceWorktreeDialogState,
   TaskCreatorState,
   TaskEditorState,
@@ -30,36 +29,36 @@ export type SelectionDraftUiState = Pick<
 >
 
 export interface WorkspaceCanvasViewProps {
-  canvasRef: RefObject<HTMLDivElement | null>
+  canvasRef: React.RefObject<HTMLDivElement | null>
   resolvedCanvasInputMode: string
   onCanvasClick: () => void
-  handleCanvasPointerDownCapture: PointerEventHandler<HTMLDivElement>
-  handleCanvasPointerMoveCapture: PointerEventHandler<HTMLDivElement>
-  handleCanvasPointerUpCapture: PointerEventHandler<HTMLDivElement>
-  handleCanvasDoubleClickCapture: MouseEventHandler<HTMLDivElement>
+  handleCanvasPointerDownCapture: React.PointerEventHandler<HTMLDivElement>
+  handleCanvasPointerMoveCapture: React.PointerEventHandler<HTMLDivElement>
+  handleCanvasPointerUpCapture: React.PointerEventHandler<HTMLDivElement>
+  handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
   handleCanvasWheelCapture: (event: WheelEvent) => void
   nodes: Node<TerminalNodeData>[]
   edges: Edge[]
   nodeTypes: NodeTypes
   onNodesChange: OnNodesChange<Node<TerminalNodeData>>
-  onPaneClick: (event: ReactMouseEvent | MouseEvent) => void
-  onPaneContextMenu: (event: ReactMouseEvent | MouseEvent) => void
-  onNodeClick: (event: ReactMouseEvent, node: Node<TerminalNodeData>) => void
-  onNodeContextMenu: (event: ReactMouseEvent, node: Node<TerminalNodeData>) => void
-  onSelectionContextMenu: (event: ReactMouseEvent, selectedNodes: Node<TerminalNodeData>[]) => void
+  onPaneClick: (event: React.MouseEvent | MouseEvent) => void
+  onPaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
+  onNodeClick: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
+  onNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
+  onSelectionContextMenu: (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => void
   onSelectionChange: (params: { nodes: Node<TerminalNodeData>[] }) => void
   onNodeDragStart: (
-    event: ReactMouseEvent,
+    event: React.MouseEvent,
     node: Node<TerminalNodeData>,
     nodes: Node<TerminalNodeData>[],
   ) => void
-  onSelectionDragStart: (event: ReactMouseEvent, nodes: Node<TerminalNodeData>[]) => void
+  onSelectionDragStart: (event: React.MouseEvent, nodes: Node<TerminalNodeData>[]) => void
   onNodeDragStop: (
-    event: ReactMouseEvent,
+    event: React.MouseEvent,
     node: Node<TerminalNodeData>,
     nodes: Node<TerminalNodeData>[],
   ) => void
-  onSelectionDragStop: (event: ReactMouseEvent, nodes: Node<TerminalNodeData>[]) => void
+  onSelectionDragStop: (event: React.MouseEvent, nodes: Node<TerminalNodeData>[]) => void
   onMoveEnd: (_event: MouseEvent | TouchEvent | null, nextViewport: Viewport) => void
   viewport: Viewport
   isTrackpadCanvasMode: boolean
@@ -68,24 +67,25 @@ export interface WorkspaceCanvasViewProps {
   selectionDraft: SelectionDraftUiState | null
   snapGuides: WorkspaceSnapGuide[] | null
   spaceVisuals: SpaceVisual[]
-  spaceFramePreview: { spaceId: string; rect: WorkspaceSpaceRect } | null
+  spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
   handleSpaceDragHandlePointerDown: (
-    event: ReactPointerEvent<HTMLDivElement> | ReactMouseEvent<HTMLDivElement>,
+    event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
     options?: { mode?: 'auto' | 'region' },
   ) => void
   editingSpaceId: string | null
-  spaceRenameInputRef: RefObject<HTMLInputElement | null>
+  spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
-  setSpaceRenameDraft: Dispatch<SetStateAction<string>>
+  setSpaceRenameDraft: React.Dispatch<React.SetStateAction<string>>
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   startSpaceRename: (spaceId: string) => void
+  setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   selectedNodeCount: number
   isMinimapVisible: boolean
   minimapNodeColor: (node: Node<TerminalNodeData>) => string
-  setIsMinimapVisible: Dispatch<SetStateAction<boolean>>
+  setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   onMinimapVisibilityChange: (isVisible: boolean) => void
   spaces: WorkspaceSpaceState[]
   focusSpaceInViewport: (spaceId: string) => void
@@ -101,27 +101,34 @@ export interface WorkspaceCanvasViewProps {
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
+  openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
   createSpaceFromSelectedNodes: () => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
+  setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
   taskCreator: TaskCreatorState | null
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
   taskTagOptions: string[]
-  setTaskCreator: Dispatch<SetStateAction<TaskCreatorState | null>>
+  setTaskCreator: React.Dispatch<React.SetStateAction<TaskCreatorState | null>>
   closeTaskCreator: () => void
   generateTaskTitle: () => Promise<void>
   createTask: () => Promise<void>
   taskEditor: TaskEditorState | null
-  setTaskEditor: Dispatch<SetStateAction<TaskEditorState | null>>
+  setTaskEditor: React.Dispatch<React.SetStateAction<TaskEditorState | null>>
   closeTaskEditor: () => void
   generateTaskEditorTitle: () => Promise<void>
   saveTaskEdits: () => Promise<void>
   nodeDeleteConfirmation: NodeDeleteConfirmationState | null
-  setNodeDeleteConfirmation: Dispatch<SetStateAction<NodeDeleteConfirmationState | null>>
+  setNodeDeleteConfirmation: React.Dispatch<
+    React.SetStateAction<NodeDeleteConfirmationState | null>
+  >
   confirmNodeDelete: () => Promise<void>
+  spaceWorktreeMismatchDropWarning: SpaceWorktreeMismatchDropWarningState | null
+  cancelSpaceWorktreeMismatchDropWarning: () => void
+  continueSpaceWorktreeMismatchDropWarning: () => void
   agentSettings: WorkspaceCanvasProps['agentSettings']
   workspacePath: string
   spaceActionMenu: SpaceActionMenuState | null

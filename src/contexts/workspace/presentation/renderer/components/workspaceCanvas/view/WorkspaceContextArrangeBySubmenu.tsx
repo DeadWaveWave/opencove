@@ -46,9 +46,12 @@ export function WorkspaceContextArrangeBySubmenu({
 
   return (
     <div
-      className="workspace-context-menu workspace-context-menu--submenu"
+      className="workspace-context-menu workspace-context-menu--submenu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-arrange-by-menu"
       style={style}
+      onMouseDown={event => {
+        event.stopPropagation()
+      }}
       onClick={event => {
         event.stopPropagation()
       }}

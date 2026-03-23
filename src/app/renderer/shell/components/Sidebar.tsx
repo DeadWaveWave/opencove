@@ -30,7 +30,6 @@ export function Sidebar({
   onSelectWorkspace,
   onOpenProjectContextMenu,
   onSelectAgentNode,
-  onOpenSettings,
 }: {
   workspaces: WorkspaceState[]
   activeWorkspaceId: string | null
@@ -41,7 +40,6 @@ export function Sidebar({
   onSelectWorkspace: (workspaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
-  onOpenSettings: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
 
@@ -193,18 +191,6 @@ export function Sidebar({
             </div>
           )
         })}
-      </div>
-
-      <div className="workspace-sidebar__footer">
-        <button
-          type="button"
-          className="workspace-sidebar__settings"
-          onClick={() => {
-            onOpenSettings()
-          }}
-        >
-          {t('sidebar.settings')}
-        </button>
       </div>
     </aside>
   )

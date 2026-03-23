@@ -69,7 +69,6 @@ export function SpaceWorktreeWindow({
     () => (spaceId ? (spaces.find(candidate => candidate.id === spaceId) ?? null) : null),
     [spaceId, spaces],
   )
-
   const [viewMode, setViewMode] = useState<SpaceWorktreeViewMode>(initialViewMode)
   const [branches, setBranches] = useState<string[]>([])
   const [currentBranch, setCurrentBranch] = useState<string | null>(null)

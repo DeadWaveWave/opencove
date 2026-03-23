@@ -1,0 +1,216 @@
+.app-header {
+  grid-column: 1 / -1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+  background: var(--cove-surface);
+  backdrop-filter: blur(20px) saturate(130%);
+  height: var(--cove-app-header-height);
+  -webkit-app-region: drag;
+}
+
+.app-header--mac {
+  padding-left: calc(10px + 72px);
+}
+
+.app-header--windows {
+  /* env(titlebar-area-width) = 可用标题栏宽度（全宽 - 控制按钮宽度）
+   * 控制按钮宽度 = 100vw - env(titlebar-area-width)，标准 Windows 约 138px */
+  padding-right: calc(100vw - env(titlebar-area-width, calc(100vw - 138px)) + 10px);
+}
+
+.app-header__section {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.app-header__section--right {
+  margin-left: auto;
+}
+
+.app-header__center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.app-header__center > * {
+  pointer-events: auto;
+}
+
+.app-header__command-center {
+  max-width: min(520px, 100%);
+  height: 28px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 999px;
+  background: var(--cove-field);
+  color: var(--cove-text-muted);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.app-header__command-center:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--cove-border);
+  color: var(--cove-text);
+}
+
+.app-header__command-center--open,
+.app-header__command-center:active {
+  background: rgba(94, 156, 255, 0.1);
+  border-color: rgba(94, 156, 255, 0.35);
+  transform: translateY(1px);
+}
+
+.app-header__command-center:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.app-header__command-center-icon {
+  flex: 0 0 auto;
+  opacity: 0.85;
+}
+
+.app-header__command-center-title {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  letter-spacing: 0.15px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+  text-align: left;
+}
+
+.app-header__command-center-keycap {
+  flex: 0 0 auto;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  padding: 2px 6px;
+  border-radius: 7px;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-surface-hover);
+  color: var(--cove-text-faint);
+  letter-spacing: 0.2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-header__command-center-chevron {
+  flex: 0 0 auto;
+  opacity: 0.65;
+  transition: transform 0.15s ease;
+}
+
+.app-header__command-center--open .app-header__command-center-chevron {
+  transform: rotate(180deg);
+}
+
+.app-header__icon-button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--cove-text-muted);
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 0;
+  -webkit-app-region: no-drag;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.app-header__update-button {
+  min-width: 0;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid rgba(94, 156, 255, 0.28);
+  background: rgba(94, 156, 255, 0.14);
+  color: var(--cove-text);
+  border-radius: 999px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.app-header__update-button:hover {
+  background: rgba(94, 156, 255, 0.2);
+  border-color: rgba(94, 156, 255, 0.42);
+}
+
+.app-header__update-button:active {
+  transform: translateY(1px);
+}
+
+.app-header__update-button:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.app-header__update-button--disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.app-header__update-button span {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.app-header__update-icon--spinning {
+  animation: app-header-update-spin 1.2s linear infinite;
+}
+
+.app-header__icon-button:hover {
+  background: var(--cove-surface-hover);
+  color: var(--cove-text);
+}
+
+.app-header__icon-button:active {
+  background: var(--cove-field);
+  transform: translateY(1px);
+}
+
+.app-header__icon-button:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+@keyframes app-header-update-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

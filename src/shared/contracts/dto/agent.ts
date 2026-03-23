@@ -9,6 +9,10 @@ export interface ListAgentModelsInput {
   provider: AgentProviderId
 }
 
+export interface ListInstalledAgentProvidersResult {
+  providers: AgentProviderId[]
+}
+
 export interface AgentModelOption {
   id: string
   displayName: string

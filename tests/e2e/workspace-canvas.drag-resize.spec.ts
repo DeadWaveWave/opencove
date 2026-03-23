@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
+  readCanvasViewport,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -232,6 +233,95 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       await expect(agentNode).toBeVisible()
       await expect(agentNode.locator('.xterm')).toBeVisible()
       await expect(agentNode).toContainText('[cove-test-agent]')
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('keeps terminal resize handle aligned with the mouse while zoomed', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'node-zoomed-resize',
+          title: 'terminal-zoomed-resize',
+          position: { x: 120, y: 120 },
+          width: 460,
+          height: 300,
+        },
+      ])
+
+      const zoomInButton = window.locator('.react-flow__controls-zoomin')
+      await expect(zoomInButton).toBeVisible()
+      await zoomInButton.click()
+      await zoomInButton.click()
+
+      const viewport = await readCanvasViewport(window)
+      expect(viewport.zoom).toBeGreaterThan(1.01)
+
+      const terminal = window.locator('.terminal-node').first()
+      await expect(terminal).toBeVisible()
+
+      const rightResizer = terminal.locator('[data-testid="terminal-resizer-right"]')
+      const rightResizerBox = await rightResizer.boundingBox()
+      if (!rightResizerBox) {
+        throw new Error('terminal right resizer bounding box unavailable at zoomed resize')
+      }
+
+      const startX = rightResizerBox.x + rightResizerBox.width / 2
+      const startY = rightResizerBox.y + rightResizerBox.height / 2
+      const pointerDeltaX = 180
+      const releaseX = startX + pointerDeltaX
+
+      await window.mouse.move(startX, startY)
+      await window.mouse.down()
+      await window.mouse.move(releaseX, startY, { steps: 12 })
+      await window.mouse.up()
+
+      await expect
+        .poll(
+          async () => {
+            const box = await rightResizer.boundingBox()
+            if (!box) {
+              return Number.NaN
+            }
+
+            return box.x + box.width / 2
+          },
+          { timeout: 10_000 },
+        )
+        .toBeCloseTo(releaseX, 1)
+
+      await expect
+        .poll(
+          async () => {
+            return await window.evaluate(async key => {
+              void key
+
+              const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+              if (!raw) {
+                return null
+              }
+
+              const state = JSON.parse(raw) as {
+                workspaces?: Array<{
+                  nodes?: Array<{
+                    id?: string
+                    width?: number
+                  }>
+                }>
+              }
+
+              return (
+                state.workspaces?.[0]?.nodes?.find(node => node.id === 'node-zoomed-resize')
+                  ?.width ?? null
+              )
+            }, storageKey)
+          },
+          { timeout: 10_000 },
+        )
+        .toBeCloseTo(460 + pointerDeltaX / viewport.zoom, 0)
     } finally {
       await electronApp.close()
     }

@@ -2,6 +2,10 @@ import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { eq, inArray } from 'drizzle-orm'
 import type { NormalizedPersistedAppState } from './normalize'
 import {
+  normalizeLabelColor,
+  normalizeNodeLabelColorOverride,
+} from '../../../shared/types/labelColor'
+import {
   appMeta,
   appSettings,
   nodeScrollback,
@@ -11,6 +15,18 @@ import {
   workspaces,
 } from './schema'
 import { safeJsonParse } from './utils'
+
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const normalized = value
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+
+  return [...new Set(normalized)].slice(0, 50)
+}
 
 export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersistedAppState | null {
   const metaRows = db.select().from(appMeta).all()
@@ -69,6 +85,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         width: node.width,
         height: node.height,
         kind: node.kind,
+        labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         status: node.status,
         startedAt: node.startedAt,
         endedAt: node.endedAt,
@@ -90,6 +107,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          labelColor: normalizeLabelColor(space.labelColor),
           nodeIds: links.map(link => link.nodeId),
           rect:
             space.rectX !== null &&
@@ -117,6 +135,9 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         name: workspace.name,
         path: workspace.path,
         worktreesRoot: workspace.worktreesRoot,
+        pullRequestBaseBranchOptions: normalizeStringArray(
+          safeJsonParse(workspace.pullRequestBaseBranchOptionsJson),
+        ),
         viewport: { x: workspace.viewportX, y: workspace.viewportY, zoom: workspace.viewportZoom },
         isMinimapVisible: workspace.isMinimapVisible,
         spaces: workspaceSpaces,

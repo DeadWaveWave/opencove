@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
+import { useStore } from '@xyflow/react'
 import type { NodeFrame, Point, Size } from '../types'
 
 export const NODE_DRAG_HANDLE_SELECTOR = '[data-node-drag-handle=true]'
@@ -11,6 +12,15 @@ interface ResizeStartState {
   client: Point
   frame: NodeFrame
   edges: ResizeEdges
+}
+
+export function normalizeResizePointerDelta(delta: Point, zoom: number): Point {
+  const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+
+  return {
+    x: delta.x / safeZoom,
+    y: delta.y / safeZoom,
+  }
 }
 
 export function resolveResizedNodeFrame({
@@ -120,6 +130,15 @@ export function useNodeFrameResize({
   const draftFrameRef = useRef<NodeFrame | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [draftFrame, setDraftFrame] = useState<NodeFrame | null>(null)
+  const zoom = useStore(storeState => {
+    const transform = (storeState as { transform?: [number, number, number] }).transform
+    const currentZoom = transform?.[2]
+    if (typeof currentZoom !== 'number' || !Number.isFinite(currentZoom) || currentZoom <= 0) {
+      return 1
+    }
+
+    return currentZoom
+  })
 
   useEffect(() => {
     draftFrameRef.current = draftFrame
@@ -182,10 +201,13 @@ export function useNodeFrameResize({
         resolveResizedNodeFrame({
           initialFrame: start.frame,
           edges: start.edges,
-          delta: {
-            x: event.clientX - start.client.x,
-            y: event.clientY - start.client.y,
-          },
+          delta: normalizeResizePointerDelta(
+            {
+              x: event.clientX - start.client.x,
+              y: event.clientY - start.client.y,
+            },
+            zoom,
+          ),
           minSize,
         }),
       )
@@ -215,7 +237,7 @@ export function useNodeFrameResize({
       window.removeEventListener('pointerup', finalizeResize)
       window.removeEventListener('pointercancel', finalizeResize)
     }
-  }, [height, isResizing, minSize, onResize, onResizeEnd, position, width])
+  }, [height, isResizing, minSize, onResize, onResizeEnd, position, width, zoom])
 
   return {
     draftFrame,

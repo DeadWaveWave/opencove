@@ -32,6 +32,14 @@ export interface GetGitStatusSummaryResult {
   changedFileCount: number
 }
 
+export interface GetGitDefaultBranchInput {
+  repoPath: string
+}
+
+export interface GetGitDefaultBranchResult {
+  branch: string | null
+}
+
 export type CreateGitWorktreeBranchMode =
   | { kind: 'new'; name: string; startPoint: string }
   | { kind: 'existing'; name: string }

@@ -3,6 +3,7 @@ import { translate, type TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import {
   formatAppErrorMessage,
+  getAppErrorDebugMessage,
   isAppErrorDescriptor,
   OpenCoveAppError,
 } from '@shared/errors/appError'
@@ -31,6 +32,21 @@ export function focusNodeInViewport(
     {
       duration: resolveWorkspaceCanvasAnimationDuration(options.duration ?? 120),
       zoom: options.zoom ?? 1,
+    },
+  )
+}
+
+export function centerNodeInViewport(
+  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
+  node: Pick<Node<TerminalNodeData>, 'position' | 'data'>,
+  options: { duration?: number; zoom: number },
+): void {
+  reactFlow.setCenter(
+    node.position.x + node.data.width / 2,
+    node.position.y + node.data.height / 2,
+    {
+      duration: resolveWorkspaceCanvasAnimationDuration(options.duration ?? 180),
+      zoom: Number.isFinite(options.zoom) && options.zoom > 0 ? options.zoom : 1,
     },
   )
 }
@@ -70,6 +86,28 @@ export function normalizeTaskTagSelection(selection: string[], availableTags: st
     if (availableTags.includes(value)) {
       normalized.push(value)
     }
+  }
+
+  return normalized
+}
+
+export function normalizeTaskTagOptions(raw: unknown): string[] {
+  if (!Array.isArray(raw)) {
+    return []
+  }
+
+  const normalized: string[] = []
+  for (const tag of raw) {
+    if (typeof tag !== 'string') {
+      continue
+    }
+
+    const value = tag.trim()
+    if (value.length === 0 || normalized.includes(value)) {
+      continue
+    }
+
+    normalized.push(value)
   }
 
   return normalized
@@ -126,6 +164,7 @@ export function validateSpaceTransfer(
   targetSpace: WorkspaceSpaceState | null,
   workspacePath: string,
   t: TranslateFn,
+  options?: { allowDirectoryMismatch?: boolean },
 ): string | null {
   if (nodeIds.length === 0) {
     return null
@@ -133,6 +172,7 @@ export function validateSpaceTransfer(
 
   const nodeById = new Map(nodes.map(node => [node.id, node]))
   const targetDirectory = resolveSpaceDirectoryPath(targetSpace, workspacePath)
+  const allowDirectoryMismatch = options?.allowDirectoryMismatch === true
 
   for (const nodeId of nodeIds) {
     const node = nodeById.get(nodeId)
@@ -141,7 +181,10 @@ export function validateSpaceTransfer(
     }
 
     if (node.data.kind === 'agent' && node.data.agent) {
-      if (resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory) {
+      if (
+        !allowDirectoryMismatch &&
+        resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory
+      ) {
         return t('messages.agentSpaceDirectoryMismatch')
       }
 
@@ -149,7 +192,10 @@ export function validateSpaceTransfer(
     }
 
     if (node.data.kind === 'terminal') {
-      if (resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory) {
+      if (
+        !allowDirectoryMismatch &&
+        resolveNodeExecutionDirectory(node, workspacePath) !== targetDirectory
+      ) {
         return t('messages.terminalSpaceDirectoryMismatch')
       }
 
@@ -176,10 +222,20 @@ export function validateSpaceTransfer(
 
 export function toErrorMessage(error: unknown): string {
   if (error instanceof OpenCoveAppError) {
+    const debug = getAppErrorDebugMessage(error)
+    if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
+      return normalizeIntegrationErrorMessage(debug)
+    }
+
     return formatAppErrorMessage(error)
   }
 
   if (isAppErrorDescriptor(error)) {
+    const debug = getAppErrorDebugMessage(error)
+    if (typeof debug === 'string' && error.code.startsWith('integration.github.')) {
+      return normalizeIntegrationErrorMessage(debug)
+    }
+
     return formatAppErrorMessage(error)
   }
 
@@ -192,6 +248,10 @@ export function toErrorMessage(error: unknown): string {
   }
 
   return translate('common.unknownError')
+}
+
+function normalizeIntegrationErrorMessage(message: string): string {
+  return message.replace(/^[A-Za-z0-9_]+Error:\s*/, '')
 }
 
 export function providerLabel(provider: AgentProvider): string {

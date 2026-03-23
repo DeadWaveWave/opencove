@@ -1,7 +1,8 @@
 import React from 'react'
 import { ViewportPortal, useReactFlow } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { GitWorktreeInfo } from '@shared/contracts/dto'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
+import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import { toErrorMessage } from '../helpers'
@@ -20,10 +21,12 @@ import {
   type WorkspaceSpaceBranchBadge,
 } from './WorkspaceSpaceRegionItem'
 
+const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
+
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
   spaceVisuals: SpaceVisual[]
-  spaceFramePreview: { spaceId: string; rect: WorkspaceSpaceRect } | null
+  spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
@@ -61,10 +64,17 @@ export function WorkspaceSpaceRegionsOverlay({
   const branchRenameInputRef = React.useRef<HTMLInputElement | null>(null)
   const [refreshNonce, setRefreshNonce] = React.useState(0)
   const [branchRename, setBranchRename] = React.useState<BranchRenameState | null>(null)
+  const [pullRequestsByBranch, setPullRequestsByBranch] = React.useState<
+    Record<string, GitHubPullRequestSummary | null>
+  >(() => ({}))
 
   const normalizedWorkspacePath = React.useMemo(
     () => normalizeComparablePath(workspacePath),
     [workspacePath],
+  )
+
+  const githubPullRequestsEnabled = useAppStore(
+    state => state.agentSettings.githubPullRequestsEnabled,
   )
 
   const worktreeDirectories = React.useMemo(() => {
@@ -90,6 +100,29 @@ export function WorkspaceSpaceRegionsOverlay({
   const [worktreeInfoByPath, setWorktreeInfoByPath] = React.useState<Map<string, GitWorktreeInfo>>(
     () => new Map(),
   )
+
+  const worktreeBranches = React.useMemo(() => {
+    const unique = new Set<string>()
+
+    spaceVisuals.forEach(space => {
+      const directoryPath = normalizeComparablePath(space.directoryPath)
+      const hasWorktreeDirectory =
+        directoryPath.length > 0 && directoryPath !== normalizedWorkspacePath
+      if (!hasWorktreeDirectory) {
+        return
+      }
+
+      const info = worktreeInfoByPath.get(directoryPath)
+      const branch = info?.branch?.trim() ?? ''
+      if (branch.length > 0) {
+        unique.add(branch)
+      }
+    })
+
+    return [...unique].sort((left, right) => left.localeCompare(right))
+  }, [normalizedWorkspacePath, spaceVisuals, worktreeInfoByPath])
+
+  const worktreeBranchesKey = React.useMemo(() => worktreeBranches.join('|'), [worktreeBranches])
 
   React.useEffect(() => {
     if (worktreeDirectories.length === 0) {
@@ -131,6 +164,66 @@ export function WorkspaceSpaceRegionsOverlay({
       cancelled = true
     }
   }, [refreshNonce, worktreeDirectories.length, worktreeDirectoriesKey, workspacePath])
+
+  React.useEffect(() => {
+    if (worktreeBranches.length === 0) {
+      setPullRequestsByBranch({})
+      return
+    }
+
+    if (!githubPullRequestsEnabled) {
+      setPullRequestsByBranch({})
+      return
+    }
+
+    const resolvePullRequests = window.opencoveApi?.integration?.github?.resolvePullRequests
+    if (typeof resolvePullRequests !== 'function') {
+      setPullRequestsByBranch(Object.fromEntries(worktreeBranches.map(branch => [branch, null])))
+      return
+    }
+
+    let cancelled = false
+    let intervalId: number | null = null
+
+    const resolveAll = async (): Promise<void> => {
+      try {
+        const result = await resolvePullRequests({
+          repoPath: workspacePath,
+          branches: worktreeBranches,
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setPullRequestsByBranch(result.pullRequestsByBranch)
+      } catch {
+        if (cancelled) {
+          return
+        }
+
+        setPullRequestsByBranch(previous => {
+          const next: Record<string, GitHubPullRequestSummary | null> = {}
+          worktreeBranches.forEach(branch => {
+            next[branch] = previous[branch] ?? null
+          })
+          return next
+        })
+      }
+    }
+
+    void resolveAll()
+    intervalId = window.setInterval(() => {
+      void resolveAll()
+    }, PULL_REQUEST_REFRESH_INTERVAL_MS)
+
+    return () => {
+      cancelled = true
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+      }
+    }
+  }, [githubPullRequestsEnabled, worktreeBranches, worktreeBranchesKey, workspacePath])
 
   React.useEffect(() => {
     if (!branchRename?.spaceId) {
@@ -258,8 +351,7 @@ export function WorkspaceSpaceRegionsOverlay({
           const hasWorktreeDirectory =
             normalizedDirectoryPath.length > 0 &&
             normalizedDirectoryPath !== normalizedWorkspacePath
-          const resolvedRect =
-            spaceFramePreview?.spaceId === space.id ? spaceFramePreview.rect : space.rect
+          const resolvedRect = spaceFramePreview?.get(space.id) ?? space.rect
           const resolvedWorktreeInfo = hasWorktreeDirectory
             ? (worktreeInfoByPath.get(normalizedDirectoryPath) ?? null)
             : null
@@ -281,12 +373,17 @@ export function WorkspaceSpaceRegionsOverlay({
                 : null
             : null
 
+          const branchKey = resolvedWorktreeInfo?.branch?.trim() ?? ''
+          const resolvedPullRequestSummary =
+            branchKey.length > 0 ? (pullRequestsByBranch[branchKey] ?? null) : null
+
           return (
             <WorkspaceSpaceRegionItem
               key={space.id}
               space={space}
               resolvedRect={resolvedRect}
               isSelected={isSelected}
+              githubPullRequestsEnabled={githubPullRequestsEnabled}
               editingSpaceId={editingSpaceId}
               spaceRenameInputRef={spaceRenameInputRef}
               spaceRenameDraft={spaceRenameDraft}
@@ -298,6 +395,7 @@ export function WorkspaceSpaceRegionsOverlay({
               updateHandleCursor={updateHandleCursor}
               resolvedWorktreeInfo={resolvedWorktreeInfo}
               resolvedBranchBadge={resolvedBranchBadge}
+              resolvedPullRequestSummary={resolvedPullRequestSummary}
               onStartBranchRename={({ spaceId, spaceName, worktreePath, branchName }) => {
                 setBranchRename({
                   spaceId,

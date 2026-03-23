@@ -1,0 +1,30 @@
+.workspace-canvas .react-flow__node.selected .terminal-node::after,
+.workspace-canvas .react-flow__node.dragging .terminal-node::after,
+.workspace-canvas .react-flow__node.selected .task-node::after,
+.workspace-canvas .react-flow__node.dragging .task-node::after,
+.workspace-canvas .react-flow__node.selected .note-node::after,
+.workspace-canvas .react-flow__node.dragging .note-node::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 24;
+  cursor: grab;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.workspace-canvas .react-flow__node.dragging .terminal-node,
+.workspace-canvas .react-flow__node.dragging .task-node,
+.workspace-canvas .react-flow__node.dragging .note-node {
+  border-color: var(--cove-node-selection-border);
+  box-shadow: var(--cove-node-selection-shadow);
+}
+
+.workspace-canvas .react-flow__node.selected.dragging .terminal-node::after,
+.workspace-canvas .react-flow__node.dragging .terminal-node::after,
+.workspace-canvas .react-flow__node.selected.dragging .task-node::after,
+.workspace-canvas .react-flow__node.dragging .task-node::after,
+.workspace-canvas .react-flow__node.selected.dragging .note-node::after,
+.workspace-canvas .react-flow__node.dragging .note-node::after {
+  cursor: grabbing;
+}

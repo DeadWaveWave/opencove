@@ -7,12 +7,14 @@ import type {
   ShowWorkspaceCanvasMessage,
   SpaceVisual,
 } from '../types'
+import type { LabelColor } from '@shared/types/labelColor'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
+  activeSpaceId: string | null
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
@@ -34,6 +36,7 @@ interface UseWorkspaceCanvasSpacesParams {
 
 export function useWorkspaceCanvasSpaces({
   workspaceId,
+  activeSpaceId,
   workspacePath,
   reactFlow,
   nodes,
@@ -56,6 +59,7 @@ export function useWorkspaceCanvasSpaces({
   startSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   commitSpaceRename: (spaceId: string) => void
+  setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
   spaceVisuals: SpaceVisual[]
   focusSpaceInViewport: (spaceId: string) => void
@@ -64,6 +68,8 @@ export function useWorkspaceCanvasSpaces({
   const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
   const [spaceRenameDraft, setSpaceRenameDraft] = useState('')
   const spaceRenameInputRef = useRef<HTMLInputElement>(null)
+  const lastAppliedWorkspaceIdRef = useRef<string | null>(null)
+  const lastAppliedActiveSpaceIdRef = useRef<string | null | undefined>(undefined)
 
   useLayoutEffect(() => {
     spacesRef.current = spaces
@@ -203,6 +209,23 @@ export function useWorkspaceCanvasSpaces({
     [cancelSpaceRename, onSpacesChange, spaceRenameDraft, spacesRef],
   )
 
+  const setSpaceLabelColor = useCallback(
+    (spaceId: string, labelColor: LabelColor | null) => {
+      const nextSpaces = spacesRef.current.map(space =>
+        space.id === spaceId
+          ? {
+              ...space,
+              labelColor,
+            }
+          : space,
+      )
+
+      onSpacesChange(nextSpaces)
+      onRequestPersistFlush?.()
+    },
+    [onRequestPersistFlush, onSpacesChange, spacesRef],
+  )
+
   const spaceVisuals = useMemo<SpaceVisual[]>(() => {
     return spaces
       .map(space => {
@@ -215,6 +238,7 @@ export function useWorkspaceCanvasSpaces({
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          labelColor: space.labelColor,
           rect,
           hasExplicitRect: true,
         }
@@ -248,6 +272,31 @@ export function useWorkspaceCanvasSpaces({
     })
   }, [nodesRef, reactFlow])
 
+  useEffect(() => {
+    if (lastAppliedWorkspaceIdRef.current !== workspaceId) {
+      lastAppliedWorkspaceIdRef.current = workspaceId
+      lastAppliedActiveSpaceIdRef.current = undefined
+    }
+
+    if (lastAppliedActiveSpaceIdRef.current === undefined) {
+      lastAppliedActiveSpaceIdRef.current = activeSpaceId
+      return
+    }
+
+    if (lastAppliedActiveSpaceIdRef.current === activeSpaceId) {
+      return
+    }
+
+    lastAppliedActiveSpaceIdRef.current = activeSpaceId
+
+    if (activeSpaceId) {
+      focusSpaceInViewport(activeSpaceId)
+      return
+    }
+
+    focusAllInViewport()
+  }, [activeSpaceId, focusAllInViewport, focusSpaceInViewport, workspaceId])
+
   return {
     editingSpaceId,
     spaceRenameDraft,
@@ -256,6 +305,7 @@ export function useWorkspaceCanvasSpaces({
     startSpaceRename,
     cancelSpaceRename,
     commitSpaceRename,
+    setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     spaceVisuals,
     focusSpaceInViewport,

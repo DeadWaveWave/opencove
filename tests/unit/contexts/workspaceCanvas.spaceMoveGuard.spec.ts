@@ -91,6 +91,35 @@ describe('workspaceCanvas space move guard', () => {
     )
   })
 
+  it('allows agent windows to enter a space with a different directory when directory mismatch is allowed', () => {
+    const agentNode = createNode('agent-1', {
+      kind: 'agent',
+      title: 'Agent',
+      sessionId: 'agent-session',
+      status: 'standby',
+      agent: {
+        provider: 'codex',
+        prompt: 'Test',
+        model: 'gpt-5.2-codex',
+        effectiveModel: 'gpt-5.2-codex',
+        launchMode: 'new',
+        resumeSessionId: null,
+        executionDirectory: workspacePath,
+        expectedDirectory: workspacePath,
+        directoryMode: 'workspace',
+        customDirectory: null,
+        shouldCreateDirectory: false,
+        taskId: null,
+      },
+    })
+
+    expect(
+      validateSpaceTransfer(['agent-1'], [agentNode], worktreeSpace, workspacePath, t, {
+        allowDirectoryMismatch: true,
+      }),
+    ).toBeNull()
+  })
+
   it('blocks terminal windows from leaving to a different directory root', () => {
     const terminalNode = createNode('terminal-1', {
       kind: 'terminal',
@@ -103,6 +132,22 @@ describe('workspaceCanvas space move guard', () => {
     expect(validateSpaceTransfer(['terminal-1'], [terminalNode], rootSpace, workspacePath, t)).toBe(
       'Terminal windows cannot enter or leave a space with a different directory.',
     )
+  })
+
+  it('allows terminal windows to leave to a different directory root when directory mismatch is allowed', () => {
+    const terminalNode = createNode('terminal-1', {
+      kind: 'terminal',
+      title: 'Terminal',
+      sessionId: 'terminal-session',
+      executionDirectory: worktreePath,
+      expectedDirectory: worktreePath,
+    })
+
+    expect(
+      validateSpaceTransfer(['terminal-1'], [terminalNode], rootSpace, workspacePath, t, {
+        allowDirectoryMismatch: true,
+      }),
+    ).toBeNull()
   })
 
   it('allows moving tasks when the linked agent is inactive', () => {

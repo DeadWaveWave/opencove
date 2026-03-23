@@ -13,6 +13,8 @@ describe('WorkspaceSection', () => {
         workspacePath="/repo/demo"
         worktreesRoot=".opencove/worktrees"
         onChangeWorktreesRoot={onChangeWorktreesRoot}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
       />,
     )
 
@@ -45,6 +47,8 @@ describe('WorkspaceSection', () => {
         workspacePath={null}
         worktreesRoot=""
         onChangeWorktreesRoot={() => undefined}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
       />,
     )
 

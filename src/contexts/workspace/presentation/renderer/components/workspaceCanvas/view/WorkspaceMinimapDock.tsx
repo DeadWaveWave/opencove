@@ -30,7 +30,7 @@ export function WorkspaceMinimapDock({
           zoomable
           nodeColor={minimapNodeColor}
           nodeBorderRadius={6}
-          maskColor="rgba(73, 132, 255, 0.16)"
+          maskColor="var(--cove-canvas-minimap-mask-surface)"
         />
       ) : null}
 

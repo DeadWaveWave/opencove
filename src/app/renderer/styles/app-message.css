@@ -1,7 +1,7 @@
 .app-message {
-  --app-message-border: rgba(110, 165, 255, 0.38);
-  --app-message-background: rgba(13, 22, 42, 0.92);
-  --app-message-label: rgba(191, 213, 252, 0.95);
+  --app-message-border: var(--cove-border);
+  --app-message-background: var(--cove-surface-strong);
+  --app-message-label: var(--cove-text-muted);
   position: fixed;
   top: 16px;
   right: 16px;
@@ -16,26 +16,32 @@
   background: var(--app-message-background);
   color: var(--cove-text);
   backdrop-filter: blur(18px) saturate(140%);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 14px 34px var(--cove-shadow-color-elevated);
   pointer-events: none;
 }
 
 .app-message--info {
-  --app-message-border: rgba(110, 165, 255, 0.38);
-  --app-message-background: rgba(13, 22, 42, 0.92);
-  --app-message-label: rgba(191, 213, 252, 0.95);
+  --app-message-border: rgba(94, 156, 255, 0.38);
+  --app-message-background:
+    radial-gradient(circle at top right, rgba(94, 156, 255, 0.12), transparent 45%),
+    var(--cove-surface-strong);
+  --app-message-label: rgba(94, 156, 255, 0.92);
 }
 
 .app-message--warning {
   --app-message-border: rgba(255, 196, 107, 0.34);
-  --app-message-background: rgba(32, 24, 10, 0.92);
-  --app-message-label: rgba(255, 210, 138, 0.92);
+  --app-message-background:
+    radial-gradient(circle at top right, rgba(255, 196, 107, 0.16), transparent 50%),
+    var(--cove-surface-strong);
+  --app-message-label: rgba(255, 196, 107, 0.92);
 }
 
 .app-message--error {
   --app-message-border: rgba(255, 125, 125, 0.36);
-  --app-message-background: rgba(44, 14, 18, 0.94);
-  --app-message-label: rgba(255, 172, 172, 0.94);
+  --app-message-background:
+    radial-gradient(circle at top right, rgba(255, 125, 125, 0.16), transparent 50%),
+    var(--cove-surface-strong);
+  --app-message-label: rgba(255, 125, 125, 0.92);
 }
 
 .app-message__label {

@@ -1,6 +1,6 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { GitWorktreeInfo } from '@shared/contracts/dto'
+import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import type { SpaceFrameHandleMode } from '../../../utils/spaceLayout'
@@ -15,6 +15,7 @@ export function WorkspaceSpaceRegionItem({
   space,
   resolvedRect,
   isSelected,
+  githubPullRequestsEnabled,
   editingSpaceId,
   spaceRenameInputRef,
   spaceRenameDraft,
@@ -26,12 +27,14 @@ export function WorkspaceSpaceRegionItem({
   updateHandleCursor,
   resolvedWorktreeInfo,
   resolvedBranchBadge,
+  resolvedPullRequestSummary,
   onStartBranchRename,
   onOpenSpaceMenu,
 }: {
   space: SpaceVisual
   resolvedRect: WorkspaceSpaceRect
   isSelected: boolean
+  githubPullRequestsEnabled: boolean
   editingSpaceId: string | null
   spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
   spaceRenameDraft: string
@@ -51,6 +54,7 @@ export function WorkspaceSpaceRegionItem({
   ) => void
   resolvedWorktreeInfo: GitWorktreeInfo | null
   resolvedBranchBadge: WorkspaceSpaceBranchBadge | null
+  resolvedPullRequestSummary: GitHubPullRequestSummary | null
   onStartBranchRename: (payload: {
     spaceId: string
     spaceName: string
@@ -63,6 +67,13 @@ export function WorkspaceSpaceRegionItem({
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
   const shouldShowSpaceLabel = resolvedBranchBadge === null
+  const pullRequestUrl = resolvedPullRequestSummary?.ref.url ?? null
+  const shouldShowPullRequestChip =
+    githubPullRequestsEnabled &&
+    Boolean(branchName) &&
+    Boolean(worktreePath) &&
+    Boolean(pullRequestUrl) &&
+    resolvedPullRequestSummary !== null
   return (
     <div
       className={
@@ -70,6 +81,7 @@ export function WorkspaceSpaceRegionItem({
           ? 'workspace-space-region workspace-space-region--selected'
           : 'workspace-space-region'
       }
+      data-cove-label-color={space.labelColor ?? undefined}
       style={{
         transform: `translate(${resolvedRect.x}px, ${resolvedRect.y}px)`,
         width: resolvedRect.width,
@@ -146,6 +158,13 @@ export function WorkspaceSpaceRegionItem({
                 startSpaceRename(space.id)
               }}
             >
+              {space.labelColor ? (
+                <span
+                  className="cove-label-dot cove-label-dot--solid"
+                  data-cove-label-color={space.labelColor}
+                  aria-hidden="true"
+                />
+              ) : null}
               {space.name}
             </button>
           ) : null}
@@ -186,6 +205,28 @@ export function WorkspaceSpaceRegionItem({
                 {resolvedBranchBadge.value}
               </span>
             </span>
+          ) : null}
+
+          {branchName && worktreePath && shouldShowPullRequestChip && resolvedPullRequestSummary ? (
+            <a
+              className="workspace-space-region__pr-chip"
+              data-testid={`workspace-space-pr-chip-${space.id}`}
+              href={pullRequestUrl ?? undefined}
+              target="_blank"
+              rel="noreferrer"
+              title={`${resolvedPullRequestSummary.title} (#${resolvedPullRequestSummary.number})`}
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
+              onClick={event => {
+                event.stopPropagation()
+              }}
+            >
+              <span className="workspace-space-region__pr-chip-kind">PR</span>
+              <span className="workspace-space-region__pr-chip-value">
+                {`#${resolvedPullRequestSummary.number}`}
+              </span>
+            </a>
           ) : null}
 
           <button

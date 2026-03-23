@@ -1,4 +1,9 @@
 import { MAX_PERSISTED_SCROLLBACK_CHARS } from './constants'
+import type { LabelColor, NodeLabelColorOverride } from '../../../shared/types/labelColor'
+import {
+  normalizeLabelColor,
+  normalizeNodeLabelColorOverride,
+} from '../../../shared/types/labelColor'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -44,6 +49,7 @@ export type NormalizedPersistedNode = {
   width: number
   height: number
   kind: string
+  labelColorOverride: NodeLabelColorOverride
   status: string | null
   startedAt: string | null
   endedAt: string | null
@@ -60,6 +66,7 @@ export type NormalizedPersistedSpace = {
   id: string
   name: string
   directoryPath: string
+  labelColor: LabelColor | null
   nodeIds: string[]
   rect: { x: number; y: number; width: number; height: number } | null
 }
@@ -69,6 +76,7 @@ export type NormalizedPersistedWorkspace = {
   name: string
   path: string
   worktreesRoot: string
+  pullRequestBaseBranchOptions: string[]
   viewport: { x: number; y: number; zoom: number }
   isMinimapVisible: boolean
   spaces: NormalizedPersistedSpace[]
@@ -130,6 +138,18 @@ function normalizeNodeIds(value: unknown): string[] {
   return value.filter((nodeId): nodeId is string => typeof nodeId === 'string' && nodeId.length > 0)
 }
 
+function normalizeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return []
+  }
+
+  const normalized = value
+    .map(item => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+
+  return [...new Set(normalized)].slice(0, 50)
+}
+
 export function normalizePersistedAppState(value: unknown): NormalizedPersistedAppState | null {
   if (!isRecord(value)) {
     return null
@@ -183,6 +203,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         width: normalizeFiniteNumber(node.width, 0),
         height: normalizeFiniteNumber(node.height, 0),
         kind: normalizeString(node.kind, 'terminal'),
+        labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         status: typeof node.status === 'string' ? node.status : null,
         startedAt: typeof node.startedAt === 'string' ? node.startedAt : null,
         endedAt: typeof node.endedAt === 'string' ? node.endedAt : null,
@@ -218,6 +239,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         id: spaceId,
         name: normalizeString(space.name),
         directoryPath: normalizeString(space.directoryPath),
+        labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeNodeIds(space.nodeIds),
         rect: normalizeRect(space.rect),
       })
@@ -228,6 +250,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
       name: normalizeString(workspace.name),
       path: normalizeString(workspace.path),
       worktreesRoot: normalizeString(workspace.worktreesRoot),
+      pullRequestBaseBranchOptions: normalizeStringArray(workspace.pullRequestBaseBranchOptions),
       viewport: normalizeViewport(workspace.viewport),
       isMinimapVisible: normalizeBoolean(workspace.isMinimapVisible, true),
       spaces: normalizedSpaces,

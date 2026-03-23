@@ -4,6 +4,7 @@ import {
   assignAgentNodeToTaskSpace,
   createTaskAgentAnchor,
   findTaskNode,
+  findTaskSpace,
   resolveTaskDirectory,
   setTaskLastError,
   type ResumeTaskAgentSessionContext,
@@ -45,6 +46,7 @@ export async function resumeTaskAgentSessionAction(
   }
 
   const taskDirectory = resolveTaskDirectory(taskNodeId, context.spacesRef, context.workspacePath)
+  const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
 
   try {
     const launched = await window.opencoveApi.agent.launch({
@@ -64,6 +66,10 @@ export async function resumeTaskAgentSessionAction(
       title: context.buildAgentNodeTitle(record.provider, launched.effectiveModel),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',
+      placement: {
+        targetSpaceRect: taskSpace?.rect ?? null,
+        preferredDirection: 'right',
+      },
       agent: {
         provider: record.provider,
         prompt: record.prompt,

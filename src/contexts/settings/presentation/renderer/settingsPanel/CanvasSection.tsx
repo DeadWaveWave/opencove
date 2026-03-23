@@ -2,50 +2,59 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   CANVAS_INPUT_MODES,
+  FOCUS_NODE_TARGET_ZOOM_STEP,
+  MAX_FOCUS_NODE_TARGET_ZOOM,
+  MIN_FOCUS_NODE_TARGET_ZOOM,
   MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
-  MAX_TERMINAL_FONT_SIZE,
-  MAX_UI_FONT_SIZE,
   MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
-  MIN_TERMINAL_FONT_SIZE,
-  MIN_UI_FONT_SIZE,
   type CanvasInputMode,
+  type FocusNodeTargetZoom,
 } from '@contexts/settings/domain/agentSettings'
 import { getCanvasInputModeLabel } from '@app/renderer/i18n/labels'
 import type { TerminalProfile } from '@shared/contracts/dto'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
-  normalizeZoomOnTerminalClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: FocusNodeTargetZoom
   defaultTerminalWindowScalePercent: number
-  terminalFontSize: number
-  uiFontSize: number
   defaultTerminalProfileId: string | null
   terminalProfiles: TerminalProfile[]
   detectedDefaultTerminalProfileId: string | null
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
-  onChangeNormalizeZoomOnTerminalClick: (enabled: boolean) => void
+  onChangeFocusNodeOnClick: (enabled: boolean) => void
+  onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
+  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChangeDefaultTerminalWindowScalePercent: (percent: number) => void
-  onChangeTerminalFontSize: (size: number) => void
-  onChangeUiFontSize: (size: number) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const {
     canvasInputMode,
-    normalizeZoomOnTerminalClick,
+    focusNodeOnClick,
+    focusNodeTargetZoom,
     defaultTerminalWindowScalePercent,
-    terminalFontSize,
-    uiFontSize,
     defaultTerminalProfileId,
     terminalProfiles,
     detectedDefaultTerminalProfileId,
     onChangeCanvasInputMode,
     onChangeDefaultTerminalProfileId,
-    onChangeNormalizeZoomOnTerminalClick,
+    onChangeFocusNodeOnClick,
+    onChangeFocusNodeTargetZoom,
+    onFocusNodeTargetZoomPreviewChange,
     onChangeDefaultTerminalWindowScalePercent,
-    onChangeTerminalFontSize,
-    onChangeUiFontSize,
   } = props
+  const neutralTargetZoom = 1
+  const neutralTargetZoomRatioRaw =
+    (neutralTargetZoom - MIN_FOCUS_NODE_TARGET_ZOOM) /
+    (MAX_FOCUS_NODE_TARGET_ZOOM - MIN_FOCUS_NODE_TARGET_ZOOM)
+  const neutralTargetZoomRatio = Number.isFinite(neutralTargetZoomRatioRaw)
+    ? Math.max(0, Math.min(1, neutralTargetZoomRatioRaw))
+    : 0.5
+  const focusTargetZoomRangeStyle: React.CSSProperties & Record<string, string | number> = {
+    '--settings-panel-range-neutral-ratio': neutralTargetZoomRatio,
+  }
   const selectedProfileId = terminalProfiles.some(
     profile => profile.id === defaultTerminalProfileId,
   )
@@ -62,18 +71,16 @@ export function CanvasSection(props: {
           <span>{t('settingsPanel.canvas.inputModeHelp')}</span>
         </div>
         <div className="settings-panel__control">
-          <select
+          <CoveSelect
             id="settings-canvas-input-mode"
-            data-testid="settings-canvas-input-mode"
+            testId="settings-canvas-input-mode"
             value={canvasInputMode}
-            onChange={event => onChangeCanvasInputMode(event.target.value as CanvasInputMode)}
-          >
-            {CANVAS_INPUT_MODES.map(mode => (
-              <option key={mode} value={mode}>
-                {getCanvasInputModeLabel(t, mode)}
-              </option>
-            ))}
-          </select>
+            options={CANVAS_INPUT_MODES.map(mode => ({
+              value: mode,
+              label: getCanvasInputModeLabel(t, mode),
+            }))}
+            onChange={nextValue => onChangeCanvasInputMode(nextValue as CanvasInputMode)}
+          />
         </div>
       </div>
 
@@ -90,30 +97,29 @@ export function CanvasSection(props: {
             </span>
           </div>
           <div className="settings-panel__control">
-            <select
+            <CoveSelect
               id="settings-terminal-profile"
-              data-testid="settings-terminal-profile"
+              testId="settings-terminal-profile"
               value={selectedProfileId ?? ''}
-              onChange={event =>
-                onChangeDefaultTerminalProfileId(
-                  event.target.value.trim().length > 0 ? event.target.value : null,
-                )
+              options={[
+                {
+                  value: '',
+                  label: t('settingsPanel.canvas.terminalProfileAutoWithDefault', {
+                    defaultProfile:
+                      terminalProfiles.find(
+                        profile => profile.id === detectedDefaultTerminalProfileId,
+                      )?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
+                  }),
+                },
+                ...terminalProfiles.map(profile => ({
+                  value: profile.id,
+                  label: profile.label,
+                })),
+              ]}
+              onChange={nextValue =>
+                onChangeDefaultTerminalProfileId(nextValue.trim().length > 0 ? nextValue : null)
               }
-            >
-              <option value="">
-                {t('settingsPanel.canvas.terminalProfileAutoWithDefault', {
-                  defaultProfile:
-                    terminalProfiles.find(
-                      profile => profile.id === detectedDefaultTerminalProfileId,
-                    )?.label ?? t('settingsPanel.canvas.terminalProfileAuto'),
-                })}
-              </option>
-              {terminalProfiles.map(profile => (
-                <option key={profile.id} value={profile.id}>
-                  {profile.label}
-                </option>
-              ))}
-            </select>
+            />
           </div>
         </div>
       ) : null}
@@ -124,6 +130,7 @@ export function CanvasSection(props: {
         </div>
         <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
           <input
+            className="cove-field"
             style={{ width: '80px' }}
             type="number"
             min={MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT}
@@ -133,59 +140,56 @@ export function CanvasSection(props: {
               onChangeDefaultTerminalWindowScalePercent(Number(event.target.value))
             }
           />
-          <span style={{ fontSize: '12px', color: '#666' }}>{t('common.percentUnit')}</span>
+          <span style={{ fontSize: '12px', color: 'var(--cove-text-muted)' }}>
+            {t('common.percentUnit')}
+          </span>
         </div>
       </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.terminalFontSize')}</strong>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
-          <input
-            style={{ width: '80px' }}
-            type="number"
-            min={MIN_TERMINAL_FONT_SIZE}
-            max={MAX_TERMINAL_FONT_SIZE}
-            value={terminalFontSize}
-            onChange={event => onChangeTerminalFontSize(Number(event.target.value))}
-          />
-          <span style={{ fontSize: '12px', color: '#666' }}>{t('common.pixelUnit')}</span>
-        </div>
-      </div>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.interfaceFontSize')}</strong>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
-          <input
-            style={{ width: '80px' }}
-            type="number"
-            min={MIN_UI_FONT_SIZE}
-            max={MAX_UI_FONT_SIZE}
-            value={uiFontSize}
-            onChange={event => onChangeUiFontSize(Number(event.target.value))}
-          />
-          <span style={{ fontSize: '12px', color: '#666' }}>{t('common.pixelUnit')}</span>
-        </div>
-      </div>
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.autoZoomLabel')}</strong>
-          <span>{t('settingsPanel.canvas.autoZoomHelp')}</span>
+          <strong>{t('settingsPanel.canvas.focusOnClickLabel')}</strong>
+          <span>{t('settingsPanel.canvas.focusOnClickHelp')}</span>
         </div>
         <div className="settings-panel__control">
           <label className="cove-toggle">
             <input
               type="checkbox"
-              data-testid="settings-normalize-zoom-on-terminal-click"
-              checked={normalizeZoomOnTerminalClick}
-              onChange={event => onChangeNormalizeZoomOnTerminalClick(event.target.checked)}
+              data-testid="settings-focus-node-on-click"
+              checked={focusNodeOnClick}
+              onChange={event => onChangeFocusNodeOnClick(event.target.checked)}
             />
             <span className="cove-toggle__slider"></span>
           </label>
+        </div>
+      </div>
+
+      <div className="settings-panel__row settings-panel__row--focus-target-zoom">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.canvas.focusTargetZoomLabel')}</strong>
+          <span>{t('settingsPanel.canvas.focusTargetZoomHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <div
+            className="settings-panel__range settings-panel__range--neutral-marker"
+            style={focusTargetZoomRangeStyle}
+          >
+            <input
+              id="settings-focus-node-target-zoom"
+              data-testid="settings-focus-node-target-zoom"
+              value={focusNodeTargetZoom}
+              disabled={!focusNodeOnClick}
+              type="range"
+              min={MIN_FOCUS_NODE_TARGET_ZOOM}
+              max={MAX_FOCUS_NODE_TARGET_ZOOM}
+              step={FOCUS_NODE_TARGET_ZOOM_STEP}
+              onPointerDown={() => onFocusNodeTargetZoomPreviewChange(true)}
+              onPointerUp={() => onFocusNodeTargetZoomPreviewChange(false)}
+              onPointerCancel={() => onFocusNodeTargetZoomPreviewChange(false)}
+              onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
+              onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
+            />
+          </div>
         </div>
       </div>
     </div>

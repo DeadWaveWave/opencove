@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useTerminalProfiles } from '@app/renderer/shell/hooks/useTerminalProfiles'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
@@ -8,12 +8,18 @@ import {
   type AgentProvider,
   type AgentSettings,
   type CanvasInputMode,
+  type FocusNodeTargetZoom,
   type TaskTitleProvider,
   type UiLanguage,
+  type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
+import type { AppUpdateState } from '@shared/contracts/dto'
+import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
+import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
+import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
@@ -28,15 +34,36 @@ interface ProviderModelCatalogEntry {
 
 interface SettingsPanelProps {
   settings: AgentSettings
+  updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  isFocusNodeTargetZoomPreviewing: boolean
+  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChange: (settings: AgentSettings) => void
+  onCheckForUpdates: () => void
+  onDownloadUpdate: () => void
+  onInstallUpdate: () => void
   onClose: () => void
 }
 
-type CoreSectionId = 'general' | 'canvas' | 'task-configuration' | 'model-overrides'
-type SettingsSectionId = CoreSectionId | string
+type CorePageId =
+  | 'general'
+  | 'agent'
+  | 'canvas'
+  | 'shortcuts'
+  | 'task-configuration'
+  | 'integrations'
+type WorkspacePageId = `workspace:${string}`
+type SettingsPageId = CorePageId | WorkspacePageId
+
+function getWorkspacePageId(workspaceId: string): WorkspacePageId {
+  return `workspace:${workspaceId}`
+}
+
+function isWorkspacePageId(pageId: SettingsPageId): pageId is WorkspacePageId {
+  return pageId.startsWith('workspace:')
+}
 
 function createInitialInputState(): Record<AgentProvider, string> {
   return AGENT_PROVIDERS.reduce<Record<AgentProvider, string>>(
@@ -55,23 +82,33 @@ function getFolderName(path: string): string {
 
 export function SettingsPanel({
   settings,
+  updateState,
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  isFocusNodeTargetZoomPreviewing,
+  onFocusNodeTargetZoomPreviewChange,
   onChange,
+  onCheckForUpdates,
+  onDownloadUpdate,
+  onInstallUpdate,
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
   const { t } = useTranslation()
   const { terminalProfiles, detectedDefaultTerminalProfileId } = useTerminalProfiles()
+  const contentRef = useRef<HTMLDivElement | null>(null)
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState())
-  const [activeSectionId, setActiveSectionId] = useState<SettingsSectionId>('general')
+  const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
+  const updateAgentProviderOrder = (providers: AgentProvider[]): void =>
+    onChange({ ...settings, agentProviderOrder: providers })
   const updateLanguage = (language: UiLanguage): void => onChange({ ...settings, language })
+  const updateUiTheme = (uiTheme: UiTheme): void => onChange({ ...settings, uiTheme })
   const updateAgentFullAccess = (enabled: boolean): void =>
     onChange({ ...settings, agentFullAccess: enabled })
   const updateDefaultTerminalProfileId = (profileId: string | null): void =>
@@ -80,8 +117,10 @@ export function SettingsPanel({
     onChange({ ...settings, taskTitleProvider: provider })
   const updateTaskTitleModel = (model: string): void =>
     onChange({ ...settings, taskTitleModel: model })
-  const updateNormalizeZoomOnTerminalClick = (enabled: boolean): void =>
-    onChange({ ...settings, normalizeZoomOnTerminalClick: enabled })
+  const updateFocusNodeOnClick = (enabled: boolean): void =>
+    onChange({ ...settings, focusNodeOnClick: enabled })
+  const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
+    onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
   const updateDefaultTerminalWindowScalePercent = (percent: number): void =>
@@ -90,8 +129,24 @@ export function SettingsPanel({
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateUiFontSize = (fontSize: number): void =>
     onChange({ ...settings, uiFontSize: fontSize })
+  const updateUpdatePolicy = (policy: AgentSettings['updatePolicy']): void => {
+    const normalized = settings.updateChannel === 'nightly' && policy === 'auto' ? 'prompt' : policy
+    onChange({ ...settings, updatePolicy: normalized })
+  }
+
+  const updateUpdateChannel = (channel: AgentSettings['updateChannel']): void => {
+    const normalizedPolicy =
+      channel === 'nightly' && settings.updatePolicy === 'auto' ? 'prompt' : settings.updatePolicy
+    onChange({ ...settings, updateChannel: channel, updatePolicy: normalizedPolicy })
+  }
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
+  const updateDisableAppShortcutsWhenTerminalFocused = (enabled: boolean): void =>
+    onChange({ ...settings, disableAppShortcutsWhenTerminalFocused: enabled })
+  const updateKeybindings = (keybindings: AgentSettings['keybindings']): void =>
+    onChange({ ...settings, keybindings })
+  const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, githubPullRequestsEnabled: enabled })
 
   const removeTaskTagOption = (tag: string): void => {
     const nextTags = settings.taskTagOptions.filter(option => option !== tag)
@@ -180,33 +235,51 @@ export function SettingsPanel({
   }
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
-  const scrollToSection = (id: SettingsSectionId, targetId: string): void => {
-    setActiveSectionId(id)
-    window.requestAnimationFrame(() => {
-      document.getElementById(targetId)?.scrollIntoView({
-        block: 'start',
-        behavior: 'auto',
-      })
-    })
-  }
+
+  const activeWorkspace = useMemo(() => {
+    if (!isWorkspacePageId(activePageId)) {
+      return null
+    }
+
+    const workspaceId = activePageId.slice('workspace:'.length)
+    return workspaces.find(workspace => workspace.id === workspaceId) ?? null
+  }, [activePageId, workspaces])
+
+  useEffect(() => {
+    if (isWorkspacePageId(activePageId) && !activeWorkspace) {
+      setActivePageId('general')
+    }
+  }, [activePageId, activeWorkspace])
+
+  useEffect(() => {
+    if (!contentRef.current) {
+      return
+    }
+
+    contentRef.current.scrollTop = 0
+  }, [activePageId])
+
+  useEffect(() => {
+    if (activePageId !== 'canvas') {
+      onFocusNodeTargetZoomPreviewChange(false)
+    }
+  }, [activePageId, onFocusNodeTargetZoomPreviewChange])
 
   const NavButton = ({
     id,
     label,
-    targetId,
     testId,
   }: {
-    id: SettingsSectionId
+    id: SettingsPageId
     label: string
-    targetId: string
     testId?: string
   }) => {
-    const isActive = activeSectionId === id
+    const isActive = activePageId === id
     return (
       <button
         type="button"
         data-testid={testId}
-        onClick={() => scrollToSection(id, targetId)}
+        onClick={() => setActivePageId(id)}
         className={`settings-panel__nav-button${isActive ? ' settings-panel__nav-button--active' : ''}`}
       >
         {label}
@@ -215,32 +288,47 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="settings-backdrop" onClick={onClose}>
-      <section className="settings-panel" onClick={e => e.stopPropagation()}>
-        <aside className="settings-panel__sidebar">
+    <div
+      className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
+      onClick={onClose}
+    >
+      <section
+        className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
+        onClick={e => e.stopPropagation()}
+      >
+        <aside
+          className="settings-panel__sidebar"
+          aria-label={t('settingsPanel.nav.sectionsLabel')}
+        >
           <NavButton
             id="general"
             label={t('settingsPanel.nav.general')}
-            targetId="settings-section-general"
             testId="settings-section-nav-general"
+          />
+          <NavButton
+            id="agent"
+            label={t('settingsPanel.nav.agent')}
+            testId="settings-section-nav-agent"
           />
           <NavButton
             id="canvas"
             label={t('settingsPanel.nav.canvas')}
-            targetId="settings-section-canvas"
             testId="settings-section-nav-canvas"
+          />
+          <NavButton
+            id="shortcuts"
+            label={t('settingsPanel.nav.shortcuts')}
+            testId="settings-section-nav-shortcuts"
           />
           <NavButton
             id="task-configuration"
             label={t('settingsPanel.nav.tasks')}
-            targetId="settings-section-task-configuration"
             testId="settings-section-nav-task-configuration"
           />
           <NavButton
-            id="model-overrides"
-            label={t('settingsPanel.nav.models')}
-            targetId="settings-section-model-override"
-            testId="settings-section-nav-model-overrides"
+            id="integrations"
+            label={t('settingsPanel.nav.integrations')}
+            testId="settings-section-nav-integrations"
           />
 
           <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
@@ -248,11 +336,10 @@ export function SettingsPanel({
             {workspaces.map(workspace => (
               <NavButton
                 key={workspace.id}
-                id={workspace.id}
+                id={getWorkspacePageId(workspace.id)}
                 label={
                   workspace.name.trim().length > 0 ? workspace.name : getFolderName(workspace.path)
                 }
-                targetId={`settings-section-workspace-${workspace.id}`}
               />
             ))}
           </div>
@@ -265,65 +352,117 @@ export function SettingsPanel({
               ×
             </button>
           </div>
-          <div className="settings-panel__content">
-            <GeneralSection
-              language={settings.language}
-              defaultProvider={settings.defaultProvider}
-              agentFullAccess={settings.agentFullAccess}
-              onChangeLanguage={updateLanguage}
-              onChangeDefaultProvider={updateDefaultProvider}
-              onChangeAgentFullAccess={updateAgentFullAccess}
-            />
-            <CanvasSection
-              canvasInputMode={settings.canvasInputMode}
-              normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
-              defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
-              terminalFontSize={settings.terminalFontSize}
-              uiFontSize={settings.uiFontSize}
-              defaultTerminalProfileId={settings.defaultTerminalProfileId}
-              terminalProfiles={terminalProfiles}
-              detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
-              onChangeCanvasInputMode={updateCanvasInputMode}
-              onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
-              onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
-              onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
-              onChangeTerminalFontSize={updateTerminalFontSize}
-              onChangeUiFontSize={updateUiFontSize}
-            />
-            <TaskConfigurationSection
-              showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}
-              defaultProvider={settings.defaultProvider}
-              taskTitleProvider={settings.taskTitleProvider}
-              taskTitleModel={settings.taskTitleModel}
-              effectiveTaskTitleProvider={effectiveTaskTitleProvider}
-              tags={settings.taskTagOptions}
-              addTaskTagInput={addTaskTagInput}
-              onChangeTaskTitleProvider={updateTaskTitleProvider}
-              onChangeTaskTitleModel={updateTaskTitleModel}
-              onChangeAddTaskTagInput={setAddTaskTagInput}
-              onAddTag={addTaskTagOption}
-              onRemoveTag={removeTaskTagOption}
-            />
-            <ModelOverrideSection
-              settings={settings}
-              modelCatalogByProvider={modelCatalogByProvider}
-              addModelInputByProvider={addModelInputByProvider}
-              onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
-              onSelectProviderModel={selectProviderModel}
-              onRemoveCustomModelOption={removeCustomModelOption}
-              onChangeAddModelInput={updateAddModelInput}
-              onAddCustomModelOption={addCustomModelOption}
-            />
-            {workspaces.map(workspace => (
-              <WorkspaceSection
-                key={workspace.id}
-                sectionId={`settings-section-workspace-${workspace.id}`}
-                workspaceName={workspace.name}
-                workspacePath={workspace.path}
-                worktreesRoot={workspace.worktreesRoot}
-                onChangeWorktreesRoot={root => onWorkspaceWorktreesRootChange(workspace.id, root)}
+          <div className="settings-panel__content" ref={contentRef}>
+            {activePageId === 'general' ? (
+              <GeneralSection
+                language={settings.language}
+                uiTheme={settings.uiTheme}
+                uiFontSize={settings.uiFontSize}
+                terminalFontSize={settings.terminalFontSize}
+                updatePolicy={settings.updatePolicy}
+                updateChannel={settings.updateChannel}
+                updateState={updateState}
+                onChangeLanguage={updateLanguage}
+                onChangeUiTheme={updateUiTheme}
+                onChangeUiFontSize={updateUiFontSize}
+                onChangeTerminalFontSize={updateTerminalFontSize}
+                onChangeUpdatePolicy={updateUpdatePolicy}
+                onChangeUpdateChannel={updateUpdateChannel}
+                onCheckForUpdates={onCheckForUpdates}
+                onDownloadUpdate={onDownloadUpdate}
+                onInstallUpdate={onInstallUpdate}
               />
-            ))}
+            ) : null}
+
+            {activePageId === 'agent' ? (
+              <>
+                <AgentSection
+                  defaultProvider={settings.defaultProvider}
+                  agentProviderOrder={settings.agentProviderOrder}
+                  agentFullAccess={settings.agentFullAccess}
+                  onChangeDefaultProvider={updateDefaultProvider}
+                  onChangeAgentProviderOrder={updateAgentProviderOrder}
+                  onChangeAgentFullAccess={updateAgentFullAccess}
+                />
+                <ModelOverrideSection
+                  settings={settings}
+                  modelCatalogByProvider={modelCatalogByProvider}
+                  addModelInputByProvider={addModelInputByProvider}
+                  onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
+                  onSelectProviderModel={selectProviderModel}
+                  onRemoveCustomModelOption={removeCustomModelOption}
+                  onChangeAddModelInput={updateAddModelInput}
+                  onAddCustomModelOption={addCustomModelOption}
+                />
+              </>
+            ) : null}
+
+            {activePageId === 'integrations' ? (
+              <IntegrationsSection
+                githubPullRequestsEnabled={settings.githubPullRequestsEnabled}
+                onChangeGitHubPullRequestsEnabled={updateGitHubPullRequestsEnabled}
+              />
+            ) : null}
+
+            {activePageId === 'canvas' ? (
+              <CanvasSection
+                canvasInputMode={settings.canvasInputMode}
+                focusNodeOnClick={settings.focusNodeOnClick}
+                focusNodeTargetZoom={settings.focusNodeTargetZoom}
+                defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
+                defaultTerminalProfileId={settings.defaultTerminalProfileId}
+                terminalProfiles={terminalProfiles}
+                detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
+                onChangeCanvasInputMode={updateCanvasInputMode}
+                onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
+                onChangeFocusNodeOnClick={updateFocusNodeOnClick}
+                onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
+                onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
+                onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
+              />
+            ) : null}
+
+            {activePageId === 'shortcuts' ? (
+              <ShortcutsSection
+                disableAppShortcutsWhenTerminalFocused={
+                  settings.disableAppShortcutsWhenTerminalFocused
+                }
+                keybindings={settings.keybindings}
+                onChangeDisableAppShortcutsWhenTerminalFocused={
+                  updateDisableAppShortcutsWhenTerminalFocused
+                }
+                onChangeKeybindings={updateKeybindings}
+              />
+            ) : null}
+
+            {activePageId === 'task-configuration' ? (
+              <TaskConfigurationSection
+                showTaskTitleGeneration={AI_NAMING_FEATURES.taskTitleGeneration}
+                defaultProvider={settings.defaultProvider}
+                taskTitleProvider={settings.taskTitleProvider}
+                taskTitleModel={settings.taskTitleModel}
+                effectiveTaskTitleProvider={effectiveTaskTitleProvider}
+                tags={settings.taskTagOptions}
+                addTaskTagInput={addTaskTagInput}
+                onChangeTaskTitleProvider={updateTaskTitleProvider}
+                onChangeTaskTitleModel={updateTaskTitleModel}
+                onChangeAddTaskTagInput={setAddTaskTagInput}
+                onAddTag={addTaskTagOption}
+                onRemoveTag={removeTaskTagOption}
+              />
+            ) : null}
+
+            {isWorkspacePageId(activePageId) && activeWorkspace ? (
+              <WorkspaceSection
+                sectionId={`settings-section-workspace-${activeWorkspace.id}`}
+                workspaceName={activeWorkspace.name}
+                workspacePath={activeWorkspace.path}
+                worktreesRoot={activeWorkspace.worktreesRoot}
+                onChangeWorktreesRoot={root =>
+                  onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+                }
+              />
+            ) : null}
           </div>
         </div>
       </section>

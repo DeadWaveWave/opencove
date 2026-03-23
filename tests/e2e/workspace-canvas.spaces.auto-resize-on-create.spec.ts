@@ -7,7 +7,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
-  test('expands the space when creating a node would push members outside', async () => {
+  test('keeps crowded space members non-overlapping and enclosed after creation', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -155,40 +155,102 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
                 return null
               }
 
-              const originalWidth = 1020
-              const expanded = rect.width > originalWidth
-
               const nodeById = new Map((workspace.nodes ?? []).map(node => [node.id ?? '', node]))
+              const memberRects = space.nodeIds
+                .map(nodeId => {
+                  const node = nodeById.get(nodeId)
+                  if (
+                    !node?.position ||
+                    typeof node.position.x !== 'number' ||
+                    typeof node.position.y !== 'number' ||
+                    typeof node.width !== 'number' ||
+                    typeof node.height !== 'number'
+                  ) {
+                    return null
+                  }
+
+                  return {
+                    id: nodeId,
+                    left: node.position.x,
+                    top: node.position.y,
+                    right: node.position.x + node.width,
+                    bottom: node.position.y + node.height,
+                  }
+                })
+                .filter(
+                  (
+                    item,
+                  ): item is {
+                    id: string
+                    left: number
+                    top: number
+                    right: number
+                    bottom: number
+                  } => Boolean(item),
+                )
+
               const membersInside = space.nodeIds.every(nodeId => {
-                const node = nodeById.get(nodeId)
-                if (
-                  !node?.position ||
-                  typeof node.position.x !== 'number' ||
-                  typeof node.position.y !== 'number' ||
-                  typeof node.width !== 'number' ||
-                  typeof node.height !== 'number'
-                ) {
+                const memberRect = memberRects.find(item => item.id === nodeId)
+                if (!memberRect) {
                   return false
                 }
 
-                const left = node.position.x
-                const top = node.position.y
-                const right = left + node.width
-                const bottom = top + node.height
                 const spaceRight = rect.x + rect.width
                 const spaceBottom = rect.y + rect.height
 
                 return (
-                  left >= rect.x && top >= rect.y && right <= spaceRight && bottom <= spaceBottom
+                  memberRect.left >= rect.x &&
+                  memberRect.top >= rect.y &&
+                  memberRect.right <= spaceRight &&
+                  memberRect.bottom <= spaceBottom
                 )
               })
 
-              return { expanded, membersInside }
+              const membersOverlap = memberRects.some((leftRect, leftIndex) =>
+                memberRects.some((rightRect, rightIndex) => {
+                  if (rightIndex <= leftIndex) {
+                    return false
+                  }
+
+                  return !(
+                    leftRect.right <= rightRect.left ||
+                    leftRect.left >= rightRect.right ||
+                    leftRect.bottom <= rightRect.top ||
+                    leftRect.top >= rightRect.bottom
+                  )
+                }),
+              )
+
+              const root = nodeById.get('root-near-space')
+              const rootClear =
+                !root?.position ||
+                typeof root.position.x !== 'number' ||
+                typeof root.position.y !== 'number' ||
+                typeof root.width !== 'number' ||
+                typeof root.height !== 'number'
+                  ? false
+                  : (() => {
+                      const rootLeft = root.position.x
+                      const rootTop = root.position.y
+                      const rootRight = root.position.x + root.width
+                      const rootBottom = root.position.y + root.height
+                      const spaceRight = rect.x + rect.width
+                      const spaceBottom = rect.y + rect.height
+
+                      return (
+                        rootRight <= rect.x ||
+                        rootLeft >= spaceRight ||
+                        rootBottom <= rect.y ||
+                        rootTop >= spaceBottom
+                      )
+                    })()
+
+              return { membersInside, membersOverlap, rootClear }
             },
             { key: storageKey },
           )
         })
-        .toEqual({ expanded: true, membersInside: true })
+        .toEqual({ membersInside: true, membersOverlap: false, rootClear: true })
     } finally {
       await electronApp.close()
     }

@@ -3,6 +3,9 @@ export const APP_ERROR_CODES = [
   'common.approved_path_required',
   'common.unavailable',
   'common.unexpected',
+  'integration.github.unavailable',
+  'integration.github.resolve_failed',
+  'integration.github.action_failed',
   'workspace.select_directory_failed',
   'workspace.ensure_directory_failed',
   'workspace.copy_path_failed',
@@ -12,6 +15,7 @@ export const APP_ERROR_CODES = [
   'worktree.list_branches_failed',
   'worktree.list_worktrees_failed',
   'worktree.status_summary_failed',
+  'worktree.get_default_branch_failed',
   'worktree.create_failed',
   'worktree.remove_failed',
   'worktree.remove_uncommitted_changes',
@@ -37,6 +41,12 @@ export const APP_ERROR_CODES = [
   'persistence.io_failed',
   'persistence.invalid_state',
   'persistence.invalid_node_id',
+  'update.get_state_failed',
+  'update.configure_failed',
+  'update.check_failed',
+  'update.download_failed',
+  'update.install_failed',
+  'release_notes.get_range_failed',
 ] as const
 
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number]

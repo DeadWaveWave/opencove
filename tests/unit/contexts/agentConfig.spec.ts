@@ -13,16 +13,30 @@ describe('agent settings normalization', () => {
     expect(normalizeAgentSettings(null)).toEqual(DEFAULT_AGENT_SETTINGS)
     expect(normalizeAgentSettings('invalid')).toEqual(DEFAULT_AGENT_SETTINGS)
     expect(DEFAULT_AGENT_SETTINGS.language).toBe('en')
-    expect(DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('system')
+    expect(DEFAULT_AGENT_SETTINGS.focusNodeOnClick).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom).toBe(1)
     expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
     expect(DEFAULT_AGENT_SETTINGS.uiFontSize).toBe(18)
+    expect(DEFAULT_AGENT_SETTINGS.updatePolicy).toBe('prompt')
+    expect(DEFAULT_AGENT_SETTINGS.updateChannel).toBe('stable')
+    expect(DEFAULT_AGENT_SETTINGS.releaseNotesSeenVersion).toBeNull()
+  })
+
+  it('normalizes the agent provider order and keeps all providers', () => {
+    const result = normalizeAgentSettings({
+      agentProviderOrder: ['gemini', 'codex', 'gemini', 'invalid'],
+    })
+
+    expect(result.agentProviderOrder).toEqual(['gemini', 'codex', 'claude-code', 'opencode'])
   })
 
   it('keeps valid provider, custom model, and model option fields', () => {
     const result = normalizeAgentSettings({
       language: 'zh-CN',
+      uiTheme: 'light',
       defaultProvider: 'codex',
       customModelEnabledByProvider: {
         'claude-code': true,
@@ -39,14 +53,18 @@ describe('agent settings normalization', () => {
       taskTitleProvider: 'claude-code',
       taskTitleModel: 'claude-opus-4-6',
       taskTagOptions: ['feature', 'bug', 'feature', ''],
-      normalizeZoomOnTerminalClick: false,
+      focusNodeOnClick: false,
+      focusNodeTargetZoom: 1.25,
       canvasInputMode: 'trackpad',
       defaultTerminalWindowScalePercent: 95,
       terminalFontSize: 15,
       uiFontSize: 21,
+      updatePolicy: 'auto',
+      updateChannel: 'nightly',
     })
 
     expect(result.language).toBe('zh-CN')
+    expect(result.uiTheme).toBe('light')
     expect(result.defaultProvider).toBe('codex')
     expect(result.customModelEnabledByProvider['claude-code']).toBe(true)
     expect(result.customModelEnabledByProvider.codex).toBe(false)
@@ -60,11 +78,14 @@ describe('agent settings normalization', () => {
     expect(result.taskTitleProvider).toBe('claude-code')
     expect(result.taskTitleModel).toBe('claude-opus-4-6')
     expect(result.taskTagOptions).toEqual(['feature', 'bug'])
-    expect(result.normalizeZoomOnTerminalClick).toBe(false)
+    expect(result.focusNodeOnClick).toBe(false)
+    expect(result.focusNodeTargetZoom).toBe(1.25)
     expect(result.canvasInputMode).toBe('trackpad')
     expect(result.defaultTerminalWindowScalePercent).toBe(95)
     expect(result.terminalFontSize).toBe(15)
     expect(result.uiFontSize).toBe(21)
+    expect(result.updatePolicy).toBe('prompt')
+    expect(result.updateChannel).toBe('nightly')
     expect(resolveTaskTitleProvider(result)).toBe('claude-code')
     expect(resolveTaskTitleModel(result)).toBe('claude-opus-4-6')
     expect(resolveAgentModel(result, 'claude-code')).toBe('claude-opus-4-6')
@@ -98,11 +119,14 @@ describe('agent settings normalization', () => {
     expect(result.taskTitleProvider).toBe('default')
     expect(result.taskTitleModel).toBe('')
     expect(result.taskTagOptions).toEqual(['ops'])
-    expect(result.normalizeZoomOnTerminalClick).toBe(true)
+    expect(result.focusNodeOnClick).toBe(true)
+    expect(result.focusNodeTargetZoom).toBe(1)
     expect(result.canvasInputMode).toBe('auto')
     expect(result.defaultTerminalWindowScalePercent).toBe(80)
     expect(result.terminalFontSize).toBe(13)
     expect(result.uiFontSize).toBe(18)
+    expect(result.updatePolicy).toBe('prompt')
+    expect(result.updateChannel).toBe('stable')
     expect(resolveAgentModel(result, 'claude-code')).toBeNull()
     expect(resolveAgentModel(result, 'codex')).toBe('gpt-5.2-codex')
     expect(resolveTaskTitleProvider(result)).toBe('claude-code')
@@ -112,11 +136,17 @@ describe('agent settings normalization', () => {
   it('falls back to auto canvas input mode when input is invalid', () => {
     const result = normalizeAgentSettings({
       language: 'fr-FR',
+      uiTheme: 'bold-blue',
       canvasInputMode: 'touchscreen',
+      updatePolicy: 'download-all',
+      updateChannel: 'beta',
     })
 
     expect(result.language).toBe('en')
+    expect(result.uiTheme).toBe('system')
     expect(result.canvasInputMode).toBe('auto')
+    expect(result.updatePolicy).toBe('prompt')
+    expect(result.updateChannel).toBe('stable')
   })
 
   it('migrates legacy modelByProvider to custom override', () => {
@@ -183,6 +213,34 @@ describe('agent settings normalization', () => {
     })
 
     expect(result.uiFontSize).toBe(20)
+  })
+
+  it('migrates legacy normalizeZoomOnTerminalClick to focusNodeOnClick', () => {
+    const result = normalizeAgentSettings({
+      normalizeZoomOnTerminalClick: false,
+    })
+
+    expect(result.focusNodeOnClick).toBe(false)
+  })
+
+  it('falls back to default focus zoom when target zoom is invalid', () => {
+    const result = normalizeAgentSettings({
+      focusNodeTargetZoom: Number.NaN,
+    })
+
+    expect(result.focusNodeTargetZoom).toBe(1)
+  })
+
+  it('clamps focus zoom setting to the supported canvas zoom range', () => {
+    const maxResult = normalizeAgentSettings({
+      focusNodeTargetZoom: 999,
+    })
+    expect(maxResult.focusNodeTargetZoom).toBe(2)
+
+    const minResult = normalizeAgentSettings({
+      focusNodeTargetZoom: 0.001,
+    })
+    expect(minResult.focusNodeTargetZoom).toBe(0.1)
   })
 
   it('falls back to codex for task titles when default provider cannot name tasks', () => {

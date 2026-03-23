@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useState, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
+import type { LabelColor } from '@shared/types/labelColor'
 import { getStatusClassName } from './status'
 
 interface TerminalNodeHeaderProps {
   title: string
   kind: WorkspaceNodeKind
   status: AgentRuntimeStatus | null
+  labelColor?: LabelColor | null
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   onTitleCommit?: (title: string) => void
   onClose: () => void
@@ -18,6 +20,7 @@ export function TerminalNodeHeader({
   title,
   kind,
   status,
+  labelColor,
   directoryMismatch,
   onTitleCommit,
   onClose,
@@ -102,6 +105,13 @@ export function TerminalNodeHeader({
 
   return (
     <div className="terminal-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
+      {labelColor ? (
+        <span
+          className="cove-label-dot cove-label-dot--solid"
+          data-cove-label-color={labelColor}
+          aria-hidden="true"
+        />
+      ) : null}
       {isTitleEditable ? (
         isTitleEditing ? (
           <>

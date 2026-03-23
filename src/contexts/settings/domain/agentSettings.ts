@@ -1,30 +1,49 @@
+import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
+import {
+  isValidUpdateChannel,
+  isValidUpdatePolicy,
+  normalizeUpdatePolicyForChannel,
+} from './updateSettings'
+import type { KeybindingOverrides } from './keybindings'
+import { normalizeKeybindingOverrides } from './keybindings'
+import {
+  isRecord,
+  normalizeBoolean,
+  normalizeIntegerInRange,
+  normalizeTextValue,
+  normalizeUniqueStringArray,
+  normalizeUniqueStringArrayWithFallback,
+} from './settingsNormalization'
+
+export {
+  FOCUS_NODE_TARGET_ZOOM_STEP,
+  MAX_FOCUS_NODE_TARGET_ZOOM,
+  MIN_FOCUS_NODE_TARGET_ZOOM,
+} from './focusNodeTargetZoom'
+export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
+
 export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
-
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
-
 export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
-
 export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
-
 export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
-
 export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
-
 export type WorktreeNameSuggestionAgentProvider =
   (typeof WORKTREE_NAME_SUGGESTION_PROVIDERS)[number]
 
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
-
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
 
 export const UI_LANGUAGES = ['en', 'zh-CN'] as const
-
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
-export type TerminalProfileId = string | null
+export const UI_THEMES = ['system', 'light', 'dark'] as const
+export type UiTheme = (typeof UI_THEMES)[number]
 
+export type TerminalProfileId = string | null
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
 export const MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 120
 export const MIN_TERMINAL_FONT_SIZE = 10
@@ -36,46 +55,11 @@ export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
 
-export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
-  'claude-code': 'Claude Code',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-  gemini: 'Gemini CLI',
-}
-
-export interface AgentProviderCapabilities {
-  taskTitle: boolean
-  worktreeNameSuggestion: boolean
-  runtimeObservation: 'jsonl' | 'provider-api' | 'none'
-  experimental: boolean
-}
-
-export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCapabilities> = {
-  'claude-code': {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  codex: {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  opencode: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'provider-api',
-    experimental: false,
-  },
-  gemini: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'none',
-    experimental: false,
-  },
-}
+export {
+  AGENT_PROVIDER_CAPABILITIES,
+  AGENT_PROVIDER_LABEL,
+  type AgentProviderCapabilities,
+} from './agentSettings.providerMeta'
 
 const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
 
@@ -97,7 +81,10 @@ export type AgentCustomModelOptionsByProvider = {
 
 export interface AgentSettings {
   language: UiLanguage
+  uiTheme: UiTheme
+  isPrimarySidebarCollapsed: boolean
   defaultProvider: AgentProvider
+  agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
   defaultTerminalProfileId: TerminalProfileId
   customModelEnabledByProvider: AgentCustomModelEnabledByProvider
@@ -106,16 +93,27 @@ export interface AgentSettings {
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
-  normalizeZoomOnTerminalClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: FocusNodeTargetZoom
+  disableAppShortcutsWhenTerminalFocused: boolean
+  keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   uiFontSize: number
+  githubPullRequestsEnabled: boolean
+  updatePolicy: AppUpdatePolicy
+  updateChannel: AppUpdateChannel
+  releaseNotesSeenVersion: string | null
+  hideWorktreeMismatchDropWarning: boolean
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
+  uiTheme: 'system',
+  isPrimarySidebarCollapsed: false,
   defaultProvider: 'codex',
+  agentProviderOrder: [...AGENT_PROVIDERS],
   agentFullAccess: true,
   defaultTerminalProfileId: null,
   customModelEnabledByProvider: {
@@ -139,15 +137,19 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTitleProvider: 'default',
   taskTitleModel: '',
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
-  normalizeZoomOnTerminalClick: true,
+  focusNodeOnClick: true,
+  focusNodeTargetZoom: 1,
+  disableAppShortcutsWhenTerminalFocused: true,
+  keybindings: {},
   canvasInputMode: 'auto',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   uiFontSize: 18,
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
+  githubPullRequestsEnabled: true,
+  updatePolicy: 'prompt',
+  updateChannel: 'stable',
+  releaseNotesSeenVersion: null,
+  hideWorktreeMismatchDropWarning: false,
 }
 
 function isValidProvider(value: unknown): value is AgentProvider {
@@ -179,78 +181,41 @@ function isValidUiLanguage(value: unknown): value is UiLanguage {
   return typeof value === 'string' && UI_LANGUAGES.includes(value as UiLanguage)
 }
 
-function normalizeTextValue(value: unknown): string {
-  if (typeof value !== 'string') {
-    return ''
-  }
-
-  return value.trim()
+function isValidUiTheme(value: unknown): value is UiTheme {
+  return typeof value === 'string' && UI_THEMES.includes(value as UiTheme)
 }
 
-function normalizeModelEnabled(value: unknown): boolean | null {
-  if (typeof value !== 'boolean') {
-    return null
-  }
-
-  return value
-}
-
-function normalizeBoolean(value: unknown): boolean | null {
-  if (typeof value !== 'boolean') {
-    return null
-  }
-
-  return value
-}
-
-function normalizeIntegerInRange(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return fallback
-  }
-
-  const normalized = Math.round(value)
-  return Math.max(min, Math.min(max, normalized))
-}
-
-function normalizeModelOptions(value: unknown): string[] {
+function normalizeAgentProviderOrder(value: unknown): AgentProvider[] {
   if (!Array.isArray(value)) {
-    return []
+    return [...AGENT_PROVIDERS]
   }
 
-  const normalized: string[] = []
+  const normalized: AgentProvider[] = []
+  const seen = new Set<AgentProvider>()
+
   for (const item of value) {
-    const model = normalizeTextValue(item)
-    if (model.length === 0 || normalized.includes(model)) {
+    if (!isValidProvider(item)) {
       continue
     }
 
-    normalized.push(model)
+    if (seen.has(item)) {
+      continue
+    }
+
+    seen.add(item)
+    normalized.push(item)
+  }
+
+  for (const provider of AGENT_PROVIDERS) {
+    if (seen.has(provider)) {
+      continue
+    }
+
+    seen.add(provider)
+    normalized.push(provider)
   }
 
   return normalized
-}
-
-function normalizeTagOptions(value: unknown, fallback: string[]): string[] {
-  if (!Array.isArray(value)) {
-    return [...fallback]
-  }
-
-  const normalized: string[] = []
-  for (const item of value) {
-    const tag = normalizeTextValue(item)
-    if (tag.length === 0 || normalized.includes(tag)) {
-      continue
-    }
-
-    normalized.push(tag)
-  }
-
-  return normalized.length > 0 ? normalized : [...fallback]
 }
 
 export function resolveAgentModel(settings: AgentSettings, provider: AgentProvider): string | null {
@@ -296,6 +261,11 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const language = isValidUiLanguage(value.language)
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
+  const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
+  const isPrimarySidebarCollapsed =
+    normalizeBoolean(value.isPrimarySidebarCollapsed) ??
+    DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed
+  const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
 
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess
@@ -311,7 +281,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   const customModelEnabledByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelEnabledByProvider>(
     (acc, provider) => {
-      const normalizedEnabled = normalizeModelEnabled(enabledInput[provider])
+      const normalizedEnabled = normalizeBoolean(enabledInput[provider])
       const legacyModel = normalizeTextValue(legacyModelInput[provider])
 
       acc[provider] = normalizedEnabled === null ? legacyModel.length > 0 : normalizedEnabled
@@ -336,7 +306,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   const customModelOptionsByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
     (acc, provider) => {
-      const options = normalizeModelOptions(optionsInput[provider])
+      const options = normalizeUniqueStringArray(optionsInput[provider])
       const selectedModel = customModelByProvider[provider]
 
       if (selectedModel.length > 0 && !options.includes(selectedModel)) {
@@ -360,13 +330,22 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     : DEFAULT_AGENT_SETTINGS.taskTitleProvider
 
   const taskTitleModel = normalizeTextValue(value.taskTitleModel)
-  const taskTagOptions = normalizeTagOptions(
+  const taskTagOptions = normalizeUniqueStringArrayWithFallback(
     value.taskTagOptions,
     DEFAULT_AGENT_SETTINGS.taskTagOptions,
   )
-  const normalizeZoomOnTerminalClick =
+  const focusNodeOnClick =
+    normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
-    DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick
+    DEFAULT_AGENT_SETTINGS.focusNodeOnClick
+  const focusNodeTargetZoom = normalizeFocusNodeTargetZoom(
+    value.focusNodeTargetZoom,
+    DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
+  )
+  const disableAppShortcutsWhenTerminalFocused =
+    normalizeBoolean(value.disableAppShortcutsWhenTerminalFocused) ??
+    DEFAULT_AGENT_SETTINGS.disableAppShortcutsWhenTerminalFocused
+  const keybindings = normalizeKeybindingOverrides(value.keybindings)
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
@@ -395,10 +374,31 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     MIN_UI_FONT_SIZE,
     MAX_UI_FONT_SIZE,
   )
+  const githubPullRequestsEnabled =
+    normalizeBoolean(value.githubPullRequestsEnabled) ??
+    DEFAULT_AGENT_SETTINGS.githubPullRequestsEnabled
+  const updateChannel = isValidUpdateChannel(value.updateChannel)
+    ? value.updateChannel
+    : DEFAULT_AGENT_SETTINGS.updateChannel
+  let updatePolicy = isValidUpdatePolicy(value.updatePolicy)
+    ? normalizeUpdatePolicyForChannel(value.updatePolicy, updateChannel)
+    : DEFAULT_AGENT_SETTINGS.updatePolicy
+  updatePolicy = normalizeUpdatePolicyForChannel(updatePolicy, updateChannel)
+  const releaseNotesSeenVersion =
+    typeof value.releaseNotesSeenVersion === 'string' &&
+    value.releaseNotesSeenVersion.trim().length > 0
+      ? value.releaseNotesSeenVersion.trim()
+      : DEFAULT_AGENT_SETTINGS.releaseNotesSeenVersion
+  const hideWorktreeMismatchDropWarning =
+    normalizeBoolean(value.hideWorktreeMismatchDropWarning) ??
+    DEFAULT_AGENT_SETTINGS.hideWorktreeMismatchDropWarning
 
   return {
     language,
+    uiTheme,
+    isPrimarySidebarCollapsed,
     defaultProvider,
+    agentProviderOrder,
     agentFullAccess,
     defaultTerminalProfileId:
       defaultTerminalProfileId.length > 0
@@ -410,10 +410,18 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTitleProvider,
     taskTitleModel,
     taskTagOptions,
-    normalizeZoomOnTerminalClick,
+    focusNodeOnClick,
+    focusNodeTargetZoom,
+    disableAppShortcutsWhenTerminalFocused,
+    keybindings,
     canvasInputMode,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     uiFontSize,
+    githubPullRequestsEnabled,
+    updatePolicy,
+    updateChannel,
+    releaseNotesSeenVersion,
+    hideWorktreeMismatchDropWarning,
   }
 }

@@ -5,6 +5,7 @@ import type {
   LaunchAgentInput,
   LaunchAgentResult,
   ListAgentModelsInput,
+  ListInstalledAgentProvidersResult,
   ReadAgentLastMessageInput,
   ReadAgentLastMessageResult,
   ResolveAgentResumeSessionInput,
@@ -14,6 +15,7 @@ import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import { buildAgentLaunchCommand } from '../../infrastructure/cli/AgentCommandFactory'
 import { resolveAgentCliInvocation } from '../../infrastructure/cli/AgentCliInvocation'
+import { listInstalledAgentProviders } from '../../infrastructure/cli/AgentCliAvailability'
 import {
   disposeAgentModelService,
   listAgentModels,
@@ -69,6 +71,14 @@ export function registerAgentIpcHandlers(
   ptyRuntime: PtyRuntime,
   approvedWorkspaces: ApprovedWorkspaceStore,
 ): IpcRegistrationDisposable {
+  registerHandledIpc(
+    IPC_CHANNELS.agentListInstalledProviders,
+    async (): Promise<ListInstalledAgentProvidersResult> => ({
+      providers: await listInstalledAgentProviders(),
+    }),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
   registerHandledIpc(
     IPC_CHANNELS.agentListModels,
     async (_event, payload: ListAgentModelsInput) => {
@@ -261,6 +271,7 @@ export function registerAgentIpcHandlers(
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
+      ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
       ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
       ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
       ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
