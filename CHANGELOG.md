@@ -27,6 +27,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)
 - Windows: Fixed native select dropdown styling issues (notably dark mode) by using a custom select component across the UI. (#47)
 - Terminal: Fixed theme glitches when switching light/dark by syncing xterm theme with CSS tokens and reacting to theme change events. (#47)
+- OpenCode: Keep embedded agent terminals pinned to dark theme to avoid partial light/dark desynchronization. (#60)
 - Canvas: Stabilized auto input-mode detection to default to mouse semantics until high-confidence trackpad gestures are observed. (#47)
 - Worktree window: Fixed light theme text colors in the create/archive dialog. (#47)
 - Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)
