@@ -465,7 +465,6 @@ export function TerminalNode({
     >
       <Handle type="target" position={Position.Left} className="workspace-node-handle" />
       <Handle type="source" position={Position.Right} className="workspace-node-handle" />
-
       <TerminalNodeHeader
         title={title}
         kind={kind}
@@ -476,12 +475,11 @@ export function TerminalNode({
         onClose={onClose}
         onCopyLastMessage={onCopyLastMessage}
       />
-
       {isAgentNode && lastError ? <div className="terminal-node__error">{lastError}</div> : null}
-
       <div
         ref={containerRef}
         className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
+        data-cove-focus-scope="terminal"
         aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
       />
       <NodeResizeHandles

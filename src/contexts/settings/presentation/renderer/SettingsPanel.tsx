@@ -19,6 +19,7 @@ import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
+import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
@@ -46,7 +47,13 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
-type CorePageId = 'general' | 'agent' | 'canvas' | 'task-configuration' | 'integrations'
+type CorePageId =
+  | 'general'
+  | 'agent'
+  | 'canvas'
+  | 'shortcuts'
+  | 'task-configuration'
+  | 'integrations'
 type WorkspacePageId = `workspace:${string}`
 type SettingsPageId = CorePageId | WorkspacePageId
 
@@ -134,6 +141,10 @@ export function SettingsPanel({
   }
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
+  const updateDisableAppShortcutsWhenTerminalFocused = (enabled: boolean): void =>
+    onChange({ ...settings, disableAppShortcutsWhenTerminalFocused: enabled })
+  const updateKeybindings = (keybindings: AgentSettings['keybindings']): void =>
+    onChange({ ...settings, keybindings })
   const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
     onChange({ ...settings, githubPullRequestsEnabled: enabled })
 
@@ -305,6 +316,11 @@ export function SettingsPanel({
             testId="settings-section-nav-canvas"
           />
           <NavButton
+            id="shortcuts"
+            label={t('settingsPanel.nav.shortcuts')}
+            testId="settings-section-nav-shortcuts"
+          />
+          <NavButton
             id="task-configuration"
             label={t('settingsPanel.nav.tasks')}
             testId="settings-section-nav-task-configuration"
@@ -403,6 +419,19 @@ export function SettingsPanel({
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
                 onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
+              />
+            ) : null}
+
+            {activePageId === 'shortcuts' ? (
+              <ShortcutsSection
+                disableAppShortcutsWhenTerminalFocused={
+                  settings.disableAppShortcutsWhenTerminalFocused
+                }
+                keybindings={settings.keybindings}
+                onChangeDisableAppShortcutsWhenTerminalFocused={
+                  updateDisableAppShortcutsWhenTerminalFocused
+                }
+                onChangeKeybindings={updateKeybindings}
               />
             ) : null}
 

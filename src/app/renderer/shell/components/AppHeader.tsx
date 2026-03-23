@@ -17,6 +17,8 @@ export function AppHeader({
   activeWorkspacePath,
   isSidebarCollapsed,
   isCommandCenterOpen,
+  commandCenterPrimaryHint,
+  commandCenterSecondaryHint,
   updateState,
   onToggleSidebar,
   onToggleCommandCenter,
@@ -29,6 +31,8 @@ export function AppHeader({
   activeWorkspacePath: string | null
   isSidebarCollapsed: boolean
   isCommandCenterOpen: boolean
+  commandCenterPrimaryHint: string
+  commandCenterSecondaryHint: string
   updateState: AppUpdateState | null
   onToggleSidebar: () => void
   onToggleCommandCenter: () => void
@@ -40,8 +44,6 @@ export function AppHeader({
   const { t } = useTranslation()
   const isMac = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'darwin'
   const isWindows = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'win32'
-  const commandCenterPrimaryHint = isMac ? '⌘K' : 'Ctrl K'
-  const commandCenterSecondaryHint = isMac ? '⌘P' : 'Ctrl P'
   const ToggleIcon = useMemo(
     () => (isSidebarCollapsed ? PanelLeftOpen : PanelLeftClose),
     [isSidebarCollapsed],

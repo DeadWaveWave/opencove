@@ -22,7 +22,7 @@ import { usePersistedAppState } from './hooks/usePersistedAppState'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
-import { useCommandCenterShortcuts } from './hooks/useCommandCenterShortcuts'
+import { useAppKeybindings } from './hooks/useAppKeybindings'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useWhatsNew } from './hooks/useWhatsNew'
@@ -31,6 +31,7 @@ import { useAppStore } from './store/useAppStore'
 import { createDefaultWorkspaceViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { WhatsNewDialog } from './components/WhatsNewDialog'
+import { formatKeyChord, resolveCommandKeybindings } from '@contexts/settings/domain/keybindings'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -101,9 +102,28 @@ export default function App(): React.JSX.Element {
     setIsCommandCenterOpen(false)
   }, [])
 
-  useCommandCenterShortcuts({
+  useAppKeybindings({
     enabled: !isSettingsOpen && projectDeleteConfirmation === null,
-    onToggle: toggleCommandCenter,
+    settings: {
+      disableAppShortcutsWhenTerminalFocused: agentSettings.disableAppShortcutsWhenTerminalFocused,
+      keybindings: agentSettings.keybindings,
+    },
+    onToggleCommandCenter: toggleCommandCenter,
+    onOpenSettings: () => {
+      closeCommandCenter()
+      setIsSettingsOpen(true)
+    },
+    onTogglePrimarySidebar: () => {
+      closeCommandCenter()
+      setAgentSettings(prev => ({
+        ...prev,
+        isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+      }))
+    },
+    onAddProject: () => {
+      closeCommandCenter()
+      void handleAddWorkspace()
+    },
   })
 
   useEffect(() => {
@@ -123,6 +143,23 @@ export default function App(): React.JSX.Element {
   useEffect(() => {
     document.title = activeWorkspaceName ? `${activeWorkspaceName} — OpenCove` : 'OpenCove'
   }, [activeWorkspaceName])
+
+  const platform =
+    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
+      ? window.opencoveApi.meta.platform
+      : undefined
+  const commandCenterBindings = useMemo(
+    () =>
+      resolveCommandKeybindings({
+        commandId: 'commandCenter.toggle',
+        overrides: agentSettings.keybindings,
+        platform,
+      }),
+    [agentSettings.keybindings, platform],
+  )
+  const commandCenterPrimaryHint = formatKeyChord(platform, commandCenterBindings.primary) || '—'
+  const commandCenterSecondaryHint =
+    formatKeyChord(platform, commandCenterBindings.secondary) || '—'
 
   const [floatingMessage, setFloatingMessage] = useState<{
     id: number
@@ -253,6 +290,8 @@ export default function App(): React.JSX.Element {
           activeWorkspacePath={activeWorkspace?.path ?? null}
           isSidebarCollapsed={isPrimarySidebarCollapsed}
           isCommandCenterOpen={isCommandCenterOpen}
+          commandCenterPrimaryHint={commandCenterPrimaryHint}
+          commandCenterSecondaryHint={commandCenterSecondaryHint}
           updateState={updateState}
           onToggleSidebar={() => {
             setAgentSettings(prev => ({

@@ -144,7 +144,10 @@ test.describe('Command Center', () => {
         throw new Error('react-flow surface size unavailable')
       }
 
-      await window.keyboard.press(`${commandCenterModifier}+K`)
+      const commandCenterButton = window.locator('[data-testid="app-header-command-center"]')
+      await expect(commandCenterButton).toBeVisible()
+      await commandCenterButton.click()
+
       const commandCenterInput = window.locator('[data-testid="command-center-input"]')
       await expect(commandCenterInput).toBeFocused()
       await commandCenterInput.fill('Focus Scope')
