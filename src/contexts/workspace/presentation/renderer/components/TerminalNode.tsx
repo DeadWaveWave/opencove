@@ -246,7 +246,7 @@ export function TerminalNode({
         return
       }
 
-      const exitMessage = `\\r\\n[process exited with code ${event.exitCode}]\\r\\n`
+      const exitMessage = `\r\n[process exited with code ${event.exitCode}]\r\n`
       outputScheduler.handleChunk(exitMessage, { immediateScrollbackPublish: true })
     })
 
@@ -275,7 +275,7 @@ export function TerminalNode({
       }
 
       if (bufferedExitCode !== null) {
-        const exitMessage = `\\r\\n[process exited with code ${bufferedExitCode}]\\r\\n`
+        const exitMessage = `\r\n[process exited with code ${bufferedExitCode}]\r\n`
         bufferedExitCode = null
         terminal.write(exitMessage)
         scrollbackBuffer.append(exitMessage)
