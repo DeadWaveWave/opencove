@@ -15,6 +15,7 @@ import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
   activeSpaceId: string | null
+  onActiveSpaceChange: (spaceId: string | null) => void
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
@@ -37,6 +38,7 @@ interface UseWorkspaceCanvasSpacesParams {
 export function useWorkspaceCanvasSpaces({
   workspaceId,
   activeSpaceId,
+  onActiveSpaceChange,
   workspacePath,
   reactFlow,
   nodes,
@@ -62,6 +64,8 @@ export function useWorkspaceCanvasSpaces({
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
   spaceVisuals: SpaceVisual[]
+  activateSpace: (spaceId: string) => void
+  activateAllSpaces: () => void
   focusSpaceInViewport: (spaceId: string) => void
   focusAllInViewport: () => void
 } {
@@ -272,6 +276,33 @@ export function useWorkspaceCanvasSpaces({
     })
   }, [nodesRef, reactFlow])
 
+  const activateSpace = useCallback(
+    (spaceId: string): void => {
+      if (!spacesRef.current.some(space => space.id === spaceId)) {
+        return
+      }
+
+      cancelSpaceRename()
+      if (activeSpaceId === spaceId) {
+        focusSpaceInViewport(spaceId)
+        return
+      }
+
+      onActiveSpaceChange(spaceId)
+    },
+    [activeSpaceId, cancelSpaceRename, focusSpaceInViewport, onActiveSpaceChange, spacesRef],
+  )
+
+  const activateAllSpaces = useCallback((): void => {
+    cancelSpaceRename()
+    if (activeSpaceId === null) {
+      focusAllInViewport()
+      return
+    }
+
+    onActiveSpaceChange(null)
+  }, [activeSpaceId, cancelSpaceRename, focusAllInViewport, onActiveSpaceChange])
+
   useEffect(() => {
     if (lastAppliedWorkspaceIdRef.current !== workspaceId) {
       lastAppliedWorkspaceIdRef.current = workspaceId
@@ -308,6 +339,8 @@ export function useWorkspaceCanvasSpaces({
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     spaceVisuals,
+    activateSpace,
+    activateAllSpaces,
     focusSpaceInViewport,
     focusAllInViewport,
   }

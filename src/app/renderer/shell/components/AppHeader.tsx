@@ -17,8 +17,7 @@ export function AppHeader({
   activeWorkspacePath,
   isSidebarCollapsed,
   isCommandCenterOpen,
-  commandCenterPrimaryHint,
-  commandCenterSecondaryHint,
+  commandCenterShortcutHint,
   updateState,
   onToggleSidebar,
   onToggleCommandCenter,
@@ -31,8 +30,7 @@ export function AppHeader({
   activeWorkspacePath: string | null
   isSidebarCollapsed: boolean
   isCommandCenterOpen: boolean
-  commandCenterPrimaryHint: string
-  commandCenterSecondaryHint: string
+  commandCenterShortcutHint: string
   updateState: AppUpdateState | null
   onToggleSidebar: () => void
   onToggleCommandCenter: () => void
@@ -128,8 +126,7 @@ export function AppHeader({
           aria-expanded={isCommandCenterOpen}
           aria-label={t('appHeader.commandCenter')}
           title={t('appHeader.commandCenterHint', {
-            primary: commandCenterPrimaryHint,
-            secondary: commandCenterSecondaryHint,
+            shortcut: commandCenterShortcutHint,
           })}
           onClick={() => {
             onToggleCommandCenter()
@@ -140,7 +137,7 @@ export function AppHeader({
             {activeWorkspaceName ?? t('appHeader.commandCenterFallbackTitle')}
           </span>
           <span className="app-header__command-center-keycap" aria-hidden="true">
-            {commandCenterPrimaryHint}
+            {commandCenterShortcutHint}
           </span>
           <ChevronDown
             aria-hidden="true"

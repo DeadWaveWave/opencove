@@ -15,6 +15,8 @@ export function WorkspaceCanvasInner({
   spaces,
   activeSpaceId,
   onSpacesChange,
+  onActiveSpaceChange,
+  shortcutsEnabled = true,
   viewport,
   isMinimapVisible: persistedMinimapVisible,
   onViewportChange,
@@ -83,11 +85,12 @@ export function WorkspaceCanvasInner({
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     spaceVisuals,
-    focusSpaceInViewport,
-    focusAllInViewport,
+    activateSpace,
+    activateAllSpaces,
   } = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     activeSpaceId,
+    onActiveSpaceChange,
     workspacePath,
     reactFlow,
     nodes: canvasState.flowNodes,
@@ -198,15 +201,7 @@ export function WorkspaceCanvasInner({
     workspacePath,
     createTaskNode,
     closeNode,
-    actionRefs: {
-      ...actionRefs,
-      runTaskAgentRef: actionRefs.runTaskAgentRef,
-      resumeTaskAgentSessionRef: actionRefs.resumeTaskAgentSessionRef,
-      removeTaskAgentSessionRecordRef: actionRefs.removeTaskAgentSessionRecordRef,
-      updateTaskStatusRef: actionRefs.updateTaskStatusRef,
-      quickUpdateTaskTitleRef: actionRefs.quickUpdateTaskTitleRef,
-      quickUpdateTaskRequirementRef: actionRefs.quickUpdateTaskRequirementRef,
-    },
+    actionRefs,
   })
   const {
     resolvedCanvasInputMode,
@@ -224,33 +219,19 @@ export function WorkspaceCanvasInner({
     reactFlow,
     onViewportChange,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycle({
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({
     workspaceId,
     persistedMinimapVisible,
-    setIsMinimapVisible: canvasState.setIsMinimapVisible,
-    setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
+    canvasState,
     cancelSpaceRename,
-    selectionDraftRef: canvasState.selectionDraftRef,
-    trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
-    restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,
     reactFlow,
     viewport,
-    viewportRef: canvasState.viewportRef,
-    canvasInputModeSetting: agentSettings.canvasInputMode,
-    inputModalityStateRef: canvasState.inputModalityStateRef,
-    setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
-    isShiftPressedRef: canvasState.isShiftPressedRef,
-    setIsShiftPressed: canvasState.setIsShiftPressed,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
-    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
+    agentSettings,
     focusNodeId,
     focusSequence,
-    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     isFocusNodeTargetZoomPreviewing,
     nodesRef,
+    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
   })
   const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes,
@@ -302,6 +283,26 @@ export function WorkspaceCanvasInner({
     nodesRef,
     createNodeForSession,
     createNoteNode,
+  })
+  workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
+    enabled: shortcutsEnabled,
+    activeSpaceId,
+    spaces,
+    agentSettings,
+    workspacePath,
+    canvasRef: canvasState.canvasRef,
+    setContextMenu: canvasState.setContextMenu,
+    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
+    cancelSpaceRename,
+    reactFlow,
+    spacesRef: canvasState.spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+    createNodeForSession,
+    createNoteNode,
+    createSpaceFromSelectedNodes,
+    activateSpace,
   })
   const {
     canConvertSelectedNoteToTask,
@@ -428,8 +429,8 @@ export function WorkspaceCanvasInner({
       setIsMinimapVisible={canvasState.setIsMinimapVisible}
       onMinimapVisibilityChange={onMinimapVisibilityChange}
       spaces={spaces}
-      focusSpaceInViewport={focusSpaceInViewport}
-      focusAllInViewport={focusAllInViewport}
+      activateSpace={activateSpace}
+      activateAllSpaces={activateAllSpaces}
       contextMenu={canvasState.contextMenu}
       closeContextMenu={spaceUi.closeContextMenu}
       magneticSnappingEnabled={canvasState.magneticSnappingEnabled}

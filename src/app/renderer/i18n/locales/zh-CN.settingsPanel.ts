@@ -97,12 +97,20 @@ export const zhCNSettingsPanel = {
       '开启后，当 {{terminal}} 获得焦点时，OpenCove 不会捕获应用快捷键。',
     bindings: '快捷键绑定',
     bindingsHelp: '为常用操作设置快捷键。若冲突，会自动取消另一个操作的绑定。',
-    primaryLabel: '主',
-    secondaryLabel: '次',
     unassigned: '未分配',
     record: '录制',
     recording: '请按键…',
     clear: '清除',
+    groups: {
+      app: {
+        title: '应用',
+        help: '作用于应用外壳层的全局快捷键。',
+      },
+      workspaceCanvas: {
+        title: '工作区画布',
+        help: '用于在画布中创建节点和切换 Space 的快捷键。',
+      },
+    },
     commands: {
       commandCenterToggle: {
         title: '命令中心',
@@ -119,6 +127,34 @@ export const zhCNSettingsPanel = {
       addProject: {
         title: '添加项目',
         help: '添加项目文件夹。',
+      },
+      workspaceCanvasCreateSpace: {
+        title: '创建 Space',
+        help: '基于当前选中内容创建一个 Space。',
+      },
+      workspaceCanvasCreateNote: {
+        title: '创建 Note',
+        help: '从根画布视觉中心创建一个 Note。',
+      },
+      workspaceCanvasCreateTerminal: {
+        title: '创建终端',
+        help: '从根画布视觉中心创建一个终端。',
+      },
+      workspaceCanvasCycleSpacesForward: {
+        title: '下一个 Space',
+        help: '按左上角 Space pill 顺序切换到下一个 Space，不包含全局。',
+      },
+      workspaceCanvasCycleSpacesBackward: {
+        title: '上一个 Space',
+        help: '按左上角 Space pill 顺序切换到上一个 Space，不包含全局。',
+      },
+      workspaceCanvasCycleIdleSpacesForward: {
+        title: '下一个空闲 Space',
+        help: '切换到下一个没有 working agent 的 Space。',
+      },
+      workspaceCanvasCycleIdleSpacesBackward: {
+        title: '上一个空闲 Space',
+        help: '切换到上一个没有 working agent 的 Space。',
       },
     },
   },

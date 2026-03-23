@@ -2,17 +2,17 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   APP_COMMAND_IDS,
+  COMMAND_IDS,
+  WORKSPACE_CANVAS_COMMAND_IDS,
   formatKeyChord,
-  hasNonShiftModifier,
+  isSupportedKeybindingChord,
   resolveEffectiveKeybindings,
   serializeKeyChord,
   toKeyChord,
-  type AppCommandId,
+  type CommandId,
   type KeyChord,
   type KeybindingOverrides,
 } from '@contexts/settings/domain/keybindings'
-
-type KeybindingSlot = 'primary' | 'secondary'
 
 const TERMINAL_FOCUS_SCOPE_LABEL_BY_LOCALE: Record<string, string> = {
   en: 'terminal',
@@ -24,77 +24,42 @@ const shortcutButtonStyle: React.CSSProperties = {
   fontSize: '11px',
 }
 
-function isSupportedChord(chord: KeyChord): boolean {
-  if (hasNonShiftModifier(chord)) {
-    return true
-  }
-
-  return /^F\d+$/.test(chord.code)
-}
-
-function omitUndefined<T extends Record<string, unknown>>(value: T): T {
-  return value
-}
-
 function pruneOverrides(overrides: KeybindingOverrides): KeybindingOverrides {
   const next: KeybindingOverrides = {}
 
-  for (const commandId of APP_COMMAND_IDS) {
-    const entry = overrides[commandId]
-    if (!entry) {
+  for (const commandId of COMMAND_IDS) {
+    if (!Object.prototype.hasOwnProperty.call(overrides, commandId)) {
       continue
     }
 
-    const hasPrimary = Object.prototype.hasOwnProperty.call(entry, 'primary')
-    const hasSecondary = Object.prototype.hasOwnProperty.call(entry, 'secondary')
-
-    if (!hasPrimary && !hasSecondary) {
-      continue
-    }
-
-    next[commandId] = omitUndefined({ ...entry })
+    next[commandId] = overrides[commandId] ?? null
   }
 
   return next
 }
 
-function removeSlotOverride(
-  overrides: KeybindingOverrides,
-  commandId: AppCommandId,
-  slot: KeybindingSlot,
-): KeybindingOverrides {
-  const existing = overrides[commandId]
-  if (!existing || !Object.prototype.hasOwnProperty.call(existing, slot)) {
+function removeOverride(overrides: KeybindingOverrides, commandId: CommandId): KeybindingOverrides {
+  if (!Object.prototype.hasOwnProperty.call(overrides, commandId)) {
     return overrides
   }
 
-  const { [slot]: _removed, ...rest } = existing
   const next = { ...overrides }
-  if (Object.keys(rest).length === 0) {
-    delete next[commandId]
-    return next
-  }
-
-  next[commandId] = rest
+  delete next[commandId]
   return next
 }
 
-function setSlotOverride(
+function setOverride(
   overrides: KeybindingOverrides,
-  commandId: AppCommandId,
-  slot: KeybindingSlot,
+  commandId: CommandId,
   chord: KeyChord | null,
 ): KeybindingOverrides {
   return {
     ...overrides,
-    [commandId]: {
-      ...(overrides[commandId] ?? {}),
-      [slot]: chord,
-    },
+    [commandId]: chord,
   }
 }
 
-function getCommandTitleKey(commandId: AppCommandId): string {
+function getCommandTitleKey(commandId: CommandId): string {
   switch (commandId) {
     case 'commandCenter.toggle':
       return 'settingsPanel.shortcuts.commands.commandCenterToggle.title'
@@ -104,6 +69,20 @@ function getCommandTitleKey(commandId: AppCommandId): string {
       return 'settingsPanel.shortcuts.commands.togglePrimarySidebar.title'
     case 'workspace.addProject':
       return 'settingsPanel.shortcuts.commands.addProject.title'
+    case 'workspaceCanvas.createSpace':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateSpace.title'
+    case 'workspaceCanvas.createNote':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateNote.title'
+    case 'workspaceCanvas.createTerminal':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateTerminal.title'
+    case 'workspaceCanvas.cycleSpacesForward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesForward.title'
+    case 'workspaceCanvas.cycleSpacesBackward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesBackward.title'
+    case 'workspaceCanvas.cycleIdleSpacesForward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesForward.title'
+    case 'workspaceCanvas.cycleIdleSpacesBackward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesBackward.title'
     default: {
       const _exhaustive: never = commandId
       return _exhaustive
@@ -111,7 +90,7 @@ function getCommandTitleKey(commandId: AppCommandId): string {
   }
 }
 
-function getCommandHelpKey(commandId: AppCommandId): string {
+function getCommandHelpKey(commandId: CommandId): string {
   switch (commandId) {
     case 'commandCenter.toggle':
       return 'settingsPanel.shortcuts.commands.commandCenterToggle.help'
@@ -121,15 +100,25 @@ function getCommandHelpKey(commandId: AppCommandId): string {
       return 'settingsPanel.shortcuts.commands.togglePrimarySidebar.help'
     case 'workspace.addProject':
       return 'settingsPanel.shortcuts.commands.addProject.help'
+    case 'workspaceCanvas.createSpace':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateSpace.help'
+    case 'workspaceCanvas.createNote':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateNote.help'
+    case 'workspaceCanvas.createTerminal':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateTerminal.help'
+    case 'workspaceCanvas.cycleSpacesForward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesForward.help'
+    case 'workspaceCanvas.cycleSpacesBackward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesBackward.help'
+    case 'workspaceCanvas.cycleIdleSpacesForward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesForward.help'
+    case 'workspaceCanvas.cycleIdleSpacesBackward':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesBackward.help'
     default: {
       const _exhaustive: never = commandId
       return _exhaustive
     }
   }
-}
-
-function supportsSecondaryBinding(commandId: AppCommandId): boolean {
-  return commandId === 'commandCenter.toggle'
 }
 
 export function ShortcutsSection({
@@ -154,13 +143,28 @@ export function ShortcutsSection({
     [keybindings, platform],
   )
 
-  const [recording, setRecording] = React.useState<{
-    commandId: AppCommandId
-    slot: KeybindingSlot
-  } | null>(null)
+  const commandGroups = React.useMemo(
+    () => [
+      {
+        id: 'app',
+        title: t('settingsPanel.shortcuts.groups.app.title'),
+        help: t('settingsPanel.shortcuts.groups.app.help'),
+        commandIds: APP_COMMAND_IDS,
+      },
+      {
+        id: 'workspaceCanvas',
+        title: t('settingsPanel.shortcuts.groups.workspaceCanvas.title'),
+        help: t('settingsPanel.shortcuts.groups.workspaceCanvas.help'),
+        commandIds: WORKSPACE_CANVAS_COMMAND_IDS,
+      },
+    ],
+    [t],
+  )
+
+  const [recordingCommandId, setRecordingCommandId] = React.useState<CommandId | null>(null)
 
   React.useEffect(() => {
-    if (!recording) {
+    if (!recordingCommandId) {
       return
     }
 
@@ -168,12 +172,12 @@ export function ShortcutsSection({
       if (event.key === 'Escape') {
         event.preventDefault()
         event.stopPropagation()
-        setRecording(null)
+        setRecordingCommandId(null)
         return
       }
 
       const chord = toKeyChord(event)
-      if (!chord || !isSupportedChord(chord)) {
+      if (!isSupportedKeybindingChord(chord)) {
         return
       }
 
@@ -181,29 +185,18 @@ export function ShortcutsSection({
       event.stopPropagation()
 
       const next = (() => {
-        let nextOverrides = setSlotOverride(keybindings, recording.commandId, recording.slot, chord)
-
+        let nextOverrides = setOverride(keybindings, recordingCommandId, chord)
         const serialized = serializeKeyChord(chord)
         const nextEffective = resolveEffectiveKeybindings({ platform, overrides: nextOverrides })
 
-        for (const commandId of APP_COMMAND_IDS) {
-          const bindings = nextEffective[commandId]
-          const primary = bindings.primary
+        for (const commandId of COMMAND_IDS) {
+          const existing = nextEffective[commandId]
           if (
-            primary &&
-            serializeKeyChord(primary) === serialized &&
-            !(commandId === recording.commandId && recording.slot === 'primary')
+            commandId !== recordingCommandId &&
+            existing &&
+            serializeKeyChord(existing) === serialized
           ) {
-            nextOverrides = setSlotOverride(nextOverrides, commandId, 'primary', null)
-          }
-
-          const secondary = bindings.secondary
-          if (
-            secondary &&
-            serializeKeyChord(secondary) === serialized &&
-            !(commandId === recording.commandId && recording.slot === 'secondary')
-          ) {
-            nextOverrides = setSlotOverride(nextOverrides, commandId, 'secondary', null)
+            nextOverrides = setOverride(nextOverrides, commandId, null)
           }
         }
 
@@ -211,17 +204,14 @@ export function ShortcutsSection({
       })()
 
       onChangeKeybindings(next)
-      setRecording(null)
+      setRecordingCommandId(null)
     }
 
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => {
       window.removeEventListener('keydown', handleKeyDown, { capture: true })
     }
-  }, [keybindings, onChangeKeybindings, platform, recording])
-
-  const isRecording = (commandId: AppCommandId, slot: KeybindingSlot): boolean =>
-    recording?.commandId === commandId && recording?.slot === slot
+  }, [keybindings, onChangeKeybindings, platform, recordingCommandId])
 
   const localeTerminalLabel =
     TERMINAL_FOCUS_SCOPE_LABEL_BY_LOCALE[i18n.language] ?? TERMINAL_FOCUS_SCOPE_LABEL_BY_LOCALE.en
@@ -260,105 +250,77 @@ export function ShortcutsSection({
           <span>{t('settingsPanel.shortcuts.bindingsHelp')}</span>
         </div>
 
-        {APP_COMMAND_IDS.map(commandId => {
-          const bindings = effectiveBindings[commandId]
-          const title = t(getCommandTitleKey(commandId))
-          const help = t(getCommandHelpKey(commandId))
-
-          const renderSlot = (slot: KeybindingSlot): React.JSX.Element => {
-            const chord = bindings[slot]
-            const formatted = formatKeyChord(platform, chord)
-            const hasBinding = formatted.length > 0
-
-            return (
-              <div className="settings-panel__row" key={`${commandId}:${slot}`}>
-                <div className="settings-panel__row-label">
-                  <strong>
-                    {slot === 'primary'
-                      ? t('settingsPanel.shortcuts.primaryLabel')
-                      : t('settingsPanel.shortcuts.secondaryLabel')}
-                  </strong>
-                </div>
-                <div className="settings-panel__control" style={{ gap: '8px', flexWrap: 'wrap' }}>
-                  <span
-                    className="settings-panel__value"
-                    data-testid={`settings-shortcut-value-${commandId}-${slot}`}
-                  >
-                    {hasBinding ? formatted : t('settingsPanel.shortcuts.unassigned')}
-                  </span>
-                  <button
-                    type="button"
-                    className="secondary"
-                    style={shortcutButtonStyle}
-                    data-testid={`settings-shortcut-record-${commandId}-${slot}`}
-                    onClick={() => {
-                      setRecording(prev =>
-                        prev && prev.commandId === commandId && prev.slot === slot
-                          ? null
-                          : { commandId, slot },
-                      )
-                    }}
-                  >
-                    {isRecording(commandId, slot)
-                      ? t('settingsPanel.shortcuts.recording')
-                      : t('settingsPanel.shortcuts.record')}
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    style={shortcutButtonStyle}
-                    data-testid={`settings-shortcut-clear-${commandId}-${slot}`}
-                    onClick={() => {
-                      const nextOverrides = pruneOverrides(
-                        setSlotOverride(keybindings, commandId, slot, null),
-                      )
-                      onChangeKeybindings(nextOverrides)
-                    }}
-                    disabled={
-                      !hasBinding &&
-                      !Object.prototype.hasOwnProperty.call(keybindings[commandId] ?? {}, slot)
-                    }
-                  >
-                    {t('settingsPanel.shortcuts.clear')}
-                  </button>
-                  <button
-                    type="button"
-                    className="secondary"
-                    style={shortcutButtonStyle}
-                    data-testid={`settings-shortcut-reset-${commandId}-${slot}`}
-                    onClick={() => {
-                      const nextOverrides = pruneOverrides(
-                        removeSlotOverride(keybindings, commandId, slot),
-                      )
-                      onChangeKeybindings(nextOverrides)
-                    }}
-                    disabled={
-                      !Object.prototype.hasOwnProperty.call(keybindings[commandId] ?? {}, slot)
-                    }
-                  >
-                    {t('common.resetToDefault')}
-                  </button>
-                </div>
-              </div>
-            )
-          }
-
-          return (
-            <div
-              key={commandId}
-              className="settings-panel__subsection"
-              style={{ marginTop: '12px' }}
-            >
-              <div className="settings-panel__subsection-header">
-                <h4 className="settings-panel__section-title">{title}</h4>
-                <span>{help}</span>
-              </div>
-
-              {renderSlot('primary')}
-              {supportsSecondaryBinding(commandId) ? renderSlot('secondary') : null}
+        {commandGroups.map(group => (
+          <div key={group.id} className="settings-panel__subsection" style={{ marginTop: '12px' }}>
+            <div className="settings-panel__subsection-header">
+              <h4 className="settings-panel__section-title">{group.title}</h4>
+              <span>{group.help}</span>
             </div>
-          )
-        })}
+
+            {group.commandIds.map(commandId => {
+              const formatted = formatKeyChord(platform, effectiveBindings[commandId])
+              const hasBinding = formatted.length > 0
+
+              return (
+                <div className="settings-panel__row" key={commandId}>
+                  <div className="settings-panel__row-label">
+                    <strong>{t(getCommandTitleKey(commandId))}</strong>
+                    <span>{t(getCommandHelpKey(commandId))}</span>
+                  </div>
+                  <div className="settings-panel__control" style={{ gap: '8px', flexWrap: 'wrap' }}>
+                    <span
+                      className="settings-panel__value"
+                      data-testid={`settings-shortcut-value-${commandId}`}
+                    >
+                      {hasBinding ? formatted : t('settingsPanel.shortcuts.unassigned')}
+                    </span>
+                    <button
+                      type="button"
+                      className="secondary"
+                      style={shortcutButtonStyle}
+                      data-testid={`settings-shortcut-record-${commandId}`}
+                      onClick={() => {
+                        setRecordingCommandId(current => (current === commandId ? null : commandId))
+                      }}
+                    >
+                      {recordingCommandId === commandId
+                        ? t('settingsPanel.shortcuts.recording')
+                        : t('settingsPanel.shortcuts.record')}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      style={shortcutButtonStyle}
+                      data-testid={`settings-shortcut-clear-${commandId}`}
+                      onClick={() => {
+                        onChangeKeybindings(
+                          pruneOverrides(setOverride(keybindings, commandId, null)),
+                        )
+                      }}
+                      disabled={
+                        !hasBinding && !Object.prototype.hasOwnProperty.call(keybindings, commandId)
+                      }
+                    >
+                      {t('settingsPanel.shortcuts.clear')}
+                    </button>
+                    <button
+                      type="button"
+                      className="secondary"
+                      style={shortcutButtonStyle}
+                      data-testid={`settings-shortcut-reset-${commandId}`}
+                      onClick={() => {
+                        onChangeKeybindings(pruneOverrides(removeOverride(keybindings, commandId)))
+                      }}
+                      disabled={!Object.prototype.hasOwnProperty.call(keybindings, commandId)}
+                    >
+                      {t('common.resetToDefault')}
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        ))}
       </div>
     </div>
   )

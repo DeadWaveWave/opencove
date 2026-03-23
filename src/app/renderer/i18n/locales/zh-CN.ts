@@ -63,7 +63,7 @@ export const zhCN = {
   appHeader: {
     togglePrimarySidebar: '切换主侧边栏',
     commandCenter: '命令中心',
-    commandCenterHint: '命令中心（{{primary}} / {{secondary}}）',
+    commandCenterHint: '命令中心（{{shortcut}}）',
     commandCenterFallbackTitle: '搜索',
     updateAvailableShort: '更新',
     updateAvailableTitle: '发现新版本 {{version}}',

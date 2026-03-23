@@ -1,13 +1,8 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, CreateNodeInput } from '../types'
-import { resolveDefaultTerminalWindowSize } from '../constants'
-import { resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
-import {
-  assignNodeToSpaceAndExpand,
-  findContainingSpaceByAnchor,
-} from './useInteractions.spaceAssignment'
+import { createTerminalNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -42,55 +37,20 @@ export function useWorkspaceCanvasTerminalCreation({
       return
     }
 
-    const cursorAnchor: Point = {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    }
-    const anchor = resolveNodePlacementAnchorFromViewportCenter(
-      cursorAnchor,
-      resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent),
-    )
-
     setContextMenu(null)
-    const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-
-    const resolvedCwd =
-      targetSpace && targetSpace.directoryPath.trim().length > 0
-        ? targetSpace.directoryPath
-        : workspacePath
-
-    const spawned = await window.opencoveApi.pty.spawn({
-      cwd: resolvedCwd,
-      profileId: defaultTerminalProfileId ?? undefined,
-      cols: 80,
-      rows: 24,
-    })
-
-    const created = await createNodeForSession({
-      sessionId: spawned.sessionId,
-      profileId: spawned.profileId,
-      runtimeKind: spawned.runtimeKind,
-      title: `terminal-${nodesRef.current.length + 1}`,
-      anchor,
-      kind: 'terminal',
-      executionDirectory: resolvedCwd,
-      expectedDirectory: resolvedCwd,
-      placement: {
-        targetSpaceRect: targetSpace?.rect ?? null,
+    await createTerminalNodeAtFlowPosition({
+      anchor: {
+        x: contextMenu.flowX,
+        y: contextMenu.flowY,
       },
-    })
-
-    if (!created || !targetSpace) {
-      return
-    }
-
-    assignNodeToSpaceAndExpand({
-      createdNodeId: created.id,
-      targetSpaceId: targetSpace.id,
+      defaultTerminalProfileId,
+      defaultTerminalWindowScalePercent,
+      workspacePath,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
+      createNodeForSession,
     })
   }, [
     contextMenu,

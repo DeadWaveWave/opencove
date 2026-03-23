@@ -62,7 +62,7 @@ export const en = {
   appHeader: {
     togglePrimarySidebar: 'Toggle Primary Sidebar',
     commandCenter: 'Command Center',
-    commandCenterHint: 'Command Center ({{primary}} / {{secondary}})',
+    commandCenterHint: 'Command Center ({{shortcut}})',
     commandCenterFallbackTitle: 'Search',
     updateAvailableShort: 'Update',
     updateAvailableTitle: 'Version {{version}} is available',

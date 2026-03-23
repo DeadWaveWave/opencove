@@ -28,15 +28,9 @@ test.describe('Command Center', () => {
       const commandCenter = window.locator('[data-testid="command-center"]')
       const commandCenterInput = window.locator('[data-testid="command-center-input"]')
 
-      await window.keyboard.press(`${commandCenterModifier}+K`)
-      await expect(commandCenter).toBeVisible()
-      await expect(commandCenterInput).toBeFocused()
-
-      await window.keyboard.press('Escape')
-      await expect(commandCenter).toBeHidden()
-
       await window.keyboard.press(`${commandCenterModifier}+P`)
       await expect(commandCenter).toBeVisible()
+      await expect(commandCenterInput).toBeFocused()
 
       await window.keyboard.press(`${commandCenterModifier}+P`)
       await expect(commandCenter).toBeHidden()
@@ -71,7 +65,7 @@ test.describe('Command Center', () => {
       await expect(commandCenterButton).toBeVisible()
       await expect(commandCenterButton).toContainText('workspace-command-center-a')
 
-      await window.keyboard.press(`${commandCenterModifier}+K`)
+      await window.keyboard.press(`${commandCenterModifier}+P`)
       const commandCenterInput = window.locator('[data-testid="command-center-input"]')
       await expect(commandCenterInput).toBeFocused()
 

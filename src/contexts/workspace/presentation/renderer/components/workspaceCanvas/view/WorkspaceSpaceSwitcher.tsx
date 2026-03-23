@@ -3,15 +3,15 @@ import type { WorkspaceSpaceState } from '../../../types'
 
 interface WorkspaceSpaceSwitcherProps {
   spaces: WorkspaceSpaceState[]
-  focusSpaceInViewport: (spaceId: string) => void
-  focusAllInViewport: () => void
+  activateSpace: (spaceId: string) => void
+  activateAllSpaces: () => void
   cancelSpaceRename: () => void
 }
 
 export function WorkspaceSpaceSwitcher({
   spaces,
-  focusSpaceInViewport,
-  focusAllInViewport,
+  activateSpace,
+  activateAllSpaces,
   cancelSpaceRename,
 }: WorkspaceSpaceSwitcherProps): React.JSX.Element | null {
   if (spaces.length === 0) {
@@ -30,7 +30,7 @@ export function WorkspaceSpaceSwitcher({
         className="workspace-space-switcher__item"
         data-testid="workspace-space-switch-all"
         onClick={() => {
-          focusAllInViewport()
+          activateAllSpaces()
           cancelSpaceRename()
         }}
       >
@@ -44,7 +44,7 @@ export function WorkspaceSpaceSwitcher({
           data-testid={`workspace-space-switch-${space.id}`}
           data-cove-label-color={space.labelColor ?? undefined}
           onClick={() => {
-            focusSpaceInViewport(space.id)
+            activateSpace(space.id)
             cancelSpaceRename()
           }}
         >

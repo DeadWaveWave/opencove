@@ -79,8 +79,8 @@ export function WorkspaceCanvasView({
   setIsMinimapVisible,
   onMinimapVisibilityChange,
   spaces,
-  focusSpaceInViewport,
-  focusAllInViewport,
+  activateSpace,
+  activateAllSpaces,
   contextMenu,
   closeContextMenu,
   magneticSnappingEnabled,
@@ -375,8 +375,8 @@ export function WorkspaceCanvasView({
 
       <WorkspaceCanvasTopOverlays
         spaces={spaces}
-        focusSpaceInViewport={focusSpaceInViewport}
-        focusAllInViewport={focusAllInViewport}
+        activateSpace={activateSpace}
+        activateAllSpaces={activateAllSpaces}
         cancelSpaceRename={cancelSpaceRename}
         usedLabelColors={usedLabelColors}
         activeLabelColorFilter={labelColorFilter}
