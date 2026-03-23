@@ -26,6 +26,8 @@ import {
   SUBMENU_WIDTH,
   VIEWPORT_PADDING,
   isPointWithinRect,
+  placeContextMenuAtPoint,
+  placeSubmenuAtItem,
 } from './WorkspaceContextMenu.helpers'
 
 type OpenSubmenu = 'arrangeBy' | 'agent-providers' | 'label-color' | null
@@ -176,7 +178,14 @@ export function WorkspaceContextMenu({
   const agentProviderToggleRef = React.useRef<HTMLButtonElement | null>(null)
   const arrangeByButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const labelColorButtonRef = React.useRef<HTMLButtonElement | null>(null)
-  const [measuredSubmenuHeight, setMeasuredSubmenuHeight] = useState<number | null>(null)
+  const [measuredMenuSize, setMeasuredMenuSize] = useState<{
+    width: number
+    height: number
+  } | null>(null)
+  const [measuredSubmenuSize, setMeasuredSubmenuSize] = useState<{
+    width: number
+    height: number
+  } | null>(null)
 
   useEffect(() => {
     const signature = contextMenu
@@ -298,20 +307,46 @@ export function WorkspaceContextMenu({
   )
 
   useLayoutEffect(() => {
+    if (!contextMenu) {
+      setMeasuredMenuSize(null)
+      return
+    }
+
+    const menuElement = menuRef.current
+    if (!menuElement) {
+      setMeasuredMenuSize(null)
+      return
+    }
+
+    const nextRect = menuElement.getBoundingClientRect()
+    setMeasuredMenuSize(previous =>
+      previous !== null &&
+      Math.abs(previous.width - nextRect.width) < 0.5 &&
+      Math.abs(previous.height - nextRect.height) < 0.5
+        ? previous
+        : { width: nextRect.width, height: nextRect.height },
+    )
+  }, [contextMenu])
+
+  useLayoutEffect(() => {
     if (!openSubmenu) {
-      setMeasuredSubmenuHeight(null)
+      setMeasuredSubmenuSize(null)
       return
     }
 
     const submenuElement = submenuRef.current
     if (!submenuElement) {
-      setMeasuredSubmenuHeight(null)
+      setMeasuredSubmenuSize(null)
       return
     }
 
-    const nextHeight = submenuElement.getBoundingClientRect().height
-    setMeasuredSubmenuHeight(previous =>
-      previous !== null && Math.abs(previous - nextHeight) < 0.5 ? previous : nextHeight,
+    const nextRect = submenuElement.getBoundingClientRect()
+    setMeasuredSubmenuSize(previous =>
+      previous !== null &&
+      Math.abs(previous.width - nextRect.width) < 0.5 &&
+      Math.abs(previous.height - nextRect.height) < 0.5
+        ? previous
+        : { width: nextRect.width, height: nextRect.height },
     )
   }, [openSubmenu, contextMenu, sortedInstalledProviders.length])
 
@@ -321,19 +356,21 @@ export function WorkspaceContextMenu({
 
   const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
   const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
-  const anchorX = Math.min(
-    Math.max(contextMenu.x, VIEWPORT_PADDING),
-    Math.max(VIEWPORT_PADDING, viewportWidth - VIEWPORT_PADDING),
-  )
-  const anchorY = Math.min(
-    Math.max(contextMenu.y, VIEWPORT_PADDING),
-    Math.max(VIEWPORT_PADDING, viewportHeight - VIEWPORT_PADDING),
-  )
-  const flipX = contextMenu.x > viewportWidth / 2
-  const flipY = contextMenu.y > viewportHeight / 2
-  const menuTransform =
-    flipX || flipY ? `translate(${flipX ? '-100%' : '0'}, ${flipY ? '-100%' : '0'})` : undefined
-  const measuredMenuRect = menuRef.current?.getBoundingClientRect() ?? null
+  const menuSize = measuredMenuSize ?? {
+    width: MENU_WIDTH,
+    height: 0,
+  }
+  const rootMenuPlacement = placeContextMenuAtPoint({
+    point: { x: contextMenu.x, y: contextMenu.y },
+    menuSize,
+    viewport: { width: viewportWidth, height: viewportHeight },
+  })
+  const rootMenuRect = {
+    left: rootMenuPlacement.left,
+    top: rootMenuPlacement.top,
+    width: menuSize.width,
+    height: menuSize.height,
+  }
   const activeSubmenuAnchor =
     openSubmenu === 'arrangeBy'
       ? arrangeByButtonRef.current
@@ -345,34 +382,31 @@ export function WorkspaceContextMenu({
   const measuredSubmenuAnchorRect = activeSubmenuAnchor?.getBoundingClientRect() ?? null
   const submenuMaxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
   const submenuVisibleHeight =
-    measuredSubmenuHeight !== null
-      ? Math.min(submenuMaxHeight, measuredSubmenuHeight)
+    measuredSubmenuSize !== null
+      ? Math.min(submenuMaxHeight, measuredSubmenuSize.height)
       : submenuMaxHeight
-  const fallbackSubmenuLeft = flipX
-    ? Math.max(VIEWPORT_PADDING, anchorX - MENU_WIDTH - SUBMENU_GAP - SUBMENU_WIDTH)
-    : Math.min(viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH, anchorX + MENU_WIDTH + SUBMENU_GAP)
-  const fallbackSubmenuTopAnchor = measuredSubmenuAnchorRect?.top ?? anchorY
-  const fallbackSubmenuTop = Math.max(
-    VIEWPORT_PADDING,
-    Math.min(fallbackSubmenuTopAnchor, viewportHeight - VIEWPORT_PADDING - submenuVisibleHeight),
-  )
-  const submenuLeft = measuredMenuRect
-    ? measuredMenuRect.right + SUBMENU_GAP + SUBMENU_WIDTH > viewportWidth - VIEWPORT_PADDING
-      ? Math.max(VIEWPORT_PADDING, measuredMenuRect.left - SUBMENU_GAP - SUBMENU_WIDTH)
-      : Math.min(
-          viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH,
-          measuredMenuRect.right + SUBMENU_GAP,
-        )
-    : fallbackSubmenuLeft
-  const submenuTop = measuredSubmenuAnchorRect
-    ? Math.max(
-        VIEWPORT_PADDING,
-        Math.min(
-          measuredSubmenuAnchorRect.top,
-          viewportHeight - VIEWPORT_PADDING - submenuVisibleHeight,
-        ),
-      )
-    : fallbackSubmenuTop
+  const submenuPlacement = placeSubmenuAtItem({
+    parentMenuRect: rootMenuRect,
+    itemRect: measuredSubmenuAnchorRect
+      ? {
+          left: measuredSubmenuAnchorRect.left,
+          top: measuredSubmenuAnchorRect.top,
+          width: measuredSubmenuAnchorRect.width,
+          height: measuredSubmenuAnchorRect.height,
+        }
+      : {
+          left: rootMenuRect.left,
+          top: rootMenuRect.top,
+          width: rootMenuRect.width,
+          height: 0,
+        },
+    submenuSize: {
+      width: measuredSubmenuSize?.width ?? SUBMENU_WIDTH,
+      height: submenuVisibleHeight,
+    },
+    viewport: { width: viewportWidth, height: viewportHeight },
+    gap: SUBMENU_GAP,
+  })
   const canArrangeHitSpace = Boolean(contextHitSpace && contextHitSpace.nodeIds.length >= 2)
   const canArrangeCurrentScope =
     arrangeScope === 'all'
@@ -388,8 +422,8 @@ export function WorkspaceContextMenu({
   const shouldShowLabelColorSubmenu =
     contextMenu.kind === 'selection' && openSubmenu === 'label-color'
   const sharedSubmenuStyle = {
-    top: submenuTop,
-    left: submenuLeft,
+    top: submenuPlacement.top,
+    left: submenuPlacement.left,
     maxHeight: submenuMaxHeight,
   }
 
@@ -398,7 +432,7 @@ export function WorkspaceContextMenu({
       <div
         ref={menuRef}
         className="workspace-context-menu workspace-canvas-context-menu"
-        style={{ top: anchorY, left: anchorX, transform: menuTransform }}
+        style={{ top: rootMenuPlacement.top, left: rootMenuPlacement.left }}
         onMouseDown={event => {
           event.stopPropagation()
         }}
@@ -445,7 +479,11 @@ export function WorkspaceContextMenu({
       {shouldShowArrangeSubmenu ? (
         <WorkspaceContextArrangeBySubmenu
           submenuRef={submenuRef}
-          style={{ top: submenuTop, left: submenuLeft, maxHeight: submenuMaxHeight }}
+          style={{
+            top: submenuPlacement.top,
+            left: submenuPlacement.left,
+            maxHeight: submenuMaxHeight,
+          }}
           hitSpace={contextHitSpace}
           canArrangeAll={canArrangeAll}
           canArrangeCanvas={canArrangeCanvas}
