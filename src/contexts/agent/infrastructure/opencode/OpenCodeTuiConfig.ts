@@ -13,11 +13,7 @@ const OPENCODE_EMBEDDED_TUI_CONFIG_CONTENT = `${JSON.stringify(
 )}\n`
 
 export async function ensureOpenCodeEmbeddedTuiConfigPath(): Promise<string> {
-  await writeFile(
-    OPENCODE_EMBEDDED_TUI_CONFIG_PATH,
-    OPENCODE_EMBEDDED_TUI_CONFIG_CONTENT,
-    'utf8',
-  )
+  await writeFile(OPENCODE_EMBEDDED_TUI_CONFIG_PATH, OPENCODE_EMBEDDED_TUI_CONFIG_CONTENT, 'utf8')
 
   return OPENCODE_EMBEDDED_TUI_CONFIG_PATH
 }
