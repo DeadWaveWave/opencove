@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
-import { Handle, Position, useStore } from '@xyflow/react'
+import { useStore } from '@xyflow/react'
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
@@ -18,17 +18,14 @@ import {
   isCachedTerminalScreenStateInvalidated,
   setCachedTerminalScreenState,
 } from './terminalNode/screenStateCache'
-import { TerminalNodeHeader } from './terminalNode/TerminalNodeHeader'
 import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
-import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
-import { resolveActiveUiTheme, resolveTerminalTheme } from './terminalNode/theme'
+import { resolveTerminalTheme, resolveTerminalUiTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
-import { shouldStopWheelPropagation } from './terminalNode/wheel'
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
@@ -36,7 +33,7 @@ import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
 } from './terminalNode/reactFlowState'
-import { NodeResizeHandles } from './shared/NodeResizeHandles'
+import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
 export function TerminalNode({
@@ -45,6 +42,7 @@ export function TerminalNode({
   title,
   kind,
   labelColor,
+  terminalThemeMode = 'sync-with-ui',
   isSelected = false,
   isDragging = false,
   status,
@@ -116,10 +114,11 @@ export function TerminalNode({
     if (!terminal) {
       return
     }
-    terminal.options.theme = { ...resolveTerminalTheme() }
-    containerRef.current?.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
+    const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
+    terminal.options.theme = { ...resolveTerminalTheme(terminalThemeMode) }
+    containerRef.current?.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
     terminal.refresh(0, Math.max(0, terminal.rows - 1))
-  }, [])
+  }, [terminalThemeMode])
   const { draftFrame, handleResizePointerDown } = useTerminalResize({
     position,
     width,
@@ -142,7 +141,8 @@ export function TerminalNode({
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
-    const initialTerminalTheme = resolveTerminalTheme()
+    const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
+    const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily:
@@ -177,7 +177,7 @@ export function TerminalNode({
     )
     if (containerRef.current) {
       terminal.open(containerRef.current)
-      containerRef.current.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
+      containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
@@ -342,6 +342,9 @@ export function TerminalNode({
     const disposeLayoutSync = registerTerminalLayoutSync(syncTerminalSize)
 
     const handleThemeChange = () => {
+      if (terminalThemeMode !== 'sync-with-ui') {
+        return
+      }
       applyTerminalTheme()
       syncTerminalSize()
     }
@@ -398,6 +401,7 @@ export function TerminalNode({
     scrollbackBufferRef,
     sessionId,
     syncTerminalSize,
+    terminalThemeMode,
   ])
 
   useEffect(() => {
@@ -417,7 +421,6 @@ export function TerminalNode({
     }
   }, [height, syncTerminalSize, width])
 
-  const isAgentNode = kind === 'agent'
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
@@ -427,75 +430,29 @@ export function TerminalNode({
   } = useTerminalBodyClickFallback(onInteractionStart)
 
   return (
-    <div
-      className={`terminal-node nowheel ${hasSelectedDragSurface ? 'terminal-node--selected-surface' : ''}`.trim()}
-      style={sizeStyle}
-      onPointerDownCapture={handleTerminalBodyPointerDownCapture}
-      onPointerMoveCapture={handleTerminalBodyPointerMoveCapture}
-      onPointerUp={handleTerminalBodyPointerUp}
-      onClickCapture={event => {
-        if (event.button !== 0) {
-          return
-        }
-
-        if (
-          event.detail === 2 &&
-          event.target instanceof Element &&
-          event.target.closest('.terminal-node__header') &&
-          !event.target.closest('.nodrag')
-        ) {
-          return
-        }
-
-        if (consumeIgnoredTerminalBodyClick(event.target)) {
-          event.stopPropagation()
-          return
-        }
-
-        const interaction = resolveTerminalNodeInteraction(event.target)
-        if (!interaction) {
-          return
-        }
-
-        event.stopPropagation()
-        onInteractionStart?.({
-          normalizeViewport: interaction.normalizeViewport,
-          selectNode: interaction.selectNode || event.shiftKey,
-          shiftKey: event.shiftKey,
-        })
-      }}
-      onWheel={event => {
-        if (shouldStopWheelPropagation(event.currentTarget)) {
-          event.stopPropagation()
-        }
-      }}
-    >
-      <Handle type="target" position={Position.Left} className="workspace-node-handle" />
-      <Handle type="source" position={Position.Right} className="workspace-node-handle" />
-
-      <TerminalNodeHeader
-        title={title}
-        kind={kind}
-        status={status}
-        labelColor={labelColor ?? null}
-        directoryMismatch={directoryMismatch}
-        onTitleCommit={onTitleCommit}
-        onClose={onClose}
-        onCopyLastMessage={onCopyLastMessage}
-      />
-
-      {isAgentNode && lastError ? <div className="terminal-node__error">{lastError}</div> : null}
-
-      <div
-        ref={containerRef}
-        className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
-        aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
-      />
-      <NodeResizeHandles
-        classNamePrefix="terminal-node"
-        testIdPrefix="terminal-resizer"
-        handleResizePointerDown={handleResizePointerDown}
-      />
-    </div>
+    <TerminalNodeFrame
+      title={title}
+      kind={kind}
+      labelColor={labelColor}
+      terminalThemeMode={terminalThemeMode}
+      isSelected={hasSelectedDragSurface}
+      isDragging={false}
+      status={status}
+      directoryMismatch={directoryMismatch}
+      lastError={lastError}
+      sessionId={sessionId}
+      isTerminalHydrated={isTerminalHydrated}
+      sizeStyle={sizeStyle}
+      containerRef={containerRef}
+      handleTerminalBodyPointerDownCapture={handleTerminalBodyPointerDownCapture}
+      handleTerminalBodyPointerMoveCapture={handleTerminalBodyPointerMoveCapture}
+      handleTerminalBodyPointerUp={handleTerminalBodyPointerUp}
+      consumeIgnoredTerminalBodyClick={consumeIgnoredTerminalBodyClick}
+      onInteractionStart={onInteractionStart}
+      onTitleCommit={onTitleCommit}
+      onClose={onClose}
+      onCopyLastMessage={onCopyLastMessage}
+      handleResizePointerDown={handleResizePointerDown}
+    />
   )
 }

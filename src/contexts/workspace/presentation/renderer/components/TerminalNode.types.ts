@@ -1,5 +1,6 @@
 import type { AgentRuntimeStatus, NodeFrame, Point, WorkspaceNodeKind } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
+import type { TerminalThemeMode } from './terminalNode/theme'
 
 export interface TerminalNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -13,6 +14,7 @@ export interface TerminalNodeProps {
   title: string
   kind: WorkspaceNodeKind
   labelColor?: LabelColor | null
+  terminalThemeMode?: TerminalThemeMode
   isSelected?: boolean
   isDragging?: boolean
   status: AgentRuntimeStatus | null

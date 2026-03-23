@@ -9,6 +9,7 @@
 @import './styles/workspace-overlays.css';
 @import './styles/workspace-pr-chip.css';
 @import './styles/terminal-node.css';
+@import './styles/terminal-node.theme-opencode.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';
 @import './styles/settings-panel.css';
