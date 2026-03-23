@@ -156,6 +156,10 @@ export interface NodeDeleteConfirmationState {
   nodeIds: string[]
   primaryNodeKind: WorkspaceNodeKind
   primaryNodeTitle: string
+  emptyingSpaces: Array<{
+    id: string
+    name: string
+  }>
 }
 
 export interface SpaceWorktreeMismatchDropWarningState {

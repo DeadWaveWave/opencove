@@ -79,9 +79,10 @@ export function useWorkspaceCanvasTaskWindows({
       openTaskEditorRef: actionRefs.openTaskEditorRef,
     })
 
-  const { nodeDeleteConfirmation, setNodeDeleteConfirmation, confirmNodeDelete } =
+  const { nodeDeleteConfirmation, setNodeDeleteConfirmation, confirmNodeDelete, requestNodeClose } =
     useWorkspaceCanvasNodeDeleteConfirmation({
       nodesRef,
+      spacesRef,
       closeNode,
       requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
     })
@@ -101,5 +102,6 @@ export function useWorkspaceCanvasTaskWindows({
     nodeDeleteConfirmation,
     setNodeDeleteConfirmation,
     confirmNodeDelete,
+    requestNodeClose,
   }
 }

@@ -182,6 +182,7 @@ export function WorkspaceCanvasInner({
     nodeDeleteConfirmation,
     setNodeDeleteConfirmation,
     confirmNodeDelete,
+    requestNodeClose,
   } = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
     contextMenu: canvasState.contextMenu,
@@ -328,7 +329,7 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     actionRefs,
     clearNodeSelection,
-    closeNode,
+    closeNode: requestNodeClose,
     resizeNode,
     updateNoteText,
     updateNodeScrollback,

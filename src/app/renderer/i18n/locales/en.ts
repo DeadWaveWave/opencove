@@ -195,6 +195,10 @@ export const en = {
     multipleDescription: 'This will permanently remove {{count}} selected nodes.',
     taskDescriptionPrefix: 'This will permanently remove',
     nodeDescriptionPrefix: 'This will permanently remove this {{kind}}:',
+    emptySpaceWarningSingle:
+      'Deleting this last node will leave the space empty, and it will close automatically.',
+    emptySpaceWarningMultiple:
+      'Deleting these last nodes will leave the space empty, and it will close automatically.',
   },
   workspaceContextMenu: {
     newTerminal: 'New Terminal',
