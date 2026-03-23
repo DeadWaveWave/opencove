@@ -33,6 +33,12 @@
     "executableName": "OpenCove",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "generateUpdatesFilesForAllChannels": true,
+    "extraResources": [
+      {
+        "from": "release/release-manifest.json",
+        "to": "release-manifest.json"
+      }
+    ],
     "publish": [
       {
         "provider": "github",
@@ -57,11 +63,12 @@
     "check": "tsc -b tsconfig.node.json tsconfig.web.json --noEmit",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "pnpm build && electron-builder --dir --publish never",
-    "build:mac": "pnpm build && electron-builder --mac --publish never",
-    "build:mac:unsigned": "pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --publish never",
-    "build:win": "pnpm build && electron-builder --win --publish never",
-    "build:linux": "pnpm build && electron-builder --linux AppImage --publish never",
+    "build:release-manifest": "node scripts/generate-release-manifest.mjs",
+    "build:unpack": "pnpm build && pnpm build:release-manifest && electron-builder --dir --publish never",
+    "build:mac": "pnpm build && pnpm build:release-manifest && electron-builder --mac --publish never",
+    "build:mac:unsigned": "pnpm build && pnpm build:release-manifest && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --publish never",
+    "build:win": "pnpm build && pnpm build:release-manifest && electron-builder --win --publish never",
+    "build:linux": "pnpm build && pnpm build:release-manifest && electron-builder --linux AppImage --publish never",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",

@@ -87,13 +87,54 @@ function normalizeReleaseDate(value: string | Date | null | undefined): string |
   return typeof value === 'string' && value.trim().length > 0 ? value : null
 }
 
+function normalizeWhitespace(value: string): string {
+  return value.replace(/\s+/g, ' ').trim()
+}
+
+function stripErrorPrefixes(value: string): string {
+  let normalized = value.trim()
+
+  while (/^[A-Za-z0-9_.-]*Error:\s*/.test(normalized)) {
+    normalized = normalized.replace(/^[A-Za-z0-9_.-]*Error:\s*/, '').trim()
+  }
+
+  return normalized
+}
+
+function extractPrimaryMessage(value: string): string {
+  const firstLine = value.split(/\r?\n/, 1)[0] ?? value
+  return normalizeWhitespace(stripErrorPrefixes(firstLine))
+}
+
+function summarizeUpdateErrorMessage(message: string): string {
+  const normalized = normalizeWhitespace(message)
+
+  if (normalized.includes('Cannot parse releases feed')) {
+    return 'Unable to read the update feed from GitHub Releases.'
+  }
+
+  if (
+    normalized.includes('net::ERR_INTERNET_DISCONNECTED') ||
+    normalized.includes('net::ERR_NETWORK_CHANGED')
+  ) {
+    return 'Network connection was interrupted while checking for updates.'
+  }
+
+  const primary = extractPrimaryMessage(normalized)
+  if (primary.length <= 160) {
+    return primary
+  }
+
+  return `${primary.slice(0, 157).trimEnd()}...`
+}
+
 function normalizeMessage(error: unknown): string {
   if (error instanceof Error && error.message.trim().length > 0) {
-    return error.message.trim()
+    return summarizeUpdateErrorMessage(error.message)
   }
 
   if (typeof error === 'string' && error.trim().length > 0) {
-    return error.trim()
+    return summarizeUpdateErrorMessage(error)
   }
 
   return 'Unknown update error'

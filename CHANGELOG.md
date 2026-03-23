@@ -22,6 +22,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 💅 Changed
 - Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
+- What's New: switched update notes from runtime GitHub compare fetching to release-manifest delivery embedded in each build. (#67)
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
 - Workspace canvas: arrange spaces before root nodes during canvas/global arrange. (#42)
 - Workspace canvas: default arrange now keeps standard-size alignment always on and resizes spaces to the fitted tiled result. (#42)
@@ -38,6 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Spaces: New windows created from a crowded space now preserve existing window layout, expand the space only as needed, and keep the viewport centered on the final position. (#62)
+- Settings: update status now summarizes updater feed parsing errors instead of dumping raw parser/CSP output. (#67)
 - Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
 - Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
 - Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)

@@ -54,7 +54,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'update.check_failed': 'Unable to check for updates.',
     'update.download_failed': 'Unable to download the update.',
     'update.install_failed': 'Unable to install the update.',
-    'release_notes.get_range_failed': 'Unable to load release notes.',
+    'release_notes.get_current_failed': 'Unable to load release notes.',
   }
 }
 
