@@ -110,7 +110,7 @@ export interface AgentSettings {
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
-  uiTheme: 'system',
+  uiTheme: 'dark',
   isPrimarySidebarCollapsed: false,
   defaultProvider: 'codex',
   agentProviderOrder: [...AGENT_PROVIDERS],
