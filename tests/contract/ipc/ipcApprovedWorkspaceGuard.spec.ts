@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { readFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import type { ApprovedWorkspaceStore } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type { PtyRuntime } from '../../../src/contexts/terminal/presentation/main-ipc/runtime'
@@ -50,6 +51,7 @@ afterEach(() => {
     value: originalPlatform,
     configurable: true,
   })
+  delete process.env.OPENCODE_TUI_CONFIG
   vi.doUnmock('node:child_process')
 })
 
@@ -318,6 +320,72 @@ describe('IPC approved workspace guards', () => {
           resumeSessionId: null,
         }),
       )
+    } finally {
+      if (typeof previousNodeEnv === 'string') {
+        process.env.NODE_ENV = previousNodeEnv
+      } else {
+        delete process.env.NODE_ENV
+      }
+    }
+  })
+
+  it('injects a system OpenCode TUI config for embedded launches', async () => {
+    vi.resetModules()
+
+    const previousNodeEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'test'
+
+    try {
+      const { handlers, ipcMain } = createIpcHarness()
+      vi.doMock('electron', () => ({ ipcMain }))
+
+      const runtime = createPtyRuntimeMock()
+      const store = createApprovedWorkspaceStoreMock({ isPathApproved: true })
+
+      const { registerAgentIpcHandlers } =
+        await import('../../../src/contexts/agent/presentation/main-ipc/register')
+      registerAgentIpcHandlers(runtime, store)
+
+      const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
+      expect(launchHandler).toBeTypeOf('function')
+
+      const result = await invokeHandledIpc(launchHandler, null, {
+        provider: 'opencode',
+        cwd: '/tmp/approved',
+        prompt: 'Ship the fix',
+        cols: 80,
+        rows: 24,
+      })
+
+      expect(result).toEqual(
+        expect.objectContaining({
+          sessionId: 'session-1',
+          provider: 'opencode',
+        }),
+      )
+
+      const spawnCall = vi.mocked(runtime.spawnSession).mock.calls[0]?.[0]
+      expect(spawnCall).toEqual(
+        expect.objectContaining({
+          cwd: '/tmp/approved',
+          command: expect.any(String),
+          args: expect.any(Array),
+          env: expect.objectContaining({
+            OPENCOVE_OPENCODE_SERVER_HOSTNAME: '127.0.0.1',
+            OPENCOVE_OPENCODE_SERVER_PORT: expect.any(String),
+            OPENCODE_TUI_CONFIG: expect.any(String),
+          }),
+        }),
+      )
+
+      const opencodeTuiConfigPath = spawnCall?.env?.OPENCODE_TUI_CONFIG
+      expect(opencodeTuiConfigPath).toBeTypeOf('string')
+
+      const parsedConfig = JSON.parse(await readFile(opencodeTuiConfigPath as string, 'utf8'))
+      expect(parsedConfig).toEqual({
+        $schema: 'https://opencode.ai/tui.json',
+        theme: 'system',
+      })
     } finally {
       if (typeof previousNodeEnv === 'string') {
         process.env.NODE_ENV = previousNodeEnv

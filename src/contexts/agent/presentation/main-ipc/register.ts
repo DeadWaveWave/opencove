@@ -26,6 +26,7 @@ import {
   readLastAssistantMessageFromSessionFile,
 } from '../../infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../infrastructure/watchers/SessionFileResolver'
+import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../infrastructure/opencode/OpenCodeTuiConfig'
 import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import {
@@ -41,6 +42,11 @@ const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
 const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
 const READ_LAST_MESSAGE_FILE_TIMEOUT_MS = 1_500
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
+
+function normalizeOptionalEnvValue(value: string | undefined): string | null {
+  const normalized = value?.trim()
+  return normalized && normalized.length > 0 ? normalized : null
+}
 
 async function reserveLoopbackPort(hostname: string): Promise<number> {
   return await new Promise((resolve, reject) => {
@@ -215,12 +221,19 @@ export function registerAgentIpcHandlers(
         args: testStub?.args ?? launchCommand.args,
       })
 
+      const opencodeTuiConfigPath =
+        normalized.provider === 'opencode'
+          ? (normalizeOptionalEnvValue(process.env.OPENCODE_TUI_CONFIG) ??
+            (await ensureOpenCodeEmbeddedTuiConfigPath()))
+          : null
+
       const sessionEnv =
         opencodeServer && normalized.provider === 'opencode'
           ? {
               ...process.env,
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
               OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
+              ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
           : undefined
 
