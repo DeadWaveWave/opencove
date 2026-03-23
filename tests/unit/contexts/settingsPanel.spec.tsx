@@ -154,26 +154,26 @@ describe('SettingsPanel', () => {
       refreshTerminalProfiles: async () => undefined,
     })
 
-	    render(
-	      <SettingsPanel
-	        settings={DEFAULT_AGENT_SETTINGS}
-	        updateState={createUpdateState({
-	          status: 'available',
-	          latestVersion: '0.2.1',
-	          checkedAt: '2026-03-20T00:00:00.000Z',
-	        })}
-	        modelCatalogByProvider={createModelCatalog()}
-	        workspaces={[]}
-	        onWorkspaceWorktreesRootChange={() => undefined}
-	        isFocusNodeTargetZoomPreviewing={false}
-	        onFocusNodeTargetZoomPreviewChange={() => undefined}
-	        onChange={onChange}
-	        onCheckForUpdates={onCheckForUpdates}
-	        onDownloadUpdate={onDownloadUpdate}
-	        onInstallUpdate={() => undefined}
-	        onClose={() => undefined}
-	      />,
-	    )
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState({
+          status: 'available',
+          latestVersion: '0.2.1',
+          checkedAt: '2026-03-20T00:00:00.000Z',
+        })}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={onChange}
+        onCheckForUpdates={onCheckForUpdates}
+        onDownloadUpdate={onDownloadUpdate}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
 
     fireEvent.click(screen.getByTestId('settings-update-policy-trigger'))
     fireEvent.click(screen.getByRole('option', { name: 'Auto Update' }))
