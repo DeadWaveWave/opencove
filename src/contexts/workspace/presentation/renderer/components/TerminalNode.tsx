@@ -357,7 +357,8 @@ export function TerminalNode({
       const hasPendingWrites = outputScheduler.hasPendingWrites()
 
       if (!isInvalidated && isTerminalHydratedRef.current && !hasPendingWrites) {
-        const serializedScreen = serializeAddon.serialize()
+        // Live PTY output owns terminal modes; the renderer cache should only restore pixels.
+        const serializedScreen = serializeAddon.serialize({ excludeModes: true })
         if (serializedScreen.length > 0) {
           setCachedTerminalScreenState(nodeId, {
             sessionId,
