@@ -3,10 +3,17 @@ import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
 import {
   computeBoundingRect,
-  resolveDensePacking,
-  resolveFlowPacking,
   snapDown,
+  type Rect,
 } from './workspaceArrange.flowPacking'
+import type { PlacementCandidate } from './workspaceArrange.canvasPacking'
+import {
+  dedupePlacementCandidates,
+  resolveAspectPenalty,
+  resolveCanvasSectionPlacementCandidates,
+  resolveSectionWrapWidthCandidates,
+  translatePlacementCandidate,
+} from './workspaceArrange.canvasPacking'
 import {
   createArrangeItemsForCanvasSpaces,
   type WorkspaceArrangeItem,
@@ -32,72 +39,8 @@ import {
   resolveCanonicalBucketCellSize,
   WORKSPACE_CANONICAL_GUTTER_PX,
 } from './workspaceNodeSizing'
-function resolveCanvasSectionPlacements({
-  items,
-  start,
-  wrapWidth,
-  gap,
-  packing = 'flow',
-}: {
-  items: WorkspaceArrangeItem[]
-  start: { x: number; y: number }
-  wrapWidth: number
-  gap: number
-  packing?: 'dense' | 'flow'
-}): Map<string, { x: number; y: number }> {
-  if (items.length === 0) {
-    return new Map()
-  }
 
-  const placementItems = items.map(item => ({
-    id: item.key,
-    width: item.rect.width,
-    height: item.rect.height,
-  }))
-  const effectiveWrapWidth = Math.max(
-    wrapWidth,
-    Math.max(...placementItems.map(item => item.width)),
-  )
-
-  if (packing === 'dense') {
-    return resolveDensePacking({
-      items: placementItems,
-      start,
-      wrapWidth: effectiveWrapWidth,
-      gap,
-    })
-  }
-
-  return resolveFlowPacking({
-    items: placementItems,
-    start,
-    wrapWidth: effectiveWrapWidth,
-    gap,
-  })
-}
-
-function computePlacedBoundingRect(
-  items: WorkspaceArrangeItem[],
-  placements: Map<string, { x: number; y: number }>,
-) {
-  return computeBoundingRect(
-    items
-      .map(item => {
-        const placed = placements.get(item.key)
-        if (!placed) {
-          return null
-        }
-
-        return {
-          x: placed.x,
-          y: placed.y,
-          width: item.rect.width,
-          height: item.rect.height,
-        }
-      })
-      .filter((rect): rect is NonNullable<typeof rect> => rect !== null),
-  )
-}
+const SECTION_PACKING_ASPECT_EPSILON = 0.01
 
 export function arrangeWorkspaceCanvas({
   nodes,
@@ -210,20 +153,14 @@ export function arrangeWorkspaceCanvas({
   const packingGap = Math.round(gap / 2)
   const sectionGap = gap
   const targetAspect = resolveViewportAspectRatio(viewport)
-  const spacePlacements = resolveCanvasSectionPlacements({
+  const relativeSpaceCandidates = resolveCanvasSectionPlacementCandidates({
     items: spaceItems,
-    start,
+    start: { x: 0, y: 0 },
     wrapWidth: effectiveWrapWidth,
     gap: packingGap,
     packing: 'dense',
+    targetAspect,
   })
-  const placedSpaceBounding = computePlacedBoundingRect(spaceItems, spacePlacements)
-  const rootStart = {
-    x: start.x,
-    y: placedSpaceBounding
-      ? placedSpaceBounding.y + placedSpaceBounding.height + sectionGap
-      : start.y,
-  }
   const semanticGroupGap = resolvedStyle.alignCanonicalSizes
     ? WORKSPACE_CANONICAL_GUTTER_PX
     : packingGap
@@ -240,51 +177,205 @@ export function arrangeWorkspaceCanvas({
     kindRank: 0,
     area: item.width * item.height,
   }))
-  const rootPlacements = (() => {
+  const rootFlowWrapWidth = Math.max(
+    effectiveWrapWidth,
+    rootFlowArrangeItems.length > 0
+      ? Math.max(...rootFlowArrangeItems.map(item => item.rect.width))
+      : effectiveWrapWidth,
+  )
+  const relativeRootCandidates = (() => {
     if (!resolvedStyle.alignCanonicalSizes) {
-      const maxItemWidth =
-        rootFlowArrangeItems.length > 0
-          ? Math.max(...rootFlowArrangeItems.map(item => item.rect.width))
-          : 0
-
-      return resolveCanvasSectionPlacements({
+      return resolveCanvasSectionPlacementCandidates({
         items: rootFlowArrangeItems,
-        start: rootStart,
-        wrapWidth: Math.max(effectiveWrapWidth, maxItemWidth),
+        start: { x: 0, y: 0 },
+        wrapWidth: rootFlowWrapWidth,
         gap: packingGap,
+        targetAspect,
       })
     }
 
+    const MAX_CANONICAL_COLUMNS = 64
     const cell = resolveCanonicalBucketCellSize(canonicalBucket)
     const strideWidth = Math.max(1, cell.width) + WORKSPACE_CANONICAL_GUTTER_PX
-    const maxColumns = Math.max(
+    const maxColumnsByWrap = Math.max(
       1,
       Math.floor((effectiveWrapWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth),
     )
-    const packed = resolveWorkspaceArrangeSemanticGridPlacements({
-      groups: rootGroups,
-      start: rootStart,
-      cell,
+    const wrapWidthCandidates = resolveSectionWrapWidthCandidates({
+      items: rootFlowArrangeItems,
+      wrapWidth: rootFlowWrapWidth,
       gap: WORKSPACE_CANONICAL_GUTTER_PX,
       targetAspect,
-      maxColumns,
     })
+    const maxColumnsByCandidates =
+      wrapWidthCandidates.length > 0
+        ? Math.max(
+            1,
+            ...wrapWidthCandidates.map(candidateWrapWidth =>
+              Math.floor((candidateWrapWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth),
+            ),
+          )
+        : maxColumnsByWrap
+    const maxRootItemWidth =
+      rootFlowArrangeItems.length > 0
+        ? Math.max(...rootFlowArrangeItems.map(item => item.rect.width))
+        : 0
+    const rootTotalArea = rootFlowArrangeItems.reduce(
+      (sum, item) => sum + item.rect.width * item.rect.height,
+      0,
+    )
+    const estimatedRootWidth = Math.round(
+      Math.sqrt(Math.max(rootTotalArea, maxRootItemWidth * maxRootItemWidth) * targetAspect),
+    )
+    const rawIdealColumns =
+      estimatedRootWidth > 0
+        ? Math.max(1, Math.floor((estimatedRootWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth))
+        : maxColumnsByWrap
+    const maxColumnsLimit = Math.min(
+      MAX_CANONICAL_COLUMNS,
+      Math.max(maxColumnsByWrap, rawIdealColumns, maxColumnsByCandidates),
+    )
+    const idealColumns = Math.max(1, Math.min(maxColumnsLimit, rawIdealColumns))
+    const maxColumnCandidates = new Set<number>([1, maxColumnsByWrap, idealColumns, maxColumnsLimit])
 
-    if (!packed) {
-      const maxItemWidth =
-        rootFlowArrangeItems.length > 0
-          ? Math.max(...rootFlowArrangeItems.map(item => item.rect.width))
-          : 0
-      return resolveCanvasSectionPlacements({
+    for (const candidateWrapWidth of wrapWidthCandidates) {
+      const maxColumns = Math.max(
+        1,
+        Math.min(
+          maxColumnsLimit,
+          Math.floor((candidateWrapWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth),
+        ),
+      )
+      maxColumnCandidates.add(maxColumns)
+    }
+
+    const candidates = [...maxColumnCandidates]
+      .sort((left, right) => left - right)
+      .map(maxColumns =>
+        resolveWorkspaceArrangeSemanticGridPlacements({
+          groups: rootGroups,
+          start: { x: 0, y: 0 },
+          cell,
+          gap: WORKSPACE_CANONICAL_GUTTER_PX,
+          targetAspect,
+          maxColumns,
+        }),
+      )
+      .filter((candidate): candidate is NonNullable<typeof candidate> => candidate !== null)
+      .map(candidate => ({
+        placements: new Map([...candidate.placements.entries()]),
+        bounding: candidate.bounding,
+      }))
+
+    if (candidates.length === 0) {
+      return resolveCanvasSectionPlacementCandidates({
         items: rootFlowArrangeItems,
-        start: rootStart,
-        wrapWidth: Math.max(effectiveWrapWidth, maxItemWidth),
+        start: { x: 0, y: 0 },
+        wrapWidth: rootFlowWrapWidth,
         gap: packingGap,
+        targetAspect,
       })
     }
 
-    return new Map([...packed.placements.entries()])
+    return dedupePlacementCandidates(candidates)
   })()
+  const bestCanvasLayout = (() => {
+    const candidates: Array<{
+      spaceCandidate: PlacementCandidate
+      rootCandidate: PlacementCandidate
+      spacePlacements: Map<string, { x: number; y: number }>
+      rootPlacements: Map<string, { x: number; y: number }>
+      bounding: Rect
+      area: number
+      aspectPenalty: number
+      composition: 'horizontal' | 'vertical'
+    }> = []
+
+    for (const spaceCandidate of relativeSpaceCandidates) {
+      const hasSpaces = spaceCandidate.bounding.width > 0 && spaceCandidate.bounding.height > 0
+
+      for (const rootCandidate of relativeRootCandidates) {
+        const hasRoots = rootCandidate.bounding.width > 0 && rootCandidate.bounding.height > 0
+        const compositions: Array<{
+          composition: 'horizontal' | 'vertical'
+          rootOffset: { x: number; y: number }
+        }> = [
+          {
+            composition: 'vertical',
+            rootOffset: {
+              x: 0,
+              y: hasSpaces && hasRoots ? spaceCandidate.bounding.height + sectionGap : 0,
+            },
+          },
+          {
+            composition: 'horizontal',
+            rootOffset: {
+              x: hasSpaces && hasRoots ? spaceCandidate.bounding.width + sectionGap : 0,
+              y: 0,
+            },
+          },
+        ]
+
+        for (const { composition, rootOffset } of compositions) {
+          const absoluteSpaceCandidate = translatePlacementCandidate(spaceCandidate, start)
+          const absoluteRootCandidate = translatePlacementCandidate(rootCandidate, {
+            x: start.x + rootOffset.x,
+            y: start.y + rootOffset.y,
+          })
+          const boundingRects = [
+            ...(hasSpaces ? [absoluteSpaceCandidate.bounding] : []),
+            ...(hasRoots ? [absoluteRootCandidate.bounding] : []),
+          ]
+          const combinedBounding = computeBoundingRect(boundingRects) ?? {
+            x: start.x,
+            y: start.y,
+            width: 0,
+            height: 0,
+          }
+
+          candidates.push({
+            spaceCandidate,
+            rootCandidate,
+            spacePlacements: absoluteSpaceCandidate.placements,
+            rootPlacements: absoluteRootCandidate.placements,
+            bounding: combinedBounding,
+            area: combinedBounding.width * combinedBounding.height,
+            aspectPenalty: resolveAspectPenalty(
+              combinedBounding.height > 0
+                ? combinedBounding.width / combinedBounding.height
+                : Number.POSITIVE_INFINITY,
+              targetAspect,
+            ),
+            composition,
+          })
+        }
+      }
+    }
+
+    return (
+      candidates.sort((left, right) => {
+        if (Math.abs(left.aspectPenalty - right.aspectPenalty) > SECTION_PACKING_ASPECT_EPSILON) {
+          return left.aspectPenalty - right.aspectPenalty
+        }
+
+        if (left.area !== right.area) {
+          return left.area - right.area
+        }
+
+        if (left.bounding.height !== right.bounding.height) {
+          return left.bounding.height - right.bounding.height
+        }
+
+        if (left.composition !== right.composition) {
+          return left.composition === 'horizontal' ? -1 : 1
+        }
+
+        return left.bounding.width - right.bounding.width
+      })[0] ?? null
+    )
+  })()
+  const spacePlacements = bestCanvasLayout?.spacePlacements ?? new Map<string, { x: number; y: number }>()
+  const rootPlacements = bestCanvasLayout?.rootPlacements ?? new Map<string, { x: number; y: number }>()
 
   const spaceDeltaById = new Map<string, { dx: number; dy: number }>()
   for (const item of spaceItems) {

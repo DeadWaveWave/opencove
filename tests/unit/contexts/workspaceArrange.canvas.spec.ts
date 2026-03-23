@@ -92,6 +92,7 @@ describe('workspace arrange canvas utils', () => {
       nodes,
       spaces,
       wrapWidth: 5000,
+      viewport: { width: 1440, height: 900 },
       style: { spaceFit: 'keep', alignCanonicalSizes: false },
     })
     expect(result.didChange).toBe(true)
@@ -104,8 +105,8 @@ describe('workspace arrange canvas utils', () => {
     const dy = spaceAfter!.y - spaceBefore.y
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('r1')?.position).toEqual({ x: 96, y: 408 })
-    expect(nodeById.get('r2')?.position).toEqual({ x: 588, y: 408 })
+    expect(nodeById.get('r1')?.position).toEqual({ x: 600, y: 48 })
+    expect(nodeById.get('r2')?.position).toEqual({ x: 600, y: 396 })
 
     expect(nodeById.get('a')?.position).toEqual({
       x: ownedA.position.x + dx,
@@ -121,7 +122,7 @@ describe('workspace arrange canvas utils', () => {
     expect(ownedAfterA.position.y - spaceAfter!.y).toBe(ownedA.position.y - spaceBefore.y)
   })
 
-  it('packs smaller spaces into open gaps before starting a new row', () => {
+  it('rebalances space packing toward the viewport aspect ratio', () => {
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -157,6 +158,7 @@ describe('workspace arrange canvas utils', () => {
       nodes: [],
       spaces,
       wrapWidth: 1464,
+      viewport: { width: 1440, height: 900 },
       style: { spaceFit: 'keep', alignCanonicalSizes: false },
     })
 
@@ -169,10 +171,36 @@ describe('workspace arrange canvas utils', () => {
 
     expect(spaceA).toEqual({ x: 0, y: 0, width: 480, height: 520 })
     expect(spaceB).toEqual({ x: 492, y: 0, width: 480, height: 320 })
-    expect(spaceC).toEqual({ x: 984, y: 0, width: 480, height: 520 })
-    expect(spaceD).toEqual({ x: 492, y: 320 + packingGap, width: 240, height: 320 })
-    expect(spaceD!.y).toBeLessThan(spaceA!.y + spaceA!.height)
-    expect(spaceD!.y).toBeLessThan(spaceC!.y + spaceC!.height)
+    expect(spaceC).toEqual({ x: 492, y: 320 + packingGap, width: 480, height: 520 })
+    expect(spaceD).toEqual({ x: 0, y: 520 + packingGap, width: 240, height: 320 })
+  })
+
+  it('chooses a wider canvas packing when it better matches the viewport aspect ratio', () => {
+    const spaces: WorkspaceSpaceState[] = Array.from({ length: 6 }, (_, index) => ({
+      id: `space-${index + 1}`,
+      name: `Space ${index + 1}`,
+      directoryPath: '/tmp',
+      nodeIds: [],
+      rect: { x: 0, y: 0, width: 480, height: 336 },
+    }))
+
+    const result = arrangeWorkspaceCanvas({
+      nodes: [],
+      spaces,
+      wrapWidth: 500,
+      viewport: { width: 1920, height: 1080 },
+      style: { spaceFit: 'keep', alignCanonicalSizes: false },
+    })
+
+    const spaceRects = result.spaces.map(space => space.rect)
+    expect(spaceRects).toEqual([
+      { x: 0, y: 0, width: 480, height: 336 },
+      { x: 492, y: 0, width: 480, height: 336 },
+      { x: 984, y: 0, width: 480, height: 336 },
+      { x: 0, y: 348, width: 480, height: 336 },
+      { x: 492, y: 348, width: 480, height: 336 },
+      { x: 984, y: 348, width: 480, height: 336 },
+    ])
   })
 
   it('is deterministic for the same input', () => {

@@ -67,7 +67,7 @@ function createTaskData({
 }
 
 describe('workspace arrange semantic grouping', () => {
-  it('places ideas first, then task + linked agent, then fallback content below', () => {
+  it('places ideas first, then task + linked agent, then other content, preferring wide layouts', () => {
     const nodes = [
       createTerminalNode({
         id: 'note',
@@ -125,8 +125,8 @@ describe('workspace arrange semantic grouping', () => {
       y: task.position.y,
     })
     expect(terminal.position).toEqual({
-      x: note.position.x,
-      y: task.position.y + 672,
+      x: agent.position.x + 480,
+      y: task.position.y,
     })
   })
 

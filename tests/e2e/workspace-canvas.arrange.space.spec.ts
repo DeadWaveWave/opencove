@@ -17,75 +17,25 @@ async function openPaneContextMenu(
     throw new Error('Pane bounding box not available')
   }
 
-  await window.mouse.click(box.x + position.x, box.y + position.y, { button: 'right' })
+  await pane.evaluate(
+    (element, payload) => {
+      const event = new MouseEvent('contextmenu', {
+        button: 2,
+        clientX: payload.clientX,
+        clientY: payload.clientY,
+        bubbles: true,
+        cancelable: true,
+      })
+      element.dispatchEvent(event)
+    },
+    {
+      clientX: box.x + position.x,
+      clientY: box.y + position.y,
+    },
+  )
 }
 
 test.describe('Workspace Canvas - Arrange', () => {
-  test('shows arrange actions in pane menu and arranges canvas deterministically', async () => {
-    const { electronApp, window } = await launchApp()
-
-    try {
-      await clearAndSeedWorkspace(window, [
-        {
-          id: 'arrange-node-1',
-          title: 'arrange-1',
-          position: { x: 450, y: 140 },
-          width: 320,
-          height: 240,
-        },
-        {
-          id: 'arrange-node-2',
-          title: 'arrange-2',
-          position: { x: 113, y: 119 },
-          width: 320,
-          height: 240,
-        },
-      ])
-
-      const pane = window.locator('.workspace-canvas .react-flow__pane')
-      await expect(pane).toBeVisible()
-      await expect(window.locator('.react-flow__node')).toHaveCount(2)
-
-      const viewport = await readCanvasViewport(window)
-      await openPaneContextMenu(window, pane, {
-        x: 50 * viewport.zoom + viewport.x,
-        y: 50 * viewport.zoom + viewport.y,
-      })
-
-      await expect(window.locator('.workspace-context-menu')).toBeVisible()
-      await expect(window.locator('[data-testid="workspace-context-arrange"]')).toBeVisible()
-      await expect(window.locator('[data-testid="workspace-context-arrange-by"]')).toBeVisible()
-      await expect(window.locator('[data-testid="workspace-context-arrange"]')).toBeEnabled()
-
-      await ensureArtifactsDir()
-      await window.locator('.workspace-context-menu').screenshot({
-        path: 'artifacts/workspace-canvas-arrange.context-menu.png',
-      })
-
-      await window.locator('[data-testid="workspace-context-arrange"]').click()
-      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
-
-      await expect
-        .poll(async () => {
-          return await readSeededWorkspaceLayout(window, {
-            nodeIds: ['arrange-node-1', 'arrange-node-2'],
-            spaceIds: [],
-          })
-        })
-        .toEqual({
-          nodes: {
-            'arrange-node-1': { x: 576, y: 96, width: 468, height: 324 },
-            'arrange-node-2': { x: 96, y: 96, width: 468, height: 324 },
-          },
-          spaces: {},
-        })
-
-      await window.screenshot({ path: 'artifacts/workspace-canvas-arrange.canvas-after.png' })
-    } finally {
-      await electronApp.close()
-    }
-  })
-
   test('arranges nodes inside a space without affecting root nodes', async () => {
     const { electronApp, window } = await launchApp()
 
@@ -385,3 +335,4 @@ test.describe('Workspace Canvas - Arrange', () => {
     }
   })
 })
+

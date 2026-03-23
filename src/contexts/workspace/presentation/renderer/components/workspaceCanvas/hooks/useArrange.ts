@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
@@ -12,6 +12,7 @@ import {
 import type { ShowWorkspaceCanvasMessage } from '../types'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
+const DEFAULT_VIEWPORT_HEIGHT = 900
 const DEFAULT_VIEWPORT_MARGIN_PX = 96
 const MIN_WRAP_WIDTH_PX = 720
 const MAX_WRAP_WIDTH_PX = 3200
@@ -29,17 +30,14 @@ function resolveViewportSize(): { width: number; height: number } {
   return { width: Math.round(width), height: Math.round(height) }
 }
 
-function resolveWrapWidth(reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>): number {
-  const rawZoom = typeof reactFlow?.getZoom === 'function' ? reactFlow.getZoom() : 1
-  const zoom = Number.isFinite(rawZoom) && rawZoom > 0 ? rawZoom : 1
-
-  const viewportWidth =
-    typeof window !== 'undefined' && Number.isFinite(window.innerWidth) && window.innerWidth > 0
-      ? window.innerWidth
-      : DEFAULT_VIEWPORT_WIDTH
-
-  const flowWidth = viewportWidth / zoom
-  const wrapWidth = flowWidth - DEFAULT_VIEWPORT_MARGIN_PX
+export function resolveArrangeWrapWidth(viewport: { width: number; height: number }): number {
+  const defaultAspect = DEFAULT_VIEWPORT_WIDTH / DEFAULT_VIEWPORT_HEIGHT
+  const aspect =
+    viewport.height > 0 && Number.isFinite(viewport.width / viewport.height)
+      ? viewport.width / viewport.height
+      : defaultAspect
+  const wrapWidth =
+    (DEFAULT_VIEWPORT_WIDTH - DEFAULT_VIEWPORT_MARGIN_PX) * (aspect / defaultAspect)
 
   return Math.max(MIN_WRAP_WIDTH_PX, Math.min(MAX_WRAP_WIDTH_PX, Math.round(wrapWidth)))
 }
@@ -55,15 +53,14 @@ function summarizeWarnings(warnings: WorkspaceArrangeWarning[]): { skippedSpaceC
 }
 
 export function useWorkspaceCanvasArrange({
-  reactFlow,
   nodesRef,
   spacesRef,
   setNodes,
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
+  onFocusAllInViewport,
 }: {
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   setNodes: (
@@ -73,6 +70,7 @@ export function useWorkspaceCanvasArrange({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
+  onFocusAllInViewport?: () => void
 }): {
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
@@ -98,14 +96,23 @@ export function useWorkspaceCanvasArrange({
       }
 
       onRequestPersistFlush?.()
+
+      const schedule =
+        typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
+          ? window.requestAnimationFrame.bind(window)
+          : (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0)
+
+      schedule(() => {
+        onFocusAllInViewport?.()
+      })
     },
-    [onRequestPersistFlush, onSpacesChange, setNodes, spacesRef],
+    [onFocusAllInViewport, onRequestPersistFlush, onSpacesChange, setNodes, spacesRef],
   )
 
   const arrangeAll = useCallback(
     (style?: WorkspaceArrangeStyle) => {
-      const wrapWidth = resolveWrapWidth(reactFlow)
       const viewport = resolveViewportSize()
+      const wrapWidth = resolveArrangeWrapWidth(viewport)
       const result = arrangeWorkspaceAll({
         nodes: nodesRef.current,
         spaces: spacesRef.current,
@@ -124,13 +131,13 @@ export function useWorkspaceCanvasArrange({
         )
       }
     },
-    [commitArrange, nodesRef, onShowMessage, reactFlow, spacesRef, t],
+    [commitArrange, nodesRef, onShowMessage, spacesRef, t],
   )
 
   const arrangeCanvas = useCallback(
     (style?: WorkspaceArrangeStyle) => {
-      const wrapWidth = resolveWrapWidth(reactFlow)
       const viewport = resolveViewportSize()
+      const wrapWidth = resolveArrangeWrapWidth(viewport)
       const result = arrangeWorkspaceCanvas({
         nodes: nodesRef.current,
         spaces: spacesRef.current,
@@ -141,7 +148,7 @@ export function useWorkspaceCanvasArrange({
 
       commitArrange(result)
     },
-    [commitArrange, nodesRef, reactFlow, spacesRef],
+    [commitArrange, nodesRef, spacesRef],
   )
 
   const arrangeInSpace = useCallback(

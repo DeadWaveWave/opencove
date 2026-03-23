@@ -319,9 +319,9 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     setContextMenu: canvasState.setContextMenu,
-    reactFlow,
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
+    onFocusAllInViewport: focusAllInViewport,
   })
   workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
     setNodes,
