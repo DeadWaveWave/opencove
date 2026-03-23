@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, storageKey } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Node Create (Push-away)', () => {
-  test('pushes blocking windows to the right when creating a task in a crowded spot', async () => {
+  test('keeps blocking windows fixed and creates the task in a nearby vacancy', async () => {
     const { electronApp, window } = await launchApp()
     const clickPosition = { x: 280, y: 220 }
 
@@ -62,6 +62,8 @@ test.describe('Workspace Canvas - Node Create (Push-away)', () => {
               id?: string
               kind?: string
               position?: { x?: number; y?: number }
+              width?: number
+              height?: number
               task?: { requirement?: string } | null
             }>
           }>
@@ -86,8 +88,11 @@ test.describe('Workspace Canvas - Node Create (Push-away)', () => {
 
         return {
           createdX: created.position.x,
+          createdY: created.position.y,
           createdWidth: created.width,
+          createdHeight: created.height,
           existingX: existing.position.x,
+          existingY: existing.position.y ?? null,
         }
       }, storageKey)
 
@@ -95,8 +100,40 @@ test.describe('Workspace Canvas - Node Create (Push-away)', () => {
         throw new Error('failed to read persisted crowded create snapshot')
       }
 
-      expect(snapshot.createdX).toBe(clickPosition.x - snapshot.createdWidth / 2)
-      expect(snapshot.existingX).toBeGreaterThanOrEqual(snapshot.createdX + snapshot.createdWidth)
+      expect(snapshot.existingX).toBe(320)
+      expect(snapshot.existingY).toBe(220)
+
+      const createdRight = snapshot.createdX + snapshot.createdWidth
+      const createdBottom = snapshot.createdY + snapshot.createdHeight
+      const existingRight = snapshot.existingX + 460
+      const existingBottom = snapshot.existingY + 280
+
+      expect(
+        createdRight <= snapshot.existingX ||
+          snapshot.createdX >= existingRight ||
+          createdBottom <= snapshot.existingY ||
+          snapshot.createdY >= existingBottom,
+      ).toBe(true)
+
+      const createdTaskNode = window
+        .locator('.task-node')
+        .filter({ hasText: 'Crowded Task' })
+        .first()
+      await expect(createdTaskNode).toBeVisible()
+      await expect(pane).toBeVisible()
+
+      const bounds = await createdTaskNode.boundingBox()
+      const paneBounds = await pane.boundingBox()
+
+      if (!bounds || !paneBounds) {
+        throw new Error('failed to resolve created task or pane bounds')
+      }
+
+      const centeredX = bounds.x + bounds.width / 2
+      const centeredY = bounds.y + bounds.height / 2
+
+      expect(Math.abs(centeredX - (paneBounds.x + paneBounds.width / 2))).toBeLessThanOrEqual(48)
+      expect(Math.abs(centeredY - (paneBounds.y + paneBounds.height / 2))).toBeLessThanOrEqual(48)
     } finally {
       await electronApp.close()
     }

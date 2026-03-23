@@ -12,13 +12,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
 - In-canvas GitHub pull request chip for worktree-bound Spaces (opens on GitHub; requires `gh`).
 - Settings → Integrations tab with a GitHub PR links toggle (default on).
+- In-app update checker with stable/nightly tracking (nightly supports prompt only) plus a first-launch “What’s New” sheet after updates. (#49)
+- Workspace canvas: Label colors for Spaces and windows, plus a single-color filter. (#54)
+- Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
 
 ### 💅 Changed
 - Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
+- UI: Softened minimap node colors in light theme. (#47)
+- UI: Made modal dialogs opaque for clearer readability. (#48)
+- Spaces: dragging Terminal/Agent windows across directory-bound spaces now shows a compact confirmation, then moves with `DIR MISMATCH` labeling. (#51)
 
 ### 🐞 Fixed
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
 - Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
+- Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)
+- Windows: Fixed native select dropdown styling issues (notably dark mode) by using a custom select component across the UI. (#47)
+- Terminal: Fixed theme glitches when switching light/dark by syncing xterm theme with CSS tokens and reacting to theme change events. (#47)
+- Canvas: Stabilized auto input-mode detection to default to mouse semantics until high-confidence trackpad gestures are observed. (#47)
+- Worktree window: Fixed light theme text colors in the create/archive dialog. (#47)
+- Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)
+- Improved canvas drag smoothness under heavy terminal output by throttling terminal screen writes during viewport interaction while keeping output live. (#50)
+- Normalized node resize and terminal selection drags while the canvas is zoomed. (#56)
 - Stabilized and optimized space-bounded push-away reflow during node dragging to prevent edge overlaps/stacking. (#57)
 
 ---

@@ -69,15 +69,18 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
   onShowMessage?: ShowWorkspaceCanvasMessage
   resolveSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
   t: TranslateFn
-}): (input: ApplyOwnershipForDropInput) => void {
+}): (input: ApplyOwnershipForDropInput, options?: { allowDirectoryMismatch?: boolean }) => void {
   return useCallback(
-    ({
-      draggedNodeIds,
-      draggedNodePositionById,
-      dragStartNodePositionById,
-      dragStartAllNodePositionById,
-      dropFlowPoint,
-    }: ApplyOwnershipForDropInput) => {
+    (
+      {
+        draggedNodeIds,
+        draggedNodePositionById,
+        dragStartNodePositionById,
+        dragStartAllNodePositionById,
+        dropFlowPoint,
+      }: ApplyOwnershipForDropInput,
+      options?: { allowDirectoryMismatch?: boolean },
+    ) => {
       if (draggedNodeIds.length === 0) {
         return
       }
@@ -107,14 +110,14 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         .filter((node): node is Node<TerminalNodeData> => Boolean(node))
 
       const draggedDropRect = computeBoundingRect(draggedNodesForTarget)
-      const targetSpace = resolveSpaceAtPoint(
-        draggedDropRect
+      const dropTargetPoint =
+        draggedDropRect && nodeIds.length > 1
           ? {
               x: draggedDropRect.x + draggedDropRect.width / 2,
               y: draggedDropRect.y + draggedDropRect.height / 2,
             }
-          : dropFlowPoint,
-      )
+          : dropFlowPoint
+      const targetSpace = resolveSpaceAtPoint(dropTargetPoint)
       const targetSpaceId = targetSpace?.id ?? null
       const nodeIdSet = new Set(nodeIds)
       const anchorNodeId = nodeIds[0] ?? null
@@ -172,6 +175,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
           targetSpace,
           workspacePath,
           t,
+          { allowDirectoryMismatch: options?.allowDirectoryMismatch === true },
         )
 
         if (validationError) {

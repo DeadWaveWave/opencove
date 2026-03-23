@@ -142,16 +142,7 @@ function isCandidateTrackpadPanSample(sample: WheelInputSample): boolean {
   }
 
   const metrics = resolveWheelAxisMetrics(sample)
-
-  if (hasMeaningfulDualAxisGesture(metrics)) {
-    return true
-  }
-
-  if (metrics.dominant > STRONG_TRACKPAD_PIXEL_DELTA_MAX) {
-    return false
-  }
-
-  return hasFractionalDelta(metrics.absX) || hasFractionalDelta(metrics.absY)
+  return hasMeaningfulDualAxisGesture(metrics)
 }
 
 function resolveWheelSampleTiming(

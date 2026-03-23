@@ -99,6 +99,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
 
 interface SyncActionRefsParams {
   actionRefs: WorkspaceCanvasActionRefs
+  clearNodeSelection: () => void
   closeNode: (nodeId: string) => Promise<void>
   resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   copyAgentLastMessage: (nodeId: string) => Promise<void>
@@ -106,13 +107,15 @@ interface SyncActionRefsParams {
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
-  normalizeZoomOnTerminalClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: number
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
 }
 
 export function useWorkspaceCanvasSyncActionRefs({
   actionRefs,
+  clearNodeSelection,
   closeNode,
   resizeNode,
   copyAgentLastMessage,
@@ -120,10 +123,15 @@ export function useWorkspaceCanvasSyncActionRefs({
   updateNodeScrollback,
   updateTerminalTitle,
   renameTerminalTitle,
-  normalizeZoomOnTerminalClick,
+  focusNodeOnClick,
+  focusNodeTargetZoom,
   nodesRef,
   reactFlow,
 }: SyncActionRefsParams): void {
+  useLayoutEffect(() => {
+    actionRefs.clearNodeSelectionRef.current = clearNodeSelection
+  }, [actionRefs.clearNodeSelectionRef, clearNodeSelection])
+
   useLayoutEffect(() => {
     actionRefs.closeNodeRef.current = closeNode
   }, [actionRefs.closeNodeRef, closeNode])
@@ -162,7 +170,7 @@ export function useWorkspaceCanvasSyncActionRefs({
 
   useLayoutEffect(() => {
     actionRefs.normalizeViewportForTerminalInteractionRef.current = (nodeId: string) => {
-      if (!normalizeZoomOnTerminalClick) {
+      if (!focusNodeOnClick) {
         return
       }
 
@@ -171,12 +179,13 @@ export function useWorkspaceCanvasSyncActionRefs({
         return
       }
 
-      focusNodeInViewport(reactFlow, targetNode, { duration: 120, zoom: 1 })
+      focusNodeInViewport(reactFlow, targetNode, { duration: 120, zoom: focusNodeTargetZoom })
     }
   }, [
     actionRefs.normalizeViewportForTerminalInteractionRef,
+    focusNodeOnClick,
+    focusNodeTargetZoom,
     nodesRef,
-    normalizeZoomOnTerminalClick,
     reactFlow,
   ])
 }

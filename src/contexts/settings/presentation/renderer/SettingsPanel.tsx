@@ -8,10 +8,12 @@ import {
   type AgentProvider,
   type AgentSettings,
   type CanvasInputMode,
+  type FocusNodeTargetZoom,
   type TaskTitleProvider,
   type UiLanguage,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
+import type { AppUpdateState } from '@shared/contracts/dto'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
@@ -31,10 +33,16 @@ interface ProviderModelCatalogEntry {
 
 interface SettingsPanelProps {
   settings: AgentSettings
+  updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  isFocusNodeTargetZoomPreviewing: boolean
+  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChange: (settings: AgentSettings) => void
+  onCheckForUpdates: () => void
+  onDownloadUpdate: () => void
+  onInstallUpdate: () => void
   onClose: () => void
 }
 
@@ -67,10 +75,16 @@ function getFolderName(path: string): string {
 
 export function SettingsPanel({
   settings,
+  updateState,
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  isFocusNodeTargetZoomPreviewing,
+  onFocusNodeTargetZoomPreviewChange,
   onChange,
+  onCheckForUpdates,
+  onDownloadUpdate,
+  onInstallUpdate,
   onClose,
 }: SettingsPanelProps): React.JSX.Element {
   const { t } = useTranslation()
@@ -96,8 +110,10 @@ export function SettingsPanel({
     onChange({ ...settings, taskTitleProvider: provider })
   const updateTaskTitleModel = (model: string): void =>
     onChange({ ...settings, taskTitleModel: model })
-  const updateNormalizeZoomOnTerminalClick = (enabled: boolean): void =>
-    onChange({ ...settings, normalizeZoomOnTerminalClick: enabled })
+  const updateFocusNodeOnClick = (enabled: boolean): void =>
+    onChange({ ...settings, focusNodeOnClick: enabled })
+  const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
+    onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
   const updateDefaultTerminalWindowScalePercent = (percent: number): void =>
@@ -106,6 +122,16 @@ export function SettingsPanel({
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateUiFontSize = (fontSize: number): void =>
     onChange({ ...settings, uiFontSize: fontSize })
+  const updateUpdatePolicy = (policy: AgentSettings['updatePolicy']): void => {
+    const normalized = settings.updateChannel === 'nightly' && policy === 'auto' ? 'prompt' : policy
+    onChange({ ...settings, updatePolicy: normalized })
+  }
+
+  const updateUpdateChannel = (channel: AgentSettings['updateChannel']): void => {
+    const normalizedPolicy =
+      channel === 'nightly' && settings.updatePolicy === 'auto' ? 'prompt' : settings.updatePolicy
+    onChange({ ...settings, updateChannel: channel, updatePolicy: normalizedPolicy })
+  }
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
   const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
@@ -222,6 +248,12 @@ export function SettingsPanel({
     contentRef.current.scrollTop = 0
   }, [activePageId])
 
+  useEffect(() => {
+    if (activePageId !== 'canvas') {
+      onFocusNodeTargetZoomPreviewChange(false)
+    }
+  }, [activePageId, onFocusNodeTargetZoomPreviewChange])
+
   const NavButton = ({
     id,
     label,
@@ -245,8 +277,14 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="settings-backdrop" onClick={onClose}>
-      <section className="settings-panel" onClick={e => e.stopPropagation()}>
+    <div
+      className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
+      onClick={onClose}
+    >
+      <section
+        className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
+        onClick={e => e.stopPropagation()}
+      >
         <aside
           className="settings-panel__sidebar"
           aria-label={t('settingsPanel.nav.sectionsLabel')}
@@ -305,10 +343,18 @@ export function SettingsPanel({
                 uiTheme={settings.uiTheme}
                 uiFontSize={settings.uiFontSize}
                 terminalFontSize={settings.terminalFontSize}
+                updatePolicy={settings.updatePolicy}
+                updateChannel={settings.updateChannel}
+                updateState={updateState}
                 onChangeLanguage={updateLanguage}
                 onChangeUiTheme={updateUiTheme}
                 onChangeUiFontSize={updateUiFontSize}
                 onChangeTerminalFontSize={updateTerminalFontSize}
+                onChangeUpdatePolicy={updateUpdatePolicy}
+                onChangeUpdateChannel={updateUpdateChannel}
+                onCheckForUpdates={onCheckForUpdates}
+                onDownloadUpdate={onDownloadUpdate}
+                onInstallUpdate={onInstallUpdate}
               />
             ) : null}
 
@@ -345,14 +391,17 @@ export function SettingsPanel({
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}
-                normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
+                focusNodeOnClick={settings.focusNodeOnClick}
+                focusNodeTargetZoom={settings.focusNodeTargetZoom}
                 defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
                 onChangeCanvasInputMode={updateCanvasInputMode}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
-                onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
+                onChangeFocusNodeOnClick={updateFocusNodeOnClick}
+                onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
+                onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
                 onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
               />
             ) : null}

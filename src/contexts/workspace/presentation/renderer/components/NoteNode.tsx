@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { NodeFrame, Point } from '../types'
+import type { LabelColor } from '@shared/types/labelColor'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
@@ -15,6 +16,7 @@ interface NoteNodeInteractionOptions {
 
 interface NoteNodeProps {
   text: string
+  labelColor?: LabelColor | null
   position: Point
   width: number
   height: number
@@ -26,6 +28,7 @@ interface NoteNodeProps {
 
 export function NoteNode({
   text,
+  labelColor,
   position,
   width,
   height,
@@ -103,6 +106,13 @@ export function NoteNode({
       }}
     >
       <div className="note-node__header" data-node-drag-handle="true">
+        {labelColor ? (
+          <span
+            className="cove-label-dot cove-label-dot--solid"
+            data-cove-label-color={labelColor}
+            aria-hidden="true"
+          />
+        ) : null}
         <span className="note-node__title" data-testid="note-node-title">
           {t('noteNode.title')}
         </span>

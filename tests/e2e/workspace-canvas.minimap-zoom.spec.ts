@@ -130,7 +130,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       })
       expect(minimapNodeFill).not.toBe('none')
       const minimapNodeAlpha = parseAlpha(minimapNodeFill)
-      expect(minimapNodeAlpha).toBeGreaterThan(0.7)
+      // Light theme minimap nodes should be visible but not overly saturated.
+      expect(minimapNodeAlpha).toBeGreaterThan(0.45)
+      expect(minimapNodeAlpha).toBeLessThan(0.85)
 
       const screenshotPath = testInfo.outputPath('minimap-light.png')
       await window.screenshot({ path: screenshotPath })
@@ -212,6 +214,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
         .toBeGreaterThan(1.01)
 
       await expect(window.locator('.react-flow__node.dragging')).toHaveCount(0)
+
+      await pane.click({ position: { x: 40, y: 40 } })
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       const terminalBody = terminal.locator('.terminal-node__terminal')
       const terminalBox = await terminalBody.boundingBox()
@@ -375,6 +380,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
           return (await readCanvasViewport(window)).zoom
         })
         .toBeGreaterThan(1.01)
+
+      await pane.click({ position: { x: 40, y: 40 } })
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       await taskNode.locator('.task-node__requirement-input').click({
         position: { x: 48, y: 36 },

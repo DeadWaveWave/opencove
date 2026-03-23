@@ -79,7 +79,8 @@ node scripts/prepare-release.mjs 0.2.0 --dry-run
 ### Nightly 流程
 
 `nightly` 默认不改 `package.json` 版本号，也不要求更新 `CHANGELOG.md`。它的作用是把当前 `main` 的某个快照发给测试者。
-只有 `stable` release 才需要 bump `package.json.version`；`nightly` 只是开发快照，不是新的正式版本承诺。
+只有 `stable` release 才需要在仓库里 bump `package.json.version`；`nightly` 只是开发快照，不是新的正式版本承诺。
+但为了让应用内更新检测能正确比较版本，CI 在构建 nightly tag 时会临时把 `package.json.version` 改成对应的 nightly tag 版本；这个改动只发生在 CI 构建目录，不会回写仓库。
 
 推荐流程：
 
@@ -102,6 +103,14 @@ git push origin v0.2.0-nightly.20260312.1
 - `stable` 路径可以先运行 `pnpm release:version 0.2.0`，自动更新 `package.json` 和 `CHANGELOG.md` 模板。
 - `prepare-release` 会在 `major / minor` 版本自动插入 `✨ Highlights` 模板；`patch` 版本不会插入。
 - `nightly` 路径不需要运行 release 准备脚本；只要 push 合规 tag，CI 就会自动打包并发布 GitHub prerelease。
+- Auto Update 依赖 release assets 中的 channel metadata（如 `latest.yml` / `nightly.yml`），GitHub Actions 会随构建一起上传。
+
+## Nightly 定时发布（每天 04:00 北京时间）
+
+仓库提供一个定时任务：每天北京时间 `04:00` 自动从 `main` 打包并发布最新 `nightly`（GitHub prerelease）。
+
+- Workflow: `.github/workflows/nightly.yml`
+- Tag 形如：`v<package.json.version>-nightly.<YYYYMMDD>.<N>`
 
 ## 未签名/未公证的安装说明（给用户）
 

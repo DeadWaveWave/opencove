@@ -28,6 +28,11 @@ import type {
   ResolveAgentResumeSessionResult,
   ResolveGitHubPullRequestsInput,
   ResolveGitHubPullRequestsResult,
+  AppUpdateState,
+  ConfigureAppUpdatesInput,
+  GetReleaseNotesAutoRangeInput,
+  GetReleaseNotesRangeInput,
+  ReleaseNotesRangeResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -45,6 +50,7 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
+  SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalSessionMetadataEvent,
@@ -63,7 +69,12 @@ type UnsubscribeFn = () => void
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
+    allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     platform: process.platform,
+  },
+  windowChrome: {
+    setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.windowChromeSetTheme, payload),
   },
   clipboard: {
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),
@@ -121,6 +132,31 @@ const opencoveApi = {
       ): Promise<ResolveGitHubPullRequestsResult> =>
         invokeIpc(IPC_CHANNELS.integrationGithubResolvePullRequests, payload),
     },
+  },
+  update: {
+    getState: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateGetState),
+    configure: (payload: ConfigureAppUpdatesInput): Promise<AppUpdateState> =>
+      invokeIpc(IPC_CHANNELS.appUpdateConfigure, payload),
+    checkForUpdates: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateCheck),
+    downloadUpdate: (): Promise<AppUpdateState> => invokeIpc(IPC_CHANNELS.appUpdateDownload),
+    installUpdate: (): Promise<void> => invokeIpc(IPC_CHANNELS.appUpdateInstall),
+    onState: (listener: (state: AppUpdateState) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: AppUpdateState) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.appUpdateState, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.appUpdateState, handler)
+      }
+    },
+  },
+  releaseNotes: {
+    getRange: (payload: GetReleaseNotesRangeInput): Promise<ReleaseNotesRangeResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetRange, payload),
+    getAutoRange: (payload: GetReleaseNotesAutoRangeInput): Promise<ReleaseNotesRangeResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetAutoRange, payload),
   },
   pty: {
     listProfiles: (): Promise<ListTerminalProfilesResult> =>

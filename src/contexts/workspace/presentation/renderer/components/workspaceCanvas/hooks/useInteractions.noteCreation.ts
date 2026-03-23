@@ -22,18 +22,29 @@ export function createNoteNodeAtAnchor({
 }: {
   anchor: Point
   spaceAnchor?: Point
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  createNoteNode: (
+    anchor: Point,
+    options?: {
+      placement?: {
+        targetSpaceRect?: WorkspaceSpaceState['rect']
+      }
+    },
+  ) => Node<TerminalNodeData> | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
 }): void {
-  const created = createNoteNode(anchor)
+  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, spaceAnchor)
+  const created = createNoteNode(anchor, {
+    placement: {
+      targetSpaceRect: targetSpace?.rect ?? null,
+    },
+  })
   if (!created) {
     return
   }
 
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, spaceAnchor)
   if (!targetSpace) {
     return
   }

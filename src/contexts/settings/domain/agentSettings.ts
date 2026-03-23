@@ -1,34 +1,39 @@
+import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
+import {
+  isValidUpdateChannel,
+  isValidUpdatePolicy,
+  normalizeUpdatePolicyForChannel,
+} from './updateSettings'
+
+export {
+  FOCUS_NODE_TARGET_ZOOM_STEP,
+  MAX_FOCUS_NODE_TARGET_ZOOM,
+  MIN_FOCUS_NODE_TARGET_ZOOM,
+} from './focusNodeTargetZoom'
+export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
+
 export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
-
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
-
 export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
-
 export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
-
 export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
-
 export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
-
 export type WorktreeNameSuggestionAgentProvider =
   (typeof WORKTREE_NAME_SUGGESTION_PROVIDERS)[number]
 
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
-
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
 
 export const UI_LANGUAGES = ['en', 'zh-CN'] as const
-
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
 export const UI_THEMES = ['system', 'light', 'dark'] as const
-
 export type UiTheme = (typeof UI_THEMES)[number]
 
 export type TerminalProfileId = string | null
-
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
 export const MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 120
 export const MIN_TERMINAL_FONT_SIZE = 10
@@ -40,46 +45,11 @@ export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
 
-export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
-  'claude-code': 'Claude Code',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-  gemini: 'Gemini CLI',
-}
-
-export interface AgentProviderCapabilities {
-  taskTitle: boolean
-  worktreeNameSuggestion: boolean
-  runtimeObservation: 'jsonl' | 'provider-api' | 'none'
-  experimental: boolean
-}
-
-export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCapabilities> = {
-  'claude-code': {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  codex: {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  opencode: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'provider-api',
-    experimental: false,
-  },
-  gemini: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'none',
-    experimental: false,
-  },
-}
+export {
+  AGENT_PROVIDER_CAPABILITIES,
+  AGENT_PROVIDER_LABEL,
+  type AgentProviderCapabilities,
+} from './agentSettings.providerMeta'
 
 const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
 
@@ -113,12 +83,17 @@ export interface AgentSettings {
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
-  normalizeZoomOnTerminalClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: FocusNodeTargetZoom
   canvasInputMode: CanvasInputMode
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   uiFontSize: number
   githubPullRequestsEnabled: boolean
+  updatePolicy: AppUpdatePolicy
+  updateChannel: AppUpdateChannel
+  releaseNotesSeenVersion: string | null
+  hideWorktreeMismatchDropWarning: boolean
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -150,12 +125,17 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTitleProvider: 'default',
   taskTitleModel: '',
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
-  normalizeZoomOnTerminalClick: true,
+  focusNodeOnClick: true,
+  focusNodeTargetZoom: 1,
   canvasInputMode: 'auto',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   uiFontSize: 18,
   githubPullRequestsEnabled: true,
+  updatePolicy: 'prompt',
+  updateChannel: 'stable',
+  releaseNotesSeenVersion: null,
+  hideWorktreeMismatchDropWarning: false,
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -418,9 +398,14 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.taskTagOptions,
     DEFAULT_AGENT_SETTINGS.taskTagOptions,
   )
-  const normalizeZoomOnTerminalClick =
+  const focusNodeOnClick =
+    normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
-    DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick
+    DEFAULT_AGENT_SETTINGS.focusNodeOnClick
+  const focusNodeTargetZoom = normalizeFocusNodeTargetZoom(
+    value.focusNodeTargetZoom,
+    DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
+  )
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
@@ -452,6 +437,21 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const githubPullRequestsEnabled =
     normalizeBoolean(value.githubPullRequestsEnabled) ??
     DEFAULT_AGENT_SETTINGS.githubPullRequestsEnabled
+  const updateChannel = isValidUpdateChannel(value.updateChannel)
+    ? value.updateChannel
+    : DEFAULT_AGENT_SETTINGS.updateChannel
+  let updatePolicy = isValidUpdatePolicy(value.updatePolicy)
+    ? normalizeUpdatePolicyForChannel(value.updatePolicy, updateChannel)
+    : DEFAULT_AGENT_SETTINGS.updatePolicy
+  updatePolicy = normalizeUpdatePolicyForChannel(updatePolicy, updateChannel)
+  const releaseNotesSeenVersion =
+    typeof value.releaseNotesSeenVersion === 'string' &&
+    value.releaseNotesSeenVersion.trim().length > 0
+      ? value.releaseNotesSeenVersion.trim()
+      : DEFAULT_AGENT_SETTINGS.releaseNotesSeenVersion
+  const hideWorktreeMismatchDropWarning =
+    normalizeBoolean(value.hideWorktreeMismatchDropWarning) ??
+    DEFAULT_AGENT_SETTINGS.hideWorktreeMismatchDropWarning
 
   return {
     language,
@@ -470,11 +470,16 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTitleProvider,
     taskTitleModel,
     taskTagOptions,
-    normalizeZoomOnTerminalClick,
+    focusNodeOnClick,
+    focusNodeTargetZoom,
     canvasInputMode,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     uiFontSize,
     githubPullRequestsEnabled,
+    updatePolicy,
+    updateChannel,
+    releaseNotesSeenVersion,
+    hideWorktreeMismatchDropWarning,
   }
 }

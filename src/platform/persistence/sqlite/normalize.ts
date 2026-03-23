@@ -1,4 +1,9 @@
 import { MAX_PERSISTED_SCROLLBACK_CHARS } from './constants'
+import type { LabelColor, NodeLabelColorOverride } from '../../../shared/types/labelColor'
+import {
+  normalizeLabelColor,
+  normalizeNodeLabelColorOverride,
+} from '../../../shared/types/labelColor'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -44,6 +49,7 @@ export type NormalizedPersistedNode = {
   width: number
   height: number
   kind: string
+  labelColorOverride: NodeLabelColorOverride
   status: string | null
   startedAt: string | null
   endedAt: string | null
@@ -60,6 +66,7 @@ export type NormalizedPersistedSpace = {
   id: string
   name: string
   directoryPath: string
+  labelColor: LabelColor | null
   nodeIds: string[]
   rect: { x: number; y: number; width: number; height: number } | null
 }
@@ -196,6 +203,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         width: normalizeFiniteNumber(node.width, 0),
         height: normalizeFiniteNumber(node.height, 0),
         kind: normalizeString(node.kind, 'terminal'),
+        labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         status: typeof node.status === 'string' ? node.status : null,
         startedAt: typeof node.startedAt === 'string' ? node.startedAt : null,
         endedAt: typeof node.endedAt === 'string' ? node.endedAt : null,
@@ -231,6 +239,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         id: spaceId,
         name: normalizeString(space.name),
         directoryPath: normalizeString(space.directoryPath),
+        labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeNodeIds(space.nodeIds),
         rect: normalizeRect(space.rect),
       })

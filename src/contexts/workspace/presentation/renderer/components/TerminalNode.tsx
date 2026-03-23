@@ -5,12 +5,12 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
-import { TERMINAL_LAYOUT_SYNC_EVENT } from './terminalNode/constants'
 import {
   createTerminalCommandInputState,
   parseTerminalCommandInput,
 } from './terminalNode/commandInput'
 import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './terminalNode/inputBridge'
+import { registerTerminalLayoutSync } from './terminalNode/layoutSync'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './terminalNode/scrollback'
 import {
   clearCachedTerminalScreenStateInvalidation,
@@ -23,13 +23,18 @@ import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeInteraction } from './terminalNode/interaction'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
+import { resolveActiveUiTheme, resolveTerminalTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
+import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
+import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { shouldStopWheelPropagation } from './terminalNode/wheel'
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
+import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
+import { selectViewportInteractionActive } from './terminalNode/reactFlowState'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
@@ -38,6 +43,7 @@ export function TerminalNode({
   sessionId,
   title,
   kind,
+  labelColor,
   isSelected = false,
   isDragging = false,
   status,
@@ -56,9 +62,9 @@ export function TerminalNode({
   onCommandRun,
   onInteractionStart,
 }: TerminalNodeProps): JSX.Element {
-  const dragSurfaceSelectionMode = useStore(
-    state => (state as { coveDragSurfaceSelectionMode?: boolean }).coveDragSurfaceSelectionMode,
-  )
+  const isViewportInteractionActive = useStore(selectViewportInteractionActive)
+  const outputSchedulerRef = useRef<ReturnType<typeof createTerminalOutputScheduler> | null>(null)
+  const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
@@ -71,6 +77,10 @@ export function TerminalNode({
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
   }, [onCommandRun])
+  useEffect(() => {
+    isViewportInteractionActiveRef.current = isViewportInteractionActive
+    outputSchedulerRef.current?.onViewportInteractionActiveChange(isViewportInteractionActive)
+  }, [isViewportInteractionActive])
   const {
     scrollbackBufferRef,
     markScrollbackDirty,
@@ -99,6 +109,7 @@ export function TerminalNode({
       sessionId,
     })
   }, [sessionId])
+  const applyTerminalTheme = useTerminalThemeApplier({ terminalRef, containerRef })
   const { draftFrame, handleResizePointerDown } = useTerminalResize({
     position,
     width,
@@ -108,14 +119,7 @@ export function TerminalNode({
     scheduleScrollbackPublish,
     isPointerResizingRef,
   })
-
-  const sizeStyle = resolveTerminalNodeFrameStyle({
-    draftFrame,
-    position,
-    width,
-    height,
-  })
-
+  const sizeStyle = resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })
   useEffect(() => {
     if (sessionId.trim().length === 0) {
       return undefined
@@ -125,25 +129,20 @@ export function TerminalNode({
       attach?: (payload: { sessionId: string }) => Promise<void>
       detach?: (payload: { sessionId: string }) => Promise<void>
     }
-
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
-
+    const initialTerminalTheme = resolveTerminalTheme()
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily:
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      theme: {
-        background: '#0a0f1d',
-        foreground: '#d6e4ff',
-      },
+      theme: initialTerminalTheme,
       allowProposedApi: true,
       convertEol: true,
       scrollback: 5000,
       ...(initialDimensions ?? {}),
     })
-
     const fitAddon = new FitAddon()
     const serializeAddon = new SerializeAddon()
     terminal.loadAddon(fitAddon)
@@ -166,9 +165,11 @@ export function TerminalNode({
         terminal,
       }),
     )
-
+    let cancelMouseServicePatch: () => void = () => undefined
     if (containerRef.current) {
       terminal.open(containerRef.current)
+      containerRef.current.setAttribute('data-cove-terminal-theme', resolveActiveUiTheme())
+      cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
@@ -213,15 +214,21 @@ export function TerminalNode({
     let bufferedExitCode: number | null = null
     const ptyEventHub = getPtyEventHub()
 
+    const outputScheduler = createTerminalOutputScheduler({
+      terminal,
+      scrollbackBuffer,
+      markScrollbackDirty,
+    })
+    outputSchedulerRef.current = outputScheduler
+    outputScheduler.onViewportInteractionActiveChange(isViewportInteractionActiveRef.current)
+
     const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
       if (isHydrating) {
         bufferedDataChunks.push(event.data)
         return
       }
 
-      terminal.write(event.data)
-      scrollbackBuffer.append(event.data)
-      markScrollbackDirty()
+      outputScheduler.handleChunk(event.data)
     })
 
     const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
@@ -231,9 +238,7 @@ export function TerminalNode({
       }
 
       const exitMessage = `\\r\\n[process exited with code ${event.exitCode}]\\r\\n`
-      terminal.write(exitMessage)
-      scrollbackBuffer.append(exitMessage)
-      markScrollbackDirty(true)
+      outputScheduler.handleChunk(exitMessage, { immediateScrollbackPublish: true })
     })
 
     const attachPromise = Promise.resolve(ptyWithOptionalAttach.attach?.({ sessionId }))
@@ -326,29 +331,20 @@ export function TerminalNode({
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current)
     }
+    const disposeLayoutSync = registerTerminalLayoutSync(syncTerminalSize)
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible') {
-        syncTerminalSize()
-      }
-    }
-
-    const handleWindowFocus = () => {
+    const handleThemeChange = () => {
+      applyTerminalTheme()
       syncTerminalSize()
     }
-
-    const handleLayoutSync = () => {
-      syncTerminalSize()
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('focus', handleWindowFocus)
-    window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleLayoutSync)
+    window.addEventListener('opencove-theme-changed', handleThemeChange)
 
     return () => {
       const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
 
-      if (!isInvalidated && isTerminalHydratedRef.current) {
+      const hasPendingWrites = outputScheduler.hasPendingWrites()
+
+      if (!isInvalidated && isTerminalHydratedRef.current && !hasPendingWrites) {
         const serializedScreen = serializeAddon.serialize()
         if (serializedScreen.length > 0) {
           setCachedTerminalScreenState(nodeId, {
@@ -361,18 +357,20 @@ export function TerminalNode({
         }
       }
 
+      cancelMouseServicePatch()
       isDisposed = true
       const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
       void detachPromise?.catch(() => undefined)
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('focus', handleWindowFocus)
-      window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleLayoutSync)
+      disposeLayoutSync()
+      window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
       dataDisposable.dispose()
       binaryDisposable.dispose()
       unsubscribeData()
       unsubscribeExit()
       disposeTerminalSelectionTestHandle()
+      outputScheduler.dispose()
+      outputSchedulerRef.current = null
       ptyWriteQueue.dispose()
       if (isInvalidated) {
         cancelScrollbackPublish()
@@ -386,6 +384,7 @@ export function TerminalNode({
     }
   }, [
     cancelScrollbackPublish,
+    applyTerminalTheme,
     nodeId,
     disposeScrollbackPublish,
     markScrollbackDirty,
@@ -412,7 +411,7 @@ export function TerminalNode({
   }, [height, syncTerminalSize, width])
 
   const isAgentNode = kind === 'agent'
-  const hasSelectedDragSurface = dragSurfaceSelectionMode === true && (isSelected || isDragging)
+  const hasSelectedDragSurface = isSelected || isDragging
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
     handlePointerDownCapture: handleTerminalBodyPointerDownCapture,
@@ -471,6 +470,7 @@ export function TerminalNode({
         title={title}
         kind={kind}
         status={status}
+        labelColor={labelColor ?? null}
         directoryMismatch={directoryMismatch}
         onTitleCommit={onTitleCommit}
         onClose={onClose}

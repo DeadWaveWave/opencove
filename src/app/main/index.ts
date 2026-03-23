@@ -6,6 +6,7 @@ import { hydrateCliPathForPackagedApp } from '../../platform/os/CliEnvironment'
 import { registerIpcHandlers } from './ipc/registerIpcHandlers'
 import { setRuntimeIconTestState } from './iconTestHarness'
 import { resolveRuntimeIconPath } from './runtimeIcon'
+import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 const APP_USER_DATA_DIRECTORY_NAME = 'opencove'
@@ -239,6 +240,12 @@ function createWindow(): void {
     ...(placeWindowOffscreen ? { x: E2E_OFFSCREEN_COORDINATE, y: E2E_OFFSCREEN_COORDINATE } : {}),
     autoHideMenuBar: true,
     ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' } : {}),
+    ...(process.platform === 'win32'
+      ? {
+          titleBarStyle: 'hidden',
+          titleBarOverlay: resolveTitleBarOverlay('dark'),
+        }
+      : {}),
     ...(runtimeIconPath ? { icon: runtimeIconPath } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
@@ -249,7 +256,7 @@ function createWindow(): void {
     },
   })
 
-  mainWindow.on('ready-to-show', () => {
+  const showWindow = (): void => {
     if (e2eWindowMode === 'hidden') {
       return
     }
@@ -266,7 +273,25 @@ function createWindow(): void {
     }
 
     mainWindow.show()
+  }
+
+  mainWindow.on('ready-to-show', () => {
+    showWindow()
   })
+
+  // 兜底：Electron #42409 - titleBarOverlay + show:false 时 ready-to-show 在 Windows 上可能不触发
+  const useReadyToShowFallback = process.platform === 'win32' && e2eWindowMode === 'normal'
+  if (useReadyToShowFallback) {
+    const READY_TO_SHOW_FALLBACK_MS = 2000
+    const fallbackTimer = setTimeout(() => {
+      if (!mainWindow.isDestroyed() && !mainWindow.isVisible()) {
+        showWindow()
+      }
+    }, READY_TO_SHOW_FALLBACK_MS)
+    const clearFallback = (): void => clearTimeout(fallbackTimer)
+    mainWindow.once('ready-to-show', clearFallback)
+    mainWindow.once('closed', clearFallback)
+  }
 
   mainWindow.webContents.setWindowOpenHandler(details => {
     if (shouldOpenUrlExternally(details.url)) {

@@ -118,6 +118,7 @@ export function ModelOverrideSection(props: {
                   <input
                     type="text"
                     data-testid={`settings-custom-model-add-input-${provider}`}
+                    className="cove-field"
                     value={addInputValue}
                     placeholder={t('settingsPanel.models.addModelPlaceholder')}
                     onChange={event => onChangeAddModelInput(provider, event.target.value)}

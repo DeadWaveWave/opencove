@@ -25,6 +25,7 @@ function isRetryableLaunchError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return (
     message.includes('Process failed to launch') ||
+    message.includes('electronApplication.firstWindow') ||
     message.includes('SIGABRT') ||
     message.includes('SIGSEGV') ||
     message.includes('Target page, context or browser has been closed')

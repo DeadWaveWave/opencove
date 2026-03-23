@@ -26,6 +26,11 @@ import type {
   ResolveAgentResumeSessionResult,
   ResolveGitHubPullRequestsInput,
   ResolveGitHubPullRequestsResult,
+  AppUpdateState,
+  ConfigureAppUpdatesInput,
+  GetReleaseNotesAutoRangeInput,
+  GetReleaseNotesRangeInput,
+  ReleaseNotesRangeResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
@@ -43,6 +48,7 @@ import type {
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
+  SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalSessionMetadataEvent,
@@ -59,7 +65,11 @@ type UnsubscribeFn = () => void
 export interface OpenCoveApi {
   meta: {
     isTest: boolean
+    allowWhatsNewInTests: boolean
     platform: string
+  }
+  windowChrome: {
+    setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
   }
   clipboard: {
     readText: () => Promise<string>
@@ -96,6 +106,18 @@ export interface OpenCoveApi {
         payload: ResolveGitHubPullRequestsInput,
       ) => Promise<ResolveGitHubPullRequestsResult>
     }
+  }
+  update: {
+    getState: () => Promise<AppUpdateState>
+    configure: (payload: ConfigureAppUpdatesInput) => Promise<AppUpdateState>
+    checkForUpdates: () => Promise<AppUpdateState>
+    downloadUpdate: () => Promise<AppUpdateState>
+    installUpdate: () => Promise<void>
+    onState: (listener: (state: AppUpdateState) => void) => UnsubscribeFn
+  }
+  releaseNotes: {
+    getRange: (payload: GetReleaseNotesRangeInput) => Promise<ReleaseNotesRangeResult>
+    getAutoRange: (payload: GetReleaseNotesAutoRangeInput) => Promise<ReleaseNotesRangeResult>
   }
   pty: {
     listProfiles?: () => Promise<ListTerminalProfilesResult>

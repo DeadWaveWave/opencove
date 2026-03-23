@@ -1,3 +1,5 @@
+import { enMessages } from './en.messages'
+
 export const en = {
   common: {
     add: 'Add',
@@ -61,6 +63,27 @@ export const en = {
     commandCenter: 'Command Center',
     commandCenterHint: 'Command Center ({{primary}} / {{secondary}})',
     commandCenterFallbackTitle: 'Search',
+    updateAvailableShort: 'Update',
+    updateAvailableTitle: 'Version {{version}} is available',
+    updateDownloadingTitle: 'Downloading version {{version}} ({{percent}})',
+    restartToUpdateShort: 'Restart',
+    restartToUpdateTitle: 'Version {{version}} is ready to install',
+  },
+  whatsNew: {
+    title: "What's New",
+    subtitleRange: 'Updated from {{fromVersion}} to {{toVersion}}.',
+    loading: 'Loading release notes…',
+    empty: 'No release notes found for this update.',
+    viewCompare: 'View full compare on GitHub',
+    viewChangelog: 'View CHANGELOG on GitHub',
+    truncated: 'Showing the first {{count}} changes.',
+    sections: {
+      added: 'Added',
+      fixed: 'Fixed',
+      changed: 'Changed',
+      docs: 'Docs',
+      other: 'Other',
+    },
   },
   commandCenter: {
     title: 'Command Center',
@@ -144,6 +167,40 @@ export const en = {
       },
       interfaceFontSize: 'Interface Font Size',
       terminalFontSize: 'Terminal Font Size',
+      updates: {
+        title: 'Updates',
+        help: 'Follow GitHub Releases and choose how OpenCove applies app updates.',
+        currentVersionLabel: 'Current Version',
+        policyLabel: 'Update Behavior',
+        policyHelp: 'Ignore updates, prompt before downloading, or install automatically.',
+        channelLabel: 'Release Channel',
+        channelHelp: 'Choose which release stream OpenCove follows.',
+        statusLabel: 'Status',
+        actionsLabel: 'Actions',
+        checkNow: 'Check for Updates',
+        downloadNow: 'Download Update',
+        restartToUpdate: 'Restart to Update',
+        policy: {
+          off: 'Do Not Update',
+          prompt: 'Prompt Me',
+          auto: 'Auto Update',
+        },
+        channel: {
+          stable: 'Stable',
+          nightly: 'Nightly',
+        },
+        status: {
+          disabled: 'Update checks are turned off.',
+          unsupported: 'Update checks are unavailable in this build.',
+          idle: 'Waiting for the next background check.',
+          checking: 'Checking GitHub Releases…',
+          available: 'Version {{version}} is available.',
+          downloading: 'Downloading version {{version}} ({{percent}}).',
+          downloaded: 'Version {{version}} is ready to install.',
+          upToDate: 'You are up to date.',
+          error: 'Update failed: {{message}}',
+        },
+      },
     },
     agent: {
       title: 'Agent',
@@ -171,8 +228,11 @@ export const en = {
         mouse: 'Mouse',
       },
       initialWindowSize: 'Initial Window Size',
-      autoZoomLabel: 'Auto-zoom on Click',
-      autoZoomHelp: 'Zoom to 100% when a node is clicked.',
+      focusOnClickLabel: 'Auto-focus on Click',
+      focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
+      focusTargetZoomLabel: 'Target Zoom',
+      focusTargetZoomHelp:
+        'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
     },
     tasks: {
       title: 'Task Configuration',
@@ -283,6 +343,20 @@ export const en = {
     selectionHint_other: 'Selected {{count}} windows.',
     showMinimap: 'Show minimap',
     hideMinimap: 'Hide minimap',
+    labelColorFilterAll: 'Show all',
+    clearLabelColorFilter: 'Clear label filter',
+  },
+  labelColors: {
+    title: 'Label Color',
+    autoInherit: 'Auto (inherit Space)',
+    none: 'None',
+    gray: 'Gray',
+    red: 'Red',
+    orange: 'Orange',
+    yellow: 'Yellow',
+    green: 'Green',
+    blue: 'Blue',
+    purple: 'Purple',
   },
   space: {
     defaultName: 'Space {{count}}',
@@ -390,41 +464,11 @@ export const en = {
     closeFirstRequired: 'This action requires closing all windows first.',
     closeFailed: 'Some windows could not be closed. Close them manually and try again.',
   },
-  messages: {
-    agentLaunchFailed: 'Agent launch failed: {{message}}',
-    agentResumeFailed: 'Agent resume failed: {{message}}',
-    terminalLaunchFailed: 'Terminal launch failed: {{message}}',
-    fallbackTerminalFailed: 'Fallback terminal launch also failed: {{message}}',
-    agentPromptRequired: 'Agent prompt cannot be empty.',
-    taskRequirementRequired: 'Task requirement cannot be empty.',
-    taskTitleGenerateFailed: 'Auto-generation failed: {{message}}',
-    taskCreateFailed: 'Failed to create task: {{message}}',
-    taskUpdateFailed: 'Failed to update task: {{message}}',
-    taskNodePlacementFailed: 'Task node cannot be placed. Tidy the canvas and try again.',
-    taskTitleOrAutoGenerateRequired: 'Enter a task title or enable auto-generation.',
-    taskTitleRequired: 'Enter a task title.',
-    taskLinkedAgentWindowOpen: 'Close the currently linked agent window before continuing.',
-    taskResumeSessionMissing:
-      'This agent record does not have a verified resumeSessionId, so it cannot resume.',
-    resumeSessionMissing: 'This agent does not have a verified resumeSessionId yet.',
-    noTerminalSlotNearby:
-      'No room nearby in the current view. Move or close some terminal windows first.',
-    noWindowSlotOnRight:
-      'No room to the right of the current agent. Move or close some windows first.',
-    noWindowSlotNearby: 'No room nearby in the current view. Move or close some windows first.',
-    noteToTaskRequiresContent: 'Cannot convert an empty note into a task.',
-    agentLastMessageUnavailable:
-      'The current agent is unavailable, so the last message cannot be copied.',
-    agentLastMessageStartedAtMissing:
-      'The current agent is missing its session start time, so the last message cannot be copied.',
-    agentLastMessageEmpty: 'The current agent does not have a last message to copy yet.',
-    agentLastMessageCopied: 'The last agent message was copied.',
-    agentLastMessageCopyFailed: 'Failed to copy the last agent message: {{message}}',
-    agentSpaceDirectoryMismatch:
-      'Agent windows cannot enter or leave a space with a different directory.',
-    terminalSpaceDirectoryMismatch:
-      'Terminal windows cannot enter or leave a space with a different directory.',
-    taskSpaceMoveBlocked: 'Tasks with active agents cannot be moved between spaces.',
-    spaceRequiresNode: 'Space must include at least one task or agent.',
+  spaceDropGuard: {
+    title: 'Move to “{{name}}”?',
+    description: 'Windows keep their current directory and will be labeled {{badge}}.',
+    dontShowAgain: "Don't warn again",
+    move: 'Move',
   },
+  messages: enMessages,
 } as const

@@ -27,7 +27,7 @@ async function dispatchCanvasWheel(
 }
 
 test.describe('Workspace Canvas - Auto Switch Wheel', () => {
-  test('auto mode keeps mouse zoom on a single ambiguous vertical pixel wheel', async () => {
+  test('auto mode keeps mouse zoom across repeated ambiguous vertical pixel wheel input', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -51,6 +51,11 @@ test.describe('Workspace Canvas - Auto Switch Wheel', () => {
       await dispatchCanvasWheel(window, {
         deltaX: 0,
         deltaY: -4.5,
+        deltaMode: 0,
+      })
+      await dispatchCanvasWheel(window, {
+        deltaX: 0,
+        deltaY: -4.25,
         deltaMode: 0,
       })
 

@@ -1,5 +1,5 @@
-import { useCallback, type MutableRefObject } from 'react'
-import type { Node, ReactFlowInstance, Viewport } from '@xyflow/react'
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { useStoreApi, type Node, type ReactFlowInstance, type Viewport } from '@xyflow/react'
 import type {
   CanvasInputModalityState,
   DetectedCanvasInputMode,
@@ -66,6 +66,9 @@ export function useWorkspaceCanvasTrackpadGestures({
   reactFlow,
   onViewportChange,
 }: UseTrackpadGesturesParams): { handleCanvasWheelCapture: (event: WheelEvent) => void } {
+  const reactFlowStore = useStoreApi()
+  const interactionClearTimerRef = useRef<number | null>(null)
+
   const handleCanvasWheelCapture = useCallback(
     (event: WheelEvent) => {
       const wheelTarget = resolveWheelTarget(event.target)
@@ -107,6 +110,19 @@ export function useWorkspaceCanvasTrackpadGestures({
       if (decision.canvasAction === null) {
         return
       }
+
+      reactFlowStore.setState({
+        coveViewportInteractionActive: true,
+      } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+      if (interactionClearTimerRef.current !== null) {
+        window.clearTimeout(interactionClearTimerRef.current)
+      }
+      interactionClearTimerRef.current = window.setTimeout(() => {
+        interactionClearTimerRef.current = null
+        reactFlowStore.setState({
+          coveViewportInteractionActive: false,
+        } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+      }, 120)
 
       event.preventDefault()
       event.stopPropagation()
@@ -171,6 +187,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       canvasRef,
       inputModalityStateRef,
       onViewportChange,
+      reactFlowStore,
       reactFlow,
       resolvedCanvasInputMode,
       setDetectedCanvasInputMode,
@@ -178,6 +195,15 @@ export function useWorkspaceCanvasTrackpadGestures({
       viewportRef,
     ],
   )
+
+  useEffect(() => {
+    return () => {
+      if (interactionClearTimerRef.current !== null) {
+        window.clearTimeout(interactionClearTimerRef.current)
+        interactionClearTimerRef.current = null
+      }
+    }
+  }, [])
 
   return { handleCanvasWheelCapture }
 }

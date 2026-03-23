@@ -23,6 +23,7 @@ interface UseApplyNodeChangesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   selectedSpaceIdsRef: MutableRefObject<string[]>
   dragSelectedSpaceIdsRef?: MutableRefObject<string[] | null>
+  exclusiveNodeDragAnchorIdRef?: MutableRefObject<string | null>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
 }
@@ -37,13 +38,23 @@ export function useWorkspaceCanvasApplyNodeChanges({
   spacesRef,
   selectedSpaceIdsRef,
   dragSelectedSpaceIdsRef,
+  exclusiveNodeDragAnchorIdRef,
   onSpacesChange,
   onRequestPersistFlush,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
   return useCallback(
     (changes: NodeChange<Node<TerminalNodeData>>[]) => {
       const wasDragging = isNodeDraggingRef.current
-      const filteredChanges = changes.filter(change => change.type !== 'select')
+      const exclusiveAnchorId = exclusiveNodeDragAnchorIdRef?.current ?? null
+      const filteredChanges = changes
+        .filter(change => change.type !== 'select')
+        .filter(change => {
+          if (!exclusiveAnchorId) {
+            return true
+          }
+
+          return change.type !== 'position' || change.id === exclusiveAnchorId
+        })
 
       if (!filteredChanges.length) {
         return
@@ -116,10 +127,14 @@ export function useWorkspaceCanvasApplyNodeChanges({
       const anchorChange = positionChanges.find(change => change.position !== undefined) ?? null
       const activeSelectedSpaceIds = dragSelectedSpaceIdsRef?.current ?? selectedSpaceIdsRef.current
       const hasSelectedSpaces = activeSelectedSpaceIds.length > 0
-      const shouldSyncSelectedSpaces = hasSelectedSpaces && anchorChange !== null
+      const prevAnchor = anchorChange
+        ? (currentNodes.find(node => node.id === anchorChange.id) ?? null)
+        : null
+      const anchorIsSelected = prevAnchor?.selected === true
+      const shouldSyncSelectedSpaces =
+        hasSelectedSpaces && anchorChange !== null && anchorIsSelected
 
       if (shouldSyncSelectedSpaces) {
-        const prevAnchor = currentNodes.find(node => node.id === anchorChange.id) ?? null
         const nextAnchor = nextNodes.find(node => node.id === anchorChange.id) ?? null
 
         if (prevAnchor && nextAnchor) {
@@ -231,14 +246,20 @@ export function useWorkspaceCanvasApplyNodeChanges({
         const anchorNodeId =
           positionChanges.find(change => change.dragging !== false && change.position !== undefined)
             ?.id ?? draggedNodeIds[0]
-        const prevAnchor = anchorNodeId
+        const previousDragAnchor = anchorNodeId
           ? (currentNodes.find(node => node.id === anchorNodeId) ?? null)
           : null
-        const nextAnchor = anchorNodeId
+        const nextDragAnchor = anchorNodeId
           ? (nextNodes.find(node => node.id === anchorNodeId) ?? null)
           : null
-        const dragDx = prevAnchor && nextAnchor ? nextAnchor.position.x - prevAnchor.position.x : 0
-        const dragDy = prevAnchor && nextAnchor ? nextAnchor.position.y - prevAnchor.position.y : 0
+        const dragDx =
+          previousDragAnchor && nextDragAnchor
+            ? nextDragAnchor.position.x - previousDragAnchor.position.x
+            : 0
+        const dragDy =
+          previousDragAnchor && nextDragAnchor
+            ? nextDragAnchor.position.y - previousDragAnchor.position.y
+            : 0
 
         const projected = projectWorkspaceNodeDragLayout({
           nodes: nextNodes,
@@ -270,6 +291,15 @@ export function useWorkspaceCanvasApplyNodeChanges({
 
       if (positionChanges.length > 0) {
         isNodeDraggingRef.current = isDraggingThisFrame
+      }
+
+      if (
+        exclusiveAnchorId &&
+        exclusiveNodeDragAnchorIdRef &&
+        positionChanges.length > 0 &&
+        !isDraggingThisFrame
+      ) {
+        exclusiveNodeDragAnchorIdRef.current = null
       }
 
       if (!isNodeDraggingRef.current) {
@@ -343,6 +373,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
     [
       applyPendingScrollbacks,
       clearAgentLaunchToken,
+      exclusiveNodeDragAnchorIdRef,
       isNodeDraggingRef,
       nodesRef,
       normalizePosition,

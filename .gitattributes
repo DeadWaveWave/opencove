@@ -1,0 +1,6 @@
+# 所有文本文件统一使用 LF，避免 Windows CRLF 污染 CI 格式检查
+* text=auto eol=lf
+
+# Windows 批处理脚本必须保留 CRLF
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf

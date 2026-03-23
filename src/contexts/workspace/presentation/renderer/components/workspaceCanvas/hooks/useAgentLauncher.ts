@@ -7,7 +7,10 @@ import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { resolveDefaultAgentWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
-import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
+import {
+  assignNodeToSpaceAndExpand,
+  findContainingSpaceByAnchor,
+} from './useInteractions.spaceAssignment'
 
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
@@ -66,19 +69,7 @@ export function useWorkspaceCanvasAgentLauncher({
 
       const model = resolveAgentModel(agentSettings, provider)
 
-      const anchorSpace =
-        spacesRef.current.find(space => {
-          if (!space.rect) {
-            return false
-          }
-
-          return (
-            cursorAnchor.x >= space.rect.x &&
-            cursorAnchor.x <= space.rect.x + space.rect.width &&
-            cursorAnchor.y >= space.rect.y &&
-            cursorAnchor.y <= space.rect.y + space.rect.height
-          )
-        }) ?? null
+      const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
 
       const executionDirectory =
         anchorSpace && anchorSpace.directoryPath.trim().length > 0
@@ -106,6 +97,9 @@ export function useWorkspaceCanvasAgentLauncher({
             title: buildAgentNodeTitle(provider, modelLabel),
             anchor,
             kind: 'agent',
+            placement: {
+              targetSpaceRect: anchorSpace?.rect ?? null,
+            },
             agent: {
               provider,
               prompt: '',
@@ -138,6 +132,7 @@ export function useWorkspaceCanvasAgentLauncher({
             setNodes,
             onSpacesChange,
           })
+
           onRequestPersistFlush?.()
         } catch (error) {
           onShowMessage?.(

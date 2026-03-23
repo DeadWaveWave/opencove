@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
@@ -51,6 +51,8 @@ interface UseWorkspaceCanvasLifecycleParams {
   requestNodeDeleteRef: React.MutableRefObject<(nodeIds: string[]) => void>
   focusNodeId?: string | null
   focusSequence?: number
+  focusNodeTargetZoom: number
+  isFocusNodeTargetZoomPreviewing: boolean
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
 }
 
@@ -78,8 +80,13 @@ export function useWorkspaceCanvasLifecycle({
   requestNodeDeleteRef,
   focusNodeId,
   focusSequence,
+  focusNodeTargetZoom,
+  isFocusNodeTargetZoomPreviewing,
   nodesRef,
 }: UseWorkspaceCanvasLifecycleParams): void {
+  const previewSequenceRef = useRef(0)
+  const viewportBeforePreviewRef = useRef<Viewport | null>(null)
+
   useEffect(() => {
     setIsMinimapVisible(persistedMinimapVisible)
   }, [persistedMinimapVisible, setIsMinimapVisible, workspaceId])
@@ -123,6 +130,42 @@ export function useWorkspaceCanvasLifecycle({
   useEffect(() => {
     viewportRef.current = viewport
   }, [viewport, viewportRef])
+
+  useEffect(() => {
+    if (!isFocusNodeTargetZoomPreviewing) {
+      const previousViewport = viewportBeforePreviewRef.current
+      if (!previousViewport) {
+        return
+      }
+
+      viewportBeforePreviewRef.current = null
+      const sequence = (previewSequenceRef.current += 1)
+
+      void reactFlow.setViewport(previousViewport, { duration: 0 }).then(() => {
+        if (previewSequenceRef.current !== sequence) {
+          return
+        }
+
+        viewportRef.current = previousViewport
+      })
+
+      return
+    }
+
+    if (!viewportBeforePreviewRef.current) {
+      viewportBeforePreviewRef.current = reactFlow.getViewport()
+    }
+
+    const sequence = (previewSequenceRef.current += 1)
+
+    void reactFlow.zoomTo(focusNodeTargetZoom, { duration: 0 }).then(() => {
+      if (previewSequenceRef.current !== sequence) {
+        return
+      }
+
+      viewportRef.current = reactFlow.getViewport()
+    })
+  }, [focusNodeTargetZoom, isFocusNodeTargetZoomPreviewing, reactFlow, viewportRef])
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -197,6 +240,6 @@ export function useWorkspaceCanvasLifecycle({
       return
     }
 
-    focusNodeInViewport(reactFlow, target, { duration: 220, zoom: 1 })
-  }, [focusNodeId, focusSequence, nodesRef, reactFlow])
+    focusNodeInViewport(reactFlow, target, { duration: 220, zoom: focusNodeTargetZoom })
+  }, [focusNodeId, focusNodeTargetZoom, focusSequence, nodesRef, reactFlow])
 }

@@ -112,6 +112,7 @@ token.json
 test-results/
 playwright-report/
 artifacts/
+tmp/
 
 # Other
 .cove/

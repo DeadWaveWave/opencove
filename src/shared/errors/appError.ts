@@ -49,6 +49,12 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'persistence.io_failed': 'Unable to save data to storage.',
     'persistence.invalid_state': 'The workspace state could not be saved.',
     'persistence.invalid_node_id': 'The terminal history could not be saved.',
+    'update.get_state_failed': 'Unable to read the update status.',
+    'update.configure_failed': 'Unable to apply update settings.',
+    'update.check_failed': 'Unable to check for updates.',
+    'update.download_failed': 'Unable to download the update.',
+    'update.install_failed': 'Unable to install the update.',
+    'release_notes.get_range_failed': 'Unable to load release notes.',
   }
 }
 

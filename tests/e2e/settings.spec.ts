@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { launchApp } from './workspace-canvas.helpers'
+import { launchApp, selectCoveOption } from './workspace-canvas.helpers'
 
 test.describe('Settings', () => {
   test('persists agent provider and list-based custom model options', async ({
@@ -45,13 +45,17 @@ test.describe('Settings', () => {
       await expect(taskConfigurationNav).toBeVisible()
 
       const languageSelect = window.locator('[data-testid="settings-language"]')
-      await expect(languageSelect).toBeVisible()
-      await languageSelect.selectOption('zh-CN')
+      const languageTrigger = window.locator('[data-testid="settings-language-trigger"]')
+      await expect(languageTrigger).toBeVisible()
+      await selectCoveOption(window, 'settings-language', 'zh-CN')
+      await expect(languageSelect).toHaveValue('zh-CN')
       await expect(window.locator('.settings-panel__header h2')).toHaveText('设置')
 
       const uiThemeSelect = window.locator('[data-testid="settings-ui-theme"]')
-      await expect(uiThemeSelect).toBeVisible()
-      await uiThemeSelect.selectOption('light')
+      const uiThemeTrigger = window.locator('[data-testid="settings-ui-theme-trigger"]')
+      await expect(uiThemeTrigger).toBeVisible()
+      await selectCoveOption(window, 'settings-ui-theme', 'light')
+      await expect(uiThemeSelect).toHaveValue('light')
       await expect
         .poll(() =>
           window.evaluate(() => {
@@ -68,21 +72,87 @@ test.describe('Settings', () => {
       await expect(terminalFontSize).toBeVisible()
       await terminalFontSize.fill('15')
 
+      const updatePolicy = window.locator('[data-testid="settings-update-policy"]')
+      const updatePolicyTrigger = window.locator('[data-testid="settings-update-policy-trigger"]')
+      await expect(updatePolicyTrigger).toBeVisible()
+      await expect(updatePolicy).toHaveValue('prompt')
+      await selectCoveOption(window, 'settings-update-policy', 'auto')
+      await expect(updatePolicy).toHaveValue('auto')
+
+      const updateChannel = window.locator('[data-testid="settings-update-channel"]')
+      const updateChannelTrigger = window.locator('[data-testid="settings-update-channel-trigger"]')
+      await expect(updateChannelTrigger).toBeVisible()
+      await expect(updateChannel).toHaveValue('stable')
+      await selectCoveOption(window, 'settings-update-channel', 'nightly')
+      await expect(updateChannel).toHaveValue('nightly')
+      await expect(updatePolicy).toHaveValue('prompt')
+
       await canvasNav.click()
       const canvasInputMode = window.locator('[data-testid="settings-canvas-input-mode"]')
-      await expect(canvasInputMode).toBeVisible()
-      await canvasInputMode.selectOption('trackpad')
-
-      const normalizeZoomToggle = window.locator(
-        '[data-testid="settings-normalize-zoom-on-terminal-click"]',
+      const canvasInputModeTrigger = window.locator(
+        '[data-testid="settings-canvas-input-mode-trigger"]',
       )
-      await expect(normalizeZoomToggle).toBeVisible()
-      await normalizeZoomToggle.uncheck()
+      await expect(canvasInputModeTrigger).toBeVisible()
+      await expect(canvasInputMode).toHaveValue('auto')
+      await selectCoveOption(window, 'settings-canvas-input-mode', 'trackpad')
+      await expect(canvasInputMode).toHaveValue('trackpad')
+
+      const focusTargetZoom = window.locator('[data-testid="settings-focus-node-target-zoom"]')
+      await expect(focusTargetZoom).toBeVisible()
+      const sliderBox = await focusTargetZoom.boundingBox()
+      if (!sliderBox) {
+        throw new Error('focus target zoom slider bounding box unavailable')
+      }
+
+      await window.mouse.move(
+        sliderBox.x + sliderBox.width * 0.6,
+        sliderBox.y + sliderBox.height / 2,
+      )
+      await window.mouse.down()
+      await expect(window.locator('.settings-panel')).toHaveClass(/settings-panel--preview/)
+      await expect(window.locator('.settings-panel__sidebar')).toBeHidden()
+      await expect(window.locator('.settings-panel__header')).toBeHidden()
+      await expect(
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
+      ).toBeHidden()
+
+      await window.mouse.up()
+      await expect(window.locator('.settings-panel')).not.toHaveClass(/settings-panel--preview/)
+      await expect(window.locator('.settings-panel__sidebar')).toBeVisible()
+      await expect(window.locator('.settings-panel__header')).toBeVisible()
+      await expect(
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
+      ).toBeVisible()
+
+      await focusTargetZoom.evaluate((element, value) => {
+        const input = element as HTMLInputElement
+        const next = String(value)
+        const prototype = Object.getPrototypeOf(input)
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
+        const setter = descriptor?.set
+        if (setter) {
+          setter.call(input, next)
+        } else {
+          input.value = next
+        }
+
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      }, 1.37)
+      await expect(focusTargetZoom).toHaveValue('1.37')
+
+      const focusToggle = window.locator('[data-testid="settings-focus-node-on-click"]')
+      await expect(focusToggle).toBeVisible()
+      await focusToggle.uncheck()
 
       await agentNav.click()
-      const defaultProvider = window.locator('#settings-default-provider')
-      await expect(defaultProvider).toBeVisible()
-      await defaultProvider.selectOption('codex')
+      const defaultProvider = window.locator('[data-testid="settings-default-provider"]')
+      const defaultProviderTrigger = window.locator(
+        '[data-testid="settings-default-provider-trigger"]',
+      )
+      await expect(defaultProviderTrigger).toBeVisible()
+      await selectCoveOption(window, 'settings-default-provider', 'codex')
+      await expect(defaultProvider).toHaveValue('codex')
 
       const customModelEnabled = window.locator(
         '[data-testid="settings-custom-model-enabled-codex"]',
@@ -177,11 +247,14 @@ test.describe('Settings', () => {
                   codex?: string[]
                 }
                 taskTagOptions?: string[]
-                normalizeZoomOnTerminalClick?: boolean
+                focusNodeOnClick?: boolean
+                focusNodeTargetZoom?: number
                 canvasInputMode?: string
                 uiTheme?: string
                 terminalFontSize?: number
                 uiFontSize?: number
+                updatePolicy?: string
+                updateChannel?: string
               }
             }
             return parsed.settings ?? null
@@ -194,11 +267,14 @@ test.describe('Settings', () => {
         expect.objectContaining({
           language: 'zh-CN',
           defaultProvider: 'codex',
-          normalizeZoomOnTerminalClick: false,
+          focusNodeOnClick: false,
+          focusNodeTargetZoom: 1.37,
           canvasInputMode: 'trackpad',
           uiTheme: 'light',
           terminalFontSize: 15,
           uiFontSize: 20,
+          updatePolicy: 'prompt',
+          updateChannel: 'nightly',
         }),
       )
 
@@ -229,10 +305,13 @@ test.describe('Settings', () => {
       expect(persistedSettings?.customModelOptionsByProvider?.codex).toContain('gpt-5.2-codex')
       expect(persistedSettings?.taskTagOptions).toContain('ops')
       expect(persistedSettings?.taskTagOptions).not.toContain('feature')
-      expect(persistedSettings?.normalizeZoomOnTerminalClick).toBe(false)
+      expect(persistedSettings?.focusNodeOnClick).toBe(false)
+      expect(persistedSettings?.focusNodeTargetZoom).toBe(1.37)
       expect(persistedSettings?.canvasInputMode).toBe('trackpad')
       expect(persistedSettings?.terminalFontSize).toBe(15)
       expect(persistedSettings?.uiFontSize).toBe(20)
+      expect(persistedSettings?.updatePolicy).toBe('prompt')
+      expect(persistedSettings?.updateChannel).toBe('nightly')
     } finally {
       await electronApp.close()
     }

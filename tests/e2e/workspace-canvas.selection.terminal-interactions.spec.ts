@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
+  selectCoveOption,
   storageKey,
 } from './workspace-canvas.helpers'
 
@@ -110,8 +111,10 @@ test.describe('Workspace Canvas - Selection', () => {
       await settingsButton.click({ noWaitAfter: true })
 
       const languageSelect = window.locator('[data-testid="settings-language"]')
-      await expect(languageSelect).toBeVisible()
-      await languageSelect.selectOption('zh-CN')
+      const languageTrigger = window.locator('[data-testid="settings-language-trigger"]')
+      await expect(languageTrigger).toBeVisible()
+      await selectCoveOption(window, 'settings-language', 'zh-CN')
+      await expect(languageSelect).toHaveValue('zh-CN')
       await expect(settingsButton).toHaveAttribute('aria-label', '设置')
 
       await window.locator('.settings-panel__close').click()

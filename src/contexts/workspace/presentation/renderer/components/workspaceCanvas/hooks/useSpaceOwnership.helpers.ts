@@ -376,9 +376,7 @@ export function applyDirectoryExpectationForDrop({
         }
 
         if (node.data.kind === 'agent' && node.data.agent) {
-          const nextExpectedDirectory = targetSpace
-            ? targetDirectory
-            : node.data.agent.executionDirectory
+          const nextExpectedDirectory = targetDirectory
 
           if (node.data.agent.expectedDirectory === nextExpectedDirectory) {
             return node
@@ -404,7 +402,7 @@ export function applyDirectoryExpectationForDrop({
               ? node.data.executionDirectory
               : workspacePath
 
-          const nextExpectedDirectory = targetSpace ? targetDirectory : executionDirectory
+          const nextExpectedDirectory = targetDirectory
 
           if (
             node.data.executionDirectory === executionDirectory &&

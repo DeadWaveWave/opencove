@@ -1,6 +1,7 @@
-import type React from 'react'
+import type * as React from 'react'
 import type { Edge, Node, NodeTypes, OnNodesChange, Viewport } from '@xyflow/react'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
+import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   AgentNodeData,
   TerminalNodeData,
@@ -13,6 +14,7 @@ import type {
   SelectionDraftState,
   SpaceActionMenuState,
   SpaceVisual,
+  SpaceWorktreeMismatchDropWarningState,
   SpaceWorktreeDialogState,
   TaskCreatorState,
   TaskEditorState,
@@ -76,6 +78,7 @@ export interface WorkspaceCanvasViewProps {
   commitSpaceRename: (spaceId: string) => void
   cancelSpaceRename: () => void
   startSpaceRename: (spaceId: string) => void
+  setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   selectedNodeCount: number
   isMinimapVisible: boolean
   minimapNodeColor: (node: Node<TerminalNodeData>) => string
@@ -96,6 +99,7 @@ export interface WorkspaceCanvasViewProps {
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
+  setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
   taskCreator: TaskCreatorState | null
   taskTitleProviderLabel: string
   taskTitleModelLabel: string
@@ -114,6 +118,9 @@ export interface WorkspaceCanvasViewProps {
     React.SetStateAction<NodeDeleteConfirmationState | null>
   >
   confirmNodeDelete: () => Promise<void>
+  spaceWorktreeMismatchDropWarning: SpaceWorktreeMismatchDropWarningState | null
+  cancelSpaceWorktreeMismatchDropWarning: () => void
+  continueSpaceWorktreeMismatchDropWarning: () => void
   agentSettings: WorkspaceCanvasProps['agentSettings']
   workspacePath: string
   spaceActionMenu: SpaceActionMenuState | null
