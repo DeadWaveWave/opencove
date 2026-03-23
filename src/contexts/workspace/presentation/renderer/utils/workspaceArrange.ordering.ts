@@ -55,7 +55,7 @@ function createNodeArrangeItem(node: Node<TerminalNodeData>): WorkspaceArrangeIt
   }
 }
 
-function resolveNodeCreatedAt(node: Node<TerminalNodeData>): number | null {
+export function resolveNodeCreatedAt(node: Node<TerminalNodeData>): number | null {
   const taskCreatedAt =
     node.data.kind === 'task' && typeof node.data.task?.createdAt === 'string'
       ? node.data.task.createdAt.trim()
@@ -78,7 +78,7 @@ function resolveNodeCreatedAt(node: Node<TerminalNodeData>): number | null {
   return null
 }
 
-function resolveNodeKindRank(kind: TerminalNodeData['kind']): number {
+export function resolveNodeKindRank(kind: TerminalNodeData['kind']): number {
   switch (kind) {
     case 'task':
       return 1

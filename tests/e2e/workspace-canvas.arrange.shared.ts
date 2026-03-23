@@ -1,8 +1,85 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
+import { readCanvasViewport } from './workspace-canvas.helpers'
 
 export async function ensureArtifactsDir(): Promise<void> {
   await mkdir('artifacts', { recursive: true })
+}
+
+export async function openPaneContextMenuAtFlowPoint(
+  window: Page,
+  pane: Locator,
+  point: { x: number; y: number },
+): Promise<void> {
+  const box = await pane.boundingBox()
+  if (!box) {
+    throw new Error('Pane bounding box not available')
+  }
+
+  const viewport = await readCanvasViewport(window)
+  const clientX = box.x + point.x * viewport.zoom + viewport.x
+  const clientY = box.y + point.y * viewport.zoom + viewport.y
+
+  await pane.evaluate(
+    (element, payload) => {
+      const event = new MouseEvent('contextmenu', {
+        button: 2,
+        clientX: payload.clientX,
+        clientY: payload.clientY,
+        bubbles: true,
+        cancelable: true,
+      })
+      element.dispatchEvent(event)
+    },
+    { clientX, clientY },
+  )
+}
+
+export async function clickPaneAtFlowPoint(
+  window: Page,
+  pane: Locator,
+  point: { x: number; y: number },
+): Promise<void> {
+  const box = await pane.boundingBox()
+  if (!box) {
+    throw new Error('Pane bounding box not available')
+  }
+
+  const viewport = await readCanvasViewport(window)
+  await window.mouse.click(
+    box.x + point.x * viewport.zoom + viewport.x,
+    box.y + point.y * viewport.zoom + viewport.y,
+  )
+}
+
+export async function openPaneContextMenuInSpace(
+  window: Page,
+  pane: Locator,
+  spaceId: string,
+): Promise<void> {
+  const layout = await readSeededWorkspaceLayout(window, { nodeIds: [], spaceIds: [spaceId] })
+  const rect = layout.spaces[spaceId]
+  if (!rect) {
+    throw new Error(`Space rect not available: ${spaceId}`)
+  }
+
+  const inset = 12
+  await openPaneContextMenuAtFlowPoint(window, pane, {
+    x: rect.x + inset,
+    y: rect.y + Math.max(inset, Math.min(760, rect.height - inset)),
+  })
+}
+
+export function rectsOverlap(
+  left: { x: number; y: number; width: number; height: number },
+  right: { x: number; y: number; width: number; height: number },
+): boolean {
+  return (
+    left.x < right.x + right.width &&
+    left.x + left.width > right.x &&
+    left.y < right.y + right.height &&
+    left.y + left.height > right.y
+  )
 }
 
 export async function readSeededWorkspaceLayout(

@@ -6,8 +6,13 @@ import {
   resolveFlowPacking,
   type Rect,
 } from './workspaceArrange.flowPacking'
-import { createArrangeItemsForSpaceNodes } from './workspaceArrange.ordering'
 import { resolveBestDenseGridPacking } from './workspaceArrange.gridPacking'
+import {
+  createWorkspaceArrangeSemanticFlowItems,
+  createWorkspaceArrangeSemanticGridItems,
+  createWorkspaceArrangeSemanticGroups,
+  resolveWorkspaceArrangeSemanticNodePlacements,
+} from './workspaceArrange.semantic'
 import { resolveViewportAspectRatio } from './workspaceArrange.viewport'
 import {
   resolveArrangeStyle,
@@ -21,7 +26,6 @@ import {
   normalizeWorkspaceNodesToCanonicalSizing,
   resolveArrangeCanonicalBucket,
   resolveCanonicalBucketCellSize,
-  resolveCanonicalNodeGridSpan,
   WORKSPACE_CANONICAL_GUTTER_PX,
 } from './workspaceNodeSizing'
 
@@ -101,11 +105,10 @@ export function arrangeWorkspaceInSpace({
   }
 
   const effectiveGap = Math.round(gap / 2)
-  const items = createArrangeItemsForSpaceNodes({
+  const semanticGroups = createWorkspaceArrangeSemanticGroups({
     nodes: normalizedOwnedNodes,
     order: resolvedStyle.order,
   })
-  const kindById = new Map(normalizedOwnedNodes.map(node => [node.id, node.data.kind]))
   const maxCanonicalColumns = (() => {
     if (!resolvedStyle.alignCanonicalSizes) {
       return undefined
@@ -119,20 +122,28 @@ export function arrangeWorkspaceInSpace({
     innerRect.height > 0 ? innerRect.width / innerRect.height : resolveViewportAspectRatio(viewport)
 
   const start = { x: innerRect.x, y: innerRect.y }
+  const semanticGroupGap = resolvedStyle.alignCanonicalSizes
+    ? WORKSPACE_CANONICAL_GUTTER_PX
+    : effectiveGap
+  const semanticFlowItems = createWorkspaceArrangeSemanticFlowItems({
+    groups: semanticGroups,
+    gap: semanticGroupGap,
+  })
 
   const placements = (() => {
     if (resolvedStyle.spaceFit === 'keep') {
-      if (items.some(item => item.width > innerRect.width || item.height > innerRect.height)) {
+      if (
+        semanticFlowItems.some(
+          item => item.width > innerRect.width || item.height > innerRect.height,
+        )
+      ) {
         return null
       }
 
       if (resolvedStyle.alignCanonicalSizes) {
         const cell = resolveCanonicalBucketCellSize(canonicalBucket)
         const packed = resolveBestDenseGridPacking({
-          items: items.map(item => ({
-            id: item.id,
-            ...resolveCanonicalNodeGridSpan(kindById.get(item.id) ?? 'terminal'),
-          })),
+          items: createWorkspaceArrangeSemanticGridItems(semanticGroups),
           start,
           cell,
           gap: WORKSPACE_CANONICAL_GUTTER_PX,
@@ -146,7 +157,7 @@ export function arrangeWorkspaceInSpace({
       }
 
       return resolveBoundedFlowPacking({
-        items,
+        items: semanticFlowItems,
         bounds: innerRect,
         gap: effectiveGap,
       })
@@ -155,10 +166,7 @@ export function arrangeWorkspaceInSpace({
     if (resolvedStyle.alignCanonicalSizes) {
       const cell = resolveCanonicalBucketCellSize(canonicalBucket)
       const packed = resolveBestDenseGridPacking({
-        items: items.map(item => ({
-          id: item.id,
-          ...resolveCanonicalNodeGridSpan(kindById.get(item.id) ?? 'terminal'),
-        })),
+        items: createWorkspaceArrangeSemanticGridItems(semanticGroups),
         start,
         cell,
         gap: WORKSPACE_CANONICAL_GUTTER_PX,
@@ -172,10 +180,11 @@ export function arrangeWorkspaceInSpace({
       }
     }
 
-    const maxItemWidth = Math.max(...items.map(item => item.width))
+    const maxItemWidth =
+      semanticFlowItems.length > 0 ? Math.max(...semanticFlowItems.map(item => item.width)) : 0
     const wrapWidth = Math.max(innerRect.width, maxItemWidth)
 
-    return resolveFlowPacking({ items, start, wrapWidth, gap: effectiveGap })
+    return resolveFlowPacking({ items: semanticFlowItems, start, wrapWidth, gap: effectiveGap })
   })()
 
   if (!placements) {
@@ -188,8 +197,13 @@ export function arrangeWorkspaceInSpace({
   }
 
   let didChange = false
+  const nodePlacements = resolveWorkspaceArrangeSemanticNodePlacements({
+    groups: semanticGroups,
+    groupPlacements: placements,
+    gap: semanticGroupGap,
+  })
   const nextNodes = normalizedNodes.map(node => {
-    const placement = placements.get(node.id)
+    const placement = nodePlacements.get(node.id)
     if (!placement) {
       return node
     }

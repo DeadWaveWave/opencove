@@ -16,6 +16,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
 - Workspace canvas: arrange spaces before root nodes during canvas/global arrange. (#42)
 - Workspace canvas: default arrange now keeps standard-size alignment always on and resizes spaces to the fitted tiled result. (#42)
+- Workspace canvas: tiled arrange now keeps note/task planning nodes on the left and packs linked task-agent pairs together on one row within the active arrange scope. (#42)
 - Workspace canvas: dense packing now favors balanced aspect ratios over ultra-tall stacks for more shelf-like results. (#42)
 - Workspace canvas: drag now previews live snap guides continuously and only commits magnetic snapping on release for steadier pointer movement. (#42)
 

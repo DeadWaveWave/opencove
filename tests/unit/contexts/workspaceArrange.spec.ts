@@ -396,14 +396,15 @@ describe('workspace arrange utils', () => {
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
     const xs = {
-      task: nodeById.get('task')!.position.x,
       note: nodeById.get('note')!.position.x,
+      task: nodeById.get('task')!.position.x,
       agent: nodeById.get('agent')!.position.x,
       terminal: nodeById.get('terminal')!.position.x,
     }
 
-    expect(xs.task).toBeLessThan(xs.note)
+    expect(xs.note).toBeLessThan(xs.task)
     expect(xs.note).toBeLessThan(xs.agent)
+    expect(xs.task).toBeLessThan(xs.agent)
     expect(xs.agent).toBeLessThan(xs.terminal)
   })
 

@@ -1,87 +1,13 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 import {
-  clearAndSeedWorkspace,
-  launchApp,
-  readCanvasViewport,
-  testWorkspacePath,
-} from './workspace-canvas.helpers'
-import { ensureArtifactsDir, readSeededWorkspaceLayout } from './workspace-canvas.arrange.shared'
-
-async function openPaneContextMenuAtFlowPoint(
-  window: Page,
-  pane: Locator,
-  point: { x: number; y: number },
-): Promise<void> {
-  const box = await pane.boundingBox()
-  if (!box) {
-    throw new Error('Pane bounding box not available')
-  }
-
-  const viewport = await readCanvasViewport(window)
-  const clientX = box.x + point.x * viewport.zoom + viewport.x
-  const clientY = box.y + point.y * viewport.zoom + viewport.y
-
-  await pane.evaluate(
-    (element, payload) => {
-      const event = new MouseEvent('contextmenu', {
-        button: 2,
-        clientX: payload.clientX,
-        clientY: payload.clientY,
-        bubbles: true,
-        cancelable: true,
-      })
-      element.dispatchEvent(event)
-    },
-    { clientX, clientY },
-  )
-}
-
-async function clickPaneAtFlowPoint(
-  window: Page,
-  pane: Locator,
-  point: { x: number; y: number },
-): Promise<void> {
-  const box = await pane.boundingBox()
-  if (!box) {
-    throw new Error('Pane bounding box not available')
-  }
-
-  const viewport = await readCanvasViewport(window)
-  await window.mouse.click(
-    box.x + point.x * viewport.zoom + viewport.x,
-    box.y + point.y * viewport.zoom + viewport.y,
-  )
-}
-
-async function openPaneContextMenuInSpace(
-  window: Page,
-  pane: Locator,
-  spaceId: string,
-): Promise<void> {
-  const layout = await readSeededWorkspaceLayout(window, { nodeIds: [], spaceIds: [spaceId] })
-  const rect = layout.spaces[spaceId]
-  if (!rect) {
-    throw new Error(`Space rect not available: ${spaceId}`)
-  }
-
-  const inset = 12
-  await openPaneContextMenuAtFlowPoint(window, pane, {
-    x: rect.x + inset,
-    y: rect.y + Math.max(inset, Math.min(760, rect.height - inset)),
-  })
-}
-
-function rectsOverlap(
-  left: { x: number; y: number; width: number; height: number },
-  right: { x: number; y: number; width: number; height: number },
-): boolean {
-  return (
-    left.x < right.x + right.width &&
-    left.x + left.width > right.x &&
-    left.y < right.y + right.height &&
-    left.y + left.height > right.y
-  )
-}
+  clickPaneAtFlowPoint,
+  ensureArtifactsDir,
+  openPaneContextMenuAtFlowPoint,
+  openPaneContextMenuInSpace,
+  readSeededWorkspaceLayout,
+  rectsOverlap,
+} from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Arrange', () => {
   test('arrange-by menu keeps toggles visible while applying the tiled layout', async () => {
@@ -438,10 +364,10 @@ test.describe('Workspace Canvas - Arrange', () => {
       expect(layout.nodes['mixed-task-1']).toMatchObject({ width: 228, height: 324 })
       expect(layout.nodes['mixed-task-2']).toMatchObject({ width: 228, height: 324 })
 
-      expect(layout.nodes['mixed-agent']).toMatchObject({ x: 124, y: 124 })
-      expect(layout.nodes['mixed-terminal']).toMatchObject({ x: 604, y: 124 })
-      expect(layout.nodes['mixed-task-1']).toMatchObject({ x: 604, y: 460 })
-      expect(layout.nodes['mixed-task-2']).toMatchObject({ x: 844, y: 460 })
+      expect(layout.nodes['mixed-task-1']).toMatchObject({ x: 124, y: 124 })
+      expect(layout.nodes['mixed-task-2']).toMatchObject({ x: 364, y: 124 })
+      expect(layout.nodes['mixed-agent']).toMatchObject({ x: 604, y: 124 })
+      expect(layout.nodes['mixed-terminal']).toMatchObject({ x: 124, y: 460 })
 
       const rects = ['mixed-agent', 'mixed-terminal', 'mixed-task-1', 'mixed-task-2'].map(
         id => layout.nodes[id],

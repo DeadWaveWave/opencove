@@ -3,10 +3,15 @@ import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
 import { computeBoundingRect, resolveFlowPacking, snapDown } from './workspaceArrange.flowPacking'
 import {
-  createArrangeItemsForCanvasRootNodes,
   createArrangeItemsForCanvasSpaces,
   type WorkspaceArrangeItem,
 } from './workspaceArrange.ordering'
+import {
+  createWorkspaceArrangeSemanticFlowItems,
+  createWorkspaceArrangeSemanticGridItems,
+  createWorkspaceArrangeSemanticGroups,
+  resolveWorkspaceArrangeSemanticNodePlacements,
+} from './workspaceArrange.semantic'
 import {
   computeOwnedNodeIdSet,
   resolveArrangeStyle,
@@ -21,7 +26,6 @@ import {
   normalizeWorkspaceNodesToCanonicalSizing,
   resolveArrangeCanonicalBucket,
   resolveCanonicalBucketCellSize,
-  resolveCanonicalNodeGridSpan,
   WORKSPACE_CANONICAL_GUTTER_PX,
 } from './workspaceNodeSizing'
 import { resolveBestDenseGridPacking } from './workspaceArrange.gridPacking'
@@ -120,7 +124,6 @@ export function arrangeWorkspaceCanvas({
   const nodesWithStandardSizing = canonicalSizingNormalized.nodes
 
   const nodeById = new Map(nodesWithStandardSizing.map(node => [node.id, node]))
-  const nodeKindById = new Map(nodesWithStandardSizing.map(node => [node.id, node.data.kind]))
 
   let didSpaceFitChange = false
   const fittedSpaces = spaces.map(space => {
@@ -170,12 +173,20 @@ export function arrangeWorkspaceCanvas({
     spaces: fittedSpaces,
     order: resolvedStyle.order,
   })
-  const rootItems = createArrangeItemsForCanvasRootNodes({
-    nodes: nodesWithStandardSizing,
-    spaces: fittedSpaces,
+  const rootGroups = createWorkspaceArrangeSemanticGroups({
+    nodes: nodesWithStandardSizing.filter(node => rootNodeIdSet.has(node.id)),
     order: resolvedStyle.order,
   })
-  const items = [...spaceItems, ...rootItems]
+  const rootItems: WorkspaceArrangeItem[] = rootGroups.map(group => ({
+    key: group.key,
+    kind: 'node',
+    id: group.key,
+    rect: group.rect,
+    createdAt: group.createdAt,
+    kindRank: group.kindRank,
+    area: group.area,
+  }))
+  const items: WorkspaceArrangeItem[] = [...spaceItems, ...rootItems]
 
   const bounding = computeBoundingRect(items.map(item => item.rect))
   if (!bounding) {
@@ -200,12 +211,33 @@ export function arrangeWorkspaceCanvas({
       ? placedSpaceBounding.y + placedSpaceBounding.height + sectionGap
       : start.y,
   }
+  const semanticGroupGap = resolvedStyle.alignCanonicalSizes
+    ? WORKSPACE_CANONICAL_GUTTER_PX
+    : packingGap
+  const rootFlowItems = createWorkspaceArrangeSemanticFlowItems({
+    groups: rootGroups,
+    gap: semanticGroupGap,
+  })
+  const rootFlowArrangeItems: WorkspaceArrangeItem[] = rootFlowItems.map(item => ({
+    key: item.id,
+    kind: 'node',
+    id: item.id,
+    rect: { x: 0, y: 0, width: item.width, height: item.height },
+    createdAt: null,
+    kindRank: 0,
+    area: item.width * item.height,
+  }))
   const rootPlacements = (() => {
     if (!resolvedStyle.alignCanonicalSizes) {
+      const maxItemWidth =
+        rootFlowArrangeItems.length > 0
+          ? Math.max(...rootFlowArrangeItems.map(item => item.rect.width))
+          : 0
+
       return resolveCanvasSectionPlacements({
-        items: rootItems,
+        items: rootFlowArrangeItems,
         start: rootStart,
-        wrapWidth: effectiveWrapWidth,
+        wrapWidth: Math.max(effectiveWrapWidth, maxItemWidth),
         gap: packingGap,
       })
     }
@@ -217,10 +249,7 @@ export function arrangeWorkspaceCanvas({
       Math.floor((effectiveWrapWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth),
     )
     const packed = resolveBestDenseGridPacking({
-      items: rootItems.map(item => ({
-        id: item.key,
-        ...resolveCanonicalNodeGridSpan(nodeKindById.get(item.id) ?? 'terminal'),
-      })),
+      items: createWorkspaceArrangeSemanticGridItems(rootGroups),
       start: rootStart,
       cell,
       gap: WORKSPACE_CANONICAL_GUTTER_PX,
@@ -229,10 +258,14 @@ export function arrangeWorkspaceCanvas({
     })
 
     if (!packed) {
+      const maxItemWidth =
+        rootFlowArrangeItems.length > 0
+          ? Math.max(...rootFlowArrangeItems.map(item => item.rect.width))
+          : 0
       return resolveCanvasSectionPlacements({
-        items: rootItems,
+        items: rootFlowArrangeItems,
         start: rootStart,
-        wrapWidth: effectiveWrapWidth,
+        wrapWidth: Math.max(effectiveWrapWidth, maxItemWidth),
         gap: packingGap,
       })
     }
@@ -257,13 +290,13 @@ export function arrangeWorkspaceCanvas({
   }
 
   const nodePlacementById = new Map<string, { x: number; y: number }>()
-  for (const item of rootItems) {
-    const placed = rootPlacements.get(item.key)
-    if (!placed) {
-      continue
-    }
-
-    nodePlacementById.set(item.id, placed)
+  const semanticNodePlacements = resolveWorkspaceArrangeSemanticNodePlacements({
+    groups: rootGroups,
+    groupPlacements: rootPlacements,
+    gap: semanticGroupGap,
+  })
+  for (const [nodeId, placement] of semanticNodePlacements.entries()) {
+    nodePlacementById.set(nodeId, placement)
   }
 
   const owningSpaceIdByNodeId = new Map<string, string>()
