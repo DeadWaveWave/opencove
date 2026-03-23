@@ -335,7 +335,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     DEFAULT_AGENT_SETTINGS.taskTagOptions,
   )
   const focusNodeOnClick =
-    normalizeBoolean(value.focusNodeOnClick) ?? DEFAULT_AGENT_SETTINGS.focusNodeOnClick
+    normalizeBoolean(value.focusNodeOnClick) ??
+    normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
+    DEFAULT_AGENT_SETTINGS.focusNodeOnClick
   const focusNodeTargetZoom = normalizeFocusNodeTargetZoom(
     value.focusNodeTargetZoom,
     DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
