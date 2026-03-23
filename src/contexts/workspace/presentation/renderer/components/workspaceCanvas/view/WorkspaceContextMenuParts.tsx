@@ -33,6 +33,7 @@ export function WorkspaceContextPaneMenuContent({
   openTaskCreator,
   openAgentLauncher,
   openAgentProviderSubmenu,
+  agentProviderToggleRef,
   isLoadingInstalledProviders,
   isAgentProviderSubmenuOpen,
   canArrangeCurrentScope,
@@ -48,6 +49,7 @@ export function WorkspaceContextPaneMenuContent({
   openTaskCreator: () => void
   openAgentLauncher: () => void
   openAgentProviderSubmenu: () => void
+  agentProviderToggleRef: React.RefObject<HTMLButtonElement | null>
   isLoadingInstalledProviders: boolean
   isAgentProviderSubmenuOpen: boolean
   canArrangeCurrentScope: boolean
@@ -108,6 +110,7 @@ export function WorkspaceContextPaneMenuContent({
           </span>
         </button>
         <button
+          ref={agentProviderToggleRef}
           type="button"
           data-testid="workspace-context-run-agent-provider-toggle"
           className="workspace-context-menu__split-toggle"
@@ -182,6 +185,7 @@ export function WorkspaceContextPaneMenuContent({
 export function WorkspaceContextSelectionMenuContent({
   createSpaceFromSelectedNodes,
   openLabelColorSubmenu,
+  labelColorButtonRef,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
   convertSelectedNoteToTask,
@@ -190,6 +194,7 @@ export function WorkspaceContextSelectionMenuContent({
 }: {
   createSpaceFromSelectedNodes: () => void
   openLabelColorSubmenu: () => void
+  labelColorButtonRef: React.RefObject<HTMLButtonElement | null>
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
   convertSelectedNoteToTask: () => void
@@ -211,6 +216,7 @@ export function WorkspaceContextSelectionMenuContent({
         </span>
       </button>
       <button
+        ref={labelColorButtonRef}
         type="button"
         data-testid="workspace-selection-label-color"
         onMouseEnter={openLabelColorSubmenu}
@@ -256,12 +262,14 @@ export function WorkspaceContextSelectionMenuContent({
 
 export function WorkspaceContextAgentProviderSubmenu({
   sortedInstalledProviders,
+  submenuRef,
   style,
   keepSubmenuOpen,
   scheduleSubmenuClose,
   openAgentLauncherForProvider,
 }: {
   sortedInstalledProviders: AgentProvider[]
+  submenuRef: React.RefObject<HTMLDivElement | null>
   style: React.CSSProperties
   keepSubmenuOpen: () => void
   scheduleSubmenuClose: () => void
@@ -269,6 +277,7 @@ export function WorkspaceContextAgentProviderSubmenu({
 }): React.JSX.Element {
   return (
     <div
+      ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-run-agent-provider-menu"
       style={style}
@@ -299,12 +308,14 @@ export function WorkspaceContextAgentProviderSubmenu({
 }
 
 export function WorkspaceContextLabelColorSubmenu({
+  submenuRef,
   style,
   keepSubmenuOpen,
   scheduleSubmenuClose,
   setSelectedNodeLabelColorOverride,
   closeContextMenu,
 }: {
+  submenuRef: React.RefObject<HTMLDivElement | null>
   style: React.CSSProperties
   keepSubmenuOpen: () => void
   scheduleSubmenuClose: () => void
@@ -315,6 +326,7 @@ export function WorkspaceContextLabelColorSubmenu({
 
   return (
     <div
+      ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-selection-label-color-menu"
       style={style}

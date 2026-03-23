@@ -149,7 +149,7 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
       expect(rectsOverlap(note, terminal)).toBe(false)
 
       await ensureArtifactsDir()
-      await clickPaneAtFlowPoint(window, pane, { x: 960, y: 760 })
+      await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
       await window.screenshot({
         path: 'artifacts/workspace-canvas-arrange.semantic-task-agent-pair.png',
