@@ -32,7 +32,6 @@ const WHEEL_BLOCK_SELECTOR = '.cove-window, .cove-window-backdrop, .workspace-co
 type NodeWithEffectiveLabelColor = Node<TerminalNodeData> & {
   data: TerminalNodeData & { effectiveLabelColor?: LabelColor | null }
 }
-
 export function WorkspaceCanvasView({
   canvasRef,
   resolvedCanvasInputMode,

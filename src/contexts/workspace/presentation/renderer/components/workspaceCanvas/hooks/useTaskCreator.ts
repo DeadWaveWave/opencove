@@ -9,8 +9,7 @@ import {
   resolveNodePlacementAnchorFromViewportCenter,
   toErrorMessage,
 } from '../helpers'
-import type { ContextMenuState, TaskCreatorState } from '../types'
-import type { NodePlacementOptions } from '../types'
+import type { ContextMenuState, NodePlacementOptions, TaskCreatorState } from '../types'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,

@@ -4,7 +4,17 @@ on:
   schedule:
     # 04:00 Asia/Shanghai = 20:00 UTC (previous day)
     - cron: '0 20 * * *'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Build nightly artifacts without publishing a GitHub release
+        required: false
+        type: boolean
+        default: true
+      target_ref:
+        description: Branch, tag, or SHA to package (defaults to the dispatched ref)
+        required: false
+        type: string
 
 permissions:
   contents: write
@@ -17,6 +27,8 @@ jobs:
   resolve:
     name: Resolve Nightly Tag
     runs-on: ubuntu-latest
+    env:
+      OPENCOVE_NIGHTLY_TARGET_REF: ${{ inputs.target_ref || github.ref_name }}
     outputs:
       tag_name: ${{ steps.tag.outputs.tag_name }}
       target_commitish: ${{ steps.sha.outputs.target_commitish }}
@@ -24,7 +36,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ env.OPENCOVE_NIGHTLY_TARGET_REF }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -48,5 +60,6 @@ jobs:
     needs: resolve
     uses: ./.github/workflows/release.yml
     with:
+      dry_run: ${{ inputs.dry_run || false }}
       tag_name: ${{ needs.resolve.outputs.tag_name }}
       target_commitish: ${{ needs.resolve.outputs.target_commitish }}

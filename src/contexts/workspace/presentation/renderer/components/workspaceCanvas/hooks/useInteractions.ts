@@ -19,6 +19,7 @@ import {
   isPanePointerDragStartTarget,
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
+import { createNoteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -32,7 +33,8 @@ type SelectionDraftUiState = Pick<
 
 interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
-  normalizeZoomOnNodeClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: number
   defaultTerminalWindowScalePercent: number
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
@@ -66,7 +68,8 @@ interface UseWorkspaceCanvasInteractionsParams {
 
 export function useWorkspaceCanvasInteractions({
   isTrackpadCanvasMode,
-  normalizeZoomOnNodeClick,
+  focusNodeOnClick,
+  focusNodeTargetZoom,
   defaultTerminalWindowScalePercent,
   isShiftPressedRef,
   selectionDraftRef,
@@ -170,16 +173,16 @@ export function useWorkspaceCanvasInteractions({
 
   const handleNodeClick = useCallback(
     (event: React.MouseEvent, node: Node<TerminalNodeData>) => {
-      if (!normalizeZoomOnNodeClick) {
+      if (!focusNodeOnClick) {
         return
       }
       if (!shouldFocusNodeFromClickTarget(event.target)) {
         return
       }
 
-      focusNodeInViewport(reactFlow, node, { duration: 120, zoom: 1 })
+      focusNodeInViewport(reactFlow, node, { duration: 120, zoom: focusNodeTargetZoom })
     },
-    [normalizeZoomOnNodeClick, reactFlow],
+    [focusNodeOnClick, focusNodeTargetZoom, reactFlow],
   )
 
   const handleNodeContextMenu = useCallback(
@@ -424,29 +427,14 @@ export function useWorkspaceCanvasInteractions({
   })
 
   const createNoteNodeFromContextMenu = useCallback(() => {
-    if (!contextMenu || contextMenu.kind !== 'pane') {
-      return
-    }
-
-    const cursorAnchor = {
-      x: contextMenu.flowX,
-      y: contextMenu.flowY,
-    }
-    const anchor = resolveNodePlacementAnchorFromViewportCenter(
-      cursorAnchor,
-      DEFAULT_NOTE_WINDOW_SIZE,
-    )
-
-    setContextMenu(null)
-
-    createNoteNodeAtAnchor({
-      anchor,
-      spaceAnchor: cursorAnchor,
+    createNoteNodeFromPaneContextMenu({
+      contextMenu,
       createNoteNode,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
+      setContextMenu,
     })
   }, [contextMenu, createNoteNode, nodesRef, onSpacesChange, setContextMenu, setNodes, spacesRef])
 

@@ -26,7 +26,7 @@ const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
   spaceVisuals: SpaceVisual[]
-  spaceFramePreview: { spaceId: string; rect: WorkspaceSpaceRect } | null
+  spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
@@ -351,8 +351,7 @@ export function WorkspaceSpaceRegionsOverlay({
           const hasWorktreeDirectory =
             normalizedDirectoryPath.length > 0 &&
             normalizedDirectoryPath !== normalizedWorkspacePath
-          const resolvedRect =
-            spaceFramePreview?.spaceId === space.id ? spaceFramePreview.rect : space.rect
+          const resolvedRect = spaceFramePreview?.get(space.id) ?? space.rect
           const resolvedWorktreeInfo = hasWorktreeDirectory
             ? (worktreeInfoByPath.get(normalizedDirectoryPath) ?? null)
             : null

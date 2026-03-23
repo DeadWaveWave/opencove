@@ -64,7 +64,7 @@ export interface WorkspaceCanvasViewProps {
   isShiftPressed: boolean
   selectionDraft: SelectionDraftUiState | null
   spaceVisuals: SpaceVisual[]
-  spaceFramePreview: { spaceId: string; rect: WorkspaceSpaceRect } | null
+  spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,

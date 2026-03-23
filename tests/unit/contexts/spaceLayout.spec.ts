@@ -7,6 +7,18 @@ import {
   resolveSpaceFrameHandle,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/spaceLayout'
 
+function rectsIntersect(
+  a: { x: number; y: number; width: number; height: number },
+  b: { x: number; y: number; width: number; height: number },
+): boolean {
+  const aRight = a.x + a.width
+  const aBottom = a.y + a.height
+  const bRight = b.x + b.width
+  const bBottom = b.y + b.height
+
+  return !(aRight <= b.x || a.x >= bRight || aBottom <= b.y || a.y >= bBottom)
+}
+
 describe('spaceLayout', () => {
   it('computes an explicit space rect from owned nodes (padding + min size)', () => {
     expect(
@@ -176,7 +188,7 @@ describe('spaceLayout', () => {
     expect(spaceBNode?.rect.x).toBe(110 + (100 + gap - 90))
   })
 
-  it('reprocesses pinned groups when chain reactions push nodes into them', () => {
+  it('reprocesses pinned groups and allows nearby orthogonal fallback', () => {
     const gap = 24
 
     const next = pushAwayLayout({
@@ -212,7 +224,49 @@ describe('spaceLayout', () => {
       gap,
     })
 
+    const moverA = next.find(item => item.id === 'mover-a')
     const moverB = next.find(item => item.id === 'mover-b')
-    expect(moverB?.rect.x).toBe(400 + gap)
+    expect(moverA).toBeTruthy()
+    expect(moverB).toBeTruthy()
+    expect(rectsIntersect(moverB!.rect, { x: 300, y: 0, width: 100, height: 100 })).toBe(false)
+    expect(rectsIntersect(moverB!.rect, moverA!.rect)).toBe(false)
+    expect(moverB!.rect.x !== 200 || moverB!.rect.y !== 0).toBe(true)
+  })
+
+  it('avoids pushing targets outside bounds when an in-bounds direction exists', () => {
+    const bounds = { x: 0, y: 0, width: 300, height: 200 }
+
+    const next = pushAwayLayout({
+      items: [
+        {
+          id: 'pinned',
+          kind: 'node',
+          groupId: 'pinned',
+          rect: { x: 50, y: 120, width: 100, height: 60 },
+        },
+        {
+          id: 'target',
+          kind: 'node',
+          groupId: 'target',
+          rect: { x: 80, y: 130, width: 100, height: 60 },
+        },
+      ],
+      pinnedGroupIds: ['pinned'],
+      sourceGroupIds: ['pinned'],
+      directions: ['y+', 'x+'],
+      gap: 0,
+      bounds: { rect: bounds, padding: 0 },
+    })
+
+    const pinned = next.find(item => item.id === 'pinned')
+    const target = next.find(item => item.id === 'target')
+    expect(pinned).toBeTruthy()
+    expect(target).toBeTruthy()
+    expect(rectsIntersect(pinned!.rect, target!.rect)).toBe(false)
+
+    expect(target!.rect.x).toBe(150)
+    expect(target!.rect.y).toBe(130)
+    expect(target!.rect.x + target!.rect.width).toBeLessThanOrEqual(bounds.x + bounds.width)
+    expect(target!.rect.y + target!.rect.height).toBeLessThanOrEqual(bounds.y + bounds.height)
   })
 })

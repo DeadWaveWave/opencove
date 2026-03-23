@@ -48,6 +48,9 @@ export function createSpaceDragState({
     startClient,
     shiftKey,
     initialRect: targetSpace.rect!,
+    allNodePositions: new Map(
+      nodes.map(node => [node.id, { x: node.position.x, y: node.position.y }]),
+    ),
     initialNodePositions: new Map(
       movableNodes.map(node => [node.id, { x: node.position.x, y: node.position.y }]),
     ),

@@ -8,6 +8,7 @@ import {
   type AgentProvider,
   type AgentSettings,
   type CanvasInputMode,
+  type FocusNodeTargetZoom,
   type TaskTitleProvider,
   type UiLanguage,
   type UiTheme,
@@ -18,6 +19,7 @@ import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
+import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
@@ -36,6 +38,8 @@ interface SettingsPanelProps {
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  isFocusNodeTargetZoomPreviewing: boolean
+  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChange: (settings: AgentSettings) => void
   onCheckForUpdates: () => void
   onDownloadUpdate: () => void
@@ -43,7 +47,13 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
-type CorePageId = 'general' | 'agent' | 'canvas' | 'task-configuration' | 'integrations'
+type CorePageId =
+  | 'general'
+  | 'agent'
+  | 'canvas'
+  | 'shortcuts'
+  | 'task-configuration'
+  | 'integrations'
 type WorkspacePageId = `workspace:${string}`
 type SettingsPageId = CorePageId | WorkspacePageId
 
@@ -76,6 +86,8 @@ export function SettingsPanel({
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  isFocusNodeTargetZoomPreviewing,
+  onFocusNodeTargetZoomPreviewChange,
   onChange,
   onCheckForUpdates,
   onDownloadUpdate,
@@ -105,8 +117,10 @@ export function SettingsPanel({
     onChange({ ...settings, taskTitleProvider: provider })
   const updateTaskTitleModel = (model: string): void =>
     onChange({ ...settings, taskTitleModel: model })
-  const updateNormalizeZoomOnTerminalClick = (enabled: boolean): void =>
-    onChange({ ...settings, normalizeZoomOnTerminalClick: enabled })
+  const updateFocusNodeOnClick = (enabled: boolean): void =>
+    onChange({ ...settings, focusNodeOnClick: enabled })
+  const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
+    onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
   const updateDefaultTerminalWindowScalePercent = (percent: number): void =>
@@ -127,6 +141,10 @@ export function SettingsPanel({
   }
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
+  const updateDisableAppShortcutsWhenTerminalFocused = (enabled: boolean): void =>
+    onChange({ ...settings, disableAppShortcutsWhenTerminalFocused: enabled })
+  const updateKeybindings = (keybindings: AgentSettings['keybindings']): void =>
+    onChange({ ...settings, keybindings })
   const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
     onChange({ ...settings, githubPullRequestsEnabled: enabled })
 
@@ -241,6 +259,12 @@ export function SettingsPanel({
     contentRef.current.scrollTop = 0
   }, [activePageId])
 
+  useEffect(() => {
+    if (activePageId !== 'canvas') {
+      onFocusNodeTargetZoomPreviewChange(false)
+    }
+  }, [activePageId, onFocusNodeTargetZoomPreviewChange])
+
   const NavButton = ({
     id,
     label,
@@ -264,8 +288,14 @@ export function SettingsPanel({
   }
 
   return (
-    <div className="settings-backdrop" onClick={onClose}>
-      <section className="settings-panel" onClick={e => e.stopPropagation()}>
+    <div
+      className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
+      onClick={onClose}
+    >
+      <section
+        className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
+        onClick={e => e.stopPropagation()}
+      >
         <aside
           className="settings-panel__sidebar"
           aria-label={t('settingsPanel.nav.sectionsLabel')}
@@ -284,6 +314,11 @@ export function SettingsPanel({
             id="canvas"
             label={t('settingsPanel.nav.canvas')}
             testId="settings-section-nav-canvas"
+          />
+          <NavButton
+            id="shortcuts"
+            label={t('settingsPanel.nav.shortcuts')}
+            testId="settings-section-nav-shortcuts"
           />
           <NavButton
             id="task-configuration"
@@ -372,15 +407,31 @@ export function SettingsPanel({
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}
-                normalizeZoomOnTerminalClick={settings.normalizeZoomOnTerminalClick}
+                focusNodeOnClick={settings.focusNodeOnClick}
+                focusNodeTargetZoom={settings.focusNodeTargetZoom}
                 defaultTerminalWindowScalePercent={settings.defaultTerminalWindowScalePercent}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
                 onChangeCanvasInputMode={updateCanvasInputMode}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
-                onChangeNormalizeZoomOnTerminalClick={updateNormalizeZoomOnTerminalClick}
+                onChangeFocusNodeOnClick={updateFocusNodeOnClick}
+                onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
+                onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
                 onChangeDefaultTerminalWindowScalePercent={updateDefaultTerminalWindowScalePercent}
+              />
+            ) : null}
+
+            {activePageId === 'shortcuts' ? (
+              <ShortcutsSection
+                disableAppShortcutsWhenTerminalFocused={
+                  settings.disableAppShortcutsWhenTerminalFocused
+                }
+                keybindings={settings.keybindings}
+                onChangeDisableAppShortcutsWhenTerminalFocused={
+                  updateDisableAppShortcutsWhenTerminalFocused
+                }
+                onChangeKeybindings={updateKeybindings}
               />
             ) : null}
 

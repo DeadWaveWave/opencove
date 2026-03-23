@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ShowWorkspaceCanvasMessage, SpaceWorktreeMismatchDropWarningState } from '../types'
@@ -13,6 +13,7 @@ import {
   type SetNodes,
 } from './useSpaceOwnership.helpers'
 import { useWorkspaceCanvasApplyOwnershipForDrop } from './useSpaceOwnership.applyDrop'
+import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
 
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
@@ -22,8 +23,12 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath,
   reactFlow,
   spacesRef,
+  selectedNodeIdsRef,
+  setSelectedNodeIds,
   selectedSpaceIdsRef,
+  setSelectedSpaceIds,
   dragSelectedSpaceIdsRef,
+  exclusiveNodeDragAnchorIdRef,
   setNodes,
   onSpacesChange,
   onRequestPersistFlush,
@@ -33,8 +38,12 @@ export function useWorkspaceCanvasSpaceOwnership({
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  selectedNodeIdsRef: React.MutableRefObject<string[]>
+  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
+  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
   dragSelectedSpaceIdsRef: React.MutableRefObject<string[] | null>
+  exclusiveNodeDragAnchorIdRef: React.MutableRefObject<string | null>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
@@ -58,12 +67,15 @@ export function useWorkspaceCanvasSpaceOwnership({
   continueSpaceWorktreeMismatchDropWarning: () => void
 } {
   const { t } = useTranslation()
+  const reactFlowStore = useStoreApi()
   const dragStartNodeIdsRef = useRef<string[] | null>(null)
   const dragStartNodePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
+  const dragStartAllNodePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
   const pendingWorktreeMismatchDropRef = useRef<{
     draggedNodeIds: string[]
     draggedNodePositionById: Map<string, { x: number; y: number }>
     dragStartNodePositionById: Map<string, { x: number; y: number }>
+    dragStartAllNodePositionById?: Map<string, { x: number; y: number }>
     dropFlowPoint: { x: number; y: number }
   } | null>(null)
   const [spaceWorktreeMismatchDropWarning, setSpaceWorktreeMismatchDropWarning] =
@@ -105,6 +117,7 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodeIds: pending.draggedNodeIds,
         draggedNodePositionById: pending.draggedNodePositionById,
         dragStartNodePositionById: pending.dragStartNodePositionById,
+        dragStartAllNodePositionById: pending.dragStartAllNodePositionById,
         dropFlowPoint: pending.dropFlowPoint,
       },
       { allowDirectoryMismatch: true },
@@ -117,24 +130,72 @@ export function useWorkspaceCanvasSpaceOwnership({
       dragStartNodePositionByIdRef.current = new Map(
         nodes.map(node => [node.id, { x: node.position.x, y: node.position.y }]),
       )
+      dragStartAllNodePositionByIdRef.current = new Map(
+        reactFlow.getNodes().map(node => [node.id, { x: node.position.x, y: node.position.y }]),
+      )
       dragSelectedSpaceIdsRef.current = [...selectedSpaceIdsRef.current]
     },
-    [dragSelectedSpaceIdsRef, selectedSpaceIdsRef],
+    [dragSelectedSpaceIdsRef, reactFlow, selectedSpaceIdsRef],
   )
 
   const handleNodeDragStart = useCallback(
-    (_event: React.MouseEvent, node: Node<TerminalNodeData>, nodes: Node<TerminalNodeData>[]) => {
-      const draggedNodes = nodes.length > 0 ? nodes : [node]
+    (event: React.MouseEvent, node: Node<TerminalNodeData>, nodes: Node<TerminalNodeData>[]) => {
+      const shouldReplaceSelection =
+        !event.shiftKey && !selectedNodeIdsRef.current.includes(node.id)
+
+      if (shouldReplaceSelection) {
+        exclusiveNodeDragAnchorIdRef.current = node.id
+
+        setNodes(
+          prevNodes => {
+            let hasChanged = false
+            const nextNodes = prevNodes.map(item => {
+              const shouldSelect = item.id === node.id
+              if (item.selected === shouldSelect) {
+                return item
+              }
+
+              hasChanged = true
+              return { ...item, selected: shouldSelect }
+            })
+
+            return hasChanged ? nextNodes : prevNodes
+          },
+          { syncLayout: false },
+        )
+
+        selectedNodeIdsRef.current = [node.id]
+        setSelectedNodeIds([node.id])
+        setSortedSelectedSpaceIds([], selectedSpaceIdsRef, setSelectedSpaceIds)
+        reactFlowStore.setState({
+          nodesSelectionActive: true,
+          coveDragSurfaceSelectionMode: false,
+        } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+      } else {
+        exclusiveNodeDragAnchorIdRef.current = null
+      }
+
+      const draggedNodes = shouldReplaceSelection ? [node] : nodes.length > 0 ? nodes : [node]
       captureDragStartNodeIds(draggedNodes)
     },
-    [captureDragStartNodeIds],
+    [
+      captureDragStartNodeIds,
+      exclusiveNodeDragAnchorIdRef,
+      reactFlowStore,
+      selectedNodeIdsRef,
+      selectedSpaceIdsRef,
+      setNodes,
+      setSelectedNodeIds,
+      setSelectedSpaceIds,
+    ],
   )
 
   const handleSelectionDragStart = useCallback(
     (_event: React.MouseEvent, nodes: Node<TerminalNodeData>[]) => {
+      exclusiveNodeDragAnchorIdRef.current = null
       captureDragStartNodeIds(nodes)
     },
-    [captureDragStartNodeIds],
+    [captureDragStartNodeIds, exclusiveNodeDragAnchorIdRef],
   )
 
   const requestWorktreeMismatchDropWarning = useCallback(
@@ -142,12 +203,14 @@ export function useWorkspaceCanvasSpaceOwnership({
       draggedNodeIds,
       draggedNodePositionById,
       dragStartNodePositionById,
+      dragStartAllNodePositionById,
       dropFlowPoint,
       fallbackNodes,
     }: {
       draggedNodeIds: string[]
       draggedNodePositionById: Map<string, { x: number; y: number }>
       dragStartNodePositionById: Map<string, { x: number; y: number }>
+      dragStartAllNodePositionById?: Map<string, { x: number; y: number }>
       dropFlowPoint: { x: number; y: number }
       fallbackNodes: Array<Node<TerminalNodeData>>
     }): boolean => {
@@ -244,6 +307,7 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodeIds,
         draggedNodePositionById,
         dragStartNodePositionById,
+        dragStartAllNodePositionById,
         dropFlowPoint,
       }
 
@@ -260,11 +324,9 @@ export function useWorkspaceCanvasSpaceOwnership({
           let hasChanged = false
 
           const revertedNodes = prevNodes.map(node => {
-            if (!nodeIdSet.has(node.id)) {
-              return node
-            }
-
-            const startPosition = dragStartNodePositionById.get(node.id)
+            const startPosition =
+              dragStartAllNodePositionById?.get(node.id) ??
+              (nodeIdSet.has(node.id) ? dragStartNodePositionById.get(node.id) : undefined)
             if (!startPosition) {
               return node
             }
@@ -314,6 +376,8 @@ export function useWorkspaceCanvasSpaceOwnership({
       dragStartNodeIdsRef.current = null
       const dragStartNodePositionById = dragStartNodePositionByIdRef.current ?? new Map()
       dragStartNodePositionByIdRef.current = null
+      const dragStartAllNodePositionById = dragStartAllNodePositionByIdRef.current ?? undefined
+      dragStartAllNodePositionByIdRef.current = null
 
       const fallbackNodes = nodes.length > 0 ? nodes : [node]
       const draggedNodeIds =
@@ -331,20 +395,19 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodeIds,
         draggedNodePositionById,
         dragStartNodePositionById,
+        dragStartAllNodePositionById,
         dropFlowPoint: dropPoint,
         fallbackNodes,
       })
 
       if (!shouldWarn) {
-        applyOwnershipForDrop(
-          {
-            draggedNodeIds,
-            draggedNodePositionById,
-            dragStartNodePositionById,
-            dropFlowPoint: dropPoint,
-          },
-          { allowDirectoryMismatch: true },
-        )
+        applyOwnershipForDrop({
+          draggedNodeIds,
+          draggedNodePositionById,
+          dragStartNodePositionById,
+          dragStartAllNodePositionById,
+          dropFlowPoint: dropPoint,
+        })
       }
       dragSelectedSpaceIdsRef.current = null
     },
@@ -366,6 +429,8 @@ export function useWorkspaceCanvasSpaceOwnership({
       dragStartNodeIdsRef.current = null
       const dragStartNodePositionById = dragStartNodePositionByIdRef.current ?? new Map()
       dragStartNodePositionByIdRef.current = null
+      const dragStartAllNodePositionById = dragStartAllNodePositionByIdRef.current ?? undefined
+      dragStartAllNodePositionByIdRef.current = null
 
       const fallbackNodes = nodes
       const draggedNodeIds =
@@ -385,20 +450,19 @@ export function useWorkspaceCanvasSpaceOwnership({
         draggedNodeIds,
         draggedNodePositionById,
         dragStartNodePositionById,
+        dragStartAllNodePositionById,
         dropFlowPoint: dropPoint,
         fallbackNodes,
       })
 
       if (!shouldWarn) {
-        applyOwnershipForDrop(
-          {
-            draggedNodeIds,
-            draggedNodePositionById,
-            dragStartNodePositionById,
-            dropFlowPoint: dropPoint,
-          },
-          { allowDirectoryMismatch: true },
-        )
+        applyOwnershipForDrop({
+          draggedNodeIds,
+          draggedNodePositionById,
+          dragStartNodePositionById,
+          dragStartAllNodePositionById,
+          dropFlowPoint: dropPoint,
+        })
       }
       dragSelectedSpaceIdsRef.current = null
     },

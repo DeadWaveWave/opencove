@@ -81,15 +81,28 @@ test.describe('Workspace Canvas - Node Resize (Push-away)', () => {
                 return false
               }
 
-              const gapSatisfied = blocked.position.x >= source.position.x + source.width
+              if (typeof blocked.width !== 'number' || typeof blocked.height !== 'number') {
+                return false
+              }
+
+              const sourceRight = source.position.x + source.width
+              const sourceBottom = source.position.y + source.height
+              const blockedRight = blocked.position.x + blocked.width
+              const blockedBottom = blocked.position.y + blocked.height
+
+              const overlap = !(
+                sourceRight <= blocked.position.x ||
+                source.position.x >= blockedRight ||
+                sourceBottom <= blocked.position.y ||
+                source.position.y >= blockedBottom
+              )
 
               return (
                 source.position.x === 120 &&
                 source.position.y === 120 &&
                 source.width > 460 &&
                 source.height === 300 &&
-                blocked.position.y === 120 &&
-                gapSatisfied
+                !overlap
               )
             }, storageKey)
           },

@@ -128,6 +128,7 @@ export function TerminalNodeFrame({
       <div
         ref={containerRef}
         className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
+        data-cove-focus-scope="terminal"
         aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
       />
 

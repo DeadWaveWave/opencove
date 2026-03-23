@@ -38,6 +38,7 @@ export interface WorkspaceCanvasProps {
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
   agentSettings: AgentSettings
+  isFocusNodeTargetZoomPreviewing?: boolean
   focusNodeId?: string | null
   focusSequence?: number
 }
@@ -104,6 +105,7 @@ export interface SpaceDragState {
   startClient: Point
   shiftKey: boolean
   initialRect: WorkspaceSpaceRect
+  allNodePositions: Map<string, Point>
   initialNodePositions: Map<string, Point>
   ownedBounds: { left: number; top: number; right: number; bottom: number } | null
   handle:

@@ -6,6 +6,9 @@
   display: grid;
   place-items: center;
   z-index: 100;
+  transition:
+    background 180ms ease,
+    backdrop-filter 180ms ease;
 }
 
 .settings-panel {
@@ -18,6 +21,11 @@
   grid-template-columns: 208px minmax(0, 1fr);
   overflow: hidden;
   box-shadow: 0 40px 100px var(--cove-shadow-color-panel);
+  transition:
+    background 180ms ease,
+    backdrop-filter 180ms ease,
+    opacity 180ms ease,
+    border-color 180ms ease;
 }
 
 /* --- Sidebar --- */
@@ -30,6 +38,9 @@
   gap: 6px;
   overflow-y: auto;
   min-height: 0;
+  transition:
+    background 180ms ease,
+    backdrop-filter 180ms ease;
 }
 
 .settings-panel__nav-button {
@@ -184,6 +195,20 @@
   gap: 10px;
 }
 
+.settings-panel__range {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.settings-panel__range-value {
+  width: 62px;
+  text-align: right;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+}
+
 .settings-panel__value {
   font-size: calc(13px * var(--cove-ui-font-scale));
   color: var(--cove-text-muted);
@@ -310,6 +335,66 @@
 .settings-panel__section--vertical .settings-panel__row--horizontal .settings-panel__control {
   justify-content: flex-end;
   width: auto;
+}
+
+.settings-panel input[type='range'] {
+  appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0;
+  height: 28px;
+  --cove-range-track-bg: color-mix(in srgb, var(--cove-border) 70%, transparent);
+}
+
+.settings-panel input[type='range']:focus {
+  box-shadow: none;
+}
+
+.settings-panel input[type='range']::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--cove-range-track-bg);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-border-subtle) 60%, transparent);
+}
+
+.settings-panel__range--neutral-marker input[type='range']::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    var(--cove-range-track-bg) 0%,
+    var(--cove-range-track-bg) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100%),
+    var(--cove-text-faint) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100%),
+    var(--cove-text-faint) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100% + 2px),
+    var(--cove-range-track-bg) calc(var(--settings-panel-range-neutral-ratio, 0.5) * 100% + 2px),
+    var(--cove-range-track-bg) 100%
+  );
+}
+
+.settings-panel input[type='range']::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cove-accent) 92%, #fff);
+  border: 1px solid color-mix(in srgb, var(--cove-accent) 60%, transparent);
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.22),
+    0 0 0 2px color-mix(in srgb, var(--cove-surface) 75%, transparent);
+  margin-top: -6px;
+}
+
+.settings-panel input[type='range']:focus-visible {
+  outline: none;
+}
+
+.settings-panel input[type='range']:focus-visible::-webkit-slider-thumb {
+  box-shadow:
+    0 8px 18px rgba(0, 0, 0, 0.22),
+    0 0 0 3px color-mix(in srgb, var(--cove-accent) 35%, transparent);
+}
+
+.settings-panel input[type='range']:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .settings-panel input[type='checkbox'] {

@@ -150,6 +150,9 @@ test.describe('Workspace Canvas - Spaces (Node Resize)', () => {
                   typeof node.height !== 'number' ||
                   !root?.position ||
                   typeof root.position.x !== 'number' ||
+                  typeof root.position.y !== 'number' ||
+                  typeof root.width !== 'number' ||
+                  typeof root.height !== 'number' ||
                   !rect ||
                   typeof rect.x !== 'number' ||
                   typeof rect.y !== 'number' ||
@@ -163,6 +166,8 @@ test.describe('Workspace Canvas - Spaces (Node Resize)', () => {
                 const nodeBottom = node.position.y + node.height
                 const spaceRight = rect.x + rect.width
                 const spaceBottom = rect.y + rect.height
+                const rootRight = root.position.x + root.width
+                const rootBottom = root.position.y + root.height
 
                 const spaceExpanded = rect.width > 600 && rect.height > 400
                 const nodeNotClamped =
@@ -174,7 +179,11 @@ test.describe('Workspace Canvas - Spaces (Node Resize)', () => {
                   nodeRight <= spaceRight &&
                   nodeBottom <= spaceBottom
 
-                const rootPushed = root.position.x >= spaceRight
+                const rootClearOfExpandedSpace =
+                  rootRight <= rect.x ||
+                  root.position.x >= spaceRight ||
+                  rootBottom <= rect.y ||
+                  root.position.y >= spaceBottom
 
                 const ok =
                   node.position.x === 140 &&
@@ -182,7 +191,7 @@ test.describe('Workspace Canvas - Spaces (Node Resize)', () => {
                   spaceExpanded &&
                   nodeNotClamped &&
                   nodeInsideSpace &&
-                  rootPushed
+                  rootClearOfExpandedSpace
 
                 return {
                   ok,
@@ -210,7 +219,7 @@ test.describe('Workspace Canvas - Spaces (Node Resize)', () => {
                     spaceExpanded,
                     nodeNotClamped,
                     nodeInsideSpace,
-                    rootPushed,
+                    rootClearOfExpandedSpace,
                   },
                 }
               },

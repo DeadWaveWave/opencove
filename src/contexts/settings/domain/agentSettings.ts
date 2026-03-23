@@ -1,9 +1,27 @@
 import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
 import {
   isValidUpdateChannel,
   isValidUpdatePolicy,
   normalizeUpdatePolicyForChannel,
 } from './updateSettings'
+import type { KeybindingOverrides } from './keybindings'
+import { normalizeKeybindingOverrides } from './keybindings'
+import {
+  isRecord,
+  normalizeBoolean,
+  normalizeIntegerInRange,
+  normalizeTextValue,
+  normalizeUniqueStringArray,
+  normalizeUniqueStringArrayWithFallback,
+} from './settingsNormalization'
+
+export {
+  FOCUS_NODE_TARGET_ZOOM_STEP,
+  MAX_FOCUS_NODE_TARGET_ZOOM,
+  MIN_FOCUS_NODE_TARGET_ZOOM,
+} from './focusNodeTargetZoom'
+export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
 
 export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
@@ -37,46 +55,11 @@ export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
 
-export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
-  'claude-code': 'Claude Code',
-  codex: 'Codex',
-  opencode: 'OpenCode',
-  gemini: 'Gemini CLI',
-}
-
-export interface AgentProviderCapabilities {
-  taskTitle: boolean
-  worktreeNameSuggestion: boolean
-  runtimeObservation: 'jsonl' | 'provider-api' | 'none'
-  experimental: boolean
-}
-
-export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCapabilities> = {
-  'claude-code': {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  codex: {
-    taskTitle: true,
-    worktreeNameSuggestion: true,
-    runtimeObservation: 'jsonl',
-    experimental: false,
-  },
-  opencode: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'provider-api',
-    experimental: false,
-  },
-  gemini: {
-    taskTitle: false,
-    worktreeNameSuggestion: false,
-    runtimeObservation: 'none',
-    experimental: false,
-  },
-}
+export {
+  AGENT_PROVIDER_CAPABILITIES,
+  AGENT_PROVIDER_LABEL,
+  type AgentProviderCapabilities,
+} from './agentSettings.providerMeta'
 
 const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
 
@@ -110,7 +93,10 @@ export interface AgentSettings {
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
-  normalizeZoomOnTerminalClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: FocusNodeTargetZoom
+  disableAppShortcutsWhenTerminalFocused: boolean
+  keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
@@ -151,7 +137,10 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTitleProvider: 'default',
   taskTitleModel: '',
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
-  normalizeZoomOnTerminalClick: true,
+  focusNodeOnClick: true,
+  focusNodeTargetZoom: 1,
+  disableAppShortcutsWhenTerminalFocused: true,
+  keybindings: {},
   canvasInputMode: 'auto',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
@@ -161,10 +150,6 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   updateChannel: 'stable',
   releaseNotesSeenVersion: null,
   hideWorktreeMismatchDropWarning: false,
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
 }
 
 function isValidProvider(value: unknown): value is AgentProvider {
@@ -198,80 +183,6 @@ function isValidUiLanguage(value: unknown): value is UiLanguage {
 
 function isValidUiTheme(value: unknown): value is UiTheme {
   return typeof value === 'string' && UI_THEMES.includes(value as UiTheme)
-}
-
-function normalizeTextValue(value: unknown): string {
-  if (typeof value !== 'string') {
-    return ''
-  }
-
-  return value.trim()
-}
-
-function normalizeModelEnabled(value: unknown): boolean | null {
-  if (typeof value !== 'boolean') {
-    return null
-  }
-
-  return value
-}
-
-function normalizeBoolean(value: unknown): boolean | null {
-  if (typeof value !== 'boolean') {
-    return null
-  }
-
-  return value
-}
-
-function normalizeIntegerInRange(
-  value: unknown,
-  fallback: number,
-  min: number,
-  max: number,
-): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    return fallback
-  }
-
-  const normalized = Math.round(value)
-  return Math.max(min, Math.min(max, normalized))
-}
-
-function normalizeModelOptions(value: unknown): string[] {
-  if (!Array.isArray(value)) {
-    return []
-  }
-
-  const normalized: string[] = []
-  for (const item of value) {
-    const model = normalizeTextValue(item)
-    if (model.length === 0 || normalized.includes(model)) {
-      continue
-    }
-
-    normalized.push(model)
-  }
-
-  return normalized
-}
-
-function normalizeTagOptions(value: unknown, fallback: string[]): string[] {
-  if (!Array.isArray(value)) {
-    return [...fallback]
-  }
-
-  const normalized: string[] = []
-  for (const item of value) {
-    const tag = normalizeTextValue(item)
-    if (tag.length === 0 || normalized.includes(tag)) {
-      continue
-    }
-
-    normalized.push(tag)
-  }
-
-  return normalized.length > 0 ? normalized : [...fallback]
 }
 
 function normalizeAgentProviderOrder(value: unknown): AgentProvider[] {
@@ -370,7 +281,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   const customModelEnabledByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelEnabledByProvider>(
     (acc, provider) => {
-      const normalizedEnabled = normalizeModelEnabled(enabledInput[provider])
+      const normalizedEnabled = normalizeBoolean(enabledInput[provider])
       const legacyModel = normalizeTextValue(legacyModelInput[provider])
 
       acc[provider] = normalizedEnabled === null ? legacyModel.length > 0 : normalizedEnabled
@@ -395,7 +306,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   const customModelOptionsByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
     (acc, provider) => {
-      const options = normalizeModelOptions(optionsInput[provider])
+      const options = normalizeUniqueStringArray(optionsInput[provider])
       const selectedModel = customModelByProvider[provider]
 
       if (selectedModel.length > 0 && !options.includes(selectedModel)) {
@@ -419,13 +330,22 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     : DEFAULT_AGENT_SETTINGS.taskTitleProvider
 
   const taskTitleModel = normalizeTextValue(value.taskTitleModel)
-  const taskTagOptions = normalizeTagOptions(
+  const taskTagOptions = normalizeUniqueStringArrayWithFallback(
     value.taskTagOptions,
     DEFAULT_AGENT_SETTINGS.taskTagOptions,
   )
-  const normalizeZoomOnTerminalClick =
+  const focusNodeOnClick =
+    normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
-    DEFAULT_AGENT_SETTINGS.normalizeZoomOnTerminalClick
+    DEFAULT_AGENT_SETTINGS.focusNodeOnClick
+  const focusNodeTargetZoom = normalizeFocusNodeTargetZoom(
+    value.focusNodeTargetZoom,
+    DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
+  )
+  const disableAppShortcutsWhenTerminalFocused =
+    normalizeBoolean(value.disableAppShortcutsWhenTerminalFocused) ??
+    DEFAULT_AGENT_SETTINGS.disableAppShortcutsWhenTerminalFocused
+  const keybindings = normalizeKeybindingOverrides(value.keybindings)
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
@@ -490,7 +410,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTitleProvider,
     taskTitleModel,
     taskTagOptions,
-    normalizeZoomOnTerminalClick,
+    focusNodeOnClick,
+    focusNodeTargetZoom,
+    disableAppShortcutsWhenTerminalFocused,
+    keybindings,
     canvasInputMode,
     defaultTerminalWindowScalePercent,
     terminalFontSize,

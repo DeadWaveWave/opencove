@@ -84,6 +84,8 @@ describe('SettingsPanel', () => {
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
         onChange={onChange}
         onCheckForUpdates={() => undefined}
         onDownloadUpdate={() => undefined}
@@ -123,6 +125,8 @@ describe('SettingsPanel', () => {
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
         onChange={onChange}
         onCheckForUpdates={() => undefined}
         onDownloadUpdate={() => undefined}
@@ -161,6 +165,8 @@ describe('SettingsPanel', () => {
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
         onChange={onChange}
         onCheckForUpdates={onCheckForUpdates}
         onDownloadUpdate={onDownloadUpdate}

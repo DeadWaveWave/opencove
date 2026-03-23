@@ -97,11 +97,53 @@ test.describe('Settings', () => {
       await selectCoveOption(window, 'settings-canvas-input-mode', 'trackpad')
       await expect(canvasInputMode).toHaveValue('trackpad')
 
-      const normalizeZoomToggle = window.locator(
-        '[data-testid="settings-normalize-zoom-on-terminal-click"]',
+      const focusTargetZoom = window.locator('[data-testid="settings-focus-node-target-zoom"]')
+      await expect(focusTargetZoom).toBeVisible()
+      const sliderBox = await focusTargetZoom.boundingBox()
+      if (!sliderBox) {
+        throw new Error('focus target zoom slider bounding box unavailable')
+      }
+
+      await window.mouse.move(
+        sliderBox.x + sliderBox.width * 0.6,
+        sliderBox.y + sliderBox.height / 2,
       )
-      await expect(normalizeZoomToggle).toBeVisible()
-      await normalizeZoomToggle.uncheck()
+      await window.mouse.down()
+      await expect(window.locator('.settings-panel')).toHaveClass(/settings-panel--preview/)
+      await expect(window.locator('.settings-panel__sidebar')).toBeHidden()
+      await expect(window.locator('.settings-panel__header')).toBeHidden()
+      await expect(
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
+      ).toBeHidden()
+
+      await window.mouse.up()
+      await expect(window.locator('.settings-panel')).not.toHaveClass(/settings-panel--preview/)
+      await expect(window.locator('.settings-panel__sidebar')).toBeVisible()
+      await expect(window.locator('.settings-panel__header')).toBeVisible()
+      await expect(
+        window.locator('.settings-panel__row--focus-target-zoom .settings-panel__row-label'),
+      ).toBeVisible()
+
+      await focusTargetZoom.evaluate((element, value) => {
+        const input = element as HTMLInputElement
+        const next = String(value)
+        const prototype = Object.getPrototypeOf(input)
+        const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value')
+        const setter = descriptor?.set
+        if (setter) {
+          setter.call(input, next)
+        } else {
+          input.value = next
+        }
+
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+        input.dispatchEvent(new Event('change', { bubbles: true }))
+      }, 1.37)
+      await expect(focusTargetZoom).toHaveValue('1.37')
+
+      const focusToggle = window.locator('[data-testid="settings-focus-node-on-click"]')
+      await expect(focusToggle).toBeVisible()
+      await focusToggle.uncheck()
 
       await agentNav.click()
       const defaultProvider = window.locator('[data-testid="settings-default-provider"]')
@@ -205,7 +247,8 @@ test.describe('Settings', () => {
                   codex?: string[]
                 }
                 taskTagOptions?: string[]
-                normalizeZoomOnTerminalClick?: boolean
+                focusNodeOnClick?: boolean
+                focusNodeTargetZoom?: number
                 canvasInputMode?: string
                 uiTheme?: string
                 terminalFontSize?: number
@@ -224,7 +267,8 @@ test.describe('Settings', () => {
         expect.objectContaining({
           language: 'zh-CN',
           defaultProvider: 'codex',
-          normalizeZoomOnTerminalClick: false,
+          focusNodeOnClick: false,
+          focusNodeTargetZoom: 1.37,
           canvasInputMode: 'trackpad',
           uiTheme: 'light',
           terminalFontSize: 15,
@@ -261,7 +305,8 @@ test.describe('Settings', () => {
       expect(persistedSettings?.customModelOptionsByProvider?.codex).toContain('gpt-5.2-codex')
       expect(persistedSettings?.taskTagOptions).toContain('ops')
       expect(persistedSettings?.taskTagOptions).not.toContain('feature')
-      expect(persistedSettings?.normalizeZoomOnTerminalClick).toBe(false)
+      expect(persistedSettings?.focusNodeOnClick).toBe(false)
+      expect(persistedSettings?.focusNodeTargetZoom).toBe(1.37)
       expect(persistedSettings?.canvasInputMode).toBe('trackpad')
       expect(persistedSettings?.terminalFontSize).toBe(15)
       expect(persistedSettings?.uiFontSize).toBe(20)

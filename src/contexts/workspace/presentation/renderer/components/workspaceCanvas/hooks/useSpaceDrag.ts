@@ -7,7 +7,10 @@ import {
   SPACE_MIN_SIZE,
   type SpaceFrameHandle,
 } from '../../../utils/spaceLayout'
-import { finalizeWorkspaceSpaceDrag } from './useSpaceDrag.finalize'
+import {
+  finalizeWorkspaceSpaceDrag,
+  projectWorkspaceSpaceDragLayout,
+} from './useSpaceDrag.finalize'
 import { createSpaceDragState } from './useSpaceDrag.startState'
 import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
 
@@ -47,7 +50,7 @@ export function useWorkspaceCanvasSpaceDrag({
   cancelSpaceRename,
   setEmptySelectionPrompt,
 }: UseSpaceDragParams): {
-  spaceFramePreview: { spaceId: string; rect: WorkspaceSpaceRect } | null
+  spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
@@ -55,10 +58,10 @@ export function useWorkspaceCanvasSpaceDrag({
   ) => void
 } {
   const reactFlowStore = useStoreApi()
-  const [spaceFramePreview, setSpaceFramePreview] = useState<{
-    spaceId: string
-    rect: WorkspaceSpaceRect
-  } | null>(null)
+  const [spaceFramePreview, setSpaceFramePreview] = useState<ReadonlyMap<
+    string,
+    WorkspaceSpaceRect
+  > | null>(null)
   const spaceDragStateRef = useRef<SpaceDragState | null>(null)
   const spaceDragSawPointerMoveRef = useRef(false)
 
@@ -139,30 +142,77 @@ export function useWorkspaceCanvasSpaceDrag({
     [],
   )
 
-  const applySpaceDragNodePositions = useCallback(
+  const applyProjectedSpaceDragLayout = useCallback(
     (dragState: SpaceDragState, dx: number, dy: number) => {
+      const projected = projectWorkspaceSpaceDragLayout({
+        dragState,
+        dx,
+        dy,
+        nodes: nodesRef.current,
+        spaces: spacesRef.current,
+        resolveResizedRect,
+      })
+
+      if (!projected) {
+        setSpaceFramePreview(
+          new Map(
+            spacesRef.current
+              .filter(space => space.rect)
+              .map(space => [space.id, space.rect!] as const),
+          ),
+        )
+        setNodes(
+          prevNodes => {
+            let hasMoved = false
+            const nextNodes = prevNodes.map(node => {
+              const baseline = dragState.allNodePositions.get(node.id)
+              if (!baseline) {
+                return node
+              }
+
+              if (node.position.x === baseline.x && node.position.y === baseline.y) {
+                return node
+              }
+
+              hasMoved = true
+              return {
+                ...node,
+                position: baseline,
+              }
+            })
+
+            return hasMoved ? nextNodes : prevNodes
+          },
+          { syncLayout: false },
+        )
+        return
+      }
+
+      setSpaceFramePreview(
+        new Map(
+          projected.nextSpaces
+            .filter(space => space.rect)
+            .map(space => [space.id, space.rect!] as const),
+        ),
+      )
+
       setNodes(
         prevNodes => {
           let hasMoved = false
           const nextNodes = prevNodes.map(node => {
-            const initialPosition = dragState.initialNodePositions.get(node.id)
-            if (!initialPosition) {
+            const nextPosition = projected.nextNodePositionById.get(node.id)
+            if (!nextPosition) {
               return node
             }
 
-            const nextX = initialPosition.x + dx
-            const nextY = initialPosition.y + dy
-            if (node.position.x === nextX && node.position.y === nextY) {
+            if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
               return node
             }
 
             hasMoved = true
             return {
               ...node,
-              position: {
-                x: nextX,
-                y: nextY,
-              },
+              position: nextPosition,
             }
           })
 
@@ -171,7 +221,7 @@ export function useWorkspaceCanvasSpaceDrag({
         { syncLayout: false },
       )
     },
-    [setNodes],
+    [nodesRef, resolveResizedRect, setNodes, spacesRef],
   )
 
   const finalizeSpaceDrag = useCallback(
@@ -182,22 +232,13 @@ export function useWorkspaceCanvasSpaceDrag({
         dy,
         nodes: nodesRef.current,
         spaces: spacesRef.current,
-        applySpaceDragNodePositions,
         resolveResizedRect,
         setNodes,
         onSpacesChange,
         onRequestPersistFlush,
       })
     },
-    [
-      applySpaceDragNodePositions,
-      nodesRef,
-      onRequestPersistFlush,
-      onSpacesChange,
-      resolveResizedRect,
-      setNodes,
-      spacesRef,
-    ],
+    [nodesRef, onRequestPersistFlush, onSpacesChange, resolveResizedRect, setNodes, spacesRef],
   )
 
   const applySpaceClickSelection = useCallback(
@@ -293,28 +334,10 @@ export function useWorkspaceCanvasSpaceDrag({
       const dx = currentFlow.x - dragState.startFlow.x
       const dy = currentFlow.y - dragState.startFlow.y
 
-      const handle = dragState.handle
-      if (handle.kind === 'move') {
-        spaceDragSawPointerMoveRef.current = true
-        setSpaceFramePreview({
-          spaceId: dragState.spaceId,
-          rect: {
-            ...dragState.initialRect,
-            x: dragState.initialRect.x + dx,
-            y: dragState.initialRect.y + dy,
-          },
-        })
-        applySpaceDragNodePositions(dragState, dx, dy)
-        return
-      }
-
       spaceDragSawPointerMoveRef.current = true
-      setSpaceFramePreview({
-        spaceId: dragState.spaceId,
-        rect: resolveResizedRect(dragState, dx, dy),
-      })
+      applyProjectedSpaceDragLayout(dragState, dx, dy)
     },
-    [applySpaceDragNodePositions, reactFlow, resolveResizedRect],
+    [applyProjectedSpaceDragLayout, reactFlow],
   )
 
   const handleSpaceDragPointerUp = useCallback(
@@ -343,26 +366,9 @@ export function useWorkspaceCanvasSpaceDrag({
       const dx = currentFlow.x - dragState.startFlow.x
       const dy = currentFlow.y - dragState.startFlow.y
 
-      const handle = dragState.handle
-      if (handle.kind === 'move') {
-        setSpaceFramePreview({
-          spaceId: dragState.spaceId,
-          rect: {
-            ...dragState.initialRect,
-            x: dragState.initialRect.x + dx,
-            y: dragState.initialRect.y + dy,
-          },
-        })
-        applySpaceDragNodePositions(dragState, dx, dy)
-        return
-      }
-
-      setSpaceFramePreview({
-        spaceId: dragState.spaceId,
-        rect: resolveResizedRect(dragState, dx, dy),
-      })
+      applyProjectedSpaceDragLayout(dragState, dx, dy)
     },
-    [applySpaceDragNodePositions, reactFlow, resolveResizedRect],
+    [applyProjectedSpaceDragLayout, reactFlow],
   )
 
   const handleSpaceDragMouseUp = useCallback(
@@ -417,6 +423,10 @@ export function useWorkspaceCanvasSpaceDrag({
         return
       }
 
+      if (!event.shiftKey && !selectedSpaceIdsRef.current.includes(spaceId)) {
+        applySpaceClickSelection(spaceId)
+      }
+
       event.preventDefault()
       event.stopPropagation()
 
@@ -448,19 +458,18 @@ export function useWorkspaceCanvasSpaceDrag({
         selectedNodeIds: selectedNodeIdsRef.current,
       })
       spaceDragSawPointerMoveRef.current = false
-      setSpaceFramePreview({
-        spaceId,
-        rect: targetSpace.rect,
-      })
+      setSpaceFramePreview(new Map([[spaceId, targetSpace.rect]]))
       setContextMenu(null)
       cancelSpaceRename()
       setEmptySelectionPrompt(null)
     },
     [
+      applySpaceClickSelection,
       cancelSpaceRename,
       nodesRef,
       reactFlow,
       selectedNodeIdsRef,
+      selectedSpaceIdsRef,
       setContextMenu,
       setEmptySelectionPrompt,
       spacesRef,
