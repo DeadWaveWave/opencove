@@ -33,6 +33,68 @@ export function resolveOffsetDirectionRank({
 
 const BOUNDED_PLACEMENT_PREFERRED_DIRECTION_PENALTY = 48
 
+const GRID_STEP = 4
+const MAX_SCAN_RADIUS = 80
+
+const cachedOffsetsByDirectionKey = new Map<
+  string,
+  Map<number, Array<{ dx: number; dy: number }>>
+>()
+
+function resolveGridOffsetsForRadius(
+  radius: number,
+  directions: LayoutDirection[],
+): Array<{ dx: number; dy: number }> {
+  const directionKey = directions.join(',')
+  const existing = cachedOffsetsByDirectionKey.get(directionKey)
+  const byRadius = existing ?? new Map<number, Array<{ dx: number; dy: number }>>()
+
+  if (!existing) {
+    cachedOffsetsByDirectionKey.set(directionKey, byRadius)
+  }
+
+  const cached = byRadius.get(radius)
+  if (cached) {
+    return cached
+  }
+
+  const offsets: Array<{ dx: number; dy: number }> = []
+
+  const scaledRadius = radius * GRID_STEP
+  for (let x = -radius; x <= radius; x += 1) {
+    const scaledX = x * GRID_STEP
+    offsets.push({ dx: scaledX, dy: -scaledRadius })
+    offsets.push({ dx: scaledX, dy: scaledRadius })
+  }
+
+  for (let y = -radius + 1; y <= radius - 1; y += 1) {
+    const scaledY = y * GRID_STEP
+    offsets.push({ dx: -scaledRadius, dy: scaledY })
+    offsets.push({ dx: scaledRadius, dy: scaledY })
+  }
+
+  offsets.sort((a, b) => {
+    const aMan = Math.abs(a.dx) + Math.abs(a.dy)
+    const bMan = Math.abs(b.dx) + Math.abs(b.dy)
+    const aRank = resolveOffsetDirectionRank({ dx: a.dx, dy: a.dy, directions })
+    const bRank = resolveOffsetDirectionRank({ dx: b.dx, dy: b.dy, directions })
+    const aWeighted = aMan + aRank * BOUNDED_PLACEMENT_PREFERRED_DIRECTION_PENALTY
+    const bWeighted = bMan + bRank * BOUNDED_PLACEMENT_PREFERRED_DIRECTION_PENALTY
+    if (aWeighted !== bWeighted) {
+      return aWeighted - bWeighted
+    }
+
+    if (aMan !== bMan) {
+      return aMan - bMan
+    }
+
+    return a.dx * a.dx + a.dy * a.dy - (b.dx * b.dx + b.dy * b.dy)
+  })
+
+  byRadius.set(radius, offsets)
+  return offsets
+}
+
 export function resolveNearestNonOverlappingRectWithinBounds({
   desired,
   obstacles,
@@ -154,45 +216,8 @@ export function resolveNearestNonOverlappingRectWithinBounds({
     return { ...desired, x: candidate.x, y: candidate.y }
   }
 
-  const GRID_STEP = 4
-  const MAX_SCAN_RADIUS = 80
-
-  const offsetsForRadius = (radius: number): Array<{ dx: number; dy: number }> => {
-    const offsets: Array<{ dx: number; dy: number }> = []
-
-    for (let y = -radius; y <= radius; y += 1) {
-      for (let x = -radius; x <= radius; x += 1) {
-        if (Math.max(Math.abs(x), Math.abs(y)) !== radius) {
-          continue
-        }
-
-        offsets.push({ dx: x * GRID_STEP, dy: y * GRID_STEP })
-      }
-    }
-
-    offsets.sort((a, b) => {
-      const aMan = Math.abs(a.dx) + Math.abs(a.dy)
-      const bMan = Math.abs(b.dx) + Math.abs(b.dy)
-      const aRank = resolveOffsetDirectionRank({ dx: a.dx, dy: a.dy, directions })
-      const bRank = resolveOffsetDirectionRank({ dx: b.dx, dy: b.dy, directions })
-      const aWeighted = aMan + aRank * BOUNDED_PLACEMENT_PREFERRED_DIRECTION_PENALTY
-      const bWeighted = bMan + bRank * BOUNDED_PLACEMENT_PREFERRED_DIRECTION_PENALTY
-      if (aWeighted !== bWeighted) {
-        return aWeighted - bWeighted
-      }
-
-      if (aMan !== bMan) {
-        return aMan - bMan
-      }
-
-      return a.dx * a.dx + a.dy * a.dy - (b.dx * b.dx + b.dy * b.dy)
-    })
-
-    return offsets
-  }
-
   for (let radius = 1; radius <= MAX_SCAN_RADIUS; radius += 1) {
-    const offsets = offsetsForRadius(radius)
+    const offsets = resolveGridOffsetsForRadius(radius, directions)
 
     for (const offset of offsets) {
       const candidate = clampPoint({

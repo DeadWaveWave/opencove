@@ -19,7 +19,6 @@ function clampNodeRectInsideSpace(nodeRect: Rect, spaceRect: WorkspaceSpaceRect)
   if (dx === 0 && dy === 0) {
     return nodeRect
   }
-
   return {
     ...nodeRect,
     x: nodeRect.x + dx,
@@ -54,7 +53,6 @@ function resolvePinnedDeltaBounds({
   let maxDx = Number.POSITIVE_INFINITY
   let minDy = Number.NEGATIVE_INFINITY
   let maxDy = Number.POSITIVE_INFINITY
-
   for (const rect of pinnedRects) {
     minDx = Math.max(minDx, bounds.left - rect.x)
     maxDx = Math.min(maxDx, bounds.right - (rect.x + rect.width))
@@ -456,8 +454,17 @@ export function resolveBoundedSpaceNodeLayout({
   })
 
   let bestSolution: Solution | null = null
+  let bestDeltaSq = Number.POSITIVE_INFINITY
+  let bestDeltaMan = Number.POSITIVE_INFINITY
 
   for (const delta of candidates) {
+    const deltaSq = delta.dx * delta.dx + delta.dy * delta.dy
+    const deltaMan = Math.abs(delta.dx) + Math.abs(delta.dy)
+
+    if (deltaSq > bestDeltaSq || (deltaSq === bestDeltaSq && deltaMan > bestDeltaMan)) {
+      break
+    }
+
     const solved = solvePinnedDelta(delta)
     if (!solved) {
       continue
@@ -466,6 +473,8 @@ export function resolveBoundedSpaceNodeLayout({
     const solution: Solution = { rectById: solved.rectById, cost: solved.cost, delta }
     if (!bestSolution || compareSolution(solution, bestSolution) < 0) {
       bestSolution = solution
+      bestDeltaSq = deltaSq
+      bestDeltaMan = deltaMan
     }
   }
 
