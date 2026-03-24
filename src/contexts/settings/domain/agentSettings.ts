@@ -15,6 +15,11 @@ import {
   normalizeUniqueStringArray,
   normalizeUniqueStringArrayWithFallback,
 } from './settingsNormalization'
+import type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
+import {
+  normalizeTaskPromptTemplates,
+  normalizeTaskPromptTemplatesByWorkspaceId,
+} from './taskPromptTemplates'
 
 export {
   FOCUS_NODE_TARGET_ZOOM_STEP,
@@ -81,6 +86,8 @@ export type AgentCustomModelOptionsByProvider = {
   [provider in AgentProvider]: string[]
 }
 
+export type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
+
 export interface AgentSettings {
   language: UiLanguage
   uiTheme: UiTheme
@@ -95,6 +102,8 @@ export interface AgentSettings {
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
+  taskPromptTemplates: TaskPromptTemplate[]
+  taskPromptTemplatesByWorkspaceId: TaskPromptTemplatesByWorkspaceId
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   disableAppShortcutsWhenTerminalFocused: boolean
@@ -140,6 +149,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTitleProvider: 'default',
   taskTitleModel: '',
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
+  taskPromptTemplates: [],
+  taskPromptTemplatesByWorkspaceId: {},
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
   disableAppShortcutsWhenTerminalFocused: true,
@@ -345,6 +356,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.taskTagOptions,
     DEFAULT_AGENT_SETTINGS.taskTagOptions,
   )
+  const taskPromptTemplates = normalizeTaskPromptTemplates(value.taskPromptTemplates)
+  const taskPromptTemplatesByWorkspaceId = normalizeTaskPromptTemplatesByWorkspaceId(
+    value.taskPromptTemplatesByWorkspaceId,
+  )
   const focusNodeOnClick =
     normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
@@ -424,6 +439,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTitleProvider,
     taskTitleModel,
     taskTagOptions,
+    taskPromptTemplates,
+    taskPromptTemplatesByWorkspaceId,
     focusNodeOnClick,
     focusNodeTargetZoom,
     disableAppShortcutsWhenTerminalFocused,

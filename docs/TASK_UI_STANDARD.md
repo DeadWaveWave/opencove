@@ -32,7 +32,8 @@
 
 ### 2.1 头部（Header）
 - 标题支持 inline 编辑。
-- 右上角保留两个图标按钮：
+- 右上角保留三个图标按钮：
+  - 模板：打开提示词模板菜单（选择/新增模板，并前置插入到任务要求）；
   - 铅笔：打开完整编辑弹窗；
   - `×`：删除任务（触发确认弹窗）。
 
@@ -76,6 +77,7 @@
 
 - Task 关键操作需稳定的 `data-testid`：
   - `task-node-open-editor`
+  - `task-node-open-prompt-templates`
   - `task-node-close`
   - `task-node-inline-title-trigger`
   - `task-node-inline-title-input`
