@@ -303,17 +303,11 @@ export function arrangeWorkspaceCanvas({
           rootOffset: { x: number; y: number }
         }> = [
           {
+            // Keep spaces above root windows so the canvas reads top-down: spaces then roots.
             composition: 'vertical',
             rootOffset: {
               x: 0,
               y: hasSpaces && hasRoots ? spaceCandidate.bounding.height + sectionGap : 0,
-            },
-          },
-          {
-            composition: 'horizontal',
-            rootOffset: {
-              x: hasSpaces && hasRoots ? spaceCandidate.bounding.width + sectionGap : 0,
-              y: 0,
             },
           },
         ]
@@ -366,10 +360,6 @@ export function arrangeWorkspaceCanvas({
 
         if (left.bounding.height !== right.bounding.height) {
           return left.bounding.height - right.bounding.height
-        }
-
-        if (left.composition !== right.composition) {
-          return left.composition === 'horizontal' ? -1 : 1
         }
 
         return left.bounding.width - right.bounding.width
