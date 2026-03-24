@@ -105,8 +105,8 @@ describe('workspace arrange canvas utils', () => {
     const dy = spaceAfter!.y - spaceBefore.y
 
     const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    expect(nodeById.get('r1')?.position).toEqual({ x: 600, y: 48 })
-    expect(nodeById.get('r2')?.position).toEqual({ x: 600, y: 396 })
+    expect(nodeById.get('r1')?.position).toEqual({ x: 96, y: 408 })
+    expect(nodeById.get('r2')?.position).toEqual({ x: 588, y: 408 })
 
     expect(nodeById.get('a')?.position).toEqual({
       x: ownedA.position.x + dx,
