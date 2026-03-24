@@ -160,6 +160,11 @@
     ]
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "node-pty"
+    ],
     "overrides": {
       "ajv@6.12.6": "6.14.0",
       "ajv@8.17.1": "8.18.0",
