@@ -1,6 +1,5 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
-import { SPACE_MIN_SIZE, SPACE_NODE_PADDING } from '../../../utils/spaceLayout'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { reassignNodesAcrossSpaces } from './useSpaceOwnership.drop.helpers'
 import { projectWorkspaceNodeDragLayout } from './useSpaceOwnership.projectLayout'
@@ -19,6 +18,42 @@ export interface ProjectedWorkspaceNodeDropLayout {
   nextSpaces: WorkspaceSpaceState[]
   hasSpaceChange: boolean
   nextCache: WorkspaceNodeDropProjectionCache | null
+}
+
+function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
+  if (a === b) {
+    return true
+  }
+
+  if (!a || !b) {
+    return false
+  }
+
+  return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+}
+
+function applySpaceRectOverrides({
+  spaces,
+  rectOverrideById,
+}: {
+  spaces: WorkspaceSpaceState[]
+  rectOverrideById: ReadonlyMap<string, WorkspaceSpaceRect>
+}): WorkspaceSpaceState[] {
+  return spaces.map(space => {
+    const override = rectOverrideById.get(space.id) ?? null
+    if (!override) {
+      return space
+    }
+
+    if (rectEquals(space.rect ?? null, override)) {
+      return space
+    }
+
+    return {
+      ...space,
+      rect: { ...override },
+    }
+  })
 }
 
 export function projectWorkspaceNodeDropLayout({
@@ -50,15 +85,42 @@ export function projectWorkspaceNodeDropLayout({
     }
   }
 
-  const projectedDrag = projectWorkspaceNodeDragLayout({
+  const canUsePreviousSpaceRects = Boolean(previousCache && previousCache.baselineSpaces === spaces)
+  const projectedSpaces = canUsePreviousSpaceRects
+    ? applySpaceRectOverrides({
+        spaces,
+        rectOverrideById: previousCache!.nextSpaceRectById,
+      })
+    : spaces
+
+  let projectedDrag = projectWorkspaceNodeDragLayout({
     nodes,
-    spaces,
+    spaces: projectedSpaces,
     draggedNodeIds,
     draggedNodePositionById,
     dragDx,
     dragDy,
     dropFlowPoint,
   })
+
+  const mustDropPreviousCache =
+    Boolean(projectedDrag) &&
+    Boolean(previousCache) &&
+    Boolean(canUsePreviousSpaceRects) &&
+    projectedDrag!.targetSpaceId !== previousCache!.targetSpaceId
+
+  if (mustDropPreviousCache) {
+    projectedDrag = projectWorkspaceNodeDragLayout({
+      nodes,
+      spaces,
+      draggedNodeIds,
+      draggedNodePositionById,
+      dragDx,
+      dragDy,
+      dropFlowPoint,
+    })
+    previousCache = null
+  }
 
   if (!projectedDrag) {
     const nextNodePositionById = new Map(
@@ -84,9 +146,10 @@ export function projectWorkspaceNodeDropLayout({
   }
 
   const targetSpaceId = projectedDrag.targetSpaceId
+  const effectiveSpaces = canUsePreviousSpaceRects && previousCache ? projectedSpaces : spaces
 
   const { nextSpaces: reassignedSpaces, hasSpaceChange } = reassignNodesAcrossSpaces({
-    spaces,
+    spaces: effectiveSpaces,
     nodeIds: draggedNodeIds,
     targetSpaceId,
   })
@@ -111,102 +174,14 @@ export function projectWorkspaceNodeDropLayout({
   )
 
   if (shouldEnsureSpaceFitsOwnedNodes && targetSpaceId) {
-    const nodeRectById = new Map(nodeRects.map(item => [item.id, item.rect]))
-    const targetSpace = reassignedSpaces.find(space => space.id === targetSpaceId) ?? null
-    const targetSpaceRect = targetSpace?.rect ?? null
-    const ownedRects =
-      targetSpace && targetSpaceRect
-        ? targetSpace.nodeIds
-            .map(nodeId => nodeRectById.get(nodeId))
-            .filter((rect): rect is WorkspaceSpaceRect => Boolean(rect))
-        : []
-
-    let minX = Number.POSITIVE_INFINITY
-    let minY = Number.POSITIVE_INFINITY
-    let maxX = Number.NEGATIVE_INFINITY
-    let maxY = Number.NEGATIVE_INFINITY
-
-    for (const rect of ownedRects) {
-      minX = Math.min(minX, rect.x)
-      minY = Math.min(minY, rect.y)
-      maxX = Math.max(maxX, rect.x + rect.width)
-      maxY = Math.max(maxY, rect.y + rect.height)
-    }
-
-    const canComputeExpandedRect =
-      Boolean(targetSpaceRect) &&
-      ownedRects.length > 0 &&
-      Number.isFinite(minX) &&
-      Number.isFinite(minY) &&
-      Number.isFinite(maxX) &&
-      Number.isFinite(maxY)
-
-    const requiredRect: WorkspaceSpaceRect | null = canComputeExpandedRect
-      ? {
-          x: minX - SPACE_NODE_PADDING,
-          y: minY - SPACE_NODE_PADDING,
-          width: maxX - minX + SPACE_NODE_PADDING * 2,
-          height: maxY - minY + SPACE_NODE_PADDING * 2,
-        }
-      : null
-
-    const expandedRect: WorkspaceSpaceRect | null =
-      requiredRect && targetSpaceRect
-        ? (() => {
-            const nextLeft = Math.min(targetSpaceRect.x, requiredRect.x)
-            const nextTop = Math.min(targetSpaceRect.y, requiredRect.y)
-            const nextRight = Math.max(
-              targetSpaceRect.x + targetSpaceRect.width,
-              requiredRect.x + requiredRect.width,
-            )
-            const nextBottom = Math.max(
-              targetSpaceRect.y + targetSpaceRect.height,
-              requiredRect.y + requiredRect.height,
-            )
-
-            return {
-              x: nextLeft,
-              y: nextTop,
-              width: Math.max(SPACE_MIN_SIZE.width, nextRight - nextLeft),
-              height: Math.max(SPACE_MIN_SIZE.height, nextBottom - nextTop),
-            }
-          })()
-        : null
-
-    const cacheHit = Boolean(
+    const lockActive = Boolean(
       previousCache &&
-        expandedRect &&
+        canUsePreviousSpaceRects &&
         previousCache.baselineSpaces === spaces &&
-        previousCache.targetSpaceId === targetSpaceId &&
-        previousCache.expandedRect.x === expandedRect.x &&
-        previousCache.expandedRect.y === expandedRect.y &&
-        previousCache.expandedRect.width === expandedRect.width &&
-        previousCache.expandedRect.height === expandedRect.height,
+        previousCache.targetSpaceId === targetSpaceId,
     )
 
-    if (cacheHit && previousCache && expandedRect && targetSpaceRect) {
-      const nextSpaces = reassignedSpaces.map(space => {
-        if (!space.rect) {
-          return space
-        }
-
-        const rectOverride = previousCache.nextSpaceRectById.get(space.id) ?? null
-        if (!rectOverride) {
-          return space
-        }
-
-        if (
-          rectOverride.x === space.rect.x &&
-          rectOverride.y === space.rect.y &&
-          rectOverride.width === space.rect.width &&
-          rectOverride.height === space.rect.height
-        ) {
-          return space
-        }
-
-        return { ...space, rect: rectOverride }
-      })
-
+    if (lockActive && previousCache) {
       nodeRects = nodeRects.map(item => {
         const next = previousCache.movedNodePositionById.get(item.id)
         if (!next) {
@@ -225,28 +200,9 @@ export function projectWorkspaceNodeDropLayout({
         nextNodePositionById: new Map(
           nodeRects.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
         ),
-        nextSpaces,
+        nextSpaces: reassignedSpaces,
         hasSpaceChange: true,
         nextCache: previousCache,
-      }
-    }
-
-    if (
-      expandedRect &&
-      targetSpaceRect &&
-      expandedRect.x === targetSpaceRect.x &&
-      expandedRect.y === targetSpaceRect.y &&
-      expandedRect.width === targetSpaceRect.width &&
-      expandedRect.height === targetSpaceRect.height
-    ) {
-      return {
-        targetSpaceId,
-        nextNodePositionById: new Map(
-          nodeRects.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
-        ),
-        nextSpaces: hasSpaceChange ? reassignedSpaces : spaces,
-        hasSpaceChange,
-        nextCache: null,
       }
     }
 
@@ -266,6 +222,33 @@ export function projectWorkspaceNodeDropLayout({
       return { id: item.id, rect: { ...item.rect, x: next.x, y: next.y } }
     })
 
+    const beforeRectById = new Map(
+      reassignedSpaces
+        .filter(space => Boolean(space.rect))
+        .map(space => [space.id, space.rect!] as const),
+    )
+
+    const hasRectChange = pushedSpaces.some(space => {
+      if (!space.rect) {
+        return false
+      }
+
+      return !rectEquals(space.rect, beforeRectById.get(space.id) ?? null)
+    })
+
+    if (!hasRectChange) {
+      return {
+        targetSpaceId,
+        nextNodePositionById: new Map(
+          nodeRects.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
+        ),
+        nextSpaces: hasSpaceChange ? reassignedSpaces : effectiveSpaces,
+        hasSpaceChange,
+        nextCache: null,
+      }
+    }
+
+    const expandedRect = pushedSpaces.find(space => space.id === targetSpaceId)?.rect ?? null
     return {
       targetSpaceId,
       nextNodePositionById: new Map(
@@ -273,20 +256,19 @@ export function projectWorkspaceNodeDropLayout({
       ),
       nextSpaces: pushedSpaces,
       hasSpaceChange: true,
-      nextCache:
-        expandedRect && targetSpaceRect
-          ? {
-              baselineSpaces: spaces,
-              targetSpaceId,
-              expandedRect,
-              nextSpaceRectById: new Map(
-                pushedSpaces
-                  .filter(space => Boolean(space.rect))
-                  .map(space => [space.id, space.rect!] as const),
-              ),
-              movedNodePositionById: nodePositionById,
-            }
-          : null,
+      nextCache: expandedRect
+        ? {
+            baselineSpaces: spaces,
+            targetSpaceId,
+            expandedRect,
+            nextSpaceRectById: new Map(
+              pushedSpaces
+                .filter(space => Boolean(space.rect))
+                .map(space => [space.id, space.rect!] as const),
+            ),
+            movedNodePositionById: nodePositionById,
+          }
+        : null,
     }
   }
 
@@ -295,7 +277,7 @@ export function projectWorkspaceNodeDropLayout({
     nextNodePositionById: new Map(
       nodeRects.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
     ),
-    nextSpaces: hasSpaceChange ? reassignedSpaces : spaces,
+    nextSpaces: hasSpaceChange ? reassignedSpaces : effectiveSpaces,
     hasSpaceChange,
     nextCache: null,
   }

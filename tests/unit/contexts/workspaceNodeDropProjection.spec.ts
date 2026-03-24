@@ -138,7 +138,7 @@ describe('projectWorkspaceNodeDropLayout', () => {
     expect(nodeBOutside.position.x).toBe(244)
   })
 
-  it('reuses cached space push-away projection when expanded rect is unchanged', () => {
+  it('locks space push-away projection after first enter until drag leaves the space', () => {
     const spaceA: WorkspaceSpaceState = {
       id: 'space-a',
       name: 'A',
@@ -191,11 +191,24 @@ describe('projectWorkspaceNodeDropLayout', () => {
 
     expect(projectedFirst.nextCache).toBeTruthy()
 
+    const expandedSpaceA = projectedFirst.nextSpaces.find(space => space.id === 'space-a')?.rect
+    expect(expandedSpaceA).toBeTruthy()
+
+    const desiredDeeperInside = new Map([
+      [
+        'drag',
+        {
+          x: expandedSpaceA!.x + expandedSpaceA!.width - 24 - 220,
+          y: expandedSpaceA!.y + expandedSpaceA!.height - 24 - 100,
+        },
+      ],
+    ])
+
     const projectedSecond = projectWorkspaceNodeDropLayout({
       nodes,
       spaces,
       draggedNodeIds: ['drag'],
-      draggedNodePositionById: desiredInsideSpaceA,
+      draggedNodePositionById: desiredDeeperInside,
       dragDx: -476,
       dragDy: 0,
       previousCache: projectedFirst.nextCache,
@@ -203,7 +216,9 @@ describe('projectWorkspaceNodeDropLayout', () => {
 
     expect(projectedSecond.nextCache).toBe(projectedFirst.nextCache)
     expect(projectedSecond.nextSpaces).toEqual(projectedFirst.nextSpaces)
-    expect(projectedSecond.nextNodePositionById).toEqual(projectedFirst.nextNodePositionById)
+    expect(projectedSecond.nextNodePositionById.get('drag')).not.toEqual(
+      projectedFirst.nextNodePositionById.get('drag'),
+    )
 
     const desiredOutside = new Map([['drag', { x: 500, y: 24 }]])
     const projectedOutside = projectWorkspaceNodeDropLayout({
