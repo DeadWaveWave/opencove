@@ -234,4 +234,63 @@ describe('projectWorkspaceNodeDropLayout', () => {
     expect(projectedOutside.targetSpaceId).toBeNull()
     expect(projectedOutside.nextCache).toBeNull()
   })
+
+  it('locks space rect computation on enter even when no rect expansion is required', () => {
+    const spaceA: WorkspaceSpaceState = {
+      id: 'space-a',
+      name: 'A',
+      directoryPath: '/tmp/a',
+      labelColor: null,
+      nodeIds: ['a'],
+      rect: { x: 0, y: 0, width: 500, height: 500 },
+    }
+
+    const nodes: Array<Node<TerminalNodeData>> = [
+      {
+        ...baseNode,
+        id: 'a',
+        data: { ...baseNode.data, title: 'a', width: 100, height: 100 },
+        position: { x: 24, y: 24 },
+      },
+      {
+        ...baseNode,
+        id: 'drag',
+        data: { ...baseNode.data, title: 'drag', width: 100, height: 100 },
+        position: { x: 600, y: 24 },
+      },
+    ]
+
+    const spaces = [spaceA]
+
+    const desiredInside = new Map([['drag', { x: 120, y: 120 }]])
+    const projectedFirst = projectWorkspaceNodeDropLayout({
+      nodes,
+      spaces,
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desiredInside,
+      dragDx: -480,
+      dragDy: 96,
+    })
+
+    expect(projectedFirst.targetSpaceId).toBe('space-a')
+    expect(projectedFirst.nextCache).toBeTruthy()
+
+    const projectedSpaceA = projectedFirst.nextSpaces.find(space => space.id === 'space-a')?.rect
+    expect(projectedSpaceA).toEqual(spaceA.rect as WorkspaceSpaceRect)
+
+    const desiredDeeperInside = new Map([['drag', { x: 300, y: 300 }]])
+    const projectedSecond = projectWorkspaceNodeDropLayout({
+      nodes,
+      spaces,
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desiredDeeperInside,
+      dragDx: -300,
+      dragDy: 276,
+      previousCache: projectedFirst.nextCache,
+    })
+
+    expect(projectedSecond.targetSpaceId).toBe('space-a')
+    expect(projectedSecond.nextCache).toBe(projectedFirst.nextCache)
+    expect(projectedSecond.nextSpaces).toEqual(projectedFirst.nextSpaces)
+  })
 })

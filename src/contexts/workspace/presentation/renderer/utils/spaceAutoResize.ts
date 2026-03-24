@@ -55,12 +55,14 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
   nodeRects,
   gap,
   padding = SPACE_NODE_PADDING,
+  minimumRect = null,
 }: {
   targetSpaceId: string
   spaces: WorkspaceSpaceState[]
   nodeRects: Array<{ id: string; rect: WorkspaceSpaceRect }>
   gap: number
   padding?: number
+  minimumRect?: WorkspaceSpaceRect | null
 }): { spaces: WorkspaceSpaceState[]; nodePositionById: Map<string, { x: number; y: number }> } {
   const targetSpace = spaces.find(space => space.id === targetSpaceId)
   if (!targetSpace?.rect) {
@@ -105,16 +107,20 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
   }
 
   const existingRect = targetSpace.rect
-  const nextLeft = Math.min(existingRect.x, requiredRect.x)
-  const nextTop = Math.min(existingRect.y, requiredRect.y)
-  const nextRight = Math.max(
-    existingRect.x + existingRect.width,
-    requiredRect.x + requiredRect.width,
-  )
-  const nextBottom = Math.max(
+  let nextLeft = Math.min(existingRect.x, requiredRect.x)
+  let nextTop = Math.min(existingRect.y, requiredRect.y)
+  let nextRight = Math.max(existingRect.x + existingRect.width, requiredRect.x + requiredRect.width)
+  let nextBottom = Math.max(
     existingRect.y + existingRect.height,
     requiredRect.y + requiredRect.height,
   )
+
+  if (minimumRect) {
+    nextLeft = Math.min(nextLeft, minimumRect.x)
+    nextTop = Math.min(nextTop, minimumRect.y)
+    nextRight = Math.max(nextRight, minimumRect.x + minimumRect.width)
+    nextBottom = Math.max(nextBottom, minimumRect.y + minimumRect.height)
+  }
 
   const expandedRect: WorkspaceSpaceRect = {
     x: nextLeft,

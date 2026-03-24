@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
+import { SPACE_NODE_PADDING } from '../../../utils/spaceLayout'
 import { reassignNodesAcrossSpaces } from './useSpaceOwnership.drop.helpers'
 import { projectWorkspaceNodeDragLayout } from './useSpaceOwnership.projectLayout'
 
@@ -54,6 +55,63 @@ function applySpaceRectOverrides({
       rect: { ...override },
     }
   })
+}
+
+function sumRectArea(rects: WorkspaceSpaceRect[]): number {
+  let total = 0
+  for (const rect of rects) {
+    total += rect.width * rect.height
+  }
+  return total
+}
+
+function resolveSpaceEntryReserveRect({
+  spaceRect,
+  ownedRects,
+  padding = SPACE_NODE_PADDING,
+  targetFill = 0.6,
+  maxScale = 2.25,
+}: {
+  spaceRect: WorkspaceSpaceRect
+  ownedRects: WorkspaceSpaceRect[]
+  padding?: number
+  targetFill?: number
+  maxScale?: number
+}): WorkspaceSpaceRect | null {
+  if (ownedRects.length === 0) {
+    return null
+  }
+
+  const usableWidth = Math.max(0, spaceRect.width - padding * 2)
+  const usableHeight = Math.max(0, spaceRect.height - padding * 2)
+  const usableArea = usableWidth * usableHeight
+  if (usableArea <= 0) {
+    return null
+  }
+
+  const totalArea = sumRectArea(ownedRects)
+  const density = totalArea / usableArea
+
+  if (!Number.isFinite(density) || density <= targetFill) {
+    return null
+  }
+
+  const requiredArea = totalArea / targetFill
+  const scale = Math.min(maxScale, Math.sqrt(requiredArea / usableArea))
+
+  if (!Number.isFinite(scale) || scale <= 1) {
+    return null
+  }
+
+  const nextUsableWidth = usableWidth * scale
+  const nextUsableHeight = usableHeight * scale
+
+  return {
+    x: spaceRect.x,
+    y: spaceRect.y,
+    width: Math.max(spaceRect.width, nextUsableWidth + padding * 2),
+    height: Math.max(spaceRect.height, nextUsableHeight + padding * 2),
+  }
 }
 
 export function projectWorkspaceNodeDropLayout({
@@ -176,9 +234,9 @@ export function projectWorkspaceNodeDropLayout({
   if (shouldEnsureSpaceFitsOwnedNodes && targetSpaceId) {
     const lockActive = Boolean(
       previousCache &&
-        canUsePreviousSpaceRects &&
-        previousCache.baselineSpaces === spaces &&
-        previousCache.targetSpaceId === targetSpaceId,
+      canUsePreviousSpaceRects &&
+      previousCache.baselineSpaces === spaces &&
+      previousCache.targetSpaceId === targetSpaceId,
     )
 
     if (lockActive && previousCache) {
@@ -206,11 +264,26 @@ export function projectWorkspaceNodeDropLayout({
       }
     }
 
+    const targetSpace = reassignedSpaces.find(space => space.id === targetSpaceId) ?? null
+    const ownedRectById = new Map(nodeRects.map(item => [item.id, item.rect]))
+    const ownedRects =
+      targetSpace?.rect && targetSpace.nodeIds.length > 0
+        ? targetSpace.nodeIds
+            .map(nodeId => ownedRectById.get(nodeId))
+            .filter((rect): rect is WorkspaceSpaceRect => Boolean(rect))
+        : []
+
+    const minimumRect =
+      targetSpace?.rect && hasSpaceChange
+        ? resolveSpaceEntryReserveRect({ spaceRect: targetSpace.rect, ownedRects })
+        : null
+
     const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({
       targetSpaceId,
       spaces: reassignedSpaces,
       nodeRects,
       gap: 0,
+      minimumRect,
     })
 
     nodeRects = nodeRects.map(item => {
@@ -237,14 +310,30 @@ export function projectWorkspaceNodeDropLayout({
     })
 
     if (!hasRectChange) {
+      const stableSpaces = hasSpaceChange ? reassignedSpaces : effectiveSpaces
+      const stableSpaceRectById = new Map(
+        stableSpaces
+          .filter(space => Boolean(space.rect))
+          .map(space => [space.id, space.rect!] as const),
+      )
+      const stableTargetRect = stableSpaceRectById.get(targetSpaceId) ?? targetSpace?.rect ?? null
+
       return {
         targetSpaceId,
         nextNodePositionById: new Map(
           nodeRects.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
         ),
-        nextSpaces: hasSpaceChange ? reassignedSpaces : effectiveSpaces,
+        nextSpaces: stableSpaces,
         hasSpaceChange,
-        nextCache: null,
+        nextCache: stableTargetRect
+          ? {
+              baselineSpaces: spaces,
+              targetSpaceId,
+              expandedRect: stableTargetRect,
+              nextSpaceRectById: stableSpaceRectById,
+              movedNodePositionById: nodePositionById,
+            }
+          : null,
       }
     }
 
