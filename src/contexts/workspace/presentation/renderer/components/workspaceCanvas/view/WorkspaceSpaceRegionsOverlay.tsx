@@ -1,5 +1,5 @@
 import React from 'react'
-import { ViewportPortal, useReactFlow } from '@xyflow/react'
+import { ViewportPortal, useReactFlow, useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
@@ -20,6 +20,7 @@ import {
   WorkspaceSpaceRegionItem,
   type WorkspaceSpaceBranchBadge,
 } from './WorkspaceSpaceRegionItem'
+import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
 
 const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
 
@@ -60,6 +61,7 @@ export function WorkspaceSpaceRegionsOverlay({
 }: WorkspaceSpaceRegionsOverlayProps): React.JSX.Element {
   const { t } = useTranslation()
   const reactFlow = useReactFlow()
+  const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const selectedSpaceIdSet = React.useMemo(() => new Set(selectedSpaceIds), [selectedSpaceIds])
   const branchRenameInputRef = React.useRef<HTMLInputElement | null>(null)
   const [refreshNonce, setRefreshNonce] = React.useState(0)
@@ -383,6 +385,7 @@ export function WorkspaceSpaceRegionsOverlay({
               space={space}
               resolvedRect={resolvedRect}
               isSelected={isSelected}
+              isDragSurfaceSelectionMode={isDragSurfaceSelectionMode}
               githubPullRequestsEnabled={githubPullRequestsEnabled}
               editingSpaceId={editingSpaceId}
               spaceRenameInputRef={spaceRenameInputRef}

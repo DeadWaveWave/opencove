@@ -156,6 +156,19 @@
   pointer-events: auto;
 }
 
+.workspace-space-region__drag-surface {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  cursor: grab;
+  border-radius: inherit;
+  touch-action: none;
+}
+
+.workspace-space-region__drag-surface:active {
+  cursor: grabbing;
+}
+
 .workspace-space-region__drag-handle--top {
   top: -8px;
   left: -8px;

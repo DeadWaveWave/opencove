@@ -17,7 +17,6 @@ import { type SetNodes } from './useSpaceOwnership.helpers'
 import { useWorkspaceCanvasApplyOwnershipForDrop } from './useSpaceOwnership.applyDrop'
 import { useWorkspaceCanvasSpaceOwnershipWorktreeWarning } from './useSpaceOwnership.worktreeWarning'
 import { setSortedSelectedSpaceIds } from './useSelectionDraft.helpers'
-
 export function useWorkspaceCanvasSpaceOwnership({
   workspacePath,
   reactFlow,
@@ -255,7 +254,6 @@ export function useWorkspaceCanvasSpaceOwnership({
             x: event.clientX,
             y: event.clientY,
           })
-
           nodeDragPointerAnchorRef.current = {
             nodeId: node.id,
             offset: {
@@ -270,7 +268,6 @@ export function useWorkspaceCanvasSpaceOwnership({
 
       const shouldReplaceSelection =
         !event.shiftKey && !selectedNodeIdsRef.current.includes(node.id)
-
       if (shouldReplaceSelection) {
         exclusiveNodeDragAnchorIdRef.current = node.id
 
@@ -345,7 +342,6 @@ export function useWorkspaceCanvasSpaceOwnership({
         x: event.clientX,
         y: event.clientY,
       })
-
       const recorded = dragStartNodeIdsRef.current
       dragStartNodeIdsRef.current = null
       const dragStartNodePositionById = dragStartNodePositionByIdRef.current ?? new Map()
@@ -360,6 +356,10 @@ export function useWorkspaceCanvasSpaceOwnership({
         recorded && recorded.includes(node.id) && recorded.length > 0
           ? recorded
           : fallbackNodes.map(item => item.id)
+      if (dragSelectedSpaceIdsRef.current && dragSelectedSpaceIdsRef.current.length > 0) {
+        dragSelectedSpaceIdsRef.current = null
+        return
+      }
 
       const draggedNodePositionById = collectDraggedNodePositions({
         draggedNodeIds,
@@ -421,7 +421,6 @@ export function useWorkspaceCanvasSpaceOwnership({
         x: event.clientX,
         y: event.clientY,
       })
-
       const recorded = dragStartNodeIdsRef.current
       dragStartNodeIdsRef.current = null
       const dragStartNodePositionById = dragStartNodePositionByIdRef.current ?? new Map()
@@ -438,6 +437,10 @@ export function useWorkspaceCanvasSpaceOwnership({
           : fallbackNodes.length > 0
             ? fallbackNodes.map(item => item.id)
             : []
+      if (dragSelectedSpaceIdsRef.current && dragSelectedSpaceIdsRef.current.length > 0) {
+        dragSelectedSpaceIdsRef.current = null
+        return
+      }
 
       const draggedNodePositionById = collectDraggedNodePositions({
         draggedNodeIds,

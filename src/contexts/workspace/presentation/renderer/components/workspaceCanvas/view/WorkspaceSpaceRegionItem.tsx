@@ -15,6 +15,7 @@ export function WorkspaceSpaceRegionItem({
   space,
   resolvedRect,
   isSelected,
+  isDragSurfaceSelectionMode,
   githubPullRequestsEnabled,
   editingSpaceId,
   spaceRenameInputRef,
@@ -34,6 +35,7 @@ export function WorkspaceSpaceRegionItem({
   space: SpaceVisual
   resolvedRect: WorkspaceSpaceRect
   isSelected: boolean
+  isDragSurfaceSelectionMode: boolean
   githubPullRequestsEnabled: boolean
   editingSpaceId: string | null
   spaceRenameInputRef: React.RefObject<HTMLInputElement | null>
@@ -88,6 +90,24 @@ export function WorkspaceSpaceRegionItem({
         height: resolvedRect.height,
       }}
     >
+      {isSelected && isDragSurfaceSelectionMode ? (
+        <div
+          className="workspace-space-region__drag-surface"
+          data-testid={`workspace-space-drag-surface-${space.id}`}
+          onPointerDown={event => {
+            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
+          }}
+          onPointerMove={event => {
+            updateHandleCursor(event, resolvedRect, 'region')
+          }}
+          onMouseDown={event => {
+            handleSpaceDragHandlePointerDown(event, space.id, { mode: 'region' })
+          }}
+          onMouseMove={event => {
+            updateHandleCursor(event, resolvedRect, 'region')
+          }}
+        />
+      ) : null}
       {(['top', 'right', 'bottom', 'left'] as const).map(side => (
         <div
           key={side}

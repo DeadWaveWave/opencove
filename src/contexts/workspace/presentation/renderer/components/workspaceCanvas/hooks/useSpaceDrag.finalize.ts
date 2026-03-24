@@ -1,7 +1,8 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { SpaceDragState } from '../types'
-import { pushAwayLayout, type LayoutDirection, type LayoutItem } from '../../../utils/spaceLayout'
+import { type LayoutDirection } from '../../../utils/spaceLayout'
+import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -73,11 +74,13 @@ export function projectWorkspaceSpaceDragLayout({
       }
     })
 
-    return projectPushedLayout({
+    return projectWorkspacePushAwayLayout({
       spaces: draftSpaces,
       nodes: draftNodes,
-      pinnedGroupId: dragState.spaceId,
+      pinnedGroupIds: [dragState.spaceId],
+      sourceGroupIds: [dragState.spaceId],
       directions: resolveMoveDirections(dx, dy),
+      gap: 0,
     })
   }
 
@@ -95,11 +98,13 @@ export function projectWorkspaceSpaceDragLayout({
       : space,
   )
 
-  return projectPushedLayout({
+  return projectWorkspacePushAwayLayout({
     spaces: draftSpaces,
     nodes: baselineNodes,
-    pinnedGroupId: dragState.spaceId,
+    pinnedGroupIds: [dragState.spaceId],
+    sourceGroupIds: [dragState.spaceId],
     directions: resolveResizeDirections(dragState.initialRect, nextRect),
+    gap: 0,
   })
 }
 
@@ -185,113 +190,6 @@ function restoreBaselineNodes(
       position: baseline,
     }
   })
-}
-
-function buildLayoutItems({
-  spaces,
-  nodes,
-}: {
-  spaces: WorkspaceSpaceState[]
-  nodes: Node<TerminalNodeData>[]
-}): LayoutItem[] {
-  const ownedNodeIds = new Set(spaces.flatMap(space => space.nodeIds))
-  const items: LayoutItem[] = []
-  const nodeById = new Map(nodes.map(node => [node.id, node]))
-
-  for (const space of spaces) {
-    if (!space.rect) {
-      continue
-    }
-
-    items.push({
-      id: space.id,
-      kind: 'space',
-      groupId: space.id,
-      rect: { ...space.rect },
-    })
-
-    for (const nodeId of space.nodeIds) {
-      const node = nodeById.get(nodeId)
-      if (!node) {
-        continue
-      }
-
-      items.push({
-        id: node.id,
-        kind: 'node',
-        groupId: space.id,
-        rect: {
-          x: node.position.x,
-          y: node.position.y,
-          width: node.data.width,
-          height: node.data.height,
-        },
-      })
-    }
-  }
-
-  for (const node of nodes) {
-    if (ownedNodeIds.has(node.id)) {
-      continue
-    }
-
-    items.push({
-      id: node.id,
-      kind: 'node',
-      groupId: node.id,
-      rect: {
-        x: node.position.x,
-        y: node.position.y,
-        width: node.data.width,
-        height: node.data.height,
-      },
-    })
-  }
-
-  return items
-}
-
-function projectPushedLayout({
-  spaces,
-  nodes,
-  pinnedGroupId,
-  directions,
-}: {
-  spaces: WorkspaceSpaceState[]
-  nodes: Node<TerminalNodeData>[]
-  pinnedGroupId: string
-  directions: LayoutDirection[]
-}): ProjectedSpaceDragLayout {
-  const pushed = pushAwayLayout({
-    items: buildLayoutItems({ spaces, nodes }),
-    pinnedGroupIds: [pinnedGroupId],
-    sourceGroupIds: [pinnedGroupId],
-    directions,
-    gap: 0,
-  })
-
-  const nextSpaceRectById = new Map(
-    pushed.filter(item => item.kind === 'space').map(item => [item.id, item.rect]),
-  )
-  const nextNodePositionById = new Map(
-    pushed
-      .filter(item => item.kind === 'node')
-      .map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
-  )
-
-  const nextSpaces = spaces.map(space => {
-    const rect = nextSpaceRectById.get(space.id)
-    if (!rect || !space.rect || rectEquals(rect, space.rect)) {
-      return space
-    }
-
-    return { ...space, rect }
-  })
-
-  return {
-    nextSpaces,
-    nextNodePositionById,
-  }
 }
 
 function rectEquals(a: WorkspaceSpaceRect, b: WorkspaceSpaceRect): boolean {

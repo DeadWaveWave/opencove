@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Node, Viewport } from '@xyflow/react'
+import { useStore, type Node, type Viewport } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
   createCanvasInputModalityState,
@@ -13,6 +13,7 @@ import type {
   SelectionDraftState,
   TrackpadGestureLockState,
 } from '../types'
+import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
 
 type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -63,6 +64,7 @@ export function useWorkspaceCanvasState({
   viewportRef: React.MutableRefObject<Viewport>
   flowNodes: Node<TerminalNodeData>[]
 } {
+  const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null)
   const [isMinimapVisible, setIsMinimapVisible] = useState(persistedMinimapVisible)
   const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
@@ -92,9 +94,10 @@ export function useWorkspaceCanvasState({
     () =>
       nodes.map(node => ({
         ...node,
-        dragHandle: node.selected ? undefined : NODE_DRAG_HANDLE_SELECTOR,
+        dragHandle:
+          node.selected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR,
       })),
-    [nodes],
+    [isDragSurfaceSelectionMode, nodes],
   )
 
   useLayoutEffect(() => {

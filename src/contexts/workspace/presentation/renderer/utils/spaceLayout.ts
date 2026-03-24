@@ -99,7 +99,10 @@ export function applySpaceFrameHandleMode(
   handle: SpaceFrameHandle,
   mode: SpaceFrameHandleMode = 'auto',
 ): SpaceFrameHandle {
-  void mode
+  if (mode === 'region') {
+    return { kind: 'move' }
+  }
+
   return handle
 }
 

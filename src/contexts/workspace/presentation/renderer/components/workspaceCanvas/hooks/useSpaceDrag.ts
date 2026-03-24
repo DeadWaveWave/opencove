@@ -222,7 +222,12 @@ export function useWorkspaceCanvasSpaceDrag({
           : [...selectedSpaceIdsRef.current, spaceId]
 
         setSortedSelectedSpaceIds(nextSelectedSpaceIds, selectedSpaceIdsRef, setSelectedSpaceIds)
-        reactFlowStore.setState({ nodesSelectionActive: selectedNodeIdsRef.current.length > 0 })
+        const hasSelectedNodes = selectedNodeIdsRef.current.length > 0
+        const hasAnySelection = hasSelectedNodes || nextSelectedSpaceIds.length > 0
+        reactFlowStore.setState({
+          nodesSelectionActive: hasSelectedNodes,
+          coveDragSurfaceSelectionMode: hasAnySelection,
+        } as unknown as Parameters<typeof reactFlowStore.setState>[0])
         return
       }
 
@@ -249,7 +254,10 @@ export function useWorkspaceCanvasSpaceDrag({
       selectedNodeIdsRef.current = []
       setSelectedNodeIds([])
       setSortedSelectedSpaceIds([spaceId], selectedSpaceIdsRef, setSelectedSpaceIds)
-      reactFlowStore.setState({ nodesSelectionActive: false })
+      reactFlowStore.setState({
+        nodesSelectionActive: false,
+        coveDragSurfaceSelectionMode: false,
+      } as unknown as Parameters<typeof reactFlowStore.setState>[0])
     },
     [
       reactFlowStore,

@@ -6,6 +6,7 @@ import {
   PanOnScrollMode,
   ReactFlow,
   SelectionMode,
+  useStore,
   useStoreApi,
   type Edge,
   type Node,
@@ -25,6 +26,7 @@ import { WorkspaceCanvasTopOverlays } from './view/WorkspaceCanvasTopOverlays'
 import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
 import { isEditableDomTarget } from './domTargets'
+import { selectDragSurfaceSelectionMode } from '../terminalNode/reactFlowState'
 
 const WHEEL_BLOCK_SELECTOR = '.cove-window, .cove-window-backdrop, .workspace-context-menu'
 
@@ -142,6 +144,7 @@ export function WorkspaceCanvasView({
   closeNodesById,
 }: WorkspaceCanvasViewProps): React.JSX.Element {
   const reactFlowStore = useStoreApi()
+  const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const [labelColorFilter, setLabelColorFilter] = React.useState<LabelColor | null>(null)
 
   useWorkspaceCanvasGlobalDismissals({
@@ -276,6 +279,7 @@ export function WorkspaceCanvasView({
       className="workspace-canvas"
       data-canvas-input-mode={resolvedCanvasInputMode}
       data-selected-node-count={selectedNodeCount}
+      data-cove-drag-surface-selection-mode={isDragSurfaceSelectionMode ? 'true' : 'false'}
       tabIndex={-1}
       onClick={onCanvasClick}
       onPaste={handleCanvasPaste}

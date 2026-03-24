@@ -134,9 +134,11 @@ export function useWorkspaceCanvasSelectNode({
 
       selectedNodeIdsRef.current = nextSelectedNodeIds
       setSelectedNodeIds(nextSelectedNodeIds)
+      const hasAnySelection =
+        nextSelectedNodeIds.length > 0 || selectedSpaceIdsRef.current.length > 0
       reactFlowStore.setState({
         nodesSelectionActive: nextSelectedNodeIds.length > 0,
-        coveDragSurfaceSelectionMode: shouldToggle && nextSelectedNodeIds.length > 0,
+        coveDragSurfaceSelectionMode: shouldToggle && hasAnySelection,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
     },
     [
