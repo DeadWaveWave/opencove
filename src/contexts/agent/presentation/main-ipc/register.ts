@@ -20,6 +20,7 @@ import {
   disposeAgentModelService,
   listAgentModels,
 } from '../../infrastructure/cli/AgentModelService'
+import { captureGeminiSessionDiscoveryCursor } from '../../infrastructure/cli/AgentSessionLocatorProviders'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
 import {
   readLastAssistantMessageFromOpenCodeSession,
@@ -215,6 +216,13 @@ export function registerAgentIpcHandlers(
         normalized.mode,
       )
 
+      const geminiDiscoveryCursor =
+        normalized.provider === 'gemini' &&
+        launchCommand.launchMode === 'new' &&
+        !launchCommand.resumeSessionId
+          ? await captureGeminiSessionDiscoveryCursor(normalized.cwd).catch(() => null)
+          : undefined
+
       const launchStartedAtMs = Date.now()
       const resolvedInvocation = await resolveAgentCliInvocation({
         command: testStub?.command ?? launchCommand.command,
@@ -260,6 +268,7 @@ export function registerAgentIpcHandlers(
           launchMode: launchCommand.launchMode,
           resumeSessionId,
           startedAtMs: launchStartedAtMs,
+          ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
           opencodeBaseUrl: opencodeServer
             ? `http://${opencodeServer.hostname}:${opencodeServer.port}`
             : null,

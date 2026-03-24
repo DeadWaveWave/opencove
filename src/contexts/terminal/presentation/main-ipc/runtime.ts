@@ -13,6 +13,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { PtyManager, type SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
+import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 
 const PTY_DATA_FLUSH_DELAY_MS = 32
@@ -28,6 +29,7 @@ export interface StartSessionStateWatcherInput {
   resumeSessionId: string | null
   startedAtMs: number
   opencodeBaseUrl?: string | null
+  geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
 }
 
 export interface PtyRuntime {
