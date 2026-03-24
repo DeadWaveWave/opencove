@@ -175,10 +175,14 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
 
   for (const nodeItem of nodeRects) {
     const owner = owningSpaceIdByNodeId.get(nodeItem.id)
+    if (owner) {
+      continue
+    }
+
     items.push({
       id: nodeItem.id,
       kind: 'node',
-      groupId: owner ?? nodeItem.id,
+      groupId: nodeItem.id,
       rect: { ...nodeItem.rect },
     })
   }
@@ -210,11 +214,14 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
   const nextSpaceRectById = new Map(
     pushed.filter(item => item.kind === 'space').map(item => [item.id, item.rect]),
   )
-  const nextNodePositionById = new Map(
-    pushed
-      .filter(item => item.kind === 'node')
-      .map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
-  )
+  const nextNodePositionById = new Map<string, { x: number; y: number }>()
+  pushed.forEach(item => {
+    if (item.kind !== 'node') {
+      return
+    }
+
+    nextNodePositionById.set(item.id, { x: item.rect.x, y: item.rect.y })
+  })
 
   const nextSpaces = draftSpaces.map(space => {
     const rect = space.rect ? nextSpaceRectById.get(space.id) : null
@@ -224,6 +231,32 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
 
     return rectEquals(rect, space.rect) ? space : { ...space, rect }
   })
+
+  for (const space of draftSpaces) {
+    if (!space.rect) {
+      continue
+    }
+
+    const nextRect = nextSpaceRectById.get(space.id)
+    if (!nextRect) {
+      continue
+    }
+
+    const dx = nextRect.x - space.rect.x
+    const dy = nextRect.y - space.rect.y
+    if (dx === 0 && dy === 0) {
+      continue
+    }
+
+    for (const nodeId of space.nodeIds) {
+      const rect = nodeRectById.get(nodeId)
+      if (!rect) {
+        continue
+      }
+
+      nextNodePositionById.set(nodeId, { x: rect.x + dx, y: rect.y + dy })
+    }
+  }
 
   return { spaces: nextSpaces, nodePositionById: nextNodePositionById }
 }
