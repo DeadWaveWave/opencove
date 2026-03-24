@@ -69,7 +69,17 @@ function createVersion2Tables(): Map<string, string[]> {
     ['app_settings', [...CURRENT_SCHEMA_COLUMNS.app_settings]],
     [
       'workspaces',
-      ['id', 'name', 'path', 'worktrees_root', 'viewport_x', 'viewport_y', 'viewport_zoom', 'is_minimap_visible', 'active_space_id'],
+      [
+        'id',
+        'name',
+        'path',
+        'worktrees_root',
+        'viewport_x',
+        'viewport_y',
+        'viewport_zoom',
+        'is_minimap_visible',
+        'active_space_id',
+      ],
     ],
     [
       'nodes',
@@ -96,23 +106,32 @@ function createVersion2Tables(): Map<string, string[]> {
     ],
     [
       'workspace_spaces',
-      ['id', 'workspace_id', 'name', 'directory_path', 'rect_x', 'rect_y', 'rect_width', 'rect_height'],
+      [
+        'id',
+        'workspace_id',
+        'name',
+        'directory_path',
+        'rect_x',
+        'rect_y',
+        'rect_width',
+        'rect_height',
+      ],
     ],
     ['workspace_space_nodes', [...CURRENT_SCHEMA_COLUMNS.workspace_space_nodes]],
     ['node_scrollback', [...CURRENT_SCHEMA_COLUMNS.node_scrollback]],
   ])
 }
 
-function createMockDbState(options: {
-  userVersion?: number
-  version2Schema?: boolean
-  failOnFirstOpen?: boolean
-} = {}): MockDbState {
+function createMockDbState(
+  options: {
+    userVersion?: number
+    version2Schema?: boolean
+    failOnFirstOpen?: boolean
+  } = {},
+): MockDbState {
   return {
     userVersion: options.userVersion ?? 0,
-    tables: options.version2Schema
-      ? createVersion2Tables()
-      : new Map<string, string[]>(),
+    tables: options.version2Schema ? createVersion2Tables() : new Map<string, string[]>(),
     openAttempts: 0,
     ...(options.failOnFirstOpen ? { failOnFirstOpen: true } : {}),
   }
@@ -159,7 +178,8 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
         }
       }
 
-      const alterRegex = /ALTER TABLE\s+("?)([A-Za-z_][A-Za-z0-9_]*)\1\s+ADD COLUMN\s+("?)([A-Za-z_][A-Za-z0-9_]*)\3/gi
+      const alterRegex =
+        /ALTER TABLE\s+("?)([A-Za-z_][A-Za-z0-9_]*)\1\s+ADD COLUMN\s+("?)([A-Za-z_][A-Za-z0-9_]*)\3/gi
       for (const match of sql.matchAll(alterRegex)) {
         const tableName = match[2]
         const columnName = match[4]
@@ -176,7 +196,11 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
       }
     }
 
-    public prepare(sql: string): { all: () => unknown[]; get: (...params: unknown[]) => unknown; run: (...params: unknown[]) => void } {
+    public prepare(sql: string): {
+      all: () => unknown[]
+      get: (...params: unknown[]) => unknown
+      run: (...params: unknown[]) => void
+    } {
       const tableInfoMatch = sql.match(/PRAGMA table_info\("?([A-Za-z_][A-Za-z0-9_]*)"?\)/i)
       if (tableInfoMatch) {
         const tableName = tableInfoMatch[1]
@@ -190,7 +214,9 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
         }
       }
 
-      const insertMatch = sql.match(/INSERT INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([\s\S]*?)\)\s*VALUES/i)
+      const insertMatch = sql.match(
+        /INSERT INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([\s\S]*?)\)\s*VALUES/i,
+      )
       if (insertMatch) {
         const tableName = insertMatch[1]
         const columns = insertMatch[2]
