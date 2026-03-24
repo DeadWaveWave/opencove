@@ -96,6 +96,12 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         .locator('.terminal-node__header')
         .first()
         .click({ position: { x: 40, y: 20 } })
+      await window.evaluate(() => {
+        const { activeElement } = document
+        if (activeElement instanceof HTMLElement) {
+          activeElement.blur()
+        }
+      })
       await window.keyboard.press(`${commandModifier}+G`)
 
       await expect
