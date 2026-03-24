@@ -137,6 +137,8 @@ export const en = {
     fields: {
       provider: 'Provider',
       model: 'Model',
+      sessionId: 'Session ID',
+      sessionVerified: 'verified',
       executionDirectory: 'Bound directory',
       expectedDirectory: 'Original directory',
     },

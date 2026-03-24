@@ -2,6 +2,7 @@ import React from 'react'
 import type { NodeProps, Node as ReactFlowNode } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
+import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   AgentRuntimeStatus,
@@ -10,15 +11,28 @@ import type {
   TaskPriority,
   TaskRuntimeStatus,
 } from '@contexts/workspace/presentation/renderer/types'
+import { providerLabel } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 import { getStatusClassName } from '@contexts/workspace/presentation/renderer/components/terminalNode/status'
 
-type TerminalLikeNodeData = {
-  kind: 'terminal' | 'agent'
-  title: string
-  status: AgentRuntimeStatus | null
-  labelColor: LabelColor | null
-  providerLabel: string | null
-}
+type TerminalLikeNodeData =
+  | {
+      kind: 'terminal'
+      title: string
+      labelColor: LabelColor | null
+    }
+  | {
+      kind: 'agent'
+      title: string
+      status: AgentRuntimeStatus | null
+      labelColor: LabelColor | null
+      provider: AgentProvider | null
+      model: string | null
+      effectiveModel: string | null
+      resumeSessionId: string | null
+      resumeSessionIdVerified: boolean
+      executionDirectory: string | null
+      expectedDirectory: string | null
+    }
 
 type TaskNodeData = {
   kind: 'task'
@@ -77,9 +91,10 @@ function stopReactFlowInteraction(event: React.SyntheticEvent): void {
 function ArchivedTerminalLikeNode({ data }: NodeProps<TerminalLikeNode>): React.JSX.Element {
   const { t } = useTranslation()
   const isAgentNode = data.kind === 'agent'
+  const agentStatus = isAgentNode ? data.status : null
 
   const statusLabel = (() => {
-    switch (data.status) {
+    switch (agentStatus) {
       case 'standby':
         return t('agentRuntime.standby')
       case 'exited':
@@ -115,17 +130,59 @@ function ArchivedTerminalLikeNode({ data }: NodeProps<TerminalLikeNode>): React.
 
         {isAgentNode ? (
           <div className="terminal-node__header-badges">
-            <span className={`terminal-node__status ${getStatusClassName(data.status)}`}>
+            <span className={`terminal-node__status ${getStatusClassName(agentStatus)}`}>
               {statusLabel}
             </span>
           </div>
         ) : null}
       </div>
 
-      <div
-        className="terminal-node__terminal space-archive-replay__terminal-body"
-        aria-hidden="true"
-      />
+      <div className="terminal-node__terminal space-archive-replay__terminal-body">
+        {isAgentNode ? (
+          <div className="space-archive-replay__agent-meta">
+            <div className="space-archive-replay__agent-meta-row">
+              <span className="space-archive-replay__agent-meta-label">
+                {t('spaceArchivesWindow.fields.provider')}
+              </span>
+              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+                {data.provider ? providerLabel(data.provider) : '—'}
+              </span>
+            </div>
+
+            <div className="space-archive-replay__agent-meta-row">
+              <span className="space-archive-replay__agent-meta-label">
+                {t('spaceArchivesWindow.fields.model')}
+              </span>
+              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+                {data.effectiveModel ?? data.model ?? t('taskNode.defaultModel')}
+              </span>
+            </div>
+
+            <div className="space-archive-replay__agent-meta-row">
+              <span className="space-archive-replay__agent-meta-label">
+                {t('spaceArchivesWindow.fields.sessionId')}
+              </span>
+              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+                {data.resumeSessionId ?? '—'}
+                {data.resumeSessionIdVerified ? (
+                  <span className="space-archive-replay__agent-meta-chip">
+                    {t('spaceArchivesWindow.fields.sessionVerified')}
+                  </span>
+                ) : null}
+              </span>
+            </div>
+
+            <div className="space-archive-replay__agent-meta-row">
+              <span className="space-archive-replay__agent-meta-label">
+                {t('spaceArchivesWindow.fields.executionDirectory')}
+              </span>
+              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+                {data.executionDirectory ?? '—'}
+              </span>
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   )
 }
@@ -151,15 +208,16 @@ function ArchivedNoteNode({ data }: NodeProps<ArchivedNoteNodeType>): React.JSX.
         <span className="note-node__title">{t('noteNode.title')}</span>
       </div>
 
-      <pre
+      <textarea
         className="note-node__textarea nodrag nopan nowheel space-archive-replay__note-text space-archive-replay__selectable"
+        value={data.text}
+        readOnly
+        spellCheck={false}
         onPointerDownCapture={stopReactFlowInteraction}
         onPointerDown={stopReactFlowInteraction}
         onClick={stopReactFlowInteraction}
         onWheel={stopReactFlowInteraction}
-      >
-        {data.text}
-      </pre>
+      />
     </div>
   )
 }
@@ -210,15 +268,16 @@ function ArchivedTaskNode({ data }: NodeProps<ArchivedTaskNodeType>): React.JSX.
       <div className="task-node__content">
         <label>{t('taskNode.requirement')}</label>
         <div className="task-node__inline-editor">
-          <pre
+          <textarea
             className="task-node__requirement-input nodrag nopan nowheel space-archive-replay__task-requirement space-archive-replay__selectable"
+            value={data.requirement}
+            readOnly
+            spellCheck={false}
             onPointerDownCapture={stopReactFlowInteraction}
             onPointerDown={stopReactFlowInteraction}
             onClick={stopReactFlowInteraction}
             onWheel={stopReactFlowInteraction}
-          >
-            {data.requirement}
-          </pre>
+          />
         </div>
       </div>
     </div>
@@ -276,11 +335,25 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
         type: 'terminalLike',
         position: { x: node.frame.position.x, y: node.frame.position.y },
         data: {
-          kind: node.kind,
-          title: node.title,
-          status: node.kind === 'agent' ? node.status : null,
-          labelColor: effectiveLabelColor,
-          providerLabel: node.kind === 'agent' ? node.provider : null,
+          ...(node.kind === 'agent'
+            ? {
+                kind: 'agent' as const,
+                title: node.title,
+                status: node.status,
+                labelColor: effectiveLabelColor,
+                provider: node.provider,
+                model: node.model,
+                effectiveModel: node.effectiveModel,
+                resumeSessionId: node.resumeSessionId,
+                resumeSessionIdVerified: node.resumeSessionIdVerified === true,
+                executionDirectory: node.executionDirectory,
+                expectedDirectory: node.expectedDirectory,
+              }
+            : {
+                kind: 'terminal' as const,
+                title: node.title,
+                labelColor: effectiveLabelColor,
+              }),
         },
         style: {
           width: node.frame.size.width,

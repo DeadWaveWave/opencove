@@ -138,6 +138,8 @@ export const zhCN = {
     fields: {
       provider: '提供方',
       model: '模型',
+      sessionId: '会话 ID',
+      sessionVerified: '已验证',
       executionDirectory: '绑定目录',
       expectedDirectory: '原目录',
     },
