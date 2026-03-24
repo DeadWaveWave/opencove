@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings: UI theme selector (system/light/dark) with system follow. (#40)
 - UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
+- UI: Control Center + agent standby banner notifications (with configurable context chips). (#81)
 - In-canvas GitHub pull request chip for worktree-bound Spaces (opens on GitHub; requires `gh`).
 - Settings → Integrations tab with a GitHub PR links toggle (default on).
 - In-app update checker with stable/nightly tracking (nightly supports prompt only) plus a first-launch “What’s New” sheet after updates. (#49)
@@ -39,6 +40,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
 - Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
+- Codex: Fixed agents getting stuck on `working` and missing standby notifications when switching projects or after restart. (#81)
 - Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
 - Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)
 - Windows: Fixed native select dropdown styling issues (notably dark mode) by using a custom select component across the UI. (#47)
