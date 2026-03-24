@@ -3,6 +3,7 @@ export const APP_COMMAND_IDS = [
   'app.openSettings',
   'app.togglePrimarySidebar',
   'workspace.addProject',
+  'workspace.search',
 ] as const
 
 export const WORKSPACE_CANVAS_COMMAND_IDS = [
@@ -133,6 +134,7 @@ export function resolveDefaultKeybindings(
     'app.openSettings': createCommandModifierChord(platform, 'Comma'),
     'app.togglePrimarySidebar': createCommandModifierChord(platform, 'KeyB'),
     'workspace.addProject': createCommandModifierChord(platform, 'KeyO'),
+    'workspace.search': createCommandModifierChord(platform, 'KeyF'),
     'workspaceCanvas.createSpace': createCommandModifierChord(platform, 'KeyG'),
     'workspaceCanvas.createNote': createCommandModifierChord(platform, 'KeyN'),
     'workspaceCanvas.createTerminal': createCommandModifierChord(platform, 'KeyT'),

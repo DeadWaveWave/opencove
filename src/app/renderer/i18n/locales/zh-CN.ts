@@ -108,6 +108,22 @@ export const zhCN = {
       addProjectHint: '添加一个项目文件夹',
     },
   },
+  workspaceSearch: {
+    title: '搜索',
+    noteTitle: '便签',
+    placeholder: '搜索…',
+    empty: '没有结果。',
+    metaEsc: 'Esc',
+    sections: {
+      spaces: '空间',
+      tasks: '任务',
+      notes: '便签',
+    },
+    filters: {
+      label: '筛选结果',
+      all: '全部',
+    },
+  },
   workspaceEmptyState: {
     title: '添加一个项目开始使用',
     description: '每个项目都有自己的无限画布和终端。',
@@ -184,6 +200,12 @@ export const zhCN = {
   terminalNode: {
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
+  },
+  terminalFind: {
+    placeholder: '查找…',
+    previous: '上一个匹配',
+    next: '下一个匹配',
+    close: '关闭',
   },
   terminalNodeHeader: {
     directoryMismatch: '目录不匹配',

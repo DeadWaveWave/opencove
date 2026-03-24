@@ -1,6 +1,7 @@
 import React, { type JSX } from 'react'
 import { Handle, Position } from '@xyflow/react'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
+import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
 import { resolveTerminalNodeInteraction } from './interaction'
 import { shouldStopWheelPropagation } from './wheel'
@@ -33,6 +34,16 @@ interface TerminalNodeFrameProps {
   onTitleCommit?: (title: string) => void
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
+  find: {
+    isOpen: boolean
+    query: string
+    resultIndex: number
+    resultCount: number
+  }
+  onFindQueryChange: (query: string) => void
+  onFindNext: () => void
+  onFindPrevious: () => void
+  onFindClose: () => void
   handleResizePointerDown: (edges: ResizeEdges) => (event: React.PointerEvent<HTMLElement>) => void
 }
 
@@ -58,6 +69,11 @@ export function TerminalNodeFrame({
   onTitleCommit,
   onClose,
   onCopyLastMessage,
+  find,
+  onFindQueryChange,
+  onFindNext,
+  onFindPrevious,
+  onFindClose,
   handleResizePointerDown,
 }: TerminalNodeFrameProps): JSX.Element {
   const isAgentNode = kind === 'agent'
@@ -124,6 +140,17 @@ export function TerminalNodeFrame({
       />
 
       {isAgentNode && lastError ? <div className="terminal-node__error">{lastError}</div> : null}
+
+      <TerminalNodeFindBar
+        isOpen={find.isOpen}
+        query={find.query}
+        resultIndex={find.resultIndex}
+        resultCount={find.resultCount}
+        onQueryChange={onFindQueryChange}
+        onFindNext={onFindNext}
+        onFindPrevious={onFindPrevious}
+        onClose={onFindClose}
+      />
 
       <div
         ref={containerRef}

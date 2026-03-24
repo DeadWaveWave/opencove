@@ -107,6 +107,22 @@ export const en = {
       addProjectHint: 'Add a project folder',
     },
   },
+  workspaceSearch: {
+    title: 'Search',
+    noteTitle: 'Note',
+    placeholder: 'Search…',
+    empty: 'No results.',
+    metaEsc: 'Esc',
+    sections: {
+      spaces: 'Spaces',
+      tasks: 'Tasks',
+      notes: 'Notes',
+    },
+    filters: {
+      label: 'Filter results',
+      all: 'All',
+    },
+  },
   workspaceEmptyState: {
     title: 'Add a project to start',
     description: 'Each project has its own infinite canvas and terminals.',
@@ -185,6 +201,12 @@ export const en = {
   terminalNode: {
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
+  },
+  terminalFind: {
+    placeholder: 'Find…',
+    previous: 'Previous match',
+    next: 'Next match',
+    close: 'Close',
   },
   terminalNodeHeader: {
     directoryMismatch: 'DIR MISMATCH',

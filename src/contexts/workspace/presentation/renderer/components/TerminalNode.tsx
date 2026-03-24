@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '@xyflow/react'
 import { SerializeAddon } from '@xterm/addon-serialize'
+import { SearchAddon } from '@xterm/addon-search'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -26,6 +27,7 @@ import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
 import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
+import { useTerminalFind } from './terminalNode/useTerminalFind'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
@@ -77,6 +79,19 @@ export function TerminalNode({
   const onCommandRunRef = useRef(onCommandRun)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
+  const {
+    state: findState,
+    open: openTerminalFind,
+    close: closeTerminalFind,
+    setQuery: setFindQuery,
+    findNext: findNextMatch,
+    findPrevious: findPreviousMatch,
+    bindSearchAddon: bindSearchAddonToFind,
+  } = useTerminalFind({
+    sessionId,
+    terminalRef,
+    terminalThemeMode,
+  })
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
   }, [onCommandRun])
@@ -102,6 +117,7 @@ export function TerminalNode({
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
+
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
       terminalRef,
@@ -159,6 +175,15 @@ export function TerminalNode({
 
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
+    const terminalSupportsSearch =
+      typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
+    const disposeTerminalFind = terminalSupportsSearch
+      ? (() => {
+          const searchAddon = new SearchAddon()
+          terminal.loadAddon(searchAddon)
+          return bindSearchAddonToFind(searchAddon)
+        })()
+      : () => undefined
     let disposeTerminalSelectionTestHandle: () => void = () => undefined
     const ptyWriteQueue = createPtyWriteQueue(({ data, encoding }) =>
       window.opencoveApi.pty.write({
@@ -172,6 +197,7 @@ export function TerminalNode({
         event,
         ptyWriteQueue,
         terminal,
+        onOpenFind: openTerminalFind,
       }),
     )
     let cancelMouseServicePatch: () => void = () => undefined
@@ -382,6 +408,7 @@ export function TerminalNode({
       unsubscribeData()
       unsubscribeExit()
       disposeTerminalSelectionTestHandle()
+      disposeTerminalFind()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       ptyWriteQueue.dispose()
@@ -398,9 +425,11 @@ export function TerminalNode({
   }, [
     cancelScrollbackPublish,
     applyTerminalTheme,
+    bindSearchAddonToFind,
     nodeId,
     disposeScrollbackPublish,
     markScrollbackDirty,
+    openTerminalFind,
     scrollbackBufferRef,
     sessionId,
     syncTerminalSize,
@@ -455,6 +484,11 @@ export function TerminalNode({
       onTitleCommit={onTitleCommit}
       onClose={onClose}
       onCopyLastMessage={onCopyLastMessage}
+      find={findState}
+      onFindQueryChange={setFindQuery}
+      onFindNext={findNextMatch}
+      onFindPrevious={findPreviousMatch}
+      onFindClose={closeTerminalFind}
       handleResizePointerDown={handleResizePointerDown}
     />
   )

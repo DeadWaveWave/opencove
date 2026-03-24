@@ -137,6 +137,10 @@ export const enSettingsPanel = {
         title: 'Add Project',
         help: 'Add a project folder.',
       },
+      workspaceSearch: {
+        title: 'Workspace Search',
+        help: 'Search within the current project.',
+      },
       workspaceCanvasCreateSpace: {
         title: 'Create Space',
         help: 'Create a space from the current selection.',

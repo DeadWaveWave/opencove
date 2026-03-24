@@ -20,6 +20,18 @@ function isTerminalFocusActive(target: EventTarget | null): boolean {
   return !!activeElement?.closest(TERMINAL_FOCUS_SCOPE_SELECTOR)
 }
 
+function isTerminalFindShortcut(event: KeyboardEvent): boolean {
+  if (event.altKey) {
+    return false
+  }
+
+  if (!(event.metaKey || event.ctrlKey)) {
+    return false
+  }
+
+  return event.key.toLowerCase() === 'f'
+}
+
 export function useAppKeybindings({
   enabled,
   settings,
@@ -27,6 +39,7 @@ export function useAppKeybindings({
   onOpenSettings,
   onTogglePrimarySidebar,
   onAddProject,
+  onOpenWorkspaceSearch,
 }: {
   enabled: boolean
   settings: Pick<AgentSettings, 'disableAppShortcutsWhenTerminalFocused' | 'keybindings'>
@@ -34,6 +47,7 @@ export function useAppKeybindings({
   onOpenSettings: () => void
   onTogglePrimarySidebar: () => void
   onAddProject: () => void
+  onOpenWorkspaceSearch: () => void
 }): void {
   const platform = useMemo(
     () =>
@@ -58,6 +72,10 @@ export function useAppKeybindings({
 
     const handler = (event: KeyboardEvent): void => {
       if (event.isComposing || event.repeat) {
+        return
+      }
+
+      if (isTerminalFocusActive(event.target) && isTerminalFindShortcut(event)) {
         return
       }
 
@@ -91,6 +109,9 @@ export function useAppKeybindings({
         case 'workspace.addProject':
           onAddProject()
           return
+        case 'workspace.search':
+          onOpenWorkspaceSearch()
+          return
         default: {
           const _exhaustive: never = commandId
           return _exhaustive
@@ -109,6 +130,7 @@ export function useAppKeybindings({
     onOpenSettings,
     onToggleCommandCenter,
     onTogglePrimarySidebar,
+    onOpenWorkspaceSearch,
     settings.disableAppShortcutsWhenTerminalFocused,
   ])
 }

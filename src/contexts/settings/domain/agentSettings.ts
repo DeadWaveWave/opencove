@@ -58,6 +58,8 @@ export const MAX_TERMINAL_FONT_SIZE = 22
 export const MIN_UI_FONT_SIZE = 14
 export const MAX_UI_FONT_SIZE = 24
 export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
+export const MIN_WORKSPACE_SEARCH_PANEL_WIDTH = 320
+export const MAX_WORKSPACE_SEARCH_PANEL_WIDTH = 720
 
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
@@ -92,6 +94,7 @@ export interface AgentSettings {
   language: UiLanguage
   uiTheme: UiTheme
   isPrimarySidebarCollapsed: boolean
+  workspaceSearchPanelWidth: number
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
@@ -124,6 +127,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
   uiTheme: 'dark',
   isPrimarySidebarCollapsed: false,
+  workspaceSearchPanelWidth: 420,
   defaultProvider: 'codex',
   agentProviderOrder: [...AGENT_PROVIDERS],
   agentFullAccess: true,
@@ -287,6 +291,12 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const isPrimarySidebarCollapsed =
     normalizeBoolean(value.isPrimarySidebarCollapsed) ??
     DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed
+  const workspaceSearchPanelWidth = normalizeIntegerInRange(
+    value.workspaceSearchPanelWidth,
+    DEFAULT_AGENT_SETTINGS.workspaceSearchPanelWidth,
+    MIN_WORKSPACE_SEARCH_PANEL_WIDTH,
+    MAX_WORKSPACE_SEARCH_PANEL_WIDTH,
+  )
   const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
 
   const agentFullAccess =
@@ -426,6 +436,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     language,
     uiTheme,
     isPrimarySidebarCollapsed,
+    workspaceSearchPanelWidth,
     defaultProvider,
     agentProviderOrder,
     agentFullAccess,

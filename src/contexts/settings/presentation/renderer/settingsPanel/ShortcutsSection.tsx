@@ -69,6 +69,8 @@ function getCommandTitleKey(commandId: CommandId): string {
       return 'settingsPanel.shortcuts.commands.togglePrimarySidebar.title'
     case 'workspace.addProject':
       return 'settingsPanel.shortcuts.commands.addProject.title'
+    case 'workspace.search':
+      return 'settingsPanel.shortcuts.commands.workspaceSearch.title'
     case 'workspaceCanvas.createSpace':
       return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateSpace.title'
     case 'workspaceCanvas.createNote':
@@ -100,6 +102,8 @@ function getCommandHelpKey(commandId: CommandId): string {
       return 'settingsPanel.shortcuts.commands.togglePrimarySidebar.help'
     case 'workspace.addProject':
       return 'settingsPanel.shortcuts.commands.addProject.help'
+    case 'workspace.search':
+      return 'settingsPanel.shortcuts.commands.workspaceSearch.help'
     case 'workspaceCanvas.createSpace':
       return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateSpace.help'
     case 'workspaceCanvas.createNote':

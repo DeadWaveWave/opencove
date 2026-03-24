@@ -135,6 +135,10 @@ export const zhCNSettingsPanel = {
         title: '添加项目',
         help: '添加项目文件夹。',
       },
+      workspaceSearch: {
+        title: '工作区搜索',
+        help: '在当前项目中搜索。',
+      },
       workspaceCanvasCreateSpace: {
         title: '创建 Space',
         help: '基于当前选中内容创建一个 Space。',

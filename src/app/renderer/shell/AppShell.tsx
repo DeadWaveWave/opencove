@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
-import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import type { WorkspaceCanvasMessageTone } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '@contexts/workspace/presentation/renderer/types'
@@ -13,7 +12,8 @@ import { CommandCenter } from './components/CommandCenter'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { ProjectContextMenu } from './components/ProjectContextMenu'
 import { Sidebar } from './components/Sidebar'
-import { WorkspaceEmptyState } from './components/WorkspaceEmptyState'
+import { WorkspaceMain } from './components/WorkspaceMain'
+import { WorkspaceSearchOverlay } from './components/WorkspaceSearchOverlay'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
 import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
@@ -92,14 +92,25 @@ export default function App(): React.JSX.Element {
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
 
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
+  const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
 
   const toggleCommandCenter = useCallback((): void => {
+    setIsWorkspaceSearchOpen(false)
     setIsCommandCenterOpen(open => !open)
   }, [])
 
   const closeCommandCenter = useCallback((): void => {
     setIsCommandCenterOpen(false)
+  }, [])
+
+  const openWorkspaceSearch = useCallback((): void => {
+    closeCommandCenter()
+    setIsWorkspaceSearchOpen(true)
+  }, [closeCommandCenter])
+
+  const closeWorkspaceSearch = useCallback((): void => {
+    setIsWorkspaceSearchOpen(false)
   }, [])
 
   useAppKeybindings({
@@ -111,10 +122,12 @@ export default function App(): React.JSX.Element {
     onToggleCommandCenter: toggleCommandCenter,
     onOpenSettings: () => {
       closeCommandCenter()
+      closeWorkspaceSearch()
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
       closeCommandCenter()
+      closeWorkspaceSearch()
       setAgentSettings(prev => ({
         ...prev,
         isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
@@ -122,7 +135,11 @@ export default function App(): React.JSX.Element {
     },
     onAddProject: () => {
       closeCommandCenter()
+      closeWorkspaceSearch()
       void handleAddWorkspace()
+    },
+    onOpenWorkspaceSearch: () => {
+      openWorkspaceSearch()
     },
   })
 
@@ -132,6 +149,7 @@ export default function App(): React.JSX.Element {
     }
 
     setIsCommandCenterOpen(false)
+    setIsWorkspaceSearchOpen(false)
   }, [isSettingsOpen, projectDeleteConfirmation])
 
   useEffect(() => {
@@ -336,44 +354,44 @@ export default function App(): React.JSX.Element {
           />
         )}
 
-        <main className="workspace-main">
-          {activeWorkspace ? (
-            <WorkspaceCanvas
-              workspaceId={activeWorkspace.id}
-              onShowMessage={handleShowMessage}
-              workspacePath={activeWorkspace.path}
-              worktreesRoot={activeWorkspace.worktreesRoot}
-              nodes={activeWorkspace.nodes}
-              onNodesChange={handleWorkspaceNodesChange}
-              onRequestPersistFlush={requestPersistFlush}
-              viewport={activeWorkspace.viewport}
-              isMinimapVisible={activeWorkspace.isMinimapVisible}
-              onViewportChange={handleWorkspaceViewportChange}
-              onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
-              spaces={activeWorkspace.spaces}
-              activeSpaceId={activeWorkspace.activeSpaceId}
-              onSpacesChange={handleWorkspaceSpacesChange}
-              onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
-              shortcutsEnabled={
-                !isSettingsOpen && !isCommandCenterOpen && projectDeleteConfirmation === null
-              }
-              agentSettings={agentSettings}
-              isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
-              focusNodeId={
-                focusRequest && focusRequest.workspaceId === activeWorkspace.id
-                  ? focusRequest.nodeId
-                  : null
-              }
-              focusSequence={
-                focusRequest && focusRequest.workspaceId === activeWorkspace.id
-                  ? focusRequest.sequence
-                  : 0
-              }
-            />
-          ) : (
-            <WorkspaceEmptyState onAddWorkspace={() => void handleAddWorkspace()} />
-          )}
-        </main>
+        <WorkspaceMain
+          activeWorkspace={activeWorkspace}
+          agentSettings={agentSettings}
+          focusRequest={focusRequest}
+          isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
+          shortcutsEnabled={
+            !isSettingsOpen &&
+            !isCommandCenterOpen &&
+            !isWorkspaceSearchOpen &&
+            projectDeleteConfirmation === null
+          }
+          onAddWorkspace={() => {
+            void handleAddWorkspace()
+          }}
+          onShowMessage={handleShowMessage}
+          onRequestPersistFlush={requestPersistFlush}
+          onNodesChange={handleWorkspaceNodesChange}
+          onViewportChange={handleWorkspaceViewportChange}
+          onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
+          onSpacesChange={handleWorkspaceSpacesChange}
+          onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
+        />
+
+        <WorkspaceSearchOverlay
+          isOpen={isWorkspaceSearchOpen}
+          activeWorkspace={activeWorkspace}
+          onClose={closeWorkspaceSearch}
+          onSelectSpace={spaceId => {
+            handleWorkspaceActiveSpaceChange(spaceId)
+          }}
+          panelWidth={agentSettings.workspaceSearchPanelWidth}
+          onPanelWidthChange={nextWidth => {
+            setAgentSettings(prev => ({
+              ...prev,
+              workspaceSearchPanelWidth: nextWidth,
+            }))
+          }}
+        />
       </div>
 
       {floatingMessage ? (
