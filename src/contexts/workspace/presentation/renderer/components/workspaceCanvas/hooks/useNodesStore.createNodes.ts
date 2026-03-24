@@ -337,7 +337,16 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
+    [
+      nodesRef,
+      onNodeCreated,
+      onRequestPersistFlush,
+      onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
   )
 
   const createImageNode = useCallback(
@@ -399,16 +408,7 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [
-      nodesRef,
-      onNodeCreated,
-      onRequestPersistFlush,
-      onShowMessage,
-      setNodes,
-      spacesRef,
-      standardWindowSizeBucket,
-      t,
-    ],
+    [nodesRef, onNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
   )
 
   return {
