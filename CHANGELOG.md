@@ -34,6 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: tiled arrange now keeps an idea lane first, can open that lane into two note columns when space allows, then places task + linked agent groups before standalone agents / terminals. (#42)
 - Workspace canvas: dense packing now favors balanced aspect ratios over ultra-tall stacks for more shelf-like results. (#42)
 - Workspace canvas: drag now previews live snap guides continuously and only commits magnetic snapping on release for steadier pointer movement. (#42)
+- Workspace canvas: show drag-surface overlays only for multi-select (Shift+click/marquee) and treat mixed selection with Spaces as space-dominant drag. (#82)
 - Workspace canvas: Arrange By now simplifies Space sizing to `Tighten Space` / `Keep Space size`, defaults to `Tighten Space`, and moves magnetic snapping to the top-level context menu. (#42)
 - Settings: default UI theme is now dark. (#69)
 - Shortcuts: Yield app shortcuts to the terminal when it’s focused (configurable), and allow customizing keybindings in Settings → Shortcuts. (#59)
