@@ -2,8 +2,8 @@ import { useEffect, useMemo } from 'react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import {
   APP_COMMAND_IDS,
-  hasNonShiftModifier,
-  resolveEffectiveKeybindings,
+  createChordToCommandMap,
+  isSupportedKeybindingChord,
   serializeKeyChord,
   toKeyChord,
   type AppCommandId,
@@ -18,20 +18,6 @@ function isTerminalFocusActive(target: EventTarget | null): boolean {
 
   const activeElement = document.activeElement instanceof Element ? document.activeElement : null
   return !!activeElement?.closest(TERMINAL_FOCUS_SCOPE_SELECTOR)
-}
-
-function isSupportedChord(
-  chord: ReturnType<typeof toKeyChord>,
-): chord is NonNullable<ReturnType<typeof toKeyChord>> {
-  if (!chord) {
-    return false
-  }
-
-  if (hasNonShiftModifier(chord)) {
-    return true
-  }
-
-  return /^F\d+$/.test(chord.code)
 }
 
 export function useAppKeybindings({
@@ -58,28 +44,11 @@ export function useAppKeybindings({
   )
 
   const chordToCommand = useMemo(() => {
-    const bindings = resolveEffectiveKeybindings({ platform, overrides: settings.keybindings })
-    const map = new Map<string, AppCommandId>()
-
-    for (const commandId of APP_COMMAND_IDS) {
-      const commandBindings = bindings[commandId]
-      const primary = commandBindings.primary
-      if (primary) {
-        const serialized = serializeKeyChord(primary)
-        if (!map.has(serialized)) {
-          map.set(serialized, commandId)
-        }
-      }
-      const secondary = commandBindings.secondary
-      if (secondary) {
-        const serialized = serializeKeyChord(secondary)
-        if (!map.has(serialized)) {
-          map.set(serialized, commandId)
-        }
-      }
-    }
-
-    return map
+    return createChordToCommandMap({
+      platform,
+      overrides: settings.keybindings,
+      commandIds: APP_COMMAND_IDS,
+    }) as Map<string, AppCommandId>
   }, [platform, settings.keybindings])
 
   useEffect(() => {
@@ -93,7 +62,7 @@ export function useAppKeybindings({
       }
 
       const chord = toKeyChord(event)
-      if (!isSupportedChord(chord)) {
+      if (!isSupportedKeybindingChord(chord)) {
         return
       }
 

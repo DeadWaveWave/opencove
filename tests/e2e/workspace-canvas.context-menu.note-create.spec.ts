@@ -1,7 +1,80 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  clickPaneAtFlowPoint,
+  openPaneContextMenuAtFlowPoint,
+} from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Context Menu Note Create', () => {
+  test('positions the pane context menu near the pointer and only shifts when it would overflow', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      const paneBox = await pane.boundingBox()
+      if (!paneBox) {
+        throw new Error('workspace pane bounding box unavailable')
+      }
+
+      const viewport = await window.evaluate(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }))
+
+      const roomyPoint = {
+        x: Math.floor(Math.max(120, Math.min(220, paneBox.width - 320))),
+        y: Math.floor(Math.max(220, Math.min(360, paneBox.height - 340))),
+      }
+
+      await openPaneContextMenuAtFlowPoint(window, pane, roomyPoint)
+
+      const menu = window.locator('.workspace-context-menu').first()
+      await expect(menu).toBeVisible()
+
+      const roomyMenuBox = await menu.boundingBox()
+      if (!roomyMenuBox) {
+        throw new Error('workspace context menu bounding box unavailable')
+      }
+
+      const roomyClientX = paneBox.x + roomyPoint.x
+      const roomyClientY = paneBox.y + roomyPoint.y
+
+      expect(roomyMenuBox.x).toBeGreaterThanOrEqual(roomyClientX - 1)
+      expect(roomyMenuBox.y).toBeGreaterThanOrEqual(roomyClientY - 1)
+
+      await clickPaneAtFlowPoint(window, pane, { x: 20, y: 20 })
+      await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
+
+      const edgePoint = {
+        x: Math.floor(Math.max(40, paneBox.width - 24)),
+        y: Math.floor(Math.max(40, paneBox.height - 24)),
+      }
+
+      await openPaneContextMenuAtFlowPoint(window, pane, edgePoint)
+
+      await expect(menu).toBeVisible()
+
+      const edgeMenuBox = await menu.boundingBox()
+      if (!edgeMenuBox) {
+        throw new Error('workspace context menu edge bounding box unavailable')
+      }
+
+      const edgeClientX = paneBox.x + edgePoint.x
+      const edgeClientY = paneBox.y + edgePoint.y
+
+      expect(edgeMenuBox.x).toBeLessThanOrEqual(edgeClientX)
+      expect(edgeMenuBox.y).toBeLessThanOrEqual(edgeClientY)
+      expect(edgeMenuBox.x + edgeMenuBox.width).toBeLessThanOrEqual(viewport.width + 12)
+      expect(edgeMenuBox.y + edgeMenuBox.height).toBeLessThanOrEqual(viewport.height + 12)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('shows note creation in the blank pane menu', async () => {
     const { electronApp, window } = await launchApp()
 

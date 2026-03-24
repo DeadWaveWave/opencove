@@ -5,45 +5,48 @@ import {
   FOCUS_NODE_TARGET_ZOOM_STEP,
   MAX_FOCUS_NODE_TARGET_ZOOM,
   MIN_FOCUS_NODE_TARGET_ZOOM,
-  MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
-  MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT,
   type CanvasInputMode,
   type FocusNodeTargetZoom,
+  STANDARD_WINDOW_SIZE_BUCKETS,
+  type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import { getCanvasInputModeLabel } from '@app/renderer/i18n/labels'
+import {
+  getCanvasInputModeLabel,
+  getStandardWindowSizeBucketLabel,
+} from '@app/renderer/i18n/labels'
 import type { TerminalProfile } from '@shared/contracts/dto'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
+  standardWindowSizeBucket: StandardWindowSizeBucket
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
-  defaultTerminalWindowScalePercent: number
   defaultTerminalProfileId: string | null
   terminalProfiles: TerminalProfile[]
   detectedDefaultTerminalProfileId: string | null
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
+  onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
-  onChangeDefaultTerminalWindowScalePercent: (percent: number) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const {
     canvasInputMode,
+    standardWindowSizeBucket,
     focusNodeOnClick,
     focusNodeTargetZoom,
-    defaultTerminalWindowScalePercent,
     defaultTerminalProfileId,
     terminalProfiles,
     detectedDefaultTerminalProfileId,
     onChangeCanvasInputMode,
+    onChangeStandardWindowSizeBucket,
     onChangeDefaultTerminalProfileId,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
     onFocusNodeTargetZoomPreviewChange,
-    onChangeDefaultTerminalWindowScalePercent,
   } = props
   const neutralTargetZoom = 1
   const neutralTargetZoomRatioRaw =
@@ -80,6 +83,27 @@ export function CanvasSection(props: {
               label: getCanvasInputModeLabel(t, mode),
             }))}
             onChange={nextValue => onChangeCanvasInputMode(nextValue as CanvasInputMode)}
+          />
+        </div>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.canvas.standardWindowSizeLabel')}</strong>
+          <span>{t('settingsPanel.canvas.standardWindowSizeHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <CoveSelect
+            id="settings-standard-window-size"
+            testId="settings-standard-window-size"
+            value={standardWindowSizeBucket}
+            options={STANDARD_WINDOW_SIZE_BUCKETS.map(bucket => ({
+              value: bucket,
+              label: getStandardWindowSizeBucketLabel(t, bucket),
+            }))}
+            onChange={nextValue =>
+              onChangeStandardWindowSizeBucket(nextValue as StandardWindowSizeBucket)
+            }
           />
         </div>
       </div>
@@ -123,28 +147,6 @@ export function CanvasSection(props: {
           </div>
         </div>
       ) : null}
-
-      <div className="settings-panel__row">
-        <div className="settings-panel__row-label">
-          <strong>{t('settingsPanel.canvas.initialWindowSize')}</strong>
-        </div>
-        <div className="settings-panel__control" style={{ alignItems: 'center', gap: '8px' }}>
-          <input
-            className="cove-field"
-            style={{ width: '80px' }}
-            type="number"
-            min={MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT}
-            max={MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT}
-            value={defaultTerminalWindowScalePercent}
-            onChange={event =>
-              onChangeDefaultTerminalWindowScalePercent(Number(event.target.value))
-            }
-          />
-          <span style={{ fontSize: '12px', color: 'var(--cove-text-muted)' }}>
-            {t('common.percentUnit')}
-          </span>
-        </div>
-      </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">

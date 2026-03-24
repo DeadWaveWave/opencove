@@ -10,9 +10,10 @@ export function useWorkspaceCanvasMenuActions({
   onRequestPersistFlush,
   onShowMessage,
   setContextMenu,
+  reactFlow,
   spacesRef,
   onSpacesChange,
-  onFocusAllInViewport,
+  standardWindowSizeBucket,
 }: {
   selectedNodeIds: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['selectedNodeIds']
   selectedNodeIdsRef: Parameters<
@@ -26,9 +27,12 @@ export function useWorkspaceCanvasMenuActions({
   >[0]['onRequestPersistFlush']
   onShowMessage?: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['onShowMessage']
   setContextMenu: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['setContextMenu']
+  reactFlow: Parameters<typeof useWorkspaceCanvasArrange>[0]['reactFlow']
   spacesRef: Parameters<typeof useWorkspaceCanvasArrange>[0]['spacesRef']
   onSpacesChange: Parameters<typeof useWorkspaceCanvasArrange>[0]['onSpacesChange']
-  onFocusAllInViewport?: Parameters<typeof useWorkspaceCanvasArrange>[0]['onFocusAllInViewport']
+  standardWindowSizeBucket: Parameters<
+    typeof useWorkspaceCanvasArrange
+  >[0]['standardWindowSizeBucket']
 }): ReturnType<typeof useWorkspaceCanvasNoteToTaskConversion> &
   ReturnType<typeof useWorkspaceCanvasArrange> {
   const noteToTask = useWorkspaceCanvasNoteToTaskConversion({
@@ -36,20 +40,24 @@ export function useWorkspaceCanvasMenuActions({
     selectedNodeIdsRef,
     flowNodes,
     nodesRef,
+    spacesRef,
     setNodes,
+    onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
     setContextMenu,
+    standardWindowSizeBucket,
   })
 
   const arrange = useWorkspaceCanvasArrange({
+    reactFlow,
     nodesRef,
     spacesRef,
     setNodes,
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
-    onFocusAllInViewport,
+    standardWindowSizeBucket,
   })
 
   return {

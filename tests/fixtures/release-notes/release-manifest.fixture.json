@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "version": "0.2.0",
+  "channel": "stable",
+  "publishedAt": "2026-03-23T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/releases/tag/v0.2.0",
+  "locales": {
+    "en": {
+      "summary": "This build includes the new update sheet, better nightly messaging, and clearer settings interactions.",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "Added a first-launch What's New sheet for app updates.",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/49",
+          "prNumber": 49,
+          "sha": "deadbeef"
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "这个版本包含新的更新内容弹窗、更稳定的 nightly 提示，以及更清晰的设置交互。",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "新增更新公告弹窗（首次启动展示）。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/49",
+          "prNumber": 49,
+          "sha": "deadbeef"
+        },
+        {
+          "kind": "fixed",
+          "summary": "修复 nightly 更新检测在离线时的错误提示。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/51",
+          "prNumber": 51,
+          "sha": "cafebabe"
+        },
+        {
+          "kind": "changed",
+          "summary": "优化设置面板的更新策略交互。",
+          "url": "https://github.com/DeadWaveWave/opencove/pull/52",
+          "prNumber": 52,
+          "sha": "8badf00d"
+        }
+      ]
+    }
+  }
+}

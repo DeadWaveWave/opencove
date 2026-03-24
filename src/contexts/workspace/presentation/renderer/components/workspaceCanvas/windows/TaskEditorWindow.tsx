@@ -7,6 +7,9 @@ import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskEditorState } from '../types'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
+import { FileText } from 'lucide-react'
+import { TaskPromptTemplatesMenu } from '@contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 
 interface TaskEditorWindowProps {
   taskEditor: TaskEditorState | null
@@ -30,7 +33,17 @@ export function TaskEditorWindow({
   saveTaskEdits,
 }: TaskEditorWindowProps): React.JSX.Element | null {
   const { t } = useTranslation()
+  const workspaceId = useAppStore(state => state.activeWorkspaceId)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
+  const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = React.useState<{
+    x: number
+    y: number
+  } | null>(null)
+  const isPromptTemplatesMenuOpen = promptTemplatesMenuAnchor !== null
+
+  React.useEffect(() => {
+    setPromptTemplatesMenuAnchor(null)
+  }, [taskEditor?.nodeId])
 
   if (!taskEditor) {
     return null
@@ -91,9 +104,35 @@ export function TaskEditorWindow({
         </div>
 
         <div className="workspace-task-creator__field-row">
-          <label htmlFor="workspace-task-editor-requirement">
-            {t('taskWindow.taskRequirementPrompt')}
-          </label>
+          <div className="cove-window__label-row">
+            <label htmlFor="workspace-task-editor-requirement">
+              {t('taskWindow.taskRequirementPrompt')}
+            </label>
+            <button
+              type="button"
+              className="cove-window__icon-button"
+              data-testid="workspace-task-editor-open-prompt-templates"
+              disabled={taskEditor.isSaving || taskEditor.isGeneratingTitle}
+              onClick={event => {
+                event.stopPropagation()
+
+                if (isPromptTemplatesMenuOpen) {
+                  setPromptTemplatesMenuAnchor(null)
+                  return
+                }
+
+                const rect = event.currentTarget.getBoundingClientRect()
+                setPromptTemplatesMenuAnchor({
+                  x: rect.right,
+                  y: rect.bottom,
+                })
+              }}
+              aria-label={t('taskPromptTemplates.openMenu')}
+              title={t('taskPromptTemplates.openMenu')}
+            >
+              <FileText size={14} strokeWidth={2.2} />
+            </button>
+          </div>
           <textarea
             id="workspace-task-editor-requirement"
             data-testid="workspace-task-editor-requirement"
@@ -114,6 +153,28 @@ export function TaskEditorWindow({
             }}
           />
         </div>
+
+        <TaskPromptTemplatesMenu
+          isOpen={isPromptTemplatesMenuOpen}
+          anchor={promptTemplatesMenuAnchor}
+          workspaceId={workspaceId}
+          closeMenu={() => {
+            setPromptTemplatesMenuAnchor(null)
+          }}
+          currentRequirement={taskEditor.requirement}
+          onChangeRequirement={nextRequirement => {
+            setTaskEditor(prev =>
+              prev
+                ? {
+                    ...prev,
+                    requirement: nextRequirement,
+                    error: null,
+                  }
+                : prev,
+            )
+          }}
+          testIdPrefix="task-editor"
+        />
 
         <div className="workspace-task-creator__field-grid">
           <div className="workspace-task-creator__field-row">

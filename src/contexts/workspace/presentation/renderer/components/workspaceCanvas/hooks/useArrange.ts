@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
-import type { Node } from '@xyflow/react'
+import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
   arrangeWorkspaceAll,
@@ -9,6 +10,7 @@ import {
   type WorkspaceArrangeStyle,
   type WorkspaceArrangeWarning,
 } from '../../../utils/workspaceArrange'
+import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
@@ -25,7 +27,7 @@ function resolveViewportSize(): { width: number; height: number } {
   const height =
     typeof window !== 'undefined' && Number.isFinite(window.innerHeight) && window.innerHeight > 0
       ? window.innerHeight
-      : 900
+      : DEFAULT_VIEWPORT_HEIGHT
 
   return { width: Math.round(width), height: Math.round(height) }
 }
@@ -53,14 +55,16 @@ function summarizeWarnings(warnings: WorkspaceArrangeWarning[]): { skippedSpaceC
 }
 
 export function useWorkspaceCanvasArrange({
+  reactFlow,
   nodesRef,
   spacesRef,
   setNodes,
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
-  onFocusAllInViewport,
+  standardWindowSizeBucket,
 }: {
+  reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   setNodes: (
@@ -70,7 +74,7 @@ export function useWorkspaceCanvasArrange({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
-  onFocusAllInViewport?: () => void
+  standardWindowSizeBucket: StandardWindowSizeBucket
 }): {
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
@@ -103,10 +107,17 @@ export function useWorkspaceCanvasArrange({
           : (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0)
 
       schedule(() => {
-        onFocusAllInViewport?.()
+        if (nodesRef.current.length === 0) {
+          return
+        }
+
+        void reactFlow.fitView({
+          padding: 0.16,
+          duration: resolveWorkspaceCanvasAnimationDuration(220),
+        })
       })
     },
-    [onFocusAllInViewport, onRequestPersistFlush, onSpacesChange, setNodes, spacesRef],
+    [nodesRef, onRequestPersistFlush, onSpacesChange, reactFlow, setNodes, spacesRef],
   )
 
   const arrangeAll = useCallback(
@@ -118,6 +129,7 @@ export function useWorkspaceCanvasArrange({
         spaces: spacesRef.current,
         wrapWidth,
         viewport,
+        standardWindowSizeBucket,
         style,
       })
 
@@ -131,7 +143,7 @@ export function useWorkspaceCanvasArrange({
         )
       }
     },
-    [commitArrange, nodesRef, onShowMessage, spacesRef, t],
+    [commitArrange, nodesRef, onShowMessage, spacesRef, standardWindowSizeBucket, t],
   )
 
   const arrangeCanvas = useCallback(
@@ -143,12 +155,13 @@ export function useWorkspaceCanvasArrange({
         spaces: spacesRef.current,
         wrapWidth,
         viewport,
+        standardWindowSizeBucket,
         style,
       })
 
       commitArrange(result)
     },
-    [commitArrange, nodesRef, spacesRef],
+    [commitArrange, nodesRef, spacesRef, standardWindowSizeBucket],
   )
 
   const arrangeInSpace = useCallback(
@@ -159,6 +172,7 @@ export function useWorkspaceCanvasArrange({
         nodes: nodesRef.current,
         spaces: spacesRef.current,
         viewport,
+        standardWindowSizeBucket,
         style,
       })
 
@@ -169,7 +183,7 @@ export function useWorkspaceCanvasArrange({
 
       commitArrange(result)
     },
-    [commitArrange, nodesRef, onShowMessage, spacesRef, t],
+    [commitArrange, nodesRef, onShowMessage, spacesRef, standardWindowSizeBucket, t],
   )
 
   return {

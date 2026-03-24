@@ -88,4 +88,35 @@ describe('WorkspaceSpaceActionMenu', () => {
     expect(screen.getByTestId('workspace-space-action-create')).toBeVisible()
     expect(screen.getByTestId('workspace-space-action-archive')).toBeVisible()
   })
+
+  it('keeps label color second-to-last and arrange last', () => {
+    render(
+      <WorkspaceSpaceActionMenu
+        menu={{ spaceId: 'space-1', x: 120, y: 80 }}
+        availableOpeners={[
+          { id: 'finder', label: 'Finder' },
+          { id: 'terminal', label: 'Terminal' },
+        ]}
+        canArrange
+        canCreateWorktree
+        canArchive
+        closeMenu={() => undefined}
+        setSpaceLabelColor={() => undefined}
+        onArrange={() => undefined}
+        onCreateWorktree={() => undefined}
+        onArchive={() => undefined}
+        onCopyPath={() => undefined}
+        onOpenPath={() => undefined}
+      />,
+    )
+
+    const ids = within(screen.getByTestId('workspace-space-action-menu'))
+      .getAllByRole('button')
+      .map(button => button.getAttribute('data-testid'))
+
+    expect(ids.slice(-2)).toEqual([
+      'workspace-space-action-label-color',
+      'workspace-space-action-arrange',
+    ])
+  })
 })

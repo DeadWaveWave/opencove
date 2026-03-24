@@ -84,7 +84,14 @@ export const enSettingsPanel = {
       trackpad: 'Trackpad',
       mouse: 'Mouse',
     },
-    initialWindowSize: 'Initial Window Size',
+    standardWindowSizeLabel: 'Standard Window Size',
+    standardWindowSizeHelp:
+      'Default size bucket used for new windows and Arrange. It stays fixed until you change it here.',
+    standardWindowSize: {
+      compact: 'Compact',
+      regular: 'Regular',
+      large: 'Large',
+    },
     focusOnClickLabel: 'Auto-focus on Click',
     focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
     focusTargetZoomLabel: 'Target Zoom',
@@ -99,12 +106,20 @@ export const enSettingsPanel = {
     bindings: 'Keybindings',
     bindingsHelp:
       'Set shortcuts for common actions. Conflicts are resolved by unassigning the other action.',
-    primaryLabel: 'Primary',
-    secondaryLabel: 'Secondary',
     unassigned: 'Unassigned',
     record: 'Record',
     recording: 'Press keys…',
     clear: 'Clear',
+    groups: {
+      app: {
+        title: 'App',
+        help: 'Global shortcuts for shell-level actions.',
+      },
+      workspaceCanvas: {
+        title: 'Workspace Canvas',
+        help: 'Canvas shortcuts for creating nodes and switching spaces.',
+      },
+    },
     commands: {
       commandCenterToggle: {
         title: 'Command Center',
@@ -121,6 +136,34 @@ export const enSettingsPanel = {
       addProject: {
         title: 'Add Project',
         help: 'Add a project folder.',
+      },
+      workspaceCanvasCreateSpace: {
+        title: 'Create Space',
+        help: 'Create a space from the current selection.',
+      },
+      workspaceCanvasCreateNote: {
+        title: 'Create Note',
+        help: 'Create a note from the visual center of the root canvas.',
+      },
+      workspaceCanvasCreateTerminal: {
+        title: 'Create Terminal',
+        help: 'Create a terminal from the visual center of the root canvas.',
+      },
+      workspaceCanvasCycleSpacesForward: {
+        title: 'Next Space',
+        help: 'Switch to the next space in top-left pill order. The All pill is excluded.',
+      },
+      workspaceCanvasCycleSpacesBackward: {
+        title: 'Previous Space',
+        help: 'Switch to the previous space in top-left pill order. The All pill is excluded.',
+      },
+      workspaceCanvasCycleIdleSpacesForward: {
+        title: 'Next Idle Space',
+        help: 'Switch to the next space with no working agent.',
+      },
+      workspaceCanvasCycleIdleSpacesBackward: {
+        title: 'Previous Idle Space',
+        help: 'Switch to the previous space with no working agent.',
       },
     },
   },

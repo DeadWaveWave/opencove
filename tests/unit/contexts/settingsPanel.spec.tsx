@@ -144,6 +144,41 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('updates the standard window size bucket from canvas settings', () => {
+    const onChange = vi.fn()
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={onChange}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-canvas'))
+    fireEvent.click(screen.getByTestId('settings-standard-window-size-trigger'))
+    fireEvent.click(screen.getByRole('option', { name: 'Large' }))
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      standardWindowSizeBucket: 'large',
+    })
+  })
+
   it('updates release channel settings and exposes update actions', () => {
     const onChange = vi.fn()
     const onCheckForUpdates = vi.fn()

@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
 import {
@@ -35,7 +36,6 @@ import {
 import { resolveViewportAspectRatio } from './workspaceArrange.viewport'
 import {
   normalizeWorkspaceNodesToCanonicalSizing,
-  resolveArrangeCanonicalBucket,
   resolveCanonicalBucketCellSize,
   WORKSPACE_CANONICAL_GUTTER_PX,
 } from './workspaceNodeSizing'
@@ -47,6 +47,7 @@ export function arrangeWorkspaceCanvas({
   spaces,
   wrapWidth,
   viewport,
+  standardWindowSizeBucket,
   style,
   gap = WORKSPACE_ARRANGE_GAP_PX,
   grid = WORKSPACE_ARRANGE_GRID_PX,
@@ -55,6 +56,7 @@ export function arrangeWorkspaceCanvas({
   spaces: WorkspaceSpaceState[]
   wrapWidth: number
   viewport?: Partial<Size>
+  standardWindowSizeBucket?: StandardWindowSizeBucket
   style?: WorkspaceArrangeStyle
   gap?: number
   grid?: number
@@ -65,11 +67,7 @@ export function arrangeWorkspaceCanvas({
     nodes.filter(node => !ownedNodeIdSet.has(node.id)).map(node => node.id),
   )
   const canonicalBucket = resolvedStyle.alignCanonicalSizes
-    ? resolveArrangeCanonicalBucket({
-        nodes,
-        nodeIdSet: rootNodeIdSet,
-        viewport,
-      })
+    ? (standardWindowSizeBucket ?? 'regular')
     : 'regular'
   const canonicalSizingNormalized = normalizeWorkspaceNodesToCanonicalSizing({
     nodes,

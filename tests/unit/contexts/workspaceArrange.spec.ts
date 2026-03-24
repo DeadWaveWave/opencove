@@ -195,6 +195,7 @@ describe('workspace arrange utils', () => {
       nodes,
       spaces,
       viewport: { width: 1440, height: 900 },
+      standardWindowSizeBucket: 'compact',
       style: { alignCanonicalSizes: true },
     })
 
@@ -290,6 +291,7 @@ describe('workspace arrange utils', () => {
       nodes,
       spaces,
       viewport: { width: 1920, height: 1080 },
+      standardWindowSizeBucket: 'large',
       style: { alignCanonicalSizes: true, spaceFit: 'keep' },
     })
 
@@ -333,6 +335,7 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
+      standardWindowSizeBucket: 'compact',
       style: { alignCanonicalSizes: true },
     })
 

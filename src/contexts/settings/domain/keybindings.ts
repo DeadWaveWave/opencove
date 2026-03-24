@@ -5,7 +5,21 @@ export const APP_COMMAND_IDS = [
   'workspace.addProject',
 ] as const
 
+export const WORKSPACE_CANVAS_COMMAND_IDS = [
+  'workspaceCanvas.createSpace',
+  'workspaceCanvas.createNote',
+  'workspaceCanvas.createTerminal',
+  'workspaceCanvas.cycleSpacesForward',
+  'workspaceCanvas.cycleSpacesBackward',
+  'workspaceCanvas.cycleIdleSpacesForward',
+  'workspaceCanvas.cycleIdleSpacesBackward',
+] as const
+
+export const COMMAND_IDS = [...APP_COMMAND_IDS, ...WORKSPACE_CANVAS_COMMAND_IDS] as const
+
 export type AppCommandId = (typeof APP_COMMAND_IDS)[number]
+export type WorkspaceCanvasCommandId = (typeof WORKSPACE_CANVAS_COMMAND_IDS)[number]
+export type CommandId = (typeof COMMAND_IDS)[number]
 
 export type KeyChord = {
   code: string
@@ -15,20 +29,26 @@ export type KeyChord = {
   shiftKey: boolean
 }
 
-export type CommandKeybindings = {
-  primary: KeyChord | null
-  secondary: KeyChord | null
-}
-
-export type KeybindingOverrideSlots = {
-  primary?: KeyChord | null
-  secondary?: KeyChord | null
-}
-
-export type KeybindingOverrides = Partial<Record<AppCommandId, KeybindingOverrideSlots>>
+export type KeybindingOverrides = Partial<Record<CommandId, KeyChord | null>>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function createCommandModifierChord(
+  platform: string | undefined,
+  code: KeyChord['code'],
+  options?: Pick<KeyChord, 'shiftKey'>,
+): KeyChord {
+  const isMac = platform === 'darwin'
+
+  return {
+    code,
+    altKey: false,
+    ctrlKey: !isMac,
+    metaKey: isMac,
+    shiftKey: options?.shiftKey === true,
+  }
 }
 
 export function isModifierCode(code: string): boolean {
@@ -46,6 +66,18 @@ export function isModifierCode(code: string): boolean {
 
 export function hasNonShiftModifier(chord: KeyChord): boolean {
   return chord.metaKey || chord.ctrlKey || chord.altKey
+}
+
+export function isSupportedKeybindingChord(chord: KeyChord | null): chord is KeyChord {
+  if (!chord) {
+    return false
+  }
+
+  if (hasNonShiftModifier(chord)) {
+    return true
+  }
+
+  return /^F\d+$/.test(chord.code)
 }
 
 export function toKeyChord(
@@ -95,83 +127,40 @@ export function isKeyChordEqual(a: KeyChord | null, b: KeyChord | null): boolean
 
 export function resolveDefaultKeybindings(
   platform: string | undefined,
-): Record<AppCommandId, CommandKeybindings> {
-  const isMac = platform === 'darwin'
-  const commandModifier = isMac ? { metaKey: true } : { ctrlKey: true }
-
+): Record<CommandId, KeyChord | null> {
   return {
-    'commandCenter.toggle': {
-      primary: {
-        code: 'KeyK',
-        altKey: false,
-        ctrlKey: !!commandModifier.ctrlKey,
-        metaKey: !!commandModifier.metaKey,
-        shiftKey: false,
-      },
-      secondary: {
-        code: 'KeyP',
-        altKey: false,
-        ctrlKey: !!commandModifier.ctrlKey,
-        metaKey: !!commandModifier.metaKey,
-        shiftKey: false,
-      },
-    },
-    'app.openSettings': {
-      primary: {
-        code: 'Comma',
-        altKey: false,
-        ctrlKey: !!commandModifier.ctrlKey,
-        metaKey: !!commandModifier.metaKey,
-        shiftKey: false,
-      },
-      secondary: null,
-    },
-    'app.togglePrimarySidebar': {
-      primary: {
-        code: 'KeyB',
-        altKey: false,
-        ctrlKey: !!commandModifier.ctrlKey,
-        metaKey: !!commandModifier.metaKey,
-        shiftKey: false,
-      },
-      secondary: null,
-    },
-    'workspace.addProject': {
-      primary: {
-        code: 'KeyO',
-        altKey: false,
-        ctrlKey: !!commandModifier.ctrlKey,
-        metaKey: !!commandModifier.metaKey,
-        shiftKey: false,
-      },
-      secondary: null,
-    },
+    'commandCenter.toggle': createCommandModifierChord(platform, 'KeyP'),
+    'app.openSettings': createCommandModifierChord(platform, 'Comma'),
+    'app.togglePrimarySidebar': createCommandModifierChord(platform, 'KeyB'),
+    'workspace.addProject': createCommandModifierChord(platform, 'KeyO'),
+    'workspaceCanvas.createSpace': createCommandModifierChord(platform, 'KeyG'),
+    'workspaceCanvas.createNote': createCommandModifierChord(platform, 'KeyN'),
+    'workspaceCanvas.createTerminal': createCommandModifierChord(platform, 'KeyT'),
+    'workspaceCanvas.cycleSpacesForward': createCommandModifierChord(platform, 'BracketRight'),
+    'workspaceCanvas.cycleSpacesBackward': createCommandModifierChord(platform, 'BracketLeft'),
+    'workspaceCanvas.cycleIdleSpacesForward': createCommandModifierChord(platform, 'BracketRight', {
+      shiftKey: true,
+    }),
+    'workspaceCanvas.cycleIdleSpacesBackward': createCommandModifierChord(platform, 'BracketLeft', {
+      shiftKey: true,
+    }),
   }
 }
 
-export function resolveCommandKeybindings({
+export function resolveCommandKeybinding({
   commandId,
   overrides,
   platform,
 }: {
-  commandId: AppCommandId
+  commandId: CommandId
   overrides: KeybindingOverrides | null | undefined
   platform: string | undefined
-}): CommandKeybindings {
-  const defaults = resolveDefaultKeybindings(platform)[commandId]
-  const override = overrides?.[commandId] ?? null
-  if (!override) {
-    return defaults
+}): KeyChord | null {
+  if (overrides && Object.prototype.hasOwnProperty.call(overrides, commandId)) {
+    return overrides[commandId] ?? null
   }
 
-  return {
-    primary: Object.prototype.hasOwnProperty.call(override, 'primary')
-      ? (override.primary ?? null)
-      : defaults.primary,
-    secondary: Object.prototype.hasOwnProperty.call(override, 'secondary')
-      ? (override.secondary ?? null)
-      : defaults.secondary,
-  }
+  return resolveDefaultKeybindings(platform)[commandId]
 }
 
 export function resolveEffectiveKeybindings({
@@ -180,14 +169,41 @@ export function resolveEffectiveKeybindings({
 }: {
   overrides: KeybindingOverrides | null | undefined
   platform: string | undefined
-}): Record<AppCommandId, CommandKeybindings> {
-  return APP_COMMAND_IDS.reduce(
+}): Record<CommandId, KeyChord | null> {
+  return COMMAND_IDS.reduce(
     (acc, commandId) => {
-      acc[commandId] = resolveCommandKeybindings({ commandId, overrides, platform })
+      acc[commandId] = resolveCommandKeybinding({ commandId, overrides, platform })
       return acc
     },
-    {} as Record<AppCommandId, CommandKeybindings>,
+    {} as Record<CommandId, KeyChord | null>,
   )
+}
+
+export function createChordToCommandMap({
+  platform,
+  overrides,
+  commandIds = COMMAND_IDS,
+}: {
+  platform: string | undefined
+  overrides: KeybindingOverrides | null | undefined
+  commandIds?: readonly CommandId[]
+}): Map<string, CommandId> {
+  const bindings = resolveEffectiveKeybindings({ platform, overrides })
+  const map = new Map<string, CommandId>()
+
+  for (const commandId of commandIds) {
+    const chord = bindings[commandId]
+    if (!chord) {
+      continue
+    }
+
+    const serialized = serializeKeyChord(chord)
+    if (!map.has(serialized)) {
+      map.set(serialized, commandId)
+    }
+  }
+
+  return map
 }
 
 function formatCodeLabel(code: string): string {
@@ -299,30 +315,21 @@ export function normalizeKeybindingOverrides(value: unknown): KeybindingOverride
 
   const overrides: KeybindingOverrides = {}
 
-  for (const commandId of APP_COMMAND_IDS) {
+  for (const commandId of COMMAND_IDS) {
+    if (!Object.prototype.hasOwnProperty.call(value, commandId)) {
+      continue
+    }
+
     const raw = value[commandId]
-    if (!isRecord(raw)) {
+    if (raw === null) {
+      overrides[commandId] = null
       continue
     }
 
-    const entry: KeybindingOverrideSlots = {}
-
-    if (Object.prototype.hasOwnProperty.call(raw, 'primary')) {
-      entry.primary = normalizeKeyChord(raw.primary)
+    const chord = normalizeKeyChord(raw)
+    if (chord) {
+      overrides[commandId] = chord
     }
-
-    if (Object.prototype.hasOwnProperty.call(raw, 'secondary')) {
-      entry.secondary = normalizeKeyChord(raw.secondary)
-    }
-
-    if (
-      !Object.prototype.hasOwnProperty.call(entry, 'primary') &&
-      !Object.prototype.hasOwnProperty.call(entry, 'secondary')
-    ) {
-      continue
-    }
-
-    overrides[commandId] = entry
   }
 
   return overrides

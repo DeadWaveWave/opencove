@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { arrangeWorkspaceCanvas } from './workspaceArrange.canvas'
 import { arrangeWorkspaceInSpace } from './workspaceArrange.inSpace'
@@ -16,6 +17,7 @@ export function arrangeWorkspaceAll({
   spaces,
   wrapWidth,
   viewport,
+  standardWindowSizeBucket,
   style,
   padding = WORKSPACE_ARRANGE_PADDING_PX,
   gap = WORKSPACE_ARRANGE_GAP_PX,
@@ -25,6 +27,7 @@ export function arrangeWorkspaceAll({
   spaces: WorkspaceSpaceState[]
   wrapWidth: number
   viewport?: Partial<Size>
+  standardWindowSizeBucket?: StandardWindowSizeBucket
   style?: WorkspaceArrangeStyle
   padding?: number
   gap?: number
@@ -41,6 +44,7 @@ export function arrangeWorkspaceAll({
       nodes: nextNodes,
       spaces: nextSpaces,
       viewport,
+      standardWindowSizeBucket,
       style,
       padding,
       gap,
@@ -63,6 +67,7 @@ export function arrangeWorkspaceAll({
     spaces: nextSpaces,
     wrapWidth,
     viewport,
+    standardWindowSizeBucket,
     style,
     gap,
     grid,

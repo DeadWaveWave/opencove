@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveDefaultTaskWindowSize } from '../constants'
@@ -32,6 +33,7 @@ interface UseTaskCreatorParams {
   suggestTaskTitle: (
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   createTaskNode: (
     anchor: Point,
     title: string,
@@ -53,6 +55,7 @@ export function useWorkspaceCanvasTaskCreator({
   onSpacesChange,
   onRequestPersistFlush,
   suggestTaskTitle,
+  standardWindowSizeBucket,
   createTaskNode,
 }: UseTaskCreatorParams): {
   taskCreator: TaskCreatorState | null
@@ -219,7 +222,7 @@ export function useWorkspaceCanvasTaskCreator({
       const title = titleInput.length > 0 ? titleInput : fallbackTaskTitle(requirement)
       const placementAnchor = resolveNodePlacementAnchorFromViewportCenter(
         taskCreator.anchor,
-        resolveDefaultTaskWindowSize(),
+        resolveDefaultTaskWindowSize(standardWindowSizeBucket),
       )
       const targetSpace = findContainingSpaceByAnchor(spacesRef.current, taskCreator.anchor) ?? null
 
@@ -409,6 +412,7 @@ export function useWorkspaceCanvasTaskCreator({
     setNodes,
     spacesRef,
     isTaskAiNamingEnabled,
+    standardWindowSizeBucket,
     suggestTaskTitle,
     t,
     taskCreator,
