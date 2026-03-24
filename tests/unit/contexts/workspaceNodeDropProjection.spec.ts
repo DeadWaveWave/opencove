@@ -137,4 +137,86 @@ describe('projectWorkspaceNodeDropLayout', () => {
     const nodeBOutside = nodesAfterOutside.find(node => node.id === 'b')!
     expect(nodeBOutside.position.x).toBe(244)
   })
+
+  it('reuses cached space push-away projection when expanded rect is unchanged', () => {
+    const spaceA: WorkspaceSpaceState = {
+      id: 'space-a',
+      name: 'A',
+      directoryPath: '/tmp/a',
+      labelColor: null,
+      nodeIds: ['a'],
+      rect: { x: 0, y: 0, width: 200, height: 200 },
+    }
+    const spaceB: WorkspaceSpaceState = {
+      id: 'space-b',
+      name: 'B',
+      directoryPath: '/tmp/b',
+      labelColor: null,
+      nodeIds: ['b'],
+      rect: { x: 220, y: 0, width: 200, height: 200 },
+    }
+
+    const nodes: Array<Node<TerminalNodeData>> = [
+      {
+        ...baseNode,
+        id: 'a',
+        data: { ...baseNode.data, title: 'a', width: 100, height: 100 },
+        position: { x: 24, y: 24 },
+      },
+      {
+        ...baseNode,
+        id: 'b',
+        data: { ...baseNode.data, title: 'b', width: 100, height: 100 },
+        position: { x: 244, y: 24 },
+      },
+      {
+        ...baseNode,
+        id: 'drag',
+        data: { ...baseNode.data, title: 'drag', width: 220, height: 100 },
+        position: { x: 500, y: 24 },
+      },
+    ]
+
+    const spaces = [spaceA, spaceB]
+    const desiredInsideSpaceA = new Map([['drag', { x: 24, y: 24 }]])
+
+    const projectedFirst = projectWorkspaceNodeDropLayout({
+      nodes,
+      spaces,
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desiredInsideSpaceA,
+      dragDx: -476,
+      dragDy: 0,
+    })
+
+    expect(projectedFirst.nextCache).toBeTruthy()
+
+    const projectedSecond = projectWorkspaceNodeDropLayout({
+      nodes,
+      spaces,
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desiredInsideSpaceA,
+      dragDx: -476,
+      dragDy: 0,
+      previousCache: projectedFirst.nextCache,
+    })
+
+    expect(projectedSecond.nextCache).toBe(projectedFirst.nextCache)
+    expect(projectedSecond.nextSpaces).toEqual(projectedFirst.nextSpaces)
+    expect(projectedSecond.nextNodePositionById).toEqual(projectedFirst.nextNodePositionById)
+
+    const desiredOutside = new Map([['drag', { x: 500, y: 24 }]])
+    const projectedOutside = projectWorkspaceNodeDropLayout({
+      nodes,
+      spaces,
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desiredOutside,
+      dragDx: 0,
+      dragDy: 0,
+      previousCache: projectedFirst.nextCache,
+    })
+
+    expect(projectedOutside.targetSpaceId).toBeNull()
+    expect(projectedOutside.nextCache).toBeNull()
+  })
 })

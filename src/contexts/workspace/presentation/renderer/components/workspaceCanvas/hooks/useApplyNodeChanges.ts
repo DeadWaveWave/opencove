@@ -16,7 +16,7 @@ import {
   setResolvedSpaceFramePreview,
   type UseApplyNodeChangesParams,
 } from './useApplyNodeChanges.helpers'
-import { projectWorkspaceNodeDropLayout } from './useSpaceOwnership.projectDropLayout'
+import { projectWorkspaceNodeDropLayout, type WorkspaceNodeDropProjectionCache } from './useSpaceOwnership.projectDropLayout'
 
 export function useWorkspaceCanvasApplyNodeChanges({
   nodesRef,
@@ -37,6 +37,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
   nodeDragPointerAnchorRef,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
   const dragBaselinePositionByIdRef = useRef<Map<string, { x: number; y: number }> | null>(null)
+  const dragDropProjectionCacheRef = useRef<WorkspaceNodeDropProjectionCache | null>(null)
 
   return useCallback(
     (changes: NodeChange<Node<TerminalNodeData>>[]) => {
@@ -150,8 +151,10 @@ export function useWorkspaceCanvasApplyNodeChanges({
         dragBaselinePositionByIdRef.current = new Map(
           currentNodes.map(node => [node.id, { x: node.position.x, y: node.position.y }]),
         )
+        dragDropProjectionCacheRef.current = null
       } else if (wasDragging && !isDraggingThisFrame) {
         dragBaselinePositionByIdRef.current = null
+        dragDropProjectionCacheRef.current = null
 
         if (setSpaceFramePreview) {
           window.requestAnimationFrame(() => {
@@ -342,7 +345,9 @@ export function useWorkspaceCanvasApplyNodeChanges({
           dragDx,
           dragDy,
           dropFlowPoint,
+          previousCache: dragDropProjectionCacheRef.current,
         })
+        dragDropProjectionCacheRef.current = projected.nextCache
 
         nextNodes = nextNodes.map(node => {
           const nextPosition = projected.nextNodePositionById.get(node.id)
