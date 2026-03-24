@@ -34,6 +34,7 @@ export function WorkspaceCanvasWindows({
   agentSettings,
   closeSpaceWorktree,
   onShowMessage,
+  onAppendSpaceArchiveRecord,
   updateSpaceDirectory,
   getSpaceBlockingNodes,
   closeNodesById,
@@ -66,6 +67,7 @@ export function WorkspaceCanvasWindows({
   | 'agentSettings'
   | 'closeSpaceWorktree'
   | 'onShowMessage'
+  | 'onAppendSpaceArchiveRecord'
   | 'updateSpaceDirectory'
   | 'getSpaceBlockingNodes'
   | 'closeNodesById'
@@ -116,6 +118,7 @@ export function WorkspaceCanvasWindows({
         agentSettings={agentSettings}
         onClose={closeSpaceWorktree}
         onShowMessage={onShowMessage}
+        onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
         onUpdateSpaceDirectory={(spaceId, directoryPath, options) => {
           updateSpaceDirectory(spaceId, directoryPath, options)
         }}

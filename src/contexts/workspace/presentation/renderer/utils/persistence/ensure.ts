@@ -4,18 +4,16 @@ import type {
   NoteNodeData,
   PersistedTerminalNode,
   PersistedWorkspaceState,
+  SpaceArchiveRecord,
   TaskAgentSessionRecord,
   TaskNodeData,
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
-import type {
-  AgentProviderId,
-  CanvasImageMimeType,
-  TerminalRuntimeKind,
-} from '../../../../../../shared/contracts/dto'
-import { CANVAS_IMAGE_MIME_TYPES } from '../../../../../../shared/contracts/dto'
+import type { CanvasImageMimeType, TerminalRuntimeKind } from '@shared/contracts/dto'
+import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
-import { clearResumeSessionBinding, isResumeSessionBindingVerified } from '../agentResumeBinding'
+import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
+import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
 import {
   normalizeAgentRuntimeStatus,
   normalizeDirectoryMode,
@@ -34,32 +32,7 @@ import {
   normalizeWorkspaceViewport,
 } from './normalize'
 
-function normalizeResumeSessionBinding(
-  provider: AgentProviderId,
-  record: Record<string, unknown>,
-): {
-  resumeSessionId: string | null
-  resumeSessionIdVerified: boolean
-} {
-  const resumeSessionId = normalizeOptionalString(record.resumeSessionId)
-  const resumeSessionIdVerifiedInput =
-    typeof record.resumeSessionIdVerified === 'boolean' ? record.resumeSessionIdVerified : undefined
-
-  if (
-    !isResumeSessionBindingVerified({
-      provider,
-      resumeSessionId,
-      resumeSessionIdVerified: resumeSessionIdVerifiedInput,
-    })
-  ) {
-    return clearResumeSessionBinding()
-  }
-
-  return {
-    resumeSessionId,
-    resumeSessionIdVerified: true,
-  }
-}
+const MAX_SPACE_ARCHIVE_RECORDS = 50
 
 function ensurePersistedTaskAgentSessionRecords(value: unknown): TaskAgentSessionRecord[] {
   if (!Array.isArray(value)) {
@@ -333,6 +306,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   const nodes = record.nodes
   const spaces = record.spaces
   const activeSpaceId = record.activeSpaceId
+  const spaceArchiveRecords = record.spaceArchiveRecords
 
   if (typeof id !== 'string' || typeof name !== 'string' || typeof path !== 'string') {
     return null
@@ -363,6 +337,13 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
       ? normalizedActiveSpaceId
       : null
 
+  const normalizedSpaceArchiveRecords = Array.isArray(spaceArchiveRecords)
+    ? spaceArchiveRecords
+        .map(item => ensurePersistedSpaceArchiveRecord(item, path))
+        .filter((item): item is SpaceArchiveRecord => item !== null)
+        .slice(0, MAX_SPACE_ARCHIVE_RECORDS)
+    : []
+
   return {
     id,
     name,
@@ -374,5 +355,6 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
     isMinimapVisible: normalizeWorkspaceMinimapVisible(record.isMinimapVisible),
     spaces: sanitizedSpaces,
     activeSpaceId: resolvedActiveSpaceId,
+    spaceArchiveRecords: normalizedSpaceArchiveRecords,
   }
 }

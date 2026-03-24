@@ -29,6 +29,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={() => undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={() => undefined}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -64,6 +65,7 @@ describe('SpaceWorktreeWindow flow', () => {
         worktreesRoot=".opencove/worktrees"
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={() => undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={() => undefined}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -103,6 +105,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
         onShowMessage={undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -153,6 +156,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
         onShowMessage={undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -196,6 +200,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
         onShowMessage={undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: ['agent-1'], terminalNodeIds: ['terminal-1'] })}
         closeNodesById={closeNodesById}
@@ -250,6 +255,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
         onShowMessage={undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={getBlockingNodes}
         closeNodesById={closeNodesById}
@@ -305,6 +311,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
         onShowMessage={undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={getBlockingNodes}
         closeNodesById={closeNodesById}
@@ -342,6 +349,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={() => undefined}
         onShowMessage={undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={() => undefined}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -398,6 +406,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={() => undefined}
         onShowMessage={undefined}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={() => undefined}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}
@@ -448,6 +457,7 @@ describe('SpaceWorktreeWindow flow', () => {
         agentSettings={DEFAULT_AGENT_SETTINGS}
         onClose={onClose}
         onShowMessage={onShowMessage}
+        onAppendSpaceArchiveRecord={() => undefined}
         onUpdateSpaceDirectory={onUpdateSpaceDirectory}
         getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
         closeNodesById={async () => undefined}

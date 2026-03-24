@@ -146,6 +146,7 @@ export interface WorkspaceCanvasViewProps {
   openSpaceArchive: (spaceId: string) => void
   closeSpaceWorktree: () => void
   onShowMessage?: WorkspaceCanvasProps['onShowMessage']
+  onAppendSpaceArchiveRecord: WorkspaceCanvasProps['onAppendSpaceArchiveRecord']
   updateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,

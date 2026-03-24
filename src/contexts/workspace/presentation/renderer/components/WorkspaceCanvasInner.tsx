@@ -17,6 +17,7 @@ export function WorkspaceCanvasInner({
   onSpacesChange,
   onActiveSpaceChange,
   shortcutsEnabled = true,
+  onAppendSpaceArchiveRecord,
   viewport,
   isMinimapVisible: persistedMinimapVisible,
   onViewportChange,
@@ -497,6 +498,7 @@ export function WorkspaceCanvasInner({
       openSpaceArchive={spaceUi.openSpaceArchive}
       closeSpaceWorktree={spaceUi.closeSpaceWorktree}
       onShowMessage={onShowMessage}
+      onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
       updateSpaceDirectory={updateSpaceDirectory}
       getSpaceBlockingNodes={getSpaceBlockingNodes}
       closeNodesById={closeNodesById}

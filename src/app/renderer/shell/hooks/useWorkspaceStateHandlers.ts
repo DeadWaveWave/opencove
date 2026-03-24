@@ -1,9 +1,11 @@
 import { useCallback } from 'react'
 import type {
+  SpaceArchiveRecord,
   WorkspaceViewport,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
+import { appendSpaceArchiveRecord } from '@contexts/workspace/presentation/renderer/utils/spaceArchiveRecords'
 import { useAppStore } from '../store/useAppStore'
 
 export function useWorkspaceStateHandlers({
@@ -16,6 +18,7 @@ export function useWorkspaceStateHandlers({
   handleWorkspaceMinimapVisibilityChange: (isVisible: boolean) => void
   handleWorkspaceSpacesChange: (spaces: WorkspaceState['spaces']) => void
   handleWorkspaceActiveSpaceChange: (spaceId: string | null) => void
+  handleWorkspaceSpaceArchiveRecordAppend: (record: SpaceArchiveRecord) => void
   handleAnyWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
 } {
   const handleWorkspaceNodesChange = useCallback((nodes: WorkspaceState['nodes']): void => {
@@ -165,6 +168,32 @@ export function useWorkspaceStateHandlers({
     )
   }, [])
 
+  const handleWorkspaceSpaceArchiveRecordAppend = useCallback(
+    (record: SpaceArchiveRecord): void => {
+      const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
+        useAppStore.getState()
+      if (!currentActiveWorkspaceId) {
+        return
+      }
+
+      updateWorkspaces(previous =>
+        previous.map(workspace => {
+          if (workspace.id !== currentActiveWorkspaceId) {
+            return workspace
+          }
+
+          return {
+            ...workspace,
+            spaceArchiveRecords: appendSpaceArchiveRecord(workspace.spaceArchiveRecords, record),
+          }
+        }),
+      )
+
+      requestPersistFlush()
+    },
+    [requestPersistFlush],
+  )
+
   const handleAnyWorkspaceWorktreesRootChange = useCallback(
     (workspaceId: string, worktreesRoot: string): void => {
       const { setWorkspaces: updateWorkspaces } = useAppStore.getState()
@@ -193,6 +222,7 @@ export function useWorkspaceStateHandlers({
     handleWorkspaceMinimapVisibilityChange,
     handleWorkspaceSpacesChange,
     handleWorkspaceActiveSpaceChange,
+    handleWorkspaceSpaceArchiveRecordAppend,
     handleAnyWorkspaceWorktreesRootChange,
   }
 }

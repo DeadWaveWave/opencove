@@ -48,6 +48,7 @@ function toShellWorkspaceState(workspace: PersistedWorkspaceState): WorkspaceSta
     isMinimapVisible: workspace.isMinimapVisible,
     spaces: sanitizedSpaces,
     activeSpaceId: hasActiveSpace ? workspace.activeSpaceId : null,
+    spaceArchiveRecords: workspace.spaceArchiveRecords,
   }
 }
 

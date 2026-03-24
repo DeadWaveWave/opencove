@@ -138,6 +138,10 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         pullRequestBaseBranchOptions: normalizeStringArray(
           safeJsonParse(workspace.pullRequestBaseBranchOptionsJson),
         ),
+        spaceArchiveRecords: (() => {
+          const parsed = safeJsonParse(workspace.spaceArchiveRecordsJson)
+          return Array.isArray(parsed) ? parsed.slice(0, 50) : []
+        })(),
         viewport: { x: workspace.viewportX, y: workspace.viewportY, zoom: workspace.viewportZoom },
         isMinimapVisible: workspace.isMinimapVisible,
         spaces: workspaceSpaces,

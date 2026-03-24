@@ -48,6 +48,9 @@ export function toPersistedState(
         workspace.spaces.some(space => space.id === workspace.activeSpaceId)
           ? workspace.activeSpaceId
           : null,
+      spaceArchiveRecords: Array.isArray(workspace.spaceArchiveRecords)
+        ? workspace.spaceArchiveRecords.slice(0, 50)
+        : [],
       nodes: workspace.nodes.map(node => ({
         id: node.id,
         title: node.data.title,

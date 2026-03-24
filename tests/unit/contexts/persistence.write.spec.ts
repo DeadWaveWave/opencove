@@ -70,10 +70,12 @@ describe('workspace persistence (write)', () => {
           id: 'workspace-1',
           name: 'cove',
           path: '/tmp/cove',
+          worktreesRoot: '',
           viewport: { x: 0, y: 0, zoom: 1 },
           isMinimapVisible: true,
           spaces: [],
           activeSpaceId: null,
+          spaceArchiveRecords: [],
           nodes: [
             {
               id: 'terminal-1',

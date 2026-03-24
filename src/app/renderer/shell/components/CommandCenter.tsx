@@ -1,5 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Folder, PanelLeftClose, PanelLeftOpen, Search, Settings, SquareDashed } from 'lucide-react'
+import {
+  Folder,
+  Package,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+  Settings,
+  SquareDashed,
+} from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   WorkspaceSpaceState,
@@ -99,6 +107,7 @@ export function CommandCenter({
   isPrimarySidebarCollapsed,
   onClose,
   onOpenSettings,
+  onOpenSpaceArchives,
   onTogglePrimarySidebar,
   onAddWorkspace,
   onSelectWorkspace,
@@ -110,6 +119,7 @@ export function CommandCenter({
   isPrimarySidebarCollapsed: boolean
   onClose: () => void
   onOpenSettings: () => void
+  onOpenSpaceArchives: () => void
   onTogglePrimarySidebar: () => void
   onAddWorkspace: () => void
   onSelectWorkspace: (workspaceId: string) => void
@@ -139,6 +149,19 @@ export function CommandCenter({
           onOpenSettings()
         },
       },
+      ...(activeWorkspace
+        ? [
+            {
+              id: 'command:space-archives',
+              title: t('commandCenter.commands.spaceArchives'),
+              subtitle: t('commandCenter.commands.spaceArchivesHint'),
+              icon: <Package aria-hidden="true" size={16} />,
+              onSelect: () => {
+                onOpenSpaceArchives()
+              },
+            },
+          ]
+        : []),
       {
         id: 'command:toggle-primary-sidebar',
         title: isPrimarySidebarCollapsed
@@ -215,6 +238,7 @@ export function CommandCenter({
     isPrimarySidebarCollapsed,
     onAddWorkspace,
     onOpenSettings,
+    onOpenSpaceArchives,
     onSelectSpace,
     onSelectWorkspace,
     onTogglePrimarySidebar,
