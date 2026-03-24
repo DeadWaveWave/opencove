@@ -12,6 +12,7 @@ interface ResizeStartState {
   client: Point
   frame: NodeFrame
   edges: ResizeEdges
+  aspectRatio: number | null
 }
 
 function isSameFrame(left: NodeFrame, right: NodeFrame): boolean {
@@ -37,12 +38,108 @@ export function resolveResizedNodeFrame({
   edges,
   delta,
   minSize,
+  aspectRatio,
 }: {
   initialFrame: NodeFrame
   edges: ResizeEdges
   delta: Point
   minSize: Size
+  aspectRatio?: number | null
 }): NodeFrame {
+  const isValidAspectRatio =
+    typeof aspectRatio === 'number' && Number.isFinite(aspectRatio) && aspectRatio > 0
+
+  if (isValidAspectRatio) {
+    const hasHorizontal = Boolean(edges.left || edges.right)
+    const hasVertical = Boolean(edges.top || edges.bottom)
+
+    const rawWidth =
+      edges.left && !edges.right
+        ? initialFrame.size.width - delta.x
+        : edges.right && !edges.left
+          ? initialFrame.size.width + delta.x
+          : initialFrame.size.width
+
+    const rawHeight =
+      edges.top && !edges.bottom
+        ? initialFrame.size.height - delta.y
+        : edges.bottom && !edges.top
+          ? initialFrame.size.height + delta.y
+          : initialFrame.size.height
+
+    const fixedX =
+      edges.left && !edges.right
+        ? initialFrame.position.x + initialFrame.size.width
+        : edges.right && !edges.left
+          ? initialFrame.position.x
+          : initialFrame.position.x + initialFrame.size.width / 2
+
+    const fixedY =
+      edges.top && !edges.bottom
+        ? initialFrame.position.y + initialFrame.size.height
+        : edges.bottom && !edges.top
+          ? initialFrame.position.y
+          : initialFrame.position.y + initialFrame.size.height / 2
+
+    let nextWidth = rawWidth
+    let nextHeight = rawHeight
+
+    if (hasHorizontal && hasVertical) {
+      const denom = aspectRatio * aspectRatio + 1
+      const projectedHeight = (aspectRatio * rawWidth + rawHeight) / denom
+      nextHeight = projectedHeight
+      nextWidth = aspectRatio * projectedHeight
+    } else if (hasHorizontal) {
+      nextWidth = rawWidth
+      nextHeight = rawWidth / aspectRatio
+    } else if (hasVertical) {
+      nextHeight = rawHeight
+      nextWidth = rawHeight * aspectRatio
+    }
+
+    if (
+      !Number.isFinite(nextWidth) ||
+      !Number.isFinite(nextHeight) ||
+      nextWidth <= 0 ||
+      nextHeight <= 0
+    ) {
+      nextHeight = Math.max(minSize.height, minSize.width / aspectRatio)
+      nextWidth = nextHeight * aspectRatio
+    }
+
+    const scale = Math.max(minSize.width / nextWidth, minSize.height / nextHeight, 1)
+    nextWidth *= scale
+    nextHeight *= scale
+
+    const resolvedWidth = Math.max(minSize.width, Math.round(nextWidth))
+    const resolvedHeight = Math.max(minSize.height, Math.round(nextHeight))
+
+    const nextX =
+      edges.left && !edges.right
+        ? fixedX - resolvedWidth
+        : edges.right && !edges.left
+          ? fixedX
+          : fixedX - resolvedWidth / 2
+
+    const nextY =
+      edges.top && !edges.bottom
+        ? fixedY - resolvedHeight
+        : edges.bottom && !edges.top
+          ? fixedY
+          : fixedY - resolvedHeight / 2
+
+    return {
+      position: {
+        x: Math.round(nextX),
+        y: Math.round(nextY),
+      },
+      size: {
+        width: resolvedWidth,
+        height: resolvedHeight,
+      },
+    }
+  }
+
   let nextX = initialFrame.position.x
   let nextY = initialFrame.position.y
   let nextWidth = initialFrame.size.width
@@ -120,6 +217,7 @@ export function useNodeFrameResize({
   width,
   height,
   minSize,
+  aspectRatio,
   onResize,
   onResizeStart,
   onResizeEnd,
@@ -128,6 +226,7 @@ export function useNodeFrameResize({
   width: number
   height: number
   minSize: Size
+  aspectRatio?: number | null
   onResize: (frame: NodeFrame) => void
   onResizeStart?: () => void
   onResizeEnd?: () => void
@@ -217,13 +316,17 @@ export function useNodeFrameResize({
         },
         frame,
         edges,
+        aspectRatio:
+          typeof aspectRatio === 'number' && Number.isFinite(aspectRatio) && aspectRatio > 0
+            ? aspectRatio
+            : null,
       }
 
       onResizeStart?.()
       setDraftFrame(frame)
       setIsResizing(true)
     },
-    [height, onResizeStart, position, width],
+    [aspectRatio, height, onResizeStart, position, width],
   )
 
   useEffect(() => {
@@ -249,6 +352,7 @@ export function useNodeFrameResize({
             zoom,
           ),
           minSize,
+          aspectRatio: start.aspectRatio,
         }),
       )
     }

@@ -1,5 +1,6 @@
 import type {
   AgentNodeData,
+  ImageNodeData,
   NoteNodeData,
   PersistedTerminalNode,
   PersistedWorkspaceState,
@@ -7,7 +8,12 @@ import type {
   TaskNodeData,
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
-import type { AgentProviderId, TerminalRuntimeKind } from '../../../../../../shared/contracts/dto'
+import type {
+  AgentProviderId,
+  CanvasImageMimeType,
+  TerminalRuntimeKind,
+} from '../../../../../../shared/contracts/dto'
+import { CANVAS_IMAGE_MIME_TYPES } from '../../../../../../shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { clearResumeSessionBinding, isResumeSessionBindingVerified } from '../agentResumeBinding'
 import {
@@ -207,6 +213,44 @@ function ensurePersistedNoteData(value: unknown): NoteNodeData | null {
   }
 }
 
+const CANVAS_IMAGE_ASSET_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function normalizeOptionalCanvasImageDimension(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : null
+}
+
+function ensurePersistedImageData(value: unknown): ImageNodeData | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const assetId = typeof record.assetId === 'string' ? record.assetId.trim() : ''
+  const mimeType = typeof record.mimeType === 'string' ? record.mimeType.trim() : ''
+
+  if (assetId.length === 0 || !CANVAS_IMAGE_ASSET_ID_PATTERN.test(assetId)) {
+    return null
+  }
+
+  if (!CANVAS_IMAGE_MIME_TYPES.includes(mimeType as CanvasImageMimeType)) {
+    return null
+  }
+
+  const fileName =
+    typeof record.fileName === 'string' && record.fileName.trim().length > 0
+      ? record.fileName.trim()
+      : null
+
+  return {
+    assetId,
+    mimeType: mimeType as CanvasImageMimeType,
+    fileName,
+    naturalWidth: normalizeOptionalCanvasImageDimension(record.naturalWidth),
+    naturalHeight: normalizeOptionalCanvasImageDimension(record.naturalHeight),
+  }
+}
+
 function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   if (!node || typeof node !== 'object') {
     return null
@@ -239,6 +283,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   const agent = ensurePersistedAgentData(record.agent)
   const task = ensurePersistedTaskData(record.task)
   const note = ensurePersistedNoteData(record.task)
+  const image = ensurePersistedImageData(record.task)
   const runtimeKindInput = record.runtimeKind
   const runtimeKind: TerminalRuntimeKind | undefined =
     runtimeKindInput === 'windows' || runtimeKindInput === 'wsl' || runtimeKindInput === 'posix'
@@ -264,7 +309,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     executionDirectory: normalizeOptionalString(record.executionDirectory),
     expectedDirectory: normalizeOptionalString(record.expectedDirectory),
     agent: kind === 'agent' ? agent : null,
-    task: kind === 'task' ? task : kind === 'note' ? note : null,
+    task: kind === 'task' ? task : kind === 'note' ? note : kind === 'image' ? image : null,
     position: {
       x: positionRecord.x,
       y: positionRecord.y,

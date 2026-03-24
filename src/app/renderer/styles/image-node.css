@@ -1,0 +1,144 @@
+.image-node {
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  display: block;
+  overflow: hidden;
+  position: relative;
+}
+
+.image-node__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+.image-node__placeholder {
+  width: 100%;
+  height: 100%;
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.06) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.06) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.06) 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0px;
+  opacity: 0.35;
+}
+
+.image-node__placeholder[data-image-missing='true'] {
+  opacity: 0.18;
+}
+
+.image-node__close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.34);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(18px * var(--cove-ui-font-scale));
+  line-height: 1;
+  opacity: 0;
+  transform: translateY(-2px);
+  pointer-events: none;
+  transition:
+    opacity 0.16s ease,
+    transform 0.16s ease,
+    background-color 0.16s ease;
+}
+
+.workspace-canvas .react-flow__node:hover .image-node__close,
+.workspace-canvas .react-flow__node.selected .image-node__close {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.image-node__close:hover {
+  background: rgba(0, 0, 0, 0.46);
+}
+
+.image-node__close:focus-visible {
+  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.image-node__resizer {
+  position: absolute;
+  background: transparent;
+  z-index: 2;
+  touch-action: none;
+}
+
+.image-node__resizer--left,
+.image-node__resizer--right {
+  top: 0;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+}
+
+.image-node__resizer--left {
+  left: 0;
+}
+
+.image-node__resizer--right {
+  right: 0;
+}
+
+.image-node__resizer--bottom {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  cursor: ns-resize;
+}
+
+.image-node__resizer--top-left,
+.image-node__resizer--top-right,
+.image-node__resizer--bottom-left,
+.image-node__resizer--bottom-right {
+  width: 14px;
+  height: 14px;
+}
+
+.image-node__resizer--top-left {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.image-node__resizer--top-right {
+  top: 0;
+  right: 0;
+  cursor: nesw-resize;
+}
+
+.image-node__resizer--bottom-left {
+  bottom: 0;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.image-node__resizer--bottom-right {
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+}

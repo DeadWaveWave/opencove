@@ -15,6 +15,9 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'workspace.copy_path_failed': 'Unable to copy the path.',
     'workspace.list_path_openers_failed': 'Unable to load available path openers.',
     'workspace.open_path_failed': 'Unable to open the path.',
+    'workspace.canvas_image_write_failed': 'Unable to save the canvas image.',
+    'workspace.canvas_image_read_failed': 'Unable to load the canvas image.',
+    'workspace.canvas_image_delete_failed': 'Unable to delete the canvas image.',
     'worktree.api_unavailable':
       'Worktree API is unavailable. Please restart OpenCove and try again.',
     'worktree.list_branches_failed': 'Unable to load Git branches.',

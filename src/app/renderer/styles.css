@@ -13,6 +13,7 @@
 @import './styles/terminal-node.theme-opencode.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';
+@import './styles/image-node.css';
 @import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';
 @import './styles/settings-panel.preview.css';

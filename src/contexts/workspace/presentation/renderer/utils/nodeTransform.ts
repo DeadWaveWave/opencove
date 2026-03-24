@@ -1,17 +1,28 @@
 import type { Node } from '@xyflow/react'
 import type {
+  ImageNodeData,
   NoteNodeData,
   PersistedWorkspaceState,
   TaskNodeData,
   TerminalNodeData,
 } from '../types'
 
-function isTaskNodeData(value: TaskNodeData | NoteNodeData | null): value is TaskNodeData {
+function isTaskNodeData(
+  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+): value is TaskNodeData {
   return value !== null && typeof value === 'object' && 'requirement' in value
 }
 
-function isNoteNodeData(value: TaskNodeData | NoteNodeData | null): value is NoteNodeData {
+function isNoteNodeData(
+  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+): value is NoteNodeData {
   return value !== null && typeof value === 'object' && 'text' in value
+}
+
+function isImageNodeData(
+  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+): value is ImageNodeData {
+  return value !== null && typeof value === 'object' && 'assetId' in value && 'mimeType' in value
 }
 
 export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<TerminalNodeData>[] {
@@ -32,10 +43,19 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
       node.kind === 'task' ? (isTaskNodeData(node.task) ? node.task : defaultTask) : null
     const note =
       node.kind === 'note' ? (isNoteNodeData(node.task) ? node.task : { text: '' }) : null
+    const image: ImageNodeData | null =
+      node.kind === 'image' ? (isImageNodeData(node.task) ? node.task : null) : null
 
     const runtimeNode: Node<TerminalNodeData> = {
       id: node.id,
-      type: node.kind === 'task' ? 'taskNode' : node.kind === 'note' ? 'noteNode' : 'terminalNode',
+      type:
+        node.kind === 'task'
+          ? 'taskNode'
+          : node.kind === 'note'
+            ? 'noteNode'
+            : node.kind === 'image'
+              ? 'imageNode'
+              : 'terminalNode',
       position: node.position,
       data: {
         sessionId: '',
@@ -58,6 +78,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         agent: node.agent,
         task,
         note,
+        image,
       },
       draggable: true,
       selectable: node.kind !== 'note',

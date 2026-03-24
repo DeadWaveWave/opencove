@@ -2,11 +2,11 @@ import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { TerminalRuntimeKind } from '@shared/contracts/dto'
+import type { CanvasImageMimeType, TerminalRuntimeKind } from '@shared/contracts/dto'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 
-export type WorkspaceNodeKind = 'terminal' | 'agent' | 'task' | 'note'
+export type WorkspaceNodeKind = 'terminal' | 'agent' | 'task' | 'note' | 'image'
 
 export type TaskRuntimeStatus = 'todo' | 'doing' | 'ai_done' | 'done'
 
@@ -67,6 +67,14 @@ export interface NoteNodeData {
   text: string
 }
 
+export interface ImageNodeData {
+  assetId: string
+  mimeType: CanvasImageMimeType
+  fileName: string | null
+  naturalWidth: number | null
+  naturalHeight: number | null
+}
+
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
@@ -89,6 +97,7 @@ export interface TerminalNodeData {
   agent: AgentNodeData | null
   task: TaskNodeData | null
   note: NoteNodeData | null
+  image: ImageNodeData | null
 }
 
 export interface WorkspaceState {
@@ -153,7 +162,7 @@ export interface PersistedTerminalNode {
   executionDirectory?: string | null
   expectedDirectory?: string | null
   agent: AgentNodeData | null
-  task: TaskNodeData | NoteNodeData | null
+  task: TaskNodeData | NoteNodeData | ImageNodeData | null
 }
 
 export interface PersistedAppState {

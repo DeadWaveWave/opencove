@@ -36,6 +36,7 @@ export function WorkspaceCanvasInner({
   const exclusiveNodeDragAnchorIdRef =
     workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
+  const idsRef = canvasState.selectedNodeIdsRef
   const {
     nodesRef,
     isNodeDraggingRef,
@@ -50,11 +51,12 @@ export function WorkspaceCanvasInner({
     updateNodeScrollback,
     updateTerminalTitle,
     renameTerminalTitle,
-    setNodeLabelColorOverride,
+    setNodeLabelColorOverride: setLabelColor,
     updateNoteText,
     createNodeForSession,
     createNoteNode,
     createTaskNode,
+    createImageNode,
   } = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     nodes: canvasState.flowNodes,
     spacesRef: canvasState.spacesRef,
@@ -261,7 +263,11 @@ export function WorkspaceCanvasInner({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
+    handleCanvasPaste,
+    handleCanvasDragOver,
+    handleCanvasDrop,
   } = workspaceCanvasHooks.useWorkspaceCanvasInteractions({
+    canvasRef: canvasState.canvasRef,
     isTrackpadCanvasMode,
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
@@ -286,6 +292,8 @@ export function WorkspaceCanvasInner({
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createNodeForSession,
     createNoteNode,
+    onShowMessage,
+    createImageNode,
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     enabled: shortcutsEnabled,
@@ -394,6 +402,9 @@ export function WorkspaceCanvasInner({
       handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
       handleCanvasDoubleClickCapture={handleCanvasDoubleClickCapture}
       handleCanvasWheelCapture={handleCanvasWheelCapture}
+      handleCanvasPaste={handleCanvasPaste}
+      handleCanvasDragOver={handleCanvasDragOver}
+      handleCanvasDrop={handleCanvasDrop}
       nodes={canvasState.flowNodes}
       edges={taskAgentEdges}
       nodeTypes={nodeTypes}
@@ -438,9 +449,7 @@ export function WorkspaceCanvasInner({
       contextMenu={canvasState.contextMenu}
       closeContextMenu={spaceUi.closeContextMenu}
       magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
-      onToggleMagneticSnapping={() => {
-        canvasState.setMagneticSnappingEnabled(enabled => !enabled)
-      }}
+      onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
       arrangeAll={arrangeAll}
@@ -454,9 +463,7 @@ export function WorkspaceCanvasInner({
       canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
-      setSelectedNodeLabelColorOverride={labelColorOverride =>
-        setNodeLabelColorOverride(canvasState.selectedNodeIdsRef.current, labelColorOverride)
-      }
+      setSelectedNodeLabelColorOverride={override => setLabelColor(idsRef.current, override)}
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}
       taskTitleModelLabel={taskTitleModelLabel}

@@ -3,7 +3,10 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { Size, TaskPriority } from '../../types'
-import { resolveCanonicalNodeSize } from '../../utils/workspaceNodeSizing'
+import {
+  resolveCanvasCanonicalBucketFromViewport,
+  resolveCanonicalNodeSize,
+} from '../../utils/workspaceNodeSizing'
 
 export const MIN_CANVAS_ZOOM = 0.1
 export const MAX_CANVAS_ZOOM = 2
@@ -21,6 +24,11 @@ export function resolveDefaultNoteWindowSize(
   bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
 ): Size {
   return resolveCanonicalNodeSize({ kind: 'note', bucket })
+}
+
+export function resolveDefaultImageWindowSize(viewport?: Partial<Size>): Size {
+  const bucket = resolveCanvasCanonicalBucketFromViewport(viewport)
+  return resolveCanonicalNodeSize({ kind: 'image', bucket })
 }
 
 export function resolveDefaultAgentWindowSize(

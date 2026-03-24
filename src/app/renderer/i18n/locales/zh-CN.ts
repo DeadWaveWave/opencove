@@ -175,6 +175,12 @@ export const zhCN = {
     resizeWidth: '调整便签宽度',
     resizeHeight: '调整便签高度',
   },
+  imageNode: {
+    title: '图片',
+    deleteImage: '删除图片',
+    resizeWidth: '调整图片宽度',
+    resizeHeight: '调整图片高度',
+  },
   terminalNode: {
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
@@ -409,5 +415,8 @@ export const zhCN = {
     terminalSpaceDirectoryMismatch: '终端窗口不能进入或离开目录不同的 Space。',
     taskSpaceMoveBlocked: '带有活动 Agent 的任务不能在 Space 之间移动。',
     spaceRequiresNode: '空间至少要包含一个任务或 Agent。',
+    canvasImageUnsupportedType: '不支持的图片格式，请使用 PNG、JPEG、WebP、GIF 或 AVIF。',
+    canvasImageTooLarge: '图片太大（最大 {{maxMb}} MB）。',
+    canvasImageImportFailed: '导入图片失败：{{message}}',
   },
 } as const satisfies TranslationDictionary

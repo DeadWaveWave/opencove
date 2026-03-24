@@ -34,6 +34,8 @@ import type {
   OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
+  ReadCanvasImageInput,
+  ReadCanvasImageResult,
   WindowDisplayInfo,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
@@ -54,10 +56,12 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
+  WriteCanvasImageInput,
   WriteAppStateInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
+  DeleteCanvasImageInput,
 } from '../../shared/contracts/dto'
 
 type UnsubscribeFn = () => void
@@ -92,6 +96,9 @@ export interface OpenCoveApi {
     copyPath: (payload: CopyWorkspacePathInput) => Promise<void>
     listPathOpeners: () => Promise<ListWorkspacePathOpenersResult>
     openPath: (payload: OpenWorkspacePathInput) => Promise<void>
+    writeCanvasImage: (payload: WriteCanvasImageInput) => Promise<void>
+    readCanvasImage: (payload: ReadCanvasImageInput) => Promise<ReadCanvasImageResult | null>
+    deleteCanvasImage: (payload: DeleteCanvasImageInput) => Promise<void>
   }
   worktree: {
     listBranches: (payload: ListGitBranchesInput) => Promise<ListGitBranchesResult>

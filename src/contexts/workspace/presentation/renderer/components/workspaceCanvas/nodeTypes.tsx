@@ -6,6 +6,7 @@ import { TerminalNode } from '../TerminalNode'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
+import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
 import type {
   QuickUpdateTaskRequirement,
   QuickUpdateTaskTitle,
@@ -383,6 +384,21 @@ export function useWorkspaceCanvasNodeTypes({
       )
     }
 
+    const ImageNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+      const nodePosition = useNodePosition(id)
+      return (
+        <WorkspaceCanvasImageNodeType
+          data={data}
+          id={id}
+          nodePosition={nodePosition}
+          selectNode={selectNode}
+          closeNodeRef={closeNodeRef}
+          resizeNodeRef={resizeNodeRef}
+          normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+        />
+      )
+    }
+
     return {
       terminalNode: ({
         data,
@@ -427,6 +443,7 @@ export function useWorkspaceCanvasNodeTypes({
           />
         )
       },
+      imageNode: ImageNodeType,
       taskNode: TaskNodeType,
     }
   }, [
