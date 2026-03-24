@@ -130,6 +130,7 @@ export interface OpenCoveApi {
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
+    debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
     onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
     onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn

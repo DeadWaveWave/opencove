@@ -245,7 +245,7 @@ export function registerAgentIpcHandlers(
             }
           : undefined
 
-      const { sessionId } = ptyRuntime.spawnSession({
+      const { sessionId } = await ptyRuntime.spawnSession({
         cwd: normalized.cwd,
         cols: normalized.cols ?? 80,
         rows: normalized.rows ?? 24,

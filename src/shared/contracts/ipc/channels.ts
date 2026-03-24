@@ -38,6 +38,7 @@ export const IPC_CHANNELS = {
   ptyAttach: 'pty:attach',
   ptyDetach: 'pty:detach',
   ptySnapshot: 'pty:snapshot',
+  ptyDebugCrashHost: 'pty:debug-crash-host',
   ptyData: 'pty:data',
   ptyExit: 'pty:exit',
   ptyState: 'pty:state',

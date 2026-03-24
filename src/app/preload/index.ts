@@ -176,6 +176,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
+    debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),
     onData: (listener: (event: TerminalDataEvent) => void): UnsubscribeFn => {
       const handler = (_event: Electron.IpcRendererEvent, payload: TerminalDataEvent) => {
         listener(payload)

@@ -1,5 +1,6 @@
-import { webContents } from 'electron'
-import type { IPty } from 'node-pty'
+import { app, utilityProcess, webContents } from 'electron'
+import process from 'node:process'
+import { resolve } from 'node:path'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   AgentLaunchMode,
@@ -11,7 +12,15 @@ import type {
   TerminalExitEvent,
   TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
-import { PtyManager, type SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
+import {
+  appendSnapshotData,
+  createEmptySnapshotState,
+  snapshotToString,
+} from '../../../../platform/process/pty/snapshot'
+import type { SnapshotState } from '../../../../platform/process/pty/snapshot'
+import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
+import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
+import { PtyHostSupervisor } from '../../../../platform/process/ptyHost/supervisor'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
@@ -35,7 +44,7 @@ export interface StartSessionStateWatcherInput {
 export interface PtyRuntime {
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
-  spawnSession: (options: SpawnPtyOptions) => { sessionId: string }
+  spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => void
   resize: (sessionId: string, cols: number, rows: number) => void
   kill: (sessionId: string) => void
@@ -43,6 +52,7 @@ export interface PtyRuntime {
   detach: (contentsId: number, sessionId: string) => void
   snapshot: (sessionId: string) => string
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
+  debugCrashHost?: () => void
   dispose: () => void
 }
 
@@ -55,8 +65,10 @@ function reportStateWatcherIssue(message: string): void {
 }
 
 export function createPtyRuntime(): PtyRuntime {
-  const ptyManager = new PtyManager()
   const profileResolver = new TerminalProfileResolver()
+  const activeSessions = new Set<string>()
+  const terminatedSessions = new Set<string>()
+  const snapshots = new Map<string, SnapshotState>()
   const terminalProbeBufferBySession = new Map<string, string>()
   const pendingPtyDataChunksBySession = new Map<string, string[]>()
   const pendingPtyDataCharsBySession = new Map<string, number>()
@@ -83,6 +95,16 @@ export function createPtyRuntime(): PtyRuntime {
   const sessionStateWatcher = createSessionStateWatcherController({
     sendToAllWindows,
     reportIssue: reportStateWatcherIssue,
+  })
+
+  const logsDir = resolve(app.getPath('userData'), 'logs')
+  const ptyHostLogFilePath = resolve(logsDir, 'pty-host.log')
+  const ptyHost = new PtyHostSupervisor({
+    baseDir: __dirname,
+    logFilePath: ptyHostLogFilePath,
+    reportIssue: reportStateWatcherIssue,
+    createProcess: modulePath =>
+      utilityProcess.fork(modulePath, [], { stdio: 'pipe', serviceName: 'OpenCove PTY Host' }),
   })
 
   const cleanupPtyDataSubscriptions = (contentsId: number): void => {
@@ -206,7 +228,12 @@ export function createPtyRuntime(): PtyRuntime {
       return
     }
 
-    ptyManager.appendSnapshotData(sessionId, data)
+    if (activeSessions.has(sessionId)) {
+      const snapshot = snapshots.get(sessionId)
+      if (snapshot) {
+        appendSnapshotData(snapshot, data)
+      }
+    }
 
     if (!hasPtyDataSubscribers(sessionId)) {
       return
@@ -287,56 +314,62 @@ export function createPtyRuntime(): PtyRuntime {
 
   const resolveTerminalProbeReplies = (sessionId: string, outputChunk: string): void => {
     if (outputChunk.includes('\u001b[6n')) {
-      ptyManager.write(sessionId, '\u001b[1;1R')
+      ptyHost.write(sessionId, '\u001b[1;1R')
     }
 
     if (outputChunk.includes('\u001b[?6n')) {
-      ptyManager.write(sessionId, '\u001b[?1;1R')
+      ptyHost.write(sessionId, '\u001b[?1;1R')
     }
 
     if (outputChunk.includes('\u001b[c')) {
-      ptyManager.write(sessionId, '\u001b[?1;2c')
+      ptyHost.write(sessionId, '\u001b[?1;2c')
     }
 
     if (outputChunk.includes('\u001b[>c')) {
-      ptyManager.write(sessionId, '\u001b[>0;115;0c')
+      ptyHost.write(sessionId, '\u001b[>0;115;0c')
     }
 
     if (outputChunk.includes('\u001b[?u')) {
-      ptyManager.write(sessionId, '\u001b[?0u')
+      ptyHost.write(sessionId, '\u001b[?0u')
     }
   }
 
-  const wirePtySessionEvents = (sessionId: string, pty: IPty): void => {
-    pty.onData(data => {
-      if (!hasPtyDataSubscribers(sessionId)) {
-        const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${data}`
-        resolveTerminalProbeReplies(sessionId, probeBuffer)
-        terminalProbeBufferBySession.set(sessionId, probeBuffer.slice(-32))
+  ptyHost.onData(({ sessionId, data }) => {
+    if (!terminatedSessions.has(sessionId)) {
+      activeSessions.add(sessionId)
+      if (!snapshots.has(sessionId)) {
+        snapshots.set(sessionId, createEmptySnapshotState())
       }
+    }
 
-      queuePtyDataBroadcast(sessionId, data)
-    })
+    if (!hasPtyDataSubscribers(sessionId)) {
+      const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${data}`
+      resolveTerminalProbeReplies(sessionId, probeBuffer)
+      terminalProbeBufferBySession.set(sessionId, probeBuffer.slice(-32))
+    }
 
-    pty.onExit(exit => {
-      flushPtyDataBroadcast(sessionId)
-      clearSessionProbeState(sessionId)
-      sessionStateWatcher.disposeSession(sessionId)
-      cleanupSessionPtyDataSubscriptions(sessionId)
-      ptyManager.delete(sessionId, { keepSnapshot: true })
-      const eventPayload: TerminalExitEvent = {
-        sessionId,
-        exitCode: exit.exitCode,
-      }
-      sendToAllWindows(IPC_CHANNELS.ptyExit, eventPayload)
-    })
-  }
+    queuePtyDataBroadcast(sessionId, data)
+  })
+
+  ptyHost.onExit(({ sessionId, exitCode }) => {
+    flushPtyDataBroadcast(sessionId)
+    clearSessionProbeState(sessionId)
+    sessionStateWatcher.disposeSession(sessionId)
+    cleanupSessionPtyDataSubscriptions(sessionId)
+    activeSessions.delete(sessionId)
+    terminatedSessions.add(sessionId)
+    const eventPayload: TerminalExitEvent = {
+      sessionId,
+      exitCode,
+    }
+    sendToAllWindows(IPC_CHANNELS.ptyExit, eventPayload)
+  })
 
   return {
     listProfiles: async () => await profileResolver.listProfiles(),
     spawnTerminalSession: async input => {
       const resolved = await profileResolver.resolveTerminalSpawn(input)
-      const { sessionId, pty } = ptyManager.spawnSession({
+      const { sessionId } = await ptyHost.spawn({
         cwd: resolved.cwd,
         command: resolved.command,
         args: resolved.args,
@@ -344,8 +377,13 @@ export function createPtyRuntime(): PtyRuntime {
         cols: input.cols,
         rows: input.rows,
       })
+
+      activeSessions.add(sessionId)
+      terminatedSessions.delete(sessionId)
+      if (!snapshots.has(sessionId)) {
+        snapshots.set(sessionId, createEmptySnapshotState())
+      }
       registerSessionProbeState(sessionId)
-      wirePtySessionEvents(sessionId, pty)
 
       return {
         sessionId,
@@ -353,25 +391,43 @@ export function createPtyRuntime(): PtyRuntime {
         runtimeKind: resolved.runtimeKind,
       }
     },
-    spawnSession: options => {
-      const { sessionId, pty } = ptyManager.spawnSession(options)
+    spawnSession: async options => {
+      const command = options.command ?? options.shell ?? resolveDefaultShell()
+      const args = options.command ? (options.args ?? []) : []
+
+      const { sessionId } = await ptyHost.spawn({
+        cwd: options.cwd,
+        command,
+        args,
+        env: options.env,
+        cols: options.cols,
+        rows: options.rows,
+      })
+
+      activeSessions.add(sessionId)
+      terminatedSessions.delete(sessionId)
+      if (!snapshots.has(sessionId)) {
+        snapshots.set(sessionId, createEmptySnapshotState())
+      }
       registerSessionProbeState(sessionId)
-      wirePtySessionEvents(sessionId, pty)
       return { sessionId }
     },
     write: (sessionId, data, encoding = 'utf8') => {
-      ptyManager.write(sessionId, data, encoding)
+      ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
     resize: (sessionId, cols, rows) => {
-      ptyManager.resize(sessionId, cols, rows)
+      ptyHost.resize(sessionId, cols, rows)
     },
     kill: sessionId => {
       flushPtyDataBroadcast(sessionId)
       clearSessionProbeState(sessionId)
       sessionStateWatcher.disposeSession(sessionId)
       cleanupSessionPtyDataSubscriptions(sessionId)
-      ptyManager.kill(sessionId)
+      activeSessions.delete(sessionId)
+      terminatedSessions.add(sessionId)
+      snapshots.delete(sessionId)
+      ptyHost.kill(sessionId)
     },
     attach: (contentsId, sessionId) => {
       trackWebContentsSubscriptionLifecycle(contentsId)
@@ -404,9 +460,17 @@ export function createPtyRuntime(): PtyRuntime {
     },
     snapshot: sessionId => {
       flushPtyDataBroadcast(sessionId)
-      return ptyManager.snapshot(sessionId)
+      const snapshot = snapshots.get(sessionId)
+      return snapshot ? snapshotToString(snapshot) : ''
     },
     startSessionStateWatcher,
+    ...(process.env.NODE_ENV === 'test'
+      ? {
+          debugCrashHost: () => {
+            ptyHost.crash()
+          },
+        }
+      : {}),
     dispose: () => {
       sessionStateWatcher.dispose()
 
@@ -422,7 +486,10 @@ export function createPtyRuntime(): PtyRuntime {
       ptyDataSubscribedWebContentsIds.clear()
       terminalProbeBufferBySession.clear()
 
-      ptyManager.disposeAll()
+      activeSessions.clear()
+      terminatedSessions.clear()
+      snapshots.clear()
+      ptyHost.dispose()
     },
   }
 }

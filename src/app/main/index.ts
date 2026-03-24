@@ -345,6 +345,28 @@ app.whenReady().then(() => {
     app.dock?.setIcon(nativeImage.createFromPath(runtimeIconPath))
   }
 
+  if (isTruthyEnv(process.env['OPENCOVE_PTY_HOST_POC'])) {
+    void import('../../platform/process/ptyHost/poc').then(
+      async ({ runPtyHostUtilityProcessPoc }) => {
+        try {
+          await runPtyHostUtilityProcessPoc()
+          app.exit(0)
+        } catch (error) {
+          const detail =
+            error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+          process.stderr.write(`[cove] pty-host PoC failed: ${detail}\n`)
+          app.exit(1)
+        }
+      },
+      error => {
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+        process.stderr.write(`[cove] pty-host PoC failed: ${detail}\n`)
+        app.exit(1)
+      },
+    )
+    return
+  }
+
   ipcDisposable = registerIpcHandlers()
 
   createWindow()
