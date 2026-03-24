@@ -19,6 +19,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - In-app update checker with stable/nightly tracking (nightly supports prompt only) plus a first-launch “What’s New” sheet after updates. (#49)
 - Workspace canvas: Label colors for Spaces and windows, plus a single-color filter. (#54)
 - Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
+- Settings: standard window size bucket (compact/regular/large) for node create/arrange sizing (replaces runtime auto-sizing). (#70)
 
 ### 💅 Changed
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
