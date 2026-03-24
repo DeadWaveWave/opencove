@@ -340,21 +340,22 @@ export function useNodeFrameResize({
         return
       }
 
-      setDraftFrame(
-        resolveResizedNodeFrame({
-          initialFrame: start.frame,
-          edges: start.edges,
-          delta: normalizeResizePointerDelta(
-            {
-              x: event.clientX - start.client.x,
-              y: event.clientY - start.client.y,
-            },
-            zoom,
-          ),
-          minSize,
-          aspectRatio: start.aspectRatio,
-        }),
-      )
+      const nextFrame = resolveResizedNodeFrame({
+        initialFrame: start.frame,
+        edges: start.edges,
+        delta: normalizeResizePointerDelta(
+          {
+            x: event.clientX - start.client.x,
+            y: event.clientY - start.client.y,
+          },
+          zoom,
+        ),
+        minSize,
+        aspectRatio: start.aspectRatio,
+      })
+
+      draftFrameRef.current = nextFrame
+      setDraftFrame(nextFrame)
     }
 
     const finalizeResize = () => {
