@@ -76,10 +76,26 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
     return { spaces, nodePositionById: new Map() }
   }
 
-  const minX = Math.min(...ownedRects.map(rect => rect.x))
-  const minY = Math.min(...ownedRects.map(rect => rect.y))
-  const maxX = Math.max(...ownedRects.map(rect => rect.x + rect.width))
-  const maxY = Math.max(...ownedRects.map(rect => rect.y + rect.height))
+  let minX = Number.POSITIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+
+  for (const rect of ownedRects) {
+    minX = Math.min(minX, rect.x)
+    minY = Math.min(minY, rect.y)
+    maxX = Math.max(maxX, rect.x + rect.width)
+    maxY = Math.max(maxY, rect.y + rect.height)
+  }
+
+  if (
+    !Number.isFinite(minX) ||
+    !Number.isFinite(minY) ||
+    !Number.isFinite(maxX) ||
+    !Number.isFinite(maxY)
+  ) {
+    return { spaces, nodePositionById: new Map() }
+  }
 
   const requiredRect: WorkspaceSpaceRect = {
     x: minX - padding,

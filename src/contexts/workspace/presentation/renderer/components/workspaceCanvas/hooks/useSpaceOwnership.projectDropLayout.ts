@@ -1,7 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
-import { pushAwayLayout, type LayoutDirection } from '../../../utils/spaceLayout'
 import { reassignNodesAcrossSpaces } from './useSpaceOwnership.drop.helpers'
 import { projectWorkspaceNodeDragLayout } from './useSpaceOwnership.projectLayout'
 
@@ -10,33 +9,6 @@ export interface ProjectedWorkspaceNodeDropLayout {
   nextNodePositionById: Map<string, { x: number; y: number }>
   nextSpaces: WorkspaceSpaceState[]
   hasSpaceChange: boolean
-}
-
-function buildDragDirectionPreference(dx: number, dy: number): LayoutDirection[] {
-  const ordered: LayoutDirection[] = []
-  const xDirection = dx >= 0 ? ('x+' as const) : ('x-' as const)
-  const yDirection = dy >= 0 ? ('y+' as const) : ('y-' as const)
-
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    ordered.push(xDirection, yDirection)
-  } else {
-    ordered.push(yDirection, xDirection)
-  }
-
-  if (!ordered.includes('x+')) {
-    ordered.push('x+')
-  }
-  if (!ordered.includes('x-')) {
-    ordered.push('x-')
-  }
-  if (!ordered.includes('y+')) {
-    ordered.push('y+')
-  }
-  if (!ordered.includes('y-')) {
-    ordered.push('y-')
-  }
-
-  return ordered
 }
 
 export function projectWorkspaceNodeDropLayout({
@@ -98,7 +70,6 @@ export function projectWorkspaceNodeDropLayout({
   }
 
   const targetSpaceId = projectedDrag.targetSpaceId
-  const dragDirections = buildDragDirectionPreference(dragDx, dragDy)
 
   const { nextSpaces: reassignedSpaces, hasSpaceChange } = reassignNodesAcrossSpaces({
     spaces,
@@ -124,71 +95,6 @@ export function projectWorkspaceNodeDropLayout({
   const shouldEnsureSpaceFitsOwnedNodes = Boolean(
     targetSpaceId && reassignedSpaces.find(space => space.id === targetSpaceId)?.rect,
   )
-
-  if (targetSpaceId) {
-    const targetSpaceNodeIds =
-      reassignedSpaces.find(space => space.id === targetSpaceId)?.nodeIds ?? []
-
-    if (targetSpaceNodeIds.length > 1) {
-      const rectByNodeId = new Map(nodeRects.map(item => [item.id, item.rect]))
-      const reflowItems = targetSpaceNodeIds
-        .map(nodeId => {
-          const rect = rectByNodeId.get(nodeId)
-          if (!rect) {
-            return null
-          }
-
-          return {
-            id: nodeId,
-            kind: 'node' as const,
-            groupId: nodeId,
-            rect: { ...rect },
-          }
-        })
-        .filter(
-          (
-            item,
-          ): item is {
-            id: string
-            kind: 'node'
-            groupId: string
-            rect: WorkspaceSpaceRect
-          } => Boolean(item),
-        )
-
-      if (reflowItems.length > 1) {
-        const pushed = pushAwayLayout({
-          items: reflowItems,
-          pinnedGroupIds: draggedNodeIds,
-          sourceGroupIds: draggedNodeIds,
-          directions: dragDirections,
-          gap: 0,
-        })
-
-        const reflowPositionByNodeId = new Map(
-          pushed.map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
-        )
-
-        if (reflowPositionByNodeId.size > 0) {
-          nodeRects = nodeRects.map(item => {
-            const nextPosition = reflowPositionByNodeId.get(item.id)
-            if (!nextPosition) {
-              return item
-            }
-
-            return {
-              id: item.id,
-              rect: {
-                ...item.rect,
-                x: nextPosition.x,
-                y: nextPosition.y,
-              },
-            }
-          })
-        }
-      }
-    }
-  }
 
   if (shouldEnsureSpaceFitsOwnedNodes && targetSpaceId) {
     const { spaces: pushedSpaces, nodePositionById } = expandSpaceToFitOwnedNodesAndPushAway({

@@ -78,6 +78,12 @@ export function pushAwayLayout(_input: {
   const pinned = new Set(_input.pinnedGroupIds)
   const groupIds = [...groupIndices.keys()]
   const preferredDirections = orderPreferredDirections(_input.directions)
+  const preferredRankByDirection: Record<LayoutDirection, number> = {
+    'x+': preferredDirections.indexOf('x+'),
+    'x-': preferredDirections.indexOf('x-'),
+    'y+': preferredDirections.indexOf('y+'),
+    'y-': preferredDirections.indexOf('y-'),
+  }
   const groupHasSpace = new Map<string, boolean>()
   nextItems.forEach(item => {
     if (item.kind !== 'space') {
@@ -114,11 +120,20 @@ export function pushAwayLayout(_input: {
       return
     }
 
-    indices.forEach(index => {
+    for (let i = 0; i < indices.length; i += 1) {
+      const index = indices[i]
+      if (typeof index !== 'number') {
+        continue
+      }
+
       const item = nextItems[index]
+      if (!item) {
+        continue
+      }
+
       item.rect.x += dx
       item.rect.y += dy
-    })
+    }
 
     const groupRect = groupBounds.get(groupId)
     if (groupRect) {
@@ -163,38 +178,8 @@ export function pushAwayLayout(_input: {
       preferredDirections,
     })
 
-    const candidateByDirection = new Map<LayoutDirection, { dx: number; dy: number }>([
-      [
-        'x+',
-        {
-          dx: sourceRect.x + sourceRect.width + gap - targetRect.x,
-          dy: 0,
-        },
-      ],
-      [
-        'x-',
-        {
-          dx: sourceRect.x - gap - (targetRect.x + targetRect.width),
-          dy: 0,
-        },
-      ],
-      [
-        'y+',
-        {
-          dx: 0,
-          dy: sourceRect.y + sourceRect.height + gap - targetRect.y,
-        },
-      ],
-      [
-        'y-',
-        {
-          dx: 0,
-          dy: sourceRect.y - gap - (targetRect.y + targetRect.height),
-        },
-      ],
-    ])
-
-    let bestCandidate: { dx: number; dy: number } | null = null
+    let bestCandidateDx = 0
+    let bestCandidateDy = 0
     let bestScore: {
       naturalRank: number
       preferredRank: number
@@ -204,10 +189,23 @@ export function pushAwayLayout(_input: {
       boundsViolation: number
     } | null = null
 
-    for (const direction of naturalDirections) {
-      const candidate = candidateByDirection.get(direction)
-      if (!candidate) {
+    for (let naturalRank = 0; naturalRank < naturalDirections.length; naturalRank += 1) {
+      const direction = naturalDirections[naturalRank]
+      if (!direction) {
         continue
+      }
+
+      let dx = 0
+      let dy = 0
+
+      if (direction === 'x+') {
+        dx = sourceRect.x + sourceRect.width + gap - targetRect.x
+      } else if (direction === 'x-') {
+        dx = sourceRect.x - gap - (targetRect.x + targetRect.width)
+      } else if (direction === 'y+') {
+        dy = sourceRect.y + sourceRect.height + gap - targetRect.y
+      } else {
+        dy = sourceRect.y - gap - (targetRect.y + targetRect.height)
       }
 
       const boundsViolation =
@@ -215,37 +213,46 @@ export function pushAwayLayout(_input: {
           ? computeBoundsViolation({
               bounds: allowedBounds,
               rect: {
-                x: targetRect.x + candidate.dx,
-                y: targetRect.y + candidate.dy,
+                x: targetRect.x + dx,
+                y: targetRect.y + dy,
                 width: targetRect.width,
                 height: targetRect.height,
               },
             })
           : 0
-      const manhattan = Math.abs(candidate.dx) + Math.abs(candidate.dy)
-      const euclidean = candidate.dx * candidate.dx + candidate.dy * candidate.dy
+      const manhattan = Math.abs(dx) + Math.abs(dy)
+      const euclidean = dx * dx + dy * dy
+      const preferredRank = preferredRankByDirection[direction]
       const score = {
-        naturalRank: naturalDirections.indexOf(direction),
-        preferredRank: preferredDirections.indexOf(direction),
-        weightedDistance:
-          manhattan + preferredDirections.indexOf(direction) * PREFERRED_DIRECTION_PENALTY,
+        naturalRank,
+        preferredRank,
+        weightedDistance: manhattan + preferredRank * PREFERRED_DIRECTION_PENALTY,
         manhattan,
         euclidean,
         boundsViolation,
       }
 
-      if (
-        !bestScore ||
-        comparePushScore(score, bestScore) < 0 ||
-        (comparePushScore(score, bestScore) === 0 &&
-          comparePushDelta(candidate, bestCandidate ?? { dx: 0, dy: 0 }) < 0)
-      ) {
-        bestCandidate = candidate
+      const scoreComparison = bestScore ? comparePushScore(score, bestScore) : -1
+
+      if (scoreComparison < 0) {
+        bestCandidateDx = dx
+        bestCandidateDy = dy
+        bestScore = score
+        continue
+      }
+
+      if (scoreComparison > 0 || !bestScore) {
+        continue
+      }
+
+      if (comparePushDelta({ dx, dy }, { dx: bestCandidateDx, dy: bestCandidateDy }) < 0) {
+        bestCandidateDx = dx
+        bestCandidateDy = dy
         bestScore = score
       }
     }
 
-    return bestCandidate ?? { dx: 0, dy: 0 }
+    return bestScore ? { dx: bestCandidateDx, dy: bestCandidateDy } : { dx: 0, dy: 0 }
   }
 
   const initialQueue = (): string[] => {
@@ -261,15 +268,18 @@ export function pushAwayLayout(_input: {
 
   const queue = initialQueue()
   const inQueue = new Set(queue)
+  let queueIndex = 0
   const maxIterations = Math.max(20, groupIds.length * groupIds.length * 6)
   let iterations = 0
 
-  while (queue.length > 0 && iterations < maxIterations) {
+  while (queueIndex < queue.length && iterations < maxIterations) {
     iterations += 1
-    const sourceGroupId = queue.shift()
+    const sourceGroupId = queue[queueIndex]
+    queueIndex += 1
     if (!sourceGroupId) {
-      break
+      continue
     }
+
     inQueue.delete(sourceGroupId)
 
     for (const targetGroupId of groupIds) {
