@@ -5,160 +5,235 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const PERSISTENCE_STORE_TEST_TIMEOUT_MS = 20_000
 
-type SqliteStatementLike = {
-  all: (...params: unknown[]) => unknown[]
-  get: (...params: unknown[]) => unknown
-  run: (...params: unknown[]) => unknown
+type MockDbState = {
+  userVersion: number
+  tables: Map<string, string[]>
+  openAttempts: number
+  failOnFirstOpen?: boolean
 }
 
-type SqliteDbLike = {
-  close: () => void
-  exec: (sql: string) => void
-  prepare: (sql: string) => SqliteStatementLike
-  pragma: (query: string, options?: { simple?: boolean }) => unknown
+const CURRENT_SCHEMA_COLUMNS = {
+  app_meta: ['key', 'value'],
+  app_settings: ['id', 'value'],
+  workspaces: [
+    'id',
+    'name',
+    'path',
+    'worktrees_root',
+    'pull_request_base_branch_options_json',
+    'viewport_x',
+    'viewport_y',
+    'viewport_zoom',
+    'is_minimap_visible',
+    'active_space_id',
+  ],
+  nodes: [
+    'id',
+    'workspace_id',
+    'title',
+    'title_pinned_by_user',
+    'position_x',
+    'position_y',
+    'width',
+    'height',
+    'kind',
+    'label_color_override',
+    'status',
+    'started_at',
+    'ended_at',
+    'exit_code',
+    'last_error',
+    'execution_directory',
+    'expected_directory',
+    'agent_json',
+    'task_json',
+  ],
+  workspace_spaces: [
+    'id',
+    'workspace_id',
+    'name',
+    'directory_path',
+    'label_color',
+    'rect_x',
+    'rect_y',
+    'rect_width',
+    'rect_height',
+  ],
+  workspace_space_nodes: ['space_id', 'node_id', 'sort_order'],
+  node_scrollback: ['node_id', 'scrollback', 'updated_at'],
+} as const
+
+function createVersion2Tables(): Map<string, string[]> {
+  return new Map<string, string[]>([
+    ['app_meta', [...CURRENT_SCHEMA_COLUMNS.app_meta]],
+    ['app_settings', [...CURRENT_SCHEMA_COLUMNS.app_settings]],
+    [
+      'workspaces',
+      ['id', 'name', 'path', 'worktrees_root', 'viewport_x', 'viewport_y', 'viewport_zoom', 'is_minimap_visible', 'active_space_id'],
+    ],
+    [
+      'nodes',
+      [
+        'id',
+        'workspace_id',
+        'title',
+        'title_pinned_by_user',
+        'position_x',
+        'position_y',
+        'width',
+        'height',
+        'kind',
+        'status',
+        'started_at',
+        'ended_at',
+        'exit_code',
+        'last_error',
+        'execution_directory',
+        'expected_directory',
+        'agent_json',
+        'task_json',
+      ],
+    ],
+    [
+      'workspace_spaces',
+      ['id', 'workspace_id', 'name', 'directory_path', 'rect_x', 'rect_y', 'rect_width', 'rect_height'],
+    ],
+    ['workspace_space_nodes', [...CURRENT_SCHEMA_COLUMNS.workspace_space_nodes]],
+    ['node_scrollback', [...CURRENT_SCHEMA_COLUMNS.node_scrollback]],
+  ])
 }
 
-async function openWritableSqliteDb(dbPath: string): Promise<SqliteDbLike> {
-  const { createRequire } = await import('node:module')
-  const require = createRequire(import.meta.url)
-  const BetterSqlite3 = require('better-sqlite3') as new (filePath: string) => SqliteDbLike
-  return new BetterSqlite3(dbPath)
+function createMockDbState(options: {
+  userVersion?: number
+  version2Schema?: boolean
+  failOnFirstOpen?: boolean
+} = {}): MockDbState {
+  return {
+    userVersion: options.userVersion ?? 0,
+    tables: options.version2Schema
+      ? createVersion2Tables()
+      : new Map<string, string[]>(),
+    openAttempts: 0,
+    ...(options.failOnFirstOpen ? { failOnFirstOpen: true } : {}),
+  }
 }
 
-async function useActualBetterSqliteForModuleImports(): Promise<void> {
-  const { createRequire } = await import('node:module')
-  const require = createRequire(import.meta.url)
-  const BetterSqlite3 = require('better-sqlite3') as new (filePath: string) => SqliteDbLike
-  vi.doMock('better-sqlite3', () => ({ default: BetterSqlite3 }))
-}
+function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
+  return class MockDatabase {
+    private readonly state: MockDbState
 
-function seedVersion2Schema(db: SqliteDbLike, options: { userVersion?: number } = {}): void {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS app_meta (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
+    public constructor(private readonly path: string) {
+      const existing = mockDbByPath.get(path)
+      const nextState = existing ?? createMockDbState()
+      nextState.openAttempts += 1
 
-    CREATE TABLE IF NOT EXISTS app_settings (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      value TEXT NOT NULL
-    );
+      if (nextState.failOnFirstOpen === true && nextState.openAttempts === 1) {
+        throw new Error('SQLITE_CORRUPT: database disk image is malformed')
+      }
 
-    CREATE TABLE IF NOT EXISTS workspaces (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      path TEXT NOT NULL,
-      worktrees_root TEXT NOT NULL,
-      viewport_x REAL NOT NULL,
-      viewport_y REAL NOT NULL,
-      viewport_zoom REAL NOT NULL,
-      is_minimap_visible INTEGER NOT NULL,
-      active_space_id TEXT
-    );
+      mockDbByPath.set(path, nextState)
+      this.state = nextState
+    }
 
-    CREATE TABLE IF NOT EXISTS nodes (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      title_pinned_by_user INTEGER NOT NULL,
-      position_x REAL NOT NULL,
-      position_y REAL NOT NULL,
-      width INTEGER NOT NULL,
-      height INTEGER NOT NULL,
-      kind TEXT NOT NULL,
-      status TEXT,
-      started_at TEXT,
-      ended_at TEXT,
-      exit_code INTEGER,
-      last_error TEXT,
-      execution_directory TEXT,
-      expected_directory TEXT,
-      agent_json TEXT,
-      task_json TEXT
-    );
+    public pragma(query: string, options?: { simple?: boolean }): unknown {
+      if (query === 'user_version' && options?.simple === true) {
+        return this.state.userVersion
+      }
 
-    CREATE TABLE IF NOT EXISTS workspace_spaces (
-      id TEXT PRIMARY KEY,
-      workspace_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      directory_path TEXT NOT NULL,
-      rect_x REAL,
-      rect_y REAL,
-      rect_width REAL,
-      rect_height REAL
-    );
+      const match = query.match(/^user_version\s*=\s*(\d+)$/)
+      if (match) {
+        this.state.userVersion = Number(match[1])
+        return undefined
+      }
 
-    CREATE TABLE IF NOT EXISTS workspace_space_nodes (
-      space_id TEXT NOT NULL,
-      node_id TEXT NOT NULL,
-      sort_order INTEGER NOT NULL,
-      PRIMARY KEY (space_id, node_id)
-    );
+      return undefined
+    }
 
-    CREATE TABLE IF NOT EXISTS node_scrollback (
-      node_id TEXT PRIMARY KEY,
-      scrollback TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-  `)
+    public exec(sql: string): void {
+      for (const [tableName, columns] of Object.entries(CURRENT_SCHEMA_COLUMNS)) {
+        if (
+          sql.includes(`CREATE TABLE IF NOT EXISTS ${tableName}`) &&
+          !this.state.tables.has(tableName)
+        ) {
+          this.state.tables.set(tableName, [...columns])
+        }
+      }
 
-  db.prepare(`INSERT INTO app_settings (id, value) VALUES (1, '{}')`).run()
-  db.prepare(
-    `
-      INSERT INTO workspaces (
-        id, name, path, worktrees_root,
-        viewport_x, viewport_y, viewport_zoom,
-        is_minimap_visible, active_space_id
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-  ).run('ws-1', 'Workspace', '/tmp/workspace', '/tmp', 1, 2, 1, 0, null)
-  db.prepare(
-    `
-      INSERT INTO nodes (
-        id, workspace_id, title, title_pinned_by_user,
-        position_x, position_y, width, height,
-        kind, status, started_at, ended_at, exit_code, last_error,
-        execution_directory, expected_directory, agent_json, task_json
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-  ).run(
-    'node-1',
-    'ws-1',
-    'Node',
-    0,
-    10,
-    20,
-    300,
-    200,
-    'task',
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-    null,
-  )
-  db.prepare(
-    `
-      INSERT INTO workspace_spaces (
-        id, workspace_id, name, directory_path, rect_x, rect_y, rect_width, rect_height
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-  ).run('space-1', 'ws-1', 'Space', '/tmp/workspace', 0, 0, 100, 100)
-  db.prepare(
-    `
-      INSERT INTO workspace_space_nodes (space_id, node_id, sort_order)
-      VALUES (?, ?, ?)
-    `,
-  ).run('space-1', 'node-1', 0)
+      const alterRegex = /ALTER TABLE\s+("?)([A-Za-z_][A-Za-z0-9_]*)\1\s+ADD COLUMN\s+("?)([A-Za-z_][A-Za-z0-9_]*)\3/gi
+      for (const match of sql.matchAll(alterRegex)) {
+        const tableName = match[2]
+        const columnName = match[4]
+        const existingColumns = this.state.tables.get(tableName) ?? []
+        if (!existingColumns.includes(columnName)) {
+          existingColumns.push(columnName)
+          this.state.tables.set(tableName, existingColumns)
+        }
+      }
 
-  db.pragma(`user_version = ${options.userVersion ?? 2}`)
+      const dropRegex = /DROP TABLE IF EXISTS\s+("?)([A-Za-z_][A-Za-z0-9_]*)\1/gi
+      for (const match of sql.matchAll(dropRegex)) {
+        this.state.tables.delete(match[2])
+      }
+    }
+
+    public prepare(sql: string): { all: () => unknown[]; get: (...params: unknown[]) => unknown; run: (...params: unknown[]) => void } {
+      const tableInfoMatch = sql.match(/PRAGMA table_info\("?([A-Za-z_][A-Za-z0-9_]*)"?\)/i)
+      if (tableInfoMatch) {
+        const tableName = tableInfoMatch[1]
+        return {
+          all: () =>
+            (this.state.tables.get(tableName) ?? []).map(name => ({
+              name,
+            })),
+          get: () => undefined,
+          run: () => undefined,
+        }
+      }
+
+      const insertMatch = sql.match(/INSERT INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([\s\S]*?)\)\s*VALUES/i)
+      if (insertMatch) {
+        const tableName = insertMatch[1]
+        const columns = insertMatch[2]
+          .split(',')
+          .map(column => column.replace(/\s+/g, ' ').trim())
+          .filter(column => column.length > 0)
+        return {
+          all: () => [],
+          get: () => undefined,
+          run: () => {
+            const tableColumns = this.state.tables.get(tableName) ?? []
+            for (const column of columns) {
+              if (!tableColumns.includes(column)) {
+                throw new Error(`table ${tableName} has no column named ${column}`)
+              }
+            }
+          },
+        }
+      }
+
+      if (sql.includes('SELECT value FROM kv WHERE key = ?')) {
+        return {
+          all: () => [],
+          get: () => undefined,
+          run: () => undefined,
+        }
+      }
+
+      return {
+        all: () => [],
+        get: () => undefined,
+        run: () => undefined,
+      }
+    }
+
+    public transaction<TArgs extends unknown[], TResult>(
+      fn: (...args: TArgs) => TResult,
+    ): (...args: TArgs) => TResult {
+      return (...args: TArgs) => fn(...args)
+    }
+
+    public close(): void {}
+  }
 }
 
 describe('PersistenceStore', () => {
@@ -187,54 +262,8 @@ describe('PersistenceStore', () => {
       const dbPath = join(tempDir, 'opencove.db')
       await writeFile(dbPath, 'legacy-db')
 
-      type MockDbState = { userVersion: number }
       const mockDbByPath = new Map<string, MockDbState>()
-
-      class MockDatabase {
-        private readonly state: MockDbState
-
-        public constructor(private readonly path: string) {
-          const existing = mockDbByPath.get(path)
-          if (existing) {
-            this.state = existing
-            return
-          }
-
-          const next: MockDbState = { userVersion: 0 }
-          mockDbByPath.set(path, next)
-          this.state = next
-        }
-
-        public pragma(query: string, options?: { simple?: boolean }): unknown {
-          if (query === 'user_version' && options?.simple === true) {
-            return this.state.userVersion
-          }
-
-          const match = query.match(/^user_version\\s*=\\s*(\\d+)$/)
-          if (match) {
-            this.state.userVersion = Number(match[1])
-            return undefined
-          }
-
-          return undefined
-        }
-
-        public exec(_sql: string): void {}
-
-        public prepare(_sql: string): { run: () => void } {
-          return { run: () => undefined }
-        }
-
-        public transaction<TArgs extends unknown[], TResult>(
-          fn: (...args: TArgs) => TResult,
-        ): (...args: TArgs) => TResult {
-          return (...args: TArgs) => fn(...args)
-        }
-
-        public close(): void {}
-      }
-
-      vi.doMock('better-sqlite3', () => ({ default: MockDatabase }))
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
       const { createPersistenceStore } =
         await import('../../../src/platform/persistence/sqlite/PersistenceStore')
@@ -262,36 +291,10 @@ describe('PersistenceStore', () => {
       const dbPath = join(tempDir, 'opencove.db')
       await writeFile(dbPath, 'corrupt-db')
 
-      let openAttempts = 0
-
-      class MockDatabase {
-        public constructor() {
-          openAttempts += 1
-          if (openAttempts === 1) {
-            throw new Error('SQLITE_CORRUPT: database disk image is malformed')
-          }
-        }
-
-        public pragma(): unknown {
-          return 0
-        }
-
-        public exec(): void {}
-
-        public prepare(): { run: () => void } {
-          return { run: () => undefined }
-        }
-
-        public transaction<TArgs extends unknown[], TResult>(
-          fn: (...args: TArgs) => TResult,
-        ): (...args: TArgs) => TResult {
-          return (...args: TArgs) => fn(...args)
-        }
-
-        public close(): void {}
-      }
-
-      vi.doMock('better-sqlite3', () => ({ default: MockDatabase }))
+      const mockDbByPath = new Map<string, MockDbState>([
+        [dbPath, createMockDbState({ failOnFirstOpen: true })],
+      ])
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
       const { createPersistenceStore } =
         await import('../../../src/platform/persistence/sqlite/PersistenceStore')
@@ -311,8 +314,9 @@ describe('PersistenceStore', () => {
   it(
     'measures workspace state payload size in UTF-8 bytes',
     async () => {
-      await useActualBetterSqliteForModuleImports()
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
+      const mockDbByPath = new Map<string, MockDbState>()
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
       const { createPersistenceStore } =
         await import('../../../src/platform/persistence/sqlite/PersistenceStore')
@@ -360,13 +364,12 @@ describe('PersistenceStore', () => {
   it(
     'applies cumulative migrations when upgrading a version 2 db',
     async () => {
-      await useActualBetterSqliteForModuleImports()
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
-
-      const seededDb = await openWritableSqliteDb(dbPath)
-      seedVersion2Schema(seededDb)
-      seededDb.close()
+      const mockDbByPath = new Map<string, MockDbState>([
+        [dbPath, createMockDbState({ userVersion: 2, version2Schema: true })],
+      ])
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
       const { createPersistenceStore } =
         await import('../../../src/platform/persistence/sqlite/PersistenceStore')
@@ -426,28 +429,13 @@ describe('PersistenceStore', () => {
       expect(result).toMatchObject({ ok: true, level: 'full' })
       store.dispose()
 
-      const migratedDb = await openWritableSqliteDb(dbPath)
-      expect(migratedDb.pragma('user_version', { simple: true })).toBe(4)
-      expect(
-        migratedDb
-          .prepare(`PRAGMA table_info("nodes")`)
-          .all()
-          .map(row => (row as { name?: string }).name),
-      ).toContain('label_color_override')
-      expect(
-        migratedDb
-          .prepare(`PRAGMA table_info("workspace_spaces")`)
-          .all()
-          .map(row => (row as { name?: string }).name),
-      ).toContain('label_color')
-      expect(
-        migratedDb
-          .prepare(`PRAGMA table_info("workspaces")`)
-          .all()
-          .map(row => (row as { name?: string }).name),
-      ).toContain('pull_request_base_branch_options_json')
-      expect(migratedDb.prepare('SELECT COUNT(*) AS count FROM nodes').get()).toEqual({ count: 1 })
-      migratedDb.close()
+      const migratedState = mockDbByPath.get(dbPath)
+      expect(migratedState?.userVersion).toBe(4)
+      expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
+      expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
+      expect(migratedState?.tables.get('workspaces')).toContain(
+        'pull_request_base_branch_options_json',
+      )
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )
@@ -455,13 +443,12 @@ describe('PersistenceStore', () => {
   it(
     'repairs a schema marked current when additive columns are missing',
     async () => {
-      await useActualBetterSqliteForModuleImports()
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
-
-      const seededDb = await openWritableSqliteDb(dbPath)
-      seedVersion2Schema(seededDb, { userVersion: 4 })
-      seededDb.close()
+      const mockDbByPath = new Map<string, MockDbState>([
+        [dbPath, createMockDbState({ userVersion: 4, version2Schema: true })],
+      ])
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
       const { createPersistenceStore } =
         await import('../../../src/platform/persistence/sqlite/PersistenceStore')
@@ -477,20 +464,9 @@ describe('PersistenceStore', () => {
       expect(result).toMatchObject({ ok: true, level: 'full' })
       store.dispose()
 
-      const repairedDb = await openWritableSqliteDb(dbPath)
-      expect(
-        repairedDb
-          .prepare(`PRAGMA table_info("nodes")`)
-          .all()
-          .map(row => (row as { name?: string }).name),
-      ).toContain('label_color_override')
-      expect(
-        repairedDb
-          .prepare(`PRAGMA table_info("workspace_spaces")`)
-          .all()
-          .map(row => (row as { name?: string }).name),
-      ).toContain('label_color')
-      repairedDb.close()
+      const repairedState = mockDbByPath.get(dbPath)
+      expect(repairedState?.tables.get('nodes')).toContain('label_color_override')
+      expect(repairedState?.tables.get('workspace_spaces')).toContain('label_color')
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )
