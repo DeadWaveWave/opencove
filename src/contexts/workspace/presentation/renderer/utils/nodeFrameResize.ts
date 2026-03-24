@@ -14,6 +14,15 @@ interface ResizeStartState {
   edges: ResizeEdges
 }
 
+function isSameFrame(left: NodeFrame, right: NodeFrame): boolean {
+  return (
+    left.position.x === right.position.x &&
+    left.position.y === right.position.y &&
+    left.size.width === right.size.width &&
+    left.size.height === right.size.height
+  )
+}
+
 export function normalizeResizePointerDelta(delta: Point, zoom: number): Point {
   const safeZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
 
@@ -128,6 +137,8 @@ export function useNodeFrameResize({
 } {
   const resizeStartRef = useRef<ResizeStartState | null>(null)
   const draftFrameRef = useRef<NodeFrame | null>(null)
+  const pendingCommitFrameRef = useRef<NodeFrame | null>(null)
+  const baseFrameAtResizeEndRef = useRef<NodeFrame | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [draftFrame, setDraftFrame] = useState<NodeFrame | null>(null)
   const zoom = useStore(storeState => {
@@ -146,6 +157,33 @@ export function useNodeFrameResize({
 
   useEffect(() => {
     if (!draftFrame || isResizing) {
+      return
+    }
+
+    const baseFrame: NodeFrame = {
+      position: { x: position.x, y: position.y },
+      size: { width, height },
+    }
+    const pendingCommitFrame = pendingCommitFrameRef.current
+    if (pendingCommitFrame) {
+      if (isSameFrame(baseFrame, pendingCommitFrame)) {
+        pendingCommitFrameRef.current = null
+        baseFrameAtResizeEndRef.current = null
+        setDraftFrame(null)
+        return
+      }
+
+      const baseFrameAtResizeEnd = baseFrameAtResizeEndRef.current
+      if (baseFrameAtResizeEnd && isSameFrame(baseFrame, baseFrameAtResizeEnd)) {
+        // Keep the visual preview until the resize commit lands in state to avoid flicker.
+        return
+      }
+
+      // If something else moved the node (for example Arrange) before the resize commit landed,
+      // the draft frame would apply an incorrect relative transform and visually offset the node.
+      pendingCommitFrameRef.current = null
+      baseFrameAtResizeEndRef.current = null
+      setDraftFrame(null)
       return
     }
 
@@ -170,6 +208,8 @@ export function useNodeFrameResize({
         size: { width, height },
       }
 
+      pendingCommitFrameRef.current = null
+      baseFrameAtResizeEndRef.current = null
       resizeStartRef.current = {
         client: {
           x: event.clientX,
@@ -222,6 +262,12 @@ export function useNodeFrameResize({
           position: { ...position },
           size: { width, height },
         } satisfies NodeFrame)
+
+      pendingCommitFrameRef.current = finalFrame
+      baseFrameAtResizeEndRef.current = {
+        position: { x: position.x, y: position.y },
+        size: { width, height },
+      }
 
       onResize(finalFrame)
       resizeStartRef.current = null
