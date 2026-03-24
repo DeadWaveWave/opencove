@@ -44,15 +44,12 @@ export function SpaceArchiveReplayCanvas({
       viewportRef,
     })
 
-  const handleInit = React.useCallback(
-    (instance: ReactFlowInstance<SpaceArchiveReplayNode>) => {
-      reactFlowInstanceRef.current = instance
+  const handleInit = React.useCallback((instance: ReactFlowInstance<SpaceArchiveReplayNode>) => {
+    reactFlowInstanceRef.current = instance
 
-      instance.fitView({ padding: 0.2, duration: 0, maxZoom: 1 })
-      viewportRef.current = instance.getViewport()
-    },
-    [],
-  )
+    instance.fitView({ padding: 0.2, duration: 0, maxZoom: 1 })
+    viewportRef.current = instance.getViewport()
+  }, [])
 
   if (record.nodes.length > 0 && !hasFullLayout) {
     return (

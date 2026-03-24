@@ -2,7 +2,11 @@ import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { CanvasImageMimeType, GitHubPullRequestSummary, TerminalRuntimeKind } from '@shared/contracts/dto'
+import type {
+  CanvasImageMimeType,
+  GitHubPullRequestSummary,
+  TerminalRuntimeKind,
+} from '@shared/contracts/dto'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 

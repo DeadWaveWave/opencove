@@ -213,9 +213,9 @@ test.describe('Space Archives', () => {
         await expect(contextMenu).toBeVisible()
         await relaunch.window.locator('[data-testid="space-archives-window-record-delete"]').click()
 
-        await expect(relaunch.window.locator('[data-testid="space-archives-window-record"]')).toHaveCount(
-          0,
-        )
+        await expect(
+          relaunch.window.locator('[data-testid="space-archives-window-record"]'),
+        ).toHaveCount(0)
         await expect
           .poll(async () => {
             return await relaunch.window.evaluate(async () => {
