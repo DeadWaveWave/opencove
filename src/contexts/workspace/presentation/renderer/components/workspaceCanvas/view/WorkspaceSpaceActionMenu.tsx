@@ -135,51 +135,6 @@ export function WorkspaceSpaceActionMenu({
         onMouseEnter={cancelScheduledSubmenuClose}
         onMouseLeave={scheduleSubmenuClose}
       >
-        {onArrange ? (
-          <>
-            <button
-              type="button"
-              data-testid="workspace-space-action-arrange"
-              disabled={!canArrange}
-              onClick={() => {
-                onArrange(menu.spaceId)
-                closeMenu()
-              }}
-            >
-              <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
-              <span className="workspace-context-menu__label">
-                {t('spaceActions.arrangeInSpace')}
-              </span>
-            </button>
-
-            <div className="workspace-context-menu__separator" />
-          </>
-        ) : null}
-
-        <button
-          type="button"
-          data-testid="workspace-space-action-label-color"
-          onMouseEnter={() => {
-            cancelScheduledSubmenuClose()
-            setOpenSubmenu('label-color')
-          }}
-          onFocus={() => {
-            cancelScheduledSubmenuClose()
-            setOpenSubmenu('label-color')
-          }}
-          onClick={() => {
-            cancelScheduledSubmenuClose()
-            setOpenSubmenu('label-color')
-          }}
-        >
-          <Tag className="workspace-context-menu__icon" aria-hidden="true" />
-          <span className="workspace-context-menu__label">{t('labelColors.title')}</span>
-          <ChevronRight
-            className="workspace-context-menu__icon workspace-space-action-menu__chevron"
-            aria-hidden="true"
-          />
-        </button>
-
         {canCreateWorktree ? (
           <button
             type="button"
@@ -244,6 +199,49 @@ export function WorkspaceSpaceActionMenu({
               className="workspace-context-menu__icon workspace-space-action-menu__chevron"
               aria-hidden="true"
             />
+          </button>
+        ) : null}
+
+        <div className="workspace-context-menu__separator" />
+
+        <button
+          type="button"
+          data-testid="workspace-space-action-label-color"
+          onMouseEnter={() => {
+            cancelScheduledSubmenuClose()
+            setOpenSubmenu('label-color')
+          }}
+          onFocus={() => {
+            cancelScheduledSubmenuClose()
+            setOpenSubmenu('label-color')
+          }}
+          onClick={() => {
+            cancelScheduledSubmenuClose()
+            setOpenSubmenu('label-color')
+          }}
+        >
+          <Tag className="workspace-context-menu__icon" aria-hidden="true" />
+          <span className="workspace-context-menu__label">{t('labelColors.title')}</span>
+          <ChevronRight
+            className="workspace-context-menu__icon workspace-space-action-menu__chevron"
+            aria-hidden="true"
+          />
+        </button>
+
+        {onArrange ? (
+          <button
+            type="button"
+            data-testid="workspace-space-action-arrange"
+            disabled={!canArrange}
+            onClick={() => {
+              onArrange(menu.spaceId)
+              closeMenu()
+            }}
+          >
+            <LayoutGrid className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">
+              {t('spaceActions.arrangeInSpace')}
+            </span>
           </button>
         ) : null}
       </div>

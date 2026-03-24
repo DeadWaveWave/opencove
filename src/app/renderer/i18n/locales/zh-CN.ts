@@ -63,7 +63,7 @@ export const zhCN = {
   appHeader: {
     togglePrimarySidebar: '切换主侧边栏',
     commandCenter: '命令中心',
-    commandCenterHint: '命令中心（{{primary}} / {{secondary}}）',
+    commandCenterHint: '命令中心（{{shortcut}}）',
     commandCenterFallbackTitle: '搜索',
     updateAvailableShort: '更新',
     updateAvailableTitle: '发现新版本 {{version}}',
@@ -77,7 +77,7 @@ export const zhCN = {
     loading: '正在加载更新内容…',
     empty: '这次更新没有可显示的变更内容。',
     viewCompare: '在 GitHub 查看完整对比',
-    viewChangelog: '在 GitHub 查看更新日志',
+    viewRelease: '在 GitHub 查看此版本',
     truncated: '仅显示前 {{count}} 条变更。',
     sections: {
       added: '新增',
@@ -193,6 +193,8 @@ export const zhCN = {
     multipleDescription: '这会永久删除所选的 {{count}} 个节点。',
     taskDescriptionPrefix: '这会永久删除',
     nodeDescriptionPrefix: '这会永久删除这个 {{kind}}：',
+    emptySpaceWarningSingle: '删除最后这个节点会使该 Space 变为空，并随后自动关闭。',
+    emptySpaceWarningMultiple: '删除最后这几个节点会使该 Space 变为空，并随后自动关闭。',
   },
   workspaceContextMenu: {
     newTerminal: '新建终端',

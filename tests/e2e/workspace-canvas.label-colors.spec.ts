@@ -2,6 +2,72 @@ import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Label Colors', () => {
+  test('keeps the selection label color submenu attached to the context menu near viewport edges', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'node-label-edge',
+          title: 'terminal-label-edge',
+          position: { x: 980, y: 560 },
+          width: 260,
+          height: 180,
+        },
+      ])
+
+      const terminalNode = window.locator('.terminal-node').first()
+      const header = terminalNode.locator('.terminal-node__header')
+      await expect(terminalNode).toBeVisible()
+
+      // Keep the interactive minimap overlay from stealing clicks in smaller CI windows.
+      const minimapDock = window.locator('.workspace-canvas__minimap-dock')
+      await expect(minimapDock).toBeVisible()
+      await minimapDock.hover()
+      const minimapToggle = window.locator('[data-testid="workspace-minimap-toggle"]')
+      await expect(minimapToggle).toBeVisible()
+      await minimapToggle.click()
+      await expect(window.locator('.workspace-canvas__minimap')).toHaveCount(0)
+
+      await header.click({ position: { x: 40, y: 20 } })
+      await terminalNode.click({ button: 'right', position: { x: 240, y: 150 } })
+
+      const selectionMenuTrigger = window.locator('[data-testid="workspace-selection-label-color"]')
+      await expect(selectionMenuTrigger).toBeVisible()
+      await selectionMenuTrigger.click()
+
+      const selectionMenu = window.locator('.workspace-context-menu', {
+        has: selectionMenuTrigger,
+      })
+      const submenu = window.locator('[data-testid="workspace-selection-label-color-menu"]')
+      await expect(submenu).toBeVisible()
+
+      const [menuBox, submenuBox] = await Promise.all([
+        selectionMenu.boundingBox(),
+        submenu.boundingBox(),
+      ])
+
+      if (!menuBox || !submenuBox) {
+        throw new Error('Context menu or submenu bounding box not available')
+      }
+
+      const horizontalGap = Math.min(
+        Math.abs(submenuBox.x - (menuBox.x + menuBox.width)),
+        Math.abs(menuBox.x - (submenuBox.x + submenuBox.width)),
+      )
+      const verticalGap = Math.max(
+        menuBox.y - (submenuBox.y + submenuBox.height),
+        submenuBox.y - (menuBox.y + menuBox.height),
+        0,
+      )
+
+      expect(horizontalGap).toBeLessThanOrEqual(12)
+      expect(verticalGap).toBeLessThanOrEqual(12)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('sets space label color and syncs space switcher', async () => {
     const { electronApp, window } = await launchApp()
 

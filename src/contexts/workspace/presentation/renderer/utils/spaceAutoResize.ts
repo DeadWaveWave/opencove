@@ -11,6 +11,44 @@ function rectEquals(a: WorkspaceSpaceRect, b: WorkspaceSpaceRect): boolean {
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
 }
 
+function rectsIntersect(a: WorkspaceSpaceRect, b: WorkspaceSpaceRect): boolean {
+  const aRight = a.x + a.width
+  const aBottom = a.y + a.height
+  const bRight = b.x + b.width
+  const bBottom = b.y + b.height
+
+  return !(aRight <= b.x || a.x >= bRight || aBottom <= b.y || a.y >= bBottom)
+}
+
+function buildGroupBounds(items: LayoutItem[]): Map<string, WorkspaceSpaceRect> {
+  const boundsByGroupId = new Map<string, WorkspaceSpaceRect>()
+
+  for (const item of items) {
+    const existing = boundsByGroupId.get(item.groupId)
+    const itemRight = item.rect.x + item.rect.width
+    const itemBottom = item.rect.y + item.rect.height
+
+    if (!existing) {
+      boundsByGroupId.set(item.groupId, { ...item.rect })
+      continue
+    }
+
+    const nextLeft = Math.min(existing.x, item.rect.x)
+    const nextTop = Math.min(existing.y, item.rect.y)
+    const nextRight = Math.max(existing.x + existing.width, itemRight)
+    const nextBottom = Math.max(existing.y + existing.height, itemBottom)
+
+    boundsByGroupId.set(item.groupId, {
+      x: nextLeft,
+      y: nextTop,
+      width: nextRight - nextLeft,
+      height: nextBottom - nextTop,
+    })
+  }
+
+  return boundsByGroupId
+}
+
 export function expandSpaceToFitOwnedNodesAndPushAway({
   targetSpaceId,
   spaces,
@@ -127,6 +165,22 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
       groupId: owner ?? nodeItem.id,
       rect: { ...nodeItem.rect },
     })
+  }
+
+  const groupBoundsById = buildGroupBounds(items)
+  const targetGroupBounds = groupBoundsById.get(targetSpaceId) ?? null
+  const hasExternalCollision =
+    targetGroupBounds !== null &&
+    [...groupBoundsById.entries()].some(([groupId, rect]) => {
+      if (groupId === targetSpaceId) {
+        return false
+      }
+
+      return rectsIntersect(targetGroupBounds, rect)
+    })
+
+  if (!hasExternalCollision) {
+    return { spaces: draftSpaces, nodePositionById: new Map() }
   }
 
   const pushed = pushAwayLayout({

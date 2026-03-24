@@ -26,7 +26,7 @@ export function useWorkspaceCanvasCreatedNodeViewportCenter(
 
     const nodes = nodesRefRef.current?.current ?? []
     const targetNode =
-      reactFlow.getNode?.(createdNodeId) ?? nodes.find(node => node.id === createdNodeId) ?? null
+      nodes.find(node => node.id === createdNodeId) ?? reactFlow.getNode?.(createdNodeId) ?? null
     if (!targetNode) {
       return
     }

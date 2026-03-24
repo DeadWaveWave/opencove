@@ -63,6 +63,9 @@ function createDriver() {
       listeners.error.push(listener)
       return () => undefined
     },
+    emitError(error: Error) {
+      listeners.error.forEach(listener => listener(error))
+    },
     emitCheckingForUpdate() {
       listeners['checking-for-update'].forEach(listener => listener())
     },
@@ -155,5 +158,22 @@ describe('AppUpdateService', () => {
 
     expect(service.getState().status).toBe('downloaded')
     expect(service.getState().latestVersion).toBe('0.2.1')
+  })
+
+  it('summarizes noisy feed parsing errors into a short user-facing status message', async () => {
+    const driver = createDriver()
+    const { createAppUpdateService } =
+      await import('../../../src/contexts/update/infrastructure/main/AppUpdateService')
+    const service = createAppUpdateService(driver, { supportsUpdates: true })
+
+    await service.configure({ policy: 'prompt', channel: 'stable' })
+    driver.emitError(
+      new Error(
+        'Cannot parse releases feed: Error: Unable to find latest.yml <meta http-equiv="Content-Security-Policy" content="default-src \'none\'">',
+      ),
+    )
+
+    expect(service.getState().status).toBe('error')
+    expect(service.getState().message).toBe('Unable to read the update feed from GitHub Releases.')
   })
 })

@@ -60,10 +60,14 @@ pnpm release:version 0.2.0
 2) 填好 `CHANGELOG.md` 新增版本段落
    - 若本次为 `major` 或 `minor` 版本（例如 `0.1.0 -> 0.2.0`、`0.x -> 1.0.0`），必须补一段 `### ✨ Highlights`
    - 若本次为 `patch` 版本（例如 `0.2.0 -> 0.2.1`），不强制要求 `Highlights`
-3) 更新 README 顶部的 `Important Announcement / 重要公告`，用 1-3 句短文概括这次对外想传达的重点
-4) 运行 `pnpm pre-commit`
-5) 提交 release 准备改动到 `main`
-6) 创建并 push tag
+3) 为该 stable 版本补一份结构化 `What's New` manifest：
+   - 路径：`build/release-notes/stable/v<version>.json`
+   - 要求：至少提供 `en`；若有对外中文体验，则同步补 `zh-CN`
+   - 该文件是应用内 `What's New` 的版本真相源；`CHANGELOG.md` 负责历史文档，二者不再互相解析
+4) 更新 README 顶部的 `Important Announcement / 重要公告`，用 1-3 句短文概括这次对外想传达的重点
+5) 运行 `pnpm pre-commit`
+6) 提交 release 准备改动到 `main`
+7) 创建并 push tag
 
 ```bash
 git tag v0.2.0
@@ -81,6 +85,7 @@ node scripts/prepare-release.mjs 0.2.0 --dry-run
 `nightly` 默认不改 `package.json` 版本号，也不要求更新 `CHANGELOG.md`。它的作用是把当前 `main` 的某个快照发给测试者。
 只有 `stable` release 才需要在仓库里 bump `package.json.version`；`nightly` 只是开发快照，不是新的正式版本承诺。
 但为了让应用内更新检测能正确比较版本，CI 在构建 nightly tag 时会临时把 `package.json.version` 改成对应的 nightly tag 版本；这个改动只发生在 CI 构建目录，不会回写仓库。
+应用内 `What's New` 不再在运行时抓 GitHub compare；nightly 会在构建前自动生成一份版本级 manifest，并嵌入安装包。
 
 推荐流程：
 
@@ -103,7 +108,9 @@ git push origin v0.2.0-nightly.20260312.1
 - `stable` 路径可以先运行 `pnpm release:version 0.2.0`，自动更新 `package.json` 和 `CHANGELOG.md` 模板。
 - `prepare-release` 会在 `major / minor` 版本自动插入 `✨ Highlights` 模板；`patch` 版本不会插入。
 - `nightly` 路径不需要运行 release 准备脚本；只要 push 合规 tag，CI 就会自动打包并发布 GitHub prerelease。
+- 如需手动覆写某个 nightly 的应用内 `What's New`，可新增 `build/release-notes/nightly/v<version>.json`；存在时会优先于自动生成结果。
 - Auto Update 依赖 release assets 中的 channel metadata（如 `latest.yml` / `nightly.yml`），GitHub Actions 会随构建一起上传。
+- 构建命令会自动生成 `release/release-manifest.json`，并将其嵌入安装包，同时作为 GitHub Release asset 上传。
 
 ## Nightly 定时发布（每天 04:00 北京时间）
 

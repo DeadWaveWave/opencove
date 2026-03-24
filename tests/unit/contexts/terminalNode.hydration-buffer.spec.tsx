@@ -239,7 +239,7 @@ describe('TerminalNode hydration buffering', () => {
       expect(__getLastTerminal()?.written).toEqual([
         'hello',
         '!!',
-        '\\r\\n[process exited with code 0]\\r\\n',
+        '\r\n[process exited with code 0]\r\n',
       ])
     })
 
@@ -249,7 +249,7 @@ describe('TerminalNode hydration buffering', () => {
       expect(__getLastTerminal()?.written).toEqual([
         'hello',
         '!!',
-        '\\r\\n[process exited with code 0]\\r\\n',
+        '\r\n[process exited with code 0]\r\n',
         'after',
       ])
     })

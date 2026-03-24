@@ -16,6 +16,115 @@ type SetNodes = (
   options?: { syncLayout?: boolean },
 ) => void
 
+export async function createTerminalNodeAtFlowPosition({
+  anchor,
+  defaultTerminalProfileId,
+  standardWindowSizeBucket,
+  workspacePath,
+  spacesRef,
+  nodesRef,
+  setNodes,
+  onSpacesChange,
+  createNodeForSession,
+}: {
+  anchor: Point
+  defaultTerminalProfileId: string | null
+  standardWindowSizeBucket: StandardWindowSizeBucket
+  workspacePath: string
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  setNodes: SetNodes
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
+}): Promise<void> {
+  const cursorAnchor = {
+    x: anchor.x,
+    y: anchor.y,
+  }
+  const nodeAnchor = resolveNodePlacementAnchorFromViewportCenter(
+    cursorAnchor,
+    resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
+  )
+
+  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+
+  const resolvedCwd =
+    targetSpace && targetSpace.directoryPath.trim().length > 0
+      ? targetSpace.directoryPath
+      : workspacePath
+
+  const spawned = await window.opencoveApi.pty.spawn({
+    cwd: resolvedCwd,
+    profileId: defaultTerminalProfileId ?? undefined,
+    cols: 80,
+    rows: 24,
+  })
+
+  const created = await createNodeForSession({
+    sessionId: spawned.sessionId,
+    profileId: spawned.profileId,
+    runtimeKind: spawned.runtimeKind,
+    title: `terminal-${nodesRef.current.length + 1}`,
+    anchor: nodeAnchor,
+    kind: 'terminal',
+    executionDirectory: resolvedCwd,
+    expectedDirectory: resolvedCwd,
+    placement: {
+      targetSpaceRect: targetSpace?.rect ?? null,
+    },
+  })
+
+  if (!created || !targetSpace) {
+    return
+  }
+
+  assignNodeToSpaceAndExpand({
+    createdNodeId: created.id,
+    targetSpaceId: targetSpace.id,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+  })
+}
+
+export function createNoteNodeAtFlowPosition({
+  anchor,
+  standardWindowSizeBucket,
+  createNoteNode,
+  spacesRef,
+  nodesRef,
+  setNodes,
+  onSpacesChange,
+}: {
+  anchor: Point
+  standardWindowSizeBucket: StandardWindowSizeBucket
+  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  setNodes: SetNodes
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+}): void {
+  const cursorAnchor = {
+    x: anchor.x,
+    y: anchor.y,
+  }
+  const nodeAnchor = resolveNodePlacementAnchorFromViewportCenter(
+    cursorAnchor,
+    resolveDefaultNoteWindowSize(standardWindowSizeBucket),
+  )
+
+  createNoteNodeAtAnchor({
+    anchor: nodeAnchor,
+    spaceAnchor: cursorAnchor,
+    createNoteNode,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+  })
+}
+
 export async function createTerminalNodeFromPaneContextMenu({
   contextMenu,
   defaultTerminalProfileId,
@@ -43,52 +152,20 @@ export async function createTerminalNodeFromPaneContextMenu({
     return
   }
 
-  const cursorAnchor = {
-    x: contextMenu.flowX,
-    y: contextMenu.flowY,
-  }
-  const anchor = resolveNodePlacementAnchorFromViewportCenter(
-    cursorAnchor,
-    resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
-  )
-
   setContextMenu(null)
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-
-  const resolvedCwd =
-    targetSpace && targetSpace.directoryPath.trim().length > 0
-      ? targetSpace.directoryPath
-      : workspacePath
-
-  const spawned = await window.opencoveApi.pty.spawn({
-    cwd: resolvedCwd,
-    profileId: defaultTerminalProfileId ?? undefined,
-    cols: 80,
-    rows: 24,
-  })
-
-  const created = await createNodeForSession({
-    sessionId: spawned.sessionId,
-    profileId: spawned.profileId,
-    runtimeKind: spawned.runtimeKind,
-    title: `terminal-${nodesRef.current.length + 1}`,
-    anchor,
-    kind: 'terminal',
-    executionDirectory: resolvedCwd,
-    expectedDirectory: resolvedCwd,
-  })
-
-  if (!created || !targetSpace) {
-    return
-  }
-
-  assignNodeToSpaceAndExpand({
-    createdNodeId: created.id,
-    targetSpaceId: targetSpace.id,
+  await createTerminalNodeAtFlowPosition({
+    anchor: {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    },
+    defaultTerminalProfileId,
+    standardWindowSizeBucket,
+    workspacePath,
     spacesRef,
     nodesRef,
     setNodes,
     onSpacesChange,
+    createNodeForSession,
   })
 }
 
@@ -115,20 +192,13 @@ export function createNoteNodeFromPaneContextMenu({
     return
   }
 
-  const cursorAnchor = {
-    x: contextMenu.flowX,
-    y: contextMenu.flowY,
-  }
-  const anchor = resolveNodePlacementAnchorFromViewportCenter(
-    cursorAnchor,
-    resolveDefaultNoteWindowSize(standardWindowSizeBucket),
-  )
-
   setContextMenu(null)
-
-  createNoteNodeAtAnchor({
-    anchor,
-    spaceAnchor: cursorAnchor,
+  createNoteNodeAtFlowPosition({
+    anchor: {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    },
+    standardWindowSizeBucket,
     createNoteNode,
     spacesRef,
     nodesRef,

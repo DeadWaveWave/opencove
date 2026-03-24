@@ -46,7 +46,7 @@ export const APP_ERROR_CODES = [
   'update.check_failed',
   'update.download_failed',
   'update.install_failed',
-  'release_notes.get_range_failed',
+  'release_notes.get_current_failed',
 ] as const
 
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number]

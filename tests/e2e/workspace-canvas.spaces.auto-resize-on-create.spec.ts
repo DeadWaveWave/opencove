@@ -220,6 +220,26 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
                   )
                 }),
               )
+              const leftNode = nodeById.get('space-crowded-left')
+              const rightNode = nodeById.get('space-crowded-right')
+              const existingMembersStable =
+                leftNode?.position?.x === 240 &&
+                leftNode?.position?.y === 260 &&
+                rightNode?.position?.x === 720 &&
+                rightNode?.position?.y === 260
+              const memberMinLeft = Math.min(...memberRects.map(item => item.left))
+              const memberMinTop = Math.min(...memberRects.map(item => item.top))
+              const memberMaxRight = Math.max(...memberRects.map(item => item.right))
+              const memberMaxBottom = Math.max(...memberRects.map(item => item.bottom))
+              const expectedLeft = Math.min(200, memberMinLeft - 24)
+              const expectedTop = Math.min(220, memberMinTop - 24)
+              const expectedRight = Math.max(200 + 1020, memberMaxRight + 24)
+              const expectedBottom = Math.max(220 + 420, memberMaxBottom + 24)
+              const minimalSpaceRect =
+                rect.x === expectedLeft &&
+                rect.y === expectedTop &&
+                rect.width === expectedRight - expectedLeft &&
+                rect.height === expectedBottom - expectedTop
 
               const root = nodeById.get('root-near-space')
               const rootClear =
@@ -245,12 +265,24 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
                       )
                     })()
 
-              return { membersInside, membersOverlap, rootClear }
+              return {
+                membersInside,
+                membersOverlap,
+                rootClear,
+                existingMembersStable,
+                minimalSpaceRect,
+              }
             },
             { key: storageKey },
           )
         })
-        .toEqual({ membersInside: true, membersOverlap: false, rootClear: true })
+        .toEqual({
+          membersInside: true,
+          membersOverlap: false,
+          rootClear: true,
+          existingMembersStable: true,
+          minimalSpaceRect: true,
+        })
     } finally {
       await electronApp.close()
     }

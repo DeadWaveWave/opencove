@@ -1,7 +1,4 @@
-import type {
-  GetReleaseNotesAutoRangeInput,
-  GetReleaseNotesRangeInput,
-} from '../../../../shared/contracts/dto'
+import type { GetCurrentReleaseNotesInput } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -16,63 +13,45 @@ function normalizeVersion(value: unknown): string {
   return value.trim()
 }
 
-function normalizeLimit(value: unknown): number | undefined {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
+function normalizeLanguage(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
     return undefined
   }
 
-  return value
+  const normalized = value.trim()
+  return normalized.length > 0 ? normalized : undefined
 }
 
 function isValidVersion(value: string): boolean {
-  // Accept semver-ish values (e.g. 0.2.0, 0.2.0-nightly.20260321.1)
   return value.length > 0 && value.length <= 128 && /^[0-9A-Za-z][0-9A-Za-z.+-]*$/.test(value)
 }
 
-export function normalizeGetReleaseNotesRangePayload(payload: unknown): GetReleaseNotesRangeInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'release-notes:get-range payload must be an object',
-    })
-  }
-
-  const fromVersion = normalizeVersion(payload.fromVersion)
-  const toVersion = normalizeVersion(payload.toVersion)
-  const limit = normalizeLimit(payload.limit)
-
-  if (!isValidVersion(fromVersion) || !isValidVersion(toVersion)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'release-notes:get-range payload is missing valid fromVersion/toVersion',
-    })
-  }
-
-  return {
-    fromVersion,
-    toVersion,
-    ...(limit === undefined ? {} : { limit }),
-  }
+function isValidLanguage(value: string | undefined): boolean {
+  return (
+    value === undefined || (value.length > 0 && value.length <= 32 && /^[A-Za-z0-9-]+$/.test(value))
+  )
 }
 
-export function normalizeGetReleaseNotesAutoRangePayload(
+export function normalizeGetCurrentReleaseNotesPayload(
   payload: unknown,
-): GetReleaseNotesAutoRangeInput {
+): GetCurrentReleaseNotesInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
-      debugMessage: 'release-notes:get-auto-range payload must be an object',
+      debugMessage: 'release-notes:get-current payload must be an object',
     })
   }
 
-  const toVersion = normalizeVersion(payload.toVersion)
-  const limit = normalizeLimit(payload.limit)
+  const currentVersion = normalizeVersion(payload.currentVersion)
+  const language = normalizeLanguage(payload.language)
 
-  if (!isValidVersion(toVersion)) {
+  if (!isValidVersion(currentVersion) || !isValidLanguage(language)) {
     throw createAppError('common.invalid_input', {
-      debugMessage: 'release-notes:get-auto-range payload is missing a valid toVersion',
+      debugMessage: 'release-notes:get-current payload is missing a valid currentVersion/language',
     })
   }
 
   return {
-    toVersion,
-    ...(limit === undefined ? {} : { limit }),
+    currentVersion,
+    ...(language === undefined ? {} : { language }),
   }
 }

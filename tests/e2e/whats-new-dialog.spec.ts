@@ -6,10 +6,14 @@ test.describe('Whats New', () => {
   test('shows the update changelog dialog after first launch', async ({
     browserName,
   }, testInfo) => {
+    const releaseManifestPath = path.resolve(
+      __dirname,
+      '../fixtures/release-notes/release-manifest.fixture.json',
+    )
     const { electronApp, window } = await launchApp({
       env: {
         OPENCOVE_TEST_WHATS_NEW: '1',
-        OPENCOVE_TEST_RELEASE_NOTES_FIXTURE: '1',
+        OPENCOVE_RELEASE_NOTES_MANIFEST_PATH: releaseManifestPath,
       },
     })
 
@@ -39,11 +43,16 @@ test.describe('Whats New', () => {
       }
 
       await window.reload({ waitUntil: 'domcontentloaded' })
+      await window.waitForFunction(() => {
+        const body = document.querySelector('.whats-new-body')
+        return Boolean(body) && !body.textContent?.includes('正在加载更新内容')
+      })
 
       const dialog = window.locator('[data-testid="whats-new-dialog"]')
       await expect(dialog).toBeVisible()
       await expect(window.locator('.whats-new-header h3')).toHaveText('更新内容')
-      await expect(window.locator('.whats-new-compare-link')).toHaveText('在 GitHub 查看完整对比')
+      await expect(window.locator('.whats-new-body')).toContainText('这个版本包含新的更新内容弹窗')
+      await expect(window.locator('.whats-new-compare-link')).toHaveText('在 GitHub 查看此版本')
 
       const screenshotPath = path.resolve(
         __dirname,
@@ -55,6 +64,25 @@ test.describe('Whats New', () => {
         path: screenshotPath,
         contentType: 'image/png',
       })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('does not show the dialog on a fresh install', async () => {
+    const releaseManifestPath = path.resolve(
+      __dirname,
+      '../fixtures/release-notes/release-manifest.fixture.json',
+    )
+    const { electronApp, window } = await launchApp({
+      env: {
+        OPENCOVE_TEST_WHATS_NEW: '1',
+        OPENCOVE_RELEASE_NOTES_MANIFEST_PATH: releaseManifestPath,
+      },
+    })
+
+    try {
+      await expect(window.locator('[data-testid="whats-new-dialog"]')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

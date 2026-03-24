@@ -2,7 +2,6 @@ import React from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
-import { createTaskUiActionRefs } from './workspaceCanvas/hooks/taskUiActionRefs'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
@@ -16,6 +15,8 @@ export function WorkspaceCanvasInner({
   spaces,
   activeSpaceId,
   onSpacesChange,
+  onActiveSpaceChange,
+  shortcutsEnabled = true,
   viewport,
   isMinimapVisible: persistedMinimapVisible,
   onViewportChange,
@@ -84,11 +85,12 @@ export function WorkspaceCanvasInner({
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     spaceVisuals,
-    focusSpaceInViewport,
-    focusAllInViewport,
+    activateSpace,
+    activateAllSpaces,
   } = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     activeSpaceId,
+    onActiveSpaceChange,
     workspacePath,
     reactFlow,
     nodes: canvasState.flowNodes,
@@ -184,6 +186,7 @@ export function WorkspaceCanvasInner({
     nodeDeleteConfirmation,
     setNodeDeleteConfirmation,
     confirmNodeDelete,
+    requestNodeClose,
   } = workspaceCanvasHooks.useWorkspaceCanvasTaskUi({
     agentTaskTagOptions: agentSettings.taskTagOptions,
     contextMenu: canvasState.contextMenu,
@@ -201,7 +204,7 @@ export function WorkspaceCanvasInner({
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createTaskNode,
     closeNode,
-    actionRefs: createTaskUiActionRefs(actionRefs),
+    actionRefs,
   })
   const {
     resolvedCanvasInputMode,
@@ -219,33 +222,19 @@ export function WorkspaceCanvasInner({
     reactFlow,
     onViewportChange,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycle({
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({
     workspaceId,
     persistedMinimapVisible,
-    setIsMinimapVisible: canvasState.setIsMinimapVisible,
-    setSelectedNodeIds: canvasState.setSelectedNodeIds,
-    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
-    setContextMenu: canvasState.setContextMenu,
-    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
+    canvasState,
     cancelSpaceRename,
-    selectionDraftRef: canvasState.selectionDraftRef,
-    trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
-    restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,
     reactFlow,
     viewport,
-    viewportRef: canvasState.viewportRef,
-    canvasInputModeSetting: agentSettings.canvasInputMode,
-    inputModalityStateRef: canvasState.inputModalityStateRef,
-    setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
-    isShiftPressedRef: canvasState.isShiftPressedRef,
-    setIsShiftPressed: canvasState.setIsShiftPressed,
-    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
-    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
+    agentSettings,
     focusNodeId,
     focusSequence,
-    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     isFocusNodeTargetZoomPreviewing,
     nodesRef,
+    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
   })
   const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes,
@@ -298,6 +287,26 @@ export function WorkspaceCanvasInner({
     createNodeForSession,
     createNoteNode,
   })
+  workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
+    enabled: shortcutsEnabled,
+    activeSpaceId,
+    spaces,
+    agentSettings,
+    workspacePath,
+    canvasRef: canvasState.canvasRef,
+    setContextMenu: canvasState.setContextMenu,
+    setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
+    cancelSpaceRename,
+    reactFlow,
+    spacesRef: canvasState.spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+    createNodeForSession,
+    createNoteNode,
+    createSpaceFromSelectedNodes,
+    activateSpace,
+  })
   const {
     canConvertSelectedNoteToTask,
     isConvertSelectedNoteToTaskDisabled,
@@ -324,7 +333,7 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     actionRefs,
     clearNodeSelection,
-    closeNode,
+    closeNode: requestNodeClose,
     resizeNode,
     updateNoteText,
     updateNodeScrollback,
@@ -424,8 +433,8 @@ export function WorkspaceCanvasInner({
       setIsMinimapVisible={canvasState.setIsMinimapVisible}
       onMinimapVisibilityChange={onMinimapVisibilityChange}
       spaces={spaces}
-      focusSpaceInViewport={focusSpaceInViewport}
-      focusAllInViewport={focusAllInViewport}
+      activateSpace={activateSpace}
+      activateAllSpaces={activateAllSpaces}
       contextMenu={canvasState.contextMenu}
       closeContextMenu={spaceUi.closeContextMenu}
       magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
