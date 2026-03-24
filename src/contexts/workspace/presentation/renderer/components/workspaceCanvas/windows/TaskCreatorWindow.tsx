@@ -7,6 +7,9 @@ import { normalizeTaskTagSelection } from '../helpers'
 import type { TaskCreatorState } from '../types'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
+import { FileText } from 'lucide-react'
+import { TaskPromptTemplatesMenu } from '@contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 
 interface TaskCreatorWindowProps {
   taskCreator: TaskCreatorState | null
@@ -30,13 +33,20 @@ export function TaskCreatorWindow({
   createTask,
 }: TaskCreatorWindowProps): React.JSX.Element | null {
   const { t } = useTranslation()
+  const workspaceId = useAppStore(state => state.activeWorkspaceId)
   const [isAdvancedSettingsVisible, setIsAdvancedSettingsVisible] = useState(false)
+  const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = useState<{
+    x: number
+    y: number
+  } | null>(null)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
   const isTaskCreatorOpen = taskCreator !== null
+  const isPromptTemplatesMenuOpen = promptTemplatesMenuAnchor !== null
 
   useLayoutEffect(() => {
     if (isTaskCreatorOpen) {
       setIsAdvancedSettingsVisible(false)
+      setPromptTemplatesMenuAnchor(null)
     }
   }, [isTaskCreatorOpen])
 
@@ -61,7 +71,33 @@ export function TaskCreatorWindow({
         <h3>{t('taskWindow.newTask')}</h3>
 
         <div className="workspace-task-creator__field-row">
-          <label htmlFor="workspace-task-requirement">{t('taskWindow.describeTask')}</label>
+          <div className="cove-window__label-row">
+            <label htmlFor="workspace-task-requirement">{t('taskWindow.describeTask')}</label>
+            <button
+              type="button"
+              className="cove-window__icon-button"
+              data-testid="workspace-task-creator-open-prompt-templates"
+              disabled={taskCreator.isCreating || taskCreator.isGeneratingTitle}
+              onClick={event => {
+                event.stopPropagation()
+
+                if (isPromptTemplatesMenuOpen) {
+                  setPromptTemplatesMenuAnchor(null)
+                  return
+                }
+
+                const rect = event.currentTarget.getBoundingClientRect()
+                setPromptTemplatesMenuAnchor({
+                  x: rect.right,
+                  y: rect.bottom,
+                })
+              }}
+              aria-label={t('taskPromptTemplates.openMenu')}
+              title={t('taskPromptTemplates.openMenu')}
+            >
+              <FileText size={14} strokeWidth={2.2} />
+            </button>
+          </div>
           <textarea
             id="workspace-task-requirement"
             data-testid="workspace-task-requirement"
@@ -83,6 +119,28 @@ export function TaskCreatorWindow({
             }}
           />
         </div>
+
+        <TaskPromptTemplatesMenu
+          isOpen={isPromptTemplatesMenuOpen}
+          anchor={promptTemplatesMenuAnchor}
+          workspaceId={workspaceId}
+          closeMenu={() => {
+            setPromptTemplatesMenuAnchor(null)
+          }}
+          currentRequirement={taskCreator.requirement}
+          onChangeRequirement={nextRequirement => {
+            setTaskCreator(prev =>
+              prev
+                ? {
+                    ...prev,
+                    requirement: nextRequirement,
+                    error: null,
+                  }
+                : prev,
+            )
+          }}
+          testIdPrefix="task-creator"
+        />
 
         {isAdvancedSettingsVisible ? (
           <>
