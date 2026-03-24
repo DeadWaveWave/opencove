@@ -423,14 +423,14 @@ export function useWorkspaceCanvasNodesStore({
   )
   const { createNodeForSession, createNoteNode, createTaskNode, createImageNode } =
     useWorkspaceCanvasNodeCreation({
-    nodesRef,
-    spacesRef,
-    onRequestPersistFlush,
-    onShowMessage,
-    onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
-    setNodes,
-    standardWindowSizeBucket,
-  })
+      nodesRef,
+      spacesRef,
+      onRequestPersistFlush,
+      onShowMessage,
+      onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
+      setNodes,
+      standardWindowSizeBucket,
+    })
 
   return {
     nodesRef,
