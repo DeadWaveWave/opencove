@@ -3,7 +3,10 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { Size, TaskPriority } from '../../types'
-import { resolveCanonicalNodeSize } from '../../utils/workspaceNodeSizing'
+import {
+  resolveCanvasCanonicalBucketFromViewport,
+  resolveCanonicalNodeSize,
+} from '../../utils/workspaceNodeSizing'
 
 export const MIN_CANVAS_ZOOM = 0.1
 export const MAX_CANVAS_ZOOM = 2
