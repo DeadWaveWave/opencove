@@ -170,6 +170,7 @@ export function resolveBestDenseGridPacking({
   maxColumns,
   maxHeight,
   compactAreaTolerance = COMPACT_AREA_TOLERANCE,
+  occupiedRegions = [],
 }: {
   items: GridItem[]
   start: { x: number; y: number }
@@ -179,6 +180,7 @@ export function resolveBestDenseGridPacking({
   maxColumns?: number
   maxHeight?: number
   compactAreaTolerance?: number
+  occupiedRegions?: GridOccupiedRegion[]
 }): { placements: Map<string, { x: number; y: number }>; bounding: Rect } | null {
   if (items.length === 0) {
     return { placements: new Map(), bounding: { x: start.x, y: start.y, width: 0, height: 0 } }
@@ -194,13 +196,42 @@ export function resolveBestDenseGridPacking({
       ? compactAreaTolerance
       : COMPACT_AREA_TOLERANCE
 
-  const minColumns = Math.max(1, ...items.map(item => Math.max(1, Math.floor(item.colSpan))))
+  const safeOccupiedRegions = Array.isArray(occupiedRegions) ? occupiedRegions : []
+  const minColumnsFromOccupied =
+    safeOccupiedRegions.length > 0
+      ? Math.max(
+          1,
+          ...safeOccupiedRegions.map(region => {
+            const col = Number.isFinite(region.col) ? Math.max(0, Math.floor(region.col)) : 0
+            const colSpan = Number.isFinite(region.colSpan)
+              ? Math.max(1, Math.floor(region.colSpan))
+              : 1
+            return col + colSpan
+          }),
+        )
+      : 1
+  const minColumns = Math.max(
+    1,
+    minColumnsFromOccupied,
+    ...items.map(item => Math.max(1, Math.floor(item.colSpan))),
+  )
   const areaCells = items.reduce(
     (sum, item) =>
       sum + Math.max(1, Math.floor(item.colSpan)) * Math.max(1, Math.floor(item.rowSpan)),
     0,
   )
-  const totalColSpan = items.reduce((sum, item) => sum + Math.max(1, Math.floor(item.colSpan)), 0)
+  const occupiedAreaCells = safeOccupiedRegions.reduce((sum, region) => {
+    const colSpan = Number.isFinite(region.colSpan) ? Math.max(1, Math.floor(region.colSpan)) : 1
+    const rowSpan = Number.isFinite(region.rowSpan) ? Math.max(1, Math.floor(region.rowSpan)) : 1
+    return sum + colSpan * rowSpan
+  }, 0)
+  const totalAreaCells = areaCells + occupiedAreaCells
+  const totalColSpan =
+    items.reduce((sum, item) => sum + Math.max(1, Math.floor(item.colSpan)), 0) +
+    safeOccupiedRegions.reduce((sum, region) => {
+      const colSpan = Number.isFinite(region.colSpan) ? Math.max(1, Math.floor(region.colSpan)) : 1
+      return sum + colSpan
+    }, 0)
 
   const maxColumnsLimit = (() => {
     if (typeof maxColumns === 'number' && Number.isFinite(maxColumns)) {
@@ -215,13 +246,13 @@ export function resolveBestDenseGridPacking({
   }
 
   const idealColumns = (() => {
-    if (areaCells <= 0) {
+    if (totalAreaCells <= 0) {
       return minColumns
     }
 
     const strideWidth = safeCellWidth + safeGap
     const strideHeight = safeCellHeight + safeGap
-    const estimated = Math.sqrt(areaCells * safeAspect * (strideHeight / strideWidth))
+    const estimated = Math.sqrt(totalAreaCells * safeAspect * (strideHeight / strideWidth))
     return Math.max(minColumns, Math.min(maxColumnsLimit, Math.round(estimated)))
   })()
 
@@ -243,7 +274,7 @@ export function resolveBestDenseGridPacking({
     addCandidate(idealColumns + delta)
   }
 
-  const sqrtArea = Math.sqrt(Math.max(1, areaCells))
+  const sqrtArea = Math.sqrt(Math.max(1, totalAreaCells))
   addCandidate(Math.round(sqrtArea))
   addCandidate(Math.round(sqrtArea * 1.25))
   addCandidate(Math.round(sqrtArea * 1.5))
@@ -258,7 +289,11 @@ export function resolveBestDenseGridPacking({
       continue
     }
 
-    const gridPlacement = resolveDenseGridAutoPlacement({ items, columnCount })
+    const gridPlacement = resolveDenseGridAutoPlacement({
+      items,
+      columnCount,
+      occupiedRegions: safeOccupiedRegions,
+    })
     const width =
       gridPlacement.columnsUsed > 0
         ? gridPlacement.columnsUsed * safeCellWidth + (gridPlacement.columnsUsed - 1) * safeGap

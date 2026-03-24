@@ -4,9 +4,12 @@ import { ensurePersistedWorkspace } from './ensure'
 import { getPersistencePort, readLegacyLocalStorageRaw } from './port'
 import type { PersistenceRecoveryReason } from '@shared/contracts/dto'
 
-function parsePersistedStateValue(value: unknown): PersistedAppState | null {
+function parsePersistedStateValue(value: unknown): {
+  state: PersistedAppState | null
+  hasStandardWindowSizeBucket: boolean
+} {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    return null
+    return { state: null, hasStandardWindowSizeBucket: false }
   }
 
   const record = value as Record<string, unknown>
@@ -21,11 +24,11 @@ function parsePersistedStateValue(value: unknown): PersistedAppState | null {
   const workspaces = record.workspaces
 
   if (activeWorkspaceId !== null && typeof activeWorkspaceId !== 'string') {
-    return null
+    return { state: null, hasStandardWindowSizeBucket: false }
   }
 
   if (!Array.isArray(workspaces)) {
-    return null
+    return { state: null, hasStandardWindowSizeBucket: false }
   }
 
   const normalizedWorkspaces = workspaces
@@ -33,19 +36,27 @@ function parsePersistedStateValue(value: unknown): PersistedAppState | null {
     .filter((item): item is PersistedWorkspaceState => item !== null)
 
   const settings = normalizeAgentSettings(record.settings)
+  const hasStandardWindowSizeBucket =
+    typeof record.settings === 'object' &&
+    record.settings !== null &&
+    !Array.isArray(record.settings) &&
+    typeof (record.settings as Record<string, unknown>).standardWindowSizeBucket === 'string'
 
   return {
-    formatVersion,
-    activeWorkspaceId,
-    workspaces: normalizedWorkspaces,
-    settings,
+    state: {
+      formatVersion,
+      activeWorkspaceId,
+      workspaces: normalizedWorkspaces,
+      settings,
+    },
+    hasStandardWindowSizeBucket,
   }
 }
 
 function parseRawPersistedState(raw: string): PersistedAppState | null {
   try {
     const parsed = JSON.parse(raw) as unknown
-    return parsePersistedStateValue(parsed)
+    return parsePersistedStateValue(parsed).state
   } catch {
     return null
   }
@@ -64,10 +75,11 @@ function stripScrollbackFromState(state: PersistedAppState): PersistedAppState {
 export async function readPersistedStateWithMeta(): Promise<{
   state: PersistedAppState | null
   recovery: PersistenceRecoveryReason | null
+  hasStandardWindowSizeBucket: boolean
 }> {
   const port = getPersistencePort()
   if (!port) {
-    return { state: null, recovery: null }
+    return { state: null, recovery: null, hasStandardWindowSizeBucket: false }
   }
 
   const primary = await port.readAppState()
@@ -75,29 +87,33 @@ export async function readPersistedStateWithMeta(): Promise<{
 
   if (primary?.state) {
     const parsed = parsePersistedStateValue(primary.state)
-    if (parsed) {
-      return { state: parsed, recovery }
+    if (parsed.state) {
+      return {
+        state: parsed.state,
+        recovery,
+        hasStandardWindowSizeBucket: parsed.hasStandardWindowSizeBucket,
+      }
     }
   }
 
   if (port.kind !== 'ipc') {
-    return { state: null, recovery }
+    return { state: null, recovery, hasStandardWindowSizeBucket: false }
   }
 
   const legacyRaw = readLegacyLocalStorageRaw()
   if (!legacyRaw) {
-    return { state: null, recovery }
+    return { state: null, recovery, hasStandardWindowSizeBucket: false }
   }
 
   const legacyParsed = parseRawPersistedState(legacyRaw)
   if (!legacyParsed) {
-    return { state: null, recovery }
+    return { state: null, recovery, hasStandardWindowSizeBucket: false }
   }
 
   const migratedState = stripScrollbackFromState(legacyParsed)
   const migratedAppStateResult = await port.writeAppState(migratedState)
   if (!migratedAppStateResult.ok) {
-    return { state: migratedState, recovery }
+    return { state: migratedState, recovery, hasStandardWindowSizeBucket: false }
   }
 
   await Promise.allSettled(
@@ -108,7 +124,7 @@ export async function readPersistedStateWithMeta(): Promise<{
     ),
   )
 
-  return { state: migratedState, recovery }
+  return { state: migratedState, recovery, hasStandardWindowSizeBucket: false }
 }
 
 export async function readPersistedState(): Promise<PersistedAppState | null> {

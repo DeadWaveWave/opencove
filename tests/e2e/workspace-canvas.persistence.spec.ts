@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  buildNodeEvalCommand,
   buildPaddedNumberSequenceCommand,
   clearAndSeedWorkspace,
   launchApp,
@@ -260,6 +261,100 @@ test.describe('Workspace Canvas - Persistence', () => {
       await expect(window.locator('.workspace-item').nth(0)).toHaveClass(/workspace-item--active/)
       await expect(window.locator('.terminal-node')).toHaveCount(1)
       await expect(window.locator('.terminal-node').first()).toContainText(token)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('keeps arrow-key history recall working after restoring a terminal that exited raw mode while inactive', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await seedWorkspaceState(window, {
+        activeWorkspaceId: 'workspace-a',
+        workspaces: [
+          {
+            id: 'workspace-a',
+            name: 'workspace-a',
+            path: testWorkspacePath,
+            nodes: [
+              {
+                id: 'node-a',
+                title: 'terminal-a',
+                position: { x: 120, y: 120 },
+                width: 460,
+                height: 300,
+              },
+            ],
+          },
+          {
+            id: 'workspace-b',
+            name: 'workspace-b',
+            path: testWorkspacePath,
+            nodes: [
+              {
+                id: 'node-b',
+                title: 'terminal-b',
+                position: { x: 160, y: 160 },
+                width: 460,
+                height: 300,
+              },
+            ],
+          },
+        ],
+      })
+
+      const terminal = window.locator('.terminal-node').first()
+      await expect(terminal).toBeVisible()
+      await expect(terminal.locator('.xterm')).toBeVisible()
+
+      const rawModeDoneToken = `OPENCOVE_ARROW_HISTORY_DONE_${Date.now()}`
+      const rawModeCommand = buildNodeEvalCommand(
+        [
+          'process.stdout.write("\\x1b[?1049h\\x1b[?1hOPENCOVE_ARROW_HISTORY_START\\n");',
+          'if (process.stdin.isTTY && typeof process.stdin.setRawMode === "function") {',
+          '  process.stdin.setRawMode(true);',
+          '}',
+          'setTimeout(() => {',
+          '  if (process.stdin.isTTY && typeof process.stdin.setRawMode === "function") {',
+          '    process.stdin.setRawMode(false);',
+          '  }',
+          `  process.stdout.write("\\x1b[?1l\\x1b[?1049l${rawModeDoneToken}\\n");`,
+          '  process.exit(0);',
+          '}, 600);',
+        ].join(''),
+      )
+
+      await terminal.locator('.xterm').click()
+      await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+      await window.keyboard.type(rawModeCommand)
+      await window.keyboard.press('Enter')
+
+      await expect(terminal).toContainText('OPENCOVE_ARROW_HISTORY_START', { timeout: 20_000 })
+
+      await window.locator('.workspace-item').nth(1).click()
+      await expect(window.locator('.workspace-item').nth(1)).toHaveClass(/workspace-item--active/)
+
+      await window.waitForTimeout(1_200)
+
+      await window.locator('.workspace-item').nth(0).click()
+      await expect(window.locator('.workspace-item').nth(0)).toHaveClass(/workspace-item--active/)
+
+      const restoredTerminal = window.locator('.terminal-node').first()
+      await expect(restoredTerminal).toContainText(rawModeDoneToken, { timeout: 20_000 })
+
+      await restoredTerminal.locator('.xterm').click()
+      await expect(restoredTerminal.locator('.xterm-helper-textarea')).toBeFocused()
+      await window.keyboard.press('ArrowUp')
+      await window.keyboard.press('Enter')
+
+      await expect
+        .poll(async () => {
+          const text = (await restoredTerminal.textContent()) ?? ''
+          return (text.match(new RegExp(rawModeDoneToken, 'g')) ?? []).length >= 2
+        })
+        .toBe(true)
+      await expect(restoredTerminal).not.toContainText('^[[A')
     } finally {
       await electronApp.close()
     }

@@ -11,6 +11,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: Arrange By menu (scope, ordering, space sizing, magnetic snapping). (#42)
 - Workspace canvas: live magnetic snap guides for node dragging, aligned to the 24px canvas rhythm and enabled by default. (#42)
 - Workspace canvas: unified tiled arrange layout with standard node ratios (terminal/task/agent/note) and balanced dense packing. (#42)
+- Workspace canvas: paste/drag-drop images into the canvas as borderless image nodes with aspect-locked resize. (#74)
+- Workspace: Cmd/Ctrl+F opens a right-side search panel for spaces/tasks/notes; terminal-focused Cmd/Ctrl+F opens in-terminal find. (#78)
 - Settings: UI theme selector (system/light/dark) with system follow. (#40)
 - UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
@@ -20,8 +22,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - In-app update checker with stable/nightly tracking (nightly supports prompt only) plus a first-launch “What’s New” sheet after updates. (#49)
 - Workspace canvas: Label colors for Spaces and windows, plus a single-color filter. (#54)
 - Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
+- Settings: standard window size bucket (compact/regular/large) for node create/arrange sizing (replaces runtime auto-sizing). (#70)
+- Task: prompt templates for task requirement prefix injection (Global + Project scopes). (#71)
 
 ### 💅 Changed
+- Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
+- What's New: switched update notes from runtime GitHub compare fetching to release-manifest delivery embedded in each build. (#67)
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
 - Workspace canvas: arrange spaces before root nodes during canvas/global arrange. (#42)
 - Workspace canvas: default arrange now keeps standard-size alignment always on and resizes spaces to the fitted tiled result. (#42)
@@ -29,19 +35,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: dense packing now favors balanced aspect ratios over ultra-tall stacks for more shelf-like results. (#42)
 - Workspace canvas: drag now previews live snap guides continuously and only commits magnetic snapping on release for steadier pointer movement. (#42)
 - Workspace canvas: Arrange By now simplifies Space sizing to `Tighten Space` / `Keep Space size`, defaults to `Tighten Space`, and moves magnetic snapping to the top-level context menu. (#42)
+- Settings: default UI theme is now dark. (#69)
 - Shortcuts: Yield app shortcuts to the terminal when it’s focused (configurable), and allow customizing keybindings in Settings → Shortcuts. (#59)
+- Shortcuts: unify app and workspace-canvas keybindings under single-bind customization, make canvas shortcuts recordable, and switch Command Center to Cmd/Ctrl+P by default. (#68)
 - Simplified GitHub PR integration to a link-only chip (removed in-canvas PR panel/actions/diff/checks UI for now).
 - UI: Softened minimap node colors in light theme. (#47)
 - UI: Made modal dialogs opaque for clearer readability. (#48)
 - Spaces: dragging Terminal/Agent windows across directory-bound spaces now shows a compact confirmation, then moves with `DIR MISMATCH` labeling. (#51)
+- Spaces: warn before closing the last node in a space when it would become empty and auto-close, using the shared warning dialog shell. (#66)
 
 ### 🐞 Fixed
+- Persistence: Repair cumulative SQLite schema upgrades and auto-heal mis-versioned local databases so workspace state saves no longer fail after upgrading from older installs. (#76)
+- Spaces: New windows created from a crowded space now preserve existing window layout, expand the space only as needed, and keep the viewport centered on the final position. (#62)
+- Settings: update status now summarizes updater feed parsing errors instead of dumping raw parser/CSP output. (#67)
 - Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
 - Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
 - Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
+- Workspace canvas: note-to-task conversion now resizes to the standard task size and pushes away overlapping nodes. (#63)
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
 - Codex: Fixed agents getting stuck on `working` and missing standby notifications when switching projects or after restart. (#81)
 - Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.
+- Terminal: Hydrate UTF-8 locale for GUI-launched terminals on macOS/Linux and enable Wayland IME integration on Linux. (#65)
+- Terminal: Preserve shell history arrow keys after terminal restore by avoiding stale xterm mode replay. (#65)
 - Windows: Fixed double header / mismatched chrome by switching to hidden title bar + titlebar overlay and syncing overlay theme with app theme. (#47)
 - Windows: Fixed native select dropdown styling issues (notably dark mode) by using a custom select component across the UI. (#47)
 - Terminal: Fixed theme glitches when switching light/dark by syncing xterm theme with CSS tokens and reacting to theme change events. (#47)
@@ -52,6 +67,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Improved canvas drag smoothness under heavy terminal output by throttling terminal screen writes during viewport interaction while keeping output live. (#50)
 - Normalized node resize and terminal selection drags while the canvas is zoomed. (#56)
 - Stabilized and optimized space-bounded push-away reflow during node dragging to prevent edge overlaps/stacking. (#57)
+- Workspace canvas: arrange is now aspect-aware, avoids large empty gaps, and auto-fits the viewport after arranging; created-time ordering is deterministic across node types. (#72)
+- Terminal: Prevented `node-pty` native aborts from crashing the whole app by isolating PTY into a utility process. (#75)
 
 ---
 

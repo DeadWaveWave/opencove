@@ -58,6 +58,20 @@ export function isWindowsTerminalPasteShortcut(
   return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
 }
 
+function isTerminalFindShortcut(
+  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey'>,
+): boolean {
+  if (event.altKey) {
+    return false
+  }
+
+  if (!(event.metaKey || event.ctrlKey)) {
+    return false
+  }
+
+  return event.key.toLowerCase() === 'f'
+}
+
 export async function copyTextToClipboard(text: string): Promise<void> {
   if (text.length === 0) {
     return
@@ -143,6 +157,7 @@ export function handleTerminalCustomKeyEvent({
   copySelectedText = copyTextToClipboard,
   event,
   pasteClipboardText = pasteTextFromClipboard,
+  onOpenFind,
   platformInfo,
   ptyWriteQueue,
   terminal,
@@ -152,6 +167,7 @@ export function handleTerminalCustomKeyEvent({
   pasteClipboardText?: (
     options: Pick<Parameters<typeof pasteTextFromClipboard>[0], 'terminal'>,
   ) => Promise<void> | void
+  onOpenFind?: () => void
   platformInfo?: PlatformInfo
   ptyWriteQueue: PtyWriteQueue
   terminal: TerminalClipboardController
@@ -168,6 +184,13 @@ export function handleTerminalCustomKeyEvent({
       ptyWriteQueue.flush()
     }
 
+    return false
+  }
+
+  if (event.type === 'keydown' && isTerminalFindShortcut(event)) {
+    event.preventDefault()
+    event.stopPropagation()
+    onOpenFind?.()
     return false
   }
 

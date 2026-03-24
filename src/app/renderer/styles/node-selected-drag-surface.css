@@ -3,7 +3,9 @@
 .workspace-canvas .react-flow__node.selected .task-node::after,
 .workspace-canvas .react-flow__node.dragging .task-node::after,
 .workspace-canvas .react-flow__node.selected .note-node::after,
-.workspace-canvas .react-flow__node.dragging .note-node::after {
+.workspace-canvas .react-flow__node.dragging .note-node::after,
+.workspace-canvas .react-flow__node.selected .image-node::after,
+.workspace-canvas .react-flow__node.dragging .image-node::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -15,7 +17,8 @@
 
 .workspace-canvas .react-flow__node.dragging .terminal-node,
 .workspace-canvas .react-flow__node.dragging .task-node,
-.workspace-canvas .react-flow__node.dragging .note-node {
+.workspace-canvas .react-flow__node.dragging .note-node,
+.workspace-canvas .react-flow__node.dragging .image-node {
   border-color: var(--cove-node-selection-border);
   box-shadow: var(--cove-node-selection-shadow);
 }
@@ -25,6 +28,8 @@
 .workspace-canvas .react-flow__node.selected.dragging .task-node::after,
 .workspace-canvas .react-flow__node.dragging .task-node::after,
 .workspace-canvas .react-flow__node.selected.dragging .note-node::after,
-.workspace-canvas .react-flow__node.dragging .note-node::after {
+.workspace-canvas .react-flow__node.dragging .note-node::after,
+.workspace-canvas .react-flow__node.selected.dragging .image-node::after,
+.workspace-canvas .react-flow__node.dragging .image-node::after {
   cursor: grabbing;
 }

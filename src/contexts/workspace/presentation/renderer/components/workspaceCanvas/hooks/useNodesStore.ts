@@ -24,8 +24,8 @@ export function useWorkspaceCanvasNodesStore({
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
-  defaultTerminalWindowScalePercent,
   onNodeCreated,
+  standardWindowSizeBucket,
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   const nodesRef = useRef(nodes)
@@ -33,6 +33,7 @@ export function useWorkspaceCanvasNodesStore({
   const pendingScrollbackByNodeRef = useRef<Map<string, string>>(new Map())
   const isNodeDraggingRef = useRef(false)
   const [fallbackCreatedNodeId, setFallbackCreatedNodeId] = useState<string | null>(null)
+  const createdNodeViewportSettleTimerRef = useRef<number | null>(null)
 
   const fallbackOnNodeCreated = useCallback((nodeId: string) => {
     const normalizedNodeId = nodeId.trim()
@@ -53,8 +54,8 @@ export function useWorkspaceCanvasNodesStore({
     }
 
     const targetNode =
-      reactFlow.getNode?.(fallbackCreatedNodeId) ??
       nodesRef.current.find(node => node.id === fallbackCreatedNodeId) ??
+      reactFlow.getNode?.(fallbackCreatedNodeId) ??
       null
 
     if (!targetNode) {
@@ -68,7 +69,23 @@ export function useWorkspaceCanvasNodesStore({
       duration: 180,
       zoom,
     })
-  }, [fallbackCreatedNodeId, onNodeCreated, reactFlow])
+
+    if (createdNodeViewportSettleTimerRef.current !== null) {
+      window.clearTimeout(createdNodeViewportSettleTimerRef.current)
+    }
+
+    createdNodeViewportSettleTimerRef.current = window.setTimeout(() => {
+      createdNodeViewportSettleTimerRef.current = null
+      setFallbackCreatedNodeId(current => (current === fallbackCreatedNodeId ? null : current))
+    }, 0)
+
+    return () => {
+      if (createdNodeViewportSettleTimerRef.current !== null) {
+        window.clearTimeout(createdNodeViewportSettleTimerRef.current)
+        createdNodeViewportSettleTimerRef.current = null
+      }
+    }
+  }, [fallbackCreatedNodeId, nodes, onNodeCreated, reactFlow])
 
   useLayoutEffect(() => {
     nodesRef.current = nodes
@@ -125,6 +142,13 @@ export function useWorkspaceCanvasNodesStore({
       if (target && target.data.sessionId.length > 0) {
         cleanupNodeRuntimeArtifacts(nodeId, target.data.sessionId)
         await window.opencoveApi.pty.kill({ sessionId: target.data.sessionId })
+      }
+
+      if (target?.data.kind === 'image' && target.data.image) {
+        const deleteCanvasImage = window.opencoveApi?.workspace?.deleteCanvasImage
+        if (typeof deleteCanvasImage === 'function') {
+          await deleteCanvasImage({ assetId: target.data.image.assetId }).catch(() => undefined)
+        }
       }
 
       setNodes(prevNodes => {
@@ -397,15 +421,16 @@ export function useWorkspaceCanvasNodesStore({
     },
     [onRequestPersistFlush, setNodes],
   )
-  const { createNodeForSession, createNoteNode, createTaskNode } = useWorkspaceCanvasNodeCreation({
-    defaultTerminalWindowScalePercent,
-    nodesRef,
-    spacesRef,
-    onRequestPersistFlush,
-    onShowMessage,
-    onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
-    setNodes,
-  })
+  const { createNodeForSession, createNoteNode, createTaskNode, createImageNode } =
+    useWorkspaceCanvasNodeCreation({
+      nodesRef,
+      spacesRef,
+      onRequestPersistFlush,
+      onShowMessage,
+      onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
+      setNodes,
+      standardWindowSizeBucket,
+    })
 
   return {
     nodesRef,
@@ -428,5 +453,6 @@ export function useWorkspaceCanvasNodesStore({
     createNodeForSession,
     createNoteNode,
     createTaskNode,
+    createImageNode,
   }
 }

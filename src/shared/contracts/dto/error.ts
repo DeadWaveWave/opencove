@@ -11,6 +11,9 @@ export const APP_ERROR_CODES = [
   'workspace.copy_path_failed',
   'workspace.list_path_openers_failed',
   'workspace.open_path_failed',
+  'workspace.canvas_image_write_failed',
+  'workspace.canvas_image_read_failed',
+  'workspace.canvas_image_delete_failed',
   'worktree.api_unavailable',
   'worktree.list_branches_failed',
   'worktree.list_worktrees_failed',
@@ -46,7 +49,7 @@ export const APP_ERROR_CODES = [
   'update.check_failed',
   'update.download_failed',
   'update.install_failed',
-  'release_notes.get_range_failed',
+  'release_notes.get_current_failed',
 ] as const
 
 export type AppErrorCode = (typeof APP_ERROR_CODES)[number]

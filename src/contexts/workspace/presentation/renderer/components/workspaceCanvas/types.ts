@@ -33,6 +33,7 @@ export interface WorkspaceCanvasProps {
   activeSpaceId: string | null
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onActiveSpaceChange: (spaceId: string | null) => void
+  shortcutsEnabled?: boolean
   viewport: WorkspaceViewport
   isMinimapVisible: boolean
   onViewportChange: (viewport: WorkspaceViewport) => void
@@ -156,6 +157,10 @@ export interface NodeDeleteConfirmationState {
   nodeIds: string[]
   primaryNodeKind: WorkspaceNodeKind
   primaryNodeTitle: string
+  emptyingSpaces: Array<{
+    id: string
+    name: string
+  }>
 }
 
 export interface SpaceWorktreeMismatchDropWarningState {

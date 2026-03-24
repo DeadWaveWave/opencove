@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { computeHydratedCliPath } from '../../../src/platform/os/CliEnvironment'
+import {
+  computeHydratedCliPath,
+  computeHydratedLocaleEnv,
+} from '../../../src/platform/os/CliEnvironment'
 
 describe('computeHydratedCliPath', () => {
   it('keeps PATH unchanged when app is not packaged', () => {
@@ -45,5 +48,82 @@ describe('computeHydratedCliPath', () => {
     })
 
     expect(path).toBe('C:\\Windows\\System32;C:\\Tools;D:\\bin')
+  })
+})
+
+describe('computeHydratedLocaleEnv', () => {
+  it('keeps locale unchanged when app is not packaged', () => {
+    expect(
+      computeHydratedLocaleEnv({
+        platform: 'darwin',
+        currentEnv: { LANG: 'en_US.UTF-8' },
+        loginShellEnv: {
+          LANG: 'en_US.UTF-8',
+        },
+      }),
+    ).toEqual({})
+  })
+
+  it('hydrates packaged macOS locale from a UTF-8 login shell', () => {
+    expect(
+      computeHydratedLocaleEnv({
+        platform: 'darwin',
+        currentEnv: {
+          LANG: 'C',
+          LC_ALL: 'C',
+        },
+        loginShellEnv: {
+          LANG: 'en_US.UTF-8',
+          LC_CTYPE: 'en_US.UTF-8',
+        },
+      }),
+    ).toEqual({
+      LANG: 'en_US.UTF-8',
+      LC_CTYPE: 'en_US.UTF-8',
+      LC_ALL: 'en_US.UTF-8',
+    })
+  })
+
+  it('keeps a packaged UTF-8 locale unchanged', () => {
+    expect(
+      computeHydratedLocaleEnv({
+        platform: 'darwin',
+        currentEnv: {
+          LANG: 'en_US.UTF-8',
+        },
+        loginShellEnv: {
+          LANG: 'en_US.UTF-8',
+        },
+      }),
+    ).toEqual({})
+  })
+
+  it('falls back to a Linux UTF-8 locale when the login shell does not expose one', () => {
+    expect(
+      computeHydratedLocaleEnv({
+        platform: 'linux',
+        currentEnv: {
+          LANG: 'C',
+        },
+        loginShellEnv: {},
+      }),
+    ).toEqual({
+      LANG: 'C.UTF-8',
+      LC_CTYPE: 'C.UTF-8',
+    })
+  })
+
+  it('keeps Windows locale handling unchanged', () => {
+    expect(
+      computeHydratedLocaleEnv({
+        platform: 'win32',
+        currentEnv: {
+          LANG: 'C',
+        },
+        loginShellEnv: {
+          LANG: 'en_US.UTF-8',
+        },
+      }),
+    ).toEqual({})
   })
 })

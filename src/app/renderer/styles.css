@@ -5,6 +5,7 @@
 @import './styles/app-header.css';
 @import './styles/command-center.css';
 @import './styles/control-center.css';
+@import './styles/workspace-search-panel.css';
 @import './styles/workspace-sidebar.css';
 @import './styles/workspace-canvas.css';
 @import './styles/workspace-overlays.css';
@@ -14,6 +15,7 @@
 @import './styles/terminal-node.theme-opencode.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';
+@import './styles/image-node.css';
 @import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';
 @import './styles/settings-panel.preview.css';

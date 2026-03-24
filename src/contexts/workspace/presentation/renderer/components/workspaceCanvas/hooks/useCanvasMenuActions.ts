@@ -13,6 +13,7 @@ export function useWorkspaceCanvasMenuActions({
   reactFlow,
   spacesRef,
   onSpacesChange,
+  standardWindowSizeBucket,
 }: {
   selectedNodeIds: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['selectedNodeIds']
   selectedNodeIdsRef: Parameters<
@@ -29,6 +30,9 @@ export function useWorkspaceCanvasMenuActions({
   reactFlow: Parameters<typeof useWorkspaceCanvasArrange>[0]['reactFlow']
   spacesRef: Parameters<typeof useWorkspaceCanvasArrange>[0]['spacesRef']
   onSpacesChange: Parameters<typeof useWorkspaceCanvasArrange>[0]['onSpacesChange']
+  standardWindowSizeBucket: Parameters<
+    typeof useWorkspaceCanvasArrange
+  >[0]['standardWindowSizeBucket']
 }): ReturnType<typeof useWorkspaceCanvasNoteToTaskConversion> &
   ReturnType<typeof useWorkspaceCanvasArrange> {
   const noteToTask = useWorkspaceCanvasNoteToTaskConversion({
@@ -36,10 +40,13 @@ export function useWorkspaceCanvasMenuActions({
     selectedNodeIdsRef,
     flowNodes,
     nodesRef,
+    spacesRef,
     setNodes,
+    onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
     setContextMenu,
+    standardWindowSizeBucket,
   })
 
   const arrange = useWorkspaceCanvasArrange({
@@ -50,6 +57,7 @@ export function useWorkspaceCanvasMenuActions({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
+    standardWindowSizeBucket,
   })
 
   return {

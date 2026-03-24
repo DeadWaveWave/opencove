@@ -18,6 +18,7 @@ function renderMark(checked: boolean): React.JSX.Element {
 }
 
 export function WorkspaceContextArrangeBySubmenu({
+  submenuRef,
   style,
   hitSpace,
   canArrangeAll,
@@ -30,6 +31,7 @@ export function WorkspaceContextArrangeBySubmenu({
   onSelectOrder,
   onSelectSpaceFit,
 }: {
+  submenuRef: React.RefObject<HTMLDivElement | null>
   style: React.CSSProperties
   hitSpace: WorkspaceSpaceState | null
   canArrangeAll: boolean
@@ -46,6 +48,7 @@ export function WorkspaceContextArrangeBySubmenu({
 
   return (
     <div
+      ref={submenuRef}
       className="workspace-context-menu workspace-context-menu--submenu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-arrange-by-menu"
       style={style}
@@ -121,26 +124,6 @@ export function WorkspaceContextArrangeBySubmenu({
         <span className="workspace-context-menu__label">
           {t('workspaceArrangeMenu.orderCreatedAt')}
         </span>
-      </button>
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-order-kind"
-        onClick={() => {
-          onSelectOrder('kind')
-        }}
-      >
-        {renderMark(arrangeOrder === 'kind')}
-        <span className="workspace-context-menu__label">{t('workspaceArrangeMenu.orderKind')}</span>
-      </button>
-      <button
-        type="button"
-        data-testid="workspace-context-arrange-order-size"
-        onClick={() => {
-          onSelectOrder('size')
-        }}
-      >
-        {renderMark(arrangeOrder === 'size')}
-        <span className="workspace-context-menu__label">{t('workspaceArrangeMenu.orderSize')}</span>
       </button>
 
       <div className="workspace-context-menu__separator" />

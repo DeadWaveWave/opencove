@@ -4,6 +4,7 @@ import {
   resolveBestDenseGridPacking,
   resolveDenseGridAutoPlacement,
   type GridItem,
+  type GridOccupiedRegion,
 } from './workspaceArrange.gridPacking'
 import { resolveCanonicalNodeGridSpan } from './workspaceNodeSizing'
 import type { WorkspaceArrangeSemanticGroup } from './workspaceArrange.semantic'
@@ -177,7 +178,6 @@ export function resolveWorkspaceArrangeSemanticGridPlacements({
   const ideaLaneColumnWidth = canUseTwoColumnIdeas
     ? preferredIdeaColumnWidth
     : singleIdeaColumnWidth
-  const executionLaneStartCol = ideaLaneColumnWidth + workLaneWidth
 
   if (ideaLaneColumnWidth + workLaneWidth > safeMaxColumns) {
     return resolveBestDenseGridPacking({
@@ -194,12 +194,20 @@ export function resolveWorkspaceArrangeSemanticGridPlacements({
 
   const placements = new Map<string, { x: number; y: number }>()
   const placedRects: Rect[] = []
+  const occupiedRegions: GridOccupiedRegion[] = []
 
   const addPlacedItem = ({ id, col, row }: { id: string; col: number; row: number }) => {
     const item = itemById.get(id)
     if (!item) {
       return
     }
+
+    occupiedRegions.push({
+      col,
+      row,
+      colSpan: item.colSpan,
+      rowSpan: item.rowSpan,
+    })
 
     const rect: Rect = {
       x: start.x + col * strideX,
@@ -250,12 +258,7 @@ export function resolveWorkspaceArrangeSemanticGridPlacements({
   }
 
   const ideaLane = placeIdeaLane()
-  const workLane = placeVerticalLane({ items: workItems, startCol: ideaLane.columnsUsed })
-  const anchorRowsUsed = Math.max(ideaLane.rowsUsed, workLane.rowsUsed)
-  const minContentColumns =
-    contentItems.length > 0 ? Math.max(...contentItems.map(item => item.colSpan)) : 0
-  const rightAvailableColumns = safeMaxColumns - executionLaneStartCol
-
+  placeVerticalLane({ items: workItems, startCol: ideaLane.columnsUsed })
   const appendPackedPlacements = (packedPlacements: Map<string, { x: number; y: number }>) => {
     for (const [id, placement] of packedPlacements.entries()) {
       const item = itemById.get(id)
@@ -272,53 +275,24 @@ export function resolveWorkspaceArrangeSemanticGridPlacements({
       })
     }
   }
-
-  let contentPlaced = false
-  if (rightAvailableColumns >= minContentColumns) {
-    const rightPacked = resolveBestDenseGridPacking({
+  if (contentItems.length > 0) {
+    const packed = resolveBestDenseGridPacking({
       items: contentItems,
-      start: {
-        x: start.x + executionLaneStartCol * strideX,
-        y: start.y,
-      },
-      cell,
-      gap,
-      targetAspect,
-      maxColumns: rightAvailableColumns,
-      ...(typeof maxHeight === 'number' ? { maxHeight } : {}),
-      ...(typeof compactAreaTolerance === 'number' ? { compactAreaTolerance } : {}),
-    })
-    if (rightPacked) {
-      appendPackedPlacements(rightPacked.placements)
-      contentPlaced = true
-    }
-  }
-
-  if (!contentPlaced) {
-    const fallbackStart = {
-      x: start.x,
-      y: start.y + anchorRowsUsed * strideY,
-    }
-    const fallbackMaxHeight =
-      typeof maxHeight === 'number'
-        ? Math.max(0, maxHeight - (fallbackStart.y - start.y))
-        : undefined
-    const belowPacked = resolveBestDenseGridPacking({
-      items: contentItems,
-      start: fallbackStart,
+      start,
       cell,
       gap,
       targetAspect,
       maxColumns: safeMaxColumns,
-      ...(typeof fallbackMaxHeight === 'number' ? { maxHeight: fallbackMaxHeight } : {}),
+      ...(typeof maxHeight === 'number' ? { maxHeight } : {}),
       ...(typeof compactAreaTolerance === 'number' ? { compactAreaTolerance } : {}),
+      occupiedRegions,
     })
 
-    if (!belowPacked) {
+    if (!packed) {
       return null
     }
 
-    appendPackedPlacements(belowPacked.placements)
+    appendPackedPlacements(packed.placements)
   }
 
   const bounding = computeBoundingRect(placedRects) ?? {

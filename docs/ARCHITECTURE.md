@@ -99,6 +99,18 @@ domain <- application <- presentation
 - 只能出现在边界 adapter。
 - 禁止出现在 `domain / application / renderer presentation`。
 
+### `host process`（故障隔离）
+
+当某个子系统满足任一条件时，必须使用独立进程（例如 Electron `utilityProcess` 或 Node `child_process`）承载，而不是放在 `main` 进程内：
+- 会加载 **native addon**（Node-API/N-API），且其异常可能导致进程级 `abort / segfault`（典型：PTY）。
+- 会执行不受信任或高复杂度的外部命令，并需要长时间保持运行（TTY/CLI daemon）。
+- 其故障应被视为“可恢复的子系统不可用”，而不是“全应用退出”。
+
+强制约束：
+- `main` 只承担 **supervisor**：启动/退出、重启退避、health 状态汇总、统一日志、统一降级策略。
+- renderer **禁止**直连 host process；所有跨进程通信必须经 `main-ipc` 校验与映射。
+- host process 必须有可序列化、可版本化的协议（request/response + event stream），并定义“不可用/断连”的一等语义，确保 UI 可解释降级而不是白屏。
+
 ## 7. 恢复与持久化规则
 
 对 `hydration / restart / resume / watcher / persistence / fallback` 相关路径，必须先区分：
@@ -125,6 +137,7 @@ domain <- application <- presentation
 - 所有 `watcher / timer / child process / subscription` 都必须有明确 owner 和 `dispose` 路径。
 - 不允许存在无 owner 的全局 runtime 状态表。
 - IPC contract 必须统一、可序列化、可判定。
+- 当引入 `host process` 承载高风险子系统时，必须显式建模：`unavailable`（不可用）与 `recovery`（自恢复/重试）语义；不得让调用方靠“超时/偶然报错”猜测子系统状态。
 
 ## 10. 测试映射规则
 
@@ -141,3 +154,4 @@ domain <- application <- presentation
 - 用持久化结构反向定义业务语义。
 - 让非 owner context 判定别人的 durable truth。
 - 通过跨 context 直接写 store/state 传递业务真相。
+- 在 `main` 进程内直接承载高风险 native/外部运行时（例如 PTY），导致单点崩溃/白屏，缺失故障隔离与可恢复语义。

@@ -1,17 +1,20 @@
 import { useCallback, useRef } from 'react'
 import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { ImageNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
   CreateNodeInput,
   EmptySelectionPromptState,
   SelectionDraftState,
+  ShowWorkspaceCanvasMessage,
 } from '../types'
 import { resolveDefaultNoteWindowSize } from '../constants'
 import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
+import { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
 import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
 import {
@@ -33,10 +36,10 @@ type SelectionDraftUiState = Pick<
 >
 
 interface UseWorkspaceCanvasInteractionsParams {
+  canvasRef: React.RefObject<HTMLDivElement | null>
   isTrackpadCanvasMode: boolean
   focusNodeOnClick: boolean
   focusNodeTargetZoom: number
-  defaultTerminalWindowScalePercent: number
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -55,6 +58,7 @@ interface UseWorkspaceCanvasInteractionsParams {
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (
     anchor: Point,
@@ -65,13 +69,19 @@ interface UseWorkspaceCanvasInteractionsParams {
       }
     },
   ) => Node<TerminalNodeData> | null
+  onShowMessage?: ShowWorkspaceCanvasMessage
+  createImageNode: (
+    anchor: Point,
+    image: ImageNodeData,
+    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
+  ) => Node<TerminalNodeData> | null
 }
 
 export function useWorkspaceCanvasInteractions({
+  canvasRef,
   isTrackpadCanvasMode,
   focusNodeOnClick,
   focusNodeTargetZoom,
-  defaultTerminalWindowScalePercent,
   isShiftPressedRef,
   selectionDraftRef,
   setSelectionDraftUi,
@@ -90,8 +100,11 @@ export function useWorkspaceCanvasInteractions({
   spacesRef,
   onSpacesChange,
   nodesRef,
+  standardWindowSizeBucket,
   createNodeForSession,
   createNoteNode,
+  onShowMessage,
+  createImageNode,
 }: UseWorkspaceCanvasInteractionsParams): {
   clearNodeSelection: () => void
   handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
@@ -109,6 +122,9 @@ export function useWorkspaceCanvasInteractions({
   handlePaneClick: (_event: React.MouseEvent | MouseEvent) => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
+  handleCanvasPaste: React.ClipboardEventHandler<HTMLDivElement>
+  handleCanvasDragOver: React.DragEventHandler<HTMLDivElement>
+  handleCanvasDrop: React.DragEventHandler<HTMLDivElement>
 } {
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
@@ -379,18 +395,20 @@ export function useWorkspaceCanvasInteractions({
         x: flowPosition.x,
         y: flowPosition.y,
       }
-      const noteSize = resolveDefaultNoteWindowSize()
-      const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
+      void (async () => {
+        const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
+        const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
 
-      createNoteNodeAtAnchor({
-        anchor,
-        spaceAnchor: cursorAnchor,
-        createNoteNode,
-        spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
-      })
+        createNoteNodeAtAnchor({
+          anchor,
+          spaceAnchor: cursorAnchor,
+          createNoteNode,
+          spacesRef,
+          nodesRef,
+          setNodes,
+          onSpacesChange,
+        })
+      })()
     },
     [
       cancelSpaceRename,
@@ -403,6 +421,7 @@ export function useWorkspaceCanvasInteractions({
       setEmptySelectionPrompt,
       setNodes,
       spacesRef,
+      standardWindowSizeBucket,
     ],
   )
   const handlePaneClick = useCallback(
@@ -426,11 +445,11 @@ export function useWorkspaceCanvasInteractions({
   const createTerminalNode = useWorkspaceCanvasTerminalCreation({
     contextMenu,
     setContextMenu,
-    defaultTerminalWindowScalePercent,
     spacesRef,
     workspacePath,
     nodesRef,
     defaultTerminalProfileId,
+    standardWindowSizeBucket,
     createNodeForSession,
     setNodes,
     onSpacesChange,
@@ -440,13 +459,35 @@ export function useWorkspaceCanvasInteractions({
     createNoteNodeFromPaneContextMenu({
       contextMenu,
       createNoteNode,
+      standardWindowSizeBucket,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
       setContextMenu,
     })
-  }, [contextMenu, createNoteNode, nodesRef, onSpacesChange, setContextMenu, setNodes, spacesRef])
+  }, [
+    contextMenu,
+    createNoteNode,
+    nodesRef,
+    onSpacesChange,
+    setContextMenu,
+    setNodes,
+    spacesRef,
+    standardWindowSizeBucket,
+  ])
+
+  const { handleCanvasPaste, handleCanvasDragOver, handleCanvasDrop } =
+    useWorkspaceCanvasImageImport({
+      canvasRef,
+      reactFlow,
+      spacesRef,
+      nodesRef,
+      setNodes,
+      onSpacesChange,
+      onShowMessage,
+      createImageNode,
+    })
 
   return {
     clearNodeSelection,
@@ -462,5 +503,8 @@ export function useWorkspaceCanvasInteractions({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
+    handleCanvasPaste,
+    handleCanvasDragOver,
+    handleCanvasDrop,
   }
 }

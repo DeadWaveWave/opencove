@@ -7,25 +7,13 @@ import {
   type CanvasInputModalityState,
   type DetectedCanvasInputMode,
 } from '../../../utils/inputModality'
+import { isEditableDomTarget } from '../domTargets'
 import type {
   ContextMenuState,
   EmptySelectionPromptState,
   SelectionDraftState,
   TrackpadGestureLockState,
 } from '../types'
-
-function isEditableKeyboardTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-
-  if (target.isContentEditable || target.closest('[contenteditable="true"]')) {
-    return true
-  }
-
-  const { tagName } = target
-  return tagName === 'INPUT' || tagName === 'TEXTAREA' || tagName === 'SELECT'
-}
 
 interface UseWorkspaceCanvasLifecycleParams {
   workspaceId: string
@@ -174,7 +162,7 @@ export function useWorkspaceCanvasLifecycle({
         !event.metaKey &&
         !event.ctrlKey &&
         !event.altKey &&
-        !isEditableKeyboardTarget(event.target)
+        !isEditableDomTarget(event.target)
       ) {
         const selectedNodeIds = selectedNodeIdsRef.current
         if (selectedNodeIds.length > 0) {
@@ -185,7 +173,7 @@ export function useWorkspaceCanvasLifecycle({
         }
       }
 
-      if (event.key === 'Shift' && !isEditableKeyboardTarget(event.target)) {
+      if (event.key === 'Shift' && !isEditableDomTarget(event.target)) {
         isShiftPressedRef.current = true
         setIsShiftPressed(true)
       }

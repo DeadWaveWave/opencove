@@ -4,6 +4,37 @@ export interface WorkspaceDirectory {
   path: string
 }
 
+export const CANVAS_IMAGE_MIME_TYPES = [
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'image/avif',
+] as const
+
+export type CanvasImageMimeType = (typeof CANVAS_IMAGE_MIME_TYPES)[number]
+
+export const MAX_CANVAS_IMAGE_BYTES = 20 * 1024 * 1024
+
+export interface WriteCanvasImageInput {
+  assetId: string
+  bytes: Uint8Array
+  mimeType: CanvasImageMimeType
+  fileName: string | null
+}
+
+export interface ReadCanvasImageInput {
+  assetId: string
+}
+
+export interface ReadCanvasImageResult {
+  bytes: Uint8Array
+}
+
+export interface DeleteCanvasImageInput {
+  assetId: string
+}
+
 export interface EnsureDirectoryInput {
   path: string
 }

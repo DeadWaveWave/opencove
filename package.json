@@ -33,6 +33,12 @@
     "executableName": "OpenCove",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "generateUpdatesFilesForAllChannels": true,
+    "extraResources": [
+      {
+        "from": "release/release-manifest.json",
+        "to": "release-manifest.json"
+      }
+    ],
     "publish": [
       {
         "provider": "github",
@@ -57,11 +63,12 @@
     "check": "tsc -b tsconfig.node.json tsconfig.web.json --noEmit",
     "preview": "electron-vite preview",
     "postinstall": "electron-builder install-app-deps",
-    "build:unpack": "pnpm build && electron-builder --dir --publish never",
-    "build:mac": "pnpm build && electron-builder --mac --publish never",
-    "build:mac:unsigned": "pnpm build && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --publish never",
-    "build:win": "pnpm build && electron-builder --win --publish never",
-    "build:linux": "pnpm build && electron-builder --linux AppImage --publish never",
+    "build:release-manifest": "node scripts/generate-release-manifest.mjs",
+    "build:unpack": "pnpm build && pnpm build:release-manifest && electron-builder --dir --publish never",
+    "build:mac": "pnpm build && pnpm build:release-manifest && electron-builder --mac --publish never",
+    "build:mac:unsigned": "pnpm build && pnpm build:release-manifest && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --publish never",
+    "build:win": "pnpm build && pnpm build:release-manifest && electron-builder --win --publish never",
+    "build:linux": "pnpm build && pnpm build:release-manifest && electron-builder --linux AppImage --publish never",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",
@@ -91,6 +98,7 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/vite": "^4.2.1",
     "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-serialize": "^0.14.0",
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
@@ -153,6 +161,11 @@
     ]
   },
   "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "electron",
+      "node-pty"
+    ],
     "overrides": {
       "ajv@6.12.6": "6.14.0",
       "ajv@8.17.1": "8.18.0",

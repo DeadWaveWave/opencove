@@ -2,11 +2,12 @@ import { app, shell, BrowserWindow, nativeImage } from 'electron'
 import { isAbsolute, join, relative, resolve, sep } from 'path'
 import { fileURLToPath } from 'url'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
-import { hydrateCliPathForPackagedApp } from '../../platform/os/CliEnvironment'
+import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
 import { registerIpcHandlers } from './ipc/registerIpcHandlers'
 import { setRuntimeIconTestState } from './iconTestHarness'
 import { resolveRuntimeIconPath } from './runtimeIcon'
 import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
+import { shouldEnableWaylandIme } from './waylandIme'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 const APP_USER_DATA_DIRECTORY_NAME = 'opencove'
@@ -44,6 +45,10 @@ if (process.platform === 'linux' && process.env['NODE_ENV'] === 'test') {
     app.commandLine.appendSwitch('no-sandbox')
     app.commandLine.appendSwitch('disable-dev-shm-usage')
   }
+}
+
+if (shouldEnableWaylandIme({ platform: process.platform, env: process.env })) {
+  app.commandLine.appendSwitch('enable-wayland-ime')
 }
 
 function preserveCanonicalUserDataPath(): void {
@@ -324,7 +329,7 @@ function createWindow(): void {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 app.whenReady().then(() => {
-  hydrateCliPathForPackagedApp(app.isPackaged === true)
+  hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
 
   // Set app user model id for windows
   electronApp.setAppUserModelId(OPENCOVE_APP_USER_MODEL_ID)
@@ -338,6 +343,36 @@ app.whenReady().then(() => {
   const runtimeIconPath = resolveRuntimeIconPath()
   if (process.platform === 'darwin' && runtimeIconPath) {
     app.dock?.setIcon(nativeImage.createFromPath(runtimeIconPath))
+  }
+
+  if (isTruthyEnv(process.env['OPENCOVE_PTY_HOST_POC'])) {
+    void (async () => {
+      try {
+        const { runPtyHostUtilityProcessPoc } = await import('../../platform/process/ptyHost/poc')
+        await runPtyHostUtilityProcessPoc()
+        app.exit(0)
+      } catch (error) {
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+        process.stderr.write(`[cove] pty-host PoC failed: ${detail}\n`)
+        app.exit(1)
+      }
+    })()
+    return
+  }
+
+  if (isTruthyEnv(process.env['OPENCOVE_PTY_HOST_STRESS'])) {
+    void (async () => {
+      try {
+        const { runPtyHostStressTest } = await import('../../platform/process/ptyHost/stress')
+        await runPtyHostStressTest()
+        app.exit(0)
+      } catch (error) {
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+        process.stderr.write(`[cove] pty-host stress failed: ${detail}\n`)
+        app.exit(1)
+      }
+    })()
+    return
   }
 
   ipcDisposable = registerIpcHandlers()

@@ -29,6 +29,17 @@ export async function removeWorkspace(workspaceId: string): Promise<void> {
     store.setActiveWorkspaceId(currentActiveId =>
       currentActiveId === workspaceId ? (nextWorkspaces[0]?.id ?? null) : currentActiveId,
     )
+    store.setAgentSettings(prev => {
+      if (!prev.taskPromptTemplatesByWorkspaceId[workspaceId]) {
+        return prev
+      }
+
+      const { [workspaceId]: _removed, ...rest } = prev.taskPromptTemplatesByWorkspaceId
+      return {
+        ...prev,
+        taskPromptTemplatesByWorkspaceId: rest,
+      }
+    })
     store.setFocusRequest(null)
     store.setProjectDeleteConfirmation(null)
   } finally {

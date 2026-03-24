@@ -30,13 +30,15 @@ import type {
   ResolveGitHubPullRequestsResult,
   AppUpdateState,
   ConfigureAppUpdatesInput,
-  GetReleaseNotesAutoRangeInput,
-  GetReleaseNotesRangeInput,
-  ReleaseNotesRangeResult,
+  GetCurrentReleaseNotesInput,
+  ReleaseNotesCurrentResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
+  ReadCanvasImageInput,
+  ReadCanvasImageResult,
+  WindowDisplayInfo,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -56,10 +58,12 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
+  WriteCanvasImageInput,
   WriteAppStateInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
+  DeleteCanvasImageInput,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 
@@ -75,6 +79,10 @@ const opencoveApi = {
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.windowChromeSetTheme, payload),
+  },
+  windowMetrics: {
+    getDisplayInfo: (): Promise<WindowDisplayInfo> =>
+      invokeIpc(IPC_CHANNELS.windowMetricsGetDisplayInfo),
   },
   clipboard: {
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),
@@ -106,6 +114,12 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.workspaceListPathOpeners),
     openPath: (payload: OpenWorkspacePathInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.workspaceOpenPath, payload),
+    writeCanvasImage: (payload: WriteCanvasImageInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.workspaceWriteCanvasImage, payload),
+    readCanvasImage: (payload: ReadCanvasImageInput): Promise<ReadCanvasImageResult | null> =>
+      invokeIpc(IPC_CHANNELS.workspaceReadCanvasImage, payload),
+    deleteCanvasImage: (payload: DeleteCanvasImageInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.workspaceDeleteCanvasImage, payload),
   },
   worktree: {
     listBranches: (payload: ListGitBranchesInput): Promise<ListGitBranchesResult> =>
@@ -153,10 +167,8 @@ const opencoveApi = {
     },
   },
   releaseNotes: {
-    getRange: (payload: GetReleaseNotesRangeInput): Promise<ReleaseNotesRangeResult> =>
-      invokeIpc(IPC_CHANNELS.releaseNotesGetRange, payload),
-    getAutoRange: (payload: GetReleaseNotesAutoRangeInput): Promise<ReleaseNotesRangeResult> =>
-      invokeIpc(IPC_CHANNELS.releaseNotesGetAutoRange, payload),
+    getCurrent: (payload: GetCurrentReleaseNotesInput): Promise<ReleaseNotesCurrentResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetCurrent, payload),
   },
   pty: {
     listProfiles: (): Promise<ListTerminalProfilesResult> =>
@@ -174,6 +186,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
+    debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),
     onData: (listener: (event: TerminalDataEvent) => void): UnsubscribeFn => {
       const handler = (_event: Electron.IpcRendererEvent, payload: TerminalDataEvent) => {
         listener(payload)

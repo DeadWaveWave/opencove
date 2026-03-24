@@ -1,4 +1,5 @@
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -16,7 +17,6 @@ export type SelectionDraftUiState = Pick<
 export interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
   normalizeZoomOnNodeClick: boolean
-  defaultTerminalWindowScalePercent: number
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -35,6 +35,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
 }

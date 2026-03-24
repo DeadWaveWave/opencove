@@ -30,6 +30,13 @@ export interface SessionStateWatcherStartInput {
   resumeSessionId: string | null
   startedAtMs: number
   opencodeBaseUrl?: string | null
+  /**
+   * Optional pre-captured snapshot of Gemini sessions for this cwd.
+   *
+   * - `undefined`: controller will capture the snapshot itself (legacy behaviour).
+   * - `null`: explicitly skip snapshot capture and attempt discovery without cursor filtering.
+   */
+  geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
 }
 
 type SendToAllWindows = <Payload>(channel: string, payload: Payload) => void
@@ -349,6 +356,18 @@ export function createSessionStateWatcherController({
 
     const watcherVersion = stateWatcherVersionBySession.get(input.sessionId) ?? 0
     if (input.provider === 'gemini' && input.launchMode === 'new' && !input.resumeSessionId) {
+      // If the caller already captured (or explicitly skipped) the discovery cursor,
+      // avoid capturing it again after the agent has started, which can race with
+      // Gemini writing the session file and lead to missing resume bindings.
+      if (input.geminiDiscoveryCursor !== undefined) {
+        if (input.geminiDiscoveryCursor) {
+          geminiDiscoveryCursorBySession.set(input.sessionId, input.geminiDiscoveryCursor)
+        }
+
+        scheduleSessionStateWatcherAttempt(input.sessionId, watcherVersion, 0)
+        return
+      }
+
       geminiDiscoveryCursorPendingSessionIds.add(input.sessionId)
       void captureGeminiSessionDiscoveryCursor(input.cwd)
         .then(cursor => {

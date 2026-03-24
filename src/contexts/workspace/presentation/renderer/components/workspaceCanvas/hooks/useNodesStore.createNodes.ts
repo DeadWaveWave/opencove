@@ -2,12 +2,21 @@ import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type {
+  ImageNodeData,
+  Point,
+  TaskPriority,
+  TerminalNodeData,
+  WorkspaceSpaceState,
+} from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import { findNearestFreePositionOnRight, inflateRect, type Rect } from '../../../utils/collision'
 import { SPACE_NODE_PADDING } from '../../../utils/spaceLayout'
+import { resolveImageNodeSizeFromNaturalDimensions } from '../../../utils/workspaceNodeSizing'
 import {
   resolveDefaultAgentWindowSize,
+  resolveDefaultImageWindowSize,
   resolveDefaultNoteWindowSize,
   resolveDefaultTaskWindowSize,
   resolveDefaultTerminalWindowSize,
@@ -20,26 +29,26 @@ import type {
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 
 interface UseWorkspaceCanvasNodeCreationParams {
-  defaultTerminalWindowScalePercent: number
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
+  standardWindowSizeBucket: StandardWindowSizeBucket
 }
 
 export function useWorkspaceCanvasNodeCreation({
-  defaultTerminalWindowScalePercent,
   nodesRef,
   spacesRef,
   onRequestPersistFlush,
   onShowMessage,
   onNodeCreated,
   setNodes,
+  standardWindowSizeBucket,
 }: UseWorkspaceCanvasNodeCreationParams): Pick<
   UseWorkspaceCanvasNodesStoreResult,
-  'createNodeForSession' | 'createNoteNode' | 'createTaskNode'
+  'createNodeForSession' | 'createNoteNode' | 'createTaskNode' | 'createImageNode'
 > {
   const { t } = useTranslation()
 
@@ -58,8 +67,8 @@ export function useWorkspaceCanvasNodeCreation({
     }: CreateNodeInput): Promise<Node<TerminalNodeData> | null> => {
       const defaultSize =
         kind === 'agent'
-          ? resolveDefaultAgentWindowSize(defaultTerminalWindowScalePercent)
-          : resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent)
+          ? resolveDefaultAgentWindowSize(standardWindowSizeBucket)
+          : resolveDefaultTerminalWindowSize(standardWindowSizeBucket)
 
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
@@ -111,7 +120,7 @@ export function useWorkspaceCanvasNodeCreation({
                 ? ('standby' as const)
                 : resolveInitialAgentRuntimeStatus(agent?.prompt)
               : null,
-          startedAt: kind === 'agent' ? now : null,
+          startedAt: now,
           endedAt: null,
           exitCode: null,
           lastError: null,
@@ -127,6 +136,7 @@ export function useWorkspaceCanvasNodeCreation({
           agent: kind === 'agent' ? (agent ?? null) : null,
           task: null,
           note: null,
+          image: null,
         },
         draggable: true,
         selectable: false,
@@ -138,20 +148,20 @@ export function useWorkspaceCanvasNodeCreation({
       return nextNode
     },
     [
-      defaultTerminalWindowScalePercent,
       nodesRef,
-      spacesRef,
-      onRequestPersistFlush,
       onNodeCreated,
-      setNodes,
+      onRequestPersistFlush,
       onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
       t,
     ],
   )
 
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
-      const noteSize = resolveDefaultNoteWindowSize()
+      const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
       const spaceObstacles: Rect[] = spacesRef.current
         .map(space => space.rect)
         .filter((rect): rect is { x: number; y: number; width: number; height: number } =>
@@ -209,6 +219,8 @@ export function useWorkspaceCanvasNodeCreation({
         return null
       }
 
+      const now = new Date().toISOString()
+
       const nextNode: Node<TerminalNodeData> = {
         id: crypto.randomUUID(),
         type: 'noteNode',
@@ -221,7 +233,7 @@ export function useWorkspaceCanvasNodeCreation({
           height: noteSize.height,
           kind: 'note',
           status: null,
-          startedAt: null,
+          startedAt: now,
           endedAt: null,
           exitCode: null,
           lastError: null,
@@ -231,6 +243,7 @@ export function useWorkspaceCanvasNodeCreation({
           note: {
             text: '',
           },
+          image: null,
         },
         draggable: true,
         selectable: true,
@@ -241,7 +254,16 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
+    [
+      nodesRef,
+      onNodeCreated,
+      onRequestPersistFlush,
+      onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
   )
 
   const createTaskNode = useCallback(
@@ -254,7 +276,7 @@ export function useWorkspaceCanvasNodeCreation({
       tags: string[],
       placementOptions?: NodePlacementOptions,
     ): Node<TerminalNodeData> | null => {
-      const defaultTaskSize = resolveDefaultTaskWindowSize()
+      const defaultTaskSize = resolveDefaultTaskWindowSize(standardWindowSizeBucket)
 
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
@@ -309,6 +331,78 @@ export function useWorkspaceCanvasNodeCreation({
             updatedAt: now,
           },
           note: null,
+          image: null,
+        },
+        draggable: true,
+        selectable: true,
+      }
+
+      setNodes(prevNodes => [...prevNodes, nextNode])
+      onNodeCreated?.(nextNode.id)
+      onRequestPersistFlush?.()
+      return nextNode
+    },
+    [
+      nodesRef,
+      onNodeCreated,
+      onRequestPersistFlush,
+      onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
+  )
+
+  const createImageNode = useCallback(
+    (anchor: Point, image: ImageNodeData, placementOptions?: NodePlacementOptions) => {
+      const defaultSize = resolveDefaultImageWindowSize()
+      const desiredSize = resolveImageNodeSizeFromNaturalDimensions({
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        preferred: defaultSize,
+      })
+      const resolvedPlacement = resolveNodesPlacement({
+        anchor,
+        size: desiredSize,
+        getNodes: () => nodesRef.current,
+        getSpaceRects: () =>
+          spacesRef.current
+            .map(space => space.rect)
+            .filter(
+              (rect): rect is { x: number; y: number; width: number; height: number } =>
+                rect !== null,
+            ),
+        targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
+        preferredDirection: placementOptions?.preferredDirection,
+      })
+
+      if (resolvedPlacement.canPlace !== true) {
+        onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
+        return null
+      }
+
+      const nextNode: Node<TerminalNodeData> = {
+        id: crypto.randomUUID(),
+        type: 'imageNode',
+        position: resolvedPlacement.placement,
+        data: {
+          sessionId: '',
+          title: image.fileName?.trim().length ? image.fileName.trim() : t('imageNode.title'),
+          titlePinnedByUser: false,
+          width: desiredSize.width,
+          height: desiredSize.height,
+          kind: 'image',
+          status: null,
+          startedAt: null,
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: null,
+          agent: null,
+          task: null,
+          note: null,
+          image,
         },
         draggable: true,
         selectable: true,
@@ -326,5 +420,6 @@ export function useWorkspaceCanvasNodeCreation({
     createNodeForSession,
     createNoteNode,
     createTaskNode,
+    createImageNode,
   }
 }

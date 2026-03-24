@@ -1,17 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 
-function createDeferred<T>() {
-  let resolve!: (value: T) => void
-  let reject!: (error: unknown) => void
-
-  const promise = new Promise<T>((res, rej) => {
-    resolve = res
-    reject = rej
-  })
-
-  return { promise, resolve, reject }
-}
+type PtyDataHandler = (event: { sessionId: string; data: string }) => void
+type PtyExitHandler = (event: { sessionId: string; exitCode: number }) => void
 
 describe('Pty runtime subscriptions', () => {
   it('cleans session subscriptions after exit and preserves the last snapshot', async () => {
@@ -19,88 +10,76 @@ describe('Pty runtime subscriptions', () => {
     vi.resetModules()
 
     const send = vi.fn()
-    const destroyedHandlers: Array<() => void> = []
-
     const content = {
       isDestroyed: () => false,
       getType: () => 'window',
       send,
-      once: (_event: string, handler: () => void) => {
-        destroyedHandlers.push(handler)
-      },
+      once: vi.fn(),
     }
 
-    let onDataHandler: ((data: string) => void) | null = null
-    let onExitHandler: ((event: { exitCode: number }) => void) | null = null
-    const snapshotBySession = new Map<string, string>()
+    let onDataHandler: PtyDataHandler | null = null
+    let onExitHandler: PtyExitHandler | null = null
 
-    const pty = {
-      onData: (handler: (data: string) => void) => {
+    class MockPtyHostSupervisor {
+      public write = vi.fn()
+      public resize = vi.fn()
+      public kill = vi.fn()
+      public dispose = vi.fn()
+      public crash = vi.fn()
+      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
+
+      public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
-      },
-      onExit: (handler: (event: { exitCode: number }) => void) => {
+      }
+
+      public onExit(handler: PtyExitHandler): void {
         onExitHandler = handler
-      },
-    }
-
-    class MockPtyManager {
-      public appendSnapshotData(sessionId: string, data: string): void {
-        snapshotBySession.set(sessionId, `${snapshotBySession.get(sessionId) ?? ''}${data}`)
-      }
-      public snapshot(sessionId: string): string {
-        return snapshotBySession.get(sessionId) ?? ''
-      }
-      public write(): void {}
-      public resize(): void {}
-      public kill(): void {}
-      public delete(sessionId: string, options: { keepSnapshot?: boolean } = {}): void {
-        if (options.keepSnapshot === true) {
-          return
-        }
-
-        snapshotBySession.delete(sessionId)
-      }
-      public disposeAll(): void {}
-
-      public spawnSession(): { sessionId: string; pty: typeof pty } {
-        return { sessionId: 'session-1', pty }
       }
     }
 
     vi.doMock('electron', () => ({
+      app: {
+        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+      },
+      utilityProcess: {
+        fork: vi.fn(),
+      },
       webContents: {
         getAllWebContents: () => [content],
         fromId: (id: number) => (id === 1 ? content : null),
       },
     }))
 
-    vi.doMock('../../../src/platform/process/pty/PtyManager', () => ({
-      PtyManager: MockPtyManager,
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime()
-    runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
-    runtime.attach(1, 'session-1')
+    expect(onDataHandler).not.toBeNull()
+    expect(onExitHandler).not.toBeNull()
 
-    onDataHandler?.('hello')
+    const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
+    runtime.attach(1, sessionId)
+
+    onDataHandler?.({ sessionId, data: 'hello' })
     await vi.advanceTimersByTimeAsync(40)
 
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([
-      [IPC_CHANNELS.ptyData, { sessionId: 'session-1', data: 'hello' }],
+      [IPC_CHANNELS.ptyData, { sessionId, data: 'hello' }],
     ])
-    expect(runtime.snapshot('session-1')).toBe('hello')
+    expect(runtime.snapshot(sessionId)).toBe('hello')
 
-    onExitHandler?.({ exitCode: 0 })
+    onExitHandler?.({ sessionId, exitCode: 0 })
 
     expect(send.mock.calls.some(([channel]) => channel === IPC_CHANNELS.ptyExit)).toBe(true)
-    expect(runtime.snapshot('session-1')).toBe('hello')
+    expect(runtime.snapshot(sessionId)).toBe('hello')
 
     send.mockClear()
 
-    onDataHandler?.('after-exit')
+    onDataHandler?.({ sessionId, data: 'after-exit' })
     await vi.advanceTimersByTimeAsync(40)
 
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([])
@@ -121,64 +100,61 @@ describe('Pty runtime subscriptions', () => {
       once: vi.fn(),
     }
 
-    let onDataHandler: ((data: string) => void) | null = null
+    let onDataHandler: PtyDataHandler | null = null
+    const kill = vi.fn()
 
-    const pty = {
-      onData: (handler: (data: string) => void) => {
+    class MockPtyHostSupervisor {
+      public write = vi.fn()
+      public resize = vi.fn()
+      public kill = kill
+      public dispose = vi.fn()
+      public crash = vi.fn()
+      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
+
+      public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
-      },
-      onExit: (_handler: (event: { exitCode: number }) => void) => {},
-    }
-
-    const killDeferred = createDeferred<void>()
-
-    class MockPtyManager {
-      public appendSnapshotData(): void {}
-      public snapshot(): string {
-        return ''
       }
-      public write(): void {}
-      public resize(): void {}
-      public kill(): void {
-        killDeferred.resolve()
-      }
-      public delete(): void {}
-      public disposeAll(): void {}
 
-      public spawnSession(): { sessionId: string; pty: typeof pty } {
-        return { sessionId: 'session-1', pty }
-      }
+      public onExit(_handler: PtyExitHandler): void {}
     }
 
     vi.doMock('electron', () => ({
+      app: {
+        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+      },
+      utilityProcess: {
+        fork: vi.fn(),
+      },
       webContents: {
         getAllWebContents: () => [content],
         fromId: (id: number) => (id === 1 ? content : null),
       },
     }))
 
-    vi.doMock('../../../src/platform/process/pty/PtyManager', () => ({
-      PtyManager: MockPtyManager,
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime()
-    runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
-    runtime.attach(1, 'session-1')
+    expect(onDataHandler).not.toBeNull()
 
-    onDataHandler?.('hello')
+    const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
+    runtime.attach(1, sessionId)
+
+    onDataHandler?.({ sessionId, data: 'hello' })
     await vi.advanceTimersByTimeAsync(40)
 
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData).length).toBe(1)
 
-    runtime.kill('session-1')
-    await killDeferred.promise
+    runtime.kill(sessionId)
+    expect(kill).toHaveBeenCalledWith(sessionId)
 
     send.mockClear()
 
-    onDataHandler?.('after-kill')
+    onDataHandler?.({ sessionId, data: 'after-kill' })
     await vi.advanceTimersByTimeAsync(40)
 
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([])
@@ -201,60 +177,60 @@ describe('Pty runtime subscriptions', () => {
       once: vi.fn(),
     }
 
-    let onDataHandler: ((data: string) => void) | null = null
+    let onDataHandler: PtyDataHandler | null = null
 
-    const pty = {
-      onData: (handler: (data: string) => void) => {
-        onDataHandler = handler
-      },
-      onExit: (_handler: (event: { exitCode: number }) => void) => {},
-    }
-
-    class MockPtyManager {
-      public appendSnapshotData(): void {}
-      public snapshot(): string {
-        return ''
-      }
+    class MockPtyHostSupervisor {
       public write = write
       public resize = resize
-      public kill(): void {}
-      public delete(): void {}
-      public disposeAll(): void {}
+      public kill = vi.fn()
+      public dispose = vi.fn()
+      public crash = vi.fn()
+      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
 
-      public spawnSession(): { sessionId: string; pty: typeof pty } {
-        return { sessionId: 'session-1', pty }
+      public onData(handler: PtyDataHandler): void {
+        onDataHandler = handler
       }
+
+      public onExit(_handler: PtyExitHandler): void {}
     }
 
     vi.doMock('electron', () => ({
+      app: {
+        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+      },
+      utilityProcess: {
+        fork: vi.fn(),
+      },
       webContents: {
         getAllWebContents: () => [content],
         fromId: (id: number) => (id === 1 ? content : null),
       },
     }))
 
-    vi.doMock('../../../src/platform/process/pty/PtyManager', () => ({
-      PtyManager: MockPtyManager,
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime()
-    runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
-    runtime.attach(1, 'session-1')
-    runtime.resize('session-1', 120, 40)
+    expect(onDataHandler).not.toBeNull()
 
-    onDataHandler?.('\u001b[6n\u001b[c\u001b[?u')
+    const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
+    runtime.attach(1, sessionId)
+    runtime.resize(sessionId, 120, 40)
+
+    onDataHandler?.({ sessionId, data: '\u001b[6n\u001b[c\u001b[?u' })
     expect(write).toHaveBeenCalledTimes(0)
 
-    runtime.detach(1, 'session-1')
+    runtime.detach(1, sessionId)
 
-    onDataHandler?.('\u001b[6n\u001b[c\u001b[?u')
+    onDataHandler?.({ sessionId, data: '\u001b[6n\u001b[c\u001b[?u' })
     expect(write.mock.calls).toEqual([
-      ['session-1', '\u001b[1;1R'],
-      ['session-1', '\u001b[?1;2c'],
-      ['session-1', '\u001b[?0u'],
+      [sessionId, '\u001b[1;1R'],
+      [sessionId, '\u001b[?1;2c'],
+      [sessionId, '\u001b[?0u'],
     ])
 
     runtime.dispose()
@@ -276,57 +252,57 @@ describe('Pty runtime subscriptions', () => {
       },
     }
 
-    let onDataHandler: ((data: string) => void) | null = null
+    let onDataHandler: PtyDataHandler | null = null
 
-    const pty = {
-      onData: (handler: (data: string) => void) => {
-        onDataHandler = handler
-      },
-      onExit: (_handler: (event: { exitCode: number }) => void) => {},
-    }
-
-    class MockPtyManager {
-      public appendSnapshotData(): void {}
-      public snapshot(): string {
-        return ''
-      }
+    class MockPtyHostSupervisor {
       public write = write
-      public resize(): void {}
-      public kill(): void {}
-      public delete(): void {}
-      public disposeAll(): void {}
+      public resize = vi.fn()
+      public kill = vi.fn()
+      public dispose = vi.fn()
+      public crash = vi.fn()
+      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
 
-      public spawnSession(): { sessionId: string; pty: typeof pty } {
-        return { sessionId: 'session-1', pty }
+      public onData(handler: PtyDataHandler): void {
+        onDataHandler = handler
       }
+
+      public onExit(_handler: PtyExitHandler): void {}
     }
 
     vi.doMock('electron', () => ({
+      app: {
+        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+      },
+      utilityProcess: {
+        fork: vi.fn(),
+      },
       webContents: {
         getAllWebContents: () => [content],
         fromId: (id: number) => (id === 1 ? content : null),
       },
     }))
 
-    vi.doMock('../../../src/platform/process/pty/PtyManager', () => ({
-      PtyManager: MockPtyManager,
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime()
-    runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
-    runtime.attach(1, 'session-1')
+    expect(onDataHandler).not.toBeNull()
 
-    onDataHandler?.('\u001b[>c')
+    const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
+    runtime.attach(1, sessionId)
+
+    onDataHandler?.({ sessionId, data: '\u001b[>c' })
     expect(write).toHaveBeenCalledTimes(0)
 
     destroyedHandlers[0]?.()
 
-    onDataHandler?.('\u001b[>c')
+    onDataHandler?.({ sessionId, data: '\u001b[>c' })
     expect(write).toHaveBeenCalledTimes(1)
-    expect(write).toHaveBeenCalledWith('session-1', '\u001b[>0;115;0c')
+    expect(write).toHaveBeenCalledWith(sessionId, '\u001b[>0;115;0c')
 
     runtime.dispose()
     vi.useRealTimers()
@@ -344,62 +320,57 @@ describe('Pty runtime subscriptions', () => {
       once: vi.fn(),
     }
 
-    let onDataHandler: ((data: string) => void) | null = null
-    const snapshotBySession = new Map<string, string>()
-    const appendSnapshotData = vi.fn((sessionId: string, data: string) => {
-      snapshotBySession.set(sessionId, `${snapshotBySession.get(sessionId) ?? ''}${data}`)
-    })
+    let onDataHandler: PtyDataHandler | null = null
 
-    const pty = {
-      onData: (handler: (data: string) => void) => {
+    class MockPtyHostSupervisor {
+      public write = vi.fn()
+      public resize = vi.fn()
+      public kill = vi.fn()
+      public dispose = vi.fn()
+      public crash = vi.fn()
+      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
+
+      public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
-      },
-      onExit: (_handler: (event: { exitCode: number }) => void) => {},
-    }
-
-    class MockPtyManager {
-      public appendSnapshotData = appendSnapshotData
-      public snapshot(sessionId: string): string {
-        return snapshotBySession.get(sessionId) ?? ''
       }
-      public write(): void {}
-      public resize(): void {}
-      public kill(): void {}
-      public delete(): void {}
-      public disposeAll(): void {}
 
-      public spawnSession(): { sessionId: string; pty: typeof pty } {
-        return { sessionId: 'session-1', pty }
-      }
+      public onExit(_handler: PtyExitHandler): void {}
     }
 
     vi.doMock('electron', () => ({
+      app: {
+        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+      },
+      utilityProcess: {
+        fork: vi.fn(),
+      },
       webContents: {
         getAllWebContents: () => [content],
         fromId: (id: number) => (id === 1 ? content : null),
       },
     }))
 
-    vi.doMock('../../../src/platform/process/pty/PtyManager', () => ({
-      PtyManager: MockPtyManager,
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime()
-    runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
-    runtime.attach(1, 'session-1')
+    expect(onDataHandler).not.toBeNull()
 
-    onDataHandler?.('hel')
-    onDataHandler?.('lo')
+    const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
+    runtime.attach(1, sessionId)
+
+    onDataHandler?.({ sessionId, data: 'hel' })
+    onDataHandler?.({ sessionId, data: 'lo' })
     await vi.advanceTimersByTimeAsync(40)
 
-    expect(appendSnapshotData).toHaveBeenCalledTimes(1)
-    expect(appendSnapshotData).toHaveBeenCalledWith('session-1', 'hello')
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([
-      [IPC_CHANNELS.ptyData, { sessionId: 'session-1', data: 'hello' }],
+      [IPC_CHANNELS.ptyData, { sessionId, data: 'hello' }],
     ])
+    expect(runtime.snapshot(sessionId)).toBe('hello')
 
     runtime.dispose()
     vi.useRealTimers()
@@ -409,61 +380,55 @@ describe('Pty runtime subscriptions', () => {
     vi.useFakeTimers()
     vi.resetModules()
 
-    let onDataHandler: ((data: string) => void) | null = null
-    const snapshotBySession = new Map<string, string>()
-    const appendSnapshotData = vi.fn((sessionId: string, data: string) => {
-      snapshotBySession.set(sessionId, `${snapshotBySession.get(sessionId) ?? ''}${data}`)
-    })
+    let onDataHandler: PtyDataHandler | null = null
 
-    const pty = {
-      onData: (handler: (data: string) => void) => {
+    class MockPtyHostSupervisor {
+      public write = vi.fn()
+      public resize = vi.fn()
+      public kill = vi.fn()
+      public dispose = vi.fn()
+      public crash = vi.fn()
+      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
+
+      public onData(handler: PtyDataHandler): void {
         onDataHandler = handler
-      },
-      onExit: (_handler: (event: { exitCode: number }) => void) => {},
-    }
-
-    class MockPtyManager {
-      public appendSnapshotData = appendSnapshotData
-      public snapshot(sessionId: string): string {
-        return snapshotBySession.get(sessionId) ?? ''
       }
-      public write(): void {}
-      public resize(): void {}
-      public kill(): void {}
-      public delete(): void {}
-      public disposeAll(): void {}
 
-      public spawnSession(): { sessionId: string; pty: typeof pty } {
-        return { sessionId: 'session-1', pty }
-      }
+      public onExit(_handler: PtyExitHandler): void {}
     }
 
     vi.doMock('electron', () => ({
+      app: {
+        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+      },
+      utilityProcess: {
+        fork: vi.fn(),
+      },
       webContents: {
         getAllWebContents: () => [],
         fromId: () => null,
       },
     }))
 
-    vi.doMock('../../../src/platform/process/pty/PtyManager', () => ({
-      PtyManager: MockPtyManager,
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
     const runtime = createPtyRuntime()
-    runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
+    expect(onDataHandler).not.toBeNull()
 
-    onDataHandler?.('snap')
-    onDataHandler?.('shot')
+    const { sessionId } = await runtime.spawnSession({ cwd: '/tmp', cols: 80, rows: 24 })
 
-    expect(runtime.snapshot('session-1')).toBe('snapshot')
-    expect(appendSnapshotData).toHaveBeenCalledTimes(1)
-    expect(appendSnapshotData).toHaveBeenCalledWith('session-1', 'snapshot')
+    onDataHandler?.({ sessionId, data: 'snap' })
+    onDataHandler?.({ sessionId, data: 'shot' })
+
+    expect(runtime.snapshot(sessionId)).toBe('snapshot')
 
     await vi.advanceTimersByTimeAsync(40)
-    expect(appendSnapshotData).toHaveBeenCalledTimes(1)
+    expect(runtime.snapshot(sessionId)).toBe('snapshot')
 
     runtime.dispose()
     vi.useRealTimers()

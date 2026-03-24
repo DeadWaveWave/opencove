@@ -195,6 +195,7 @@ describe('workspace arrange utils', () => {
       nodes,
       spaces,
       viewport: { width: 1440, height: 900 },
+      standardWindowSizeBucket: 'compact',
       style: { alignCanonicalSizes: true },
     })
 
@@ -261,74 +262,6 @@ describe('workspace arrange utils', () => {
     expect(nodeById.get('c')?.position.x).toBeLessThan(nodeById.get('a')?.position.x ?? 0)
   })
 
-  it('orders nodes by kind when arranging inside a space', () => {
-    const nodes = [
-      createTerminalNode({
-        id: 'terminal',
-        position: { x: 0, y: 0 },
-        size: { width: 200, height: 200 },
-        kind: 'terminal',
-      }),
-      createTerminalNode({
-        id: 'task',
-        position: { x: 0, y: 0 },
-        size: { width: 200, height: 200 },
-        kind: 'task',
-      }),
-      createTerminalNode({
-        id: 'note',
-        position: { x: 0, y: 0 },
-        size: { width: 200, height: 200 },
-        kind: 'note',
-      }),
-      createTerminalNode({
-        id: 'agent',
-        position: { x: 0, y: 0 },
-        size: { width: 200, height: 200 },
-        kind: 'agent',
-      }),
-    ]
-
-    const spaces: WorkspaceSpaceState[] = [
-      {
-        id: 'space-1',
-        name: 'Space 1',
-        directoryPath: '/tmp',
-        nodeIds: ['terminal', 'task', 'note', 'agent'],
-        rect: { x: 0, y: 0, width: 2000, height: 800 },
-      },
-    ]
-
-    const result = arrangeWorkspaceInSpace({
-      spaceId: 'space-1',
-      nodes,
-      spaces,
-      style: { order: 'kind', spaceFit: 'keep', alignCanonicalSizes: false },
-    })
-
-    const nodeById = new Map(result.nodes.map(node => [node.id, node]))
-    const xs = {
-      note: nodeById.get('note')!.position.x,
-      task: nodeById.get('task')!.position.x,
-      agent: nodeById.get('agent')!.position.x,
-      terminal: nodeById.get('terminal')!.position.x,
-    }
-    const ys = {
-      note: nodeById.get('note')!.position.y,
-      task: nodeById.get('task')!.position.y,
-      agent: nodeById.get('agent')!.position.y,
-      terminal: nodeById.get('terminal')!.position.y,
-    }
-
-    expect(xs.note).toBeLessThan(xs.task)
-    expect(xs.task).toBeLessThan(xs.agent)
-    expect(xs.task).toBeLessThan(xs.agent)
-    expect(xs.agent).toBeLessThan(xs.terminal)
-    expect(ys.note).toBe(ys.task)
-    expect(ys.task).toBe(ys.agent)
-    expect(ys.agent).toBe(ys.terminal)
-  })
-
   it('normalizes nodes to canonical sizes before arranging', () => {
     const nodes = [
       createTerminalNode({
@@ -358,6 +291,7 @@ describe('workspace arrange utils', () => {
       nodes,
       spaces,
       viewport: { width: 1920, height: 1080 },
+      standardWindowSizeBucket: 'large',
       style: { alignCanonicalSizes: true, spaceFit: 'keep' },
     })
 
@@ -401,6 +335,7 @@ describe('workspace arrange utils', () => {
       spaceId: 'space-1',
       nodes,
       spaces,
+      standardWindowSizeBucket: 'compact',
       style: { alignCanonicalSizes: true },
     })
 

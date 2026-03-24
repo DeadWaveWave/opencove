@@ -1,26 +1,10 @@
 import React from 'react'
-import type { AppUpdateState, ReleaseNotesRangeResult } from '@shared/contracts/dto'
+import type { AppUpdateState, ReleaseNotesCurrentResult } from '@shared/contracts/dto'
 import type { UiLanguage } from '@contexts/settings/domain/agentSettings'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 
 function getReleaseNotesApi() {
   return window.opencoveApi?.releaseNotes
-}
-
-function normalizeVersionTag(version: string): string {
-  const trimmed = version.trim()
-  return trimmed.startsWith('v') ? trimmed : `v${trimmed}`
-}
-
-function buildCompareUrl(fromVersion: string, toVersion: string): string {
-  const base = 'https://github.com/DeadWaveWave/opencove/compare'
-  const fromTag = normalizeVersionTag(fromVersion)
-  const toTag = normalizeVersionTag(toVersion)
-  return `${base}/${encodeURIComponent(fromTag)}...${encodeURIComponent(toTag)}`
-}
-
-function buildChangelogUrl(): string {
-  return 'https://github.com/DeadWaveWave/opencove/blob/main/CHANGELOG.md'
 }
 
 function getErrorMessage(error: unknown): string {
@@ -45,7 +29,7 @@ export function useWhatsNew({
   isOpen: boolean
   fromVersion: string | null
   toVersion: string | null
-  notes: ReleaseNotesRangeResult | null
+  notes: ReleaseNotesCurrentResult | null
   isLoading: boolean
   error: string | null
   language: UiLanguage
@@ -55,10 +39,12 @@ export function useWhatsNew({
   const [isOpen, setIsOpen] = React.useState(false)
   const [fromVersion, setFromVersion] = React.useState<string | null>(null)
   const [toVersion, setToVersion] = React.useState<string | null>(null)
-  const [notes, setNotes] = React.useState<ReleaseNotesRangeResult | null>(null)
+  const [notes, setNotes] = React.useState<ReleaseNotesCurrentResult | null>(null)
   const [isLoading, setIsLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [compareUrl, setCompareUrl] = React.useState<string | null>(null)
+  const isDialogOpenRef = React.useRef(false)
+  const isRequestInFlightRef = React.useRef(false)
 
   const language = settings.language
   const seenVersion = settings.releaseNotesSeenVersion
@@ -82,11 +68,11 @@ export function useWhatsNew({
       return
     }
 
-    if (seenVersion && seenVersion === currentVersion) {
+    if (!seenVersion || seenVersion === currentVersion) {
       return
     }
 
-    if (isOpen) {
+    if (isDialogOpenRef.current || isRequestInFlightRef.current) {
       return
     }
 
@@ -96,6 +82,8 @@ export function useWhatsNew({
     }
 
     let active = true
+    isDialogOpenRef.current = true
+    isRequestInFlightRef.current = true
 
     setIsOpen(true)
     setFromVersion(seenVersion)
@@ -103,21 +91,16 @@ export function useWhatsNew({
     setNotes(null)
     setError(null)
     setIsLoading(true)
+    setCompareUrl(null)
 
-    const request = seenVersion
-      ? api.getRange({ fromVersion: seenVersion, toVersion: currentVersion })
-      : api.getAutoRange({ toVersion: currentVersion })
-
-    setCompareUrl(seenVersion ? buildCompareUrl(seenVersion, currentVersion) : buildChangelogUrl())
-
-    void request
+    void api
+      .getCurrent({ currentVersion, language })
       .then(result => {
         if (!active) {
           return
         }
 
         setNotes(result)
-        setFromVersion(result.fromVersion !== result.toVersion ? result.fromVersion : null)
         setCompareUrl(result.compareUrl)
       })
       .catch(fetchError => {
@@ -131,15 +114,19 @@ export function useWhatsNew({
         if (active) {
           setIsLoading(false)
         }
+
+        isRequestInFlightRef.current = false
       })
 
     return () => {
       active = false
     }
-  }, [currentVersion, isOpen, isPersistReady, onChangeSettings, seenVersion, updateStatus])
+  }, [currentVersion, isPersistReady, language, seenVersion, updateStatus])
 
   const close = React.useCallback(() => {
     const version = toVersion ?? currentVersion
+    isDialogOpenRef.current = false
+    isRequestInFlightRef.current = false
     if (version) {
       onChangeSettings(prev => ({ ...prev, releaseNotesSeenVersion: version }))
     }

@@ -15,6 +15,11 @@ import {
   normalizeUniqueStringArray,
   normalizeUniqueStringArrayWithFallback,
 } from './settingsNormalization'
+import type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
+import {
+  normalizeTaskPromptTemplates,
+  normalizeTaskPromptTemplatesByWorkspaceId,
+} from './taskPromptTemplates'
 
 export {
   FOCUS_NODE_TARGET_ZOOM_STEP,
@@ -36,6 +41,8 @@ export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
+export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const
+export type StandardWindowSizeBucket = (typeof STANDARD_WINDOW_SIZE_BUCKETS)[number]
 
 export const UI_LANGUAGES = ['en', 'zh-CN'] as const
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
@@ -51,6 +58,8 @@ export const MAX_TERMINAL_FONT_SIZE = 22
 export const MIN_UI_FONT_SIZE = 14
 export const MAX_UI_FONT_SIZE = 24
 export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
+export const MIN_WORKSPACE_SEARCH_PANEL_WIDTH = 320
+export const MAX_WORKSPACE_SEARCH_PANEL_WIDTH = 720
 
 const MIN_LEGACY_UI_FONT_SCALE_PERCENT = 85
 const MAX_LEGACY_UI_FONT_SCALE_PERCENT = 140
@@ -79,10 +88,13 @@ export type AgentCustomModelOptionsByProvider = {
   [provider in AgentProvider]: string[]
 }
 
+export type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
+
 export interface AgentSettings {
   language: UiLanguage
   uiTheme: UiTheme
   isPrimarySidebarCollapsed: boolean
+  workspaceSearchPanelWidth: number
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
@@ -93,6 +105,8 @@ export interface AgentSettings {
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
+  taskPromptTemplates: TaskPromptTemplate[]
+  taskPromptTemplatesByWorkspaceId: TaskPromptTemplatesByWorkspaceId
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   standbyBannerEnabled: boolean
@@ -103,6 +117,7 @@ export interface AgentSettings {
   disableAppShortcutsWhenTerminalFocused: boolean
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
+  standardWindowSizeBucket: StandardWindowSizeBucket
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   uiFontSize: number
@@ -115,8 +130,9 @@ export interface AgentSettings {
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
-  uiTheme: 'system',
+  uiTheme: 'dark',
   isPrimarySidebarCollapsed: false,
+  workspaceSearchPanelWidth: 420,
   defaultProvider: 'codex',
   agentProviderOrder: [...AGENT_PROVIDERS],
   agentFullAccess: true,
@@ -142,6 +158,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTitleProvider: 'default',
   taskTitleModel: '',
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
+  taskPromptTemplates: [],
+  taskPromptTemplatesByWorkspaceId: {},
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
   standbyBannerEnabled: true,
@@ -152,6 +170,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   disableAppShortcutsWhenTerminalFocused: true,
   keybindings: {},
   canvasInputMode: 'auto',
+  standardWindowSizeBucket: 'regular',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   uiFontSize: 18,
@@ -185,6 +204,13 @@ function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
 
 function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
   return typeof value === 'string' && CANVAS_INPUT_MODES.includes(value as CanvasInputMode)
+}
+
+function isValidStandardWindowSizeBucket(value: unknown): value is StandardWindowSizeBucket {
+  return (
+    typeof value === 'string' &&
+    STANDARD_WINDOW_SIZE_BUCKETS.includes(value as StandardWindowSizeBucket)
+  )
 }
 
 function isValidUiLanguage(value: unknown): value is UiLanguage {
@@ -275,6 +301,12 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const isPrimarySidebarCollapsed =
     normalizeBoolean(value.isPrimarySidebarCollapsed) ??
     DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed
+  const workspaceSearchPanelWidth = normalizeIntegerInRange(
+    value.workspaceSearchPanelWidth,
+    DEFAULT_AGENT_SETTINGS.workspaceSearchPanelWidth,
+    MIN_WORKSPACE_SEARCH_PANEL_WIDTH,
+    MAX_WORKSPACE_SEARCH_PANEL_WIDTH,
+  )
   const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
 
   const agentFullAccess =
@@ -344,6 +376,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.taskTagOptions,
     DEFAULT_AGENT_SETTINGS.taskTagOptions,
   )
+  const taskPromptTemplates = normalizeTaskPromptTemplates(value.taskPromptTemplates)
+  const taskPromptTemplatesByWorkspaceId = normalizeTaskPromptTemplatesByWorkspaceId(
+    value.taskPromptTemplatesByWorkspaceId,
+  )
   const focusNodeOnClick =
     normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
@@ -371,6 +407,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
+  const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
+    ? value.standardWindowSizeBucket
+    : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -419,6 +458,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     language,
     uiTheme,
     isPrimarySidebarCollapsed,
+    workspaceSearchPanelWidth,
     defaultProvider,
     agentProviderOrder,
     agentFullAccess,
@@ -432,6 +472,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTitleProvider,
     taskTitleModel,
     taskTagOptions,
+    taskPromptTemplates,
+    taskPromptTemplatesByWorkspaceId,
     focusNodeOnClick,
     focusNodeTargetZoom,
     standbyBannerEnabled,
@@ -442,6 +484,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     disableAppShortcutsWhenTerminalFocused,
     keybindings,
     canvasInputMode,
+    standardWindowSizeBucket,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     uiFontSize,

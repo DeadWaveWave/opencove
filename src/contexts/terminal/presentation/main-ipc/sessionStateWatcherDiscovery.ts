@@ -20,11 +20,25 @@ export async function resolveDiscoveredSessionId({
   locateTimeoutMs: number
 }): Promise<string | null> {
   if (input.provider === 'opencode') {
-    if (!input.opencodeBaseUrl) {
-      return null
-    }
-
     for (const startedAtMs of startedAtHints) {
+      // Prefer filesystem/DB discovery so we can bind the resume session id even if the
+      // embedded OpenCode server is still starting up.
+      // eslint-disable-next-line no-await-in-loop
+      const resolvedFromLocator = await locateAgentResumeSessionId({
+        provider: input.provider,
+        cwd: input.cwd,
+        startedAtMs,
+        timeoutMs: locateTimeoutMs,
+      })
+
+      if (resolvedFromLocator) {
+        return resolvedFromLocator
+      }
+
+      if (!input.opencodeBaseUrl) {
+        continue
+      }
+
       // eslint-disable-next-line no-await-in-loop
       const resolved = await findOpenCodeSessionId({
         baseUrl: input.opencodeBaseUrl,

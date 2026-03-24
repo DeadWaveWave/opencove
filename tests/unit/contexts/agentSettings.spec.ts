@@ -25,4 +25,13 @@ describe('normalizeAgentSettings', () => {
 
     expect(settings.defaultTerminalProfileId).toBeNull()
   })
+
+  it('normalizes the standard window size bucket', () => {
+    expect(
+      normalizeAgentSettings({ standardWindowSizeBucket: 'large' }).standardWindowSizeBucket,
+    ).toBe('large')
+    expect(
+      normalizeAgentSettings({ standardWindowSizeBucket: 'invalid' }).standardWindowSizeBucket,
+    ).toBe(DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket)
+  })
 })

@@ -1,6 +1,10 @@
 import type { Node } from '@xyflow/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import {
+  DEFAULT_AGENT_SETTINGS,
+  type AgentSettings,
+  type StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
 import { applyUiLanguage, translate } from '@app/renderer/i18n'
 import type {
   PersistedWorkspaceState,
@@ -11,6 +15,7 @@ import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/st
 import { readPersistedStateWithMeta } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { getPersistencePort } from '@contexts/workspace/presentation/renderer/utils/persistence/port'
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
+import { resolveCanvasCanonicalBucketFromViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceNodeSizing'
 import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
 import { useAppStore } from '../store/useAppStore'
@@ -121,6 +126,19 @@ export function resolveTerminalHydrationCwd(
   }
 
   return workspacePath
+}
+
+async function inferInitialStandardWindowSizeBucket(): Promise<StandardWindowSizeBucket> {
+  const getter = window.opencoveApi?.windowMetrics?.getDisplayInfo
+  if (typeof getter !== 'function') {
+    return DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
+  }
+
+  try {
+    return resolveCanvasCanonicalBucketFromViewport(undefined, await getter())
+  } catch {
+    return DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
+  }
 }
 
 export async function hydrateRuntimeNode({
@@ -356,13 +374,29 @@ export function useHydrateAppState({
     setIsPersistReady(false)
 
     const hydrateAppState = async (): Promise<void> => {
-      const { state: persisted, recovery } = await readPersistedStateWithMeta()
+      const {
+        state: persisted,
+        recovery,
+        hasStandardWindowSizeBucket,
+      } = await readPersistedStateWithMeta()
+      if (isCancelledRef.current) {
+        return
+      }
+
+      let resolvedSettings = persisted?.settings ?? DEFAULT_AGENT_SETTINGS
+      if (!hasStandardWindowSizeBucket) {
+        resolvedSettings = {
+          ...resolvedSettings,
+          standardWindowSizeBucket: await inferInitialStandardWindowSizeBucket(),
+        }
+      }
+
       if (isCancelledRef.current) {
         return
       }
 
       if (persisted) {
-        await applyUiLanguage(persisted.settings.language)
+        await applyUiLanguage(resolvedSettings.language)
       }
 
       if (recovery) {
@@ -376,12 +410,13 @@ export function useHydrateAppState({
       }
 
       if (!persisted) {
+        setAgentSettings(resolvedSettings)
         setIsHydrated(true)
         setIsPersistReady(true)
         return
       }
 
-      setAgentSettings(persisted.settings)
+      setAgentSettings(resolvedSettings)
 
       if (persisted.workspaces.length === 0) {
         setIsHydrated(true)

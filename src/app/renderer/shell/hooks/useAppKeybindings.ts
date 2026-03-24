@@ -2,8 +2,8 @@ import { useEffect, useMemo } from 'react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import {
   APP_COMMAND_IDS,
-  hasNonShiftModifier,
-  resolveEffectiveKeybindings,
+  createChordToCommandMap,
+  isSupportedKeybindingChord,
   serializeKeyChord,
   toKeyChord,
   type AppCommandId,
@@ -20,18 +20,16 @@ function isTerminalFocusActive(target: EventTarget | null): boolean {
   return !!activeElement?.closest(TERMINAL_FOCUS_SCOPE_SELECTOR)
 }
 
-function isSupportedChord(
-  chord: ReturnType<typeof toKeyChord>,
-): chord is NonNullable<ReturnType<typeof toKeyChord>> {
-  if (!chord) {
+function isTerminalFindShortcut(event: KeyboardEvent): boolean {
+  if (event.altKey) {
     return false
   }
 
-  if (hasNonShiftModifier(chord)) {
-    return true
+  if (!(event.metaKey || event.ctrlKey)) {
+    return false
   }
 
-  return /^F\d+$/.test(chord.code)
+  return event.key.toLowerCase() === 'f'
 }
 
 export function useAppKeybindings({
@@ -41,6 +39,7 @@ export function useAppKeybindings({
   onOpenSettings,
   onTogglePrimarySidebar,
   onAddProject,
+  onOpenWorkspaceSearch,
 }: {
   enabled: boolean
   settings: Pick<AgentSettings, 'disableAppShortcutsWhenTerminalFocused' | 'keybindings'>
@@ -48,6 +47,7 @@ export function useAppKeybindings({
   onOpenSettings: () => void
   onTogglePrimarySidebar: () => void
   onAddProject: () => void
+  onOpenWorkspaceSearch: () => void
 }): void {
   const platform = useMemo(
     () =>
@@ -58,28 +58,11 @@ export function useAppKeybindings({
   )
 
   const chordToCommand = useMemo(() => {
-    const bindings = resolveEffectiveKeybindings({ platform, overrides: settings.keybindings })
-    const map = new Map<string, AppCommandId>()
-
-    for (const commandId of APP_COMMAND_IDS) {
-      const commandBindings = bindings[commandId]
-      const primary = commandBindings.primary
-      if (primary) {
-        const serialized = serializeKeyChord(primary)
-        if (!map.has(serialized)) {
-          map.set(serialized, commandId)
-        }
-      }
-      const secondary = commandBindings.secondary
-      if (secondary) {
-        const serialized = serializeKeyChord(secondary)
-        if (!map.has(serialized)) {
-          map.set(serialized, commandId)
-        }
-      }
-    }
-
-    return map
+    return createChordToCommandMap({
+      platform,
+      overrides: settings.keybindings,
+      commandIds: APP_COMMAND_IDS,
+    }) as Map<string, AppCommandId>
   }, [platform, settings.keybindings])
 
   useEffect(() => {
@@ -92,8 +75,12 @@ export function useAppKeybindings({
         return
       }
 
+      if (isTerminalFocusActive(event.target) && isTerminalFindShortcut(event)) {
+        return
+      }
+
       const chord = toKeyChord(event)
-      if (!isSupportedChord(chord)) {
+      if (!isSupportedKeybindingChord(chord)) {
         return
       }
 
@@ -122,6 +109,9 @@ export function useAppKeybindings({
         case 'workspace.addProject':
           onAddProject()
           return
+        case 'workspace.search':
+          onOpenWorkspaceSearch()
+          return
         default: {
           const _exhaustive: never = commandId
           return _exhaustive
@@ -140,6 +130,7 @@ export function useAppKeybindings({
     onOpenSettings,
     onToggleCommandCenter,
     onTogglePrimarySidebar,
+    onOpenWorkspaceSearch,
     settings.disableAppShortcutsWhenTerminalFocused,
   ])
 }

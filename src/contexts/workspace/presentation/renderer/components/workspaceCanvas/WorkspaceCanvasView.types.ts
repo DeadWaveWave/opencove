@@ -37,6 +37,9 @@ export interface WorkspaceCanvasViewProps {
   handleCanvasPointerUpCapture: React.PointerEventHandler<HTMLDivElement>
   handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
   handleCanvasWheelCapture: (event: WheelEvent) => void
+  handleCanvasPaste?: React.ClipboardEventHandler<HTMLDivElement>
+  handleCanvasDragOver?: React.DragEventHandler<HTMLDivElement>
+  handleCanvasDrop?: React.DragEventHandler<HTMLDivElement>
   nodes: Node<TerminalNodeData>[]
   edges: Edge[]
   nodeTypes: NodeTypes
@@ -88,8 +91,8 @@ export interface WorkspaceCanvasViewProps {
   setIsMinimapVisible: React.Dispatch<React.SetStateAction<boolean>>
   onMinimapVisibilityChange: (isVisible: boolean) => void
   spaces: WorkspaceSpaceState[]
-  focusSpaceInViewport: (spaceId: string) => void
-  focusAllInViewport: () => void
+  activateSpace: (spaceId: string) => void
+  activateAllSpaces: () => void
   contextMenu: ContextMenuState | null
   closeContextMenu: () => void
   magneticSnappingEnabled: boolean

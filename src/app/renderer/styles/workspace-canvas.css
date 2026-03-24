@@ -30,6 +30,11 @@
   width: 100%;
 }
 
+.workspace-canvas:focus,
+.workspace-canvas:focus-visible {
+  outline: none;
+}
+
 .workspace-selection-draft {
   position: absolute;
   z-index: 6;

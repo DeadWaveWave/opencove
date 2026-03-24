@@ -15,7 +15,7 @@ import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type { PtyRuntime } from './runtime'
-import type { SpawnPtyOptions } from '../../../../platform/process/pty/PtyManager'
+import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
 import {
   normalizeAttachTerminalPayload,
   normalizeDetachTerminalPayload,
@@ -56,7 +56,7 @@ export function registerPtyIpcHandlers(
         return await runtime.spawnTerminalSession(normalized)
       }
 
-      return runtime.spawnSession(normalized as SpawnPtyOptions)
+      return await runtime.spawnSession(normalized as SpawnPtyOptions)
     },
     { defaultErrorCode: 'terminal.spawn_failed' },
   )
@@ -115,6 +115,16 @@ export function registerPtyIpcHandlers(
     { defaultErrorCode: 'terminal.snapshot_failed' },
   )
 
+  if (process.env.NODE_ENV === 'test' && runtime.debugCrashHost) {
+    registerHandledIpc(
+      IPC_CHANNELS.ptyDebugCrashHost,
+      async () => {
+        runtime.debugCrashHost?.()
+      },
+      { defaultErrorCode: 'common.unexpected' },
+    )
+  }
+
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.ptySpawn)
@@ -125,6 +135,7 @@ export function registerPtyIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.ptyAttach)
       ipcMain.removeHandler(IPC_CHANNELS.ptyDetach)
       ipcMain.removeHandler(IPC_CHANNELS.ptySnapshot)
+      ipcMain.removeHandler(IPC_CHANNELS.ptyDebugCrashHost)
 
       runtime.dispose()
     },

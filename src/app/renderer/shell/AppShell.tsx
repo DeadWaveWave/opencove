@@ -2,17 +2,15 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
-import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
-import { AppMessage } from './components/AppMessage'
 import { AppHeader } from './components/AppHeader'
-import { AppNotifications } from './components/AppNotifications'
-import { ControlCenter } from './components/ControlCenter'
+import { AppShellOverlays } from './components/AppShellOverlays'
 import { CommandCenter } from './components/CommandCenter'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { ProjectContextMenu } from './components/ProjectContextMenu'
 import { Sidebar } from './components/Sidebar'
-import { WorkspaceEmptyState } from './components/WorkspaceEmptyState'
+import { WorkspaceMain } from './components/WorkspaceMain'
+import { WorkspaceSearchOverlay } from './components/WorkspaceSearchOverlay'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
 import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
@@ -24,7 +22,6 @@ import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
 import { useAddWorkspaceAction } from './hooks/useAddWorkspaceAction'
 import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotifications'
-import { useCommandCenterHints } from './hooks/useCommandCenterHints'
 import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
@@ -33,6 +30,7 @@ import type { ProjectContextMenuState } from './types'
 import { useAppStore } from './store/useAppStore'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { WhatsNewDialog } from './components/WhatsNewDialog'
+import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -98,11 +96,13 @@ export default function App(): React.JSX.Element {
 
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false)
+  const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
 
   const toggleCommandCenter = useCallback((): void => {
-    setIsCommandCenterOpen(open => !open)
+    setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
+    setIsCommandCenterOpen(open => !open)
   }, [])
 
   const closeCommandCenter = useCallback((): void => {
@@ -110,12 +110,23 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const toggleControlCenter = useCallback((): void => {
-    setIsControlCenterOpen(open => !open)
     setIsCommandCenterOpen(false)
+    setIsWorkspaceSearchOpen(false)
+    setIsControlCenterOpen(open => !open)
   }, [])
 
   const closeControlCenter = useCallback((): void => {
     setIsControlCenterOpen(false)
+  }, [])
+
+  const openWorkspaceSearch = useCallback((): void => {
+    closeCommandCenter()
+    setIsControlCenterOpen(false)
+    setIsWorkspaceSearchOpen(true)
+  }, [closeCommandCenter])
+
+  const closeWorkspaceSearch = useCallback((): void => {
+    setIsWorkspaceSearchOpen(false)
   }, [])
 
   useAppKeybindings({
@@ -127,11 +138,14 @@ export default function App(): React.JSX.Element {
     onToggleCommandCenter: toggleCommandCenter,
     onOpenSettings: () => {
       closeCommandCenter()
+      closeWorkspaceSearch()
       closeControlCenter()
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
       closeCommandCenter()
+      closeWorkspaceSearch()
+      closeControlCenter()
       setAgentSettings(prev => ({
         ...prev,
         isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
@@ -139,7 +153,12 @@ export default function App(): React.JSX.Element {
     },
     onAddProject: () => {
       closeCommandCenter()
+      closeWorkspaceSearch()
+      closeControlCenter()
       void handleAddWorkspace()
+    },
+    onOpenWorkspaceSearch: () => {
+      openWorkspaceSearch()
     },
   })
 
@@ -149,6 +168,7 @@ export default function App(): React.JSX.Element {
     }
 
     setIsCommandCenterOpen(false)
+    setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
   }, [isSettingsOpen, projectDeleteConfirmation])
 
@@ -162,8 +182,20 @@ export default function App(): React.JSX.Element {
     document.title = activeWorkspaceName ? `${activeWorkspaceName} — OpenCove` : 'OpenCove'
   }, [activeWorkspaceName])
 
-  const { primaryHint: commandCenterPrimaryHint, secondaryHint: commandCenterSecondaryHint } =
-    useCommandCenterHints(agentSettings.keybindings)
+  const platform =
+    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
+      ? window.opencoveApi.meta.platform
+      : undefined
+  const commandCenterBindings = useMemo(
+    () =>
+      resolveCommandKeybinding({
+        commandId: 'commandCenter.toggle',
+        overrides: agentSettings.keybindings,
+        platform,
+      }),
+    [agentSettings.keybindings, platform],
+  )
+  const commandCenterShortcutHint = formatKeyChord(platform, commandCenterBindings) || '—'
 
   const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
     policy: agentSettings.updatePolicy,
@@ -242,8 +274,7 @@ export default function App(): React.JSX.Element {
           isSidebarCollapsed={isPrimarySidebarCollapsed}
           isControlCenterOpen={isControlCenterOpen}
           isCommandCenterOpen={isCommandCenterOpen}
-          commandCenterPrimaryHint={commandCenterPrimaryHint}
-          commandCenterSecondaryHint={commandCenterSecondaryHint}
+          commandCenterShortcutHint={commandCenterShortcutHint}
           updateState={updateState}
           onToggleSidebar={() => {
             setAgentSettings(prev => ({
@@ -295,98 +326,62 @@ export default function App(): React.JSX.Element {
           />
         )}
 
-        <main className="workspace-main">
-          {activeWorkspace ? (
-            <WorkspaceCanvas
-              workspaceId={activeWorkspace.id}
-              onShowMessage={handleShowMessage}
-              workspacePath={activeWorkspace.path}
-              worktreesRoot={activeWorkspace.worktreesRoot}
-              nodes={activeWorkspace.nodes}
-              onNodesChange={handleWorkspaceNodesChange}
-              onRequestPersistFlush={requestPersistFlush}
-              viewport={activeWorkspace.viewport}
-              isMinimapVisible={activeWorkspace.isMinimapVisible}
-              onViewportChange={handleWorkspaceViewportChange}
-              onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
-              spaces={activeWorkspace.spaces}
-              activeSpaceId={activeWorkspace.activeSpaceId}
-              onSpacesChange={handleWorkspaceSpacesChange}
-              onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
-              agentSettings={agentSettings}
-              isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
-              focusNodeId={
-                focusRequest && focusRequest.workspaceId === activeWorkspace.id
-                  ? focusRequest.nodeId
-                  : null
-              }
-              focusSequence={
-                focusRequest && focusRequest.workspaceId === activeWorkspace.id
-                  ? focusRequest.sequence
-                  : 0
-              }
-            />
-          ) : (
-            <WorkspaceEmptyState onAddWorkspace={() => void handleAddWorkspace()} />
-          )}
-        </main>
+        <WorkspaceMain
+          activeWorkspace={activeWorkspace}
+          agentSettings={agentSettings}
+          focusRequest={focusRequest}
+          isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
+          shortcutsEnabled={
+            !isSettingsOpen &&
+            !isCommandCenterOpen &&
+            !isControlCenterOpen &&
+            !isWorkspaceSearchOpen &&
+            projectDeleteConfirmation === null
+          }
+          onAddWorkspace={() => {
+            void handleAddWorkspace()
+          }}
+          onShowMessage={handleShowMessage}
+          onRequestPersistFlush={requestPersistFlush}
+          onNodesChange={handleWorkspaceNodesChange}
+          onViewportChange={handleWorkspaceViewportChange}
+          onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
+          onSpacesChange={handleWorkspaceSpacesChange}
+          onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
+        />
+
+        <WorkspaceSearchOverlay
+          isOpen={isWorkspaceSearchOpen}
+          activeWorkspace={activeWorkspace}
+          onClose={closeWorkspaceSearch}
+          onSelectSpace={spaceId => {
+            handleWorkspaceActiveSpaceChange(spaceId)
+          }}
+          panelWidth={agentSettings.workspaceSearchPanelWidth}
+          onPanelWidthChange={nextWidth => {
+            setAgentSettings(prev => ({
+              ...prev,
+              workspaceSearchPanelWidth: nextWidth,
+            }))
+          }}
+        />
       </div>
 
-      {floatingMessage ? (
-        <AppMessage tone={floatingMessage.tone} text={floatingMessage.text} />
-      ) : null}
-      <AppNotifications
+      <AppShellOverlays
+        floatingMessage={floatingMessage}
         notifications={agentNotifications}
-        contextVisibility={{
-          showTask: agentSettings.standbyBannerShowTask,
-          showSpace: agentSettings.standbyBannerShowSpace,
-          showBranch: agentSettings.standbyBannerShowBranch,
-          showPullRequest:
-            agentSettings.standbyBannerShowPullRequest && agentSettings.githubPullRequestsEnabled,
-        }}
-        onActivate={notification => {
-          handleDismissAgentNotification(notification.id)
-          handleSelectAgentNode(notification.workspaceId, notification.nodeId)
-        }}
-        onDismiss={handleDismissAgentNotification}
-      />
-      <ControlCenter
-        isOpen={isControlCenterOpen}
-        uiTheme={agentSettings.uiTheme}
+        dismissNotification={handleDismissAgentNotification}
+        onFocusAgentNode={handleSelectAgentNode}
+        agentSettings={agentSettings}
+        setAgentSettings={setAgentSettings}
+        activeWorkspace={activeWorkspace}
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
-        isMinimapVisible={activeWorkspace?.isMinimapVisible ?? false}
-        isStandbyBannerEnabled={agentSettings.standbyBannerEnabled}
-        hasActiveWorkspace={activeWorkspace !== null}
-        onClose={() => {
-          closeControlCenter()
-        }}
-        onChangeUiTheme={theme => {
-          setAgentSettings(prev => ({
-            ...prev,
-            uiTheme: theme,
-          }))
-        }}
-        onTogglePrimarySidebar={() => {
-          setAgentSettings(prev => ({
-            ...prev,
-            isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
-          }))
-        }}
-        onToggleMinimap={() => {
-          if (!activeWorkspace) {
-            return
-          }
-
-          handleWorkspaceMinimapVisibilityChange(!activeWorkspace.isMinimapVisible)
-        }}
-        onToggleStandbyBanner={() => {
-          setAgentSettings(prev => ({
-            ...prev,
-            standbyBannerEnabled: !prev.standbyBannerEnabled,
-          }))
-        }}
+        isControlCenterOpen={isControlCenterOpen}
+        onCloseControlCenter={closeControlCenter}
+        onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
         onOpenSettings={() => {
           setIsFocusNodeTargetZoomPreviewing(false)
+          closeControlCenter()
           setIsSettingsOpen(true)
         }}
       />

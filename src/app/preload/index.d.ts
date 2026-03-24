@@ -28,13 +28,15 @@ import type {
   ResolveGitHubPullRequestsResult,
   AppUpdateState,
   ConfigureAppUpdatesInput,
-  GetReleaseNotesAutoRangeInput,
-  GetReleaseNotesRangeInput,
-  ReleaseNotesRangeResult,
+  GetCurrentReleaseNotesInput,
+  ReleaseNotesCurrentResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
+  ReadCanvasImageInput,
+  ReadCanvasImageResult,
+  WindowDisplayInfo,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -54,10 +56,12 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
+  WriteCanvasImageInput,
   WriteAppStateInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
+  DeleteCanvasImageInput,
 } from '../../shared/contracts/dto'
 
 type UnsubscribeFn = () => void
@@ -70,6 +74,9 @@ export interface OpenCoveApi {
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
+  }
+  windowMetrics: {
+    getDisplayInfo: () => Promise<WindowDisplayInfo>
   }
   clipboard: {
     readText: () => Promise<string>
@@ -89,6 +96,9 @@ export interface OpenCoveApi {
     copyPath: (payload: CopyWorkspacePathInput) => Promise<void>
     listPathOpeners: () => Promise<ListWorkspacePathOpenersResult>
     openPath: (payload: OpenWorkspacePathInput) => Promise<void>
+    writeCanvasImage: (payload: WriteCanvasImageInput) => Promise<void>
+    readCanvasImage: (payload: ReadCanvasImageInput) => Promise<ReadCanvasImageResult | null>
+    deleteCanvasImage: (payload: DeleteCanvasImageInput) => Promise<void>
   }
   worktree: {
     listBranches: (payload: ListGitBranchesInput) => Promise<ListGitBranchesResult>
@@ -116,8 +126,7 @@ export interface OpenCoveApi {
     onState: (listener: (state: AppUpdateState) => void) => UnsubscribeFn
   }
   releaseNotes: {
-    getRange: (payload: GetReleaseNotesRangeInput) => Promise<ReleaseNotesRangeResult>
-    getAutoRange: (payload: GetReleaseNotesAutoRangeInput) => Promise<ReleaseNotesRangeResult>
+    getCurrent: (payload: GetCurrentReleaseNotesInput) => Promise<ReleaseNotesCurrentResult>
   }
   pty: {
     listProfiles?: () => Promise<ListTerminalProfilesResult>
@@ -128,6 +137,7 @@ export interface OpenCoveApi {
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
+    debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
     onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
     onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn

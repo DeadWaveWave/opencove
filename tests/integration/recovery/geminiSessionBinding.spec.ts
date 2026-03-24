@@ -113,33 +113,32 @@ describe('Gemini session binding', () => {
       once: vi.fn(),
     }
 
-    class MockPtyManager {
-      public appendSnapshotData(): void {}
-      public snapshot(): string {
-        return ''
-      }
-      public write(): void {}
-      public resize(): void {}
-      public kill(): void {}
-      public delete(): void {}
-      public disposeAll(): void {}
-      public spawnSession(): {
-        sessionId: string
-        pty: { onData: () => void; onExit: () => void }
-      } {
-        return { sessionId: 'session-1', pty: { onData: () => undefined, onExit: () => undefined } }
-      }
+    class MockPtyHostSupervisor {
+      public write = vi.fn()
+      public resize = vi.fn()
+      public kill = vi.fn()
+      public dispose = vi.fn()
+      public crash = vi.fn()
+      public spawn = vi.fn(async () => ({ sessionId: 'session-1' }))
+      public onData(): void {}
+      public onExit(): void {}
     }
 
     vi.doMock('electron', () => ({
+      app: {
+        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+      },
+      utilityProcess: {
+        fork: vi.fn(),
+      },
       webContents: {
         getAllWebContents: () => [content],
         fromId: () => content,
       },
     }))
 
-    vi.doMock('../../../src/platform/process/pty/PtyManager', () => ({
-      PtyManager: MockPtyManager,
+    vi.doMock('../../../src/platform/process/ptyHost/supervisor', () => ({
+      PtyHostSupervisor: MockPtyHostSupervisor,
     }))
 
     const { createPtyRuntime } =

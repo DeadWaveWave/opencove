@@ -26,6 +26,8 @@ import {
   SUBMENU_WIDTH,
   VIEWPORT_PADDING,
   isPointWithinRect,
+  placeContextMenuAtPoint,
+  placeSubmenuAtItem,
 } from './WorkspaceContextMenu.helpers'
 
 type OpenSubmenu = 'arrangeBy' | 'agent-providers' | 'label-color' | null
@@ -172,11 +174,17 @@ export function WorkspaceContextMenu({
   const [arrangeSpaceFit, setArrangeSpaceFit] = useState<WorkspaceArrangeSpaceFit>('tight')
   const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
   const menuRef = React.useRef<HTMLDivElement | null>(null)
+  const submenuRef = React.useRef<HTMLDivElement | null>(null)
+  const agentProviderToggleRef = React.useRef<HTMLButtonElement | null>(null)
   const arrangeByButtonRef = React.useRef<HTMLButtonElement | null>(null)
-  const [arrangeSubmenuLayout, setArrangeSubmenuLayout] = React.useState<{
-    left: number
-    top: number
-    maxHeight: number
+  const labelColorButtonRef = React.useRef<HTMLButtonElement | null>(null)
+  const [measuredMenuSize, setMeasuredMenuSize] = useState<{
+    width: number
+    height: number
+  } | null>(null)
+  const [measuredSubmenuSize, setMeasuredSubmenuSize] = useState<{
+    width: number
+    height: number
   } | null>(null)
 
   useEffect(() => {
@@ -299,35 +307,48 @@ export function WorkspaceContextMenu({
   )
 
   useLayoutEffect(() => {
-    if (!contextMenu || contextMenu.kind !== 'pane' || openSubmenu !== 'arrangeBy') {
-      setArrangeSubmenuLayout(null)
+    if (!contextMenu) {
+      setMeasuredMenuSize(null)
       return
     }
 
     const menuElement = menuRef.current
-    const anchorButton = arrangeByButtonRef.current
-    if (!menuElement || !anchorButton) {
-      setArrangeSubmenuLayout(null)
+    if (!menuElement) {
+      setMeasuredMenuSize(null)
       return
     }
 
-    const menuRect = menuElement.getBoundingClientRect()
-    const anchorRect = anchorButton.getBoundingClientRect()
-    const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
-    const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
-    const maxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
-    const wouldOverflowRight =
-      menuRect.right + SUBMENU_GAP + SUBMENU_WIDTH > viewportWidth - VIEWPORT_PADDING
-    const left = wouldOverflowRight
-      ? Math.max(VIEWPORT_PADDING, menuRect.left - SUBMENU_GAP - SUBMENU_WIDTH)
-      : Math.min(viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH, menuRect.right + SUBMENU_GAP)
-    const top = Math.max(
-      VIEWPORT_PADDING,
-      Math.min(anchorRect.top, viewportHeight - VIEWPORT_PADDING - maxHeight),
+    const nextRect = menuElement.getBoundingClientRect()
+    setMeasuredMenuSize(previous =>
+      previous !== null &&
+      Math.abs(previous.width - nextRect.width) < 0.5 &&
+      Math.abs(previous.height - nextRect.height) < 0.5
+        ? previous
+        : { width: nextRect.width, height: nextRect.height },
     )
+  }, [contextMenu])
 
-    setArrangeSubmenuLayout({ left, top, maxHeight })
-  }, [contextMenu, openSubmenu])
+  useLayoutEffect(() => {
+    if (!openSubmenu) {
+      setMeasuredSubmenuSize(null)
+      return
+    }
+
+    const submenuElement = submenuRef.current
+    if (!submenuElement) {
+      setMeasuredSubmenuSize(null)
+      return
+    }
+
+    const nextRect = submenuElement.getBoundingClientRect()
+    setMeasuredSubmenuSize(previous =>
+      previous !== null &&
+      Math.abs(previous.width - nextRect.width) < 0.5 &&
+      Math.abs(previous.height - nextRect.height) < 0.5
+        ? previous
+        : { width: nextRect.width, height: nextRect.height },
+    )
+  }, [openSubmenu, contextMenu, sortedInstalledProviders.length])
 
   if (!contextMenu) {
     return null
@@ -335,41 +356,57 @@ export function WorkspaceContextMenu({
 
   const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
   const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
-  const anchorX = Math.min(
-    Math.max(contextMenu.x, VIEWPORT_PADDING),
-    Math.max(VIEWPORT_PADDING, viewportWidth - VIEWPORT_PADDING),
-  )
-  const anchorY = Math.min(
-    Math.max(contextMenu.y, VIEWPORT_PADDING),
-    Math.max(VIEWPORT_PADDING, viewportHeight - VIEWPORT_PADDING),
-  )
-  const flipX = contextMenu.x > viewportWidth / 2
-  const flipY = contextMenu.y > viewportHeight / 2
-  const menuTransform =
-    flipX || flipY ? `translate(${flipX ? '-100%' : '0'}, ${flipY ? '-100%' : '0'})` : undefined
-  const measuredMenuRect = menuRef.current?.getBoundingClientRect() ?? null
+  const menuSize = measuredMenuSize ?? {
+    width: MENU_WIDTH,
+    height: 0,
+  }
+  const rootMenuPlacement = placeContextMenuAtPoint({
+    point: { x: contextMenu.x, y: contextMenu.y },
+    menuSize,
+    viewport: { width: viewportWidth, height: viewportHeight },
+  })
+  const rootMenuRect = {
+    left: rootMenuPlacement.left,
+    top: rootMenuPlacement.top,
+    width: menuSize.width,
+    height: menuSize.height,
+  }
+  const activeSubmenuAnchor =
+    openSubmenu === 'arrangeBy'
+      ? arrangeByButtonRef.current
+      : openSubmenu === 'agent-providers'
+        ? agentProviderToggleRef.current
+        : openSubmenu === 'label-color'
+          ? labelColorButtonRef.current
+          : null
+  const measuredSubmenuAnchorRect = activeSubmenuAnchor?.getBoundingClientRect() ?? null
   const submenuMaxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
-  const fallbackSubmenuLeft = flipX
-    ? Math.max(VIEWPORT_PADDING, anchorX - MENU_WIDTH - SUBMENU_GAP - SUBMENU_WIDTH)
-    : Math.min(viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH, anchorX + MENU_WIDTH + SUBMENU_GAP)
-  const fallbackSubmenuTop = Math.max(
-    VIEWPORT_PADDING,
-    Math.min(anchorY, viewportHeight - VIEWPORT_PADDING - submenuMaxHeight),
-  )
-  const submenuLeft = measuredMenuRect
-    ? measuredMenuRect.right + SUBMENU_GAP + SUBMENU_WIDTH > viewportWidth - VIEWPORT_PADDING
-      ? Math.max(VIEWPORT_PADDING, measuredMenuRect.left - SUBMENU_GAP - SUBMENU_WIDTH)
-      : Math.min(
-          viewportWidth - VIEWPORT_PADDING - SUBMENU_WIDTH,
-          measuredMenuRect.right + SUBMENU_GAP,
-        )
-    : fallbackSubmenuLeft
-  const submenuTop = measuredMenuRect
-    ? Math.max(
-        VIEWPORT_PADDING,
-        Math.min(measuredMenuRect.top, viewportHeight - VIEWPORT_PADDING - submenuMaxHeight),
-      )
-    : fallbackSubmenuTop
+  const submenuVisibleHeight =
+    measuredSubmenuSize !== null
+      ? Math.min(submenuMaxHeight, measuredSubmenuSize.height)
+      : submenuMaxHeight
+  const submenuPlacement = placeSubmenuAtItem({
+    parentMenuRect: rootMenuRect,
+    itemRect: measuredSubmenuAnchorRect
+      ? {
+          left: measuredSubmenuAnchorRect.left,
+          top: measuredSubmenuAnchorRect.top,
+          width: measuredSubmenuAnchorRect.width,
+          height: measuredSubmenuAnchorRect.height,
+        }
+      : {
+          left: rootMenuRect.left,
+          top: rootMenuRect.top,
+          width: rootMenuRect.width,
+          height: 0,
+        },
+    submenuSize: {
+      width: measuredSubmenuSize?.width ?? SUBMENU_WIDTH,
+      height: submenuVisibleHeight,
+    },
+    viewport: { width: viewportWidth, height: viewportHeight },
+    gap: SUBMENU_GAP,
+  })
   const canArrangeHitSpace = Boolean(contextHitSpace && contextHitSpace.nodeIds.length >= 2)
   const canArrangeCurrentScope =
     arrangeScope === 'all'
@@ -385,8 +422,8 @@ export function WorkspaceContextMenu({
   const shouldShowLabelColorSubmenu =
     contextMenu.kind === 'selection' && openSubmenu === 'label-color'
   const sharedSubmenuStyle = {
-    top: submenuTop,
-    left: submenuLeft,
+    top: submenuPlacement.top,
+    left: submenuPlacement.left,
     maxHeight: submenuMaxHeight,
   }
 
@@ -395,7 +432,7 @@ export function WorkspaceContextMenu({
       <div
         ref={menuRef}
         className="workspace-context-menu workspace-canvas-context-menu"
-        style={{ top: anchorY, left: anchorX, transform: menuTransform }}
+        style={{ top: rootMenuPlacement.top, left: rootMenuPlacement.left }}
         onMouseDown={event => {
           event.stopPropagation()
         }}
@@ -412,6 +449,7 @@ export function WorkspaceContextMenu({
             openTaskCreator={openTaskCreator}
             openAgentLauncher={openAgentLauncher}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
+            agentProviderToggleRef={agentProviderToggleRef}
             isLoadingInstalledProviders={isLoadingInstalledProviders}
             isAgentProviderSubmenuOpen={openSubmenu === 'agent-providers'}
             canArrangeCurrentScope={canArrangeCurrentScope}
@@ -428,6 +466,7 @@ export function WorkspaceContextMenu({
           <WorkspaceContextSelectionMenuContent
             createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
             openLabelColorSubmenu={openLabelColorSubmenu}
+            labelColorButtonRef={labelColorButtonRef}
             canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
             isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
             convertSelectedNoteToTask={convertSelectedNoteToTask}
@@ -439,10 +478,11 @@ export function WorkspaceContextMenu({
 
       {shouldShowArrangeSubmenu ? (
         <WorkspaceContextArrangeBySubmenu
+          submenuRef={submenuRef}
           style={{
-            top: arrangeSubmenuLayout?.top ?? submenuTop,
-            left: arrangeSubmenuLayout?.left ?? submenuLeft,
-            maxHeight: arrangeSubmenuLayout?.maxHeight ?? submenuMaxHeight,
+            top: submenuPlacement.top,
+            left: submenuPlacement.left,
+            maxHeight: submenuMaxHeight,
           }}
           hitSpace={contextHitSpace}
           canArrangeAll={canArrangeAll}
@@ -460,6 +500,7 @@ export function WorkspaceContextMenu({
       {shouldShowAgentProviderSubmenu ? (
         <WorkspaceContextAgentProviderSubmenu
           sortedInstalledProviders={sortedInstalledProviders}
+          submenuRef={submenuRef}
           style={sharedSubmenuStyle}
           keepSubmenuOpen={keepAgentProviderSubmenuOpen}
           scheduleSubmenuClose={scheduleSubmenuClose}
@@ -469,6 +510,7 @@ export function WorkspaceContextMenu({
 
       {shouldShowLabelColorSubmenu ? (
         <WorkspaceContextLabelColorSubmenu
+          submenuRef={submenuRef}
           style={sharedSubmenuStyle}
           keepSubmenuOpen={keepLabelColorSubmenuOpen}
           scheduleSubmenuClose={scheduleSubmenuClose}

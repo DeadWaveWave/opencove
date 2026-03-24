@@ -62,7 +62,7 @@ export const en = {
   appHeader: {
     togglePrimarySidebar: 'Toggle Primary Sidebar',
     commandCenter: 'Command Center',
-    commandCenterHint: 'Command Center ({{primary}} / {{secondary}})',
+    commandCenterHint: 'Command Center ({{shortcut}})',
     commandCenterFallbackTitle: 'Search',
     updateAvailableShort: 'Update',
     updateAvailableTitle: 'Version {{version}} is available',
@@ -86,7 +86,7 @@ export const en = {
     loading: 'Loading release notes…',
     empty: 'No release notes found for this update.',
     viewCompare: 'View full compare on GitHub',
-    viewChangelog: 'View CHANGELOG on GitHub',
+    viewRelease: 'View release on GitHub',
     truncated: 'Showing the first {{count}} changes.',
     sections: {
       added: 'Added',
@@ -115,6 +115,22 @@ export const en = {
       togglePrimarySidebarHint: 'Toggle Primary Sidebar',
       addProject: 'Add Project',
       addProjectHint: 'Add a project folder',
+    },
+  },
+  workspaceSearch: {
+    title: 'Search',
+    noteTitle: 'Note',
+    placeholder: 'Search…',
+    empty: 'No results.',
+    metaEsc: 'Esc',
+    sections: {
+      spaces: 'Spaces',
+      tasks: 'Tasks',
+      notes: 'Notes',
+    },
+    filters: {
+      label: 'Filter results',
+      all: 'All',
     },
   },
   workspaceEmptyState: {
@@ -186,9 +202,21 @@ export const en = {
     resizeWidth: 'Resize note width',
     resizeHeight: 'Resize note height',
   },
+  imageNode: {
+    title: 'image',
+    deleteImage: 'Delete image',
+    resizeWidth: 'Resize image width',
+    resizeHeight: 'Resize image height',
+  },
   terminalNode: {
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
+  },
+  terminalFind: {
+    placeholder: 'Find…',
+    previous: 'Previous match',
+    next: 'Next match',
+    close: 'Close',
   },
   terminalNodeHeader: {
     directoryMismatch: 'DIR MISMATCH',
@@ -205,6 +233,10 @@ export const en = {
     multipleDescription: 'This will permanently remove {{count}} selected nodes.',
     taskDescriptionPrefix: 'This will permanently remove',
     nodeDescriptionPrefix: 'This will permanently remove this {{kind}}:',
+    emptySpaceWarningSingle:
+      'Deleting this last node will leave the space empty, and it will close automatically.',
+    emptySpaceWarningMultiple:
+      'Deleting these last nodes will leave the space empty, and it will close automatically.',
   },
   workspaceContextMenu: {
     newTerminal: 'New Terminal',
@@ -295,6 +327,23 @@ export const en = {
     autoGenerateWhenEmpty: 'Auto-generate title/priority/tags when title is empty',
     advanced: 'Advanced',
     hideAdvanced: 'Hide Advanced',
+  },
+  taskPromptTemplates: {
+    openMenu: 'Prompt templates',
+    globalSection: 'Global Templates',
+    noGlobalTemplates: 'No global templates.',
+    addGlobal: 'Add global template',
+    projectSection: 'Project Templates',
+    noProjectTemplates: 'No project templates.',
+    projectUnavailable: 'Project templates are unavailable.',
+    addProject: 'Add project template',
+    createGlobalTitle: 'New Global Prompt Template',
+    createProjectTitle: 'New Project Prompt Template',
+    createDescription: 'Create a reusable prompt prefix for task requirements.',
+    templateName: 'Template name',
+    templateNamePlaceholder: 'e.g. Implementation checklist',
+    templateContent: 'Template content',
+    templateContentPlaceholder: 'Write the prompt content to insert...',
   },
   worktree: {
     createWorktree: 'Create worktree',

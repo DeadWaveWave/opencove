@@ -7,8 +7,8 @@ import { WorkspaceSpaceSwitcher } from './WorkspaceSpaceSwitcher'
 
 interface WorkspaceCanvasTopOverlaysProps {
   spaces: WorkspaceSpaceState[]
-  focusSpaceInViewport: (spaceId: string) => void
-  focusAllInViewport: () => void
+  activateSpace: (spaceId: string) => void
+  activateAllSpaces: () => void
   cancelSpaceRename: () => void
   usedLabelColors: LabelColor[]
   activeLabelColorFilter: LabelColor | null
@@ -18,8 +18,8 @@ interface WorkspaceCanvasTopOverlaysProps {
 
 export function WorkspaceCanvasTopOverlays({
   spaces,
-  focusSpaceInViewport,
-  focusAllInViewport,
+  activateSpace,
+  activateAllSpaces,
   cancelSpaceRename,
   usedLabelColors,
   activeLabelColorFilter,
@@ -110,8 +110,8 @@ export function WorkspaceCanvasTopOverlays({
       {spaces.length > 0 ? (
         <WorkspaceSpaceSwitcher
           spaces={spaces}
-          focusSpaceInViewport={focusSpaceInViewport}
-          focusAllInViewport={focusAllInViewport}
+          activateSpace={activateSpace}
+          activateAllSpaces={activateAllSpaces}
           cancelSpaceRename={cancelSpaceRename}
         />
       ) : null}

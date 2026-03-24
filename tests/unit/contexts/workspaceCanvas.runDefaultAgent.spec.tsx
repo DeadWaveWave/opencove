@@ -164,6 +164,7 @@ describe('WorkspaceCanvas run default agent', () => {
           agentSettings={{
             ...DEFAULT_AGENT_SETTINGS,
             defaultProvider: 'codex',
+            defaultTerminalWindowScalePercent: 120,
             customModelEnabledByProvider: {
               ...DEFAULT_AGENT_SETTINGS.customModelEnabledByProvider,
               codex: true,
@@ -176,6 +177,7 @@ describe('WorkspaceCanvas run default agent', () => {
               ...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider,
               codex: ['gpt-5.2-codex'],
             },
+            standardWindowSizeBucket: 'large',
           }}
         />
       )
@@ -208,14 +210,14 @@ describe('WorkspaceCanvas run default agent', () => {
         'codex · gpt-5.2-codex:standby',
       )
     })
-    const expectedSize = resolveDefaultAgentWindowSize(
-      DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
-    )
+    const expectedSize = resolveDefaultAgentWindowSize('large')
     expect(latestNodes).toHaveLength(1)
     expect(latestNodes[0]?.position).toEqual({
       x: 320 - expectedSize.width / 2,
       y: 220 - expectedSize.height / 2,
     })
+    expect(latestNodes[0]?.data.width).toBe(expectedSize.width)
+    expect(latestNodes[0]?.data.height).toBe(expectedSize.height)
     expect(screen.queryByTestId('workspace-agent-launcher')).toBeNull()
   })
 
