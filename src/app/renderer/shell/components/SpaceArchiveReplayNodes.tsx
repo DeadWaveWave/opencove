@@ -1,18 +1,16 @@
 import React from 'react'
 import type { NodeProps, Node as ReactFlowNode } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import type {
   AgentRuntimeStatus,
   SpaceArchiveNodeSnapshot,
   SpaceArchiveRecord,
-  TaskPriority,
-  TaskRuntimeStatus,
 } from '@contexts/workspace/presentation/renderer/types'
 import { providerLabel } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 import { getStatusClassName } from '@contexts/workspace/presentation/renderer/components/terminalNode/status'
+import { ArchivedTaskNode, type ArchivedTaskNodeType } from './SpaceArchiveReplayTaskNode'
 
 type TerminalLikeNodeData =
   | {
@@ -34,16 +32,6 @@ type TerminalLikeNodeData =
       expectedDirectory: string | null
     }
 
-type TaskNodeData = {
-  kind: 'task'
-  title: string
-  requirement: string
-  status: TaskRuntimeStatus
-  priority: TaskPriority
-  tags: string[]
-  labelColor: LabelColor | null
-}
-
 type NoteNodeData = {
   kind: 'note'
   title: string
@@ -56,7 +44,6 @@ type SpaceBoundsNodeData = {
 }
 
 type TerminalLikeNode = ReactFlowNode<TerminalLikeNodeData, 'terminalLike'>
-type ArchivedTaskNodeType = ReactFlowNode<TaskNodeData, 'archivedTask'>
 type ArchivedNoteNodeType = ReactFlowNode<NoteNodeData, 'archivedNote'>
 type SpaceBoundsNodeType = ReactFlowNode<SpaceBoundsNodeData, 'spaceBounds'>
 
@@ -139,12 +126,12 @@ function ArchivedTerminalLikeNode({ data }: NodeProps<TerminalLikeNode>): React.
 
       <div className="terminal-node__terminal space-archive-replay__terminal-body">
         {isAgentNode ? (
-          <div className="space-archive-replay__agent-meta">
+          <div className="space-archive-replay__agent-meta nodrag nopan nowheel">
             <div className="space-archive-replay__agent-meta-row">
               <span className="space-archive-replay__agent-meta-label">
                 {t('spaceArchivesWindow.fields.provider')}
               </span>
-              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+              <span className="space-archive-replay__agent-meta-value nodrag nopan space-archive-replay__selectable">
                 {data.provider ? providerLabel(data.provider) : '—'}
               </span>
             </div>
@@ -153,7 +140,7 @@ function ArchivedTerminalLikeNode({ data }: NodeProps<TerminalLikeNode>): React.
               <span className="space-archive-replay__agent-meta-label">
                 {t('spaceArchivesWindow.fields.model')}
               </span>
-              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+              <span className="space-archive-replay__agent-meta-value nodrag nopan space-archive-replay__selectable">
                 {data.effectiveModel ?? data.model ?? t('taskNode.defaultModel')}
               </span>
             </div>
@@ -162,7 +149,7 @@ function ArchivedTerminalLikeNode({ data }: NodeProps<TerminalLikeNode>): React.
               <span className="space-archive-replay__agent-meta-label">
                 {t('spaceArchivesWindow.fields.sessionId')}
               </span>
-              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+              <span className="space-archive-replay__agent-meta-value nodrag nopan space-archive-replay__selectable">
                 {data.resumeSessionId ?? '—'}
                 {data.resumeSessionIdVerified ? (
                   <span className="space-archive-replay__agent-meta-chip">
@@ -176,7 +163,7 @@ function ArchivedTerminalLikeNode({ data }: NodeProps<TerminalLikeNode>): React.
               <span className="space-archive-replay__agent-meta-label">
                 {t('spaceArchivesWindow.fields.executionDirectory')}
               </span>
-              <span className="space-archive-replay__agent-meta-value space-archive-replay__selectable">
+              <span className="space-archive-replay__agent-meta-value nodrag nopan space-archive-replay__selectable">
                 {data.executionDirectory ?? '—'}
               </span>
             </div>
@@ -222,68 +209,6 @@ function ArchivedNoteNode({ data }: NodeProps<ArchivedNoteNodeType>): React.JSX.
   )
 }
 
-function ArchivedTaskNode({ data }: NodeProps<ArchivedTaskNodeType>): React.JSX.Element {
-  const { t } = useTranslation()
-
-  return (
-    <div
-      className="task-node nowheel space-archive-replay__task"
-      style={{ width: '100%', height: '100%' }}
-      data-testid="space-archives-window-replay-node"
-      data-node-kind="task"
-    >
-      <div className="task-node__header" data-node-drag-handle="true">
-        <div className="task-node__header-main">
-          <div className="task-node__title-row">
-            {data.labelColor ? (
-              <span
-                className="cove-label-dot cove-label-dot--solid"
-                data-cove-label-color={data.labelColor}
-                aria-hidden="true"
-              />
-            ) : null}
-            <span className="task-node__title">{data.title}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="task-node__meta">
-        <span className={`task-node__priority task-node__priority--${data.priority}`}>
-          {getTaskPriorityLabel(t, data.priority).toUpperCase()}
-        </span>
-
-        <span className="task-node__tags">
-          {data.tags.length > 0 ? (
-            data.tags.map(tag => (
-              <span key={tag} className="task-node__tag">
-                #{tag}
-              </span>
-            ))
-          ) : (
-            <span className="task-node__tag task-node__tag--empty">{t('taskNode.noTags')}</span>
-          )}
-        </span>
-      </div>
-
-      <div className="task-node__content">
-        <label>{t('taskNode.requirement')}</label>
-        <div className="task-node__inline-editor">
-          <textarea
-            className="task-node__requirement-input nodrag nopan nowheel space-archive-replay__task-requirement space-archive-replay__selectable"
-            value={data.requirement}
-            readOnly
-            spellCheck={false}
-            onPointerDownCapture={stopReactFlowInteraction}
-            onPointerDown={stopReactFlowInteraction}
-            onClick={stopReactFlowInteraction}
-            onWheel={stopReactFlowInteraction}
-          />
-        </div>
-      </div>
-    </div>
-  )
-}
-
 function SpaceBoundsNode(_props: NodeProps<SpaceBoundsNodeType>): React.JSX.Element | null {
   return null
 }
@@ -298,6 +223,7 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
   const nodesWithFrame = record.nodes.filter(hasArchiveNodeFrame)
   const shouldRenderNodes = nodesWithFrame.length === record.nodes.length
   const resolvedSpaceLabelColor = record.space.labelColor ?? null
+  const snapshotById = new Map(record.nodes.map(snapshot => [snapshot.id, snapshot] as const))
 
   const replayNodes: SpaceArchiveReplayNode[] = []
 
@@ -367,6 +293,12 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
     }
 
     if (node.kind === 'task') {
+      const linkedAgentSnapshot = node.linkedAgentNodeId
+        ? (snapshotById.get(node.linkedAgentNodeId) ?? null)
+        : null
+      const linkedAgent =
+        linkedAgentSnapshot && linkedAgentSnapshot.kind === 'agent' ? linkedAgentSnapshot : null
+
       replayNodes.push({
         id: node.id,
         type: 'archivedTask',
@@ -379,6 +311,19 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
           priority: node.priority,
           tags: node.tags,
           labelColor: effectiveLabelColor,
+          linkedAgent: linkedAgent
+            ? {
+                nodeId: linkedAgent.id,
+                title: linkedAgent.title,
+                status: linkedAgent.status,
+                provider: linkedAgent.provider,
+                model: linkedAgent.model,
+                effectiveModel: linkedAgent.effectiveModel,
+                resumeSessionId: linkedAgent.resumeSessionId,
+                resumeSessionIdVerified: linkedAgent.resumeSessionIdVerified === true,
+                startedAt: linkedAgent.startedAt,
+              }
+            : null,
         },
         style: {
           width: node.frame.size.width,
