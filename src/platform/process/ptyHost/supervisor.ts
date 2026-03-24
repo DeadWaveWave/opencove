@@ -358,14 +358,14 @@ export class PtyHostSupervisor {
 
   public async spawn(options: PtyHostSpawnOptions): Promise<{ sessionId: string }> {
     const env = options.env ? { ...options.env } : { ...process.env }
-    for (let attempt = 0; attempt < 2; attempt += 1) {
+    let attemptedChild: PtyHostProcess | null = null
+    const spawnOnce = async (): Promise<{ sessionId: string }> => {
       await this.ensureReady()
-
       const child = this.process
       if (!child) {
         throw new Error('[pty-host] missing process')
       }
-
+      attemptedChild = child
       const requestId = crypto.randomUUID()
 
       const request: PtyHostSpawnRequest = {
@@ -391,7 +391,6 @@ export class PtyHostSupervisor {
           timer,
         })
       })
-
       try {
         child.postMessage(request satisfies PtyHostRequest)
       } catch (error) {
@@ -402,33 +401,32 @@ export class PtyHostSupervisor {
           this.pendingResponses.delete(requestId)
           pending.reject(normalizedError)
         }
-
         if (this.process === child) {
           this.handleHostExit(1)
         }
       }
-
-      try {
-        const response = await responsePromise
-        if (!response.ok) {
-          throw new Error(
-            `[pty-host] spawn failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
-          )
-        }
-
-        const sessionId = response.result.sessionId
-        this.activeSessions.add(sessionId)
-        return { sessionId }
-      } catch (error) {
-        const hostLost = this.process !== child || !this.process || !this.readyPromise
-        if (attempt === 0 && hostLost && !this.isDisposed) {
-          continue
-        }
-
-        throw error
+      const response = await responsePromise
+      if (!response.ok) {
+        throw new Error(
+          `[pty-host] spawn failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
+        )
       }
+      const sessionId = response.result.sessionId
+      this.activeSessions.add(sessionId)
+      return { sessionId }
     }
-    throw new Error('[pty-host] spawn failed after retry')
+    try {
+      return await spawnOnce()
+    } catch (error) {
+      const hostLost =
+        !this.process ||
+        !this.readyPromise ||
+        (attemptedChild !== null && this.process !== attemptedChild)
+      if (hostLost && !this.isDisposed) {
+        return await spawnOnce()
+      }
+      throw error
+    }
   }
 
   public write(sessionId: string, data: string, encoding: PtyHostWriteEncoding = 'utf8'): void {
