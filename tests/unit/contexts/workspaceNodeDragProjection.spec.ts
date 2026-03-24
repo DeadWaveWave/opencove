@@ -127,6 +127,119 @@ function applyProjectedPositions(
 }
 
 describe('projectWorkspaceNodeDragLayout', () => {
+  it('resolves the target space using pointer-based dropFlowPoint for single-node drags', () => {
+    const spaceRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 200, height: 200 }
+    const space: WorkspaceSpaceState = {
+      id: 'space-1',
+      name: 'Space',
+      directoryPath: '/tmp',
+      nodeIds: [],
+      rect: spaceRect,
+    }
+
+    const nodes: Array<Node<TerminalNodeData>> = [
+      {
+        ...baseNode,
+        id: 'drag',
+        data: { ...baseNode.data, title: 'drag', width: 100, height: 100 },
+        position: { x: 160, y: 50 },
+      },
+    ]
+
+    const draggedNodeIds = ['drag']
+    const draggedNodePositionById = new Map([['drag', { x: 160, y: 50 }]])
+
+    const withoutPointer = projectWorkspaceNodeDragLayout({
+      nodes,
+      spaces: [space],
+      draggedNodeIds,
+      draggedNodePositionById,
+    })
+
+    expect(withoutPointer?.targetSpaceId).toBeNull()
+
+    const withPointer = projectWorkspaceNodeDragLayout({
+      nodes,
+      spaces: [space],
+      draggedNodeIds,
+      draggedNodePositionById,
+      dropFlowPoint: { x: 190, y: 100 },
+    })
+
+    expect(withPointer?.targetSpaceId).toBe('space-1')
+  })
+
+  it('keeps root drags outside spaces without moving space-owned nodes', () => {
+    const spaceRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 200, height: 200 }
+    const space: WorkspaceSpaceState = {
+      id: 'space-1',
+      name: 'Space',
+      directoryPath: '/tmp',
+      nodeIds: ['owned'],
+      rect: spaceRect,
+    }
+
+    const owned = {
+      ...baseNode,
+      id: 'owned',
+      data: { ...baseNode.data, title: 'owned', width: 80, height: 80 },
+      position: { x: 24, y: 24 },
+    }
+
+    const root = {
+      ...baseNode,
+      id: 'root',
+      data: { ...baseNode.data, title: 'root', width: 80, height: 80 },
+      position: { x: 210, y: 50 },
+    }
+
+    const drag = {
+      ...baseNode,
+      id: 'drag',
+      data: { ...baseNode.data, title: 'drag', width: 80, height: 80 },
+      position: { x: 250, y: 50 },
+    }
+
+    const nodes: Array<Node<TerminalNodeData>> = [owned, root, drag]
+    const desired = new Map([['drag', { x: 170, y: 50 }]])
+
+    const projected = projectWorkspaceNodeDragLayout({
+      nodes,
+      spaces: [space],
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desired,
+      dragDx: -80,
+      dragDy: 0,
+    })
+
+    expect(projected?.targetSpaceId).toBeNull()
+    expect(projected?.nextNodePositionById.get('owned')).toBeUndefined()
+
+    const nextNodes = applyProjectedPositions(nodes, projected!.nextNodePositionById)
+    const nextOwned = nextNodes.find(node => node.id === 'owned')!
+    expect(nextOwned.position).toEqual(owned.position)
+
+    const nextDrag = nextNodes.find(node => node.id === 'drag')!
+    const nextRoot = nextNodes.find(node => node.id === 'root')!
+
+    const dragRect = {
+      x: nextDrag.position.x,
+      y: nextDrag.position.y,
+      width: nextDrag.data.width,
+      height: nextDrag.data.height,
+    }
+    const rootRect = {
+      x: nextRoot.position.x,
+      y: nextRoot.position.y,
+      width: nextRoot.data.width,
+      height: nextRoot.data.height,
+    }
+
+    expect(intersects(dragRect, spaceRect)).toBe(false)
+    expect(intersects(rootRect, spaceRect)).toBe(false)
+    expect(intersects(dragRect, rootRect)).toBe(false)
+  })
+
   it('keeps space-contained drags overlap-free across continuous frames', () => {
     const spaceRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 740, height: 420 }
     const space: WorkspaceSpaceState = {

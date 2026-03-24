@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
-import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { SpaceWorktreeMismatchDropWarningState } from '../types'
 import {
   computeBoundingRect,
@@ -18,6 +18,7 @@ interface SpaceOwnershipDropInput {
   draggedNodePositionById: Map<string, { x: number; y: number }>
   dragStartNodePositionById: Map<string, { x: number; y: number }>
   dragStartAllNodePositionById?: Map<string, { x: number; y: number }>
+  dragStartSpaceRectById?: Map<string, WorkspaceSpaceRect>
   dropFlowPoint: { x: number; y: number }
 }
 
@@ -76,6 +77,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
       draggedNodePositionById,
       dragStartNodePositionById,
       dragStartAllNodePositionById,
+      dragStartSpaceRectById,
       dropFlowPoint,
       fallbackNodes,
     }: SpaceOwnershipWarningRequest): boolean => {
@@ -173,6 +175,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
         draggedNodePositionById,
         dragStartNodePositionById,
         dragStartAllNodePositionById,
+        dragStartSpaceRectById,
         dropFlowPoint,
       }
 

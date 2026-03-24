@@ -35,6 +35,46 @@ export function pushAwayLayout(_input: {
     groupIndices.set(item.groupId, [index])
   })
 
+  const groupBounds = new Map<string, WorkspaceSpaceRect>()
+  for (const [groupId, indices] of groupIndices.entries()) {
+    if (indices.length === 0) {
+      continue
+    }
+
+    let minX = Number.POSITIVE_INFINITY
+    let minY = Number.POSITIVE_INFINITY
+    let maxX = Number.NEGATIVE_INFINITY
+    let maxY = Number.NEGATIVE_INFINITY
+
+    for (const index of indices) {
+      const rect = nextItems[index]?.rect
+      if (!rect) {
+        continue
+      }
+
+      minX = Math.min(minX, rect.x)
+      minY = Math.min(minY, rect.y)
+      maxX = Math.max(maxX, rect.x + rect.width)
+      maxY = Math.max(maxY, rect.y + rect.height)
+    }
+
+    if (
+      !Number.isFinite(minX) ||
+      !Number.isFinite(minY) ||
+      !Number.isFinite(maxX) ||
+      !Number.isFinite(maxY)
+    ) {
+      continue
+    }
+
+    groupBounds.set(groupId, {
+      x: minX,
+      y: minY,
+      width: Math.max(0, maxX - minX),
+      height: Math.max(0, maxY - minY),
+    })
+  }
+
   const pinned = new Set(_input.pinnedGroupIds)
   const groupIds = [...groupIndices.keys()]
   const preferredDirections = orderPreferredDirections(_input.directions)
@@ -79,51 +119,17 @@ export function pushAwayLayout(_input: {
       item.rect.x += dx
       item.rect.y += dy
     })
-  }
 
-  const getGroupBounds = (groupId: string): WorkspaceSpaceRect | null => {
-    const indices = groupIndices.get(groupId)
-    if (!indices || indices.length === 0) {
-      return null
-    }
-
-    let minX = Number.POSITIVE_INFINITY
-    let minY = Number.POSITIVE_INFINITY
-    let maxX = Number.NEGATIVE_INFINITY
-    let maxY = Number.NEGATIVE_INFINITY
-
-    for (const index of indices) {
-      const rect = nextItems[index]?.rect
-      if (!rect) {
-        continue
-      }
-
-      minX = Math.min(minX, rect.x)
-      minY = Math.min(minY, rect.y)
-      maxX = Math.max(maxX, rect.x + rect.width)
-      maxY = Math.max(maxY, rect.y + rect.height)
-    }
-
-    if (
-      !Number.isFinite(minX) ||
-      !Number.isFinite(minY) ||
-      !Number.isFinite(maxX) ||
-      !Number.isFinite(maxY)
-    ) {
-      return null
-    }
-
-    return {
-      x: minX,
-      y: minY,
-      width: Math.max(0, maxX - minX),
-      height: Math.max(0, maxY - minY),
+    const groupRect = groupBounds.get(groupId)
+    if (groupRect) {
+      groupRect.x += dx
+      groupRect.y += dy
     }
   }
 
   const hasGroupIntersection = (sourceGroupId: string, targetGroupId: string): boolean => {
-    const sourceRect = getGroupBounds(sourceGroupId)
-    const targetRect = getGroupBounds(targetGroupId)
+    const sourceRect = groupBounds.get(sourceGroupId)
+    const targetRect = groupBounds.get(targetGroupId)
     if (!sourceRect || !targetRect) {
       return false
     }
@@ -136,8 +142,8 @@ export function pushAwayLayout(_input: {
     targetGroupId: string,
     gap: number,
   ): { dx: number; dy: number } => {
-    const sourceRect = getGroupBounds(sourceGroupId)
-    const targetRect = getGroupBounds(targetGroupId)
+    const sourceRect = groupBounds.get(sourceGroupId)
+    const targetRect = groupBounds.get(targetGroupId)
     if (!sourceRect || !targetRect || !intersects(sourceRect, targetRect)) {
       return { dx: 0, dy: 0 }
     }

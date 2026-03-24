@@ -18,6 +18,7 @@ import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
 export interface ProjectedNodeDragLayout {
   targetSpaceId: string | null
   nextNodePositionById: Map<string, { x: number; y: number }>
+  nextSpaces: WorkspaceSpaceState[]
 }
 
 function buildSpaceRectItems(spaces: WorkspaceSpaceState[]): LayoutItem[] {
@@ -93,6 +94,7 @@ export function projectWorkspaceNodeDragLayout({
   draggedNodePositionById,
   dragDx = 0,
   dragDy = 0,
+  dropFlowPoint,
 }: {
   nodes: Node<TerminalNodeData>[]
   spaces: WorkspaceSpaceState[]
@@ -100,6 +102,7 @@ export function projectWorkspaceNodeDragLayout({
   draggedNodePositionById: Map<string, { x: number; y: number }>
   dragDx?: number
   dragDy?: number
+  dropFlowPoint?: { x: number; y: number } | null
 }): ProjectedNodeDragLayout | null {
   if (draggedNodeIds.length === 0) {
     return null
@@ -139,69 +142,89 @@ export function projectWorkspaceNodeDragLayout({
     y: dropRect.y + dropRect.height * 0.5,
   }
 
-  const targetSpace = resolveSpaceAtPoint(spaces, dropCenter)
+  const dropTargetPoint =
+    dropRect && draggedNodeIds.length > 1
+      ? dropCenter
+      : dropFlowPoint && Number.isFinite(dropFlowPoint.x) && Number.isFinite(dropFlowPoint.y)
+        ? dropFlowPoint
+        : dropCenter
+
+  const targetSpace = resolveSpaceAtPoint(spaces, dropTargetPoint)
   const targetSpaceId = targetSpace?.id ?? null
   const targetSpaceRect = targetSpace?.rect ?? null
 
   const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(spaces)
   const draggedNodeIdSet = new Set(draggedNodeIds)
 
-  const otherNodes =
-    targetSpaceId && targetSpaceRect
-      ? nodes.filter(
-          node =>
-            !draggedNodeIdSet.has(node.id) && owningSpaceIdByNodeId.get(node.id) === targetSpaceId,
-        )
-      : nodes.filter(node => !draggedNodeIdSet.has(node.id) && !owningSpaceIdByNodeId.has(node.id))
+  const directions = buildDragDirectionPreference(dragDx, dragDy)
 
-  const { dx: baseDx, dy: baseDy } =
-    targetSpaceRect !== null
-      ? resolveDeltaToKeepRectInsideRect(dropRect, targetSpaceRect, SPACE_NODE_PADDING)
-      : resolveDeltaToKeepRectOutsideRects(
-          dropRect,
-          spaces
-            .map(space => space.rect)
-            .filter((rect): rect is WorkspaceSpaceRect => Boolean(rect)),
-        )
+  if (!targetSpaceId || !targetSpaceRect) {
+    const otherNodes = nodes.filter(
+      node => !draggedNodeIdSet.has(node.id) && !owningSpaceIdByNodeId.has(node.id),
+    )
+
+    const { dx: baseDx, dy: baseDy } = resolveDeltaToKeepRectOutsideRects(
+      dropRect,
+      spaces.map(space => space.rect).filter((rect): rect is WorkspaceSpaceRect => Boolean(rect)),
+    )
+
+    const constrainedDraggedNodes = applyDelta(draggedNodes, { dx: baseDx, dy: baseDy })
+    const pinnedNodeIds = constrainedDraggedNodes.map(node => node.id)
+
+    const spaceItems = buildSpaceRectItems(spaces)
+    const pinnedSpaceIds = spaces.filter(space => Boolean(space.rect)).map(space => space.id)
+    const rootDirections = buildDragDirectionPreference(Math.abs(dragDx), Math.abs(dragDy))
+
+    const pushed = pushAwayLayout({
+      items: [...spaceItems, ...buildNodeItems([...constrainedDraggedNodes, ...otherNodes])],
+      pinnedGroupIds: [...pinnedNodeIds, ...pinnedSpaceIds],
+      sourceGroupIds: pinnedNodeIds,
+      directions: rootDirections,
+      gap: 0,
+    })
+
+    const nextNodePositionById = new Map(
+      pushed
+        .filter(item => item.kind === 'node')
+        .map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
+    )
+
+    return { targetSpaceId, nextNodePositionById, nextSpaces: spaces }
+  }
+
+  const otherNodes = nodes.filter(
+    node => !draggedNodeIdSet.has(node.id) && owningSpaceIdByNodeId.get(node.id) === targetSpaceId,
+  )
+
+  const { dx: baseDx, dy: baseDy } = resolveDeltaToKeepRectInsideRect(
+    dropRect,
+    targetSpaceRect,
+    SPACE_NODE_PADDING,
+  )
 
   const constrainedDraggedNodes = applyDelta(draggedNodes, { dx: baseDx, dy: baseDy })
 
   const pinnedNodeIds = constrainedDraggedNodes.map(node => node.id)
 
-  const directions = buildDragDirectionPreference(dragDx, dragDy)
-
-  const spaceItems = targetSpaceId ? [] : buildSpaceRectItems(spaces)
-  const pinnedSpaceIds = targetSpaceId
-    ? []
-    : spaces.filter(space => Boolean(space.rect)).map(space => space.id)
-
-  const solveOnceUnbounded = (items: LayoutItem[]): LayoutItem[] =>
+  const items = buildNodeItems([...constrainedDraggedNodes, ...otherNodes])
+  const bounded = resolveBoundedSpaceNodeLayout({
+    items,
+    pinnedNodeIds,
+    targetSpaceRect,
+    dropCenter,
+    directions,
+    dragDx,
+    dragDy,
+  })
+  const pushed =
+    bounded ??
     pushAwayLayout({
       items,
-      pinnedGroupIds: [...pinnedNodeIds, ...pinnedSpaceIds],
+      pinnedGroupIds: pinnedNodeIds,
       sourceGroupIds: pinnedNodeIds,
       directions,
       gap: 0,
     })
-
-  const buildItems = (
-    dragged: Array<Node<TerminalNodeData>>,
-    others: Array<Node<TerminalNodeData>>,
-  ) => [...spaceItems, ...buildNodeItems([...dragged, ...others])]
-
-  const items = buildItems(constrainedDraggedNodes, otherNodes)
-  const bounded =
-    targetSpaceRect &&
-    resolveBoundedSpaceNodeLayout({
-      items,
-      pinnedNodeIds,
-      targetSpaceRect,
-      dropCenter,
-      directions,
-      dragDx,
-      dragDy,
-    })
-  const pushed = bounded ?? solveOnceUnbounded(items)
 
   const nextNodePositionById = new Map(
     pushed
@@ -209,5 +232,5 @@ export function projectWorkspaceNodeDragLayout({
       .map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
   )
 
-  return { targetSpaceId, nextNodePositionById }
+  return { targetSpaceId, nextNodePositionById, nextSpaces: spaces }
 }

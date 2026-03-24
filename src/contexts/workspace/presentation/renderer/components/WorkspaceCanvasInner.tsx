@@ -28,6 +28,9 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
+  const { nodeDragPointerAnchorRef, nodeSpaceFramePreview, setNodeSpaceFramePreview } =
+    workspaceCanvasHooks.useWorkspaceCanvasNodeDragPreviewState(workspaceId)
+
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
     spaces,
@@ -151,6 +154,7 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
+    nodeDragPointerAnchorRef,
   })
   const {
     buildAgentNodeTitle,
@@ -369,6 +373,8 @@ export function WorkspaceCanvasInner({
     exclusiveNodeDragAnchorIdRef,
     onSpacesChange,
     onRequestPersistFlush,
+    setSpaceFramePreview: setNodeSpaceFramePreview,
+    nodeDragPointerAnchorRef,
   })
   const {
     taskTitleProviderLabel,
@@ -428,7 +434,7 @@ export function WorkspaceCanvasInner({
       selectionDraft={canvasState.selectionDraftUi}
       snapGuides={canvasState.snapGuides}
       spaceVisuals={spaceVisuals}
-      spaceFramePreview={spaceFramePreview}
+      spaceFramePreview={spaceFramePreview ?? nodeSpaceFramePreview}
       selectedSpaceIds={canvasState.selectedSpaceIds}
       handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
       editingSpaceId={editingSpaceId}
