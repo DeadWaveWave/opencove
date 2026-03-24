@@ -8,49 +8,49 @@ import {
 import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 
 describe('workspace canvas default sizing', () => {
-  it('resolves canonical window sizes from viewport bucket', () => {
-    expect(resolveDefaultTerminalWindowSize(100, { width: 1920, height: 1080 })).toEqual({
+  it('resolves canonical window sizes from the selected bucket', () => {
+    expect(resolveDefaultTerminalWindowSize('large')).toEqual({
       width: 564,
       height: 388,
     })
 
-    expect(resolveDefaultTaskWindowSize({ width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultTaskWindowSize('large')).toEqual({
       width: 276,
       height: 388,
     })
 
-    expect(resolveDefaultAgentWindowSize(100, { width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultAgentWindowSize('large')).toEqual({
       width: 564,
       height: 788,
     })
 
-    expect(resolveDefaultNoteWindowSize({ width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultNoteWindowSize('large')).toEqual({
       width: 276,
       height: 188,
     })
   })
 
-  it('applies scale percent to default terminal/agent window size', () => {
-    expect(resolveDefaultTerminalWindowSize(80, { width: 1920, height: 1080 })).toEqual({
-      width: 451,
-      height: 310,
+  it('keeps compact bucket sizes on the canonical grid', () => {
+    expect(resolveDefaultTerminalWindowSize('compact')).toEqual({
+      width: 468,
+      height: 324,
     })
 
-    expect(resolveDefaultAgentWindowSize(80, { width: 1920, height: 1080 })).toEqual({
-      width: 451,
-      height: 630,
+    expect(resolveDefaultAgentWindowSize('compact')).toEqual({
+      width: 468,
+      height: 660,
     })
   })
 
-  it('clamps invalid scale values to allowed range', () => {
-    expect(resolveDefaultTerminalWindowSize(-1, { width: 1920, height: 1080 })).toEqual({
-      width: 400,
-      height: 260,
+  it('defaults to the regular bucket when none is provided', () => {
+    expect(resolveDefaultTerminalWindowSize()).toEqual({
+      width: 516,
+      height: 356,
     })
 
-    expect(resolveDefaultTerminalWindowSize(999, { width: 1920, height: 1080 })).toEqual({
-      width: 677,
-      height: 466,
+    expect(resolveDefaultAgentWindowSize()).toEqual({
+      width: 516,
+      height: 724,
     })
   })
 })

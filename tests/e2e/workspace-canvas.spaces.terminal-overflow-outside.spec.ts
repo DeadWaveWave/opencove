@@ -103,6 +103,14 @@ test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
             return {
               spaceRect: rect,
               spaceNodeIds: space.nodeIds,
+              seedNote: nodes.find(node => node.id === 'space-note')
+                ? {
+                    x: nodes.find(node => node.id === 'space-note')?.position?.x ?? null,
+                    y: nodes.find(node => node.id === 'space-note')?.position?.y ?? null,
+                    width: nodes.find(node => node.id === 'space-note')?.width ?? null,
+                    height: nodes.find(node => node.id === 'space-note')?.height ?? null,
+                  }
+                : null,
               terminal: {
                 id: createdTerminal.id ?? null,
                 x: createdTerminal.position.x ?? null,
@@ -122,21 +130,43 @@ test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
             snapshot.spaceRect.height > 320 ||
             snapshot.spaceRect.x < 200 ||
             snapshot.spaceRect.y < 200
+          const seedNoteStable =
+            snapshot.seedNote?.x === 240 &&
+            snapshot.seedNote?.y === 240 &&
+            snapshot.seedNote?.width === 420 &&
+            snapshot.seedNote?.height === 280
           const terminalRight = snapshot.terminal.x + snapshot.terminal.width
           const terminalBottom = snapshot.terminal.y + snapshot.terminal.height
           const spaceRight = snapshot.spaceRect.x + snapshot.spaceRect.width
           const spaceBottom = snapshot.spaceRect.y + snapshot.spaceRect.height
+          const seedNoteRight = snapshot.seedNote.x + snapshot.seedNote.width
+          const seedNoteBottom = snapshot.seedNote.y + snapshot.seedNote.height
+          const memberMinLeft = Math.min(snapshot.seedNote.x, snapshot.terminal.x)
+          const memberMinTop = Math.min(snapshot.seedNote.y, snapshot.terminal.y)
+          const memberMaxRight = Math.max(seedNoteRight, terminalRight)
+          const memberMaxBottom = Math.max(seedNoteBottom, terminalBottom)
+          const expectedLeft = Math.min(200, memberMinLeft - 24)
+          const expectedTop = Math.min(200, memberMinTop - 24)
+          const expectedRight = Math.max(200 + 480, memberMaxRight + 24)
+          const expectedBottom = Math.max(200 + 320, memberMaxBottom + 24)
           const terminalInside =
             snapshot.terminal.x >= snapshot.spaceRect.x &&
             snapshot.terminal.y >= snapshot.spaceRect.y &&
             terminalRight <= spaceRight &&
             terminalBottom <= spaceBottom
+          const minimalSpaceRect =
+            snapshot.spaceRect.x === expectedLeft &&
+            snapshot.spaceRect.y === expectedTop &&
+            snapshot.spaceRect.width === expectedRight - expectedLeft &&
+            snapshot.spaceRect.height === expectedBottom - expectedTop
 
           return {
             expanded,
             hasSeedNote: snapshot.spaceNodeIds.includes('space-note'),
             hasCreatedTerminal: snapshot.spaceNodeIds.includes(snapshot.terminal.id),
             terminalInside,
+            seedNoteStable,
+            minimalSpaceRect,
           }
         })
         .toEqual({
@@ -144,7 +174,26 @@ test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
           hasSeedNote: true,
           hasCreatedTerminal: true,
           terminalInside: true,
+          seedNoteStable: true,
+          minimalSpaceRect: true,
         })
+
+      const createdTerminalNode = window.locator('.terminal-node').first()
+      await expect(createdTerminalNode).toBeVisible()
+      await expect(pane).toBeVisible()
+
+      const terminalBounds = await createdTerminalNode.boundingBox()
+      const paneBounds = await pane.boundingBox()
+
+      if (!terminalBounds || !paneBounds) {
+        throw new Error('failed to resolve created terminal or pane bounds')
+      }
+
+      const centeredX = terminalBounds.x + terminalBounds.width / 2
+      const centeredY = terminalBounds.y + terminalBounds.height / 2
+
+      expect(Math.abs(centeredX - (paneBounds.x + paneBounds.width / 2))).toBeLessThanOrEqual(48)
+      expect(Math.abs(centeredY - (paneBounds.y + paneBounds.height / 2))).toBeLessThanOrEqual(48)
     } finally {
       await electronApp.close()
     }

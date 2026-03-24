@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type {
   ImageNodeData,
   Point,
@@ -28,23 +29,23 @@ import type {
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 
 interface UseWorkspaceCanvasNodeCreationParams {
-  defaultTerminalWindowScalePercent: number
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
+  standardWindowSizeBucket: StandardWindowSizeBucket
 }
 
 export function useWorkspaceCanvasNodeCreation({
-  defaultTerminalWindowScalePercent,
   nodesRef,
   spacesRef,
   onRequestPersistFlush,
   onShowMessage,
   onNodeCreated,
   setNodes,
+  standardWindowSizeBucket,
 }: UseWorkspaceCanvasNodeCreationParams): Pick<
   UseWorkspaceCanvasNodesStoreResult,
   'createNodeForSession' | 'createNoteNode' | 'createTaskNode' | 'createImageNode'
@@ -66,8 +67,8 @@ export function useWorkspaceCanvasNodeCreation({
     }: CreateNodeInput): Promise<Node<TerminalNodeData> | null> => {
       const defaultSize =
         kind === 'agent'
-          ? resolveDefaultAgentWindowSize(defaultTerminalWindowScalePercent)
-          : resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent)
+          ? resolveDefaultAgentWindowSize(standardWindowSizeBucket)
+          : resolveDefaultTerminalWindowSize(standardWindowSizeBucket)
 
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
@@ -142,20 +143,20 @@ export function useWorkspaceCanvasNodeCreation({
       return nextNode
     },
     [
-      defaultTerminalWindowScalePercent,
       nodesRef,
-      spacesRef,
-      onRequestPersistFlush,
       onNodeCreated,
-      setNodes,
+      onRequestPersistFlush,
       onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
       t,
     ],
   )
 
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
-      const noteSize = resolveDefaultNoteWindowSize()
+      const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
       const spaceObstacles: Rect[] = spacesRef.current
         .map(space => space.rect)
         .filter((rect): rect is { x: number; y: number; width: number; height: number } =>
@@ -246,7 +247,16 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
+    [
+      nodesRef,
+      onNodeCreated,
+      onRequestPersistFlush,
+      onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
   )
 
   const createTaskNode = useCallback(
@@ -259,7 +269,7 @@ export function useWorkspaceCanvasNodeCreation({
       tags: string[],
       placementOptions?: NodePlacementOptions,
     ): Node<TerminalNodeData> | null => {
-      const defaultTaskSize = resolveDefaultTaskWindowSize()
+      const defaultTaskSize = resolveDefaultTaskWindowSize(standardWindowSizeBucket)
 
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
@@ -387,7 +397,16 @@ export function useWorkspaceCanvasNodeCreation({
       onRequestPersistFlush?.()
       return nextNode
     },
-    [nodesRef, onNodeCreated, onRequestPersistFlush, onShowMessage, setNodes, spacesRef, t],
+    [
+      nodesRef,
+      onNodeCreated,
+      onRequestPersistFlush,
+      onShowMessage,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+      t,
+    ],
   )
 
   return {

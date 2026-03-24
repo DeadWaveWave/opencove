@@ -18,6 +18,7 @@ function renderMark(checked: boolean): React.JSX.Element {
 }
 
 export function WorkspaceContextArrangeBySubmenu({
+  submenuRef,
   style,
   hitSpace,
   canArrangeAll,
@@ -30,6 +31,7 @@ export function WorkspaceContextArrangeBySubmenu({
   onSelectOrder,
   onSelectSpaceFit,
 }: {
+  submenuRef: React.RefObject<HTMLDivElement | null>
   style: React.CSSProperties
   hitSpace: WorkspaceSpaceState | null
   canArrangeAll: boolean
@@ -46,6 +48,7 @@ export function WorkspaceContextArrangeBySubmenu({
 
   return (
     <div
+      ref={submenuRef}
       className="workspace-context-menu workspace-context-menu--submenu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-arrange-by-menu"
       style={style}

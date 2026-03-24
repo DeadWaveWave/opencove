@@ -1,8 +1,9 @@
 import { Handle, Position } from '@xyflow/react'
-import { Pencil } from 'lucide-react'
+import { FileText, Pencil } from 'lucide-react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type {
   AgentRuntimeStatus,
   NodeFrame,
@@ -19,6 +20,7 @@ import { TaskNodeFooter } from './taskNode/TaskNodeFooter'
 import { MIN_HEIGHT, MIN_WIDTH, shouldStopWheelPropagation } from './taskNode/helpers'
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
+import { TaskPromptTemplatesMenu } from './promptTemplates/TaskPromptTemplatesMenu'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -84,11 +86,16 @@ export function TaskNode({
   onInteractionStart,
 }: TaskNodeProps): JSX.Element {
   const { t } = useTranslation()
+  const workspaceId = useAppStore(state => state.activeWorkspaceId)
 
   const [isTitleEditing, setIsTitleEditing] = useState(false)
   const [titleDraft, setTitleDraft] = useState(title)
   const [isRequirementEditing, setIsRequirementEditing] = useState(false)
   const [requirementDraft, setRequirementDraft] = useState(requirement)
+  const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = useState<{
+    x: number
+    y: number
+  } | null>(null)
 
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
@@ -161,6 +168,8 @@ export function TaskNode({
   const cancelRequirementEdit = useCallback(() => {
     setRequirementDraft(requirement)
   }, [requirement])
+
+  const isPromptTemplatesMenuOpen = promptTemplatesMenuAnchor !== null
 
   const renderedFrame = draftFrame ?? {
     position,
@@ -297,6 +306,30 @@ export function TaskNode({
         <div className="task-node__header-actions nodrag">
           <button
             type="button"
+            className="task-node__icon-button task-node__icon-button--templates nodrag"
+            data-testid="task-node-open-prompt-templates"
+            onClick={event => {
+              event.stopPropagation()
+
+              if (isPromptTemplatesMenuOpen) {
+                setPromptTemplatesMenuAnchor(null)
+                return
+              }
+
+              const rect = event.currentTarget.getBoundingClientRect()
+              setPromptTemplatesMenuAnchor({
+                x: rect.right,
+                y: rect.bottom,
+              })
+            }}
+            aria-label={t('taskPromptTemplates.openMenu')}
+            title={t('taskPromptTemplates.openMenu')}
+          >
+            <FileText size={14} strokeWidth={2.2} />
+          </button>
+
+          <button
+            type="button"
             className="task-node__icon-button task-node__icon-button--edit nodrag"
             data-testid="task-node-open-editor"
             onClick={event => {
@@ -324,6 +357,21 @@ export function TaskNode({
           </button>
         </div>
       </div>
+
+      <TaskPromptTemplatesMenu
+        isOpen={isPromptTemplatesMenuOpen}
+        anchor={promptTemplatesMenuAnchor}
+        workspaceId={workspaceId}
+        closeMenu={() => {
+          setPromptTemplatesMenuAnchor(null)
+        }}
+        currentRequirement={requirementDraft}
+        onChangeRequirement={nextRequirement => {
+          setRequirementDraft(nextRequirement)
+          onQuickRequirementSave(nextRequirement)
+        }}
+        testIdPrefix="task-node"
+      />
 
       <div className="task-node__meta" data-testid="task-node-meta">
         <span className={`task-node__priority task-node__priority--${priority}`}>

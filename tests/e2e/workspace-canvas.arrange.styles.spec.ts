@@ -1,12 +1,15 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 import {
+  ARRANGE_PADDING_PX,
+  CANONICAL_GUTTER_PX,
   clickPaneAtFlowPoint,
   ensureArtifactsDir,
   openPaneContextMenuAtFlowPoint,
   openPaneContextMenuInSpace,
   readSeededWorkspaceLayout,
   rectsOverlap,
+  resolveCanonicalNodeSizes,
 } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Arrange', () => {
@@ -64,6 +67,12 @@ test.describe('Workspace Canvas - Arrange', () => {
       await expect(pane).toBeVisible()
       await expect(window.locator('.react-flow__node')).toHaveCount(4)
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const terminalSize = canonicalSizes.terminal
+      const expectedSpaceWidth =
+        ARRANGE_PADDING_PX * 2 + terminalSize.width * 2 + CANONICAL_GUTTER_PX
+      const expectedSpaceHeight =
+        ARRANGE_PADDING_PX * 2 + terminalSize.height * 2 + CANONICAL_GUTTER_PX
 
       await openPaneContextMenuInSpace(window, pane, 'space-tiles')
 
@@ -120,13 +129,30 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toEqual({
           nodes: {
-            'tile-1': { x: 124, y: 124, width: 468, height: 324 },
-            'tile-2': { x: 604, y: 124, width: 468, height: 324 },
-            'tile-3': { x: 124, y: 460, width: 468, height: 324 },
-            'tile-4': { x: 604, y: 460, width: 468, height: 324 },
+            'tile-1': { x: 124, y: 124, ...terminalSize },
+            'tile-2': {
+              x: 124 + terminalSize.width + CANONICAL_GUTTER_PX,
+              y: 124,
+              ...terminalSize,
+            },
+            'tile-3': {
+              x: 124,
+              y: 124 + terminalSize.height + CANONICAL_GUTTER_PX,
+              ...terminalSize,
+            },
+            'tile-4': {
+              x: 124 + terminalSize.width + CANONICAL_GUTTER_PX,
+              y: 124 + terminalSize.height + CANONICAL_GUTTER_PX,
+              ...terminalSize,
+            },
           },
           spaces: {
-            'space-tiles': { x: 100, y: 100, width: 996, height: 708 },
+            'space-tiles': {
+              x: 100,
+              y: 100,
+              width: expectedSpaceWidth,
+              height: expectedSpaceHeight,
+            },
           },
         })
 
@@ -192,6 +218,8 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const terminalSize = canonicalSizes.terminal
 
       await openPaneContextMenuAtFlowPoint(window, pane, { x: 40, y: 40 })
 
@@ -221,10 +249,10 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toMatchObject({
           nodes: {
-            'root-a': { width: 468, height: 324 },
-            'root-b': { width: 468, height: 324 },
-            'space-a': { width: 468, height: 324 },
-            'space-b': { width: 468, height: 324 },
+            'root-a': terminalSize,
+            'root-b': terminalSize,
+            'space-a': terminalSize,
+            'space-b': terminalSize,
           },
         })
       const layout = await readSeededWorkspaceLayout(window, {
@@ -354,6 +382,15 @@ test.describe('Workspace Canvas - Arrange', () => {
       await expect(pane).toBeVisible()
       await expect(window.locator('.react-flow__node')).toHaveCount(4)
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const expectedSpaceWidth =
+        ARRANGE_PADDING_PX * 2 +
+        canonicalSizes.task.width +
+        CANONICAL_GUTTER_PX +
+        canonicalSizes.agent.width +
+        CANONICAL_GUTTER_PX +
+        canonicalSizes.terminal.width
+      const expectedSpaceHeight = ARRANGE_PADDING_PX * 2 + canonicalSizes.agent.height
 
       await openPaneContextMenuInSpace(window, pane, 'space-mixed')
       await expect(window.locator('.workspace-context-menu')).toBeVisible()
@@ -370,17 +407,36 @@ test.describe('Workspace Canvas - Arrange', () => {
       })
 
       const spaceRect = layout.spaces['space-mixed']
-      expect(spaceRect).toEqual({ x: 100, y: 100, width: 1236, height: 708 })
+      expect(spaceRect).toEqual({
+        x: 100,
+        y: 100,
+        width: expectedSpaceWidth,
+        height: expectedSpaceHeight,
+      })
 
-      expect(layout.nodes['mixed-agent']).toMatchObject({ width: 468, height: 660 })
-      expect(layout.nodes['mixed-terminal']).toMatchObject({ width: 468, height: 324 })
-      expect(layout.nodes['mixed-task-1']).toMatchObject({ width: 228, height: 324 })
-      expect(layout.nodes['mixed-task-2']).toMatchObject({ width: 228, height: 324 })
+      expect(layout.nodes['mixed-agent']).toMatchObject(canonicalSizes.agent)
+      expect(layout.nodes['mixed-terminal']).toMatchObject(canonicalSizes.terminal)
+      expect(layout.nodes['mixed-task-1']).toMatchObject(canonicalSizes.task)
+      expect(layout.nodes['mixed-task-2']).toMatchObject(canonicalSizes.task)
 
       expect(layout.nodes['mixed-task-1']).toMatchObject({ x: 124, y: 124 })
-      expect(layout.nodes['mixed-task-2']).toMatchObject({ x: 124, y: 460 })
-      expect(layout.nodes['mixed-agent']).toMatchObject({ x: 364, y: 124 })
-      expect(layout.nodes['mixed-terminal']).toMatchObject({ x: 844, y: 124 })
+      expect(layout.nodes['mixed-task-2']).toMatchObject({
+        x: 124,
+        y: 124 + canonicalSizes.task.height + CANONICAL_GUTTER_PX,
+      })
+      expect(layout.nodes['mixed-agent']).toMatchObject({
+        x: 124 + canonicalSizes.task.width + CANONICAL_GUTTER_PX,
+        y: 124,
+      })
+      expect(layout.nodes['mixed-terminal']).toMatchObject({
+        x:
+          124 +
+          canonicalSizes.task.width +
+          CANONICAL_GUTTER_PX +
+          canonicalSizes.agent.width +
+          CANONICAL_GUTTER_PX,
+        y: 124,
+      })
 
       const rects = ['mixed-agent', 'mixed-terminal', 'mixed-task-1', 'mixed-task-2'].map(
         id => layout.nodes[id],

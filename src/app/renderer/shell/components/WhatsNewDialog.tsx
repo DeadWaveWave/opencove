@@ -1,9 +1,9 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
+  ReleaseNotesCurrentResult,
   ReleaseNotesItem,
   ReleaseNotesKind,
-  ReleaseNotesRangeResult,
 } from '@shared/contracts/dto'
 
 const KIND_ORDER: ReleaseNotesKind[] = ['added', 'fixed', 'changed', 'docs', 'other']
@@ -51,7 +51,7 @@ export function WhatsNewDialog({
   isOpen: boolean
   fromVersion: string | null
   toVersion: string | null
-  notes: ReleaseNotesRangeResult | null
+  notes: ReleaseNotesCurrentResult | null
   isLoading: boolean
   error: string | null
   compareUrl: string | null
@@ -68,7 +68,7 @@ export function WhatsNewDialog({
   const compareLinkLabel =
     compareUrl && compareUrl.includes('/compare/')
       ? t('whatsNew.viewCompare')
-      : t('whatsNew.viewChangelog')
+      : t('whatsNew.viewRelease')
 
   return (
     <div
@@ -107,8 +107,11 @@ export function WhatsNewDialog({
         <div className="whats-new-body">
           {isLoading ? <p className="whats-new-muted">{t('whatsNew.loading')}</p> : null}
           {error ? <p className="whats-new-error">{error}</p> : null}
+          {!isLoading && !error && notes?.summary ? (
+            <p className="whats-new-subtitle">{notes.summary}</p>
+          ) : null}
 
-          {!isLoading && !error && items.length === 0 ? (
+          {!isLoading && !error && items.length === 0 && !notes?.summary ? (
             <p className="whats-new-muted">{t('whatsNew.empty')}</p>
           ) : null}
 
@@ -144,13 +147,7 @@ export function WhatsNewDialog({
         </div>
 
         <footer className="whats-new-footer">
-          {notes?.truncated ? (
-            <span className="whats-new-muted">
-              {t('whatsNew.truncated', { count: notes.items.length })}
-            </span>
-          ) : (
-            <span />
-          )}
+          <span />
           {compareUrl ? (
             <a
               className="whats-new-compare-link"

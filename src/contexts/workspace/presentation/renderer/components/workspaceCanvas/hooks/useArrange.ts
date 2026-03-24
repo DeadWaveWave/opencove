@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
   arrangeWorkspaceAll,
@@ -62,6 +63,7 @@ export function useWorkspaceCanvasArrange({
   onSpacesChange,
   onRequestPersistFlush,
   onShowMessage,
+  standardWindowSizeBucket,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -73,6 +75,7 @@ export function useWorkspaceCanvasArrange({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
+  standardWindowSizeBucket: StandardWindowSizeBucket
 }): {
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
@@ -104,65 +107,74 @@ export function useWorkspaceCanvasArrange({
 
   const arrangeAll = useCallback(
     (style?: WorkspaceArrangeStyle) => {
-      const wrapWidth = resolveWrapWidth(reactFlow)
-      const viewport = resolveViewportSize()
-      const result = arrangeWorkspaceAll({
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
-        wrapWidth,
-        viewport,
-        style,
-      })
+      void (async () => {
+        const wrapWidth = resolveWrapWidth(reactFlow)
+        const viewport = resolveViewportSize()
+        const result = arrangeWorkspaceAll({
+          nodes: nodesRef.current,
+          spaces: spacesRef.current,
+          wrapWidth,
+          viewport,
+          standardWindowSizeBucket,
+          style,
+        })
 
-      commitArrange(result)
+        commitArrange(result)
 
-      const { skippedSpaceCount } = summarizeWarnings(result.warnings)
-      if (skippedSpaceCount > 0) {
-        onShowMessage?.(
-          t('messages.arrangeAllSkippedSpaces', { count: skippedSpaceCount }),
-          'warning',
-        )
-      }
+        const { skippedSpaceCount } = summarizeWarnings(result.warnings)
+        if (skippedSpaceCount > 0) {
+          onShowMessage?.(
+            t('messages.arrangeAllSkippedSpaces', { count: skippedSpaceCount }),
+            'warning',
+          )
+        }
+      })()
     },
-    [commitArrange, nodesRef, onShowMessage, reactFlow, spacesRef, t],
+    [commitArrange, nodesRef, onShowMessage, reactFlow, spacesRef, standardWindowSizeBucket, t],
   )
 
   const arrangeCanvas = useCallback(
     (style?: WorkspaceArrangeStyle) => {
-      const wrapWidth = resolveWrapWidth(reactFlow)
-      const viewport = resolveViewportSize()
-      const result = arrangeWorkspaceCanvas({
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
-        wrapWidth,
-        viewport,
-        style,
-      })
+      void (async () => {
+        const wrapWidth = resolveWrapWidth(reactFlow)
+        const viewport = resolveViewportSize()
+        const result = arrangeWorkspaceCanvas({
+          nodes: nodesRef.current,
+          spaces: spacesRef.current,
+          wrapWidth,
+          viewport,
+          standardWindowSizeBucket,
+          style,
+        })
 
-      commitArrange(result)
+        commitArrange(result)
+      })()
     },
-    [commitArrange, nodesRef, reactFlow, spacesRef],
+    [commitArrange, nodesRef, reactFlow, spacesRef, standardWindowSizeBucket],
   )
 
   const arrangeInSpace = useCallback(
     (spaceId: string, style?: WorkspaceArrangeStyle) => {
-      const viewport = resolveViewportSize()
-      const result = arrangeWorkspaceInSpace({
-        spaceId,
-        nodes: nodesRef.current,
-        spaces: spacesRef.current,
-        viewport,
-        style,
-      })
+      void (async () => {
+        const viewport = resolveViewportSize()
+        const result = arrangeWorkspaceInSpace({
+          spaceId,
+          nodes: nodesRef.current,
+          spaces: spacesRef.current,
+          viewport,
+          standardWindowSizeBucket,
+          style,
+        })
 
-      if (result.warnings.some(warning => warning.kind === 'space_no_room')) {
-        onShowMessage?.(t('messages.arrangeSpaceNoRoom'), 'warning')
-        return
-      }
+        if (result.warnings.some(warning => warning.kind === 'space_no_room')) {
+          onShowMessage?.(t('messages.arrangeSpaceNoRoom'), 'warning')
+          return
+        }
 
-      commitArrange(result)
+        commitArrange(result)
+      })()
     },
-    [commitArrange, nodesRef, onShowMessage, spacesRef, t],
+    [commitArrange, nodesRef, onShowMessage, spacesRef, standardWindowSizeBucket, t],
   )
 
   return {

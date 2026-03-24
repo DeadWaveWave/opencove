@@ -13,7 +13,7 @@ describe('agent settings normalization', () => {
     expect(normalizeAgentSettings(null)).toEqual(DEFAULT_AGENT_SETTINGS)
     expect(normalizeAgentSettings('invalid')).toEqual(DEFAULT_AGENT_SETTINGS)
     expect(DEFAULT_AGENT_SETTINGS.language).toBe('en')
-    expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('system')
+    expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('dark')
     expect(DEFAULT_AGENT_SETTINGS.focusNodeOnClick).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom).toBe(1)
     expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
@@ -143,7 +143,7 @@ describe('agent settings normalization', () => {
     })
 
     expect(result.language).toBe('en')
-    expect(result.uiTheme).toBe('system')
+    expect(result.uiTheme).toBe('dark')
     expect(result.canvasInputMode).toBe('auto')
     expect(result.updatePolicy).toBe('prompt')
     expect(result.updateChannel).toBe('stable')

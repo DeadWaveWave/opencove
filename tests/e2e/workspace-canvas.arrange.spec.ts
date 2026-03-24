@@ -5,7 +5,13 @@ import {
   readCanvasViewport,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
-import { ensureArtifactsDir, readSeededWorkspaceLayout } from './workspace-canvas.arrange.shared'
+import {
+  ARRANGE_PADDING_PX,
+  CANONICAL_GUTTER_PX,
+  ensureArtifactsDir,
+  readSeededWorkspaceLayout,
+  resolveCanonicalNodeSizes,
+} from './workspace-canvas.arrange.shared'
 
 async function openPaneContextMenu(
   window: Page,
@@ -45,6 +51,8 @@ test.describe('Workspace Canvas - Arrange', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       await expect(window.locator('.react-flow__node')).toHaveCount(2)
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const terminalSize = canonicalSizes.terminal
 
       const viewport = await readCanvasViewport(window)
       await openPaneContextMenu(window, pane, {
@@ -74,8 +82,12 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toEqual({
           nodes: {
-            'arrange-node-1': { x: 576, y: 96, width: 468, height: 324 },
-            'arrange-node-2': { x: 96, y: 96, width: 468, height: 324 },
+            'arrange-node-1': {
+              x: 96 + terminalSize.width + CANONICAL_GUTTER_PX,
+              y: 96,
+              ...terminalSize,
+            },
+            'arrange-node-2': { x: 96, y: 96, ...terminalSize },
           },
           spaces: {},
         })
@@ -138,6 +150,12 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
       await expect(window.locator('.react-flow__node')).toHaveCount(4)
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const terminalSize = canonicalSizes.terminal
+      const expectedSpaceWidth =
+        ARRANGE_PADDING_PX * 2 + terminalSize.width * 2 + CANONICAL_GUTTER_PX
+      const expectedSpaceHeight =
+        ARRANGE_PADDING_PX * 2 + terminalSize.height * 2 + CANONICAL_GUTTER_PX
 
       await window.locator('[data-testid="workspace-space-menu-space-1"]').click()
       await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
@@ -156,12 +174,20 @@ test.describe('Workspace Canvas - Arrange', () => {
         .toEqual({
           nodes: {
             'root-1': { x: 980, y: 140, width: 320, height: 240 },
-            'space-node-a': { x: 124, y: 224, width: 468, height: 324 },
-            'space-node-b': { x: 604, y: 224, width: 468, height: 324 },
-            'space-node-c': { x: 124, y: 560, width: 468, height: 324 },
+            'space-node-a': { x: 124, y: 224, ...terminalSize },
+            'space-node-b': {
+              x: 124 + terminalSize.width + CANONICAL_GUTTER_PX,
+              y: 224,
+              ...terminalSize,
+            },
+            'space-node-c': {
+              x: 124,
+              y: 224 + terminalSize.height + CANONICAL_GUTTER_PX,
+              ...terminalSize,
+            },
           },
           spaces: {
-            'space-1': { x: 100, y: 200, width: 996, height: 708 },
+            'space-1': { x: 100, y: 200, width: expectedSpaceWidth, height: expectedSpaceHeight },
           },
         })
 
@@ -330,6 +356,13 @@ test.describe('Workspace Canvas - Arrange', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       await expect(window.locator('.workspace-space-region')).toHaveCount(2)
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const terminalSize = canonicalSizes.terminal
+      const expectedBigSpaceWidth =
+        ARRANGE_PADDING_PX * 2 + terminalSize.width * 2 + CANONICAL_GUTTER_PX
+      const expectedBigSpaceHeight =
+        ARRANGE_PADDING_PX * 2 + terminalSize.height * 2 + CANONICAL_GUTTER_PX
+      const canArrangeBigSpace = expectedBigSpaceWidth <= 996 && expectedBigSpaceHeight <= 708
 
       const viewport = await readCanvasViewport(window)
       await openPaneContextMenu(window, pane, {
@@ -352,7 +385,7 @@ test.describe('Workspace Canvas - Arrange', () => {
       ).toBeVisible()
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
-        'Skipped 1 space: not enough room to arrange.',
+        `Skipped ${canArrangeBigSpace ? 1 : 2} space${canArrangeBigSpace ? '' : 's'}: not enough room to arrange.`,
       )
 
       await expect
@@ -366,13 +399,34 @@ test.describe('Workspace Canvas - Arrange', () => {
           nodes: {
             'small-1': { x: 120, y: 150, width: 280, height: 160 },
             'small-2': { x: 120, y: 200, width: 280, height: 160 },
-            'big-1': { x: 452, y: 120, width: 468, height: 324 },
-            'big-2': { x: 932, y: 120, width: 468, height: 324 },
-            'big-3': { x: 452, y: 456, width: 468, height: 324 },
+            'big-1': canArrangeBigSpace
+              ? { x: 452, y: 120, ...terminalSize }
+              : { x: 488, y: 130, width: 120, height: 120 },
+            'big-2': canArrangeBigSpace
+              ? {
+                  x: 452 + terminalSize.width + CANONICAL_GUTTER_PX,
+                  y: 120,
+                  ...terminalSize,
+                }
+              : { x: 638, y: 140, width: 120, height: 120 },
+            'big-3': canArrangeBigSpace
+              ? {
+                  x: 452,
+                  y: 120 + terminalSize.height + CANONICAL_GUTTER_PX,
+                  ...terminalSize,
+                }
+              : { x: 498, y: 150, width: 120, height: 120 },
           },
           spaces: {
             'space-small': { x: 96, y: 96, width: 320, height: 320 },
-            'space-big': { x: 428, y: 96, width: 996, height: 708 },
+            'space-big': canArrangeBigSpace
+              ? {
+                  x: 428,
+                  y: 96,
+                  width: expectedBigSpaceWidth,
+                  height: expectedBigSpaceHeight,
+                }
+              : { x: 428, y: 96, width: 996, height: 708 },
           },
         })
 

@@ -2,8 +2,71 @@ import type { Locator, Page } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import { readCanvasViewport } from './workspace-canvas.helpers'
 
+type CanonicalSizeBucket = 'compact' | 'regular' | 'large'
+type CanonicalNodeKind = 'terminal' | 'task' | 'agent' | 'note'
+
+const CANONICAL_BUCKET_CELLS: Record<CanonicalSizeBucket, { col: number; row: number }> = {
+  compact: { col: 108, row: 72 },
+  regular: { col: 120, row: 80 },
+  large: { col: 132, row: 88 },
+}
+
+const CANONICAL_KIND_UNITS: Record<CanonicalNodeKind, { col: number; row: number }> = {
+  terminal: { col: 4, row: 4 },
+  task: { col: 2, row: 4 },
+  agent: { col: 4, row: 8 },
+  note: { col: 2, row: 2 },
+}
+
+export const CANONICAL_GUTTER_PX = 12
+export const ARRANGE_PADDING_PX = 24
+
 export async function ensureArtifactsDir(): Promise<void> {
   await mkdir('artifacts', { recursive: true })
+}
+
+export async function resolveCanonicalBucketForWindow(window: Page): Promise<CanonicalSizeBucket> {
+  return await window.evaluate(async () => {
+    const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+    if (!raw) {
+      return 'regular'
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        settings?: { standardWindowSizeBucket?: string }
+      }
+      const bucket = parsed.settings?.standardWindowSizeBucket
+      return bucket === 'compact' || bucket === 'regular' || bucket === 'large' ? bucket : 'regular'
+    } catch {
+      return 'regular'
+    }
+  })
+}
+
+export async function resolveCanonicalNodeSizes(window: Page): Promise<
+  Record<CanonicalNodeKind, { width: number; height: number }> & {
+    bucket: CanonicalSizeBucket
+  }
+> {
+  const bucket = await resolveCanonicalBucketForWindow(window)
+
+  const resolveSize = (kind: CanonicalNodeKind) => {
+    const cell = CANONICAL_BUCKET_CELLS[bucket]
+    const units = CANONICAL_KIND_UNITS[kind]
+    return {
+      width: cell.col * units.col + CANONICAL_GUTTER_PX * Math.max(0, units.col - 1),
+      height: cell.row * units.row + CANONICAL_GUTTER_PX * Math.max(0, units.row - 1),
+    }
+  }
+
+  return {
+    bucket,
+    terminal: resolveSize('terminal'),
+    task: resolveSize('task'),
+    agent: resolveSize('agent'),
+    note: resolveSize('note'),
+  }
 }
 
 export async function openPaneContextMenuAtFlowPoint(

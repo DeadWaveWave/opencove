@@ -11,6 +11,10 @@ export const enMessages = {
   taskNodePlacementFailed: 'Task node cannot be placed. Tidy the canvas and try again.',
   taskTitleOrAutoGenerateRequired: 'Enter a task title or enable auto-generation.',
   taskTitleRequired: 'Enter a task title.',
+  taskPromptTemplateNameRequired: 'Template name cannot be empty.',
+  taskPromptTemplateContentRequired: 'Template content cannot be empty.',
+  taskPromptTemplateNameTaken: 'A template with this name already exists.',
+  taskPromptTemplateProjectUnavailable: 'Project templates are unavailable.',
   taskLinkedAgentWindowOpen: 'Close the currently linked agent window before continuing.',
   taskResumeSessionMissing:
     'This agent record does not have a verified resumeSessionId, so it cannot resume.',

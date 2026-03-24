@@ -30,15 +30,15 @@ import type {
   ResolveGitHubPullRequestsResult,
   AppUpdateState,
   ConfigureAppUpdatesInput,
-  GetReleaseNotesAutoRangeInput,
-  GetReleaseNotesRangeInput,
-  ReleaseNotesRangeResult,
+  GetCurrentReleaseNotesInput,
+  ReleaseNotesCurrentResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
   ReadCanvasImageInput,
   ReadCanvasImageResult,
+  WindowDisplayInfo,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -79,6 +79,10 @@ const opencoveApi = {
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.windowChromeSetTheme, payload),
+  },
+  windowMetrics: {
+    getDisplayInfo: (): Promise<WindowDisplayInfo> =>
+      invokeIpc(IPC_CHANNELS.windowMetricsGetDisplayInfo),
   },
   clipboard: {
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),
@@ -163,10 +167,8 @@ const opencoveApi = {
     },
   },
   releaseNotes: {
-    getRange: (payload: GetReleaseNotesRangeInput): Promise<ReleaseNotesRangeResult> =>
-      invokeIpc(IPC_CHANNELS.releaseNotesGetRange, payload),
-    getAutoRange: (payload: GetReleaseNotesAutoRangeInput): Promise<ReleaseNotesRangeResult> =>
-      invokeIpc(IPC_CHANNELS.releaseNotesGetAutoRange, payload),
+    getCurrent: (payload: GetCurrentReleaseNotesInput): Promise<ReleaseNotesCurrentResult> =>
+      invokeIpc(IPC_CHANNELS.releaseNotesGetCurrent, payload),
   },
   pty: {
     listProfiles: (): Promise<ListTerminalProfilesResult> =>

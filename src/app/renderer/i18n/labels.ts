@@ -1,4 +1,9 @@
-import type { CanvasInputMode, UiLanguage, UiTheme } from '@contexts/settings/domain/agentSettings'
+import type {
+  CanvasInputMode,
+  StandardWindowSizeBucket,
+  UiLanguage,
+  UiTheme,
+} from '@contexts/settings/domain/agentSettings'
 import { UI_LANGUAGE_NATIVE_LABEL } from '@contexts/settings/domain/agentSettings'
 import type { AppUpdateChannel, AppUpdatePolicy } from '@shared/contracts/dto'
 import type {
@@ -17,6 +22,21 @@ export function getCanvasInputModeLabel(t: TranslateFn, mode: CanvasInputMode): 
   }
 
   return t('settingsPanel.canvas.inputMode.mouse')
+}
+
+export function getStandardWindowSizeBucketLabel(
+  t: TranslateFn,
+  bucket: StandardWindowSizeBucket,
+): string {
+  if (bucket === 'compact') {
+    return t('settingsPanel.canvas.standardWindowSize.compact')
+  }
+
+  if (bucket === 'large') {
+    return t('settingsPanel.canvas.standardWindowSize.large')
+  }
+
+  return t('settingsPanel.canvas.standardWindowSize.regular')
 }
 
 export function getUiThemeLabel(t: TranslateFn, theme: UiTheme): string {

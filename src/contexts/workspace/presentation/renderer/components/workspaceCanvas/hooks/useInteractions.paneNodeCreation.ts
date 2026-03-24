@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, CreateNodeInput } from '../types'
 import { resolveDefaultNoteWindowSize, resolveDefaultTerminalWindowSize } from '../constants'
@@ -15,43 +16,36 @@ type SetNodes = (
   options?: { syncLayout?: boolean },
 ) => void
 
-export async function createTerminalNodeFromPaneContextMenu({
-  contextMenu,
+export async function createTerminalNodeAtFlowPosition({
+  anchor,
   defaultTerminalProfileId,
-  defaultTerminalWindowScalePercent,
+  standardWindowSizeBucket,
   workspacePath,
   spacesRef,
   nodesRef,
   setNodes,
   onSpacesChange,
   createNodeForSession,
-  setContextMenu,
 }: {
-  contextMenu: ContextMenuState | null
+  anchor: Point
   defaultTerminalProfileId: string | null
-  defaultTerminalWindowScalePercent: number
+  standardWindowSizeBucket: StandardWindowSizeBucket
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  setContextMenu: (next: ContextMenuState | null) => void
 }): Promise<void> {
-  if (!contextMenu || contextMenu.kind !== 'pane') {
-    return
-  }
-
   const cursorAnchor = {
-    x: contextMenu.flowX,
-    y: contextMenu.flowY,
+    x: anchor.x,
+    y: anchor.y,
   }
-  const anchor = resolveNodePlacementAnchorFromViewportCenter(
+  const nodeAnchor = resolveNodePlacementAnchorFromViewportCenter(
     cursorAnchor,
-    resolveDefaultTerminalWindowSize(defaultTerminalWindowScalePercent),
+    resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
   )
 
-  setContextMenu(null)
   const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
 
   const resolvedCwd =
@@ -71,10 +65,13 @@ export async function createTerminalNodeFromPaneContextMenu({
     profileId: spawned.profileId,
     runtimeKind: spawned.runtimeKind,
     title: `terminal-${nodesRef.current.length + 1}`,
-    anchor,
+    anchor: nodeAnchor,
     kind: 'terminal',
     executionDirectory: resolvedCwd,
     expectedDirectory: resolvedCwd,
+    placement: {
+      targetSpaceRect: targetSpace?.rect ?? null,
+    },
   })
 
   if (!created || !targetSpace) {
@@ -91,9 +88,91 @@ export async function createTerminalNodeFromPaneContextMenu({
   })
 }
 
+export function createNoteNodeAtFlowPosition({
+  anchor,
+  standardWindowSizeBucket,
+  createNoteNode,
+  spacesRef,
+  nodesRef,
+  setNodes,
+  onSpacesChange,
+}: {
+  anchor: Point
+  standardWindowSizeBucket: StandardWindowSizeBucket
+  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  setNodes: SetNodes
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+}): void {
+  const cursorAnchor = {
+    x: anchor.x,
+    y: anchor.y,
+  }
+  const nodeAnchor = resolveNodePlacementAnchorFromViewportCenter(
+    cursorAnchor,
+    resolveDefaultNoteWindowSize(standardWindowSizeBucket),
+  )
+
+  createNoteNodeAtAnchor({
+    anchor: nodeAnchor,
+    spaceAnchor: cursorAnchor,
+    createNoteNode,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+  })
+}
+
+export async function createTerminalNodeFromPaneContextMenu({
+  contextMenu,
+  defaultTerminalProfileId,
+  workspacePath,
+  spacesRef,
+  nodesRef,
+  standardWindowSizeBucket,
+  setNodes,
+  onSpacesChange,
+  createNodeForSession,
+  setContextMenu,
+}: {
+  contextMenu: ContextMenuState | null
+  defaultTerminalProfileId: string | null
+  workspacePath: string
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  standardWindowSizeBucket: StandardWindowSizeBucket
+  setNodes: SetNodes
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
+  setContextMenu: (next: ContextMenuState | null) => void
+}): Promise<void> {
+  if (!contextMenu || contextMenu.kind !== 'pane') {
+    return
+  }
+
+  setContextMenu(null)
+  await createTerminalNodeAtFlowPosition({
+    anchor: {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    },
+    defaultTerminalProfileId,
+    standardWindowSizeBucket,
+    workspacePath,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+    createNodeForSession,
+  })
+}
+
 export function createNoteNodeFromPaneContextMenu({
   contextMenu,
   createNoteNode,
+  standardWindowSizeBucket,
   spacesRef,
   nodesRef,
   setNodes,
@@ -102,6 +181,7 @@ export function createNoteNodeFromPaneContextMenu({
 }: {
   contextMenu: ContextMenuState | null
   createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  standardWindowSizeBucket: StandardWindowSizeBucket
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
@@ -112,20 +192,13 @@ export function createNoteNodeFromPaneContextMenu({
     return
   }
 
-  const cursorAnchor = {
-    x: contextMenu.flowX,
-    y: contextMenu.flowY,
-  }
-  const anchor = resolveNodePlacementAnchorFromViewportCenter(
-    cursorAnchor,
-    resolveDefaultNoteWindowSize(),
-  )
-
   setContextMenu(null)
-
-  createNoteNodeAtAnchor({
-    anchor,
-    spaceAnchor: cursorAnchor,
+  createNoteNodeAtFlowPosition({
+    anchor: {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    },
+    standardWindowSizeBucket,
     createNoteNode,
     spacesRef,
     nodesRef,

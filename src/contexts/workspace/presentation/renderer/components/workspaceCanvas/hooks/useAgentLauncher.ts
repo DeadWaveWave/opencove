@@ -1,7 +1,11 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import { resolveAgentModel, type AgentSettings } from '@contexts/settings/domain/agentSettings'
+import {
+  resolveAgentModel,
+  type AgentSettings,
+  type StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { resolveDefaultAgentWindowSize } from '../constants'
@@ -27,6 +31,7 @@ interface UseAgentLauncherParams {
   contextMenu: ContextMenuState | null
   setContextMenu: (next: ContextMenuState | null) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   buildAgentNodeTitle: (
     provider: AgentNodeData['provider'],
     effectiveModel: string | null,
@@ -45,6 +50,7 @@ export function useWorkspaceCanvasAgentLauncher({
   contextMenu,
   setContextMenu,
   createNodeForSession,
+  standardWindowSizeBucket,
   buildAgentNodeTitle,
 }: UseAgentLauncherParams): {
   openAgentLauncher: () => void
@@ -58,28 +64,24 @@ export function useWorkspaceCanvasAgentLauncher({
         return
       }
 
-      const cursorAnchor: Point = {
-        x: contextMenu.flowX,
-        y: contextMenu.flowY,
-      }
-      const anchor = resolveNodePlacementAnchorFromViewportCenter(
-        cursorAnchor,
-        resolveDefaultAgentWindowSize(agentSettings.defaultTerminalWindowScalePercent),
-      )
-
-      const model = resolveAgentModel(agentSettings, provider)
-
-      const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-
-      const executionDirectory =
-        anchorSpace && anchorSpace.directoryPath.trim().length > 0
-          ? anchorSpace.directoryPath
-          : workspacePath
-
       setContextMenu(null)
 
       void (async () => {
         try {
+          const cursorAnchor: Point = {
+            x: contextMenu.flowX,
+            y: contextMenu.flowY,
+          }
+          const anchor = resolveNodePlacementAnchorFromViewportCenter(
+            cursorAnchor,
+            resolveDefaultAgentWindowSize(standardWindowSizeBucket),
+          )
+          const model = resolveAgentModel(agentSettings, provider)
+          const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+          const executionDirectory =
+            anchorSpace && anchorSpace.directoryPath.trim().length > 0
+              ? anchorSpace.directoryPath
+              : workspacePath
           const launched = await window.opencoveApi.agent.launch({
             provider,
             cwd: executionDirectory,
@@ -154,6 +156,7 @@ export function useWorkspaceCanvasAgentLauncher({
       setContextMenu,
       setNodes,
       spacesRef,
+      standardWindowSizeBucket,
       t,
       workspacePath,
     ],

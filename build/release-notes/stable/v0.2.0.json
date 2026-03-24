@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "version": "0.2.0",
+  "channel": "stable",
+  "publishedAt": "2026-03-12T00:00:00.000Z",
+  "provenance": "curated",
+  "defaultLocale": "en",
+  "compareUrl": "https://github.com/DeadWaveWave/opencove/releases/tag/v0.2.0",
+  "locales": {
+    "en": {
+      "summary": "OpenCove 0.2.0 unifies the workspace chrome, hardens agent/runtime stability, and introduces a formal multi-platform release pipeline.",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "Unified node chrome across terminals, notes, and tasks for a tighter workspace feel.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Expanded worktree management with clearer archive states and panel integrations.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "Added automated GitHub Releases for macOS, Windows, and Linux artifacts.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "Refined workspace defaults and task/worktree flows for more deterministic behavior.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Hardened PTY lifecycle, recovery, and persistence behavior to prevent agent/runtime desync.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "Resolved canvas and terminal regressions around scrollback, cleanup, and recovery edges.",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        }
+      ]
+    },
+    "zh-CN": {
+      "summary": "OpenCove 0.2.0 统一了工作区界面，强化了 Agent 与运行时稳定性，并引入正式的多平台发布流程。",
+      "items": [
+        {
+          "kind": "added",
+          "summary": "统一终端、便签和任务窗口的节点外观，让工作区体验更完整一致。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "扩展 worktree 管理能力，补齐更清晰的归档状态与面板集成。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "added",
+          "summary": "新增 macOS、Windows、Linux 三端 GitHub Release 自动发布流程。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "changed",
+          "summary": "优化工作区默认行为与任务/worktree 流程，让整体操作更可预测。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "强化 PTY 生命周期、恢复链路和持久化行为，减少 Agent 与运行时失同步。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        },
+        {
+          "kind": "fixed",
+          "summary": "修复画布与终端在滚动回放、清理和恢复边界上的一组回归问题。",
+          "url": null,
+          "prNumber": null,
+          "sha": null
+        }
+      ]
+    }
+  }
+}

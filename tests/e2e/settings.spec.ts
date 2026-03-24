@@ -15,7 +15,9 @@ test.describe('Settings', () => {
             formatVersion: 1,
             activeWorkspaceId: null,
             workspaces: [],
-            settings: {},
+            settings: {
+              standardWindowSizeBucket: 'regular',
+            },
           }),
         })
       })
@@ -96,6 +98,15 @@ test.describe('Settings', () => {
       await expect(canvasInputMode).toHaveValue('auto')
       await selectCoveOption(window, 'settings-canvas-input-mode', 'trackpad')
       await expect(canvasInputMode).toHaveValue('trackpad')
+
+      const standardWindowSize = window.locator('[data-testid="settings-standard-window-size"]')
+      const standardWindowSizeTrigger = window.locator(
+        '[data-testid="settings-standard-window-size-trigger"]',
+      )
+      await expect(standardWindowSizeTrigger).toBeVisible()
+      await expect(standardWindowSize).toHaveValue('regular')
+      await selectCoveOption(window, 'settings-standard-window-size', 'large')
+      await expect(standardWindowSize).toHaveValue('large')
 
       const focusTargetZoom = window.locator('[data-testid="settings-focus-node-target-zoom"]')
       await expect(focusTargetZoom).toBeVisible()
@@ -250,6 +261,7 @@ test.describe('Settings', () => {
                 focusNodeOnClick?: boolean
                 focusNodeTargetZoom?: number
                 canvasInputMode?: string
+                standardWindowSizeBucket?: string
                 uiTheme?: string
                 terminalFontSize?: number
                 uiFontSize?: number
@@ -270,6 +282,7 @@ test.describe('Settings', () => {
           focusNodeOnClick: false,
           focusNodeTargetZoom: 1.37,
           canvasInputMode: 'trackpad',
+          standardWindowSizeBucket: 'large',
           uiTheme: 'light',
           terminalFontSize: 15,
           uiFontSize: 20,
@@ -308,6 +321,7 @@ test.describe('Settings', () => {
       expect(persistedSettings?.focusNodeOnClick).toBe(false)
       expect(persistedSettings?.focusNodeTargetZoom).toBe(1.37)
       expect(persistedSettings?.canvasInputMode).toBe('trackpad')
+      expect(persistedSettings?.standardWindowSizeBucket).toBe('large')
       expect(persistedSettings?.terminalFontSize).toBe(15)
       expect(persistedSettings?.uiFontSize).toBe(20)
       expect(persistedSettings?.updatePolicy).toBe('prompt')

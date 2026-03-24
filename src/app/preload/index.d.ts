@@ -28,15 +28,15 @@ import type {
   ResolveGitHubPullRequestsResult,
   AppUpdateState,
   ConfigureAppUpdatesInput,
-  GetReleaseNotesAutoRangeInput,
-  GetReleaseNotesRangeInput,
-  ReleaseNotesRangeResult,
+  GetCurrentReleaseNotesInput,
+  ReleaseNotesCurrentResult,
   ListWorkspacePathOpenersResult,
   OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
   ReadCanvasImageInput,
   ReadCanvasImageResult,
+  WindowDisplayInfo,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -74,6 +74,9 @@ export interface OpenCoveApi {
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
+  }
+  windowMetrics: {
+    getDisplayInfo: () => Promise<WindowDisplayInfo>
   }
   clipboard: {
     readText: () => Promise<string>
@@ -123,8 +126,7 @@ export interface OpenCoveApi {
     onState: (listener: (state: AppUpdateState) => void) => UnsubscribeFn
   }
   releaseNotes: {
-    getRange: (payload: GetReleaseNotesRangeInput) => Promise<ReleaseNotesRangeResult>
-    getAutoRange: (payload: GetReleaseNotesAutoRangeInput) => Promise<ReleaseNotesRangeResult>
+    getCurrent: (payload: GetCurrentReleaseNotesInput) => Promise<ReleaseNotesCurrentResult>
   }
   pty: {
     listProfiles?: () => Promise<ListTerminalProfilesResult>

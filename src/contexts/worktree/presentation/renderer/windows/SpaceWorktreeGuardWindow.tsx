@@ -1,4 +1,5 @@
 import React from 'react'
+import { WarningDialog } from '@app/renderer/components/WarningDialog'
 import { useTranslation } from '@app/renderer/i18n'
 
 export interface SpaceWorktreeGuardState {
@@ -34,41 +35,16 @@ export function SpaceWorktreeGuardWindow({
   ].join(' · ')
 
   return (
-    <div
-      className="cove-window-backdrop workspace-space-worktree-guard-backdrop"
-      data-testid="space-worktree-guard"
-      onClick={() => {
-        if (guard.isBusy) {
-          return
-        }
-
-        onCancel()
-      }}
-    >
-      <section
-        className="cove-window workspace-space-worktree-guard"
-        onClick={event => {
-          event.stopPropagation()
-        }}
-      >
-        <div className="workspace-space-worktree__message-block">
-          <h3>{guard.pendingLabel}</h3>
-          <p className="workspace-space-worktree__lead">
-            {t('worktreeGuard.activeWindowsBound', { name: guard.spaceName })}
-          </p>
-          <p className="workspace-space-worktree__supporting-text">
-            {guard.allowMarkMismatch
-              ? t('worktreeGuard.closeFirstOrMark')
-              : t('worktreeGuard.closeFirstOnly')}
-          </p>
-          <p className="workspace-space-worktree-guard__summary">{windowSummary}</p>
-        </div>
-
-        {guard.error ? (
-          <p className="cove-window__error workspace-space-worktree-guard__error">{guard.error}</p>
-        ) : null}
-
-        <div className="cove-window__actions workspace-space-worktree-guard__actions">
+    <WarningDialog
+      dataTestId="space-worktree-guard"
+      title={guard.pendingLabel}
+      summary={windowSummary}
+      lead={t('worktreeGuard.activeWindowsBound', { name: guard.spaceName })}
+      onBackdropClick={onCancel}
+      disableBackdropDismiss={guard.isBusy}
+      backdropClassName="workspace-space-worktree-guard-backdrop"
+      actions={
+        <>
           <button
             type="button"
             className="cove-window__action cove-window__action--ghost"
@@ -106,8 +82,18 @@ export function SpaceWorktreeGuardWindow({
           >
             {t('worktreeGuard.closeAllAndContinue')}
           </button>
-        </div>
-      </section>
-    </div>
+        </>
+      }
+    >
+      <p className="workspace-warning-dialog__supporting-text">
+        {guard.allowMarkMismatch
+          ? t('worktreeGuard.closeFirstOrMark')
+          : t('worktreeGuard.closeFirstOnly')}
+      </p>
+
+      {guard.error ? (
+        <p className="cove-window__error workspace-warning-dialog__error">{guard.error}</p>
+      ) : null}
+    </WarningDialog>
   )
 }

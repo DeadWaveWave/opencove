@@ -31,7 +31,7 @@ import { useAppStore } from './store/useAppStore'
 import { createDefaultWorkspaceViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { WhatsNewDialog } from './components/WhatsNewDialog'
-import { formatKeyChord, resolveCommandKeybindings } from '@contexts/settings/domain/keybindings'
+import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -150,16 +150,14 @@ export default function App(): React.JSX.Element {
       : undefined
   const commandCenterBindings = useMemo(
     () =>
-      resolveCommandKeybindings({
+      resolveCommandKeybinding({
         commandId: 'commandCenter.toggle',
         overrides: agentSettings.keybindings,
         platform,
       }),
     [agentSettings.keybindings, platform],
   )
-  const commandCenterPrimaryHint = formatKeyChord(platform, commandCenterBindings.primary) || '—'
-  const commandCenterSecondaryHint =
-    formatKeyChord(platform, commandCenterBindings.secondary) || '—'
+  const commandCenterShortcutHint = formatKeyChord(platform, commandCenterBindings) || '—'
 
   const [floatingMessage, setFloatingMessage] = useState<{
     id: number
@@ -290,8 +288,7 @@ export default function App(): React.JSX.Element {
           activeWorkspacePath={activeWorkspace?.path ?? null}
           isSidebarCollapsed={isPrimarySidebarCollapsed}
           isCommandCenterOpen={isCommandCenterOpen}
-          commandCenterPrimaryHint={commandCenterPrimaryHint}
-          commandCenterSecondaryHint={commandCenterSecondaryHint}
+          commandCenterShortcutHint={commandCenterShortcutHint}
           updateState={updateState}
           onToggleSidebar={() => {
             setAgentSettings(prev => ({
@@ -357,6 +354,9 @@ export default function App(): React.JSX.Element {
               activeSpaceId={activeWorkspace.activeSpaceId}
               onSpacesChange={handleWorkspaceSpacesChange}
               onActiveSpaceChange={handleWorkspaceActiveSpaceChange}
+              shortcutsEnabled={
+                !isSettingsOpen && !isCommandCenterOpen && projectDeleteConfirmation === null
+              }
               agentSettings={agentSettings}
               isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
               focusNodeId={

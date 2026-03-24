@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type {
   ImageNodeData,
   NodeFrame,
@@ -23,8 +24,8 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
-  defaultTerminalWindowScalePercent: number
   onNodeCreated?: (nodeId: string) => void
+  standardWindowSizeBucket: StandardWindowSizeBucket
 }
 
 export interface UseWorkspaceCanvasNodesStoreResult {
