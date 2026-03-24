@@ -280,11 +280,30 @@ export function CommandCenter({
     setQuery('')
     setActiveItemId(null)
 
-    window.setTimeout(() => {
+    let canceled = false
+    const focusInput = (): void => {
+      if (canceled) {
+        return
+      }
+
       inputRef.current?.focus()
-    }, 0)
+    }
+
+    focusInput()
+
+    const rafId = window.requestAnimationFrame(() => {
+      focusInput()
+    })
+
+    const timeoutId = window.setTimeout(() => {
+      focusInput()
+    }, 50)
 
     return () => {
+      canceled = true
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(timeoutId)
+
       const focusTarget = restoreFocusRef.current
       restoreFocusRef.current = null
       if (focusTarget && document.contains(focusTarget)) {

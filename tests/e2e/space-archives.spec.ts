@@ -138,7 +138,7 @@ test.describe('Space Archives', () => {
           })
           .toEqual({ recordCount: 1, hasNote: true, hasTask: true })
 
-        await window.keyboard.press(`${commandCenterModifier}+K`)
+        await window.keyboard.press(`${commandCenterModifier}+P`)
         const archivesCommand = window.locator(
           '[data-testid="command-center-item-command:space-archives"]',
         )
@@ -179,7 +179,7 @@ test.describe('Space Archives', () => {
         await expect(commandCenterButton).toBeVisible()
         await expect(commandCenterButton).toContainText('workspace-space-archives')
 
-        await relaunch.window.keyboard.press(`${commandCenterModifier}+K`)
+        await relaunch.window.keyboard.press(`${commandCenterModifier}+P`)
         const archivesCommand = relaunch.window.locator(
           '[data-testid="command-center-item-command:space-archives"]',
         )
