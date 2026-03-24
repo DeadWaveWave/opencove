@@ -226,25 +226,8 @@ export function projectWorkspaceNodeDragLayout({
       gap: 0,
     })
 
-  const clamped = pushed.map(item => {
-    if (item.kind !== 'node') {
-      return item
-    }
-
-    const { dx, dy } = resolveDeltaToKeepRectInsideRect(
-      item.rect,
-      targetSpaceRect,
-      SPACE_NODE_PADDING,
-    )
-    if (dx === 0 && dy === 0) {
-      return item
-    }
-
-    return { ...item, rect: { ...item.rect, x: item.rect.x + dx, y: item.rect.y + dy } }
-  })
-
   const nextNodePositionById = new Map(
-    clamped
+    pushed
       .filter(item => item.kind === 'node')
       .map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
   )

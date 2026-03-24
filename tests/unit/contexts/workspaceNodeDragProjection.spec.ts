@@ -318,44 +318,4 @@ describe('projectWorkspaceNodeDragLayout', () => {
       assertNoOverlaps(nodes, `step ${step}`)
     }
   })
-
-  it('keeps pushed space-owned nodes inside the space even when bounded layout is impossible', () => {
-    const spaceRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 148, height: 148 }
-    const space: WorkspaceSpaceState = {
-      id: 'space-1',
-      name: 'Space',
-      directoryPath: '/tmp',
-      nodeIds: ['drag', 'a'],
-      rect: spaceRect,
-    }
-
-    const nodes: Array<Node<TerminalNodeData>> = [
-      {
-        ...baseNode,
-        id: 'drag',
-        data: { ...baseNode.data, title: 'drag', width: 100, height: 100 },
-        position: { x: 24, y: 24 },
-      },
-      {
-        ...baseNode,
-        id: 'a',
-        data: { ...baseNode.data, title: 'a', width: 100, height: 100 },
-        position: { x: 24, y: 24 },
-      },
-    ]
-
-    const desired = new Map([['drag', { x: 24, y: 24 }]])
-    const projected = projectWorkspaceNodeDragLayout({
-      nodes,
-      spaces: [space],
-      draggedNodeIds: ['drag'],
-      draggedNodePositionById: desired,
-      dragDx: 0,
-      dragDy: 0,
-    })
-
-    expect(projected?.targetSpaceId).toBe('space-1')
-    const nextNodes = applyProjectedPositions(nodes, projected!.nextNodePositionById)
-    assertInsideSpace(nextNodes, spaceRect, 'fallback')
-  })
 })
