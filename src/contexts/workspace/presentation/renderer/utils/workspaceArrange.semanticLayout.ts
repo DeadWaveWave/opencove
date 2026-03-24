@@ -258,7 +258,7 @@ export function resolveWorkspaceArrangeSemanticGridPlacements({
   }
 
   const ideaLane = placeIdeaLane()
-  const workLane = placeVerticalLane({ items: workItems, startCol: ideaLane.columnsUsed })
+  placeVerticalLane({ items: workItems, startCol: ideaLane.columnsUsed })
   const appendPackedPlacements = (packedPlacements: Map<string, { x: number; y: number }>) => {
     for (const [id, placement] of packedPlacements.entries()) {
       const item = itemById.get(id)
