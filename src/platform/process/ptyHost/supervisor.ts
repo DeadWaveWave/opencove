@@ -357,52 +357,78 @@ export class PtyHostSupervisor {
   }
 
   public async spawn(options: PtyHostSpawnOptions): Promise<{ sessionId: string }> {
-    await this.ensureReady()
-
-    const child = this.process
-    if (!child) {
-      throw new Error('[pty-host] missing process')
-    }
-
-    const requestId = crypto.randomUUID()
     const env = options.env ? { ...options.env } : { ...process.env }
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await this.ensureReady()
 
-    const request: PtyHostSpawnRequest = {
-      type: 'spawn',
-      requestId,
-      command: options.command,
-      args: options.args,
-      cwd: options.cwd,
-      env,
-      cols: options.cols,
-      rows: options.rows,
-    }
+      const child = this.process
+      if (!child) {
+        throw new Error('[pty-host] missing process')
+      }
 
-    const responsePromise = new Promise<PtyHostResponseMessage>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        this.pendingResponses.delete(requestId)
-        reject(new Error(`[pty-host] spawn timeout after ${this.spawnTimeoutMs}ms`))
-      }, this.spawnTimeoutMs)
+      const requestId = crypto.randomUUID()
 
-      this.pendingResponses.set(requestId, {
-        resolve,
-        reject,
-        timer,
+      const request: PtyHostSpawnRequest = {
+        type: 'spawn',
+        requestId,
+        command: options.command,
+        args: options.args,
+        cwd: options.cwd,
+        env,
+        cols: options.cols,
+        rows: options.rows,
+      }
+
+      const responsePromise = new Promise<PtyHostResponseMessage>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.pendingResponses.delete(requestId)
+          reject(new Error(`[pty-host] spawn timeout after ${this.spawnTimeoutMs}ms`))
+        }, this.spawnTimeoutMs)
+
+        this.pendingResponses.set(requestId, {
+          resolve,
+          reject,
+          timer,
+        })
       })
-    })
 
-    child.postMessage(request satisfies PtyHostRequest)
+      try {
+        child.postMessage(request satisfies PtyHostRequest)
+      } catch (error) {
+        const normalizedError = error instanceof Error ? error : new Error(String(error))
+        const pending = this.pendingResponses.get(requestId)
+        if (pending) {
+          clearTimeout(pending.timer)
+          this.pendingResponses.delete(requestId)
+          pending.reject(normalizedError)
+        }
 
-    const response = await responsePromise
-    if (!response.ok) {
-      throw new Error(
-        `[pty-host] spawn failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
-      )
+        if (this.process === child) {
+          this.handleHostExit(1)
+        }
+      }
+
+      try {
+        const response = await responsePromise
+        if (!response.ok) {
+          throw new Error(
+            `[pty-host] spawn failed: ${response.error.name ?? 'Error'}: ${response.error.message}`,
+          )
+        }
+
+        const sessionId = response.result.sessionId
+        this.activeSessions.add(sessionId)
+        return { sessionId }
+      } catch (error) {
+        const hostLost = this.process !== child || !this.process || !this.readyPromise
+        if (attempt === 0 && hostLost && !this.isDisposed) {
+          continue
+        }
+
+        throw error
+      }
     }
-
-    const sessionId = response.result.sessionId
-    this.activeSessions.add(sessionId)
-    return { sessionId }
+    throw new Error('[pty-host] spawn failed after retry')
   }
 
   public write(sessionId: string, data: string, encoding: PtyHostWriteEncoding = 'utf8'): void {

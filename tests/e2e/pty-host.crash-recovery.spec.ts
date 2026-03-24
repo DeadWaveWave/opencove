@@ -12,11 +12,29 @@ test.describe('PTY Host Isolation', () => {
 
       expect(first.sessionId).toBeTruthy()
 
-      await window.evaluate(async () => {
-        await window.opencoveApi.pty.debugCrashHost()
-      })
+      await window.evaluate(async sessionId => {
+        const timeoutMs = 10_000
 
-      await window.waitForTimeout(500)
+        await new Promise<void>((resolve, reject) => {
+          let unsubscribe: (() => void) | null = null
+          const timer = setTimeout(() => {
+            unsubscribe?.()
+            reject(new Error(`[e2e] timed out waiting for pty exit: ${sessionId}`))
+          }, timeoutMs)
+
+          unsubscribe = window.opencoveApi.pty.onExit(event => {
+            if (event.sessionId !== sessionId) {
+              return
+            }
+
+            clearTimeout(timer)
+            unsubscribe?.()
+            resolve()
+          })
+
+          void window.opencoveApi.pty.debugCrashHost()
+        })
+      }, first.sessionId)
 
       const second = await window.evaluate(async cwd => {
         return await window.opencoveApi.pty.spawn({ cwd, cols: 80, rows: 24 })
