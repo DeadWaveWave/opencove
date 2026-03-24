@@ -39,8 +39,17 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
       await expect(header).toBeVisible()
       await expect(textarea).toBeVisible()
 
-      await header.click({ position: { x: 40, y: 20 } })
+      await window.keyboard.down('Shift')
+      try {
+        await header.click({ position: { x: 40, y: 20 } })
+      } finally {
+        await window.keyboard.up('Shift')
+      }
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
+      await expect(window.locator('.workspace-canvas')).toHaveAttribute(
+        'data-cove-drag-surface-selection-mode',
+        'true',
+      )
 
       const readNodePosition = async (): Promise<{ x: number; y: number } | null> => {
         return await window.evaluate(async key => {

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type {
   TerminalNodeData,
+  WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 
@@ -205,6 +206,9 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
+      const [, setSpaceFramePreview] = useState<ReadonlyMap<string, WorkspaceSpaceRect> | null>(
+        null,
+      )
       const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>(initialSpaces)
       const selectedSpaceIdsRef = useRef<string[]>(['selected-space'])
@@ -225,12 +229,21 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         setSnapGuides,
         onSpacesChange,
         onRequestPersistFlush,
+        setSpaceFramePreview,
       })
 
       return (
         <button
           type="button"
-          onClick={() =>
+          onClick={() => {
+            apply([
+              {
+                type: 'position',
+                id: 'outside-node',
+                position: { x: 120, y: 400 },
+                dragging: true,
+              } as never,
+            ])
             apply([
               {
                 type: 'position',
@@ -239,7 +252,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
                 dragging: false,
               } as never,
             ])
-          }
+          }}
         >
           Drag
         </button>

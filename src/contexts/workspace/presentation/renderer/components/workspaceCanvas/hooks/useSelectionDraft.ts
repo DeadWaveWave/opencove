@@ -183,7 +183,6 @@ export function useWorkspaceCanvasSelectionDraft({
     [
       applyDraftSelection,
       detachGlobalPointerListeners,
-      isTrackpadCanvasMode,
       reactFlowStore,
       selectionDraftRef,
       selectedNodeIdsRef,

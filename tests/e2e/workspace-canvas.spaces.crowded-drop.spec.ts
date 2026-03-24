@@ -148,7 +148,40 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
               const expanded = space.rect.width > initialWidth || space.rect.height > initialHeight
               const assigned = space.nodeIds.includes(nodeBId)
 
-              return assigned && expanded && nodeAInside && nodeBInside && !overlaps
+              return {
+                ok: assigned && expanded && nodeAInside && nodeBInside && !overlaps,
+                checks: {
+                  assigned,
+                  expanded,
+                  nodeAInside,
+                  nodeBInside,
+                  overlaps,
+                },
+                nodeA: {
+                  x: nodeA.position.x,
+                  y: nodeA.position.y,
+                  width: nodeA.width,
+                  height: nodeA.height,
+                  right: aRight,
+                  bottom: aBottom,
+                },
+                nodeB: {
+                  x: nodeB.position.x,
+                  y: nodeB.position.y,
+                  width: nodeB.width,
+                  height: nodeB.height,
+                  right: bRight,
+                  bottom: bBottom,
+                },
+                space: {
+                  x: space.rect.x,
+                  y: space.rect.y,
+                  width: space.rect.width,
+                  height: space.rect.height,
+                  right: spaceRight,
+                  bottom: spaceBottom,
+                },
+              }
             },
             {
               key: storageKey,
@@ -160,7 +193,7 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
             },
           )
         })
-        .toBe(true)
+        .toEqual(expect.objectContaining({ ok: true }))
     } finally {
       await electronApp.close()
     }
@@ -285,7 +318,10 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
         sourcePosition: { x: 80, y: 16 },
       })
 
-      const assertSpaceStable = async (): Promise<boolean> => {
+      const assertSpaceStable = async (): Promise<{
+        ok: boolean
+        checks: { assigned: boolean; expanded: boolean; inside: boolean; hasOverlap: boolean }
+      } | null> => {
         return await window.evaluate(
           async ({ key, spaceId, nodeAId, nodeBId, initialWidth, initialHeight }) => {
             void key
@@ -389,7 +425,15 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
             const expanded = space.rect.width > initialWidth || space.rect.height > initialHeight
             const assigned = space.nodeIds.includes(nodeAId) && space.nodeIds.includes(nodeBId)
 
-            return assigned && expanded && inside && !hasOverlap
+            return {
+              ok: assigned && expanded && inside && !hasOverlap,
+              checks: {
+                assigned,
+                expanded,
+                inside,
+                hasOverlap,
+              },
+            }
           },
           {
             key: storageKey,
@@ -402,23 +446,33 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
         )
       }
 
-      const waitForSpaceStable = async (attemptsRemaining: number): Promise<boolean> => {
-        if (await assertSpaceStable()) {
-          return true
+      const waitForSpaceStable = async (
+        attemptsRemaining: number,
+      ): Promise<NonNullable<Awaited<ReturnType<typeof assertSpaceStable>>>> => {
+        const state = await assertSpaceStable()
+
+        if (state?.ok) {
+          return state
         }
 
         if (attemptsRemaining <= 1) {
-          return false
+          return (
+            state ?? {
+              ok: false,
+              checks: { assigned: false, expanded: false, inside: false, hasOverlap: true },
+            }
+          )
         }
 
         await window.waitForTimeout(250)
         return await waitForSpaceStable(attemptsRemaining - 1)
       }
 
-      expect(await waitForSpaceStable(24)).toBe(true)
+      const stable = await waitForSpaceStable(24)
+      expect(stable).toEqual(expect.objectContaining({ ok: true }))
 
       await window.waitForTimeout(350)
-      expect(await assertSpaceStable()).toBe(true)
+      expect(await assertSpaceStable()).toEqual(expect.objectContaining({ ok: true }))
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
       await expect(

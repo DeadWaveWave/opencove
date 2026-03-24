@@ -184,26 +184,6 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
 
       const shouldCommitSpaceRectOverride = hasSpaceRectOverride && targetSpaceId !== null
 
-      if (shouldCommitSpaceRectOverride) {
-        const { nextSpaces: reassignedSpacesWithRectOverride, hasSpaceChange: hasSpaceNodeChange } =
-          reassignNodesAcrossSpaces({
-            spaces: spacesWithRectOverride,
-            nodeIds,
-            targetSpaceId,
-          })
-
-        if (hasSpaceNodeChange || hasSpaceRectOverride) {
-          onSpacesChange(reassignedSpacesWithRectOverride)
-        }
-
-        applyDirectoryExpectationForDrop({ nodeIds, targetSpace, workspacePath, setNodes })
-        restoreSelectionAfterDrop({ selectedNodeIds: nodeIds, setNodes })
-        if (nodeIds.length > 0) {
-          onRequestPersistFlush?.()
-        }
-        return
-      }
-
       let projectedNextSpaces: WorkspaceSpaceState[] | null = null
       let hasProjectedSpaceChange = false
 
@@ -213,12 +193,13 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
           return prevNodes
         }
 
+        const projectedSpaces = hasSpaceRectOverride ? spacesWithRectOverride : spacesRef.current
         const currentSpaceRectById = new Map(
-          spacesRef.current
+          projectedSpaces
             .filter(space => Boolean(space.rect))
             .map(space => [space.id, space.rect!] as const),
         )
-        const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(spacesRef.current)
+        const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(projectedSpaces)
         const movedSpaceDeltaById = new Map<string, { dx: number; dy: number }>()
 
         if (dragStartSpaceRectById) {
@@ -268,7 +249,7 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
 
         const projected = projectWorkspaceNodeDropLayout({
           nodes: baselineNodes,
-          spaces: spacesRef.current,
+          spaces: projectedSpaces,
           draggedNodeIds: nodeIds,
           draggedNodePositionById,
           dragDx,
@@ -298,7 +279,10 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         return nextNodes
       })
 
-      if (projectedNextSpaces && (hasProjectedSpaceChange || hasOwnershipChange)) {
+      if (
+        projectedNextSpaces &&
+        (shouldCommitSpaceRectOverride || hasProjectedSpaceChange || hasOwnershipChange)
+      ) {
         onSpacesChange(projectedNextSpaces)
       }
 

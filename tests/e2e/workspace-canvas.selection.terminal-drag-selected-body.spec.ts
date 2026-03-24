@@ -48,9 +48,11 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
       await expect(terminalBodyA).toBeVisible()
       await expect(headerB).toBeVisible()
 
-      const readNodePosition = async (nodeId: string): Promise<{ x: number; y: number } | null> => {
+      const readNodePosition = async (
+        targetNodeId: string,
+      ): Promise<{ x: number; y: number } | null> => {
         return await window.evaluate(
-          async ({ key, nodeId }) => {
+          async ({ key, nodeId: requestedNodeId }) => {
             void key
 
             const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
@@ -67,7 +69,7 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
               }>
             }
 
-            const node = state.workspaces?.[0]?.nodes?.find(entry => entry.id === nodeId)
+            const node = state.workspaces?.[0]?.nodes?.find(entry => entry.id === requestedNodeId)
 
             if (
               !node?.position ||
@@ -82,7 +84,7 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
               y: node.position.y,
             }
           },
-          { key: storageKey, nodeId },
+          { key: storageKey, nodeId: targetNodeId },
         )
       }
 
