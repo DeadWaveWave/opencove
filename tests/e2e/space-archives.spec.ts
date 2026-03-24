@@ -205,6 +205,35 @@ test.describe('Space Archives', () => {
         await expect(archivesWindow).toContainText('Note full text')
         await expect(archivesWindow).toContainText('Task requirement full text')
         await expect(archivesWindow).toContainText('Agent Sessions')
+
+        await record.click({ button: 'right' })
+        const contextMenu = relaunch.window.locator(
+          '[data-testid="space-archives-window-record-context-menu"]',
+        )
+        await expect(contextMenu).toBeVisible()
+        await relaunch.window.locator('[data-testid="space-archives-window-record-delete"]').click()
+
+        await expect(relaunch.window.locator('[data-testid="space-archives-window-record"]')).toHaveCount(
+          0,
+        )
+        await expect
+          .poll(async () => {
+            return await relaunch.window.evaluate(async () => {
+              const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+              if (!raw) {
+                return null
+              }
+
+              const parsed = JSON.parse(raw) as {
+                workspaces?: Array<{ id?: string; spaceArchiveRecords?: Array<unknown> }>
+              }
+
+              const workspace =
+                parsed.workspaces?.find(item => item.id === 'workspace-space-archives') ?? null
+              return workspace?.spaceArchiveRecords?.length ?? 0
+            })
+          })
+          .toBe(0)
       } finally {
         await relaunch.electronApp.close()
       }

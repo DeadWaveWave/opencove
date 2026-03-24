@@ -119,6 +119,9 @@ export const zhCN = {
     replayTitle: '快照',
     layoutUnavailable: '该归档创建时尚未支持捕获布局快照。',
     layoutEmpty: '暂无布局数据。',
+    contextMenu: {
+      delete: '删除归档',
+    },
     counts: {
       terminals_one: '{{count}} 个终端',
       terminals_other: '{{count}} 个终端',

@@ -273,6 +273,8 @@ export default function App(): React.JSX.Element {
     handleWorkspaceMinimapVisibilityChange,
     handleWorkspaceSpacesChange,
     handleWorkspaceActiveSpaceChange,
+    handleWorkspaceSpaceArchiveRecordAppend,
+    handleWorkspaceSpaceArchiveRecordRemove,
     handleAnyWorkspaceWorktreesRootChange,
   } = useWorkspaceStateHandlers({ requestPersistFlush })
 
@@ -390,6 +392,7 @@ export default function App(): React.JSX.Element {
           }}
           onShowMessage={handleShowMessage}
           onRequestPersistFlush={requestPersistFlush}
+          onAppendSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordAppend}
           onNodesChange={handleWorkspaceNodesChange}
           onViewportChange={handleWorkspaceViewportChange}
           onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
@@ -454,6 +457,7 @@ export default function App(): React.JSX.Element {
         isOpen={isSpaceArchivesOpen}
         workspace={activeWorkspace}
         canvasInputModeSetting={agentSettings.canvasInputMode}
+        onDeleteRecord={handleWorkspaceSpaceArchiveRecordRemove}
         onClose={closeSpaceArchives}
       />
 

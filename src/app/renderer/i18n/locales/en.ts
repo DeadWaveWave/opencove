@@ -118,6 +118,9 @@ export const en = {
     replayTitle: 'Snapshot',
     layoutUnavailable: 'This archive was created before layout snapshots were captured.',
     layoutEmpty: 'No layout data available.',
+    contextMenu: {
+      delete: 'Delete archive',
+    },
     counts: {
       terminals_one: '{{count}} terminal',
       terminals_other: '{{count}} terminals',

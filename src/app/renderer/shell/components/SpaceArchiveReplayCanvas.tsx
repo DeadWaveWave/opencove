@@ -33,7 +33,6 @@ export function SpaceArchiveReplayCanvas({
   const nodes = React.useMemo(() => toSpaceArchiveReplayNodes(record), [record])
   const nodesWithFrameCount = record.nodes.filter(hasArchiveNodeFrame).length
   const hasFullLayout = nodesWithFrameCount === record.nodes.length
-  const spaceRect = record.space.rect ?? null
   const canvasRef = React.useRef<HTMLDivElement | null>(null)
   const reactFlowInstanceRef = React.useRef<ReactFlowInstance<SpaceArchiveReplayNode> | null>(null)
   const viewportRef = React.useRef({ x: 0, y: 0, zoom: 1 })
@@ -49,27 +48,15 @@ export function SpaceArchiveReplayCanvas({
     (instance: ReactFlowInstance<SpaceArchiveReplayNode>) => {
       reactFlowInstanceRef.current = instance
 
-      if (spaceRect) {
-        instance.setCenter(spaceRect.x + spaceRect.width / 2, spaceRect.y + spaceRect.height / 2, {
-          zoom: 1,
-          duration: 0,
-        })
-        viewportRef.current = instance.getViewport()
-        return
-      }
-
-      instance.fitView({ padding: 0.2, duration: 0 })
+      instance.fitView({ padding: 0.2, duration: 0, maxZoom: 1 })
       viewportRef.current = instance.getViewport()
     },
-    [spaceRect],
+    [],
   )
 
   if (record.nodes.length > 0 && !hasFullLayout) {
     return (
       <div className="space-archives-window__layout">
-        <div className="space-archives-window__layout-title">
-          {t('spaceArchivesWindow.replayTitle')}
-        </div>
         <p className="space-archives-window__layout-empty">
           {t('spaceArchivesWindow.layoutUnavailable')}
         </p>
@@ -80,9 +67,6 @@ export function SpaceArchiveReplayCanvas({
   if (nodes.length === 0) {
     return (
       <div className="space-archives-window__layout">
-        <div className="space-archives-window__layout-title">
-          {t('spaceArchivesWindow.replayTitle')}
-        </div>
         <p className="space-archives-window__layout-empty">
           {t('spaceArchivesWindow.layoutEmpty')}
         </p>
@@ -92,9 +76,6 @@ export function SpaceArchiveReplayCanvas({
 
   return (
     <div className="space-archives-window__layout" data-testid="space-archives-window-replay">
-      <div className="space-archives-window__layout-title">
-        {t('spaceArchivesWindow.replayTitle')}
-      </div>
       <div
         ref={canvasRef}
         className="workspace-canvas space-archive-replay__canvas"

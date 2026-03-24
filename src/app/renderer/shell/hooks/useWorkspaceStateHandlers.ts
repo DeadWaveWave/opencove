@@ -19,6 +19,7 @@ export function useWorkspaceStateHandlers({
   handleWorkspaceSpacesChange: (spaces: WorkspaceState['spaces']) => void
   handleWorkspaceActiveSpaceChange: (spaceId: string | null) => void
   handleWorkspaceSpaceArchiveRecordAppend: (record: SpaceArchiveRecord) => void
+  handleWorkspaceSpaceArchiveRecordRemove: (recordId: string) => void
   handleAnyWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
 } {
   const handleWorkspaceNodesChange = useCallback((nodes: WorkspaceState['nodes']): void => {
@@ -194,6 +195,41 @@ export function useWorkspaceStateHandlers({
     [requestPersistFlush],
   )
 
+  const handleWorkspaceSpaceArchiveRecordRemove = useCallback(
+    (recordId: string): void => {
+      const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
+        useAppStore.getState()
+      if (!currentActiveWorkspaceId) {
+        return
+      }
+
+      updateWorkspaces(previous =>
+        previous.map(workspace => {
+          if (workspace.id !== currentActiveWorkspaceId) {
+            return workspace
+          }
+
+          const normalizedRecords = Array.isArray(workspace.spaceArchiveRecords)
+            ? workspace.spaceArchiveRecords
+            : []
+          const nextRecords = normalizedRecords.filter(record => record.id !== recordId)
+
+          if (nextRecords.length === normalizedRecords.length) {
+            return workspace
+          }
+
+          return {
+            ...workspace,
+            spaceArchiveRecords: nextRecords,
+          }
+        }),
+      )
+
+      requestPersistFlush()
+    },
+    [requestPersistFlush],
+  )
+
   const handleAnyWorkspaceWorktreesRootChange = useCallback(
     (workspaceId: string, worktreesRoot: string): void => {
       const { setWorkspaces: updateWorkspaces } = useAppStore.getState()
@@ -223,6 +259,7 @@ export function useWorkspaceStateHandlers({
     handleWorkspaceSpacesChange,
     handleWorkspaceActiveSpaceChange,
     handleWorkspaceSpaceArchiveRecordAppend,
+    handleWorkspaceSpaceArchiveRecordRemove,
     handleAnyWorkspaceWorktreesRootChange,
   }
 }

@@ -1,4 +1,5 @@
 import React from 'react'
+import { Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   SpaceArchiveRecord,
@@ -36,16 +37,23 @@ export function SpaceArchiveRecordsWindow({
   isOpen,
   workspace,
   canvasInputModeSetting,
+  onDeleteRecord,
   onClose,
 }: {
   isOpen: boolean
   workspace: WorkspaceState | null
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  onDeleteRecord: (recordId: string) => void
   onClose: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const records = workspace?.spaceArchiveRecords ?? EMPTY_RECORDS
   const [selectedRecordId, setSelectedRecordId] = React.useState<string | null>(null)
+  const [recordContextMenu, setRecordContextMenu] = React.useState<{
+    recordId: string
+    x: number
+    y: number
+  } | null>(null)
 
   React.useEffect(() => {
     if (!workspace || records.length === 0) {
@@ -57,6 +65,43 @@ export function SpaceArchiveRecordsWindow({
       setSelectedRecordId(records[0].id)
     }
   }, [records, selectedRecordId, workspace])
+
+  React.useEffect(() => {
+    if (!isOpen) {
+      setRecordContextMenu(null)
+    }
+  }, [isOpen])
+
+  React.useEffect(() => {
+    if (!recordContextMenu) {
+      return
+    }
+
+    const closeMenu = (event: MouseEvent): void => {
+      if (
+        event.target instanceof Element &&
+        event.target.closest('.space-archives-window__record-context-menu')
+      ) {
+        return
+      }
+
+      setRecordContextMenu(null)
+    }
+
+    const handleEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setRecordContextMenu(null)
+      }
+    }
+
+    window.addEventListener('mousedown', closeMenu)
+    window.addEventListener('keydown', handleEscape)
+
+    return () => {
+      window.removeEventListener('mousedown', closeMenu)
+      window.removeEventListener('keydown', handleEscape)
+    }
+  }, [recordContextMenu])
 
   const selectedRecord = selectedRecordId
     ? (records.find(record => record.id === selectedRecordId) ?? null)
@@ -150,6 +195,17 @@ export function SpaceArchiveRecordsWindow({
                       data-selected={isSelected ? 'true' : 'false'}
                       onClick={() => {
                         setSelectedRecordId(record.id)
+                        setRecordContextMenu(null)
+                      }}
+                      onContextMenu={event => {
+                        event.preventDefault()
+                        event.stopPropagation()
+                        setSelectedRecordId(record.id)
+                        setRecordContextMenu({
+                          recordId: record.id,
+                          x: event.clientX,
+                          y: event.clientY,
+                        })
                       }}
                     >
                       <div className="space-archives-window__record-title-row">
@@ -189,40 +245,47 @@ export function SpaceArchiveRecordsWindow({
 
             <div className="space-archives-window__detail">
               {selectedRecord ? (
-                <>
-                  <header className="space-archives-window__detail-header">
-                    <div className="space-archives-window__detail-main">
-                      <div className="space-archives-window__detail-title">
-                        {selectedRecord.space.name}
-                      </div>
-                      <div className="space-archives-window__detail-meta">
-                        <span title={selectedRecord.archivedAt}>
-                          {toRelativeTime(selectedRecord.archivedAt)}
-                        </span>
-                        <span className="space-archives-window__meta-divider" aria-hidden="true">
-                          ·
-                        </span>
-                        <span
-                          className="space-archives-window__detail-path"
-                          title={selectedRecord.space.directoryPath}
-                        >
-                          {selectedRecord.space.directoryPath}
-                        </span>
-                      </div>
-                    </div>
-                  </header>
-
-                  <div className="space-archives-window__detail-body">
-                    <SpaceArchiveReplayCanvas
-                      record={selectedRecord}
-                      canvasInputModeSetting={canvasInputModeSetting}
-                    />
-                  </div>
-                </>
+                <div className="space-archives-window__detail-body">
+                  <SpaceArchiveReplayCanvas
+                    record={selectedRecord}
+                    canvasInputModeSetting={canvasInputModeSetting}
+                  />
+                </div>
               ) : null}
             </div>
           </div>
         )}
+
+        {recordContextMenu ? (
+          <div
+            className="workspace-context-menu space-archives-window__record-context-menu"
+            style={{
+              top: recordContextMenu.y,
+              left: recordContextMenu.x,
+            }}
+            data-testid="space-archives-window-record-context-menu"
+            onMouseDown={event => {
+              event.stopPropagation()
+            }}
+            onClick={event => {
+              event.stopPropagation()
+            }}
+          >
+            <button
+              type="button"
+              data-testid="space-archives-window-record-delete"
+              onClick={() => {
+                onDeleteRecord(recordContextMenu.recordId)
+                setRecordContextMenu(null)
+              }}
+            >
+              <Trash2 className="workspace-context-menu__icon" aria-hidden="true" />
+              <span className="workspace-context-menu__label">
+                {t('spaceArchivesWindow.contextMenu.delete')}
+              </span>
+            </button>
+          </div>
+        ) : null}
       </section>
     </div>
   )

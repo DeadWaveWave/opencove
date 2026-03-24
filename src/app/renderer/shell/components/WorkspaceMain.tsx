@@ -3,6 +3,7 @@ import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
 import type { WorkspaceCanvasMessageTone } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import type {
+  SpaceArchiveRecord,
   WorkspaceState,
   WorkspaceViewport,
 } from '@contexts/workspace/presentation/renderer/types'
@@ -18,6 +19,7 @@ export function WorkspaceMain({
   onAddWorkspace,
   onShowMessage,
   onRequestPersistFlush,
+  onAppendSpaceArchiveRecord,
   onNodesChange,
   onViewportChange,
   onMinimapVisibilityChange,
@@ -32,6 +34,7 @@ export function WorkspaceMain({
   onAddWorkspace: () => void
   onShowMessage: (message: string, tone?: WorkspaceCanvasMessageTone) => void
   onRequestPersistFlush: () => void
+  onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
   onNodesChange: (nodes: WorkspaceState['nodes']) => void
   onViewportChange: (viewport: WorkspaceViewport) => void
   onMinimapVisibilityChange: (isVisible: boolean) => void
@@ -61,6 +64,7 @@ export function WorkspaceMain({
         nodes={activeWorkspace.nodes}
         onNodesChange={onNodesChange}
         onRequestPersistFlush={onRequestPersistFlush}
+        onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
         viewport={activeWorkspace.viewport}
         isMinimapVisible={activeWorkspace.isMinimapVisible}
         onViewportChange={onViewportChange}
