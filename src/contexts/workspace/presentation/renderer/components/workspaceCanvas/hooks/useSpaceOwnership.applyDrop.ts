@@ -17,6 +17,39 @@ import {
 import { projectWorkspaceNodeDropLayout } from './useSpaceOwnership.projectDropLayout'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
 
+function rectEquals(a: WorkspaceSpaceRect | null, b: WorkspaceSpaceRect | null): boolean {
+  if (a === b) {
+    return true
+  }
+
+  if (!a || !b) {
+    return false
+  }
+
+  return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+}
+
+function applySpaceRectOverrides({
+  spaces,
+  rectOverrideById,
+}: {
+  spaces: WorkspaceSpaceState[]
+  rectOverrideById: ReadonlyMap<string, WorkspaceSpaceRect>
+}): WorkspaceSpaceState[] {
+  return spaces.map(space => {
+    const override = rectOverrideById.get(space.id) ?? null
+    if (!override) {
+      return space
+    }
+
+    if (rectEquals(space.rect ?? null, override)) {
+      return space
+    }
+
+    return { ...space, rect: { ...override } }
+  })
+}
+
 interface ApplyOwnershipForDropInput {
   draggedNodeIds: string[]
   draggedNodePositionById: Map<string, { x: number; y: number }>
@@ -24,6 +57,7 @@ interface ApplyOwnershipForDropInput {
   dragStartAllNodePositionById?: Map<string, { x: number; y: number }>
   dragStartSpaceRectById?: Map<string, WorkspaceSpaceRect>
   dropFlowPoint: { x: number; y: number }
+  spaceRectOverrideById?: ReadonlyMap<string, WorkspaceSpaceRect> | null
 }
 
 export function useWorkspaceCanvasApplyOwnershipForDrop({
@@ -56,12 +90,22 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
         dragStartAllNodePositionById,
         dragStartSpaceRectById,
         dropFlowPoint,
+        spaceRectOverrideById,
       }: ApplyOwnershipForDropInput,
       options?: { allowDirectoryMismatch?: boolean },
     ) => {
       if (draggedNodeIds.length === 0) {
         return
       }
+
+      const hasSpaceRectOverride =
+        Boolean(spaceRectOverrideById) && (spaceRectOverrideById?.size ?? 0) > 0
+      const spacesWithRectOverride = hasSpaceRectOverride
+        ? applySpaceRectOverrides({
+            spaces: spacesRef.current,
+            rectOverrideById: spaceRectOverrideById!,
+          })
+        : spacesRef.current
 
       const nodeIds = draggedNodeIds
       const nodeIdSet = new Set(nodeIds)
@@ -136,6 +180,28 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
           onShowMessage?.(validationError, 'warning')
           return
         }
+      }
+
+      const shouldCommitSpaceRectOverride = hasSpaceRectOverride && targetSpaceId !== null
+
+      if (shouldCommitSpaceRectOverride) {
+        const { nextSpaces: reassignedSpacesWithRectOverride, hasSpaceChange: hasSpaceNodeChange } =
+          reassignNodesAcrossSpaces({
+            spaces: spacesWithRectOverride,
+            nodeIds,
+            targetSpaceId,
+          })
+
+        if (hasSpaceNodeChange || hasSpaceRectOverride) {
+          onSpacesChange(reassignedSpacesWithRectOverride)
+        }
+
+        applyDirectoryExpectationForDrop({ nodeIds, targetSpace, workspacePath, setNodes })
+        restoreSelectionAfterDrop({ selectedNodeIds: nodeIds, setNodes })
+        if (nodeIds.length > 0) {
+          onRequestPersistFlush?.()
+        }
+        return
       }
 
       let projectedNextSpaces: WorkspaceSpaceState[] | null = null

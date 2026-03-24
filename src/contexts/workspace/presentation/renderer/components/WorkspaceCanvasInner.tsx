@@ -28,7 +28,7 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const { nodeDragPointerAnchorRef, nodeSpaceFramePreview, setNodeSpaceFramePreview } =
+  const { nodeDragPointerAnchorRef, nodeSpaceFramePreview, nodeSpaceFramePreviewRef, setNodeSpaceFramePreview } =
     workspaceCanvasHooks.useWorkspaceCanvasNodeDragPreviewState(workspaceId)
 
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
@@ -155,6 +155,7 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
     nodeDragPointerAnchorRef,
+    nodeSpaceFramePreviewRef,
   })
   const {
     buildAgentNodeTitle,

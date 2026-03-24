@@ -20,6 +20,7 @@ interface SpaceOwnershipDropInput {
   dragStartAllNodePositionById?: Map<string, { x: number; y: number }>
   dragStartSpaceRectById?: Map<string, WorkspaceSpaceRect>
   dropFlowPoint: { x: number; y: number }
+  spaceRectOverrideById?: ReadonlyMap<string, WorkspaceSpaceRect> | null
 }
 
 interface SpaceOwnershipWarningRequest extends SpaceOwnershipDropInput {
@@ -79,6 +80,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
       dragStartAllNodePositionById,
       dragStartSpaceRectById,
       dropFlowPoint,
+      spaceRectOverrideById,
       fallbackNodes,
     }: SpaceOwnershipWarningRequest): boolean => {
       const fallbackNodeById = new Map(fallbackNodes.map(node => [node.id, node]))
@@ -177,6 +179,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
         dragStartAllNodePositionById,
         dragStartSpaceRectById,
         dropFlowPoint,
+        spaceRectOverrideById,
       }
 
       setSpaceWorktreeMismatchDropWarning({
