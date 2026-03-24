@@ -296,7 +296,7 @@ describe('useHydrateAppState agent session restore', () => {
     })
     expect(spawn).not.toHaveBeenCalled()
     expect(screen.getByTestId('agent-session-id')).toHaveTextContent('resumed-agent-session')
-    expect(screen.getByTestId('agent-status')).toHaveTextContent('running')
+    expect(screen.getByTestId('agent-status')).toHaveTextContent('standby')
     expect(screen.getByTestId('agent-resume-session-id')).toHaveTextContent(
       'resolved-codex-session',
     )

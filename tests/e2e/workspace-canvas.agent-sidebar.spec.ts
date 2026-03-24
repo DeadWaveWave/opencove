@@ -110,7 +110,7 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
           return delta.dy
         })
         .toBeLessThan(140)
-      await expect(agentNode.locator('.terminal-node__status')).toHaveText('Working')
+      await expect(agentNode.locator('.terminal-node__status')).toHaveText('Standby')
 
       const agentHeader = agentNode.locator('.terminal-node__header')
       await agentHeader.click()
@@ -307,11 +307,11 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       await requestItem.click()
       await expect(requestNode).toBeVisible()
 
-      await expect(doingItem.locator('.workspace-agent-item__status--agent')).toHaveText('Working')
+      await expect(doingItem.locator('.workspace-agent-item__status--agent')).toHaveText('Standby')
       await expect(requestItem.locator('.workspace-agent-item__status--agent')).toHaveText(
         'Standby',
       )
-      await expect(doneItem.locator('.workspace-agent-item__status--agent')).toHaveText('Working')
+      await expect(doneItem.locator('.workspace-agent-item__status--agent')).toHaveText('Standby')
 
       await expect(doingItem.locator('.workspace-agent-item__task-text')).toHaveText(
         'Implement OAuth refresh flow',

@@ -112,6 +112,37 @@ function detectCodexTurnState(parsed: unknown): TerminalSessionState | null {
     return null
   }
 
+  if (parsed.type === 'event_msg') {
+    const payload = parsed.payload
+    if (!isRecord(payload) || typeof payload.type !== 'string') {
+      return null
+    }
+
+    if (payload.type === 'task_started') {
+      return 'working'
+    }
+
+    if (payload.type === 'task_complete') {
+      return 'standby'
+    }
+
+    if (payload.type === 'agent_reasoning') {
+      return 'working'
+    }
+
+    if (payload.type === 'agent_message') {
+      return detectCodexAssistantMessageState(payload, {
+        fallbackToStandbyWithoutPhase: false,
+      })
+    }
+
+    if (payload.type === 'turn_aborted') {
+      return 'standby'
+    }
+
+    return null
+  }
+
   if (parsed.type === 'response_item') {
     const payload = parsed.payload
     if (!isRecord(payload) || typeof payload.type !== 'string') {
@@ -134,27 +165,6 @@ function detectCodexTurnState(parsed: unknown): TerminalSessionState | null {
       payload.type === 'function_call_output'
     ) {
       return 'working'
-    }
-  }
-
-  if (parsed.type === 'event_msg') {
-    const payload = parsed.payload
-    if (!isRecord(payload) || typeof payload.type !== 'string') {
-      return null
-    }
-
-    if (payload.type === 'agent_reasoning') {
-      return 'working'
-    }
-
-    if (payload.type === 'agent_message') {
-      return detectCodexAssistantMessageState(payload, {
-        fallbackToStandbyWithoutPhase: false,
-      })
-    }
-
-    if (payload.type === 'turn_aborted') {
-      return 'standby'
     }
   }
 

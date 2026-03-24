@@ -3,12 +3,11 @@ import { useTranslation } from '@app/renderer/i18n'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { WorkspaceCanvas } from '@contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
-import type { WorkspaceCanvasMessageTone } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
-import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '@contexts/workspace/presentation/renderer/types'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { AppMessage } from './components/AppMessage'
 import { AppHeader } from './components/AppHeader'
+import { AppNotifications } from './components/AppNotifications'
+import { ControlCenter } from './components/ControlCenter'
 import { CommandCenter } from './components/CommandCenter'
 import { DeleteProjectDialog } from './components/DeleteProjectDialog'
 import { ProjectContextMenu } from './components/ProjectContextMenu'
@@ -23,12 +22,14 @@ import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
+import { useAddWorkspaceAction } from './hooks/useAddWorkspaceAction'
+import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotifications'
+import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import type { ProjectContextMenuState } from './types'
 import { useAppStore } from './store/useAppStore'
-import { createDefaultWorkspaceViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { WhatsNewDialog } from './components/WhatsNewDialog'
 import { formatKeyChord, resolveCommandKeybindings } from '@contexts/settings/domain/keybindings'
@@ -80,6 +81,10 @@ export default function App(): React.JSX.Element {
     producePersistedState,
   })
 
+  const { floatingMessage, showMessage: handleShowMessage } = useFloatingMessage()
+  const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
+    useAgentStandbyNotifications()
+
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
 
   const activeWorkspace = useMemo(
@@ -92,14 +97,25 @@ export default function App(): React.JSX.Element {
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
 
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
+  const [isControlCenterOpen, setIsControlCenterOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
 
   const toggleCommandCenter = useCallback((): void => {
     setIsCommandCenterOpen(open => !open)
+    setIsControlCenterOpen(false)
   }, [])
 
   const closeCommandCenter = useCallback((): void => {
     setIsCommandCenterOpen(false)
+  }, [])
+
+  const toggleControlCenter = useCallback((): void => {
+    setIsControlCenterOpen(open => !open)
+    setIsCommandCenterOpen(false)
+  }, [])
+
+  const closeControlCenter = useCallback((): void => {
+    setIsControlCenterOpen(false)
   }, [])
 
   useAppKeybindings({
@@ -111,6 +127,7 @@ export default function App(): React.JSX.Element {
     onToggleCommandCenter: toggleCommandCenter,
     onOpenSettings: () => {
       closeCommandCenter()
+      closeControlCenter()
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
@@ -132,6 +149,7 @@ export default function App(): React.JSX.Element {
     }
 
     setIsCommandCenterOpen(false)
+    setIsControlCenterOpen(false)
   }, [isSettingsOpen, projectDeleteConfirmation])
 
   useEffect(() => {
@@ -161,33 +179,6 @@ export default function App(): React.JSX.Element {
   const commandCenterSecondaryHint =
     formatKeyChord(platform, commandCenterBindings.secondary) || '—'
 
-  const [floatingMessage, setFloatingMessage] = useState<{
-    id: number
-    text: string
-    tone: WorkspaceCanvasMessageTone
-  } | null>(null)
-
-  useEffect(() => {
-    if (!floatingMessage) {
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setFloatingMessage(current => (current?.id === floatingMessage.id ? null : current))
-    }, 3200)
-
-    return () => {
-      window.clearTimeout(timeoutId)
-    }
-  }, [floatingMessage])
-
-  const handleShowMessage = useCallback(
-    (message: string, tone: WorkspaceCanvasMessageTone = 'info'): void => {
-      setFloatingMessage({ id: Date.now(), text: message, tone })
-    },
-    [],
-  )
-
   const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
     policy: agentSettings.updatePolicy,
     channel: agentSettings.updateChannel,
@@ -204,33 +195,7 @@ export default function App(): React.JSX.Element {
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
     resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
-  const handleAddWorkspace = useCallback(async (): Promise<void> => {
-    const selected = await window.opencoveApi.workspace.selectDirectory()
-    if (!selected) {
-      return
-    }
-
-    const store = useAppStore.getState()
-    const existing = store.workspaces.find(workspace => workspace.path === selected.path)
-    if (existing) {
-      store.setActiveWorkspaceId(existing.id)
-      return
-    }
-
-    const nextWorkspace: WorkspaceState = {
-      ...selected,
-      nodes: [],
-      worktreesRoot: '',
-      viewport: createDefaultWorkspaceViewport(),
-      isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-      spaces: [],
-      activeSpaceId: null,
-    }
-
-    store.setWorkspaces(prev => [...prev, nextWorkspace])
-    store.setActiveWorkspaceId(nextWorkspace.id)
-    store.setFocusRequest(null)
-  }, [])
+  const handleAddWorkspace = useAddWorkspaceAction()
 
   const {
     handleWorkspaceNodesChange,
@@ -289,6 +254,7 @@ export default function App(): React.JSX.Element {
           activeWorkspaceName={activeWorkspace?.name ?? null}
           activeWorkspacePath={activeWorkspace?.path ?? null}
           isSidebarCollapsed={isPrimarySidebarCollapsed}
+          isControlCenterOpen={isControlCenterOpen}
           isCommandCenterOpen={isCommandCenterOpen}
           commandCenterPrimaryHint={commandCenterPrimaryHint}
           commandCenterSecondaryHint={commandCenterSecondaryHint}
@@ -299,11 +265,15 @@ export default function App(): React.JSX.Element {
               isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
             }))
           }}
+          onToggleControlCenter={() => {
+            toggleControlCenter()
+          }}
           onToggleCommandCenter={() => {
             toggleCommandCenter()
           }}
           onOpenSettings={() => {
             setIsFocusNodeTargetZoomPreviewing(false)
+            closeControlCenter()
             setIsSettingsOpen(true)
           }}
           onCheckForUpdates={() => {
@@ -379,6 +349,54 @@ export default function App(): React.JSX.Element {
       {floatingMessage ? (
         <AppMessage tone={floatingMessage.tone} text={floatingMessage.text} />
       ) : null}
+      <AppNotifications
+        notifications={agentNotifications}
+        contextVisibility={{
+          showTask: agentSettings.standbyBannerShowTask,
+          showSpace: agentSettings.standbyBannerShowSpace,
+          showBranch: agentSettings.standbyBannerShowBranch,
+          showPullRequest:
+            agentSettings.standbyBannerShowPullRequest && agentSettings.githubPullRequestsEnabled,
+        }}
+        onActivate={notification => {
+          handleDismissAgentNotification(notification.id)
+          handleSelectAgentNode(notification.workspaceId, notification.nodeId)
+        }}
+        onDismiss={handleDismissAgentNotification}
+      />
+      <ControlCenter
+        isOpen={isControlCenterOpen}
+        uiTheme={agentSettings.uiTheme}
+        isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
+        isMinimapVisible={activeWorkspace?.isMinimapVisible ?? false}
+        hasActiveWorkspace={activeWorkspace !== null}
+        onClose={() => {
+          closeControlCenter()
+        }}
+        onChangeUiTheme={theme => {
+          setAgentSettings(prev => ({
+            ...prev,
+            uiTheme: theme,
+          }))
+        }}
+        onTogglePrimarySidebar={() => {
+          setAgentSettings(prev => ({
+            ...prev,
+            isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
+          }))
+        }}
+        onToggleMinimap={() => {
+          if (!activeWorkspace) {
+            return
+          }
+
+          handleWorkspaceMinimapVisibilityChange(!activeWorkspace.isMinimapVisible)
+        }}
+        onOpenSettings={() => {
+          setIsFocusNodeTargetZoomPreviewing(false)
+          setIsSettingsOpen(true)
+        }}
+      />
 
       <CommandCenter
         isOpen={isCommandCenterOpen}

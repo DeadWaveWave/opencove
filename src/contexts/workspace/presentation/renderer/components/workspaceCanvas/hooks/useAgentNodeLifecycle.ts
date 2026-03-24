@@ -189,7 +189,10 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 ...item.data,
                 sessionId: launched.sessionId,
                 title: buildAgentNodeTitle(launchData.provider, launched.effectiveModel),
-                status: resolveInitialAgentRuntimeStatus(launchData.prompt),
+                status:
+                  launched.launchMode === 'resume'
+                    ? ('standby' as const)
+                    : resolveInitialAgentRuntimeStatus(launchData.prompt),
                 startedAt:
                   mode === 'new' ? new Date().toISOString() : (item.data.startedAt ?? null),
                 endedAt: null,

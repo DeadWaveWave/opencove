@@ -69,6 +69,14 @@ export const zhCNSettingsPanel = {
     moveDown: '下移',
     fullAccessLabel: '完全访问模式',
     fullAccessHelp: '为 Agent 关闭沙箱和人工审批。',
+    standbyBanner: {
+      title: '待命提示',
+      help: '控制右上角待命提示中显示的上下文信息。',
+      showTask: '显示任务',
+      showSpace: '显示空间',
+      showBranch: '显示分支',
+      showPullRequest: '显示 PR',
+    },
   },
   canvas: {
     title: '画布',

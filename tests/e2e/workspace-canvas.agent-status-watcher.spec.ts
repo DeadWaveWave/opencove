@@ -140,6 +140,17 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       await expect(sidebarStatus).toHaveText('Working')
       await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
       await expect(sidebarStatus).toHaveText('Standby')
+
+      const notification = window
+        .locator('[data-testid="app-notifications"] .app-notification')
+        .first()
+      await expect(notification).toBeVisible()
+
+      await window.waitForTimeout(800)
+      await expect(notification).toBeVisible()
+
+      await window.locator('[data-testid^="app-notification-close-"]').first().click()
+      await expect(window.locator('[data-testid="app-notifications"]')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }
@@ -181,6 +192,66 @@ test.describe('Workspace Canvas - Agent Status Watcher', () => {
       )
 
       await expect(workspaceAStatus).toHaveText('Standby', { timeout: 15_000 })
+
+      const notification = window
+        .locator('[data-testid="app-notifications"] .app-notification')
+        .first()
+      await expect(notification).toBeVisible()
+      await notification.click()
+
+      await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
+        'workspace-a',
+      )
+      await expect(window.locator('[data-testid="app-notifications"]')).toHaveCount(0)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('shows a notification even if the first observed state is standby after switching projects', async () => {
+    const { electronApp, window } = await launchApp({
+      windowMode: 'offscreen',
+      env: {
+        OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+        OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-standby-only',
+      },
+    })
+
+    try {
+      await seedCodexTaskInMultipleWorkspaces(window)
+
+      const taskNode = window.locator('.task-node').first()
+      await expect(taskNode).toBeVisible()
+
+      await taskNode.locator('[data-testid="task-node-run-agent"]').click()
+
+      const workspaceAGroup = window
+        .locator('.workspace-item-group')
+        .filter({ has: window.locator('.workspace-item__name', { hasText: 'workspace-a' }) })
+
+      const workspaceAStatus = workspaceAGroup
+        .locator('.workspace-agent-item__status--agent')
+        .first()
+
+      await expect(workspaceAStatus).toHaveText('Working')
+
+      await window.locator('.workspace-item__name', { hasText: 'workspace-b' }).click()
+      await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
+        'workspace-b',
+      )
+
+      await expect(workspaceAStatus).toHaveText('Standby', { timeout: 15_000 })
+
+      const notification = window
+        .locator('[data-testid="app-notifications"] .app-notification')
+        .first()
+      await expect(notification).toBeVisible()
+      await notification.click()
+
+      await expect(window.locator('.workspace-item.workspace-item--active')).toContainText(
+        'workspace-a',
+      )
+      await expect(window.locator('[data-testid="app-notifications"]')).toHaveCount(0)
     } finally {
       await electronApp.close()
     }

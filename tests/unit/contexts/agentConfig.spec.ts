@@ -16,6 +16,10 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('system')
     expect(DEFAULT_AGENT_SETTINGS.focusNodeOnClick).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom).toBe(1)
+    expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowTask).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowSpace).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowBranch).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowPullRequest).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
@@ -55,6 +59,10 @@ describe('agent settings normalization', () => {
       taskTagOptions: ['feature', 'bug', 'feature', ''],
       focusNodeOnClick: false,
       focusNodeTargetZoom: 1.25,
+      standbyBannerShowTask: false,
+      standbyBannerShowSpace: false,
+      standbyBannerShowBranch: false,
+      standbyBannerShowPullRequest: false,
       canvasInputMode: 'trackpad',
       defaultTerminalWindowScalePercent: 95,
       terminalFontSize: 15,
@@ -80,6 +88,10 @@ describe('agent settings normalization', () => {
     expect(result.taskTagOptions).toEqual(['feature', 'bug'])
     expect(result.focusNodeOnClick).toBe(false)
     expect(result.focusNodeTargetZoom).toBe(1.25)
+    expect(result.standbyBannerShowTask).toBe(false)
+    expect(result.standbyBannerShowSpace).toBe(false)
+    expect(result.standbyBannerShowBranch).toBe(false)
+    expect(result.standbyBannerShowPullRequest).toBe(false)
     expect(result.canvasInputMode).toBe('trackpad')
     expect(result.defaultTerminalWindowScalePercent).toBe(95)
     expect(result.terminalFontSize).toBe(15)

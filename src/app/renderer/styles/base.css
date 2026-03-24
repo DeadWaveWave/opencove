@@ -6,6 +6,7 @@
 
 :root {
   --cove-ui-font-scale: 1;
+  --cove-app-header-height: 36px;
   --cove-accent: #5e9cff;
   --cove-label-gray: #8e8e93;
   --cove-label-red: #ff453a;
@@ -277,7 +278,6 @@ body {
 }
 
 .app-shell {
-  --cove-app-header-height: 36px;
   --cove-primary-sidebar-width: 280px;
   display: grid;
   grid-template-columns: var(--cove-primary-sidebar-width) minmax(0, 1fr);

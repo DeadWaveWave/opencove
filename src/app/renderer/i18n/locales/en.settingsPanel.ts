@@ -69,6 +69,14 @@ export const enSettingsPanel = {
     moveDown: 'Move down',
     fullAccessLabel: 'Full Access Mode',
     fullAccessHelp: 'Disable sandbox and manual approvals for agents.',
+    standbyBanner: {
+      title: 'Standby Banner',
+      help: 'Choose what context is shown in the top-right standby banner.',
+      showTask: 'Show task',
+      showSpace: 'Show space',
+      showBranch: 'Show branch',
+      showPullRequest: 'Show PR',
+    },
   },
   canvas: {
     title: 'Canvas',

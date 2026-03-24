@@ -113,6 +113,14 @@ function extractCodexAssistantMessage(parsed: unknown): string | null {
   }
 
   const payload = parsed.payload
+  if (payload.type === 'task_complete') {
+    if (typeof payload.last_agent_message === 'string') {
+      return normalizeMessageText(payload.last_agent_message)
+    }
+
+    return null
+  }
+
   if (payload.type !== 'agent_message') {
     return null
   }

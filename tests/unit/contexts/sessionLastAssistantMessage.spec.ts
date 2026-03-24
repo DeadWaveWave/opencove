@@ -83,6 +83,33 @@ describe('readLastAssistantMessageFromSessionFile', () => {
     )
   })
 
+  it('extracts codex task_complete last_agent_message payloads', async () => {
+    const tempDir = await fs.mkdtemp(join(tmpdir(), 'cove-session-message-'))
+    tempDirs.push(tempDir)
+    const filePath = join(tempDir, 'session.jsonl')
+
+    await fs.writeFile(
+      filePath,
+      `${JSON.stringify({
+        type: 'event_msg',
+        payload: {
+          type: 'task_started',
+          turn_id: 'turn_1',
+        },
+      })}\n${JSON.stringify({
+        type: 'event_msg',
+        payload: {
+          type: 'task_complete',
+          turn_id: 'turn_1',
+          last_agent_message: 'Done.',
+        },
+      })}`,
+      'utf8',
+    )
+
+    await expect(readLastAssistantMessageFromSessionFile('codex', filePath)).resolves.toBe('Done.')
+  })
+
   it('ignores an incomplete trailing record and keeps the last complete codex message', async () => {
     const tempDir = await fs.mkdtemp(join(tmpdir(), 'cove-session-message-'))
     tempDirs.push(tempDir)

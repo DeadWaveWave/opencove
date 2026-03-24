@@ -121,6 +121,14 @@ export function SettingsPanel({
     onChange({ ...settings, focusNodeOnClick: enabled })
   const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
     onChange({ ...settings, focusNodeTargetZoom: zoom })
+  const updateStandbyBannerShowTask = (enabled: boolean): void =>
+    onChange({ ...settings, standbyBannerShowTask: enabled })
+  const updateStandbyBannerShowSpace = (enabled: boolean): void =>
+    onChange({ ...settings, standbyBannerShowSpace: enabled })
+  const updateStandbyBannerShowBranch = (enabled: boolean): void =>
+    onChange({ ...settings, standbyBannerShowBranch: enabled })
+  const updateStandbyBannerShowPullRequest = (enabled: boolean): void =>
+    onChange({ ...settings, standbyBannerShowPullRequest: enabled })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
   const updateDefaultTerminalWindowScalePercent = (percent: number): void =>
@@ -380,9 +388,17 @@ export function SettingsPanel({
                   defaultProvider={settings.defaultProvider}
                   agentProviderOrder={settings.agentProviderOrder}
                   agentFullAccess={settings.agentFullAccess}
+                  standbyBannerShowTask={settings.standbyBannerShowTask}
+                  standbyBannerShowSpace={settings.standbyBannerShowSpace}
+                  standbyBannerShowBranch={settings.standbyBannerShowBranch}
+                  standbyBannerShowPullRequest={settings.standbyBannerShowPullRequest}
                   onChangeDefaultProvider={updateDefaultProvider}
                   onChangeAgentProviderOrder={updateAgentProviderOrder}
                   onChangeAgentFullAccess={updateAgentFullAccess}
+                  onChangeStandbyBannerShowTask={updateStandbyBannerShowTask}
+                  onChangeStandbyBannerShowSpace={updateStandbyBannerShowSpace}
+                  onChangeStandbyBannerShowBranch={updateStandbyBannerShowBranch}
+                  onChangeStandbyBannerShowPullRequest={updateStandbyBannerShowPullRequest}
                 />
                 <ModelOverrideSection
                   settings={settings}

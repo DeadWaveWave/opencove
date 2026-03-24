@@ -8,18 +8,34 @@ export function AgentSection(props: {
   defaultProvider: AgentProvider
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
+  standbyBannerShowTask: boolean
+  standbyBannerShowSpace: boolean
+  standbyBannerShowBranch: boolean
+  standbyBannerShowPullRequest: boolean
   onChangeDefaultProvider: (provider: AgentProvider) => void
   onChangeAgentProviderOrder: (providers: AgentProvider[]) => void
   onChangeAgentFullAccess: (enabled: boolean) => void
+  onChangeStandbyBannerShowTask: (enabled: boolean) => void
+  onChangeStandbyBannerShowSpace: (enabled: boolean) => void
+  onChangeStandbyBannerShowBranch: (enabled: boolean) => void
+  onChangeStandbyBannerShowPullRequest: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const {
     defaultProvider,
     agentProviderOrder,
     agentFullAccess,
+    standbyBannerShowTask,
+    standbyBannerShowSpace,
+    standbyBannerShowBranch,
+    standbyBannerShowPullRequest,
     onChangeDefaultProvider,
     onChangeAgentProviderOrder,
     onChangeAgentFullAccess,
+    onChangeStandbyBannerShowTask,
+    onChangeStandbyBannerShowSpace,
+    onChangeStandbyBannerShowBranch,
+    onChangeStandbyBannerShowPullRequest,
   } = props
 
   const moveProvider = (fromIndex: number, toIndex: number): void => {
@@ -127,6 +143,71 @@ export function AgentSection(props: {
             />
             <span className="cove-toggle__slider"></span>
           </label>
+        </div>
+      </div>
+
+      <div className="settings-panel__subsection">
+        <div className="settings-panel__subsection-header">
+          <strong>{t('settingsPanel.agent.standbyBanner.title')}</strong>
+          <span>{t('settingsPanel.agent.standbyBanner.help')}</span>
+        </div>
+
+        <div className="settings-list-container">
+          <div className="settings-list-item" data-testid="settings-standby-banner-show-task">
+            <div className="settings-list-item__left">
+              {t('settingsPanel.agent.standbyBanner.showTask')}
+            </div>
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                checked={standbyBannerShowTask}
+                onChange={event => onChangeStandbyBannerShowTask(event.target.checked)}
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
+
+          <div className="settings-list-item" data-testid="settings-standby-banner-show-space">
+            <div className="settings-list-item__left">
+              {t('settingsPanel.agent.standbyBanner.showSpace')}
+            </div>
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                checked={standbyBannerShowSpace}
+                onChange={event => onChangeStandbyBannerShowSpace(event.target.checked)}
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
+
+          <div className="settings-list-item" data-testid="settings-standby-banner-show-branch">
+            <div className="settings-list-item__left">
+              {t('settingsPanel.agent.standbyBanner.showBranch')}
+            </div>
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                checked={standbyBannerShowBranch}
+                onChange={event => onChangeStandbyBannerShowBranch(event.target.checked)}
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
+
+          <div className="settings-list-item" data-testid="settings-standby-banner-show-pr">
+            <div className="settings-list-item__left">
+              {t('settingsPanel.agent.standbyBanner.showPullRequest')}
+            </div>
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                checked={standbyBannerShowPullRequest}
+                onChange={event => onChangeStandbyBannerShowPullRequest(event.target.checked)}
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
         </div>
       </div>
     </div>

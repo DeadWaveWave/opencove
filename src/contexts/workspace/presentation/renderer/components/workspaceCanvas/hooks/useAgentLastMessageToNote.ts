@@ -4,6 +4,39 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { TerminalNodeData } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 
+const AGENT_LAST_MESSAGE_READ_MAX_ATTEMPTS = 5
+const AGENT_LAST_MESSAGE_READ_RETRY_MS = 220
+
+async function delay(ms: number): Promise<void> {
+  await new Promise(resolve => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
+async function readLastAgentMessageWithRetry(
+  payload: Parameters<typeof window.opencoveApi.agent.readLastMessage>[0],
+): Promise<string> {
+  return await readLastAgentMessageWithRetryAttempt(payload, 0)
+}
+
+async function readLastAgentMessageWithRetryAttempt(
+  payload: Parameters<typeof window.opencoveApi.agent.readLastMessage>[0],
+  attempt: number,
+): Promise<string> {
+  const result = await window.opencoveApi.agent.readLastMessage(payload)
+  const message = typeof result.message === 'string' ? result.message.trim() : ''
+  if (message.length > 0) {
+    return message
+  }
+
+  if (attempt >= AGENT_LAST_MESSAGE_READ_MAX_ATTEMPTS - 1) {
+    return ''
+  }
+
+  await delay(AGENT_LAST_MESSAGE_READ_RETRY_MS)
+  return await readLastAgentMessageWithRetryAttempt(payload, attempt + 1)
+}
+
 export function useWorkspaceCanvasAgentLastMessageCopy({
   nodesRef,
   onShowMessage,
@@ -28,14 +61,13 @@ export function useWorkspaceCanvasAgentLastMessageCopy({
       }
 
       try {
-        const result = await window.opencoveApi.agent.readLastMessage({
+        const message = await readLastAgentMessageWithRetry({
           provider: node.data.agent.provider,
           cwd: node.data.agent.executionDirectory,
           startedAt,
           resumeSessionId: node.data.agent.resumeSessionId ?? null,
         })
 
-        const message = typeof result.message === 'string' ? result.message.trim() : ''
         if (message.length === 0) {
           onShowMessage?.(t('messages.agentLastMessageEmpty'), 'warning')
           return

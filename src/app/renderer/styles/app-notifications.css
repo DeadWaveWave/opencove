@@ -1,0 +1,168 @@
+.app-notifications {
+  position: fixed;
+  top: calc(var(--cove-app-header-height) + 12px);
+  right: 16px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 32px));
+}
+
+.app-notification {
+  --app-notification-border: var(--cove-border-subtle);
+  --app-notification-surface: var(--cove-surface-strong);
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--app-notification-border);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(94, 156, 255, 0.14), transparent 55%),
+    var(--app-notification-surface);
+  color: var(--cove-text);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: 0 16px 42px var(--cove-shadow-color-elevated);
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  animation: app-notification-in 0.14s ease-out;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease,
+    background-color 0.15s ease;
+}
+
+@keyframes app-notification-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.app-notification:hover {
+  border-color: var(--cove-border);
+}
+
+.app-notification:active {
+  transform: translateY(1px);
+}
+
+.app-notification:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.app-notification__icon {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  color: rgba(94, 156, 255, 0.92);
+  background: rgba(94, 156, 255, 0.12);
+  border: 1px solid rgba(94, 156, 255, 0.22);
+}
+
+.app-notification__content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.app-notification__title {
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-notification__subtitle {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-notification__context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.app-notification__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+  min-height: 22px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-field);
+  color: var(--cove-text-muted);
+  font-size: calc(10px * var(--cove-ui-font-scale));
+  line-height: 1.2;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.app-notification__chip-kind {
+  flex: 0 0 auto;
+  font-size: calc(8px * var(--cove-ui-font-scale));
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cove-text-faint);
+}
+
+.app-notification__chip-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-notification__close {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--cove-text-muted);
+  border-radius: 10px;
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.app-notification__close:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: var(--cove-text);
+}
+
+.app-notification__close:active {
+  transform: translateY(1px);
+}
+
+.app-notification__close:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}

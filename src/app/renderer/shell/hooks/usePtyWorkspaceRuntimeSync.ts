@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect } from 'react'
 import type { Node } from '@xyflow/react'
 import type {
   TerminalNodeData,
@@ -127,21 +127,15 @@ export function usePtyWorkspaceRuntimeSync({
   requestPersistFlush: () => void
 }): void {
   const setWorkspaces = useAppStore(state => state.setWorkspaces)
-  const activeWorkspaceId = useAppStore(state => state.activeWorkspaceId)
-  const activeWorkspaceIdRef = useRef(activeWorkspaceId)
-
-  useEffect(() => {
-    activeWorkspaceIdRef.current = activeWorkspaceId
-  }, [activeWorkspaceId])
 
   useEffect(() => {
     const ptyEventHub = getPtyEventHub()
 
     const unsubscribeState = ptyEventHub.onState(event => {
+      const excludeWorkspaceId = useAppStore.getState().activeWorkspaceId
       let didChange = false
 
       setWorkspaces(previous => {
-        const excludeWorkspaceId = activeWorkspaceIdRef.current
         const result = updateWorkspacesWithAgentNodes(previous, {
           sessionId: event.sessionId,
           excludeWorkspaceId,
@@ -174,10 +168,10 @@ export function usePtyWorkspaceRuntimeSync({
         return
       }
 
+      const excludeWorkspaceId = useAppStore.getState().activeWorkspaceId
       let didChange = false
 
       setWorkspaces(previous => {
-        const excludeWorkspaceId = activeWorkspaceIdRef.current
         const result = updateWorkspacesWithAgentNodes(previous, {
           sessionId: event.sessionId,
           excludeWorkspaceId,
@@ -220,9 +214,9 @@ export function usePtyWorkspaceRuntimeSync({
     const unsubscribeExit = ptyEventHub.onExit(event => {
       let didChange = false
       const now = new Date().toISOString()
+      const excludeWorkspaceId = useAppStore.getState().activeWorkspaceId
 
       setWorkspaces(previous => {
-        const excludeWorkspaceId = activeWorkspaceIdRef.current
         const result = updateWorkspacesWithAgentExit({
           workspaces: previous,
           sessionId: event.sessionId,

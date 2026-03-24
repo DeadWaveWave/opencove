@@ -8,6 +8,7 @@ import {
   RotateCcw,
   Search,
   Settings,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AppUpdateState } from '@shared/contracts/dto'
@@ -16,11 +17,13 @@ export function AppHeader({
   activeWorkspaceName,
   activeWorkspacePath,
   isSidebarCollapsed,
+  isControlCenterOpen,
   isCommandCenterOpen,
   commandCenterPrimaryHint,
   commandCenterSecondaryHint,
   updateState,
   onToggleSidebar,
+  onToggleControlCenter,
   onToggleCommandCenter,
   onOpenSettings,
   onCheckForUpdates,
@@ -30,11 +33,13 @@ export function AppHeader({
   activeWorkspaceName: string | null
   activeWorkspacePath: string | null
   isSidebarCollapsed: boolean
+  isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
   commandCenterPrimaryHint: string
   commandCenterSecondaryHint: string
   updateState: AppUpdateState | null
   onToggleSidebar: () => void
+  onToggleControlCenter: () => void
   onToggleCommandCenter: () => void
   onOpenSettings: () => void
   onCheckForUpdates: () => void
@@ -173,6 +178,19 @@ export function AppHeader({
             <span>{updateAction.label}</span>
           </button>
         ) : null}
+        <button
+          type="button"
+          className={`app-header__icon-button${isControlCenterOpen ? ' app-header__icon-button--active' : ''}`}
+          data-testid="app-header-control-center"
+          aria-label={t('controlCenter.open')}
+          aria-pressed={isControlCenterOpen}
+          title={t('controlCenter.open')}
+          onClick={() => {
+            onToggleControlCenter()
+          }}
+        >
+          <SlidersHorizontal aria-hidden="true" size={18} />
+        </button>
         <button
           type="button"
           className="app-header__icon-button"

@@ -10,10 +10,12 @@ export async function runCodexStandbyNoNewlineScenario(cwd) {
 
   await sleep(800)
   await appendCodexRecord(sessionFilePath, {
-    type: 'response_item',
+    type: 'event_msg',
     payload: {
-      type: 'reasoning',
-      summary: [],
+      type: 'task_started',
+      turn_id: 'cove-test-turn-1',
+      model_context_window: 128_000,
+      collaboration_mode_kind: 'default',
     },
   })
 
@@ -21,17 +23,31 @@ export async function runCodexStandbyNoNewlineScenario(cwd) {
   await appendCodexRecord(
     sessionFilePath,
     {
-      type: 'response_item',
+      type: 'event_msg',
       payload: {
-        type: 'message',
-        role: 'assistant',
-        phase: 'final_answer',
-        content: [
-          {
-            type: 'output_text',
-            text: 'All set.',
-          },
-        ],
+        type: 'task_complete',
+        turn_id: 'cove-test-turn-1',
+        last_agent_message: 'All set.',
+      },
+    },
+    { newline: false },
+  )
+
+  await sleep(20_000)
+}
+
+export async function runCodexStandbyOnlyScenario(cwd) {
+  const sessionFilePath = await createCodexSessionFile(cwd)
+
+  await sleep(1200)
+  await appendCodexRecord(
+    sessionFilePath,
+    {
+      type: 'event_msg',
+      payload: {
+        type: 'task_complete',
+        turn_id: 'cove-test-turn-1',
+        last_agent_message: 'All set.',
       },
     },
     { newline: false },
@@ -45,26 +61,21 @@ export async function runCodexCommentaryThenFinalScenario(cwd) {
 
   await sleep(700)
   await appendCodexRecord(sessionFilePath, {
-    type: 'response_item',
+    type: 'event_msg',
     payload: {
-      type: 'reasoning',
-      summary: [],
+      type: 'task_started',
+      turn_id: 'cove-test-turn-1',
+      model_context_window: 128_000,
+      collaboration_mode_kind: 'default',
     },
   })
 
   await sleep(1200)
   await appendCodexRecord(sessionFilePath, {
-    type: 'response_item',
+    type: 'event_msg',
     payload: {
-      type: 'message',
-      role: 'assistant',
-      phase: 'commentary',
-      content: [
-        {
-          type: 'output_text',
-          text: 'I am checking the repo before making changes.',
-        },
-      ],
+      type: 'agent_reasoning',
+      text: 'I am checking the repo before making changes.',
     },
   })
 
@@ -85,17 +96,11 @@ export async function runCodexCommentaryThenFinalScenario(cwd) {
   await appendCodexRecord(
     sessionFilePath,
     {
-      type: 'response_item',
+      type: 'event_msg',
       payload: {
-        type: 'message',
-        role: 'assistant',
-        phase: 'final_answer',
-        content: [
-          {
-            type: 'output_text',
-            text: 'Done.',
-          },
-        ],
+        type: 'task_complete',
+        turn_id: 'cove-test-turn-1',
+        last_agent_message: 'Done.',
       },
     },
     { newline: false },

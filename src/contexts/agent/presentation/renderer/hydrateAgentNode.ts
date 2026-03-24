@@ -160,7 +160,10 @@ export async function hydrateAgentNode({
           ...node.data,
           sessionId: restoredAgent.sessionId,
           title: toAgentNodeTitle(sanitizedAgent.provider, restoredAgent.effectiveModel),
-          status: resolveInitialAgentRuntimeStatus(sanitizedAgent.prompt),
+          status:
+            restoredAgent.launchMode === 'resume'
+              ? ('standby' as const)
+              : resolveInitialAgentRuntimeStatus(sanitizedAgent.prompt),
           endedAt: null,
           exitCode: null,
           lastError: null,

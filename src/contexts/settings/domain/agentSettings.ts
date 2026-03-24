@@ -95,6 +95,10 @@ export interface AgentSettings {
   taskTagOptions: string[]
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
+  standbyBannerShowTask: boolean
+  standbyBannerShowSpace: boolean
+  standbyBannerShowBranch: boolean
+  standbyBannerShowPullRequest: boolean
   disableAppShortcutsWhenTerminalFocused: boolean
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
@@ -139,6 +143,10 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
+  standbyBannerShowTask: true,
+  standbyBannerShowSpace: true,
+  standbyBannerShowBranch: true,
+  standbyBannerShowPullRequest: true,
   disableAppShortcutsWhenTerminalFocused: true,
   keybindings: {},
   canvasInputMode: 'auto',
@@ -342,6 +350,16 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.focusNodeTargetZoom,
     DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
   )
+  const standbyBannerShowTask =
+    normalizeBoolean(value.standbyBannerShowTask) ?? DEFAULT_AGENT_SETTINGS.standbyBannerShowTask
+  const standbyBannerShowSpace =
+    normalizeBoolean(value.standbyBannerShowSpace) ?? DEFAULT_AGENT_SETTINGS.standbyBannerShowSpace
+  const standbyBannerShowBranch =
+    normalizeBoolean(value.standbyBannerShowBranch) ??
+    DEFAULT_AGENT_SETTINGS.standbyBannerShowBranch
+  const standbyBannerShowPullRequest =
+    normalizeBoolean(value.standbyBannerShowPullRequest) ??
+    DEFAULT_AGENT_SETTINGS.standbyBannerShowPullRequest
   const disableAppShortcutsWhenTerminalFocused =
     normalizeBoolean(value.disableAppShortcutsWhenTerminalFocused) ??
     DEFAULT_AGENT_SETTINGS.disableAppShortcutsWhenTerminalFocused
@@ -412,6 +430,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTagOptions,
     focusNodeOnClick,
     focusNodeTargetZoom,
+    standbyBannerShowTask,
+    standbyBannerShowSpace,
+    standbyBannerShowBranch,
+    standbyBannerShowPullRequest,
     disableAppShortcutsWhenTerminalFocused,
     keybindings,
     canvasInputMode,

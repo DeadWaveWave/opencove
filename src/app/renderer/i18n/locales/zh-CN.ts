@@ -71,6 +71,13 @@ export const zhCN = {
     restartToUpdateShort: '重启更新',
     restartToUpdateTitle: '版本 {{version}} 已准备好安装',
   },
+  controlCenter: {
+    open: '控制中心',
+    title: '控制中心',
+    sidebar: '侧边栏',
+    minimap: '缩略图',
+    theme: '主题',
+  },
   whatsNew: {
     title: '更新内容',
     subtitleRange: '从 {{fromVersion}} 更新到 {{toVersion}}。',

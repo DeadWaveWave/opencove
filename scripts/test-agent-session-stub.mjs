@@ -5,6 +5,7 @@ import { sleep } from './test-agent-session-stub/sleep.mjs'
 import {
   runCodexCommentaryThenFinalScenario,
   runCodexStandbyNoNewlineScenario,
+  runCodexStandbyOnlyScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
 } from './test-agent-session-stub/codex.mjs'
 import {
@@ -31,6 +32,11 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-standby-no-newline') {
     await runCodexStandbyNoNewlineScenario(cwd)
+    return
+  }
+
+  if (provider === 'codex' && scenario === 'codex-standby-only') {
+    await runCodexStandbyOnlyScenario(cwd)
     return
   }
 

@@ -92,6 +92,31 @@ describe('detectTurnStateFromSessionLine', () => {
     expect(detectTurnStateFromSessionLine('codex', line)).toBe('standby')
   })
 
+  it('treats codex task_started events as working', () => {
+    const line = JSON.stringify({
+      type: 'event_msg',
+      payload: {
+        type: 'task_started',
+        turn_id: 'turn_123',
+      },
+    })
+
+    expect(detectTurnStateFromSessionLine('codex', line)).toBe('working')
+  })
+
+  it('treats codex task_complete events as standby', () => {
+    const line = JSON.stringify({
+      type: 'event_msg',
+      payload: {
+        type: 'task_complete',
+        turn_id: 'turn_123',
+        last_agent_message: 'All set.',
+      },
+    })
+
+    expect(detectTurnStateFromSessionLine('codex', line)).toBe('standby')
+  })
+
   it('treats codex event-stream commentary agent messages as working', () => {
     const line = JSON.stringify({
       type: 'event_msg',

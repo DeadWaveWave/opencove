@@ -142,6 +142,11 @@
     transform 0.15s ease;
 }
 
+.app-header__icon-button--active {
+  background: rgba(94, 156, 255, 0.12);
+  color: var(--cove-text);
+}
+
 .app-header__update-button {
   min-width: 0;
   height: 28px;
