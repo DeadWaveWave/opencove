@@ -13,6 +13,8 @@ const CODEX_MODEL_CACHE_TTL_MS = 30_000
 const CODEX_MODEL_ERROR_CACHE_TTL_MS = 5_000
 const GEMINI_MODEL_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 const GEMINI_MODEL_FALLBACK_CACHE_TTL_MS = 5 * 60 * 1000
+const CURSOR_AGENT_MODEL_CACHE_TTL_MS = 30_000
+const CURSOR_AGENT_MODEL_ERROR_CACHE_TTL_MS = 5_000
 const CLI_MODEL_LIST_TIMEOUT_MS = 8000
 const CLI_MODEL_LIST_MAX_BUFFER_BYTES = 16 * 1024 * 1024
 
@@ -30,6 +32,13 @@ let cachedGeminiModels: {
 } | null = null
 
 let geminiModelsRequestInFlight: Promise<ListAgentModelsResult> | null = null
+
+let cachedCursorAgentModels: {
+  result: ListAgentModelsResult
+  expiresAtMs: number
+} | null = null
+
+let cursorAgentModelsRequestInFlight: Promise<ListAgentModelsResult> | null = null
 
 const CLAUDE_CODE_STATIC_MODELS: AgentModelOption[] = [
   {
@@ -141,6 +150,32 @@ function readCachedGeminiModels(): ListAgentModelsResult | null {
   return cloneListAgentModelsResult(cachedGeminiModels.result)
 }
 
+function rememberCursorAgentModels(result: ListAgentModelsResult): ListAgentModelsResult {
+  cachedCursorAgentModels = {
+    result: cloneListAgentModelsResult(result),
+    expiresAtMs:
+      Date.now() +
+      (result.error === null
+        ? CURSOR_AGENT_MODEL_CACHE_TTL_MS
+        : CURSOR_AGENT_MODEL_ERROR_CACHE_TTL_MS),
+  }
+
+  return cloneListAgentModelsResult(result)
+}
+
+function readCachedCursorAgentModels(): ListAgentModelsResult | null {
+  if (!cachedCursorAgentModels) {
+    return null
+  }
+
+  if (Date.now() > cachedCursorAgentModels.expiresAtMs) {
+    cachedCursorAgentModels = null
+    return null
+  }
+
+  return cloneListAgentModelsResult(cachedCursorAgentModels.result)
+}
+
 async function executeCliText(command: string, args: string[]): Promise<string> {
   const invocation = await resolveAgentCliInvocation({ command, args })
 
@@ -185,6 +220,21 @@ async function listOpenCodeModelsFromCli(): Promise<AgentModelOption[]> {
     }))
 }
 
+async function listCursorAgentModelsFromCli(): Promise<AgentModelOption[]> {
+  const stdout = await executeCliText('agent', ['models'])
+
+  return stdout
+    .split(/\r?\n/)
+    .map(line => line.trim())
+    .filter(line => line.length > 0)
+    .map(modelId => ({
+      id: modelId,
+      displayName: modelId,
+      description: '',
+      isDefault: false,
+    }))
+}
+
 function listClaudeCodeStaticModels(): AgentModelOption[] {
   return CLAUDE_CODE_STATIC_MODELS.map(model => ({ ...model }))
 }
@@ -194,6 +244,8 @@ export function disposeAgentModelService(): void {
   cachedCodexModels = null
   geminiModelsRequestInFlight = null
   cachedGeminiModels = null
+  cursorAgentModelsRequestInFlight = null
+  cachedCursorAgentModels = null
 
   disposeCodexModelCatalog()
 }
@@ -259,6 +311,44 @@ export async function listAgentModels(provider: AgentProviderId): Promise<ListAg
         }),
       }
     }
+  }
+
+  if (provider === 'cursor-agent') {
+    const cachedResult = readCachedCursorAgentModels()
+    if (cachedResult) {
+      return cachedResult
+    }
+
+    if (!cursorAgentModelsRequestInFlight) {
+      cursorAgentModelsRequestInFlight = (async () => {
+        const fetchedAt = new Date().toISOString()
+
+        try {
+          const models = await listCursorAgentModelsFromCli()
+          return rememberCursorAgentModels({
+            provider,
+            source: 'cursor-agent-cli',
+            fetchedAt,
+            models,
+            error: null,
+          })
+        } catch (error) {
+          return rememberCursorAgentModels({
+            provider,
+            source: 'cursor-agent-cli',
+            fetchedAt,
+            models: [],
+            error: createAppErrorDescriptor('agent.list_models_failed', {
+              debugMessage: toErrorMessage(error),
+            }),
+          })
+        } finally {
+          cursorAgentModelsRequestInFlight = null
+        }
+      })()
+    }
+
+    return cloneListAgentModelsResult(await cursorAgentModelsRequestInFlight)
   }
 
   if (provider === 'gemini') {

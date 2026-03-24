@@ -192,6 +192,17 @@ describe('readLastAssistantMessageFromSessionFile', () => {
     )
   })
 
+  it('returns null for cursor-agent without attempting extraction', () => {
+    expect(
+      extractLastAssistantMessageFromSessionData('cursor-agent', {
+        messages: [
+          { role: 'user', content: [{ text: 'hello' }] },
+          { role: 'assistant', content: [{ text: 'world' }] },
+        ],
+      }),
+    ).toBeNull()
+  })
+
   it('extracts the last opencode assistant reply from exported session data', () => {
     expect(
       extractLastAssistantMessageFromSessionData('opencode', {

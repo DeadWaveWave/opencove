@@ -36,6 +36,10 @@ export function resolveAgentCliCommand(provider: AgentProviderId): string {
     return 'gemini'
   }
 
+  if (provider === 'cursor-agent') {
+    return 'agent'
+  }
+
   return 'codex'
 }
 
@@ -187,6 +191,48 @@ export function buildAgentLaunchCommand(input: BuildAgentLaunchCommandInput): Ag
 
     return {
       command: 'gemini',
+      args,
+      launchMode: 'new',
+      effectiveModel,
+      resumeSessionId: null,
+    }
+  }
+
+  if (input.provider === 'cursor-agent') {
+    const args: string[] = []
+
+    if (agentFullAccess) {
+      args.push('--yolo')
+    }
+
+    if (effectiveModel) {
+      args.push('--model', effectiveModel)
+    }
+
+    if (input.mode === 'resume') {
+      if (resumeSessionId) {
+        args.push('--resume', resumeSessionId)
+      } else {
+        args.push('--continue')
+      }
+
+      return {
+        command: 'agent',
+        args,
+        launchMode: 'resume',
+        effectiveModel,
+        resumeSessionId,
+      }
+    }
+
+    const prompt = normalizePrompt(input.prompt)
+    if (prompt.length > 0) {
+      maybeTerminateOptionParsing(args, prompt)
+      args.push(prompt)
+    }
+
+    return {
+      command: 'agent',
       args,
       launchMode: 'new',
       effectiveModel,

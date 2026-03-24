@@ -234,6 +234,38 @@ describe('detectTurnStateFromSessionLine', () => {
     }
   })
 
+  it('returns null for cursor-agent turn state detection', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      message: {
+        stop_reason: 'end_turn',
+        content: [{ type: 'text', text: 'Done' }],
+      },
+    })
+
+    expect(detectTurnStateFromSessionLine('cursor-agent', line)).toBeNull()
+  })
+
+  it('skips parsing for cursor-agent lines', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    try {
+      const line = JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          phase: 'final_answer',
+        },
+      })
+
+      expect(detectTurnStateFromSessionLine('cursor-agent', line)).toBeNull()
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
+  })
+
   it('ignores claude queue-operation events so standby is not overwritten', () => {
     const parseSpy = vi.spyOn(JSON, 'parse')
 

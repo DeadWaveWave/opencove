@@ -140,7 +140,7 @@ describe('SettingsPanel', () => {
 
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_AGENT_SETTINGS,
-      agentProviderOrder: ['codex', 'claude-code', 'opencode', 'gemini'],
+      agentProviderOrder: ['codex', 'claude-code', 'opencode', 'gemini', 'cursor-agent'],
     })
   })
 

@@ -285,6 +285,10 @@ async function tryFindResumeSessionId(
     return await findOpenCodeResumeSessionId(cwd, startedAtMs)
   }
 
+  if (provider === 'cursor-agent') {
+    return null
+  }
+
   return await findGeminiResumeSessionId(cwd, startedAtMs)
 }
 

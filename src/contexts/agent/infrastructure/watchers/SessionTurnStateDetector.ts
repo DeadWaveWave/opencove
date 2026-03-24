@@ -32,6 +32,10 @@ function mayContainTurnState(provider: AgentProviderId, line: string): boolean {
     return false
   }
 
+  if (provider === 'cursor-agent') {
+    return false
+  }
+
   if (provider === 'claude-code') {
     return line.includes('"assistant"') || line.includes('"user"')
   }
@@ -177,6 +181,10 @@ export function detectTurnStateFromSessionRecord(
 ): TerminalSessionState | null {
   if (provider === 'claude-code') {
     return detectClaudeTurnState(parsed)
+  }
+
+  if (provider === 'cursor-agent') {
+    return null
   }
 
   return detectCodexTurnState(parsed)
