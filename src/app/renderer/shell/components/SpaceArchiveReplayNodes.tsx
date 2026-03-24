@@ -284,6 +284,7 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
         style: {
           width: node.frame.size.width,
           height: node.frame.size.height,
+          pointerEvents: 'all',
         },
         draggable: false,
         selectable: false,
@@ -328,6 +329,7 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
         style: {
           width: node.frame.size.width,
           height: node.frame.size.height,
+          pointerEvents: 'all',
         },
         draggable: false,
         selectable: false,
@@ -350,6 +352,7 @@ export function toSpaceArchiveReplayNodes(record: SpaceArchiveRecord): SpaceArch
         style: {
           width: node.frame.size.width,
           height: node.frame.size.height,
+          pointerEvents: 'all',
         },
         draggable: false,
         selectable: false,
