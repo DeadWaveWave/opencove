@@ -127,6 +127,13 @@ export function useWorkspaceCanvasNodesStore({
         await window.opencoveApi.pty.kill({ sessionId: target.data.sessionId })
       }
 
+      if (target?.data.kind === 'image' && target.data.image) {
+        const deleteCanvasImage = window.opencoveApi?.workspace?.deleteCanvasImage
+        if (typeof deleteCanvasImage === 'function') {
+          await deleteCanvasImage({ assetId: target.data.image.assetId }).catch(() => undefined)
+        }
+      }
+
       setNodes(prevNodes => {
         const now = new Date().toISOString()
         return removeNodeWithRelations({
@@ -397,15 +404,16 @@ export function useWorkspaceCanvasNodesStore({
     },
     [onRequestPersistFlush, setNodes],
   )
-  const { createNodeForSession, createNoteNode, createTaskNode } = useWorkspaceCanvasNodeCreation({
-    defaultTerminalWindowScalePercent,
-    nodesRef,
-    spacesRef,
-    onRequestPersistFlush,
-    onShowMessage,
-    onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
-    setNodes,
-  })
+  const { createNodeForSession, createNoteNode, createTaskNode, createImageNode } =
+    useWorkspaceCanvasNodeCreation({
+      defaultTerminalWindowScalePercent,
+      nodesRef,
+      spacesRef,
+      onRequestPersistFlush,
+      onShowMessage,
+      onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
+      setNodes,
+    })
 
   return {
     nodesRef,
@@ -428,5 +436,6 @@ export function useWorkspaceCanvasNodesStore({
     createNodeForSession,
     createNoteNode,
     createTaskNode,
+    createImageNode,
   }
 }

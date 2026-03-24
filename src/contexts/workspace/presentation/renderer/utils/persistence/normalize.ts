@@ -49,6 +49,10 @@ export function normalizeNodeKind(value: unknown): WorkspaceNodeKind {
     return 'note'
   }
 
+  if (value === 'image') {
+    return 'image'
+  }
+
   return 'terminal'
 }
 

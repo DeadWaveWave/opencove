@@ -37,6 +37,8 @@ import type {
   OpenWorkspacePathInput,
   PersistWriteResult,
   ReadAppStateResult,
+  ReadCanvasImageInput,
+  ReadCanvasImageResult,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -56,10 +58,12 @@ import type {
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
+  WriteCanvasImageInput,
   WriteAppStateInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
+  DeleteCanvasImageInput,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 
@@ -106,6 +110,12 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.workspaceListPathOpeners),
     openPath: (payload: OpenWorkspacePathInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.workspaceOpenPath, payload),
+    writeCanvasImage: (payload: WriteCanvasImageInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.workspaceWriteCanvasImage, payload),
+    readCanvasImage: (payload: ReadCanvasImageInput): Promise<ReadCanvasImageResult | null> =>
+      invokeIpc(IPC_CHANNELS.workspaceReadCanvasImage, payload),
+    deleteCanvasImage: (payload: DeleteCanvasImageInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.workspaceDeleteCanvasImage, payload),
   },
   worktree: {
     listBranches: (payload: ListGitBranchesInput): Promise<ListGitBranchesResult> =>

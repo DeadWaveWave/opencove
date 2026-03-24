@@ -24,6 +24,7 @@ import { WorkspaceSnapGuidesOverlay } from './view/WorkspaceSnapGuidesOverlay'
 import { WorkspaceCanvasTopOverlays } from './view/WorkspaceCanvasTopOverlays'
 import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
+import { isEditableDomTarget } from './domTargets'
 
 const WHEEL_BLOCK_SELECTOR = '.cove-window, .cove-window-backdrop, .workspace-context-menu'
 
@@ -40,6 +41,9 @@ export function WorkspaceCanvasView({
   handleCanvasPointerUpCapture,
   handleCanvasDoubleClickCapture,
   handleCanvasWheelCapture,
+  handleCanvasPaste,
+  handleCanvasDragOver,
+  handleCanvasDrop,
   nodes,
   edges,
   nodeTypes,
@@ -271,9 +275,17 @@ export function WorkspaceCanvasView({
       className="workspace-canvas"
       data-canvas-input-mode={resolvedCanvasInputMode}
       data-selected-node-count={selectedNodeCount}
+      tabIndex={-1}
       onClick={onCanvasClick}
+      onPaste={handleCanvasPaste}
+      onDragOver={handleCanvasDragOver}
+      onDrop={handleCanvasDrop}
       onDoubleClickCapture={handleCanvasDoubleClickCapture}
       onPointerDownCapture={event => {
+        if (event.button === 0 && !isEditableDomTarget(event.target)) {
+          canvasRef.current?.focus?.({ preventScroll: true })
+        }
+
         if (
           event.button === 0 &&
           (contextMenu !== null || spaceActionMenu !== null) &&

@@ -68,7 +68,12 @@ export function toPersistedState(
         executionDirectory: normalizeOptionalString(node.data.executionDirectory),
         expectedDirectory: normalizeOptionalString(node.data.expectedDirectory),
         agent: node.data.agent,
-        task: node.data.kind === 'note' ? node.data.note : node.data.task,
+        task:
+          node.data.kind === 'note'
+            ? node.data.note
+            : node.data.kind === 'image'
+              ? node.data.image
+              : node.data.task,
       })),
     })),
     settings,

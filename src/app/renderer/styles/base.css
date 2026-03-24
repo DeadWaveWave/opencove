@@ -102,6 +102,7 @@
   --cove-canvas-minimap-opacity-hover: 0.96;
   --cove-canvas-minimap-node-agent: rgba(111, 188, 255, 0.78);
   --cove-canvas-minimap-node-task: rgba(173, 166, 255, 0.78);
+  --cove-canvas-minimap-node-image: rgba(255, 214, 142, 0.78);
   --cove-canvas-minimap-node-default: rgba(130, 156, 255, 0.78);
   --cove-canvas-minimap-node-stroke: rgba(0, 0, 0, 0.18);
 
@@ -208,6 +209,7 @@
   --cove-canvas-minimap-opacity-hover: 0.96;
   --cove-canvas-minimap-node-agent: rgba(78, 164, 255, 0.72);
   --cove-canvas-minimap-node-task: rgba(152, 136, 255, 0.66);
+  --cove-canvas-minimap-node-image: rgba(255, 206, 120, 0.66);
   --cove-canvas-minimap-node-default: rgba(94, 156, 255, 0.55);
   --cove-canvas-minimap-node-stroke: rgba(17, 24, 39, 0.14);
 

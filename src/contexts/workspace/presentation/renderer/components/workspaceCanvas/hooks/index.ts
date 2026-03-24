@@ -10,6 +10,7 @@ export {
 export { useWorkspaceCanvasApplyNodeChanges } from './useApplyNodeChanges'
 export { useWorkspaceCanvasArrange } from './useArrange'
 export { useWorkspaceCanvasDerivedConfig } from './useCanvasDerivedConfig'
+export { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
 export { useWorkspaceCanvasState } from './useCanvasState'
 export { useWorkspaceCanvasComposedNodeTypes } from './useCanvasNodeTypes'
 export { useWorkspaceCanvasInputMode } from './useCanvasInputMode'

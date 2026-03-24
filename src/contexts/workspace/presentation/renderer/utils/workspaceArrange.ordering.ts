@@ -83,6 +83,7 @@ export function resolveNodeKindRank(kind: TerminalNodeData['kind']): number {
     case 'task':
       return 1
     case 'note':
+    case 'image':
       return 2
     case 'agent':
       return 3

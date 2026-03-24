@@ -1,17 +1,19 @@
 import { useCallback, useRef } from 'react'
 import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { ImageNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
   CreateNodeInput,
   EmptySelectionPromptState,
   SelectionDraftState,
+  ShowWorkspaceCanvasMessage,
 } from '../types'
 import { resolveDefaultNoteWindowSize } from '../constants'
 import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
+import { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
 import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
 import {
@@ -33,6 +35,7 @@ type SelectionDraftUiState = Pick<
 >
 
 interface UseWorkspaceCanvasInteractionsParams {
+  canvasRef: React.RefObject<HTMLDivElement | null>
   isTrackpadCanvasMode: boolean
   focusNodeOnClick: boolean
   focusNodeTargetZoom: number
@@ -65,9 +68,16 @@ interface UseWorkspaceCanvasInteractionsParams {
       }
     },
   ) => Node<TerminalNodeData> | null
+  onShowMessage?: ShowWorkspaceCanvasMessage
+  createImageNode: (
+    anchor: Point,
+    image: ImageNodeData,
+    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
+  ) => Node<TerminalNodeData> | null
 }
 
 export function useWorkspaceCanvasInteractions({
+  canvasRef,
   isTrackpadCanvasMode,
   focusNodeOnClick,
   focusNodeTargetZoom,
@@ -92,6 +102,8 @@ export function useWorkspaceCanvasInteractions({
   nodesRef,
   createNodeForSession,
   createNoteNode,
+  onShowMessage,
+  createImageNode,
 }: UseWorkspaceCanvasInteractionsParams): {
   clearNodeSelection: () => void
   handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
@@ -109,6 +121,9 @@ export function useWorkspaceCanvasInteractions({
   handlePaneClick: (_event: React.MouseEvent | MouseEvent) => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
+  handleCanvasPaste: React.ClipboardEventHandler<HTMLDivElement>
+  handleCanvasDragOver: React.DragEventHandler<HTMLDivElement>
+  handleCanvasDrop: React.DragEventHandler<HTMLDivElement>
 } {
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
@@ -448,6 +463,18 @@ export function useWorkspaceCanvasInteractions({
     })
   }, [contextMenu, createNoteNode, nodesRef, onSpacesChange, setContextMenu, setNodes, spacesRef])
 
+  const { handleCanvasPaste, handleCanvasDragOver, handleCanvasDrop } =
+    useWorkspaceCanvasImageImport({
+      canvasRef,
+      reactFlow,
+      spacesRef,
+      nodesRef,
+      setNodes,
+      onSpacesChange,
+      onShowMessage,
+      createImageNode,
+    })
+
   return {
     clearNodeSelection,
     handleCanvasDoubleClickCapture,
@@ -462,5 +489,8 @@ export function useWorkspaceCanvasInteractions({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
+    handleCanvasPaste,
+    handleCanvasDragOver,
+    handleCanvasDrop,
   }
 }

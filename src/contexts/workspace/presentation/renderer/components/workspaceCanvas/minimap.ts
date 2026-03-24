@@ -7,6 +7,8 @@ export function resolveWorkspaceMinimapNodeColor(node: Node<TerminalNodeData>): 
       return 'var(--cove-canvas-minimap-node-agent)'
     case 'task':
       return 'var(--cove-canvas-minimap-node-task)'
+    case 'image':
+      return 'var(--cove-canvas-minimap-node-image)'
     default:
       return 'var(--cove-canvas-minimap-node-default)'
   }

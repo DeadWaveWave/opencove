@@ -288,7 +288,8 @@
 
 .workspace-canvas .react-flow__node.selected .terminal-node,
 .workspace-canvas .react-flow__node.selected .task-node,
-.workspace-canvas .react-flow__node.selected .note-node {
+.workspace-canvas .react-flow__node.selected .note-node,
+.workspace-canvas .react-flow__node.selected .image-node {
   border-color: var(--cove-node-selection-border);
   box-shadow: var(--cove-node-selection-shadow);
 }

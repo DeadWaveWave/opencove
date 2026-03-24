@@ -62,6 +62,11 @@ export function resolveDefaultNoteWindowSize(viewport?: Partial<Size>): Size {
   return resolveCanonicalNodeSize({ kind: 'note', bucket })
 }
 
+export function resolveDefaultImageWindowSize(viewport?: Partial<Size>): Size {
+  const bucket = resolveCanvasCanonicalBucketFromViewport(viewport)
+  return resolveCanonicalNodeSize({ kind: 'image', bucket })
+}
+
 export function resolveDefaultAgentWindowSize(
   scalePercent: number,
   viewport?: Partial<Size>,

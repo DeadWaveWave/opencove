@@ -176,6 +176,12 @@ export const en = {
     resizeWidth: 'Resize note width',
     resizeHeight: 'Resize note height',
   },
+  imageNode: {
+    title: 'image',
+    deleteImage: 'Delete image',
+    resizeWidth: 'Resize image width',
+    resizeHeight: 'Resize image height',
+  },
   terminalNode: {
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
