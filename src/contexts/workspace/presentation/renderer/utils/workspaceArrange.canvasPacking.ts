@@ -209,7 +209,8 @@ export function resolveCanvasSectionPlacementCandidates({
     })
     .filter(
       rankedCandidate =>
-        rankedCandidate.candidate.bounding.width > 0 || rankedCandidate.candidate.bounding.height > 0,
+        rankedCandidate.candidate.bounding.width > 0 ||
+        rankedCandidate.candidate.bounding.height > 0,
     )
 
   if (ranked.length === 0) {
@@ -247,4 +248,3 @@ function computePlacedBoundingRect(
       .filter((rect): rect is NonNullable<typeof rect> => rect !== null),
   )
 }
-

@@ -57,10 +57,10 @@ function ResizeHarness(): React.JSX.Element {
   })
 
   const renderedFrame = draftFrame ?? frame
-  const nodeStyle = useMemo(() => buildNodeStyle({ base: frame, rendered: renderedFrame }), [
-    frame,
-    renderedFrame,
-  ])
+  const nodeStyle = useMemo(
+    () => buildNodeStyle({ base: frame, rendered: renderedFrame }),
+    [frame, renderedFrame],
+  )
 
   return (
     <div>
@@ -116,4 +116,3 @@ describe('useNodeFrameResize', () => {
     })
   })
 })
-

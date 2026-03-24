@@ -2,11 +2,7 @@ import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Size, TerminalNodeData, WorkspaceSpaceState } from '../types'
 import { computeSpaceRectFromNodes } from './spaceLayout'
-import {
-  computeBoundingRect,
-  snapDown,
-  type Rect,
-} from './workspaceArrange.flowPacking'
+import { computeBoundingRect, snapDown, type Rect } from './workspaceArrange.flowPacking'
 import type { PlacementCandidate } from './workspaceArrange.canvasPacking'
 import {
   dedupePlacementCandidates,
@@ -227,14 +223,22 @@ export function arrangeWorkspaceCanvas({
     )
     const rawIdealColumns =
       estimatedRootWidth > 0
-        ? Math.max(1, Math.floor((estimatedRootWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth))
+        ? Math.max(
+            1,
+            Math.floor((estimatedRootWidth + WORKSPACE_CANONICAL_GUTTER_PX) / strideWidth),
+          )
         : maxColumnsByWrap
     const maxColumnsLimit = Math.min(
       MAX_CANONICAL_COLUMNS,
       Math.max(maxColumnsByWrap, rawIdealColumns, maxColumnsByCandidates),
     )
     const idealColumns = Math.max(1, Math.min(maxColumnsLimit, rawIdealColumns))
-    const maxColumnCandidates = new Set<number>([1, maxColumnsByWrap, idealColumns, maxColumnsLimit])
+    const maxColumnCandidates = new Set<number>([
+      1,
+      maxColumnsByWrap,
+      idealColumns,
+      maxColumnsLimit,
+    ])
 
     for (const candidateWrapWidth of wrapWidthCandidates) {
       const maxColumns = Math.max(
@@ -372,8 +376,10 @@ export function arrangeWorkspaceCanvas({
       })[0] ?? null
     )
   })()
-  const spacePlacements = bestCanvasLayout?.spacePlacements ?? new Map<string, { x: number; y: number }>()
-  const rootPlacements = bestCanvasLayout?.rootPlacements ?? new Map<string, { x: number; y: number }>()
+  const spacePlacements =
+    bestCanvasLayout?.spacePlacements ?? new Map<string, { x: number; y: number }>()
+  const rootPlacements =
+    bestCanvasLayout?.rootPlacements ?? new Map<string, { x: number; y: number }>()
 
   const spaceDeltaById = new Map<string, { dx: number; dy: number }>()
   for (const item of spaceItems) {

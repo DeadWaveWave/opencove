@@ -1,9 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import {
-  clearAndSeedWorkspace,
-  launchApp,
-  readCanvasViewport,
-} from './workspace-canvas.helpers'
+import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
 import {
   CANONICAL_GUTTER_PX,
   ensureArtifactsDir,

@@ -38,8 +38,7 @@ export function resolveArrangeWrapWidth(viewport: { width: number; height: numbe
     viewport.height > 0 && Number.isFinite(viewport.width / viewport.height)
       ? viewport.width / viewport.height
       : defaultAspect
-  const wrapWidth =
-    (DEFAULT_VIEWPORT_WIDTH - DEFAULT_VIEWPORT_MARGIN_PX) * (aspect / defaultAspect)
+  const wrapWidth = (DEFAULT_VIEWPORT_WIDTH - DEFAULT_VIEWPORT_MARGIN_PX) * (aspect / defaultAspect)
 
   return Math.max(MIN_WRAP_WIDTH_PX, Math.min(MAX_WRAP_WIDTH_PX, Math.round(wrapWidth)))
 }

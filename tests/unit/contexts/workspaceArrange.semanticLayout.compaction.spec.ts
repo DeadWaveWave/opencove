@@ -28,7 +28,10 @@ function makeNode(id: string, kind: TerminalNodeData['kind']): Node<TerminalNode
   }
 }
 
-function makeSingleGroup(id: string, kind: TerminalNodeData['kind']): WorkspaceArrangeSemanticGroup {
+function makeSingleGroup(
+  id: string,
+  kind: TerminalNodeData['kind'],
+): WorkspaceArrangeSemanticGroup {
   const node = makeNode(id, kind)
   return {
     key: id,
@@ -75,4 +78,3 @@ describe('Workspace arrange semantic grid packing', () => {
     expect(terminalPlacements.some(placement => placement.x === 0 && placement.y > 0)).toBe(true)
   })
 })
-
