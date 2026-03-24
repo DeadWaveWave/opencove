@@ -129,13 +129,16 @@ export function useAgentStandbyNotifications({
       ? window.opencoveApi.meta.platform
       : undefined
   const workspaces = useAppStore(state => state.workspaces)
+  const isStandbyBannerEnabled = useAppStore(state => state.agentSettings.standbyBannerEnabled)
   const showBranch = useAppStore(state => state.agentSettings.standbyBannerShowBranch)
   const showPullRequest = useAppStore(state => state.agentSettings.standbyBannerShowPullRequest)
   const githubPullRequestsEnabled = useAppStore(
     state => state.agentSettings.githubPullRequestsEnabled,
   )
-  const shouldResolveBranch = showBranch || (showPullRequest && githubPullRequestsEnabled)
-  const shouldResolvePullRequest = showPullRequest && githubPullRequestsEnabled
+  const shouldResolveBranch =
+    isStandbyBannerEnabled && (showBranch || (showPullRequest && githubPullRequestsEnabled))
+  const shouldResolvePullRequest =
+    isStandbyBannerEnabled && showPullRequest && githubPullRequestsEnabled
 
   const [notifications, setNotifications] = useState<AgentStandbyNotification[]>([])
   const worktreeCacheRef = useRef<Map<string, { fetchedAt: number; worktrees: GitWorktreeInfo[] }>>(
@@ -240,6 +243,10 @@ export function useAgentStandbyNotifications({
 
   const handleAgentEnteredStandby = useCallback(
     (payload: AgentStandbyNotificationPayload) => {
+      if (!isStandbyBannerEnabled) {
+        return
+      }
+
       const workspace = workspacesById.get(payload.workspaceId) ?? null
       const taskTitle = resolveTaskTitle(workspace, payload.taskId)
       const space = resolveOwningSpace(workspace, payload.nodeId, payload.taskId)
@@ -278,7 +285,13 @@ export function useAgentStandbyNotifications({
         return updated.length > maxVisible ? updated.slice(0, maxVisible) : updated
       })
     },
-    [maxVisible, shouldResolveBranch, shouldResolvePullRequest, workspacesById],
+    [
+      isStandbyBannerEnabled,
+      maxVisible,
+      shouldResolveBranch,
+      shouldResolvePullRequest,
+      workspacesById,
+    ],
   )
 
   const handleAgentEnteredWorking = useCallback((sessionId: string) => {
@@ -286,6 +299,14 @@ export function useAgentStandbyNotifications({
       previous.filter(notification => notification.sessionId !== sessionId),
     )
   }, [])
+
+  useEffect(() => {
+    if (isStandbyBannerEnabled) {
+      return
+    }
+
+    setNotifications([])
+  }, [isStandbyBannerEnabled])
 
   const dismiss = useCallback((id: string) => {
     setNotifications(previous => previous.filter(notification => notification.id !== id))
@@ -422,6 +443,7 @@ export function useAgentStandbyNotifications({
   ])
 
   useAgentStandbyNotificationWatcher({
+    enabled: isStandbyBannerEnabled,
     onAgentEnteredStandby: handleAgentEnteredStandby,
     onAgentEnteredWorking: handleAgentEnteredWorking,
   })

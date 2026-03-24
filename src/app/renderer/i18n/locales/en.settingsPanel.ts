@@ -3,6 +3,7 @@ export const enSettingsPanel = {
   nav: {
     general: 'General',
     agent: 'Agent',
+    notifications: 'Notifications',
     canvas: 'Canvas',
     shortcuts: 'Shortcuts',
     tasks: 'Tasks',
@@ -69,9 +70,14 @@ export const enSettingsPanel = {
     moveDown: 'Move down',
     fullAccessLabel: 'Full Access Mode',
     fullAccessHelp: 'Disable sandbox and manual approvals for agents.',
-    standbyBanner: {
-      title: 'Standby Banner',
-      help: 'Choose what context is shown in the top-right standby banner.',
+  },
+  notifications: {
+    title: 'Notifications',
+    agentStandbyBanner: {
+      enabledLabel: 'Agent standby banner',
+      enabledHelp: 'Show a top-right banner when an agent transitions from working to standby.',
+      contextTitle: 'Banner context',
+      contextHelp: 'Choose what context chips are shown in the banner.',
       showTask: 'Show task',
       showSpace: 'Show space',
       showBranch: 'Show branch',

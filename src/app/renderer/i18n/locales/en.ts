@@ -76,6 +76,9 @@ export const en = {
     sidebar: 'Sidebar',
     minimap: 'Minimap',
     theme: 'Theme',
+    agentStandbyBanner: 'Agent standby banner',
+    on: 'On',
+    off: 'Off',
   },
   whatsNew: {
     title: "What's New",

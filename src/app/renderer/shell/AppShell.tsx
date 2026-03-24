@@ -24,6 +24,7 @@ import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
 import { useAddWorkspaceAction } from './hooks/useAddWorkspaceAction'
 import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotifications'
+import { useCommandCenterHints } from './hooks/useCommandCenterHints'
 import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
@@ -32,7 +33,6 @@ import type { ProjectContextMenuState } from './types'
 import { useAppStore } from './store/useAppStore'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { WhatsNewDialog } from './components/WhatsNewDialog'
-import { formatKeyChord, resolveCommandKeybindings } from '@contexts/settings/domain/keybindings'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -162,22 +162,8 @@ export default function App(): React.JSX.Element {
     document.title = activeWorkspaceName ? `${activeWorkspaceName} — OpenCove` : 'OpenCove'
   }, [activeWorkspaceName])
 
-  const platform =
-    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
-      ? window.opencoveApi.meta.platform
-      : undefined
-  const commandCenterBindings = useMemo(
-    () =>
-      resolveCommandKeybindings({
-        commandId: 'commandCenter.toggle',
-        overrides: agentSettings.keybindings,
-        platform,
-      }),
-    [agentSettings.keybindings, platform],
-  )
-  const commandCenterPrimaryHint = formatKeyChord(platform, commandCenterBindings.primary) || '—'
-  const commandCenterSecondaryHint =
-    formatKeyChord(platform, commandCenterBindings.secondary) || '—'
+  const { primaryHint: commandCenterPrimaryHint, secondaryHint: commandCenterSecondaryHint } =
+    useCommandCenterHints(agentSettings.keybindings)
 
   const { updateState, checkForUpdates, downloadUpdate, installUpdate } = useAppUpdates({
     policy: agentSettings.updatePolicy,
@@ -369,6 +355,7 @@ export default function App(): React.JSX.Element {
         uiTheme={agentSettings.uiTheme}
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
         isMinimapVisible={activeWorkspace?.isMinimapVisible ?? false}
+        isStandbyBannerEnabled={agentSettings.standbyBannerEnabled}
         hasActiveWorkspace={activeWorkspace !== null}
         onClose={() => {
           closeControlCenter()
@@ -391,6 +378,12 @@ export default function App(): React.JSX.Element {
           }
 
           handleWorkspaceMinimapVisibilityChange(!activeWorkspace.isMinimapVisible)
+        }}
+        onToggleStandbyBanner={() => {
+          setAgentSettings(prev => ({
+            ...prev,
+            standbyBannerEnabled: !prev.standbyBannerEnabled,
+          }))
         }}
         onOpenSettings={() => {
           setIsFocusNodeTargetZoomPreviewing(false)

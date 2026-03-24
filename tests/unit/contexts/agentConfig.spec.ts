@@ -16,6 +16,7 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.uiTheme).toBe('system')
     expect(DEFAULT_AGENT_SETTINGS.focusNodeOnClick).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom).toBe(1)
+    expect(DEFAULT_AGENT_SETTINGS.standbyBannerEnabled).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowTask).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowSpace).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowBranch).toBe(true)
@@ -59,6 +60,7 @@ describe('agent settings normalization', () => {
       taskTagOptions: ['feature', 'bug', 'feature', ''],
       focusNodeOnClick: false,
       focusNodeTargetZoom: 1.25,
+      standbyBannerEnabled: false,
       standbyBannerShowTask: false,
       standbyBannerShowSpace: false,
       standbyBannerShowBranch: false,
@@ -88,6 +90,7 @@ describe('agent settings normalization', () => {
     expect(result.taskTagOptions).toEqual(['feature', 'bug'])
     expect(result.focusNodeOnClick).toBe(false)
     expect(result.focusNodeTargetZoom).toBe(1.25)
+    expect(result.standbyBannerEnabled).toBe(false)
     expect(result.standbyBannerShowTask).toBe(false)
     expect(result.standbyBannerShowSpace).toBe(false)
     expect(result.standbyBannerShowBranch).toBe(false)

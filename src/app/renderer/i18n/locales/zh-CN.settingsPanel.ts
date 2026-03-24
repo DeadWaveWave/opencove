@@ -3,6 +3,7 @@ export const zhCNSettingsPanel = {
   nav: {
     general: '通用',
     agent: 'Agent',
+    notifications: '通知',
     canvas: '画布',
     shortcuts: '快捷键',
     tasks: '任务',
@@ -69,9 +70,14 @@ export const zhCNSettingsPanel = {
     moveDown: '下移',
     fullAccessLabel: '完全访问模式',
     fullAccessHelp: '为 Agent 关闭沙箱和人工审批。',
-    standbyBanner: {
-      title: '待命提示',
-      help: '控制右上角待命提示中显示的上下文信息。',
+  },
+  notifications: {
+    title: '通知',
+    agentStandbyBanner: {
+      enabledLabel: 'Agent 完成提醒',
+      enabledHelp: '当 Agent 从工作状态变为待命时，在右上角显示提醒横幅。',
+      contextTitle: '横幅信息',
+      contextHelp: '控制右上角提醒横幅中显示的上下文信息。',
       showTask: '显示任务',
       showSpace: '显示空间',
       showBranch: '显示分支',

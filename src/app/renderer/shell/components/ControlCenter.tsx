@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react'
-import { Map as MapIcon, Monitor, Moon, PanelLeft, Settings, Sun } from 'lucide-react'
+import { Bell, Map as MapIcon, Monitor, Moon, PanelLeft, Settings, Sun } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { UiTheme } from '@contexts/settings/domain/agentSettings'
 import { getUiThemeLabel } from '@app/renderer/i18n/labels'
@@ -9,22 +9,26 @@ export function ControlCenter({
   uiTheme,
   isPrimarySidebarCollapsed,
   isMinimapVisible,
+  isStandbyBannerEnabled,
   hasActiveWorkspace,
   onClose,
   onChangeUiTheme,
   onTogglePrimarySidebar,
   onToggleMinimap,
+  onToggleStandbyBanner,
   onOpenSettings,
 }: {
   isOpen: boolean
   uiTheme: UiTheme
   isPrimarySidebarCollapsed: boolean
   isMinimapVisible: boolean
+  isStandbyBannerEnabled: boolean
   hasActiveWorkspace: boolean
   onClose: () => void
   onChangeUiTheme: (theme: UiTheme) => void
   onTogglePrimarySidebar: () => void
   onToggleMinimap: () => void
+  onToggleStandbyBanner: () => void
   onOpenSettings: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
@@ -151,6 +155,27 @@ export function ControlCenter({
                 {isMinimapVisible
                   ? t('workspaceCanvas.hideMinimap')
                   : t('workspaceCanvas.showMinimap')}
+              </span>
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className={`control-center-tile${isStandbyBannerEnabled ? ' control-center-tile--on' : ''}`}
+            data-testid="control-center-toggle-agent-standby-banner"
+            onClick={() => {
+              onToggleStandbyBanner()
+            }}
+          >
+            <span className="control-center-tile__icon" aria-hidden="true">
+              <Bell size={18} />
+            </span>
+            <span className="control-center-tile__text">
+              <span className="control-center-tile__label">
+                {t('controlCenter.agentStandbyBanner')}
+              </span>
+              <span className="control-center-tile__subtitle">
+                {isStandbyBannerEnabled ? t('controlCenter.on') : t('controlCenter.off')}
               </span>
             </span>
           </button>

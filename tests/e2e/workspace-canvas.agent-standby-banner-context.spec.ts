@@ -119,9 +119,10 @@ test.describe('Workspace Canvas - Agent Standby Banner Context', () => {
 
         await taskNode.locator('[data-testid="task-node-run-agent"]').click()
 
-        const notification = window
-          .locator('[data-testid="app-notifications"] .app-notification')
-          .first()
+        const notificationList = window.locator(
+          '[data-testid="app-notifications"] .app-notification',
+        )
+        const notification = notificationList.first()
         await expect(notification).toBeVisible({ timeout: 15_000 })
 
         await expect(
@@ -139,8 +140,8 @@ test.describe('Workspace Canvas - Agent Standby Banner Context', () => {
 
         await window.locator('[data-testid="app-header-settings"]').click()
         await expect(window.locator('.settings-panel')).toBeVisible()
-        await window.locator('[data-testid="settings-section-nav-agent"]').click()
-        await expect(window.locator('#settings-section-agent')).toBeVisible()
+        await window.locator('[data-testid="settings-section-nav-notifications"]').click()
+        await expect(window.locator('#settings-section-notifications')).toBeVisible()
 
         const prToggle = window.locator(
           '[data-testid="settings-standby-banner-show-pr"] input[type="checkbox"]',
@@ -154,6 +155,12 @@ test.describe('Workspace Canvas - Agent Standby Banner Context', () => {
         await expect(notification.locator('[data-testid="app-notification-chip-pr"]')).toHaveCount(
           0,
         )
+
+        await window.locator('[data-testid="app-header-control-center"]').click()
+        await expect(window.locator('[data-testid="control-center"]')).toBeVisible()
+        await window.locator('[data-testid="control-center-toggle-agent-standby-banner"]').click()
+
+        await expect(notificationList).toHaveCount(0)
       } finally {
         await electronApp.close()
       }

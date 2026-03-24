@@ -77,6 +77,9 @@ export const zhCN = {
     sidebar: '侧边栏',
     minimap: '缩略图',
     theme: '主题',
+    agentStandbyBanner: 'Agent 完成提醒',
+    on: '已开启',
+    off: '已关闭',
   },
   whatsNew: {
     title: '更新内容',

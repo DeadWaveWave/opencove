@@ -95,6 +95,7 @@ export interface AgentSettings {
   taskTagOptions: string[]
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
+  standbyBannerEnabled: boolean
   standbyBannerShowTask: boolean
   standbyBannerShowSpace: boolean
   standbyBannerShowBranch: boolean
@@ -143,6 +144,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
+  standbyBannerEnabled: true,
   standbyBannerShowTask: true,
   standbyBannerShowSpace: true,
   standbyBannerShowBranch: true,
@@ -350,6 +352,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.focusNodeTargetZoom,
     DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
   )
+  const standbyBannerEnabled =
+    normalizeBoolean(value.standbyBannerEnabled) ?? DEFAULT_AGENT_SETTINGS.standbyBannerEnabled
   const standbyBannerShowTask =
     normalizeBoolean(value.standbyBannerShowTask) ?? DEFAULT_AGENT_SETTINGS.standbyBannerShowTask
   const standbyBannerShowSpace =
@@ -430,6 +434,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTagOptions,
     focusNodeOnClick,
     focusNodeTargetZoom,
+    standbyBannerEnabled,
     standbyBannerShowTask,
     standbyBannerShowSpace,
     standbyBannerShowBranch,
