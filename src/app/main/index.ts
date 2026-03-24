@@ -346,24 +346,32 @@ app.whenReady().then(() => {
   }
 
   if (isTruthyEnv(process.env['OPENCOVE_PTY_HOST_POC'])) {
-    void import('../../platform/process/ptyHost/poc').then(
-      async ({ runPtyHostUtilityProcessPoc }) => {
-        try {
-          await runPtyHostUtilityProcessPoc()
-          app.exit(0)
-        } catch (error) {
-          const detail =
-            error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
-          process.stderr.write(`[cove] pty-host PoC failed: ${detail}\n`)
-          app.exit(1)
-        }
-      },
-      error => {
+    void (async () => {
+      try {
+        const { runPtyHostUtilityProcessPoc } = await import('../../platform/process/ptyHost/poc')
+        await runPtyHostUtilityProcessPoc()
+        app.exit(0)
+      } catch (error) {
         const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
         process.stderr.write(`[cove] pty-host PoC failed: ${detail}\n`)
         app.exit(1)
-      },
-    )
+      }
+    })()
+    return
+  }
+
+  if (isTruthyEnv(process.env['OPENCOVE_PTY_HOST_STRESS'])) {
+    void (async () => {
+      try {
+        const { runPtyHostStressTest } = await import('../../platform/process/ptyHost/stress')
+        await runPtyHostStressTest()
+        app.exit(0)
+      } catch (error) {
+        const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+        process.stderr.write(`[cove] pty-host stress failed: ${detail}\n`)
+        app.exit(1)
+      }
+    })()
     return
   }
 
