@@ -4,6 +4,14 @@ import { normalizePersistedAppState } from './normalize'
 import { safeJsonParse } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
 
+function quoteSqliteIdentifier(value: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(value)) {
+    throw new Error(`Unsafe sqlite identifier: ${value}`)
+  }
+
+  return `"${value}"`
+}
+
 function createTables(db: Database.Database): void {
   db.exec(`
     PRAGMA journal_mode = WAL;
@@ -100,11 +108,71 @@ function dropLegacyKv(db: Database.Database): void {
   }
 }
 
+function listTableColumns(db: Database.Database, tableName: string): string[] {
+  const statement = db.prepare(`PRAGMA table_info(${quoteSqliteIdentifier(tableName)})`) as {
+    all?: () => unknown[]
+  }
+  const rows = typeof statement.all === 'function' ? statement.all() : []
+
+  return rows
+    .map(row => {
+      if (!row || typeof row !== 'object') {
+        return ''
+      }
+
+      const name = (row as { name?: unknown }).name
+      return typeof name === 'string' ? name.trim() : ''
+    })
+    .filter(name => name.length > 0)
+}
+
+function hasTableColumn(db: Database.Database, tableName: string, columnName: string): boolean {
+  return listTableColumns(db, tableName).includes(columnName)
+}
+
+function ensureTableColumn(
+  db: Database.Database,
+  options: { tableName: string; columnName: string; definitionSql: string },
+): void {
+  if (hasTableColumn(db, options.tableName, options.columnName)) {
+    return
+  }
+
+  db.exec(
+    `ALTER TABLE ${quoteSqliteIdentifier(options.tableName)} ADD COLUMN ${quoteSqliteIdentifier(
+      options.columnName,
+    )} ${options.definitionSql}`,
+  )
+}
+
+function ensureCurrentSchema(db: Database.Database): void {
+  createTables(db)
+
+  ensureTableColumn(db, {
+    tableName: 'workspaces',
+    columnName: 'pull_request_base_branch_options_json',
+    definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'label_color_override',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'label_color',
+    definitionSql: 'TEXT',
+  })
+}
+
 export function migrate(db: Database.Database): void {
   const version = db.pragma('user_version', { simple: true }) as unknown
   const currentVersion = typeof version === 'number' ? version : 0
 
   if (currentVersion >= DB_SCHEMA_VERSION) {
+    ensureCurrentSchema(db)
     return
   }
 
@@ -126,47 +194,6 @@ export function migrate(db: Database.Database): void {
     return
   }
 
-  if (currentVersion === 2) {
-    createTables(db)
-
-    try {
-      db.exec(`
-        ALTER TABLE workspaces
-        ADD COLUMN pull_request_base_branch_options_json TEXT NOT NULL DEFAULT '[]'
-      `)
-    } catch {
-      // ignore (column already exists)
-    }
-
-    db.pragma(`user_version = ${DB_SCHEMA_VERSION}`)
-    return
-  }
-
-  if (currentVersion === 3) {
-    createTables(db)
-
-    try {
-      db.exec(`
-        ALTER TABLE nodes
-        ADD COLUMN label_color_override TEXT
-      `)
-    } catch {
-      // ignore (column already exists)
-    }
-
-    try {
-      db.exec(`
-        ALTER TABLE workspace_spaces
-        ADD COLUMN label_color TEXT
-      `)
-    } catch {
-      // ignore (column already exists)
-    }
-
-    db.pragma(`user_version = ${DB_SCHEMA_VERSION}`)
-    return
-  }
-
-  createTables(db)
+  ensureCurrentSchema(db)
   db.pragma(`user_version = ${DB_SCHEMA_VERSION}`)
 }
