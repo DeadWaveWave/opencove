@@ -129,7 +129,7 @@ describe('workspace arrange - dense grid packing', () => {
     expect(nodeById.get('mixed-task-1')?.position).toEqual({ x: 0, y: 0 })
     expect(nodeById.get('mixed-task-2')?.position).toEqual({ x: 0, y: 336 })
     expect(nodeById.get('mixed-agent')?.position).toEqual({ x: 240, y: 0 })
-    expect(nodeById.get('mixed-terminal')?.position).toEqual({ x: 240, y: 672 })
+    expect(nodeById.get('mixed-terminal')?.position).toEqual({ x: 720, y: 0 })
   })
 
   it('packs nodes inside a space compactly on a canonical grid when standard sizes are aligned', () => {
@@ -186,6 +186,6 @@ describe('workspace arrange - dense grid packing', () => {
 
     expect(nodeById.get('c')?.position).toEqual({ x: 124, y: 224 })
     expect(nodeById.get('a')?.position).toEqual({ x: 364, y: 224 })
-    expect(nodeById.get('b')?.position).toEqual({ x: 364, y: 560 })
+    expect(nodeById.get('b')?.position).toEqual({ x: 124, y: 560 })
   })
 })

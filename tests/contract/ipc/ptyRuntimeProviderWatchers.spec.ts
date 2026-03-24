@@ -65,6 +65,10 @@ describe('Pty runtime provider watchers', () => {
       PtyManager: MockPtyManager,
     }))
 
+    vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentSessionLocator', () => ({
+      locateAgentResumeSessionId: vi.fn().mockResolvedValue(null),
+    }))
+
     const { createPtyRuntime } =
       await import('../../../src/contexts/terminal/presentation/main-ipc/runtime')
 
