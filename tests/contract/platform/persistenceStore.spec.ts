@@ -21,6 +21,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'path',
     'worktrees_root',
     'pull_request_base_branch_options_json',
+    'space_archive_records_json',
     'viewport_x',
     'viewport_y',
     'viewport_zoom',
@@ -456,12 +457,13 @@ describe('PersistenceStore', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(4)
+      expect(migratedState?.userVersion).toBe(5)
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
       expect(migratedState?.tables.get('workspaces')).toContain(
         'pull_request_base_branch_options_json',
       )
+      expect(migratedState?.tables.get('workspaces')).toContain('space_archive_records_json')
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )
@@ -472,7 +474,7 @@ describe('PersistenceStore', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 4, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: 5, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
@@ -493,6 +495,10 @@ describe('PersistenceStore', () => {
       const repairedState = mockDbByPath.get(dbPath)
       expect(repairedState?.tables.get('nodes')).toContain('label_color_override')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('label_color')
+      expect(repairedState?.tables.get('workspaces')).toContain(
+        'pull_request_base_branch_options_json',
+      )
+      expect(repairedState?.tables.get('workspaces')).toContain('space_archive_records_json')
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )
