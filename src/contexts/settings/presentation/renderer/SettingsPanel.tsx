@@ -9,6 +9,7 @@ import {
   type AgentSettings,
   type CanvasInputMode,
   type FocusNodeTargetZoom,
+  type StandardWindowSizeBucket,
   type TaskTitleProvider,
   type UiLanguage,
   type UiTheme,
@@ -123,6 +124,8 @@ export function SettingsPanel({
     onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
+  const updateStandardWindowSizeBucket = (bucket: StandardWindowSizeBucket): void =>
+    onChange({ ...settings, standardWindowSizeBucket: bucket })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateUiFontSize = (fontSize: number): void =>
@@ -405,12 +408,14 @@ export function SettingsPanel({
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}
+                standardWindowSizeBucket={settings.standardWindowSizeBucket}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
                 onChangeCanvasInputMode={updateCanvasInputMode}
+                onChangeStandardWindowSizeBucket={updateStandardWindowSizeBucket}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}

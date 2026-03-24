@@ -103,6 +103,7 @@ describe('workspace arrange semantic grouping', () => {
       spaces: [],
       wrapWidth: 1008,
       viewport: { width: 1440, height: 900 },
+      standardWindowSizeBucket: 'compact',
       style: { alignCanonicalSizes: true, order: 'createdAt' },
     })
 
@@ -172,6 +173,7 @@ describe('workspace arrange semantic grouping', () => {
       spaces: [],
       wrapWidth: 1404,
       viewport: { width: 1728, height: 1117 },
+      standardWindowSizeBucket: 'regular',
       style: { alignCanonicalSizes: true, order: 'createdAt' },
     })
 

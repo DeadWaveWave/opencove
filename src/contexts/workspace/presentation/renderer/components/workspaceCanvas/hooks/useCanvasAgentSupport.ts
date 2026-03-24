@@ -15,6 +15,7 @@ export function useWorkspaceCanvasAgentSupport({
   contextMenu,
   setContextMenu,
   createNodeForSession,
+  standardWindowSizeBucket,
 }: {
   nodesRef: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['nodesRef']
   setNodes: Parameters<typeof useWorkspaceCanvasAgentNodeLifecycle>[0]['setNodes']
@@ -37,6 +38,9 @@ export function useWorkspaceCanvasAgentSupport({
   createNodeForSession: Parameters<
     typeof useWorkspaceCanvasAgentLauncher
   >[0]['createNodeForSession']
+  standardWindowSizeBucket: Parameters<
+    typeof useWorkspaceCanvasAgentLauncher
+  >[0]['standardWindowSizeBucket']
 }): ReturnType<typeof useWorkspaceCanvasAgentNodeLifecycle> &
   Pick<
     ReturnType<typeof useWorkspaceCanvasAgentLauncher>,
@@ -63,6 +67,7 @@ export function useWorkspaceCanvasAgentSupport({
     contextMenu,
     setContextMenu,
     createNodeForSession,
+    standardWindowSizeBucket,
     buildAgentNodeTitle,
   })
 

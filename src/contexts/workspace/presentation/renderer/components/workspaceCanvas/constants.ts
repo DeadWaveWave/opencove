@@ -1,8 +1,9 @@
-import type { Size, TaskPriority } from '../../types'
 import {
-  resolveCanvasCanonicalBucketFromViewport,
-  resolveCanonicalNodeSize,
-} from '../../utils/workspaceNodeSizing'
+  DEFAULT_AGENT_SETTINGS,
+  type StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
+import type { Size, TaskPriority } from '../../types'
+import { resolveCanonicalNodeSize } from '../../utils/workspaceNodeSizing'
 
 export const MIN_CANVAS_ZOOM = 0.1
 export const MAX_CANVAS_ZOOM = 2
@@ -10,23 +11,27 @@ export const TRACKPAD_PAN_SCROLL_SPEED = 0.5
 export const TRACKPAD_PINCH_SENSITIVITY = 0.01
 export const TRACKPAD_GESTURE_LOCK_GAP_MS = 220
 
-export function resolveDefaultTaskWindowSize(viewport?: Partial<Size>): Size {
-  const bucket = resolveCanvasCanonicalBucketFromViewport(viewport)
+export function resolveDefaultTaskWindowSize(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+): Size {
   return resolveCanonicalNodeSize({ kind: 'task', bucket })
 }
 
-export function resolveDefaultNoteWindowSize(viewport?: Partial<Size>): Size {
-  const bucket = resolveCanvasCanonicalBucketFromViewport(viewport)
+export function resolveDefaultNoteWindowSize(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+): Size {
   return resolveCanonicalNodeSize({ kind: 'note', bucket })
 }
 
-export function resolveDefaultAgentWindowSize(viewport?: Partial<Size>): Size {
-  const bucket = resolveCanvasCanonicalBucketFromViewport(viewport)
+export function resolveDefaultAgentWindowSize(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+): Size {
   return resolveCanonicalNodeSize({ kind: 'agent', bucket })
 }
 
-export function resolveDefaultTerminalWindowSize(viewport?: Partial<Size>): Size {
-  const bucket = resolveCanvasCanonicalBucketFromViewport(viewport)
+export function resolveDefaultTerminalWindowSize(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+): Size {
   return resolveCanonicalNodeSize({ kind: 'terminal', bucket })
 }
 

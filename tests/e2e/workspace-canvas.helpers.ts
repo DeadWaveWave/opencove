@@ -214,7 +214,15 @@ export async function clearAndSeedWorkspace(
         ...(options && 'activeSpaceId' in options ? { activeSpaceId: options.activeSpaceId } : {}),
       },
     ],
-    settings: options?.settings,
+    settings:
+      options?.settings && typeof options.settings === 'object' && options.settings !== null
+        ? {
+            standardWindowSizeBucket: 'regular',
+            ...options.settings,
+          }
+        : {
+            standardWindowSizeBucket: 'regular',
+          },
   })
 }
 

@@ -2,6 +2,7 @@ import React from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
+import { createTaskUiActionRefs } from './workspaceCanvas/hooks/taskUiActionRefs'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
@@ -60,6 +61,7 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     onShowMessage,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
@@ -164,6 +166,7 @@ export function WorkspaceCanvasInner({
     contextMenu: canvasState.contextMenu,
     setContextMenu: canvasState.setContextMenu,
     createNodeForSession,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
   const {
     taskTagOptions,
@@ -195,17 +198,10 @@ export function WorkspaceCanvasInner({
     launchAgentInNode,
     agentSettings,
     workspacePath,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createTaskNode,
     closeNode,
-    actionRefs: {
-      ...actionRefs,
-      runTaskAgentRef: actionRefs.runTaskAgentRef,
-      resumeTaskAgentSessionRef: actionRefs.resumeTaskAgentSessionRef,
-      removeTaskAgentSessionRecordRef: actionRefs.removeTaskAgentSessionRecordRef,
-      updateTaskStatusRef: actionRefs.updateTaskStatusRef,
-      quickUpdateTaskTitleRef: actionRefs.quickUpdateTaskTitleRef,
-      quickUpdateTaskRequirementRef: actionRefs.quickUpdateTaskRequirementRef,
-    },
+    actionRefs: createTaskUiActionRefs(actionRefs),
   })
   const {
     resolvedCanvasInputMode,
@@ -298,6 +294,7 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     nodesRef,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createNodeForSession,
     createNoteNode,
   })
@@ -320,6 +317,7 @@ export function WorkspaceCanvasInner({
     reactFlow,
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
   workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
     setNodes,

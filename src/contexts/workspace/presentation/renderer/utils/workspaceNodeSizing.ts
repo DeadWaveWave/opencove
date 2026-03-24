@@ -1,7 +1,9 @@
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { WindowDisplayInfo } from '@shared/contracts/dto'
 import type { Size, TerminalNodeData } from '../types'
 
-export type WorkspaceCanonicalSizeBucket = 'compact' | 'regular' | 'large'
+export type WorkspaceCanonicalSizeBucket = StandardWindowSizeBucket
 
 export const WORKSPACE_CANONICAL_GUTTER_PX = 12
 
@@ -69,10 +71,31 @@ function resolveViewportSize(viewport?: Partial<Size>): Size {
   return { width, height }
 }
 
+function resolveDisplayAwareViewportSize(
+  viewport?: Partial<Size>,
+  displayInfo?: WindowDisplayInfo | null,
+): Size {
+  if (
+    displayInfo &&
+    Number.isFinite(displayInfo.effectiveWidthPx) &&
+    displayInfo.effectiveWidthPx > 0 &&
+    Number.isFinite(displayInfo.effectiveHeightPx) &&
+    displayInfo.effectiveHeightPx > 0
+  ) {
+    return {
+      width: Math.round(displayInfo.effectiveWidthPx),
+      height: Math.round(displayInfo.effectiveHeightPx),
+    }
+  }
+
+  return resolveViewportSize(viewport)
+}
+
 export function resolveCanvasCanonicalBucketFromViewport(
   viewport?: Partial<Size>,
+  displayInfo?: WindowDisplayInfo | null,
 ): WorkspaceCanonicalSizeBucket {
-  const resolved = resolveViewportSize(viewport)
+  const resolved = resolveDisplayAwareViewportSize(viewport, displayInfo)
 
   if (resolved.width >= 1920 && resolved.height >= 1080) {
     return 'large'
@@ -117,23 +140,6 @@ export function resolveCanonicalNodeSize({
   }
 
   return clampSize(desired, MIN_SIZE_BY_KIND[kind], MAX_SIZE_BY_KIND[kind])
-}
-
-export function resolveArrangeCanonicalBucket({
-  nodes,
-  nodeIdSet,
-  viewport,
-}: {
-  nodes: Node<TerminalNodeData>[]
-  nodeIdSet: Set<string>
-  viewport?: Partial<Size>
-}): WorkspaceCanonicalSizeBucket {
-  const viewportBucket = resolveCanvasCanonicalBucketFromViewport(viewport)
-  if (nodeIdSet.size === 0 || nodes.length === 0) {
-    return viewportBucket
-  }
-
-  return viewportBucket
 }
 
 export function normalizeWorkspaceNodesToCanonicalSizing({

@@ -227,6 +227,29 @@ describe('workspace arrange canvas utils', () => {
     expect(result.spaces).toBe(spaces)
 
     const next = result.nodes.find(node => node.id === 'r1')!
+    expect(next.data.width).toBe(516)
+    expect(next.data.height).toBe(356)
+  })
+
+  it('uses the selected standard bucket when canonical sizing during arrange', () => {
+    const nodes = [
+      createTerminalNode({
+        id: 'r1',
+        position: { x: 96, y: 96 },
+        size: { width: 468, height: 324 },
+      }),
+    ]
+
+    const result = arrangeWorkspaceCanvas({
+      nodes,
+      spaces: [],
+      wrapWidth: 5000,
+      viewport: { width: 1440, height: 900 },
+      standardWindowSizeBucket: 'large',
+      style: { alignCanonicalSizes: true },
+    })
+
+    const next = result.nodes.find(node => node.id === 'r1')!
     expect(next.data.width).toBe(564)
     expect(next.data.height).toBe(388)
   })

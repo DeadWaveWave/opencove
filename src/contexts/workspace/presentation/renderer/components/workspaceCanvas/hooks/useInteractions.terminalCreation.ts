@@ -1,5 +1,6 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, CreateNodeInput } from '../types'
 import { resolveDefaultTerminalWindowSize } from '../constants'
@@ -21,6 +22,7 @@ export function useWorkspaceCanvasTerminalCreation({
   workspacePath,
   defaultTerminalProfileId,
   nodesRef,
+  standardWindowSizeBucket,
   createNodeForSession,
   setNodes,
   onSpacesChange,
@@ -31,6 +33,7 @@ export function useWorkspaceCanvasTerminalCreation({
   workspacePath: string
   defaultTerminalProfileId: string | null
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
@@ -46,7 +49,7 @@ export function useWorkspaceCanvasTerminalCreation({
     }
     const anchor = resolveNodePlacementAnchorFromViewportCenter(
       cursorAnchor,
-      resolveDefaultTerminalWindowSize(),
+      resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
     )
 
     setContextMenu(null)
@@ -99,6 +102,7 @@ export function useWorkspaceCanvasTerminalCreation({
     setNodes,
     spacesRef,
     defaultTerminalProfileId,
+    standardWindowSizeBucket,
     workspacePath,
   ])
 }

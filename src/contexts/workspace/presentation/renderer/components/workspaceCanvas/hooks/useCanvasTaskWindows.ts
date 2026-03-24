@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, NodePlacementOptions } from '../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
@@ -21,6 +22,7 @@ export function useWorkspaceCanvasTaskWindows({
   onSpacesChange,
   onRequestPersistFlush,
   suggestTaskTitle,
+  standardWindowSizeBucket,
   createTaskNode,
   closeNode,
   actionRefs,
@@ -36,6 +38,7 @@ export function useWorkspaceCanvasTaskWindows({
   suggestTaskTitle: (
     requirement: string,
   ) => Promise<{ title: string; priority: TaskPriority; tags: string[] }>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   createTaskNode: (
     anchor: Point,
     title: string,
@@ -65,6 +68,7 @@ export function useWorkspaceCanvasTaskWindows({
     onSpacesChange,
     onRequestPersistFlush,
     suggestTaskTitle,
+    standardWindowSizeBucket,
     createTaskNode,
   })
 

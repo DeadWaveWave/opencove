@@ -7,19 +7,26 @@ import {
   MIN_FOCUS_NODE_TARGET_ZOOM,
   type CanvasInputMode,
   type FocusNodeTargetZoom,
+  STANDARD_WINDOW_SIZE_BUCKETS,
+  type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import { getCanvasInputModeLabel } from '@app/renderer/i18n/labels'
+import {
+  getCanvasInputModeLabel,
+  getStandardWindowSizeBucketLabel,
+} from '@app/renderer/i18n/labels'
 import type { TerminalProfile } from '@shared/contracts/dto'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
+  standardWindowSizeBucket: StandardWindowSizeBucket
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   defaultTerminalProfileId: string | null
   terminalProfiles: TerminalProfile[]
   detectedDefaultTerminalProfileId: string | null
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
+  onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
@@ -28,12 +35,14 @@ export function CanvasSection(props: {
   const { t } = useTranslation()
   const {
     canvasInputMode,
+    standardWindowSizeBucket,
     focusNodeOnClick,
     focusNodeTargetZoom,
     defaultTerminalProfileId,
     terminalProfiles,
     detectedDefaultTerminalProfileId,
     onChangeCanvasInputMode,
+    onChangeStandardWindowSizeBucket,
     onChangeDefaultTerminalProfileId,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
@@ -74,6 +83,27 @@ export function CanvasSection(props: {
               label: getCanvasInputModeLabel(t, mode),
             }))}
             onChange={nextValue => onChangeCanvasInputMode(nextValue as CanvasInputMode)}
+          />
+        </div>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.canvas.standardWindowSizeLabel')}</strong>
+          <span>{t('settingsPanel.canvas.standardWindowSizeHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <CoveSelect
+            id="settings-standard-window-size"
+            testId="settings-standard-window-size"
+            value={standardWindowSizeBucket}
+            options={STANDARD_WINDOW_SIZE_BUCKETS.map(bucket => ({
+              value: bucket,
+              label: getStandardWindowSizeBucketLabel(t, bucket),
+            }))}
+            onChange={nextValue =>
+              onChangeStandardWindowSizeBucket(nextValue as StandardWindowSizeBucket)
+            }
           />
         </div>
       </div>

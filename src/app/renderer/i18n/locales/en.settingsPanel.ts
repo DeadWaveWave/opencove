@@ -84,7 +84,14 @@ export const enSettingsPanel = {
       trackpad: 'Trackpad',
       mouse: 'Mouse',
     },
-    initialWindowSize: 'Initial Window Size',
+    standardWindowSizeLabel: 'Standard Window Size',
+    standardWindowSizeHelp:
+      'Default size bucket used for new windows and Arrange. It stays fixed until you change it here.',
+    standardWindowSize: {
+      compact: 'Compact',
+      regular: 'Regular',
+      large: 'Large',
+    },
     focusOnClickLabel: 'Auto-focus on Click',
     focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
     focusTargetZoomLabel: 'Target Zoom',

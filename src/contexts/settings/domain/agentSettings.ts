@@ -36,6 +36,8 @@ export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
+export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const
+export type StandardWindowSizeBucket = (typeof STANDARD_WINDOW_SIZE_BUCKETS)[number]
 
 export const UI_LANGUAGES = ['en', 'zh-CN'] as const
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
@@ -98,6 +100,7 @@ export interface AgentSettings {
   disableAppShortcutsWhenTerminalFocused: boolean
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
+  standardWindowSizeBucket: StandardWindowSizeBucket
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   uiFontSize: number
@@ -142,6 +145,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   disableAppShortcutsWhenTerminalFocused: true,
   keybindings: {},
   canvasInputMode: 'auto',
+  standardWindowSizeBucket: 'regular',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   uiFontSize: 18,
@@ -175,6 +179,13 @@ function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
 
 function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
   return typeof value === 'string' && CANVAS_INPUT_MODES.includes(value as CanvasInputMode)
+}
+
+function isValidStandardWindowSizeBucket(value: unknown): value is StandardWindowSizeBucket {
+  return (
+    typeof value === 'string' &&
+    STANDARD_WINDOW_SIZE_BUCKETS.includes(value as StandardWindowSizeBucket)
+  )
 }
 
 function isValidUiLanguage(value: unknown): value is UiLanguage {
@@ -349,6 +360,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
+  const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
+    ? value.standardWindowSizeBucket
+    : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -415,6 +429,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     disableAppShortcutsWhenTerminalFocused,
     keybindings,
     canvasInputMode,
+    standardWindowSizeBucket,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     uiFontSize,

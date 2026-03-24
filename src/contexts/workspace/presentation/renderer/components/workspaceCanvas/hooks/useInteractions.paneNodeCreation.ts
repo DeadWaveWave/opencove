@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, CreateNodeInput } from '../types'
 import { resolveDefaultNoteWindowSize, resolveDefaultTerminalWindowSize } from '../constants'
@@ -21,6 +22,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   workspacePath,
   spacesRef,
   nodesRef,
+  standardWindowSizeBucket,
   setNodes,
   onSpacesChange,
   createNodeForSession,
@@ -31,6 +33,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   workspacePath: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -46,7 +49,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   }
   const anchor = resolveNodePlacementAnchorFromViewportCenter(
     cursorAnchor,
-    resolveDefaultTerminalWindowSize(),
+    resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
   )
 
   setContextMenu(null)
@@ -92,6 +95,7 @@ export async function createTerminalNodeFromPaneContextMenu({
 export function createNoteNodeFromPaneContextMenu({
   contextMenu,
   createNoteNode,
+  standardWindowSizeBucket,
   spacesRef,
   nodesRef,
   setNodes,
@@ -100,6 +104,7 @@ export function createNoteNodeFromPaneContextMenu({
 }: {
   contextMenu: ContextMenuState | null
   createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  standardWindowSizeBucket: StandardWindowSizeBucket
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
@@ -116,7 +121,7 @@ export function createNoteNodeFromPaneContextMenu({
   }
   const anchor = resolveNodePlacementAnchorFromViewportCenter(
     cursorAnchor,
-    resolveDefaultNoteWindowSize(),
+    resolveDefaultNoteWindowSize(standardWindowSizeBucket),
   )
 
   setContextMenu(null)

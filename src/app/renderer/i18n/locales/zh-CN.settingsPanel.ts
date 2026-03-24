@@ -84,7 +84,14 @@ export const zhCNSettingsPanel = {
       trackpad: '触控板',
       mouse: '鼠标',
     },
-    initialWindowSize: '初始窗口大小',
+    standardWindowSizeLabel: '标准窗口尺寸',
+    standardWindowSizeHelp:
+      '新窗口和 Arrange 使用的默认尺寸档位。除非你在这里修改，否则不会自动变化。',
+    standardWindowSize: {
+      compact: '紧凑',
+      regular: '标准',
+      large: '大',
+    },
     focusOnClickLabel: '点击自动定位',
     focusOnClickHelp: '点击节点时自动将画布居中到该节点。',
     focusTargetZoomLabel: '定位缩放',

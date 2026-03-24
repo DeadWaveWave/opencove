@@ -30,6 +30,7 @@ export const IPC_CHANNELS = {
   worktreeSuggestNames: 'worktree:suggest-names',
   integrationGithubResolvePullRequests: 'integration:github:resolve-pull-requests',
   windowChromeSetTheme: 'window-chrome:set-theme',
+  windowMetricsGetDisplayInfo: 'window-metrics:get-display-info',
   ptySpawn: 'pty:spawn',
   ptyListProfiles: 'pty:list-profiles',
   ptyWrite: 'pty:write',

@@ -8,37 +8,49 @@ import {
 import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 
 describe('workspace canvas default sizing', () => {
-  it('resolves canonical window sizes from viewport bucket', () => {
-    expect(resolveDefaultTerminalWindowSize({ width: 1920, height: 1080 })).toEqual({
+  it('resolves canonical window sizes from the selected bucket', () => {
+    expect(resolveDefaultTerminalWindowSize('large')).toEqual({
       width: 564,
       height: 388,
     })
 
-    expect(resolveDefaultTaskWindowSize({ width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultTaskWindowSize('large')).toEqual({
       width: 276,
       height: 388,
     })
 
-    expect(resolveDefaultAgentWindowSize({ width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultAgentWindowSize('large')).toEqual({
       width: 564,
       height: 788,
     })
 
-    expect(resolveDefaultNoteWindowSize({ width: 1920, height: 1080 })).toEqual({
+    expect(resolveDefaultNoteWindowSize('large')).toEqual({
       width: 276,
       height: 188,
     })
   })
 
-  it('keeps new terminal and agent sizes on canonical grid for smaller viewports too', () => {
-    expect(resolveDefaultTerminalWindowSize({ width: 1440, height: 900 })).toEqual({
+  it('keeps compact bucket sizes on the canonical grid', () => {
+    expect(resolveDefaultTerminalWindowSize('compact')).toEqual({
       width: 468,
       height: 324,
     })
 
-    expect(resolveDefaultAgentWindowSize({ width: 1440, height: 900 })).toEqual({
+    expect(resolveDefaultAgentWindowSize('compact')).toEqual({
       width: 468,
       height: 660,
+    })
+  })
+
+  it('defaults to the regular bucket when none is provided', () => {
+    expect(resolveDefaultTerminalWindowSize()).toEqual({
+      width: 516,
+      height: 356,
+    })
+
+    expect(resolveDefaultAgentWindowSize()).toEqual({
+      width: 516,
+      height: 724,
     })
   })
 })

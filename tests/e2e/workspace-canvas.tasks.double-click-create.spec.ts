@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { resolveCanonicalNodeSizes } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
   test('double-clicking pane creates a new note node', async () => {
@@ -11,6 +12,7 @@ test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
 
       await pane.dblclick({ position: clickPosition })
 
@@ -59,10 +61,9 @@ test.describe('Workspace Canvas - Notes (Double Click Create)', () => {
         })
         .toMatchObject({
           text: 'hello note',
-          x: clickPosition.x - 114,
-          y: clickPosition.y - 78,
-          width: 228,
-          height: 156,
+          x: clickPosition.x - canonicalSizes.note.width / 2,
+          y: clickPosition.y - canonicalSizes.note.height / 2,
+          ...canonicalSizes.note,
         })
     } finally {
       await electronApp.close()

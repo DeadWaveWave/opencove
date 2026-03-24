@@ -16,6 +16,7 @@ export function useWorkspaceCanvasTaskUi({
   actionRefs,
   contextMenu,
   setContextMenu,
+  standardWindowSizeBucket,
   createTaskNode,
   closeNode,
 }: {
@@ -36,6 +37,9 @@ export function useWorkspaceCanvasTaskUi({
     Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['actionRefs']
   contextMenu: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['contextMenu']
   setContextMenu: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['setContextMenu']
+  standardWindowSizeBucket: Parameters<
+    typeof useWorkspaceCanvasTaskWindows
+  >[0]['standardWindowSizeBucket']
   createTaskNode: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['createTaskNode']
   closeNode: Parameters<typeof useWorkspaceCanvasTaskWindows>[0]['closeNode']
 }): ReturnType<typeof useWorkspaceCanvasTaskSupport> &
@@ -65,6 +69,7 @@ export function useWorkspaceCanvasTaskUi({
     onSpacesChange,
     onRequestPersistFlush,
     suggestTaskTitle,
+    standardWindowSizeBucket,
     createTaskNode,
     closeNode,
     actionRefs,

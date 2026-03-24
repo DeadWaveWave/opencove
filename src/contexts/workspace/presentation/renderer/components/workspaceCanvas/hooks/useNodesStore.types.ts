@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { NodeFrame, Point, Size, TerminalNodeData, TaskPriority } from '../../../types'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
@@ -17,6 +18,7 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
+  standardWindowSizeBucket: StandardWindowSizeBucket
 }
 
 export interface UseWorkspaceCanvasNodesStoreResult {

@@ -1,11 +1,13 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 import {
+  CANONICAL_GUTTER_PX,
   clickPaneAtFlowPoint,
   ensureArtifactsDir,
   openPaneContextMenuAtFlowPoint,
   rectsOverlap,
   readSeededWorkspaceLayout,
+  resolveCanonicalNodeSizes,
 } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Arrange Semantics', () => {
@@ -84,6 +86,7 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
 
       await openPaneContextMenuAtFlowPoint(window, pane, { x: 900, y: 720 })
       await expect(window.locator('.workspace-context-menu')).toBeVisible()
@@ -112,7 +115,7 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
 
           return (
             note.x < task.x &&
-            agent.x === task.x + 240 &&
+            agent.x === task.x + task.width + CANONICAL_GUTTER_PX &&
             agent.y === task.y &&
             note.y === task.y &&
             task.y < terminal.y &&
@@ -130,14 +133,14 @@ test.describe('Workspace Canvas - Arrange Semantics', () => {
       const agent = layout.nodes['agent-lane']!
       const terminal = layout.nodes['terminal-lane']!
 
-      expect(note).toMatchObject({ width: 228, height: 156 })
-      expect(task).toMatchObject({ width: 228, height: 324 })
-      expect(agent).toMatchObject({ width: 468, height: 660 })
-      expect(terminal).toMatchObject({ width: 468, height: 324 })
+      expect(note).toMatchObject(canonicalSizes.note)
+      expect(task).toMatchObject(canonicalSizes.task)
+      expect(agent).toMatchObject(canonicalSizes.agent)
+      expect(terminal).toMatchObject(canonicalSizes.terminal)
 
       expect(note.x).toBeLessThan(task.x)
       expect(note.y).toBe(task.y)
-      expect(agent.x).toBe(task.x + 240)
+      expect(agent.x).toBe(task.x + task.width + CANONICAL_GUTTER_PX)
       expect(agent.y).toBe(task.y)
       expect(terminal.x).toBe(note.x)
       expect(terminal.y).toBeGreaterThan(task.y)

@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -54,6 +55,7 @@ interface UseWorkspaceCanvasInteractionsParams {
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
+  standardWindowSizeBucket: StandardWindowSizeBucket
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (
     anchor: Point,
@@ -88,6 +90,7 @@ export function useWorkspaceCanvasInteractions({
   spacesRef,
   onSpacesChange,
   nodesRef,
+  standardWindowSizeBucket,
   createNodeForSession,
   createNoteNode,
 }: UseWorkspaceCanvasInteractionsParams): {
@@ -377,18 +380,20 @@ export function useWorkspaceCanvasInteractions({
         x: flowPosition.x,
         y: flowPosition.y,
       }
-      const noteSize = resolveDefaultNoteWindowSize()
-      const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
+      void (async () => {
+        const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
+        const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, noteSize)
 
-      createNoteNodeAtAnchor({
-        anchor,
-        spaceAnchor: cursorAnchor,
-        createNoteNode,
-        spacesRef,
-        nodesRef,
-        setNodes,
-        onSpacesChange,
-      })
+        createNoteNodeAtAnchor({
+          anchor,
+          spaceAnchor: cursorAnchor,
+          createNoteNode,
+          spacesRef,
+          nodesRef,
+          setNodes,
+          onSpacesChange,
+        })
+      })()
     },
     [
       cancelSpaceRename,
@@ -401,6 +406,7 @@ export function useWorkspaceCanvasInteractions({
       setEmptySelectionPrompt,
       setNodes,
       spacesRef,
+      standardWindowSizeBucket,
     ],
   )
   const handlePaneClick = useCallback(
@@ -428,6 +434,7 @@ export function useWorkspaceCanvasInteractions({
     workspacePath,
     nodesRef,
     defaultTerminalProfileId,
+    standardWindowSizeBucket,
     createNodeForSession,
     setNodes,
     onSpacesChange,
@@ -437,13 +444,23 @@ export function useWorkspaceCanvasInteractions({
     createNoteNodeFromPaneContextMenu({
       contextMenu,
       createNoteNode,
+      standardWindowSizeBucket,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
       setContextMenu,
     })
-  }, [contextMenu, createNoteNode, nodesRef, onSpacesChange, setContextMenu, setNodes, spacesRef])
+  }, [
+    contextMenu,
+    createNoteNode,
+    nodesRef,
+    onSpacesChange,
+    setContextMenu,
+    setNodes,
+    spacesRef,
+    standardWindowSizeBucket,
+  ])
 
   return {
     clearNodeSelection,
