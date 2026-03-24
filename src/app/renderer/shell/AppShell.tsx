@@ -453,6 +453,7 @@ export default function App(): React.JSX.Element {
       <SpaceArchiveRecordsWindow
         isOpen={isSpaceArchivesOpen}
         workspace={activeWorkspace}
+        canvasInputModeSetting={agentSettings.canvasInputMode}
         onClose={closeSpaceArchives}
       />
 
@@ -510,7 +511,6 @@ export default function App(): React.JSX.Element {
           }}
         />
       ) : null}
-
       <WhatsNewDialog
         isOpen={whatsNew.isOpen}
         fromVersion={whatsNew.fromVersion}

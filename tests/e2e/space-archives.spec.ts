@@ -127,13 +127,13 @@ test.describe('Space Archives', () => {
 
         const record = window.locator('[data-testid="space-archives-window-record"]').first()
         await expect(record).toBeVisible()
-        await record.locator('summary').click()
+        await record.click()
 
         await expect(
-          record.locator('[data-testid="space-archives-window-replay-canvas"]'),
+          archivesWindow.locator('[data-testid="space-archives-window-replay-canvas"]'),
         ).toBeVisible()
         await expect(
-          record.locator('[data-testid="space-archives-window-replay-node"]'),
+          archivesWindow.locator('[data-testid="space-archives-window-replay-node"]'),
         ).toHaveCount(2)
 
         await expect(archivesWindow).toContainText('Note full text')
@@ -169,13 +169,13 @@ test.describe('Space Archives', () => {
           .locator('[data-testid="space-archives-window-record"]')
           .first()
         await expect(record).toBeVisible()
-        await record.locator('summary').click()
+        await record.click()
 
         await expect(
-          record.locator('[data-testid="space-archives-window-replay-canvas"]'),
+          archivesWindow.locator('[data-testid="space-archives-window-replay-canvas"]'),
         ).toBeVisible()
         await expect(
-          record.locator('[data-testid="space-archives-window-replay-node"]'),
+          archivesWindow.locator('[data-testid="space-archives-window-replay-node"]'),
         ).toHaveCount(2)
 
         await expect(archivesWindow).toContainText('Note full text')

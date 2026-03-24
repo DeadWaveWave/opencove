@@ -7,6 +7,7 @@ import {
 } from '@shared/errors/appError'
 
 const relativeTimeFormatterByLanguage = new Map<string, Intl.RelativeTimeFormat>()
+const dateTimeFormatterByLanguage = new Map<string, Intl.DateTimeFormat>()
 
 function getRelativeTimeFormatter(language: string): Intl.RelativeTimeFormat {
   const cached = relativeTimeFormatterByLanguage.get(language)
@@ -16,6 +17,23 @@ function getRelativeTimeFormatter(language: string): Intl.RelativeTimeFormat {
 
   const formatter = new Intl.RelativeTimeFormat(language, { numeric: 'auto' })
   relativeTimeFormatterByLanguage.set(language, formatter)
+  return formatter
+}
+
+function getDateTimeFormatter(language: string): Intl.DateTimeFormat {
+  const cached = dateTimeFormatterByLanguage.get(language)
+  if (cached) {
+    return cached
+  }
+
+  const formatter = new Intl.DateTimeFormat(language, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  dateTimeFormatterByLanguage.set(language, formatter)
   return formatter
 }
 
@@ -49,6 +67,21 @@ export function toAgentNodeTitle(provider: AgentProvider, model: string | null):
           ? 'gemini'
           : 'codex'
   return `${providerTitle} · ${model ?? translate('common.defaultModel')}`
+}
+
+export function toLocalDateTime(iso: string | null): string {
+  const formatter = getDateTimeFormatter(getActiveUiLanguage())
+
+  if (!iso) {
+    return formatter.format(Date.now())
+  }
+
+  const timestamp = Date.parse(iso)
+  if (Number.isNaN(timestamp)) {
+    return iso
+  }
+
+  return formatter.format(timestamp)
 }
 
 export function toRelativeTime(iso: string | null): string {

@@ -1,12 +1,13 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
-  SpaceArchiveNodeSnapshot,
   SpaceArchiveRecord,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
-import { toRelativeTime } from '../utils/format'
+import { toLocalDateTime, toRelativeTime } from '../utils/format'
 import { SpaceArchiveReplayCanvas } from './SpaceArchiveReplayCanvas'
+
+const EMPTY_RECORDS: SpaceArchiveRecord[] = []
 
 function countRecordNodes(record: SpaceArchiveRecord): {
   terminal: number
@@ -31,37 +32,39 @@ function countRecordNodes(record: SpaceArchiveRecord): {
   return counts
 }
 
-function getNodeKindLabelKey(kind: SpaceArchiveNodeSnapshot['kind']): string {
-  switch (kind) {
-    case 'terminal':
-      return 'spaceArchivesWindow.nodeKinds.terminal'
-    case 'agent':
-      return 'spaceArchivesWindow.nodeKinds.agent'
-    case 'task':
-      return 'spaceArchivesWindow.nodeKinds.task'
-    case 'note':
-      return 'spaceArchivesWindow.nodeKinds.note'
-    default:
-      return 'spaceArchivesWindow.nodeKinds.terminal'
-  }
-}
-
 export function SpaceArchiveRecordsWindow({
   isOpen,
   workspace,
+  canvasInputModeSetting,
   onClose,
 }: {
   isOpen: boolean
   workspace: WorkspaceState | null
+  canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
   onClose: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
+  const records = workspace?.spaceArchiveRecords ?? EMPTY_RECORDS
+  const [selectedRecordId, setSelectedRecordId] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!workspace || records.length === 0) {
+      setSelectedRecordId(null)
+      return
+    }
+
+    if (!selectedRecordId || !records.some(record => record.id === selectedRecordId)) {
+      setSelectedRecordId(records[0].id)
+    }
+  }, [records, selectedRecordId, workspace])
+
+  const selectedRecord = selectedRecordId
+    ? (records.find(record => record.id === selectedRecordId) ?? null)
+    : null
 
   if (!isOpen) {
     return null
   }
-
-  const records = workspace?.spaceArchiveRecords ?? []
 
   return (
     <div
@@ -99,184 +102,127 @@ export function SpaceArchiveRecordsWindow({
           </button>
         </header>
 
-        <div className="space-archives-window__body">
-          {!workspace ? (
-            <p className="space-archives-window__empty">{t('spaceArchivesWindow.noWorkspace')}</p>
-          ) : records.length === 0 ? (
-            <p className="space-archives-window__empty">{t('spaceArchivesWindow.empty')}</p>
-          ) : (
-            <div className="space-archives-window__list" data-testid="space-archives-window-list">
-              {records.map(record => {
-                const counts = countRecordNodes(record)
-                const timeLabel = toRelativeTime(record.archivedAt)
-                const gitLabel = record.git?.branch
-                  ? `${t('worktree.branch')}: ${record.git.branch}`
-                  : record.git?.head
-                    ? `${t('worktree.detached')}: ${record.git.head.trim().slice(0, 7)}`
-                    : null
-                const summaryParts = [
-                  counts.terminal > 0
-                    ? t('spaceArchivesWindow.counts.terminals', { count: counts.terminal })
-                    : null,
-                  counts.agent > 0
-                    ? t('spaceArchivesWindow.counts.agents', { count: counts.agent })
-                    : null,
-                  counts.task > 0
-                    ? t('spaceArchivesWindow.counts.tasks', { count: counts.task })
-                    : null,
-                  counts.note > 0
-                    ? t('spaceArchivesWindow.counts.notes', { count: counts.note })
-                    : null,
-                ].filter(Boolean)
+        {!workspace ? (
+          <div className="space-archives-window__empty">{t('spaceArchivesWindow.noWorkspace')}</div>
+        ) : records.length === 0 ? (
+          <div className="space-archives-window__empty">{t('spaceArchivesWindow.empty')}</div>
+        ) : (
+          <div className="space-archives-window__content">
+            <aside className="space-archives-window__sidebar">
+              <div className="space-archives-window__list" data-testid="space-archives-window-list">
+                {records.map(record => {
+                  const counts = countRecordNodes(record)
+                  const timeLabel = toLocalDateTime(record.archivedAt)
+                  const relativeTimeLabel = toRelativeTime(record.archivedAt)
+                  const isSelected = record.id === selectedRecordId
 
-                return (
-                  <details
-                    key={record.id}
-                    className="space-archives-window__record"
-                    data-testid="space-archives-window-record"
-                  >
-                    <summary className="space-archives-window__record-summary">
-                      <div className="space-archives-window__record-main">
-                        <div className="space-archives-window__record-title">
+                  const summaryParts = [
+                    counts.terminal > 0
+                      ? t('spaceArchivesWindow.counts.terminals', { count: counts.terminal })
+                      : null,
+                    counts.agent > 0
+                      ? t('spaceArchivesWindow.counts.agents', { count: counts.agent })
+                      : null,
+                    counts.task > 0
+                      ? t('spaceArchivesWindow.counts.tasks', { count: counts.task })
+                      : null,
+                    counts.note > 0
+                      ? t('spaceArchivesWindow.counts.notes', { count: counts.note })
+                      : null,
+                  ].filter(Boolean)
+
+                  const branchLabel = record.git?.branch
+                    ? record.git.branch
+                    : record.git?.head
+                      ? record.git.head.trim().slice(0, 7)
+                      : null
+
+                  const prLabel = record.git?.pullRequest?.number
+                    ? `#${record.git.pullRequest.number}`
+                    : null
+
+                  return (
+                    <button
+                      key={record.id}
+                      type="button"
+                      className="space-archives-window__record"
+                      data-testid="space-archives-window-record"
+                      data-selected={isSelected ? 'true' : 'false'}
+                      onClick={() => {
+                        setSelectedRecordId(record.id)
+                      }}
+                    >
+                      <div className="space-archives-window__record-title-row">
+                        <span className="space-archives-window__record-title">
                           {record.space.name}
-                        </div>
-                        <div className="space-archives-window__record-meta">
-                          <span title={record.archivedAt}>{timeLabel}</span>
-                          <span className="space-archives-window__meta-divider" aria-hidden="true">
-                            ·
-                          </span>
-                          {gitLabel ? (
-                            <>
-                              <span
-                                className="space-archives-window__record-branch"
-                                title={gitLabel}
-                              >
-                                {gitLabel}
-                              </span>
-                              <span
-                                className="space-archives-window__meta-divider"
-                                aria-hidden="true"
-                              >
-                                ·
-                              </span>
-                            </>
-                          ) : null}
-                          <span
-                            className="space-archives-window__record-path"
-                            title={record.space.directoryPath}
-                          >
-                            {record.space.directoryPath}
-                          </span>
-                        </div>
+                        </span>
+                        <span
+                          className="space-archives-window__record-time"
+                          title={`${relativeTimeLabel} · ${record.archivedAt}`}
+                        >
+                          {timeLabel}
+                        </span>
                       </div>
 
-                      {summaryParts.length > 0 ? (
-                        <div className="space-archives-window__record-counts">
-                          {summaryParts.join(' · ')}
-                        </div>
-                      ) : null}
-                    </summary>
+                      <div className="space-archives-window__record-meta">
+                        {branchLabel ? (
+                          <span className="space-archives-window__pill" title={branchLabel}>
+                            {branchLabel}
+                          </span>
+                        ) : null}
+                        {prLabel ? (
+                          <span className="space-archives-window__pill" title={prLabel}>
+                            PR {prLabel}
+                          </span>
+                        ) : null}
+                        {summaryParts.length > 0 ? (
+                          <span className="space-archives-window__record-counts">
+                            {summaryParts.join(' · ')}
+                          </span>
+                        ) : null}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
+            </aside>
 
-                    <div className="space-archives-window__record-body">
-                      <SpaceArchiveReplayCanvas record={record} />
-                      {record.nodes.length === 0 ? (
-                        <p className="space-archives-window__empty">
-                          {t('spaceArchivesWindow.emptySnapshot')}
-                        </p>
-                      ) : (
-                        <div className="space-archives-window__nodes">
-                          {record.nodes.map(node => (
-                            <div key={node.id} className="space-archives-window__node">
-                              <div className="space-archives-window__node-header">
-                                <span className="space-archives-window__node-kind">
-                                  {t(getNodeKindLabelKey(node.kind))}
-                                </span>
-                                <strong className="space-archives-window__node-title">
-                                  {node.title}
-                                </strong>
-                              </div>
-
-                              {node.kind === 'task' ? (
-                                <pre className="space-archives-window__node-text">
-                                  {node.requirement}
-                                </pre>
-                              ) : null}
-
-                              {node.kind === 'note' ? (
-                                <pre className="space-archives-window__node-text">{node.text}</pre>
-                              ) : null}
-
-                              {node.kind === 'agent' ? (
-                                <>
-                                  <div className="space-archives-window__node-kv">
-                                    <span className="space-archives-window__node-key">
-                                      {t('spaceArchivesWindow.fields.provider')}
-                                    </span>
-                                    <span className="space-archives-window__node-value">
-                                      {node.provider ?? '—'}
-                                    </span>
-                                  </div>
-                                  <div className="space-archives-window__node-kv">
-                                    <span className="space-archives-window__node-key">
-                                      {t('spaceArchivesWindow.fields.model')}
-                                    </span>
-                                    <span className="space-archives-window__node-value">
-                                      {node.effectiveModel ?? node.model ?? '—'}
-                                    </span>
-                                  </div>
-                                  <div className="space-archives-window__node-kv">
-                                    <span className="space-archives-window__node-key">
-                                      {t('spaceArchivesWindow.fields.executionDirectory')}
-                                    </span>
-                                    <span className="space-archives-window__node-value">
-                                      {node.executionDirectory ?? '—'}
-                                    </span>
-                                  </div>
-                                  <div className="space-archives-window__node-kv">
-                                    <span className="space-archives-window__node-key">
-                                      {t('spaceArchivesWindow.fields.expectedDirectory')}
-                                    </span>
-                                    <span className="space-archives-window__node-value">
-                                      {node.expectedDirectory ?? '—'}
-                                    </span>
-                                  </div>
-                                  <pre className="space-archives-window__node-text">
-                                    {node.prompt}
-                                  </pre>
-                                </>
-                              ) : null}
-
-                              {node.kind === 'terminal' ? (
-                                <>
-                                  <div className="space-archives-window__node-kv">
-                                    <span className="space-archives-window__node-key">
-                                      {t('spaceArchivesWindow.fields.executionDirectory')}
-                                    </span>
-                                    <span className="space-archives-window__node-value">
-                                      {node.executionDirectory ?? '—'}
-                                    </span>
-                                  </div>
-                                  <div className="space-archives-window__node-kv">
-                                    <span className="space-archives-window__node-key">
-                                      {t('spaceArchivesWindow.fields.expectedDirectory')}
-                                    </span>
-                                    <span className="space-archives-window__node-value">
-                                      {node.expectedDirectory ?? '—'}
-                                    </span>
-                                  </div>
-                                </>
-                              ) : null}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+            <div className="space-archives-window__detail">
+              {selectedRecord ? (
+                <>
+                  <header className="space-archives-window__detail-header">
+                    <div className="space-archives-window__detail-main">
+                      <div className="space-archives-window__detail-title">
+                        {selectedRecord.space.name}
+                      </div>
+                      <div className="space-archives-window__detail-meta">
+                        <span title={selectedRecord.archivedAt}>
+                          {toRelativeTime(selectedRecord.archivedAt)}
+                        </span>
+                        <span className="space-archives-window__meta-divider" aria-hidden="true">
+                          ·
+                        </span>
+                        <span
+                          className="space-archives-window__detail-path"
+                          title={selectedRecord.space.directoryPath}
+                        >
+                          {selectedRecord.space.directoryPath}
+                        </span>
+                      </div>
                     </div>
-                  </details>
-                )
-              })}
+                  </header>
+
+                  <div className="space-archives-window__detail-body">
+                    <SpaceArchiveReplayCanvas
+                      record={selectedRecord}
+                      canvasInputModeSetting={canvasInputModeSetting}
+                    />
+                  </div>
+                </>
+              ) : null}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </section>
     </div>
   )
