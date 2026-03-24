@@ -13,11 +13,7 @@ test.describe('Workspace Canvas - Note to Task', () => {
       const sourcePosition = { x: 880, y: 420 }
       const sourceNoteSize = { width: 220, height: 140 }
       const blockerInitialY = 580
-      const viewportSize = await window.evaluate(() => ({
-        width: window.innerWidth,
-        height: window.innerHeight,
-      }))
-      const expectedTaskSize = resolveDefaultTaskWindowSize(viewportSize)
+      const expectedTaskSize = resolveDefaultTaskWindowSize('regular')
 
       await clearAndSeedWorkspace(window, [
         {

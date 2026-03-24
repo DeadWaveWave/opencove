@@ -46,6 +46,7 @@ export function useWorkspaceCanvasMenuActions({
     onRequestPersistFlush,
     onShowMessage,
     setContextMenu,
+    standardWindowSizeBucket,
   })
 
   const arrange = useWorkspaceCanvasArrange({

@@ -85,6 +85,7 @@ export function useWorkspaceCanvasShortcutActions({
       onSpacesChange,
     })
   }, [
+    agentSettings.standardWindowSizeBucket,
     cancelSpaceRename,
     canvasRef,
     createNoteNode,

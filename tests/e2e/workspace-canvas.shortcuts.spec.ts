@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test'
-import { DEFAULT_AGENT_SETTINGS } from '../../src/contexts/settings/domain/agentSettings'
 import {
   resolveDefaultNoteWindowSize,
   resolveDefaultTerminalWindowSize,
@@ -123,10 +122,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
       const metrics = await readCanvasMetrics(window)
       const centerFlowX = -viewport.x / viewport.zoom + metrics.width / (2 * viewport.zoom)
       const centerFlowY = -viewport.y / viewport.zoom + metrics.height / (2 * viewport.zoom)
-      const noteSize = resolveDefaultNoteWindowSize({
-        width: metrics.windowWidth,
-        height: metrics.windowHeight,
-      })
+      const noteSize = resolveDefaultNoteWindowSize('regular')
 
       await window.keyboard.press(`${commandModifier}+N`)
 
@@ -157,13 +153,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
       const metrics = await readCanvasMetrics(window)
       const centerFlowX = -viewport.x / viewport.zoom + metrics.width / (2 * viewport.zoom)
       const centerFlowY = -viewport.y / viewport.zoom + metrics.height / (2 * viewport.zoom)
-      const terminalSize = resolveDefaultTerminalWindowSize(
-        DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
-        {
-          width: metrics.windowWidth,
-          height: metrics.windowHeight,
-        },
-      )
+      const terminalSize = resolveDefaultTerminalWindowSize('regular')
 
       await window.keyboard.press(`${commandModifier}+T`)
 

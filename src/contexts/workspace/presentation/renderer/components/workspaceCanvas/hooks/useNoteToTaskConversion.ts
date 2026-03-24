@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveDefaultTaskWindowSize } from '../constants'
 import type { ContextMenuState, ShowWorkspaceCanvasMessage } from '../types'
@@ -35,6 +36,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   onRequestPersistFlush,
   onShowMessage,
   setContextMenu,
+  standardWindowSizeBucket,
 }: {
   selectedNodeIds: string[]
   selectedNodeIdsRef: React.MutableRefObject<string[]>
@@ -46,6 +48,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
   onRequestPersistFlush?: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
+  standardWindowSizeBucket: StandardWindowSizeBucket
 }): {
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean
@@ -89,7 +92,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
     }
 
     const title = resolveFallbackTaskTitle(requirement, t('taskWindow.defaultTaskTitle'))
-    const defaultTaskSize = resolveDefaultTaskWindowSize()
+    const defaultTaskSize = resolveDefaultTaskWindowSize(standardWindowSizeBucket)
     const now = new Date().toISOString()
     const previousSpaces = spacesRef.current
     let nextSpaces = previousSpaces
@@ -168,6 +171,7 @@ export function useWorkspaceCanvasNoteToTaskConversion({
     setContextMenu,
     setNodes,
     spacesRef,
+    standardWindowSizeBucket,
     t,
   ])
 
