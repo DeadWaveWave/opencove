@@ -4,7 +4,12 @@ import {
   launchApp,
   readCanvasViewport,
 } from './workspace-canvas.helpers'
-import { ensureArtifactsDir, readSeededWorkspaceLayout } from './workspace-canvas.arrange.shared'
+import {
+  CANONICAL_GUTTER_PX,
+  ensureArtifactsDir,
+  readSeededWorkspaceLayout,
+  resolveCanonicalNodeSizes,
+} from './workspace-canvas.arrange.shared'
 
 async function openPaneContextMenu(
   window: Page,
@@ -59,6 +64,8 @@ test.describe('Workspace Canvas - Arrange', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       await expect(window.locator('.react-flow__node')).toHaveCount(2)
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const terminalSize = canonicalSizes.terminal
 
       const paneBox = await pane.boundingBox()
       if (!paneBox) {
@@ -92,8 +99,12 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toEqual({
           nodes: {
-            'arrange-node-1': { x: 576, y: 96, width: 468, height: 324 },
-            'arrange-node-2': { x: 96, y: 96, width: 468, height: 324 },
+            'arrange-node-1': {
+              x: 96 + terminalSize.width + CANONICAL_GUTTER_PX,
+              y: 96,
+              ...terminalSize,
+            },
+            'arrange-node-2': { x: 96, y: 96, ...terminalSize },
           },
           spaces: {},
         })
@@ -155,6 +166,10 @@ test.describe('Workspace Canvas - Arrange', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+      const terminalSize = canonicalSizes.terminal
+      const strideX = terminalSize.width + CANONICAL_GUTTER_PX
+      const strideY = terminalSize.height + CANONICAL_GUTTER_PX
 
       const zoomInButton = window.locator('.react-flow__controls-zoomin')
       await expect(zoomInButton).toBeVisible()
@@ -189,12 +204,12 @@ test.describe('Workspace Canvas - Arrange', () => {
         })
         .toEqual({
           nodes: {
-            'zoom-arrange-1': { x: 120, y: 120, width: 468, height: 324 },
-            'zoom-arrange-2': { x: 600, y: 120, width: 468, height: 324 },
-            'zoom-arrange-3': { x: 1080, y: 120, width: 468, height: 324 },
-            'zoom-arrange-4': { x: 120, y: 456, width: 468, height: 324 },
-            'zoom-arrange-5': { x: 600, y: 456, width: 468, height: 324 },
-            'zoom-arrange-6': { x: 1080, y: 456, width: 468, height: 324 },
+            'zoom-arrange-1': { x: 120, y: 120, ...terminalSize },
+            'zoom-arrange-2': { x: 120 + strideX, y: 120, ...terminalSize },
+            'zoom-arrange-3': { x: 120 + strideX * 2, y: 120, ...terminalSize },
+            'zoom-arrange-4': { x: 120, y: 120 + strideY, ...terminalSize },
+            'zoom-arrange-5': { x: 120 + strideX, y: 120 + strideY, ...terminalSize },
+            'zoom-arrange-6': { x: 120 + strideX * 2, y: 120 + strideY, ...terminalSize },
           },
           spaces: {},
         })
