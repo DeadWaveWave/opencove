@@ -53,9 +53,7 @@ export function useWorkspaceCanvasSpaceOwnership({
     nodeId: string
     offset: { x: number; y: number }
   } | null>
-  nodeSpaceFramePreviewRef?: React.MutableRefObject<
-    ReadonlyMap<string, WorkspaceSpaceRect> | null
-  >
+  nodeSpaceFramePreviewRef?: React.MutableRefObject<ReadonlyMap<string, WorkspaceSpaceRect> | null>
 }): {
   handleNodeDragStart: (
     event: React.MouseEvent,

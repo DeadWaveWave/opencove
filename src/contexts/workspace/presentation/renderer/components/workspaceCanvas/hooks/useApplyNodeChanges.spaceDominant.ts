@@ -128,4 +128,3 @@ function resolveMoveDirections(dx: number, dy: number): LayoutDirection[] {
 
   return ordered
 }
-

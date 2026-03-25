@@ -2,11 +2,17 @@
   .react-flow__node.selected
   .terminal-node::after,
 .workspace-canvas .react-flow__node.dragging .terminal-node::after,
-.workspace-canvas[data-cove-drag-surface-selection-mode='true'] .react-flow__node.selected .task-node::after,
+.workspace-canvas[data-cove-drag-surface-selection-mode='true']
+  .react-flow__node.selected
+  .task-node::after,
 .workspace-canvas .react-flow__node.dragging .task-node::after,
-.workspace-canvas[data-cove-drag-surface-selection-mode='true'] .react-flow__node.selected .note-node::after,
+.workspace-canvas[data-cove-drag-surface-selection-mode='true']
+  .react-flow__node.selected
+  .note-node::after,
 .workspace-canvas .react-flow__node.dragging .note-node::after,
-.workspace-canvas[data-cove-drag-surface-selection-mode='true'] .react-flow__node.selected .image-node::after,
+.workspace-canvas[data-cove-drag-surface-selection-mode='true']
+  .react-flow__node.selected
+  .image-node::after,
 .workspace-canvas .react-flow__node.dragging .image-node::after {
   content: '';
   position: absolute;

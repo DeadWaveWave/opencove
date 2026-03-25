@@ -176,9 +176,9 @@ export function projectWorkspaceNodeDropLayout({
   if (shouldEnsureSpaceFitsOwnedNodes && targetSpaceId) {
     const lockActive = Boolean(
       previousCache &&
-        canUsePreviousSpaceRects &&
-        previousCache.baselineSpaces === spaces &&
-        previousCache.targetSpaceId === targetSpaceId,
+      canUsePreviousSpaceRects &&
+      previousCache.baselineSpaces === spaces &&
+      previousCache.targetSpaceId === targetSpaceId,
     )
 
     if (lockActive && previousCache) {

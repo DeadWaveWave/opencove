@@ -16,7 +16,10 @@ import {
   setResolvedSpaceFramePreview,
   type UseApplyNodeChangesParams,
 } from './useApplyNodeChanges.helpers'
-import { projectWorkspaceNodeDropLayout, type WorkspaceNodeDropProjectionCache } from './useSpaceOwnership.projectDropLayout'
+import {
+  projectWorkspaceNodeDropLayout,
+  type WorkspaceNodeDropProjectionCache,
+} from './useSpaceOwnership.projectDropLayout'
 import { projectWorkspaceSpaceDominantLayout } from './useApplyNodeChanges.spaceDominant'
 
 export function useWorkspaceCanvasApplyNodeChanges({

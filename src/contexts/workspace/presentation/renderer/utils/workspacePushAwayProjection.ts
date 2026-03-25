@@ -121,4 +121,3 @@ function buildLayoutItems({
 function rectEquals(a: WorkspaceSpaceRect, b: WorkspaceSpaceRect): boolean {
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
 }
-
