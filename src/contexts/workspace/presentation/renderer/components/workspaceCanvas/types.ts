@@ -2,6 +2,7 @@ import type { Node } from '@xyflow/react'
 import type {
   AgentNodeData,
   Point,
+  SpaceArchiveRecord,
   TaskPriority,
   TaskRuntimeStatus,
   TerminalNodeData,
@@ -34,6 +35,7 @@ export interface WorkspaceCanvasProps {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onActiveSpaceChange: (spaceId: string | null) => void
   shortcutsEnabled?: boolean
+  onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
   viewport: WorkspaceViewport
   isMinimapVisible: boolean
   onViewportChange: (viewport: WorkspaceViewport) => void

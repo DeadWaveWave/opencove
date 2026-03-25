@@ -34,6 +34,7 @@ function createTables(db: Database.Database): void {
       path TEXT NOT NULL,
       worktrees_root TEXT NOT NULL,
       pull_request_base_branch_options_json TEXT NOT NULL DEFAULT '[]',
+      space_archive_records_json TEXT NOT NULL DEFAULT '[]',
       viewport_x REAL NOT NULL,
       viewport_y REAL NOT NULL,
       viewport_zoom REAL NOT NULL,
@@ -151,6 +152,12 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'workspaces',
     columnName: 'pull_request_base_branch_options_json',
+    definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspaces',
+    columnName: 'space_archive_records_json',
     definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
   })
 

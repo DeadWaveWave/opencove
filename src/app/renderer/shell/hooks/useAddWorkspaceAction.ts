@@ -26,6 +26,7 @@ export function useAddWorkspaceAction(): () => Promise<void> {
       isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
       spaces: [],
       activeSpaceId: null,
+      spaceArchiveRecords: [],
     }
 
     store.setWorkspaces(prev => [...prev, nextWorkspace])

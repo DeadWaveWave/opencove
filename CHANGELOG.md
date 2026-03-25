@@ -17,6 +17,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - UI: App header with primary sidebar toggle + top-right settings (macOS uses unified title bar chrome).
 - UI: Command Center in header (search + project/space switcher) with Cmd/Ctrl+K and Cmd/Ctrl+P shortcuts.
 - UI: Control Center + agent standby banner notifications (with configurable context chips). (#81)
+- Spaces: Space Archives — archive Space snapshots + replay window (Command Center). (#80)
 - In-canvas GitHub pull request chip for worktree-bound Spaces (opens on GitHub; requires `gh`).
 - Settings → Integrations tab with a GitHub PR links toggle (default on).
 - In-app update checker with stable/nightly tracking (nightly supports prompt only) plus a first-launch “What’s New” sheet after updates. (#49)

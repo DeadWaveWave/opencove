@@ -136,6 +136,7 @@ export function WorkspaceCanvasView({
   openSpaceArchive,
   closeSpaceWorktree,
   onShowMessage,
+  onAppendSpaceArchiveRecord,
   updateSpaceDirectory,
   getSpaceBlockingNodes,
   closeNodesById,
@@ -485,6 +486,7 @@ export function WorkspaceCanvasView({
         agentSettings={agentSettings}
         closeSpaceWorktree={closeSpaceWorktree}
         onShowMessage={onShowMessage}
+        onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
         updateSpaceDirectory={updateSpaceDirectory}
         getSpaceBlockingNodes={getSpaceBlockingNodes}
         closeNodesById={closeNodesById}

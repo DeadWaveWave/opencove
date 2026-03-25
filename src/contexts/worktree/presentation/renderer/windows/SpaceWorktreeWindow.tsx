@@ -4,6 +4,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type {
   TerminalNodeData,
+  SpaceArchiveRecord,
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import type { ShowWorkspaceCanvasMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
@@ -32,6 +33,10 @@ import { useSpaceWorktreeSuggestNames } from './useSpaceWorktreeSuggestNames'
 import { getSpaceArchiveCounts, resolveSpaceWorktreeStatusPath } from './spaceWorktreeWindowState'
 import { buildArchiveWarningMessage } from './spaceWorktreeWarnings'
 import { toSpaceWorktreeErrorMessage } from './spaceWorktreeErrorMessage'
+import { buildSpaceArchiveRecord } from '@contexts/workspace/presentation/renderer/utils/spaceArchiveRecords'
+import { closeBlockingNodesForArchive } from './closeBlockingNodesForArchive'
+import { resolveSpaceArchiveGitSnapshot } from './resolveSpaceArchiveGitSnapshot'
+import { resolveSpaceTasks } from './resolveSpaceTasks'
 
 export function SpaceWorktreeWindow({
   spaceId,
@@ -43,6 +48,7 @@ export function SpaceWorktreeWindow({
   agentSettings,
   onClose,
   onShowMessage,
+  onAppendSpaceArchiveRecord,
   onUpdateSpaceDirectory,
   getBlockingNodes,
   closeNodesById,
@@ -56,6 +62,7 @@ export function SpaceWorktreeWindow({
   agentSettings: AgentSettings
   onClose: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
+  onAppendSpaceArchiveRecord: (record: SpaceArchiveRecord) => void
   onUpdateSpaceDirectory: (
     spaceId: string,
     directoryPath: string,
@@ -124,20 +131,7 @@ export function SpaceWorktreeWindow({
     [currentWorktree, isSpaceOnWorkspaceRoot, space?.directoryPath, workspacePath],
   )
 
-  const spaceTasks = useMemo(() => {
-    if (!space) {
-      return []
-    }
-
-    const spaceNodeIds = new Set(space.nodeIds)
-
-    return nodes
-      .filter(node => spaceNodeIds.has(node.id) && node.data.kind === 'task' && node.data.task)
-      .map(node => ({
-        title: node.data.title,
-        requirement: node.data.task?.requirement ?? '',
-      }))
-  }, [nodes, space])
+  const spaceTasks = useMemo(() => resolveSpaceTasks(space, nodes), [nodes, space])
 
   const archiveCounts = useMemo(() => getSpaceArchiveCounts({ space, nodes }), [nodes, space])
 
@@ -302,26 +296,6 @@ export function SpaceWorktreeWindow({
     [executePendingOperation, onClose, queueGuardIfNeeded, space, t],
   )
 
-  const closeBlockingNodesForArchive = useCallback(
-    async (targetSpaceId: string): Promise<boolean> => {
-      const blocking = getBlockingNodes(targetSpaceId)
-      const nodesToClose = [...new Set([...blocking.agentNodeIds, ...blocking.terminalNodeIds])]
-
-      if (nodesToClose.length > 0) {
-        await closeNodesById(nodesToClose)
-      }
-
-      const nextBlocking = getBlockingNodes(targetSpaceId)
-      if (nextBlocking.agentNodeIds.length > 0 || nextBlocking.terminalNodeIds.length > 0) {
-        setError(t('worktreeGuard.closeFailed'))
-        return false
-      }
-
-      return true
-    },
-    [closeNodesById, getBlockingNodes, t],
-  )
-
   const { applyPendingWithMismatch, applyPendingByClosingAll } = useSpaceWorktreeGuardActions({
     guard,
     setGuard,
@@ -385,19 +359,32 @@ export function SpaceWorktreeWindow({
     if (!space) {
       return
     }
-
     if (!isSpaceOnWorkspaceRoot && changedFileCount > 0 && !forceArchiveConfirmed) {
       return
     }
 
+    const git = await resolveSpaceArchiveGitSnapshot({
+      agentSettings,
+      workspacePath,
+      isSpaceOnWorkspaceRoot,
+      spaceDirectoryPath: space.directoryPath,
+      currentBranch,
+      currentWorktree,
+    })
+
+    const snapshot = buildSpaceArchiveRecord({ space, nodes, git })
     setError(null)
     setIsMutating(true)
     try {
-      const canContinue = await closeBlockingNodesForArchive(space.id)
+      const canContinue = await closeBlockingNodesForArchive(
+        space.id,
+        getBlockingNodes,
+        closeNodesById,
+      )
       if (!canContinue) {
+        setError(t('worktreeGuard.closeFailed'))
         return
       }
-
       await executePendingOperation(space.id, {
         kind: 'archive',
         worktreePath: isSpaceOnWorkspaceRoot ? null : space.directoryPath,
@@ -405,6 +392,7 @@ export function SpaceWorktreeWindow({
         archiveSpace: true,
         force: true,
       })
+      onAppendSpaceArchiveRecord(snapshot)
       onClose()
     } catch (operationError) {
       setError(toSpaceWorktreeErrorMessage(operationError, t))
@@ -412,17 +400,23 @@ export function SpaceWorktreeWindow({
       setIsMutating(false)
     }
   }, [
-    closeBlockingNodesForArchive,
+    agentSettings,
+    closeNodesById,
+    currentBranch,
+    currentWorktree,
     changedFileCount,
     deleteBranchOnArchive,
     executePendingOperation,
     forceArchiveConfirmed,
+    getBlockingNodes,
     isSpaceOnWorkspaceRoot,
     onClose,
+    onAppendSpaceArchiveRecord,
     space,
     t,
+    nodes,
+    workspacePath,
   ])
-
   const panelHandlers = useSpaceWorktreePanelHandlers({
     setError,
     setDeleteBranchOnArchive,
@@ -435,7 +429,6 @@ export function SpaceWorktreeWindow({
     handleCreate,
     handleArchive,
   })
-
   if (!space) {
     return null
   }

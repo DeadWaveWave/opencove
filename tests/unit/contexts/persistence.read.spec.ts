@@ -23,6 +23,7 @@ describe('workspace persistence (read/normalize)', () => {
         name: 'cove',
         path: '/tmp/cove',
         worktreesRoot: '.opencove/worktrees',
+        spaceArchiveRecords: [],
         viewport: { x: -320, y: 180, zoom: 1.25 },
         isMinimapVisible: false,
         spaces: [],
@@ -178,10 +179,12 @@ describe('workspace persistence (read/normalize)', () => {
           id: 'workspace-1',
           name: 'cove',
           path: '/tmp/cove',
+          worktreesRoot: '',
           viewport: { x: 0, y: 0, zoom: 1 },
           isMinimapVisible: true,
           spaces: [],
           activeSpaceId: null,
+          spaceArchiveRecords: [],
           nodes: [
             {
               id: 'terminal-1',
@@ -326,6 +329,44 @@ describe('workspace persistence (read/normalize)', () => {
     expect(restored?.workspaces[0].spaces[0].directoryPath).toBe('/tmp/cove')
     expect(restored?.workspaces[0].spaces[0].nodeIds).toEqual(['node-1'])
     expect(restored?.workspaces[0].activeSpaceId).toBe('space-1')
+  })
+
+  it('clamps space archive records to 50 items when reading', async () => {
+    const spaceArchiveRecords = Array.from({ length: 55 }, (_, index) => ({
+      id: `archive-${index}`,
+      archivedAt: '2026-03-23T00:00:00.000Z',
+      space: {
+        id: 'space-1',
+        name: 'Archived Space',
+        directoryPath: '/tmp/cove',
+        labelColor: null,
+        rect: null,
+      },
+      nodes: [],
+    }))
+
+    await writeRawPersistedState(
+      JSON.stringify({
+        activeWorkspaceId: 'workspace-1',
+        workspaces: [
+          {
+            id: 'workspace-1',
+            name: 'cove',
+            path: '/tmp/cove',
+            nodes: [],
+            spaceArchiveRecords,
+          },
+        ],
+        settings: {},
+      }),
+    )
+
+    const restored = await readPersistedState()
+    expect(restored?.workspaces[0].spaceArchiveRecords).toHaveLength(50)
+    expect(restored?.workspaces[0].spaceArchiveRecords[0]?.id).toBe('archive-0')
+    expect(restored?.workspaces[0].spaceArchiveRecords.some(item => item.id === 'archive-54')).toBe(
+      false,
+    )
   })
 
   it('returns null when stored json is invalid', async () => {
