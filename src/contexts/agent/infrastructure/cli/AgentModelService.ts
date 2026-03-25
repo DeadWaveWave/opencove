@@ -220,23 +220,54 @@ async function listOpenCodeModelsFromCli(): Promise<AgentModelOption[]> {
     }))
 }
 
+function stripAnsiCodes(text: string): string {
+  // eslint-disable-next-line no-control-regex
+  return text.replace(/\u001B\[[0-9;]*[A-Za-z]|\u001B\].*?\u0007/g, '')
+}
+
 async function listCursorAgentModelsFromCli(): Promise<AgentModelOption[]> {
   const stdout = await executeCliText('agent', ['models'])
+  const cleaned = stripAnsiCodes(stdout)
 
-  return stdout
-    .split(/\r?\n/)
-    .map(line => line.trim())
-    .filter(line => line.length > 0)
-    .map(modelId => ({
-      id: modelId,
-      displayName: modelId,
-      description: '',
-      isDefault: false,
-    }))
+  const models: AgentModelOption[] = []
+  for (const rawLine of cleaned.split(/\r?\n/)) {
+    const line = rawLine.trim()
+    const match = line.match(/^([a-z0-9][a-z0-9._-]*)\s+-\s+(.+)$/)
+    if (!match) {
+      continue
+    }
+
+    const id = match[1]
+    let displayName = match[2].trim()
+    const isCurrent = /\(current\)\s*$/.test(displayName)
+    const isDefault = /\(default\)\s*$/.test(displayName)
+    displayName = displayName.replace(/\s*\((current|default)\)\s*/g, '').trim()
+
+    models.push({
+      id,
+      displayName,
+      description: isCurrent ? 'Current model' : isDefault ? 'Default model' : '',
+      isDefault: isCurrent || isDefault,
+    })
+  }
+
+  return models
 }
 
 function listClaudeCodeStaticModels(): AgentModelOption[] {
   return CLAUDE_CODE_STATIC_MODELS.map(model => ({ ...model }))
+}
+
+export async function resolveDefaultModelDisplayName(
+  provider: AgentProviderId,
+): Promise<string | null> {
+  try {
+    const result = await listAgentModels(provider)
+    const defaultModel = result.models.find(m => m.isDefault)
+    return defaultModel?.displayName ?? null
+  } catch {
+    return null
+  }
 }
 
 export function disposeAgentModelService(): void {

@@ -26,7 +26,7 @@ async function isCommandAvailable(command: string): Promise<boolean> {
 
 async function isCursorAgent(command: string): Promise<boolean> {
   try {
-    const { stdout, stderr } = await execFileAsync(command, ['--version'], {
+    const { stdout, stderr } = await execFileAsync(command, ['--help'], {
       windowsHide: true,
       timeout: 3000,
     })

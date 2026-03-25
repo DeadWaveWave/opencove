@@ -328,9 +328,18 @@ describe('AgentModelService', () => {
   })
 
   it('lists cursor-agent models from CLI output', async () => {
+    const cliOutput = [
+      'Available models',
+      '',
+      'claude-sonnet-4-6 - Sonnet 4.6  (current)',
+      'gpt-5.2-codex - GPT-5.2 Codex',
+      'gemini-3-pro - Gemini 3 Pro',
+      '',
+    ].join('\n')
+
     execFileMock.mockImplementation((_file, _args, options, callback) => {
       const cb = typeof options === 'function' ? options : callback
-      cb?.(null, 'claude-sonnet-4-6\ngpt-5.2-codex\ngemini-3-pro\n', '')
+      cb?.(null, cliOutput, '')
       return {} as ReturnType<typeof execFileMock>
     })
 
@@ -345,6 +354,9 @@ describe('AgentModelService', () => {
       'gpt-5.2-codex',
       'gemini-3-pro',
     ])
+    expect(result.models[0].displayName).toBe('Sonnet 4.6')
+    expect(result.models[0].isDefault).toBe(true)
+    expect(result.models[1].isDefault).toBe(false)
   })
 
   it('returns empty models with error when cursor-agent CLI fails', async () => {
@@ -368,7 +380,7 @@ describe('AgentModelService', () => {
     execFileMock.mockImplementation((_file, _args, options, callback) => {
       callCount++
       const cb = typeof options === 'function' ? options : callback
-      cb?.(null, 'claude-sonnet-4-6\n', '')
+      cb?.(null, 'claude-sonnet-4-6 - Sonnet 4.6\n', '')
       return {} as ReturnType<typeof execFileMock>
     })
 
@@ -386,7 +398,7 @@ describe('AgentModelService', () => {
     execFileMock.mockImplementation((_file, _args, options, callback) => {
       callCount++
       const cb = typeof options === 'function' ? options : callback
-      cb?.(null, 'model-a\nmodel-b\n', '')
+      cb?.(null, 'model-a - Model A\nmodel-b - Model B\n', '')
       return {} as ReturnType<typeof execFileMock>
     })
 
