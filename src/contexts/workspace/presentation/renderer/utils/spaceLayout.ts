@@ -100,6 +100,18 @@ export function applySpaceFrameHandleMode(
   mode: SpaceFrameHandleMode = 'auto',
 ): SpaceFrameHandle {
   if (mode === 'region') {
+    if (handle.kind !== 'resize') {
+      return handle
+    }
+
+    const { left, right, top, bottom } = handle.edges
+    const hasHorizontal = Boolean(left || right)
+    const hasVertical = Boolean(top || bottom)
+
+    if (hasHorizontal && hasVertical) {
+      return handle
+    }
+
     return { kind: 'move' }
   }
 

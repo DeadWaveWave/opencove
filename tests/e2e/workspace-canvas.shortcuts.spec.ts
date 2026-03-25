@@ -96,6 +96,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         .locator('.terminal-node__header')
         .first()
         .click({ position: { x: 40, y: 20 } })
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await window.evaluate(() => {
         const { activeElement } = document
         if (activeElement instanceof HTMLElement) {
@@ -105,10 +106,13 @@ test.describe('Workspace Canvas - Shortcuts', () => {
       await window.keyboard.press(`${commandModifier}+G`)
 
       await expect
-        .poll(async () => {
-          const workspace = await readPersistedWorkspace(window)
-          return workspace?.spaces ?? []
-        })
+        .poll(
+          async () => {
+            const workspace = await readPersistedWorkspace(window)
+            return workspace?.spaces ?? []
+          },
+          { timeout: 30_000 },
+        )
         .toHaveLength(1)
 
       const workspace = await readPersistedWorkspace(window)

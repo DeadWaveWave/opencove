@@ -175,14 +175,10 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
 
   for (const nodeItem of nodeRects) {
     const owner = owningSpaceIdByNodeId.get(nodeItem.id)
-    if (owner) {
-      continue
-    }
-
     items.push({
       id: nodeItem.id,
       kind: 'node',
-      groupId: nodeItem.id,
+      groupId: owner ?? nodeItem.id,
       rect: { ...nodeItem.rect },
     })
   }

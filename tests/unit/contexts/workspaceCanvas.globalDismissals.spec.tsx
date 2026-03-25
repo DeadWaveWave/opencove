@@ -13,6 +13,7 @@ vi.mock('@xyflow/react', () => {
       getState: vi.fn(() => ({})),
       subscribe: vi.fn(),
     }),
+    useStore: (selector: (state: unknown) => unknown) => selector({}),
     ReactFlow: ({ children }: { children?: React.ReactNode }) => (
       <div data-testid="workspace-react-flow">{children}</div>
     ),

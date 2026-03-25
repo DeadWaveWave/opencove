@@ -249,6 +249,17 @@ export function projectWorkspaceNodeDropLayout({
     }
 
     const expandedRect = pushedSpaces.find(space => space.id === targetSpaceId)?.rect ?? null
+    const targetSpaceNodeIdSet = new Set(
+      reassignedSpaces.find(space => space.id === targetSpaceId)?.nodeIds ?? [],
+    )
+    const cachedMovedNodePositionById = new Map<string, { x: number; y: number }>()
+    nodePositionById.forEach((position, nodeId) => {
+      if (targetSpaceNodeIdSet.has(nodeId)) {
+        return
+      }
+
+      cachedMovedNodePositionById.set(nodeId, position)
+    })
     return {
       targetSpaceId,
       nextNodePositionById: new Map(
@@ -266,7 +277,7 @@ export function projectWorkspaceNodeDropLayout({
                 .filter(space => Boolean(space.rect))
                 .map(space => [space.id, space.rect!] as const),
             ),
-            movedNodePositionById: nodePositionById,
+            movedNodePositionById: cachedMovedNodePositionById,
           }
         : null,
     }

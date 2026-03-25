@@ -10,6 +10,7 @@ vi.mock('@xyflow/react', () => {
       screenToFlowPosition: ({ x, y }: { x: number; y: number }) => ({ x, y }),
       getZoom: () => 1,
     }),
+    useStore: (selector: (state: unknown) => unknown) => selector({}),
   }
 })
 
