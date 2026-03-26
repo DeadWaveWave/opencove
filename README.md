@@ -2,12 +2,18 @@
 
 # OpenCove 🌌
 
-**Your infinite canvas workspace for agents, tasks, knowledge, and research.**
+**A spatial workspace for Claude Code, Codex, terminals, tasks, and notes.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)]()
 [![简体中文](https://img.shields.io/badge/Language-%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87-blue)](./README_ZH.md)
+
+Keep every agent, terminal, task, and note on one infinite canvas.
+
+See parallel work at a glance, keep context visible, and resume exactly where you left off.
+
+[Download the latest builds](https://github.com/DeadWaveWave/opencove/releases) · [Read the Chinese README](./README_ZH.md)
 
 <img src="./assets/images/opencove_header_readme.jpg" alt="OpenCove Header" width="100%" />
 
@@ -15,45 +21,57 @@
 
 ## 📖 What is OpenCove?
 
-OpenCove is a **spatial development workspace** built for the AI era. It reimagines traditional development tools by replacing split-panels and disjointed tabs with a virtually boundless 2D canvas.
+OpenCove is a **spatial development workspace** for people who work with AI coding agents every day.
 
-Here, your **AI Agents (like Claude Code / Codex)**, **Terminals**, **Tasks**, and **Notes** exist on the same visual plane. By organizing human intuition and agent-driven automation spatially, OpenCove allows you to see the true context of your work at all times.
+Instead of burying work inside tabs, sidebars, and long chat threads, OpenCove puts your **AI agents**, **terminals**, **tasks**, and **notes** on the same infinite 2D canvas, so the full state of your work stays visible.
+
+It is built for workflows like:
+
+- Running multiple `Claude Code` or `Codex` sessions side by side
+- Keeping task plans, notes, and terminal output in one shared workspace
+- Switching projects without losing layout, context, or execution history
 
 <img src="./assets/images/opencove_app_preview_readme.jpg" alt="OpenCove App Preview" width="100%" />
 
 ## ✨ Highlights
 
-- **🌌 Infinite Spatial Canvas**: Break free from rigid layouts. Freely arrange terminals, docs, and agent interfaces to construct a holistic view of your workflow.
-- **🤖 Native CLI Agent Support**: Deeply optimized for CLI AI tools like `Claude Code` and `Codex`. Easily spawn them, compare them side-by-side, and monitor their state live.
-- **🧠 Visualized Context Management**: Keep your task planning and actual execution side by side. Crucial context no longer gets buried inside scrolling chat histories.
-- **💾 Persistent State & Memory**: OpenCove remembers the scene. Your viewport, layout, terminal output, and agent states survive project switches and restarts, picking up right where you left off.
-- **🗂️ Fine-Grained Workspace Isolation**: Separate your workstreams natively using directories and git worktrees, ensuring that context never bleeds across projects.
+- **🌌 Infinite spatial canvas**: Arrange terminals, notes, tasks, and agent sessions the way you actually think.
+- **🤖 Built for CLI agents**: Optimized for `Claude Code`, `Codex`, and similar terminal-native agent workflows.
+- **🧠 Context stays visible**: Planning, execution, and results live together instead of getting buried in linear chat history.
+- **💾 Persistent workspaces**: Restore your viewport, layout, terminal output, and agent state after restarts.
+- **🗂️ Space archives**: Snapshot and revisit previous workspace states when you need to jump back into old contexts.
+- **🖼️ Rich media and smart layouts**: Paste images, multi-select nodes, use label colors, and tidy messy boards quickly.
+- **🔍 Global search and control center**: Search across the canvas and terminal output, then manage active sessions from one place.
+- **🗂️ Workspace isolation**: Separate projects cleanly with directories and git worktrees.
 
 ## 💡 Why OpenCove?
 
-In traditional dev environments or linear chat bots, context is quickly lost to scrolling or tucked away in hidden tabs.
+OpenCove is designed around a simple idea: **agent workflows are easier to reason about when context is spatial, not hidden**.
 
 | Pain Point (Traditional) | The OpenCove Workspace |
 | :--- | :--- |
-| **Linear Amnesia**: Context gets buried in endless chat histories. | **Spatial Context**: Crucial decisions and active tasks stay visible on the canvas. |
-| **Single-Pane Bottlenecks**: Switching tabs breaks your train of thought. | **Parallel Execution**: Observe multiple agents working simultaneously without losing focus. |
-| **Opaque Automation**: It's hard to follow what background agents are doing. | **Transparent Actions**: Terminal executions and side-effects are rendered right before your eyes. |
+| **Linear amnesia**: context disappears into long chat histories. | **Spatial context**: important tasks, notes, and execution stay visible on the canvas. |
+| **Single-pane bottlenecks**: tabs and split panes force constant context switching. | **Parallel execution**: compare and monitor multiple agents without losing your place. |
+| **Opaque automation**: background agent work feels like a black box. | **Transparent actions**: terminals and side effects stay visible while work is happening. |
 
 ## 🚀 Getting Started
 
-*OpenCove is currently in Alpha. We welcome early adopters and power users to test it out.*
+*OpenCove is currently in Alpha. We recommend it for early adopters and power users who want to explore spatial AI workflows.*
 
 ### Download
 
-We distribute pre-compiled binaries via our [GitHub Releases](https://github.com/DeadWaveWave/opencove/releases) page:
+Prebuilt binaries are available on the [GitHub Releases](https://github.com/DeadWaveWave/opencove/releases) page.
 
-- **Stable Build**: Recommended for general users.
-- **Nightly Build**: Contains the bleeding-edge features.
+At the moment, most public builds are **nightly / prerelease builds**, which means:
 
-Downloads are available for macOS, Windows, and Linux (`.dmg`, `.exe`, `.zip`, etc.).
+- You get the newest features first
+- You should expect rough edges
+- Feedback and bug reports are especially valuable
 
-> **⚠️ macOS Users Note**:
-> The current releases are **not signed or notarized** with an Apple Developer ID. If Gatekeeper blocks the app, run this in your terminal:
+Downloads are available for macOS, Windows, and Linux.
+
+> **⚠️ macOS note**
+> Current macOS builds are **not signed or notarized** with an Apple Developer ID. If Gatekeeper blocks the app, run this in your terminal:
 > ```bash
 > xattr -dr com.apple.quarantine /Applications/OpenCove.app
 > ```
