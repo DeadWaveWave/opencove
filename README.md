@@ -2,7 +2,7 @@
 
 # OpenCove 🌌
 
-**A spatial workspace for Claude Code, Codex, terminals, tasks, and notes.**
+**An infinite canvas for Claude Code, Codex, terminals, tasks, and notes.**
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
