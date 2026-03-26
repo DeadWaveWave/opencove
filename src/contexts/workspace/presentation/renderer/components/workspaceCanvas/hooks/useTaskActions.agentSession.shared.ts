@@ -53,17 +53,6 @@ export function findTaskSpace(
   return spacesRef.current.find(space => space.nodeIds.includes(taskNodeId)) ?? null
 }
 
-export function resolveTaskDirectory(
-  taskNodeId: string,
-  spacesRef: TaskActionContext['spacesRef'] | ResumeTaskAgentSessionContext['spacesRef'],
-  workspacePath: string,
-): string {
-  const taskSpace = findTaskSpace(taskNodeId, spacesRef)
-  return taskSpace && taskSpace.directoryPath.trim().length > 0
-    ? taskSpace.directoryPath
-    : workspacePath
-}
-
 export function assignAgentNodeToTaskSpace({
   taskNodeId,
   assignedNodeId,

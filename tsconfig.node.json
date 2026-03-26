@@ -6,6 +6,7 @@
     "src/app/preload/**/*",
     "src/shared/**/*",
     "src/contexts/**/domain/**/*",
+    "src/contexts/**/application/**/*",
     "src/contexts/**/infrastructure/**/*",
     "src/contexts/**/presentation/main-ipc/**/*",
     "src/platform/**/*"

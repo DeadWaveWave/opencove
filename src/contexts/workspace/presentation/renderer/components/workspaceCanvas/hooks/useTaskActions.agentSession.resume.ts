@@ -1,3 +1,4 @@
+import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import {
@@ -5,7 +6,6 @@ import {
   createTaskAgentAnchor,
   findTaskNode,
   findTaskSpace,
-  resolveTaskDirectory,
   setTaskLastError,
   type ResumeTaskAgentSessionContext,
 } from './useTaskActions.agentSession.shared'
@@ -45,7 +45,12 @@ export async function resumeTaskAgentSessionAction(
     return
   }
 
-  const taskDirectory = resolveTaskDirectory(taskNodeId, context.spacesRef, context.workspacePath)
+  const taskExecutionContext = resolveTaskExecutionContext({
+    spaces: context.spacesRef.current,
+    taskNodeId,
+    workspacePath: context.workspacePath,
+  })
+  const taskDirectory = taskExecutionContext.workingDirectory
   const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
 
   try {

@@ -1,4 +1,5 @@
 import { resolveAgentModel } from '@contexts/settings/domain/agentSettings'
+import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import {
@@ -7,7 +8,6 @@ import {
   createTaskAgentAnchor,
   findTaskNode,
   findTaskSpace,
-  resolveTaskDirectory,
   setTaskLastError,
   type TaskActionContext,
 } from './useTaskActions.agentSession.shared'
@@ -108,7 +108,12 @@ export async function runTaskAgentAction(
     return
   }
 
-  const taskDirectory = resolveTaskDirectory(taskNodeId, context.spacesRef, context.workspacePath)
+  const taskExecutionContext = resolveTaskExecutionContext({
+    spaces: context.spacesRef.current,
+    taskNodeId,
+    workspacePath: context.workspacePath,
+  })
+  const taskDirectory = taskExecutionContext.workingDirectory
   const linkedAgentNodeId = taskNode.data.task.linkedAgentNodeId
 
   if (linkedAgentNodeId) {
