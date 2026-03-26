@@ -8,6 +8,8 @@
 
 具体落地结构应以当前代码为准。
 
+> 本次重构（Landing 阶段）的“必要目录结构与 owner 落点”见 `docs/LANDING_ARCHITECTURE.md`。该文档只覆盖 Landing 必需结构。
+
 ## 1. 核心原则
 
 OpenCove 采用：
