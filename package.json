@@ -53,6 +53,9 @@
       "category": "public.app-category.developer-tools"
     }
   },
+  "bin": {
+    "opencove": "src/app/cli/opencove.mjs"
+  },
   "engines": {
     "node": ">=22",
     "pnpm": ">=9"
@@ -74,6 +77,7 @@
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
+    "opencove": "node src/app/cli/opencove.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format-check:staged": "node scripts/check-format-staged.mjs",

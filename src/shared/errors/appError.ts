@@ -7,6 +7,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.approved_path_required': 'The selected path is outside approved workspaces.',
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
+    'control_surface.unauthorized': 'Unauthorized request.',
     'integration.github.unavailable': 'GitHub integration is unavailable.',
     'integration.github.resolve_failed': 'Unable to load pull request info.',
     'integration.github.action_failed': 'Unable to run pull request action.',

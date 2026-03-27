@@ -3,6 +3,7 @@ export const APP_ERROR_CODES = [
   'common.approved_path_required',
   'common.unavailable',
   'common.unexpected',
+  'control_surface.unauthorized',
   'integration.github.unavailable',
   'integration.github.resolve_failed',
   'integration.github.action_failed',
