@@ -57,6 +57,7 @@ export function TerminalNode({
   width,
   height,
   terminalFontSize,
+  terminalFontFamily,
   scrollback,
   onClose,
   onCopyLastMessage,
@@ -161,6 +162,7 @@ export function TerminalNode({
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily:
+        terminalFontFamily ??
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       theme: initialTerminalTheme,
       allowProposedApi: true,
@@ -445,6 +447,18 @@ export function TerminalNode({
     terminal.options.fontSize = terminalFontSize
     syncTerminalSize()
   }, [syncTerminalSize, terminalFontSize])
+
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+
+    terminal.options.fontFamily =
+      terminalFontFamily ??
+      'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+    syncTerminalSize()
+  }, [syncTerminalSize, terminalFontFamily])
 
   useEffect(() => {
     const frame = requestAnimationFrame(syncTerminalSize)

@@ -120,6 +120,7 @@ export interface AgentSettings {
   standardWindowSizeBucket: StandardWindowSizeBucket
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
+  terminalFontFamily: string | null
   uiFontSize: number
   githubPullRequestsEnabled: boolean
   updatePolicy: AppUpdatePolicy
@@ -173,6 +174,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   standardWindowSizeBucket: 'regular',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
+  terminalFontFamily: null,
   uiFontSize: 18,
   githubPullRequestsEnabled: true,
   updatePolicy: 'prompt',
@@ -422,6 +424,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     MIN_TERMINAL_FONT_SIZE,
     MAX_TERMINAL_FONT_SIZE,
   )
+  const terminalFontFamily =
+    typeof value.terminalFontFamily === 'string' && value.terminalFontFamily.trim().length > 0
+      ? value.terminalFontFamily.trim()
+      : DEFAULT_AGENT_SETTINGS.terminalFontFamily
   const legacyUiFontScalePercent = normalizeIntegerInRange(
     value.uiFontScalePercent,
     Math.round((DEFAULT_AGENT_SETTINGS.uiFontSize / 16) * 100),
@@ -487,6 +493,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     standardWindowSizeBucket,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
+    terminalFontFamily,
     uiFontSize,
     githubPullRequestsEnabled,
     updatePolicy,

@@ -1,6 +1,7 @@
 import type {
   AttachTerminalInput,
   CopyWorkspacePathInput,
+  ListSystemFontsResult,
   CreateGitWorktreeInput,
   CreateGitWorktreeResult,
   DetachTerminalInput,
@@ -154,6 +155,9 @@ export interface OpenCoveApi {
   }
   task: {
     suggestTitle: (payload: SuggestTaskTitleInput) => Promise<SuggestTaskTitleResult>
+  }
+  system: {
+    listFonts: () => Promise<ListSystemFontsResult>
   }
 }
 

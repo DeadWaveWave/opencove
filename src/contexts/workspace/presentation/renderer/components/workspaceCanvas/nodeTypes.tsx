@@ -40,6 +40,7 @@ function TerminalNodeType({
   selected,
   dragging,
   terminalFontSize,
+  terminalFontFamily,
   selectNode,
   closeNodeRef,
   resizeNodeRef,
@@ -54,6 +55,7 @@ function TerminalNodeType({
   selected?: boolean
   dragging?: boolean
   terminalFontSize: number
+  terminalFontFamily: string | null
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
@@ -105,6 +107,7 @@ function TerminalNodeType({
       width={data.width}
       height={data.height}
       terminalFontSize={terminalFontSize}
+      terminalFontFamily={terminalFontFamily}
       scrollback={scrollback}
       onClose={() => {
         void closeNodeRef.current(id)
@@ -224,6 +227,7 @@ interface WorkspaceCanvasNodeTypesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   terminalFontSize: number
+  terminalFontFamily: string | null
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -250,6 +254,7 @@ export function useWorkspaceCanvasNodeTypes({
   spacesRef,
   workspacePath,
   terminalFontSize,
+  terminalFontFamily,
   selectNode,
   clearNodeSelectionRef,
   closeNodeRef,
@@ -418,6 +423,7 @@ export function useWorkspaceCanvasNodeTypes({
             selected={selected}
             dragging={dragging}
             terminalFontSize={terminalFontSize}
+            terminalFontFamily={terminalFontFamily}
             selectNode={selectNode}
             closeNodeRef={closeNodeRef}
             resizeNodeRef={resizeNodeRef}
