@@ -4,6 +4,7 @@ import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
 import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
+import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import {
   resolveWorkspaceNodeSnapCandidateRects,
   unionWorkspaceNodeRects,
@@ -473,7 +474,7 @@ export function useWorkspaceCanvasApplyNodeChanges({
       nodesRef.current = nextNodes
       onNodesChange(nextNodes)
       if (shouldSyncLayout) {
-        window.dispatchEvent(new Event('cove:terminal-layout-sync'))
+        window.dispatchEvent(new Event(TERMINAL_LAYOUT_SYNC_EVENT))
       }
     },
     [

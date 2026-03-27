@@ -6,6 +6,7 @@ import { useScrollbackStore } from '../../../store/useScrollbackStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollbackSchedule'
+import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
 import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
@@ -110,7 +111,7 @@ export function useWorkspaceCanvasNodesStore({
       onNodesChange(nextNodes)
 
       if (options.syncLayout ?? true) {
-        window.dispatchEvent(new Event('cove:terminal-layout-sync'))
+        window.dispatchEvent(new Event(TERMINAL_LAYOUT_SYNC_EVENT))
       }
     },
     [onNodesChange],
