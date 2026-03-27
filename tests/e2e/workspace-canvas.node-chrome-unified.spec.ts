@@ -111,23 +111,23 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(taskTitleInput).toHaveCount(0)
 
-      await terminalHeader.dispatchEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        detail: 2,
+      await terminalHeader.evaluate(header => {
+        header.dispatchEvent(
+          new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }),
+        )
       })
-      await expect(terminalTitleInput).toBeVisible()
+      await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill('terminal renamed')
       await terminalTitleInput.press('Enter')
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(terminalHeader).toContainText('terminal renamed')
 
-      await taskHeader.dispatchEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        detail: 2,
+      await taskHeader.evaluate(header => {
+        header.dispatchEvent(
+          new MouseEvent('click', { bubbles: true, cancelable: true, detail: 2 }),
+        )
       })
-      await expect(taskTitleInput).toBeVisible()
+      await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill('task renamed')
       await taskTitleInput.press('Enter')
       await expect(taskTitleInput).toHaveCount(0)

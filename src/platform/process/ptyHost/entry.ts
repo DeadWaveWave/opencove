@@ -133,7 +133,9 @@ function shutdown(request: PtyHostShutdownRequest): void {
 
 function crash(request: PtyHostCrashRequest): void {
   void request
-  process.abort()
+  // `process.abort()` can be slow/flaky on Linux CI (core dump generation). We only need a
+  // deterministic host termination signal to validate supervisor crash recovery.
+  process.exit(1)
 }
 
 parentPort.on('message', messageEvent => {
