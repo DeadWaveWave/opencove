@@ -156,7 +156,7 @@
 
 -   **Agent 关键指令与决策门槛**：`AGENTS.md`
 -   **架构标准（DDD + Clean）**：`docs/ARCHITECTURE.md`
--   **完全重构计划**：`docs/REFACTOR_PLAN.md`
+-   **Landing 重构落地规范**：`docs/LANDING_ARCHITECTURE.md`
 -   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/PERSISTENCE.md`
 -   **UI 开发标准**：
