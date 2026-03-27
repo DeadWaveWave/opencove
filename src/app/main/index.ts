@@ -9,6 +9,8 @@ import { setRuntimeIconTestState } from './iconTestHarness'
 import { resolveRuntimeIconPath } from './runtimeIcon'
 import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { shouldEnableWaylandIme } from './waylandIme'
+import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
+import { createPtyRuntime } from '../../contexts/terminal/presentation/main-ipc/runtime'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
@@ -377,9 +379,12 @@ app.whenReady().then(() => {
     return
   }
 
-  ipcDisposable = registerIpcHandlers()
+  const approvedWorkspaces = createApprovedWorkspaceStore()
+  const ptyRuntime = createPtyRuntime()
+
+  ipcDisposable = registerIpcHandlers({ approvedWorkspaces, ptyRuntime })
   if (process.env.NODE_ENV !== 'test') {
-    controlSurfaceDisposable = registerControlSurfaceServer()
+    controlSurfaceDisposable = registerControlSurfaceServer({ approvedWorkspaces, ptyRuntime })
   }
 
   createWindow()

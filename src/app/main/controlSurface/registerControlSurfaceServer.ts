@@ -117,7 +117,10 @@ async function removeConnectionFile(): Promise<void> {
   await rm(filePath, { force: true })
 }
 
-export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
+export function registerControlSurfaceServer(deps?: {
+  approvedWorkspaces?: ReturnType<typeof createApprovedWorkspaceStore>
+  ptyRuntime?: ReturnType<typeof createPtyRuntime>
+}): ControlSurfaceServerDisposable {
   const token = randomBytes(32).toString('base64url')
 
   const ctx: ControlSurfaceContext = {
@@ -144,8 +147,9 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
   }
 
   const controlSurface = createControlSurface()
-  const approvedWorkspaces = createApprovedWorkspaceStore()
-  const ptyRuntime = createPtyRuntime()
+  const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
+  const ownsPtyRuntime = !deps?.ptyRuntime
+  const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
   registerSystemHandlers(controlSurface)
   registerProjectHandlers(controlSurface, getPersistenceStore)
   registerSpaceHandlers(controlSurface, getPersistenceStore)
@@ -263,7 +267,9 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
         }
 
         try {
-          ptyRuntime.dispose()
+          if (ownsPtyRuntime) {
+            ptyRuntime.dispose()
+          }
         } catch {
           // ignore
         }

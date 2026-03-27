@@ -22,9 +22,12 @@ import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHand
 
 export type { IpcRegistrationDisposable } from './types'
 
-export function registerIpcHandlers(): IpcRegistrationDisposable {
-  const ptyRuntime = createPtyRuntime()
-  const approvedWorkspaces = createApprovedWorkspaceStore()
+export function registerIpcHandlers(deps?: {
+  ptyRuntime?: ReturnType<typeof createPtyRuntime>
+  approvedWorkspaces?: ReturnType<typeof createApprovedWorkspaceStore>
+}): IpcRegistrationDisposable {
+  const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
+  const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const appUpdateService = createAppUpdateService()
   const releaseNotesService = createReleaseNotesService()
 
