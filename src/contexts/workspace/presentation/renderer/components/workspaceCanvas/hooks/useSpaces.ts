@@ -163,6 +163,7 @@ export function useWorkspaceCanvasSpaces({
 
   const { createSpaceFromSelectedNodes } = useWorkspaceCanvasCreateSpace({
     workspacePath,
+    reactFlow,
     nodesRef,
     setNodes,
     spacesRef,

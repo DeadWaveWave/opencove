@@ -172,6 +172,7 @@ function printUsage() {
   process.stdout.write(`  opencove ping [--pretty]\n`)
   process.stdout.write(`  opencove project list [--pretty]\n`)
   process.stdout.write(`  opencove space list [--project <id>] [--pretty]\n\n`)
+  process.stdout.write(`  opencove space get --space <id> [--pretty]\n\n`)
   process.stdout.write(`Environment:\n`)
   process.stdout.write(`  OPENCOVE_USER_DATA_DIR=/path/to/userData (optional override)\n`)
 }
@@ -252,6 +253,30 @@ async function main() {
     const { result } = await invokeControlSurface(
       connection,
       { kind: 'query', id: 'space.list', payload },
+      { timeoutMs: 2500 },
+    )
+
+    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+    process.stdout.write(`${output}\n`)
+
+    if (result && result.ok === false) {
+      process.exit(1)
+    }
+
+    return
+  }
+
+  if (command === 'space' && args[1] === 'get') {
+    const spaceId = readFlagValue(args, '--space')
+    if (!spaceId) {
+      process.stderr.write('[opencove] missing required flag: --space <id>\n')
+      printUsage()
+      process.exit(2)
+    }
+
+    const { result } = await invokeControlSurface(
+      connection,
+      { kind: 'query', id: 'space.get', payload: { spaceId } },
       { timeoutMs: 2500 },
     )
 

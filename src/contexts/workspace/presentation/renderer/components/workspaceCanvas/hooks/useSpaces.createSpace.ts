@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { Node } from '@xyflow/react'
+import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type {
@@ -22,6 +22,7 @@ type SetNodes = (
 
 export function useWorkspaceCanvasCreateSpace({
   workspacePath,
+  reactFlow,
   nodesRef,
   setNodes,
   spacesRef,
@@ -34,6 +35,7 @@ export function useWorkspaceCanvasCreateSpace({
   onShowMessage,
 }: {
   workspacePath: string
+  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
@@ -317,10 +319,14 @@ export function useWorkspaceCanvasCreateSpace({
   )
 
   const createSpaceFromSelectedNodes = useCallback(() => {
+    const selectedIdsRefValue = selectedNodeIdsRef.current
     const selectedIds =
-      selectedNodeIdsRef.current.length > 0
-        ? selectedNodeIdsRef.current
-        : nodesRef.current.filter(node => node.selected).map(node => node.id)
+      selectedIdsRefValue.length > 0
+        ? selectedIdsRefValue
+        : reactFlow
+            .getNodes()
+            .filter(node => node.selected)
+            .map(node => node.id)
     if (selectedIds.length === 0) {
       setContextMenu(null)
       return
@@ -330,7 +336,7 @@ export function useWorkspaceCanvasCreateSpace({
       nodeIds: selectedIds,
       rect: null,
     })
-  }, [createSpace, nodesRef, selectedNodeIdsRef, setContextMenu])
+  }, [createSpace, reactFlow, selectedNodeIdsRef, setContextMenu])
 
   return {
     createSpaceFromSelectedNodes,

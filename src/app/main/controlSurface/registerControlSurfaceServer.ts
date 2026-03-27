@@ -6,7 +6,11 @@ import { app } from 'electron'
 import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
 import type { ControlSurfaceInvokeResult } from '../../../shared/contracts/controlSurface'
 import type {
+  CanvasNodeKind,
+  CanvasNodeSummary,
   ControlSurfacePingResult,
+  GetSpaceInput,
+  GetSpaceResult,
   ListProjectsResult,
   ListSpacesInput,
   ListSpacesResult,
@@ -37,6 +41,33 @@ export interface ControlSurfaceServerDisposable {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
+}
+
+function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
+  switch (kind) {
+    case 'terminal':
+    case 'agent':
+    case 'task':
+    case 'note':
+    case 'image':
+      return kind
+    default:
+      return 'unknown'
+  }
+}
+
+function toNodeSummary(node: {
+  id: string
+  kind: unknown
+  title: unknown
+  status?: unknown
+}): CanvasNodeSummary {
+  return {
+    id: node.id,
+    kind: normalizeCanvasNodeKind(node.kind),
+    title: typeof node.title === 'string' ? node.title : '',
+    ...(typeof node.status === 'string' || node.status === null ? { status: node.status } : {}),
+  }
 }
 
 function buildUnauthorizedResult(): ControlSurfaceInvokeResult<unknown> {
@@ -150,6 +181,30 @@ function normalizeListSpacesPayload(payload: unknown): ListSpacesInput {
   return { projectId }
 }
 
+function normalizeGetSpacePayload(payload: unknown): GetSpaceInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for space.get.',
+    })
+  }
+
+  const spaceIdRaw = payload.spaceId
+  if (typeof spaceIdRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for space.get spaceId.',
+    })
+  }
+
+  const spaceId = spaceIdRaw.trim()
+  if (spaceId.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Missing payload for space.get spaceId.',
+    })
+  }
+
+  return { spaceId }
+}
+
 function registerDefaultHandlers({
   controlSurface,
   getPersistenceStore,
@@ -206,15 +261,60 @@ function registerDefaultHandlers({
           ? (normalized.workspaces.find(item => item.id === effectiveProjectId) ?? null)
           : null
 
+      const nodeById = new Map((workspace?.nodes ?? []).map(node => [node.id, node]))
+
       return {
         projectId: workspace?.id ?? effectiveProjectId,
+        activeSpaceId: workspace?.activeSpaceId ?? null,
         spaces: (workspace?.spaces ?? []).map(space => ({
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
           nodeIds: space.nodeIds,
+          nodes: space.nodeIds.map(nodeId => {
+            const node = nodeById.get(nodeId)
+            return node ? toNodeSummary(node) : { id: nodeId, kind: 'unknown', title: '' }
+          }),
         })),
       }
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('space.get', {
+    kind: 'query',
+    validate: normalizeGetSpacePayload,
+    handle: async (_ctx, payload): Promise<GetSpaceResult> => {
+      const store = await getPersistenceStore()
+      const normalized = normalizePersistedAppState(await store.readAppState())
+      const workspaces = normalized?.workspaces ?? []
+
+      for (const workspace of workspaces) {
+        const space = workspace.spaces.find(candidate => candidate.id === payload.spaceId) ?? null
+        if (!space) {
+          continue
+        }
+
+        const nodeById = new Map(workspace.nodes.map(node => [node.id, node]))
+        return {
+          projectId: workspace.id,
+          activeSpaceId: workspace.activeSpaceId,
+          space: {
+            id: space.id,
+            name: space.name,
+            directoryPath: space.directoryPath,
+            nodeIds: space.nodeIds,
+            nodes: space.nodeIds.map(nodeId => {
+              const node = nodeById.get(nodeId)
+              return node ? toNodeSummary(node) : { id: nodeId, kind: 'unknown', title: '' }
+            }),
+          },
+        }
+      }
+
+      throw createAppError('space.not_found', {
+        debugMessage: `space.get: unknown space id: ${payload.spaceId}`,
+      })
     },
     defaultErrorCode: 'common.unexpected',
   })
