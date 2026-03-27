@@ -164,6 +164,8 @@
 -   **Agent 关键指令与决策门槛**：`AGENTS.md`
 -   **架构标准（DDD + Clean）**：`docs/ARCHITECTURE.md`
 -   **Landing 重构落地规范**：`docs/LANDING_ARCHITECTURE.md`
+-   **统一控制面（command/query/event）**：`docs/CONTROL_SURFACE.md`
+-   **CLI 规范**：`docs/CLI.md`
 -   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/PERSISTENCE.md`
 -   **UI 开发标准**：
