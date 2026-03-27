@@ -3,8 +3,17 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { app } from 'electron'
-import { createAppErrorDescriptor } from '../../../shared/errors/appError'
+import { createAppError, createAppErrorDescriptor } from '../../../shared/errors/appError'
 import type { ControlSurfaceInvokeResult } from '../../../shared/contracts/controlSurface'
+import type {
+  ControlSurfacePingResult,
+  ListProjectsResult,
+  ListSpacesInput,
+  ListSpacesResult,
+} from '../../../shared/contracts/dto'
+import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
+import { createPersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
+import { normalizePersistedAppState } from '../../../platform/persistence/sqlite/normalize'
 import { createControlSurface } from './controlSurface'
 import { normalizeInvokeRequest } from './validate'
 import type { ControlSurfaceContext } from './types'
@@ -24,6 +33,10 @@ export interface ControlSurfaceConnectionInfo {
 
 export interface ControlSurfaceServerDisposable {
   dispose: () => void
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object'
 }
 
 function buildUnauthorizedResult(): ControlSurfaceInvokeResult<unknown> {
@@ -107,15 +120,102 @@ async function removeConnectionFile(): Promise<void> {
   await rm(filePath, { force: true })
 }
 
-function registerDefaultHandlers(controlSurface: ReturnType<typeof createControlSurface>): void {
+function normalizeListSpacesPayload(payload: unknown): ListSpacesInput {
+  if (payload === null || payload === undefined) {
+    return { projectId: null }
+  }
+
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for space.list.',
+    })
+  }
+
+  const projectIdRaw = payload.projectId
+  if (projectIdRaw === null || projectIdRaw === undefined) {
+    return { projectId: null }
+  }
+
+  if (typeof projectIdRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for space.list projectId.',
+    })
+  }
+
+  const projectId = projectIdRaw.trim()
+  if (projectId.length === 0) {
+    return { projectId: null }
+  }
+
+  return { projectId }
+}
+
+function registerDefaultHandlers({
+  controlSurface,
+  getPersistenceStore,
+}: {
+  controlSurface: ReturnType<typeof createControlSurface>
+  getPersistenceStore: () => Promise<PersistenceStore>
+}): void {
   controlSurface.register('system.ping', {
     kind: 'query',
     validate: payload => payload ?? null,
-    handle: ctx => ({
+    handle: (ctx): ControlSurfacePingResult => ({
       ok: true,
       now: ctx.now().toISOString(),
       pid: process.pid,
     }),
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('project.list', {
+    kind: 'query',
+    validate: payload => payload ?? null,
+    handle: async (): Promise<ListProjectsResult> => {
+      const store = await getPersistenceStore()
+      const normalized = normalizePersistedAppState(await store.readAppState())
+      const workspaces = normalized?.workspaces ?? []
+
+      return {
+        activeProjectId: normalized?.activeWorkspaceId ?? null,
+        projects: workspaces.map(workspace => ({
+          id: workspace.id,
+          name: workspace.name,
+          path: workspace.path,
+          worktreesRoot: workspace.worktreesRoot,
+          activeSpaceId: workspace.activeSpaceId,
+        })),
+      }
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('space.list', {
+    kind: 'query',
+    validate: normalizeListSpacesPayload,
+    handle: async (_ctx, payload): Promise<ListSpacesResult> => {
+      const store = await getPersistenceStore()
+      const normalized = normalizePersistedAppState(await store.readAppState())
+
+      const activeProjectId = normalized?.activeWorkspaceId ?? null
+      const requestedProjectId = payload.projectId ?? null
+      const effectiveProjectId = requestedProjectId ?? activeProjectId
+
+      const workspace =
+        effectiveProjectId && normalized
+          ? (normalized.workspaces.find(item => item.id === effectiveProjectId) ?? null)
+          : null
+
+      return {
+        projectId: workspace?.id ?? effectiveProjectId,
+        spaces: (workspace?.spaces ?? []).map(space => ({
+          id: space.id,
+          name: space.name,
+          directoryPath: space.directoryPath,
+          nodeIds: space.nodeIds,
+        })),
+      }
+    },
     defaultErrorCode: 'common.unexpected',
   })
 }
@@ -127,8 +227,27 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
     now: () => new Date(),
   }
 
+  let persistenceStorePromise: Promise<PersistenceStore> | null = null
+  const getPersistenceStore = async (): Promise<PersistenceStore> => {
+    if (persistenceStorePromise) {
+      return await persistenceStorePromise
+    }
+
+    const dbPath = resolve(app.getPath('userData'), 'opencove.db')
+    const nextPromise = createPersistenceStore({ dbPath }).catch(error => {
+      if (persistenceStorePromise === nextPromise) {
+        persistenceStorePromise = null
+      }
+
+      throw error
+    })
+
+    persistenceStorePromise = nextPromise
+    return await persistenceStorePromise
+  }
+
   const controlSurface = createControlSurface()
-  registerDefaultHandlers(controlSurface)
+  registerDefaultHandlers({ controlSurface, getPersistenceStore })
 
   let closed = false
   let closeRequested = false
@@ -207,6 +326,9 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
       closeRequested = true
 
       void (async () => {
+        const storePromise = persistenceStorePromise
+        persistenceStorePromise = null
+
         try {
           await pendingConnectionWrite
         } catch {
@@ -226,6 +348,14 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
         } catch {
           closed = true
         }
+
+        storePromise
+          ?.then(store => {
+            store.dispose()
+          })
+          .catch(() => {
+            // ignore
+          })
       })()
     },
   }

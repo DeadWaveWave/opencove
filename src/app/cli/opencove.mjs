@@ -169,9 +169,25 @@ async function invokeControlSurface(connection, request, options) {
 function printUsage() {
   process.stdout.write(`OpenCove CLI (dev)\n\n`)
   process.stdout.write(`Usage:\n`)
-  process.stdout.write(`  opencove ping [--pretty]\n\n`)
+  process.stdout.write(`  opencove ping [--pretty]\n`)
+  process.stdout.write(`  opencove project list [--pretty]\n`)
+  process.stdout.write(`  opencove space list [--project <id>] [--pretty]\n\n`)
   process.stdout.write(`Environment:\n`)
   process.stdout.write(`  OPENCOVE_USER_DATA_DIR=/path/to/userData (optional override)\n`)
+}
+
+function readFlagValue(args, flag) {
+  const index = args.indexOf(flag)
+  if (index === -1) {
+    return null
+  }
+
+  const next = args[index + 1]
+  if (!next || next.startsWith('-')) {
+    return null
+  }
+
+  return next.trim() || null
 }
 
 async function main() {
@@ -199,6 +215,43 @@ async function main() {
     const { result } = await invokeControlSurface(
       connection,
       { kind: 'query', id: 'system.ping', payload: null },
+      { timeoutMs: 2500 },
+    )
+
+    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+    process.stdout.write(`${output}\n`)
+
+    if (result && result.ok === false) {
+      process.exit(1)
+    }
+
+    return
+  }
+
+  if (command === 'project' && args[1] === 'list') {
+    const { result } = await invokeControlSurface(
+      connection,
+      { kind: 'query', id: 'project.list', payload: null },
+      { timeoutMs: 2500 },
+    )
+
+    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+    process.stdout.write(`${output}\n`)
+
+    if (result && result.ok === false) {
+      process.exit(1)
+    }
+
+    return
+  }
+
+  if (command === 'space' && args[1] === 'list') {
+    const projectId = readFlagValue(args, '--project')
+    const payload = projectId ? { projectId } : null
+
+    const { result } = await invokeControlSurface(
+      connection,
+      { kind: 'query', id: 'space.list', payload },
       { timeoutMs: 2500 },
     )
 
