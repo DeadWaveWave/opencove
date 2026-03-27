@@ -7,6 +7,8 @@ import type {
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import { suggestTaskTitle } from '../../infrastructure/cli/TaskTitleGenerator'
+import type { TaskTitlePort } from '../../application/ports'
+import { suggestTaskTitleUseCase } from '../../application/usecases'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { normalizeSuggestTaskTitlePayload } from './validate'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -14,6 +16,10 @@ import { createAppError } from '../../../../shared/errors/appError'
 export function registerTaskIpcHandlers(
   approvedWorkspaces: ApprovedWorkspaceStore,
 ): IpcRegistrationDisposable {
+  const taskTitlePort: TaskTitlePort = {
+    suggestTitle: async input => await suggestTaskTitle(input),
+  }
+
   registerHandledIpc(
     IPC_CHANNELS.taskSuggestTitle,
     async (_event, payload: SuggestTaskTitleInput): Promise<SuggestTaskTitleResult> => {
@@ -24,7 +30,7 @@ export function registerTaskIpcHandlers(
           debugMessage: 'task:suggest-title cwd is outside approved workspaces',
         })
       }
-      return await suggestTaskTitle(normalized)
+      return await suggestTaskTitleUseCase(taskTitlePort, normalized)
     },
     { defaultErrorCode: 'task.suggest_title_failed' },
   )
