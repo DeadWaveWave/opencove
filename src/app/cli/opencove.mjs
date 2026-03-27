@@ -177,6 +177,17 @@ function printUsage() {
   process.stdout.write(`  opencove fs write --uri <uri> --content <text> [--pretty]\n`)
   process.stdout.write(`  opencove fs stat --uri <uri> [--pretty]\n`)
   process.stdout.write(`  opencove fs ls --uri <uri> [--pretty]\n\n`)
+  process.stdout.write(`  opencove worktree list [--project <id>] [--pretty]\n`)
+  process.stdout.write(`  opencove worktree create --space <id> [--name <branch>] [--pretty]\n`)
+  process.stdout.write(
+    `  opencove worktree archive --space <id> [--force] [--delete-branch] [--pretty]\n\n`,
+  )
+  process.stdout.write(
+    `  opencove session run-agent --space <id> --prompt <text> [--provider <id>] [--model <id>] [--pretty]\n`,
+  )
+  process.stdout.write(`  opencove session get --session <id> [--pretty]\n`)
+  process.stdout.write(`  opencove session final --session <id> [--pretty]\n`)
+  process.stdout.write(`  opencove session kill --session <id> [--pretty]\n\n`)
   process.stdout.write(`Environment:\n`)
   process.stdout.write(`  OPENCOVE_USER_DATA_DIR=/path/to/userData (optional override)\n`)
 }
@@ -193,6 +204,33 @@ function readFlagValue(args, flag) {
   }
 
   return next.trim() || null
+}
+
+function exitWithUsage(message) {
+  process.stderr.write(message)
+  printUsage()
+  process.exit(2)
+}
+
+function requireFlagValue(args, flag) {
+  const value = readFlagValue(args, flag)
+  if (!value) {
+    exitWithUsage(`[opencove] missing required flag: ${flag} <value>\n`)
+  }
+
+  return value
+}
+
+async function invokeAndPrint(connection, request, { pretty, timeoutMs = 2500 } = {}) {
+  const { result } = await invokeControlSurface(connection, request, { timeoutMs })
+  const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+  process.stdout.write(`${output}\n`)
+
+  if (result && result.ok === false) {
+    process.exit(1)
+  }
+
+  return result
 }
 
 async function main() {
@@ -217,35 +255,21 @@ async function main() {
   }
 
   if (command === 'ping') {
-    const { result } = await invokeControlSurface(
+    await invokeAndPrint(
       connection,
       { kind: 'query', id: 'system.ping', payload: null },
-      { timeoutMs: 2500 },
+      { pretty },
     )
-
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
-
-    if (result && result.ok === false) {
-      process.exit(1)
-    }
 
     return
   }
 
   if (command === 'project' && args[1] === 'list') {
-    const { result } = await invokeControlSurface(
+    await invokeAndPrint(
       connection,
       { kind: 'query', id: 'project.list', payload: null },
-      { timeoutMs: 2500 },
+      { pretty },
     )
-
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
-
-    if (result && result.ok === false) {
-      process.exit(1)
-    }
 
     return
   }
@@ -254,145 +278,163 @@ async function main() {
     const projectId = readFlagValue(args, '--project')
     const payload = projectId ? { projectId } : null
 
-    const { result } = await invokeControlSurface(
-      connection,
-      { kind: 'query', id: 'space.list', payload },
-      { timeoutMs: 2500 },
-    )
-
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
-
-    if (result && result.ok === false) {
-      process.exit(1)
-    }
+    await invokeAndPrint(connection, { kind: 'query', id: 'space.list', payload }, { pretty })
 
     return
   }
 
   if (command === 'space' && args[1] === 'get') {
-    const spaceId = readFlagValue(args, '--space')
-    if (!spaceId) {
-      process.stderr.write('[opencove] missing required flag: --space <id>\n')
-      printUsage()
-      process.exit(2)
-    }
-
-    const { result } = await invokeControlSurface(
+    const spaceId = requireFlagValue(args, '--space')
+    await invokeAndPrint(
       connection,
       { kind: 'query', id: 'space.get', payload: { spaceId } },
-      { timeoutMs: 2500 },
+      { pretty },
     )
-
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
-
-    if (result && result.ok === false) {
-      process.exit(1)
-    }
 
     return
   }
 
   if (command === 'fs' && args[1] === 'read') {
-    const uri = readFlagValue(args, '--uri')
-    if (!uri) {
-      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
-      printUsage()
-      process.exit(2)
-    }
-
-    const { result } = await invokeControlSurface(
+    const uri = requireFlagValue(args, '--uri')
+    await invokeAndPrint(
       connection,
       { kind: 'query', id: 'filesystem.readFileText', payload: { uri } },
-      { timeoutMs: 2500 },
+      { pretty },
     )
-
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
-
-    if (result && result.ok === false) {
-      process.exit(1)
-    }
 
     return
   }
 
   if (command === 'fs' && args[1] === 'write') {
-    const uri = readFlagValue(args, '--uri')
-    if (!uri) {
-      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
-      printUsage()
-      process.exit(2)
-    }
-
-    const content = readFlagValue(args, '--content')
-    if (content === null) {
-      process.stderr.write('[opencove] missing required flag: --content <text>\n')
-      printUsage()
-      process.exit(2)
-    }
-
-    const { result } = await invokeControlSurface(
+    const uri = requireFlagValue(args, '--uri')
+    const content = requireFlagValue(args, '--content')
+    await invokeAndPrint(
       connection,
       { kind: 'command', id: 'filesystem.writeFileText', payload: { uri, content } },
-      { timeoutMs: 2500 },
+      { pretty },
     )
-
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
-
-    if (result && result.ok === false) {
-      process.exit(1)
-    }
 
     return
   }
 
   if (command === 'fs' && args[1] === 'stat') {
-    const uri = readFlagValue(args, '--uri')
-    if (!uri) {
-      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
-      printUsage()
-      process.exit(2)
-    }
-
-    const { result } = await invokeControlSurface(
+    const uri = requireFlagValue(args, '--uri')
+    await invokeAndPrint(
       connection,
       { kind: 'query', id: 'filesystem.stat', payload: { uri } },
-      { timeoutMs: 2500 },
+      { pretty },
     )
-
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
-
-    if (result && result.ok === false) {
-      process.exit(1)
-    }
 
     return
   }
 
   if (command === 'fs' && args[1] === 'ls') {
-    const uri = readFlagValue(args, '--uri')
-    if (!uri) {
-      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
-      printUsage()
-      process.exit(2)
-    }
-
-    const { result } = await invokeControlSurface(
+    const uri = requireFlagValue(args, '--uri')
+    await invokeAndPrint(
       connection,
       { kind: 'query', id: 'filesystem.readDirectory', payload: { uri } },
-      { timeoutMs: 2500 },
+      { pretty },
     )
 
-    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
-    process.stdout.write(`${output}\n`)
+    return
+  }
 
-    if (result && result.ok === false) {
-      process.exit(1)
+  if (command === 'worktree' && args[1] === 'list') {
+    const projectId = readFlagValue(args, '--project')
+    const payload = projectId ? { projectId } : null
+
+    await invokeAndPrint(connection, { kind: 'query', id: 'worktree.list', payload }, { pretty })
+
+    return
+  }
+
+  if (command === 'worktree' && args[1] === 'create') {
+    const spaceId = requireFlagValue(args, '--space')
+    const name = readFlagValue(args, '--name')
+    const payload = name ? { spaceId, name } : { spaceId }
+
+    await invokeAndPrint(
+      connection,
+      { kind: 'command', id: 'worktree.create', payload },
+      { pretty },
+    )
+
+    return
+  }
+
+  if (command === 'worktree' && args[1] === 'archive') {
+    const spaceId = requireFlagValue(args, '--space')
+    const force = args.includes('--force')
+    const deleteBranch = args.includes('--delete-branch')
+
+    const payload = {
+      spaceId,
+      ...(force ? { force: true } : {}),
+      ...(deleteBranch ? { deleteBranch: true } : {}),
     }
+
+    await invokeAndPrint(
+      connection,
+      { kind: 'command', id: 'worktree.archive', payload },
+      { pretty },
+    )
+
+    return
+  }
+
+  if (command === 'session' && args[1] === 'run-agent') {
+    const spaceId = requireFlagValue(args, '--space')
+    const prompt = requireFlagValue(args, '--prompt')
+    const provider = readFlagValue(args, '--provider')
+    const model = readFlagValue(args, '--model')
+
+    await invokeAndPrint(
+      connection,
+      {
+        kind: 'command',
+        id: 'session.launchAgent',
+        payload: {
+          spaceId,
+          prompt,
+          ...(provider ? { provider } : {}),
+          ...(model ? { model } : {}),
+        },
+      },
+      { pretty, timeoutMs: 10_000 },
+    )
+
+    return
+  }
+
+  if (command === 'session' && args[1] === 'get') {
+    const sessionId = requireFlagValue(args, '--session')
+    await invokeAndPrint(
+      connection,
+      { kind: 'query', id: 'session.get', payload: { sessionId } },
+      { pretty },
+    )
+
+    return
+  }
+
+  if (command === 'session' && args[1] === 'final') {
+    const sessionId = requireFlagValue(args, '--session')
+    await invokeAndPrint(
+      connection,
+      { kind: 'query', id: 'session.finalMessage', payload: { sessionId } },
+      { pretty, timeoutMs: 3_000 },
+    )
+
+    return
+  }
+
+  if (command === 'session' && args[1] === 'kill') {
+    const sessionId = requireFlagValue(args, '--session')
+    await invokeAndPrint(
+      connection,
+      { kind: 'command', id: 'session.kill', payload: { sessionId } },
+      { pretty },
+    )
 
     return
   }

@@ -4,6 +4,7 @@ export const APP_ERROR_CODES = [
   'common.unavailable',
   'common.unexpected',
   'space.not_found',
+  'session.not_found',
   'control_surface.unauthorized',
   'integration.github.unavailable',
   'integration.github.resolve_failed',

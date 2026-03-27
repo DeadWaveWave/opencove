@@ -94,6 +94,18 @@ export function TerminalNodeFrame({
         }
 
         if (
+          event.target instanceof Element &&
+          !event.target.closest('.terminal-node__terminal') &&
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement.closest('[data-cove-focus-scope=terminal]')
+        ) {
+          // Clicking terminal chrome (header/badges/close) should release terminal focus so that
+          // workspace-level shortcuts work deterministically (especially in E2E where terminals
+          // auto-focus on mount).
+          document.activeElement.blur()
+        }
+
+        if (
           event.detail === 2 &&
           event.target instanceof Element &&
           event.target.closest('.terminal-node__header') &&

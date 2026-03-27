@@ -15,6 +15,9 @@ import { registerProjectHandlers } from './handlers/projectHandlers'
 import { registerSpaceHandlers } from './handlers/spaceHandlers'
 import { registerFilesystemHandlers } from './handlers/filesystemHandlers'
 import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
+import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
+import { registerSessionHandlers } from './handlers/sessionHandlers'
+import { createPtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
 
 const CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
@@ -141,11 +144,22 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
   }
 
   const controlSurface = createControlSurface()
+  const approvedWorkspaces = createApprovedWorkspaceStore()
+  const ptyRuntime = createPtyRuntime()
   registerSystemHandlers(controlSurface)
   registerProjectHandlers(controlSurface, getPersistenceStore)
   registerSpaceHandlers(controlSurface, getPersistenceStore)
   registerFilesystemHandlers(controlSurface, {
-    approvedWorkspaces: createApprovedWorkspaceStore(),
+    approvedWorkspaces,
+  })
+  registerWorktreeHandlers(controlSurface, {
+    approvedWorkspaces,
+    getPersistenceStore,
+  })
+  registerSessionHandlers(controlSurface, {
+    approvedWorkspaces,
+    getPersistenceStore,
+    ptyRuntime,
   })
 
   let closed = false
@@ -246,6 +260,12 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
           })
         } catch {
           closed = true
+        }
+
+        try {
+          ptyRuntime.dispose()
+        } catch {
+          // ignore
         }
 
         storePromise

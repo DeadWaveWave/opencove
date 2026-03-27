@@ -8,6 +8,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
     'space.not_found': 'Space not found.',
+    'session.not_found': 'Session not found.',
     'control_surface.unauthorized': 'Unauthorized request.',
     'integration.github.unavailable': 'GitHub integration is unavailable.',
     'integration.github.resolve_failed': 'Unable to load pull request info.',
