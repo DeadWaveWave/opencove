@@ -13,6 +13,8 @@ import type { ControlSurfaceContext } from './types'
 import { registerSystemHandlers } from './handlers/systemHandlers'
 import { registerProjectHandlers } from './handlers/projectHandlers'
 import { registerSpaceHandlers } from './handlers/spaceHandlers'
+import { registerFilesystemHandlers } from './handlers/filesystemHandlers'
+import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 
 const CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
@@ -142,6 +144,9 @@ export function registerControlSurfaceServer(): ControlSurfaceServerDisposable {
   registerSystemHandlers(controlSurface)
   registerProjectHandlers(controlSurface, getPersistenceStore)
   registerSpaceHandlers(controlSurface, getPersistenceStore)
+  registerFilesystemHandlers(controlSurface, {
+    approvedWorkspaces: createApprovedWorkspaceStore(),
+  })
 
   let closed = false
   let closeRequested = false

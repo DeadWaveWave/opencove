@@ -173,6 +173,10 @@ function printUsage() {
   process.stdout.write(`  opencove project list [--pretty]\n`)
   process.stdout.write(`  opencove space list [--project <id>] [--pretty]\n\n`)
   process.stdout.write(`  opencove space get --space <id> [--pretty]\n\n`)
+  process.stdout.write(`  opencove fs read --uri <uri> [--pretty]\n`)
+  process.stdout.write(`  opencove fs write --uri <uri> --content <text> [--pretty]\n`)
+  process.stdout.write(`  opencove fs stat --uri <uri> [--pretty]\n`)
+  process.stdout.write(`  opencove fs ls --uri <uri> [--pretty]\n\n`)
   process.stdout.write(`Environment:\n`)
   process.stdout.write(`  OPENCOVE_USER_DATA_DIR=/path/to/userData (optional override)\n`)
 }
@@ -277,6 +281,109 @@ async function main() {
     const { result } = await invokeControlSurface(
       connection,
       { kind: 'query', id: 'space.get', payload: { spaceId } },
+      { timeoutMs: 2500 },
+    )
+
+    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+    process.stdout.write(`${output}\n`)
+
+    if (result && result.ok === false) {
+      process.exit(1)
+    }
+
+    return
+  }
+
+  if (command === 'fs' && args[1] === 'read') {
+    const uri = readFlagValue(args, '--uri')
+    if (!uri) {
+      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
+      printUsage()
+      process.exit(2)
+    }
+
+    const { result } = await invokeControlSurface(
+      connection,
+      { kind: 'query', id: 'filesystem.readFileText', payload: { uri } },
+      { timeoutMs: 2500 },
+    )
+
+    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+    process.stdout.write(`${output}\n`)
+
+    if (result && result.ok === false) {
+      process.exit(1)
+    }
+
+    return
+  }
+
+  if (command === 'fs' && args[1] === 'write') {
+    const uri = readFlagValue(args, '--uri')
+    if (!uri) {
+      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
+      printUsage()
+      process.exit(2)
+    }
+
+    const content = readFlagValue(args, '--content')
+    if (content === null) {
+      process.stderr.write('[opencove] missing required flag: --content <text>\n')
+      printUsage()
+      process.exit(2)
+    }
+
+    const { result } = await invokeControlSurface(
+      connection,
+      { kind: 'command', id: 'filesystem.writeFileText', payload: { uri, content } },
+      { timeoutMs: 2500 },
+    )
+
+    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+    process.stdout.write(`${output}\n`)
+
+    if (result && result.ok === false) {
+      process.exit(1)
+    }
+
+    return
+  }
+
+  if (command === 'fs' && args[1] === 'stat') {
+    const uri = readFlagValue(args, '--uri')
+    if (!uri) {
+      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
+      printUsage()
+      process.exit(2)
+    }
+
+    const { result } = await invokeControlSurface(
+      connection,
+      { kind: 'query', id: 'filesystem.stat', payload: { uri } },
+      { timeoutMs: 2500 },
+    )
+
+    const output = pretty ? JSON.stringify(result, null, 2) : JSON.stringify(result)
+    process.stdout.write(`${output}\n`)
+
+    if (result && result.ok === false) {
+      process.exit(1)
+    }
+
+    return
+  }
+
+  if (command === 'fs' && args[1] === 'ls') {
+    const uri = readFlagValue(args, '--uri')
+    if (!uri) {
+      process.stderr.write('[opencove] missing required flag: --uri <uri>\n')
+      printUsage()
+      process.exit(2)
+    }
+
+    const { result } = await invokeControlSurface(
+      connection,
+      { kind: 'query', id: 'filesystem.readDirectory', payload: { uri } },
       { timeoutMs: 2500 },
     )
 
