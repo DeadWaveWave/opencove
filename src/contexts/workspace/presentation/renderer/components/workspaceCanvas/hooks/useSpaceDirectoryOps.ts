@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
+import { computeSpaceDirectoryUpdate } from '@contexts/space/application/updateSpaceDirectory'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 
 export function useWorkspaceCanvasSpaceDirectoryOps({
@@ -44,49 +45,36 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
         renameSpaceTo?: string
       },
     ) => {
-      const targetSpace = spacesRef.current.find(space => space.id === spaceId) ?? null
-      if (!targetSpace) {
+      const result = computeSpaceDirectoryUpdate({
+        workspacePath,
+        spaces: spacesRef.current,
+        spaceId,
+        directoryPath,
+        options,
+      })
+      if (!result) {
         return
       }
 
-      const previousDirectoryPath =
-        targetSpace.directoryPath.trim().length > 0 ? targetSpace.directoryPath : workspacePath
-      const markNodeDirectoryMismatch = options?.markNodeDirectoryMismatch === true
-      const archiveSpace = options?.archiveSpace === true
-      const renameSpaceTo = options?.renameSpaceTo?.trim()
-      const targetNodeIds = new Set(targetSpace.nodeIds)
+      onSpacesChange(result.nextSpaces)
 
-      const nextSpaces = archiveSpace
-        ? spacesRef.current.filter(space => space.id !== spaceId)
-        : spacesRef.current.map(space =>
-            space.id === spaceId
-              ? {
-                  ...space,
-                  directoryPath,
-                  name: renameSpaceTo && renameSpaceTo.length > 0 ? renameSpaceTo : space.name,
-                }
-              : space,
-          )
-
-      onSpacesChange(nextSpaces)
-
-      if (archiveSpace && targetNodeIds.size > 0) {
+      if (result.archiveSpace && result.targetNodeIds.size > 0) {
         setNodes(prevNodes => {
-          const nextNodes = prevNodes.filter(node => !targetNodeIds.has(node.id))
+          const nextNodes = prevNodes.filter(node => !result.targetNodeIds.has(node.id))
           return nextNodes.length === prevNodes.length ? prevNodes : nextNodes
         })
-      } else if (markNodeDirectoryMismatch && targetNodeIds.size > 0) {
+      } else if (result.markNodeDirectoryMismatch && result.targetNodeIds.size > 0) {
         setNodes(
           prevNodes => {
             let hasChanged = false
 
             const nextNodes = prevNodes.map(node => {
-              if (!targetNodeIds.has(node.id)) {
+              if (!result.targetNodeIds.has(node.id)) {
                 return node
               }
 
               if (node.data.kind === 'agent' && node.data.agent) {
-                if (node.data.agent.expectedDirectory === directoryPath) {
+                if (node.data.agent.expectedDirectory === result.nextDirectoryPath) {
                   return node
                 }
 
@@ -97,7 +85,7 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
                     ...node.data,
                     agent: {
                       ...node.data.agent,
-                      expectedDirectory: directoryPath,
+                      expectedDirectory: result.nextDirectoryPath,
                     },
                   },
                 }
@@ -108,11 +96,11 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
                   typeof node.data.executionDirectory === 'string' &&
                   node.data.executionDirectory.trim().length > 0
                     ? node.data.executionDirectory
-                    : previousDirectoryPath
+                    : result.previousEffectiveDirectory
 
                 if (
                   node.data.executionDirectory === executionDirectory &&
-                  node.data.expectedDirectory === directoryPath
+                  node.data.expectedDirectory === result.nextDirectoryPath
                 ) {
                   return node
                 }
@@ -123,7 +111,7 @@ export function useWorkspaceCanvasSpaceDirectoryOps({
                   data: {
                     ...node.data,
                     executionDirectory,
-                    expectedDirectory: directoryPath,
+                    expectedDirectory: result.nextDirectoryPath,
                   },
                 }
               }
