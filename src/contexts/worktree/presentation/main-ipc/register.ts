@@ -20,6 +20,17 @@ import type {
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
+import type { GitWorktreePort } from '../../application/ports'
+import {
+  createGitWorktreeUseCase,
+  getGitDefaultBranchUseCase,
+  getGitStatusSummaryUseCase,
+  listGitBranchesUseCase,
+  listGitWorktreesUseCase,
+  removeGitWorktreeUseCase,
+  renameGitBranchUseCase,
+  suggestWorktreeNamesUseCase,
+} from '../../application/usecases'
 import {
   createGitWorktree,
   getGitStatusSummary,
@@ -45,6 +56,17 @@ import { createAppError } from '../../../../shared/errors/appError'
 export function registerWorktreeIpcHandlers(
   approvedWorkspaces: ApprovedWorkspaceStore,
 ): IpcRegistrationDisposable {
+  const gitWorktreePort: GitWorktreePort = {
+    listBranches: async input => await listGitBranches(input),
+    listWorktrees: async input => await listGitWorktrees(input),
+    getStatusSummary: async input => await getGitStatusSummary(input),
+    getDefaultBranch: async input => await getGitDefaultBranch(input),
+    createWorktree: async input => await createGitWorktree(input),
+    removeWorktree: async input => await removeGitWorktree(input),
+    renameBranch: async input => await renameGitBranch(input),
+    suggestNames: async input => await suggestWorktreeNames(input),
+  }
+
   registerHandledIpc(
     IPC_CHANNELS.worktreeListBranches,
     async (_event, payload: ListGitBranchesInput): Promise<ListGitBranchesResult> => {
@@ -56,7 +78,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      return await listGitBranches({ repoPath: normalized.repoPath })
+      return await listGitBranchesUseCase(gitWorktreePort, { repoPath: normalized.repoPath })
     },
     { defaultErrorCode: 'worktree.list_branches_failed' },
   )
@@ -72,7 +94,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      return await listGitWorktrees({ repoPath: normalized.repoPath })
+      return await listGitWorktreesUseCase(gitWorktreePort, { repoPath: normalized.repoPath })
     },
     { defaultErrorCode: 'worktree.list_worktrees_failed' },
   )
@@ -88,7 +110,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      return await getGitStatusSummary({ repoPath: normalized.repoPath })
+      return await getGitStatusSummaryUseCase(gitWorktreePort, { repoPath: normalized.repoPath })
     },
     { defaultErrorCode: 'worktree.status_summary_failed' },
   )
@@ -104,8 +126,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      const branch = await getGitDefaultBranch({ repoPath: normalized.repoPath })
-      return { branch }
+      return await getGitDefaultBranchUseCase(gitWorktreePort, { repoPath: normalized.repoPath })
     },
     { defaultErrorCode: 'worktree.get_default_branch_failed' },
   )
@@ -126,8 +147,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      const worktree = await createGitWorktree(normalized)
-      return { worktree }
+      return await createGitWorktreeUseCase(gitWorktreePort, normalized)
     },
     { defaultErrorCode: 'worktree.create_failed' },
   )
@@ -148,7 +168,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      return await removeGitWorktree(normalized)
+      return await removeGitWorktreeUseCase(gitWorktreePort, normalized)
     },
     { defaultErrorCode: 'worktree.remove_failed' },
   )
@@ -169,7 +189,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      await renameGitBranch(normalized)
+      await renameGitBranchUseCase(gitWorktreePort, normalized)
     },
     { defaultErrorCode: 'worktree.rename_branch_failed' },
   )
@@ -185,7 +205,7 @@ export function registerWorktreeIpcHandlers(
         })
       }
 
-      return await suggestWorktreeNames(normalized)
+      return await suggestWorktreeNamesUseCase(gitWorktreePort, normalized)
     },
     { defaultErrorCode: 'worktree.suggest_names_failed' },
   )
