@@ -457,7 +457,7 @@ describe('PersistenceStore', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(5)
+      expect(migratedState?.userVersion).toBe(6)
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
       expect(migratedState?.tables.get('workspaces')).toContain(
