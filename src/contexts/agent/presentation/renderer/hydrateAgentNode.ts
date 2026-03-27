@@ -135,10 +135,6 @@ export async function hydrateAgentNode({
 
   const shouldAutoResumeAgent =
     hasActiveAgentStatus && isResumeSessionBindingVerified(sanitizedAgent)
-  const shouldRelaunchBlankAgent =
-    hasActiveAgentStatus &&
-    !isResumeSessionBindingVerified(sanitizedAgent) &&
-    sanitizedAgent.prompt.trim().length === 0
 
   if (shouldAutoResumeAgent) {
     try {
@@ -184,49 +180,6 @@ export async function hydrateAgentNode({
         cwd: workspacePath,
         agent: sanitizedAgent,
         errorMessage: translate('messages.agentResumeFailed', { message: toErrorMessage(error) }),
-      })
-    }
-  }
-
-  if (shouldRelaunchBlankAgent) {
-    try {
-      const relaunchedAgent = await window.opencoveApi.agent.launch({
-        provider: sanitizedAgent.provider,
-        cwd: sanitizedAgent.executionDirectory,
-        prompt: sanitizedAgent.prompt,
-        mode: 'new',
-        model: sanitizedAgent.model,
-        agentFullAccess,
-        cols: 80,
-        rows: 24,
-      })
-
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          sessionId: relaunchedAgent.sessionId,
-          title: toAgentNodeTitle(sanitizedAgent.provider, relaunchedAgent.effectiveModel),
-          status: resolveInitialAgentRuntimeStatus(sanitizedAgent.prompt),
-          startedAt: new Date().toISOString(),
-          endedAt: null,
-          exitCode: null,
-          lastError: null,
-          scrollback: null,
-          agent: {
-            ...sanitizedAgent,
-            effectiveModel: relaunchedAgent.effectiveModel,
-            launchMode: relaunchedAgent.launchMode,
-            ...clearResumeSessionBinding(),
-          },
-        },
-      }
-    } catch (error) {
-      return fallbackToFailedAgentTerminal({
-        node,
-        cwd: sanitizedAgent.executionDirectory,
-        agent: sanitizedAgent,
-        errorMessage: translate('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
       })
     }
   }
