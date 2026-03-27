@@ -37,4 +37,3 @@ export interface ReadDirectoryResult {
 export interface StatInput {
   uri: string
 }
-

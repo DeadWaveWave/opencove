@@ -14,4 +14,3 @@ export function registerSystemHandlers(controlSurface: ControlSurface): void {
     defaultErrorCode: 'common.unexpected',
   })
 }
-

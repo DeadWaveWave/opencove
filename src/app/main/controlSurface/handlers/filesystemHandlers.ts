@@ -167,4 +167,3 @@ export function registerFilesystemHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 }
-

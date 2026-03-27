@@ -29,4 +29,3 @@ export function registerProjectHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 }
-

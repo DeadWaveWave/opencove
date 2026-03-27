@@ -174,4 +174,3 @@ export function registerSpaceHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 }
-
