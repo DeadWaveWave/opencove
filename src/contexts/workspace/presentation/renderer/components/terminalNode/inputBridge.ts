@@ -58,6 +58,17 @@ export function isWindowsTerminalPasteShortcut(
   return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
 }
 
+export function isMacTerminalPasteShortcut(
+  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  platformInfo: PlatformInfo | undefined = navigator,
+): boolean {
+  if (isWindowsPlatform(platformInfo) || event.ctrlKey || event.altKey) {
+    return false
+  }
+
+  return event.key.toLowerCase() === 'v' && event.metaKey && !event.shiftKey
+}
+
 function isTerminalFindShortcut(
   event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey'>,
 ): boolean {
@@ -195,7 +206,11 @@ export function handleTerminalCustomKeyEvent({
   }
 
   if (event.type !== 'keydown' || !isWindowsTerminalCopyShortcut(event, platformInfo)) {
-    if (event.type === 'keydown' && isWindowsTerminalPasteShortcut(event, platformInfo)) {
+    if (
+      event.type === 'keydown' &&
+      (isWindowsTerminalPasteShortcut(event, platformInfo) ||
+        isMacTerminalPasteShortcut(event, platformInfo))
+    ) {
       event.preventDefault()
       event.stopPropagation()
       void pasteClipboardText({ terminal })
