@@ -317,7 +317,10 @@ export function useWorkspaceCanvasCreateSpace({
   )
 
   const createSpaceFromSelectedNodes = useCallback(() => {
-    const selectedIds = selectedNodeIdsRef.current
+    const selectedIds =
+      selectedNodeIdsRef.current.length > 0
+        ? selectedNodeIdsRef.current
+        : nodesRef.current.filter(node => node.selected).map(node => node.id)
     if (selectedIds.length === 0) {
       setContextMenu(null)
       return
@@ -327,7 +330,7 @@ export function useWorkspaceCanvasCreateSpace({
       nodeIds: selectedIds,
       rect: null,
     })
-  }, [createSpace, selectedNodeIdsRef, setContextMenu])
+  }, [createSpace, nodesRef, selectedNodeIdsRef, setContextMenu])
 
   return {
     createSpaceFromSelectedNodes,
