@@ -341,8 +341,7 @@ export function useHydrateAppState({
 
       const hydrationPromise = Promise.allSettled(
         runtimeNodes.map(async node => {
-          const { agentFullAccess, defaultTerminalProfileId } =
-            useAppStore.getState().agentSettings
+          const { agentFullAccess, defaultTerminalProfileId } = useAppStore.getState().agentSettings
           const hydratedNode = await hydrateRuntimeNode({
             node,
             workspacePath: persistedWorkspace.path,
