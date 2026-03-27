@@ -58,7 +58,7 @@ function createRolloutFirstLineWithRecordTimestamp({
 
 describe('locateAgentResumeSessionId (codex)', () => {
   it('returns the uniquely matching session_meta candidate near launch time', async () => {
-    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
 
@@ -105,7 +105,7 @@ describe('locateAgentResumeSessionId (codex)', () => {
   })
 
   it('returns null when multiple same-cwd rollout candidates are plausible', async () => {
-    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
 
@@ -152,7 +152,7 @@ describe('locateAgentResumeSessionId (codex)', () => {
   })
 
   it('matches session_meta using the timestamp closest to startedAtMs', async () => {
-    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
 

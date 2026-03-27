@@ -19,7 +19,7 @@ function toDateDirectoryParts(timestampMs) {
 
 export async function createCodexSessionFile(cwd) {
   const startedAtMs = Date.now()
-  const sessionId = `cove-test-session-${startedAtMs}`
+  const sessionId = `opencove-test-session-${startedAtMs}`
   const [year, month, day] = toDateDirectoryParts(startedAtMs)
   const sessionFilePath = join(
     os.homedir(),
@@ -53,7 +53,7 @@ export async function appendCodexRecord(sessionFilePath, record, { newline = tru
 
 async function createClaudeSessionFile(cwd) {
   const startedAtMs = Date.now()
-  const sessionId = `cove-test-session-${startedAtMs}`
+  const sessionId = `opencove-test-session-${startedAtMs}`
   const sessionFilePath = join(
     os.homedir(),
     '.claude',

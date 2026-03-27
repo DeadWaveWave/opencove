@@ -84,7 +84,7 @@ test.describe('Recovery - Agent reopen', () => {
           restartedWindow.locator('.workspace-sidebar .workspace-agent-item'),
         ).toHaveCount(1)
         await expect(restartedWindow.locator('.terminal-node').first()).toContainText(
-          '[cove-test-agent] codex new',
+          '[opencove-test-agent] codex new',
         )
         await expect(
           restartedWindow.locator(
@@ -238,7 +238,7 @@ test.describe('Recovery - Agent reopen', () => {
           })
           .catch(() => undefined)
 
-        await expect(terminalNode).toContainText('[cove-test-agent] codex resume', {
+        await expect(terminalNode).toContainText('[opencove-test-agent] codex resume', {
           timeout: 20_000,
         })
 

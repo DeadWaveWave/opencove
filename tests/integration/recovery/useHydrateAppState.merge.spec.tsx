@@ -55,7 +55,7 @@ describe('useHydrateAppState merge behavior', () => {
       settings: {},
     }
 
-    storage.setItem('cove:m0:workspace-state', JSON.stringify(persistedState))
+    storage.setItem('opencove:m0:workspace-state', JSON.stringify(persistedState))
 
     const spawnDeferred = createDeferred<{ sessionId: string }>()
     const spawn = vi.fn(() => spawnDeferred.promise)
@@ -235,7 +235,7 @@ describe('useHydrateAppState merge behavior', () => {
       settings: {},
     }
 
-    storage.setItem('cove:m0:workspace-state', JSON.stringify(persistedState))
+    storage.setItem('opencove:m0:workspace-state', JSON.stringify(persistedState))
 
     const spawnDeferred1 = createDeferred<{ sessionId: string }>()
     const spawnDeferred2 = createDeferred<{ sessionId: string }>()

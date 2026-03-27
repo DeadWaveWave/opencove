@@ -9,7 +9,7 @@ import {
 } from './workspace-canvas.testUtils'
 
 export const testWorkspacePath = path.resolve(__dirname, '../../')
-export const storageKey = 'cove:m0:workspace-state'
+export const storageKey = 'opencove:m0:workspace-state'
 export const seededWorkspaceId = 'workspace-seeded'
 export { beginDragMouse, dragLocatorTo, dragMouse } from './workspace-canvas.gestures'
 export {

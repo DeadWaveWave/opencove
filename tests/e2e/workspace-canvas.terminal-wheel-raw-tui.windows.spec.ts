@@ -52,8 +52,8 @@ test.describe('Workspace Canvas - Terminal Wheel Raw TUI (Windows)', () => {
 
       expect(dispatched).toBe(true)
 
-      await expect(terminal).toContainText('[cove-test-wheel] wheel-up')
-      await expect(terminal).not.toContainText('[cove-test-wheel] timeout')
+      await expect(terminal).toContainText('[opencove-test-wheel] wheel-up')
+      await expect(terminal).not.toContainText('[opencove-test-wheel] timeout')
     } finally {
       await electronApp.close()
     }

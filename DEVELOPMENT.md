@@ -28,6 +28,12 @@
 7.  **结构优先于补丁 (Prefer Structural Clarity over Patch Accumulation)**: 不要等问题复发后才升级。只要任务本身已经暴露出 `多个 mutable state owner`、`边界/权限含混`、`同一入口承载多套竞争语义或解释路径`、或 `局部修补会制造隐藏/矛盾状态`，就应先收敛结构而不是继续叠 patch。
 8.  **Renderer 反馈统一用应用内消息，不用系统弹窗 (Use In-App Feedback, Not System Dialogs)**: Renderer 层禁止新增 `window.alert / confirm / prompt` 这类系统弹窗；统一复用应用内反馈组件，并按语义区分 `info / warning / error` 三个视觉层级，避免阻塞交互与平台观感割裂。
 
+### 命名与前缀 (Naming)
+
+- 对外/协议/持久化统一使用 `OpenCove` / `opencove`（例如 `window.opencoveApi`、`OPENCOVE_*`、`.opencove/`、`opencove.db`）。
+- UI 设计系统与样式命名空间保留 `cove` 前缀（例如 `--cove-*`、`data-cove-*`、`.cove-window`），作为稳定的内部约定。
+- 历史版本的 localStorage key 可能仍使用 `cove:m0:*` 前缀；当前实现会兼容读取并迁移。
+
 ### 架构执行触发器 (Architecture Execution Triggers)
 
 只保留最容易在代码演化中失控、且最值得前置约束的触发器：

@@ -129,7 +129,7 @@ describe('useHydrateAppState agent session restore', () => {
     const originalStartedAt = '2026-03-08T09:00:00.000Z'
 
     storage.setItem(
-      'cove:m0:workspace-state',
+      'opencove:m0:workspace-state',
       JSON.stringify(
         createPersistedState({
           prompt: '',
@@ -189,7 +189,7 @@ describe('useHydrateAppState agent session restore', () => {
     const storage = installMockStorage()
 
     storage.setItem(
-      'cove:m0:workspace-state',
+      'opencove:m0:workspace-state',
       JSON.stringify(
         createPersistedState({
           prompt: 'implement login flow',
@@ -241,7 +241,7 @@ describe('useHydrateAppState agent session restore', () => {
     const storage = installMockStorage()
 
     storage.setItem(
-      'cove:m0:workspace-state',
+      'opencove:m0:workspace-state',
       JSON.stringify(
         createPersistedState({
           prompt: 'implement login flow',

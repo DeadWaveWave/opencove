@@ -244,7 +244,7 @@ export function createSessionStateWatcherController({
 
       if (input.provider === 'opencode') {
         if (!input.opencodeBaseUrl) {
-          reportIssue(`[cove] state watcher missing opencode baseUrl for session ${sessionId}`)
+          reportIssue(`[opencove] state watcher missing opencode baseUrl for session ${sessionId}`)
           return
         }
 
@@ -259,7 +259,7 @@ export function createSessionStateWatcherController({
             const detail =
               error instanceof Error ? `${error.name}: ${error.message}` : 'unknown watcher error'
             reportIssue(
-              `[cove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
+              `[opencove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
             )
             clearSessionStateWatcher(sessionId)
             scheduleSessionStateWatcherAttempt(
@@ -309,7 +309,7 @@ export function createSessionStateWatcherController({
         const detail =
           error instanceof Error ? `${error.name}: ${error.message}` : 'unknown watcher error'
         reportIssue(
-          `[cove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
+          `[opencove] state watcher failed for ${input.provider} session ${sessionId}: ${detail}`,
         )
         clearSessionStateWatcher(sessionId)
         scheduleSessionStateWatcherAttempt(

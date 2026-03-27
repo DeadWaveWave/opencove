@@ -90,7 +90,7 @@ export async function runPtyHostStressTest(): Promise<void> {
   }
 
   if (process.platform === 'win32') {
-    throw new Error('[cove] pty-host stress currently supports only macOS/Linux')
+    throw new Error('[opencove] pty-host stress currently supports only macOS/Linux')
   }
 
   const sessionCount = parsePositiveInt(process.env['OPENCOVE_PTY_HOST_STRESS_SESSIONS'], 8)
@@ -169,7 +169,7 @@ export async function runPtyHostStressTest(): Promise<void> {
   await withTimeout(
     Promise.all(workers),
     timeoutMs,
-    `[cove] pty-host stress timed out while spawning sessions after ${timeoutMs}ms`,
+    `[opencove] pty-host stress timed out while spawning sessions after ${timeoutMs}ms`,
   )
 
   const exitPromises = sessionIds.map(sessionId => {
@@ -185,7 +185,7 @@ export async function runPtyHostStressTest(): Promise<void> {
     return withTimeout(
       exitPromise,
       timeoutMs,
-      `[cove] pty-host stress timed out waiting for session exit after ${timeoutMs}ms: ${sessionId}`,
+      `[opencove] pty-host stress timed out waiting for session exit after ${timeoutMs}ms: ${sessionId}`,
     )
   })
 
@@ -211,7 +211,7 @@ export async function runPtyHostStressTest(): Promise<void> {
 
   process.stderr.write(
     [
-      '[cove] pty-host stress completed',
+      '[opencove] pty-host stress completed',
       `sessions=${sessionCount}`,
       `bytesPerSession=${formatBytes(bytesPerSession)}`,
       `total=${formatBytes(totalBytes)}`,

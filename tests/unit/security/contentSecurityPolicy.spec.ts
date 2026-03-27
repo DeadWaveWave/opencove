@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCoveContentSecurityPolicy } from '../../../electron.vite.config'
+import { buildOpenCoveContentSecurityPolicy } from '../../../electron.vite.config'
 
 function getCspDirective(csp: string, directive: string): string | null {
   const prefix = `${directive} `
@@ -12,9 +12,9 @@ function getCspDirective(csp: string, directive: string): string | null {
   return null
 }
 
-describe('buildCoveContentSecurityPolicy', () => {
+describe('buildOpenCoveContentSecurityPolicy', () => {
   it('keeps production `style-src` strict while allowing the xterm inline channels it requires', () => {
-    const productionPolicy = buildCoveContentSecurityPolicy(false)
+    const productionPolicy = buildOpenCoveContentSecurityPolicy(false)
     const styleDirective = getCspDirective(productionPolicy, 'style-src')
     const styleAttrDirective = getCspDirective(productionPolicy, 'style-src-attr')
     const styleElemDirective = getCspDirective(productionPolicy, 'style-src-elem')
@@ -26,7 +26,7 @@ describe('buildCoveContentSecurityPolicy', () => {
   })
 
   it("keeps 'unsafe-inline' styles in development builds for Vite", () => {
-    const developmentPolicy = buildCoveContentSecurityPolicy(true)
+    const developmentPolicy = buildOpenCoveContentSecurityPolicy(true)
     const styleDirective = getCspDirective(developmentPolicy, 'style-src')
     const styleAttrDirective = getCspDirective(developmentPolicy, 'style-src-attr')
     const styleElemDirective = getCspDirective(developmentPolicy, 'style-src-elem')

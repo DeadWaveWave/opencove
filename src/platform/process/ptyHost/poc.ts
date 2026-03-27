@@ -74,9 +74,9 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
   const modulePathCandidates = [join(__dirname, 'ptyHost.js'), join(__dirname, '..', 'ptyHost.js')]
   const modulePath = modulePathCandidates.find(candidate => existsSync(candidate))
   if (!modulePath) {
-    throw new Error(`[cove] pty-host PoC missing entry: ${modulePathCandidates.join(', ')}`)
+    throw new Error(`[opencove] pty-host PoC missing entry: ${modulePathCandidates.join(', ')}`)
   }
-  process.stderr.write(`[cove] pty-host PoC launching: ${modulePath}\n`)
+  process.stderr.write(`[opencove] pty-host PoC launching: ${modulePath}\n`)
 
   const child = utilityProcess.fork(modulePath, [], {
     stdio: 'pipe',
@@ -128,13 +128,13 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
 
     if (message.type === 'exit') {
       process.stderr.write(
-        `[cove] pty-host PoC session exited: ${message.sessionId} code=${message.exitCode}\n`,
+        `[opencove] pty-host PoC session exited: ${message.sessionId} code=${message.exitCode}\n`,
       )
       return
     }
   })
 
-  await withTimeout(readyPromise, 5_000, '[cove] pty-host PoC timed out waiting for ready')
+  await withTimeout(readyPromise, 5_000, '[opencove] pty-host PoC timed out waiting for ready')
 
   const requestId = crypto.randomUUID()
   const spawnResponsePromise = new Promise<Extract<PtyHostMessage, { type: 'response' }>>(
@@ -160,17 +160,17 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
   const spawnResponse = await withTimeout(
     spawnResponsePromise,
     10_000,
-    '[cove] pty-host PoC timed out waiting for spawn response',
+    '[opencove] pty-host PoC timed out waiting for spawn response',
   )
 
   if (!spawnResponse.ok) {
     throw new Error(
-      `[cove] pty-host PoC spawn failed: ${spawnResponse.error.name ?? 'Error'}: ${spawnResponse.error.message}`,
+      `[opencove] pty-host PoC spawn failed: ${spawnResponse.error.name ?? 'Error'}: ${spawnResponse.error.message}`,
     )
   }
 
   spawnedSessionId = spawnResponse.result.sessionId
-  process.stderr.write(`[cove] pty-host PoC spawned session: ${spawnedSessionId}\n`)
+  process.stderr.write(`[opencove] pty-host PoC spawned session: ${spawnedSessionId}\n`)
 
   await withTimeout(
     new Promise<void>(resolve => {
@@ -182,10 +182,10 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
       }, 25)
     }),
     10_000,
-    '[cove] pty-host PoC timed out waiting for output',
+    '[opencove] pty-host PoC timed out waiting for output',
   )
 
-  process.stderr.write('[cove] pty-host PoC observed output OK\n')
+  process.stderr.write('[opencove] pty-host PoC observed output OK\n')
 
   const exitPromise = new Promise<number>(resolve => {
     child.once('exit', code => {
@@ -193,14 +193,14 @@ export async function runPtyHostUtilityProcessPoc(): Promise<void> {
     })
   })
 
-  process.stderr.write('[cove] pty-host PoC triggering crash\n')
+  process.stderr.write('[opencove] pty-host PoC triggering crash\n')
   child.postMessage({ type: 'crash' })
 
   const exitCode = await withTimeout(
     exitPromise,
     10_000,
-    '[cove] pty-host PoC timed out waiting for host exit',
+    '[opencove] pty-host PoC timed out waiting for host exit',
   )
 
-  process.stderr.write(`[cove] pty-host PoC host exited (main still alive): code=${exitCode}\n`)
+  process.stderr.write(`[opencove] pty-host PoC host exited (main still alive): code=${exitCode}\n`)
 }

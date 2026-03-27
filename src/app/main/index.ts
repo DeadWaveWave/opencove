@@ -353,7 +353,7 @@ app.whenReady().then(() => {
         app.exit(0)
       } catch (error) {
         const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
-        process.stderr.write(`[cove] pty-host PoC failed: ${detail}\n`)
+        process.stderr.write(`[opencove] pty-host PoC failed: ${detail}\n`)
         app.exit(1)
       }
     })()
@@ -368,7 +368,7 @@ app.whenReady().then(() => {
         app.exit(0)
       } catch (error) {
         const detail = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
-        process.stderr.write(`[cove] pty-host stress failed: ${detail}\n`)
+        process.stderr.write(`[opencove] pty-host stress failed: ${detail}\n`)
         app.exit(1)
       }
     })()

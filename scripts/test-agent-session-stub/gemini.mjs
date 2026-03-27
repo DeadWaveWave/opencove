@@ -58,7 +58,7 @@ async function writeGeminiSessionFile({
     JSON.stringify(
       {
         sessionId,
-        projectHash: 'cove-test-project-hash',
+        projectHash: 'opencove-test-project-hash',
         startTime: createGeminiTimestamp(startedAtMs),
         lastUpdated,
         messages,
@@ -74,7 +74,7 @@ async function writeGeminiSessionFile({
 
 async function createGeminiSession(cwd) {
   const startedAtMs = Date.now()
-  const sessionId = `cove-test-gemini-${startedAtMs}`
+  const sessionId = `opencove-test-gemini-${startedAtMs}`
   const projectDirectory = await ensureGeminiProjectDirectory(cwd)
   const sessionFilePath = join(
     projectDirectory,

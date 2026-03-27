@@ -77,7 +77,7 @@ export async function runRawBracketedPasteEchoScenario() {
     }
 
     const timeout = setTimeout(() => {
-      settle('[cove-test-paste] timeout')
+      settle('[opencove-test-paste] timeout')
     }, 8_000)
 
     if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
@@ -90,12 +90,12 @@ export async function runRawBracketedPasteEchoScenario() {
 
       const bracketedPayload = extractBracketedPastePayload(buffer)
       if (typeof bracketedPayload === 'string') {
-        settle(`[cove-test-paste] ${bracketedPayload}`)
+        settle(`[opencove-test-paste] ${bracketedPayload}`)
         return
       }
 
       if (buffer.includes('\u0016')) {
-        settle('[cove-test-paste] ctrl-v')
+        settle('[opencove-test-paste] ctrl-v')
       }
     })
     process.stdin.resume()
@@ -141,12 +141,12 @@ export async function runRawAltScreenWheelEchoScenario() {
       if (wheelLabel) {
         const x10Codes = extractX10MouseReportBytes(buffer)
         const codeSuffix = Array.isArray(x10Codes) ? ` codes=${x10Codes.join(',')}` : ''
-        settle(`[cove-test-wheel] ${wheelLabel}${codeSuffix}`)
+        settle(`[opencove-test-wheel] ${wheelLabel}${codeSuffix}`)
       }
     }
 
     const timeout = setTimeout(() => {
-      settle('[cove-test-wheel] timeout')
+      settle('[opencove-test-wheel] timeout')
     }, 8_000)
 
     if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {

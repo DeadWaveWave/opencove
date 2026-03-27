@@ -219,7 +219,7 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       const agentNode = window.locator('.terminal-node').first()
       await expect(agentNode).toBeVisible()
       await expect(agentNode.locator('.xterm')).toBeVisible()
-      await expect(agentNode).toContainText('[cove-test-agent]')
+      await expect(agentNode).toContainText('[opencove-test-agent]')
 
       const header = agentNode.locator('.terminal-node__header')
       const pane = window.locator('.workspace-canvas .react-flow__pane')
@@ -232,7 +232,7 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
 
       await expect(agentNode).toBeVisible()
       await expect(agentNode.locator('.xterm')).toBeVisible()
-      await expect(agentNode).toContainText('[cove-test-agent]')
+      await expect(agentNode).toContainText('[opencove-test-agent]')
     } finally {
       await electronApp.close()
     }

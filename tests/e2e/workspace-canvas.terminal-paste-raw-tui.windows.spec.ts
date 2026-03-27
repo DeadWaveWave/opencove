@@ -47,13 +47,13 @@ test.describe('Workspace Canvas - Terminal Paste Raw TUI (Windows)', () => {
         await window.keyboard.press('Enter')
 
         await expect(terminal).toContainText(
-          `[cove-test-agent] ${providerCase.provider} new default-model`,
+          `[opencove-test-agent] ${providerCase.provider} new default-model`,
         )
 
         await window.keyboard.press('Control+V')
 
-        await expect(terminal).toContainText(`[cove-test-paste] ${pastedToken}`)
-        await expect(terminal).not.toContainText('[cove-test-paste] ctrl-v')
+        await expect(terminal).toContainText(`[opencove-test-paste] ${pastedToken}`)
+        await expect(terminal).not.toContainText('[opencove-test-paste] ctrl-v')
       } finally {
         await electronApp.close()
       }

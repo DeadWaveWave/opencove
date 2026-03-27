@@ -13,7 +13,7 @@ export async function runCodexStandbyNoNewlineScenario(cwd) {
     type: 'event_msg',
     payload: {
       type: 'task_started',
-      turn_id: 'cove-test-turn-1',
+      turn_id: 'opencove-test-turn-1',
       model_context_window: 128_000,
       collaboration_mode_kind: 'default',
     },
@@ -26,7 +26,7 @@ export async function runCodexStandbyNoNewlineScenario(cwd) {
       type: 'event_msg',
       payload: {
         type: 'task_complete',
-        turn_id: 'cove-test-turn-1',
+        turn_id: 'opencove-test-turn-1',
         last_agent_message: 'All set.',
       },
     },
@@ -46,7 +46,7 @@ export async function runCodexStandbyOnlyScenario(cwd) {
       type: 'event_msg',
       payload: {
         type: 'task_complete',
-        turn_id: 'cove-test-turn-1',
+        turn_id: 'opencove-test-turn-1',
         last_agent_message: 'All set.',
       },
     },
@@ -64,7 +64,7 @@ export async function runCodexCommentaryThenFinalScenario(cwd) {
     type: 'event_msg',
     payload: {
       type: 'task_started',
-      turn_id: 'cove-test-turn-1',
+      turn_id: 'opencove-test-turn-1',
       model_context_window: 128_000,
       collaboration_mode_kind: 'default',
     },
@@ -84,7 +84,7 @@ export async function runCodexCommentaryThenFinalScenario(cwd) {
     type: 'response_item',
     payload: {
       type: 'function_call',
-      call_id: 'call-cove-test-1',
+      call_id: 'call-opencove-test-1',
       name: 'exec_command',
       arguments: '{"cmd":"pwd"}',
     },
@@ -99,7 +99,7 @@ export async function runCodexCommentaryThenFinalScenario(cwd) {
       type: 'event_msg',
       payload: {
         type: 'task_complete',
-        turn_id: 'cove-test-turn-1',
+        turn_id: 'opencove-test-turn-1',
         last_agent_message: 'Done.',
       },
     },

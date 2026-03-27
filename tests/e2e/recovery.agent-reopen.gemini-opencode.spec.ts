@@ -164,7 +164,7 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
         await expect(restartedWindow.locator('.terminal-node')).toHaveCount(1, { timeout: 30_000 })
 
         const terminalNode = restartedWindow.locator('.terminal-node').first()
-        await expect(terminalNode).toContainText('[cove-test-agent] gemini resume', {
+        await expect(terminalNode).toContainText('[opencove-test-agent] gemini resume', {
           timeout: 20_000,
         })
 
@@ -292,7 +292,7 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
         await expect(restartedWindow.locator('.terminal-node')).toHaveCount(1, { timeout: 30_000 })
 
         const terminalNode = restartedWindow.locator('.terminal-node').first()
-        await expect(terminalNode).toContainText('[cove-test-agent] opencode resume', {
+        await expect(terminalNode).toContainText('[opencove-test-agent] opencode resume', {
           timeout: 20_000,
         })
 

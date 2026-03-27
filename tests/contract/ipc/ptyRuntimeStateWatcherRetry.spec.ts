@@ -51,7 +51,7 @@ describe('Pty runtime session state watcher', () => {
 
     vi.doMock('electron', () => ({
       app: {
-        getPath: vi.fn(() => '/tmp/cove-test-userdata'),
+        getPath: vi.fn(() => '/tmp/opencove-test-userdata'),
       },
       utilityProcess: {
         fork: vi.fn(),

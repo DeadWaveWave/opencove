@@ -215,7 +215,7 @@ export async function writeGeminiSessionFile({
     JSON.stringify(
       {
         sessionId,
-        projectHash: 'cove-test-project-hash',
+        projectHash: 'opencove-test-project-hash',
         startTime: createGeminiTimestamp(startedAtMs),
         lastUpdated: createGeminiTimestamp(messages.at(-1)?.timestampMs ?? startedAtMs),
         kind: 'main',

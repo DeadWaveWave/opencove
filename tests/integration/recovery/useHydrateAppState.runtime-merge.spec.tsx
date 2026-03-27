@@ -86,7 +86,7 @@ describe('useHydrateAppState runtime field merge', () => {
       settings: {},
     }
 
-    storage.setItem('cove:m0:workspace-state', JSON.stringify(persistedState))
+    storage.setItem('opencove:m0:workspace-state', JSON.stringify(persistedState))
 
     const terminalSpawnDeferred = createDeferred<{ sessionId: string }>()
     const agentLaunchDeferred = createDeferred<{

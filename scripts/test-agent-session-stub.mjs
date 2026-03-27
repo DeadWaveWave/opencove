@@ -28,7 +28,7 @@ async function main() {
   ] = process.argv.slice(2)
   const cwd = resolve(rawCwd)
 
-  process.stdout.write(`[cove-test-agent] ${provider} ${mode} ${model}\n`)
+  process.stdout.write(`[opencove-test-agent] ${provider} ${mode} ${model}\n`)
 
   if (provider === 'codex' && scenario === 'codex-standby-no-newline') {
     await runCodexStandbyNoNewlineScenario(cwd)

@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import type { Plugin } from 'vite'
 
-export function buildCoveContentSecurityPolicy(isDev: boolean): string {
+export function buildOpenCoveContentSecurityPolicy(isDev: boolean): string {
   const scriptSources = isDev ? ["'self'", "'unsafe-eval'"] : ["'self'"]
   const connectSources = isDev ? ["'self'", 'ws:', 'http:', 'https:'] : ["'self'"]
   const styleSources = isDev ? ["'self'", "'unsafe-inline'"] : ["'self'"]
@@ -28,12 +28,12 @@ export function buildCoveContentSecurityPolicy(isDev: boolean): string {
   ].join('; ')
 }
 
-function coveCspPlugin(): Plugin {
+function opencoveCspPlugin(): Plugin {
   return {
-    name: 'cove:csp',
+    name: 'opencove:csp',
     transformIndexHtml(html, ctx) {
       const isDev = Boolean(ctx.server)
-      const content = buildCoveContentSecurityPolicy(isDev)
+      const content = buildOpenCoveContentSecurityPolicy(isDev)
 
       return {
         html,
@@ -86,7 +86,7 @@ export default defineConfig({
         },
       },
     },
-    plugins: [coveCspPlugin(), tailwindcss(), react()],
+    plugins: [opencoveCspPlugin(), tailwindcss(), react()],
     resolve: {
       alias: {
         '@app': resolve(__dirname, 'src/app'),

@@ -121,7 +121,7 @@ export function resolveAgentTestStub(
   }
 
   if (process.platform === 'win32') {
-    const message = `[cove-test-agent] ${provider} ${mode ?? 'new'} ${model ?? 'default-model'}`
+    const message = `[opencove-test-agent] ${provider} ${mode ?? 'new'} ${model ?? 'default-model'}`
     return {
       command: 'powershell.exe',
       args: [
@@ -134,7 +134,7 @@ export function resolveAgentTestStub(
   }
 
   const shell = process.env.SHELL ?? '/bin/zsh'
-  const message = `[cove-test-agent] ${provider} ${mode ?? 'new'} ${model ?? 'default-model'}`
+  const message = `[opencove-test-agent] ${provider} ${mode ?? 'new'} ${model ?? 'default-model'}`
 
   return {
     command: shell,

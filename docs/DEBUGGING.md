@@ -120,7 +120,7 @@ pnpm test:e2e
 
 重点确认：
 
-- `cove:m0:workspace-state` 是否已清理或重建
+- `opencove:m0:workspace-state`（旧版本可能是 `cove:m0:workspace-state`）是否已清理或重建
 - `reload` 后是否真的读到了当前种入的数据
 - workspace / nodes / spaces 数量是否与预期一致
 

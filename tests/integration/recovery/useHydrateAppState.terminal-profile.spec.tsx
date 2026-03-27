@@ -10,7 +10,7 @@ describe('useHydrateAppState terminal profile recovery', () => {
     const storage = installMockStorage()
 
     storage.setItem(
-      'cove:m0:workspace-state',
+      'opencove:m0:workspace-state',
       JSON.stringify({
         activeWorkspaceId: 'workspace-1',
         workspaces: [

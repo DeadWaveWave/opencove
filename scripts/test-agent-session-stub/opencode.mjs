@@ -12,7 +12,7 @@ export async function runOpenCodeIdleWithMessageScenario(cwd) {
     return
   }
 
-  const sessionId = `cove-test-opencode-${Date.now()}`
+  const sessionId = `opencove-test-opencode-${Date.now()}`
   const startedAtMs = Date.now()
 
   const opencodeDir = join(os.homedir(), '.local', 'share', 'opencode')

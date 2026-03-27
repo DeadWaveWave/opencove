@@ -7,7 +7,7 @@ function createMockApp() {
 
   return {
     whenReady: vi.fn(() => Promise.resolve()),
-    getPath: vi.fn((_name: string) => '/tmp/cove-test-userdata'),
+    getPath: vi.fn((_name: string) => '/tmp/opencove-test-userdata'),
     commandLine: {
       appendSwitch: vi.fn(),
     },

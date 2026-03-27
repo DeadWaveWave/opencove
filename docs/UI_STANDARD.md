@@ -6,6 +6,10 @@
 - 组件风格一致（像同一个“系统”）；
 - 后续开发/改动可持续（可复用、可测试、可演进）。
 
+命名约定：
+- 产品/对外接口统一使用 `OpenCove` / `opencove`。
+- UI 设计系统与样式命名空间保留 `cove` 前缀（例如 `--cove-*`、`data-cove-*`、`.cove-window`），作为稳定的内部约定，不随产品命名调整而变更。
+
 > 关联专项规范：
 > - Window：`docs/WINDOW_UI_STANDARD.md`
 > - Task：`docs/TASK_UI_STANDARD.md`

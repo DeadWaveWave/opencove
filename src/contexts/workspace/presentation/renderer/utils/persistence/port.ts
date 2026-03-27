@@ -1,6 +1,6 @@
 import type { PersistWriteResult, ReadAppStateResult } from '@shared/contracts/dto'
 import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/appError'
-import { STORAGE_KEY } from './constants'
+import { LEGACY_STORAGE_KEY, STORAGE_KEY } from './constants'
 import { getStorage, isQuotaExceededError } from './storage'
 
 export type PersistencePortKind = 'ipc' | 'localStorage'
@@ -15,7 +15,8 @@ export interface PersistencePort {
   writeWorkspaceStateRaw: (raw: string) => Promise<PersistWriteResult>
 }
 
-const NODE_SCROLLBACK_KEY_PREFIX = 'cove:m0:node-scrollback:'
+const NODE_SCROLLBACK_KEY_PREFIX = 'opencove:m0:node-scrollback:'
+const LEGACY_NODE_SCROLLBACK_KEY_PREFIX = 'cove:m0:node-scrollback:'
 function createIpcPort(): PersistencePort | null {
   if (typeof window === 'undefined') {
     return null
@@ -97,10 +98,13 @@ function createLocalStoragePort(): PersistencePort | null {
     return null
   }
 
+  const readWithLegacyFallback = (key: string, legacyKey: string): string | null =>
+    storage.getItem(key) ?? storage.getItem(legacyKey)
+
   return {
     kind: 'localStorage',
     readAppState: async () => {
-      const raw = storage.getItem(STORAGE_KEY)
+      const raw = readWithLegacyFallback(STORAGE_KEY, LEGACY_STORAGE_KEY)
       if (!raw) {
         return { state: null, recovery: null }
       }
@@ -121,6 +125,7 @@ function createLocalStoragePort(): PersistencePort | null {
 
       try {
         storage.setItem(STORAGE_KEY, raw)
+        storage.removeItem(LEGACY_STORAGE_KEY)
         return { ok: true, level: 'full', bytes: raw.length }
       } catch (error) {
         return {
@@ -137,17 +142,24 @@ function createLocalStoragePort(): PersistencePort | null {
         }
       }
     },
-    readNodeScrollback: async nodeId => storage.getItem(`${NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`),
+    readNodeScrollback: async nodeId =>
+      readWithLegacyFallback(
+        `${NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`,
+        `${LEGACY_NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`,
+      ),
     writeNodeScrollback: async (nodeId, scrollback) => {
       const key = `${NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`
+      const legacyKey = `${LEGACY_NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`
 
       try {
         if (!scrollback || scrollback.length === 0) {
           storage.removeItem(key)
+          storage.removeItem(legacyKey)
           return { ok: true, level: 'full', bytes: 0 }
         }
 
         storage.setItem(key, scrollback)
+        storage.removeItem(legacyKey)
         return { ok: true, level: 'full', bytes: scrollback.length }
       } catch (error) {
         return {
@@ -164,10 +176,11 @@ function createLocalStoragePort(): PersistencePort | null {
         }
       }
     },
-    readWorkspaceStateRaw: async () => storage.getItem(STORAGE_KEY),
+    readWorkspaceStateRaw: async () => readWithLegacyFallback(STORAGE_KEY, LEGACY_STORAGE_KEY),
     writeWorkspaceStateRaw: async raw => {
       try {
         storage.setItem(STORAGE_KEY, raw)
+        storage.removeItem(LEGACY_STORAGE_KEY)
         return { ok: true, level: 'full', bytes: raw.length }
       } catch (error) {
         return {
@@ -197,5 +210,5 @@ export function readLegacyLocalStorageRaw(): string | null {
     return null
   }
 
-  return storage.getItem(STORAGE_KEY)
+  return storage.getItem(STORAGE_KEY) ?? storage.getItem(LEGACY_STORAGE_KEY)
 }

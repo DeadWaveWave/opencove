@@ -90,7 +90,7 @@ describe('workspace persistence (read/normalize)', () => {
               endedAt: null,
               exitCode: null,
               lastError: null,
-              scrollback: '[cove-test-agent] codex new gpt-5.2-codex\n',
+              scrollback: '[opencove-test-agent] codex new gpt-5.2-codex\n',
               agent: {
                 provider: 'codex',
                 prompt: 'Implement retry for failed request',

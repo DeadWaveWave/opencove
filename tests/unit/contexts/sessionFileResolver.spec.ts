@@ -7,7 +7,7 @@ import { resolveSessionFilePath } from '../../../src/contexts/agent/infrastructu
 
 describe('resolveSessionFilePath', () => {
   it('returns null for claude-code when session file does not exist yet', async () => {
-    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
 
@@ -31,7 +31,7 @@ describe('resolveSessionFilePath', () => {
   })
 
   it('resolves claude-code session file once it exists', async () => {
-    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
 
@@ -61,7 +61,7 @@ describe('resolveSessionFilePath', () => {
   })
 
   it('resolves codex session file from rollout logs', async () => {
-    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
 
@@ -98,7 +98,7 @@ describe('resolveSessionFilePath', () => {
   })
 
   it('resolves gemini session files from the matching project workspace', async () => {
-    const tempHome = await fs.mkdtemp(join(tmpdir(), 'cove-test-home-'))
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME
     process.env.HOME = tempHome
 

@@ -226,11 +226,13 @@ test.describe('Workspace Canvas - Persistence', () => {
       await expect(terminal.locator('.xterm')).toBeVisible()
 
       await window.evaluate(() => {
-        ;(window as unknown as { __coveTestExitCode?: number | null }).__coveTestExitCode = null
+        ;(window as unknown as { __opencoveTestExitCode?: number | null }).__opencoveTestExitCode =
+          null
 
         const unsubscribe = window.opencoveApi.pty.onExit(event => {
-          ;(window as unknown as { __coveTestExitCode?: number | null }).__coveTestExitCode =
-            event.exitCode
+          ;(
+            window as unknown as { __opencoveTestExitCode?: number | null }
+          ).__opencoveTestExitCode = event.exitCode
           unsubscribe()
         })
       })
@@ -250,7 +252,8 @@ test.describe('Workspace Canvas - Persistence', () => {
           async () => {
             return await window.evaluate(
               () =>
-                (window as unknown as { __coveTestExitCode?: number | null }).__coveTestExitCode,
+                (window as unknown as { __opencoveTestExitCode?: number | null })
+                  .__opencoveTestExitCode,
             )
           },
           { timeout: 10_000 },

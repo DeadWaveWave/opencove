@@ -140,7 +140,7 @@ test.describe('Workspace Canvas - Tasks (Create & Run)', () => {
           endedAt: null,
           exitCode: null,
           lastError: null,
-          scrollback: '[cove-test-agent] ready',
+          scrollback: '[opencove-test-agent] ready',
           agent: {
             provider: 'codex',
             prompt: 'Summarize release notes',
