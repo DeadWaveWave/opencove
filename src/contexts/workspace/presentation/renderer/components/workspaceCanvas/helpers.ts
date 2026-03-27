@@ -1,6 +1,7 @@
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { translate, type TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import {
   formatAppErrorMessage,
   getAppErrorDebugMessage,
@@ -136,7 +137,7 @@ export function resolveSpaceDirectoryPath(
   space: WorkspaceSpaceState | null,
   workspacePath: string,
 ): string {
-  return space && space.directoryPath.trim().length > 0 ? space.directoryPath : workspacePath
+  return resolveSpaceWorkingDirectory(space, workspacePath)
 }
 
 function resolveNodeExecutionDirectory(

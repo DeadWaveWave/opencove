@@ -3,6 +3,7 @@ import { useStore, type Node } from '@xyflow/react'
 import { NoteNode } from '../NoteNode'
 import { TaskNode } from '../TaskNode'
 import { TerminalNode } from '../TerminalNode'
+import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
@@ -307,11 +308,12 @@ export function useWorkspaceCanvasNodeTypes({
         return null
       }
 
-      const taskSpace = spacesRef.current.find(space => space.nodeIds.includes(id)) ?? null
-      const currentDirectory =
-        taskSpace && taskSpace.directoryPath.trim().length > 0
-          ? taskSpace.directoryPath
-          : workspacePath
+      const taskExecutionContext = resolveTaskExecutionContext({
+        spaces: spacesRef.current,
+        taskNodeId: id,
+        workspacePath,
+      })
+      const currentDirectory = taskExecutionContext.workingDirectory
 
       const linkedAgentSummary =
         linkedAgentNode && linkedAgentNode.data.kind === 'agent' && linkedAgentNode.data.agent
