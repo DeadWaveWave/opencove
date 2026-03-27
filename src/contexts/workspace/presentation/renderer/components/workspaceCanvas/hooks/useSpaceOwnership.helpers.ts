@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import { pushAwayLayout, type LayoutItem } from '../../../utils/spaceLayout'
 
@@ -361,10 +362,7 @@ export function applyDirectoryExpectationForDrop({
   }
 
   const nodeIdSet = new Set(nodeIds)
-  const targetDirectory =
-    targetSpace && targetSpace.directoryPath.trim().length > 0
-      ? targetSpace.directoryPath
-      : workspacePath
+  const targetDirectory = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
 
   setNodes(
     prevNodes => {

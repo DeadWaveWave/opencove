@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { Node } from '@xyflow/react'
+import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -205,6 +206,7 @@ export function useWorkspaceCanvasCreateSpace({
       })
 
       const assignedNodeIdSet = new Set(normalizedNodeIds)
+      const targetDirectoryPath = resolveSpaceWorkingDirectory(nextSpace, workspacePath)
       setNodes(
         prevNodes => {
           let hasChanged = false
@@ -213,8 +215,6 @@ export function useWorkspaceCanvasCreateSpace({
             const nextPosition = nextNodePositionById.get(node.id)
 
             const isAssignedToNewSpace = assignedNodeIdSet.has(node.id)
-            const targetDirectoryPath =
-              nextSpace.directoryPath.trim().length > 0 ? nextSpace.directoryPath : workspacePath
 
             if (node.data.kind === 'agent' && node.data.agent && isAssignedToNewSpace) {
               const nextExpectedDirectory = targetDirectoryPath

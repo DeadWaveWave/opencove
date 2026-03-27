@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
+import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { SpaceWorktreeMismatchDropWarningState } from '../types'
 import {
@@ -116,10 +117,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
             }
           : dropFlowPoint
       const targetSpace = resolveDropTargetSpaceAtPoint(dropTargetPoint)
-      const targetDirectory =
-        targetSpace && targetSpace.directoryPath.trim().length > 0
-          ? targetSpace.directoryPath
-          : workspacePath
+      const targetDirectory = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
 
       if (hideWorktreeMismatchDropWarning) {
         return false

@@ -6,6 +6,7 @@ import {
   type AgentSettings,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
+import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { resolveDefaultAgentWindowSize } from '../constants'
@@ -78,10 +79,7 @@ export function useWorkspaceCanvasAgentLauncher({
           )
           const model = resolveAgentModel(agentSettings, provider)
           const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-          const executionDirectory =
-            anchorSpace && anchorSpace.directoryPath.trim().length > 0
-              ? anchorSpace.directoryPath
-              : workspacePath
+          const executionDirectory = resolveSpaceWorkingDirectory(anchorSpace, workspacePath)
           const launched = await window.opencoveApi.agent.launch({
             provider,
             cwd: executionDirectory,

@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState, CreateNodeInput } from '../types'
 import { resolveDefaultNoteWindowSize, resolveDefaultTerminalWindowSize } from '../constants'
@@ -48,10 +49,7 @@ export async function createTerminalNodeAtFlowPosition({
 
   const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
 
-  const resolvedCwd =
-    targetSpace && targetSpace.directoryPath.trim().length > 0
-      ? targetSpace.directoryPath
-      : workspacePath
+  const resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
 
   const spawned = await window.opencoveApi.pty.spawn({
     cwd: resolvedCwd,
