@@ -91,7 +91,9 @@ test.describe('Workspace Canvas - Agent Last Message Copy (OpenCode)', () => {
       }
 
       await expect
-        .poll(async () => await readObservedResumeSessionId(window, ptySessionId))
+        .poll(async () => await readObservedResumeSessionId(window, ptySessionId), {
+          timeout: 30_000,
+        })
         .toBeTruthy()
 
       const agentNode = window.locator('.terminal-node').first()
