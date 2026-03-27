@@ -133,7 +133,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   uiTheme: 'dark',
   isPrimarySidebarCollapsed: false,
   workspaceSearchPanelWidth: 420,
-  defaultProvider: 'codex',
+  defaultProvider: 'claude-code',
   agentProviderOrder: [...AGENT_PROVIDERS],
   agentFullAccess: true,
   defaultTerminalProfileId: null,

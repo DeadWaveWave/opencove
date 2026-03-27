@@ -33,6 +33,9 @@
     "executableName": "OpenCove",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "generateUpdatesFilesForAllChannels": true,
+    "electronFuses": {
+      "enableEmbeddedAsarIntegrityValidation": false
+    },
     "extraResources": [
       {
         "from": "release/release-manifest.json",
@@ -62,7 +65,7 @@
     "build": "electron-vite build",
     "check": "tsc -b tsconfig.node.json tsconfig.web.json --noEmit",
     "preview": "electron-vite preview",
-    "postinstall": "electron-builder install-app-deps",
+    "postinstall": "electron-builder install-app-deps && node scripts/patch-native-build.mjs",
     "build:release-manifest": "node scripts/generate-release-manifest.mjs",
     "build:unpack": "pnpm build && pnpm build:release-manifest && electron-builder --dir --publish never",
     "build:mac": "pnpm build && pnpm build:release-manifest && electron-builder --mac --publish never",
@@ -116,6 +119,7 @@
     "react-router-dom": "^7.13.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
+    "ms": "^2.1.3",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
