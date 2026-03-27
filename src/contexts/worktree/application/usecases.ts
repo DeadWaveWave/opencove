@@ -74,4 +74,3 @@ export async function suggestWorktreeNamesUseCase(
 ): Promise<SuggestWorktreeNamesResult> {
   return await port.suggestNames(input)
 }
-

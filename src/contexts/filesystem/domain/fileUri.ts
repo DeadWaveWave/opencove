@@ -50,4 +50,3 @@ export function toFileUri(path: string): string {
   const pathname = normalized.startsWith('/') ? normalized : `/${normalized}`
   return `file://${encodePathname(pathname)}`
 }
-

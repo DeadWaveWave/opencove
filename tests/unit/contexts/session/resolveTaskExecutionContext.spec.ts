@@ -4,7 +4,9 @@ import { resolveTaskExecutionContext } from '../../../../src/contexts/session/ap
 describe('resolveTaskExecutionContext', () => {
   it('resolves to the owning space directory when present', () => {
     const result = resolveTaskExecutionContext({
-      spaces: [{ id: 'space-1', directoryPath: '/tmp/repo/.opencove/worktrees/demo', nodeIds: ['t'] }],
+      spaces: [
+        { id: 'space-1', directoryPath: '/tmp/repo/.opencove/worktrees/demo', nodeIds: ['t'] },
+      ],
       taskNodeId: 't',
       workspacePath: '/tmp/repo',
     })
@@ -29,4 +31,3 @@ describe('resolveTaskExecutionContext', () => {
     expect(result.target.rootUri).toBe('file:///tmp/repo')
   })
 })
-

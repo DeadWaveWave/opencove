@@ -12,4 +12,3 @@ export interface TaskExecutionContext {
   scope: ExecutionScope
   workingDirectory: string
 }
-

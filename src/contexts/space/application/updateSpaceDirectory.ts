@@ -67,4 +67,3 @@ export function computeSpaceDirectoryUpdate<TSpace extends SpaceDirectoryRecord>
     nextDirectoryPath: directoryPath,
   }
 }
-

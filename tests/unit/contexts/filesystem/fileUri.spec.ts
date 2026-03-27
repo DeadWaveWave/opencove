@@ -14,4 +14,3 @@ describe('toFileUri', () => {
     expect(toFileUri('\\\\server\\share\\folder a')).toBe('file://server/share/folder%20a')
   })
 })
-

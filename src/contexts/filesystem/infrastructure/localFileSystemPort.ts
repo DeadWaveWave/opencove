@@ -24,7 +24,10 @@ function fileUriToPath(uri: string): string {
   return fileURLToPath(parsed)
 }
 
-function toEntryKind(dirent: { isFile: () => boolean; isDirectory: () => boolean }): FileSystemEntryKind {
+function toEntryKind(dirent: {
+  isFile: () => boolean
+  isDirectory: () => boolean
+}): FileSystemEntryKind {
   if (dirent.isDirectory()) {
     return 'directory'
   }
@@ -80,4 +83,3 @@ export function createLocalFileSystemPort(): FileSystemPort {
     },
   }
 }
-

@@ -12,4 +12,3 @@ export const LOCAL_WORKER_ENDPOINT: WorkerEndpointRef = {
   id: 'local',
   kind: 'local',
 }
-

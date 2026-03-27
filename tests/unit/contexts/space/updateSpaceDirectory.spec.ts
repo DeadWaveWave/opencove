@@ -50,4 +50,3 @@ describe('computeSpaceDirectoryUpdate', () => {
     expect(result?.archiveSpace).toBe(true)
   })
 })
-

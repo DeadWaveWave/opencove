@@ -3,4 +3,3 @@ import type { SuggestTaskTitleInput, SuggestTaskTitleResult } from '@shared/cont
 export interface TaskTitlePort {
   suggestTitle: (input: SuggestTaskTitleInput) => Promise<SuggestTaskTitleResult>
 }
-

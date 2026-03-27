@@ -25,4 +25,3 @@ export interface GitWorktreePort {
   renameBranch: (input: RenameGitBranchInput) => Promise<void>
   suggestNames: (input: SuggestWorktreeNamesInput) => Promise<SuggestWorktreeNamesResult>
 }
-

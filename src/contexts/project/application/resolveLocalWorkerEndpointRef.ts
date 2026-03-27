@@ -3,4 +3,3 @@ import { LOCAL_WORKER_ENDPOINT, type WorkerEndpointRef } from '../domain/workerE
 export function resolveLocalWorkerEndpointRef(): WorkerEndpointRef {
   return LOCAL_WORKER_ENDPOINT
 }
-

@@ -5,4 +5,3 @@ export interface MountTarget {
   rootPath: string
   rootUri: string
 }
-

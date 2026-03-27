@@ -1,5 +1,8 @@
 import { resolveLocalWorkerEndpointRef } from '@contexts/project/application/resolveLocalWorkerEndpointRef'
-import { resolveSpaceExecutionTarget, type SpaceLike } from '@contexts/space/application/resolveSpaceExecutionTarget'
+import {
+  resolveSpaceExecutionTarget,
+  type SpaceLike,
+} from '@contexts/space/application/resolveSpaceExecutionTarget'
 import type { TaskExecutionContext } from '../domain/taskExecutionContext'
 
 export function resolveTaskExecutionContext({
@@ -28,4 +31,3 @@ export function resolveTaskExecutionContext({
     workingDirectory,
   }
 }
-

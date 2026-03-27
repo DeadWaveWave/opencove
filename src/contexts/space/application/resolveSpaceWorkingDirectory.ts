@@ -8,4 +8,3 @@ export function resolveSpaceWorkingDirectory(
 ): string {
   return space && space.directoryPath.trim().length > 0 ? space.directoryPath : workspacePath
 }
-

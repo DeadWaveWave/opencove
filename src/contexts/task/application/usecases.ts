@@ -7,4 +7,3 @@ export async function suggestTaskTitleUseCase(
 ): Promise<SuggestTaskTitleResult> {
   return await port.suggestTitle(input)
 }
-

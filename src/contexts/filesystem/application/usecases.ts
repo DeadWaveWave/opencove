@@ -23,10 +23,7 @@ export async function writeFileTextUseCase(
   await port.writeFileText(input)
 }
 
-export async function statUseCase(
-  port: FileSystemPort,
-  input: StatInput,
-): Promise<FileSystemStat> {
+export async function statUseCase(port: FileSystemPort, input: StatInput): Promise<FileSystemStat> {
   return await port.stat(input)
 }
 
@@ -36,4 +33,3 @@ export async function readDirectoryUseCase(
 ): Promise<ReadDirectoryResult> {
   return await port.readDirectory(input)
 }
-

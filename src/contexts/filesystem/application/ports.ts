@@ -44,4 +44,3 @@ export interface FileSystemPort {
   stat: (input: StatInput) => Promise<FileSystemStat>
   readDirectory: (input: ReadDirectoryInput) => Promise<ReadDirectoryResult>
 }
-
