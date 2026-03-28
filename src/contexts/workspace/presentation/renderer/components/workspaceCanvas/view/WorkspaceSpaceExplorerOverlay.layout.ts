@@ -15,9 +15,9 @@ export interface SpaceExplorerPlacement {
 }
 
 const EXPLORER_MIN_WIDTH_INSIDE = 160
-const EXPLORER_MAX_WIDTH = 380
-const EXPLORER_DEFAULT_WIDTH = 260
-const EXPLORER_PREFERRED_WIDTH_RATIO = 0.38
+const EXPLORER_MAX_WIDTH = 360
+const EXPLORER_DEFAULT_WIDTH = 240
+const EXPLORER_PREFERRED_WIDTH_RATIO = 0.34
 const EXPLORER_GAP = 10
 
 function clamp(value: number, min: number, max: number): number {
