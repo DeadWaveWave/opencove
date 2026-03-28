@@ -9,8 +9,8 @@
   font-weight: inherit;
   line-height: 1.3;
   white-space: nowrap;
-  border: 1px solid color-mix(in srgb, var(--cove-label-blue) 34%, var(--cove-border));
-  background: color-mix(in srgb, var(--cove-label-blue) 24%, var(--cove-window-surface));
+  border: 1px solid color-mix(in srgb, var(--cove-label-blue) 42%, var(--cove-border));
+  background: color-mix(in srgb, var(--cove-label-blue) 32%, var(--cove-window-surface));
   color: var(--cove-text);
   cursor: pointer;
   gap: 6px;
@@ -21,13 +21,13 @@
 }
 
 .workspace-space-region__files-pill:hover {
-  border-color: color-mix(in srgb, var(--cove-label-blue) 46%, var(--cove-border));
-  background: color-mix(in srgb, var(--cove-label-blue) 30%, var(--cove-window-surface));
+  border-color: color-mix(in srgb, var(--cove-label-blue) 54%, var(--cove-border));
+  background: color-mix(in srgb, var(--cove-label-blue) 38%, var(--cove-window-surface));
 }
 
 .workspace-space-region__files-pill--active {
-  border-color: color-mix(in srgb, var(--cove-label-blue) 62%, var(--cove-border));
-  background: color-mix(in srgb, var(--cove-label-blue) 38%, var(--cove-window-surface));
+  border-color: color-mix(in srgb, var(--cove-label-blue) 68%, var(--cove-border));
+  background: color-mix(in srgb, var(--cove-label-blue) 44%, var(--cove-window-surface));
 }
 
 .workspace-space-region__files-pill:focus-visible {
@@ -51,6 +51,20 @@
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workspace-space-region__files-pill-count {
+  flex: 0 0 auto;
+  min-width: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--cove-label-blue) 48%, transparent);
+  background: color-mix(in srgb, var(--cove-label-blue) 18%, var(--cove-surface-strong));
+  color: var(--cove-text);
+  font-size: calc(10px * var(--cove-ui-font-scale));
+  line-height: 18px;
+  height: 18px;
+  text-align: center;
 }
 
 .workspace-space-explorer {

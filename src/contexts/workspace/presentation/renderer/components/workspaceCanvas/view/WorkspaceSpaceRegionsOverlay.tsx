@@ -21,6 +21,11 @@ import {
   type WorkspaceSpaceBranchBadge,
 } from './WorkspaceSpaceRegionItem'
 import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
+import { normalizeComparablePath, toShortSha } from './WorkspaceSpaceRegionsOverlay.helpers'
+import {
+  resolveGitStatusRepoKey,
+  useWorkspaceGitStatusSummary,
+} from './WorkspaceSpaceRegionsOverlay.gitStatus'
 
 const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
 
@@ -106,6 +111,14 @@ export function WorkspaceSpaceRegionsOverlay({
   const [worktreeInfoByPath, setWorktreeInfoByPath] = React.useState<Map<string, GitWorktreeInfo>>(
     () => new Map(),
   )
+
+  const changedFilesByRepoKey = useWorkspaceGitStatusSummary({
+    workspacePath,
+    normalizedWorkspacePath,
+    spaceVisuals,
+    worktreeInfoByPath,
+    refreshNonce,
+  })
 
   const worktreeBranches = React.useMemo(() => {
     const unique = new Set<string>()
@@ -383,6 +396,13 @@ export function WorkspaceSpaceRegionsOverlay({
           const resolvedPullRequestSummary =
             branchKey.length > 0 ? (pullRequestsByBranch[branchKey] ?? null) : null
 
+          const statusRepoKey = resolveGitStatusRepoKey({
+            normalizedDirectoryPath,
+            normalizedWorkspacePath,
+            isWorktree: Boolean(resolvedWorktreeInfo),
+          })
+          const resolvedChangedFileCount = changedFilesByRepoKey.get(statusRepoKey) ?? null
+
           return (
             <WorkspaceSpaceRegionItem
               key={space.id}
@@ -402,6 +422,7 @@ export function WorkspaceSpaceRegionsOverlay({
               handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
               updateHandleCursor={updateHandleCursor}
               resolvedWorktreeInfo={resolvedWorktreeInfo}
+              resolvedChangedFileCount={resolvedChangedFileCount}
               resolvedBranchBadge={resolvedBranchBadge}
               resolvedPullRequestSummary={resolvedPullRequestSummary}
               onStartBranchRename={({ spaceId, spaceName, worktreePath, branchName }) => {
@@ -431,12 +452,4 @@ export function WorkspaceSpaceRegionsOverlay({
       />
     </>
   )
-}
-
-function normalizeComparablePath(pathValue: string): string {
-  return pathValue.trim().replace(/[\\/]+$/, '')
-}
-
-function toShortSha(value: string): string {
-  return value.trim().slice(0, 7)
 }

@@ -29,6 +29,7 @@ export function WorkspaceSpaceRegionItem({
   handleSpaceDragHandlePointerDown,
   updateHandleCursor,
   resolvedWorktreeInfo,
+  resolvedChangedFileCount,
   resolvedBranchBadge,
   resolvedPullRequestSummary,
   onStartBranchRename,
@@ -59,6 +60,7 @@ export function WorkspaceSpaceRegionItem({
     mode: SpaceFrameHandleMode,
   ) => void
   resolvedWorktreeInfo: GitWorktreeInfo | null
+  resolvedChangedFileCount: number | null
   resolvedBranchBadge: WorkspaceSpaceBranchBadge | null
   resolvedPullRequestSummary: GitHubPullRequestSummary | null
   onStartBranchRename: (payload: {
@@ -80,6 +82,20 @@ export function WorkspaceSpaceRegionItem({
     Boolean(worktreePath) &&
     Boolean(pullRequestUrl) &&
     resolvedPullRequestSummary !== null
+
+  const filesPillCount =
+    typeof resolvedChangedFileCount === 'number' && Number.isFinite(resolvedChangedFileCount)
+      ? Math.max(0, Math.floor(resolvedChangedFileCount))
+      : null
+  const filesPillCountLabel =
+    filesPillCount !== null
+      ? filesPillCount === 0
+        ? t('worktree.clean')
+        : t('worktree.changedFiles', { count: filesPillCount })
+      : null
+  const filesPillTitle = filesPillCountLabel
+    ? `${t('spaceActions.openExplorer')} · ${filesPillCountLabel}`
+    : t('spaceActions.openExplorer')
   return (
     <div
       className={
@@ -201,7 +217,7 @@ export function WorkspaceSpaceRegionItem({
             data-testid={`workspace-space-files-${space.id}`}
             aria-pressed={isExplorerOpen}
             aria-label={t('spaceActions.openExplorer')}
-            title={t('spaceActions.openExplorer')}
+            title={filesPillTitle}
             onClick={event => {
               event.stopPropagation()
               onToggleExplorer?.(space.id)
@@ -211,6 +227,11 @@ export function WorkspaceSpaceRegionItem({
             <span className="workspace-space-region__files-pill-label">
               {t('spaceActions.files')}
             </span>
+            {filesPillCount !== null && filesPillCount > 0 ? (
+              <span className="workspace-space-region__files-pill-count" aria-hidden="true">
+                {filesPillCount > 99 ? '99+' : filesPillCount}
+              </span>
+            ) : null}
           </button>
 
           {branchName && resolvedBranchBadge && worktreePath ? (
