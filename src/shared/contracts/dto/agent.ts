@@ -2,6 +2,7 @@ export type AgentProviderId = 'claude-code' | 'codex' | 'opencode' | 'gemini'
 
 export type AgentModelCatalogSource = 'claude-static' | 'codex-cli' | 'opencode-cli' | 'gemini-cli'
 import type { AppErrorDescriptor } from './error'
+import type { TerminalRuntimeKind } from './terminal'
 
 export type AgentLaunchMode = 'new' | 'resume'
 
@@ -31,6 +32,7 @@ export interface ListAgentModelsResult {
 export interface LaunchAgentInput {
   provider: AgentProviderId
   cwd: string
+  profileId?: string | null
   prompt: string
   mode?: AgentLaunchMode
   model?: string | null
@@ -43,6 +45,8 @@ export interface LaunchAgentInput {
 export interface LaunchAgentResult {
   sessionId: string
   provider: AgentProviderId
+  profileId?: string | null
+  runtimeKind?: TerminalRuntimeKind
   command: string
   args: string[]
   launchMode: AgentLaunchMode

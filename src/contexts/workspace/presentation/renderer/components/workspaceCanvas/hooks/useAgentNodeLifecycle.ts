@@ -19,6 +19,7 @@ interface UseAgentNodeLifecycleParams {
   bumpAgentLaunchToken: (nodeId: string) => number
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
+  defaultTerminalProfileId: string | null
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
@@ -27,6 +28,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
   agentFullAccess,
+  defaultTerminalProfileId,
 }: UseAgentNodeLifecycleParams): {
   buildAgentNodeTitle: (
     provider: AgentNodeData['provider'],
@@ -146,6 +148,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         const launched = await window.opencoveApi.agent.launch({
           provider: launchData.provider,
           cwd: launchData.executionDirectory,
+          profileId: node.data.profileId ?? defaultTerminalProfileId,
           prompt: launchData.prompt,
           mode,
           model: launchData.model,
@@ -188,6 +191,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               data: {
                 ...item.data,
                 sessionId: launched.sessionId,
+                profileId: launched.profileId,
+                runtimeKind: launched.runtimeKind,
                 title: buildAgentNodeTitle(launchData.provider, launched.effectiveModel),
                 status:
                   launched.launchMode === 'resume'
@@ -234,6 +239,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       agentFullAccess,
       buildAgentNodeTitle,
       bumpAgentLaunchToken,
+      defaultTerminalProfileId,
       isAgentLaunchTokenCurrent,
       nodesRef,
       setNodes,

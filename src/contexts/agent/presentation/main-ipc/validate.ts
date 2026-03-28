@@ -152,6 +152,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   const record = payload as Record<string, unknown>
   const provider = normalizeProvider(record.provider)
   const cwd = typeof record.cwd === 'string' ? record.cwd.trim() : ''
+  const profileId = typeof record.profileId === 'string' ? record.profileId.trim() : ''
   const prompt = typeof record.prompt === 'string' ? record.prompt.trim() : ''
   const mode = record.mode === 'resume' ? 'resume' : 'new'
 
@@ -186,6 +187,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   return {
     provider,
     cwd,
+    profileId: profileId.length > 0 ? profileId : null,
     prompt,
     mode,
     model: model.length > 0 ? model : null,

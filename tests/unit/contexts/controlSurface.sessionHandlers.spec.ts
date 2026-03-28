@@ -114,6 +114,10 @@ describe('control surface session handlers', () => {
     }
 
     let killed: string | null = null
+    let spawnedCommand: {
+      command: string
+      args: string[]
+    } | null = null
 
     const controlSurface = createControlSurface()
     registerSessionHandlers(controlSurface, {
@@ -123,7 +127,13 @@ describe('control surface session handlers', () => {
       },
       getPersistenceStore: async () => createStubStore(appState),
       ptyRuntime: {
-        spawnSession: async () => ({ sessionId: 'pty-123' }),
+        spawnSession: async input => {
+          spawnedCommand = {
+            command: input.command,
+            args: input.args,
+          }
+          return { sessionId: 'pty-123' }
+        },
         write: () => undefined,
         resize: () => undefined,
         kill: sessionId => {
@@ -163,8 +173,8 @@ describe('control surface session handlers', () => {
       expect(fetched.value.cwd).toBe('/repo')
       expect(fetched.value.provider).toBe('codex')
       expect('startedAtMs' in fetched.value).toBe(false)
-      expect(fetched.value.command).toBe('codex')
-      expect(Array.isArray(fetched.value.args)).toBe(true)
+      expect(fetched.value.command).toBe(spawnedCommand?.command)
+      expect(fetched.value.args).toEqual(spawnedCommand?.args)
     }
 
     const killedResult = await controlSurface.invoke(ctx, {

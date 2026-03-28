@@ -164,6 +164,7 @@ describe('WorkspaceCanvas run default agent', () => {
           agentSettings={{
             ...DEFAULT_AGENT_SETTINGS,
             defaultProvider: 'codex',
+            defaultTerminalProfileId: 'wsl:Ubuntu',
             defaultTerminalWindowScalePercent: 120,
             customModelEnabledByProvider: {
               ...DEFAULT_AGENT_SETTINGS.customModelEnabledByProvider,
@@ -200,6 +201,7 @@ describe('WorkspaceCanvas run default agent', () => {
       expect.objectContaining({
         provider: 'codex',
         cwd: '/tmp/repo',
+        profileId: 'wsl:Ubuntu',
         prompt: '',
         mode: 'new',
         model: 'gpt-5.2-codex',
@@ -327,6 +329,7 @@ describe('WorkspaceCanvas run default agent', () => {
       expect.objectContaining({
         provider: 'claude-code',
         cwd: '/tmp/repo',
+        profileId: null,
         prompt: '',
         mode: 'new',
         model: 'claude-sonnet-4-6',

@@ -3,6 +3,7 @@ import {
   buildEchoSequenceCommand,
   clearAndSeedWorkspace,
   launchApp,
+  testWorkspacePath,
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Terminal Wheel', () => {
@@ -75,6 +76,69 @@ test.describe('Workspace Canvas - Terminal Wheel', () => {
 
       const afterRows = await visibleRows.innerText()
       expect(afterRows).not.toBe(beforeRows)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('wheel over a hydrated agent node scrolls the viewport instead of the canvas', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'node-agent-scroll',
+          title: 'codex · gpt-5.2-codex',
+          position: { x: 120, y: 120 },
+          width: 460,
+          height: 300,
+          kind: 'agent',
+          status: 'running',
+          startedAt: '2026-02-09T00:00:00.000Z',
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          agent: {
+            provider: 'codex',
+            prompt: 'hydrate into fallback shell and keep scroll working',
+            model: 'gpt-5.2-codex',
+            effectiveModel: 'gpt-5.2-codex',
+            launchMode: 'new',
+            resumeSessionId: null,
+            resumeSessionIdVerified: false,
+            executionDirectory: testWorkspacePath,
+            expectedDirectory: testWorkspacePath,
+            directoryMode: 'workspace',
+            customDirectory: null,
+            shouldCreateDirectory: false,
+          },
+        },
+      ])
+
+      const agentNode = window.locator('.terminal-node').first()
+      await expect(agentNode).toBeVisible()
+      const xterm = agentNode.locator('.xterm')
+      await expect(xterm).toBeVisible()
+      await xterm.click()
+      const terminalInput = agentNode.locator('.xterm-helper-textarea')
+      await expect(terminalInput).toBeFocused()
+      await window.keyboard.type(buildEchoSequenceCommand('OPENCOVE_AGENT_SCROLL', 260))
+      await window.keyboard.press('Enter')
+      await expect(agentNode).toContainText('OPENCOVE_AGENT_SCROLL_260')
+
+      const viewport = window.locator('.react-flow__viewport')
+      const beforeTransform = await viewport.getAttribute('style')
+      const visibleRows = agentNode.locator('.xterm-rows')
+      const beforeRows = await visibleRows.innerText()
+
+      await agentNode.hover()
+      await window.mouse.wheel(0, -1200)
+      await window.waitForTimeout(120)
+
+      const afterRows = await visibleRows.innerText()
+      const afterTransform = await viewport.getAttribute('style')
+      expect(afterRows).not.toBe(beforeRows)
+      expect(afterTransform).toBe(beforeTransform)
     } finally {
       await electronApp.close()
     }
