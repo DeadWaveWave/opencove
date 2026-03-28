@@ -1,5 +1,4 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import os from 'node:os'
 import { IPC_CHANNELS } from '../../shared/contracts/ipc'
 import type {
   AttachTerminalInput,
@@ -82,7 +81,9 @@ function resolveWindowsPtyMeta(): { backend: 'conpty'; buildNumber: number } | n
     return null
   }
 
-  const build = Number.parseInt(os.release().split('.')[2] ?? '', 10)
+  const systemVersion =
+    typeof process.getSystemVersion === 'function' ? process.getSystemVersion() : ''
+  const build = Number.parseInt(systemVersion.split('.')[2] ?? '', 10)
   if (!Number.isFinite(build) || build <= 0) {
     return null
   }
