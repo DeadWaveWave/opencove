@@ -102,6 +102,11 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         if (activeElement instanceof HTMLElement) {
           activeElement.blur()
         }
+
+        const canvas = document.querySelector('.workspace-canvas')
+        if (canvas instanceof HTMLElement) {
+          canvas.focus({ preventScroll: true })
+        }
       })
       await window.keyboard.press(`${commandModifier}+G`)
 

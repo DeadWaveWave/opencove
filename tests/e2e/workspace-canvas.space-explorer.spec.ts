@@ -50,7 +50,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
           {
             id: 'space-explorer-note',
             title: 'Anchor note',
-            position: { x: 380, y: 320 },
+            position: { x: 600, y: 460 },
             width: 320,
             height: 220,
             kind: 'note',
@@ -85,6 +85,11 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       const explorer = window.locator('[data-testid="workspace-space-explorer"]')
       await expect(explorer).toBeVisible()
 
+      const explorerBox = await explorer.boundingBox()
+      if (!explorerBox) {
+        throw new Error('Explorer bounding box unavailable')
+      }
+
       await testInfo.attach(`space-explorer-open-${browserName}`, {
         body: await window.screenshot(),
         contentType: 'image/png',
@@ -99,10 +104,24 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       const documentNode = window.locator('.document-node').filter({ hasText: 'hello.md' }).first()
       await expect(documentNode).toBeVisible()
 
+      const explorerBoxAfterOpen = await explorer.boundingBox()
+      if (!explorerBoxAfterOpen) {
+        throw new Error('Explorer bounding box unavailable after open')
+      }
+
+      const documentBox = await documentNode.boundingBox()
+      if (!documentBox) {
+        throw new Error('Document node bounding box unavailable')
+      }
+
       await testInfo.attach(`document-node-open-${browserName}`, {
         body: await window.screenshot(),
         contentType: 'image/png',
       })
+
+      expect(documentBox.x).toBeGreaterThanOrEqual(
+        explorerBoxAfterOpen.x + explorerBoxAfterOpen.width - 4,
+      )
 
       const textarea = documentNode.locator('[data-testid="document-node-textarea"]')
       await expect(textarea).toHaveValue(initialContent)

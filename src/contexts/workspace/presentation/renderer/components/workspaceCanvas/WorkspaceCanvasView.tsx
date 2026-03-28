@@ -309,8 +309,8 @@ export function WorkspaceCanvasView({
           }
           rect={activeExplorerSpace.rect}
           onClose={closeSpaceExplorer}
-          onOpenFile={uri => {
-            openFileInSpace(activeExplorerSpace.id, uri)
+          onOpenFile={(uri, options) => {
+            openFileInSpace(activeExplorerSpace.id, uri, options)
           }}
         />
       ) : null}

@@ -30,7 +30,6 @@ import type {
 } from './useNodesStore.types'
 import { resolveDocumentTitleFromUri } from './useNodesStore.documentTitle'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
-
 interface UseWorkspaceCanvasNodeCreationParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -40,7 +39,6 @@ interface UseWorkspaceCanvasNodeCreationParams {
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
 }
-
 export function useWorkspaceCanvasNodeCreation({
   nodesRef,
   spacesRef,
@@ -83,6 +81,7 @@ export function useWorkspaceCanvasNodeCreation({
             ),
         targetSpaceRect: placement?.targetSpaceRect ?? null,
         preferredDirection: placement?.preferredDirection,
+        avoidRects: placement?.avoidRects,
       })
 
       if (resolvedPlacement.canPlace !== true) {
@@ -208,6 +207,7 @@ export function useWorkspaceCanvasNodeCreation({
                   ),
               targetSpaceRect: options.placement?.targetSpaceRect ?? null,
               preferredDirection: options.placement?.preferredDirection,
+              avoidRects: options.placement?.avoidRects,
             })
 
       if (resolvedPlacement.canPlace !== true) {
@@ -293,6 +293,7 @@ export function useWorkspaceCanvasNodeCreation({
             ),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
+        avoidRects: placementOptions?.avoidRects,
       })
 
       if (resolvedPlacement.canPlace !== true) {
@@ -378,6 +379,7 @@ export function useWorkspaceCanvasNodeCreation({
             ),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
+        avoidRects: placementOptions?.avoidRects,
       })
 
       if (resolvedPlacement.canPlace !== true) {
@@ -436,6 +438,7 @@ export function useWorkspaceCanvasNodeCreation({
             ),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
+        avoidRects: placementOptions?.avoidRects,
       })
 
       if (resolvedPlacement.canPlace !== true) {

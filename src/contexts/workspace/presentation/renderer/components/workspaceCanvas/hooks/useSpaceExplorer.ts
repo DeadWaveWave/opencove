@@ -83,6 +83,7 @@ async function readImageNaturalDimensions(
 }
 
 export function useWorkspaceCanvasSpaceExplorer({
+  canvasRef,
   spaces,
   spacesRef,
   nodesRef,
@@ -93,6 +94,7 @@ export function useWorkspaceCanvasSpaceExplorer({
   createDocumentNode,
   createImageNode,
 }: {
+  canvasRef: React.RefObject<HTMLDivElement | null>
   spaces: WorkspaceSpaceState[]
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -118,7 +120,13 @@ export function useWorkspaceCanvasSpaceExplorer({
   openSpaceExplorer: (spaceId: string) => void
   closeSpaceExplorer: () => void
   toggleSpaceExplorer: (spaceId: string) => void
-  openFileInSpace: (spaceId: string, uri: string) => void
+  openFileInSpace: (
+    spaceId: string,
+    uri: string,
+    options?: {
+      explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+    },
+  ) => void
 } {
   const [openExplorerSpaceId, setOpenExplorerSpaceId] = React.useState<string | null>(null)
 
@@ -157,7 +165,13 @@ export function useWorkspaceCanvasSpaceExplorer({
   }, [])
 
   const openFileInSpace = React.useCallback(
-    (spaceId: string, uri: string) => {
+    (
+      spaceId: string,
+      uri: string,
+      options?: {
+        explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+      },
+    ) => {
       const normalizedUri = uri.trim()
       if (normalizedUri.length === 0) {
         return
@@ -182,6 +196,153 @@ export function useWorkspaceCanvasSpaceExplorer({
         return
       }
 
+      const baseAnchor = {
+        x: rect.x + 24,
+        y: rect.y + 46,
+      }
+
+      const placement = (() => {
+        const gapPx = 16
+        const paddingPx = 8
+
+        // When available, anchor placement to the actual rendered overlay rect. This avoids
+        // subtle coordinate-space mismatches between canvas-relative measurements and the
+        // ReactFlow viewport.
+        const explorerElement = document.querySelector(
+          '[data-testid="workspace-space-explorer"]',
+        ) as HTMLElement | null
+        if (explorerElement) {
+          const bounds = explorerElement.getBoundingClientRect()
+          if (bounds.width > 0 && bounds.height > 0) {
+            const anchorClient = {
+              x: bounds.right + gapPx,
+              y: bounds.top + 46,
+            }
+            const anchor = reactFlow.screenToFlowPosition(anchorClient)
+
+            const avoidStart = reactFlow.screenToFlowPosition({
+              x: bounds.left - paddingPx,
+              y: bounds.top - paddingPx,
+            })
+            const avoidEnd = reactFlow.screenToFlowPosition({
+              x: bounds.right + paddingPx,
+              y: bounds.bottom + paddingPx,
+            })
+
+            const avoidWidth = avoidEnd.x - avoidStart.x
+            const avoidHeight = avoidEnd.y - avoidStart.y
+
+            if (
+              Number.isFinite(anchor.x) &&
+              Number.isFinite(anchor.y) &&
+              Number.isFinite(avoidStart.x) &&
+              Number.isFinite(avoidStart.y) &&
+              Number.isFinite(avoidWidth) &&
+              Number.isFinite(avoidHeight) &&
+              avoidWidth > 0 &&
+              avoidHeight > 0
+            ) {
+              return {
+                anchor,
+                avoidRects: [
+                  {
+                    x: avoidStart.x,
+                    y: avoidStart.y,
+                    width: avoidWidth,
+                    height: avoidHeight,
+                  },
+                ],
+              }
+            }
+
+            if (Number.isFinite(anchor.x) && Number.isFinite(anchor.y)) {
+              return { anchor, avoidRects: undefined }
+            }
+          }
+        }
+
+        const placementPx = options?.explorerPlacementPx ?? null
+        if (!placementPx) {
+          return { anchor: baseAnchor, avoidRects: undefined }
+        }
+
+        const canvas = canvasRef.current
+        if (!canvas) {
+          return { anchor: baseAnchor, avoidRects: undefined }
+        }
+
+        if (
+          typeof placementPx.left !== 'number' ||
+          !Number.isFinite(placementPx.left) ||
+          typeof placementPx.top !== 'number' ||
+          !Number.isFinite(placementPx.top) ||
+          typeof placementPx.width !== 'number' ||
+          !Number.isFinite(placementPx.width) ||
+          placementPx.width <= 0 ||
+          typeof placementPx.height !== 'number' ||
+          !Number.isFinite(placementPx.height) ||
+          placementPx.height <= 0
+        ) {
+          return { anchor: baseAnchor, avoidRects: undefined }
+        }
+
+        const bounds = canvas.getBoundingClientRect()
+        if (!Number.isFinite(bounds.left) || !Number.isFinite(bounds.top)) {
+          return { anchor: baseAnchor, avoidRects: undefined }
+        }
+
+        const anchorClient = {
+          x: bounds.left + placementPx.left + placementPx.width + gapPx,
+          y: bounds.top + placementPx.top + 46,
+        }
+        const anchor = reactFlow.screenToFlowPosition(anchorClient)
+        if (!Number.isFinite(anchor.x) || !Number.isFinite(anchor.y)) {
+          return { anchor: baseAnchor, avoidRects: undefined }
+        }
+
+        const avoidStart = reactFlow.screenToFlowPosition({
+          x: bounds.left + placementPx.left - paddingPx,
+          y: bounds.top + placementPx.top - paddingPx,
+        })
+        const avoidEnd = reactFlow.screenToFlowPosition({
+          x: bounds.left + placementPx.left + placementPx.width + paddingPx,
+          y: bounds.top + placementPx.top + placementPx.height + paddingPx,
+        })
+        if (
+          !Number.isFinite(avoidStart.x) ||
+          !Number.isFinite(avoidStart.y) ||
+          !Number.isFinite(avoidEnd.x) ||
+          !Number.isFinite(avoidEnd.y)
+        ) {
+          return { anchor, avoidRects: undefined }
+        }
+
+        const avoidWidth = avoidEnd.x - avoidStart.x
+        const avoidHeight = avoidEnd.y - avoidStart.y
+        if (
+          !(
+            Number.isFinite(avoidWidth) &&
+            Number.isFinite(avoidHeight) &&
+            avoidWidth > 0 &&
+            avoidHeight > 0
+          )
+        ) {
+          return { anchor, avoidRects: undefined }
+        }
+
+        return {
+          anchor,
+          avoidRects: [
+            {
+              x: avoidStart.x,
+              y: avoidStart.y,
+              width: avoidWidth,
+              height: avoidHeight,
+            },
+          ],
+        }
+      })()
+
       const openAsDocument = () => {
         const existingNode =
           nodesRef.current.find(node => {
@@ -202,12 +363,13 @@ export function useWorkspaceCanvasSpaceExplorer({
         }
 
         const created = createDocumentNode(
-          {
-            x: rect.x + 24,
-            y: rect.y + 46,
-          },
+          placement.anchor,
           { uri: normalizedUri },
-          { targetSpaceRect: rect },
+          {
+            targetSpaceRect: rect,
+            preferredDirection: options?.explorerPlacementPx ? 'right' : undefined,
+            avoidRects: placement.avoidRects,
+          },
         )
 
         if (!created) {
@@ -251,7 +413,7 @@ export function useWorkspaceCanvasSpaceExplorer({
             )
 
             const created = createImageNode(
-              { x: rect.x + 24, y: rect.y + 46 },
+              placement.anchor,
               {
                 assetId,
                 mimeType,
@@ -259,7 +421,11 @@ export function useWorkspaceCanvasSpaceExplorer({
                 naturalWidth,
                 naturalHeight,
               },
-              { targetSpaceRect: rect },
+              {
+                targetSpaceRect: rect,
+                preferredDirection: options?.explorerPlacementPx ? 'right' : undefined,
+                avoidRects: placement.avoidRects,
+              },
             )
 
             if (!created) {
@@ -286,6 +452,7 @@ export function useWorkspaceCanvasSpaceExplorer({
       openAsDocument()
     },
     [
+      canvasRef,
       createDocumentNode,
       createImageNode,
       nodesRef,

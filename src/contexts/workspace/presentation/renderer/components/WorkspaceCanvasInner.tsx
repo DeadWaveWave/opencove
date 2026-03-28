@@ -385,6 +385,7 @@ export function WorkspaceCanvasInner({
     handleSelectionContextMenu,
   })
   const spaceExplorer = workspaceCanvasHooks.useWorkspaceCanvasSpaceExplorer({
+    canvasRef: canvasState.canvasRef,
     spaces,
     spacesRef: canvasState.spacesRef,
     nodesRef: nodeStore.nodesRef,

@@ -52,7 +52,12 @@ export function WorkspaceSpaceExplorerOverlay({
   directoryPath: string
   rect: { x: number; y: number; width: number; height: number }
   onClose: () => void
-  onOpenFile: (uri: string) => void
+  onOpenFile: (
+    uri: string,
+    options?: {
+      explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+    },
+  ) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const transform = useStore(selectViewportTransform)
@@ -66,8 +71,39 @@ export function WorkspaceSpaceExplorerOverlay({
 
   const rootUri = React.useMemo(() => toFileUri(directoryPath.trim()), [directoryPath])
 
+  const pixelRect = React.useMemo(() => {
+    const [translateX, translateY, zoom] = transform
+    return {
+      x: rect.x * zoom + translateX,
+      y: rect.y * zoom + translateY,
+      width: rect.width * zoom,
+      height: rect.height * zoom,
+    }
+  }, [rect.height, rect.width, rect.x, rect.y, transform])
+
+  const placement = React.useMemo(() => {
+    const canvasWidth = canvasSize.width > 0 ? canvasSize.width : 1280
+    const canvasHeight = canvasSize.height > 0 ? canvasSize.height : 720
+    const autoPreferredWidth = resolveExplorerAutoPreferredWidth(pixelRect.width)
+    const preferredWidth = manualWidth ?? autoPreferredWidth
+    return resolveExplorerPlacement({ canvasWidth, canvasHeight, pixelRect, preferredWidth })
+  }, [canvasSize.height, canvasSize.width, manualWidth, pixelRect])
+
   const { isLoadingRoot, rootError, rows, selectedEntryUri, refresh, handleEntryActivate, create } =
-    useSpaceExplorerOverlayModel({ rootUri, spaceId, onOpenFile })
+    useSpaceExplorerOverlayModel({
+      rootUri,
+      spaceId,
+      onOpenFile: uri => {
+        onOpenFile(uri, {
+          explorerPlacementPx: {
+            left: placement.left,
+            top: placement.top,
+            width: placement.width,
+            height: placement.height,
+          },
+        })
+      },
+    })
   const createRef = React.useRef(create)
 
   React.useEffect(() => {
@@ -138,16 +174,6 @@ export function WorkspaceSpaceExplorerOverlay({
     }
   }, [onClose])
 
-  const pixelRect = React.useMemo(() => {
-    const [translateX, translateY, zoom] = transform
-    return {
-      x: rect.x * zoom + translateX,
-      y: rect.y * zoom + translateY,
-      width: rect.width * zoom,
-      height: rect.height * zoom,
-    }
-  }, [rect.height, rect.width, rect.x, rect.y, transform])
-
   React.useEffect(() => {
     const width = canvasSize.width
     const height = canvasSize.height
@@ -173,14 +199,6 @@ export function WorkspaceSpaceExplorerOverlay({
     pixelRect.x,
     pixelRect.y,
   ])
-
-  const placement = React.useMemo(() => {
-    const canvasWidth = canvasSize.width > 0 ? canvasSize.width : 1280
-    const canvasHeight = canvasSize.height > 0 ? canvasSize.height : 720
-    const autoPreferredWidth = resolveExplorerAutoPreferredWidth(pixelRect.width)
-    const preferredWidth = manualWidth ?? autoPreferredWidth
-    return resolveExplorerPlacement({ canvasWidth, canvasHeight, pixelRect, preferredWidth })
-  }, [canvasSize.height, canvasSize.width, manualWidth, pixelRect])
 
   const body = isLoadingRoot ? (
     <div className="workspace-space-explorer__state">{t('common.loading')}</div>
