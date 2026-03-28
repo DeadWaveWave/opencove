@@ -78,6 +78,7 @@ export interface OpenCoveApi {
     isTest: boolean
     allowWhatsNewInTests: boolean
     platform: string
+    windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>

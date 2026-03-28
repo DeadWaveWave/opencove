@@ -158,6 +158,7 @@ export function TerminalNode({
     const scrollbackBuffer = scrollbackBufferRef.current
     const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
     const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
+    const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily:
@@ -166,6 +167,7 @@ export function TerminalNode({
       allowProposedApi: true,
       convertEol: true,
       scrollback: 5000,
+      ...(windowsPty ? { windowsPty } : {}),
       ...(initialDimensions ?? {}),
     })
     const fitAddon = new FitAddon()

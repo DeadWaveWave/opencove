@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import os from 'node:os'
 import { IPC_CHANNELS } from '../../shared/contracts/ipc'
 import type {
   AttachTerminalInput,
@@ -76,12 +77,29 @@ import { invokeIpc } from './ipcInvoke'
 
 type UnsubscribeFn = () => void
 
+function resolveWindowsPtyMeta(): { backend: 'conpty'; buildNumber: number } | null {
+  if (process.platform !== 'win32') {
+    return null
+  }
+
+  const build = Number.parseInt(os.release().split('.')[2] ?? '', 10)
+  if (!Number.isFinite(build) || build <= 0) {
+    return null
+  }
+
+  return {
+    backend: 'conpty',
+    buildNumber: build,
+  }
+}
+
 // Custom APIs for renderer
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     platform: process.platform,
+    windowsPty: resolveWindowsPtyMeta(),
   },
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>

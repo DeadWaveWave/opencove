@@ -244,31 +244,27 @@ export function registerAgentIpcHandlers(
             }
           : undefined
 
-      const resolvedSpawn =
-        normalized.profileId && normalized.profileId.trim().length > 0
-          ? await terminalProfileResolver.resolveCommandSpawn({
-              cwd: normalized.cwd,
-              profileId: normalized.profileId,
-              command,
-              args,
-              ...(sessionEnv ? { env: sessionEnv } : {}),
-            })
-          : await (async () => {
-              const resolvedInvocation = await resolveAgentCliInvocation({
-                command,
-                args,
-              })
+      const resolvedInvocation = await resolveAgentCliInvocation({
+        command,
+        args,
+      })
 
-              return {
-                command: resolvedInvocation.command,
-                args: resolvedInvocation.args,
-                cwd: normalized.cwd,
-                env: sessionEnv ? { ...process.env, ...sessionEnv } : undefined,
-                profileId: null,
-                runtimeKind:
-                  process.platform === 'win32' ? ('windows' as const) : ('posix' as const),
-              }
-            })()
+      const resolvedSpawn = testStub
+        ? {
+            command: resolvedInvocation.command,
+            args: resolvedInvocation.args,
+            cwd: normalized.cwd,
+            env: sessionEnv ? { ...process.env, ...sessionEnv } : undefined,
+            profileId: normalized.profileId ?? null,
+            runtimeKind: process.platform === 'win32' ? ('windows' as const) : ('posix' as const),
+          }
+        : await terminalProfileResolver.resolveCommandSpawn({
+            cwd: normalized.cwd,
+            profileId: normalized.profileId,
+            command: resolvedInvocation.command,
+            args: resolvedInvocation.args,
+            ...(sessionEnv ? { env: sessionEnv } : {}),
+          })
 
       const { sessionId } = await ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
