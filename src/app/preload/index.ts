@@ -64,6 +64,13 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  ReadDirectoryInput,
+  ReadDirectoryResult,
+  ReadFileTextInput,
+  ReadFileTextResult,
+  StatInput,
+  FileSystemStat,
+  WriteFileTextInput,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 
@@ -88,6 +95,16 @@ const opencoveApi = {
     readText: (): Promise<string> => invokeIpc(IPC_CHANNELS.clipboardReadText),
     writeText: (text: string): Promise<void> =>
       invokeIpc(IPC_CHANNELS.clipboardWriteText, { text }),
+  },
+  filesystem: {
+    readFileText: (payload: ReadFileTextInput): Promise<ReadFileTextResult> =>
+      invokeIpc(IPC_CHANNELS.filesystemReadFileText, payload),
+    writeFileText: (payload: WriteFileTextInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.filesystemWriteFileText, payload),
+    readDirectory: (payload: ReadDirectoryInput): Promise<ReadDirectoryResult> =>
+      invokeIpc(IPC_CHANNELS.filesystemReadDirectory, payload),
+    stat: (payload: StatInput): Promise<FileSystemStat> =>
+      invokeIpc(IPC_CHANNELS.filesystemStat, payload),
   },
   persistence: {
     readWorkspaceStateRaw: (): Promise<string | null> =>

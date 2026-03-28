@@ -62,6 +62,13 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  ReadDirectoryInput,
+  ReadDirectoryResult,
+  ReadFileTextInput,
+  ReadFileTextResult,
+  StatInput,
+  FileSystemStat,
+  WriteFileTextInput,
 } from '../../shared/contracts/dto'
 
 type UnsubscribeFn = () => void
@@ -81,6 +88,12 @@ export interface OpenCoveApi {
   clipboard: {
     readText: () => Promise<string>
     writeText: (text: string) => Promise<void>
+  }
+  filesystem: {
+    readFileText: (payload: ReadFileTextInput) => Promise<ReadFileTextResult>
+    writeFileText: (payload: WriteFileTextInput) => Promise<void>
+    readDirectory: (payload: ReadDirectoryInput) => Promise<ReadDirectoryResult>
+    stat: (payload: StatInput) => Promise<FileSystemStat>
   }
   persistence: {
     readWorkspaceStateRaw: () => Promise<string | null>

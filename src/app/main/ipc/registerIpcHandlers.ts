@@ -13,6 +13,7 @@ import { registerAppUpdateIpcHandlers } from '../../../contexts/update/presentat
 import { createAppUpdateService } from '../../../contexts/update/infrastructure/main/AppUpdateService'
 import { registerReleaseNotesIpcHandlers } from '../../../contexts/releaseNotes/presentation/main-ipc/register'
 import { createReleaseNotesService } from '../../../contexts/releaseNotes/infrastructure/main/ReleaseNotesService'
+import { registerFilesystemIpcHandlers } from '../../../contexts/filesystem/presentation/main-ipc/register'
 import { app } from 'electron'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createPersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
@@ -58,6 +59,7 @@ export function registerIpcHandlers(deps?: {
     registerAppUpdateIpcHandlers(appUpdateService),
     registerReleaseNotesIpcHandlers(releaseNotesService),
     registerWorkspaceIpcHandlers(approvedWorkspaces),
+    registerFilesystemIpcHandlers(approvedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
     registerWorktreeIpcHandlers(approvedWorkspaces),
     registerIntegrationIpcHandlers(approvedWorkspaces),
