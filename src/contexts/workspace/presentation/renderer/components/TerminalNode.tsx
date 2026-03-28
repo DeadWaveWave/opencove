@@ -25,6 +25,7 @@ import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { resolveTerminalTheme, resolveTerminalUiTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
+import { bindAgentCursorVisibility } from './terminalNode/agentCursorVisibility'
 import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalFind } from './terminalNode/useTerminalFind'
@@ -201,9 +202,15 @@ export function TerminalNode({
       }),
     )
     let cancelMouseServicePatch: () => void = () => undefined
+    let disposeAgentCursorVisibility: () => void = () => undefined
     if (containerRef.current) {
       terminal.open(containerRef.current)
       containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
+      disposeAgentCursorVisibility = bindAgentCursorVisibility({
+        terminal,
+        container: containerRef.current,
+        isAgentNode: kind === 'agent',
+      })
       cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
@@ -397,6 +404,7 @@ export function TerminalNode({
       }
 
       cancelMouseServicePatch()
+      disposeAgentCursorVisibility()
       isDisposed = true
       const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
       void detachPromise?.catch(() => undefined)

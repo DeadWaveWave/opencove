@@ -36,8 +36,20 @@ vi.mock('@xterm/xterm', () => {
     public options: { fontSize: number; theme?: unknown } = { fontSize: 13 }
     public written: string[] = []
     public refreshCalls = 0
+    public buffer = {
+      active: { type: 'normal' as 'normal' | 'alternate' },
+      onBufferChange: (listener: (buffer: { type: 'normal' | 'alternate' }) => void) => {
+        this.bufferChangeListener = listener
+        return {
+          dispose: () => {
+            this.bufferChangeListener = null
+          },
+        }
+      },
+    }
     private dataListener: ((data: string) => void) | null = null
     private binaryListener: ((data: string) => void) | null = null
+    private bufferChangeListener: ((buffer: { type: 'normal' | 'alternate' }) => void) | null = null
 
     public constructor(options?: { cols?: number; rows?: number; theme?: unknown }) {
       MockTerminal.lastInstance = this
@@ -86,6 +98,11 @@ vi.mock('@xterm/xterm', () => {
     public write(data: string, callback?: () => void): void {
       this.written.push(data)
       callback?.()
+    }
+
+    public emitBufferChange(type: 'normal' | 'alternate'): void {
+      this.buffer.active = { type }
+      this.bufferChangeListener?.({ type })
     }
 
     public emitBinary(data: string): void {
@@ -384,6 +401,72 @@ describe('TerminalNode hydration buffering', () => {
         data: binaryInput,
         encoding: 'binary',
       })
+    })
+  })
+
+  it('marks alternate-screen agent nodes so the native xterm cursor can be hidden', async () => {
+    if (typeof window.ResizeObserver === 'undefined') {
+      window.ResizeObserver = class ResizeObserver {
+        public observe(): void {}
+        public disconnect(): void {}
+        public unobserve(): void {}
+      }
+    }
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        meta: {
+          isTest: true,
+        },
+        pty: {
+          attach: vi.fn(async () => undefined),
+          detach: vi.fn(async () => undefined),
+          snapshot: vi.fn(async () => ({ data: '' })),
+          onData: vi.fn(() => () => undefined),
+          onExit: vi.fn(() => () => undefined),
+          write: vi.fn(async () => undefined),
+          resize: vi.fn(async () => undefined),
+        },
+      },
+    })
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+
+    const { container } = render(
+      <TerminalNode
+        nodeId="agent-node-1"
+        sessionId="session-1"
+        title="agent"
+        kind="agent"
+        status="running"
+        lastError={null}
+        position={{ x: 0, y: 0 }}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />,
+    )
+
+    const terminalContainer = container.querySelector('.terminal-node__terminal')
+    expect(terminalContainer).not.toHaveAttribute('data-cove-agent-alt-buffer')
+
+    const { __getLastTerminal } = await import('@xterm/xterm')
+    __getLastTerminal()?.emitBufferChange('alternate')
+
+    await waitFor(() => {
+      expect(terminalContainer).toHaveAttribute('data-cove-agent-alt-buffer', 'true')
+    })
+
+    __getLastTerminal()?.emitBufferChange('normal')
+
+    await waitFor(() => {
+      expect(terminalContainer).not.toHaveAttribute('data-cove-agent-alt-buffer')
     })
   })
 })
