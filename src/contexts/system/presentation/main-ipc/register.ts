@@ -59,7 +59,7 @@ async function listSystemFonts(): Promise<ListSystemFontsResult> {
     const fonts = raw
       .map(name => stripQuotes(name).trim())
       .filter(name => {
-        if (!name || seen.has(name)) return false
+        if (!name || seen.has(name)) { return false }
         seen.add(name)
         return true
       })

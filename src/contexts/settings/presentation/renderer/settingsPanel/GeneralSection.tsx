@@ -78,7 +78,7 @@ function FontFamilyRow({
   const listRef = useRef<HTMLUListElement>(null)
 
   const visibleFonts = fonts.filter(f => {
-    if (!showAll && !f.monospace) return false
+    if (!showAll && !f.monospace) { return false }
     if (query.trim().length > 0) {
       return f.name.toLowerCase().includes(query.trim().toLowerCase())
     }
@@ -106,7 +106,7 @@ function FontFamilyRow({
   )
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) { return }
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         close()

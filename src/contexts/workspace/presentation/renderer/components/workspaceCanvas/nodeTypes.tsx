@@ -460,6 +460,7 @@ export function useWorkspaceCanvasNodeTypes({
     spacesRef,
     workspacePath,
     terminalFontSize,
+    terminalFontFamily,
     updateNoteTextRef,
     openTaskEditorRef,
     quickUpdateTaskRequirementRef,

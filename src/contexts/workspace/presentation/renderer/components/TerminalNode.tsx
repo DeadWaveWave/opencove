@@ -161,6 +161,7 @@ export function TerminalNode({
     const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const terminal = new Terminal({
       cursorBlink: true,
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- terminalFontFamily is intentionally used only as the initial value; reactive updates are handled by a separate effect
       fontFamily:
         terminalFontFamily ??
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
