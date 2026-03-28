@@ -255,8 +255,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.taskSuggestTitle, payload),
   },
   system: {
-    listFonts: (): Promise<ListSystemFontsResult> =>
-      invokeIpc(IPC_CHANNELS.systemListFonts),
+    listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
   },
 }
 

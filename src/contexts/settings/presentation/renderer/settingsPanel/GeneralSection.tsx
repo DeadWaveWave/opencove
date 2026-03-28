@@ -78,7 +78,9 @@ function FontFamilyRow({
   const listRef = useRef<HTMLUListElement>(null)
 
   const visibleFonts = fonts.filter(f => {
-    if (!showAll && !f.monospace) { return false }
+    if (!showAll && !f.monospace) {
+      return false
+    }
     if (query.trim().length > 0) {
       return f.name.toLowerCase().includes(query.trim().toLowerCase())
     }
@@ -106,7 +108,9 @@ function FontFamilyRow({
   )
 
   useEffect(() => {
-    if (!isOpen) { return }
+    if (!isOpen) {
+      return
+    }
     const handler = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         close()
@@ -121,7 +125,10 @@ function FontFamilyRow({
       <div className="settings-panel__row-label">
         <strong>{t('settingsPanel.general.terminalFontFamily')}</strong>
       </div>
-      <div className="settings-panel__control" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}>
+      <div
+        className="settings-panel__control"
+        style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 6 }}
+      >
         <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
           <button
             type="button"
@@ -171,7 +178,9 @@ function FontFamilyRow({
                   onChange={e => setQuery(e.target.value)}
                 />
               </div>
-              <div style={{ padding: '2px 8px 6px', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{ padding: '2px 8px 6px', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
                 <input
                   type="checkbox"
                   id="font-show-all"
@@ -179,7 +188,10 @@ function FontFamilyRow({
                   onChange={e => setShowAll(e.target.checked)}
                   style={{ cursor: 'pointer' }}
                 />
-                <label htmlFor="font-show-all" style={{ fontSize: 12, color: 'var(--cove-text-muted)', cursor: 'pointer' }}>
+                <label
+                  htmlFor="font-show-all"
+                  style={{ fontSize: 12, color: 'var(--cove-text-muted)', cursor: 'pointer' }}
+                >
                   {t('settingsPanel.general.terminalFontFamilyShowAll')}
                 </label>
               </div>
@@ -215,7 +227,9 @@ function FontFamilyRow({
                   </li>
                 ))}
                 {!isLoading && visibleFonts.length === 0 && (
-                  <li style={{ padding: '6px 12px', color: 'var(--cove-text-muted)', fontSize: 13 }}>
+                  <li
+                    style={{ padding: '6px 12px', color: 'var(--cove-text-muted)', fontSize: 13 }}
+                  >
                     {t('settingsPanel.general.terminalFontFamilyNoResults')}
                   </li>
                 )}
