@@ -16,68 +16,14 @@ import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { shouldStopWheelPropagation } from '../../../components/taskNode/helpers'
 import { selectViewportTransform } from './WorkspaceSpaceExplorerOverlay.helpers'
 import {
+  resolveExplorerAutoPreferredWidth,
+  resolveExplorerPlacement,
+} from './WorkspaceSpaceExplorerOverlay.layout'
+import {
   useSpaceExplorerOverlayModel,
   type SpaceExplorerCreateMode,
   type SpaceExplorerRow,
 } from './WorkspaceSpaceExplorerOverlay.model'
-
-const EXPLORER_MIN_WIDTH_INSIDE = 160
-const EXPLORER_MAX_WIDTH = 380
-const EXPLORER_DEFAULT_WIDTH = 300
-const EXPLORER_GAP = 10
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value))
-}
-
-function resolveExplorerPlacement({
-  canvasWidth,
-  canvasHeight,
-  pixelRect,
-}: {
-  canvasWidth: number
-  canvasHeight: number
-  pixelRect: { x: number; y: number; width: number; height: number }
-}): { width: number; height: number; left: number; top: number } {
-  // Always render the Explorer inside the space. To keep it usable near viewport edges, clamp
-  // the overlay to the visible intersection (canvas bounds ∩ space bounds).
-  const spaceBounds = {
-    left: pixelRect.x + EXPLORER_GAP,
-    top: pixelRect.y + EXPLORER_GAP,
-    right: pixelRect.x + pixelRect.width - EXPLORER_GAP,
-    bottom: pixelRect.y + pixelRect.height - EXPLORER_GAP,
-  }
-
-  const canvasBounds = {
-    left: EXPLORER_GAP,
-    top: EXPLORER_GAP,
-    right: canvasWidth - EXPLORER_GAP,
-    bottom: canvasHeight - EXPLORER_GAP,
-  }
-
-  const bounds = {
-    left: Math.max(spaceBounds.left, canvasBounds.left),
-    top: Math.max(spaceBounds.top, canvasBounds.top),
-    right: Math.min(spaceBounds.right, canvasBounds.right),
-    bottom: Math.min(spaceBounds.bottom, canvasBounds.bottom),
-  }
-
-  const widthAvailable = Math.max(0, bounds.right - bounds.left)
-  const heightAvailable = Math.max(0, bounds.bottom - bounds.top)
-
-  // Keep the Explorer "panel-like" instead of menu-like by relating its width to the space size.
-  const preferredWidth = Math.floor(pixelRect.width * 0.38) || EXPLORER_DEFAULT_WIDTH
-  const maxWidth = Math.floor(Math.min(EXPLORER_MAX_WIDTH, widthAvailable))
-  const minWidth = Math.min(EXPLORER_MIN_WIDTH_INSIDE, maxWidth)
-  const width = clamp(preferredWidth, minWidth, maxWidth)
-
-  return {
-    width: Math.round(width),
-    height: Math.round(heightAvailable),
-    left: Math.round(bounds.left),
-    top: Math.round(bounds.top),
-  }
-}
 
 function renderRowDisclosure(row: Extract<SpaceExplorerRow, { kind: 'entry' }>): React.JSX.Element {
   if (row.entry.kind !== 'directory') {
@@ -111,6 +57,8 @@ export function WorkspaceSpaceExplorerOverlay({
   const { t } = useTranslation()
   const transform = useStore(selectViewportTransform)
   const createInputRef = React.useRef<HTMLInputElement | null>(null)
+  const resizeStartRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
+  const [manualWidth, setManualWidth] = React.useState<number | null>(null)
   const [canvasSize, setCanvasSize] = React.useState(() => ({
     width: 0,
     height: 0,
@@ -200,11 +148,39 @@ export function WorkspaceSpaceExplorerOverlay({
     }
   }, [rect.height, rect.width, rect.x, rect.y, transform])
 
+  React.useEffect(() => {
+    const width = canvasSize.width
+    const height = canvasSize.height
+    if (width <= 0 || height <= 0) {
+      return
+    }
+
+    const isSpaceVisible =
+      pixelRect.x + pixelRect.width > 0 &&
+      pixelRect.x < width &&
+      pixelRect.y + pixelRect.height > 0 &&
+      pixelRect.y < height
+
+    if (!isSpaceVisible) {
+      onClose()
+    }
+  }, [
+    canvasSize.height,
+    canvasSize.width,
+    onClose,
+    pixelRect.height,
+    pixelRect.width,
+    pixelRect.x,
+    pixelRect.y,
+  ])
+
   const placement = React.useMemo(() => {
     const canvasWidth = canvasSize.width > 0 ? canvasSize.width : 1280
     const canvasHeight = canvasSize.height > 0 ? canvasSize.height : 720
-    return resolveExplorerPlacement({ canvasWidth, canvasHeight, pixelRect })
-  }, [canvasSize.height, canvasSize.width, pixelRect])
+    const autoPreferredWidth = resolveExplorerAutoPreferredWidth(pixelRect.width)
+    const preferredWidth = manualWidth ?? autoPreferredWidth
+    return resolveExplorerPlacement({ canvasWidth, canvasHeight, pixelRect, preferredWidth })
+  }, [canvasSize.height, canvasSize.width, manualWidth, pixelRect])
 
   const body = isLoadingRoot ? (
     <div className="workspace-space-explorer__state">{t('common.loading')}</div>
@@ -430,6 +406,62 @@ export function WorkspaceSpaceExplorerOverlay({
         ) : null}
         {body}
       </div>
+
+      <div
+        className="workspace-space-explorer__resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label={t('spaceExplorer.resizeWidth')}
+        onPointerDown={event => {
+          event.stopPropagation()
+          if (event.button !== 0) {
+            return
+          }
+
+          resizeStartRef.current = {
+            startX: event.clientX,
+            startWidth: placement.width,
+          }
+          event.currentTarget.setPointerCapture(event.pointerId)
+        }}
+        onPointerMove={event => {
+          const resizeStart = resizeStartRef.current
+          if (!resizeStart) {
+            return
+          }
+
+          event.stopPropagation()
+          const delta = event.clientX - resizeStart.startX
+          const unclampedWidth = resizeStart.startWidth + delta
+          const nextWidth = Math.min(
+            placement.maxWidth,
+            Math.max(placement.minWidth, unclampedWidth),
+          )
+          setManualWidth(nextWidth)
+        }}
+        onPointerUp={event => {
+          if (!resizeStartRef.current) {
+            return
+          }
+
+          event.stopPropagation()
+          resizeStartRef.current = null
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }
+        }}
+        onPointerCancel={event => {
+          if (!resizeStartRef.current) {
+            return
+          }
+
+          event.stopPropagation()
+          resizeStartRef.current = null
+          if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }
+        }}
+      />
     </section>
   )
 }

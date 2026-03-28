@@ -361,6 +361,7 @@ export const en = {
     newFile: 'New File',
     newFolder: 'New Folder',
     create: 'Create',
+    resizeWidth: 'Resize Explorer width',
     fileNamePlaceholder: 'File name',
     folderNamePlaceholder: 'Folder name',
     invalidName: 'Enter a valid name.',

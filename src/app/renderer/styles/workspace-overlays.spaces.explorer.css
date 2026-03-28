@@ -378,3 +378,39 @@
   border-color: var(--cove-canvas-control-border-hover);
   background: color-mix(in srgb, var(--cove-canvas-control-surface-hover) 88%, transparent);
 }
+
+.workspace-space-explorer__resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  z-index: 1;
+}
+
+.workspace-space-explorer__resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  bottom: 10px;
+  left: 50%;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cove-border) 58%, transparent);
+  opacity: 0.35;
+  transition:
+    opacity 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.workspace-space-explorer__resize-handle:hover::before {
+  opacity: 0.9;
+  background: color-mix(in srgb, var(--cove-label-blue) 40%, var(--cove-border));
+}
+
+.workspace-space-explorer__resize-handle:active::before {
+  opacity: 1;
+}

@@ -357,6 +357,7 @@ export const zhCN = {
     newFile: '新建文件',
     newFolder: '新建文件夹',
     create: '创建',
+    resizeWidth: '调整 Explorer 宽度',
     fileNamePlaceholder: '文件名',
     folderNamePlaceholder: '文件夹名',
     invalidName: '请输入有效名称。',
