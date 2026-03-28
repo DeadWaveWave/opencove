@@ -1,3 +1,4 @@
+import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { ListSystemFontsResult } from '../../../../shared/contracts/dto'
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
@@ -59,7 +60,9 @@ async function listSystemFonts(): Promise<ListSystemFontsResult> {
     const fonts = raw
       .map(name => stripQuotes(name).trim())
       .filter(name => {
-        if (!name || seen.has(name)) { return false }
+        if (!name || seen.has(name)) {
+          return false
+        }
         seen.add(name)
         return true
       })
@@ -79,6 +82,8 @@ export function registerSystemIpcHandlers(): IpcRegistrationDisposable {
   )
 
   return {
-    dispose: () => undefined,
+    dispose: () => {
+      ipcMain.removeHandler(IPC_CHANNELS.systemListFonts)
+    },
   }
 }
