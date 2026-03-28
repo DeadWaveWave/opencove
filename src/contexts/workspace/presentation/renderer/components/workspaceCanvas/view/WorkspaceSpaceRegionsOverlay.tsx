@@ -21,7 +21,11 @@ import {
   type WorkspaceSpaceBranchBadge,
 } from './WorkspaceSpaceRegionItem'
 import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
-import { normalizeComparablePath, toShortSha } from './WorkspaceSpaceRegionsOverlay.helpers'
+import {
+  normalizeComparablePath,
+  resolveClosestWorktree,
+  toShortSha,
+} from './WorkspaceSpaceRegionsOverlay.helpers'
 import {
   resolveGitStatusRepoKey,
   useWorkspaceGitStatusSummary,
@@ -88,29 +92,11 @@ export function WorkspaceSpaceRegionsOverlay({
     state => state.agentSettings.githubPullRequestsEnabled,
   )
 
-  const worktreeDirectories = React.useMemo(() => {
-    const unique = new Set<string>()
-
-    spaceVisuals.forEach(space => {
-      const directoryPath = normalizeComparablePath(space.directoryPath)
-      if (directoryPath.length === 0 || directoryPath === normalizedWorkspacePath) {
-        return
-      }
-
-      unique.add(directoryPath)
-    })
-
-    return [...unique].sort((left, right) => left.localeCompare(right))
-  }, [normalizedWorkspacePath, spaceVisuals])
-
-  const worktreeDirectoriesKey = React.useMemo(
-    () => worktreeDirectories.join('|'),
-    [worktreeDirectories],
-  )
-
   const [worktreeInfoByPath, setWorktreeInfoByPath] = React.useState<Map<string, GitWorktreeInfo>>(
     () => new Map(),
   )
+
+  const worktrees = React.useMemo(() => [...worktreeInfoByPath.values()], [worktreeInfoByPath])
 
   const changedFilesByRepoKey = useWorkspaceGitStatusSummary({
     workspacePath,
@@ -124,14 +110,21 @@ export function WorkspaceSpaceRegionsOverlay({
     const unique = new Set<string>()
 
     spaceVisuals.forEach(space => {
-      const directoryPath = normalizeComparablePath(space.directoryPath)
-      const hasWorktreeDirectory =
-        directoryPath.length > 0 && directoryPath !== normalizedWorkspacePath
-      if (!hasWorktreeDirectory) {
+      const info = resolveClosestWorktree(worktrees, space.directoryPath)
+      if (!info) {
         return
       }
 
-      const info = worktreeInfoByPath.get(directoryPath)
+      const normalizedWorktreePath = normalizeComparablePath(info.path)
+      if (
+        normalizedWorktreePath.length === 0 ||
+        (normalizedWorktreePath === normalizedWorkspacePath &&
+          !selectedSpaceIdSet.has(space.id) &&
+          openExplorerSpaceId !== space.id)
+      ) {
+        return
+      }
+
       const branch = info?.branch?.trim() ?? ''
       if (branch.length > 0) {
         unique.add(branch)
@@ -139,16 +132,11 @@ export function WorkspaceSpaceRegionsOverlay({
     })
 
     return [...unique].sort((left, right) => left.localeCompare(right))
-  }, [normalizedWorkspacePath, spaceVisuals, worktreeInfoByPath])
+  }, [normalizedWorkspacePath, openExplorerSpaceId, selectedSpaceIdSet, spaceVisuals, worktrees])
 
   const worktreeBranchesKey = React.useMemo(() => worktreeBranches.join('|'), [worktreeBranches])
 
   React.useEffect(() => {
-    if (worktreeDirectories.length === 0) {
-      setWorktreeInfoByPath(new Map())
-      return
-    }
-
     const listWorktrees = window.opencoveApi?.worktree?.listWorktrees
     if (typeof listWorktrees !== 'function') {
       setWorktreeInfoByPath(new Map())
@@ -182,7 +170,7 @@ export function WorkspaceSpaceRegionsOverlay({
     return () => {
       cancelled = true
     }
-  }, [refreshNonce, worktreeDirectories.length, worktreeDirectoriesKey, workspacePath])
+  }, [refreshNonce, workspacePath])
 
   React.useEffect(() => {
     if (worktreeBranches.length === 0) {
@@ -367,16 +355,21 @@ export function WorkspaceSpaceRegionsOverlay({
       <ViewportPortal>
         {spaceVisuals.map(space => {
           const normalizedDirectoryPath = normalizeComparablePath(space.directoryPath)
-          const hasWorktreeDirectory =
-            normalizedDirectoryPath.length > 0 &&
-            normalizedDirectoryPath !== normalizedWorkspacePath
           const resolvedRect = spaceFramePreview?.get(space.id) ?? space.rect
-          const resolvedWorktreeInfo = hasWorktreeDirectory
-            ? (worktreeInfoByPath.get(normalizedDirectoryPath) ?? null)
-            : null
           const isSelected = selectedSpaceIdSet.has(space.id)
+          const isExplorerOpen = openExplorerSpaceId === space.id
+          const resolvedWorktreeInfo = resolveClosestWorktree(worktrees, space.directoryPath)
+          const normalizedResolvedWorktreePath = resolvedWorktreeInfo
+            ? normalizeComparablePath(resolvedWorktreeInfo.path)
+            : null
+          const isWorkspaceRootWorktree =
+            normalizedResolvedWorktreePath !== null &&
+            normalizedResolvedWorktreePath === normalizedWorkspacePath
 
-          const resolvedBranchBadge: WorkspaceSpaceBranchBadge | null = resolvedWorktreeInfo
+          const shouldShowRepoSummary = !isWorkspaceRootWorktree || isSelected || isExplorerOpen
+
+          const resolvedBranchBadge: WorkspaceSpaceBranchBadge | null =
+            shouldShowRepoSummary && resolvedWorktreeInfo
             ? resolvedWorktreeInfo.branch
               ? {
                   kind: t('worktree.branch'),
@@ -392,16 +385,21 @@ export function WorkspaceSpaceRegionsOverlay({
                 : null
             : null
 
-          const branchKey = resolvedWorktreeInfo?.branch?.trim() ?? ''
+          const branchKey = shouldShowRepoSummary ? (resolvedWorktreeInfo?.branch?.trim() ?? '') : ''
           const resolvedPullRequestSummary =
-            branchKey.length > 0 ? (pullRequestsByBranch[branchKey] ?? null) : null
+            shouldShowRepoSummary && branchKey.length > 0
+              ? (pullRequestsByBranch[branchKey] ?? null)
+              : null
 
           const statusRepoKey = resolveGitStatusRepoKey({
             normalizedDirectoryPath,
             normalizedWorkspacePath,
-            isWorktree: Boolean(resolvedWorktreeInfo),
+            normalizedWorktreePath: normalizedResolvedWorktreePath,
           })
-          const resolvedChangedFileCount = changedFilesByRepoKey.get(statusRepoKey) ?? null
+          const resolvedChangedFileCount = shouldShowRepoSummary
+            ? (changedFilesByRepoKey.get(statusRepoKey) ?? null)
+            : null
+          const allowBranchRename = Boolean(resolvedWorktreeInfo && !isWorkspaceRootWorktree)
 
           return (
             <WorkspaceSpaceRegionItem
@@ -409,7 +407,7 @@ export function WorkspaceSpaceRegionsOverlay({
               space={space}
               resolvedRect={resolvedRect}
               isSelected={isSelected}
-              isExplorerOpen={openExplorerSpaceId === space.id}
+              isExplorerOpen={isExplorerOpen}
               isDragSurfaceSelectionMode={isDragSurfaceSelectionMode}
               githubPullRequestsEnabled={githubPullRequestsEnabled}
               editingSpaceId={editingSpaceId}
@@ -422,6 +420,7 @@ export function WorkspaceSpaceRegionsOverlay({
               handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
               updateHandleCursor={updateHandleCursor}
               resolvedWorktreeInfo={resolvedWorktreeInfo}
+              allowBranchRename={allowBranchRename}
               resolvedChangedFileCount={resolvedChangedFileCount}
               resolvedBranchBadge={resolvedBranchBadge}
               resolvedPullRequestSummary={resolvedPullRequestSummary}

@@ -29,6 +29,7 @@ export function WorkspaceSpaceRegionItem({
   handleSpaceDragHandlePointerDown,
   updateHandleCursor,
   resolvedWorktreeInfo,
+  allowBranchRename,
   resolvedChangedFileCount,
   resolvedBranchBadge,
   resolvedPullRequestSummary,
@@ -60,6 +61,7 @@ export function WorkspaceSpaceRegionItem({
     mode: SpaceFrameHandleMode,
   ) => void
   resolvedWorktreeInfo: GitWorktreeInfo | null
+  allowBranchRename: boolean
   resolvedChangedFileCount: number | null
   resolvedBranchBadge: WorkspaceSpaceBranchBadge | null
   resolvedPullRequestSummary: GitHubPullRequestSummary | null
@@ -234,7 +236,7 @@ export function WorkspaceSpaceRegionItem({
             ) : null}
           </button>
 
-          {branchName && resolvedBranchBadge && worktreePath ? (
+          {branchName && resolvedBranchBadge && worktreePath && allowBranchRename ? (
             <button
               type="button"
               className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"

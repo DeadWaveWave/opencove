@@ -1,25 +1,25 @@
 import React from 'react'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
 import type { SpaceVisual } from '../types'
-import { normalizeComparablePath } from './WorkspaceSpaceRegionsOverlay.helpers'
+import { normalizeComparablePath, resolveClosestWorktree } from './WorkspaceSpaceRegionsOverlay.helpers'
 
 const GIT_STATUS_REFRESH_INTERVAL_MS = 30_000
 
 export function resolveGitStatusRepoKey({
   normalizedDirectoryPath,
   normalizedWorkspacePath,
-  isWorktree,
+  normalizedWorktreePath,
 }: {
   normalizedDirectoryPath: string
   normalizedWorkspacePath: string
-  isWorktree: boolean
+  normalizedWorktreePath: string | null
 }): string {
   if (normalizedDirectoryPath.length === 0 || normalizedDirectoryPath === normalizedWorkspacePath) {
     return normalizedWorkspacePath
   }
 
-  if (isWorktree) {
-    return normalizedDirectoryPath
+  if (normalizedWorktreePath) {
+    return normalizedWorktreePath
   }
 
   return normalizedDirectoryPath.startsWith(`${normalizedWorkspacePath}/`)
@@ -59,6 +59,8 @@ export function useWorkspaceGitStatusSummary({
 
     addRepoPath(workspacePath)
 
+    const worktrees = [...worktreeInfoByPath.values()]
+
     spaceVisuals.forEach(space => {
       const normalizedDirectoryPath = normalizeComparablePath(space.directoryPath)
       if (
@@ -68,9 +70,12 @@ export function useWorkspaceGitStatusSummary({
         return
       }
 
-      // If this is a tracked worktree, it represents its own repo-like checkout.
-      if (worktreeInfoByPath.has(normalizedDirectoryPath)) {
-        addRepoPath(space.directoryPath)
+      const closestWorktree = resolveClosestWorktree(worktrees, normalizedDirectoryPath)
+      const normalizedWorktreeKey = closestWorktree
+        ? normalizeComparablePath(closestWorktree.path)
+        : ''
+      if (closestWorktree && normalizedWorktreeKey.length > 0 && normalizedWorktreeKey !== normalizedWorkspacePath) {
+        addRepoPath(closestWorktree.path)
         return
       }
 
