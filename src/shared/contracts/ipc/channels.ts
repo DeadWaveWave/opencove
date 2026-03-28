@@ -1,6 +1,8 @@
 export const IPC_CHANNELS = {
   clipboardReadText: 'clipboard:read-text',
   clipboardWriteText: 'clipboard:write-text',
+  filesystemCreateDirectory: 'filesystem:create-directory',
+  filesystemReadFileBytes: 'filesystem:read-file-bytes',
   filesystemReadFileText: 'filesystem:read-file-text',
   filesystemWriteFileText: 'filesystem:write-file-text',
   filesystemReadDirectory: 'filesystem:read-directory',

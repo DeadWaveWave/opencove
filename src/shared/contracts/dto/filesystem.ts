@@ -21,9 +21,21 @@ export interface ReadFileTextResult {
   content: string
 }
 
+export interface ReadFileBytesInput {
+  uri: string
+}
+
+export interface ReadFileBytesResult {
+  bytes: Uint8Array
+}
+
 export interface WriteFileTextInput {
   uri: string
   content: string
+}
+
+export interface CreateDirectoryInput {
+  uri: string
 }
 
 export interface ReadDirectoryInput {

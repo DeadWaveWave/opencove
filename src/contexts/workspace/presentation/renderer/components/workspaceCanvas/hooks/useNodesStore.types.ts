@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type {
+  DocumentNodeData,
   ImageNodeData,
   NodeFrame,
   Point,
@@ -63,6 +64,11 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   createImageNode: (
     anchor: Point,
     image: ImageNodeData,
+    placement?: NodePlacementOptions,
+  ) => Node<TerminalNodeData> | null
+  createDocumentNode: (
+    anchor: Point,
+    document: DocumentNodeData,
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
 }

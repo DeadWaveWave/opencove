@@ -29,6 +29,8 @@ interface WorkspaceSpaceRegionsOverlayProps {
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
+  openExplorerSpaceId: string | null
+  toggleExplorer: (spaceId: string) => void
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
@@ -49,6 +51,8 @@ export function WorkspaceSpaceRegionsOverlay({
   spaceVisuals,
   spaceFramePreview,
   selectedSpaceIds,
+  openExplorerSpaceId,
+  toggleExplorer,
   handleSpaceDragHandlePointerDown,
   editingSpaceId,
   spaceRenameInputRef,
@@ -385,6 +389,7 @@ export function WorkspaceSpaceRegionsOverlay({
               space={space}
               resolvedRect={resolvedRect}
               isSelected={isSelected}
+              isExplorerOpen={openExplorerSpaceId === space.id}
               isDragSurfaceSelectionMode={isDragSurfaceSelectionMode}
               githubPullRequestsEnabled={githubPullRequestsEnabled}
               editingSpaceId={editingSpaceId}
@@ -410,6 +415,7 @@ export function WorkspaceSpaceRegionsOverlay({
                   error: null,
                 })
               }}
+              onToggleExplorer={toggleExplorer}
               onOpenSpaceMenu={onOpenSpaceMenu}
             />
           )

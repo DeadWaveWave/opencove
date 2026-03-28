@@ -1,4 +1,5 @@
 import React from 'react'
+import { Folder } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
@@ -15,6 +16,7 @@ export function WorkspaceSpaceRegionItem({
   space,
   resolvedRect,
   isSelected,
+  isExplorerOpen,
   isDragSurfaceSelectionMode,
   githubPullRequestsEnabled,
   editingSpaceId,
@@ -30,11 +32,13 @@ export function WorkspaceSpaceRegionItem({
   resolvedBranchBadge,
   resolvedPullRequestSummary,
   onStartBranchRename,
+  onToggleExplorer,
   onOpenSpaceMenu,
 }: {
   space: SpaceVisual
   resolvedRect: WorkspaceSpaceRect
   isSelected: boolean
+  isExplorerOpen: boolean
   isDragSurfaceSelectionMode: boolean
   githubPullRequestsEnabled: boolean
   editingSpaceId: string | null
@@ -63,12 +67,12 @@ export function WorkspaceSpaceRegionItem({
     worktreePath: string
     branchName: string
   }) => void
+  onToggleExplorer?: (spaceId: string) => void
   onOpenSpaceMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
-  const shouldShowSpaceLabel = resolvedBranchBadge === null
   const pullRequestUrl = resolvedPullRequestSummary?.ref.url ?? null
   const shouldShowPullRequestChip =
     githubPullRequestsEnabled &&
@@ -168,26 +172,46 @@ export function WorkspaceSpaceRegionItem({
             event.stopPropagation()
           }}
         >
-          {shouldShowSpaceLabel ? (
-            <button
-              type="button"
-              className="workspace-space-region__label"
-              data-testid={`workspace-space-label-${space.id}`}
-              onClick={event => {
-                event.stopPropagation()
-                startSpaceRename(space.id)
-              }}
-            >
-              {space.labelColor ? (
-                <span
-                  className="cove-label-dot cove-label-dot--solid"
-                  data-cove-label-color={space.labelColor}
-                  aria-hidden="true"
-                />
-              ) : null}
-              {space.name}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            className="workspace-space-region__label"
+            data-testid={`workspace-space-label-${space.id}`}
+            onClick={event => {
+              event.stopPropagation()
+              startSpaceRename(space.id)
+            }}
+          >
+            {space.labelColor ? (
+              <span
+                className="cove-label-dot cove-label-dot--solid"
+                data-cove-label-color={space.labelColor}
+                aria-hidden="true"
+              />
+            ) : null}
+            {space.name}
+          </button>
+
+          <button
+            type="button"
+            className={
+              isExplorerOpen
+                ? 'workspace-space-region__files-pill workspace-space-region__files-pill--active'
+                : 'workspace-space-region__files-pill'
+            }
+            data-testid={`workspace-space-files-${space.id}`}
+            aria-pressed={isExplorerOpen}
+            aria-label={t('spaceActions.openExplorer')}
+            title={t('spaceActions.openExplorer')}
+            onClick={event => {
+              event.stopPropagation()
+              onToggleExplorer?.(space.id)
+            }}
+          >
+            <Folder className="workspace-space-region__files-pill-icon" aria-hidden="true" />
+            <span className="workspace-space-region__files-pill-label">
+              {t('spaceActions.files')}
+            </span>
+          </button>
 
           {branchName && resolvedBranchBadge && worktreePath ? (
             <button

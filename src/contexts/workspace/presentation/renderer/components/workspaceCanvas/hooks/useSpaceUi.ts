@@ -37,18 +37,12 @@ export function useWorkspaceCanvasSpaceUi({
   spaceActionMenu: { spaceId: string; x: number; y: number } | null
   spaceWorktreeDialog: SpaceWorktreeDialogState | null
   availablePathOpeners: WorkspacePathOpener[]
-  handleCanvasClick: () => void
+  onCanvasClick: () => void
   closeContextMenu: () => void
-  handlePaneClickWithSpaceMenuClose: (event: React.MouseEvent | MouseEvent) => void
-  handlePaneContextMenuWithSpaceMenuClose: (event: React.MouseEvent | MouseEvent) => void
-  handleNodeContextMenuWithSpaceMenuClose: (
-    event: React.MouseEvent,
-    node: Node<TerminalNodeData>,
-  ) => void
-  handleSelectionContextMenuWithSpaceMenuClose: (
-    event: React.MouseEvent,
-    selectedNodes: Node<TerminalNodeData>[],
-  ) => void
+  onPaneClick: (event: React.MouseEvent | MouseEvent) => void
+  onPaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
+  onNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
+  onSelectionContextMenu: (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => void
   openSpaceActionMenu: (spaceId: string, anchor: { x: number; y: number }) => void
   closeSpaceActionMenu: () => void
   copySpacePath: (spaceId: string) => Promise<void>
@@ -86,7 +80,7 @@ export function useWorkspaceCanvasSpaceUi({
     [spacesRef, workspacePath],
   )
 
-  const handleCanvasClick = useCallback(() => {
+  const onCanvasClick = useCallback(() => {
     setSpaceActionMenu(null)
     setEmptySelectionPrompt(null)
     cancelSpaceRename()
@@ -97,7 +91,7 @@ export function useWorkspaceCanvasSpaceUi({
     setSpaceActionMenu(null)
   }, [setContextMenu])
 
-  const handlePaneClickWithSpaceMenuClose = useCallback(
+  const onPaneClick = useCallback(
     (event: React.MouseEvent | MouseEvent) => {
       setSpaceActionMenu(null)
       handlePaneClick(event)
@@ -105,7 +99,7 @@ export function useWorkspaceCanvasSpaceUi({
     [handlePaneClick],
   )
 
-  const handlePaneContextMenuWithSpaceMenuClose = useCallback(
+  const onPaneContextMenu = useCallback(
     (event: React.MouseEvent | MouseEvent) => {
       setSpaceActionMenu(null)
       handlePaneContextMenu(event)
@@ -113,7 +107,7 @@ export function useWorkspaceCanvasSpaceUi({
     [handlePaneContextMenu],
   )
 
-  const handleNodeContextMenuWithSpaceMenuClose = useCallback(
+  const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node<TerminalNodeData>) => {
       setSpaceActionMenu(null)
       handleNodeContextMenu(event, node)
@@ -121,7 +115,7 @@ export function useWorkspaceCanvasSpaceUi({
     [handleNodeContextMenu],
   )
 
-  const handleSelectionContextMenuWithSpaceMenuClose = useCallback(
+  const onSelectionContextMenu = useCallback(
     (event: React.MouseEvent, selectedNodes: Node<TerminalNodeData>[]) => {
       setSpaceActionMenu(null)
       handleSelectionContextMenu(event, selectedNodes)
@@ -196,12 +190,12 @@ export function useWorkspaceCanvasSpaceUi({
     spaceActionMenu,
     spaceWorktreeDialog,
     availablePathOpeners,
-    handleCanvasClick,
+    onCanvasClick,
     closeContextMenu,
-    handlePaneClickWithSpaceMenuClose,
-    handlePaneContextMenuWithSpaceMenuClose,
-    handleNodeContextMenuWithSpaceMenuClose,
-    handleSelectionContextMenuWithSpaceMenuClose,
+    onPaneClick,
+    onPaneContextMenu,
+    onNodeContextMenu,
+    onSelectionContextMenu,
     openSpaceActionMenu,
     closeSpaceActionMenu,
     copySpacePath,

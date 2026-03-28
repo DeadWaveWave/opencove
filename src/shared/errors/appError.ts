@@ -21,6 +21,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'workspace.canvas_image_write_failed': 'Unable to save the canvas image.',
     'workspace.canvas_image_read_failed': 'Unable to load the canvas image.',
     'workspace.canvas_image_delete_failed': 'Unable to delete the canvas image.',
+    'filesystem.create_directory_failed': 'Unable to create the directory.',
+    'filesystem.read_file_bytes_failed': 'Unable to read the file.',
     'filesystem.read_file_text_failed': 'Unable to read the file.',
     'filesystem.write_file_text_failed': 'Unable to save the file.',
     'filesystem.read_directory_failed': 'Unable to load the directory.',

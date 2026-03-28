@@ -43,6 +43,12 @@ export function resolveDefaultTerminalWindowSize(
   return resolveCanonicalNodeSize({ kind: 'terminal', bucket })
 }
 
+export function resolveDefaultDocumentWindowSize(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+): Size {
+  return resolveCanonicalNodeSize({ kind: 'document', bucket })
+}
+
 export const TASK_PRIORITY_OPTIONS: Array<{ value: TaskPriority; label: string }> = [
   { value: 'low', label: 'Low' },
   { value: 'medium', label: 'Medium' },

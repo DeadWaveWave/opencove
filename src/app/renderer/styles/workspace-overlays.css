@@ -2,6 +2,7 @@
 @import './workspace-overlays.worktree.light.css';
 @import './workspace-overlays.worktree-guard.css';
 @import './workspace-overlays.spaces.css';
+@import './workspace-overlays.spaces.explorer.css';
 
 .workspace-context-menu {
   position: fixed;

@@ -384,11 +384,23 @@ export function WorkspaceCanvasInner({
     handleNodeContextMenu,
     handleSelectionContextMenu,
   })
+  const spaceExplorer = workspaceCanvasHooks.useWorkspaceCanvasSpaceExplorer({
+    spaces,
+    spacesRef: canvasState.spacesRef,
+    nodesRef: nodeStore.nodesRef,
+    setNodes: nodeStore.setNodes,
+    onSpacesChange,
+    onRequestPersistFlush,
+    reactFlow,
+    createDocumentNode: nodeStore.createDocumentNode,
+    createImageNode: nodeStore.createImageNode,
+  })
   return (
     <WorkspaceCanvasView
       canvasRef={canvasState.canvasRef}
       resolvedCanvasInputMode={resolvedCanvasInputMode}
-      onCanvasClick={spaceUi.handleCanvasClick}
+      {...spaceUi}
+      {...spaceExplorer}
       handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}
       handleCanvasPointerMoveCapture={handleCanvasPointerMoveCapture}
       handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
@@ -401,11 +413,7 @@ export function WorkspaceCanvasInner({
       edges={taskAgentEdges}
       nodeTypes={nodeTypes}
       onNodesChange={applyChanges}
-      onPaneClick={spaceUi.handlePaneClickWithSpaceMenuClose}
-      onPaneContextMenu={spaceUi.handlePaneContextMenuWithSpaceMenuClose}
       onNodeClick={handleNodeClick}
-      onNodeContextMenu={spaceUi.handleNodeContextMenuWithSpaceMenuClose}
-      onSelectionContextMenu={spaceUi.handleSelectionContextMenuWithSpaceMenuClose}
       onSelectionChange={handleSelectionChange}
       onNodeDragStart={handleNodeDragStart}
       onSelectionDragStart={handleSelectionDragStart}
@@ -439,7 +447,6 @@ export function WorkspaceCanvasInner({
       activateSpace={activateSpace}
       activateAllSpaces={activateAllSpaces}
       contextMenu={canvasState.contextMenu}
-      closeContextMenu={spaceUi.closeContextMenu}
       magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
       onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
       createTerminalNode={createTerminalNode}
@@ -479,17 +486,7 @@ export function WorkspaceCanvasInner({
       continueSpaceWorktreeMismatchDropWarning={continueSpaceWorktreeMismatchDropWarning}
       agentSettings={agentSettings}
       workspacePath={workspacePath}
-      spaceActionMenu={spaceUi.spaceActionMenu}
-      availablePathOpeners={spaceUi.availablePathOpeners}
-      openSpaceActionMenu={spaceUi.openSpaceActionMenu}
-      closeSpaceActionMenu={spaceUi.closeSpaceActionMenu}
-      copySpacePath={spaceUi.copySpacePath}
-      openSpacePath={spaceUi.openSpacePath}
-      spaceWorktreeDialog={spaceUi.spaceWorktreeDialog}
       worktreesRoot={worktreesRoot}
-      openSpaceCreateWorktree={spaceUi.openSpaceCreateWorktree}
-      openSpaceArchive={spaceUi.openSpaceArchive}
-      closeSpaceWorktree={spaceUi.closeSpaceWorktree}
       onShowMessage={onShowMessage}
       onAppendSpaceArchiveRecord={onAppendSpaceArchiveRecord}
       updateSpaceDirectory={updateSpaceDirectory}

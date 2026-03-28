@@ -62,8 +62,11 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  CreateDirectoryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
   StatInput,
@@ -90,6 +93,8 @@ export interface OpenCoveApi {
     writeText: (text: string) => Promise<void>
   }
   filesystem: {
+    createDirectory: (payload: CreateDirectoryInput) => Promise<void>
+    readFileBytes: (payload: ReadFileBytesInput) => Promise<ReadFileBytesResult>
     readFileText: (payload: ReadFileTextInput) => Promise<ReadFileTextResult>
     writeFileText: (payload: WriteFileTextInput) => Promise<void>
     readDirectory: (payload: ReadDirectoryInput) => Promise<ReadDirectoryResult>

@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type {
+  DocumentNodeData,
   ImageNodeData,
   NoteNodeData,
   PersistedWorkspaceState,
@@ -8,21 +9,27 @@ import type {
 } from '../types'
 
 function isTaskNodeData(
-  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | null,
 ): value is TaskNodeData {
   return value !== null && typeof value === 'object' && 'requirement' in value
 }
 
 function isNoteNodeData(
-  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | null,
 ): value is NoteNodeData {
   return value !== null && typeof value === 'object' && 'text' in value
 }
 
 function isImageNodeData(
-  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | null,
 ): value is ImageNodeData {
   return value !== null && typeof value === 'object' && 'assetId' in value && 'mimeType' in value
+}
+
+function isDocumentNodeData(
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | null,
+): value is DocumentNodeData {
+  return value !== null && typeof value === 'object' && 'uri' in value
 }
 
 export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<TerminalNodeData>[] {
@@ -45,6 +52,8 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
       node.kind === 'note' ? (isNoteNodeData(node.task) ? node.task : { text: '' }) : null
     const image: ImageNodeData | null =
       node.kind === 'image' ? (isImageNodeData(node.task) ? node.task : null) : null
+    const document: DocumentNodeData | null =
+      node.kind === 'document' ? (isDocumentNodeData(node.task) ? node.task : null) : null
 
     const runtimeNode: Node<TerminalNodeData> = {
       id: node.id,
@@ -55,7 +64,9 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
             ? 'noteNode'
             : node.kind === 'image'
               ? 'imageNode'
-              : 'terminalNode',
+              : node.kind === 'document'
+                ? 'documentNode'
+                : 'terminalNode',
       position: node.position,
       data: {
         sessionId: '',
@@ -79,9 +90,10 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         task,
         note,
         image,
+        document,
       },
       draggable: true,
-      selectable: node.kind !== 'note',
+      selectable: node.kind !== 'note' && node.kind !== 'document',
     }
 
     return runtimeNode
