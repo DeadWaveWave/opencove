@@ -12,7 +12,6 @@ import {
 } from './terminalNode/commandInput'
 import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './terminalNode/inputBridge'
 import { registerTerminalLayoutSync } from './terminalNode/layoutSync'
-import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './terminalNode/scrollback'
 import {
   clearCachedTerminalScreenStateInvalidation,
   getCachedTerminalScreenState,
@@ -25,6 +24,7 @@ import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { resolveTerminalTheme, resolveTerminalUiTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
+import { registerTerminalDiagnostics } from './terminalNode/registerDiagnostics'
 import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalFind } from './terminalNode/useTerminalFind'
@@ -33,6 +33,7 @@ import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
+import { hydrateTerminalFromSnapshot } from './terminalNode/hydrateFromSnapshot'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -159,6 +160,9 @@ export function TerminalNode({
     const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
     const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
+    const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
+    const logTerminalDiagnostics =
+      window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily:
@@ -215,6 +219,18 @@ export function TerminalNode({
         terminal.focus()
       }
     }
+    const terminalDiagnostics = registerTerminalDiagnostics({
+      enabled: diagnosticsEnabled,
+      emit: logTerminalDiagnostics,
+      nodeId,
+      sessionId,
+      nodeKind: kind === 'agent' ? 'agent' : 'terminal',
+      title,
+      terminal,
+      container: containerRef.current,
+      terminalThemeMode,
+      windowsPty,
+    })
 
     let isDisposed = false
     let shouldForwardTerminalData = false
@@ -310,6 +326,10 @@ export function TerminalNode({
       }
 
       markScrollbackDirty(true)
+      terminalDiagnostics.logHydrated({
+        rawSnapshotLength: rawSnapshot.length,
+        bufferedExitCode,
+      })
       revealHydratedTerminal(syncTerminalSize, () => {
         if (!isDisposed) {
           isTerminalHydratedRef.current = true
@@ -318,48 +338,19 @@ export function TerminalNode({
       })
     }
 
-    const hydrateFromSnapshot = async () => {
-      await attachPromise.catch(() => undefined)
-
-      const persistedSnapshot = scrollbackBuffer.snapshot()
-      const cachedSerializedScreen = cachedScreenState?.serialized ?? ''
-      const baseRawSnapshot =
-        cachedScreenState && cachedScreenState.rawSnapshot.length > 0
-          ? cachedScreenState.rawSnapshot
-          : persistedSnapshot
-      let restoredPayload =
-        cachedSerializedScreen.length > 0 ? cachedSerializedScreen : persistedSnapshot
-      let rawSnapshot = baseRawSnapshot
-
-      try {
-        const snapshot = await window.opencoveApi.pty.snapshot({ sessionId })
-        if (cachedSerializedScreen.length > 0) {
-          restoredPayload = `${cachedSerializedScreen}${resolveScrollbackDelta(baseRawSnapshot, snapshot.data)}`
-          rawSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
-        } else {
-          rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
-          restoredPayload = rawSnapshot
-        }
-      } catch {
-        rawSnapshot = baseRawSnapshot
-      }
-
-      if (isDisposed) {
-        return
-      }
-
-      if (restoredPayload.length > 0) {
-        terminal.write(restoredPayload, () => {
-          shouldForwardTerminalData = true
-          finalizeHydration(rawSnapshot)
-        })
-      } else {
+    void hydrateTerminalFromSnapshot({
+      attachPromise,
+      sessionId,
+      terminal,
+      cachedScreenState,
+      persistedSnapshot: scrollbackBuffer.snapshot(),
+      takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
+      isDisposed: () => isDisposed,
+      finalizeHydration: rawSnapshot => {
         shouldForwardTerminalData = true
         finalizeHydration(rawSnapshot)
-      }
-    }
-
-    void hydrateFromSnapshot()
+      },
+    })
 
     const resizeObserver = new ResizeObserver(() => {
       syncTerminalSize()
@@ -403,6 +394,7 @@ export function TerminalNode({
       const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
       void detachPromise?.catch(() => undefined)
       disposeLayoutSync()
+      terminalDiagnostics.dispose()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
       dataDisposable.dispose()
@@ -436,6 +428,8 @@ export function TerminalNode({
     sessionId,
     syncTerminalSize,
     terminalThemeMode,
+    title,
+    kind,
   ])
 
   useEffect(() => {

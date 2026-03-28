@@ -62,6 +62,7 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  TerminalDiagnosticsLogInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
   ReadFileTextInput,
@@ -77,8 +78,12 @@ export interface OpenCoveApi {
   meta: {
     isTest: boolean
     allowWhatsNewInTests: boolean
+    enableTerminalDiagnostics?: boolean
     platform: string
     windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null
+  }
+  debug?: {
+    logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>

@@ -1,6 +1,7 @@
 export * from './agent'
 export * from './clipboard'
 export * from './controlSurface'
+export * from './debug'
 export * from './filesystem'
 export * from './error'
 export * from './integration'

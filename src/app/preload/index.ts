@@ -64,6 +64,7 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  TerminalDiagnosticsLogInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
   ReadFileTextInput,
@@ -99,8 +100,14 @@ const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
+    enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
     platform: process.platform,
     windowsPty: resolveWindowsPtyMeta(),
+  },
+  debug: {
+    logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput): void => {
+      ipcRenderer.send(IPC_CHANNELS.terminalDiagnosticsLog, payload)
+    },
   },
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
