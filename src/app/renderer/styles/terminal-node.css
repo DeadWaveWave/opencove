@@ -162,10 +162,6 @@
   overscroll-behavior: contain;
 }
 
-.terminal-node__terminal[data-cove-agent-alt-buffer='true'] .xterm-cursor-layer .xterm-cursor {
-  opacity: 0;
-}
-
 .terminal-node__resizer {
   position: absolute;
   background: transparent;
