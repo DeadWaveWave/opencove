@@ -1,7 +1,10 @@
 import React from 'react'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
 import type { SpaceVisual } from '../types'
-import { normalizeComparablePath, resolveClosestWorktree } from './WorkspaceSpaceRegionsOverlay.helpers'
+import {
+  normalizeComparablePath,
+  resolveClosestWorktree,
+} from './WorkspaceSpaceRegionsOverlay.helpers'
 
 const GIT_STATUS_REFRESH_INTERVAL_MS = 30_000
 
@@ -74,7 +77,11 @@ export function useWorkspaceGitStatusSummary({
       const normalizedWorktreeKey = closestWorktree
         ? normalizeComparablePath(closestWorktree.path)
         : ''
-      if (closestWorktree && normalizedWorktreeKey.length > 0 && normalizedWorktreeKey !== normalizedWorkspacePath) {
+      if (
+        closestWorktree &&
+        normalizedWorktreeKey.length > 0 &&
+        normalizedWorktreeKey !== normalizedWorkspacePath
+      ) {
         addRepoPath(closestWorktree.path)
         return
       }
@@ -87,11 +94,6 @@ export function useWorkspaceGitStatusSummary({
 
     return [...byKey.values()].sort((left, right) => left.key.localeCompare(right.key))
   }, [normalizedWorkspacePath, spaceVisuals, worktreeInfoByPath, workspacePath])
-
-  const statusReposKey = React.useMemo(
-    () => statusRepos.map(entry => entry.key).join('|'),
-    [statusRepos],
-  )
 
   React.useEffect(() => {
     if (statusRepos.length === 0) {
@@ -150,7 +152,7 @@ export function useWorkspaceGitStatusSummary({
         window.clearInterval(intervalId)
       }
     }
-  }, [refreshNonce, statusRepos.length, statusReposKey])
+  }, [refreshNonce, statusRepos])
 
   return changedFilesByRepoKey
 }

@@ -97,6 +97,7 @@
 .workspace-canvas .react-flow__controls {
   left: 16px;
   bottom: 16px;
+  z-index: 20;
   box-shadow: none;
   border: 0;
   background: transparent;

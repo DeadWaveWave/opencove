@@ -1,37 +1,18 @@
 import React from 'react'
-import {
-  Check,
-  ChevronDown,
-  ChevronRight,
-  FilePlus,
-  FileText,
-  Folder,
-  FolderPlus,
-  RefreshCw,
-  X,
-} from 'lucide-react'
+import { Check, FilePlus, FileText, Folder, FolderPlus, RefreshCw, X } from 'lucide-react'
 import { useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import { shouldStopWheelPropagation } from '../../../components/taskNode/helpers'
 import { selectViewportTransform } from './WorkspaceSpaceExplorerOverlay.helpers'
 import {
   resolveExplorerAutoPreferredWidth,
   resolveExplorerPlacement,
 } from './WorkspaceSpaceExplorerOverlay.layout'
+import { WorkspaceSpaceExplorerTree } from './WorkspaceSpaceExplorerOverlay.tree'
 import {
   useSpaceExplorerOverlayModel,
   type SpaceExplorerCreateMode,
-  type SpaceExplorerRow,
 } from './WorkspaceSpaceExplorerOverlay.model'
-
-function renderRowDisclosure(row: Extract<SpaceExplorerRow, { kind: 'entry' }>): React.JSX.Element {
-  if (row.entry.kind !== 'directory') {
-    return <span className="workspace-space-explorer__entry-disclosure-placeholder" />
-  }
-
-  return row.isExpanded ? <ChevronDown /> : <ChevronRight />
-}
 
 function resolveCreateIcon(mode: Exclude<SpaceExplorerCreateMode, null>): React.JSX.Element {
   return mode === 'directory' ? <Folder aria-hidden="true" /> : <FileText aria-hidden="true" />
@@ -62,7 +43,12 @@ export function WorkspaceSpaceExplorerOverlay({
   const { t } = useTranslation()
   const transform = useStore(selectViewportTransform)
   const createInputRef = React.useRef<HTMLInputElement | null>(null)
-  const resizeStartRef = React.useRef<{ startX: number; startWidth: number } | null>(null)
+  const resizeStartRef = React.useRef<{
+    startX: number
+    startWidth: number
+    minWidth: number
+    maxWidth: number
+  } | null>(null)
   const [manualWidth, setManualWidth] = React.useState<number | null>(null)
   const [canvasSize, setCanvasSize] = React.useState(() => ({
     width: 0,
@@ -82,12 +68,21 @@ export function WorkspaceSpaceExplorerOverlay({
   }, [rect.height, rect.width, rect.x, rect.y, transform])
 
   const placement = React.useMemo(() => {
+    // Keep the panel width/height stable across canvas zoom levels so it behaves like an overlay
+    // (VS Code-ish), only shrinking when the space is too small to host it.
     const canvasWidth = canvasSize.width > 0 ? canvasSize.width : 1280
     const canvasHeight = canvasSize.height > 0 ? canvasSize.height : 720
-    const autoPreferredWidth = resolveExplorerAutoPreferredWidth(pixelRect.width)
+    const autoPreferredWidth = resolveExplorerAutoPreferredWidth(rect.width)
     const preferredWidth = manualWidth ?? autoPreferredWidth
-    return resolveExplorerPlacement({ canvasWidth, canvasHeight, pixelRect, preferredWidth })
-  }, [canvasSize.height, canvasSize.width, manualWidth, pixelRect])
+    const autoPreferredHeight = Math.max(0, Math.floor(rect.height - 20))
+    return resolveExplorerPlacement({
+      canvasWidth,
+      canvasHeight,
+      pixelRect,
+      preferredWidth,
+      preferredHeight: autoPreferredHeight,
+    })
+  }, [canvasSize.height, canvasSize.width, manualWidth, pixelRect, rect.height, rect.width])
 
   const { isLoadingRoot, rootError, rows, selectedEntryUri, refresh, handleEntryActivate, create } =
     useSpaceExplorerOverlayModel({
@@ -199,83 +194,6 @@ export function WorkspaceSpaceExplorerOverlay({
     pixelRect.x,
     pixelRect.y,
   ])
-
-  const body = isLoadingRoot ? (
-    <div className="workspace-space-explorer__state">{t('common.loading')}</div>
-  ) : rootError ? (
-    <div className="workspace-space-explorer__state workspace-space-explorer__state--error">
-      <div className="workspace-space-explorer__state-title">{t('common.error')}</div>
-      <div className="workspace-space-explorer__state-message">{rootError}</div>
-      <button
-        type="button"
-        className="workspace-space-explorer__state-action"
-        onClick={event => {
-          event.stopPropagation()
-          refresh()
-        }}
-      >
-        {t('documentNode.retry')}
-      </button>
-    </div>
-  ) : rows.length === 0 ? (
-    <div className="workspace-space-explorer__state">{t('spaceExplorer.empty')}</div>
-  ) : (
-    <div
-      className="workspace-space-explorer__tree"
-      onWheel={event => {
-        if (shouldStopWheelPropagation(event.currentTarget)) {
-          event.stopPropagation()
-        }
-      }}
-    >
-      {rows.map(row => {
-        if (row.kind === 'state') {
-          return (
-            <div
-              key={row.id}
-              className={
-                row.stateKind === 'error'
-                  ? 'workspace-space-explorer__tree-state workspace-space-explorer__tree-state--error'
-                  : 'workspace-space-explorer__tree-state'
-              }
-              style={{ paddingLeft: `${16 + row.depth * 14}px` }}
-            >
-              {row.message}
-            </div>
-          )
-        }
-
-        return (
-          <button
-            key={row.entry.uri}
-            type="button"
-            className={
-              selectedEntryUri === row.entry.uri
-                ? 'workspace-space-explorer__entry workspace-space-explorer__entry--selected'
-                : 'workspace-space-explorer__entry'
-            }
-            data-testid={`workspace-space-explorer-entry-${spaceId}-${encodeURIComponent(row.entry.uri)}`}
-            title={row.entry.name}
-            style={{ paddingLeft: `${10 + row.depth * 14}px` }}
-            onClick={event => {
-              event.stopPropagation()
-              handleEntryActivate(row.entry)
-            }}
-          >
-            <span className="workspace-space-explorer__entry-disclosure" aria-hidden="true">
-              {renderRowDisclosure(row)}
-            </span>
-            {row.entry.kind === 'directory' ? (
-              <Folder className="workspace-space-explorer__entry-icon" aria-hidden="true" />
-            ) : (
-              <FileText className="workspace-space-explorer__entry-icon" aria-hidden="true" />
-            )}
-            <span className="workspace-space-explorer__entry-label">{row.entry.name}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
 
   return (
     <section
@@ -422,7 +340,15 @@ export function WorkspaceSpaceExplorerOverlay({
             ) : null}
           </form>
         ) : null}
-        {body}
+        <WorkspaceSpaceExplorerTree
+          spaceId={spaceId}
+          isLoadingRoot={isLoadingRoot}
+          rootError={rootError}
+          rows={rows}
+          selectedEntryUri={selectedEntryUri}
+          onRefresh={refresh}
+          onEntryActivate={handleEntryActivate}
+        />
       </div>
 
       <div
@@ -439,8 +365,47 @@ export function WorkspaceSpaceExplorerOverlay({
           resizeStartRef.current = {
             startX: event.clientX,
             startWidth: placement.width,
+            minWidth: placement.minWidth,
+            maxWidth: placement.maxWidth,
           }
           event.currentTarget.setPointerCapture(event.pointerId)
+        }}
+        onMouseDown={event => {
+          event.stopPropagation()
+          if (event.button !== 0) {
+            return
+          }
+
+          resizeStartRef.current = {
+            startX: event.clientX,
+            startWidth: placement.width,
+            minWidth: placement.minWidth,
+            maxWidth: placement.maxWidth,
+          }
+
+          const handleMove = (moveEvent: MouseEvent) => {
+            const resizeStart = resizeStartRef.current
+            if (!resizeStart) {
+              return
+            }
+
+            const delta = moveEvent.clientX - resizeStart.startX
+            const unclampedWidth = resizeStart.startWidth + delta
+            const nextWidth = Math.min(
+              resizeStart.maxWidth,
+              Math.max(resizeStart.minWidth, unclampedWidth),
+            )
+            setManualWidth(nextWidth)
+          }
+
+          const handleUp = () => {
+            resizeStartRef.current = null
+            document.removeEventListener('mousemove', handleMove)
+            document.removeEventListener('mouseup', handleUp)
+          }
+
+          document.addEventListener('mousemove', handleMove)
+          document.addEventListener('mouseup', handleUp)
         }}
         onPointerMove={event => {
           const resizeStart = resizeStartRef.current
@@ -452,8 +417,8 @@ export function WorkspaceSpaceExplorerOverlay({
           const delta = event.clientX - resizeStart.startX
           const unclampedWidth = resizeStart.startWidth + delta
           const nextWidth = Math.min(
-            placement.maxWidth,
-            Math.max(placement.minWidth, unclampedWidth),
+            resizeStart.maxWidth,
+            Math.max(resizeStart.minWidth, unclampedWidth),
           )
           setManualWidth(nextWidth)
         }}

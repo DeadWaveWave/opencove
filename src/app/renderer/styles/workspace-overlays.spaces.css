@@ -53,6 +53,7 @@
   gap: 4px;
   /* Keep the draggable top edge usable (tests click the top handle center). */
   max-width: min(520px, calc((100% - 32px) / 2));
+  overflow: hidden;
   pointer-events: auto;
 }
 
@@ -97,6 +98,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workspace-space-region__branch-badge,
+.workspace-space-region__worktree-badge,
+.workspace-space-region__menu {
+  min-width: 0;
 }
 
 .workspace-space-region__menu {

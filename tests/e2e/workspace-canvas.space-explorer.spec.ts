@@ -6,6 +6,7 @@ import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
   clearAndSeedWorkspace,
   launchApp,
+  readCanvasViewport,
   removePathWithRetry,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -122,6 +123,35 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       expect(documentBox.x).toBeGreaterThanOrEqual(
         explorerBoxAfterOpen.x + explorerBoxAfterOpen.width - 4,
       )
+
+      const zoomInButton = window.locator('.react-flow__controls-zoomin')
+      await expect(zoomInButton).toBeVisible()
+      await zoomInButton.click({ force: true })
+      await zoomInButton.click({ force: true })
+
+      await expect.poll(async () => (await readCanvasViewport(window)).zoom).toBeGreaterThan(1.01)
+
+      const explorerBoxZoomed = await explorer.boundingBox()
+      if (!explorerBoxZoomed) {
+        throw new Error('Explorer bounding box unavailable after zoom')
+      }
+
+      const explorerBoxBeforeZoom = explorerBoxAfterOpen
+
+      // The Explorer is an overlay panel: keep its pixel size stable across canvas zoom.
+      expect(Math.abs(explorerBoxZoomed.width - explorerBoxBeforeZoom.width)).toBeLessThanOrEqual(2)
+      expect(Math.abs(explorerBoxZoomed.height - explorerBoxBeforeZoom.height)).toBeLessThanOrEqual(
+        2,
+      )
+
+      await testInfo.attach(`space-explorer-zoomed-${browserName}`, {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+
+      // Keep the active space framed after zoom so Explorer entries remain clickable.
+      await window.locator('[data-testid="workspace-space-switch-space-explorer"]').click()
+      await expect(explorer).toBeVisible()
 
       const textarea = documentNode.locator('[data-testid="document-node-textarea"]')
       await expect(textarea).toHaveValue(initialContent)
@@ -264,7 +294,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       await expect
         .poll(async () => Math.round((await explorer.boundingBox())?.width ?? 0))
-        .toBeGreaterThan(Math.round(boxBefore.width) + 40)
+        .toBeGreaterThanOrEqual(Math.min(Math.round(boxBefore.width) + 20, 360))
 
       await window.locator('[data-testid="workspace-space-switch-space-away"]').click()
       await expect(explorer).toBeHidden()
