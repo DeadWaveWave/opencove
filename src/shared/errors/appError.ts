@@ -21,6 +21,10 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'workspace.canvas_image_write_failed': 'Unable to save the canvas image.',
     'workspace.canvas_image_read_failed': 'Unable to load the canvas image.',
     'workspace.canvas_image_delete_failed': 'Unable to delete the canvas image.',
+    'filesystem.read_file_text_failed': 'Unable to read the file.',
+    'filesystem.write_file_text_failed': 'Unable to save the file.',
+    'filesystem.read_directory_failed': 'Unable to load the directory.',
+    'filesystem.stat_failed': 'Unable to read file details.',
     'worktree.api_unavailable':
       'Worktree API is unavailable. Please restart OpenCove and try again.',
     'worktree.list_branches_failed': 'Unable to load Git branches.',
