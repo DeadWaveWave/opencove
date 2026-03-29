@@ -370,22 +370,24 @@ export function WorkspaceSpaceRegionsOverlay({
 
           const resolvedBranchBadge: WorkspaceSpaceBranchBadge | null =
             shouldShowRepoSummary && resolvedWorktreeInfo
-            ? resolvedWorktreeInfo.branch
-              ? {
-                  kind: t('worktree.branch'),
-                  value: resolvedWorktreeInfo.branch,
-                  title: resolvedWorktreeInfo.branch,
-                }
-              : resolvedWorktreeInfo.head
+              ? resolvedWorktreeInfo.branch
                 ? {
-                    kind: t('worktree.detached'),
-                    value: toShortSha(resolvedWorktreeInfo.head),
-                    title: resolvedWorktreeInfo.head,
+                    kind: t('worktree.branch'),
+                    value: resolvedWorktreeInfo.branch,
+                    title: resolvedWorktreeInfo.branch,
                   }
-                : null
-            : null
+                : resolvedWorktreeInfo.head
+                  ? {
+                      kind: t('worktree.detached'),
+                      value: toShortSha(resolvedWorktreeInfo.head),
+                      title: resolvedWorktreeInfo.head,
+                    }
+                  : null
+              : null
 
-          const branchKey = shouldShowRepoSummary ? (resolvedWorktreeInfo?.branch?.trim() ?? '') : ''
+          const branchKey = shouldShowRepoSummary
+            ? (resolvedWorktreeInfo?.branch?.trim() ?? '')
+            : ''
           const resolvedPullRequestSummary =
             shouldShowRepoSummary && branchKey.length > 0
               ? (pullRequestsByBranch[branchKey] ?? null)
