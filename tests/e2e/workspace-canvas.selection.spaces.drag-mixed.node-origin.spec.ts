@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  dragMouse,
   launchApp,
   storageKey,
   testWorkspacePath,
@@ -146,15 +147,18 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         throw new Error('outside node header bounding box unavailable for node-origin drag')
       }
 
-      const dragStartX = outsideHeaderBox.x + outsideHeaderBox.width * 0.5
-      const dragStartY = outsideHeaderBox.y + outsideHeaderBox.height * 0.5
+      const dragStartX =
+        outsideHeaderBox.x + Math.min(Math.max(40, outsideHeaderBox.width * 0.2), 80)
+      const dragStartY =
+        outsideHeaderBox.y + Math.min(Math.max(20, outsideHeaderBox.height * 0.5), 28)
       const dragDx = 340
       const dragDy = 0
 
-      await window.mouse.move(dragStartX, dragStartY)
-      await window.mouse.down()
-      await window.mouse.move(dragStartX + dragDx, dragStartY + dragDy, { steps: 24 })
-      await window.mouse.up()
+      await dragMouse(window, {
+        start: { x: dragStartX, y: dragStartY },
+        end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
+        steps: 24,
+      })
 
       await expect
         .poll(async () => {
