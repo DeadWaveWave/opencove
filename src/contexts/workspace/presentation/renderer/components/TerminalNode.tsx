@@ -6,6 +6,7 @@ import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
+import { createRollingTextBuffer } from '../utils/rollingTextBuffer'
 import {
   createTerminalCommandInputState,
   parseTerminalCommandInput,
@@ -19,19 +20,20 @@ import {
   setCachedTerminalScreenState,
 } from './terminalNode/screenStateCache'
 import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
-import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { resolveTerminalTheme, resolveTerminalUiTheme } from './terminalNode/theme'
 import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
+import { finalizeTerminalHydration } from './terminalNode/finalizeHydration'
 import { registerTerminalDiagnostics } from './terminalNode/registerDiagnostics'
 import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalFind } from './terminalNode/useTerminalFind'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
+import { createCommittedScreenStateRecorder } from './terminalNode/committedScreenState'
+import { MAX_SCROLLBACK_CHARS } from './terminalNode/constants'
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
-import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { hydrateTerminalFromSnapshot } from './terminalNode/hydrateFromSnapshot'
 import {
@@ -157,6 +159,10 @@ export function TerminalNode({
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
+    const committedScrollbackBuffer = createRollingTextBuffer({
+      maxChars: MAX_SCROLLBACK_CHARS,
+      initial: scrollbackBuffer.snapshot(),
+    })
     const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
     const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
@@ -266,11 +272,20 @@ export function TerminalNode({
     const bufferedDataChunks: string[] = []
     let bufferedExitCode: number | null = null
     const ptyEventHub = getPtyEventHub()
+    const committedScreenStateRecorder = createCommittedScreenStateRecorder({
+      serializeAddon,
+      sessionId,
+      terminal,
+    })
 
     const outputScheduler = createTerminalOutputScheduler({
       terminal,
       scrollbackBuffer,
       markScrollbackDirty,
+      onWriteCommitted: data => {
+        committedScrollbackBuffer.append(data)
+        committedScreenStateRecorder.record(committedScrollbackBuffer.snapshot())
+      },
     })
     outputSchedulerRef.current = outputScheduler
     outputScheduler.onViewportInteractionActiveChange(isViewportInteractionActiveRef.current)
@@ -297,45 +312,32 @@ export function TerminalNode({
     const attachPromise = Promise.resolve(ptyWithOptionalAttach.attach?.({ sessionId }))
 
     const finalizeHydration = (rawSnapshot: string): void => {
-      if (isDisposed) {
-        return
-      }
-
-      scrollbackBuffer.set(rawSnapshot)
       isHydrating = false
-      ptyWriteQueue.flush()
-
-      const bufferedData = bufferedDataChunks.join('')
-      bufferedDataChunks.length = 0
-
-      if (bufferedData.length > 0) {
-        const overlap = resolveSuffixPrefixOverlap(rawSnapshot, bufferedData)
-        const remainder = bufferedData.slice(overlap)
-
-        if (remainder.length > 0) {
-          terminal.write(remainder)
-          scrollbackBuffer.append(remainder)
-        }
-      }
-
-      if (bufferedExitCode !== null) {
-        const exitMessage = `\r\n[process exited with code ${bufferedExitCode}]\r\n`
-        bufferedExitCode = null
-        terminal.write(exitMessage)
-        scrollbackBuffer.append(exitMessage)
-      }
-
-      markScrollbackDirty(true)
-      terminalDiagnostics.logHydrated({
-        rawSnapshotLength: rawSnapshot.length,
+      finalizeTerminalHydration({
+        isDisposed: () => isDisposed,
+        rawSnapshot,
+        scrollbackBuffer,
+        ptyWriteQueue,
+        bufferedDataChunks,
         bufferedExitCode,
+        terminal,
+        committedScrollbackBuffer,
+        onCommittedScreenState: nextRawSnapshot => {
+          committedScreenStateRecorder.record(nextRawSnapshot)
+        },
+        markScrollbackDirty,
+        logHydrated: details => {
+          terminalDiagnostics.logHydrated(details)
+        },
+        syncTerminalSize,
+        onRevealed: () => {
+          if (!isDisposed) {
+            isTerminalHydratedRef.current = true
+            setIsTerminalHydrated(true)
+          }
+        },
       })
-      revealHydratedTerminal(syncTerminalSize, () => {
-        if (!isDisposed) {
-          isTerminalHydratedRef.current = true
-          setIsTerminalHydrated(true)
-        }
-      })
+      bufferedExitCode = null
     }
 
     void hydrateTerminalFromSnapshot({
@@ -346,6 +348,10 @@ export function TerminalNode({
       persistedSnapshot: scrollbackBuffer.snapshot(),
       takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
       isDisposed: () => isDisposed,
+      onHydratedWriteCommitted: rawSnapshot => {
+        committedScrollbackBuffer.set(rawSnapshot)
+        committedScreenStateRecorder.record(rawSnapshot)
+      },
       finalizeHydration: rawSnapshot => {
         shouldForwardTerminalData = true
         finalizeHydration(rawSnapshot)
@@ -376,15 +382,16 @@ export function TerminalNode({
       const hasPendingWrites = outputScheduler.hasPendingWrites()
 
       if (!isInvalidated && isTerminalHydratedRef.current && !hasPendingWrites) {
-        // Live PTY output owns terminal modes; the renderer cache should only restore pixels.
-        const serializedScreen = serializeAddon.serialize({ excludeModes: true })
-        if (serializedScreen.length > 0) {
+        const latestCommittedScreenState = committedScreenStateRecorder.resolve(
+          scrollbackBuffer.snapshot(),
+        )
+        if (latestCommittedScreenState) {
           setCachedTerminalScreenState(nodeId, {
-            sessionId,
-            serialized: serializedScreen,
-            rawSnapshot: scrollbackBuffer.snapshot(),
-            cols: terminal.cols,
-            rows: terminal.rows,
+            sessionId: latestCommittedScreenState.sessionId,
+            serialized: latestCommittedScreenState.serialized,
+            rawSnapshot: latestCommittedScreenState.rawSnapshot,
+            cols: latestCommittedScreenState.cols,
+            rows: latestCommittedScreenState.rows,
           })
         }
       }

@@ -10,6 +10,7 @@ export async function hydrateTerminalFromSnapshot({
   persistedSnapshot,
   takePtySnapshot,
   isDisposed,
+  onHydratedWriteCommitted,
   finalizeHydration,
 }: {
   attachPromise: Promise<void | undefined>
@@ -19,6 +20,7 @@ export async function hydrateTerminalFromSnapshot({
   persistedSnapshot: string
   takePtySnapshot: (payload: { sessionId: string }) => Promise<{ data: string }>
   isDisposed: () => boolean
+  onHydratedWriteCommitted: (rawSnapshot: string) => void
   finalizeHydration: (rawSnapshot: string) => void
 }): Promise<void> {
   await attachPromise.catch(() => undefined)
@@ -51,6 +53,7 @@ export async function hydrateTerminalFromSnapshot({
 
   if (restoredPayload.length > 0) {
     terminal.write(restoredPayload, () => {
+      onHydratedWriteCommitted(rawSnapshot)
       finalizeHydration(rawSnapshot)
     })
     return

@@ -20,11 +20,13 @@ export function createTerminalOutputScheduler({
   terminal,
   scrollbackBuffer,
   markScrollbackDirty,
+  onWriteCommitted,
   options,
 }: {
   terminal: Terminal
   scrollbackBuffer: ScrollbackBuffer
   markScrollbackDirty: (immediate?: boolean) => void
+  onWriteCommitted?: (data: string) => void
   options?: Partial<{
     maxPendingChars: number
     normalWriteChunkChars: number
@@ -181,6 +183,7 @@ export function createTerminalOutputScheduler({
 
       remainingBudget -= chunk.length
       terminal.write(chunk, () => {
+        onWriteCommitted?.(chunk)
         pendingWriteFrame = window.requestAnimationFrame(() => {
           pendingWriteFrame = null
           drainStep()
@@ -217,7 +220,9 @@ export function createTerminalOutputScheduler({
       return
     }
 
-    terminal.write(data)
+    terminal.write(data, () => {
+      onWriteCommitted?.(data)
+    })
   }
 
   const onViewportInteractionActiveChange = (isActive: boolean) => {
