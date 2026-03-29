@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
 import path from 'path'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
@@ -51,7 +52,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
           {
             id: 'space-explorer-note',
             title: 'Anchor note',
-            position: { x: 600, y: 460 },
+            position: { x: 380, y: 320 },
             width: 320,
             height: 220,
             kind: 'note',
@@ -70,14 +71,19 @@ test.describe('Workspace Canvas - Space Explorer', () => {
               rect: {
                 x: 340,
                 y: 280,
-                width: 620,
-                height: 420,
+                width: 960,
+                height: 520,
               },
             },
           ],
           activeSpaceId: 'space-explorer',
         },
       )
+
+      // The seeded workspace includes a far-away anchor note used to move the viewport. Ensure the
+      // explorer space is framed before opening the overlay so the panel can resize beyond the
+      // space's on-screen minimum width.
+      await window.locator('[data-testid="workspace-space-switch-space-explorer"]').click()
 
       const filesPill = window.locator('[data-testid="workspace-space-files-space-explorer"]')
       await expect(filesPill).toBeVisible()
@@ -196,6 +202,72 @@ test.describe('Workspace Canvas - Space Explorer', () => {
     }
   })
 
+  test('shows an error when the space directory is outside approved roots', async ({
+    browserName,
+  }, testInfo) => {
+    const fixtureDir = path.join(tmpdir(), 'opencove-e2e-unapproved-space-explorer', randomUUID())
+
+    await mkdir(fixtureDir, { recursive: true })
+    await writeFile(path.join(fixtureDir, 'hello.md'), 'hello', 'utf8')
+
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'space-unapproved-anchor',
+            title: 'Anchor note',
+            position: { x: 600, y: 460 },
+            width: 320,
+            height: 220,
+            kind: 'note',
+            task: {
+              text: 'Keep this space alive',
+            },
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-unapproved',
+              name: 'Unapproved Space',
+              directoryPath: fixtureDir,
+              nodeIds: ['space-unapproved-anchor'],
+              rect: {
+                x: 340,
+                y: 280,
+                width: 620,
+                height: 420,
+              },
+            },
+          ],
+          activeSpaceId: 'space-unapproved',
+        },
+      )
+
+      const filesPill = window.locator('[data-testid="workspace-space-files-space-unapproved"]')
+      await expect(filesPill).toBeVisible()
+      await filesPill.click()
+
+      const explorer = window.locator('[data-testid="workspace-space-explorer"]')
+      await expect(explorer).toBeVisible()
+
+      const errorState = explorer.locator('.workspace-space-explorer__state--error')
+      await expect(errorState).toBeVisible()
+      await expect(errorState).toContainText('approved workspaces')
+
+      await testInfo.attach(`space-explorer-unapproved-${browserName}`, {
+        body: await window.screenshot(),
+        contentType: 'image/png',
+      })
+    } finally {
+      await electronApp.close()
+      await removePathWithRetry(fixtureDir)
+    }
+  })
+
   test('resizes Explorer width and auto-closes when its space leaves the viewport', async () => {
     const fixtureDir = path.join(
       testWorkspacePath,
@@ -289,7 +361,10 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       await window.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
       await window.mouse.down()
-      await window.mouse.move(handleBox.x + 120, handleBox.y + handleBox.height / 2)
+      await window.mouse.move(
+        handleBox.x + handleBox.width / 2 + 120,
+        handleBox.y + handleBox.height / 2,
+      )
       await window.mouse.up()
 
       await expect
