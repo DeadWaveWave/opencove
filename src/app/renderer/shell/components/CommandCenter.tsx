@@ -390,12 +390,31 @@ export function CommandCenter({
               }
 
               if (event.key === 'Enter') {
-                if (!selectedItem) {
+                const currentQuery = normalizeQuery(event.currentTarget.value)
+                const currentSections = currentQuery
+                  ? baseSections
+                      .map(section => {
+                        const rankedItems = filterAndRank(section.items, currentQuery)
+                        return rankedItems.length === 0 ? null : { ...section, items: rankedItems }
+                      })
+                      .filter((section): section is CommandCenterSection => section !== null)
+                  : baseSections
+
+                const currentFlattenedItems = flattenSections(currentSections)
+                const currentSelectedItem =
+                  currentFlattenedItems.length === 0
+                    ? null
+                    : activeItemId
+                      ? (currentFlattenedItems.find(item => item.id === activeItemId) ??
+                        currentFlattenedItems[0])
+                      : currentFlattenedItems[0]
+
+                if (!currentSelectedItem) {
                   return
                 }
                 interactionModeRef.current = 'keyboard'
                 event.preventDefault()
-                selectedItem.onSelect()
+                currentSelectedItem.onSelect()
                 onClose()
               }
             }}

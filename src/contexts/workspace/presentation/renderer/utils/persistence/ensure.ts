@@ -1,5 +1,6 @@
 import type {
   AgentNodeData,
+  DocumentNodeData,
   ImageNodeData,
   NoteNodeData,
   PersistedTerminalNode,
@@ -224,6 +225,29 @@ function ensurePersistedImageData(value: unknown): ImageNodeData | null {
   }
 }
 
+function ensurePersistedDocumentData(value: unknown): DocumentNodeData | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const uri = typeof record.uri === 'string' ? record.uri.trim() : ''
+  if (uri.length === 0) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(uri)
+    if (parsed.protocol !== 'file:') {
+      return null
+    }
+  } catch {
+    return null
+  }
+
+  return { uri }
+}
+
 function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   if (!node || typeof node !== 'object') {
     return null
@@ -257,6 +281,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   const task = ensurePersistedTaskData(record.task)
   const note = ensurePersistedNoteData(record.task)
   const image = ensurePersistedImageData(record.task)
+  const document = ensurePersistedDocumentData(record.task)
   const runtimeKindInput = record.runtimeKind
   const runtimeKind: TerminalRuntimeKind | undefined =
     runtimeKindInput === 'windows' || runtimeKindInput === 'wsl' || runtimeKindInput === 'posix'
@@ -282,7 +307,16 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     executionDirectory: normalizeOptionalString(record.executionDirectory),
     expectedDirectory: normalizeOptionalString(record.expectedDirectory),
     agent: kind === 'agent' ? agent : null,
-    task: kind === 'task' ? task : kind === 'note' ? note : kind === 'image' ? image : null,
+    task:
+      kind === 'task'
+        ? task
+        : kind === 'note'
+          ? note
+          : kind === 'image'
+            ? image
+            : kind === 'document'
+              ? document
+              : null,
     position: {
       x: positionRecord.x,
       y: positionRecord.y,

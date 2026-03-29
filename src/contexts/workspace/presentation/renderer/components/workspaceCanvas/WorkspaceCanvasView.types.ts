@@ -72,6 +72,17 @@ export interface WorkspaceCanvasViewProps {
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
+  openExplorerSpaceId: string | null
+  openSpaceExplorer: (spaceId: string) => void
+  toggleSpaceExplorer: (spaceId: string) => void
+  closeSpaceExplorer: () => void
+  openFileInSpace: (
+    spaceId: string,
+    uri: string,
+    options?: {
+      explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+    },
+  ) => void
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,

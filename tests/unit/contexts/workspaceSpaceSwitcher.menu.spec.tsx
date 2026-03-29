@@ -58,7 +58,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
     )
   })
 
-  it('shows only the branch badge when bound to a git worktree', async () => {
+  it('shows the branch badge when bound to a git worktree', async () => {
     const listWorktrees = vi.fn(async () => {
       return {
         worktrees: [
@@ -111,7 +111,7 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
       expect(listWorktrees).toHaveBeenCalledWith({ repoPath: '/tmp/repo' })
     })
 
-    expect(screen.queryByTestId('workspace-space-label-space-1')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workspace-space-label-space-1')).toBeInTheDocument()
     expect(await screen.findByTestId('workspace-space-worktree-branch-space-1')).toHaveTextContent(
       'Branch',
     )

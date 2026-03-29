@@ -51,7 +51,9 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  max-width: min(520px, calc(100vw - 48px));
+  /* Keep the draggable top edge usable (tests click the top handle center). */
+  max-width: min(520px, calc((100% - 32px) / 2));
+  overflow: hidden;
   pointer-events: auto;
 }
 
@@ -71,7 +73,7 @@
 
 .workspace-space-region__label {
   border: 1px solid var(--cove-border);
-  background: var(--cove-surface-strong);
+  background: var(--cove-window-surface);
   color: var(--cove-text);
   cursor: text;
   flex: 1 1 auto;
@@ -86,7 +88,7 @@
 
 .workspace-space-region__worktree-badge {
   border: 1px solid var(--cove-border-subtle);
-  background: var(--cove-surface-strong);
+  background: var(--cove-window-surface);
   color: var(--cove-text-muted);
   border-radius: 999px;
   padding: 2px 10px;
@@ -98,9 +100,15 @@
   text-overflow: ellipsis;
 }
 
+.workspace-space-region__branch-badge,
+.workspace-space-region__worktree-badge,
+.workspace-space-region__menu {
+  min-width: 0;
+}
+
 .workspace-space-region__menu {
   border: 1px solid var(--cove-border);
-  background: var(--cove-field);
+  background: var(--cove-window-surface);
   color: var(--cove-text-muted);
   border-radius: 999px;
   font-size: calc(11px * var(--cove-ui-font-scale));
@@ -129,7 +137,7 @@
   min-height: 24px;
   border-radius: 999px;
   border: 1px solid var(--cove-border);
-  background: var(--cove-surface-strong);
+  background: var(--cove-window-surface);
   color: var(--cove-text);
   font-family: inherit;
   font-size: calc(11px * var(--cove-ui-font-scale));
@@ -218,7 +226,7 @@
 
 .workspace-space-switcher__item {
   border: 1px solid var(--cove-border);
-  background: var(--cove-surface-strong);
+  background: var(--cove-window-surface);
   color: var(--cove-text-muted);
   border-radius: 999px;
   font-size: calc(11px * var(--cove-ui-font-scale));
@@ -237,7 +245,7 @@
 }
 
 .workspace-space-switcher__item[data-cove-label-color]:hover {
-  background: color-mix(in srgb, var(--cove-label-color) 12%, var(--cove-surface-strong));
+  background: color-mix(in srgb, var(--cove-label-color) 12%, var(--cove-window-surface));
   color: var(--cove-text);
 }
 
@@ -270,7 +278,7 @@
 
 .workspace-space-switcher__menu {
   border: 1px solid var(--cove-border);
-  background: var(--cove-surface-strong);
+  background: var(--cove-window-surface);
   color: var(--cove-text-muted);
   border-radius: 999px;
   font-size: calc(11px * var(--cove-ui-font-scale));

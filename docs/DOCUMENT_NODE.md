@@ -40,6 +40,23 @@ Doc Node 的定位是：把“读/写文件”从 terminal 的隐式副作用升
   - 必须展示结构化错误语义（例如未批准路径、权限不足、文件不存在）
   - 禁止使用系统弹窗（见 `DEVELOPMENT.md` 约束），统一用应用内反馈组件
 
+### 3.1 自动保存（当前实现）
+
+Doc Node 具备“自动保存 + 显式保存”的组合：
+
+- 文本变更后会在短暂 debounce 后自动保存到磁盘（避免频繁写入）
+- 仍保留 `Save` 按钮与 `Cmd/Ctrl+S`（方便用户在关键点显式落盘）
+- 若保存失败会提示错误并停止自动保存，直到用户继续编辑或手动重试
+
+### 3.2 文件类型与不可编辑情形
+
+Doc Node 仅用于文本文件编辑：
+
+- 当文件疑似二进制时，会显示“二进制文件无法作为文本编辑”的说明
+- 当文件过大时，会显示“文件过大不支持在画布内作为文本编辑”的说明
+
+图片文件通常不以 Doc Node 打开，而由 Space Explorer 以 Image Node 的形式在画布中展示（见 `docs/SPACE_EXPLORER.md`）。
+
 ## 4. 与 Space Explorer 的关系
 
 Space Explorer 是 Doc Node 的“入口与编排面”：
@@ -47,7 +64,7 @@ Space Explorer 是 Doc Node 的“入口与编排面”：
 - 在 Space Explorer 的文件树中点击文件：创建/聚焦 Doc Node（绑定 `uri`）
 - 在 multi-mount 场景中：Doc Node 的 `uri` 必须属于触发它的 mount column 的 target/scope
 
-具体交互目标见 `.opencove/design/SPACE_EXPLORER_DESIGN.md`（私有设计稿）。
+具体交互与 UI 约束见 `docs/SPACE_EXPLORER.md`。
 
 ## 5. UI 约束（风格与交互）
 
@@ -60,4 +77,3 @@ Space Explorer 是 Doc Node 的“入口与编排面”：
 - E2E：
   - 从 Space Explorer 打开一个文件，修改并保存，校验磁盘内容变化
   - 未批准路径打开/保存被拒绝且 UI 可解释
-

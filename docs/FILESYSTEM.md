@@ -29,6 +29,8 @@ OpenCove 当前阶段至少支持：
 
 文件系统能力在 application 层以端口建模：
 
+- `createDirectory`
+- `readFileBytes`
 - `readFileText`
 - `writeFileText`
 - `readDirectory`
@@ -49,6 +51,11 @@ Control Surface 提供以下操作（Command/Query）：
 对应 DTO：`src/shared/contracts/dto/filesystem.ts`
 
 统一返回 envelope：`src/shared/contracts/controlSurface/result.ts`
+
+注意：
+
+- 当前 `readFileBytes/createDirectory` 仅通过 Desktop IPC（`window.opencoveApi.filesystem.*`）供 renderer 使用，用于图片打开与文件树创建操作。
+- Control Surface 暂不暴露 bytes 级别结果（避免在 CLI/Remote 场景中引入不稳定的编码与体积风险）。
 
 ## 4. Guardrails（安全与一致性门禁）
 
@@ -86,4 +93,3 @@ Control Surface 提供以下操作（Command/Query）：
 - E2E：
   - 从 UI 打开文件、编辑、保存后，文件内容确实变化
   - 未批准路径应被拒绝且 UI 可解释
-

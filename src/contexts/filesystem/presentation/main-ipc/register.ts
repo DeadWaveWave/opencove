@@ -2,9 +2,12 @@ import { fileURLToPath } from 'node:url'
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
+  CreateDirectoryInput,
   FileSystemStat,
   ReadDirectoryInput,
   ReadDirectoryResult,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
   StatInput,
@@ -16,13 +19,17 @@ import type { ApprovedWorkspaceStore } from '../../../workspace/infrastructure/a
 import { createAppError } from '../../../../shared/errors/appError'
 import { createLocalFileSystemPort } from '../../infrastructure/localFileSystemPort'
 import {
+  createDirectoryUseCase,
   readDirectoryUseCase,
+  readFileBytesUseCase,
   readFileTextUseCase,
   statUseCase,
   writeFileTextUseCase,
 } from '../../application/usecases'
 import {
+  normalizeCreateDirectoryPayload,
   normalizeReadDirectoryPayload,
+  normalizeReadFileBytesPayload,
   normalizeReadFileTextPayload,
   normalizeStatPayload,
   normalizeWriteFileTextPayload,
@@ -40,6 +47,32 @@ export function registerFilesystemIpcHandlers(
       throw createAppError('common.approved_path_required', { debugMessage })
     }
   }
+
+  registerHandledIpc<void, CreateDirectoryInput>(
+    IPC_CHANNELS.filesystemCreateDirectory,
+    async (_event, payload: CreateDirectoryInput): Promise<void> => {
+      const normalized = normalizeCreateDirectoryPayload(payload)
+      await assertApprovedUri(
+        normalized.uri,
+        'filesystem:create-directory uri is outside approved roots',
+      )
+      await createDirectoryUseCase(port, normalized)
+    },
+    { defaultErrorCode: 'filesystem.create_directory_failed' },
+  )
+
+  registerHandledIpc<ReadFileBytesResult, ReadFileBytesInput>(
+    IPC_CHANNELS.filesystemReadFileBytes,
+    async (_event, payload: ReadFileBytesInput): Promise<ReadFileBytesResult> => {
+      const normalized = normalizeReadFileBytesPayload(payload)
+      await assertApprovedUri(
+        normalized.uri,
+        'filesystem:read-file-bytes uri is outside approved roots',
+      )
+      return await readFileBytesUseCase(port, normalized)
+    },
+    { defaultErrorCode: 'filesystem.read_file_bytes_failed' },
+  )
 
   registerHandledIpc(
     IPC_CHANNELS.filesystemReadFileText,
@@ -92,6 +125,8 @@ export function registerFilesystemIpcHandlers(
 
   return {
     dispose: () => {
+      ipcMain.removeHandler(IPC_CHANNELS.filesystemCreateDirectory)
+      ipcMain.removeHandler(IPC_CHANNELS.filesystemReadFileBytes)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemReadFileText)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemWriteFileText)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemStat)

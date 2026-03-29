@@ -190,6 +190,8 @@ export type NodePlacementDirection = 'right' | 'down' | 'left' | 'up'
 export interface NodePlacementOptions {
   targetSpaceRect?: WorkspaceSpaceRect | null
   preferredDirection?: NodePlacementDirection
+  // Flow-space rectangles that new nodes should avoid overlapping (e.g. in-space overlays).
+  avoidRects?: WorkspaceSpaceRect[]
 }
 
 export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void

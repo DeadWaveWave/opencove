@@ -1,5 +1,7 @@
 import type {
+  CreateDirectoryInput,
   ReadDirectoryInput,
+  ReadFileBytesInput,
   ReadFileTextInput,
   StatInput,
   WriteFileTextInput,
@@ -54,6 +56,18 @@ export function normalizeReadFileTextPayload(payload: unknown): ReadFileTextInpu
   }
 }
 
+export function normalizeReadFileBytesPayload(payload: unknown): ReadFileBytesInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for filesystem:read-file-bytes.',
+    })
+  }
+
+  return {
+    uri: normalizeFileSystemUri(payload.uri, 'filesystem:read-file-bytes'),
+  }
+}
+
 export function normalizeWriteFileTextPayload(payload: unknown): WriteFileTextInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -95,5 +109,17 @@ export function normalizeReadDirectoryPayload(payload: unknown): ReadDirectoryIn
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem:read-directory'),
+  }
+}
+
+export function normalizeCreateDirectoryPayload(payload: unknown): CreateDirectoryInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for filesystem:create-directory.',
+    })
+  }
+
+  return {
+    uri: normalizeFileSystemUri(payload.uri, 'filesystem:create-directory'),
   }
 }

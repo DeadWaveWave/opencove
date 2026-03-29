@@ -7,6 +7,7 @@ import { resolveTaskExecutionContext } from '@contexts/session/application/resol
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
+import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
 import type {
   QuickUpdateTaskRequirement,
@@ -401,6 +402,22 @@ export function useWorkspaceCanvasNodeTypes({
       )
     }
 
+    const DocumentNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+      const nodePosition = useNodePosition(id)
+      return (
+        <WorkspaceCanvasDocumentNodeType
+          data={data}
+          id={id}
+          nodePosition={nodePosition}
+          selectNode={selectNode}
+          clearNodeSelectionRef={clearNodeSelectionRef}
+          closeNodeRef={closeNodeRef}
+          resizeNodeRef={resizeNodeRef}
+          normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+        />
+      )
+    }
+
     return {
       terminalNode: ({
         data,
@@ -445,6 +462,7 @@ export function useWorkspaceCanvasNodeTypes({
           />
         )
       },
+      documentNode: DocumentNodeType,
       imageNode: ImageNodeType,
       taskNode: TaskNodeType,
     }

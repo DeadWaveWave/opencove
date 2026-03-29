@@ -17,6 +17,8 @@ export const APP_ERROR_CODES = [
   'workspace.canvas_image_write_failed',
   'workspace.canvas_image_read_failed',
   'workspace.canvas_image_delete_failed',
+  'filesystem.create_directory_failed',
+  'filesystem.read_file_bytes_failed',
   'filesystem.read_file_text_failed',
   'filesystem.write_file_text_failed',
   'filesystem.read_directory_failed',

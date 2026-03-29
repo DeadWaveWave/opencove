@@ -1,4 +1,4 @@
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { toFileUri } from '../domain/fileUri'
@@ -41,6 +41,15 @@ function toEntryKind(dirent: {
 
 export function createLocalFileSystemPort(): FileSystemPort {
   return {
+    createDirectory: async ({ uri }) => {
+      const path = fileUriToPath(uri)
+      await mkdir(path, { recursive: false })
+    },
+    readFileBytes: async ({ uri }) => {
+      const path = fileUriToPath(uri)
+      const bytes = await readFile(path)
+      return { bytes: new Uint8Array(bytes) }
+    },
     readFileText: async ({ uri }) => {
       const path = fileUriToPath(uri)
       const content = await readFile(path, 'utf8')

@@ -65,8 +65,11 @@ import type {
   WriteTerminalInput,
   DeleteCanvasImageInput,
   TerminalDiagnosticsLogInput,
+  CreateDirectoryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
   StatInput,
@@ -123,6 +126,10 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.clipboardWriteText, { text }),
   },
   filesystem: {
+    createDirectory: (payload: CreateDirectoryInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.filesystemCreateDirectory, payload),
+    readFileBytes: (payload: ReadFileBytesInput): Promise<ReadFileBytesResult> =>
+      invokeIpc(IPC_CHANNELS.filesystemReadFileBytes, payload),
     readFileText: (payload: ReadFileTextInput): Promise<ReadFileTextResult> =>
       invokeIpc(IPC_CHANNELS.filesystemReadFileText, payload),
     writeFileText: (payload: WriteFileTextInput): Promise<void> =>

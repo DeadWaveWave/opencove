@@ -1,13 +1,30 @@
 import type {
   FileSystemPort,
+  CreateDirectoryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
   StatInput,
   FileSystemStat,
   WriteFileTextInput,
 } from './ports'
+
+export async function createDirectoryUseCase(
+  port: FileSystemPort,
+  input: CreateDirectoryInput,
+): Promise<void> {
+  await port.createDirectory(input)
+}
+
+export async function readFileBytesUseCase(
+  port: FileSystemPort,
+  input: ReadFileBytesInput,
+): Promise<ReadFileBytesResult> {
+  return await port.readFileBytes(input)
+}
 
 export async function readFileTextUseCase(
   port: FileSystemPort,

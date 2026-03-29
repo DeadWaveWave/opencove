@@ -19,6 +19,7 @@ const KIND_UNITS: Record<TerminalNodeData['kind'], { col: number; row: number }>
   agent: { col: 4, row: 8 },
   note: { col: 2, row: 2 },
   image: { col: 3, row: 3 },
+  document: { col: 4, row: 6 },
 }
 
 export function resolveCanonicalNodeGridSpan(kind: TerminalNodeData['kind']): {
@@ -35,6 +36,7 @@ const MIN_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
   agent: { width: 400, height: 520 },
   note: { width: 220, height: 140 },
   image: { width: 180, height: 120 },
+  document: { width: 400, height: 260 },
 }
 
 const MAX_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
@@ -43,6 +45,7 @@ const MAX_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
   agent: { width: 720, height: 1040 },
   note: { width: 360, height: 260 },
   image: { width: 960, height: 720 },
+  document: { width: 960, height: 900 },
 }
 
 function clampSize(size: Size, min: Size, max: Size): Size {
