@@ -88,7 +88,10 @@ export function createCommittedScreenStateRecorder({
   terminal: Terminal
 }): {
   record: (rawSnapshot: string) => void
-  resolve: (rawSnapshot: string) => CommittedTerminalScreenState | null
+  resolve: (
+    rawSnapshot: string,
+    options?: { allowSerializeFallback?: boolean },
+  ) => CommittedTerminalScreenState | null
 } {
   let latestCommittedScreenState: CommittedTerminalScreenState | null = null
 
@@ -102,14 +105,17 @@ export function createCommittedScreenStateRecorder({
           terminal,
         }) ?? latestCommittedScreenState
     },
-    resolve: rawSnapshot => {
-      latestCommittedScreenState = resolveCommittedScreenStateForCache({
-        latestCommittedScreenState,
-        serializeAddon,
-        sessionId,
-        rawSnapshot,
-        terminal,
-      })
+    resolve: (rawSnapshot, options) => {
+      const allowSerializeFallback = options?.allowSerializeFallback !== false
+      if (latestCommittedScreenState || allowSerializeFallback) {
+        latestCommittedScreenState = resolveCommittedScreenStateForCache({
+          latestCommittedScreenState,
+          serializeAddon,
+          sessionId,
+          rawSnapshot,
+          terminal,
+        })
+      }
 
       return latestCommittedScreenState
     },

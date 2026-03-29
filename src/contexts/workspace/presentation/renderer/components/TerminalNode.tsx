@@ -295,7 +295,6 @@ export function TerminalNode({
         bufferedDataChunks.push(event.data)
         return
       }
-
       outputScheduler.handleChunk(event.data)
     })
 
@@ -381,9 +380,12 @@ export function TerminalNode({
 
       const hasPendingWrites = outputScheduler.hasPendingWrites()
 
-      if (!isInvalidated && isTerminalHydratedRef.current && !hasPendingWrites) {
+      if (!isInvalidated && isTerminalHydratedRef.current) {
         const latestCommittedScreenState = committedScreenStateRecorder.resolve(
           scrollbackBuffer.snapshot(),
+          {
+            allowSerializeFallback: !hasPendingWrites,
+          },
         )
         if (latestCommittedScreenState) {
           setCachedTerminalScreenState(nodeId, {
