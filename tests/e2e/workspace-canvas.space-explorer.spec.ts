@@ -6,6 +6,7 @@ import path from 'path'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
   clearAndSeedWorkspace,
+  dragMouse,
   launchApp,
   readCanvasViewport,
   removePathWithRetry,
@@ -359,13 +360,15 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         throw new Error('Resize handle bounding box unavailable')
       }
 
-      await window.mouse.move(handleBox.x + handleBox.width / 2, handleBox.y + handleBox.height / 2)
-      await window.mouse.down()
-      await window.mouse.move(
-        handleBox.x + handleBox.width / 2 + 120,
-        handleBox.y + handleBox.height / 2,
-      )
-      await window.mouse.up()
+      const startPoint = {
+        x: handleBox.x + handleBox.width / 2,
+        y: handleBox.y + handleBox.height / 2,
+      }
+
+      await dragMouse(window, {
+        start: startPoint,
+        end: { x: startPoint.x + 120, y: startPoint.y },
+      })
 
       await expect
         .poll(async () => Math.round((await explorer.boundingBox())?.width ?? 0))
