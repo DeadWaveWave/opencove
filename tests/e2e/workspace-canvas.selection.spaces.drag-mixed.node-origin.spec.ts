@@ -95,7 +95,16 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       )
       await window.waitForTimeout(150)
 
-      const readState = async (): Promise<{ spaceAX: number; spaceBX: number } | null> => {
+      const readState = async (): Promise<{
+        spaceAX: number
+        spaceAY: number
+        spaceAWidth: number
+        spaceAHeight: number
+        spaceBX: number
+        spaceBY: number
+        spaceBWidth: number
+        spaceBHeight: number
+      } | null> => {
         return await window.evaluate(
           async ({ key, spaceAId, spaceBId }) => {
             void key
@@ -109,7 +118,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
               workspaces?: Array<{
                 spaces?: Array<{
                   id?: string
-                  rect?: { x?: number } | null
+                  rect?: { x?: number; y?: number; width?: number; height?: number } | null
                 }>
               }>
             }
@@ -121,15 +130,27 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
             if (
               !spaceA?.rect ||
               typeof spaceA.rect.x !== 'number' ||
+              typeof spaceA.rect.y !== 'number' ||
+              typeof spaceA.rect.width !== 'number' ||
+              typeof spaceA.rect.height !== 'number' ||
               !spaceB?.rect ||
-              typeof spaceB.rect.x !== 'number'
+              typeof spaceB.rect.x !== 'number' ||
+              typeof spaceB.rect.y !== 'number' ||
+              typeof spaceB.rect.width !== 'number' ||
+              typeof spaceB.rect.height !== 'number'
             ) {
               return null
             }
 
             return {
               spaceAX: spaceA.rect.x,
+              spaceAY: spaceA.rect.y,
+              spaceAWidth: spaceA.rect.width,
+              spaceAHeight: spaceA.rect.height,
               spaceBX: spaceB.rect.x,
+              spaceBY: spaceB.rect.y,
+              spaceBWidth: spaceB.rect.width,
+              spaceBHeight: spaceB.rect.height,
             }
           },
           {
@@ -174,9 +195,23 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect
         .poll(async () => {
           const after = await readState()
-          return after ? after.spaceBX - before.spaceBX : Number.NaN
+          if (!after) {
+            return false
+          }
+
+          const spaceARight = after.spaceAX + after.spaceAWidth
+          const spaceABottom = after.spaceAY + after.spaceAHeight
+          const spaceBRight = after.spaceBX + after.spaceBWidth
+          const spaceBBottom = after.spaceBY + after.spaceBHeight
+
+          return !(
+            spaceARight > after.spaceBX &&
+            after.spaceAX < spaceBRight &&
+            spaceABottom > after.spaceBY &&
+            after.spaceAY < spaceBBottom
+          )
         })
-        .toBeGreaterThan(100)
+        .toBe(true)
     } finally {
       await electronApp.close()
     }
