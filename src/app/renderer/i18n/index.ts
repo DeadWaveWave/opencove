@@ -3,6 +3,7 @@ import { DEFAULT_UI_LANGUAGE, type UiLanguage } from '@contexts/settings/domain/
 import { en } from './locales/en'
 import type { TranslationDictionary } from './locales/schema'
 import { zhCN } from './locales/zh-CN'
+import { ja } from './locales/ja'
 
 export type TranslateOptions = Record<string, string | number | boolean | null | undefined>
 export type TranslateFn = (key: string, options?: TranslateOptions) => string
@@ -10,6 +11,7 @@ export type TranslateFn = (key: string, options?: TranslateOptions) => string
 const TRANSLATIONS: Record<UiLanguage, TranslationDictionary> = {
   en,
   'zh-CN': zhCN,
+  ja,
 }
 
 let activeLanguage: UiLanguage = DEFAULT_UI_LANGUAGE
