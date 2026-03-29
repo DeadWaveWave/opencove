@@ -257,6 +257,10 @@ async function tryResolveSessionFilePath(
     return await findGeminiSessionFilePath(cwd, sessionId)
   }
 
+  if (provider === 'cursor-agent') {
+    return null
+  }
+
   return null
 }
 

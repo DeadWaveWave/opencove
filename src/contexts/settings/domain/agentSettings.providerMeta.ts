@@ -5,6 +5,7 @@ export const AGENT_PROVIDER_LABEL: Record<AgentProvider, string> = {
   codex: 'Codex',
   opencode: 'OpenCode',
   gemini: 'Gemini CLI',
+  'cursor-agent': 'Cursor Agent',
 }
 
 export interface AgentProviderCapabilities {
@@ -38,5 +39,11 @@ export const AGENT_PROVIDER_CAPABILITIES: Record<AgentProvider, AgentProviderCap
     worktreeNameSuggestion: false,
     runtimeObservation: 'none',
     experimental: false,
+  },
+  'cursor-agent': {
+    taskTitle: false,
+    worktreeNameSuggestion: false,
+    runtimeObservation: 'none',
+    experimental: true,
   },
 }

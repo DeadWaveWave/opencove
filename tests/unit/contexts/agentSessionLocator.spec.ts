@@ -326,6 +326,21 @@ describe('locateAgentResumeSessionId', () => {
     expect(detected).toBe('new-launch-session')
   })
 
+  it('returns null for cursor-agent without falling into gemini resolution', async () => {
+    const cwd = '/Users/tester/Development/cove'
+    const startedAtMs = 1_707_000_000_000
+
+    const detected = await locateAgentResumeSessionId({
+      provider: 'cursor-agent',
+      cwd,
+      startedAtMs,
+      timeoutMs: 0,
+    })
+
+    expect(detected).toBeNull()
+    expect(fsPromisesMock.readdir).not.toHaveBeenCalled()
+  })
+
   it('accepts an info-only gemini session file once it becomes a real turn session', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = Date.parse('2026-03-15T10:25:00.000Z')

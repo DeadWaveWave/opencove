@@ -19,6 +19,7 @@ import { listInstalledAgentProviders } from '../../infrastructure/cli/AgentCliAv
 import {
   disposeAgentModelService,
   listAgentModels,
+  resolveDefaultModelDisplayName,
 } from '../../infrastructure/cli/AgentModelService'
 import { captureGeminiSessionDiscoveryCursor } from '../../infrastructure/cli/AgentSessionLocatorProviders'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
@@ -275,13 +276,18 @@ export function registerAgentIpcHandlers(
         })
       }
 
+      let displayModel = launchCommand.effectiveModel
+      if (!displayModel && normalized.provider === 'cursor-agent') {
+        displayModel = await resolveDefaultModelDisplayName('cursor-agent')
+      }
+
       const result: LaunchAgentResult = {
         sessionId,
         provider: normalized.provider,
         command: resolvedInvocation.command,
         args: resolvedInvocation.args,
         launchMode: launchCommand.launchMode,
-        effectiveModel: launchCommand.effectiveModel,
+        effectiveModel: displayModel,
         resumeSessionId,
       }
 

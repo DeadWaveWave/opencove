@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { buildAgentLaunchCommand } from '../../../src/contexts/agent/infrastructure/cli/AgentCommandFactory'
+import {
+  buildAgentLaunchCommand,
+  resolveAgentCliCommand,
+} from '../../../src/contexts/agent/infrastructure/cli/AgentCommandFactory'
 
 describe('buildAgentLaunchCommand', () => {
   it('builds codex command with model override', () => {
@@ -230,5 +233,83 @@ describe('buildAgentLaunchCommand', () => {
     expect(command.command).toBe('gemini')
     expect(command.args).toEqual(['--resume', 'd7d89910-fa86-4253-a183-07db548da987'])
     expect(command.launchMode).toBe('resume')
+  })
+
+  it('resolves cursor-agent cli command to agent', () => {
+    expect(resolveAgentCliCommand('cursor-agent')).toBe('agent')
+  })
+
+  it('builds cursor-agent command with prompt', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'cursor-agent',
+      mode: 'new',
+      prompt: 'fix the build',
+      model: null,
+      resumeSessionId: null,
+    })
+
+    expect(command.command).toBe('agent')
+    expect(command.args).toEqual(['--yolo', 'fix the build'])
+    expect(command.launchMode).toBe('new')
+    expect(command.effectiveModel).toBeNull()
+    expect(command.resumeSessionId).toBeNull()
+  })
+
+  it('builds cursor-agent command with model', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'cursor-agent',
+      mode: 'new',
+      prompt: 'refactor utils',
+      model: 'claude-4-opus',
+      resumeSessionId: null,
+    })
+
+    expect(command.command).toBe('agent')
+    expect(command.args).toEqual(['--yolo', '--model', 'claude-4-opus', 'refactor utils'])
+    expect(command.effectiveModel).toBe('claude-4-opus')
+  })
+
+  it('builds cursor-agent command with yolo disabled', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'cursor-agent',
+      mode: 'new',
+      prompt: 'check tests',
+      model: null,
+      resumeSessionId: null,
+      agentFullAccess: false,
+    })
+
+    expect(command.command).toBe('agent')
+    expect(command.args).toEqual(['check tests'])
+  })
+
+  it('builds cursor-agent resume command with session id', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'cursor-agent',
+      mode: 'resume',
+      prompt: '',
+      model: null,
+      resumeSessionId: 'ab12cd34-ef56-7890-abcd-ef1234567890',
+    })
+
+    expect(command.command).toBe('agent')
+    expect(command.args).toEqual(['--yolo', '--resume', 'ab12cd34-ef56-7890-abcd-ef1234567890'])
+    expect(command.launchMode).toBe('resume')
+    expect(command.resumeSessionId).toBe('ab12cd34-ef56-7890-abcd-ef1234567890')
+  })
+
+  it('builds cursor-agent resume command without session id', () => {
+    const command = buildAgentLaunchCommand({
+      provider: 'cursor-agent',
+      mode: 'resume',
+      prompt: '',
+      model: null,
+      resumeSessionId: null,
+    })
+
+    expect(command.command).toBe('agent')
+    expect(command.args).toEqual(['--yolo', '--continue'])
+    expect(command.launchMode).toBe('resume')
+    expect(command.resumeSessionId).toBeNull()
   })
 })

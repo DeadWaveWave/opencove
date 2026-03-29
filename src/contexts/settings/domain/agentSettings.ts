@@ -28,7 +28,13 @@ export {
 } from './focusNodeTargetZoom'
 export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
 
-export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
+export const AGENT_PROVIDERS = [
+  'claude-code',
+  'codex',
+  'opencode',
+  'gemini',
+  'cursor-agent',
+] as const
 export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
 export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
 export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
@@ -142,18 +148,21 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
     codex: false,
     opencode: false,
     gemini: false,
+    'cursor-agent': false,
   },
   customModelByProvider: {
     'claude-code': '',
     codex: '',
     opencode: '',
     gemini: '',
+    'cursor-agent': '',
   },
   customModelOptionsByProvider: {
     'claude-code': [],
     codex: [],
     opencode: [],
     gemini: [],
+    'cursor-agent': [],
   },
   taskTitleProvider: 'default',
   taskTitleModel: '',

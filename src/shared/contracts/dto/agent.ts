@@ -1,6 +1,11 @@
-export type AgentProviderId = 'claude-code' | 'codex' | 'opencode' | 'gemini'
+export type AgentProviderId = 'claude-code' | 'codex' | 'opencode' | 'gemini' | 'cursor-agent'
 
-export type AgentModelCatalogSource = 'claude-static' | 'codex-cli' | 'opencode-cli' | 'gemini-cli'
+export type AgentModelCatalogSource =
+  | 'claude-static'
+  | 'codex-cli'
+  | 'opencode-cli'
+  | 'gemini-cli'
+  | 'cursor-agent-cli'
 import type { AppErrorDescriptor } from './error'
 
 export type AgentLaunchMode = 'new' | 'resume'

@@ -327,6 +327,92 @@ describe('AgentModelService', () => {
     expect(child.kill).toHaveBeenCalledWith('SIGKILL')
   })
 
+  it('lists cursor-agent models from CLI output', async () => {
+    const cliOutput = [
+      'Available models',
+      '',
+      'claude-sonnet-4-6 - Sonnet 4.6  (current)',
+      'gpt-5.2-codex - GPT-5.2 Codex',
+      'gemini-3-pro - Gemini 3 Pro',
+      '',
+    ].join('\n')
+
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(null, cliOutput, '')
+      return {} as ReturnType<typeof execFileMock>
+    })
+
+    const { listAgentModels } = await importAgentModelService()
+    const result = await listAgentModels('cursor-agent')
+
+    expect(result.provider).toBe('cursor-agent')
+    expect(result.source).toBe('cursor-agent-cli')
+    expect(result.error).toBeNull()
+    expect(result.models.map(model => model.id)).toEqual([
+      'claude-sonnet-4-6',
+      'gpt-5.2-codex',
+      'gemini-3-pro',
+    ])
+    expect(result.models[0].displayName).toBe('Sonnet 4.6')
+    expect(result.models[0].isDefault).toBe(true)
+    expect(result.models[1].isDefault).toBe(false)
+  })
+
+  it('returns empty models with error when cursor-agent CLI fails', async () => {
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(new Error('agent not found'), '', 'agent: command not found')
+      return {} as ReturnType<typeof execFileMock>
+    })
+
+    const { listAgentModels } = await importAgentModelService()
+    const result = await listAgentModels('cursor-agent')
+
+    expect(result.provider).toBe('cursor-agent')
+    expect(result.source).toBe('cursor-agent-cli')
+    expect(result.models).toEqual([])
+    expect(result.error).not.toBeNull()
+  })
+
+  it('caches cursor-agent models and returns cached result on subsequent calls', async () => {
+    let callCount = 0
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      callCount++
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(null, 'claude-sonnet-4-6 - Sonnet 4.6\n', '')
+      return {} as ReturnType<typeof execFileMock>
+    })
+
+    const { listAgentModels } = await importAgentModelService()
+    const first = await listAgentModels('cursor-agent')
+    const second = await listAgentModels('cursor-agent')
+
+    expect(first.models.map(m => m.id)).toEqual(['claude-sonnet-4-6'])
+    expect(second.models.map(m => m.id)).toEqual(['claude-sonnet-4-6'])
+    expect(callCount).toBe(1)
+  })
+
+  it('deduplicates concurrent cursor-agent model fetches', async () => {
+    let callCount = 0
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      callCount++
+      const cb = typeof options === 'function' ? options : callback
+      cb?.(null, 'model-a - Model A\nmodel-b - Model B\n', '')
+      return {} as ReturnType<typeof execFileMock>
+    })
+
+    const { listAgentModels } = await importAgentModelService()
+    const [first, second] = await Promise.all([
+      listAgentModels('cursor-agent'),
+      listAgentModels('cursor-agent'),
+    ])
+
+    expect(first.models.map(m => m.id)).toEqual(['model-a', 'model-b'])
+    expect(second.models.map(m => m.id)).toEqual(['model-a', 'model-b'])
+    expect(callCount).toBe(1)
+  })
+
   it('uses the Windows cmd shim path when codex resolves to a .cmd launcher', async () => {
     Object.defineProperty(process, 'platform', {
       value: 'win32',

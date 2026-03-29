@@ -133,4 +133,20 @@ describe('resolveSessionFilePath', () => {
       process.env.HOME = previousHome
     }
   })
+
+  it('returns null for cursor-agent without attempting file resolution', async () => {
+    const cwd = '/tmp/workspace'
+    const sessionId = 'cursor-session-123'
+    const startedAtMs = Date.now()
+
+    const resolved = await resolveSessionFilePath({
+      provider: 'cursor-agent',
+      cwd,
+      sessionId,
+      startedAtMs,
+      timeoutMs: 0,
+    })
+
+    expect(resolved).toBeNull()
+  })
 })

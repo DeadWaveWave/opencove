@@ -232,5 +232,9 @@ export function extractLastAssistantMessageFromSessionData(
     return extractOpenCodeAssistantMessage(parsed)
   }
 
+  if (provider === 'cursor-agent') {
+    return null
+  }
+
   return null
 }

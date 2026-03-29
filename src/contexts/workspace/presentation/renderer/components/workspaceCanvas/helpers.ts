@@ -272,6 +272,10 @@ export function providerTitlePrefix(provider: AgentProvider): string {
     return 'gemini'
   }
 
+  if (provider === 'cursor-agent') {
+    return 'cursor-agent'
+  }
+
   return 'codex'
 }
 
