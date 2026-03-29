@@ -51,7 +51,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
               name: 'Mixed Node Origin B',
               directoryPath: testWorkspacePath,
               nodeIds: ['mixed-node-origin-inside-b'],
-              rect: { x: 760, y: 160, width: 500, height: 400 },
+              rect: { x: 720, y: 160, width: 500, height: 400 },
             },
           ],
           activeSpaceId: null,
@@ -76,7 +76,9 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         .filter({ hasText: 'terminal-mixed-node-origin-outside' })
         .first()
       const outsideHeader = outsideNode.locator('.terminal-node__header')
+      const outsideTitle = outsideNode.locator('.terminal-node__title').first()
       await expect(outsideHeader).toBeVisible()
+      await expect(outsideTitle).toBeVisible()
 
       await window.keyboard.down('Shift')
       try {
@@ -91,6 +93,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         'data-cove-drag-surface-selection-mode',
         'true',
       )
+      await window.waitForTimeout(150)
 
       const readState = async (): Promise<{ spaceAX: number; spaceBX: number } | null> => {
         return await window.evaluate(
@@ -142,22 +145,23 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         throw new Error('failed to read initial node-origin space rects')
       }
 
-      const outsideHeaderBox = await outsideHeader.boundingBox()
-      if (!outsideHeaderBox) {
-        throw new Error('outside node header bounding box unavailable for node-origin drag')
+      const outsideTitleBox = await outsideTitle.boundingBox()
+      if (!outsideTitleBox) {
+        throw new Error('outside node title bounding box unavailable for node-origin drag')
       }
 
-      const dragStartX =
-        outsideHeaderBox.x + Math.min(Math.max(40, outsideHeaderBox.width * 0.2), 80)
-      const dragStartY =
-        outsideHeaderBox.y + Math.min(Math.max(20, outsideHeaderBox.height * 0.5), 28)
-      const dragDx = 340
+      const dragStartX = outsideTitleBox.x + outsideTitleBox.width * 0.5
+      const dragStartY = outsideTitleBox.y + outsideTitleBox.height * 0.5
+      const dragDx = 420
       const dragDy = 0
 
       await dragMouse(window, {
         start: { x: dragStartX, y: dragStartY },
         end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
-        steps: 24,
+        steps: 28,
+        settleAfterPressMs: 64,
+        settleBeforeReleaseMs: 96,
+        settleAfterReleaseMs: 64,
       })
 
       await expect

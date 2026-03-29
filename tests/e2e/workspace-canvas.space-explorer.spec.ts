@@ -347,6 +347,10 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const explorer = window.locator('[data-testid="workspace-space-explorer"]')
       await expect(explorer).toBeVisible()
+      const readExplorerWidth = async (): Promise<number> =>
+        Math.round((await explorer.boundingBox())?.width ?? 0)
+      await expect.poll(readExplorerWidth).toBeGreaterThan(250)
+      await window.waitForTimeout(150)
 
       const boxBefore = await explorer.boundingBox()
       if (!boxBefore) {
@@ -367,11 +371,15 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       await dragMouse(window, {
         start: startPoint,
-        end: { x: startPoint.x + 120, y: startPoint.y },
+        end: { x: startPoint.x + 160, y: startPoint.y },
+        steps: 20,
+        settleAfterPressMs: 64,
+        settleBeforeReleaseMs: 96,
+        settleAfterReleaseMs: 64,
       })
 
       await expect
-        .poll(async () => Math.round((await explorer.boundingBox())?.width ?? 0))
+        .poll(readExplorerWidth)
         .toBeGreaterThanOrEqual(Math.min(Math.round(boxBefore.width) + 20, 360))
 
       await window.locator('[data-testid="workspace-space-switch-space-away"]').click()
