@@ -80,6 +80,7 @@ export function TerminalNode({
   const containerRef = useRef<HTMLDivElement | null>(null)
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
+  const suppressPtyResizeRef = useRef(false)
   const commandInputStateRef = useRef(createTerminalCommandInputState())
   const onCommandRunRef = useRef(onCommandRun)
   const isTerminalHydratedRef = useRef(false)
@@ -118,11 +119,11 @@ export function TerminalNode({
   })
   useEffect(() => {
     lastSyncedPtySizeRef.current = null
+    suppressPtyResizeRef.current = false
     commandInputStateRef.current = createTerminalCommandInputState()
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
-
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
       terminalRef,
@@ -131,6 +132,7 @@ export function TerminalNode({
       isPointerResizingRef,
       lastSyncedPtySizeRef,
       sessionId,
+      shouldResizePty: !suppressPtyResizeRef.current,
     })
   }, [sessionId])
   const applyTerminalTheme = useTerminalThemeApplier({
@@ -153,9 +155,9 @@ export function TerminalNode({
     if (sessionId.trim().length === 0) {
       return undefined
     }
-
     const ptyWithOptionalAttach = resolveAttachablePtyApi()
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
+    suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
     const committedScrollbackBuffer = createRollingTextBuffer({
@@ -170,9 +172,7 @@ export function TerminalNode({
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const terminal = new Terminal({
       cursorBlink: true,
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- terminalFontFamily is intentionally used only as the initial value; reactive updates are handled by a separate effect
       fontFamily:
-        terminalFontFamily ??
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       theme: initialTerminalTheme,
       allowProposedApi: true,
@@ -238,21 +238,22 @@ export function TerminalNode({
       terminalThemeMode,
       windowsPty,
     })
-    let isDisposed = false
-    let shouldForwardTerminalData = false
+    let isDisposed = false,
+      shouldForwardTerminalData = false
     const dataDisposable = terminal.onData(data => {
       if (!shouldForwardTerminalData) {
         return
       }
-
+      if (suppressPtyResizeRef.current) {
+        suppressPtyResizeRef.current = false
+        syncTerminalSize()
+      }
       ptyWriteQueue.enqueue(data)
       ptyWriteQueue.flush()
-
       const commandRunHandler = onCommandRunRef.current
       if (!commandRunHandler) {
         return
       }
-
       const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
       commandInputStateRef.current = parsed.nextState
       parsed.commands.forEach(command => {
@@ -263,7 +264,10 @@ export function TerminalNode({
       if (!shouldForwardTerminalData) {
         return
       }
-
+      if (suppressPtyResizeRef.current) {
+        suppressPtyResizeRef.current = false
+        syncTerminalSize()
+      }
       ptyWriteQueue.enqueue(data, 'binary')
       ptyWriteQueue.flush()
     })
@@ -376,6 +380,7 @@ export function TerminalNode({
     window.addEventListener('opencove-theme-changed', handleThemeChange)
 
     return () => {
+      suppressPtyResizeRef.current = false
       const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
       cacheTerminalScreenStateOnUnmount({
         nodeId,
@@ -428,7 +433,6 @@ export function TerminalNode({
     title,
     kind,
   ])
-
   useEffect(() => {
     const terminal = terminalRef.current
     if (!terminal) {
@@ -438,7 +442,6 @@ export function TerminalNode({
     terminal.options.fontSize = terminalFontSize
     syncTerminalSize()
   }, [syncTerminalSize, terminalFontSize])
-
   useEffect(() => {
     const terminal = terminalRef.current
     if (!terminal) {
@@ -450,14 +453,12 @@ export function TerminalNode({
       'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
     syncTerminalSize()
   }, [syncTerminalSize, terminalFontFamily])
-
   useEffect(() => {
     const frame = requestAnimationFrame(syncTerminalSize)
     return () => {
       cancelAnimationFrame(frame)
     }
   }, [height, syncTerminalSize, width])
-
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
@@ -465,7 +466,6 @@ export function TerminalNode({
     handlePointerMoveCapture: handleTerminalBodyPointerMoveCapture,
     handlePointerUp: handleTerminalBodyPointerUp,
   } = useTerminalBodyClickFallback(onInteractionStart)
-
   return (
     <TerminalNodeFrame
       title={title}
