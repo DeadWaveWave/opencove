@@ -70,7 +70,6 @@ export function WorkspaceCanvasView({
   selectedSpaceIds,
   openExplorerSpaceId,
   explorerClipboard,
-  openSpaceExplorer,
   toggleSpaceExplorer,
   closeSpaceExplorer,
   setExplorerClipboard,
@@ -374,11 +373,6 @@ export function WorkspaceCanvasView({
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
-        onOpenExplorer={() => {
-          if (activeMenuSpace) {
-            openSpaceExplorer(activeMenuSpace.id)
-          }
-        }}
         onArrange={arrangeInSpace}
         onCreateWorktree={() => {
           if (activeMenuSpace) {

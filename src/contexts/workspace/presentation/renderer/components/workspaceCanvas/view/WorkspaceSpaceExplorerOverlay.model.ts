@@ -13,7 +13,14 @@ export type SpaceExplorerCreateMode = 'file' | 'directory' | null
 
 export type SpaceExplorerRow =
   | { kind: 'entry'; entry: FileSystemEntry; depth: number; isExpanded: boolean }
-  | { kind: 'state'; id: string; depth: number; stateKind: 'loading' | 'error'; message: string }
+  | {
+      kind: 'state'
+      id: string
+      depth: number
+      parentDirectoryUri: string
+      stateKind: 'loading' | 'error'
+      message: string
+    }
 
 type DirectoryListing = {
   entries: FileSystemEntry[]
@@ -170,6 +177,7 @@ export function useSpaceExplorerOverlayModel({
             kind: 'state',
             id: `${entry.uri}:loading`,
             depth: depth + 1,
+            parentDirectoryUri: entry.uri,
             stateKind: 'loading',
             message: t('common.loading'),
           })
@@ -181,6 +189,7 @@ export function useSpaceExplorerOverlayModel({
             kind: 'state',
             id: `${entry.uri}:error`,
             depth: depth + 1,
+            parentDirectoryUri: entry.uri,
             stateKind: 'error',
             message: childListing.error,
           })
@@ -270,10 +279,6 @@ export function useSpaceExplorerOverlayModel({
       mutations.cancelDelete()
       didClose = true
     }
-    if (mutations.moveConfirmation) {
-      mutations.cancelMove()
-      didClose = true
-    }
     if (actions.dropTargetDirectoryUri) {
       actions.setDropTargetDirectoryUri(null)
       didClose = true
@@ -300,12 +305,15 @@ export function useSpaceExplorerOverlayModel({
     rename: mutations.rename,
     contextMenu: actions.contextMenu,
     deleteConfirmation: mutations.deleteConfirmation,
-    moveConfirmation: mutations.moveConfirmation,
     draggedEntryUri: actions.draggedEntryUri,
     dropTargetDirectoryUri: actions.dropTargetDirectoryUri,
     dismissTransientUi,
     copyPath: mutations.copyPath,
     copyRelativePath: mutations.copyRelativePath,
+    canUndoMove: mutations.canUndoMove,
+    canRedoMove: mutations.canRedoMove,
+    undoMove: mutations.undoMove,
+    redoMove: mutations.redoMove,
     openRootContextMenu: actions.openRootContextMenu,
     openEntryContextMenu: actions.openEntryContextMenu,
     closeContextMenu: actions.closeContextMenu,
@@ -324,8 +332,6 @@ export function useSpaceExplorerOverlayModel({
     requestDropMove: mutations.requestDropMove,
     confirmDelete: mutations.confirmDelete,
     cancelDelete: mutations.cancelDelete,
-    confirmMove: mutations.confirmMove,
-    cancelMove: mutations.cancelMove,
   }
 }
 

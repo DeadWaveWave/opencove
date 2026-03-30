@@ -4,6 +4,7 @@ import path from 'node:path'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
+  beginDragMouse,
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
@@ -229,7 +230,7 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
     }
   })
 
-  test('confirms drag moves and blocks renaming open documents', async () => {
+  test('moves directly, ignores no-op drops, blocks descendant drops, and supports undo/redo', async () => {
     const fixtureDir = path.join(
       testWorkspacePath,
       'artifacts',
@@ -238,14 +239,18 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       randomUUID(),
     )
     const targetFolderPath = path.join(fixtureDir, 'nested')
+    const targetFolderChildPath = path.join(targetFolderPath, 'anchor.txt')
     const dragFolderPath = path.join(fixtureDir, 'drag-folder')
     const dragChildPath = path.join(dragFolderPath, 'inside.txt')
+    const descendantFolderPath = path.join(dragFolderPath, 'child-dir')
     const movedPath = path.join(targetFolderPath, 'drag-folder')
     const movedChildPath = path.join(movedPath, 'inside.txt')
     const openPath = path.join(fixtureDir, 'open-me.md')
 
     await mkdir(targetFolderPath, { recursive: true })
     await mkdir(dragFolderPath, { recursive: true })
+    await mkdir(descendantFolderPath, { recursive: true })
+    await writeFile(targetFolderChildPath, 'target anchor', 'utf8')
     await writeFile(dragChildPath, 'drag token', 'utf8')
     await writeFile(openPath, '# open token\n', 'utf8')
 
@@ -257,26 +262,95 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
 
       const dragSourceEntry = explorerEntry(window, spaceId, toFileUri(dragFolderPath))
       const targetFolderEntry = explorerEntry(window, spaceId, toFileUri(targetFolderPath))
+      const explorerTree = window.locator('[data-testid="workspace-space-explorer-tree"]')
 
       await expect(dragSourceEntry).toBeVisible()
       await expect(targetFolderEntry).toBeVisible()
 
-      await dragLocatorTo(window, dragSourceEntry, targetFolderEntry)
-
-      const moveConfirmation = window.locator(
-        '[data-testid="workspace-space-explorer-move-confirmation"]',
-      )
-      await expect(moveConfirmation).toBeVisible()
+      await dragLocatorTo(window, dragSourceEntry, explorerTree, {
+        targetPosition: { x: 28, y: 360 },
+      })
+      await window.waitForTimeout(150)
+      await expect.poll(async () => await pathExists(dragFolderPath)).toBe(true)
+      await expect.poll(async () => await pathExists(movedPath)).toBe(false)
       await expect(
-        window.locator('[data-testid="workspace-space-explorer-move-message"]'),
-      ).toContainText('drag-folder')
-      await moveConfirmation.getByRole('button', { name: 'Confirm' }).click()
+        window.locator('[data-testid="workspace-space-explorer-move-confirmation"]'),
+      ).toHaveCount(0)
+      await expect(window.locator('[data-testid="app-message"]')).toHaveCount(0)
 
-      await expect(moveConfirmation).toBeHidden()
+      await dragSourceEntry.click()
+      const descendantFolderEntry = explorerEntry(window, spaceId, toFileUri(descendantFolderPath))
+      await expect(descendantFolderEntry).toBeVisible()
+
+      await dragLocatorTo(window, dragSourceEntry, descendantFolderEntry)
+      await expect.poll(async () => await pathExists(dragFolderPath)).toBe(true)
+      await expect.poll(async () => await pathExists(movedPath)).toBe(false)
+      await expect(window.locator('[data-testid="app-message"]')).toContainText(
+        'cannot be placed inside one of its descendants',
+      )
+
+      await targetFolderEntry.click()
+      const targetFolderChildEntry = explorerEntry(
+        window,
+        spaceId,
+        toFileUri(targetFolderChildPath),
+      )
+      await expect(targetFolderChildEntry).toBeVisible()
+
+      const dragSourceBox = await dragSourceEntry.boundingBox()
+      const targetFolderChildBox = await targetFolderChildEntry.boundingBox()
+      if (!dragSourceBox || !targetFolderChildBox) {
+        throw new Error('Explorer entry bounding box unavailable')
+      }
+
+      const drag = await beginDragMouse(window, {
+        start: {
+          x: dragSourceBox.x + dragSourceBox.width / 2,
+          y: dragSourceBox.y + dragSourceBox.height / 2,
+        },
+        initialTarget: {
+          x: targetFolderChildBox.x + targetFolderChildBox.width / 2,
+          y: targetFolderChildBox.y + targetFolderChildBox.height / 2,
+        },
+      })
+      await drag.moveTo(
+        {
+          x: targetFolderChildBox.x + targetFolderChildBox.width / 2,
+          y: targetFolderChildBox.y + targetFolderChildBox.height / 2,
+        },
+        { settleAfterMoveMs: 128 },
+      )
+      await expect(targetFolderEntry).toHaveClass(/workspace-space-explorer__entry--drop-target/)
+      await expect(targetFolderChildEntry).toHaveClass(
+        /workspace-space-explorer__entry--drop-target-scope/,
+      )
+      await drag.release()
+
+      await expect(
+        window.locator('[data-testid="workspace-space-explorer-move-confirmation"]'),
+      ).toHaveCount(0)
       await expect.poll(async () => await pathExists(dragFolderPath)).toBe(false)
       await expect.poll(async () => await readFile(movedChildPath, 'utf8')).toBe('drag token')
-      await targetFolderEntry.dispatchEvent('click')
       await expect(explorerEntry(window, spaceId, toFileUri(movedPath))).toBeVisible()
+
+      await explorer.focus()
+      await dispatchExplorerShortcut(window, {
+        code: 'KeyZ',
+        key: 'z',
+        ctrlKey: true,
+      })
+      await expect.poll(async () => await pathExists(dragFolderPath)).toBe(true)
+      await expect.poll(async () => await pathExists(movedPath)).toBe(false)
+
+      await explorer.focus()
+      await dispatchExplorerShortcut(window, {
+        code: 'KeyZ',
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: true,
+      })
+      await expect.poll(async () => await pathExists(dragFolderPath)).toBe(false)
+      await expect.poll(async () => await readFile(movedChildPath, 'utf8')).toBe('drag token')
 
       const openEntry = explorerEntry(window, spaceId, toFileUri(openPath))
       await openEntry.dispatchEvent('click')
@@ -294,7 +368,12 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
         code: 'F2',
         key: 'F2',
       })
+      await expect(explorer.locator('.workspace-space-explorer__rename-input')).toHaveCount(0)
 
+      await openEntry.click({ button: 'right', force: true })
+      const contextMenu = window.locator('[data-testid="workspace-space-explorer-context-menu"]')
+      await expect(contextMenu).toBeVisible()
+      await contextMenu.getByRole('button', { name: 'Rename' }).click()
       await expect(explorer.locator('.workspace-space-explorer__rename-input')).toHaveCount(0)
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Close the open document "open-me.md" before changing this file.',
@@ -357,6 +436,25 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await expect.poll(async () => await readFile(movedPath, 'utf8')).toBe('cut token')
       await expect(cutSourceEntry).toHaveCount(0)
       await expect(explorerEntry(window, spaceId, toFileUri(movedPath))).toBeVisible()
+
+      await explorer.focus()
+      await dispatchExplorerShortcut(window, {
+        code: 'KeyZ',
+        key: 'z',
+        ctrlKey: true,
+      })
+      await expect.poll(async () => await pathExists(cutSourcePath)).toBe(true)
+      await expect.poll(async () => await pathExists(movedPath)).toBe(false)
+
+      await explorer.focus()
+      await dispatchExplorerShortcut(window, {
+        code: 'KeyZ',
+        key: 'z',
+        ctrlKey: true,
+        shiftKey: true,
+      })
+      await expect.poll(async () => await pathExists(cutSourcePath)).toBe(false)
+      await expect.poll(async () => await readFile(movedPath, 'utf8')).toBe('cut token')
 
       await deleteEntry.click({ button: 'right', force: true })
       await expect(contextMenu).toBeVisible()

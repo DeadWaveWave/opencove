@@ -17,11 +17,14 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
   moveSelection,
   collapseSelectionOrFocusParent,
   expandSelectionOrOpen,
-  startRenameSelection,
   requestDeleteSelection,
   copySelection,
   cutSelection,
   copyPath,
+  canUndoMove,
+  canRedoMove,
+  undoMove,
+  redoMove,
   pasteIntoSelectionTarget,
   openKeyboardContextMenu,
   onClose,
@@ -32,11 +35,14 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
   moveSelection: (direction: 'next' | 'previous') => void
   collapseSelectionOrFocusParent: () => void
   expandSelectionOrOpen: () => void
-  startRenameSelection: () => void
   requestDeleteSelection: () => void
   copySelection: () => void
   cutSelection: () => void
   copyPath: () => Promise<void>
+  canUndoMove: boolean
+  canRedoMove: boolean
+  undoMove: () => Promise<void>
+  redoMove: () => Promise<void>
   pasteIntoSelectionTarget: () => Promise<void>
   openKeyboardContextMenu: () => void
   onClose: () => void
@@ -114,6 +120,20 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
           clearPendingCopyPathChord()
           event.preventDefault()
           void pasteIntoSelectionTarget()
+        } else if (key === 'z') {
+          clearPendingCopyPathChord()
+          event.preventDefault()
+          if (event.shiftKey) {
+            if (canRedoMove) {
+              void redoMove()
+            }
+          } else if (canUndoMove) {
+            void undoMove()
+          }
+        } else if (key === 'y' && !event.metaKey && canRedoMove) {
+          clearPendingCopyPathChord()
+          event.preventDefault()
+          void redoMove()
         } else if (key === 'k' && !event.shiftKey) {
           event.preventDefault()
           armCopyPathChord()
@@ -147,10 +167,6 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
           event.preventDefault()
           expandSelectionOrOpen()
           return
-        case 'F2':
-          event.preventDefault()
-          startRenameSelection()
-          return
         case 'Delete':
         case 'Backspace':
           event.preventDefault()
@@ -168,6 +184,8 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
     }
   }, [
     copyPath,
+    canRedoMove,
+    canUndoMove,
     collapseSelectionOrFocusParent,
     contextMenu,
     copySelection,
@@ -177,9 +195,10 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
     onClose,
     openKeyboardContextMenu,
     pasteIntoSelectionTarget,
+    redoMove,
     requestDeleteSelection,
     rootRef,
-    startRenameSelection,
+    undoMove,
     moveSelection,
   ])
 }

@@ -12,13 +12,12 @@ import {
   buildChildUri,
   isSameFileUri,
   isWithinDirectoryUri,
-  resolveAvailablePasteTarget,
   resolveParentDirectoryUri,
   validateCreateName,
   type SpaceExplorerClipboardItem,
   type SpaceExplorerDeleteConfirmationState,
-  type SpaceExplorerMoveConfirmationState,
 } from './WorkspaceSpaceExplorerOverlay.operations'
+import { useSpaceExplorerOverlayMoveHistory } from './WorkspaceSpaceExplorerOverlay.moveHistory'
 
 export function useSpaceExplorerOverlayMutations({
   t,
@@ -68,8 +67,6 @@ export function useSpaceExplorerOverlayMutations({
   const [isRenaming, setIsRenaming] = React.useState(false)
   const [deleteConfirmation, setDeleteConfirmation] =
     React.useState<SpaceExplorerDeleteConfirmationState | null>(null)
-  const [moveConfirmation, setMoveConfirmation] =
-    React.useState<SpaceExplorerMoveConfirmationState | null>(null)
 
   const resolveSelectedEntry = React.useCallback(
     (): FileSystemEntry | null =>
@@ -234,6 +231,7 @@ export function useSpaceExplorerOverlayMutations({
     },
     [directoryListings, t],
   )
+
   const resolveSelectionTargetDirectory = React.useCallback((): string => {
     if (selectedEntryUri && selectedEntryKind === 'directory') {
       return selectedEntryUri
@@ -243,56 +241,20 @@ export function useSpaceExplorerOverlayMutations({
     }
     return rootUri
   }, [rootUri, selectedEntryKind, selectedEntryUri])
-  const pasteIntoDirectory = React.useCallback(
-    async (targetDirectoryUri: string): Promise<void> => {
-      const api = window.opencoveApi?.filesystem
-      if (!explorerClipboard || !api) {
-        return
-      }
-      if (
-        explorerClipboard.entry.kind === 'directory' &&
-        (isSameFileUri(explorerClipboard.entry.uri, targetDirectoryUri) ||
-          isWithinDirectoryUri(explorerClipboard.entry.uri, targetDirectoryUri))
-      ) {
-        onShowMessage?.(t('spaceExplorer.invalidMoveIntoSelf'), 'warning')
-        return
-      }
-      if (explorerClipboard.mode === 'cut' && !ensureEntryMutable(explorerClipboard.entry)) {
-        return
-      }
 
-      try {
-        const targetUri = resolveAvailablePasteTarget({
-          clipboard: explorerClipboard,
-          targetDirectoryUri,
-          siblingEntries: await readSiblingEntries(targetDirectoryUri),
-        })
-        if (!targetUri || isSameFileUri(targetUri, explorerClipboard.entry.uri)) {
-          return
-        }
-        if (explorerClipboard.mode === 'cut') {
-          await api.moveEntry({ sourceUri: explorerClipboard.entry.uri, targetUri })
-          setExplorerClipboard(null)
-        } else {
-          await api.copyEntry({ sourceUri: explorerClipboard.entry.uri, targetUri })
-        }
-        selectEntry({ ...explorerClipboard.entry, uri: targetUri })
-        refresh()
-      } catch (error) {
-        onShowMessage?.(toErrorMessage(error), 'error')
-      }
-    },
-    [
-      ensureEntryMutable,
+  const { canUndoMove, canRedoMove, executeMove, pasteIntoDirectory, undoMove, redoMove } =
+    useSpaceExplorerOverlayMoveHistory({
+      t,
       explorerClipboard,
+      setExplorerClipboard,
       onShowMessage,
       readSiblingEntries,
       refresh,
       selectEntry,
-      setExplorerClipboard,
-      t,
-    ],
-  )
+      ensureEntryMutable,
+      setDropTargetDirectoryUri,
+    })
+
   const copyPath = React.useCallback(
     async (uri?: string) =>
       copyExplorerAbsolutePath({
@@ -383,63 +345,14 @@ export function useSpaceExplorerOverlayMutations({
     (targetDirectoryUri: string) => {
       const entry = draggedEntryUri ? (entriesByUri.get(draggedEntryUri) ?? null) : null
       if (!entry || !ensureEntryMutable(entry)) {
-        return
-      }
-      if (
-        entry.kind === 'directory' &&
-        (isSameFileUri(entry.uri, targetDirectoryUri) ||
-          isWithinDirectoryUri(entry.uri, targetDirectoryUri))
-      ) {
-        onShowMessage?.(t('spaceExplorer.invalidMoveIntoSelf'), 'warning')
+        setDropTargetDirectoryUri(null)
         return
       }
 
-      setMoveConfirmation({ entry, targetDirectoryUri })
-      setDropTargetDirectoryUri(null)
+      void executeMove(entry, targetDirectoryUri)
     },
-    [
-      draggedEntryUri,
-      ensureEntryMutable,
-      entriesByUri,
-      onShowMessage,
-      setDropTargetDirectoryUri,
-      t,
-    ],
+    [draggedEntryUri, ensureEntryMutable, entriesByUri, executeMove, setDropTargetDirectoryUri],
   )
-  const confirmMove = React.useCallback(async () => {
-    const nextMove = moveConfirmation
-    const api = window.opencoveApi?.filesystem
-    if (!nextMove || !api) {
-      return
-    }
-    const targetUri = buildChildUri(nextMove.targetDirectoryUri, nextMove.entry.name)
-    if (!targetUri || isSameFileUri(targetUri, nextMove.entry.uri)) {
-      setMoveConfirmation(null)
-      return
-    }
-
-    try {
-      await api.moveEntry({ sourceUri: nextMove.entry.uri, targetUri })
-      if (
-        explorerClipboard?.mode === 'cut' &&
-        isSameFileUri(explorerClipboard.entry.uri, nextMove.entry.uri)
-      ) {
-        setExplorerClipboard(null)
-      }
-      selectEntry({ ...nextMove.entry, uri: targetUri })
-      setMoveConfirmation(null)
-      refresh()
-    } catch (error) {
-      onShowMessage?.(toErrorMessage(error), 'error')
-    }
-  }, [
-    explorerClipboard,
-    moveConfirmation,
-    onShowMessage,
-    refresh,
-    selectEntry,
-    setExplorerClipboard,
-  ])
 
   return {
     create: {
@@ -481,11 +394,14 @@ export function useSpaceExplorerOverlayMutations({
       submit: submitRename,
     },
     deleteConfirmation,
-    moveConfirmation,
     copySelection,
     cutSelection,
     copyPath,
     copyRelativePath,
+    canUndoMove,
+    canRedoMove,
+    undoMove,
+    redoMove,
     requestDeleteSelection,
     pasteIntoSelectionTarget: async () => {
       closeContextMenu()
@@ -494,7 +410,5 @@ export function useSpaceExplorerOverlayMutations({
     requestDropMove,
     confirmDelete,
     cancelDelete: () => setDeleteConfirmation(null),
-    confirmMove,
-    cancelMove: () => setMoveConfirmation(null),
   }
 }

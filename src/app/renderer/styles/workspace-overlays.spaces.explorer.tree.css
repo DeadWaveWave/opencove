@@ -5,7 +5,7 @@
   padding: 6px 6px 6px 6px;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
 }
 
 .workspace-space-explorer__tree--drop-target {
@@ -46,8 +46,16 @@
 }
 
 .workspace-space-explorer__entry--drop-target {
-  background: color-mix(in srgb, var(--cove-label-blue) 14%, var(--cove-surface-strong));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-label-blue) 36%, transparent);
+  background: color-mix(in srgb, var(--cove-label-blue) 18%, var(--cove-surface-strong));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--cove-label-blue) 42%, transparent),
+    inset 3px 0 0 color-mix(in srgb, var(--cove-label-blue) 72%, transparent);
+}
+
+.workspace-space-explorer__entry--drop-target-scope {
+  background: transparent;
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cove-label-blue) 48%, transparent);
+  border-radius: 0;
 }
 
 .workspace-space-explorer__entry:active {
@@ -132,4 +140,10 @@
 
 .workspace-space-explorer__tree-state--error {
   color: color-mix(in srgb, var(--cove-label-orange) 72%, var(--cove-text));
+}
+
+.workspace-space-explorer__tree-state--drop-target-scope {
+  background: transparent;
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--cove-label-blue) 48%, transparent);
+  border-radius: 0;
 }

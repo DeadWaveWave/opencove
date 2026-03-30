@@ -17,9 +17,45 @@ export interface SpaceExplorerDeleteConfirmationState {
   entry: FileSystemEntry
 }
 
-export interface SpaceExplorerMoveConfirmationState {
+export interface SpaceExplorerMoveHistoryEntry {
+  entryKind: FileSystemEntry['kind']
+  sourceUri: string
+  targetUri: string
+}
+
+export type SpaceExplorerMovePlan =
+  | { kind: 'noop' }
+  | { kind: 'invalid-descendant' }
+  | { kind: 'invalid-target' }
+  | { kind: 'move'; targetUri: string }
+
+export function resolveEntryMovePlan(options: {
   entry: FileSystemEntry
   targetDirectoryUri: string
+}): SpaceExplorerMovePlan {
+  if (options.entry.kind === 'directory') {
+    if (isSameFileUri(options.entry.uri, options.targetDirectoryUri)) {
+      return { kind: 'noop' }
+    }
+
+    if (isWithinDirectoryUri(options.entry.uri, options.targetDirectoryUri)) {
+      return { kind: 'invalid-descendant' }
+    }
+  }
+
+  const targetUri = buildChildUri(options.targetDirectoryUri, options.entry.name)
+  if (!targetUri) {
+    return { kind: 'invalid-target' }
+  }
+
+  if (isSameFileUri(targetUri, options.entry.uri)) {
+    return { kind: 'noop' }
+  }
+
+  return {
+    kind: 'move',
+    targetUri,
+  }
 }
 
 function normalizePathname(pathname: string): string {

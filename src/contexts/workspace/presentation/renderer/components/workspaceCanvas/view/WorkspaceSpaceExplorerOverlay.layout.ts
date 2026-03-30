@@ -63,7 +63,9 @@ export function resolveExplorerPlacement({
   }
 
   const widthAvailable = Math.max(0, spaceBounds.right - spaceBounds.left)
-  const heightAvailable = Math.max(0, spaceBounds.bottom - spaceBounds.top)
+  const visibleTop = Math.max(spaceBounds.top, canvasBounds.top)
+  const visibleBottom = Math.min(spaceBounds.bottom, canvasBounds.bottom)
+  const heightAvailable = Math.max(0, visibleBottom - visibleTop)
 
   // Keep the Explorer "panel-like" instead of menu-like by relating its width to the space size.
   const maxWidth = Math.floor(Math.min(EXPLORER_MAX_WIDTH, widthAvailable))

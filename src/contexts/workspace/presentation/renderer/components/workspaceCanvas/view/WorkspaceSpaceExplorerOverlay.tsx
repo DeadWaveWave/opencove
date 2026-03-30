@@ -47,6 +47,12 @@ export function WorkspaceSpaceExplorerOverlay({
   const containerRef = React.useRef<HTMLElement | null>(null)
   const createInputRef = React.useRef<HTMLInputElement | null>(null)
   const renameInputRef = React.useRef<HTMLInputElement | null>(null)
+  const placementRef = React.useRef<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const resizeStartRef = React.useRef<{
     startX: number
     startWidth: number
@@ -139,6 +145,30 @@ export function WorkspaceSpaceExplorerOverlay({
     }
   }, [])
 
+  placementRef.current = {
+    left: placement.left,
+    top: placement.top,
+    width: placement.width,
+    height: placement.height,
+  }
+
+  const handleOpenFile = React.useCallback(
+    (uri: string) => {
+      const nextPlacement = placementRef.current
+      onOpenFile(uri, {
+        explorerPlacementPx: nextPlacement
+          ? {
+              left: nextPlacement.left,
+              top: nextPlacement.top,
+              width: nextPlacement.width,
+              height: nextPlacement.height,
+            }
+          : undefined,
+      })
+    },
+    [onOpenFile],
+  )
+
   return (
     <section
       ref={containerRef}
@@ -174,16 +204,7 @@ export function WorkspaceSpaceExplorerOverlay({
         createInputRef={createInputRef}
         renameInputRef={renameInputRef}
         containerRef={containerRef}
-        onOpenFile={uri => {
-          onOpenFile(uri, {
-            explorerPlacementPx: {
-              left: placement.left,
-              top: placement.top,
-              width: placement.width,
-              height: placement.height,
-            },
-          })
-        }}
+        onOpenFile={handleOpenFile}
       />
 
       <div

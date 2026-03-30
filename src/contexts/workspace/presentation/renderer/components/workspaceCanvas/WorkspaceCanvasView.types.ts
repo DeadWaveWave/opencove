@@ -76,7 +76,6 @@ export interface WorkspaceCanvasViewProps {
   selectedSpaceIds: string[]
   openExplorerSpaceId: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
-  openSpaceExplorer: (spaceId: string) => void
   toggleSpaceExplorer: (spaceId: string) => void
   closeSpaceExplorer: () => void
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void

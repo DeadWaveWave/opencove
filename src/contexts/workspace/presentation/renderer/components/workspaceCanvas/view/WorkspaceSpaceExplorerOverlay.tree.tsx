@@ -3,7 +3,10 @@ import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
 import { shouldStopWheelPropagation } from '../../../components/taskNode/helpers'
-import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
+import {
+  resolveParentDirectoryUri,
+  type SpaceExplorerClipboardItem,
+} from './WorkspaceSpaceExplorerOverlay.operations'
 import type { SpaceExplorerRow } from './WorkspaceSpaceExplorerOverlay.model'
 
 function renderRowDisclosure(row: Extract<SpaceExplorerRow, { kind: 'entry' }>): React.JSX.Element {
@@ -66,6 +69,15 @@ export function WorkspaceSpaceExplorerTree({
   onRequestDropMove: (targetDirectoryUri: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const resolveRowDropDirectoryUri = React.useCallback(
+    (row: SpaceExplorerRow): string =>
+      row.kind === 'state'
+        ? row.parentDirectoryUri
+        : row.entry.kind === 'directory'
+          ? row.entry.uri
+          : resolveParentDirectoryUri(row.entry.uri, rootUri),
+    [rootUri],
+  )
 
   if (isLoadingRoot) {
     return <div className="workspace-space-explorer__state">{t('common.loading')}</div>
@@ -145,15 +157,60 @@ export function WorkspaceSpaceExplorerTree({
       ) : null}
       {rows.map(row => {
         if (row.kind === 'state') {
+          const isWithinDropTargetScope =
+            dropTargetDirectoryUri !== null &&
+            dropTargetDirectoryUri !== rootUri &&
+            row.parentDirectoryUri === dropTargetDirectoryUri
+
           return (
             <div
               key={row.id}
               className={
                 row.stateKind === 'error'
-                  ? 'workspace-space-explorer__tree-state workspace-space-explorer__tree-state--error'
-                  : 'workspace-space-explorer__tree-state'
+                  ? `workspace-space-explorer__tree-state workspace-space-explorer__tree-state--error${
+                      isWithinDropTargetScope
+                        ? ' workspace-space-explorer__tree-state--drop-target-scope'
+                        : ''
+                    }`
+                  : `workspace-space-explorer__tree-state${
+                      isWithinDropTargetScope
+                        ? ' workspace-space-explorer__tree-state--drop-target-scope'
+                        : ''
+                    }`
               }
               style={{ paddingLeft: `${16 + row.depth * 14}px` }}
+              onDragOver={event => {
+                if (!draggedEntryUri) {
+                  return
+                }
+
+                event.preventDefault()
+                event.stopPropagation()
+                onDropTargetChange(resolveRowDropDirectoryUri(row))
+              }}
+              onDragLeave={event => {
+                if (!draggedEntryUri) {
+                  return
+                }
+
+                if (
+                  event.relatedTarget instanceof Element &&
+                  event.currentTarget.contains(event.relatedTarget)
+                ) {
+                  return
+                }
+
+                onDropTargetChange(null)
+              }}
+              onDrop={event => {
+                if (!draggedEntryUri) {
+                  return
+                }
+
+                event.preventDefault()
+                event.stopPropagation()
+                onRequestDropMove(resolveRowDropDirectoryUri(row))
+              }}
             >
               {row.message}
             </div>
@@ -166,11 +223,16 @@ export function WorkspaceSpaceExplorerTree({
           explorerClipboard?.mode === 'cut' && explorerClipboard.entry.uri === row.entry.uri
         const isDropTarget =
           dropTargetDirectoryUri === row.entry.uri && row.entry.kind === 'directory'
+        const isWithinDropTargetScope =
+          dropTargetDirectoryUri !== null &&
+          dropTargetDirectoryUri !== rootUri &&
+          resolveParentDirectoryUri(row.entry.uri, rootUri) === dropTargetDirectoryUri
         const className = [
           'workspace-space-explorer__entry',
           isSelected ? 'workspace-space-explorer__entry--selected' : '',
           isCut ? 'workspace-space-explorer__entry--cut' : '',
           isDropTarget ? 'workspace-space-explorer__entry--drop-target' : '',
+          isWithinDropTargetScope ? 'workspace-space-explorer__entry--drop-target-scope' : '',
         ]
           .filter(Boolean)
           .join(' ')
@@ -259,16 +321,16 @@ export function WorkspaceSpaceExplorerTree({
               onEntryDragEnd()
             }}
             onDragOver={event => {
-              if (row.entry.kind !== 'directory' || !draggedEntryUri) {
+              if (!draggedEntryUri) {
                 return
               }
 
               event.preventDefault()
               event.stopPropagation()
-              onDropTargetChange(row.entry.uri)
+              onDropTargetChange(resolveRowDropDirectoryUri(row))
             }}
             onDragLeave={event => {
-              if (row.entry.kind !== 'directory' || !draggedEntryUri) {
+              if (!draggedEntryUri) {
                 return
               }
 
@@ -282,13 +344,13 @@ export function WorkspaceSpaceExplorerTree({
               onDropTargetChange(null)
             }}
             onDrop={event => {
-              if (row.entry.kind !== 'directory' || !draggedEntryUri) {
+              if (!draggedEntryUri) {
                 return
               }
 
               event.preventDefault()
               event.stopPropagation()
-              onRequestDropMove(row.entry.uri)
+              onRequestDropMove(resolveRowDropDirectoryUri(row))
             }}
           >
             <span className="workspace-space-explorer__entry-disclosure" aria-hidden="true">

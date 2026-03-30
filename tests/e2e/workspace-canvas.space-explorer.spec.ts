@@ -421,6 +421,13 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const explorer = window.locator('[data-testid="workspace-space-explorer"]')
       await expect(explorer).toBeVisible()
+      const viewportHeight = await window.evaluate(() => window.innerHeight)
+      const explorerBox = await explorer.boundingBox()
+      if (!explorerBox) {
+        throw new Error('Explorer bounding box unavailable')
+      }
+      expect(Math.ceil(explorerBox.y + explorerBox.height)).toBeLessThanOrEqual(viewportHeight)
+
       const readExplorerWidth = async (): Promise<number> =>
         Math.round((await explorer.boundingBox())?.width ?? 0)
       await expect.poll(readExplorerWidth).toBeGreaterThan(250)
