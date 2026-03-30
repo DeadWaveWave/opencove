@@ -119,4 +119,11 @@ describe('WorkspaceSpaceActionMenu', () => {
       'workspace-space-action-arrange',
     ])
   })
+
+  it('does not show the Open submenu when no path openers are available (web)', () => {
+    renderMenu([])
+
+    expect(screen.queryByTestId('workspace-space-action-open')).not.toBeInTheDocument()
+    expect(screen.getByTestId('workspace-space-action-copy-path')).toBeVisible()
+  })
 })

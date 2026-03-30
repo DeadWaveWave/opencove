@@ -1,6 +1,7 @@
 import React from 'react'
 import { FolderX } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 
 export function ProjectContextMenu({
   workspaceId,
@@ -16,17 +17,16 @@ export function ProjectContextMenu({
   const { t } = useTranslation()
 
   return (
-    <div
+    <ViewportMenuSurface
+      open={true}
       className="workspace-context-menu workspace-project-context-menu"
-      style={{
-        top: y,
-        left: x,
-      }}
-      onMouseDown={event => {
-        event.stopPropagation()
-      }}
-      onClick={event => {
-        event.stopPropagation()
+      placement={{
+        type: 'point',
+        point: { x, y },
+        estimatedSize: {
+          width: 188,
+          height: 56,
+        },
       }}
     >
       <button
@@ -41,6 +41,6 @@ export function ProjectContextMenu({
           {t('projectContextMenu.removeProject')}
         </span>
       </button>
-    </div>
+    </ViewportMenuSurface>
   )
 }

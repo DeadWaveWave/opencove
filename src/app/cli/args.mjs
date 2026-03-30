@@ -43,6 +43,11 @@ export function stripGlobalOptions(argv) {
       continue
     }
 
+    if (arg === '--endpoint' || arg === '--token') {
+      index += 1
+      continue
+    }
+
     args.push(arg)
   }
 

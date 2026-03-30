@@ -1,5 +1,30 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, seededWorkspaceId } from './workspace-canvas.helpers'
+
+async function expectMenuAnchoredToTrigger(trigger: Locator, menu: Locator): Promise<void> {
+  const triggerBox = await trigger.boundingBox()
+  const menuBox = await menu.boundingBox()
+
+  expect(triggerBox).not.toBeNull()
+  expect(menuBox).not.toBeNull()
+
+  if (!triggerBox || !menuBox) {
+    return
+  }
+
+  const triggerRight = triggerBox.x + triggerBox.width
+  const triggerBottom = triggerBox.y + triggerBox.height
+  const menuRight = menuBox.x + menuBox.width
+  const menuBottom = menuBox.y + menuBox.height
+
+  const horizontalAnchorMatches =
+    Math.abs(menuBox.x - triggerRight) <= 16 || Math.abs(menuRight - triggerRight) <= 16
+  const verticalAnchorMatches =
+    Math.abs(menuBox.y - triggerBottom) <= 16 || Math.abs(menuBottom - triggerBottom) <= 16
+
+  expect(horizontalAnchorMatches).toBe(true)
+  expect(verticalAnchorMatches).toBe(true)
+}
 
 test.describe('Workspace Canvas - Tasks (Prompt Templates)', () => {
   test('supports global + project templates and prefix injection', async () => {
@@ -25,9 +50,13 @@ test.describe('Workspace Canvas - Tasks (Prompt Templates)', () => {
       const originalRequirement = 'Implement auth flow'
       await requirement.fill(originalRequirement)
 
-      await window.locator('[data-testid="workspace-task-creator-open-prompt-templates"]').click()
+      const creatorTrigger = window.locator(
+        '[data-testid="workspace-task-creator-open-prompt-templates"]',
+      )
+      await creatorTrigger.click()
       const creatorMenu = window.locator('[data-testid="task-creator-prompt-templates-menu"]')
       await expect(creatorMenu).toBeVisible()
+      await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
 
       await window.locator('[data-testid="task-creator-prompt-templates-add-global"]').click()
       const creatorCreateWindow = window.locator(
@@ -44,13 +73,15 @@ test.describe('Workspace Canvas - Tasks (Prompt Templates)', () => {
       await window.locator('[data-testid="task-creator-prompt-templates-create-save"]').click()
       await expect(creatorCreateWindow).toBeHidden()
 
-      await window.locator('[data-testid="workspace-task-creator-open-prompt-templates"]').click()
+      await creatorTrigger.click()
       await expect(creatorMenu).toBeVisible()
+      await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
       await creatorMenu.getByRole('button', { name: 'Global A' }).click()
       await expect(requirement).toHaveValue(`GLOBAL-TEMPLATE\n\n${originalRequirement}`)
 
-      await window.locator('[data-testid="workspace-task-creator-open-prompt-templates"]').click()
+      await creatorTrigger.click()
       await expect(creatorMenu).toBeVisible()
+      await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
       await window.locator('[data-testid="task-creator-prompt-templates-add-project"]').click()
       await expect(creatorCreateWindow).toBeVisible()
 
@@ -63,8 +94,9 @@ test.describe('Workspace Canvas - Tasks (Prompt Templates)', () => {
       await window.locator('[data-testid="task-creator-prompt-templates-create-save"]').click()
       await expect(creatorCreateWindow).toBeHidden()
 
-      await window.locator('[data-testid="workspace-task-creator-open-prompt-templates"]').click()
+      await creatorTrigger.click()
       await expect(creatorMenu).toBeVisible()
+      await expectMenuAnchoredToTrigger(creatorTrigger, creatorMenu)
       await creatorMenu.getByRole('button', { name: 'Project A' }).click()
       await expect(requirement).toHaveValue(
         `PROJECT-TEMPLATE\n\nGLOBAL-TEMPLATE\n\n${originalRequirement}`,
@@ -80,9 +112,11 @@ test.describe('Workspace Canvas - Tasks (Prompt Templates)', () => {
       )
       await expect(inlineRequirementInput).toHaveValue(/^PROJECT-TEMPLATE/)
 
-      await taskNode.locator('[data-testid="task-node-open-prompt-templates"]').click()
+      const taskNodeTrigger = taskNode.locator('[data-testid="task-node-open-prompt-templates"]')
+      await taskNodeTrigger.click()
       const taskNodeMenu = window.locator('[data-testid="task-node-prompt-templates-menu"]')
       await expect(taskNodeMenu).toBeVisible()
+      await expectMenuAnchoredToTrigger(taskNodeTrigger, taskNodeMenu)
       await taskNodeMenu.getByRole('button', { name: 'Global A' }).click()
       await expect(inlineRequirementInput).toHaveValue(/^GLOBAL-TEMPLATE/)
 
@@ -93,9 +127,13 @@ test.describe('Workspace Canvas - Tasks (Prompt Templates)', () => {
       const editorRequirement = window.locator('[data-testid="workspace-task-editor-requirement"]')
       await expect(editorRequirement).toHaveValue(/^GLOBAL-TEMPLATE/)
 
-      await window.locator('[data-testid="workspace-task-editor-open-prompt-templates"]').click()
+      const editorTrigger = window.locator(
+        '[data-testid="workspace-task-editor-open-prompt-templates"]',
+      )
+      await editorTrigger.click()
       const editorMenu = window.locator('[data-testid="task-editor-prompt-templates-menu"]')
       await expect(editorMenu).toBeVisible()
+      await expectMenuAnchoredToTrigger(editorTrigger, editorMenu)
       await editorMenu.getByRole('button', { name: 'Project A' }).click()
       await expect(editorRequirement).toHaveValue(/^PROJECT-TEMPLATE/)
 

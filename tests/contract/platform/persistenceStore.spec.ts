@@ -9,6 +9,7 @@ type MockDbState = {
   userVersion: number
   tables: Map<string, string[]>
   openAttempts: number
+  workspaceRows: Array<{ id: string; sortOrder: number }>
   failOnFirstOpen?: boolean
 }
 
@@ -27,6 +28,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'viewport_zoom',
     'is_minimap_visible',
     'active_space_id',
+    'sort_order',
   ],
   nodes: [
     'id',
@@ -134,6 +136,7 @@ function createMockDbState(
     userVersion: options.userVersion ?? 0,
     tables: options.version2Schema ? createVersion2Tables() : new Map<string, string[]>(),
     openAttempts: 0,
+    workspaceRows: [],
     ...(options.failOnFirstOpen ? { failOnFirstOpen: true } : {}),
   }
 }
@@ -215,6 +218,10 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
         }
       }
 
+      if (sql === 'SELECT COUNT(*) as cnt FROM workspaces WHERE sort_order != 0') {
+        return { all: () => [], get: () => ({ cnt: 1 }), run: () => undefined }
+      }
+
       const insertMatch = sql.match(
         /INSERT INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([\s\S]*?)\)\s*VALUES/i,
       )
@@ -227,25 +234,38 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
         return {
           all: () => [],
           get: () => undefined,
-          run: () => {
+          run: (...params: unknown[]) => {
             const tableColumns = this.state.tables.get(tableName) ?? []
             for (const column of columns) {
               if (!tableColumns.includes(column)) {
                 throw new Error(`table ${tableName} has no column named ${column}`)
               }
             }
+
+            if (tableName !== 'workspaces') {
+              return
+            }
+
+            const idIndex = columns.indexOf('id')
+            if (idIndex < 0) {
+              throw new Error('workspace insert missing id column')
+            }
+
+            const id = params[idIndex]
+            if (typeof id !== 'string') {
+              throw new Error('workspace insert missing id value')
+            }
+
+            const sortOrderIndex = columns.indexOf('sort_order')
+            const sortOrderParam = sortOrderIndex >= 0 ? params[sortOrderIndex] : 0
+            if (typeof sortOrderParam !== 'number') {
+              throw new Error('workspace insert sort_order must be numeric')
+            }
+
+            this.state.workspaceRows.push({ id, sortOrder: sortOrderParam })
           },
         }
       }
-
-      if (sql.includes('SELECT value FROM kv WHERE key = ?')) {
-        return {
-          all: () => [],
-          get: () => undefined,
-          run: () => undefined,
-        }
-      }
-
       return {
         all: () => [],
         get: () => undefined,
@@ -278,6 +298,64 @@ describe('PersistenceStore', () => {
     await rm(tempDir, { recursive: true, force: true })
     tempDir = ''
   })
+
+  it(
+    'writes workspace sort_order from the in-memory array order',
+    async () => {
+      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
+      const dbPath = join(tempDir, 'opencove.db')
+      const mockDbByPath = new Map<string, MockDbState>()
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
+
+      const { createPersistenceStore } =
+        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
+
+      const store = await createPersistenceStore({ dbPath })
+
+      const result = await store.writeAppState({
+        formatVersion: 1,
+        activeWorkspaceId: 'ws-2',
+        workspaces: [
+          {
+            id: 'ws-2',
+            name: 'Workspace 2',
+            path: '/tmp/ws-2',
+            worktreesRoot: '/tmp',
+            pullRequestBaseBranchOptions: [],
+            spaceArchiveRecords: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+            isMinimapVisible: false,
+            activeSpaceId: null,
+            nodes: [],
+            spaces: [],
+          },
+          {
+            id: 'ws-1',
+            name: 'Workspace 1',
+            path: '/tmp/ws-1',
+            worktreesRoot: '/tmp',
+            pullRequestBaseBranchOptions: [],
+            spaceArchiveRecords: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+            isMinimapVisible: false,
+            activeSpaceId: null,
+            nodes: [],
+            spaces: [],
+          },
+        ],
+        settings: {},
+      })
+
+      expect(result).toMatchObject({ ok: true, level: 'full' })
+      expect(mockDbByPath.get(dbPath)?.workspaceRows).toEqual([
+        { id: 'ws-2', sortOrder: 0 },
+        { id: 'ws-1', sortOrder: 1 },
+      ])
+
+      store.dispose()
+    },
+    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
+  )
 
   it(
     'creates a backup when migrating an existing db file',

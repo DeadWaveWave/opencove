@@ -444,6 +444,8 @@ export const zhCN = {
     archiveNotes_other: '{{count}} 个便签',
     aiSuggestionFailed: 'AI 建议失败：{{message}}',
     refreshFailed: '加载 worktree 信息失败：{{message}}',
+    initialCommitRequired:
+      '该仓库还没有任何 commit。Git worktree 需要至少一个 commit 才能创建。请先创建首个 commit（例如：git commit --allow-empty -m "Initial commit"），然后重试。',
     archiveBranchDeleteFailed: 'Space 已归档，但分支未能删除。',
     archiveDirectoryCleanupFailed:
       'Space 已归档，但 worktree 目录未能删除。请关闭仍在使用它的进程，然后手动删除该目录。',

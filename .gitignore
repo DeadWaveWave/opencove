@@ -111,6 +111,8 @@ token.json
 # Test results
 test-results/
 playwright-report/
+test-results-web-shell/
+playwright-report-web-shell/
 artifacts/
 tmp/
 

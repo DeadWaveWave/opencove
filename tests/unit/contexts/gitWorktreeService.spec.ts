@@ -37,6 +37,18 @@ async function createTempRepo(): Promise<string> {
   return repoDir
 }
 
+async function createTempRepoWithoutCommit(): Promise<string> {
+  const repoDir = await mkdtemp(join(tmpdir(), 'cove-worktree-empty-'))
+
+  await runGit(['init'], repoDir)
+  await runGit(['config', 'user.email', 'test@example.com'], repoDir)
+  await runGit(['config', 'user.name', 'OpenCove Test'], repoDir)
+  await runGit(['config', 'core.autocrlf', 'false'], repoDir)
+  await runGit(['config', 'core.safecrlf', 'false'], repoDir)
+
+  return repoDir
+}
+
 describe('GitWorktreeService', () => {
   let repoDir = ''
 
@@ -75,6 +87,30 @@ describe('GitWorktreeService', () => {
 
       const after = await listGitWorktrees({ repoPath: canonicalRepoDir })
       expect(after.worktrees.some(entry => entry.path === created.path)).toBe(true)
+    },
+    GIT_WORKTREE_TEST_TIMEOUT_MS,
+  )
+
+  it(
+    'refuses to create a worktree when the repo has no commits yet',
+    async () => {
+      repoDir = await createTempRepoWithoutCommit()
+      const canonicalRepoDir = await realpath(repoDir)
+      const worktreesRoot = join(repoDir, '.opencove', 'worktrees')
+      await mkdir(worktreesRoot, { recursive: true })
+
+      const { createGitWorktree } =
+        await import('../../../src/contexts/worktree/infrastructure/git/GitWorktreeService')
+
+      await expect(
+        createGitWorktree({
+          repoPath: canonicalRepoDir,
+          worktreesRoot,
+          branchMode: { kind: 'new', name: 'space-a', startPoint: 'HEAD' },
+        }),
+      ).rejects.toMatchObject({
+        code: 'worktree.repo_has_no_commits',
+      })
     },
     GIT_WORKTREE_TEST_TIMEOUT_MS,
   )

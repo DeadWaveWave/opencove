@@ -1,4 +1,5 @@
 import React from 'react'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import {
   ChevronRight,
   Copy,
@@ -128,12 +129,14 @@ export function WorkspaceSpaceActionMenu({
 
   return (
     <>
-      <div
+      <ViewportMenuSurface
+        open={true}
         className="workspace-context-menu workspace-space-action-menu"
         data-testid="workspace-space-action-menu"
-        style={{ top: menuTop, left: menuLeft }}
-        onClick={event => {
-          event.stopPropagation()
+        placement={{
+          type: 'absolute',
+          top: menuTop,
+          left: menuLeft,
         }}
         onMouseEnter={cancelScheduledSubmenuClose}
         onMouseLeave={scheduleSubmenuClose}
@@ -261,15 +264,17 @@ export function WorkspaceSpaceActionMenu({
             </span>
           </button>
         ) : null}
-      </div>
+      </ViewportMenuSurface>
 
       {shouldShowOpenSubmenu ? (
-        <div
+        <ViewportMenuSurface
+          open={true}
           className="workspace-context-menu workspace-space-action-menu workspace-space-action-menu--submenu"
           data-testid="workspace-space-action-open-menu"
-          style={{ top: submenuTop, left: submenuLeft }}
-          onClick={event => {
-            event.stopPropagation()
+          placement={{
+            type: 'absolute',
+            top: submenuTop,
+            left: submenuLeft,
           }}
           onMouseEnter={() => {
             cancelScheduledSubmenuClose()
@@ -290,16 +295,18 @@ export function WorkspaceSpaceActionMenu({
               <span className="workspace-context-menu__label">{opener.label}</span>
             </button>
           ))}
-        </div>
+        </ViewportMenuSurface>
       ) : null}
 
       {shouldShowLabelColorSubmenu ? (
-        <div
+        <ViewportMenuSurface
+          open={true}
           className="workspace-context-menu workspace-space-action-menu workspace-space-action-menu--submenu"
           data-testid="workspace-space-action-label-color-menu"
-          style={{ top: submenuTop, left: submenuLeft }}
-          onClick={event => {
-            event.stopPropagation()
+          placement={{
+            type: 'absolute',
+            top: submenuTop,
+            left: submenuLeft,
           }}
           onMouseEnter={() => {
             cancelScheduledSubmenuClose()
@@ -340,7 +347,7 @@ export function WorkspaceSpaceActionMenu({
               <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
             </button>
           ))}
-        </div>
+        </ViewportMenuSurface>
       ) : null}
     </>
   )

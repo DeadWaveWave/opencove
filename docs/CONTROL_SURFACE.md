@@ -69,3 +69,41 @@ Control Surface 与 transport 解耦：
 
 相关架构总规范见 `docs/ARCHITECTURE.md` 与 `docs/LANDING_ARCHITECTURE.md`。
 
+## 7. Remote Worker（SSH-first，Phase 4 v0）
+
+> 目标：不改变 contracts 的前提下，把 Control Surface 通过 SSH tunnel 带到远端。
+
+最小工作流（示例）：
+
+1. 先构建一次（保证 `out/main/worker.js` 可用）：
+
+```bash
+pnpm build
+```
+
+2. 在远端机器启动 worker（默认只监听 `127.0.0.1`，需要 token）：
+
+```bash
+node out/main/worker.js --port 16661 --token <token> --approve-root <workspacePath>
+```
+
+3. 本地通过 SSH 建立 tunnel：
+
+```bash
+ssh -L 16661:127.0.0.1:16661 <host>
+```
+
+4. 本地 CLI 通过 tunnel 调用同一套 contracts：
+
+```bash
+opencove ping --endpoint http://127.0.0.1:16661 --token <token>
+```
+
+可选（用于验证/调试）：
+
+- Worker 启动后可访问 `http://127.0.0.1:<port>/` 打开最小 web shell，通过 `Authorization: Bearer <token>` 调用 `/invoke`。
+
+原则：
+
+- 远端 worker 默认不暴露公网端口；SSH/tunnel 是保守默认路径。
+- CLI/Web/Desktop 只作为 client；durable truth 与副作用由 worker owner。

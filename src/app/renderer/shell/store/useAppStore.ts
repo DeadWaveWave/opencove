@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { arrayMove } from '@dnd-kit/sortable'
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
@@ -36,6 +37,7 @@ export interface AppStoreState {
   setIsSettingsOpen: (action: SetStateAction<boolean>) => void
   setFocusRequest: (action: SetStateAction<FocusRequest | null>) => void
   setPersistNotice: (action: SetStateAction<PersistNotice | null>) => void
+  reorderWorkspaces: (activeId: string, overId: string) => void
 }
 
 export const useAppStore = create<AppStoreState>(set => ({
@@ -69,4 +71,15 @@ export const useAppStore = create<AppStoreState>(set => ({
     set(state => ({ focusRequest: applySetStateAction(state.focusRequest, action) })),
   setPersistNotice: action =>
     set(state => ({ persistNotice: applySetStateAction(state.persistNotice, action) })),
+  reorderWorkspaces: (activeId, overId) =>
+    set(state => {
+      const oldIndex = state.workspaces.findIndex(workspace => workspace.id === activeId)
+      const newIndex = state.workspaces.findIndex(workspace => workspace.id === overId)
+
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+        return state
+      }
+
+      return { workspaces: arrayMove(state.workspaces, oldIndex, newIndex) }
+    }),
 }))
