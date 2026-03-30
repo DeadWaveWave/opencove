@@ -1,11 +1,9 @@
-import { createServer } from 'node:net'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
-import { resolveAgentCliInvocation } from '../../../../contexts/agent/infrastructure/cli/AgentCliInvocation'
 import { locateAgentResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocator'
 import {
   readLastAssistantMessageFromOpenCodeSession,
@@ -13,18 +11,14 @@ import {
 } from '../../../../contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../../../contexts/agent/infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
-import { resolveLocalWorkerEndpointRef } from '../../../../contexts/project/application/resolveLocalWorkerEndpointRef'
 import { resolveSpaceWorkingDirectory } from '../../../../contexts/space/application/resolveSpaceWorkingDirectory'
-import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import {
   normalizeAgentSettings,
   resolveAgentModel,
-  type AgentProvider,
 } from '../../../../contexts/settings/domain/agentSettings'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type {
   AgentProviderId,
-  ExecutionContextDto,
   GetSessionFinalMessageInput,
   GetSessionFinalMessageResult,
   GetSessionInput,
@@ -32,6 +26,12 @@ import type {
   LaunchAgentSessionInput,
   LaunchAgentSessionResult,
 } from '../../../../shared/contracts/dto'
+import {
+  reserveLoopbackPort,
+  resolveExecutionContextDto,
+  resolveProviderFromSettings,
+  resolveSessionLaunchSpawn,
+} from './sessionLaunchSupport'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
@@ -71,31 +71,6 @@ function normalizeAgentProviderId(value: unknown): AgentProviderId | null {
 
   throw createAppError('common.invalid_input', {
     debugMessage: `Invalid payload for session.launchAgent provider: ${provider}`,
-  })
-}
-
-async function reserveLoopbackPort(hostname: string): Promise<number> {
-  return await new Promise((resolve, reject) => {
-    const server = createServer()
-    server.unref()
-
-    server.once('error', reject)
-    server.listen(0, hostname, () => {
-      const address = server.address()
-      if (!address || typeof address === 'string') {
-        server.close(() => reject(new Error('Failed to reserve local loopback port')))
-        return
-      }
-
-      server.close(error => {
-        if (error) {
-          reject(error)
-          return
-        }
-
-        resolve(address.port)
-      })
-    })
   })
 }
 
@@ -203,44 +178,6 @@ type SessionRecord = GetSessionResult & {
   startedAtMs: number
 }
 
-function resolveExecutionContextDto(workingDirectory: string): ExecutionContextDto {
-  const endpoint = resolveLocalWorkerEndpointRef()
-  const rootUri = toFileUri(workingDirectory)
-
-  return {
-    endpoint: {
-      id: endpoint.id,
-      kind: endpoint.kind,
-    },
-    target: {
-      scheme: 'file',
-      rootPath: workingDirectory,
-      rootUri,
-    },
-    scope: {
-      rootPath: workingDirectory,
-      rootUri,
-    },
-    workingDirectory,
-  }
-}
-
-function resolveProviderFromSettings(
-  requestedProvider: string | null,
-  settings: ReturnType<typeof normalizeAgentSettings>,
-): AgentProvider {
-  if (
-    requestedProvider === 'claude-code' ||
-    requestedProvider === 'codex' ||
-    requestedProvider === 'opencode' ||
-    requestedProvider === 'gemini'
-  ) {
-    return requestedProvider
-  }
-
-  return settings.defaultProvider
-}
-
 export function registerSessionHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -311,11 +248,6 @@ export function registerSessionHandlers(
         opencodeServer,
       })
 
-      const resolvedInvocation = await resolveAgentCliInvocation({
-        command: launchCommand.command,
-        args: launchCommand.args,
-      })
-
       const startedAtMs = Date.now()
       const startedAt = new Date(startedAtMs).toISOString()
 
@@ -325,20 +257,27 @@ export function registerSessionHandlers(
       const sessionEnv =
         opencodeServer && provider === 'opencode'
           ? {
-              ...process.env,
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
               OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
           : undefined
 
+      const resolvedSpawn = await resolveSessionLaunchSpawn({
+        workingDirectory,
+        defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
+        command: launchCommand.command,
+        args: launchCommand.args,
+        ...(sessionEnv ? { env: sessionEnv } : {}),
+      })
+
       const { sessionId } = await deps.ptyRuntime.spawnSession({
-        cwd: workingDirectory,
+        cwd: resolvedSpawn.cwd,
         cols: 80,
         rows: 24,
-        command: resolvedInvocation.command,
-        args: resolvedInvocation.args,
-        ...(sessionEnv ? { env: sessionEnv } : {}),
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
+        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
       const executionContext = resolveExecutionContextDto(workingDirectory)
@@ -354,8 +293,8 @@ export function registerSessionHandlers(
         executionContext,
         resumeSessionId: null,
         startedAtMs,
-        command: resolvedInvocation.command,
-        args: resolvedInvocation.args,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
       }
 
       sessions.set(sessionId, record)
@@ -367,8 +306,8 @@ export function registerSessionHandlers(
         executionContext,
         resumeSessionId: null,
         effectiveModel: launchCommand.effectiveModel,
-        command: resolvedInvocation.command,
-        args: resolvedInvocation.args,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
       }
     },
     defaultErrorCode: 'agent.launch_failed',

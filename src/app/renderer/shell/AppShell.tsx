@@ -27,7 +27,6 @@ import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useWhatsNew } from './hooks/useWhatsNew'
-import type { ProjectContextMenuState } from './types'
 import { useAppStore } from './store/useAppStore'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { WhatsNewDialog } from './components/WhatsNewDialog'
@@ -285,6 +284,21 @@ export default function App(): React.JSX.Element {
     store.setProjectContextMenu(null)
   }, [])
 
+  const handleReorderWorkspaces = useCallback(
+    (activeId: string, overId: string): void => {
+      const store = useAppStore.getState()
+      store.reorderWorkspaces(activeId, overId)
+      requestPersistFlush()
+    },
+    [requestPersistFlush],
+  )
+
+  const handleOpenSettings = useCallback((): void => {
+    setIsFocusNodeTargetZoomPreviewing(false)
+    closeControlCenter()
+    setIsSettingsOpen(true)
+  }, [closeControlCenter, setIsSettingsOpen])
+
   return (
     <>
       <div
@@ -304,26 +318,12 @@ export default function App(): React.JSX.Element {
               isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
             }))
           }}
-          onToggleControlCenter={() => {
-            toggleControlCenter()
-          }}
-          onToggleCommandCenter={() => {
-            toggleCommandCenter()
-          }}
-          onOpenSettings={() => {
-            setIsFocusNodeTargetZoomPreviewing(false)
-            closeControlCenter()
-            setIsSettingsOpen(true)
-          }}
-          onCheckForUpdates={() => {
-            void checkForUpdates()
-          }}
-          onDownloadUpdate={() => {
-            void downloadUpdate()
-          }}
-          onInstallUpdate={() => {
-            void installUpdate()
-          }}
+          onToggleControlCenter={toggleControlCenter}
+          onToggleCommandCenter={toggleCommandCenter}
+          onOpenSettings={handleOpenSettings}
+          onCheckForUpdates={checkForUpdates}
+          onDownloadUpdate={downloadUpdate}
+          onInstallUpdate={installUpdate}
         />
 
         {isPrimarySidebarCollapsed ? null : (
@@ -333,18 +333,11 @@ export default function App(): React.JSX.Element {
             activeProviderLabel={activeProviderLabel}
             activeProviderModel={activeProviderModel}
             persistNotice={persistNotice}
-            onAddWorkspace={() => {
-              void handleAddWorkspace()
-            }}
-            onSelectWorkspace={workspaceId => {
-              handleSelectWorkspace(workspaceId)
-            }}
-            onOpenProjectContextMenu={(state: ProjectContextMenuState) => {
-              setProjectContextMenu(state)
-            }}
-            onSelectAgentNode={(workspaceId, nodeId) => {
-              handleSelectAgentNode(workspaceId, nodeId)
-            }}
+            onAddWorkspace={handleAddWorkspace}
+            onSelectWorkspace={handleSelectWorkspace}
+            onOpenProjectContextMenu={setProjectContextMenu}
+            onSelectAgentNode={handleSelectAgentNode}
+            onReorderWorkspaces={handleReorderWorkspaces}
           />
         )}
 
@@ -361,9 +354,7 @@ export default function App(): React.JSX.Element {
             !isSpaceArchivesOpen &&
             projectDeleteConfirmation === null
           }
-          onAddWorkspace={() => {
-            void handleAddWorkspace()
-          }}
+          onAddWorkspace={handleAddWorkspace}
           onShowMessage={handleShowMessage}
           onRequestPersistFlush={requestPersistFlush}
           onAppendSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordAppend}
@@ -378,9 +369,7 @@ export default function App(): React.JSX.Element {
           isOpen={isWorkspaceSearchOpen}
           activeWorkspace={activeWorkspace}
           onClose={closeWorkspaceSearch}
-          onSelectSpace={spaceId => {
-            handleWorkspaceActiveSpaceChange(spaceId)
-          }}
+          onSelectSpace={handleWorkspaceActiveSpaceChange}
           panelWidth={agentSettings.workspaceSearchPanelWidth}
           onPanelWidthChange={nextWidth => {
             setAgentSettings(prev => ({
@@ -403,11 +392,7 @@ export default function App(): React.JSX.Element {
         isControlCenterOpen={isControlCenterOpen}
         onCloseControlCenter={closeControlCenter}
         onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
-        onOpenSettings={() => {
-          setIsFocusNodeTargetZoomPreviewing(false)
-          closeControlCenter()
-          setIsSettingsOpen(true)
-        }}
+        onOpenSettings={handleOpenSettings}
       />
 
       <CommandCenter
@@ -415,31 +400,18 @@ export default function App(): React.JSX.Element {
         activeWorkspace={activeWorkspace}
         workspaces={workspaces}
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
-        onClose={() => {
-          closeCommandCenter()
-        }}
-        onOpenSettings={() => {
-          setIsFocusNodeTargetZoomPreviewing(false)
-          setIsSettingsOpen(true)
-        }}
-        onOpenSpaceArchives={() => {
-          openSpaceArchives()
-        }}
+        onClose={closeCommandCenter}
+        onOpenSettings={handleOpenSettings}
+        onOpenSpaceArchives={openSpaceArchives}
         onTogglePrimarySidebar={() => {
           setAgentSettings(prev => ({
             ...prev,
             isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
           }))
         }}
-        onAddWorkspace={() => {
-          void handleAddWorkspace()
-        }}
-        onSelectWorkspace={workspaceId => {
-          handleSelectWorkspace(workspaceId)
-        }}
-        onSelectSpace={spaceId => {
-          handleWorkspaceActiveSpaceChange(spaceId)
-        }}
+        onAddWorkspace={handleAddWorkspace}
+        onSelectWorkspace={handleSelectWorkspace}
+        onSelectSpace={handleWorkspaceActiveSpaceChange}
       />
 
       <SpaceArchiveRecordsWindow
@@ -455,9 +427,7 @@ export default function App(): React.JSX.Element {
           workspaceId={projectContextMenu.workspaceId}
           x={projectContextMenu.x}
           y={projectContextMenu.y}
-          onRequestRemove={workspaceId => {
-            handleRequestRemoveProject(workspaceId)
-          }}
+          onRequestRemove={handleRequestRemoveProject}
         />
       ) : null}
 
@@ -480,23 +450,15 @@ export default function App(): React.JSX.Element {
           updateState={updateState}
           modelCatalogByProvider={providerModelCatalog}
           workspaces={workspaces}
-          onWorkspaceWorktreesRootChange={(id, root) => {
-            handleAnyWorkspaceWorktreesRootChange(id, root)
-          }}
+          onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
           isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
           onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
           onChange={next => {
             setAgentSettings(next)
           }}
-          onCheckForUpdates={() => {
-            void checkForUpdates()
-          }}
-          onDownloadUpdate={() => {
-            void downloadUpdate()
-          }}
-          onInstallUpdate={() => {
-            void installUpdate()
-          }}
+          onCheckForUpdates={checkForUpdates}
+          onDownloadUpdate={downloadUpdate}
+          onInstallUpdate={installUpdate}
           onClose={() => {
             flushPersistNow()
             setIsFocusNodeTargetZoomPreviewing(false)
@@ -512,9 +474,7 @@ export default function App(): React.JSX.Element {
         isLoading={whatsNew.isLoading}
         error={whatsNew.error}
         compareUrl={whatsNew.compareUrl}
-        onClose={() => {
-          whatsNew.close()
-        }}
+        onClose={whatsNew.close}
       />
     </>
   )

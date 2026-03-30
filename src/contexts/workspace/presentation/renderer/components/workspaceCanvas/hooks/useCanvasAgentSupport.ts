@@ -53,6 +53,7 @@ export function useWorkspaceCanvasAgentSupport({
       bumpAgentLaunchToken,
       isAgentLaunchTokenCurrent,
       agentFullAccess: agentSettings.agentFullAccess,
+      defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     })
 
   const { openAgentLauncher, openAgentLauncherForProvider } = useWorkspaceCanvasAgentLauncher({

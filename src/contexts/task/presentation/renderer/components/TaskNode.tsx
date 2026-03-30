@@ -96,6 +96,7 @@ export function TaskNode({
     x: number
     y: number
   } | null>(null)
+  const promptTemplatesTriggerRef = React.useRef<HTMLButtonElement | null>(null)
 
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
@@ -305,6 +306,7 @@ export function TaskNode({
 
         <div className="task-node__header-actions nodrag">
           <button
+            ref={promptTemplatesTriggerRef}
             type="button"
             className="task-node__icon-button task-node__icon-button--templates nodrag"
             data-testid="task-node-open-prompt-templates"
@@ -365,6 +367,7 @@ export function TaskNode({
         closeMenu={() => {
           setPromptTemplatesMenuAnchor(null)
         }}
+        triggerRef={promptTemplatesTriggerRef}
         currentRequirement={requirementDraft}
         onChangeRequirement={nextRequirement => {
           setRequirementDraft(nextRequirement)

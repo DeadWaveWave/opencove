@@ -1,4 +1,4 @@
-import React, { useLayoutEffect, useState, type Dispatch, type SetStateAction } from 'react'
+import React, { useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import type { TaskPriority } from '../../../types'
@@ -39,6 +39,7 @@ export function TaskCreatorWindow({
     x: number
     y: number
   } | null>(null)
+  const promptTemplatesTriggerRef = useRef<HTMLButtonElement | null>(null)
   const isTaskAiNamingEnabled = AI_NAMING_FEATURES.taskTitleGeneration
   const isTaskCreatorOpen = taskCreator !== null
   const isPromptTemplatesMenuOpen = promptTemplatesMenuAnchor !== null
@@ -74,6 +75,7 @@ export function TaskCreatorWindow({
           <div className="cove-window__label-row">
             <label htmlFor="workspace-task-requirement">{t('taskWindow.describeTask')}</label>
             <button
+              ref={promptTemplatesTriggerRef}
               type="button"
               className="cove-window__icon-button"
               data-testid="workspace-task-creator-open-prompt-templates"
@@ -127,6 +129,7 @@ export function TaskCreatorWindow({
           closeMenu={() => {
             setPromptTemplatesMenuAnchor(null)
           }}
+          triggerRef={promptTemplatesTriggerRef}
           currentRequirement={taskCreator.requirement}
           onChangeRequirement={nextRequirement => {
             setTaskCreator(prev =>

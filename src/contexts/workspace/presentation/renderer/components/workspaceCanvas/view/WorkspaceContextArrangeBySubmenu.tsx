@@ -1,5 +1,6 @@
 import React from 'react'
 import { Check } from 'lucide-react'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceSpaceState } from '../../../types'
 import type {
@@ -47,16 +48,18 @@ export function WorkspaceContextArrangeBySubmenu({
   const { t } = useTranslation()
 
   return (
-    <div
+    <ViewportMenuSurface
+      open={true}
       ref={submenuRef}
       className="workspace-context-menu workspace-context-menu--submenu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-arrange-by-menu"
-      style={style}
-      onMouseDown={event => {
-        event.stopPropagation()
+      placement={{
+        type: 'absolute',
+        top: style.top as number,
+        left: style.left as number,
       }}
-      onClick={event => {
-        event.stopPropagation()
+      style={{
+        maxHeight: style.maxHeight,
       }}
     >
       <button
@@ -155,6 +158,6 @@ export function WorkspaceContextArrangeBySubmenu({
           {t('workspaceArrangeMenu.spaceFitKeep')}
         </span>
       </button>
-    </div>
+    </ViewportMenuSurface>
   )
 }

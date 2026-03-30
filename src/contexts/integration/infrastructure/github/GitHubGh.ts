@@ -1,6 +1,6 @@
-import { spawn } from 'node:child_process'
 import process from 'node:process'
 import type { CommandResult } from './githubIntegration.shared'
+import { runCommand as runProcessCommand } from '../../../../platform/process/runCommand'
 
 const DEFAULT_TIMEOUT_MS = 30_000
 const HOST_CACHE_TTL_MS = 5 * 60_000
@@ -26,75 +26,10 @@ export async function runCommand(
     env?: NodeJS.ProcessEnv
   } = {},
 ): Promise<CommandResult> {
-  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
-
-  return await new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {
-      cwd,
-      env: options.env ?? process.env,
-      stdio: ['pipe', 'pipe', 'pipe'],
-      windowsHide: true,
-    })
-
-    let stdout = ''
-    let stderr = ''
-    let settled = false
-    let timeoutHandle: ReturnType<typeof setTimeout> | null = null
-
-    const finalize = (fn: () => void): void => {
-      if (settled) {
-        return
-      }
-
-      settled = true
-      if (timeoutHandle) {
-        clearTimeout(timeoutHandle)
-      }
-      fn()
-    }
-
-    timeoutHandle = setTimeout(() => {
-      try {
-        child.kill('SIGKILL')
-      } catch {
-        // Ignore kill errors (process may already be gone).
-      }
-
-      finalize(() => {
-        reject(new Error(`${command} command timed out`))
-      })
-    }, timeoutMs)
-
-    child.stdout.on('data', chunk => {
-      stdout += chunk.toString()
-    })
-
-    child.stderr.on('data', chunk => {
-      stderr += chunk.toString()
-    })
-
-    child.on('error', error => {
-      finalize(() => {
-        reject(error)
-      })
-    })
-
-    child.on('close', exitCode => {
-      finalize(() => {
-        resolvePromise({
-          exitCode: typeof exitCode === 'number' ? exitCode : 1,
-          stdout,
-          stderr,
-        })
-      })
-    })
-
-    const stdin = options.stdin
-    if (typeof stdin === 'string' && stdin.length > 0) {
-      child.stdin.write(stdin)
-    }
-
-    child.stdin.end()
+  return await runProcessCommand(command, args, cwd, {
+    timeoutMs: options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    stdin: options.stdin,
+    env: options.env ?? process.env,
   })
 }
 

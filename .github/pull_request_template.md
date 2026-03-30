@@ -44,4 +44,4 @@ Please fill out the template completely to avoid delays in review.
 
 ## 📸 Screenshots / Visual Evidence
 
-<!-- Drop your screenshots or screen recordings (GIF/MP4) here -->
+<!-- Upload screenshots or screen recordings directly in the GitHub PR UI. Do not commit review-only media into the repo unless it is a maintained visual-regression baseline. -->

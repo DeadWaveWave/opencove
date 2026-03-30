@@ -154,6 +154,10 @@
   gap: 6px;
 }
 
+.workspace-item-group--drag-overlay {
+  pointer-events: none;
+}
+
 .workspace-sidebar__empty {
   font-size: calc(13px * var(--cove-ui-font-scale));
   color: var(--cove-text-faint);
@@ -189,6 +193,15 @@
   border-color: rgba(94, 156, 255, 0.55);
   background: rgba(94, 156, 255, 0.12);
   box-shadow: 0 0 0 1px rgba(94, 156, 255, 0.2);
+}
+
+.workspace-item--drag-overlay {
+  background: color-mix(in srgb, var(--cove-surface) 78%, transparent);
+  border-color: rgba(94, 156, 255, 0.28);
+  box-shadow:
+    0 12px 24px rgba(15, 23, 42, 0.12),
+    0 0 0 1px rgba(94, 156, 255, 0.14);
+  opacity: 0.86;
 }
 
 .workspace-item__name {

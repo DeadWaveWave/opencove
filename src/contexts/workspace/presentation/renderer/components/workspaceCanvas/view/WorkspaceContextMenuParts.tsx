@@ -1,4 +1,5 @@
 import React from 'react'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import {
   ArrowRight,
   Check,
@@ -276,16 +277,18 @@ export function WorkspaceContextAgentProviderSubmenu({
   openAgentLauncherForProvider: (provider: AgentProvider) => void
 }): React.JSX.Element {
   return (
-    <div
+    <ViewportMenuSurface
+      open={true}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-run-agent-provider-menu"
-      style={style}
-      onMouseDown={event => {
-        event.stopPropagation()
+      placement={{
+        type: 'absolute',
+        top: style.top as number,
+        left: style.left as number,
       }}
-      onClick={event => {
-        event.stopPropagation()
+      style={{
+        maxHeight: style.maxHeight,
       }}
       onMouseEnter={keepSubmenuOpen}
       onMouseLeave={scheduleSubmenuClose}
@@ -303,7 +306,7 @@ export function WorkspaceContextAgentProviderSubmenu({
           <span className="workspace-context-menu__label">{AGENT_PROVIDER_LABEL[provider]}</span>
         </button>
       ))}
-    </div>
+    </ViewportMenuSurface>
   )
 }
 
@@ -325,16 +328,18 @@ export function WorkspaceContextLabelColorSubmenu({
   const { t } = useTranslation()
 
   return (
-    <div
+    <ViewportMenuSurface
+      open={true}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-selection-label-color-menu"
-      style={style}
-      onMouseDown={event => {
-        event.stopPropagation()
+      placement={{
+        type: 'absolute',
+        top: style.top as number,
+        left: style.left as number,
       }}
-      onClick={event => {
-        event.stopPropagation()
+      style={{
+        maxHeight: style.maxHeight,
       }}
       onMouseEnter={keepSubmenuOpen}
       onMouseLeave={scheduleSubmenuClose}
@@ -387,6 +392,6 @@ export function WorkspaceContextLabelColorSubmenu({
           <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
         </button>
       ))}
-    </div>
+    </ViewportMenuSurface>
   )
 }

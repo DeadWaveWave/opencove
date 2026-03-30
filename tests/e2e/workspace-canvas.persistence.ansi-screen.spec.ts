@@ -8,7 +8,11 @@ import {
 
 test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
   test('preserves full-screen ANSI content after workspace switch', async () => {
-    const { electronApp, window } = await launchApp()
+    const { electronApp, window } = await launchApp({
+      env: {
+        OPENCOVE_TERMINAL_DIAGNOSTICS: '1',
+      },
+    })
 
     try {
       await seedWorkspaceState(window, {
@@ -49,6 +53,13 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       await expect(terminal).toBeVisible()
       await expect(terminal.locator('.xterm')).toBeVisible()
 
+      const initialSize = await window.evaluate(() => {
+        return window.__opencoveTerminalSelectionTestApi?.getSize?.('node-a') ?? null
+      })
+      // Useful when debugging linux-only fit/hydration regressions (printed to CI logs on failure).
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] initial size', initialSize)
+
       const command = buildNodeEvalCommand(
         [
           'const esc="\\x1b[";',
@@ -70,13 +81,49 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       await expect(terminal).toContainText('ROW_10_STATIC', { timeout: 20_000 })
       await expect(terminal).toContainText('FRAME_29999_TOKEN', { timeout: 20_000 })
 
+      const beforeSwitchSize = await window.evaluate(() => {
+        return window.__opencoveTerminalSelectionTestApi?.getSize?.('node-a') ?? null
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] before switch size', beforeSwitchSize)
+      const beforeSwitchHasFrame = await terminal.evaluate(el => {
+        return el.textContent?.includes('FRAME_29999_TOKEN') ?? false
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] before switch has frame', beforeSwitchHasFrame)
+
       await window.locator('.workspace-item').nth(1).click()
       await expect(window.locator('.workspace-item').nth(1)).toHaveClass(/workspace-item--active/)
+      const afterUnmountCache = await window.evaluate(() => {
+        return (
+          window.__opencoveTerminalSelectionTestApi?.getCachedScreenStateSummary?.('node-a') ?? null
+        )
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after unmount cache', afterUnmountCache)
 
       await window.locator('.workspace-item').nth(0).click()
       await expect(window.locator('.workspace-item').nth(0)).toHaveClass(/workspace-item--active/)
 
+      const afterRestoreSize = await window.evaluate(() => {
+        return window.__opencoveTerminalSelectionTestApi?.getSize?.('node-a') ?? null
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after restore size', afterRestoreSize)
+      const afterRestoreCache = await window.evaluate(() => {
+        return (
+          window.__opencoveTerminalSelectionTestApi?.getCachedScreenStateSummary?.('node-a') ?? null
+        )
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after restore cache', afterRestoreCache)
+
       const restoredTerminal = window.locator('.terminal-node').first()
+      const afterRestoreHasFrame = await restoredTerminal.evaluate(el => {
+        return el.textContent?.includes('FRAME_29999_TOKEN') ?? false
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after restore has frame', afterRestoreHasFrame)
       await expect(restoredTerminal).toContainText('FRAME_29999_TOKEN', { timeout: 20_000 })
       await expect(restoredTerminal).toContainText('ROW_10_STATIC', { timeout: 20_000 })
     } finally {

@@ -158,6 +158,7 @@ export async function hydrateRuntimeNode({
       node,
       workspacePath,
       agentFullAccess,
+      defaultTerminalProfileId,
     })
   }
 

@@ -104,6 +104,25 @@ pnpm test:e2e
 - space overlay / drag handle / label 区域是否抢占事件
 - 点击点是否过于贴边
 
+### 4) 缩放/transform 场景避免依赖 `locator.boundingBox()` 做像素命中与断言
+
+在 React Flow 缩放（viewport transform）场景下，尤其是 CI 里的 `inactive/offscreen` 窗口模式，`locator.boundingBox()` 偶发返回不稳定坐标，导致鼠标按下点不到目标元素，进而出现“mouse 走完了但 resize/drag 根本没发生”的假操作。
+
+建议：
+
+- 计算鼠标命中点时，优先用 `locator.evaluate(el => el.getBoundingClientRect())` 获取可视坐标，再用其中心点进行 `mouse.move/down/up`。
+- 对像素级对齐断言留出容差（例如降低 `toBeCloseTo` precision，或用自定义 tolerance），避免被平台舍入差/动画 settle 影响。
+- 断言 resize/drag 结果时，优先读持久化状态确认是否真的提交，而不是只看 UI 像素位置。
+
+示例（命中点计算）：
+
+```ts
+const rect = await locator.evaluate(el => el.getBoundingClientRect())
+const x = rect.x + rect.width / 2
+const y = rect.y + rect.height / 2
+await page.mouse.move(x, y)
+```
+
 ## 持久化与状态污染排查
 
 ### 1) 测试优先使用 seed 状态

@@ -14,16 +14,16 @@ vi.mock('@xterm/xterm', () => {
 
     public cols = 80
     public rows = 24
-    public options: { fontSize: number; theme?: unknown } = { fontSize: 13 }
+    public options: Record<string, unknown> = { fontSize: 13 }
     public refreshCalls = 0
 
-    public constructor(options?: { cols?: number; rows?: number; theme?: unknown }) {
+    public constructor(options?: Record<string, unknown> & { cols?: number; rows?: number }) {
       MockTerminal.lastInstance = this
       this.cols = options?.cols ?? 80
       this.rows = options?.rows ?? 24
       this.options = {
         ...this.options,
-        ...(options?.theme ? { theme: options.theme } : {}),
+        ...(options ?? {}),
       }
     }
 
@@ -115,6 +115,8 @@ function installPtyApiMock() {
     value: {
       meta: {
         isTest: true,
+        platform: 'darwin',
+        windowsPty: null,
       },
       pty: {
         attach: vi.fn(async () => undefined),
@@ -282,6 +284,45 @@ describe('TerminalNode theme behavior', () => {
         'data-cove-terminal-theme',
         'dark',
       )
+    })
+  })
+
+  it('passes Windows PTY compatibility metadata into xterm when available', async () => {
+    installResizeObserverMock()
+    installPtyApiMock()
+    window.opencoveApi.meta.platform = 'win32'
+    window.opencoveApi.meta.windowsPty = {
+      backend: 'conpty',
+      buildNumber: 19045,
+    }
+
+    const { TerminalNode } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/TerminalNode')
+
+    render(
+      <TerminalNode
+        nodeId="node-winpty"
+        sessionId="session-winpty"
+        title="Windows PTY"
+        kind="terminal"
+        status={null}
+        lastError={null}
+        position={{ x: 0, y: 0 }}
+        width={520}
+        height={360}
+        terminalFontSize={13}
+        scrollback={null}
+        onClose={() => undefined}
+        onResize={() => undefined}
+      />,
+    )
+
+    const { __getLastTerminal } = await import('@xterm/xterm')
+    await waitFor(() => {
+      expect(__getLastTerminal()?.options.windowsPty).toEqual({
+        backend: 'conpty',
+        buildNumber: 19045,
+      })
     })
   })
 })

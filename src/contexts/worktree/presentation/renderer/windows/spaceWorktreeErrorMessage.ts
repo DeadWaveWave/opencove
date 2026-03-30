@@ -7,5 +7,9 @@ export function toSpaceWorktreeErrorMessage(error: unknown, t: TranslateFn): str
     return t('worktree.archiveUncommittedChangesWarning')
   }
 
+  if (error instanceof OpenCoveAppError && error.code === 'worktree.repo_has_no_commits') {
+    return t('worktree.initialCommitRequired')
+  }
+
   return toErrorMessage(error)
 }

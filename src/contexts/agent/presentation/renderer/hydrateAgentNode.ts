@@ -15,12 +15,14 @@ interface HydrateAgentNodeInput {
   node: Node<TerminalNodeData>
   workspacePath: string
   agentFullAccess: boolean
+  defaultTerminalProfileId?: string | null
 }
 
 interface FailedAgentFallbackInput {
   node: Node<TerminalNodeData>
   cwd: string
   agent: AgentNodeData
+  profileId?: string | null
   errorMessage: string
 }
 
@@ -28,6 +30,7 @@ async function fallbackToFailedAgentTerminal({
   node,
   cwd,
   agent,
+  profileId,
   errorMessage,
 }: FailedAgentFallbackInput): Promise<Node<TerminalNodeData>> {
   const now = new Date().toISOString()
@@ -35,6 +38,7 @@ async function fallbackToFailedAgentTerminal({
   try {
     const fallback = await window.opencoveApi.pty.spawn({
       cwd,
+      ...(profileId ? { profileId } : {}),
       cols: 80,
       rows: 24,
     })
@@ -103,8 +107,9 @@ async function resolvePendingResumeSessionId(node: Node<TerminalNodeData>): Prom
 
 export async function hydrateAgentNode({
   node,
-  workspacePath,
+  workspacePath: _workspacePath,
   agentFullAccess,
+  defaultTerminalProfileId,
 }: HydrateAgentNodeInput): Promise<Node<TerminalNodeData>> {
   if (node.data.kind !== 'agent' || !node.data.agent) {
     return node
@@ -139,12 +144,14 @@ export async function hydrateAgentNode({
     hasActiveAgentStatus &&
     !isResumeSessionBindingVerified(sanitizedAgent) &&
     sanitizedAgent.prompt.trim().length === 0
+  const terminalProfileId = node.data.profileId ?? defaultTerminalProfileId ?? null
 
   if (shouldAutoResumeAgent) {
     try {
       const restoredAgent = await window.opencoveApi.agent.launch({
         provider: sanitizedAgent.provider,
         cwd: sanitizedAgent.executionDirectory,
+        profileId: terminalProfileId,
         prompt: sanitizedAgent.prompt,
         mode: 'resume',
         model: sanitizedAgent.model,
@@ -159,6 +166,8 @@ export async function hydrateAgentNode({
         data: {
           ...node.data,
           sessionId: restoredAgent.sessionId,
+          profileId: restoredAgent.profileId,
+          runtimeKind: restoredAgent.runtimeKind,
           title: toAgentNodeTitle(sanitizedAgent.provider, restoredAgent.effectiveModel),
           status:
             restoredAgent.launchMode === 'resume'
@@ -181,8 +190,9 @@ export async function hydrateAgentNode({
     } catch (error) {
       return fallbackToFailedAgentTerminal({
         node,
-        cwd: workspacePath,
+        cwd: sanitizedAgent.executionDirectory,
         agent: sanitizedAgent,
+        profileId: terminalProfileId,
         errorMessage: translate('messages.agentResumeFailed', { message: toErrorMessage(error) }),
       })
     }
@@ -193,6 +203,7 @@ export async function hydrateAgentNode({
       const relaunchedAgent = await window.opencoveApi.agent.launch({
         provider: sanitizedAgent.provider,
         cwd: sanitizedAgent.executionDirectory,
+        profileId: terminalProfileId,
         prompt: sanitizedAgent.prompt,
         mode: 'new',
         model: sanitizedAgent.model,
@@ -206,6 +217,8 @@ export async function hydrateAgentNode({
         data: {
           ...node.data,
           sessionId: relaunchedAgent.sessionId,
+          profileId: relaunchedAgent.profileId,
+          runtimeKind: relaunchedAgent.runtimeKind,
           title: toAgentNodeTitle(sanitizedAgent.provider, relaunchedAgent.effectiveModel),
           status: resolveInitialAgentRuntimeStatus(sanitizedAgent.prompt),
           startedAt: new Date().toISOString(),
@@ -226,6 +239,7 @@ export async function hydrateAgentNode({
         node,
         cwd: sanitizedAgent.executionDirectory,
         agent: sanitizedAgent,
+        profileId: terminalProfileId,
         errorMessage: translate('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
       })
     }
@@ -234,6 +248,7 @@ export async function hydrateAgentNode({
   try {
     const spawned = await window.opencoveApi.pty.spawn({
       cwd: sanitizedAgent.executionDirectory,
+      profileId: terminalProfileId ?? undefined,
       cols: 80,
       rows: 24,
     })
@@ -243,6 +258,8 @@ export async function hydrateAgentNode({
       data: {
         ...node.data,
         sessionId: spawned.sessionId,
+        profileId: spawned.profileId ?? node.data.profileId ?? defaultTerminalProfileId ?? null,
+        runtimeKind: spawned.runtimeKind ?? node.data.runtimeKind,
         status: hasActiveAgentStatus ? ('stopped' as const) : node.data.status,
         endedAt: hasActiveAgentStatus
           ? (node.data.endedAt ?? new Date().toISOString())
@@ -254,8 +271,9 @@ export async function hydrateAgentNode({
   } catch (error) {
     return fallbackToFailedAgentTerminal({
       node,
-      cwd: workspacePath,
+      cwd: sanitizedAgent.executionDirectory,
       agent: sanitizedAgent,
+      profileId: terminalProfileId,
       errorMessage: translate('messages.terminalLaunchFailed', { message: toErrorMessage(error) }),
     })
   }

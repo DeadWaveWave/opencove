@@ -28,6 +28,7 @@ import {
 } from '../../infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../infrastructure/opencode/OpenCodeTuiConfig'
+import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import {
@@ -43,6 +44,7 @@ const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
 const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
 const READ_LAST_MESSAGE_FILE_TIMEOUT_MS = 1_500
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
+const terminalProfileResolver = new TerminalProfileResolver()
 
 function normalizeOptionalEnvValue(value: string | undefined): string | null {
   const normalized = value?.trim()
@@ -224,10 +226,8 @@ export function registerAgentIpcHandlers(
           : undefined
 
       const launchStartedAtMs = Date.now()
-      const resolvedInvocation = await resolveAgentCliInvocation({
-        command: testStub?.command ?? launchCommand.command,
-        args: testStub?.args ?? launchCommand.args,
-      })
+      const command = testStub?.command ?? launchCommand.command
+      const args = testStub?.args ?? launchCommand.args
 
       const opencodeTuiConfigPath =
         normalized.provider === 'opencode'
@@ -238,20 +238,41 @@ export function registerAgentIpcHandlers(
       const sessionEnv =
         opencodeServer && normalized.provider === 'opencode'
           ? {
-              ...process.env,
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
               OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
           : undefined
 
+      const resolvedInvocation = await resolveAgentCliInvocation({
+        command,
+        args,
+      })
+
+      const resolvedSpawn = testStub
+        ? {
+            command: resolvedInvocation.command,
+            args: resolvedInvocation.args,
+            cwd: normalized.cwd,
+            env: sessionEnv ? { ...process.env, ...sessionEnv } : undefined,
+            profileId: normalized.profileId ?? null,
+            runtimeKind: process.platform === 'win32' ? ('windows' as const) : ('posix' as const),
+          }
+        : await terminalProfileResolver.resolveCommandSpawn({
+            cwd: normalized.cwd,
+            profileId: normalized.profileId,
+            command: resolvedInvocation.command,
+            args: resolvedInvocation.args,
+            ...(sessionEnv ? { env: sessionEnv } : {}),
+          })
+
       const { sessionId } = await ptyRuntime.spawnSession({
-        cwd: normalized.cwd,
+        cwd: resolvedSpawn.cwd,
         cols: normalized.cols ?? 80,
         rows: normalized.rows ?? 24,
-        command: resolvedInvocation.command,
-        args: resolvedInvocation.args,
-        ...(sessionEnv ? { env: sessionEnv } : {}),
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
+        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
       const resumeSessionId = launchCommand.resumeSessionId
@@ -278,8 +299,10 @@ export function registerAgentIpcHandlers(
       const result: LaunchAgentResult = {
         sessionId,
         provider: normalized.provider,
-        command: resolvedInvocation.command,
-        args: resolvedInvocation.args,
+        profileId: resolvedSpawn.profileId,
+        runtimeKind: resolvedSpawn.runtimeKind,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
         launchMode: launchCommand.launchMode,
         effectiveModel: launchCommand.effectiveModel,
         resumeSessionId,

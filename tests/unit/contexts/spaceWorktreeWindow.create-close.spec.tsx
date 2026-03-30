@@ -3,7 +3,13 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import { SpaceWorktreeWindow } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/windows/SpaceWorktreeWindow'
-import { clearWorktreeApi, createNodes, createSpaces } from './spaceWorktreeWindow.testUtils'
+import { createAppError } from '../../../src/shared/errors/appError'
+import {
+  clearWorktreeApi,
+  createNodes,
+  createSpaces,
+  installWorktreeApi,
+} from './spaceWorktreeWindow.testUtils'
 
 describe('SpaceWorktreeWindow create flow', () => {
   afterEach(() => {
@@ -99,5 +105,45 @@ describe('SpaceWorktreeWindow create flow', () => {
       )
       expect(onClose).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('surfaces an actionable error when creating a worktree in a repo with no commits', async () => {
+    installWorktreeApi({
+      create: vi.fn(async () => {
+        throw createAppError('worktree.repo_has_no_commits')
+      }),
+    })
+
+    const onClose = vi.fn()
+    const onUpdateSpaceDirectory = vi.fn()
+
+    render(
+      <SpaceWorktreeWindow
+        spaceId="space-1"
+        initialViewMode="create"
+        spaces={createSpaces('/repo')}
+        nodes={createNodes()}
+        workspacePath="/repo"
+        worktreesRoot=".opencove/worktrees"
+        agentSettings={DEFAULT_AGENT_SETTINGS}
+        onClose={onClose}
+        onUpdateSpaceDirectory={onUpdateSpaceDirectory}
+        getBlockingNodes={() => ({ agentNodeIds: [], terminalNodeIds: [] })}
+        closeNodesById={async () => undefined}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('space-worktree-create')).not.toBeDisabled()
+    })
+
+    fireEvent.change(screen.getByTestId('space-worktree-branch-name'), {
+      target: { value: 'space/demo' },
+    })
+    fireEvent.click(screen.getByTestId('space-worktree-create'))
+
+    expect(await screen.findByText(/no commits yet/i)).toBeVisible()
+    expect(onUpdateSpaceDirectory).not.toHaveBeenCalled()
+    expect(onClose).not.toHaveBeenCalled()
   })
 })

@@ -39,6 +39,7 @@ export function TaskEditorWindow({
     x: number
     y: number
   } | null>(null)
+  const promptTemplatesTriggerRef = React.useRef<HTMLButtonElement | null>(null)
   const isPromptTemplatesMenuOpen = promptTemplatesMenuAnchor !== null
 
   React.useEffect(() => {
@@ -109,6 +110,7 @@ export function TaskEditorWindow({
               {t('taskWindow.taskRequirementPrompt')}
             </label>
             <button
+              ref={promptTemplatesTriggerRef}
               type="button"
               className="cove-window__icon-button"
               data-testid="workspace-task-editor-open-prompt-templates"
@@ -161,6 +163,7 @@ export function TaskEditorWindow({
           closeMenu={() => {
             setPromptTemplatesMenuAnchor(null)
           }}
+          triggerRef={promptTemplatesTriggerRef}
           currentRequirement={taskEditor.requirement}
           onChangeRequirement={nextRequirement => {
             setTaskEditor(prev =>

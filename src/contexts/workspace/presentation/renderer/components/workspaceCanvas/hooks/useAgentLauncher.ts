@@ -83,6 +83,7 @@ export function useWorkspaceCanvasAgentLauncher({
           const launched = await window.opencoveApi.agent.launch({
             provider,
             cwd: executionDirectory,
+            profileId: agentSettings.defaultTerminalProfileId,
             prompt: '',
             mode: 'new',
             model,
@@ -94,6 +95,8 @@ export function useWorkspaceCanvasAgentLauncher({
           const modelLabel = launched.effectiveModel ?? model
           const created = await createNodeForSession({
             sessionId: launched.sessionId,
+            profileId: launched.profileId,
+            runtimeKind: launched.runtimeKind,
             title: buildAgentNodeTitle(provider, modelLabel),
             anchor,
             kind: 'agent',

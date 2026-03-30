@@ -437,6 +437,8 @@ export const en = {
     archiveNotes_other: '{{count}} notes',
     aiSuggestionFailed: 'AI suggestion failed: {{message}}',
     refreshFailed: 'Failed to load worktree info: {{message}}',
+    initialCommitRequired:
+      'This repository has no commits yet. Create an initial commit (e.g. git commit --allow-empty -m "Initial commit") and try again.',
     archiveBranchDeleteFailed: 'Space archived, but the branch could not be deleted.',
     archiveDirectoryCleanupFailed:
       'Space archived, but the worktree directory could not be removed. Close any process still using it, then delete the directory manually.',

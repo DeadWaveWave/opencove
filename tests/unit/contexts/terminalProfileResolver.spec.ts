@@ -171,4 +171,76 @@ describe('TerminalProfileResolver', () => {
       runtimeKind: 'wsl',
     })
   })
+
+  it('resolves agent commands through the selected WSL profile', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32' }),
+      homeDir: () => 'C:\\Users\\tester',
+      locateWindowsCommands: async () => [
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ],
+      listWslDistros: async () => ['Ubuntu'],
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'wsl:Ubuntu',
+      command: 'codex',
+      args: ['resume', 'session-1'],
+      env: {
+        OPENCOVE_OPENCODE_SERVER_PORT: '5173',
+      },
+    })
+
+    expect(result).toMatchObject({
+      command: 'wsl.exe',
+      args: [
+        '--distribution',
+        'Ubuntu',
+        '--cd',
+        '/mnt/c/repo',
+        'env',
+        'OPENCOVE_OPENCODE_SERVER_PORT=5173',
+        'codex',
+        'resume',
+        'session-1',
+      ],
+      cwd: 'C:\\repo',
+      profileId: 'wsl:Ubuntu',
+      runtimeKind: 'wsl',
+    })
+  })
+
+  it('resolves agent commands through Git Bash with login shell exec semantics', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32', FOO: 'bar' }),
+      locateWindowsCommands: async commands => {
+        if (commands.includes('bash.exe')) {
+          return ['D:\\Git\\bin\\bash.exe']
+        }
+
+        return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+      },
+      listWslDistros: async () => [],
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: 'D:\\repo',
+      profileId: 'bash:d:\\git\\bin\\bash.exe',
+      command: 'codex',
+      args: ['resume', 'session-1'],
+    })
+
+    expect(result).toMatchObject({
+      command: 'D:\\Git\\bin\\bash.exe',
+      args: ['--login', '-c', 'exec "$@"', 'bash', 'codex', 'resume', 'session-1'],
+      cwd: 'D:\\repo',
+      profileId: 'bash:d:\\git\\bin\\bash.exe',
+      runtimeKind: 'windows',
+    })
+    expect(result.env.CHERE_INVOKING).toBe('1')
+    expect(result.env.FOO).toBe('bar')
+  })
 })

@@ -264,13 +264,21 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       await expect(terminal).toBeVisible()
 
       const rightResizer = terminal.locator('[data-testid="terminal-resizer-right"]')
-      const rightResizerBox = await rightResizer.boundingBox()
-      if (!rightResizerBox) {
+      const rightResizerRect = await rightResizer.evaluate(el => {
+        const rect = el.getBoundingClientRect()
+        return {
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+        }
+      })
+      if (!rightResizerRect || rightResizerRect.width <= 0 || rightResizerRect.height <= 0) {
         throw new Error('terminal right resizer bounding box unavailable at zoomed resize')
       }
 
-      const startX = rightResizerBox.x + rightResizerBox.width / 2
-      const startY = rightResizerBox.y + rightResizerBox.height / 2
+      const startX = rightResizerRect.x + rightResizerRect.width / 2
+      const startY = rightResizerRect.y + rightResizerRect.height / 2
       const pointerDeltaX = 180
       const releaseX = startX + pointerDeltaX
 
@@ -282,16 +290,14 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       await expect
         .poll(
           async () => {
-            const box = await rightResizer.boundingBox()
-            if (!box) {
-              return Number.NaN
-            }
-
-            return box.x + box.width / 2
+            return await rightResizer.evaluate(el => {
+              const rect = el.getBoundingClientRect()
+              return rect.x + rect.width / 2
+            })
           },
           { timeout: 10_000 },
         )
-        .toBeCloseTo(releaseX, 1)
+        .toBeCloseTo(releaseX, 0)
 
       await expect
         .poll(

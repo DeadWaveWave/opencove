@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import { peekCachedTerminalScreenState } from './screenStateCache'
 
 type TerminalSelectionHandle = Pick<
   Terminal,
@@ -8,6 +9,14 @@ type TerminalSelectionHandle = Pick<
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
+  getSize: (nodeId: string) => { cols: number; rows: number } | null
+  getCachedScreenStateSummary: (nodeId: string) => {
+    sessionId: string
+    serializedLength: number
+    rawSnapshotLength: number
+    serializedHasFrameToken: boolean
+    rawSnapshotHasFrameToken: boolean
+  } | null
   emitBinaryInput: (nodeId: string, data: string) => boolean
   getSelection: (nodeId: string) => string | null
   hasSelection: (nodeId: string) => boolean
@@ -93,6 +102,31 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return {
           x: rect.left + (leftPadding + (clampedCol - 0.5) * cellWidth) * scaleX,
           y: rect.top + (topPadding + (clampedRow - 0.5) * cellHeight) * scaleY,
+        }
+      },
+      getSize: nodeId => {
+        const terminal = terminalHandles.get(nodeId)
+        if (!terminal) {
+          return null
+        }
+
+        return {
+          cols: terminal.cols,
+          rows: terminal.rows,
+        }
+      },
+      getCachedScreenStateSummary: nodeId => {
+        const cached = peekCachedTerminalScreenState(nodeId)
+        if (!cached) {
+          return null
+        }
+
+        return {
+          sessionId: cached.sessionId,
+          serializedLength: cached.serialized.length,
+          rawSnapshotLength: cached.rawSnapshot.length,
+          serializedHasFrameToken: cached.serialized.includes('FRAME_29999_TOKEN'),
+          rawSnapshotHasFrameToken: cached.rawSnapshot.includes('FRAME_29999_TOKEN'),
         }
       },
       emitBinaryInput: (nodeId, data) => {

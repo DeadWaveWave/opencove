@@ -1,6 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { FilePlus2, FileText } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TaskPromptTemplate } from '@contexts/settings/domain/agentSettings'
 
@@ -39,6 +40,7 @@ export function TaskPromptTemplatesMenu({
   anchor,
   workspaceId,
   closeMenu,
+  triggerRef,
   currentRequirement,
   onChangeRequirement,
   onRequestPersistFlush,
@@ -48,6 +50,7 @@ export function TaskPromptTemplatesMenu({
   anchor: { x: number; y: number } | null
   workspaceId: string | null
   closeMenu: () => void
+  triggerRef?: React.RefObject<HTMLElement | null>
   currentRequirement: string
   onChangeRequirement: (nextRequirement: string) => void
   onRequestPersistFlush?: () => void
@@ -83,34 +86,6 @@ export function TaskPromptTemplatesMenu({
     () => new Set(projectTemplates.map(tpl => toTemplateNameKey(tpl.name))),
     [projectTemplates],
   )
-
-  useEffect(() => {
-    if (!isOpen) {
-      return
-    }
-
-    const closeOnMouseDown = (event: MouseEvent): void => {
-      if (event.target instanceof Element && event.target.closest('.task-prompt-template-menu')) {
-        return
-      }
-
-      closeMenu()
-    }
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        closeMenu()
-      }
-    }
-
-    window.addEventListener('mousedown', closeOnMouseDown)
-    window.addEventListener('keydown', handleEscape)
-
-    return () => {
-      window.removeEventListener('mousedown', closeOnMouseDown)
-      window.removeEventListener('keydown', handleEscape)
-    }
-  }, [closeMenu, isOpen])
 
   const openCreateDialog = useCallback(
     (scope: TemplateScope) => {
@@ -234,33 +209,27 @@ export function TaskPromptTemplatesMenu({
       return null
     }
 
-    const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
-    const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
-    const VIEWPORT_PADDING = 12
-
-    const anchorX = Math.min(
-      Math.max(anchor.x, VIEWPORT_PADDING),
-      Math.max(VIEWPORT_PADDING, viewportWidth - VIEWPORT_PADDING),
-    )
-    const anchorY = Math.min(
-      Math.max(anchor.y, VIEWPORT_PADDING),
-      Math.max(VIEWPORT_PADDING, viewportHeight - VIEWPORT_PADDING),
-    )
-    const flipX = anchor.x > viewportWidth / 2
-    const flipY = anchor.y > viewportHeight / 2
-    const menuTransform =
-      flipX || flipY ? `translate(${flipX ? '-100%' : '0'}, ${flipY ? '-100%' : '0'})` : undefined
-
     return (
-      <div
+      <ViewportMenuSurface
+        open={isOpen}
         className="workspace-context-menu task-prompt-template-menu"
         data-testid={`${testIdPrefix}-prompt-templates-menu`}
-        style={{ top: anchorY, left: anchorX, transform: menuTransform }}
-        onMouseDown={event => {
-          event.stopPropagation()
+        placement={{
+          type: 'point',
+          point: anchor,
+          alignX: 'auto',
+          alignY: 'auto',
+          estimatedSize: {
+            width: 240,
+            height: 320,
+          },
         }}
-        onClick={event => {
-          event.stopPropagation()
+        onDismiss={closeMenu}
+        dismissOnPointerDownOutside={true}
+        dismissOnEscape={true}
+        dismissIgnoreRefs={triggerRef ? [triggerRef] : []}
+        style={{
+          zIndex: 25,
         }}
       >
         <div className="workspace-context-menu__section-title">
@@ -347,7 +316,7 @@ export function TaskPromptTemplatesMenu({
             {t('taskPromptTemplates.addProject')}
           </span>
         </button>
-      </div>
+      </ViewportMenuSurface>
     )
   }, [
     anchor,
@@ -356,8 +325,10 @@ export function TaskPromptTemplatesMenu({
     isOpen,
     openCreateDialog,
     projectTemplates,
+    closeMenu,
     t,
     testIdPrefix,
+    triggerRef,
     workspaceId,
   ])
 

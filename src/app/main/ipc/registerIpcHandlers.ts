@@ -20,6 +20,7 @@ import { createPersistenceStore } from '../../../platform/persistence/sqlite/Per
 import { registerPersistenceIpcHandlers } from '../../../platform/persistence/sqlite/ipc/register'
 import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandlers'
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
+import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
 
 export type { IpcRegistrationDisposable } from './types'
@@ -66,6 +67,7 @@ export function registerIpcHandlers(deps?: {
     registerIntegrationIpcHandlers(approvedWorkspaces),
     registerWindowChromeIpcHandlers(),
     registerWindowMetricsIpcHandlers(),
+    registerDiagnosticsIpcHandlers(),
     registerPtyIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),

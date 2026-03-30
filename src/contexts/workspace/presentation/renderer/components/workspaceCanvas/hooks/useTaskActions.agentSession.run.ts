@@ -145,6 +145,7 @@ export async function runTaskAgentAction(
     const launched = await window.opencoveApi.agent.launch({
       provider,
       cwd: taskDirectory,
+      profileId: context.agentSettings.defaultTerminalProfileId,
       prompt: requirement,
       mode: 'new',
       model,
@@ -155,6 +156,8 @@ export async function runTaskAgentAction(
 
     const createdAgentNode = await context.createNodeForSession({
       sessionId: launched.sessionId,
+      profileId: launched.profileId,
+      runtimeKind: launched.runtimeKind,
       title: context.buildAgentNodeTitle(provider, launched.effectiveModel),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',

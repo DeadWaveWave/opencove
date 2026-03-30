@@ -6,8 +6,12 @@ import type {
   ResolveAgentResumeSessionInput,
 } from '../../../../shared/contracts/dto'
 import { normalizeProvider } from '../../../../app/main/ipc/normalize'
-import { isAbsolute } from 'node:path'
+import { isAbsolute, win32 } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
+
+function isAbsoluteWorkspacePath(path: string): boolean {
+  return isAbsolute(path) || win32.isAbsolute(path)
+}
 
 export function normalizeListModelsPayload(payload: unknown): ListAgentModelsInput {
   if (!payload || typeof payload !== 'object') {
@@ -43,7 +47,7 @@ export function normalizeResolveResumeSessionPayload(
     })
   }
 
-  if (!isAbsolute(cwd)) {
+  if (!isAbsoluteWorkspacePath(cwd)) {
     throw createAppError('common.invalid_input', {
       debugMessage: 'agent:resolve-resume-session requires an absolute cwd',
     })
@@ -74,7 +78,7 @@ export function normalizeReadLastMessagePayload(payload: unknown): ReadAgentLast
     throw new Error('Invalid cwd for agent:read-last-message')
   }
 
-  if (!isAbsolute(cwd)) {
+  if (!isAbsoluteWorkspacePath(cwd)) {
     throw new Error('agent:read-last-message requires an absolute cwd')
   }
 
@@ -152,6 +156,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   const record = payload as Record<string, unknown>
   const provider = normalizeProvider(record.provider)
   const cwd = typeof record.cwd === 'string' ? record.cwd.trim() : ''
+  const profileId = typeof record.profileId === 'string' ? record.profileId.trim() : ''
   const prompt = typeof record.prompt === 'string' ? record.prompt.trim() : ''
   const mode = record.mode === 'resume' ? 'resume' : 'new'
 
@@ -177,7 +182,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
     })
   }
 
-  if (!isAbsolute(cwd)) {
+  if (!isAbsoluteWorkspacePath(cwd)) {
     throw createAppError('common.invalid_input', {
       debugMessage: 'agent:launch requires an absolute cwd',
     })
@@ -186,6 +191,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   return {
     provider,
     cwd,
+    profileId: profileId.length > 0 ? profileId : null,
     prompt,
     mode,
     model: model.length > 0 ? model : null,
