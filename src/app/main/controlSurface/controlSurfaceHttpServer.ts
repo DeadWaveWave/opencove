@@ -17,10 +17,14 @@ import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrast
 import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
+import { registerSyncHandlers } from './handlers/syncHandlers'
+import { renderWorkerWebShellPage } from './workerWebShellPage'
 
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
+const MAX_SYNC_EVENT_BUFFER = 256
+const SYNC_SSE_EVENT_NAME = 'opencove.sync'
 
 export interface ControlSurfaceConnectionInfo {
   version: typeof CONTROL_SURFACE_CONNECTION_VERSION
@@ -76,6 +80,23 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status
   res.setHeader('content-type', 'application/json; charset=utf-8')
   res.end(`${JSON.stringify(body)}\n`)
+}
+
+type SyncEventPayload =
+  | {
+      type: 'app_state.updated'
+      revision: number
+      operationId: string
+    }
+  | {
+      type: 'resync_required'
+      revision: number
+    }
+
+function writeSseEvent(res: ServerResponse, payload: SyncEventPayload): void {
+  res.write(`id: ${payload.revision}\n`)
+  res.write(`event: ${SYNC_SSE_EVENT_NAME}\n`)
+  res.write(`data: ${JSON.stringify(payload)}\n\n`)
 }
 
 function normalizeBearerToken(value: string | undefined): string | null {
@@ -178,10 +199,34 @@ export function registerControlSurfaceHttpServer(options: {
     getPersistenceStore,
     ptyRuntime: options.ptyRuntime,
   })
+  registerSyncHandlers(controlSurface, getPersistenceStore)
 
   let closed = false
   let closeRequested = false
   let pendingConnectionWrite: Promise<void> | null = null
+  const syncClients = new Set<ServerResponse>()
+  const syncEventBuffer: SyncEventPayload[] = []
+
+  const publishSyncEvent = (payload: SyncEventPayload): void => {
+    syncEventBuffer.push(payload)
+    if (syncEventBuffer.length > MAX_SYNC_EVENT_BUFFER) {
+      syncEventBuffer.splice(0, syncEventBuffer.length - MAX_SYNC_EVENT_BUFFER)
+    }
+
+    for (const client of syncClients) {
+      try {
+        writeSseEvent(client, payload)
+      } catch {
+        try {
+          client.end()
+        } catch {
+          // ignore
+        }
+
+        syncClients.delete(client)
+      }
+    }
+  }
 
   let resolveReady: ((info: ControlSurfaceConnectionInfo) => void) | null = null
   let rejectReady: ((error: Error) => void) | null = null
@@ -203,129 +248,69 @@ export function registerControlSurfaceHttpServer(options: {
         const host = typeof req.headers.host === 'string' ? req.headers.host : ''
         res.statusCode = 200
         res.setHeader('content-type', 'text/html; charset=utf-8')
-        res.end(`<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>OpenCove Worker Shell</title>
-    <style>
-      :root { color-scheme: light dark; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
-      body { margin: 20px; }
-      .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-      label { display: inline-flex; gap: 8px; align-items: center; }
-      input, select, textarea { font: inherit; padding: 6px 8px; }
-      textarea { width: 100%; min-height: 160px; }
-      button { font: inherit; padding: 6px 10px; cursor: pointer; }
-      pre { padding: 12px; border: 1px solid rgba(127,127,127,.4); overflow: auto; }
-      .muted { opacity: 0.75; }
-      .grid { display: grid; grid-template-columns: 1fr; gap: 10px; max-width: 960px; }
-    </style>
-  </head>
-  <body>
-    <h1>OpenCove Worker Shell</h1>
-    <div class="grid">
-      <div class="row muted">
-        <div>POST <code>/invoke</code></div>
-        <div>Host: <code>${host}</code></div>
-      </div>
-
-      <div class="row">
-        <label>Token <input id="token" size="60" placeholder="Bearer token" /></label>
-        <button id="saveToken">Save</button>
-        <button id="ping">Ping</button>
-      </div>
-
-      <div class="row">
-        <label>Kind
-          <select id="kind">
-            <option value="query">query</option>
-            <option value="command">command</option>
-          </select>
-        </label>
-        <label>Id <input id="opId" size="40" placeholder="system.ping" /></label>
-        <button id="send">Send</button>
-      </div>
-
-      <div>
-        <div class="muted">Payload (JSON)</div>
-        <textarea id="payload">null</textarea>
-      </div>
-
-      <div>
-        <div class="muted">Response</div>
-        <pre id="output"></pre>
-      </div>
-    </div>
-
-    <script>
-      const tokenInput = document.getElementById('token');
-      const kindInput = document.getElementById('kind');
-      const idInput = document.getElementById('opId');
-      const payloadInput = document.getElementById('payload');
-      const output = document.getElementById('output');
-
-      const params = new URLSearchParams(location.search);
-      const tokenFromQuery = params.get('token');
-      const tokenFromStorage = localStorage.getItem('opencove:worker:token');
-      tokenInput.value = tokenFromQuery || tokenFromStorage || '';
-
-      function setOutput(value) {
-        output.textContent = typeof value === 'string' ? value : JSON.stringify(value, null, 2);
+        res.end(renderWorkerWebShellPage({ host }))
+        return
       }
+    }
 
-      async function invoke(kind, id, payload) {
-        const token = tokenInput.value.trim();
-        if (!token) {
-          throw new Error('Missing token');
+    if (req.method === 'GET' && req.url) {
+      const url = new URL(req.url, 'http://localhost')
+      if (url.pathname === '/events') {
+        const presentedToken =
+          normalizeBearerToken(req.headers.authorization) ?? url.searchParams.get('token')?.trim()
+        if (!presentedToken || !tokensEqual(presentedToken, token)) {
+          sendJson(res, 401, buildUnauthorizedResult())
+          return
         }
 
-        const res = await fetch('/invoke', {
-          method: 'POST',
-          headers: {
-            authorization: 'Bearer ' + token,
-            'content-type': 'application/json',
-          },
-          body: JSON.stringify({ kind, id, payload }),
-        });
+        const afterRevisionRaw =
+          url.searchParams.get('afterRevision') ??
+          (req.headers['last-event-id'] as string | undefined)
+        const afterRevisionParsed =
+          typeof afterRevisionRaw === 'string' ? Number.parseInt(afterRevisionRaw, 10) : NaN
+        const afterRevision =
+          Number.isFinite(afterRevisionParsed) && afterRevisionParsed >= 0
+            ? afterRevisionParsed
+            : null
 
-        const text = await res.text();
-        const data = text.trim().length ? JSON.parse(text) : null;
-        return { httpStatus: res.status, data };
-      }
+        res.statusCode = 200
+        res.setHeader('content-type', 'text/event-stream; charset=utf-8')
+        res.setHeader('cache-control', 'no-cache, no-transform')
+        res.setHeader('connection', 'keep-alive')
+        res.setHeader('x-accel-buffering', 'no')
+        res.write(':\n\n')
 
-      document.getElementById('saveToken').addEventListener('click', () => {
-        localStorage.setItem('opencove:worker:token', tokenInput.value.trim());
-        setOutput({ ok: true, saved: true });
-      });
+        if (
+          afterRevision !== null &&
+          syncEventBuffer.length > 0 &&
+          afterRevision < syncEventBuffer[0].revision - 1
+        ) {
+          try {
+            const store = await getPersistenceStore()
+            const revision = await store.readAppStateRevision()
+            writeSseEvent(res, { type: 'resync_required', revision })
+          } catch {
+            // ignore
+          }
+        } else if (afterRevision !== null && syncEventBuffer.length > 0) {
+          for (const payload of syncEventBuffer) {
+            if (payload.revision <= afterRevision) {
+              continue
+            }
 
-      document.getElementById('ping').addEventListener('click', async () => {
-        try {
-          idInput.value = 'system.ping';
-          kindInput.value = 'query';
-          payloadInput.value = 'null';
-          const result = await invoke('query', 'system.ping', null);
-          setOutput(result);
-        } catch (err) {
-          setOutput({ ok: false, error: String(err && err.message ? err.message : err) });
+            try {
+              writeSseEvent(res, payload)
+            } catch {
+              // ignore
+              break
+            }
+          }
         }
-      });
 
-      document.getElementById('send').addEventListener('click', async () => {
-        try {
-          const kind = kindInput.value;
-          const id = idInput.value.trim();
-          const rawPayload = payloadInput.value.trim();
-          const payload = rawPayload.length ? JSON.parse(rawPayload) : null;
-          const result = await invoke(kind, id, payload);
-          setOutput(result);
-        } catch (err) {
-          setOutput({ ok: false, error: String(err && err.message ? err.message : err) });
-        }
-      });
-    </script>
-  </body>
-</html>`)
+        syncClients.add(res)
+        req.on('close', () => {
+          syncClients.delete(res)
+        })
         return
       }
     }
@@ -345,7 +330,25 @@ export function registerControlSurfaceHttpServer(options: {
     try {
       const body = await readJsonBody(req)
       const request = normalizeInvokeRequest(body)
+      const shouldCheckRevision = request.kind === 'command'
+      const revisionBefore = shouldCheckRevision
+        ? await (await getPersistenceStore()).readAppStateRevision()
+        : null
       const result = await controlSurface.invoke(ctx, request)
+      if (shouldCheckRevision) {
+        try {
+          const revisionAfter = await (await getPersistenceStore()).readAppStateRevision()
+          if (typeof revisionBefore === 'number' && revisionAfter !== revisionBefore) {
+            publishSyncEvent({
+              type: 'app_state.updated',
+              revision: revisionAfter,
+              operationId: request.id,
+            })
+          }
+        } catch {
+          // ignore
+        }
+      }
       sendJson(res, 200, result)
     } catch (error) {
       sendJson(res, 400, {
@@ -432,6 +435,15 @@ export function registerControlSurfaceHttpServer(options: {
         }
 
         closed = true
+
+        for (const client of syncClients) {
+          try {
+            client.end()
+          } catch {
+            // ignore
+          }
+        }
+        syncClients.clear()
 
         await new Promise<void>(resolveClose => {
           server.close(() => resolveClose())

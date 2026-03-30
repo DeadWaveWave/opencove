@@ -22,17 +22,22 @@ import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandle
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
+import type { ControlSurfaceRemoteEndpoint } from '../controlSurface/remote/controlSurfaceHttpClient'
+import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
+import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBridge'
 
 export type { IpcRegistrationDisposable } from './types'
 
 export function registerIpcHandlers(deps?: {
   ptyRuntime?: ReturnType<typeof createPtyRuntime>
   approvedWorkspaces?: ReturnType<typeof createApprovedWorkspaceStore>
+  workerEndpoint?: ControlSurfaceRemoteEndpoint
 }): IpcRegistrationDisposable {
   const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const appUpdateService = createAppUpdateService()
   const releaseNotesService = createReleaseNotesService()
+  const workerEndpoint = deps?.workerEndpoint ?? null
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
@@ -40,8 +45,14 @@ export function registerIpcHandlers(deps?: {
       return await persistenceStorePromise
     }
 
-    const dbPath = resolve(app.getPath('userData'), 'opencove.db')
-    const nextStorePromise = createPersistenceStore({ dbPath }).catch(error => {
+    const nextStorePromise = (
+      workerEndpoint
+        ? Promise.resolve(createRemotePersistenceStore(workerEndpoint))
+        : (() => {
+            const dbPath = resolve(app.getPath('userData'), 'opencove.db')
+            return createPersistenceStore({ dbPath })
+          })()
+    ).catch(error => {
       if (persistenceStorePromise === nextStorePromise) {
         persistenceStorePromise = null
       }
@@ -73,6 +84,10 @@ export function registerIpcHandlers(deps?: {
     registerTaskIpcHandlers(approvedWorkspaces),
     registerSystemIpcHandlers(),
   ]
+
+  if (workerEndpoint) {
+    disposables.push(registerWorkerSyncBridge(workerEndpoint))
+  }
 
   return {
     dispose: () => {

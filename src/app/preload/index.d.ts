@@ -73,6 +73,7 @@ import type {
   ReadFileTextResult,
   StatInput,
   FileSystemStat,
+  SyncEventPayload,
   WriteFileTextInput,
 } from '../../shared/contracts/dto'
 
@@ -114,6 +115,9 @@ export interface OpenCoveApi {
     writeAppState: (payload: WriteAppStateInput) => Promise<PersistWriteResult>
     readNodeScrollback: (payload: ReadNodeScrollbackInput) => Promise<string | null>
     writeNodeScrollback: (payload: WriteNodeScrollbackInput) => Promise<PersistWriteResult>
+  }
+  sync: {
+    onStateUpdated: (listener: (event: SyncEventPayload) => void) => UnsubscribeFn
   }
   workspace: {
     selectDirectory: () => Promise<WorkspaceDirectory | null>

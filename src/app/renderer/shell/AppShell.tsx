@@ -1,15 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { AppHeader } from './components/AppHeader'
 import { AppShellOverlays } from './components/AppShellOverlays'
-import { CommandCenter } from './components/CommandCenter'
-import { DeleteProjectDialog } from './components/DeleteProjectDialog'
-import { ProjectContextMenu } from './components/ProjectContextMenu'
+import { AppShellModals } from './components/AppShellModals'
+import { AppShellPopups } from './components/AppShellPopups'
 import { Sidebar } from './components/Sidebar'
-import { SpaceArchiveRecordsWindow } from './components/SpaceArchiveRecordsWindow'
 import { WorkspaceMain } from './components/WorkspaceMain'
 import { WorkspaceSearchOverlay } from './components/WorkspaceSearchOverlay'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
@@ -27,9 +24,9 @@ import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useWhatsNew } from './hooks/useWhatsNew'
+import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
 import { useAppStore } from './store/useAppStore'
 import { removeWorkspace } from './utils/removeWorkspace'
-import { WhatsNewDialog } from './components/WhatsNewDialog'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 
 export default function App(): React.JSX.Element {
@@ -84,6 +81,7 @@ export default function App(): React.JSX.Element {
     useAgentStandbyNotifications()
 
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
+  useWorkerSyncStateUpdates({ enabled: isPersistReady })
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
@@ -395,12 +393,12 @@ export default function App(): React.JSX.Element {
         onOpenSettings={handleOpenSettings}
       />
 
-      <CommandCenter
-        isOpen={isCommandCenterOpen}
+      <AppShellPopups
+        isCommandCenterOpen={isCommandCenterOpen}
         activeWorkspace={activeWorkspace}
         workspaces={workspaces}
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
-        onClose={closeCommandCenter}
+        onCloseCommandCenter={closeCommandCenter}
         onOpenSettings={handleOpenSettings}
         onOpenSpaceArchives={openSpaceArchives}
         onTogglePrimarySidebar={() => {
@@ -412,69 +410,45 @@ export default function App(): React.JSX.Element {
         onAddWorkspace={handleAddWorkspace}
         onSelectWorkspace={handleSelectWorkspace}
         onSelectSpace={handleWorkspaceActiveSpaceChange}
-      />
-
-      <SpaceArchiveRecordsWindow
-        isOpen={isSpaceArchivesOpen}
-        workspace={activeWorkspace}
+        isSpaceArchivesOpen={isSpaceArchivesOpen}
         canvasInputModeSetting={agentSettings.canvasInputMode}
-        onDeleteRecord={handleWorkspaceSpaceArchiveRecordRemove}
-        onClose={closeSpaceArchives}
+        onDeleteSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordRemove}
+        onCloseSpaceArchives={closeSpaceArchives}
+        projectContextMenu={projectContextMenu}
+        onRequestRemoveProject={handleRequestRemoveProject}
+        projectDeleteConfirmation={projectDeleteConfirmation}
+        isRemovingProject={isRemovingProject}
+        onCancelProjectDelete={() => {
+          setProjectDeleteConfirmation(null)
+        }}
+        onConfirmProjectDelete={() => {
+          if (!projectDeleteConfirmation) {
+            return
+          }
+
+          void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
+        }}
       />
 
-      {projectContextMenu ? (
-        <ProjectContextMenu
-          workspaceId={projectContextMenu.workspaceId}
-          x={projectContextMenu.x}
-          y={projectContextMenu.y}
-          onRequestRemove={handleRequestRemoveProject}
-        />
-      ) : null}
-
-      {projectDeleteConfirmation ? (
-        <DeleteProjectDialog
-          workspaceName={projectDeleteConfirmation.workspaceName}
-          isRemoving={isRemovingProject}
-          onCancel={() => {
-            setProjectDeleteConfirmation(null)
-          }}
-          onConfirm={() => {
-            void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
-          }}
-        />
-      ) : null}
-
-      {isSettingsOpen ? (
-        <SettingsPanel
-          settings={agentSettings}
-          updateState={updateState}
-          modelCatalogByProvider={providerModelCatalog}
-          workspaces={workspaces}
-          onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
-          isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
-          onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
-          onChange={next => {
-            setAgentSettings(next)
-          }}
-          onCheckForUpdates={checkForUpdates}
-          onDownloadUpdate={downloadUpdate}
-          onInstallUpdate={installUpdate}
-          onClose={() => {
-            flushPersistNow()
-            setIsFocusNodeTargetZoomPreviewing(false)
-            setIsSettingsOpen(false)
-          }}
-        />
-      ) : null}
-      <WhatsNewDialog
-        isOpen={whatsNew.isOpen}
-        fromVersion={whatsNew.fromVersion}
-        toVersion={whatsNew.toVersion}
-        notes={whatsNew.notes}
-        isLoading={whatsNew.isLoading}
-        error={whatsNew.error}
-        compareUrl={whatsNew.compareUrl}
-        onClose={whatsNew.close}
+      <AppShellModals
+        isSettingsOpen={isSettingsOpen}
+        settings={agentSettings}
+        updateState={updateState}
+        modelCatalogByProvider={providerModelCatalog}
+        workspaces={workspaces}
+        onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
+        isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
+        onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
+        onChangeSettings={setAgentSettings}
+        onCheckForUpdates={checkForUpdates}
+        onDownloadUpdate={downloadUpdate}
+        onInstallUpdate={installUpdate}
+        onCloseSettings={() => {
+          flushPersistNow()
+          setIsFocusNodeTargetZoomPreviewing(false)
+          setIsSettingsOpen(false)
+        }}
+        whatsNew={whatsNew}
       />
     </>
   )

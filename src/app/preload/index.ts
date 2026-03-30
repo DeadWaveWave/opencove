@@ -75,6 +75,7 @@ import type {
   ReadFileTextResult,
   StatInput,
   FileSystemStat,
+  SyncEventPayload,
   WriteFileTextInput,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
@@ -153,6 +154,19 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.persistenceReadNodeScrollback, payload),
     writeNodeScrollback: (payload: WriteNodeScrollbackInput): Promise<PersistWriteResult> =>
       invokeIpc(IPC_CHANNELS.persistenceWriteNodeScrollback, payload),
+  },
+  sync: {
+    onStateUpdated: (listener: (event: SyncEventPayload) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: SyncEventPayload) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.syncStateUpdated, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.syncStateUpdated, handler)
+      }
+    },
   },
   workspace: {
     selectDirectory: (): Promise<WorkspaceDirectory | null> =>

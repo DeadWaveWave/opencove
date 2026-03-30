@@ -8,6 +8,15 @@ export function writeNormalizedAppState(
   db: Database.Database,
   state: NormalizedPersistedAppState,
 ): void {
+  const readMetaValue = db.prepare(
+    `
+      SELECT value
+      FROM app_meta
+      WHERE key = ?
+      LIMIT 1
+    `,
+  )
+
   const upsertMeta = db.prepare(
     `
       INSERT INTO app_meta (key, value)
@@ -65,6 +74,16 @@ export function writeNormalizedAppState(
   )
 
   const writeTx = db.transaction(() => {
+    const currentRevisionRaw = readMetaValue.get('app_state_revision' satisfies DbAppMetaKey) as
+      | { value?: unknown }
+      | undefined
+    const currentRevision =
+      typeof currentRevisionRaw?.value === 'string'
+        ? Number.parseInt(currentRevisionRaw.value, 10)
+        : 0
+    const nextRevision =
+      Number.isFinite(currentRevision) && currentRevision >= 0 ? currentRevision + 1 : 1
+
     db.exec(`
       DELETE FROM workspace_space_nodes;
       DELETE FROM workspace_spaces;
@@ -74,6 +93,7 @@ export function writeNormalizedAppState(
 
     upsertMeta.run('format_version' satisfies DbAppMetaKey, String(state.formatVersion))
     upsertMeta.run('active_workspace_id' satisfies DbAppMetaKey, state.activeWorkspaceId ?? '')
+    upsertMeta.run('app_state_revision' satisfies DbAppMetaKey, String(nextRevision))
 
     upsertSettings.run(safeJsonStringify(state.settings ?? {}))
 

@@ -11,6 +11,7 @@ import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { shouldEnableWaylandIme } from './waylandIme'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createPtyRuntime } from '../../contexts/terminal/presentation/main-ipc/runtime'
+import { resolveControlSurfaceConnectionInfoFromUserData } from './controlSurface/remote/resolveControlSurfaceConnectionInfo'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
@@ -332,7 +333,7 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
 
   // Set app user model id for windows
@@ -382,8 +383,35 @@ app.whenReady().then(() => {
   const approvedWorkspaces = createApprovedWorkspaceStore()
   const ptyRuntime = createPtyRuntime()
 
-  ipcDisposable = registerIpcHandlers({ approvedWorkspaces, ptyRuntime })
-  if (process.env.NODE_ENV !== 'test') {
+  const wantsWorkerClientMode = isTruthyEnv(process.env['OPENCOVE_WORKER_CLIENT'])
+  const workerConnection = wantsWorkerClientMode
+    ? await resolveControlSurfaceConnectionInfoFromUserData({
+        userDataPath: app.getPath('userData'),
+      })
+    : null
+  const workerClientModeEnabled = wantsWorkerClientMode && workerConnection !== null
+
+  if (wantsWorkerClientMode && !workerConnection) {
+    process.stderr.write(
+      '[opencove] OPENCOVE_WORKER_CLIENT=1 but no worker control surface connection file was found.\n',
+    )
+  }
+
+  ipcDisposable = registerIpcHandlers({
+    approvedWorkspaces,
+    ptyRuntime,
+    ...(workerConnection
+      ? {
+          workerEndpoint: {
+            hostname: workerConnection.hostname,
+            port: workerConnection.port,
+            token: workerConnection.token,
+          },
+        }
+      : {}),
+  })
+
+  if (process.env.NODE_ENV !== 'test' && !workerClientModeEnabled) {
     controlSurfaceDisposable = registerControlSurfaceServer({ approvedWorkspaces, ptyRuntime })
   }
 

@@ -1,4 +1,7 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
+import { randomUUID } from 'node:crypto'
+import { dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 function requireEnv(name: string): string {
   const value = process.env[name]
@@ -9,7 +12,7 @@ function requireEnv(name: string): string {
   return value
 }
 
-async function readOutputJson(page: { locator: (selector: string) => any }): Promise<unknown> {
+async function readOutputJson(page: Page): Promise<unknown> {
   const outputText = (await page.locator('#output').textContent()) ?? ''
   const trimmed = outputText.trim()
   if (trimmed.length === 0) {
@@ -28,6 +31,7 @@ test.describe('Worker web shell', () => {
     await expect(page.locator('#token')).toBeVisible()
     await expect(page.locator('#ping')).toBeVisible()
     await expect(page.locator('#send')).toBeVisible()
+    await expect(page.locator('#watchSync')).toBeVisible()
     await expect(page.locator('#output')).toBeVisible()
   })
 
@@ -105,5 +109,142 @@ test.describe('Worker web shell', () => {
     expect(result.httpStatus).toBe(200)
     expect(result.data?.ok).toBe(false)
     expect(result.data?.error?.code).toBe('common.invalid_input')
+  })
+
+  test('emits sync events for note.create', async ({ page }) => {
+    const token = requireEnv('OPENCOVE_WEB_SHELL_TOKEN')
+    const testFileUri = requireEnv('OPENCOVE_WEB_SHELL_TEST_FILE_URI')
+    const workspacePath = dirname(fileURLToPath(new URL(testFileUri)))
+    const workspaceId = randomUUID()
+    const spaceId = randomUUID()
+
+    const initialState = {
+      formatVersion: 1,
+      activeWorkspaceId: workspaceId,
+      workspaces: [
+        {
+          id: workspaceId,
+          name: 'Test Workspace',
+          path: workspacePath,
+          worktreesRoot: workspacePath,
+          pullRequestBaseBranchOptions: [],
+          spaceArchiveRecords: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [
+            {
+              id: spaceId,
+              name: 'Main',
+              directoryPath: workspacePath,
+              labelColor: null,
+              nodeIds: [],
+              rect: null,
+            },
+          ],
+          activeSpaceId: spaceId,
+          nodes: [],
+        },
+      ],
+      settings: {},
+    }
+
+    await page.goto(`/?token=${encodeURIComponent(token)}`)
+
+    const writeStateResponse = await page.request.post('/invoke', {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      data: {
+        kind: 'command',
+        id: 'sync.writeState',
+        payload: { state: initialState },
+      },
+    })
+    expect(writeStateResponse.status()).toBe(200)
+
+    const stateAfterWrite = (await (
+      await page.request.post('/invoke', {
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+        },
+        data: { kind: 'query', id: 'sync.state', payload: null },
+      })
+    ).json()) as { ok?: boolean; value?: { revision?: number } }
+
+    expect(stateAfterWrite.ok).toBe(true)
+    const revisionBefore = stateAfterWrite.value?.revision ?? 0
+    expect(revisionBefore).toBeGreaterThan(0)
+
+    const syncEventPromise = page.evaluate(
+      ({ token: authToken, afterRevision }) =>
+        new Promise((resolve, reject) => {
+          const url =
+            '/events?token=' +
+            encodeURIComponent(authToken) +
+            '&afterRevision=' +
+            String(afterRevision)
+          const source = new EventSource(url)
+
+          const timer = setTimeout(() => {
+            source.close()
+            reject(new Error('Timed out waiting for sync event'))
+          }, 7_500)
+
+          source.addEventListener('opencove.sync', event => {
+            try {
+              const parsed = JSON.parse(event.data)
+              if (
+                parsed &&
+                typeof parsed.revision === 'number' &&
+                parsed.revision > afterRevision
+              ) {
+                clearTimeout(timer)
+                source.close()
+                resolve(parsed)
+              }
+            } catch {
+              // ignore invalid payload
+            }
+          })
+
+          source.addEventListener('error', () => {
+            // allow reconnect attempts
+          })
+        }),
+      { token, afterRevision: revisionBefore },
+    )
+
+    const createNoteResponse = await page.request.post('/invoke', {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      data: {
+        kind: 'command',
+        id: 'note.create',
+        payload: { spaceId, text: 'hello from sync test', x: 10, y: 20 },
+      },
+    })
+    expect(createNoteResponse.status()).toBe(200)
+
+    const syncEvent = syncEventPromise as unknown as Promise<{ type?: string; revision?: number }>
+    const payload = await syncEvent
+    expect(payload.type).toBe('app_state.updated')
+    expect(payload.revision).toBeGreaterThan(revisionBefore)
+
+    const spaceGet = (await (
+      await page.request.post('/invoke', {
+        headers: {
+          authorization: `Bearer ${token}`,
+          'content-type': 'application/json',
+        },
+        data: { kind: 'query', id: 'space.get', payload: { spaceId } },
+      })
+    ).json()) as { ok?: boolean; value?: { space?: { nodes?: { kind?: string }[] } } }
+
+    expect(spaceGet.ok).toBe(true)
+    expect(spaceGet.value?.space?.nodes?.some(node => node.kind === 'note')).toBe(true)
   })
 })

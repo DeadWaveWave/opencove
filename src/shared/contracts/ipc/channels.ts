@@ -21,6 +21,7 @@ export const IPC_CHANNELS = {
   persistenceWriteAppState: 'persistence:write-app-state',
   persistenceReadNodeScrollback: 'persistence:read-node-scrollback',
   persistenceWriteNodeScrollback: 'persistence:write-node-scrollback',
+  syncStateUpdated: 'sync:state-updated',
   appUpdateGetState: 'app-update:get-state',
   appUpdateConfigure: 'app-update:configure',
   appUpdateCheck: 'app-update:check',
