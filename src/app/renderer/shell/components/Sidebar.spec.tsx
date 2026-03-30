@@ -148,12 +148,13 @@ describe('Sidebar', () => {
       dndState.onDragStart?.({ active: { id: 'workspace-b' } })
     })
 
-    expect(container.querySelector('.workspace-item--drag-overlay')).toHaveTextContent(
-      'workspace-b',
-    )
-    expect(screen.getByTitle('/tmp/workspace-b').closest('.workspace-item-group')).toHaveStyle({
-      opacity: '0.4',
-    })
+    const overlayElement = container.querySelector('.workspace-item--drag-overlay')
+    expect(overlayElement).not.toBeNull()
+    expect(overlayElement?.textContent).toContain('workspace-b')
+
+    const draggedGroup = screen.getByTitle('/tmp/workspace-b').closest('.workspace-item-group')
+    expect(draggedGroup).not.toBeNull()
+    expect((draggedGroup as HTMLElement).style.opacity).toBe('0.4')
 
     act(() => {
       dndState.draggingId = null
@@ -190,8 +191,8 @@ describe('Sidebar', () => {
     const workspaceButton = screen.getByTitle('/tmp/workspace-a')
     const agentButton = screen.getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
 
-    expect(workspaceButton).toHaveAttribute('data-drag-listener', 'true')
-    expect(agentButton).not.toHaveAttribute('data-drag-listener')
+    expect(workspaceButton.getAttribute('data-drag-listener')).toBe('true')
+    expect(agentButton.getAttribute('data-drag-listener')).toBeNull()
 
     fireEvent.click(workspaceButton)
     expect(onSelectWorkspace).toHaveBeenCalledWith('workspace-a')
