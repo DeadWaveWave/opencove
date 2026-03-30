@@ -25,6 +25,12 @@ export const enSettingsPanel = {
     },
     interfaceFontSize: 'Interface Font Size',
     terminalFontSize: 'Terminal Font Size',
+    terminalFontFamily: 'Terminal Font',
+    terminalFontFamilyDefault: 'Default',
+    terminalFontFamilyLoading: 'Loading fonts…',
+    terminalFontFamilySearch: 'Search fonts…',
+    terminalFontFamilyShowAll: 'Show all fonts',
+    terminalFontFamilyNoResults: 'No fonts found',
     updates: {
       title: 'Updates',
       help: 'Follow GitHub Releases and choose how OpenCove applies app updates.',

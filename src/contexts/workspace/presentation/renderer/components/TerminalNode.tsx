@@ -17,8 +17,9 @@ import {
   clearCachedTerminalScreenStateInvalidation,
   getCachedTerminalScreenState,
   isCachedTerminalScreenStateInvalidated,
-  setCachedTerminalScreenState,
 } from './terminalNode/screenStateCache'
+import { resolveAttachablePtyApi } from './terminalNode/attachablePty'
+import { cacheTerminalScreenStateOnUnmount } from './terminalNode/cacheTerminalScreenState'
 import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { resolveTerminalTheme, resolveTerminalUiTheme } from './terminalNode/theme'
@@ -60,6 +61,7 @@ export function TerminalNode({
   width,
   height,
   terminalFontSize,
+  terminalFontFamily,
   scrollback,
   onClose,
   onCopyLastMessage,
@@ -152,10 +154,7 @@ export function TerminalNode({
       return undefined
     }
 
-    const ptyWithOptionalAttach = window.opencoveApi.pty as typeof window.opencoveApi.pty & {
-      attach?: (payload: { sessionId: string }) => Promise<void>
-      detach?: (payload: { sessionId: string }) => Promise<void>
-    }
+    const ptyWithOptionalAttach = resolveAttachablePtyApi()
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
@@ -171,7 +170,9 @@ export function TerminalNode({
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const terminal = new Terminal({
       cursorBlink: true,
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- terminalFontFamily is intentionally used only as the initial value; reactive updates are handled by a separate effect
       fontFamily:
+        terminalFontFamily ??
         'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       theme: initialTerminalTheme,
       allowProposedApi: true,
@@ -187,15 +188,14 @@ export function TerminalNode({
 
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
-    const terminalSupportsSearch =
+    const disposeTerminalFind =
       typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
-    const disposeTerminalFind = terminalSupportsSearch
-      ? (() => {
-          const searchAddon = new SearchAddon()
-          terminal.loadAddon(searchAddon)
-          return bindSearchAddonToFind(searchAddon)
-        })()
-      : () => undefined
+        ? (() => {
+            const searchAddon = new SearchAddon()
+            terminal.loadAddon(searchAddon)
+            return bindSearchAddonToFind(searchAddon)
+          })()
+        : () => undefined
     let disposeTerminalSelectionTestHandle: () => void = () => undefined
     const ptyWriteQueue = createPtyWriteQueue(({ data, encoding }) =>
       window.opencoveApi.pty.write({
@@ -269,8 +269,7 @@ export function TerminalNode({
     })
 
     let isHydrating = true
-    const bufferedDataChunks: string[] = []
-    let bufferedExitCode: number | null = null
+    const hydrationBuffer = { dataChunks: [] as string[], exitCode: null as number | null }
     const ptyEventHub = getPtyEventHub()
     const committedScreenStateRecorder = createCommittedScreenStateRecorder({
       serializeAddon,
@@ -292,7 +291,7 @@ export function TerminalNode({
 
     const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
       if (isHydrating) {
-        bufferedDataChunks.push(event.data)
+        hydrationBuffer.dataChunks.push(event.data)
         return
       }
       outputScheduler.handleChunk(event.data)
@@ -300,12 +299,13 @@ export function TerminalNode({
 
     const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
       if (isHydrating) {
-        bufferedExitCode = event.exitCode
+        hydrationBuffer.exitCode = event.exitCode
         return
       }
 
-      const exitMessage = `\r\n[process exited with code ${event.exitCode}]\r\n`
-      outputScheduler.handleChunk(exitMessage, { immediateScrollbackPublish: true })
+      outputScheduler.handleChunk(`\r\n[process exited with code ${event.exitCode}]\r\n`, {
+        immediateScrollbackPublish: true,
+      })
     })
 
     const attachPromise = Promise.resolve(ptyWithOptionalAttach.attach?.({ sessionId }))
@@ -317,8 +317,8 @@ export function TerminalNode({
         rawSnapshot,
         scrollbackBuffer,
         ptyWriteQueue,
-        bufferedDataChunks,
-        bufferedExitCode,
+        bufferedDataChunks: hydrationBuffer.dataChunks,
+        bufferedExitCode: hydrationBuffer.exitCode,
         terminal,
         committedScrollbackBuffer,
         onCommittedScreenState: nextRawSnapshot => {
@@ -336,7 +336,7 @@ export function TerminalNode({
           }
         },
       })
-      bufferedExitCode = null
+      hydrationBuffer.exitCode = null
     }
 
     void hydrateTerminalFromSnapshot({
@@ -377,26 +377,14 @@ export function TerminalNode({
 
     return () => {
       const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
-
-      const hasPendingWrites = outputScheduler.hasPendingWrites()
-
-      if (!isInvalidated && isTerminalHydratedRef.current) {
-        const latestCommittedScreenState = committedScreenStateRecorder.resolve(
-          scrollbackBuffer.snapshot(),
-          {
-            allowSerializeFallback: !hasPendingWrites,
-          },
-        )
-        if (latestCommittedScreenState) {
-          setCachedTerminalScreenState(nodeId, {
-            sessionId: latestCommittedScreenState.sessionId,
-            serialized: latestCommittedScreenState.serialized,
-            rawSnapshot: latestCommittedScreenState.rawSnapshot,
-            cols: latestCommittedScreenState.cols,
-            rows: latestCommittedScreenState.rows,
-          })
-        }
-      }
+      cacheTerminalScreenStateOnUnmount({
+        nodeId,
+        isInvalidated,
+        isTerminalHydrated: isTerminalHydratedRef.current,
+        hasPendingWrites: outputScheduler.hasPendingWrites(),
+        rawSnapshot: scrollbackBuffer.snapshot(),
+        resolveCommittedScreenState: committedScreenStateRecorder.resolve,
+      })
 
       cancelMouseServicePatch()
       isDisposed = true
@@ -450,6 +438,18 @@ export function TerminalNode({
     terminal.options.fontSize = terminalFontSize
     syncTerminalSize()
   }, [syncTerminalSize, terminalFontSize])
+
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+
+    terminal.options.fontFamily =
+      terminalFontFamily ??
+      'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+    syncTerminalSize()
+  }, [syncTerminalSize, terminalFontFamily])
 
   useEffect(() => {
     const frame = requestAnimationFrame(syncTerminalSize)

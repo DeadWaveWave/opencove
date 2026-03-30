@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  dragMouse,
   dragLocatorTo,
   launchApp,
   readCanvasViewport,
@@ -201,10 +202,26 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       const header = terminal.locator('.terminal-node__header')
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      const headerBox = await header.boundingBox()
+      const paneBox = await pane.boundingBox()
+      if (!headerBox || !paneBox) {
+        throw new Error('header/pane bounding box unavailable for zoom-preserving drag')
+      }
 
-      await dragLocatorTo(window, header, pane, {
-        sourcePosition: { x: 120, y: 16 },
-        targetPosition: { x: 680, y: 420 },
+      const dragStartX = headerBox.x + Math.min(Math.max(120, headerBox.width * 0.35), 180)
+      const dragStartY = headerBox.y + headerBox.height * 0.5
+      const dragEndX = Math.min(paneBox.x + paneBox.width - 120, dragStartX + 220)
+      const dragEndY = Math.min(paneBox.y + paneBox.height - 120, dragStartY + 140)
+
+      await window.waitForTimeout(150)
+
+      await dragMouse(window, {
+        start: { x: dragStartX, y: dragStartY },
+        end: { x: dragEndX, y: dragEndY },
+        steps: 14,
+        settleAfterPressMs: 64,
+        settleBeforeReleaseMs: 96,
+        settleAfterReleaseMs: 64,
       })
 
       await expect

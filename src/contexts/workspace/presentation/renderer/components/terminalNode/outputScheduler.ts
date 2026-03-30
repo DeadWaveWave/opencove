@@ -48,6 +48,7 @@ export function createTerminalOutputScheduler({
   let isDisposed = false
   let isDraining = false
   let isViewportInteractionActive = false
+  let hasDirectWriteInFlight = false
 
   const hasPending = (): boolean => {
     return pendingWritesHead < pendingWrites.length
@@ -127,6 +128,10 @@ export function createTerminalOutputScheduler({
       return
     }
 
+    if (hasDirectWriteInFlight && !force) {
+      return
+    }
+
     const canDrainDuringViewportInteraction = allowDuringViewportInteraction || force
     const shouldBlock = isViewportInteractionActive && !canDrainDuringViewportInteraction
     if (shouldBlock) {
@@ -202,7 +207,8 @@ export function createTerminalOutputScheduler({
     scrollbackBuffer.append(data)
     markScrollbackDirty(chunkOptions?.immediateScrollbackPublish === true)
 
-    const shouldDeferWrite = isViewportInteractionActive || isDraining || hasPending()
+    const shouldDeferWrite =
+      isViewportInteractionActive || isDraining || hasPending() || hasDirectWriteInFlight
 
     if (shouldDeferWrite) {
       enqueue(data)
@@ -220,8 +226,13 @@ export function createTerminalOutputScheduler({
       return
     }
 
+    hasDirectWriteInFlight = true
     terminal.write(data, () => {
+      hasDirectWriteInFlight = false
       onWriteCommitted?.(data)
+      if (!isViewportInteractionActive && hasPending()) {
+        flush()
+      }
     })
   }
 
@@ -240,7 +251,7 @@ export function createTerminalOutputScheduler({
   return {
     handleChunk,
     onViewportInteractionActiveChange,
-    hasPendingWrites: () => hasPending() || isDraining,
+    hasPendingWrites: () => hasPending() || isDraining || hasDirectWriteInFlight,
     dispose: () => {
       isDisposed = true
       cancelViewportFlushTimer()
@@ -251,6 +262,7 @@ export function createTerminalOutputScheduler({
       pendingWrites.length = 0
       pendingWritesHead = 0
       pendingWriteChars = 0
+      hasDirectWriteInFlight = false
       isDraining = false
     },
   }

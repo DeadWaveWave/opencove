@@ -25,6 +25,12 @@ export const zhCNSettingsPanel = {
     },
     interfaceFontSize: '界面字体大小',
     terminalFontSize: '终端字体大小',
+    terminalFontFamily: '终端字体',
+    terminalFontFamilyDefault: '默认',
+    terminalFontFamilyLoading: '加载字体中…',
+    terminalFontFamilySearch: '搜索字体…',
+    terminalFontFamilyShowAll: '显示全部字体',
+    terminalFontFamilyNoResults: '未找到字体',
     updates: {
       title: '更新',
       help: '跟踪 GitHub Releases，并选择 OpenCove 如何应用应用更新。',

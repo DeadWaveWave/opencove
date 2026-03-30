@@ -24,6 +24,7 @@ export interface TerminalNodeProps {
   width: number
   height: number
   terminalFontSize: number
+  terminalFontFamily: string | null
   scrollback: string | null
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>

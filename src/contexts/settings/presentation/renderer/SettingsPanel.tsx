@@ -141,6 +141,8 @@ export function SettingsPanel({
     onChange({ ...settings, standardWindowSizeBucket: bucket })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
+  const updateTerminalFontFamily = (family: string | null): void =>
+    onChange({ ...settings, terminalFontFamily: family })
   const updateUiFontSize = (fontSize: number): void =>
     onChange({ ...settings, uiFontSize: fontSize })
   const updateUpdatePolicy = (policy: AgentSettings['updatePolicy']): void => {
@@ -364,6 +366,7 @@ export function SettingsPanel({
                 uiTheme={settings.uiTheme}
                 uiFontSize={settings.uiFontSize}
                 terminalFontSize={settings.terminalFontSize}
+                terminalFontFamily={settings.terminalFontFamily}
                 updatePolicy={settings.updatePolicy}
                 updateChannel={settings.updateChannel}
                 updateState={updateState}
@@ -371,6 +374,7 @@ export function SettingsPanel({
                 onChangeUiTheme={updateUiTheme}
                 onChangeUiFontSize={updateUiFontSize}
                 onChangeTerminalFontSize={updateTerminalFontSize}
+                onChangeTerminalFontFamily={updateTerminalFontFamily}
                 onChangeUpdatePolicy={updateUpdatePolicy}
                 onChangeUpdateChannel={updateUpdateChannel}
                 onCheckForUpdates={onCheckForUpdates}

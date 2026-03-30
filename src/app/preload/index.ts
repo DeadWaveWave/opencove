@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '../../shared/contracts/ipc'
 import type {
   AttachTerminalInput,
   CopyWorkspacePathInput,
+  ListSystemFontsResult,
   CreateGitWorktreeInput,
   CreateGitWorktreeResult,
   DetachTerminalInput,
@@ -302,6 +303,9 @@ const opencoveApi = {
   task: {
     suggestTitle: (payload: SuggestTaskTitleInput): Promise<SuggestTaskTitleResult> =>
       invokeIpc(IPC_CHANNELS.taskSuggestTitle, payload),
+  },
+  system: {
+    listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
   },
 }
 

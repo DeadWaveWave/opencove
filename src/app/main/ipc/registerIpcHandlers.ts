@@ -21,6 +21,7 @@ import { registerPersistenceIpcHandlers } from '../../../platform/persistence/sq
 import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandlers'
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
+import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -70,6 +71,7 @@ export function registerIpcHandlers(deps?: {
     registerPtyIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),
+    registerSystemIpcHandlers(),
   ]
 
   return {
