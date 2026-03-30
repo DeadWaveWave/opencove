@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from './schema'
 
 import { zhCNMessages } from './zh-CN.messages'
+import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
 import { zhCNSettingsPanel } from './zh-CN.settingsPanel'
 
 export const zhCN = {
@@ -350,33 +351,7 @@ export const zhCN = {
     openSpaceActions: '打开 {{name}} 的空间操作',
     title: '空间操作',
   },
-  spaceExplorer: {
-    empty: '该文件夹为空。',
-    parentDirectory: '上级目录',
-    refresh: '刷新',
-    newFile: '新建文件',
-    newFolder: '新建文件夹',
-    create: '创建',
-    rename: '重命名',
-    cut: '剪切',
-    copy: '复制',
-    paste: '粘贴',
-    copyPath: '复制路径',
-    pathCopied: '路径已复制。',
-    resizeWidth: '调整 Explorer 宽度',
-    fileNamePlaceholder: '文件名',
-    folderNamePlaceholder: '文件夹名',
-    invalidName: '请输入有效名称。',
-    createFailed: '创建失败。',
-    renameFailed: '重命名失败。',
-    copyPathFailed: '复制路径失败。',
-    invalidMoveIntoSelf: '文件夹不能移动到其自身内部。',
-    closeDocumentBeforeFileChange: '请先关闭已打开的文档“{{name}}”，再修改这个文件。',
-    deleteTitle: '删除文件或文件夹',
-    deletePrompt: '要把“{{name}}”移到废纸篓吗？',
-    moveTitle: '移动文件或文件夹',
-    movePrompt: '要把“{{name}}”移动到 {{target}} 吗？',
-  },
+  spaceExplorer: zhCNSpaceExplorer,
   branchRenameDialog: {
     title: '重命名分支',
     fieldLabel: '新分支名',

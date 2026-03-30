@@ -59,6 +59,7 @@ function renderEntryActions({
   onCopy,
   onPaste,
   onCopyPath,
+  onCopyRelativePath,
   onRefresh,
   onDelete,
 }: {
@@ -73,6 +74,7 @@ function renderEntryActions({
   onCopy: () => void
   onPaste: () => void
   onCopyPath: () => void
+  onCopyRelativePath: () => void
   onRefresh: () => void
   onDelete: () => void
 }): React.JSX.Element[] {
@@ -140,6 +142,12 @@ function renderEntryActions({
       onClick={onCopyPath}
     />,
     <MenuButton
+      key="copy-relative-path"
+      icon={<Copy size={16} />}
+      label={t('spaceExplorer.copyRelativePath')}
+      onClick={onCopyRelativePath}
+    />,
+    <MenuButton
       key="refresh"
       icon={<RefreshCw size={16} />}
       label={t('spaceExplorer.refresh')}
@@ -169,6 +177,7 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
   onCopy,
   onPaste,
   onCopyPath,
+  onCopyRelativePath,
   onRefresh,
   onDelete,
 }: {
@@ -183,6 +192,7 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
   onCopy: () => void
   onPaste: () => void
   onCopyPath: () => void
+  onCopyRelativePath: () => void
   onRefresh: () => void
   onDelete: () => void
 }): React.JSX.Element | null {
@@ -238,6 +248,11 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
             onClick={onCopyPath}
           />
           <MenuButton
+            icon={<Copy size={16} />}
+            label={t('spaceExplorer.copyRelativePath')}
+            onClick={onCopyRelativePath}
+          />
+          <MenuButton
             icon={<RefreshCw size={16} />}
             label={t('spaceExplorer.refresh')}
             onClick={onRefresh}
@@ -256,6 +271,7 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
           onCopy,
           onPaste,
           onCopyPath,
+          onCopyRelativePath,
           onRefresh,
           onDelete,
         })

@@ -186,6 +186,17 @@ export function WorkspaceSpaceExplorerTree({
                 event.stopPropagation()
                 void onRenameSubmit()
               }}
+              onBlur={event => {
+                if (
+                  isRenaming &&
+                  !(
+                    event.relatedTarget instanceof Node &&
+                    event.currentTarget.contains(event.relatedTarget)
+                  )
+                ) {
+                  onRenameCancel()
+                }
+              }}
             >
               <span className="workspace-space-explorer__entry-disclosure" aria-hidden="true">
                 {renderRowDisclosure(row)}
@@ -229,9 +240,6 @@ export function WorkspaceSpaceExplorerTree({
             data-testid={`workspace-space-explorer-entry-${spaceId}-${encodeURIComponent(row.entry.uri)}`}
             title={row.entry.name}
             style={{ paddingLeft: `${10 + row.depth * 14}px` }}
-            onMouseDown={event => {
-              event.preventDefault()
-            }}
             onClick={event => {
               event.stopPropagation()
               onEntryActivate(row.entry)

@@ -5,11 +5,14 @@ import type { ShowWorkspaceCanvasMessage } from '../types'
 import { toErrorMessage } from '../helpers'
 import type { SpaceExplorerCreateMode } from './WorkspaceSpaceExplorerOverlay.model'
 import {
+  copyExplorerAbsolutePath,
+  copyExplorerRelativePath,
+} from './WorkspaceSpaceExplorerOverlay.clipboard'
+import {
   buildChildUri,
   isSameFileUri,
   isWithinDirectoryUri,
   resolveAvailablePasteTarget,
-  resolveEntryAbsolutePath,
   resolveParentDirectoryUri,
   validateCreateName,
   type SpaceExplorerClipboardItem,
@@ -146,7 +149,6 @@ export function useSpaceExplorerOverlayMutations({
     setExpandedDirectoryUris,
     t,
   ])
-
   const startRename = React.useCallback(
     (entry: FileSystemEntry) => {
       if (!ensureEntryMutable(entry)) {
@@ -164,7 +166,6 @@ export function useSpaceExplorerOverlayMutations({
     },
     [closeContextMenu, ensureEntryMutable, selectEntry],
   )
-
   const submitRename = React.useCallback(async (): Promise<void> => {
     const entry = renameEntryUri ? (entriesByUri.get(renameEntryUri) ?? null) : null
     const api = window.opencoveApi?.filesystem
@@ -219,7 +220,6 @@ export function useSpaceExplorerOverlayMutations({
     setExplorerClipboard,
     t,
   ])
-
   const readSiblingEntries = React.useCallback(
     async (directoryUri: string): Promise<FileSystemEntry[]> => {
       const listing = directoryListings[directoryUri]
@@ -234,7 +234,6 @@ export function useSpaceExplorerOverlayMutations({
     },
     [directoryListings, t],
   )
-
   const resolveSelectionTargetDirectory = React.useCallback((): string => {
     if (selectedEntryUri && selectedEntryKind === 'directory') {
       return selectedEntryUri
@@ -244,7 +243,6 @@ export function useSpaceExplorerOverlayMutations({
     }
     return rootUri
   }, [rootUri, selectedEntryKind, selectedEntryUri])
-
   const pasteIntoDirectory = React.useCallback(
     async (targetDirectoryUri: string): Promise<void> => {
       const api = window.opencoveApi?.filesystem
@@ -295,27 +293,29 @@ export function useSpaceExplorerOverlayMutations({
       t,
     ],
   )
-
   const copyPath = React.useCallback(
-    async (uri = selectedEntryUri ?? rootUri) => {
-      closeContextMenu()
-      const path = resolveEntryAbsolutePath(uri)
-      if (!path) {
-        onShowMessage?.(t('spaceExplorer.copyPathFailed'), 'error')
-        return
-      }
-      try {
-        const copyPathApi = window.opencoveApi?.workspace?.copyPath
-        if (typeof copyPathApi === 'function') {
-          await copyPathApi({ path })
-        } else {
-          await window.opencoveApi.clipboard.writeText(path)
-        }
-        onShowMessage?.(t('spaceExplorer.pathCopied'))
-      } catch (error) {
-        onShowMessage?.(toErrorMessage(error), 'error')
-      }
-    },
+    async (uri?: string) =>
+      copyExplorerAbsolutePath({
+        uri,
+        rootUri,
+        selectedEntryUri,
+        closeContextMenu,
+        t,
+        onShowMessage,
+      }),
+    [closeContextMenu, onShowMessage, rootUri, selectedEntryUri, t],
+  )
+
+  const copyRelativePath = React.useCallback(
+    async (uri?: string) =>
+      copyExplorerRelativePath({
+        uri,
+        rootUri,
+        selectedEntryUri,
+        closeContextMenu,
+        t,
+        onShowMessage,
+      }),
     [closeContextMenu, onShowMessage, rootUri, selectedEntryUri, t],
   )
 
@@ -406,7 +406,6 @@ export function useSpaceExplorerOverlayMutations({
       t,
     ],
   )
-
   const confirmMove = React.useCallback(async () => {
     const nextMove = moveConfirmation
     const api = window.opencoveApi?.filesystem
@@ -486,6 +485,7 @@ export function useSpaceExplorerOverlayMutations({
     copySelection,
     cutSelection,
     copyPath,
+    copyRelativePath,
     requestDeleteSelection,
     pasteIntoSelectionTarget: async () => {
       closeContextMenu()

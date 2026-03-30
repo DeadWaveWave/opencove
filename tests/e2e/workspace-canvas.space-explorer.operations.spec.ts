@@ -5,6 +5,7 @@ import { expect, test, type Locator, type Page } from '@playwright/test'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
   clearAndSeedWorkspace,
+  dragLocatorTo,
   launchApp,
   removePathWithRetry,
   testWorkspacePath,
@@ -146,6 +147,33 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await expect.poll(async () => await pathExists(renamedPath)).toBe(true)
       await expect.poll(async () => await pathExists(renamePath)).toBe(false)
 
+      await renamedEntry.click({ button: 'right', force: true })
+      await expect(contextMenu).toBeVisible()
+      await contextMenu.getByRole('button', { name: 'Rename' }).click()
+
+      const blurRenameInput = explorer.locator('.workspace-space-explorer__rename-input')
+      await expect(blurRenameInput).toBeVisible()
+      await blurRenameInput.fill('transient.md')
+      await explorer.locator('.workspace-space-explorer__title').click()
+      await expect(blurRenameInput).toHaveCount(0)
+      await expect.poll(async () => await pathExists(renamedPath)).toBe(true)
+      await expect
+        .poll(async () => await pathExists(path.join(fixtureDir, 'transient.md')))
+        .toBe(false)
+
+      await electronApp.evaluate(async ({ clipboard }) => {
+        clipboard.clear()
+      })
+
+      await renamedEntry.click({ button: 'right', force: true })
+      await expect(contextMenu).toBeVisible()
+      await contextMenu.getByRole('button', { name: 'Copy Relative Path' }).click()
+      await expect
+        .poll(async () => {
+          return await electronApp.evaluate(async ({ clipboard }) => clipboard.readText())
+        })
+        .toBe('renamed.md')
+
       await electronApp.evaluate(async ({ clipboard }) => {
         clipboard.clear()
       })
@@ -210,12 +238,15 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       randomUUID(),
     )
     const targetFolderPath = path.join(fixtureDir, 'nested')
-    const dragSourcePath = path.join(fixtureDir, 'drag-me.txt')
-    const movedPath = path.join(targetFolderPath, 'drag-me.txt')
+    const dragFolderPath = path.join(fixtureDir, 'drag-folder')
+    const dragChildPath = path.join(dragFolderPath, 'inside.txt')
+    const movedPath = path.join(targetFolderPath, 'drag-folder')
+    const movedChildPath = path.join(movedPath, 'inside.txt')
     const openPath = path.join(fixtureDir, 'open-me.md')
 
     await mkdir(targetFolderPath, { recursive: true })
-    await writeFile(dragSourcePath, 'drag token', 'utf8')
+    await mkdir(dragFolderPath, { recursive: true })
+    await writeFile(dragChildPath, 'drag token', 'utf8')
     await writeFile(openPath, '# open token\n', 'utf8')
 
     const { electronApp, window } = await launchApp()
@@ -224,17 +255,13 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       const spaceId = 'space-explorer-guard'
       const explorer = await openExplorer(window, spaceId, fixtureDir)
 
-      const dragSourceEntry = explorerEntry(window, spaceId, toFileUri(dragSourcePath))
+      const dragSourceEntry = explorerEntry(window, spaceId, toFileUri(dragFolderPath))
       const targetFolderEntry = explorerEntry(window, spaceId, toFileUri(targetFolderPath))
 
       await expect(dragSourceEntry).toBeVisible()
       await expect(targetFolderEntry).toBeVisible()
 
-      const dragTransfer = await window.evaluateHandle(() => new DataTransfer())
-      await dragSourceEntry.dispatchEvent('dragstart', { dataTransfer: dragTransfer })
-      await targetFolderEntry.dispatchEvent('dragover', { dataTransfer: dragTransfer })
-      await targetFolderEntry.dispatchEvent('drop', { dataTransfer: dragTransfer })
-      await dragSourceEntry.dispatchEvent('dragend', { dataTransfer: dragTransfer })
+      await dragLocatorTo(window, dragSourceEntry, targetFolderEntry)
 
       const moveConfirmation = window.locator(
         '[data-testid="workspace-space-explorer-move-confirmation"]',
@@ -242,12 +269,12 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await expect(moveConfirmation).toBeVisible()
       await expect(
         window.locator('[data-testid="workspace-space-explorer-move-message"]'),
-      ).toContainText('drag-me.txt')
+      ).toContainText('drag-folder')
       await moveConfirmation.getByRole('button', { name: 'Confirm' }).click()
 
       await expect(moveConfirmation).toBeHidden()
-      await expect.poll(async () => await pathExists(dragSourcePath)).toBe(false)
-      await expect.poll(async () => await readFile(movedPath, 'utf8')).toBe('drag token')
+      await expect.poll(async () => await pathExists(dragFolderPath)).toBe(false)
+      await expect.poll(async () => await readFile(movedChildPath, 'utf8')).toBe('drag token')
       await targetFolderEntry.dispatchEvent('click')
       await expect(explorerEntry(window, spaceId, toFileUri(movedPath))).toBeVisible()
 

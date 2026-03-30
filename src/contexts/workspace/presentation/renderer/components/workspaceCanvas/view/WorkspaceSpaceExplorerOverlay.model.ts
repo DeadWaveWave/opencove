@@ -305,6 +305,7 @@ export function useSpaceExplorerOverlayModel({
     dropTargetDirectoryUri: actions.dropTargetDirectoryUri,
     dismissTransientUi,
     copyPath: mutations.copyPath,
+    copyRelativePath: mutations.copyRelativePath,
     openRootContextMenu: actions.openRootContextMenu,
     openEntryContextMenu: actions.openEntryContextMenu,
     closeContextMenu: actions.closeContextMenu,

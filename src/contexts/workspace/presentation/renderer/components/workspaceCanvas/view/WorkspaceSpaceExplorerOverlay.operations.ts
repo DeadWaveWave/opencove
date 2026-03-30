@@ -74,6 +74,42 @@ export function resolveEntryAbsolutePath(uri: string): string | null {
   return fromFileUri(uri)
 }
 
+export function resolveEntryRelativePath(rootUri: string, uri: string): string | null {
+  try {
+    const root = new URL(rootUri)
+    const entry = new URL(uri)
+
+    if (root.protocol !== 'file:' || entry.protocol !== 'file:') {
+      return null
+    }
+
+    if ((root.host ?? '') !== (entry.host ?? '')) {
+      return null
+    }
+
+    const rootSegments = normalizePathname(root.pathname ?? '')
+      .split('/')
+      .filter(Boolean)
+      .map(segment => decodeURIComponent(segment))
+    const entrySegments = normalizePathname(entry.pathname ?? '')
+      .split('/')
+      .filter(Boolean)
+      .map(segment => decodeURIComponent(segment))
+
+    if (
+      rootSegments.length > entrySegments.length ||
+      rootSegments.some((segment, index) => segment !== entrySegments[index])
+    ) {
+      return null
+    }
+
+    const relativeSegments = entrySegments.slice(rootSegments.length)
+    return relativeSegments.length > 0 ? relativeSegments.join('/') : '.'
+  } catch {
+    return null
+  }
+}
+
 export function isSameFileUri(leftUri: string, rightUri: string): boolean {
   try {
     const left = new URL(leftUri)

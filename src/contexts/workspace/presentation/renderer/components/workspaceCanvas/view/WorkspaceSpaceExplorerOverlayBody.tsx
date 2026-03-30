@@ -54,6 +54,8 @@ export function WorkspaceSpaceExplorerOverlayBody({
     onOpenFile,
     onShowMessage,
   })
+  const explorerContextMenu = model.contextMenu
+  const closeExplorerContextMenu = model.closeContextMenu
 
   const openKeyboardContextMenu = React.useCallback(() => {
     const selectedSelector =
@@ -120,7 +122,7 @@ export function WorkspaceSpaceExplorerOverlayBody({
   }, [model.rename.entryUri, renameInputRef])
 
   React.useEffect(() => {
-    if (!model.contextMenu) {
+    if (!explorerContextMenu) {
       return
     }
 
@@ -132,14 +134,14 @@ export function WorkspaceSpaceExplorerOverlayBody({
         return
       }
 
-      model.closeContextMenu()
+      closeExplorerContextMenu()
     }
 
     window.addEventListener('pointerdown', handlePointerDown, true)
     return () => {
       window.removeEventListener('pointerdown', handlePointerDown, true)
     }
-  }, [model.closeContextMenu, model.contextMenu])
+  }, [closeExplorerContextMenu, explorerContextMenu])
 
   useWorkspaceSpaceExplorerOverlayKeyboard({
     rootRef: containerRef,
@@ -226,6 +228,17 @@ export function WorkspaceSpaceExplorerOverlayBody({
               event.preventDefault()
               event.stopPropagation()
               void model.create.submit()
+            }}
+            onBlur={event => {
+              if (
+                model.create.isCreating ||
+                (event.relatedTarget instanceof Node &&
+                  event.currentTarget.contains(event.relatedTarget))
+              ) {
+                return
+              }
+
+              model.create.cancel()
             }}
           >
             <span className="workspace-space-explorer__create-icon" aria-hidden="true">
@@ -329,6 +342,9 @@ export function WorkspaceSpaceExplorerOverlayBody({
         }}
         onCopyPath={() => {
           void model.copyPath()
+        }}
+        onCopyRelativePath={() => {
+          void model.copyRelativePath()
         }}
         onRefresh={() => {
           model.closeContextMenu()
