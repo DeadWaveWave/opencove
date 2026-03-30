@@ -94,6 +94,13 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
 
       await window.locator('.workspace-item').nth(1).click()
       await expect(window.locator('.workspace-item').nth(1)).toHaveClass(/workspace-item--active/)
+      const afterUnmountCache = await window.evaluate(() => {
+        return (
+          window.__opencoveTerminalSelectionTestApi?.getCachedScreenStateSummary?.('node-a') ?? null
+        )
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after unmount cache', afterUnmountCache)
 
       await window.locator('.workspace-item').nth(0).click()
       await expect(window.locator('.workspace-item').nth(0)).toHaveClass(/workspace-item--active/)
@@ -103,6 +110,13 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       })
       // eslint-disable-next-line no-console
       console.log('[ansi-screen] after restore size', afterRestoreSize)
+      const afterRestoreCache = await window.evaluate(() => {
+        return (
+          window.__opencoveTerminalSelectionTestApi?.getCachedScreenStateSummary?.('node-a') ?? null
+        )
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after restore cache', afterRestoreCache)
 
       const restoredTerminal = window.locator('.terminal-node').first()
       const afterRestoreHasFrame = await restoredTerminal.evaluate(el => {

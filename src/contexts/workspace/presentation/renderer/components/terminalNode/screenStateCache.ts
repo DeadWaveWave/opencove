@@ -42,6 +42,15 @@ export function getCachedTerminalScreenState(
   return cached
 }
 
+export function peekCachedTerminalScreenState(nodeId: string): CachedTerminalScreenState | null {
+  const normalizedNodeId = normalizeId(nodeId)
+  if (normalizedNodeId.length === 0) {
+    return null
+  }
+
+  return screenStateByNodeId.get(normalizedNodeId) ?? null
+}
+
 export function setCachedTerminalScreenState(
   nodeId: string,
   state: CachedTerminalScreenState,
