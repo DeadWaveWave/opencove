@@ -166,7 +166,14 @@ async function main() {
     }
 
     const code = await runCommand(
-      ['exec', 'playwright', 'test', '--config', 'playwright.web-shell.config.ts', ...forwardedArgs],
+      [
+        'exec',
+        'playwright',
+        'test',
+        '--config',
+        'playwright.web-shell.config.ts',
+        ...forwardedArgs,
+      ],
       testEnv,
     )
 
@@ -181,7 +188,7 @@ async function main() {
 }
 
 void main().catch(error => {
-  const message = error instanceof Error ? error.stack ?? error.message : String(error)
+  const message = error instanceof Error ? (error.stack ?? error.message) : String(error)
   process.stderr.write(`${message}\n`)
   process.exit(1)
 })

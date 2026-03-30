@@ -107,4 +107,3 @@ test.describe('Worker web shell', () => {
     expect(result.data?.error?.code).toBe('common.invalid_input')
   })
 })
-
