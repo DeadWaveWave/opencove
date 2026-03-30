@@ -145,10 +145,12 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const explorerBoxBeforeZoom = explorerBoxAfterOpen
 
-      // The Explorer is an overlay panel: keep its pixel size stable across canvas zoom.
+      // The Explorer is an overlay panel: keep its width stable across canvas zoom.
+      // Height may clamp to the visible app bottom when the space moves under zoom.
       expect(Math.abs(explorerBoxZoomed.width - explorerBoxBeforeZoom.width)).toBeLessThanOrEqual(2)
-      expect(Math.abs(explorerBoxZoomed.height - explorerBoxBeforeZoom.height)).toBeLessThanOrEqual(
-        2,
+      const viewportHeight = await window.evaluate(() => window.innerHeight)
+      expect(Math.ceil(explorerBoxZoomed.y + explorerBoxZoomed.height)).toBeLessThanOrEqual(
+        viewportHeight,
       )
 
       await testInfo.attach(`space-explorer-zoomed-${browserName}`, {
