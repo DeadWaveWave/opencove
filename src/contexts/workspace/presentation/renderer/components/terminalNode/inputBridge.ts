@@ -58,11 +58,19 @@ export function isWindowsTerminalPasteShortcut(
   return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
 }
 
+export function isMacPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
+  if (!platformInfo) {
+    return false
+  }
+
+  return /mac/i.test(platformInfo.platform ?? '') || /macintosh/i.test(platformInfo.userAgent ?? '')
+}
+
 export function isMacTerminalPasteShortcut(
   event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
   platformInfo: PlatformInfo | undefined = navigator,
 ): boolean {
-  if (isWindowsPlatform(platformInfo) || event.ctrlKey || event.altKey) {
+  if (!isMacPlatform(platformInfo) || event.ctrlKey || event.altKey) {
     return false
   }
 

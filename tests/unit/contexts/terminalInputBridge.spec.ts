@@ -43,14 +43,6 @@ describe('isMacTerminalPasteShortcut', () => {
     ).toBe(false)
   })
 
-  it('returns true for Meta+V on Linux', () => {
-    expect(
-      isMacTerminalPasteShortcut(
-        { key: 'v', metaKey: true, ctrlKey: false, altKey: false, shiftKey: false },
-        { platform: 'Linux x86_64' },
-      ),
-    ).toBe(true)
-  })
 })
 
 describe('handleTerminalCustomKeyEvent', () => {
