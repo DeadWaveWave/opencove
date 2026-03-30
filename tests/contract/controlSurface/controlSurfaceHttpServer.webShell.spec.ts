@@ -24,15 +24,20 @@ async function waitForCondition(
   const intervalMs = options?.intervalMs ?? 50
   const startedAt = Date.now()
 
-  while (Date.now() - startedAt < timeoutMs) {
+  const poll = async (): Promise<void> => {
     if (await predicate()) {
       return
     }
 
+    if (Date.now() - startedAt >= timeoutMs) {
+      throw new Error('Timed out waiting for condition.')
+    }
+
     await new Promise(resolveDelay => setTimeout(resolveDelay, intervalMs))
+    await poll()
   }
 
-  throw new Error('Timed out waiting for condition.')
+  await poll()
 }
 
 async function safeRemoveDirectory(directoryPath: string): Promise<void> {
