@@ -1,4 +1,5 @@
 import React from 'react'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { ChevronDown, Tag, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
@@ -29,7 +30,6 @@ export function WorkspaceCanvasTopOverlays({
   const { t } = useTranslation()
   const [isFilterMenuOpen, setIsFilterMenuOpen] = React.useState(false)
   const filterTriggerRef = React.useRef<HTMLButtonElement | null>(null)
-  const filterMenuRef = React.useRef<HTMLDivElement | null>(null)
 
   const orderedUsedLabelColors = React.useMemo(() => {
     const usedSet = new Set(usedLabelColors)
@@ -42,64 +42,27 @@ export function WorkspaceCanvasTopOverlays({
     return ordered
   }, [usedLabelColors, activeLabelColorFilter])
 
-  const filterMenuStyle = React.useMemo((): React.CSSProperties | undefined => {
+  const filterMenuPlacement = React.useMemo(() => {
     if (!isFilterMenuOpen) {
-      return undefined
+      return null
     }
 
     const rect = filterTriggerRef.current?.getBoundingClientRect() ?? null
-    const viewportWidth = typeof window === 'undefined' ? 1280 : window.innerWidth
-    const viewportHeight = typeof window === 'undefined' ? 720 : window.innerHeight
-
-    const menuWidth = 196
-    const menuHeight = 280
-    const viewportPadding = 12
-    const offset = 6
-
-    const anchorLeft = rect?.left ?? viewportPadding
-    const anchorTop = rect?.bottom ?? viewportPadding
-
-    const left = Math.min(anchorLeft, viewportWidth - menuWidth - viewportPadding)
-    const top = Math.min(anchorTop + offset, viewportHeight - menuHeight - viewportPadding)
-
-    return { top, left }
+    return {
+      type: 'point' as const,
+      point: {
+        x: rect?.left ?? 12,
+        y: (rect?.bottom ?? 12) + 6,
+      },
+      estimatedSize: {
+        width: 196,
+        height: 280,
+      },
+    }
   }, [isFilterMenuOpen])
 
   const hasAnyOverlay =
     selectedNodeCount > 0 || spaces.length > 0 || orderedUsedLabelColors.length > 0
-
-  React.useEffect(() => {
-    if (!isFilterMenuOpen) {
-      return
-    }
-
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target
-      if (!(target instanceof Node)) {
-        setIsFilterMenuOpen(false)
-        return
-      }
-
-      if (filterTriggerRef.current?.contains(target) || filterMenuRef.current?.contains(target)) {
-        return
-      }
-
-      setIsFilterMenuOpen(false)
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setIsFilterMenuOpen(false)
-      }
-    }
-
-    window.addEventListener('pointerdown', onPointerDown, { capture: true })
-    window.addEventListener('keydown', onKeyDown, { capture: true })
-    return () => {
-      window.removeEventListener('pointerdown', onPointerDown, { capture: true })
-      window.removeEventListener('keydown', onKeyDown, { capture: true })
-    }
-  }, [isFilterMenuOpen])
 
   if (!hasAnyOverlay) {
     return null
@@ -176,16 +139,19 @@ export function WorkspaceCanvasTopOverlays({
             ) : null}
           </div>
 
-          {isFilterMenuOpen ? (
-            <div
-              ref={filterMenuRef}
+          {isFilterMenuOpen && filterMenuPlacement ? (
+            <ViewportMenuSurface
+              open={true}
               className="workspace-context-menu workspace-label-color-filter__menu"
               data-testid="workspace-label-color-filter-menu"
-              style={filterMenuStyle}
+              placement={filterMenuPlacement}
               role="menu"
-              onClick={event => {
-                event.stopPropagation()
+              onDismiss={() => {
+                setIsFilterMenuOpen(false)
               }}
+              dismissOnPointerDownOutside={true}
+              dismissOnEscape={true}
+              dismissIgnoreRefs={[filterTriggerRef]}
             >
               <button
                 type="button"
@@ -228,7 +194,7 @@ export function WorkspaceCanvasTopOverlays({
                   <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
                 </button>
               ))}
-            </div>
+            </ViewportMenuSurface>
           ) : null}
         </>
       ) : null}
