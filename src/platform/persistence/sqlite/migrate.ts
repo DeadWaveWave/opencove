@@ -39,7 +39,8 @@ function createTables(db: Database.Database): void {
       viewport_y REAL NOT NULL,
       viewport_zoom REAL NOT NULL,
       is_minimap_visible INTEGER NOT NULL,
-      active_space_id TEXT
+      active_space_id TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS nodes (
@@ -146,6 +147,21 @@ function ensureTableColumn(
   )
 }
 
+function backfillWorkspaceSortOrder(db: Database.Database): void {
+  const allZero = db.prepare('SELECT COUNT(*) as cnt FROM workspaces WHERE sort_order != 0').get() as {
+    cnt: number
+  }
+  if (allZero.cnt > 0) {
+    return
+  }
+
+  const rows = db.prepare('SELECT id FROM workspaces ORDER BY rowid').all() as { id: string }[]
+  const update = db.prepare('UPDATE workspaces SET sort_order = ? WHERE id = ?')
+  rows.forEach((row, index) => {
+    update.run(index, row.id)
+  })
+}
+
 function ensureCurrentSchema(db: Database.Database): void {
   createTables(db)
 
@@ -160,6 +176,14 @@ function ensureCurrentSchema(db: Database.Database): void {
     columnName: 'space_archive_records_json',
     definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
   })
+
+  ensureTableColumn(db, {
+    tableName: 'workspaces',
+    columnName: 'sort_order',
+    definitionSql: 'INTEGER NOT NULL DEFAULT 0',
+  })
+
+  backfillWorkspaceSortOrder(db)
 
   ensureTableColumn(db, {
     tableName: 'nodes',

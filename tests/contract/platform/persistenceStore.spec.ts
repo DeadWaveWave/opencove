@@ -8,6 +8,10 @@ const PERSISTENCE_STORE_TEST_TIMEOUT_MS = 20_000
 type MockDbState = {
   userVersion: number
   tables: Map<string, string[]>
+  workspaceRows: Array<{
+    id: string
+    sortOrder: number | null
+  }>
   openAttempts: number
   failOnFirstOpen?: boolean
 }
@@ -27,6 +31,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'viewport_zoom',
     'is_minimap_visible',
     'active_space_id',
+    'sort_order',
   ],
   nodes: [
     'id',
@@ -128,11 +133,19 @@ function createMockDbState(
     userVersion?: number
     version2Schema?: boolean
     failOnFirstOpen?: boolean
+    workspaceRows?: Array<{
+      id: string
+      sortOrder?: number
+    }>
   } = {},
 ): MockDbState {
   return {
     userVersion: options.userVersion ?? 0,
     tables: options.version2Schema ? createVersion2Tables() : new Map<string, string[]>(),
+    workspaceRows: (options.workspaceRows ?? []).map(row => ({
+      id: row.id,
+      sortOrder: row.sortOrder ?? null,
+    })),
     openAttempts: 0,
     ...(options.failOnFirstOpen ? { failOnFirstOpen: true } : {}),
   }
@@ -215,6 +228,44 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
         }
       }
 
+      if (sql === 'SELECT COUNT(*) as cnt FROM workspaces WHERE sort_order != 0') {
+        return {
+          all: () => [],
+          get: () => ({
+            cnt: this.state.workspaceRows.filter(row => (row.sortOrder ?? 0) !== 0).length,
+          }),
+          run: () => undefined,
+        }
+      }
+
+      if (sql === 'SELECT id FROM workspaces ORDER BY rowid') {
+        return {
+          all: () => this.state.workspaceRows.map(row => ({ id: row.id })),
+          get: () => undefined,
+          run: () => undefined,
+        }
+      }
+
+      if (sql === 'UPDATE workspaces SET sort_order = ? WHERE id = ?') {
+        return {
+          all: () => [],
+          get: () => undefined,
+          run: (...params: unknown[]) => {
+            const [sortOrder, id] = params
+            if (typeof sortOrder !== 'number' || typeof id !== 'string') {
+              throw new Error('Invalid workspace sort_order backfill parameters')
+            }
+
+            const row = this.state.workspaceRows.find(workspaceRow => workspaceRow.id === id)
+            if (!row) {
+              throw new Error(`Unknown workspace row: ${id}`)
+            }
+
+            row.sortOrder = sortOrder
+          },
+        }
+      }
+
       const insertMatch = sql.match(
         /INSERT INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([\s\S]*?)\)\s*VALUES/i,
       )
@@ -278,6 +329,41 @@ describe('PersistenceStore', () => {
     await rm(tempDir, { recursive: true, force: true })
     tempDir = ''
   })
+
+  it(
+    'repairs the workspaces schema and backfills sort_order in legacy rowid order',
+    async () => {
+      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
+      const dbPath = join(tempDir, 'opencove.db')
+      const mockDbByPath = new Map<string, MockDbState>([
+        [
+          dbPath,
+          createMockDbState({
+            userVersion: 5,
+            version2Schema: true,
+            workspaceRows: [{ id: 'ws-2' }, { id: 'ws-4' }, { id: 'ws-1' }],
+          }),
+        ],
+      ])
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
+
+      const { createPersistenceStore } =
+        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
+
+      const store = await createPersistenceStore({ dbPath })
+      expect(store.consumeRecovery()).toBeNull()
+      store.dispose()
+
+      const repairedState = mockDbByPath.get(dbPath)
+      expect(repairedState?.tables.get('workspaces')).toContain('sort_order')
+      expect(repairedState?.workspaceRows).toEqual([
+        { id: 'ws-2', sortOrder: 0 },
+        { id: 'ws-4', sortOrder: 1 },
+        { id: 'ws-1', sortOrder: 2 },
+      ])
+    },
+    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
+  )
 
   it(
     'creates a backup when migrating an existing db file',

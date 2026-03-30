@@ -24,6 +24,7 @@ export const workspaces = sqliteTable('workspaces', {
   viewportZoom: real('viewport_zoom').notNull(),
   isMinimapVisible: integer('is_minimap_visible', { mode: 'boolean' }).notNull(),
   activeSpaceId: text('active_space_id'),
+  sortOrder: integer('sort_order').notNull().default(0),
 })
 
 export const nodes = sqliteTable('nodes', {
