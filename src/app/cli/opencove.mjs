@@ -1,5 +1,10 @@
 #!/usr/bin/env node
 
+import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { readFlagValue, requireFlagValue, resolveTimeoutMs, stripGlobalOptions } from './args.mjs'
 import { resolveConnectionInfo } from './connection.mjs'
 import { invokeAndPrint } from './invoke.mjs'
@@ -21,6 +26,8 @@ async function main() {
   const argv = process.argv.slice(2)
   const wantsHelp = argv.includes('--help') || argv.includes('-h')
   const pretty = argv.includes('--pretty')
+  const endpoint = readFlagValue(argv, '--endpoint')
+  const token = readFlagValue(argv, '--token')
 
   const timeoutMs = resolveTimeoutMs(argv)
   const args = stripGlobalOptions(argv)
@@ -31,7 +38,91 @@ async function main() {
     process.exit(command.length === 0 ? 2 : 0)
   }
 
-  const connection = await resolveConnectionInfo()
+  if (command === 'worker' && args[1] === 'start') {
+    const cliDir = resolve(fileURLToPath(new URL('.', import.meta.url)))
+    const repoRoot = resolve(cliDir, '../../..')
+    const workerPath = resolve(repoRoot, 'out', 'main', 'worker.js')
+
+    if (!existsSync(workerPath)) {
+      process.stderr.write('[opencove] worker is not built. Run `pnpm build` first.\n')
+      process.exit(2)
+    }
+
+    const workerArgs = []
+    const hostname = readFlagValue(argv, '--hostname')
+    const port = readFlagValue(argv, '--port')
+    const userData = readFlagValue(argv, '--user-data')
+    const approvedRoots = []
+
+    for (let index = 0; index < argv.length; index += 1) {
+      if (argv[index] !== '--approve-root') {
+        continue
+      }
+
+      const next = argv[index + 1]
+      if (!next || next.startsWith('-')) {
+        continue
+      }
+
+      const normalized = next.trim()
+      if (normalized.length > 0) {
+        approvedRoots.push(normalized)
+      }
+    }
+
+    if (hostname) {
+      workerArgs.push('--hostname', hostname)
+    }
+
+    if (port) {
+      workerArgs.push('--port', port)
+    }
+
+    if (userData) {
+      workerArgs.push('--user-data', userData)
+    }
+
+    if (token) {
+      workerArgs.push('--token', token)
+    }
+
+    for (const root of approvedRoots) {
+      workerArgs.push('--approve-root', root)
+    }
+
+    const child = spawn(process.execPath, [workerPath, ...workerArgs], { stdio: 'inherit' })
+    child.on('exit', code => {
+      process.exit(code ?? 1)
+    })
+
+    return
+  }
+
+  const connection = endpoint
+    ? (() => {
+        if (!token) {
+          process.stderr.write('[opencove] missing required flag: --token <token>\n')
+          process.exit(2)
+        }
+
+        let parsed
+        try {
+          parsed = new URL(endpoint.includes('://') ? endpoint : `http://${endpoint}`)
+        } catch {
+          process.stderr.write(`[opencove] invalid endpoint: ${endpoint}\n`)
+          process.exit(2)
+        }
+
+        const port = Number(parsed.port)
+        if (!Number.isFinite(port) || port <= 0) {
+          process.stderr.write(`[opencove] endpoint must include port: ${endpoint}\n`)
+          process.exit(2)
+        }
+
+        return { hostname: parsed.hostname, port, token }
+      })()
+    : await resolveConnectionInfo()
+
   if (!connection) {
     process.stderr.write(
       '[opencove] control surface is not running (no valid connection info found).\n',
@@ -40,6 +131,16 @@ async function main() {
   }
 
   if (command === 'ping') {
+    await invokeAndPrint(
+      connection,
+      { kind: 'query', id: 'system.ping', payload: null },
+      { pretty, timeoutMs },
+    )
+
+    return
+  }
+
+  if (command === 'worker' && args[1] === 'status') {
     await invokeAndPrint(
       connection,
       { kind: 'query', id: 'system.ping', payload: null },

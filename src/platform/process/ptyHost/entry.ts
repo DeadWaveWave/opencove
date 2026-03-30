@@ -1,6 +1,7 @@
 import process from 'node:process'
 import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
+import { parentPort as workerParentPort } from 'node:worker_threads'
 import {
   isPtyHostRequest,
   PTY_HOST_PROTOCOL_VERSION,
@@ -20,10 +21,49 @@ type ParentPort = {
   start: () => void
 }
 
+type ChildProcessPort = {
+  on: (event: 'message', listener: (message: unknown) => void) => void
+  send?: (message: unknown) => void
+}
+
 function resolveParentPort(): ParentPort {
   const parentPort = (process as unknown as { parentPort?: ParentPort }).parentPort
   if (!parentPort) {
-    throw new Error('[pty-host] missing process.parentPort')
+    const port = workerParentPort
+    if (!port) {
+      const childProcessPort = process as unknown as ChildProcessPort
+      if (typeof childProcessPort.send !== 'function') {
+        throw new Error('[pty-host] missing parent port')
+      }
+
+      return {
+        on: (_event, listener) => {
+          childProcessPort.on('message', message => {
+            listener({ data: message })
+          })
+        },
+        postMessage: message => {
+          childProcessPort.send?.(message)
+        },
+        start: () => {
+          // Node.js child_process IPC does not require an explicit start call.
+        },
+      }
+    }
+
+    return {
+      on: (_event, listener) => {
+        port.on('message', message => {
+          listener({ data: message })
+        })
+      },
+      postMessage: message => {
+        port.postMessage(message)
+      },
+      start: () => {
+        // Node.js worker_threads parentPort does not require an explicit start call.
+      },
+    }
   }
 
   return parentPort
