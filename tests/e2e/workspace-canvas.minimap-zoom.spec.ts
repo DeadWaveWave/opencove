@@ -251,7 +251,11 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
 
       await expect(window.locator('.react-flow__node.dragging')).toHaveCount(0)
 
-      await pane.click({ position: { x: 40, y: 40 } })
+      // Use a raw mouse click instead of locator.click here. In inactive CI window mode,
+      // Playwright actionability checks on the transformed pane can hang behind overlays.
+      const paneBlankClickX = paneBox.x + Math.min(80, Math.max(40, paneBox.width * 0.08))
+      const paneBlankClickY = paneBox.y + Math.min(80, Math.max(40, paneBox.height * 0.08))
+      await window.mouse.click(paneBlankClickX, paneBlankClickY)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       const terminalBody = terminal.locator('.terminal-node__terminal')
