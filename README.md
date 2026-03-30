@@ -134,3 +134,22 @@ Scan the QR code below to join the OpenCove community group and chat with other 
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
 </div>
+
+
+## Installation
+
+```bash
+# Installation instructions
+```
+
+
+## Usage
+
+```python
+# Usage examples
+```
+
+
+## Contributing
+
+Contributions are welcome!
