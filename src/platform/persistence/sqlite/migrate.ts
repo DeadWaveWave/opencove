@@ -220,6 +220,7 @@ export function migrate(db: Database.Database): void {
       const normalized = normalizePersistedAppState(parsed)
       if (normalized) {
         writeNormalizedAppState(db, normalized)
+        backfillWorkspaceSortOrder(db)
         writeNormalizedScrollbacks(db, normalized)
       }
     }
