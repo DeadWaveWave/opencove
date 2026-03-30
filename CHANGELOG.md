@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
 - Settings: standard window size bucket (compact/regular/large) for node create/arrange sizing (replaces runtime auto-sizing). (#70)
 - Task: prompt templates for task requirement prefix injection (Global + Project scopes). (#71)
+- Sync-first: multi-client snapshot + revision + SSE `/events` for the worker control surface (Desktop/Web/CLI). (#122)
 
 ### 💅 Changed
 - Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
