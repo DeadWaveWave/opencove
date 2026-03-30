@@ -218,7 +218,12 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       await expect(pane).toBeVisible()
       const headerBox = await readClientRect(header)
       const paneBox = await readClientRect(pane)
-      if (headerBox.width <= 0 || headerBox.height <= 0 || paneBox.width <= 0 || paneBox.height <= 0) {
+      if (
+        headerBox.width <= 0 ||
+        headerBox.height <= 0 ||
+        paneBox.width <= 0 ||
+        paneBox.height <= 0
+      ) {
         throw new Error('header/pane client rect unavailable for zoom-preserving drag')
       }
 
