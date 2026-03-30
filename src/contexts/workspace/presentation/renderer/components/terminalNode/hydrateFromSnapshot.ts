@@ -2,14 +2,25 @@ import type { Terminal } from '@xterm/xterm'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
 
-const ALT_BUFFER_MARKER = '\u001b[?1049h'
+const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
+const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
 
-function shouldSkipRawDeltaForSerializedScreen(serialized: string): boolean {
+function shouldSkipRawDeltaForSerializedScreen(serialized: string, delta: string): boolean {
   // xterm serialize addon prefixes alternate buffer content with ESC[?1049h ESC[H. When a TUI is in
   // alternate buffer, replaying raw PTY deltas (which are capped/truncated) can clobber the screen
   // with prompt/redraw output that happened while the terminal was detached. Prefer restoring the
   // committed serialized screen and let live output update it going forward.
-  return serialized.includes(ALT_BUFFER_MARKER)
+  if (!serialized.includes(ALT_BUFFER_ENTER_MARKER)) {
+    return false
+  }
+
+  // If the process exited the alternate buffer while detached, we must replay the delta so that
+  // application cursor/raw-mode exits (and the shell prompt) restore correctly.
+  if (delta.includes(ALT_BUFFER_EXIT_MARKER)) {
+    return false
+  }
+
+  return true
 }
 
 export async function hydrateTerminalFromSnapshot({
@@ -48,7 +59,7 @@ export async function hydrateTerminalFromSnapshot({
     const snapshot = await takePtySnapshot({ sessionId })
     if (cachedSerializedScreen.length > 0) {
       const delta = resolveScrollbackDelta(baseRawSnapshot, snapshot.data)
-      restoredPayload = shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen)
+      restoredPayload = shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)
         ? cachedSerializedScreen
         : `${cachedSerializedScreen}${delta}`
       rawSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
