@@ -8,6 +8,7 @@ type TerminalSelectionHandle = Pick<
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
+  getSize: (nodeId: string) => { cols: number; rows: number } | null
   emitBinaryInput: (nodeId: string, data: string) => boolean
   getSelection: (nodeId: string) => string | null
   hasSelection: (nodeId: string) => boolean
@@ -93,6 +94,17 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return {
           x: rect.left + (leftPadding + (clampedCol - 0.5) * cellWidth) * scaleX,
           y: rect.top + (topPadding + (clampedRow - 0.5) * cellHeight) * scaleY,
+        }
+      },
+      getSize: nodeId => {
+        const terminal = terminalHandles.get(nodeId)
+        if (!terminal) {
+          return null
+        }
+
+        return {
+          cols: terminal.cols,
+          rows: terminal.rows,
         }
       },
       emitBinaryInput: (nodeId, data) => {

@@ -53,6 +53,13 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       await expect(terminal).toBeVisible()
       await expect(terminal.locator('.xterm')).toBeVisible()
 
+      const initialSize = await window.evaluate(() => {
+        return window.__opencoveTerminalSelectionTestApi?.getSize?.('node-a') ?? null
+      })
+      // Useful when debugging linux-only fit/hydration regressions (printed to CI logs on failure).
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] initial size', initialSize)
+
       const command = buildNodeEvalCommand(
         [
           'const esc="\\x1b[";',
@@ -74,11 +81,23 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       await expect(terminal).toContainText('ROW_10_STATIC', { timeout: 20_000 })
       await expect(terminal).toContainText('FRAME_29999_TOKEN', { timeout: 20_000 })
 
+      const beforeSwitchSize = await window.evaluate(() => {
+        return window.__opencoveTerminalSelectionTestApi?.getSize?.('node-a') ?? null
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] before switch size', beforeSwitchSize)
+
       await window.locator('.workspace-item').nth(1).click()
       await expect(window.locator('.workspace-item').nth(1)).toHaveClass(/workspace-item--active/)
 
       await window.locator('.workspace-item').nth(0).click()
       await expect(window.locator('.workspace-item').nth(0)).toHaveClass(/workspace-item--active/)
+
+      const afterRestoreSize = await window.evaluate(() => {
+        return window.__opencoveTerminalSelectionTestApi?.getSize?.('node-a') ?? null
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after restore size', afterRestoreSize)
 
       const restoredTerminal = window.locator('.terminal-node').first()
       await expect(restoredTerminal).toContainText('FRAME_29999_TOKEN', { timeout: 20_000 })
