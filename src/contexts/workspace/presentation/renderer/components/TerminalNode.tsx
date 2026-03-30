@@ -220,6 +220,7 @@ export function TerminalNode({
       if (window.opencoveApi.meta.isTest) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
+      syncTerminalSize()
       requestAnimationFrame(syncTerminalSize)
       if (window.opencoveApi.meta.isTest) {
         terminal.focus()
@@ -237,7 +238,6 @@ export function TerminalNode({
       terminalThemeMode,
       windowsPty,
     })
-
     let isDisposed = false
     let shouldForwardTerminalData = false
     const dataDisposable = terminal.onData(data => {

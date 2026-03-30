@@ -8,7 +8,11 @@ import {
 
 test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
   test('preserves full-screen ANSI content after workspace switch', async () => {
-    const { electronApp, window } = await launchApp()
+    const { electronApp, window } = await launchApp({
+      env: {
+        OPENCOVE_TERMINAL_DIAGNOSTICS: '1',
+      },
+    })
 
     try {
       await seedWorkspaceState(window, {
