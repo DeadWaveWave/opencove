@@ -47,7 +47,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
   const settingsValue =
     typeof settingsRow?.value === 'string' ? safeJsonParse(settingsRow.value) : {}
 
-  const workspaceRows = db.select().from(workspaces).all()
+  const workspaceRows = db.select().from(workspaces).orderBy(workspaces.sortOrder).all()
   const nodeRows = db.select().from(nodes).all()
   const spaceRows = db.select().from(spaces).all()
   const spaceNodeRows = db.select().from(spaceNodes).all()
