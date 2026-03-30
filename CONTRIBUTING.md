@@ -31,6 +31,17 @@ This project and everyone participating in it is governed by the [Code of Conduc
 - **pnpm**: `>= 9`
 - **OS**: macOS, Windows, or Linux
 
+#### Windows additional requirements
+
+Building on Windows requires native module compilation (`better-sqlite3`, `node-pty`). Before running `pnpm install`:
+
+1. Install **Visual Studio 2022 Build Tools** from [visualstudio.microsoft.com/downloads](https://visualstudio.microsoft.com/downloads/) (scroll to "Tools for Visual Studio" → "Build Tools for Visual Studio 2022")
+   - Select the **"Desktop development with C++"** workload
+   - Ensure **Windows 10/11 SDK** is included (checked by default)
+2. Install **Python 3.x** (required by node-gyp) — [python.org](https://www.python.org/downloads/) or via `winget install Python.Python.3`
+
+> **Note:** VS Build Tools 2022 is version 17.x (internally `versionMajor=17`). Some older versions of `node-gyp` bundled with `@electron/rebuild` may not detect it correctly. If you see a `Could not find any Visual Studio installation` error, verify your installation includes the C++ workload. A fix for full MSVC v18 support is tracked in [#102](https://github.com/DeadWaveWave/opencove/issues/102).
+
 ### Setup
 
 ```bash
