@@ -42,7 +42,6 @@ describe('isMacTerminalPasteShortcut', () => {
       ),
     ).toBe(false)
   })
-
 })
 
 describe('handleTerminalCustomKeyEvent', () => {
