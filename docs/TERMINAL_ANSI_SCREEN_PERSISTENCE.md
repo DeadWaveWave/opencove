@@ -38,8 +38,10 @@ caches an xterm SerializeAddon-based "committed screen state" on unmount.
    - cache `{ serializedScreen, rawSnapshotBase, cols, rows }` per `nodeId/sessionId`
 2. On mount:
    - write cached `serializedScreen`
-   - fetch `pty.snapshot` and append only the delta (computed via suffix/prefix overlap)
-   - this catches up the screen to the latest PTY state without relying on full raw replay
+   - fetch `pty.snapshot` and compute a delta (suffix/prefix overlap)
+   - for normal-buffer restores: append the delta to catch up
+   - for alternate-buffer restores: only append the delta when it contains an explicit alt-buffer exit (`ESC[?1049l`)
+     otherwise, skip the delta to avoid clobbering the committed full-screen snapshot with prompt/redraw output
 
 ## Failure Mode
 
@@ -52,6 +54,11 @@ persisted scrollback, which can be:
 - stale (publish is debounced)
 - or trimmed (cap) such that the expected final frame token is missing
 
+Even when the cache contains the expected frame token, restoring can still fail if we immediately
+replay the raw PTY delta on top of the committed serialized snapshot. In CI we observed the delta
+containing the shell prompt/redraw output that happened while the workspace was inactive, which can
+overwrite the last full-screen frame line.
+
 ## Fix
 
 Keep the latest committed screen cache even when there are pending writes.
@@ -59,6 +66,14 @@ Keep the latest committed screen cache even when there are pending writes.
 The cache is allowed to be slightly behind; the remount path will still fetch `pty.snapshot` and
 apply the delta to catch up. Deleting the cache entirely is worse because it removes the only
 representation that can preserve alternate-screen semantics when the raw snapshot cap is exceeded.
+
+In addition, treat alternate-screen restores as a special case:
+
+- Skip replaying the raw PTY delta unless it contains an explicit alt-buffer exit (`ESC[?1049l`).
+  This keeps "what the user last saw" stable and prevents prompt/redraw output from clobbering the
+  cached full-screen snapshot.
+- Suppress PTY resizes (SIGWINCH) during alternate-screen restore until the user types again, so a
+  shell redraw cannot wipe the cached frame before it is visible.
 
 ## Verification
 
@@ -79,4 +94,3 @@ CI:
 - Add bounded "drain pending writes before caching" logic on unmount (avoid UI jank).
 - Extend `OPENCOVE_TERMINAL_DIAGNOSTICS=1` to log cache/hydrate decision points (cache hit/miss,
   pending writes, raw snapshot lengths, alt/normal buffer kind).
-
