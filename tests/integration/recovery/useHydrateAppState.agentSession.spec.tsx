@@ -9,10 +9,12 @@ function createPersistedState({
   prompt,
   status,
   startedAt,
+  profileId = null,
 }: {
   prompt: string
   status: 'running' | 'standby'
   startedAt: string
+  profileId?: string | null
 }) {
   return {
     activeWorkspaceId: 'workspace-1',
@@ -39,6 +41,7 @@ function createPersistedState({
             exitCode: null,
             lastError: null,
             scrollback: null,
+            profileId,
             agent: {
               provider: 'codex',
               prompt,
@@ -135,6 +138,7 @@ describe('useHydrateAppState agent session restore', () => {
           prompt: '',
           status: 'standby',
           startedAt: originalStartedAt,
+          profileId: 'wsl:Ubuntu',
         }),
       ),
     )
@@ -170,6 +174,7 @@ describe('useHydrateAppState agent session restore', () => {
     expect(launch).toHaveBeenCalledWith({
       provider: 'codex',
       cwd: '/tmp/workspace-1/agent',
+      profileId: 'wsl:Ubuntu',
       prompt: '',
       mode: 'new',
       model: 'gpt-5.2-codex',
@@ -286,6 +291,7 @@ describe('useHydrateAppState agent session restore', () => {
     expect(launch).toHaveBeenCalledWith({
       provider: 'codex',
       cwd: '/tmp/workspace-1/agent',
+      profileId: null,
       prompt: 'implement login flow',
       mode: 'resume',
       model: 'gpt-5.2-codex',
@@ -301,5 +307,65 @@ describe('useHydrateAppState agent session restore', () => {
       'resolved-codex-session',
     )
     expect(screen.getByTestId('agent-resume-session-verified')).toHaveTextContent('true')
+  })
+
+  it('falls back to the agent execution directory when resume restore fails', async () => {
+    const storage = installMockStorage()
+
+    storage.setItem(
+      'opencove:m0:workspace-state',
+      JSON.stringify(
+        createPersistedState({
+          prompt: 'recover login flow',
+          status: 'running',
+          startedAt: '2026-03-08T09:00:00.000Z',
+          profileId: 'wsl:Ubuntu',
+        }),
+      ),
+    )
+
+    const spawn = vi.fn(async () => ({
+      sessionId: 'fallback-shell-session',
+      profileId: 'wsl:Ubuntu',
+      runtimeKind: 'wsl' as const,
+    }))
+    const launch = vi.fn(async () => {
+      throw new Error('resume failed')
+    })
+    const resolveResumeSessionId = vi.fn(async () => ({
+      resumeSessionId: 'resolved-codex-session',
+    }))
+
+    installMockApi({ spawn, launch, resolveResumeSessionId })
+
+    const { useHydrateAppState } =
+      await import('../../../src/app/renderer/shell/hooks/useHydrateAppState')
+
+    render(React.createElement(createHarness(useHydrateAppState)))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hydrated')).toHaveTextContent('true')
+    })
+
+    expect(launch).toHaveBeenCalledWith({
+      provider: 'codex',
+      cwd: '/tmp/workspace-1/agent',
+      profileId: 'wsl:Ubuntu',
+      prompt: 'recover login flow',
+      mode: 'resume',
+      model: 'gpt-5.2-codex',
+      resumeSessionId: 'resolved-codex-session',
+      agentFullAccess: true,
+      cols: 80,
+      rows: 24,
+    })
+    expect(spawn).toHaveBeenCalledWith({
+      cwd: '/tmp/workspace-1/agent',
+      profileId: 'wsl:Ubuntu',
+      cols: 80,
+      rows: 24,
+    })
+    expect(screen.getByTestId('agent-session-id')).toHaveTextContent('fallback-shell-session')
+    expect(screen.getByTestId('agent-status')).toHaveTextContent('failed')
   })
 })

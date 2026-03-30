@@ -39,6 +39,7 @@ export const IPC_CHANNELS = {
   integrationGithubResolvePullRequests: 'integration:github:resolve-pull-requests',
   windowChromeSetTheme: 'window-chrome:set-theme',
   windowMetricsGetDisplayInfo: 'window-metrics:get-display-info',
+  terminalDiagnosticsLog: 'terminal:diagnostics-log',
   ptySpawn: 'pty:spawn',
   ptyListProfiles: 'pty:list-profiles',
   ptyWrite: 'pty:write',

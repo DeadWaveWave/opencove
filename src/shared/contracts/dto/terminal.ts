@@ -2,6 +2,11 @@ export interface PseudoTerminalSession {
   sessionId: string
 }
 
+export interface TerminalWindowsPty {
+  backend: 'conpty'
+  buildNumber: number
+}
+
 export type TerminalRuntimeKind = 'windows' | 'wsl' | 'posix'
 
 export interface TerminalProfile {

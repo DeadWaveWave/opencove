@@ -19,6 +19,7 @@ interface UseAgentNodeLifecycleParams {
   bumpAgentLaunchToken: (nodeId: string) => number
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
+  defaultTerminalProfileId: string | null
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
@@ -27,6 +28,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
   agentFullAccess,
+  defaultTerminalProfileId,
 }: UseAgentNodeLifecycleParams): {
   buildAgentNodeTitle: (
     provider: AgentNodeData['provider'],
@@ -53,41 +55,45 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       const launchData = node.data.agent
 
       if (mode === 'resume' && !isResumeSessionBindingVerified(launchData)) {
-        setNodes(prevNodes =>
-          prevNodes.map(item => {
-            if (item.id !== nodeId) {
-              return item
-            }
+        setNodes(
+          prevNodes =>
+            prevNodes.map(item => {
+              if (item.id !== nodeId) {
+                return item
+              }
 
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                status: 'failed',
-                lastError: t('messages.resumeSessionMissing'),
-              },
-            }
-          }),
+              return {
+                ...item,
+                data: {
+                  ...item.data,
+                  status: 'failed',
+                  lastError: t('messages.resumeSessionMissing'),
+                },
+              }
+            }),
+          { syncLayout: false },
         )
         return
       }
 
       if (mode === 'new' && launchData.prompt.trim().length === 0) {
-        setNodes(prevNodes =>
-          prevNodes.map(item => {
-            if (item.id !== nodeId) {
-              return item
-            }
+        setNodes(
+          prevNodes =>
+            prevNodes.map(item => {
+              if (item.id !== nodeId) {
+                return item
+              }
 
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                status: 'failed',
-                lastError: t('messages.agentPromptRequired'),
-              },
-            }
-          }),
+              return {
+                ...item,
+                data: {
+                  ...item.data,
+                  status: 'failed',
+                  lastError: t('messages.agentPromptRequired'),
+                },
+              }
+            }),
+          { syncLayout: false },
         )
         return
       }
@@ -115,37 +121,40 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         return
       }
 
-      setNodes(prevNodes =>
-        prevNodes.map(item => {
-          if (item.id !== nodeId) {
-            return item
-          }
+      setNodes(
+        prevNodes =>
+          prevNodes.map(item => {
+            if (item.id !== nodeId) {
+              return item
+            }
 
-          return {
-            ...item,
-            data: {
-              ...item.data,
-              status: 'restoring',
-              endedAt: null,
-              exitCode: null,
-              lastError: null,
-              agent:
-                mode === 'new' && item.data.agent
-                  ? {
-                      ...item.data.agent,
-                      launchMode: 'new',
-                      ...clearResumeSessionBinding(),
-                    }
-                  : item.data.agent,
-            },
-          }
-        }),
+            return {
+              ...item,
+              data: {
+                ...item.data,
+                status: 'restoring',
+                endedAt: null,
+                exitCode: null,
+                lastError: null,
+                agent:
+                  mode === 'new' && item.data.agent
+                    ? {
+                        ...item.data.agent,
+                        launchMode: 'new',
+                        ...clearResumeSessionBinding(),
+                      }
+                    : item.data.agent,
+              },
+            }
+          }),
+        { syncLayout: false },
       )
 
       try {
         const launched = await window.opencoveApi.agent.launch({
           provider: launchData.provider,
           cwd: launchData.executionDirectory,
+          profileId: node.data.profileId ?? defaultTerminalProfileId,
           prompt: launchData.prompt,
           mode,
           model: launchData.model,
@@ -165,44 +174,48 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           return
         }
 
-        setNodes(prevNodes =>
-          prevNodes.map(item => {
-            if (item.id !== nodeId) {
-              return item
-            }
+        setNodes(
+          prevNodes =>
+            prevNodes.map(item => {
+              if (item.id !== nodeId) {
+                return item
+              }
 
-            const nextAgentData: AgentNodeData = {
-              ...launchData,
-              launchMode: launched.launchMode,
-              effectiveModel: launched.effectiveModel,
-              ...(mode === 'resume'
-                ? {
-                    resumeSessionId: launched.resumeSessionId ?? launchData.resumeSessionId,
-                    resumeSessionIdVerified: true,
-                  }
-                : clearResumeSessionBinding()),
-            }
+              const nextAgentData: AgentNodeData = {
+                ...launchData,
+                launchMode: launched.launchMode,
+                effectiveModel: launched.effectiveModel,
+                ...(mode === 'resume'
+                  ? {
+                      resumeSessionId: launched.resumeSessionId ?? launchData.resumeSessionId,
+                      resumeSessionIdVerified: true,
+                    }
+                  : clearResumeSessionBinding()),
+              }
 
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                sessionId: launched.sessionId,
-                title: buildAgentNodeTitle(launchData.provider, launched.effectiveModel),
-                status:
-                  launched.launchMode === 'resume'
-                    ? ('standby' as const)
-                    : resolveInitialAgentRuntimeStatus(launchData.prompt),
-                startedAt:
-                  mode === 'new' ? new Date().toISOString() : (item.data.startedAt ?? null),
-                endedAt: null,
-                exitCode: null,
-                lastError: null,
-                scrollback: mode === 'new' ? null : item.data.scrollback,
-                agent: nextAgentData,
-              },
-            }
-          }),
+              return {
+                ...item,
+                data: {
+                  ...item.data,
+                  sessionId: launched.sessionId,
+                  profileId: launched.profileId,
+                  runtimeKind: launched.runtimeKind,
+                  title: buildAgentNodeTitle(launchData.provider, launched.effectiveModel),
+                  status:
+                    launched.launchMode === 'resume'
+                      ? ('standby' as const)
+                      : resolveInitialAgentRuntimeStatus(launchData.prompt),
+                  startedAt:
+                    mode === 'new' ? new Date().toISOString() : (item.data.startedAt ?? null),
+                  endedAt: null,
+                  exitCode: null,
+                  lastError: null,
+                  scrollback: mode === 'new' ? null : item.data.scrollback,
+                  agent: nextAgentData,
+                },
+              }
+            }),
+          { syncLayout: false },
         )
       } catch (error) {
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
@@ -211,22 +224,24 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
 
         const errorMessage = t('messages.agentLaunchFailed', { message: toErrorMessage(error) })
 
-        setNodes(prevNodes =>
-          prevNodes.map(item => {
-            if (item.id !== nodeId) {
-              return item
-            }
+        setNodes(
+          prevNodes =>
+            prevNodes.map(item => {
+              if (item.id !== nodeId) {
+                return item
+              }
 
-            return {
-              ...item,
-              data: {
-                ...item.data,
-                status: 'failed',
-                endedAt: new Date().toISOString(),
-                lastError: errorMessage,
-              },
-            }
-          }),
+              return {
+                ...item,
+                data: {
+                  ...item.data,
+                  status: 'failed',
+                  endedAt: new Date().toISOString(),
+                  lastError: errorMessage,
+                },
+              }
+            }),
+          { syncLayout: false },
         )
       }
     },
@@ -234,6 +249,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       agentFullAccess,
       buildAgentNodeTitle,
       bumpAgentLaunchToken,
+      defaultTerminalProfileId,
       isAgentLaunchTokenCurrent,
       nodesRef,
       setNodes,
@@ -255,22 +271,24 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         await window.opencoveApi.pty.kill({ sessionId: node.data.sessionId })
       }
 
-      setNodes(prevNodes =>
-        prevNodes.map(item => {
-          if (item.id !== nodeId) {
-            return item
-          }
+      setNodes(
+        prevNodes =>
+          prevNodes.map(item => {
+            if (item.id !== nodeId) {
+              return item
+            }
 
-          return {
-            ...item,
-            data: {
-              ...item.data,
-              status: 'stopped',
-              endedAt: new Date().toISOString(),
-              exitCode: null,
-            },
-          }
-        }),
+            return {
+              ...item,
+              data: {
+                ...item.data,
+                status: 'stopped',
+                endedAt: new Date().toISOString(),
+                exitCode: null,
+              },
+            }
+          }),
+        { syncLayout: false },
       )
     },
     [bumpAgentLaunchToken, nodesRef, setNodes],

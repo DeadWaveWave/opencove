@@ -65,6 +65,7 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  TerminalDiagnosticsLogInput,
   CreateDirectoryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
@@ -80,12 +81,37 @@ import { invokeIpc } from './ipcInvoke'
 
 type UnsubscribeFn = () => void
 
+function resolveWindowsPtyMeta(): { backend: 'conpty'; buildNumber: number } | null {
+  if (process.platform !== 'win32') {
+    return null
+  }
+
+  const systemVersion =
+    typeof process.getSystemVersion === 'function' ? process.getSystemVersion() : ''
+  const build = Number.parseInt(systemVersion.split('.')[2] ?? '', 10)
+  if (!Number.isFinite(build) || build <= 0) {
+    return null
+  }
+
+  return {
+    backend: 'conpty',
+    buildNumber: build,
+  }
+}
+
 // Custom APIs for renderer
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
+    enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
     platform: process.platform,
+    windowsPty: resolveWindowsPtyMeta(),
+  },
+  debug: {
+    logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput): void => {
+      ipcRenderer.send(IPC_CHANNELS.terminalDiagnosticsLog, payload)
+    },
   },
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>

@@ -1,4 +1,9 @@
 import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import type {
+  AgentCustomModelByProvider,
+  AgentCustomModelEnabledByProvider,
+  AgentCustomModelOptionsByProvider,
+} from './agentSettings.customModels'
 import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
 import {
   isValidUpdateChannel,
@@ -71,22 +76,7 @@ export {
 } from './agentSettings.providerMeta'
 
 const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
-
-export const UI_LANGUAGE_NATIVE_LABEL: Record<UiLanguage, string> = {
-  en: 'English',
-  'zh-CN': '简体中文',
-}
-export type AgentCustomModelEnabledByProvider = {
-  [provider in AgentProvider]: boolean
-}
-
-export type AgentCustomModelByProvider = {
-  [provider in AgentProvider]: string
-}
-
-export type AgentCustomModelOptionsByProvider = {
-  [provider in AgentProvider]: string[]
-}
+export { UI_LANGUAGE_NATIVE_LABEL } from './agentSettings.uiLanguage'
 
 export type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
 
@@ -99,9 +89,9 @@ export interface AgentSettings {
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
   defaultTerminalProfileId: TerminalProfileId
-  customModelEnabledByProvider: AgentCustomModelEnabledByProvider
-  customModelByProvider: AgentCustomModelByProvider
-  customModelOptionsByProvider: AgentCustomModelOptionsByProvider
+  customModelEnabledByProvider: AgentCustomModelEnabledByProvider<AgentProvider>
+  customModelByProvider: AgentCustomModelByProvider<AgentProvider>
+  customModelOptionsByProvider: AgentCustomModelOptionsByProvider<AgentProvider>
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
@@ -323,7 +313,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   const legacyModelInput = isRecord(value.modelByProvider) ? value.modelByProvider : {}
 
-  const customModelEnabledByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelEnabledByProvider>(
+  const customModelEnabledByProvider = AGENT_PROVIDERS.reduce<
+    AgentCustomModelEnabledByProvider<AgentProvider>
+  >(
     (acc, provider) => {
       const normalizedEnabled = normalizeBoolean(enabledInput[provider])
       const legacyModel = normalizeTextValue(legacyModelInput[provider])
@@ -335,7 +327,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     { ...DEFAULT_AGENT_SETTINGS.customModelEnabledByProvider },
   )
 
-  const customModelByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelByProvider>(
+  const customModelByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelByProvider<AgentProvider>>(
     (acc, provider) => {
       const current = customModelInput[provider] ?? legacyModelInput[provider]
       acc[provider] = normalizeTextValue(current)
@@ -348,7 +340,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ? value.customModelOptionsByProvider
     : {}
 
-  const customModelOptionsByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
+  const customModelOptionsByProvider = AGENT_PROVIDERS.reduce<
+    AgentCustomModelOptionsByProvider<AgentProvider>
+  >(
     (acc, provider) => {
       const options = normalizeUniqueStringArray(optionsInput[provider])
       const selectedModel = customModelByProvider[provider]
@@ -360,7 +354,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
       acc[provider] = options
       return acc
     },
-    AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
+    AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider<AgentProvider>>(
       (acc, provider) => {
         acc[provider] = [...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider[provider]]
         return acc

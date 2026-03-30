@@ -57,6 +57,7 @@ export async function resumeTaskAgentSessionAction(
     const launched = await window.opencoveApi.agent.launch({
       provider: record.provider,
       cwd: record.boundDirectory,
+      profileId: context.agentSettings.defaultTerminalProfileId,
       prompt: record.prompt,
       mode: 'resume',
       model: record.model,
@@ -68,6 +69,8 @@ export async function resumeTaskAgentSessionAction(
 
     const createdAgentNode = await context.createNodeForSession({
       sessionId: launched.sessionId,
+      profileId: launched.profileId,
+      runtimeKind: launched.runtimeKind,
       title: context.buildAgentNodeTitle(record.provider, launched.effectiveModel),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',

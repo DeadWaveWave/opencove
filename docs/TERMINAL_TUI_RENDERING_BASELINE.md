@@ -73,10 +73,11 @@ pnpm test:e2e
 - `keeps terminal visible after drag, resize, and node interactions`
 - `keeps agent tui visible while dragging window`
 - `wheel over terminal scrolls terminal viewport`
+- `wheel over a hydrated agent node scrolls the viewport instead of the canvas`
 - `preserves terminal history after app reload`
 
 推荐快速执行：
 
 ```bash
-pnpm test:e2e -- tests/e2e/workspace-canvas.spec.ts -g "keeps terminal visible after drag, resize, and node interactions|keeps agent tui visible while dragging window|wheel over terminal scrolls terminal viewport|preserves terminal history after app reload"
+pnpm test:e2e -- tests/e2e/workspace-canvas.spec.ts -g "keeps terminal visible after drag, resize, and node interactions|keeps agent tui visible while dragging window|wheel over terminal scrolls terminal viewport|wheel over a hydrated agent node scrolls the viewport instead of the canvas|preserves terminal history after app reload"
 ```
