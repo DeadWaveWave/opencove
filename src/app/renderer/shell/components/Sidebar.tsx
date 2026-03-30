@@ -67,9 +67,9 @@ function getWorkspaceMetaText(workspace: WorkspaceState, t: TranslateFn): string
   let taskCount = 0
 
   for (const node of workspace.nodes) {
-    if (node.data.kind === 'terminal') terminalCount += 1
-    else if (node.data.kind === 'agent') agentCount += 1
-    else if (node.data.kind === 'task') taskCount += 1
+    if (node.data.kind === 'terminal') { terminalCount += 1 }
+    else if (node.data.kind === 'agent') { agentCount += 1 }
+    else if (node.data.kind === 'task') { taskCount += 1 }
   }
 
   return [
@@ -276,7 +276,7 @@ export function Sidebar({
 
       setActiveId(null)
 
-      if (nextOverId == null) {
+      if (nextOverId === null || nextOverId === undefined) {
         return
       }
 
