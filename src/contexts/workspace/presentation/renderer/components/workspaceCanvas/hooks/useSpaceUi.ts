@@ -150,12 +150,23 @@ export function useWorkspaceCanvasSpaceUi({
 
   const copySpacePath = useCallback(
     async (spaceId: string) => {
+      const path = resolveSpacePath(spaceId)
       const copyPath = window.opencoveApi?.workspace?.copyPath
       if (typeof copyPath !== 'function') {
+        try {
+          const clipboard =
+            typeof navigator === 'undefined' ? null : (navigator as Navigator).clipboard
+          if (clipboard && typeof clipboard.writeText === 'function') {
+            await clipboard.writeText(path)
+          }
+        } catch {
+          // ignore clipboard failures (permissions, unavailable APIs, etc.)
+        }
+
         return
       }
 
-      await copyPath({ path: resolveSpacePath(spaceId) })
+      await copyPath({ path })
     },
     [resolveSpacePath],
   )

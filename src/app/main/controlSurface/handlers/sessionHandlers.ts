@@ -4,7 +4,6 @@ import type { PersistenceStore } from '../../../../platform/persistence/sqlite/P
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
-import type { PtyRuntime } from '../../../../contexts/terminal/presentation/main-ipc/runtime'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
 import { resolveAgentCliInvocation } from '../../../../contexts/agent/infrastructure/cli/AgentCliInvocation'
 import { locateAgentResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocator'
@@ -22,6 +21,7 @@ import {
   resolveAgentModel,
   type AgentProvider,
 } from '../../../../contexts/settings/domain/agentSettings'
+import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type {
   AgentProviderId,
   ExecutionContextDto,
@@ -246,7 +246,7 @@ export function registerSessionHandlers(
   deps: {
     approvedWorkspaces: ApprovedWorkspaceStore
     getPersistenceStore: () => Promise<PersistenceStore>
-    ptyRuntime: PtyRuntime
+    ptyRuntime: ControlSurfacePtyRuntime
   },
 ): void {
   const sessions = new Map<string, SessionRecord>()

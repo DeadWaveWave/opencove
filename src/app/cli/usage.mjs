@@ -3,7 +3,7 @@ import { DEFAULT_TIMEOUT_MS } from './constants.mjs'
 export function printUsage() {
   process.stdout.write(`OpenCove CLI (dev)\n\n`)
   process.stdout.write(`Usage:\n`)
-  process.stdout.write(`  opencove ping [--pretty]\n`)
+  process.stdout.write(`  opencove ping [--pretty] [--endpoint <url>] [--token <token>]\n`)
   process.stdout.write(`  opencove project list [--pretty]\n`)
   process.stdout.write(`  opencove space list [--project <id>] [--pretty]\n\n`)
   process.stdout.write(`  opencove space get --space <id> [--pretty]\n\n`)
@@ -22,8 +22,20 @@ export function printUsage() {
   process.stdout.write(`  opencove session get --session <id> [--pretty]\n`)
   process.stdout.write(`  opencove session final --session <id> [--pretty]\n`)
   process.stdout.write(`  opencove session kill --session <id> [--pretty]\n\n`)
+  process.stdout.write(
+    `  opencove worker start [--hostname <host>] [--port <port>] [--user-data <dir>] [--token <token>] [--approve-root <path>]\n`,
+  )
+  process.stdout.write(
+    `  opencove worker status [--endpoint <url>] [--token <token>] [--pretty]\n\n`,
+  )
   process.stdout.write(`Global Options:\n`)
   process.stdout.write(`  --pretty                 Pretty-print JSON output\n`)
+  process.stdout.write(
+    `  --endpoint <url>          Override control surface base URL (for tunnels/remote)\n`,
+  )
+  process.stdout.write(
+    `  --token <token>           Override control surface bearer token (required with --endpoint)\n`,
+  )
   process.stdout.write(
     `  --timeout <ms>            Override control surface request timeout (default ${DEFAULT_TIMEOUT_MS}ms)\n\n`,
   )

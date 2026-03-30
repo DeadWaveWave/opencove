@@ -68,6 +68,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/app/main/index.ts'),
+          worker: resolve(__dirname, 'src/app/worker/index.ts'),
           ptyHost: resolve(__dirname, 'src/platform/process/ptyHost/entry.ts'),
         },
       },
