@@ -28,9 +28,9 @@ export function writeNormalizedAppState(
       INSERT INTO workspaces (
         id, name, path, worktrees_root, pull_request_base_branch_options_json, space_archive_records_json,
         viewport_x, viewport_y, viewport_zoom,
-        is_minimap_visible, active_space_id
+        is_minimap_visible, active_space_id, sort_order
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -77,7 +77,8 @@ export function writeNormalizedAppState(
 
     upsertSettings.run(safeJsonStringify(state.settings ?? {}))
 
-    for (const workspace of state.workspaces) {
+    for (let index = 0; index < state.workspaces.length; index += 1) {
+      const workspace = state.workspaces[index]
       insertWorkspace.run(
         workspace.id,
         workspace.name,
@@ -90,6 +91,7 @@ export function writeNormalizedAppState(
         workspace.viewport.zoom,
         workspace.isMinimapVisible ? 1 : 0,
         workspace.activeSpaceId,
+        index,
       )
 
       for (const node of workspace.nodes) {
