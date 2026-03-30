@@ -1,7 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
-  dragMouse,
   dragLocatorTo,
   launchApp,
   readCanvasViewport,
@@ -195,7 +194,10 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
         {
           id: 'node-header-zoom',
           title: 'terminal-header-zoom',
-          position: { x: 120, y: 120 },
+          // Keep the zoomed terminal away from the top window chrome. In
+          // inactive Linux CI, header drags too close to the top edge can
+          // stall inside Electron's native mouse move path.
+          position: { x: 640, y: 420 },
           width: 460,
           height: 300,
         },
@@ -216,31 +218,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       const header = terminal.locator('.terminal-node__header')
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      const headerBox = await readClientRect(header)
-      const paneBox = await readClientRect(pane)
-      if (
-        headerBox.width <= 0 ||
-        headerBox.height <= 0 ||
-        paneBox.width <= 0 ||
-        paneBox.height <= 0
-      ) {
-        throw new Error('header/pane client rect unavailable for zoom-preserving drag')
-      }
-
-      const dragStartX = headerBox.x + Math.min(Math.max(120, headerBox.width * 0.35), 180)
-      const dragStartY = headerBox.y + headerBox.height * 0.5
-      const dragEndX = Math.min(paneBox.x + paneBox.width - 120, dragStartX + 220)
-      const dragEndY = Math.min(paneBox.y + paneBox.height - 120, dragStartY + 140)
-
-      await window.waitForTimeout(150)
-
-      await dragMouse(window, {
-        start: { x: dragStartX, y: dragStartY },
-        end: { x: dragEndX, y: dragEndY },
-        steps: 14,
-        settleAfterPressMs: 64,
-        settleBeforeReleaseMs: 96,
-        settleAfterReleaseMs: 64,
+      await dragLocatorTo(window, header, pane, {
+        sourcePosition: { x: 120, y: 18 },
+        targetPosition: { x: 240, y: 220 },
       })
 
       await expect
@@ -251,11 +231,7 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
 
       await expect(window.locator('.react-flow__node.dragging')).toHaveCount(0)
 
-      // Use a raw mouse click instead of locator.click here. In inactive CI window mode,
-      // Playwright actionability checks on the transformed pane can hang behind overlays.
-      const paneBlankClickX = paneBox.x + Math.min(80, Math.max(40, paneBox.width * 0.08))
-      const paneBlankClickY = paneBox.y + Math.min(80, Math.max(40, paneBox.height * 0.08))
-      await window.mouse.click(paneBlankClickX, paneBlankClickY)
+      await pane.click({ position: { x: 40, y: 40 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       const terminalBody = terminal.locator('.terminal-node__terminal')
