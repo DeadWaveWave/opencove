@@ -8,7 +8,7 @@ import {
 } from './GitWorktreeService.shared'
 import { mkdir, readdir, stat } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'
-import { createAppErrorDescriptor } from '../../../../shared/errors/appError'
+import { createAppError, createAppErrorDescriptor } from '../../../../shared/errors/appError'
 import {
   cleanupResidualWorktreeDirectory,
   runGitWorktreeRemoveWithRetry,
@@ -266,6 +266,19 @@ async function allocateWorktreePath({
   throw new Error('Unable to allocate a unique worktree directory')
 }
 
+async function ensureGitRepoHasCommits(repoPath: string): Promise<void> {
+  // A repo can be a valid git working tree while still having an "unborn" HEAD (no commits yet).
+  // Worktree creation requires a commit-ish to check out, so surface an actionable error early.
+  const result = await runGit(['rev-parse', '--verify', '--quiet', 'HEAD'], repoPath)
+  if (result.exitCode === 0) {
+    return
+  }
+
+  throw createAppError('worktree.repo_has_no_commits', {
+    debugMessage: 'git rev-parse --verify HEAD failed; repository has no commits yet',
+  })
+}
+
 export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<GitWorktreeEntry> {
   const normalizedRepoPath = input.repoPath.trim()
   const normalizedWorktreesRoot = input.worktreesRoot.trim()
@@ -287,6 +300,7 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
   }
 
   await ensureGitRepo(normalizedRepoPath)
+  await ensureGitRepoHasCommits(normalizedRepoPath)
 
   const worktreesSnapshot = await listGitWorktrees({ repoPath: normalizedRepoPath })
 

@@ -33,6 +33,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'worktree.list_worktrees_failed': 'Unable to load Git worktrees.',
     'worktree.status_summary_failed': 'Unable to load Git status.',
     'worktree.get_default_branch_failed': 'Unable to determine the default branch.',
+    'worktree.repo_has_no_commits':
+      'This Git repository has no commits yet. Create an initial commit to use worktrees.',
     'worktree.create_failed': 'Unable to create the worktree.',
     'worktree.remove_failed': 'Unable to archive the worktree.',
     'worktree.remove_uncommitted_changes':
