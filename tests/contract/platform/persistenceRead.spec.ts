@@ -1,7 +1,14 @@
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3'
 import { describe, expect, it } from 'vitest'
 import { readAppStateFromDb } from '../../../src/platform/persistence/sqlite/read'
-import { appMeta, appSettings, nodes, spaceNodes, spaces, workspaces } from '../../../src/platform/persistence/sqlite/schema'
+import {
+  appMeta,
+  appSettings,
+  nodes,
+  spaceNodes,
+  spaces,
+  workspaces,
+} from '../../../src/platform/persistence/sqlite/schema'
 
 type MetaRow = { key: 'format_version' | 'active_workspace_id'; value: string }
 type SettingsRow = { id: number; value: string }

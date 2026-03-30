@@ -150,7 +150,9 @@ function ensureTableColumn(
 }
 
 function backfillWorkspaceSortOrder(db: Database.Database): void {
-  const allZero = db.prepare('SELECT COUNT(*) as cnt FROM workspaces WHERE sort_order != 0').get() as {
+  const allZero = db
+    .prepare('SELECT COUNT(*) as cnt FROM workspaces WHERE sort_order != 0')
+    .get() as {
     cnt: number
   }
   if (allZero.cnt > 0) {
