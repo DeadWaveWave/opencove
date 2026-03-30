@@ -86,6 +86,11 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       })
       // eslint-disable-next-line no-console
       console.log('[ansi-screen] before switch size', beforeSwitchSize)
+      const beforeSwitchHasFrame = await terminal.evaluate(el => {
+        return el.textContent?.includes('FRAME_29999_TOKEN') ?? false
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] before switch has frame', beforeSwitchHasFrame)
 
       await window.locator('.workspace-item').nth(1).click()
       await expect(window.locator('.workspace-item').nth(1)).toHaveClass(/workspace-item--active/)
@@ -100,6 +105,11 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       console.log('[ansi-screen] after restore size', afterRestoreSize)
 
       const restoredTerminal = window.locator('.terminal-node').first()
+      const afterRestoreHasFrame = await restoredTerminal.evaluate(el => {
+        return el.textContent?.includes('FRAME_29999_TOKEN') ?? false
+      })
+      // eslint-disable-next-line no-console
+      console.log('[ansi-screen] after restore has frame', afterRestoreHasFrame)
       await expect(restoredTerminal).toContainText('FRAME_29999_TOKEN', { timeout: 20_000 })
       await expect(restoredTerminal).toContainText('ROW_10_STATIC', { timeout: 20_000 })
     } finally {
