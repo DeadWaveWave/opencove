@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { arrayMove } from '@dnd-kit/sortable'
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
@@ -79,10 +80,6 @@ export const useAppStore = create<AppStoreState>(set => ({
         return state
       }
 
-      const reordered = [...state.workspaces]
-      const [moved] = reordered.splice(oldIndex, 1)
-      reordered.splice(newIndex, 0, moved)
-
-      return { workspaces: reordered }
+      return { workspaces: arrayMove(state.workspaces, oldIndex, newIndex) }
     }),
 }))

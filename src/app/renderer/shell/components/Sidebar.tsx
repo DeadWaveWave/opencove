@@ -6,7 +6,6 @@ import {
   closestCenter,
   useSensor,
   useSensors,
-  type DragCancelEvent,
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
@@ -22,8 +21,6 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 
 type SidebarAgentStatus = 'working' | 'standby'
-
-type SidebarStatusTone = 'working' | 'standby'
 
 type SidebarProps = {
   workspaces: WorkspaceState[]
@@ -65,9 +62,15 @@ function getWorkspaceAgents(workspace: WorkspaceState) {
 }
 
 function getWorkspaceMetaText(workspace: WorkspaceState, t: TranslateFn): string {
-  const terminalCount = workspace.nodes.filter(node => node.data.kind === 'terminal').length
-  const agentCount = workspace.nodes.filter(node => node.data.kind === 'agent').length
-  const taskCount = workspace.nodes.filter(node => node.data.kind === 'task').length
+  let terminalCount = 0
+  let agentCount = 0
+  let taskCount = 0
+
+  for (const node of workspace.nodes) {
+    if (node.data.kind === 'terminal') terminalCount += 1
+    else if (node.data.kind === 'agent') agentCount += 1
+    else if (node.data.kind === 'task') taskCount += 1
+  }
 
   return [
     t('sidebar.terminals', { count: terminalCount }),
@@ -131,8 +134,7 @@ function WorkspaceAgentItems({
           ? AGENT_PROVIDER_LABEL[provider]
           : t('sidebar.fallbackAgentLabel')
         const sidebarAgentStatus = resolveSidebarAgentStatus(node.data.status)
-        const sidebarAgentStatusTone: SidebarStatusTone =
-          sidebarAgentStatus === 'working' ? 'working' : 'standby'
+        const sidebarAgentStatusTone = sidebarAgentStatus
         const startedText = toRelativeTime(node.data.startedAt)
         const sidebarAgentStatusText =
           sidebarAgentStatus === 'working'
@@ -263,7 +265,7 @@ export function Sidebar({
     setActiveId(String(event.active.id))
   }, [])
 
-  const handleDragCancel = useCallback((_event: DragCancelEvent): void => {
+  const handleDragCancel = useCallback((): void => {
     setActiveId(null)
   }, [])
 
@@ -274,7 +276,7 @@ export function Sidebar({
 
       setActiveId(null)
 
-      if (nextOverId === null || nextOverId === undefined) {
+      if (nextOverId == null) {
         return
       }
 

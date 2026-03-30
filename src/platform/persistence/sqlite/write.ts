@@ -77,8 +77,8 @@ export function writeNormalizedAppState(
 
     upsertSettings.run(safeJsonStringify(state.settings ?? {}))
 
-    for (let index = 0; index < state.workspaces.length; index += 1) {
-      const workspace = state.workspaces[index]
+    for (let sortOrder = 0; sortOrder < state.workspaces.length; sortOrder += 1) {
+      const workspace = state.workspaces[sortOrder]
       insertWorkspace.run(
         workspace.id,
         workspace.name,
@@ -91,7 +91,7 @@ export function writeNormalizedAppState(
         workspace.viewport.zoom,
         workspace.isMinimapVisible ? 1 : 0,
         workspace.activeSpaceId,
-        index,
+        sortOrder,
       )
 
       for (const node of workspace.nodes) {
