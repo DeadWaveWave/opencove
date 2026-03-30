@@ -1,5 +1,5 @@
 import type { CommittedTerminalScreenState } from './committedScreenState'
-import { removeCachedTerminalScreenState, setCachedTerminalScreenState } from './screenStateCache'
+import { setCachedTerminalScreenState } from './screenStateCache'
 
 export function cacheTerminalScreenStateOnUnmount({
   nodeId,
@@ -27,11 +27,6 @@ export function cacheTerminalScreenStateOnUnmount({
     allowSerializeFallback: !hasPendingWrites,
   })
   if (!latestCommittedScreenState) {
-    return
-  }
-
-  if (hasPendingWrites && latestCommittedScreenState.rawSnapshot !== rawSnapshot) {
-    removeCachedTerminalScreenState(nodeId, latestCommittedScreenState.sessionId)
     return
   }
 

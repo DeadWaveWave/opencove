@@ -11,7 +11,7 @@ describe('TerminalNode screen cache with pending writes', () => {
     clearCachedTerminalScreenStates()
   })
 
-  it('drops stale committed cache when pending writes have advanced the raw snapshot', () => {
+  it('keeps the committed cache when pending writes have advanced the raw snapshot', () => {
     setCachedTerminalScreenState('node-cache-pending', {
       sessionId: 'session-cache-pending',
       serialized: 'SCREEN_AFTER_HYDRATION',
@@ -40,7 +40,12 @@ describe('TerminalNode screen cache with pending writes', () => {
     expect(resolveCommittedScreenState).toHaveBeenCalledWith('BOOTLIVE_FRAME', {
       allowSerializeFallback: false,
     })
-    expect(getCachedTerminalScreenState('node-cache-pending', 'session-cache-pending')).toBeNull()
+    expect(getCachedTerminalScreenState('node-cache-pending', 'session-cache-pending')).toEqual(
+      expect.objectContaining({
+        serialized: 'SCREEN_AFTER_HYDRATION',
+        rawSnapshot: 'BOOT',
+      }),
+    )
   })
 
   it('keeps the committed cache when pending writes have not advanced past the committed raw snapshot', () => {
