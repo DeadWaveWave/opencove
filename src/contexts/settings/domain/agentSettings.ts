@@ -44,7 +44,7 @@ export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
 export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const
 export type StandardWindowSizeBucket = (typeof STANDARD_WINDOW_SIZE_BUCKETS)[number]
 
-export const UI_LANGUAGES = ['en', 'zh-CN'] as const
+export const UI_LANGUAGES = ['en', 'zh-CN', 'ja'] as const
 export type UiLanguage = (typeof UI_LANGUAGES)[number]
 
 export const UI_THEMES = ['system', 'light', 'dark'] as const
@@ -75,6 +75,7 @@ const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
 export const UI_LANGUAGE_NATIVE_LABEL: Record<UiLanguage, string> = {
   en: 'English',
   'zh-CN': '简体中文',
+  ja: '日本語',
 }
 export type AgentCustomModelEnabledByProvider = {
   [provider in AgentProvider]: boolean
