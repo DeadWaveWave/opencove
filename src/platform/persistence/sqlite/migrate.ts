@@ -135,9 +135,9 @@ function hasTableColumn(db: Database.Database, tableName: string, columnName: st
 function ensureTableColumn(
   db: Database.Database,
   options: { tableName: string; columnName: string; definitionSql: string },
-): void {
+): boolean {
   if (hasTableColumn(db, options.tableName, options.columnName)) {
-    return
+    return false
   }
 
   db.exec(
@@ -145,6 +145,8 @@ function ensureTableColumn(
       options.columnName,
     )} ${options.definitionSql}`,
   )
+
+  return true
 }
 
 function backfillWorkspaceSortOrder(db: Database.Database): void {
@@ -177,13 +179,15 @@ function ensureCurrentSchema(db: Database.Database): void {
     definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
   })
 
-  ensureTableColumn(db, {
+  const addedWorkspaceSortOrder = ensureTableColumn(db, {
     tableName: 'workspaces',
     columnName: 'sort_order',
     definitionSql: 'INTEGER NOT NULL DEFAULT 0',
   })
 
-  backfillWorkspaceSortOrder(db)
+  if (addedWorkspaceSortOrder) {
+    backfillWorkspaceSortOrder(db)
+  }
 
   ensureTableColumn(db, {
     tableName: 'nodes',
