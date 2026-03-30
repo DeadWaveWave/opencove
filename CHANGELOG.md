@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
-- Space Explorer: VS Code-like file and folder operations, including drag-move, context menu actions, cut/copy/paste, rename, delete, and copy path. (#20)
+- Space Explorer: VS Code-like file and folder operations, including drag-move, context menu actions, cut/copy/paste, rename, delete, and copy path. (#123)
 - Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
 - Workspace canvas: Arrange By menu (scope, ordering, space sizing, magnetic snapping). (#42)
 - Workspace canvas: live magnetic snap guides for node dragging, aligned to the 24px canvas rhythm and enabled by default. (#42)
