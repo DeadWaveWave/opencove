@@ -11,13 +11,10 @@ import {
   Trash2,
   X,
 } from 'lucide-react'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
-import {
-  MENU_WIDTH,
-  VIEWPORT_PADDING,
-  placeContextMenuAtPoint,
-} from './WorkspaceContextMenu.helpers'
+import { MENU_WIDTH, VIEWPORT_PADDING } from './WorkspaceContextMenu.helpers'
 import type { SpaceExplorerContextMenuState } from './WorkspaceSpaceExplorerOverlay.operations'
 
 const MENU_HEIGHT_ESTIMATE = 300
@@ -195,22 +192,20 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
     return null
   }
 
-  const viewport = {
-    width: typeof window !== 'undefined' ? window.innerWidth : 1280,
-    height: typeof window !== 'undefined' ? window.innerHeight : 720,
-  }
-  const placement = placeContextMenuAtPoint({
-    point: { x: menu.x, y: menu.y },
-    menuSize: { width: MENU_WIDTH, height: MENU_HEIGHT_ESTIMATE },
-    viewport,
-    padding: VIEWPORT_PADDING,
-  })
-
   return (
-    <div
+    <ViewportMenuSurface
+      open
+      placement={{
+        type: 'point',
+        point: { x: menu.x, y: menu.y },
+        padding: VIEWPORT_PADDING,
+        estimatedSize: { width: MENU_WIDTH, height: MENU_HEIGHT_ESTIMATE },
+      }}
       className="workspace-context-menu workspace-canvas-context-menu workspace-space-explorer__context-menu"
       data-testid="workspace-space-explorer-context-menu"
-      style={{ left: placement.left, top: placement.top }}
+      onDismiss={onClose}
+      dismissOnPointerDownOutside
+      dismissOnEscape
       onClick={event => {
         event.stopPropagation()
       }}
@@ -267,6 +262,6 @@ export function WorkspaceSpaceExplorerOverlayContextMenu({
       ) : null}
       <div className="workspace-context-menu__separator" />
       <MenuButton icon={<X size={16} />} label={t('common.close')} onClick={onClose} />
-    </div>
+    </ViewportMenuSurface>
   )
 }
