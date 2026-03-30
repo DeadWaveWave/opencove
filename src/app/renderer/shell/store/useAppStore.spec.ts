@@ -56,4 +56,55 @@ describe('useAppStore', () => {
       'workspace-2',
     ])
   })
+
+  it('ignores reorder requests when either workspace id is missing', () => {
+    useAppStore.setState(
+      {
+        workspaces: [
+          createWorkspace('workspace-1'),
+          createWorkspace('workspace-2'),
+          createWorkspace('workspace-3'),
+        ],
+      },
+      false,
+    )
+
+    const state = useAppStore.getState() as AppStoreState & {
+      reorderWorkspaces?: ReorderWorkspacesAction
+    }
+
+    state.reorderWorkspaces?.('workspace-missing', 'workspace-1')
+    state.reorderWorkspaces?.('workspace-1', 'workspace-missing')
+
+    expect(useAppStore.getState().workspaces.map(workspace => workspace.id)).toEqual([
+      'workspace-1',
+      'workspace-2',
+      'workspace-3',
+    ])
+  })
+
+  it('treats dragging a workspace onto itself as a no-op', () => {
+    useAppStore.setState(
+      {
+        workspaces: [
+          createWorkspace('workspace-1'),
+          createWorkspace('workspace-2'),
+          createWorkspace('workspace-3'),
+        ],
+      },
+      false,
+    )
+
+    const state = useAppStore.getState() as AppStoreState & {
+      reorderWorkspaces?: ReorderWorkspacesAction
+    }
+
+    state.reorderWorkspaces?.('workspace-2', 'workspace-2')
+
+    expect(useAppStore.getState().workspaces.map(workspace => workspace.id)).toEqual([
+      'workspace-1',
+      'workspace-2',
+      'workspace-3',
+    ])
+  })
 })
