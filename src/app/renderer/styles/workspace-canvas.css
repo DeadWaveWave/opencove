@@ -31,6 +31,10 @@
   width: 100%;
 }
 
+.workspace-canvas .react-flow {
+  z-index: auto !important;
+}
+
 .workspace-canvas:focus,
 .workspace-canvas:focus-visible {
   outline: none;
