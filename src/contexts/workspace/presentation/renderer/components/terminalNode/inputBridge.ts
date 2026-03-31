@@ -58,6 +58,47 @@ export function isWindowsTerminalPasteShortcut(
   return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
 }
 
+export function isLinuxPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
+  if (!platformInfo) {
+    return false
+  }
+
+  return (
+    !isWindowsPlatform(platformInfo) &&
+    !isMacPlatform(platformInfo) &&
+    /linux/i.test(platformInfo.platform ?? platformInfo.userAgent ?? '')
+  )
+}
+
+export function isLinuxTerminalCopyShortcut(
+  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  platformInfo: PlatformInfo | undefined = navigator,
+): boolean {
+  return (
+    isLinuxPlatform(platformInfo) &&
+    event.key.toLowerCase() === 'c' &&
+    event.ctrlKey &&
+    event.shiftKey &&
+    !event.metaKey &&
+    !event.altKey
+  )
+}
+
+export function isLinuxTerminalPasteShortcut(
+  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  platformInfo: PlatformInfo | undefined = navigator,
+): boolean {
+  if (!isLinuxPlatform(platformInfo) || event.metaKey || event.altKey) {
+    return false
+  }
+
+  if (event.key.toLowerCase() === 'v') {
+    return event.ctrlKey && event.shiftKey
+  }
+
+  return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
+}
+
 export function isMacPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
   if (!platformInfo) {
     return false
@@ -213,11 +254,28 @@ export function handleTerminalCustomKeyEvent({
     return false
   }
 
+  if (event.type === 'keydown' && isLinuxTerminalCopyShortcut(event, platformInfo)) {
+    if (!terminal.hasSelection()) {
+      return true
+    }
+
+    const linuxSelection = terminal.getSelection()
+    if (linuxSelection.length === 0) {
+      return true
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+    void copySelectedText(linuxSelection)
+    return false
+  }
+
   if (event.type !== 'keydown' || !isWindowsTerminalCopyShortcut(event, platformInfo)) {
     if (
       event.type === 'keydown' &&
       (isWindowsTerminalPasteShortcut(event, platformInfo) ||
-        isMacTerminalPasteShortcut(event, platformInfo))
+        isMacTerminalPasteShortcut(event, platformInfo) ||
+        isLinuxTerminalPasteShortcut(event, platformInfo))
     ) {
       event.preventDefault()
       event.stopPropagation()

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createPtyWriteQueue,
   handleTerminalCustomKeyEvent,
+  isLinuxTerminalCopyShortcut,
+  isLinuxTerminalPasteShortcut,
   isMacTerminalPasteShortcut,
   pasteTextFromClipboard,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/inputBridge'
@@ -39,6 +41,82 @@ describe('isMacTerminalPasteShortcut', () => {
       isMacTerminalPasteShortcut(
         { key: 'v', metaKey: true, ctrlKey: false, altKey: false, shiftKey: true },
         { platform: 'MacIntel' },
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('isLinuxTerminalCopyShortcut', () => {
+  it('returns true for Ctrl+Shift+C on Linux', () => {
+    expect(
+      isLinuxTerminalCopyShortcut(
+        { key: 'c', ctrlKey: true, shiftKey: true, metaKey: false, altKey: false },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(true)
+  })
+
+  it('returns false for Ctrl+C without Shift on Linux', () => {
+    expect(
+      isLinuxTerminalCopyShortcut(
+        { key: 'c', ctrlKey: true, shiftKey: false, metaKey: false, altKey: false },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(false)
+  })
+
+  it('returns false for Ctrl+Shift+C on Windows', () => {
+    expect(
+      isLinuxTerminalCopyShortcut(
+        { key: 'c', ctrlKey: true, shiftKey: true, metaKey: false, altKey: false },
+        { platform: 'Win32' },
+      ),
+    ).toBe(false)
+  })
+
+  it('returns false for Ctrl+Shift+C on macOS', () => {
+    expect(
+      isLinuxTerminalCopyShortcut(
+        { key: 'c', ctrlKey: true, shiftKey: true, metaKey: false, altKey: false },
+        { platform: 'MacIntel' },
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('isLinuxTerminalPasteShortcut', () => {
+  it('returns true for Ctrl+Shift+V on Linux', () => {
+    expect(
+      isLinuxTerminalPasteShortcut(
+        { key: 'v', ctrlKey: true, shiftKey: true, metaKey: false, altKey: false },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(true)
+  })
+
+  it('returns true for Shift+Insert on Linux', () => {
+    expect(
+      isLinuxTerminalPasteShortcut(
+        { key: 'Insert', ctrlKey: false, shiftKey: true, metaKey: false, altKey: false },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(true)
+  })
+
+  it('returns false for Ctrl+V without Shift on Linux', () => {
+    expect(
+      isLinuxTerminalPasteShortcut(
+        { key: 'v', ctrlKey: true, shiftKey: false, metaKey: false, altKey: false },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(false)
+  })
+
+  it('returns false for Ctrl+Shift+V on Windows', () => {
+    expect(
+      isLinuxTerminalPasteShortcut(
+        { key: 'v', ctrlKey: true, shiftKey: true, metaKey: false, altKey: false },
+        { platform: 'Win32' },
       ),
     ).toBe(false)
   })
@@ -89,6 +167,97 @@ describe('handleTerminalCustomKeyEvent', () => {
 
     expect(result).toBe(true)
     expect(copySelectedText).not.toHaveBeenCalled()
+  })
+
+  it('copies the selected terminal text on Linux Ctrl+Shift+C', async () => {
+    const copySelectedText = vi.fn(async () => undefined)
+    const event = {
+      type: 'keydown',
+      key: 'c',
+      ctrlKey: true,
+      shiftKey: true,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
+
+    const result = handleTerminalCustomKeyEvent({
+      copySelectedText,
+      event,
+      platformInfo: { platform: 'Linux x86_64' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal: {
+        hasSelection: () => true,
+        getSelection: () => 'selected output',
+        paste: vi.fn(),
+      },
+    })
+
+    expect(result).toBe(false)
+    expect(copySelectedText).toHaveBeenCalledWith('selected output')
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+  })
+
+  it('passes through Linux Ctrl+Shift+C when there is no selection', () => {
+    const copySelectedText = vi.fn(async () => undefined)
+
+    const result = handleTerminalCustomKeyEvent({
+      copySelectedText,
+      event: new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, shiftKey: true }),
+      platformInfo: { platform: 'Linux x86_64' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal: {
+        hasSelection: () => false,
+        getSelection: () => '',
+        paste: vi.fn(),
+      },
+    })
+
+    expect(result).toBe(true)
+    expect(copySelectedText).not.toHaveBeenCalled()
+  })
+
+  it('pastes clipboard text on Linux Ctrl+Shift+V', () => {
+    const pasteClipboardText = vi.fn()
+    const event = {
+      type: 'keydown',
+      key: 'v',
+      ctrlKey: true,
+      shiftKey: true,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
+    const terminal = {
+      hasSelection: () => false,
+      getSelection: () => '',
+      paste: vi.fn(),
+    }
+
+    const result = handleTerminalCustomKeyEvent({
+      event,
+      pasteClipboardText,
+      platformInfo: { platform: 'Linux x86_64' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal,
+    })
+
+    expect(result).toBe(false)
+    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
   })
 
   it('does not change non-Windows Ctrl+C behavior', () => {
