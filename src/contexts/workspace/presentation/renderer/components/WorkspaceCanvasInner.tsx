@@ -82,6 +82,7 @@ export function WorkspaceCanvasInner({
     activeSpaceId,
     onActiveSpaceChange,
     workspacePath,
+    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     reactFlow,
     nodes: canvasState.flowNodes,
     nodesRef: nodeStore.nodesRef,
@@ -325,6 +326,7 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
   })
   workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
     setNodes: nodeStore.setNodes,
