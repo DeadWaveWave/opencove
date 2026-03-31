@@ -25,6 +25,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: Label colors for Spaces and windows, plus a single-color filter. (#54)
 - Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
 - Settings: standard window size bucket (compact/regular/large) for node create/arrange sizing (replaces runtime auto-sizing). (#70)
+- Settings: configurable canvas mouse-wheel behavior (zoom vs pan) with a configurable zoom modifier (Cmd/Ctrl+wheel by default). (#127)
 - Task: prompt templates for task requirement prefix injection (Global + Project scopes). (#71)
 
 ### 💅 Changed
