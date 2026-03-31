@@ -19,9 +19,9 @@ describe('macosUpdaterSupport', () => {
 
   it('detects ad-hoc designated requirements', () => {
     expect(isAdhocDesignatedRequirement('cdhash H"deadbeef"')).toBe(true)
-    expect(isAdhocDesignatedRequirement('identifier "dev.deadwave.opencove" and anchor apple')).toBe(
-      false,
-    )
+    expect(
+      isAdhocDesignatedRequirement('identifier "dev.deadwave.opencove" and anchor apple'),
+    ).toBe(false)
   })
 
   it('treats non-darwin platforms as supported', () => {
@@ -87,4 +87,3 @@ describe('macosUpdaterSupport', () => {
     expect(result.message).toContain('signed build')
   })
 })
-
