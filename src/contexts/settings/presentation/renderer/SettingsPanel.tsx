@@ -24,6 +24,7 @@ import { NotificationsSection } from './settingsPanel/NotificationsSection'
 import { SettingsPanelNavButton } from './settingsPanel/SettingsPanelNavButton'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
+import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 
@@ -52,6 +53,7 @@ interface SettingsPanelProps {
 
 type CorePageId =
   | 'general'
+  | 'worker'
   | 'agent'
   | 'notifications'
   | 'canvas'
@@ -60,6 +62,33 @@ type CorePageId =
   | 'integrations'
 type WorkspacePageId = `workspace:${string}`
 type SettingsPageId = CorePageId | WorkspacePageId
+
+const CORE_NAV_ITEMS: Array<{ id: CorePageId; labelKey: string; testId: string }> = [
+  { id: 'general', labelKey: 'settingsPanel.nav.general', testId: 'settings-section-nav-general' },
+  { id: 'worker', labelKey: 'settingsPanel.nav.worker', testId: 'settings-section-nav-worker' },
+  { id: 'agent', labelKey: 'settingsPanel.nav.agent', testId: 'settings-section-nav-agent' },
+  {
+    id: 'notifications',
+    labelKey: 'settingsPanel.nav.notifications',
+    testId: 'settings-section-nav-notifications',
+  },
+  { id: 'canvas', labelKey: 'settingsPanel.nav.canvas', testId: 'settings-section-nav-canvas' },
+  {
+    id: 'shortcuts',
+    labelKey: 'settingsPanel.nav.shortcuts',
+    testId: 'settings-section-nav-shortcuts',
+  },
+  {
+    id: 'task-configuration',
+    labelKey: 'settingsPanel.nav.tasks',
+    testId: 'settings-section-nav-task-configuration',
+  },
+  {
+    id: 'integrations',
+    labelKey: 'settingsPanel.nav.integrations',
+    testId: 'settings-section-nav-integrations',
+  },
+]
 
 function getWorkspacePageId(workspaceId: string): WorkspacePageId {
   return `workspace:${workspaceId}`
@@ -294,48 +323,15 @@ export function SettingsPanel({
           className="settings-panel__sidebar"
           aria-label={t('settingsPanel.nav.sectionsLabel')}
         >
-          <SettingsPanelNavButton
-            isActive={activePageId === 'general'}
-            label={t('settingsPanel.nav.general')}
-            testId="settings-section-nav-general"
-            onClick={() => setActivePageId('general')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'agent'}
-            label={t('settingsPanel.nav.agent')}
-            testId="settings-section-nav-agent"
-            onClick={() => setActivePageId('agent')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'notifications'}
-            label={t('settingsPanel.nav.notifications')}
-            testId="settings-section-nav-notifications"
-            onClick={() => setActivePageId('notifications')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'canvas'}
-            label={t('settingsPanel.nav.canvas')}
-            testId="settings-section-nav-canvas"
-            onClick={() => setActivePageId('canvas')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'shortcuts'}
-            label={t('settingsPanel.nav.shortcuts')}
-            testId="settings-section-nav-shortcuts"
-            onClick={() => setActivePageId('shortcuts')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'task-configuration'}
-            label={t('settingsPanel.nav.tasks')}
-            testId="settings-section-nav-task-configuration"
-            onClick={() => setActivePageId('task-configuration')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'integrations'}
-            label={t('settingsPanel.nav.integrations')}
-            testId="settings-section-nav-integrations"
-            onClick={() => setActivePageId('integrations')}
-          />
+          {CORE_NAV_ITEMS.map(item => (
+            <SettingsPanelNavButton
+              key={item.id}
+              isActive={activePageId === item.id}
+              label={t(item.labelKey)}
+              testId={item.testId}
+              onClick={() => setActivePageId(item.id)}
+            />
+          ))}
 
           <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
           <div className="settings-panel__nav-group">
@@ -382,6 +378,8 @@ export function SettingsPanel({
                 onInstallUpdate={onInstallUpdate}
               />
             ) : null}
+
+            {activePageId === 'worker' ? <WorkerSection /> : null}
 
             {activePageId === 'agent' ? (
               <>

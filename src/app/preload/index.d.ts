@@ -79,6 +79,10 @@ import type {
   FileSystemStat,
   SyncEventPayload,
   WriteFileTextInput,
+  HomeWorkerConfigDto,
+  SetHomeWorkerConfigInput,
+  WorkerStatusResult,
+  CliPathStatusResult,
 } from '../../shared/contracts/dto'
 
 type UnsubscribeFn = () => void
@@ -194,6 +198,21 @@ export interface OpenCoveApi {
   }
   system: {
     listFonts: () => Promise<ListSystemFontsResult>
+  }
+  worker: {
+    getStatus: () => Promise<WorkerStatusResult>
+    start: () => Promise<WorkerStatusResult>
+    stop: () => Promise<WorkerStatusResult>
+  }
+  workerClient: {
+    getConfig: () => Promise<HomeWorkerConfigDto>
+    setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
+    relaunch: () => Promise<void>
+  }
+  cli: {
+    getStatus: () => Promise<CliPathStatusResult>
+    install: () => Promise<CliPathStatusResult>
+    uninstall: () => Promise<CliPathStatusResult>
   }
 }
 

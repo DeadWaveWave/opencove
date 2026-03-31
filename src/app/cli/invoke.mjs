@@ -1,6 +1,6 @@
 import { DEFAULT_TIMEOUT_MS } from './constants.mjs'
 
-async function invokeControlSurface(connection, request, options) {
+export async function invokeControlSurface(connection, request, options) {
   const controller = new AbortController()
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const timer = setTimeout(() => controller.abort(), timeoutMs)

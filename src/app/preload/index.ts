@@ -81,6 +81,10 @@ import type {
   FileSystemStat,
   SyncEventPayload,
   WriteFileTextInput,
+  HomeWorkerConfigDto,
+  SetHomeWorkerConfigInput,
+  WorkerStatusResult,
+  CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 
@@ -332,6 +336,22 @@ const opencoveApi = {
   },
   system: {
     listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
+  },
+  worker: {
+    getStatus: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerGetStatus),
+    start: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStart),
+    stop: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStop),
+  },
+  workerClient: {
+    getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
+    setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
+    relaunch: (): Promise<void> => invokeIpc(IPC_CHANNELS.workerClientRelaunch),
+  },
+  cli: {
+    getStatus: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliGetStatus),
+    install: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliInstall),
+    uninstall: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliUninstall),
   },
 }
 

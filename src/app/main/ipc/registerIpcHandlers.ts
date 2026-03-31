@@ -25,6 +25,9 @@ import { registerSystemIpcHandlers } from '../../../contexts/system/presentation
 import type { ControlSurfaceRemoteEndpoint } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
 import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBridge'
+import { registerLocalWorkerIpcHandlers } from './registerLocalWorkerIpcHandlers'
+import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandlers'
+import { registerCliIpcHandlers } from './registerCliIpcHandlers'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -68,6 +71,9 @@ export function registerIpcHandlers(deps?: {
   }
 
   const disposables: IpcRegistrationDisposable[] = [
+    registerLocalWorkerIpcHandlers(),
+    registerWorkerClientIpcHandlers(),
+    registerCliIpcHandlers(),
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),
     registerReleaseNotesIpcHandlers(releaseNotesService),

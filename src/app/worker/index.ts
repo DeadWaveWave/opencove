@@ -1,8 +1,10 @@
 import { resolve } from 'node:path'
 import { registerControlSurfaceHttpServer } from '../main/controlSurface/controlSurfaceHttpServer'
+import { resolveControlSurfaceConnectionInfoFromUserData } from '../main/controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { createApprovedWorkspaceStoreForPath } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { createHeadlessPtyRuntime } from './headlessPtyRuntime'
 import { resolveWorkerUserDataDir } from './userData'
+import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -61,6 +63,17 @@ async function main(): Promise<void> {
   const port = resolvePort(argv) ?? 0
   const token = readFlagValue(argv, '--token')
 
+  const lock = await acquireWorkerSingleInstanceLock(userDataPath)
+  if (lock.status === 'existing') {
+    const connectionInfo = await resolveControlSurfaceConnectionInfoFromUserData({ userDataPath })
+    if (connectionInfo) {
+      process.stdout.write(`${JSON.stringify(connectionInfo)}\n`)
+    }
+
+    process.stderr.write('[opencove-worker] worker is already running for this user data dir.\n')
+    process.exit(0)
+  }
+
   const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
     resolve(userDataPath, 'approved-workspaces.json'),
   )
@@ -90,6 +103,7 @@ async function main(): Promise<void> {
     try {
       server.dispose()
     } finally {
+      void lock.release()
       setTimeout(() => process.exit(code), 250).unref()
     }
   }
