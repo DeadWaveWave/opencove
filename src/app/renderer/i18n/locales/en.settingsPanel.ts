@@ -94,6 +94,20 @@ export const enSettingsPanel = {
     title: 'Canvas',
     inputModeLabel: 'Input Mode',
     inputModeHelp: 'How interactions are handled on the canvas.',
+    wheelBehaviorLabel: 'Mouse Wheel',
+    wheelBehaviorHelp: 'Choose what scrolling does on the canvas.',
+    wheelBehavior: {
+      zoom: 'Zoom (Default)',
+      pan: 'Pan (Scroll)',
+    },
+    wheelZoomModifierLabel: 'Zoom Modifier',
+    wheelZoomModifierHelp: 'Hold {{modifier}} and scroll to zoom.',
+    wheelZoomModifier: {
+      primary: '{{primaryKey}} (Default)',
+      ctrl: 'Ctrl',
+      alt: 'Alt',
+      shift: 'Shift',
+    },
     terminalProfileLabel: 'Terminal Environment',
     terminalProfileHelp:
       'Choose the shell profile used for new Windows terminals. Auto falls back to {{defaultProfile}}.',

@@ -418,6 +418,8 @@ export default function App(): React.JSX.Element {
         isOpen={isSpaceArchivesOpen}
         workspace={activeWorkspace}
         canvasInputModeSetting={agentSettings.canvasInputMode}
+        canvasWheelBehaviorSetting={agentSettings.canvasWheelBehavior}
+        canvasWheelZoomModifierSetting={agentSettings.canvasWheelZoomModifier}
         onDeleteRecord={handleWorkspaceSpaceArchiveRecordRemove}
         onClose={closeSpaceArchives}
       />

@@ -6,6 +6,10 @@ import type {
   SpaceArchiveRecord,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import type {
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+} from '@contexts/settings/domain/agentSettings'
 import { toLocalDateTime, toRelativeTime } from '../utils/format'
 import { SpaceArchiveReplayCanvas } from './SpaceArchiveReplayCanvas'
 
@@ -38,12 +42,16 @@ export function SpaceArchiveRecordsWindow({
   isOpen,
   workspace,
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
+  canvasWheelZoomModifierSetting,
   onDeleteRecord,
   onClose,
 }: {
   isOpen: boolean
   workspace: WorkspaceState | null
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: CanvasWheelBehavior
+  canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
   onDeleteRecord: (recordId: string) => void
   onClose: () => void
 }): React.JSX.Element | null {
@@ -219,6 +227,8 @@ export function SpaceArchiveRecordsWindow({
                   <SpaceArchiveReplayCanvas
                     record={selectedRecord}
                     canvasInputModeSetting={canvasInputModeSetting}
+                    canvasWheelBehaviorSetting={canvasWheelBehaviorSetting}
+                    canvasWheelZoomModifierSetting={canvasWheelZoomModifierSetting}
                   />
                 </div>
               ) : null}

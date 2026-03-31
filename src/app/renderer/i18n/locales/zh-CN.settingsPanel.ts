@@ -94,6 +94,20 @@ export const zhCNSettingsPanel = {
     title: '画布',
     inputModeLabel: '输入模式',
     inputModeHelp: '画布交互的处理方式。',
+    wheelBehaviorLabel: '滚轮行为',
+    wheelBehaviorHelp: '选择在画布上滚动滚轮时的默认操作。',
+    wheelBehavior: {
+      zoom: '缩放（默认）',
+      pan: '平移（滚动）',
+    },
+    wheelZoomModifierLabel: '缩放修饰键',
+    wheelZoomModifierHelp: '按住 {{modifier}} 滚动以缩放。',
+    wheelZoomModifier: {
+      primary: '{{primaryKey}}（默认）',
+      ctrl: 'Ctrl',
+      alt: 'Option/Alt',
+      shift: 'Shift',
+    },
     terminalProfileLabel: '终端环境',
     terminalProfileHelp:
       '选择 Windows 新终端默认使用的 shell 配置。自动模式会回退到 {{defaultProfile}}。',
