@@ -58,7 +58,12 @@ export function useWorkspaceCanvasGlobalDismissals({
       const editableDomSelector = 'input, textarea, select, [contenteditable="true"]'
       const focusTarget = event.target.closest(editableDomSelector) as HTMLElement | null
 
-      const isEditableTarget = event.target.closest('.terminal-node__terminal') || focusTarget
+      const terminalBody = event.target.closest('.terminal-node__terminal') as HTMLElement | null
+      const terminalFocusTarget = terminalBody
+        ? (terminalBody.querySelector('.xterm-helper-textarea') as HTMLElement | null)
+        : null
+
+      const isEditableTarget = terminalBody || focusTarget
 
       if (!isEditableTarget) {
         return
@@ -70,9 +75,10 @@ export function useWorkspaceCanvasGlobalDismissals({
           : null
 
       const shouldRestoreFocus =
-        focusTarget !== null &&
-        activeElementAtClick !== null &&
-        activeElementAtClick === focusTarget
+        terminalFocusTarget !== null ||
+        (focusTarget !== null &&
+          activeElementAtClick !== null &&
+          activeElementAtClick === focusTarget)
 
       window.setTimeout(() => {
         clearNodeSelection()
@@ -82,7 +88,7 @@ export function useWorkspaceCanvasGlobalDismissals({
         }
 
         window.setTimeout(() => {
-          const resolvedFocusTarget = focusTarget
+          const resolvedFocusTarget = focusTarget ?? terminalFocusTarget
           if (!resolvedFocusTarget || !resolvedFocusTarget.isConnected) {
             return
           }
