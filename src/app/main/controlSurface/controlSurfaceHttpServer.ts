@@ -162,6 +162,13 @@ export function registerControlSurfaceHttpServer(options: {
 
   const ctx: ControlSurfaceContext = {
     now: () => new Date(),
+    capabilities: {
+      webShell: options.enableWebShell === true,
+      sync: {
+        state: true,
+        events: true,
+      },
+    },
   }
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null

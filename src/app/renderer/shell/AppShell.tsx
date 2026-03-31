@@ -412,6 +412,8 @@ export default function App(): React.JSX.Element {
         onSelectSpace={handleWorkspaceActiveSpaceChange}
         isSpaceArchivesOpen={isSpaceArchivesOpen}
         canvasInputModeSetting={agentSettings.canvasInputMode}
+        canvasWheelBehaviorSetting={agentSettings.canvasWheelBehavior}
+        canvasWheelZoomModifierSetting={agentSettings.canvasWheelZoomModifier}
         onDeleteSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordRemove}
         onCloseSpaceArchives={closeSpaceArchives}
         projectContextMenu={projectContextMenu}

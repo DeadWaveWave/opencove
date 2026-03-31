@@ -13,7 +13,10 @@ export interface WheelInputSample {
   deltaX: number
   deltaY: number
   deltaMode: number
+  altKey: boolean
   ctrlKey: boolean
+  metaKey: boolean
+  shiftKey: boolean
   timeStamp: number
 }
 
@@ -118,6 +121,14 @@ function isHighConfidenceMouseWheelSample(sample: WheelInputSample): boolean {
   return isSingleAxisDiscreteWheelStep(metrics) || isLargeSingleAxisMouseBurst(metrics)
 }
 
+export function isPinchLikeZoomWheelSample(sample: WheelInputSample): boolean {
+  if (sample.ctrlKey !== true || sample.deltaMode !== 0) {
+    return false
+  }
+
+  return true
+}
+
 function isStrongTrackpadPanSample(sample: WheelInputSample): boolean {
   if (sample.ctrlKey || sample.deltaMode !== 0 || isHighConfidenceMouseWheelSample(sample)) {
     return false
@@ -180,12 +191,12 @@ export function classifyCurrentWheelInputMode(
 ): ClassifiedWheelInputMode {
   const { continuesBurst } = resolveWheelSampleTiming(previous, sample)
 
-  if (sample.ctrlKey) {
-    return 'trackpad'
-  }
-
   if (isHighConfidenceMouseWheelSample(sample)) {
     return 'mouse'
+  }
+
+  if (isPinchLikeZoomWheelSample(sample)) {
+    return 'trackpad'
   }
 
   if (isStrongTrackpadPanSample(sample)) {
@@ -219,7 +230,8 @@ export function inferCanvasInputModalityFromWheel(
 ): CanvasInputModalityState {
   const { timestamp, continuesBurst } = resolveWheelSampleTiming(previous, sample)
   const classifiedMode = classifyCurrentWheelInputMode(previous, sample)
-  const isGestureLikeSample = sample.ctrlKey || isCandidateTrackpadPanSample(sample)
+  const isGestureLikeSample =
+    isPinchLikeZoomWheelSample(sample) || isCandidateTrackpadPanSample(sample)
 
   let nextBurstEventCount = continuesBurst ? previous.burstEventCount + 1 : 1
   let nextGestureLikeEventCount = continuesBurst ? previous.gestureLikeEventCount : 0

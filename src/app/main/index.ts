@@ -11,7 +11,7 @@ import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { shouldEnableWaylandIme } from './waylandIme'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createPtyRuntime } from '../../contexts/terminal/presentation/main-ipc/runtime'
-import { resolveControlSurfaceConnectionInfoFromUserData } from './controlSurface/remote/resolveControlSurfaceConnectionInfo'
+import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
@@ -383,35 +383,28 @@ app.whenReady().then(async () => {
   const approvedWorkspaces = createApprovedWorkspaceStore()
   const ptyRuntime = createPtyRuntime()
 
-  const wantsWorkerClientMode = isTruthyEnv(process.env['OPENCOVE_WORKER_CLIENT'])
-  const workerConnection = wantsWorkerClientMode
-    ? await resolveControlSurfaceConnectionInfoFromUserData({
-        userDataPath: app.getPath('userData'),
-      })
-    : null
-  const workerClientModeEnabled = wantsWorkerClientMode && workerConnection !== null
-
-  if (wantsWorkerClientMode && !workerConnection) {
-    process.stderr.write(
-      '[opencove] OPENCOVE_WORKER_CLIENT=1 but no worker control surface connection file was found.\n',
-    )
+  const homeWorker = await resolveHomeWorkerEndpoint({
+    allowConfig: process.env.NODE_ENV !== 'test',
+  })
+  for (const message of homeWorker.diagnostics) {
+    process.stderr.write(`[opencove] ${message}\n`)
   }
 
   ipcDisposable = registerIpcHandlers({
     approvedWorkspaces,
     ptyRuntime,
-    ...(workerConnection
+    ...(homeWorker.endpoint
       ? {
           workerEndpoint: {
-            hostname: workerConnection.hostname,
-            port: workerConnection.port,
-            token: workerConnection.token,
+            hostname: homeWorker.endpoint.hostname,
+            port: homeWorker.endpoint.port,
+            token: homeWorker.endpoint.token,
           },
         }
       : {}),
   })
 
-  if (process.env.NODE_ENV !== 'test' && !workerClientModeEnabled) {
+  if (process.env.NODE_ENV !== 'test' && !homeWorker.endpoint) {
     controlSurfaceDisposable = registerControlSurfaceServer({ approvedWorkspaces, ptyRuntime })
   }
 

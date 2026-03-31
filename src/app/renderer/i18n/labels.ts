@@ -1,5 +1,7 @@
 import type {
   CanvasInputMode,
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
   StandardWindowSizeBucket,
   UiLanguage,
   UiTheme,
@@ -22,6 +24,31 @@ export function getCanvasInputModeLabel(t: TranslateFn, mode: CanvasInputMode): 
   }
 
   return t('settingsPanel.canvas.inputMode.mouse')
+}
+
+export function getCanvasWheelBehaviorLabel(t: TranslateFn, behavior: CanvasWheelBehavior): string {
+  if (behavior === 'pan') {
+    return t('settingsPanel.canvas.wheelBehavior.pan')
+  }
+
+  return t('settingsPanel.canvas.wheelBehavior.zoom')
+}
+
+export function getCanvasWheelZoomModifierLabel(
+  t: TranslateFn,
+  modifier: CanvasWheelZoomModifier,
+  platform: string | undefined,
+): string {
+  switch (modifier) {
+    case 'primary':
+      return t('settingsPanel.canvas.wheelZoomModifier.primary', {
+        primaryKey: platform === 'darwin' ? 'Cmd' : 'Ctrl',
+      })
+    case 'ctrl':
+      return t('settingsPanel.canvas.wheelZoomModifier.ctrl')
+    case 'alt':
+      return t('settingsPanel.canvas.wheelZoomModifier.alt')
+  }
 }
 
 export function getStandardWindowSizeBucketLabel(

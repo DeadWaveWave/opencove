@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { useStoreApi, type Node, type ReactFlowInstance, type Viewport } from '@xyflow/react'
 import type {
-  CanvasInputModalityState,
-  DetectedCanvasInputMode,
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+} from '@contexts/settings/domain/agentSettings'
+import {
+  isPinchLikeZoomWheelSample,
+  type CanvasInputModalityState,
+  type DetectedCanvasInputMode,
+  type WheelInputSample,
 } from '../../../utils/inputModality'
 import type { TerminalNodeData } from '../../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM, TRACKPAD_PAN_SCROLL_SPEED } from '../constants'
@@ -12,6 +18,8 @@ import { resolveCanvasWheelGesture } from '../wheelGestures'
 
 interface UseTrackpadGesturesParams {
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: CanvasWheelBehavior
+  canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
   resolvedCanvasInputMode: DetectedCanvasInputMode
   inputModalityStateRef: MutableRefObject<CanvasInputModalityState>
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
@@ -40,8 +48,32 @@ function isMacLikePlatform(): boolean {
 }
 
 function resolveWheelZoomDelta(event: WheelEvent): number {
-  const factor = event.ctrlKey && isMacLikePlatform() ? 10 : 1
+  const sample: WheelInputSample = {
+    deltaX: event.deltaX,
+    deltaY: event.deltaY,
+    deltaMode: event.deltaMode,
+    altKey: event.altKey,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    timeStamp: Number.isFinite(event.timeStamp) && event.timeStamp >= 0 ? event.timeStamp : 0,
+  }
+  const factor = isMacLikePlatform() && isPinchLikeZoomWheelSample(sample) ? 10 : 1
   return -event.deltaY * (event.deltaMode === 1 ? 0.05 : event.deltaMode ? 1 : 0.002) * factor
+}
+
+function resolveEffectiveWheelZoomModifierKey(
+  setting: CanvasWheelZoomModifier,
+  platform: string | undefined,
+): 'ctrl' | 'meta' | 'alt' {
+  switch (setting) {
+    case 'primary':
+      return platform === 'darwin' ? 'meta' : 'ctrl'
+    case 'ctrl':
+      return 'ctrl'
+    case 'alt':
+      return 'alt'
+  }
 }
 
 function applyViewport(
@@ -57,6 +89,8 @@ function applyViewport(
 
 export function useWorkspaceCanvasTrackpadGestures({
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
+  canvasWheelZoomModifierSetting,
   resolvedCanvasInputMode,
   inputModalityStateRef,
   setDetectedCanvasInputMode,
@@ -71,6 +105,14 @@ export function useWorkspaceCanvasTrackpadGestures({
 
   const handleCanvasWheelCapture = useCallback(
     (event: WheelEvent) => {
+      const platform =
+        typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
+          ? window.opencoveApi.meta.platform
+          : undefined
+      const effectiveWheelZoomModifierKey = resolveEffectiveWheelZoomModifierKey(
+        canvasWheelZoomModifierSetting,
+        platform,
+      )
       const wheelTarget = resolveWheelTarget(event.target)
       const canvasElement = canvasRef.current
       const isTargetWithinCanvas =
@@ -78,22 +120,27 @@ export function useWorkspaceCanvasTrackpadGestures({
         event.target instanceof Node &&
         canvasElement.contains(event.target)
       const lockTimestamp =
-        Number.isFinite(event.timeStamp) && event.timeStamp >= 0
+        Number.isFinite(event.timeStamp) && event.timeStamp > 0
           ? event.timeStamp
           : performance.now()
 
       const decision = resolveCanvasWheelGesture({
         canvasInputModeSetting,
+        canvasWheelBehaviorSetting,
         resolvedCanvasInputMode,
         inputModalityState: inputModalityStateRef.current,
         trackpadGestureLock: trackpadGestureLockRef.current,
         wheelTarget,
         isTargetWithinCanvas,
+        wheelZoomModifierKey: effectiveWheelZoomModifierKey,
         sample: {
           deltaX: event.deltaX,
           deltaY: event.deltaY,
           deltaMode: event.deltaMode,
+          altKey: event.altKey,
           ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: event.shiftKey,
           timeStamp: event.timeStamp,
         },
         lockTimestamp,
@@ -184,6 +231,8 @@ export function useWorkspaceCanvasTrackpadGestures({
     },
     [
       canvasInputModeSetting,
+      canvasWheelBehaviorSetting,
+      canvasWheelZoomModifierSetting,
       canvasRef,
       inputModalityStateRef,
       onViewportChange,

@@ -1,0 +1,42 @@
+import { app, ipcMain } from 'electron'
+import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
+import type { SetHomeWorkerConfigInput } from '../../../shared/contracts/dto'
+import type { IpcRegistrationDisposable } from './types'
+import { registerHandledIpc } from './handle'
+import { readHomeWorkerConfig, setHomeWorkerConfig } from '../worker/homeWorkerConfig'
+
+export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
+  registerHandledIpc(
+    IPC_CHANNELS.workerClientGetConfig,
+    async () => await readHomeWorkerConfig(app.getPath('userData')),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.workerClientSetConfig,
+    async (_event, payload: SetHomeWorkerConfigInput) =>
+      await setHomeWorkerConfig(app.getPath('userData'), payload),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.workerClientRelaunch,
+    async () => {
+      if (process.env.NODE_ENV === 'test') {
+        return
+      }
+
+      app.relaunch()
+      app.exit(0)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  return {
+    dispose: () => {
+      ipcMain.removeHandler(IPC_CHANNELS.workerClientGetConfig)
+      ipcMain.removeHandler(IPC_CHANNELS.workerClientSetConfig)
+      ipcMain.removeHandler(IPC_CHANNELS.workerClientRelaunch)
+    },
+  }
+}

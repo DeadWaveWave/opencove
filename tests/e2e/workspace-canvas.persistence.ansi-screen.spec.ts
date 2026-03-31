@@ -8,6 +8,7 @@ import {
 
 test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
   test('preserves full-screen ANSI content after workspace switch', async () => {
+    const terminalFontSize = 13
     const { electronApp, window } = await launchApp({
       env: {
         OPENCOVE_TERMINAL_DIAGNOSTICS: '1',
@@ -47,6 +48,10 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
             ],
           },
         ],
+        settings: {
+          standardWindowSizeBucket: 'regular',
+          terminalFontSize,
+        },
       })
 
       const terminal = window.locator('.terminal-node').first()
@@ -74,7 +79,16 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       )
 
       await terminal.locator('.xterm').click()
-      await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+      const terminalInput = terminal.locator('.xterm-helper-textarea')
+      await expect(terminalInput).toBeFocused()
+      await expect
+        .poll(async () => {
+          const options = await window.evaluate(() => {
+            return window.__opencoveTerminalSelectionTestApi?.getFontOptions?.('node-a') ?? null
+          })
+          return options?.fontSize ?? null
+        })
+        .toBe(terminalFontSize)
       await window.keyboard.type(command)
       await window.keyboard.press('Enter')
 
@@ -126,6 +140,28 @@ test.describe('Workspace Canvas - Persistence ANSI screen restore', () => {
       console.log('[ansi-screen] after restore has frame', afterRestoreHasFrame)
       await expect(restoredTerminal).toContainText('FRAME_29999_TOKEN', { timeout: 20_000 })
       await expect(restoredTerminal).toContainText('ROW_10_STATIC', { timeout: 20_000 })
+
+      await restoredTerminal.locator('.xterm').click()
+      const restoredInput = restoredTerminal.locator('.xterm-helper-textarea')
+      await expect(restoredInput).toBeFocused()
+      await expect
+        .poll(async () => {
+          const options = await window.evaluate(() => {
+            return window.__opencoveTerminalSelectionTestApi?.getFontOptions?.('node-a') ?? null
+          })
+          return options?.fontSize ?? null
+        })
+        .toBe(terminalFontSize)
+      await window.keyboard.press('Enter')
+      await expect(restoredInput).toBeFocused()
+      await expect
+        .poll(async () => {
+          const options = await window.evaluate(() => {
+            return window.__opencoveTerminalSelectionTestApi?.getFontOptions?.('node-a') ?? null
+          })
+          return options?.fontSize ?? null
+        })
+        .toBe(terminalFontSize)
     } finally {
       await electronApp.close()
     }

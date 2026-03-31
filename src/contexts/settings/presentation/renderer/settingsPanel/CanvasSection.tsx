@@ -2,16 +2,22 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   CANVAS_INPUT_MODES,
+  CANVAS_WHEEL_BEHAVIORS,
+  CANVAS_WHEEL_ZOOM_MODIFIERS,
   FOCUS_NODE_TARGET_ZOOM_STEP,
   MAX_FOCUS_NODE_TARGET_ZOOM,
   MIN_FOCUS_NODE_TARGET_ZOOM,
   type CanvasInputMode,
+  type CanvasWheelBehavior,
+  type CanvasWheelZoomModifier,
   type FocusNodeTargetZoom,
   STANDARD_WINDOW_SIZE_BUCKETS,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import {
   getCanvasInputModeLabel,
+  getCanvasWheelBehaviorLabel,
+  getCanvasWheelZoomModifierLabel,
   getStandardWindowSizeBucketLabel,
 } from '@app/renderer/i18n/labels'
 import type { TerminalProfile } from '@shared/contracts/dto'
@@ -19,6 +25,8 @@ import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
+  canvasWheelBehavior: CanvasWheelBehavior
+  canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
@@ -26,6 +34,8 @@ export function CanvasSection(props: {
   terminalProfiles: TerminalProfile[]
   detectedDefaultTerminalProfileId: string | null
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
+  onChangeCanvasWheelBehavior: (behavior: CanvasWheelBehavior) => void
+  onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
   onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
@@ -35,6 +45,8 @@ export function CanvasSection(props: {
   const { t } = useTranslation()
   const {
     canvasInputMode,
+    canvasWheelBehavior,
+    canvasWheelZoomModifier,
     standardWindowSizeBucket,
     focusNodeOnClick,
     focusNodeTargetZoom,
@@ -42,12 +54,29 @@ export function CanvasSection(props: {
     terminalProfiles,
     detectedDefaultTerminalProfileId,
     onChangeCanvasInputMode,
+    onChangeCanvasWheelBehavior,
+    onChangeCanvasWheelZoomModifier,
     onChangeStandardWindowSizeBucket,
     onChangeDefaultTerminalProfileId,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
     onFocusNodeTargetZoomPreviewChange,
   } = props
+  const platform =
+    typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
+      ? window.opencoveApi.meta.platform
+      : undefined
+  const isMac = platform === 'darwin'
+  const wheelZoomModifierHelpLabel = (() => {
+    switch (canvasWheelZoomModifier) {
+      case 'primary':
+        return isMac ? 'Cmd' : 'Ctrl'
+      case 'ctrl':
+        return 'Ctrl'
+      case 'alt':
+        return isMac ? 'Option' : 'Alt'
+    }
+  })()
   const neutralTargetZoom = 1
   const neutralTargetZoomRatioRaw =
     (neutralTargetZoom - MIN_FOCUS_NODE_TARGET_ZOOM) /
@@ -86,6 +115,54 @@ export function CanvasSection(props: {
           />
         </div>
       </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.canvas.wheelBehaviorLabel')}</strong>
+          <span>{t('settingsPanel.canvas.wheelBehaviorHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <CoveSelect
+            id="settings-canvas-wheel-behavior"
+            testId="settings-canvas-wheel-behavior"
+            value={canvasWheelBehavior}
+            options={CANVAS_WHEEL_BEHAVIORS.map(behavior => ({
+              value: behavior,
+              label: getCanvasWheelBehaviorLabel(t, behavior),
+            }))}
+            onChange={nextValue => onChangeCanvasWheelBehavior(nextValue as CanvasWheelBehavior)}
+          />
+        </div>
+      </div>
+
+      {canvasWheelBehavior === 'pan' ? (
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.canvas.wheelZoomModifierLabel')}</strong>
+            <span>
+              {t('settingsPanel.canvas.wheelZoomModifierHelp', {
+                modifier: wheelZoomModifierHelpLabel,
+              })}
+            </span>
+          </div>
+          <div className="settings-panel__control">
+            <CoveSelect
+              id="settings-canvas-wheel-zoom-modifier"
+              testId="settings-canvas-wheel-zoom-modifier"
+              value={canvasWheelZoomModifier}
+              options={CANVAS_WHEEL_ZOOM_MODIFIERS.filter(modifier =>
+                modifier === 'ctrl' ? isMac : true,
+              ).map(modifier => ({
+                value: modifier,
+                label: getCanvasWheelZoomModifierLabel(t, modifier, platform),
+              }))}
+              onChange={nextValue =>
+                onChangeCanvasWheelZoomModifier(nextValue as CanvasWheelZoomModifier)
+              }
+            />
+          </div>
+        </div>
+      ) : null}
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">

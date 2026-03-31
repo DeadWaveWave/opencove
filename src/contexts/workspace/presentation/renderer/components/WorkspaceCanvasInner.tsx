@@ -205,6 +205,8 @@ export function WorkspaceCanvasInner({
     handleCanvasWheelCapture,
   } = workspaceCanvasHooks.useWorkspaceCanvasInputMode({
     canvasInputModeSetting: agentSettings.canvasInputMode,
+    canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior,
+    canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier,
     detectedCanvasInputMode: canvasState.detectedCanvasInputMode,
     inputModalityStateRef: canvasState.inputModalityStateRef,
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,

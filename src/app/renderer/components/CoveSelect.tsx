@@ -181,11 +181,14 @@ export function CoveSelect({
       return
     }
 
-    const currentSelectedIndex = resolveInitialIndex()
-    if (currentSelectedIndex !== highlightedIndex) {
-      setHighlightedIndex(currentSelectedIndex)
+    const highlightedOption = options[highlightedIndex]
+    const highlightedIsValid =
+      highlightedIndex >= 0 && highlightedIndex < options.length && !highlightedOption?.disabled
+
+    if (!highlightedIsValid) {
+      setHighlightedIndex(resolveInitialIndex())
     }
-  }, [highlightedIndex, isOpen, resolveInitialIndex])
+  }, [highlightedIndex, isOpen, options, resolveInitialIndex])
 
   const selectOption = (nextValue: string): void => {
     onChange(nextValue)

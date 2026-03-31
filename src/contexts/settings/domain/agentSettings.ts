@@ -4,7 +4,24 @@ import type {
   AgentCustomModelEnabledByProvider,
   AgentCustomModelOptionsByProvider,
 } from './agentSettings.customModels'
+import {
+  AGENT_PROVIDERS,
+  isTaskTitleAgentProvider,
+  isValidProvider,
+  isWorktreeNameSuggestionProvider,
+  normalizeAgentProviderOrder,
+  type AgentProvider,
+  type TaskTitleAgentProvider,
+  type WorktreeNameSuggestionAgentProvider,
+} from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
+import {
+  DEFAULT_UI_LANGUAGE,
+  isValidUiLanguage,
+  isValidUiTheme,
+  type UiLanguage,
+  type UiTheme,
+} from './uiSettings'
 import {
   isValidUpdateChannel,
   isValidUpdatePolicy,
@@ -12,6 +29,16 @@ import {
 } from './updateSettings'
 import type { KeybindingOverrides } from './keybindings'
 import { normalizeKeybindingOverrides } from './keybindings'
+import {
+  isValidCanvasInputMode,
+  isValidCanvasWheelBehavior,
+  isValidCanvasWheelZoomModifier,
+  isValidStandardWindowSizeBucket,
+  type CanvasInputMode,
+  type CanvasWheelBehavior,
+  type CanvasWheelZoomModifier,
+  type StandardWindowSizeBucket,
+} from './canvasSettings'
 import {
   isRecord,
   normalizeBoolean,
@@ -32,28 +59,34 @@ export {
   MIN_FOCUS_NODE_TARGET_ZOOM,
 } from './focusNodeTargetZoom'
 export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
-
-export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
-export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
-export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
-export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
-export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
-export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
-export type WorktreeNameSuggestionAgentProvider =
-  (typeof WORKTREE_NAME_SUGGESTION_PROVIDERS)[number]
-
+export {
+  AGENT_PROVIDERS,
+  EXPERIMENTAL_AGENT_PROVIDERS,
+  TASK_TITLE_PROVIDERS,
+  WORKTREE_NAME_SUGGESTION_PROVIDERS,
+  isTaskTitleAgentProvider,
+  isWorktreeNameSuggestionProvider,
+} from './agentSettings.providers'
+export type {
+  AgentProvider,
+  TaskTitleAgentProvider,
+  WorktreeNameSuggestionAgentProvider,
+} from './agentSettings.providers'
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
-
-export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
-export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
-export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const
-export type StandardWindowSizeBucket = (typeof STANDARD_WINDOW_SIZE_BUCKETS)[number]
-
-export const UI_LANGUAGES = ['en', 'zh-CN'] as const
-export type UiLanguage = (typeof UI_LANGUAGES)[number]
-
-export const UI_THEMES = ['system', 'light', 'dark'] as const
-export type UiTheme = (typeof UI_THEMES)[number]
+export {
+  CANVAS_INPUT_MODES,
+  CANVAS_WHEEL_BEHAVIORS,
+  CANVAS_WHEEL_ZOOM_MODIFIERS,
+  STANDARD_WINDOW_SIZE_BUCKETS,
+} from './canvasSettings'
+export type {
+  CanvasInputMode,
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+  StandardWindowSizeBucket,
+} from './canvasSettings'
+export { DEFAULT_UI_LANGUAGE, UI_LANGUAGES, UI_THEMES } from './uiSettings'
+export type { UiLanguage, UiTheme } from './uiSettings'
 
 export type TerminalProfileId = string | null
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
@@ -62,7 +95,6 @@ export const MIN_TERMINAL_FONT_SIZE = 10
 export const MAX_TERMINAL_FONT_SIZE = 22
 export const MIN_UI_FONT_SIZE = 14
 export const MAX_UI_FONT_SIZE = 24
-export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
 export const MIN_WORKSPACE_SEARCH_PANEL_WIDTH = 320
 export const MAX_WORKSPACE_SEARCH_PANEL_WIDTH = 720
 
@@ -107,6 +139,8 @@ export interface AgentSettings {
   disableAppShortcutsWhenTerminalFocused: boolean
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
+  canvasWheelBehavior: CanvasWheelBehavior
+  canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
@@ -161,6 +195,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   disableAppShortcutsWhenTerminalFocused: true,
   keybindings: {},
   canvasInputMode: 'auto',
+  canvasWheelBehavior: 'zoom',
+  canvasWheelZoomModifier: 'primary',
   standardWindowSizeBucket: 'regular',
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
@@ -173,77 +209,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   hideWorktreeMismatchDropWarning: false,
 }
 
-function isValidProvider(value: unknown): value is AgentProvider {
-  return typeof value === 'string' && AGENT_PROVIDERS.includes(value as AgentProvider)
-}
-
-export function isTaskTitleAgentProvider(value: unknown): value is TaskTitleAgentProvider {
-  return typeof value === 'string' && TASK_TITLE_PROVIDERS.includes(value as TaskTitleAgentProvider)
-}
-
-export function isWorktreeNameSuggestionProvider(
-  value: unknown,
-): value is WorktreeNameSuggestionAgentProvider {
-  return (
-    typeof value === 'string' &&
-    WORKTREE_NAME_SUGGESTION_PROVIDERS.includes(value as WorktreeNameSuggestionAgentProvider)
-  )
-}
-
 function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
   return value === 'default' || isTaskTitleAgentProvider(value)
-}
-
-function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
-  return typeof value === 'string' && CANVAS_INPUT_MODES.includes(value as CanvasInputMode)
-}
-
-function isValidStandardWindowSizeBucket(value: unknown): value is StandardWindowSizeBucket {
-  return (
-    typeof value === 'string' &&
-    STANDARD_WINDOW_SIZE_BUCKETS.includes(value as StandardWindowSizeBucket)
-  )
-}
-
-function isValidUiLanguage(value: unknown): value is UiLanguage {
-  return typeof value === 'string' && UI_LANGUAGES.includes(value as UiLanguage)
-}
-
-function isValidUiTheme(value: unknown): value is UiTheme {
-  return typeof value === 'string' && UI_THEMES.includes(value as UiTheme)
-}
-
-function normalizeAgentProviderOrder(value: unknown): AgentProvider[] {
-  if (!Array.isArray(value)) {
-    return [...AGENT_PROVIDERS]
-  }
-
-  const normalized: AgentProvider[] = []
-  const seen = new Set<AgentProvider>()
-
-  for (const item of value) {
-    if (!isValidProvider(item)) {
-      continue
-    }
-
-    if (seen.has(item)) {
-      continue
-    }
-
-    seen.add(item)
-    normalized.push(item)
-  }
-
-  for (const provider of AGENT_PROVIDERS) {
-    if (seen.has(provider)) {
-      continue
-    }
-
-    seen.add(provider)
-    normalized.push(provider)
-  }
-
-  return normalized
 }
 
 export function resolveAgentModel(settings: AgentSettings, provider: AgentProvider): string | null {
@@ -403,6 +370,12 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
+  const canvasWheelBehavior = isValidCanvasWheelBehavior(value.canvasWheelBehavior)
+    ? value.canvasWheelBehavior
+    : DEFAULT_AGENT_SETTINGS.canvasWheelBehavior
+  const canvasWheelZoomModifier = isValidCanvasWheelZoomModifier(value.canvasWheelZoomModifier)
+    ? value.canvasWheelZoomModifier
+    : DEFAULT_AGENT_SETTINGS.canvasWheelZoomModifier
   const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
     ? value.standardWindowSizeBucket
     : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
@@ -484,6 +457,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     disableAppShortcutsWhenTerminalFocused,
     keybindings,
     canvasInputMode,
+    canvasWheelBehavior,
+    canvasWheelZoomModifier,
     standardWindowSizeBucket,
     defaultTerminalWindowScalePercent,
     terminalFontSize,

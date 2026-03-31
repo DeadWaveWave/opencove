@@ -14,6 +14,7 @@ import type {
   ConfigureAppUpdatesInput,
 } from '../../../../shared/contracts/dto'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
+import { resolveMacAppBundlePath, resolveMacUpdaterSupport } from './macosUpdaterSupport'
 
 const UPDATE_CHECK_INTERVAL_MS = 1000 * 60 * 60 * 6
 
@@ -114,6 +115,13 @@ function summarizeUpdateErrorMessage(message: string): string {
   }
 
   if (
+    normalized.includes('Code signature at URL') &&
+    normalized.includes('did not pass validation')
+  ) {
+    return 'macOS rejected the downloaded update because its code signature did not match this build. Download the latest release manually.（macOS 因签名不匹配拒绝安装更新，请手动下载安装最新版本。）'
+  }
+
+  if (
     normalized.includes('net::ERR_INTERNET_DISCONNECTED') ||
     normalized.includes('net::ERR_NETWORK_CHANGED')
   ) {
@@ -206,13 +214,23 @@ export function createAppUpdateService(
   options: AppUpdateServiceOptions = {},
 ): AppUpdateService {
   const currentVersion = app.getVersion()
-  const unsupportedMessage =
-    options.unsupportedMessage ??
-    (process.env.NODE_ENV === 'test'
+  const fallbackUnsupportedMessage =
+    process.env.NODE_ENV === 'test'
       ? 'Update checks are disabled in tests.'
-      : 'Update checks are only available in packaged builds.')
-  const supportsUpdates =
+      : 'Update checks are only available in packaged builds.'
+  let supportsUpdates =
     options.supportsUpdates ?? (process.env.NODE_ENV !== 'test' && app.isPackaged)
+  let unsupportedMessage = options.unsupportedMessage ?? fallbackUnsupportedMessage
+
+  if (options.supportsUpdates === undefined && supportsUpdates && process.platform === 'darwin') {
+    const appPath = resolveMacAppBundlePath(app.getPath('exe'))
+    const macSupport = resolveMacUpdaterSupport({ appPath })
+    if (!macSupport.supported) {
+      supportsUpdates = false
+      unsupportedMessage = options.unsupportedMessage ?? macSupport.message ?? unsupportedMessage
+    }
+  }
+
   let state = buildBaseState(
     currentVersion,
     'prompt',

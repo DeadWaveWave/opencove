@@ -3,6 +3,13 @@ import type { ControlSurfaceOperationKind } from '../../../shared/contracts/cont
 
 export interface ControlSurfaceContext {
   readonly now: () => Date
+  readonly capabilities: {
+    webShell: boolean
+    sync: {
+      state: boolean
+      events: boolean
+    }
+  }
 }
 
 export type ControlSurfacePayloadValidator<TPayload> = (payload: unknown) => TPayload

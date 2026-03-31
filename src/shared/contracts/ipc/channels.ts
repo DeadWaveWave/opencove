@@ -1,4 +1,7 @@
 export const IPC_CHANNELS = {
+  cliGetStatus: 'cli:get-status',
+  cliInstall: 'cli:install',
+  cliUninstall: 'cli:uninstall',
   clipboardReadText: 'clipboard:read-text',
   clipboardWriteText: 'clipboard:write-text',
   filesystemCreateDirectory: 'filesystem:create-directory',
@@ -65,6 +68,12 @@ export const IPC_CHANNELS = {
   agentReadLastMessage: 'agent:read-last-message',
   taskSuggestTitle: 'task:suggest-title',
   systemListFonts: 'system:list-fonts',
+  workerGetStatus: 'worker:get-status',
+  workerStart: 'worker:start',
+  workerStop: 'worker:stop',
+  workerClientGetConfig: 'worker-client:get-config',
+  workerClientSetConfig: 'worker-client:set-config',
+  workerClientRelaunch: 'worker-client:relaunch',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

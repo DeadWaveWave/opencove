@@ -10,7 +10,10 @@ function sample(overrides: Partial<WheelInputSample> = {}): WheelInputSample {
     deltaX: 0,
     deltaY: 0,
     deltaMode: 0,
+    altKey: false,
     ctrlKey: false,
+    metaKey: false,
+    shiftKey: false,
     timeStamp: 100,
     ...overrides,
   }
@@ -20,6 +23,8 @@ describe('canvas wheel gesture decisions', () => {
   it('zooms canvas on a strong mouse-wheel event in auto mode', () => {
     const decision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'trackpad',
       inputModalityState: createCanvasInputModalityState('trackpad'),
       trackpadGestureLock: null,
@@ -37,6 +42,8 @@ describe('canvas wheel gesture decisions', () => {
   it('zooms canvas on a noisy large mouse-wheel event after trackpad mode', () => {
     const decision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'trackpad',
       inputModalityState: createCanvasInputModalityState('trackpad'),
       trackpadGestureLock: null,
@@ -54,6 +61,8 @@ describe('canvas wheel gesture decisions', () => {
   it('pans canvas on a strong dual-axis gesture-like scroll in auto mode', () => {
     const decision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'mouse',
       inputModalityState: createCanvasInputModalityState('mouse'),
       trackpadGestureLock: null,
@@ -74,6 +83,8 @@ describe('canvas wheel gesture decisions', () => {
   it('keeps mouse zoom on a single ambiguous vertical pixel wheel sample', () => {
     const decision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'mouse',
       inputModalityState: createCanvasInputModalityState('mouse'),
       trackpadGestureLock: null,
@@ -92,6 +103,8 @@ describe('canvas wheel gesture decisions', () => {
   it('keeps ambiguous vertical wheel bursts in mouse zoom mode', () => {
     const firstDecision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'mouse',
       inputModalityState: createCanvasInputModalityState('mouse'),
       trackpadGestureLock: null,
@@ -103,6 +116,8 @@ describe('canvas wheel gesture decisions', () => {
 
     const secondDecision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: firstDecision.nextDetectedCanvasInputMode,
       inputModalityState: firstDecision.nextInputModalityState,
       trackpadGestureLock: firstDecision.nextTrackpadGestureLock,
@@ -121,6 +136,8 @@ describe('canvas wheel gesture decisions', () => {
   it('promotes repeated dual-axis gesture bursts to trackpad pan', () => {
     const firstDecision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'mouse',
       inputModalityState: createCanvasInputModalityState('mouse'),
       trackpadGestureLock: null,
@@ -132,6 +149,8 @@ describe('canvas wheel gesture decisions', () => {
 
     const secondDecision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: firstDecision.nextDetectedCanvasInputMode,
       inputModalityState: firstDecision.nextInputModalityState,
       trackpadGestureLock: firstDecision.nextTrackpadGestureLock,
@@ -153,6 +172,8 @@ describe('canvas wheel gesture decisions', () => {
   it('does not let child scrolling pollute canvas auto detection', () => {
     const decision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'trackpad',
       inputModalityState: createCanvasInputModalityState('trackpad'),
       trackpadGestureLock: null,
@@ -170,6 +191,8 @@ describe('canvas wheel gesture decisions', () => {
   it('keeps a contiguous trackpad pan locked to the canvas across node hover', () => {
     const decision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
       resolvedCanvasInputMode: 'trackpad',
       inputModalityState: createCanvasInputModalityState('trackpad'),
       trackpadGestureLock: {
@@ -190,5 +213,77 @@ describe('canvas wheel gesture decisions', () => {
       target: 'canvas',
       lastTimestamp: 180,
     })
+  })
+
+  it('pans canvas on a mouse wheel event in pan mode', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'pan',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'mouse',
+      inputModalityState: createCanvasInputModalityState('mouse'),
+      trackpadGestureLock: null,
+      wheelTarget: 'canvas',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaY: -120, timeStamp: 2400 }),
+      lockTimestamp: 2400,
+    })
+
+    expect(decision.canvasAction).toBe('pan')
+    expect(decision.nextDetectedCanvasInputMode).toBe('mouse')
+  })
+
+  it('zooms canvas on cmd/meta + mouse wheel in pan mode', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'pan',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'mouse',
+      inputModalityState: createCanvasInputModalityState('mouse'),
+      trackpadGestureLock: null,
+      wheelTarget: 'canvas',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaY: -120, metaKey: true, timeStamp: 2400 }),
+      lockTimestamp: 2400,
+    })
+
+    expect(decision.canvasAction).toBe('zoom')
+    expect(decision.nextDetectedCanvasInputMode).toBe('mouse')
+  })
+
+  it('zooms on ctrl + wheel input in pan mode even when the modifier is cmd/meta', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'pan',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'mouse',
+      inputModalityState: createCanvasInputModalityState('mouse'),
+      trackpadGestureLock: null,
+      wheelTarget: 'canvas',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaY: -120, ctrlKey: true, timeStamp: 2400 }),
+      lockTimestamp: 2400,
+    })
+
+    expect(decision.canvasAction).toBe('zoom')
+    expect(decision.nextDetectedCanvasInputMode).toBe('mouse')
+  })
+
+  it('still zooms canvas on pinch-like wheel events in pan mode', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'pan',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'mouse',
+      inputModalityState: createCanvasInputModalityState('mouse'),
+      trackpadGestureLock: null,
+      wheelTarget: 'canvas',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaY: -2.5, ctrlKey: true, timeStamp: 2400 }),
+      lockTimestamp: 2400,
+    })
+
+    expect(decision.canvasAction).toBe('zoom')
+    expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
   })
 })

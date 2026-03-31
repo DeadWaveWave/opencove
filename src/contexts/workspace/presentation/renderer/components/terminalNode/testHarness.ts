@@ -9,6 +9,7 @@ type TerminalSelectionHandle = Pick<
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
+  getFontOptions: (nodeId: string) => { fontSize: number | null; fontFamily: string | null } | null
   getSize: (nodeId: string) => { cols: number; rows: number } | null
   getCachedScreenStateSummary: (nodeId: string) => {
     sessionId: string
@@ -102,6 +103,23 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return {
           x: rect.left + (leftPadding + (clampedCol - 0.5) * cellWidth) * scaleX,
           y: rect.top + (topPadding + (clampedRow - 0.5) * cellHeight) * scaleY,
+        }
+      },
+      getFontOptions: nodeId => {
+        const terminal = terminalHandles.get(nodeId) as unknown as {
+          options?: { fontSize?: unknown; fontFamily?: unknown }
+        }
+        const options = terminal?.options
+        if (!options) {
+          return null
+        }
+
+        return {
+          fontSize:
+            typeof options.fontSize === 'number' && Number.isFinite(options.fontSize)
+              ? options.fontSize
+              : null,
+          fontFamily: typeof options.fontFamily === 'string' ? options.fontFamily : null,
         }
       },
       getSize: nodeId => {
