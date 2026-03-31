@@ -63,17 +63,26 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  CopyEntryInput,
   TerminalDiagnosticsLogInput,
   CreateDirectoryInput,
+  DeleteEntryInput,
+  MoveEntryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
   ReadFileBytesInput,
   ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
+  RenameEntryInput,
   StatInput,
   FileSystemStat,
+  SyncEventPayload,
   WriteFileTextInput,
+  HomeWorkerConfigDto,
+  SetHomeWorkerConfigInput,
+  WorkerStatusResult,
+  CliPathStatusResult,
 } from '../../shared/contracts/dto'
 
 type UnsubscribeFn = () => void
@@ -101,6 +110,10 @@ export interface OpenCoveApi {
   }
   filesystem: {
     createDirectory: (payload: CreateDirectoryInput) => Promise<void>
+    copyEntry: (payload: CopyEntryInput) => Promise<void>
+    moveEntry: (payload: MoveEntryInput) => Promise<void>
+    renameEntry: (payload: RenameEntryInput) => Promise<void>
+    deleteEntry: (payload: DeleteEntryInput) => Promise<void>
     readFileBytes: (payload: ReadFileBytesInput) => Promise<ReadFileBytesResult>
     readFileText: (payload: ReadFileTextInput) => Promise<ReadFileTextResult>
     writeFileText: (payload: WriteFileTextInput) => Promise<void>
@@ -114,6 +127,9 @@ export interface OpenCoveApi {
     writeAppState: (payload: WriteAppStateInput) => Promise<PersistWriteResult>
     readNodeScrollback: (payload: ReadNodeScrollbackInput) => Promise<string | null>
     writeNodeScrollback: (payload: WriteNodeScrollbackInput) => Promise<PersistWriteResult>
+  }
+  sync: {
+    onStateUpdated: (listener: (event: SyncEventPayload) => void) => UnsubscribeFn
   }
   workspace: {
     selectDirectory: () => Promise<WorkspaceDirectory | null>
@@ -182,6 +198,21 @@ export interface OpenCoveApi {
   }
   system: {
     listFonts: () => Promise<ListSystemFontsResult>
+  }
+  worker: {
+    getStatus: () => Promise<WorkerStatusResult>
+    start: () => Promise<WorkerStatusResult>
+    stop: () => Promise<WorkerStatusResult>
+  }
+  workerClient: {
+    getConfig: () => Promise<HomeWorkerConfigDto>
+    setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
+    relaunch: () => Promise<void>
+  }
+  cli: {
+    getStatus: () => Promise<CliPathStatusResult>
+    install: () => Promise<CliPathStatusResult>
+    uninstall: () => Promise<CliPathStatusResult>
   }
 }
 

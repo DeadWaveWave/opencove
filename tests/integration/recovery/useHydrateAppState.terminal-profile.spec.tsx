@@ -70,6 +70,21 @@ describe('useHydrateAppState terminal profile recovery', () => {
       },
     })
 
+    vi.resetModules()
+
+    const { useAppStore } = await import('../../../src/app/renderer/shell/store/useAppStore')
+    useAppStore.setState({
+      workspaces: [],
+      activeWorkspaceId: null,
+      projectContextMenu: null,
+      projectDeleteConfirmation: null,
+      isRemovingProject: false,
+      agentSettings: DEFAULT_AGENT_SETTINGS,
+      isSettingsOpen: false,
+      focusRequest: null,
+      persistNotice: null,
+    })
+
     const { useHydrateAppState } =
       await import('../../../src/app/renderer/shell/hooks/useHydrateAppState')
 

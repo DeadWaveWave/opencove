@@ -25,6 +25,10 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'filesystem.read_file_bytes_failed': 'Unable to read the file.',
     'filesystem.read_file_text_failed': 'Unable to read the file.',
     'filesystem.write_file_text_failed': 'Unable to save the file.',
+    'filesystem.copy_entry_failed': 'Unable to copy the file or folder.',
+    'filesystem.move_entry_failed': 'Unable to move the file or folder.',
+    'filesystem.rename_entry_failed': 'Unable to rename the file or folder.',
+    'filesystem.delete_entry_failed': 'Unable to delete the file or folder.',
     'filesystem.read_directory_failed': 'Unable to load the directory.',
     'filesystem.stat_failed': 'Unable to read file details.',
     'worktree.api_unavailable':

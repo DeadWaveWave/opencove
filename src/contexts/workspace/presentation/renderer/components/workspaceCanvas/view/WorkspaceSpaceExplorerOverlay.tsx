@@ -1,22 +1,16 @@
 import React from 'react'
-import { Check, FilePlus, FileText, Folder, FolderPlus, RefreshCw, X } from 'lucide-react'
 import { useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import type { ShowWorkspaceCanvasMessage } from '../types'
+import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'
 import { selectViewportTransform } from './WorkspaceSpaceExplorerOverlay.helpers'
 import {
   resolveExplorerAutoPreferredWidth,
   resolveExplorerPlacement,
 } from './WorkspaceSpaceExplorerOverlay.layout'
-import { WorkspaceSpaceExplorerTree } from './WorkspaceSpaceExplorerOverlay.tree'
-import {
-  useSpaceExplorerOverlayModel,
-  type SpaceExplorerCreateMode,
-} from './WorkspaceSpaceExplorerOverlay.model'
-
-function resolveCreateIcon(mode: Exclude<SpaceExplorerCreateMode, null>): React.JSX.Element {
-  return mode === 'directory' ? <Folder aria-hidden="true" /> : <FileText aria-hidden="true" />
-}
+import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
+import { WorkspaceSpaceExplorerOverlayBody } from './WorkspaceSpaceExplorerOverlayBody'
 
 export function WorkspaceSpaceExplorerOverlay({
   canvasRef,
@@ -24,6 +18,10 @@ export function WorkspaceSpaceExplorerOverlay({
   spaceName,
   directoryPath,
   rect,
+  explorerClipboard,
+  setExplorerClipboard,
+  findBlockingOpenDocument,
+  onShowMessage,
   onClose,
   onOpenFile,
 }: {
@@ -32,6 +30,10 @@ export function WorkspaceSpaceExplorerOverlay({
   spaceName: string
   directoryPath: string
   rect: { x: number; y: number; width: number; height: number }
+  explorerClipboard: SpaceExplorerClipboardItem | null
+  setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
+  findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
+  onShowMessage?: ShowWorkspaceCanvasMessage
   onClose: () => void
   onOpenFile: (
     uri: string,
@@ -42,7 +44,15 @@ export function WorkspaceSpaceExplorerOverlay({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const transform = useStore(selectViewportTransform)
+  const containerRef = React.useRef<HTMLElement | null>(null)
   const createInputRef = React.useRef<HTMLInputElement | null>(null)
+  const renameInputRef = React.useRef<HTMLInputElement | null>(null)
+  const placementRef = React.useRef<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const resizeStartRef = React.useRef<{
     startX: number
     startWidth: number
@@ -50,10 +60,7 @@ export function WorkspaceSpaceExplorerOverlay({
     maxWidth: number
   } | null>(null)
   const [manualWidth, setManualWidth] = React.useState<number | null>(null)
-  const [canvasSize, setCanvasSize] = React.useState(() => ({
-    width: 0,
-    height: 0,
-  }))
+  const [canvasSize, setCanvasSize] = React.useState({ width: 0, height: 0 })
 
   const rootUri = React.useMemo(() => toFileUri(directoryPath.trim()), [directoryPath])
 
@@ -68,57 +75,16 @@ export function WorkspaceSpaceExplorerOverlay({
   }, [rect.height, rect.width, rect.x, rect.y, transform])
 
   const placement = React.useMemo(() => {
-    // Keep the panel width/height stable across canvas zoom levels so it behaves like an overlay
-    // (VS Code-ish), only shrinking when the space is too small to host it.
     const canvasWidth = canvasSize.width > 0 ? canvasSize.width : 1280
     const canvasHeight = canvasSize.height > 0 ? canvasSize.height : 720
-    const autoPreferredWidth = resolveExplorerAutoPreferredWidth(rect.width)
-    const preferredWidth = manualWidth ?? autoPreferredWidth
-    const autoPreferredHeight = Math.max(0, Math.floor(rect.height - 20))
     return resolveExplorerPlacement({
       canvasWidth,
       canvasHeight,
       pixelRect,
-      preferredWidth,
-      preferredHeight: autoPreferredHeight,
+      preferredWidth: manualWidth ?? resolveExplorerAutoPreferredWidth(rect.width),
+      preferredHeight: Math.max(0, Math.floor(rect.height - 20)),
     })
   }, [canvasSize.height, canvasSize.width, manualWidth, pixelRect, rect.height, rect.width])
-
-  const { isLoadingRoot, rootError, rows, selectedEntryUri, refresh, handleEntryActivate, create } =
-    useSpaceExplorerOverlayModel({
-      rootUri,
-      spaceId,
-      onOpenFile: uri => {
-        onOpenFile(uri, {
-          explorerPlacementPx: {
-            left: placement.left,
-            top: placement.top,
-            width: placement.width,
-            height: placement.height,
-          },
-        })
-      },
-    })
-  const createRef = React.useRef(create)
-
-  React.useEffect(() => {
-    createRef.current = create
-  }, [create])
-
-  React.useEffect(() => {
-    if (!create.mode) {
-      return
-    }
-
-    const handle = window.setTimeout(() => {
-      createInputRef.current?.focus()
-      createInputRef.current?.select()
-    }, 0)
-
-    return () => {
-      window.clearTimeout(handle)
-    }
-  }, [create.mode])
 
   React.useEffect(() => {
     const canvas = canvasRef.current
@@ -140,47 +106,21 @@ export function WorkspaceSpaceExplorerOverlay({
     update()
     const resizeObserver = new ResizeObserver(update)
     resizeObserver.observe(canvas)
-
     return () => {
       resizeObserver.disconnect()
     }
   }, [canvasRef])
 
   React.useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.key !== 'Escape') {
-        return
-      }
-
-      event.preventDefault()
-
-      const currentCreate = createRef.current
-      if (currentCreate.mode && !currentCreate.isCreating) {
-        currentCreate.cancel()
-        return
-      }
-
-      onClose()
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [onClose])
-
-  React.useEffect(() => {
-    const width = canvasSize.width
-    const height = canvasSize.height
-    if (width <= 0 || height <= 0) {
+    if (canvasSize.width <= 0 || canvasSize.height <= 0) {
       return
     }
 
     const isSpaceVisible =
       pixelRect.x + pixelRect.width > 0 &&
-      pixelRect.x < width &&
+      pixelRect.x < canvasSize.width &&
       pixelRect.y + pixelRect.height > 0 &&
-      pixelRect.y < height
+      pixelRect.y < canvasSize.height
 
     if (!isSpaceVisible) {
       onClose()
@@ -195,10 +135,46 @@ export function WorkspaceSpaceExplorerOverlay({
     pixelRect.y,
   ])
 
+  React.useEffect(() => {
+    const handle = window.setTimeout(() => {
+      containerRef.current?.focus({ preventScroll: true })
+    }, 0)
+
+    return () => {
+      window.clearTimeout(handle)
+    }
+  }, [])
+
+  placementRef.current = {
+    left: placement.left,
+    top: placement.top,
+    width: placement.width,
+    height: placement.height,
+  }
+
+  const handleOpenFile = React.useCallback(
+    (uri: string) => {
+      const nextPlacement = placementRef.current
+      onOpenFile(uri, {
+        explorerPlacementPx: nextPlacement
+          ? {
+              left: nextPlacement.left,
+              top: nextPlacement.top,
+              width: nextPlacement.width,
+              height: nextPlacement.height,
+            }
+          : undefined,
+      })
+    },
+    [onOpenFile],
+  )
+
   return (
     <section
+      ref={containerRef}
       className="workspace-space-explorer workspace-space-explorer--inside"
       data-testid="workspace-space-explorer"
+      tabIndex={0}
       style={{
         width: placement.width,
         height: placement.height,
@@ -207,6 +183,7 @@ export function WorkspaceSpaceExplorerOverlay({
       }}
       onPointerDown={event => {
         event.stopPropagation()
+        containerRef.current?.focus({ preventScroll: true })
       }}
       onClick={event => {
         event.stopPropagation()
@@ -215,141 +192,20 @@ export function WorkspaceSpaceExplorerOverlay({
         event.stopPropagation()
       }}
     >
-      <header className="workspace-space-explorer__header">
-        <div className="workspace-space-explorer__title" title={spaceName}>
-          {t('spaceActions.files')}
-        </div>
-        <div className="workspace-space-explorer__header-actions">
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action"
-            aria-label={t('spaceExplorer.newFile')}
-            title={t('spaceExplorer.newFile')}
-            disabled={!!rootError}
-            onClick={event => {
-              event.stopPropagation()
-              create.start('file')
-            }}
-          >
-            <FilePlus aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action"
-            aria-label={t('spaceExplorer.newFolder')}
-            title={t('spaceExplorer.newFolder')}
-            disabled={!!rootError}
-            onClick={event => {
-              event.stopPropagation()
-              create.start('directory')
-            }}
-          >
-            <FolderPlus aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action"
-            aria-label={t('spaceExplorer.refresh')}
-            title={t('spaceExplorer.refresh')}
-            onClick={event => {
-              event.stopPropagation()
-              refresh()
-            }}
-          >
-            <RefreshCw aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action workspace-space-explorer__header-action--close"
-            aria-label={t('common.close')}
-            title={t('common.close')}
-            onClick={event => {
-              event.stopPropagation()
-              onClose()
-            }}
-          >
-            <X aria-hidden="true" />
-          </button>
-        </div>
-      </header>
-
-      <div className="workspace-space-explorer__body">
-        {create.mode ? (
-          <form
-            className="workspace-space-explorer__create"
-            onSubmit={event => {
-              event.preventDefault()
-              event.stopPropagation()
-              void create.submit()
-            }}
-          >
-            <span className="workspace-space-explorer__create-icon" aria-hidden="true">
-              {resolveCreateIcon(create.mode)}
-            </span>
-            <input
-              ref={createInputRef}
-              className="workspace-space-explorer__create-input"
-              value={create.draftName}
-              placeholder={
-                create.mode === 'directory'
-                  ? t('spaceExplorer.folderNamePlaceholder')
-                  : t('spaceExplorer.fileNamePlaceholder')
-              }
-              disabled={create.isCreating}
-              onChange={event => {
-                create.setDraftName(event.target.value)
-              }}
-              onKeyDown={event => {
-                if (event.key !== 'Escape') {
-                  return
-                }
-
-                event.preventDefault()
-                event.stopPropagation()
-                if (!create.isCreating) {
-                  create.cancel()
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className="workspace-space-explorer__create-action"
-              disabled={create.isCreating}
-              aria-label={t('spaceExplorer.create')}
-              title={t('spaceExplorer.create')}
-            >
-              <Check aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="workspace-space-explorer__create-action workspace-space-explorer__create-action--cancel"
-              disabled={create.isCreating}
-              aria-label={t('common.cancel')}
-              title={t('common.cancel')}
-              onClick={event => {
-                event.stopPropagation()
-                create.cancel()
-              }}
-            >
-              <X aria-hidden="true" />
-            </button>
-            {create.error ? (
-              <div className="workspace-space-explorer__create-error" role="status">
-                {create.error}
-              </div>
-            ) : null}
-          </form>
-        ) : null}
-        <WorkspaceSpaceExplorerTree
-          spaceId={spaceId}
-          isLoadingRoot={isLoadingRoot}
-          rootError={rootError}
-          rows={rows}
-          selectedEntryUri={selectedEntryUri}
-          onRefresh={refresh}
-          onEntryActivate={handleEntryActivate}
-        />
-      </div>
+      <WorkspaceSpaceExplorerOverlayBody
+        spaceName={spaceName}
+        spaceId={spaceId}
+        rootUri={rootUri}
+        explorerClipboard={explorerClipboard}
+        setExplorerClipboard={setExplorerClipboard}
+        findBlockingOpenDocument={findBlockingOpenDocument}
+        onClose={onClose}
+        onShowMessage={onShowMessage}
+        createInputRef={createInputRef}
+        renameInputRef={renameInputRef}
+        containerRef={containerRef}
+        onOpenFile={handleOpenFile}
+      />
 
       <div
         className="workspace-space-explorer__resize-handle"
@@ -389,11 +245,12 @@ export function WorkspaceSpaceExplorerOverlay({
               return
             }
 
-            const delta = moveEvent.clientX - resizeStart.startX
-            const unclampedWidth = resizeStart.startWidth + delta
             const nextWidth = Math.min(
               resizeStart.maxWidth,
-              Math.max(resizeStart.minWidth, unclampedWidth),
+              Math.max(
+                resizeStart.minWidth,
+                resizeStart.startWidth + moveEvent.clientX - resizeStart.startX,
+              ),
             )
             setManualWidth(nextWidth)
           }
@@ -414,11 +271,12 @@ export function WorkspaceSpaceExplorerOverlay({
           }
 
           event.stopPropagation()
-          const delta = event.clientX - resizeStart.startX
-          const unclampedWidth = resizeStart.startWidth + delta
           const nextWidth = Math.min(
             resizeStart.maxWidth,
-            Math.max(resizeStart.minWidth, unclampedWidth),
+            Math.max(
+              resizeStart.minWidth,
+              resizeStart.startWidth + event.clientX - resizeStart.startX,
+            ),
           )
           setManualWidth(nextWidth)
         }}

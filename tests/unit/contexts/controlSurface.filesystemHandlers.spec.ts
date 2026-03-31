@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { mkdtemp, mkdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -6,6 +6,16 @@ import { createControlSurface } from '../../../src/app/main/controlSurface/contr
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerFilesystemHandlers } from '../../../src/app/main/controlSurface/handlers/filesystemHandlers'
 import { toFileUri } from '../../../src/contexts/filesystem/domain/fileUri'
+
+const { shellMock } = vi.hoisted(() => ({
+  shellMock: {
+    trashItem: vi.fn(async () => undefined),
+  },
+}))
+
+vi.mock('electron', () => ({
+  shell: shellMock,
+}))
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-03-27T00:00:00.000Z'),
@@ -101,6 +111,56 @@ describe('control surface filesystem handlers', () => {
     }
   })
 
+  it('copies, moves, renames, and trashes entries when approved', async () => {
+    const { filePath, baseDir } = await createFixture()
+    const controlSurface = createSubject(true)
+    const copiedPath = join(baseDir, 'hello-copy.txt')
+    const movedPath = join(baseDir, 'hello-moved.txt')
+    const renamedPath = join(baseDir, 'hello-renamed.txt')
+
+    let result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'filesystem.copyEntry',
+      payload: {
+        sourceUri: toFileUri(filePath),
+        targetUri: toFileUri(copiedPath),
+      },
+    })
+    expect(result.ok).toBe(true)
+    expect(await readFile(copiedPath, 'utf8')).toBe('hello')
+
+    result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'filesystem.moveEntry',
+      payload: {
+        sourceUri: toFileUri(filePath),
+        targetUri: toFileUri(movedPath),
+      },
+    })
+    expect(result.ok).toBe(true)
+
+    result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'filesystem.renameEntry',
+      payload: {
+        sourceUri: toFileUri(movedPath),
+        targetUri: toFileUri(renamedPath),
+      },
+    })
+    expect(result.ok).toBe(true)
+    expect(await readFile(renamedPath, 'utf8')).toBe('hello')
+
+    result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'filesystem.deleteEntry',
+      payload: {
+        uri: toFileUri(renamedPath),
+      },
+    })
+    expect(result.ok).toBe(true)
+    expect(shellMock.trashItem).toHaveBeenCalledWith(renamedPath)
+  })
+
   it.each([
     [
       'filesystem.readFileText',
@@ -111,6 +171,35 @@ describe('control surface filesystem handlers', () => {
       'filesystem.writeFileText',
       'command',
       async ({ filePath }: { filePath: string }) => ({ uri: toFileUri(filePath), content: 'next' }),
+    ],
+    [
+      'filesystem.copyEntry',
+      'command',
+      async ({ filePath }: { filePath: string }) => ({
+        sourceUri: toFileUri(filePath),
+        targetUri: toFileUri(`${filePath}.copy`),
+      }),
+    ],
+    [
+      'filesystem.moveEntry',
+      'command',
+      async ({ filePath }: { filePath: string }) => ({
+        sourceUri: toFileUri(filePath),
+        targetUri: toFileUri(`${filePath}.move`),
+      }),
+    ],
+    [
+      'filesystem.renameEntry',
+      'command',
+      async ({ filePath }: { filePath: string }) => ({
+        sourceUri: toFileUri(filePath),
+        targetUri: toFileUri(`${filePath}.rename`),
+      }),
+    ],
+    [
+      'filesystem.deleteEntry',
+      'command',
+      async ({ filePath }: { filePath: string }) => ({ uri: toFileUri(filePath) }),
     ],
     [
       'filesystem.stat',
@@ -155,6 +244,51 @@ describe('control surface filesystem handlers', () => {
         invalidPayload: null,
         invalidSchemePayload: { uri: 'https://example.com/file.txt', content: 'x' },
         invalidUriPayload: { uri: 'not a uri', content: 'x' },
+      },
+    ],
+    [
+      'filesystem.copyEntry',
+      'command',
+      {
+        invalidPayload: null,
+        invalidSchemePayload: {
+          sourceUri: 'https://example.com/file.txt',
+          targetUri: 'file:///tmp/x',
+        },
+        invalidUriPayload: { sourceUri: 'not a uri', targetUri: 'file:///tmp/x' },
+      },
+    ],
+    [
+      'filesystem.moveEntry',
+      'command',
+      {
+        invalidPayload: null,
+        invalidSchemePayload: {
+          sourceUri: 'https://example.com/file.txt',
+          targetUri: 'file:///tmp/x',
+        },
+        invalidUriPayload: { sourceUri: 'not a uri', targetUri: 'file:///tmp/x' },
+      },
+    ],
+    [
+      'filesystem.renameEntry',
+      'command',
+      {
+        invalidPayload: null,
+        invalidSchemePayload: {
+          sourceUri: 'https://example.com/file.txt',
+          targetUri: 'file:///tmp/x',
+        },
+        invalidUriPayload: { sourceUri: 'not a uri', targetUri: 'file:///tmp/x' },
+      },
+    ],
+    [
+      'filesystem.deleteEntry',
+      'command',
+      {
+        invalidPayload: null,
+        invalidSchemePayload: { uri: 'https://example.com/file.txt' },
+        invalidUriPayload: { uri: 'not a uri' },
       },
     ],
     [

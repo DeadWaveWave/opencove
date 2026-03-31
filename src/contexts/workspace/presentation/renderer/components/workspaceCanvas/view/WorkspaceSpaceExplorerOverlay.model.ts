@@ -1,66 +1,62 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
+import type { ShowWorkspaceCanvasMessage } from '../types'
+import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'
 import { toErrorMessage } from '../helpers'
 import { isWithinRootUri, sortEntries } from './WorkspaceSpaceExplorerOverlay.helpers'
+import { useSpaceExplorerOverlayActions } from './WorkspaceSpaceExplorerOverlay.actions'
+import { useSpaceExplorerOverlayMutations } from './WorkspaceSpaceExplorerOverlay.mutations'
+import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
 
 export type SpaceExplorerCreateMode = 'file' | 'directory' | null
 
 export type SpaceExplorerRow =
   | { kind: 'entry'; entry: FileSystemEntry; depth: number; isExpanded: boolean }
-  | { kind: 'state'; id: string; depth: number; stateKind: 'loading' | 'error'; message: string }
+  | {
+      kind: 'state'
+      id: string
+      depth: number
+      parentDirectoryUri: string
+      stateKind: 'loading' | 'error'
+      message: string
+    }
 
-function validateCreateName(name: string): boolean {
-  const trimmed = name.trim()
-  if (trimmed.length === 0) {
-    return false
-  }
-  if (trimmed === '.' || trimmed === '..') {
-    return false
-  }
-  if (trimmed.includes('/') || trimmed.includes('\\')) {
-    return false
-  }
-  return true
+type DirectoryListing = {
+  entries: FileSystemEntry[]
+  isLoading: boolean
+  error: string | null
 }
 
-function buildChildUri(baseUri: string, name: string): string | null {
-  try {
-    const ensuredBase = baseUri.endsWith('/') ? baseUri : `${baseUri}/`
-    return new URL(encodeURIComponent(name.trim()), ensuredBase).toString()
-  } catch {
-    return null
-  }
+function isEditableTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.closest('[contenteditable="true"]') !== null ||
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.tagName === 'SELECT')
+  )
 }
 
 export function useSpaceExplorerOverlayModel({
   rootUri,
   spaceId,
+  explorerClipboard,
+  setExplorerClipboard,
+  findBlockingOpenDocument,
   onOpenFile,
+  onShowMessage,
 }: {
   rootUri: string
   spaceId: string
+  explorerClipboard: SpaceExplorerClipboardItem | null
+  setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
+  findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
   onOpenFile: (uri: string) => void
-}): {
-  isLoadingRoot: boolean
-  rootError: string | null
-  rows: SpaceExplorerRow[]
-  selectedEntryUri: string | null
-  refresh: () => void
-  handleEntryActivate: (entry: FileSystemEntry) => void
-  create: {
-    mode: SpaceExplorerCreateMode
-    draftName: string
-    error: string | null
-    isCreating: boolean
-    start: (mode: Exclude<SpaceExplorerCreateMode, null>) => void
-    cancel: () => void
-    setDraftName: (value: string) => void
-    submit: () => Promise<void>
-  }
-} {
+  onShowMessage?: ShowWorkspaceCanvasMessage
+}) {
   const { t } = useTranslation()
-
   const [refreshNonce, setRefreshNonce] = React.useState(0)
   const [expandedDirectoryUris, setExpandedDirectoryUris] = React.useState<Set<string>>(
     () => new Set(),
@@ -69,21 +65,8 @@ export function useSpaceExplorerOverlayModel({
   const [selectedEntryKind, setSelectedEntryKind] = React.useState<FileSystemEntry['kind'] | null>(
     null,
   )
-
-  const [createMode, setCreateMode] = React.useState<SpaceExplorerCreateMode>(null)
-  const [createDraftName, setCreateDraftName] = React.useState('')
-  const [createError, setCreateError] = React.useState<string | null>(null)
-  const [isCreating, setIsCreating] = React.useState(false)
-
   const [directoryListings, setDirectoryListings] = React.useState<
-    Record<
-      string,
-      {
-        entries: FileSystemEntry[]
-        isLoading: boolean
-        error: string | null
-      }
-    >
+    Record<string, DirectoryListing>
   >(() => ({}))
 
   const loadDirectory = React.useCallback(
@@ -120,13 +103,13 @@ export function useSpaceExplorerOverlayModel({
             error: null,
           },
         }))
-      } catch (readError) {
+      } catch (error) {
         setDirectoryListings(previous => ({
           ...previous,
           [uri]: {
             entries: [],
             isLoading: false,
-            error: toErrorMessage(readError),
+            error: toErrorMessage(error),
           },
         }))
       }
@@ -140,10 +123,6 @@ export function useSpaceExplorerOverlayModel({
     setRefreshNonce(previous => previous + 1)
     setSelectedEntryUri(null)
     setSelectedEntryKind(null)
-    setCreateMode(null)
-    setCreateDraftName('')
-    setCreateError(null)
-    setIsCreating(false)
   }, [rootUri, spaceId])
 
   React.useEffect(() => {
@@ -152,10 +131,7 @@ export function useSpaceExplorerOverlayModel({
 
   React.useEffect(() => {
     expandedDirectoryUris.forEach(uri => {
-      if (!isWithinRootUri(rootUri, uri)) {
-        return
-      }
-      if (directoryListings[uri]) {
+      if (!isWithinRootUri(rootUri, uri) || directoryListings[uri]) {
         return
       }
       void loadDirectory(uri)
@@ -201,6 +177,7 @@ export function useSpaceExplorerOverlayModel({
             kind: 'state',
             id: `${entry.uri}:loading`,
             depth: depth + 1,
+            parentDirectoryUri: entry.uri,
             stateKind: 'loading',
             message: t('common.loading'),
           })
@@ -212,6 +189,7 @@ export function useSpaceExplorerOverlayModel({
             kind: 'state',
             id: `${entry.uri}:error`,
             depth: depth + 1,
+            parentDirectoryUri: entry.uri,
             stateKind: 'error',
             message: childListing.error,
           })
@@ -226,143 +204,137 @@ export function useSpaceExplorerOverlayModel({
     return list
   }, [directoryListings, expandedDirectoryUris, rootListing, rootUri, t])
 
-  const resolveCreateBaseUri = React.useCallback((): string => {
-    if (selectedEntryUri && selectedEntryKind === 'directory') {
-      return selectedEntryUri
-    }
-
-    if (selectedEntryUri && selectedEntryKind === 'file') {
-      try {
-        return new URL('.', selectedEntryUri).toString().replace(/\/$/, '')
-      } catch {
-        return rootUri
-      }
-    }
-
-    return rootUri
-  }, [rootUri, selectedEntryKind, selectedEntryUri])
-
-  const submitCreate = React.useCallback(async (): Promise<void> => {
-    const mode = createMode
-    if (!mode) {
-      return
-    }
-
-    const api = window.opencoveApi?.filesystem
-    if (!api) {
-      setCreateError(t('documentNode.filesystemUnavailable'))
-      return
-    }
-
-    if (!validateCreateName(createDraftName)) {
-      setCreateError(t('spaceExplorer.invalidName'))
-      return
-    }
-
-    const baseUri = resolveCreateBaseUri()
-    const targetUri = buildChildUri(baseUri, createDraftName)
-    if (!targetUri) {
-      setCreateError(t('spaceExplorer.createFailed'))
-      return
-    }
-
-    setIsCreating(true)
-    setCreateError(null)
-
-    try {
-      if (mode === 'directory') {
-        if (typeof api.createDirectory !== 'function') {
-          throw new Error(t('documentNode.filesystemUnavailable'))
-        }
-        await api.createDirectory({ uri: targetUri })
-      } else {
-        await api.writeFileText({ uri: targetUri, content: '' })
-      }
-
-      setExpandedDirectoryUris(previous => {
-        const next = new Set(previous)
-        if (isWithinRootUri(rootUri, baseUri) && baseUri !== rootUri) {
-          next.add(baseUri)
-        }
-        return next
-      })
-
-      await loadDirectory(baseUri)
-      setSelectedEntryUri(targetUri)
-      setSelectedEntryKind(mode === 'directory' ? 'directory' : 'file')
-      setCreateMode(null)
-      setCreateDraftName('')
-    } catch (error) {
-      setCreateError(toErrorMessage(error))
-    } finally {
-      setIsCreating(false)
-    }
-  }, [createDraftName, createMode, loadDirectory, resolveCreateBaseUri, rootUri, t])
-
-  const create = React.useMemo(
-    () => ({
-      mode: createMode,
-      draftName: createDraftName,
-      error: createError,
-      isCreating,
-      start: (mode: Exclude<SpaceExplorerCreateMode, null>) => {
-        setCreateMode(mode)
-        setCreateDraftName('')
-        setCreateError(null)
-      },
-      cancel: () => {
-        setCreateMode(null)
-        setCreateDraftName('')
-        setCreateError(null)
-      },
-      setDraftName: (value: string) => {
-        setCreateDraftName(value)
-        if (createError) {
-          setCreateError(null)
-        }
-      },
-      submit: submitCreate,
-    }),
-    [createDraftName, createError, createMode, isCreating, submitCreate],
+  const entryRows = React.useMemo(
+    () =>
+      rows.filter(
+        (row): row is Extract<SpaceExplorerRow, { kind: 'entry' }> => row.kind === 'entry',
+      ),
+    [rows],
   )
 
-  const handleEntryActivate = React.useCallback(
-    (entry: FileSystemEntry) => {
-      setSelectedEntryUri(entry.uri)
-      setSelectedEntryKind(entry.kind)
-
-      if (entry.kind === 'directory') {
-        if (!isWithinRootUri(rootUri, entry.uri)) {
-          return
-        }
-        setExpandedDirectoryUris(previous => {
-          const next = new Set(previous)
-          if (next.has(entry.uri)) {
-            next.delete(entry.uri)
-          } else {
-            next.add(entry.uri)
-          }
-          return next
-        })
-        return
+  const entriesByUri = React.useMemo(() => {
+    const next = new Map<string, FileSystemEntry>()
+    for (const listing of Object.values(directoryListings)) {
+      for (const entry of listing.entries) {
+        next.set(entry.uri, entry)
       }
+    }
+    return next
+  }, [directoryListings])
 
-      if (!isWithinRootUri(rootUri, entry.uri)) {
-        return
-      }
+  const selectEntry = React.useCallback((entry: FileSystemEntry | null) => {
+    setSelectedEntryUri(entry?.uri ?? null)
+    setSelectedEntryKind(entry?.kind ?? null)
+  }, [])
 
-      onOpenFile(entry.uri)
-    },
-    [onOpenFile, rootUri],
-  )
+  const actions = useSpaceExplorerOverlayActions({
+    t,
+    rootUri,
+    findBlockingOpenDocument,
+    onOpenFile,
+    onShowMessage,
+    entriesByUri,
+    entryRows,
+    expandedDirectoryUris,
+    setExpandedDirectoryUris,
+    selectedEntryUri,
+    selectEntry,
+  })
+
+  const mutations = useSpaceExplorerOverlayMutations({
+    t,
+    rootUri,
+    explorerClipboard,
+    setExplorerClipboard,
+    closeContextMenu: actions.closeContextMenu,
+    onShowMessage,
+    directoryListings,
+    entriesByUri,
+    selectedEntryUri,
+    selectedEntryKind,
+    selectEntry,
+    refresh,
+    ensureEntryMutable: actions.ensureEntryMutable,
+    setExpandedDirectoryUris,
+    draggedEntryUri: actions.draggedEntryUri,
+    setDropTargetDirectoryUri: actions.setDropTargetDirectoryUri,
+  })
+
+  const dismissTransientUi = React.useCallback(() => {
+    let didClose = false
+
+    if (actions.contextMenu) {
+      actions.closeContextMenu()
+      didClose = true
+    }
+    if (mutations.create.mode && !mutations.create.isCreating) {
+      mutations.create.cancel()
+      didClose = true
+    }
+    if (mutations.rename.entryUri && !mutations.rename.isRenaming) {
+      mutations.rename.cancel()
+      didClose = true
+    }
+    if (mutations.deleteConfirmation) {
+      mutations.cancelDelete()
+      didClose = true
+    }
+    if (actions.dropTargetDirectoryUri) {
+      actions.setDropTargetDirectoryUri(null)
+      didClose = true
+    }
+
+    return didClose
+  }, [actions, mutations])
+
+  const startRenameSelection = React.useCallback(() => {
+    const entry = actions.resolveSelectedEntry()
+    if (entry) {
+      mutations.rename.start(entry)
+    }
+  }, [actions, mutations.rename])
 
   return {
     isLoadingRoot,
     rootError,
     rows,
     selectedEntryUri,
+    selectEntry,
     refresh,
-    handleEntryActivate,
-    create,
+    create: mutations.create,
+    rename: mutations.rename,
+    contextMenu: actions.contextMenu,
+    deleteConfirmation: mutations.deleteConfirmation,
+    draggedEntryUri: actions.draggedEntryUri,
+    dropTargetDirectoryUri: actions.dropTargetDirectoryUri,
+    dismissTransientUi,
+    copyPath: mutations.copyPath,
+    copyRelativePath: mutations.copyRelativePath,
+    canUndoMove: mutations.canUndoMove,
+    canRedoMove: mutations.canRedoMove,
+    undoMove: mutations.undoMove,
+    redoMove: mutations.redoMove,
+    openRootContextMenu: actions.openRootContextMenu,
+    openEntryContextMenu: actions.openEntryContextMenu,
+    closeContextMenu: actions.closeContextMenu,
+    handleEntryActivate: actions.handleEntryActivate,
+    moveSelection: actions.moveSelection,
+    collapseSelectionOrFocusParent: actions.collapseSelectionOrFocusParent,
+    expandSelectionOrOpen: actions.expandSelectionOrOpen,
+    requestDeleteSelection: mutations.requestDeleteSelection,
+    startRenameSelection,
+    copySelection: mutations.copySelection,
+    cutSelection: mutations.cutSelection,
+    pasteIntoSelectionTarget: mutations.pasteIntoSelectionTarget,
+    handleEntryDragStart: actions.handleEntryDragStart,
+    handleEntryDragEnd: actions.handleEntryDragEnd,
+    handleDropTargetChange: actions.setDropTargetDirectoryUri,
+    requestDropMove: mutations.requestDropMove,
+    confirmDelete: mutations.confirmDelete,
+    cancelDelete: mutations.cancelDelete,
   }
+}
+
+export function shouldHandleExplorerKeydown(event: KeyboardEvent): boolean {
+  return !event.isComposing && !event.repeat && !isEditableTarget(event.target)
 }

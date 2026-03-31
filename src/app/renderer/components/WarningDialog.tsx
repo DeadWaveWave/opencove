@@ -1,4 +1,5 @@
 import React from 'react'
+import { createPortal } from 'react-dom'
 import { AlertTriangle } from 'lucide-react'
 
 function joinClassNames(...values: Array<string | null | undefined | false>): string {
@@ -32,7 +33,11 @@ export function WarningDialog({
   backdropClassName?: string
   dialogClassName?: string
 }): React.JSX.Element {
-  return (
+  if (typeof document === 'undefined' || !document.body) {
+    return <></>
+  }
+
+  return createPortal(
     <div
       className={joinClassNames(
         'cove-window-backdrop',
@@ -74,6 +79,7 @@ export function WarningDialog({
 
         <div className="cove-window__actions workspace-warning-dialog__actions">{actions}</div>
       </section>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -1,19 +1,27 @@
 import { fileURLToPath } from 'node:url'
+import { shell } from 'electron'
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { createLocalFileSystemPort } from '../../../../contexts/filesystem/infrastructure/localFileSystemPort'
 import {
+  copyEntryUseCase,
   readDirectoryUseCase,
   readFileTextUseCase,
+  moveEntryUseCase,
+  renameEntryUseCase,
   statUseCase,
   writeFileTextUseCase,
 } from '../../../../contexts/filesystem/application/usecases'
 import type {
+  CopyEntryInput,
+  DeleteEntryInput,
+  MoveEntryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
   ReadFileTextInput,
   ReadFileTextResult,
+  RenameEntryInput,
   StatInput,
   FileSystemStat,
   WriteFileTextInput,
@@ -87,6 +95,22 @@ function normalizeWriteFileTextPayload(payload: unknown): WriteFileTextInput {
   }
 }
 
+function normalizeSourceTargetPayload<T extends CopyEntryInput | MoveEntryInput | RenameEntryInput>(
+  payload: unknown,
+  operationId: string,
+): T {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: `Invalid payload for ${operationId}.`,
+    })
+  }
+
+  return {
+    sourceUri: normalizeFileSystemUri(payload.sourceUri, `${operationId}.sourceUri`),
+    targetUri: normalizeFileSystemUri(payload.targetUri, `${operationId}.targetUri`),
+  } as T
+}
+
 function normalizeStatPayload(payload: unknown): StatInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -99,6 +123,18 @@ function normalizeStatPayload(payload: unknown): StatInput {
   }
 }
 
+function normalizeCopyEntryPayload(payload: unknown): CopyEntryInput {
+  return normalizeSourceTargetPayload<CopyEntryInput>(payload, 'filesystem.copyEntry')
+}
+
+function normalizeMoveEntryPayload(payload: unknown): MoveEntryInput {
+  return normalizeSourceTargetPayload<MoveEntryInput>(payload, 'filesystem.moveEntry')
+}
+
+function normalizeRenameEntryPayload(payload: unknown): RenameEntryInput {
+  return normalizeSourceTargetPayload<RenameEntryInput>(payload, 'filesystem.renameEntry')
+}
+
 function normalizeReadDirectoryPayload(payload: unknown): ReadDirectoryInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -108,6 +144,18 @@ function normalizeReadDirectoryPayload(payload: unknown): ReadDirectoryInput {
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem.readDirectory'),
+  }
+}
+
+function normalizeDeleteEntryPayload(payload: unknown): DeleteEntryInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for filesystem.deleteEntry.',
+    })
+  }
+
+  return {
+    uri: normalizeFileSystemUri(payload.uri, 'filesystem.deleteEntry'),
   }
 }
 
@@ -143,6 +191,67 @@ export function registerFilesystemHandlers(
     handle: async (_ctx, payload): Promise<void> => {
       await assertApprovedUri(payload.uri, 'filesystem.writeFileText uri is outside approved roots')
       await writeFileTextUseCase(port, payload)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('filesystem.copyEntry', {
+    kind: 'command',
+    validate: normalizeCopyEntryPayload,
+    handle: async (_ctx, payload): Promise<void> => {
+      await assertApprovedUri(
+        payload.sourceUri,
+        'filesystem.copyEntry source is outside approved roots',
+      )
+      await assertApprovedUri(
+        payload.targetUri,
+        'filesystem.copyEntry target is outside approved roots',
+      )
+      await copyEntryUseCase(port, payload)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('filesystem.moveEntry', {
+    kind: 'command',
+    validate: normalizeMoveEntryPayload,
+    handle: async (_ctx, payload): Promise<void> => {
+      await assertApprovedUri(
+        payload.sourceUri,
+        'filesystem.moveEntry source is outside approved roots',
+      )
+      await assertApprovedUri(
+        payload.targetUri,
+        'filesystem.moveEntry target is outside approved roots',
+      )
+      await moveEntryUseCase(port, payload)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('filesystem.renameEntry', {
+    kind: 'command',
+    validate: normalizeRenameEntryPayload,
+    handle: async (_ctx, payload): Promise<void> => {
+      await assertApprovedUri(
+        payload.sourceUri,
+        'filesystem.renameEntry source is outside approved roots',
+      )
+      await assertApprovedUri(
+        payload.targetUri,
+        'filesystem.renameEntry target is outside approved roots',
+      )
+      await renameEntryUseCase(port, payload)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('filesystem.deleteEntry', {
+    kind: 'command',
+    validate: normalizeDeleteEntryPayload,
+    handle: async (_ctx, payload): Promise<void> => {
+      await assertApprovedUri(payload.uri, 'filesystem.deleteEntry uri is outside approved roots')
+      await shell.trashItem(fileURLToPath(payload.uri))
     },
     defaultErrorCode: 'common.unexpected',
   })

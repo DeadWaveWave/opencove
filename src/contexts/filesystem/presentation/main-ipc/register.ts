@@ -1,15 +1,19 @@
 import { fileURLToPath } from 'node:url'
-import { ipcMain } from 'electron'
+import { ipcMain, shell } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
+  CopyEntryInput,
   CreateDirectoryInput,
+  DeleteEntryInput,
   FileSystemStat,
+  MoveEntryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
   ReadFileBytesInput,
   ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
+  RenameEntryInput,
   StatInput,
   WriteFileTextInput,
 } from '../../../../shared/contracts/dto'
@@ -19,18 +23,25 @@ import type { ApprovedWorkspaceStore } from '../../../workspace/infrastructure/a
 import { createAppError } from '../../../../shared/errors/appError'
 import { createLocalFileSystemPort } from '../../infrastructure/localFileSystemPort'
 import {
+  copyEntryUseCase,
   createDirectoryUseCase,
+  moveEntryUseCase,
   readDirectoryUseCase,
   readFileBytesUseCase,
   readFileTextUseCase,
+  renameEntryUseCase,
   statUseCase,
   writeFileTextUseCase,
 } from '../../application/usecases'
 import {
+  normalizeCopyEntryPayload,
   normalizeCreateDirectoryPayload,
+  normalizeDeleteEntryPayload,
+  normalizeMoveEntryPayload,
   normalizeReadDirectoryPayload,
   normalizeReadFileBytesPayload,
   normalizeReadFileTextPayload,
+  normalizeRenameEntryPayload,
   normalizeStatPayload,
   normalizeWriteFileTextPayload,
 } from './validate'
@@ -59,6 +70,70 @@ export function registerFilesystemIpcHandlers(
       await createDirectoryUseCase(port, normalized)
     },
     { defaultErrorCode: 'filesystem.create_directory_failed' },
+  )
+
+  registerHandledIpc<void, CopyEntryInput>(
+    IPC_CHANNELS.filesystemCopyEntry,
+    async (_event, payload: CopyEntryInput): Promise<void> => {
+      const normalized = normalizeCopyEntryPayload(payload)
+      await assertApprovedUri(
+        normalized.sourceUri,
+        'filesystem:copy-entry source is outside approved roots',
+      )
+      await assertApprovedUri(
+        normalized.targetUri,
+        'filesystem:copy-entry target is outside approved roots',
+      )
+      await copyEntryUseCase(port, normalized)
+    },
+    { defaultErrorCode: 'filesystem.copy_entry_failed' },
+  )
+
+  registerHandledIpc<void, MoveEntryInput>(
+    IPC_CHANNELS.filesystemMoveEntry,
+    async (_event, payload: MoveEntryInput): Promise<void> => {
+      const normalized = normalizeMoveEntryPayload(payload)
+      await assertApprovedUri(
+        normalized.sourceUri,
+        'filesystem:move-entry source is outside approved roots',
+      )
+      await assertApprovedUri(
+        normalized.targetUri,
+        'filesystem:move-entry target is outside approved roots',
+      )
+      await moveEntryUseCase(port, normalized)
+    },
+    { defaultErrorCode: 'filesystem.move_entry_failed' },
+  )
+
+  registerHandledIpc<void, RenameEntryInput>(
+    IPC_CHANNELS.filesystemRenameEntry,
+    async (_event, payload: RenameEntryInput): Promise<void> => {
+      const normalized = normalizeRenameEntryPayload(payload)
+      await assertApprovedUri(
+        normalized.sourceUri,
+        'filesystem:rename-entry source is outside approved roots',
+      )
+      await assertApprovedUri(
+        normalized.targetUri,
+        'filesystem:rename-entry target is outside approved roots',
+      )
+      await renameEntryUseCase(port, normalized)
+    },
+    { defaultErrorCode: 'filesystem.rename_entry_failed' },
+  )
+
+  registerHandledIpc<void, DeleteEntryInput>(
+    IPC_CHANNELS.filesystemDeleteEntry,
+    async (_event, payload: DeleteEntryInput): Promise<void> => {
+      const normalized = normalizeDeleteEntryPayload(payload)
+      await assertApprovedUri(
+        normalized.uri,
+        'filesystem:delete-entry uri is outside approved roots',
+      )
+      await shell.trashItem(fileURLToPath(normalized.uri))
+    },
+    { defaultErrorCode: 'filesystem.delete_entry_failed' },
   )
 
   registerHandledIpc<ReadFileBytesResult, ReadFileBytesInput>(
@@ -126,6 +201,10 @@ export function registerFilesystemIpcHandlers(
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.filesystemCreateDirectory)
+      ipcMain.removeHandler(IPC_CHANNELS.filesystemCopyEntry)
+      ipcMain.removeHandler(IPC_CHANNELS.filesystemMoveEntry)
+      ipcMain.removeHandler(IPC_CHANNELS.filesystemRenameEntry)
+      ipcMain.removeHandler(IPC_CHANNELS.filesystemDeleteEntry)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemReadFileBytes)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemReadFileText)
       ipcMain.removeHandler(IPC_CHANNELS.filesystemWriteFileText)

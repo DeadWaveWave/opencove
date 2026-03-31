@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { toFileUri } from '../../../../src/contexts/filesystem/domain/fileUri'
+import { fromFileUri, toFileUri } from '../../../../src/contexts/filesystem/domain/fileUri'
 
 describe('toFileUri', () => {
   it('encodes a POSIX absolute path', () => {
@@ -28,5 +28,19 @@ describe('toFileUri', () => {
 
   it('converts a UNC root share path', () => {
     expect(toFileUri('\\\\server\\share')).toBe('file://server/share')
+  })
+})
+
+describe('fromFileUri', () => {
+  it('decodes a POSIX absolute path', () => {
+    expect(fromFileUri('file:///tmp/Hello%20World/%23hash')).toBe('/tmp/Hello World/#hash')
+  })
+
+  it('decodes a Windows drive path', () => {
+    expect(fromFileUri('file:///C:/Users/a%20b/repo')).toBe('C:\\Users\\a b\\repo')
+  })
+
+  it('decodes a UNC path', () => {
+    expect(fromFileUri('file://server/share/folder%20a')).toBe('\\\\server\\share\\folder a')
   })
 })

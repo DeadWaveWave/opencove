@@ -366,7 +366,7 @@ export function WorkspaceSpaceRegionsOverlay({
             normalizedResolvedWorktreePath !== null &&
             normalizedResolvedWorktreePath === normalizedWorkspacePath
 
-          const shouldShowRepoSummary = !isWorkspaceRootWorktree || isSelected || isExplorerOpen
+          const shouldShowRepoSummary = !isWorkspaceRootWorktree || isSelected
 
           const resolvedBranchBadge: WorkspaceSpaceBranchBadge | null =
             shouldShowRepoSummary && resolvedWorktreeInfo

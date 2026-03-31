@@ -8,6 +8,7 @@ function createPersistenceStoreStub() {
     readWorkspaceStateRaw: vi.fn(async () => null),
     writeWorkspaceStateRaw: vi.fn(async (_raw: string) => writeResult),
     readAppState: vi.fn(async () => null),
+    readAppStateRevision: vi.fn(async () => 0),
     writeAppState: vi.fn(async (_state: unknown) => writeResult),
     readNodeScrollback: vi.fn(async (_nodeId: string) => null),
     writeNodeScrollback: vi.fn(async (_nodeId: string, _scrollback: string | null) => writeResult),

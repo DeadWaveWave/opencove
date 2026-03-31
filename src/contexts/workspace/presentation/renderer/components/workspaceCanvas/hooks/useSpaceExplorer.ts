@@ -12,10 +12,15 @@ import { focusNodeInViewport } from '../helpers'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import type { NodePlacementOptions } from '../types'
 import {
+  findBlockingOpenDocumentForMutation,
+  type SpaceExplorerOpenDocumentBlock,
+} from './useSpaceExplorer.guards'
+import {
   readImageNaturalDimensions,
   resolveCanvasImageMimeType,
   resolveFileNameFromFileUri,
 } from './useSpaceExplorer.helpers'
+import type { SpaceExplorerClipboardItem } from '../view/WorkspaceSpaceExplorerOverlay.operations'
 
 export function useWorkspaceCanvasSpaceExplorer({
   canvasRef,
@@ -52,9 +57,12 @@ export function useWorkspaceCanvasSpaceExplorer({
   ) => Node<TerminalNodeData> | null
 }): {
   openExplorerSpaceId: string | null
+  explorerClipboard: SpaceExplorerClipboardItem | null
   openSpaceExplorer: (spaceId: string) => void
   closeSpaceExplorer: () => void
   toggleSpaceExplorer: (spaceId: string) => void
+  setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
+  findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
   openFileInSpace: (
     spaceId: string,
     uri: string,
@@ -64,6 +72,8 @@ export function useWorkspaceCanvasSpaceExplorer({
   ) => void
 } {
   const [openExplorerSpaceId, setOpenExplorerSpaceId] = React.useState<string | null>(null)
+  const [explorerClipboard, setExplorerClipboardState] =
+    React.useState<SpaceExplorerClipboardItem | null>(null)
 
   React.useEffect(() => {
     if (!openExplorerSpaceId) {
@@ -98,6 +108,16 @@ export function useWorkspaceCanvasSpaceExplorer({
 
     setOpenExplorerSpaceId(previous => (previous === normalized ? null : normalized))
   }, [])
+
+  const setExplorerClipboard = React.useCallback((next: SpaceExplorerClipboardItem | null) => {
+    setExplorerClipboardState(next)
+  }, [])
+
+  const findBlockingOpenDocument = React.useCallback(
+    (uri: string): SpaceExplorerOpenDocumentBlock | null =>
+      findBlockingOpenDocumentForMutation(nodesRef.current, uri),
+    [nodesRef],
+  )
 
   const openFileInSpace = React.useCallback(
     (
@@ -442,9 +462,12 @@ export function useWorkspaceCanvasSpaceExplorer({
 
   return {
     openExplorerSpaceId,
+    explorerClipboard,
     openSpaceExplorer,
     closeSpaceExplorer,
     toggleSpaceExplorer,
+    setExplorerClipboard,
+    findBlockingOpenDocument,
     openFileInSpace,
   }
 }

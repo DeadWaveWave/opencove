@@ -3,7 +3,6 @@ import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurfac
 import {
   ChevronRight,
   Copy,
-  Folder,
   FolderOpen,
   GitBranchPlus,
   LayoutGrid,
@@ -23,7 +22,6 @@ interface WorkspaceSpaceActionMenuProps {
   canArchive: boolean
   closeMenu: () => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
-  onOpenExplorer?: () => void
   onArrange?: (spaceId: string) => void
   onCreateWorktree: () => void
   onArchive: () => void
@@ -69,7 +67,6 @@ export function WorkspaceSpaceActionMenu({
   canArchive,
   closeMenu,
   setSpaceLabelColor,
-  onOpenExplorer,
   onArrange,
   onCreateWorktree,
   onArchive,
@@ -181,20 +178,6 @@ export function WorkspaceSpaceActionMenu({
           <Copy className="workspace-context-menu__icon" aria-hidden="true" />
           <span className="workspace-context-menu__label">{t('spaceActions.copyPath')}</span>
         </button>
-
-        {onOpenExplorer ? (
-          <button
-            type="button"
-            data-testid="workspace-space-action-open-explorer"
-            onClick={() => {
-              onOpenExplorer()
-              closeMenu()
-            }}
-          >
-            <Folder className="workspace-context-menu__icon" aria-hidden="true" />
-            <span className="workspace-context-menu__label">{t('spaceActions.openExplorer')}</span>
-          </button>
-        ) : null}
 
         {sortedOpeners.length > 0 ? (
           <button

@@ -1,4 +1,5 @@
 import { enMessages } from './en.messages'
+import { enSpaceExplorer } from './en.spaceExplorer'
 import { enSettingsPanel } from './en.settingsPanel'
 
 export const en = {
@@ -354,19 +355,7 @@ export const en = {
     openSpaceActions: 'Open {{name}} space actions',
     title: 'Space Actions',
   },
-  spaceExplorer: {
-    empty: 'This folder is empty.',
-    parentDirectory: 'Parent directory',
-    refresh: 'Refresh',
-    newFile: 'New File',
-    newFolder: 'New Folder',
-    create: 'Create',
-    resizeWidth: 'Resize Explorer width',
-    fileNamePlaceholder: 'File name',
-    folderNamePlaceholder: 'Folder name',
-    invalidName: 'Enter a valid name.',
-    createFailed: 'Failed to create the item.',
-  },
+  spaceExplorer: enSpaceExplorer,
   branchRenameDialog: {
     title: 'Rename Branch',
     fieldLabel: 'New branch name',

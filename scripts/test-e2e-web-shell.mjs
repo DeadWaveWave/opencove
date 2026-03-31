@@ -37,8 +37,10 @@ function runCommand(args, env = process.env) {
 
 async function startWorker(options) {
   const child = spawn(
-    process.execPath,
+    PNPM_COMMAND,
     [
+      'exec',
+      'electron',
       options.workerPath,
       '--hostname',
       '127.0.0.1',
@@ -53,6 +55,11 @@ async function startWorker(options) {
     ],
     {
       cwd: process.cwd(),
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',
+      },
+      shell: process.platform === 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
       windowsHide: true,
     },
@@ -70,25 +77,30 @@ async function startWorker(options) {
 
     const rl = createInterface({ input: child.stdout })
 
-    rl.once('line', line => {
+    const timeout = setTimeout(() => {
       rl.close()
+      rejectPromise(new Error('[web-shell-e2e] Timed out waiting for worker ready payload'))
+    }, 7_500)
 
+    rl.on('line', line => {
       try {
         const info = JSON.parse(line)
         const hostname = info && typeof info.hostname === 'string' ? info.hostname : null
         const port = info && typeof info.port === 'number' ? info.port : null
         if (!hostname || !port) {
-          rejectPromise(new Error('[web-shell-e2e] Worker ready payload is invalid'))
           return
         }
 
+        clearTimeout(timeout)
+        rl.close()
         resolvePromise({ hostname, port })
-      } catch (error) {
-        rejectPromise(error)
+      } catch {
+        // Ignore non-JSON output (pnpm/electron warnings).
       }
     })
 
     child.once('exit', code => {
+      clearTimeout(timeout)
       rl.close()
       rejectPromise(new Error(`[web-shell-e2e] Worker exited before ready (code=${code ?? 1})`))
     })

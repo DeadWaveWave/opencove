@@ -21,6 +21,7 @@ export interface PersistenceStore {
   writeWorkspaceStateRaw: (raw: string) => Promise<PersistWriteResult>
 
   readAppState: () => Promise<unknown | null>
+  readAppStateRevision: () => Promise<number>
   writeAppState: (state: unknown) => Promise<PersistWriteResult>
 
   readNodeScrollback: (nodeId: string) => Promise<string | null>
@@ -88,6 +89,26 @@ export async function createPersistenceStore(options: {
       return readAppStateFromDb(db)
     } catch {
       return null
+    }
+  }
+
+  const readAppStateRevision = async (): Promise<number> => {
+    try {
+      const row = sqlite
+        .prepare(
+          `
+            SELECT value
+            FROM app_meta
+            WHERE key = 'app_state_revision'
+            LIMIT 1
+          `,
+        )
+        .get() as { value?: unknown } | undefined
+
+      const parsed = typeof row?.value === 'string' ? Number.parseInt(row.value, 10) : 0
+      return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0
+    } catch {
+      return 0
     }
   }
 
@@ -239,6 +260,7 @@ export async function createPersistenceStore(options: {
     readWorkspaceStateRaw,
     writeWorkspaceStateRaw,
     readAppState,
+    readAppStateRevision,
     writeAppState,
     readNodeScrollback,
     writeNodeScrollback,

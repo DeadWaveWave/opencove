@@ -145,10 +145,12 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const explorerBoxBeforeZoom = explorerBoxAfterOpen
 
-      // The Explorer is an overlay panel: keep its pixel size stable across canvas zoom.
+      // The Explorer is an overlay panel: keep its width stable across canvas zoom.
+      // Height may clamp to the visible app bottom when the space moves under zoom.
       expect(Math.abs(explorerBoxZoomed.width - explorerBoxBeforeZoom.width)).toBeLessThanOrEqual(2)
-      expect(Math.abs(explorerBoxZoomed.height - explorerBoxBeforeZoom.height)).toBeLessThanOrEqual(
-        2,
+      const viewportHeight = await window.evaluate(() => window.innerHeight)
+      expect(Math.ceil(explorerBoxZoomed.y + explorerBoxZoomed.height)).toBeLessThanOrEqual(
+        viewportHeight,
       )
 
       await testInfo.attach(`space-explorer-zoomed-${browserName}`, {
@@ -269,6 +271,80 @@ test.describe('Workspace Canvas - Space Explorer', () => {
     }
   })
 
+  test('keeps the canvas clipped and does not show the root branch badge when Explorer opens', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'space-root-anchor',
+            title: 'Root anchor',
+            position: { x: 380, y: 320 },
+            width: 320,
+            height: 220,
+            kind: 'note',
+            task: {
+              text: 'Keep root space visible',
+            },
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-root-explorer',
+              name: 'Root Explorer',
+              directoryPath: testWorkspacePath,
+              nodeIds: ['space-root-anchor'],
+              rect: {
+                x: 340,
+                y: 280,
+                width: 920,
+                height: 520,
+              },
+            },
+          ],
+          activeSpaceId: 'space-root-explorer',
+        },
+      )
+
+      const branchBadge = window.locator(
+        '[data-testid="workspace-space-worktree-branch-space-root-explorer"]',
+      )
+      await expect(branchBadge).toHaveCount(0)
+
+      const filesPill = window.locator('[data-testid="workspace-space-files-space-root-explorer"]')
+      await expect(filesPill).toBeVisible()
+      await filesPill.click()
+
+      const explorer = window.locator('[data-testid="workspace-space-explorer"]')
+      await expect(explorer).toBeVisible()
+
+      const layoutOverflow = await window.evaluate(() => {
+        const main = document.querySelector('.workspace-main') as HTMLElement | null
+        if (!main) {
+          return null
+        }
+
+        return {
+          hasHorizontalOverflow: main.scrollWidth > main.clientWidth + 1,
+          hasVerticalOverflow: main.scrollHeight > main.clientHeight + 1,
+        }
+      })
+
+      expect(layoutOverflow).toEqual({
+        hasHorizontalOverflow: false,
+        hasVerticalOverflow: false,
+      })
+
+      await window.waitForTimeout(1_500)
+      await expect(branchBadge).toHaveCount(0)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
   test('resizes Explorer width and auto-closes when its space leaves the viewport', async () => {
     const fixtureDir = path.join(
       testWorkspacePath,
@@ -347,6 +423,13 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const explorer = window.locator('[data-testid="workspace-space-explorer"]')
       await expect(explorer).toBeVisible()
+      const viewportHeight = await window.evaluate(() => window.innerHeight)
+      const explorerBox = await explorer.boundingBox()
+      if (!explorerBox) {
+        throw new Error('Explorer bounding box unavailable')
+      }
+      expect(Math.ceil(explorerBox.y + explorerBox.height)).toBeLessThanOrEqual(viewportHeight)
+
       const readExplorerWidth = async (): Promise<number> =>
         Math.round((await explorer.boundingBox())?.width ?? 0)
       await expect.poll(readExplorerWidth).toBeGreaterThan(250)

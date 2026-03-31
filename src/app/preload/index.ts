@@ -65,17 +65,26 @@ import type {
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
   DeleteCanvasImageInput,
+  CopyEntryInput,
   TerminalDiagnosticsLogInput,
   CreateDirectoryInput,
+  DeleteEntryInput,
+  MoveEntryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
   ReadFileBytesInput,
   ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
+  RenameEntryInput,
   StatInput,
   FileSystemStat,
+  SyncEventPayload,
   WriteFileTextInput,
+  HomeWorkerConfigDto,
+  SetHomeWorkerConfigInput,
+  WorkerStatusResult,
+  CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 
@@ -129,6 +138,14 @@ const opencoveApi = {
   filesystem: {
     createDirectory: (payload: CreateDirectoryInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.filesystemCreateDirectory, payload),
+    copyEntry: (payload: CopyEntryInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.filesystemCopyEntry, payload),
+    moveEntry: (payload: MoveEntryInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.filesystemMoveEntry, payload),
+    renameEntry: (payload: RenameEntryInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.filesystemRenameEntry, payload),
+    deleteEntry: (payload: DeleteEntryInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.filesystemDeleteEntry, payload),
     readFileBytes: (payload: ReadFileBytesInput): Promise<ReadFileBytesResult> =>
       invokeIpc(IPC_CHANNELS.filesystemReadFileBytes, payload),
     readFileText: (payload: ReadFileTextInput): Promise<ReadFileTextResult> =>
@@ -153,6 +170,19 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.persistenceReadNodeScrollback, payload),
     writeNodeScrollback: (payload: WriteNodeScrollbackInput): Promise<PersistWriteResult> =>
       invokeIpc(IPC_CHANNELS.persistenceWriteNodeScrollback, payload),
+  },
+  sync: {
+    onStateUpdated: (listener: (event: SyncEventPayload) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: SyncEventPayload) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.syncStateUpdated, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.syncStateUpdated, handler)
+      }
+    },
   },
   workspace: {
     selectDirectory: (): Promise<WorkspaceDirectory | null> =>
@@ -306,6 +336,22 @@ const opencoveApi = {
   },
   system: {
     listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
+  },
+  worker: {
+    getStatus: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerGetStatus),
+    start: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStart),
+    stop: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStop),
+  },
+  workerClient: {
+    getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
+    setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
+    relaunch: (): Promise<void> => invokeIpc(IPC_CHANNELS.workerClientRelaunch),
+  },
+  cli: {
+    getStatus: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliGetStatus),
+    install: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliInstall),
+    uninstall: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliUninstall),
   },
 }
 

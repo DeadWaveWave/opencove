@@ -10,6 +10,7 @@ import type {
 } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
+import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
   ContextMenuState,
   NodeDeleteConfirmationState,
@@ -22,6 +23,7 @@ import type {
   TaskEditorState,
   WorkspaceCanvasProps,
 } from './types'
+import type { SpaceExplorerClipboardItem } from './view/WorkspaceSpaceExplorerOverlay.operations'
 
 export type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -73,9 +75,11 @@ export interface WorkspaceCanvasViewProps {
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
   openExplorerSpaceId: string | null
-  openSpaceExplorer: (spaceId: string) => void
+  explorerClipboard: SpaceExplorerClipboardItem | null
   toggleSpaceExplorer: (spaceId: string) => void
   closeSpaceExplorer: () => void
+  setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
+  findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
   openFileInSpace: (
     spaceId: string,
     uri: string,

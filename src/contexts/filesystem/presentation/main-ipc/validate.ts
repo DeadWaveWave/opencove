@@ -1,8 +1,12 @@
 import type {
+  CopyEntryInput,
   CreateDirectoryInput,
+  DeleteEntryInput,
+  MoveEntryInput,
   ReadDirectoryInput,
   ReadFileBytesInput,
   ReadFileTextInput,
+  RenameEntryInput,
   StatInput,
   WriteFileTextInput,
 } from '../../../../shared/contracts/dto'
@@ -88,6 +92,22 @@ export function normalizeWriteFileTextPayload(payload: unknown): WriteFileTextIn
   }
 }
 
+function normalizeSourceTargetPayload<T extends CopyEntryInput | MoveEntryInput | RenameEntryInput>(
+  payload: unknown,
+  channel: string,
+): T {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: `Invalid payload for ${channel}.`,
+    })
+  }
+
+  return {
+    sourceUri: normalizeFileSystemUri(payload.sourceUri, `${channel}:sourceUri`),
+    targetUri: normalizeFileSystemUri(payload.targetUri, `${channel}:targetUri`),
+  } as T
+}
+
 export function normalizeStatPayload(payload: unknown): StatInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -112,6 +132,18 @@ export function normalizeReadDirectoryPayload(payload: unknown): ReadDirectoryIn
   }
 }
 
+export function normalizeCopyEntryPayload(payload: unknown): CopyEntryInput {
+  return normalizeSourceTargetPayload<CopyEntryInput>(payload, 'filesystem:copy-entry')
+}
+
+export function normalizeMoveEntryPayload(payload: unknown): MoveEntryInput {
+  return normalizeSourceTargetPayload<MoveEntryInput>(payload, 'filesystem:move-entry')
+}
+
+export function normalizeRenameEntryPayload(payload: unknown): RenameEntryInput {
+  return normalizeSourceTargetPayload<RenameEntryInput>(payload, 'filesystem:rename-entry')
+}
+
 export function normalizeCreateDirectoryPayload(payload: unknown): CreateDirectoryInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -121,5 +153,17 @@ export function normalizeCreateDirectoryPayload(payload: unknown): CreateDirecto
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem:create-directory'),
+  }
+}
+
+export function normalizeDeleteEntryPayload(payload: unknown): DeleteEntryInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for filesystem:delete-entry.',
+    })
+  }
+
+  return {
+    uri: normalizeFileSystemUri(payload.uri, 'filesystem:delete-entry'),
   }
 }

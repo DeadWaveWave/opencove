@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from './schema'
 
 import { zhCNMessages } from './zh-CN.messages'
+import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
 import { zhCNSettingsPanel } from './zh-CN.settingsPanel'
 
 export const zhCN = {
@@ -350,19 +351,7 @@ export const zhCN = {
     openSpaceActions: '打开 {{name}} 的空间操作',
     title: '空间操作',
   },
-  spaceExplorer: {
-    empty: '该文件夹为空。',
-    parentDirectory: '上级目录',
-    refresh: '刷新',
-    newFile: '新建文件',
-    newFolder: '新建文件夹',
-    create: '创建',
-    resizeWidth: '调整 Explorer 宽度',
-    fileNamePlaceholder: '文件名',
-    folderNamePlaceholder: '文件夹名',
-    invalidName: '请输入有效名称。',
-    createFailed: '创建失败。',
-  },
+  spaceExplorer: zhCNSpaceExplorer,
   branchRenameDialog: {
     title: '重命名分支',
     fieldLabel: '新分支名',

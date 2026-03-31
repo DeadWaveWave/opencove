@@ -1,10 +1,17 @@
 export const IPC_CHANNELS = {
+  cliGetStatus: 'cli:get-status',
+  cliInstall: 'cli:install',
+  cliUninstall: 'cli:uninstall',
   clipboardReadText: 'clipboard:read-text',
   clipboardWriteText: 'clipboard:write-text',
   filesystemCreateDirectory: 'filesystem:create-directory',
   filesystemReadFileBytes: 'filesystem:read-file-bytes',
   filesystemReadFileText: 'filesystem:read-file-text',
   filesystemWriteFileText: 'filesystem:write-file-text',
+  filesystemCopyEntry: 'filesystem:copy-entry',
+  filesystemMoveEntry: 'filesystem:move-entry',
+  filesystemRenameEntry: 'filesystem:rename-entry',
+  filesystemDeleteEntry: 'filesystem:delete-entry',
   filesystemReadDirectory: 'filesystem:read-directory',
   filesystemStat: 'filesystem:stat',
   workspaceSelectDirectory: 'workspace:select-directory',
@@ -21,6 +28,7 @@ export const IPC_CHANNELS = {
   persistenceWriteAppState: 'persistence:write-app-state',
   persistenceReadNodeScrollback: 'persistence:read-node-scrollback',
   persistenceWriteNodeScrollback: 'persistence:write-node-scrollback',
+  syncStateUpdated: 'sync:state-updated',
   appUpdateGetState: 'app-update:get-state',
   appUpdateConfigure: 'app-update:configure',
   appUpdateCheck: 'app-update:check',
@@ -60,6 +68,12 @@ export const IPC_CHANNELS = {
   agentReadLastMessage: 'agent:read-last-message',
   taskSuggestTitle: 'task:suggest-title',
   systemListFonts: 'system:list-fonts',
+  workerGetStatus: 'worker:get-status',
+  workerStart: 'worker:start',
+  workerStop: 'worker:stop',
+  workerClientGetConfig: 'worker-client:get-config',
+  workerClientSetConfig: 'worker-client:set-config',
+  workerClientRelaunch: 'worker-client:relaunch',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

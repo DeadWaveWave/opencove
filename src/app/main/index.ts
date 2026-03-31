@@ -11,6 +11,7 @@ import { resolveTitleBarOverlay } from './ipc/registerWindowChromeIpcHandlers'
 import { shouldEnableWaylandIme } from './waylandIme'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createPtyRuntime } from '../../contexts/terminal/presentation/main-ipc/runtime'
+import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
@@ -332,7 +333,7 @@ function createWindow(): void {
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
 
   // Set app user model id for windows
@@ -382,8 +383,28 @@ app.whenReady().then(() => {
   const approvedWorkspaces = createApprovedWorkspaceStore()
   const ptyRuntime = createPtyRuntime()
 
-  ipcDisposable = registerIpcHandlers({ approvedWorkspaces, ptyRuntime })
-  if (process.env.NODE_ENV !== 'test') {
+  const homeWorker = await resolveHomeWorkerEndpoint({
+    allowConfig: process.env.NODE_ENV !== 'test',
+  })
+  for (const message of homeWorker.diagnostics) {
+    process.stderr.write(`[opencove] ${message}\n`)
+  }
+
+  ipcDisposable = registerIpcHandlers({
+    approvedWorkspaces,
+    ptyRuntime,
+    ...(homeWorker.endpoint
+      ? {
+          workerEndpoint: {
+            hostname: homeWorker.endpoint.hostname,
+            port: homeWorker.endpoint.port,
+            token: homeWorker.endpoint.token,
+          },
+        }
+      : {}),
+  })
+
+  if (process.env.NODE_ENV !== 'test' && !homeWorker.endpoint) {
     controlSurfaceDisposable = registerControlSurfaceServer({ approvedWorkspaces, ptyRuntime })
   }
 

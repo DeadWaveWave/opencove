@@ -3,6 +3,7 @@
 @import './workspace-overlays.worktree-guard.css';
 @import './workspace-overlays.spaces.css';
 @import './workspace-overlays.spaces.explorer.css';
+@import './workspace-overlays.spaces.explorer.tree.css';
 
 .workspace-context-menu {
   position: fixed;

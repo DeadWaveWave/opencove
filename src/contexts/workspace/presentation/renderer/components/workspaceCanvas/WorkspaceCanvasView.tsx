@@ -69,9 +69,11 @@ export function WorkspaceCanvasView({
   spaceFramePreview,
   selectedSpaceIds,
   openExplorerSpaceId,
-  openSpaceExplorer,
+  explorerClipboard,
   toggleSpaceExplorer,
   closeSpaceExplorer,
+  setExplorerClipboard,
+  findBlockingOpenDocument,
   openFileInSpace,
   handleSpaceDragHandlePointerDown,
   editingSpaceId,
@@ -308,6 +310,10 @@ export function WorkspaceCanvasView({
               : workspacePath
           }
           rect={activeExplorerSpace.rect}
+          explorerClipboard={explorerClipboard}
+          setExplorerClipboard={setExplorerClipboard}
+          findBlockingOpenDocument={findBlockingOpenDocument}
+          onShowMessage={onShowMessage}
           onClose={closeSpaceExplorer}
           onOpenFile={(uri, options) => {
             openFileInSpace(activeExplorerSpace.id, uri, options)
@@ -367,11 +373,6 @@ export function WorkspaceCanvasView({
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
-        onOpenExplorer={() => {
-          if (activeMenuSpace) {
-            openSpaceExplorer(activeMenuSpace.id)
-          }
-        }}
         onArrange={arrangeInSpace}
         onCreateWorktree={() => {
           if (activeMenuSpace) {

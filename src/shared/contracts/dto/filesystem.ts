@@ -34,6 +34,25 @@ export interface WriteFileTextInput {
   content: string
 }
 
+export interface CopyEntryInput {
+  sourceUri: string
+  targetUri: string
+}
+
+export interface MoveEntryInput {
+  sourceUri: string
+  targetUri: string
+}
+
+export interface RenameEntryInput {
+  sourceUri: string
+  targetUri: string
+}
+
+export interface DeleteEntryInput {
+  uri: string
+}
+
 export interface CreateDirectoryInput {
   uri: string
 }
