@@ -67,18 +67,16 @@ export function CanvasSection(props: {
       ? window.opencoveApi.meta.platform
       : undefined
   const isMac = platform === 'darwin'
-  const wheelZoomModifierHelpLabel =
-    canvasWheelZoomModifier === 'primary'
-      ? isMac
-        ? 'Cmd'
-        : 'Ctrl'
-      : canvasWheelZoomModifier === 'ctrl'
-        ? 'Ctrl'
-        : canvasWheelZoomModifier === 'alt'
-          ? isMac
-            ? 'Option'
-            : 'Alt'
-          : 'Shift'
+  const wheelZoomModifierHelpLabel = (() => {
+    switch (canvasWheelZoomModifier) {
+      case 'primary':
+        return isMac ? 'Cmd' : 'Ctrl'
+      case 'ctrl':
+        return 'Ctrl'
+      case 'alt':
+        return isMac ? 'Option' : 'Alt'
+    }
+  })()
   const neutralTargetZoom = 1
   const neutralTargetZoomRatioRaw =
     (neutralTargetZoom - MIN_FOCUS_NODE_TARGET_ZOOM) /

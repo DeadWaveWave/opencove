@@ -39,21 +39,16 @@ export function getCanvasWheelZoomModifierLabel(
   modifier: CanvasWheelZoomModifier,
   platform: string | undefined,
 ): string {
-  if (modifier === 'primary') {
-    return t('settingsPanel.canvas.wheelZoomModifier.primary', {
-      primaryKey: platform === 'darwin' ? 'Cmd' : 'Ctrl',
-    })
+  switch (modifier) {
+    case 'primary':
+      return t('settingsPanel.canvas.wheelZoomModifier.primary', {
+        primaryKey: platform === 'darwin' ? 'Cmd' : 'Ctrl',
+      })
+    case 'ctrl':
+      return t('settingsPanel.canvas.wheelZoomModifier.ctrl')
+    case 'alt':
+      return t('settingsPanel.canvas.wheelZoomModifier.alt')
   }
-
-  if (modifier === 'ctrl') {
-    return t('settingsPanel.canvas.wheelZoomModifier.ctrl')
-  }
-
-  if (modifier === 'alt') {
-    return t('settingsPanel.canvas.wheelZoomModifier.alt')
-  }
-
-  return t('settingsPanel.canvas.wheelZoomModifier.shift')
 }
 
 export function getStandardWindowSizeBucketLabel(

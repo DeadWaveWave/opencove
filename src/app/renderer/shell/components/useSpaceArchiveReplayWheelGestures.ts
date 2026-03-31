@@ -58,20 +58,15 @@ function resolveWheelZoomDelta(event: WheelEvent): number {
 function resolveEffectiveWheelZoomModifierKey(
   setting: CanvasWheelZoomModifier,
   platform: string | undefined,
-): 'ctrl' | 'meta' | 'alt' | 'shift' {
-  if (setting === 'primary') {
-    return platform === 'darwin' ? 'meta' : 'ctrl'
+): 'ctrl' | 'meta' | 'alt' {
+  switch (setting) {
+    case 'primary':
+      return platform === 'darwin' ? 'meta' : 'ctrl'
+    case 'ctrl':
+      return 'ctrl'
+    case 'alt':
+      return 'alt'
   }
-
-  if (setting === 'ctrl') {
-    return 'ctrl'
-  }
-
-  if (setting === 'alt') {
-    return 'alt'
-  }
-
-  return 'shift'
 }
 
 export function useSpaceArchiveReplayWheelGestures({

@@ -4,7 +4,7 @@ export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
 export const CANVAS_WHEEL_BEHAVIORS = ['zoom', 'pan'] as const
 export type CanvasWheelBehavior = (typeof CANVAS_WHEEL_BEHAVIORS)[number]
 
-export const CANVAS_WHEEL_ZOOM_MODIFIERS = ['primary', 'ctrl', 'alt', 'shift'] as const
+export const CANVAS_WHEEL_ZOOM_MODIFIERS = ['primary', 'ctrl', 'alt'] as const
 export type CanvasWheelZoomModifier = (typeof CANVAS_WHEEL_ZOOM_MODIFIERS)[number]
 
 export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const

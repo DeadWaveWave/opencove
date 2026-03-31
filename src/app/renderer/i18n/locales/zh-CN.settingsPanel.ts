@@ -107,7 +107,6 @@ export const zhCNSettingsPanel = {
       primary: '{{primaryKey}}（默认）',
       ctrl: 'Ctrl',
       alt: 'Option/Alt',
-      shift: 'Shift',
     },
     terminalProfileLabel: '终端环境',
     terminalProfileHelp:

@@ -107,7 +107,6 @@ export const enSettingsPanel = {
       primary: '{{primaryKey}} (Default)',
       ctrl: 'Ctrl',
       alt: 'Alt',
-      shift: 'Shift',
     },
     terminalProfileLabel: 'Terminal Environment',
     terminalProfileHelp:

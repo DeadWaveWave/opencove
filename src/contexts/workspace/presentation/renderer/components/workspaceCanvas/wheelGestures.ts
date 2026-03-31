@@ -21,7 +21,7 @@ export interface ResolveCanvasWheelGestureParams {
   trackpadGestureLock: TrackpadGestureLockState | null
   wheelTarget: TrackpadGestureTarget
   isTargetWithinCanvas: boolean
-  wheelZoomModifierKey: 'ctrl' | 'meta' | 'alt' | 'shift'
+  wheelZoomModifierKey: 'ctrl' | 'meta' | 'alt'
   sample: WheelInputSample
   lockTimestamp: number
 }
@@ -81,9 +81,7 @@ export function resolveCanvasWheelGesture({
       ? sample.ctrlKey
       : wheelZoomModifierKey === 'meta'
         ? sample.metaKey
-        : wheelZoomModifierKey === 'alt'
-          ? sample.altKey
-          : sample.shiftKey
+        : sample.altKey
 
   if (canvasInputModeSetting === 'mouse') {
     const fixedModeDecision = resolveFixedModeDecision(canvasInputModeSetting, inputModalityState)
