@@ -203,6 +203,7 @@ export interface OpenCoveApi {
     getStatus: () => Promise<WorkerStatusResult>
     start: () => Promise<WorkerStatusResult>
     stop: () => Promise<WorkerStatusResult>
+    getWebUiUrl: () => Promise<string | null>
   }
   workerClient: {
     getConfig: () => Promise<HomeWorkerConfigDto>

@@ -341,6 +341,7 @@ const opencoveApi = {
     getStatus: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerGetStatus),
     start: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStart),
     stop: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStop),
+    getWebUiUrl: (): Promise<string | null> => invokeIpc(IPC_CHANNELS.workerGetWebUiUrl),
   },
   workerClient: {
     getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),

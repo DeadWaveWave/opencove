@@ -9,6 +9,19 @@ export interface ControlSurfaceContext {
       state: boolean
       events: boolean
     }
+    sessionStreaming: {
+      enabled: boolean
+      ptyProtocolVersion: number
+      replayWindowMaxBytes: number
+      roles: {
+        viewer: boolean
+        controller: boolean
+      }
+      webAuth: {
+        ticketToCookie: boolean
+        cookieSession: boolean
+      }
+    }
   }
 }
 

@@ -1,6 +1,5 @@
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
-import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
@@ -11,11 +10,7 @@ import {
 } from '../../../../contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../../../contexts/agent/infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
-import { resolveSpaceWorkingDirectory } from '../../../../contexts/space/application/resolveSpaceWorkingDirectory'
-import {
-  normalizeAgentSettings,
-  resolveAgentModel,
-} from '../../../../contexts/settings/domain/agentSettings'
+import { resolveAgentModel } from '../../../../contexts/settings/domain/agentSettings'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type {
   AgentProviderId,
@@ -32,6 +27,8 @@ import {
   resolveProviderFromSettings,
   resolveSessionLaunchSpawn,
 } from './sessionLaunchSupport'
+import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
+import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
@@ -184,40 +181,19 @@ export function registerSessionHandlers(
     approvedWorkspaces: ApprovedWorkspaceStore
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyRuntime: ControlSurfacePtyRuntime
+    ptyStreamHub: PtyStreamHub
   },
 ): void {
   const sessions = new Map<string, SessionRecord>()
-
-  const resolveSpaceWorkingDirectoryFromStore = async (spaceId: string) => {
-    const store = await deps.getPersistenceStore()
-    const normalized = normalizePersistedAppState(await store.readAppState())
-    const workspaces = normalized?.workspaces ?? []
-
-    for (const workspace of workspaces) {
-      const space = workspace.spaces.find(candidate => candidate.id === spaceId) ?? null
-      if (!space) {
-        continue
-      }
-
-      return {
-        workspacePath: workspace.path,
-        workingDirectory: resolveSpaceWorkingDirectory(space, workspace.path),
-        agentSettings: normalizeAgentSettings(normalized?.settings),
-      }
-    }
-
-    throw createAppError('space.not_found', {
-      debugMessage: `session.launchAgent: unknown space id: ${spaceId}`,
-    })
-  }
 
   controlSurface.register('session.launchAgent', {
     kind: 'command',
     validate: normalizeLaunchAgentPayload,
     handle: async (_ctx, payload): Promise<LaunchAgentSessionResult> => {
-      const { workingDirectory, agentSettings } = await resolveSpaceWorkingDirectoryFromStore(
-        payload.spaceId,
-      )
+      const { workingDirectory, agentSettings } = await resolveSpaceWorkingDirectoryFromStore({
+        spaceId: payload.spaceId,
+        getPersistenceStore: deps.getPersistenceStore,
+      })
 
       const isApproved = await deps.approvedWorkspaces.isPathApproved(workingDirectory)
       if (!isApproved) {
@@ -298,6 +274,14 @@ export function registerSessionHandlers(
       }
 
       sessions.set(sessionId, record)
+      deps.ptyStreamHub.registerSessionMetadata({
+        sessionId,
+        kind: 'agent',
+        startedAt,
+        cwd: workingDirectory,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
+      })
 
       return {
         sessionId,
@@ -420,14 +404,14 @@ export function registerSessionHandlers(
     kind: 'command',
     validate: payload => normalizeSessionIdPayload(payload, 'session.kill'),
     handle: async (_ctx, payload): Promise<void> => {
-      const record = sessions.get(payload.sessionId)
-      if (!record) {
+      const record = sessions.get(payload.sessionId) ?? null
+      if (!record && !deps.ptyStreamHub.hasSession(payload.sessionId)) {
         throw createAppError('session.not_found', {
           debugMessage: `session.kill: unknown session id: ${payload.sessionId}`,
         })
       }
 
-      deps.ptyRuntime.kill(record.sessionId)
+      deps.ptyRuntime.kill(record?.sessionId ?? payload.sessionId)
     },
     defaultErrorCode: 'terminal.kill_failed',
   })

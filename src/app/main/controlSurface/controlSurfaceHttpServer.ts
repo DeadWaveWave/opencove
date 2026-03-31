@@ -1,11 +1,10 @@
-import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
-import { mkdir, rm, writeFile } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
-import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { createServer, type ServerResponse } from 'node:http'
+import { resolve } from 'node:path'
+import { randomBytes } from 'node:crypto'
 import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 import type { ControlSurfaceInvokeResult } from '../../../shared/contracts/controlSurface'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
-import { createPersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
+import { createPersistenceStore as createSqlitePersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createControlSurface } from './controlSurface'
 import { normalizeInvokeRequest } from './validate'
 import type { ControlSurfaceContext } from './types'
@@ -17,14 +16,23 @@ import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrast
 import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
+import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
 import { registerSyncHandlers } from './handlers/syncHandlers'
 import { renderWorkerWebShellPage } from './workerWebShellPage'
+import { WebSessionManager } from './http/webSessionManager'
+import { registerAuthHandlers } from './handlers/authHandlers'
+import { readJsonBody, sendJson } from './http/httpJson'
+import { removeConnectionFile, writeConnectionFile } from './http/connectionFile'
+import { resolveRequestAuth } from './http/requestAuth'
+import { writeSseEvent, type SyncEventPayload } from './http/syncSse'
+import { tryHandleWebAuthRoutes } from './http/webAuthRoutes'
+import { createPtyStreamService, PTY_STREAM_PROTOCOL_VERSION } from './ptyStream/ptyStreamService'
 
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
 const MAX_SYNC_EVENT_BUFFER = 256
-const SYNC_SSE_EVENT_NAME = 'opencove.sync'
+const PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES = 400_000
 
 export interface ControlSurfaceConnectionInfo {
   version: typeof CONTROL_SURFACE_CONNECTION_VERSION
@@ -51,101 +59,10 @@ function buildUnauthorizedResult(): ControlSurfaceInvokeResult<unknown> {
   }
 }
 
-async function readJsonBody(req: IncomingMessage): Promise<unknown> {
-  return await new Promise((resolveBody, reject) => {
-    const chunks: Buffer[] = []
-
-    req.on('data', chunk => {
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-    })
-
-    req.once('error', reject)
-    req.once('end', () => {
-      const raw = Buffer.concat(chunks).toString('utf8')
-      if (raw.trim().length === 0) {
-        resolveBody(null)
-        return
-      }
-
-      try {
-        resolveBody(JSON.parse(raw))
-      } catch (error) {
-        reject(error)
-      }
-    })
-  })
-}
-
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  res.statusCode = status
-  res.setHeader('content-type', 'application/json; charset=utf-8')
-  res.end(`${JSON.stringify(body)}\n`)
-}
-
-type SyncEventPayload =
-  | {
-      type: 'app_state.updated'
-      revision: number
-      operationId: string
-    }
-  | {
-      type: 'resync_required'
-      revision: number
-    }
-
-function writeSseEvent(res: ServerResponse, payload: SyncEventPayload): void {
-  res.write(`id: ${payload.revision}\n`)
-  res.write(`event: ${SYNC_SSE_EVENT_NAME}\n`)
-  res.write(`data: ${JSON.stringify(payload)}\n\n`)
-}
-
-function normalizeBearerToken(value: string | undefined): string | null {
-  if (!value) {
-    return null
-  }
-
-  const trimmed = value.trim()
-  if (trimmed.length === 0) {
-    return null
-  }
-
-  if (!trimmed.toLowerCase().startsWith('bearer ')) {
-    return null
-  }
-
-  const token = trimmed.slice('bearer '.length).trim()
-  return token.length > 0 ? token : null
-}
-
-function tokensEqual(a: string, b: string): boolean {
-  // Avoid leaking token length timing.
-  const aBytes = Buffer.from(a, 'utf8')
-  const bBytes = Buffer.from(b, 'utf8')
-  if (aBytes.length !== bBytes.length) {
-    return false
-  }
-
-  return timingSafeEqual(aBytes, bBytes)
-}
-
-async function writeConnectionFile(
-  userDataPath: string,
-  info: ControlSurfaceConnectionInfo,
-  fileName: string,
-): Promise<void> {
-  const filePath = resolve(userDataPath, fileName)
-  await mkdir(dirname(filePath), { recursive: true })
-  await writeFile(filePath, `${JSON.stringify(info)}\n`, { encoding: 'utf8', mode: 0o600 })
-}
-
-async function removeConnectionFile(userDataPath: string, fileName: string): Promise<void> {
-  const filePath = resolve(userDataPath, fileName)
-  await rm(filePath, { force: true })
-}
-
 export function registerControlSurfaceHttpServer(options: {
   userDataPath: string
   dbPath?: string
+  createPersistenceStore?: (options: { dbPath: string }) => Promise<PersistenceStore>
   hostname?: string
   port?: number
   token?: string
@@ -160,6 +77,8 @@ export function registerControlSurfaceHttpServer(options: {
   const port = options.port ?? 0
   const connectionFileName = options.connectionFileName ?? DEFAULT_CONTROL_SURFACE_CONNECTION_FILE
 
+  const webSessions = new WebSessionManager()
+
   const ctx: ControlSurfaceContext = {
     now: () => new Date(),
     capabilities: {
@@ -168,10 +87,37 @@ export function registerControlSurfaceHttpServer(options: {
         state: true,
         events: true,
       },
+      sessionStreaming: {
+        enabled: true,
+        ptyProtocolVersion: PTY_STREAM_PROTOCOL_VERSION,
+        replayWindowMaxBytes: PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES,
+        roles: {
+          viewer: true,
+          controller: true,
+        },
+        webAuth: {
+          ticketToCookie: true,
+          cookieSession: true,
+        },
+      },
     },
   }
 
+  const ptyStreamService = createPtyStreamService({
+    token,
+    webSessions,
+    now: ctx.now,
+    ptyRuntime: options.ptyRuntime,
+    replayWindowMaxBytes: PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES,
+    allowQueryToken: true,
+  })
+
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
+  const createPersistenceStore =
+    options.createPersistenceStore ??
+    (async ({ dbPath }: { dbPath: string }) => {
+      return await createSqlitePersistenceStore({ dbPath })
+    })
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
     if (persistenceStorePromise) {
       return await persistenceStorePromise
@@ -192,6 +138,7 @@ export function registerControlSurfaceHttpServer(options: {
 
   const controlSurface = createControlSurface()
   registerSystemHandlers(controlSurface)
+  registerAuthHandlers(controlSurface, { webSessions })
   registerProjectHandlers(controlSurface, getPersistenceStore)
   registerSpaceHandlers(controlSurface, getPersistenceStore)
   registerFilesystemHandlers(controlSurface, {
@@ -205,6 +152,13 @@ export function registerControlSurfaceHttpServer(options: {
     approvedWorkspaces: options.approvedWorkspaces,
     getPersistenceStore,
     ptyRuntime: options.ptyRuntime,
+    ptyStreamHub: ptyStreamService.hub,
+  })
+  registerSessionStreamingHandlers(controlSurface, {
+    approvedWorkspaces: options.approvedWorkspaces,
+    getPersistenceStore,
+    ptyRuntime: options.ptyRuntime,
+    ptyStreamHub: ptyStreamService.hub,
   })
   registerSyncHandlers(controlSurface, getPersistenceStore)
 
@@ -262,10 +216,20 @@ export function registerControlSurfaceHttpServer(options: {
 
     if (req.method === 'GET' && req.url) {
       const url = new URL(req.url, 'http://localhost')
+      if (tryHandleWebAuthRoutes({ res, url, now: ctx.now, webSessions })) {
+        return
+      }
+
       if (url.pathname === '/events') {
-        const presentedToken =
-          normalizeBearerToken(req.headers.authorization) ?? url.searchParams.get('token')?.trim()
-        if (!presentedToken || !tokensEqual(presentedToken, token)) {
+        const auth = resolveRequestAuth({
+          req,
+          url,
+          token,
+          webSessions,
+          allowQueryToken: true,
+          now: ctx.now(),
+        })
+        if (!auth) {
           sendJson(res, 401, buildUnauthorizedResult())
           return
         }
@@ -328,8 +292,16 @@ export function registerControlSurfaceHttpServer(options: {
       return
     }
 
-    const presentedToken = normalizeBearerToken(req.headers.authorization)
-    if (!presentedToken || !tokensEqual(presentedToken, token)) {
+    const invokeUrl = new URL(req.url, 'http://localhost')
+    const auth = resolveRequestAuth({
+      req,
+      url: invokeUrl,
+      token,
+      webSessions,
+      allowQueryToken: false,
+      now: ctx.now(),
+    })
+    if (!auth) {
       sendJson(res, 401, buildUnauthorizedResult())
       return
     }
@@ -337,6 +309,16 @@ export function registerControlSurfaceHttpServer(options: {
     try {
       const body = await readJsonBody(req)
       const request = normalizeInvokeRequest(body)
+
+      if (request.id === 'auth.issueWebSessionTicket' && auth.kind !== 'bearer') {
+        sendJson(res, 403, {
+          __opencoveControlEnvelope: true,
+          ok: false,
+          error: createAppErrorDescriptor('control_surface.unauthorized'),
+        })
+        return
+      }
+
       const shouldCheckRevision = request.kind === 'command'
       const revisionBefore = shouldCheckRevision
         ? await (await getPersistenceStore()).readAppStateRevision()
@@ -366,6 +348,14 @@ export function registerControlSurfaceHttpServer(options: {
         }),
       })
     }
+  })
+
+  server.on('upgrade', (req, socket, head) => {
+    if (closed) {
+      socket.destroy()
+      return
+    }
+    ptyStreamService.handleUpgrade(req, socket, head)
   })
 
   server.on('error', error => {
@@ -451,6 +441,12 @@ export function registerControlSurfaceHttpServer(options: {
           }
         }
         syncClients.clear()
+
+        try {
+          ptyStreamService.dispose()
+        } catch {
+          // ignore
+        }
 
         await new Promise<void>(resolveClose => {
           server.close(() => resolveClose())

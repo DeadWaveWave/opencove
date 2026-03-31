@@ -37,6 +37,8 @@ export interface PtyRuntime {
   write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => void
   resize: (sessionId: string, cols: number, rows: number) => void
   kill: (sessionId: string) => void
+  onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
+  onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
   attach: (contentsId: number, sessionId: string) => void
   detach: (contentsId: number, sessionId: string) => void
   snapshot: (sessionId: string) => string
@@ -161,6 +163,9 @@ export function createPtyRuntime(): PtyRuntime {
 
   // --- PtyHost event wiring ---
 
+  const externalDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+  const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+
   ptyHost.onData(({ sessionId, data }) => {
     if (!manager.hasPtyDataSubscribers(sessionId)) {
       const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${data}`
@@ -169,11 +174,19 @@ export function createPtyRuntime(): PtyRuntime {
     }
 
     manager.handleData(sessionId, data)
+
+    externalDataListeners.forEach(listener => {
+      listener({ sessionId, data })
+    })
   })
 
   ptyHost.onExit(({ sessionId, exitCode }) => {
     manager.handleExit(sessionId, exitCode)
     clearSessionProbeState(sessionId)
+
+    externalExitListeners.forEach(listener => {
+      listener({ sessionId, exitCode })
+    })
   })
 
   // --- PtyRuntime interface ---
@@ -229,6 +242,18 @@ export function createPtyRuntime(): PtyRuntime {
       clearSessionProbeState(sessionId)
       ptyHost.kill(sessionId)
     },
+    onData: listener => {
+      externalDataListeners.add(listener)
+      return () => {
+        externalDataListeners.delete(listener)
+      }
+    },
+    onExit: listener => {
+      externalExitListeners.add(listener)
+      return () => {
+        externalExitListeners.delete(listener)
+      }
+    },
     attach: (contentsId, sessionId) => {
       manager.attach(contentsId, sessionId)
     },
@@ -267,6 +292,8 @@ export function createPtyRuntime(): PtyRuntime {
     dispose: () => {
       manager.dispose()
       terminalProbeBufferBySession.clear()
+      externalDataListeners.clear()
+      externalExitListeners.clear()
       ptyHost.dispose()
     },
   }

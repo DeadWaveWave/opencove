@@ -247,4 +247,106 @@ test.describe('Worker web shell', () => {
     expect(spaceGet.ok).toBe(true)
     expect(spaceGet.value?.space?.nodes?.some(node => node.kind === 'note')).toBe(true)
   })
+
+  test('pty streaming reconnect replays output', async ({ page }) => {
+    const token = requireEnv('OPENCOVE_WEB_SHELL_TOKEN')
+    const testFileUri = requireEnv('OPENCOVE_WEB_SHELL_TEST_FILE_URI')
+    const workspacePath = dirname(fileURLToPath(new URL(testFileUri)))
+    const workspaceId = randomUUID()
+    const spaceId = randomUUID()
+
+    const initialState = {
+      formatVersion: 1,
+      activeWorkspaceId: workspaceId,
+      workspaces: [
+        {
+          id: workspaceId,
+          name: 'Test Workspace',
+          path: workspacePath,
+          worktreesRoot: workspacePath,
+          pullRequestBaseBranchOptions: [],
+          spaceArchiveRecords: [],
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [
+            {
+              id: spaceId,
+              name: 'Main',
+              directoryPath: workspacePath,
+              labelColor: null,
+              nodeIds: [],
+              rect: null,
+            },
+          ],
+          activeSpaceId: spaceId,
+          nodes: [],
+        },
+      ],
+      settings: {},
+    }
+
+    await page.goto(`/?token=${encodeURIComponent(token)}`)
+
+    const writeStateResponse = await page.request.post('/invoke', {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      data: {
+        kind: 'command',
+        id: 'sync.writeState',
+        payload: { state: initialState },
+      },
+    })
+    expect(writeStateResponse.status()).toBe(200)
+
+    const spawnTerminalResponse = await page.request.post('/invoke', {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      data: {
+        kind: 'command',
+        id: 'session.spawnTerminal',
+        payload: { spaceId, cols: 80, rows: 24, runtime: 'node' },
+      },
+    })
+    expect(spawnTerminalResponse.status()).toBe(200)
+
+    const spawnResult = (await spawnTerminalResponse.json()) as {
+      ok?: boolean
+      value?: { sessionId?: string }
+    }
+    expect(spawnResult.ok).toBe(true)
+
+    const sessionId = spawnResult.value?.sessionId ?? null
+    expect(typeof sessionId).toBe('string')
+    expect((sessionId ?? '').length).toBeGreaterThan(0)
+
+    await page.locator('#ptySessionId').fill(sessionId ?? '')
+    await page.locator('#ptyConnect').click()
+
+    await expect(page.locator('#ptyOutput')).toContainText('[connected]', { timeout: 15_000 })
+    await expect(page.locator('#ptyRole')).toHaveText('controller', { timeout: 15_000 })
+
+    await page.locator('#ptyInput').fill("console.log('stream-ok')")
+    await page.locator('#ptyInput').press('Enter')
+    await expect(page.locator('#ptyOutput')).toContainText('stream-ok', { timeout: 15_000 })
+
+    await page
+      .locator('#ptyInput')
+      .fill("setTimeout(() => console.log('replay-ok'), 800); console.log('scheduled-ok')")
+    await page.locator('#ptyInput').press('Enter')
+    await expect(page.locator('#ptyOutput')).toContainText('scheduled-ok', { timeout: 15_000 })
+
+    await page.locator('#ptyDisconnect').click()
+    await page.waitForTimeout(50)
+
+    await page.reload()
+    await page.waitForTimeout(1_100)
+    await page.locator('#ptySessionId').fill(sessionId ?? '')
+    await page.locator('#ptyConnect').click()
+
+    await expect(page.locator('#ptyOutput')).toContainText('replay-ok', { timeout: 15_000 })
+  })
 })

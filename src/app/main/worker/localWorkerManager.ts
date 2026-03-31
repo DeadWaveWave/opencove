@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../shared/contracts/dto'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
+import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -195,4 +196,44 @@ export async function stopLocalWorker(): Promise<WorkerStatusResult> {
   }
 
   return await getLocalWorkerStatus()
+}
+
+function normalizeTicketResult(value: unknown): { ticket: string } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Invalid auth.issueWebSessionTicket response payload')
+  }
+
+  const ticket = (value as Record<string, unknown>).ticket
+  if (typeof ticket !== 'string' || ticket.trim().length === 0) {
+    throw new Error('Invalid auth.issueWebSessionTicket ticket value')
+  }
+
+  return { ticket: ticket.trim() }
+}
+
+export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
+  const connection = await resolveConnectionFromUserData()
+  if (!connection) {
+    return null
+  }
+
+  const { httpStatus, result } = await invokeControlSurface(
+    {
+      hostname: connection.hostname,
+      port: connection.port,
+      token: connection.token,
+    },
+    {
+      kind: 'query',
+      id: 'auth.issueWebSessionTicket',
+      payload: { redirectPath: '/' },
+    },
+  )
+
+  if (httpStatus !== 200 || !result || result.ok !== true) {
+    throw new Error('Failed to issue web session ticket')
+  }
+
+  const { ticket } = normalizeTicketResult(result.value)
+  return `http://${connection.hostname}:${connection.port}/auth/claim?ticket=${encodeURIComponent(ticket)}`
 }

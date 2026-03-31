@@ -71,6 +71,7 @@ export const IPC_CHANNELS = {
   workerGetStatus: 'worker:get-status',
   workerStart: 'worker:start',
   workerStop: 'worker:stop',
+  workerGetWebUiUrl: 'worker:get-web-ui-url',
   workerClientGetConfig: 'worker-client:get-config',
   workerClientSetConfig: 'worker-client:set-config',
   workerClientRelaunch: 'worker-client:relaunch',

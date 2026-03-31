@@ -100,6 +100,9 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       resolve(userDataPath, 'approved-workspaces.json'),
     )
 
+    const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+    const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+
     const server = registerControlSurfaceHttpServer({
       userDataPath,
       hostname: '127.0.0.1',
@@ -109,7 +112,21 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       approvedWorkspaces,
       ptyRuntime: {
         spawnSession: async () => ({ sessionId: 'test-session' }),
+        write: () => undefined,
+        resize: () => undefined,
         kill: () => undefined,
+        onData: listener => {
+          dataListeners.add(listener)
+          return () => {
+            dataListeners.delete(listener)
+          }
+        },
+        onExit: listener => {
+          exitListeners.add(listener)
+          return () => {
+            exitListeners.delete(listener)
+          }
+        },
       },
       enableWebShell: true,
     })
@@ -177,6 +194,9 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       resolve(userDataPath, 'approved-workspaces.json'),
     )
 
+    const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+    const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+
     const server = registerControlSurfaceHttpServer({
       userDataPath,
       hostname: '127.0.0.1',
@@ -186,7 +206,21 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       approvedWorkspaces,
       ptyRuntime: {
         spawnSession: async () => ({ sessionId: 'test-session' }),
+        write: () => undefined,
+        resize: () => undefined,
         kill: () => undefined,
+        onData: listener => {
+          dataListeners.add(listener)
+          return () => {
+            dataListeners.delete(listener)
+          }
+        },
+        onExit: listener => {
+          exitListeners.add(listener)
+          return () => {
+            exitListeners.delete(listener)
+          }
+        },
       },
     })
 
@@ -214,6 +248,9 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       resolve(userDataPath, 'approved-workspaces.json'),
     )
 
+    const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+    const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+
     const server = registerControlSurfaceHttpServer({
       userDataPath,
       hostname: '127.0.0.1',
@@ -223,7 +260,21 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       approvedWorkspaces,
       ptyRuntime: {
         spawnSession: async () => ({ sessionId: 'test-session' }),
+        write: () => undefined,
+        resize: () => undefined,
         kill: () => undefined,
+        onData: listener => {
+          dataListeners.add(listener)
+          return () => {
+            dataListeners.delete(listener)
+          }
+        },
+        onExit: listener => {
+          exitListeners.add(listener)
+          return () => {
+            exitListeners.delete(listener)
+          }
+        },
       },
     })
 
