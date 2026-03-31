@@ -56,6 +56,7 @@ export const zhCNSettingsPanel = {
       status: {
         disabled: '已关闭更新检查。',
         unsupported: '当前构建无法使用更新检查。',
+        unsupportedWithMessage: '当前构建无法使用更新检查：{{message}}',
         idle: '等待下一次后台检查。',
         checking: '正在检查 GitHub Releases…',
         available: '发现新版本 {{version}}。',

@@ -38,6 +38,8 @@
 - Linux 产物（如 `*.AppImage`）
 - 汇总校验文件 `SHA256SUMS.txt`
 
+注意：macOS 的应用内自动更新依赖稳定的代码签名（Developer ID）。当前 unsigned/ad-hoc 构建在 macOS 上会禁用更新检查；请通过 GitHub Releases 手动下载新版本。
+
 其中：
 
 - `v0.2.0` 会创建正式 `stable` release

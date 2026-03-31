@@ -56,6 +56,7 @@ export const enSettingsPanel = {
       status: {
         disabled: 'Update checks are turned off.',
         unsupported: 'Update checks are unavailable in this build.',
+        unsupportedWithMessage: 'Update checks are unavailable in this build: {{message}}',
         idle: 'Waiting for the next background check.',
         checking: 'Checking GitHub Releases…',
         available: 'Version {{version}} is available.',

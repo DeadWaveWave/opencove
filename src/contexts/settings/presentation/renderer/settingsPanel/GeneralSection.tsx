@@ -34,7 +34,11 @@ function getUpdateStatusText(
     case 'disabled':
       return t('settingsPanel.general.updates.status.disabled')
     case 'unsupported':
-      return t('settingsPanel.general.updates.status.unsupported')
+      return state.message
+        ? t('settingsPanel.general.updates.status.unsupportedWithMessage', {
+            message: state.message,
+          })
+        : t('settingsPanel.general.updates.status.unsupported')
     case 'checking':
       return t('settingsPanel.general.updates.status.checking')
     case 'available':
@@ -456,7 +460,11 @@ export function GeneralSection(props: {
               className="secondary"
               data-testid="settings-update-check"
               onClick={onCheckForUpdates}
-              disabled={updateState?.status === 'checking' || updatePolicy === 'off'}
+              disabled={
+                updateState?.status === 'checking' ||
+                updateState?.status === 'unsupported' ||
+                updatePolicy === 'off'
+              }
             >
               {t('settingsPanel.general.updates.checkNow')}
             </button>
