@@ -238,6 +238,8 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .workspace-space-switcher__item[data-cove-label-color] {
@@ -258,6 +260,7 @@
 .workspace-space-switcher__item-label {
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .workspace-space-switcher__worktree-badge {

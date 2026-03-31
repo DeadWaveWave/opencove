@@ -52,8 +52,13 @@ async function resolveSummaryForBranch(
     'gh',
     [
       'pr',
-      'view',
+      'list',
+      '--head',
       branch,
+      '--state',
+      'open',
+      '--limit',
+      '1',
       '--json',
       'number,title,url,state,isDraft,author,updatedAt,baseRefName,headRefName',
     ],
@@ -75,7 +80,8 @@ async function resolveSummaryForBranch(
 
   try {
     const parsed = JSON.parse(result.stdout) as unknown
-    const value = parsePullRequestSummary(parsed)
+    const first = Array.isArray(parsed) ? (parsed[0] as unknown) : parsed
+    const value = parsePullRequestSummary(first)
     summaryCache.set(cacheKey, { value, expiresAt: Date.now() + SUMMARY_CACHE_TTL_MS })
     return value
   } catch {

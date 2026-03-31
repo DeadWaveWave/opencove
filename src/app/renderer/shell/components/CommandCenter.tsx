@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   Folder,
   Package,
@@ -269,7 +269,7 @@ export function CommandCenter({
     return flattenedItems[0]
   }, [activeItemId, flattenedItems])
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!isOpen) {
       return
     }
@@ -353,6 +353,7 @@ export function CommandCenter({
         <div className="command-center__input-row">
           <Search aria-hidden="true" size={16} className="command-center__search-icon" />
           <input
+            autoFocus
             ref={inputRef}
             className="command-center__input"
             value={query}
