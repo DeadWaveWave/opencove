@@ -13,6 +13,10 @@ export function configureWebsiteWebContents({
   contents: WebContents
   emit: (payload: WebsiteWindowEventPayload) => void
 }): void {
+  if (typeof contents.setVisualZoomLevelLimits === 'function') {
+    void contents.setVisualZoomLevelLimits(1, 1).catch(() => undefined)
+  }
+
   contents.setWindowOpenHandler(({ url }) => {
     openExternalIfSafe(url)
     return { action: 'deny' }
@@ -81,12 +85,21 @@ export function registerWebsiteWebContentsRuntimeListeners({
     publishState()
   }
 
+  const handleZoomChanged = () => {
+    const expectedZoom = runtime.canvasZoom
+    const currentZoom = contents.getZoomFactor()
+    if (!Number.isFinite(currentZoom) || Math.abs(currentZoom - expectedZoom) > 0.001) {
+      contents.setZoomFactor(expectedZoom)
+    }
+  }
+
   contents.on('did-start-loading', handleStartLoading)
   contents.on('did-stop-loading', handleStopLoading)
   contents.on('did-navigate', handleDidNavigate)
   contents.on('did-navigate-in-page', handleDidNavigateInPage)
   contents.on('page-title-updated', handleTitleUpdated)
   contents.on('did-fail-load', handleFailLoad)
+  contents.on('zoom-changed', handleZoomChanged)
 
   publishState()
 
@@ -97,5 +110,6 @@ export function registerWebsiteWebContentsRuntimeListeners({
     contents.removeListener('did-navigate-in-page', handleDidNavigateInPage)
     contents.removeListener('page-title-updated', handleTitleUpdated)
     contents.removeListener('did-fail-load', handleFailLoad)
+    contents.removeListener('zoom-changed', handleZoomChanged)
   }
 }

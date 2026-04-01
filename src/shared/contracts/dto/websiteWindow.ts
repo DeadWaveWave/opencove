@@ -26,11 +26,13 @@ export interface ActivateWebsiteWindowInput {
   sessionMode: WebsiteWindowSessionMode
   profileId: string | null
   bounds?: WebsiteWindowBounds | null
+  canvasZoom?: number | null
 }
 
 export interface SetWebsiteWindowBoundsInput {
   nodeId: string
   bounds: WebsiteWindowBounds
+  canvasZoom?: number | null
 }
 
 export interface NavigateWebsiteWindowInput {

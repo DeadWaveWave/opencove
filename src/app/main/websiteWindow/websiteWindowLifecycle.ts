@@ -1,4 +1,4 @@
-import type { BrowserWindow } from 'electron'
+import type { BrowserWindow, WebContents } from 'electron'
 import type { WebsiteWindowEventPayload, WebsiteWindowPolicy } from '../../../shared/contracts/dto'
 import { matchesAnyHostPattern } from '../../../shared/utils/hostPatterns'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
@@ -95,7 +95,14 @@ export function transitionWebsiteWindowToCold({
   cancelDiscardTimer(runtime)
 
   const view = runtime.view
-  const contents = view?.webContents ?? null
+  let contents: WebContents | null = null
+  if (view) {
+    try {
+      contents = view.webContents
+    } catch {
+      contents = null
+    }
+  }
   if (view) {
     if (!window.isDestroyed()) {
       try {

@@ -16,6 +16,7 @@ export interface WebsiteWindowRuntime {
   desiredUrl: string
   view: WebContentsView | null
   bounds: WebsiteWindowBounds | null
+  canvasZoom: number
   lastActivatedAt: number
   canGoBack: boolean
   canGoForward: boolean

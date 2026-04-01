@@ -2,6 +2,7 @@ import type { WebsiteWindowBounds } from '@shared/contracts/dto'
 
 export interface WebsiteViewportState {
   bounds: WebsiteWindowBounds
+  canvasZoom: number
 }
 
 export const HIDDEN_WEBSITE_BOUNDS: WebsiteWindowBounds = {
@@ -98,7 +99,10 @@ function resolveVisibleBounds(
   })
 }
 
-export function resolveViewportState(element: HTMLDivElement | null): WebsiteViewportState | null {
+export function resolveViewportState(
+  element: HTMLDivElement | null,
+  canvasZoom: number,
+): WebsiteViewportState | null {
   const rawBounds = resolveViewportBounds(element)
   if (!rawBounds) {
     return null
@@ -111,6 +115,7 @@ export function resolveViewportState(element: HTMLDivElement | null): WebsiteVie
 
   return {
     bounds: normalizeBounds(visibleBounds),
+    canvasZoom,
   }
 }
 
@@ -126,5 +131,9 @@ export function viewportStateEqual(
   a: WebsiteViewportState | null,
   b: WebsiteViewportState | null,
 ): boolean {
-  return boundsEqual(a?.bounds ?? null, b?.bounds ?? null)
+  if (!a || !b) {
+    return a === b
+  }
+
+  return boundsEqual(a.bounds, b.bounds) && a.canvasZoom === b.canvasZoom
 }

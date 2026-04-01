@@ -1,5 +1,6 @@
 import type { WebsiteWindowBounds, WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { normalizeWebsiteCanvasZoom, resolveWebsiteViewBorderRadius } from './websiteWindowView'
 
 export function captureWebsiteWindowRuntimeSnapshot({
   runtime,
@@ -10,7 +11,18 @@ export function captureWebsiteWindowRuntimeSnapshot({
   quality: number
   emit: (payload: WebsiteWindowEventPayload) => void
 }): void {
-  const contents = runtime.view?.webContents ?? null
+  const view = runtime.view
+  if (!view) {
+    return
+  }
+
+  let contents: (typeof view)['webContents'] | null = null
+  try {
+    contents = view.webContents
+  } catch {
+    return
+  }
+
   if (!contents || contents.isDestroyed()) {
     return
   }
@@ -35,11 +47,52 @@ export function applyWebsiteWindowBounds(
     return
   }
 
-  if (bounds.width <= 0 || bounds.height <= 0) {
-    view.setVisible(false)
+  try {
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      view.setVisible(false)
+      return
+    }
+
+    view.setVisible(true)
+    view.setBounds(bounds)
+  } catch {
+    // ignore - view may already be destroyed during shutdown
+  }
+}
+
+export function applyWebsiteWindowViewportMetrics({
+  runtime,
+  bounds,
+  canvasZoom,
+}: {
+  runtime: WebsiteWindowRuntime
+  bounds: WebsiteWindowBounds
+  canvasZoom: unknown
+}): void {
+  const view = runtime.view
+  if (!view) {
     return
   }
 
-  view.setVisible(true)
-  view.setBounds(bounds)
+  if (bounds.width <= 0 || bounds.height <= 0) {
+    applyWebsiteWindowBounds(runtime, bounds)
+    return
+  }
+
+  const normalizedCanvasZoom = normalizeWebsiteCanvasZoom(canvasZoom)
+
+  try {
+    const contents = view.webContents
+    if (!contents.isDestroyed()) {
+      const currentZoom = contents.getZoomFactor()
+      if (!Number.isFinite(currentZoom) || Math.abs(currentZoom - normalizedCanvasZoom) > 0.001) {
+        contents.setZoomFactor(normalizedCanvasZoom)
+      }
+    }
+
+    view.setBorderRadius(resolveWebsiteViewBorderRadius(normalizedCanvasZoom))
+  } catch {
+    // ignore - view may already be destroyed during shutdown
+  }
+  applyWebsiteWindowBounds(runtime, bounds)
 }

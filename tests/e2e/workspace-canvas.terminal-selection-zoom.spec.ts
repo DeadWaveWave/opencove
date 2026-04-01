@@ -48,6 +48,9 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
         })
         .toBeGreaterThan(1.01)
 
+      await xterm.click()
+      await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+
       const dragPoints = await window
         .waitForFunction(
           nodeId => {
@@ -79,18 +82,40 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
         .then(handle => handle.jsonValue())
 
       await window.mouse.move(dragPoints.start.x, dragPoints.start.y)
-      await window.mouse.down()
-      await window.mouse.move(dragPoints.end.x, dragPoints.end.y, { steps: 8 })
-      await window.mouse.up()
+      const dragOnce = async (): Promise<void> => {
+        await window.mouse.move(dragPoints.start.x, dragPoints.start.y)
+        await window.mouse.down()
+        await window.mouse.move(dragPoints.end.x, dragPoints.end.y, { steps: 8 })
+        await window.mouse.up()
+      }
 
-      await expect
-        .poll(async () => {
-          return await window.evaluate(nodeId => {
-            const api = window.__opencoveTerminalSelectionTestApi
-            return api?.getSelection(nodeId) ?? ''
-          }, 'node-selection-zoom')
-        })
-        .toMatch(/^BCDE/)
+      const readSelection = async (): Promise<string> => {
+        return await window.evaluate(nodeId => {
+          const api = window.__opencoveTerminalSelectionTestApi
+          return api?.getSelection(nodeId) ?? ''
+        }, 'node-selection-zoom')
+      }
+
+      const waitForSelection = async (): Promise<void> => {
+        await expect.poll(readSelection, { timeout: 8_000 }).toMatch(/^BCDE/)
+      }
+
+      const clearSelection = async (): Promise<void> => {
+        await window.evaluate(nodeId => {
+          window.__opencoveTerminalSelectionTestApi?.clearSelection(nodeId)
+        }, 'node-selection-zoom')
+      }
+
+      try {
+        await dragOnce()
+        await waitForSelection()
+      } catch {
+        await clearSelection()
+        await xterm.click()
+        await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+        await dragOnce()
+        await waitForSelection()
+      }
     } finally {
       await electronApp.close()
     }

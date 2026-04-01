@@ -1,0 +1,51 @@
+import type { WebsiteWindowSessionMode } from '../../../shared/contracts/dto'
+import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+
+export function ensureWebsiteWindowRuntime({
+  runtimeByNodeId,
+  nodeId,
+  desiredUrl,
+  pinned,
+  sessionMode,
+  profileId,
+}: {
+  runtimeByNodeId: Map<string, WebsiteWindowRuntime>
+  nodeId: string
+  desiredUrl: string
+  pinned: boolean
+  sessionMode: WebsiteWindowSessionMode
+  profileId: string | null
+}): WebsiteWindowRuntime {
+  const existing = runtimeByNodeId.get(nodeId)
+  if (existing) {
+    existing.desiredUrl = desiredUrl
+    existing.pinned = pinned
+    existing.sessionMode = sessionMode
+    existing.profileId = profileId
+    return existing
+  }
+
+  const runtime: WebsiteWindowRuntime = {
+    nodeId,
+    lifecycle: 'cold',
+    pinned,
+    sessionMode,
+    profileId,
+    desiredUrl,
+    view: null,
+    bounds: null,
+    canvasZoom: 1,
+    lastActivatedAt: 0,
+    canGoBack: false,
+    canGoForward: false,
+    isLoading: false,
+    title: null,
+    url: null,
+    snapshotDataUrl: null,
+    discardTimer: null,
+    disposeWebContentsListeners: null,
+  }
+
+  runtimeByNodeId.set(nodeId, runtime)
+  return runtime
+}

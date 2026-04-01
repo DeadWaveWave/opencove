@@ -45,7 +45,7 @@ async function readWebsiteRuntimeState(
 }
 
 test.describe('Workspace Canvas - Website Window', () => {
-  test('keeps website content at 100% page zoom while canvas zoom changes', async () => {
+  test('keeps website layout stable while canvas zoom changes', async () => {
     const server = createServer((_request, response) => {
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       response.end(`<!doctype html>
@@ -118,11 +118,12 @@ test.describe('Workspace Canvas - Website Window', () => {
       expect(before?.bounds).toBeTruthy()
       expect(before?.zoomFactor).toBe(1)
       expect(before?.innerWidth).toBe(before?.bounds?.width ?? null)
+      const beforeLogicalWidth = before?.innerWidth ?? null
 
-      const zoomInButton = window.locator('.react-flow__controls-zoomin')
-      await expect(zoomInButton).toBeVisible()
-      await zoomInButton.click()
-      await zoomInButton.click()
+      const zoomOutButton = window.locator('.react-flow__controls-zoomout')
+      await expect(zoomOutButton).toBeVisible()
+      await zoomOutButton.click()
+      await zoomOutButton.click()
 
       await expect
         .poll(async () => {
@@ -130,13 +131,17 @@ test.describe('Workspace Canvas - Website Window', () => {
         })
         .not.toEqual(beforeCanvasZoom)
 
+      const afterCanvasZoom = await readCanvasViewport(window)
+      const expectedZoomFactor = Math.round(Math.min(2, Math.max(0.1, afterCanvasZoom.zoom)) * 1000)
+      const normalizedExpectedZoomFactor = expectedZoomFactor / 1000
+
       await expect
         .poll(async () => {
           return (
             (await readWebsiteRuntimeState(electronApp, 'website-zoom-node'))?.zoomFactor ?? null
           )
         })
-        .toBe(1)
+        .toBe(normalizedExpectedZoomFactor)
 
       await expect
         .poll(async () => {
@@ -149,8 +154,11 @@ test.describe('Workspace Canvas - Website Window', () => {
       const after = await readWebsiteRuntimeState(electronApp, 'website-zoom-node')
       expect(after?.lifecycle).toBe('active')
       expect(after?.bounds).toBeTruthy()
-      expect(after?.zoomFactor).toBe(1)
-      expect(after?.innerWidth).toBe(after?.bounds?.width ?? null)
+      expect(after?.zoomFactor).toBe(normalizedExpectedZoomFactor)
+      expect(after?.innerWidth).toBeTruthy()
+      if (beforeLogicalWidth !== null && typeof after?.innerWidth === 'number') {
+        expect(Math.abs(after.innerWidth - beforeLogicalWidth)).toBeLessThanOrEqual(2)
+      }
       expect(after?.bounds?.width).not.toBe(before?.bounds?.width)
     } finally {
       server.close()
