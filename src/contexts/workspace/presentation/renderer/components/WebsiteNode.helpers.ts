@@ -80,12 +80,10 @@ function normalizeBounds(bounds: WebsiteWindowBounds): WebsiteWindowBounds {
   }
 }
 
-function resolveVisibleBounds(element: HTMLDivElement | null): WebsiteWindowBounds | null {
-  const rawBounds = resolveViewportBounds(element)
-  if (!rawBounds) {
-    return null
-  }
-
+function resolveVisibleBounds(
+  element: HTMLDivElement | null,
+  rawBounds: WebsiteWindowBounds,
+): WebsiteWindowBounds | null {
   const clipElement = element?.closest('.workspace-main')
   const clipRect =
     clipElement instanceof HTMLElement
@@ -101,7 +99,12 @@ function resolveVisibleBounds(element: HTMLDivElement | null): WebsiteWindowBoun
 }
 
 export function resolveViewportState(element: HTMLDivElement | null): WebsiteViewportState | null {
-  const visibleBounds = resolveVisibleBounds(element)
+  const rawBounds = resolveViewportBounds(element)
+  if (!rawBounds) {
+    return null
+  }
+
+  const visibleBounds = resolveVisibleBounds(element, rawBounds)
   if (!visibleBounds) {
     return null
   }

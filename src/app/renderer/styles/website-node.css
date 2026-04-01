@@ -235,15 +235,29 @@
   position: absolute;
   inset: 0;
   display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px;
+  pointer-events: none;
+  text-align: center;
+  z-index: 3;
+}
+
+.website-node__overlay-badge {
+  max-width: min(320px, 100%);
+  display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 14px;
+  gap: 4px;
+  padding: 8px 10px;
   text-align: center;
   color: var(--cove-text-muted);
-  background: color-mix(in srgb, var(--cove-node-surface) 84%, transparent);
-  z-index: 3;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cove-node-surface) 88%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 12px 30px var(--cove-shadow-color-elevated);
 }
 
 .website-node__overlay-title {

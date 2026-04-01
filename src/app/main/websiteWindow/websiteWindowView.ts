@@ -2,7 +2,7 @@ import type { Session, WebContentsView } from 'electron'
 import type { WebsiteWindowSessionMode } from '../../../shared/contracts/dto'
 import { resolveWebsiteSession, resolveWebsiteSessionPartition } from './websiteWindowSessions'
 
-const WEBSITE_VIEW_BORDER_RADIUS = 0
+const WEBSITE_VIEW_BORDER_RADIUS = 13
 const WEBSITE_VIEW_BACKGROUND = '#00000000'
 
 export function resolveWebsiteViewPartition({

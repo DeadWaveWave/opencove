@@ -18,14 +18,34 @@ function disposeWebContents(runtime: WebsiteWindowRuntime, window: BrowserWindow
     return
   }
 
-  window.contentView.removeChildView(view)
-  view.setVisible(false)
-  runtime.disposeWebContentsListeners?.()
+  if (!window.isDestroyed()) {
+    try {
+      window.contentView.removeChildView(view)
+    } catch {
+      // ignore - window/view may already be gone during shutdown
+    }
+  }
+
+  try {
+    view.setVisible(false)
+  } catch {
+    // ignore - view may already be destroyed during shutdown
+  }
+
+  try {
+    runtime.disposeWebContentsListeners?.()
+  } catch {
+    // ignore - listeners might race with shutdown
+  }
   runtime.disposeWebContentsListeners = null
 
-  const contents = view.webContents
-  if (!contents.isDestroyed()) {
-    contents.close({ waitForBeforeUnload: false })
+  try {
+    const contents = view.webContents
+    if (!contents.isDestroyed()) {
+      contents.close({ waitForBeforeUnload: false })
+    }
+  } catch {
+    // ignore - webContents may already be destroyed during shutdown
   }
 
   runtime.view = null
@@ -77,8 +97,19 @@ export function transitionWebsiteWindowToCold({
   const view = runtime.view
   const contents = view?.webContents ?? null
   if (view) {
-    window.contentView.removeChildView(view)
-    view.setVisible(false)
+    if (!window.isDestroyed()) {
+      try {
+        window.contentView.removeChildView(view)
+      } catch {
+        // ignore - window/view may already be gone during shutdown
+      }
+    }
+
+    try {
+      view.setVisible(false)
+    } catch {
+      // ignore - view may already be destroyed during shutdown
+    }
   }
 
   runtime.lifecycle = 'cold'

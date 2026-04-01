@@ -9,6 +9,7 @@ import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
+import { HIDDEN_WEBSITE_BOUNDS } from '../../WebsiteNode.helpers'
 
 export function useWorkspaceCanvasWebsiteNodeCreation({
   nodesRef,
@@ -84,6 +85,21 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       setNodes(prevNodes => [...prevNodes, nextNode])
       onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
+
+      const normalizedUrl = website.url.trim()
+      if (normalizedUrl.length > 0) {
+        void window.opencoveApi?.websiteWindow
+          ?.activate?.({
+            nodeId: nextNode.id,
+            url: normalizedUrl,
+            pinned: website.pinned === true,
+            sessionMode: website.sessionMode,
+            profileId: website.profileId,
+            bounds: HIDDEN_WEBSITE_BOUNDS,
+          })
+          .catch(() => undefined)
+      }
+
       return nextNode
     },
     [

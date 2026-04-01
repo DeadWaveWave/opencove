@@ -7,7 +7,6 @@ import type {
   SetWebsiteWindowBoundsInput,
   SetWebsiteWindowPinnedInput,
   SetWebsiteWindowSessionInput,
-  WebsiteWindowBounds,
   WebsiteWindowEventPayload,
   WebsiteWindowPolicy,
   WebsiteWindowSessionMode,
@@ -22,6 +21,10 @@ import {
   configureWebsiteSessionPermissions,
   resolveWebsiteViewPartition,
 } from './websiteWindowView'
+import {
+  applyWebsiteWindowBounds,
+  captureWebsiteWindowRuntimeSnapshot,
+} from './websiteWindowRuntimeViewOps'
 import {
   configureWebsiteWebContents,
   registerWebsiteWebContentsRuntimeListeners,
@@ -83,7 +86,7 @@ export class WebsiteWindowManager {
     this.markActive(runtime)
 
     if (runtime.bounds) {
-      this.applyBounds(runtime, runtime.bounds)
+      applyWebsiteWindowBounds(runtime, runtime.bounds)
     }
 
     this.loadDesiredUrl(runtime)
@@ -107,7 +110,7 @@ export class WebsiteWindowManager {
 
     runtime.bounds = normalized
     if (runtime.lifecycle === 'active') {
-      this.applyBounds(runtime, normalized)
+      applyWebsiteWindowBounds(runtime, normalized)
     }
   }
 
@@ -223,7 +226,7 @@ export class WebsiteWindowManager {
     if (wasActive) {
       this.markActive(runtime)
       if (currentBounds) {
-        this.applyBounds(runtime, currentBounds)
+        applyWebsiteWindowBounds(runtime, currentBounds)
       }
       this.loadDesiredUrl(runtime)
     }
@@ -345,6 +348,12 @@ export class WebsiteWindowManager {
       return
     }
 
+    captureWebsiteWindowRuntimeSnapshot({
+      runtime,
+      quality: 60,
+      emit: payload => this.emit(payload),
+    })
+
     runtime.lifecycle = 'warm'
 
     if (runtime.view) {
@@ -401,21 +410,6 @@ export class WebsiteWindowManager {
         this.emit(payload)
       },
     })
-  }
-
-  private applyBounds(runtime: WebsiteWindowRuntime, bounds: WebsiteWindowBounds): void {
-    const view = runtime.view
-    if (!view) {
-      return
-    }
-
-    if (bounds.width <= 0 || bounds.height <= 0) {
-      view.setVisible(false)
-      return
-    }
-
-    view.setVisible(true)
-    view.setBounds(bounds)
   }
 
   private loadDesiredUrl(runtime: WebsiteWindowRuntime): void {

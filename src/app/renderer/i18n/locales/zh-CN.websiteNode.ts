@@ -13,6 +13,7 @@ export const zhCNWebsiteNode = {
   sessionProfile: 'Profile',
   profilePlaceholder: 'Profile ID',
   snapshotAlt: '网页快照',
-  warmHint: '点击激活',
-  coldHint: '点击重新加载',
+  emptyHint: '在上方输入网址',
+  warmHint: '点击继续',
+  coldHint: '点击恢复',
 }

@@ -201,6 +201,12 @@ export function WebsiteNode({
 
   const displayTitle = runtime?.title?.trim().length ? runtime.title : title
   const snapshotDataUrl = runtime?.snapshotDataUrl ?? null
+  const overlayHint =
+    url.trim().length === 0
+      ? t('websiteNode.emptyHint')
+      : lifecycle === 'warm'
+        ? t('websiteNode.warmHint')
+        : t('websiteNode.coldHint')
 
   return (
     <div
@@ -374,7 +380,7 @@ export function WebsiteNode({
 
         <div className="website-node__body">
           <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
-            {lifecycle === 'cold' && snapshotDataUrl ? (
+            {lifecycle !== 'active' && snapshotDataUrl ? (
               <img
                 className="website-node__snapshot"
                 src={snapshotDataUrl}
@@ -385,9 +391,9 @@ export function WebsiteNode({
 
             {lifecycle !== 'active' ? (
               <div className="website-node__overlay" aria-hidden="true">
-                <div className="website-node__overlay-title">{displayTitle}</div>
-                <div className="website-node__overlay-subtitle">
-                  {lifecycle === 'warm' ? t('websiteNode.warmHint') : t('websiteNode.coldHint')}
+                <div className="website-node__overlay-badge">
+                  <div className="website-node__overlay-title">{displayTitle}</div>
+                  <div className="website-node__overlay-subtitle">{overlayHint}</div>
                 </div>
               </div>
             ) : null}

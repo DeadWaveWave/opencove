@@ -13,6 +13,7 @@ export const enWebsiteNode = {
   sessionProfile: 'Profile',
   profilePlaceholder: 'Profile ID',
   snapshotAlt: 'Website snapshot',
-  warmHint: 'Click to activate',
-  coldHint: 'Click to reload',
+  emptyHint: 'Enter a URL above',
+  warmHint: 'Click to resume',
+  coldHint: 'Click to restore',
 }
