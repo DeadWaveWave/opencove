@@ -303,6 +303,22 @@ function createWindow(): void {
     mainWindow.once('closed', clearFallback)
   }
 
+  // ── Crash recovery: reload the renderer on crash or GPU failure ──
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    console.error('[main] Renderer process gone:', details.reason, details.exitCode)
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.reload()
+    }
+  })
+
+  mainWindow.on('unresponsive', () => {
+    console.error('[main] Window became unresponsive')
+  })
+
+  mainWindow.on('responsive', () => {
+    console.info('[main] Window became responsive again')
+  })
+
   mainWindow.webContents.setWindowOpenHandler(details => {
     if (shouldOpenUrlExternally(details.url)) {
       void shell.openExternal(details.url)
@@ -343,6 +359,11 @@ app.whenReady().then(async () => {
   // and ignore CommandOrControl + R in production.
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // Log GPU and child process crashes (these can cause white screens)
+  app.on('child-process-gone', (_event, details) => {
+    console.error('[main] Child process gone:', details.type, details.reason, details.exitCode)
   })
 
   const runtimeIconPath = resolveRuntimeIconPath()
