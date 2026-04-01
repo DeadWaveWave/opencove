@@ -22,7 +22,10 @@ import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandle
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
-import type { ControlSurfaceRemoteEndpoint } from '../controlSurface/remote/controlSurfaceHttpClient'
+import type {
+  ControlSurfaceRemoteEndpoint,
+  ControlSurfaceRemoteEndpointResolver,
+} from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
 import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBridge'
 import { registerLocalWorkerIpcHandlers } from './registerLocalWorkerIpcHandlers'
@@ -35,12 +38,15 @@ export function registerIpcHandlers(deps?: {
   ptyRuntime?: ReturnType<typeof createPtyRuntime>
   approvedWorkspaces?: ReturnType<typeof createApprovedWorkspaceStore>
   workerEndpoint?: ControlSurfaceRemoteEndpoint
+  workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver
 }): IpcRegistrationDisposable {
   const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const appUpdateService = createAppUpdateService()
   const releaseNotesService = createReleaseNotesService()
-  const workerEndpoint = deps?.workerEndpoint ?? null
+  const workerEndpointResolver =
+    deps?.workerEndpointResolver ??
+    (deps?.workerEndpoint ? async () => deps.workerEndpoint ?? null : null)
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
@@ -49,8 +55,8 @@ export function registerIpcHandlers(deps?: {
     }
 
     const nextStorePromise = (
-      workerEndpoint
-        ? Promise.resolve(createRemotePersistenceStore(workerEndpoint))
+      workerEndpointResolver
+        ? Promise.resolve(createRemotePersistenceStore(workerEndpointResolver))
         : (() => {
             const dbPath = resolve(app.getPath('userData'), 'opencove.db')
             return createPersistenceStore({ dbPath })
@@ -91,8 +97,8 @@ export function registerIpcHandlers(deps?: {
     registerSystemIpcHandlers(),
   ]
 
-  if (workerEndpoint) {
-    disposables.push(registerWorkerSyncBridge(workerEndpoint))
+  if (workerEndpointResolver) {
+    disposables.push(registerWorkerSyncBridge(workerEndpointResolver))
   }
 
   return {

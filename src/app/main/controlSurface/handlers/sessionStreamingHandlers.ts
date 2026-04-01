@@ -5,6 +5,8 @@ import type {
   GetSessionSnapshotInput,
   GetSessionSnapshotResult,
   ListSessionsResult,
+  SpawnTerminalInput,
+  SpawnTerminalResult,
   SpawnTerminalSessionInput,
   SpawnTerminalSessionResult,
 } from '../../../../shared/contracts/dto'
@@ -132,6 +134,28 @@ function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalSessionIn
   }
 }
 
+function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for pty.spawn.',
+    })
+  }
+
+  const cwd = normalizeRequiredString(payload.cwd, 'pty.spawn cwd')
+  const cols = normalizeOptionalPositiveInt(payload.cols) ?? 80
+  const rows = normalizeOptionalPositiveInt(payload.rows) ?? 24
+  const profileId = normalizeOptionalString(payload.profileId)
+  const shell = normalizeOptionalString(payload.shell)
+
+  return {
+    cwd,
+    ...(profileId ? { profileId } : {}),
+    ...(shell ? { shell } : {}),
+    cols,
+    rows,
+  }
+}
+
 export function registerSessionStreamingHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -227,6 +251,44 @@ export function registerSessionStreamingHandlers(
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
         executionContext: resolveExecutionContextDto(workingDirectory),
+      }
+    },
+    defaultErrorCode: 'terminal.spawn_failed',
+  })
+
+  controlSurface.register('pty.spawn', {
+    kind: 'command',
+    validate: normalizePtySpawnPayload,
+    handle: async (_ctx, payload): Promise<SpawnTerminalResult> => {
+      const isApproved = await deps.approvedWorkspaces.isPathApproved(payload.cwd)
+      if (!isApproved) {
+        throw createAppError('common.approved_path_required', {
+          debugMessage: 'pty.spawn cwd is outside approved roots',
+        })
+      }
+
+      const command = payload.shell ?? resolveDefaultShell()
+      const { sessionId } = await deps.ptyRuntime.spawnSession({
+        cwd: payload.cwd,
+        cols: payload.cols,
+        rows: payload.rows,
+        command,
+        args: [],
+      })
+
+      deps.ptyStreamHub.registerSessionMetadata({
+        sessionId,
+        kind: 'terminal',
+        startedAt: new Date().toISOString(),
+        cwd: payload.cwd,
+        command,
+        args: [],
+      })
+
+      return {
+        sessionId,
+        profileId: payload.profileId ?? null,
+        runtimeKind: process.platform === 'win32' ? 'windows' : 'posix',
       }
     },
     defaultErrorCode: 'terminal.spawn_failed',

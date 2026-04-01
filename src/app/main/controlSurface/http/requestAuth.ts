@@ -70,23 +70,50 @@ function resolveOriginHeader(req: IncomingMessage): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
-function isSameOriginRequest(req: IncomingMessage): boolean {
-  const originRaw = resolveOriginHeader(req)
-  if (!originRaw) {
-    return false
+function resolveRefererHeader(req: IncomingMessage): string | null {
+  const raw = req.headers.referer
+  if (typeof raw !== 'string') {
+    return null
   }
 
+  const trimmed = raw.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
+function matchesHostHeader(candidateUrl: string, hostRaw: string): boolean {
+  try {
+    const parsed = new URL(candidateUrl)
+    return (parsed.protocol === 'http:' || parsed.protocol === 'https:') && parsed.host === hostRaw
+  } catch {
+    return false
+  }
+}
+
+function isSameOriginRequest(req: IncomingMessage): boolean {
+  const originRaw = resolveOriginHeader(req)
   const hostRaw = typeof req.headers.host === 'string' ? req.headers.host.trim() : ''
   if (hostRaw.length === 0) {
     return false
   }
 
-  try {
-    const origin = new URL(originRaw)
-    return origin.protocol === 'http:' && origin.host === hostRaw
-  } catch {
-    return false
+  if (originRaw) {
+    return matchesHostHeader(originRaw, hostRaw)
   }
+
+  const refererRaw = resolveRefererHeader(req)
+  if (refererRaw) {
+    return matchesHostHeader(refererRaw, hostRaw)
+  }
+
+  const fetchSiteRaw = req.headers['sec-fetch-site'] as string | string[] | undefined
+  let fetchSite = ''
+  if (typeof fetchSiteRaw === 'string') {
+    fetchSite = fetchSiteRaw.trim().toLowerCase()
+  } else if (Array.isArray(fetchSiteRaw)) {
+    fetchSite = fetchSiteRaw[0]?.trim().toLowerCase() ?? ''
+  }
+
+  return fetchSite === 'same-origin' || fetchSite === 'none'
 }
 
 export type RequestAuth =

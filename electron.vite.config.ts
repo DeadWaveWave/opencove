@@ -100,6 +100,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/app/renderer/index.html'),
+          web: resolve(__dirname, 'src/app/renderer/web.html'),
         },
       },
     },

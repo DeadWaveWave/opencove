@@ -3,6 +3,10 @@ import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/a
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import type { PersistWriteResult } from './types'
 import { getPersistencePort } from './port'
+import {
+  persistLocalViewStateFromAppState,
+  stripLocalViewStateFromPersistedState,
+} from './viewState'
 function stripScrollbackFromState(state: PersistedAppState): PersistedAppState {
   return {
     ...state,
@@ -43,10 +47,12 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
     ...state,
     formatVersion: PERSISTED_APP_STATE_FORMAT_VERSION,
   }
+  persistLocalViewStateFromAppState(normalizedState)
+  const sharedState = stripLocalViewStateFromPersistedState(normalizedState)
 
   let fullResult: PersistWriteResult
   try {
-    fullResult = await port.writeAppState(normalizedState)
+    fullResult = await port.writeAppState(sharedState)
   } catch (error) {
     return {
       ok: false,
@@ -65,7 +71,7 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
     return fullResult
   }
 
-  const degradedResult = await port.writeAppState(stripScrollbackFromState(normalizedState))
+  const degradedResult = await port.writeAppState(stripScrollbackFromState(sharedState))
   if (degradedResult.ok) {
     return { ok: true, level: 'no_scrollback', bytes: degradedResult.bytes }
   }
@@ -74,7 +80,7 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
     return degradedResult
   }
 
-  const minimalResult = await port.writeAppState(settingsOnlyState(normalizedState))
+  const minimalResult = await port.writeAppState(settingsOnlyState(sharedState))
   if (minimalResult.ok) {
     return { ok: true, level: 'settings_only', bytes: minimalResult.bytes }
   }

@@ -5,6 +5,15 @@ import { join, resolve } from 'node:path'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../src/shared/constants/controlSurface'
 
 let userDataDir: string | null = null
+const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
+
+vi.mock('node:child_process', async importOriginal => {
+  const actual = await importOriginal<typeof import('node:child_process')>()
+  return {
+    ...actual,
+    spawn: spawnMock,
+  }
+})
 
 vi.mock('electron', () => {
   return {
@@ -25,10 +34,15 @@ vi.mock('electron', () => {
   }
 })
 
-import { getLocalWorkerStatus } from '../../../src/app/main/worker/localWorkerManager'
+import {
+  getLocalWorkerStatus,
+  startLocalWorker,
+} from '../../../src/app/main/worker/localWorkerManager'
 
 describe('local worker manager connection file', () => {
   afterEach(async () => {
+    spawnMock.mockReset()
+
     if (userDataDir) {
       await rm(userDataDir, { recursive: true, force: true })
     }
@@ -86,5 +100,14 @@ describe('local worker manager connection file', () => {
     }
 
     expect(status.connection).toEqual(info)
+  })
+
+  it('surfaces a missing worker build entry in dev', async () => {
+    await createTempUserDataDir()
+
+    await expect(startLocalWorker()).rejects.toThrow(
+      'Run `pnpm build` once before using Worker/Web UI in dev.',
+    )
+    expect(spawnMock).not.toHaveBeenCalled()
   })
 })

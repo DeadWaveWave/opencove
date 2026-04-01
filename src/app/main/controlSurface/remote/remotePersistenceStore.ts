@@ -11,7 +11,10 @@ import type {
   PersistenceStore,
 } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ControlSurfaceOperationKind } from '../../../../shared/contracts/controlSurface'
-import { invokeControlSurface, type ControlSurfaceRemoteEndpoint } from './controlSurfaceHttpClient'
+import {
+  invokeControlSurface,
+  type ControlSurfaceRemoteEndpointResolver,
+} from './controlSurfaceHttpClient'
 
 function resolveIoFailure(error: unknown): PersistWriteResult {
   return {
@@ -25,11 +28,16 @@ function resolveIoFailure(error: unknown): PersistWriteResult {
 }
 
 async function invokeValue<TResult>(
-  endpoint: ControlSurfaceRemoteEndpoint,
+  endpointResolver: ControlSurfaceRemoteEndpointResolver,
   kind: ControlSurfaceOperationKind,
   id: string,
   payload: unknown,
 ): Promise<TResult | null> {
+  const endpoint = await endpointResolver()
+  if (!endpoint) {
+    return null
+  }
+
   const { result } = await invokeControlSurface(endpoint, { kind, id, payload })
   if (!result || result.ok === false) {
     return null
@@ -39,10 +47,15 @@ async function invokeValue<TResult>(
 }
 
 async function invokePersistResult(
-  endpoint: ControlSurfaceRemoteEndpoint,
+  endpointResolver: ControlSurfaceRemoteEndpointResolver,
   id: string,
   payload: unknown,
 ): Promise<PersistWriteResult> {
+  const endpoint = await endpointResolver()
+  if (!endpoint) {
+    return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
+  }
+
   const { result } = await invokeControlSurface(endpoint, { kind: 'command', id, payload })
   if (!result) {
     return resolveIoFailure(null)
@@ -56,13 +69,13 @@ async function invokePersistResult(
 }
 
 export function createRemotePersistenceStore(
-  endpoint: ControlSurfaceRemoteEndpoint,
+  endpointResolver: ControlSurfaceRemoteEndpointResolver,
 ): PersistenceStore {
   return {
     readWorkspaceStateRaw: async () => {
       try {
         return await invokeValue<string | null>(
-          endpoint,
+          endpointResolver,
           'query',
           'sync.readWorkspaceStateRaw',
           null,
@@ -74,7 +87,7 @@ export function createRemotePersistenceStore(
     writeWorkspaceStateRaw: async raw => {
       const payload: WriteWorkspaceStateRawInput = { raw }
       try {
-        return await invokePersistResult(endpoint, 'sync.writeWorkspaceStateRaw', payload)
+        return await invokePersistResult(endpointResolver, 'sync.writeWorkspaceStateRaw', payload)
       } catch (error) {
         return resolveIoFailure(error)
       }
@@ -82,7 +95,7 @@ export function createRemotePersistenceStore(
     readAppState: async () => {
       try {
         const result = await invokeValue<{ revision: number; state: unknown | null }>(
-          endpoint,
+          endpointResolver,
           'query',
           'sync.state',
           null,
@@ -95,7 +108,7 @@ export function createRemotePersistenceStore(
     readAppStateRevision: async () => {
       try {
         const result = await invokeValue<{ revision: number; state: unknown | null }>(
-          endpoint,
+          endpointResolver,
           'query',
           'sync.state',
           null,
@@ -114,6 +127,11 @@ export function createRemotePersistenceStore(
       const bytes = Buffer.byteLength(JSON.stringify(state), 'utf8')
 
       try {
+        const endpoint = await endpointResolver()
+        if (!endpoint) {
+          return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
+        }
+
         const { result } = await invokeControlSurface(endpoint, {
           kind: 'command',
           id: 'sync.writeState',
@@ -135,9 +153,14 @@ export function createRemotePersistenceStore(
     },
     readNodeScrollback: async nodeId => {
       try {
-        return await invokeValue<string | null>(endpoint, 'query', 'sync.readNodeScrollback', {
-          nodeId,
-        })
+        return await invokeValue<string | null>(
+          endpointResolver,
+          'query',
+          'sync.readNodeScrollback',
+          {
+            nodeId,
+          },
+        )
       } catch {
         return null
       }
@@ -145,7 +168,7 @@ export function createRemotePersistenceStore(
     writeNodeScrollback: async (nodeId, scrollback) => {
       const payload: WriteNodeScrollbackInput = { nodeId, scrollback }
       try {
-        return await invokePersistResult(endpoint, 'sync.writeNodeScrollback', payload)
+        return await invokePersistResult(endpointResolver, 'sync.writeNodeScrollback', payload)
       } catch (error) {
         return resolveIoFailure(error)
       }

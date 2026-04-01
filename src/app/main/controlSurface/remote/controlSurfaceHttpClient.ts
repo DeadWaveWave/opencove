@@ -9,6 +9,9 @@ export interface ControlSurfaceRemoteEndpoint {
   token: string
 }
 
+export type ControlSurfaceRemoteEndpointResolver =
+  () => Promise<ControlSurfaceRemoteEndpoint | null>
+
 export async function invokeControlSurface(
   endpoint: ControlSurfaceRemoteEndpoint,
   request: ControlSurfaceInvokeRequest,

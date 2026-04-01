@@ -19,6 +19,7 @@ import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
 import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
 import { registerSyncHandlers } from './handlers/syncHandlers'
 import { renderWorkerWebShellPage } from './workerWebShellPage'
+import { tryResolveWebUiResponse } from './webUiAssets'
 import { WebSessionManager } from './http/webSessionManager'
 import { registerAuthHandlers } from './handlers/authHandlers'
 import { readJsonBody, sendJson } from './http/httpJson'
@@ -203,20 +204,29 @@ export function registerControlSurfaceHttpServer(options: {
       return
     }
 
-    if (options.enableWebShell && req.method === 'GET' && req.url) {
+    if (req.method === 'GET' && req.url) {
       const url = new URL(req.url, 'http://localhost')
-      if (url.pathname === '/') {
+      if (tryHandleWebAuthRoutes({ res, url, now: ctx.now, webSessions })) {
+        return
+      }
+
+      if (options.enableWebShell && url.pathname === '/debug/shell') {
         const host = typeof req.headers.host === 'string' ? req.headers.host : ''
         res.statusCode = 200
         res.setHeader('content-type', 'text/html; charset=utf-8')
         res.end(renderWorkerWebShellPage({ host }))
         return
       }
-    }
 
-    if (req.method === 'GET' && req.url) {
-      const url = new URL(req.url, 'http://localhost')
-      if (tryHandleWebAuthRoutes({ res, url, now: ctx.now, webSessions })) {
+      const webUiResponse =
+        options.enableWebShell && url.pathname !== '/events' && !url.pathname.startsWith('/auth/')
+          ? tryResolveWebUiResponse(url.pathname)
+          : null
+
+      if (webUiResponse) {
+        res.statusCode = webUiResponse.statusCode
+        res.setHeader('content-type', webUiResponse.contentType)
+        res.end(webUiResponse.body)
         return
       }
 

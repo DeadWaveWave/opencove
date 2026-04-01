@@ -25,7 +25,7 @@ async function readOutputJson(page: Page): Promise<unknown> {
 test.describe('Worker web shell', () => {
   test('loads the shell page', async ({ page }) => {
     const token = requireEnv('OPENCOVE_WEB_SHELL_TOKEN')
-    await page.goto(`/?token=${encodeURIComponent(token)}`)
+    await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
     await expect(page).toHaveTitle('OpenCove Worker Shell')
     await expect(page.locator('#token')).toBeVisible()
@@ -37,7 +37,7 @@ test.describe('Worker web shell', () => {
 
   test('ping works with a valid token', async ({ page }) => {
     const token = requireEnv('OPENCOVE_WEB_SHELL_TOKEN')
-    await page.goto(`/?token=${encodeURIComponent(token)}`)
+    await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
     await page.locator('#ping').click()
     await expect(page.locator('#output')).not.toHaveText('')
@@ -52,7 +52,7 @@ test.describe('Worker web shell', () => {
   })
 
   test('ping fails with 401 when token is invalid', async ({ page }) => {
-    await page.goto('/?token=invalid-token')
+    await page.goto('/debug/shell?token=invalid-token')
 
     await page.locator('#ping').click()
     await expect(page.locator('#output')).not.toHaveText('')
@@ -71,7 +71,7 @@ test.describe('Worker web shell', () => {
     const token = requireEnv('OPENCOVE_WEB_SHELL_TOKEN')
     const fileUri = requireEnv('OPENCOVE_WEB_SHELL_TEST_FILE_URI')
 
-    await page.goto(`/?token=${encodeURIComponent(token)}`)
+    await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
     await page.locator('#kind').selectOption('query')
     await page.locator('#opId').fill('filesystem.readFileText')
@@ -92,7 +92,7 @@ test.describe('Worker web shell', () => {
 
   test('does not expose desktop-only open-path actions via control surface', async ({ page }) => {
     const token = requireEnv('OPENCOVE_WEB_SHELL_TOKEN')
-    await page.goto(`/?token=${encodeURIComponent(token)}`)
+    await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
     await page.locator('#kind').selectOption('command')
     await page.locator('#opId').fill('workspace.openPath')
@@ -148,7 +148,7 @@ test.describe('Worker web shell', () => {
       settings: {},
     }
 
-    await page.goto(`/?token=${encodeURIComponent(token)}`)
+    await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
     const writeStateResponse = await page.request.post('/invoke', {
       headers: {
@@ -285,7 +285,7 @@ test.describe('Worker web shell', () => {
       settings: {},
     }
 
-    await page.goto(`/?token=${encodeURIComponent(token)}`)
+    await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
     const writeStateResponse = await page.request.post('/invoke', {
       headers: {

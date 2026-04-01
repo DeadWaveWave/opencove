@@ -153,6 +153,17 @@ export async function hydrateRuntimeNode({
   agentFullAccess: boolean
   defaultTerminalProfileId?: string | null
 }): Promise<Node<TerminalNodeData>> {
+  const existingSessionId =
+    typeof node.data.sessionId === 'string' ? node.data.sessionId.trim() : ''
+  if (existingSessionId.length > 0) {
+    try {
+      await window.opencoveApi.pty.snapshot({ sessionId: existingSessionId })
+      return node
+    } catch {
+      // fall through to runtime recovery
+    }
+  }
+
   if (node.data.kind === 'agent' && node.data.agent) {
     return hydrateAgentNode({
       node,

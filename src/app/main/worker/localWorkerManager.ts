@@ -1,5 +1,6 @@
 import { app } from 'electron'
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import type { Readable } from 'node:stream'
@@ -51,8 +52,12 @@ type WorkerChildProcess = ChildProcessByStdio<null, Readable, Readable>
 
 let activeWorkerChild: WorkerChildProcess | null = null
 
+function childHasExited(child: WorkerChildProcess): boolean {
+  return child.exitCode !== null || child.signalCode !== null
+}
+
 async function stopChild(child: WorkerChildProcess): Promise<void> {
-  if (child.killed) {
+  if (child.killed || childHasExited(child)) {
     return
   }
 
@@ -95,6 +100,26 @@ export async function getLocalWorkerStatus(): Promise<WorkerStatusResult> {
   return connection ? { status: 'running', connection } : { status: 'stopped', connection: null }
 }
 
+export function hasOwnedLocalWorkerProcess(): boolean {
+  return activeWorkerChild !== null && !childHasExited(activeWorkerChild)
+}
+
+export async function stopOwnedLocalWorker(): Promise<boolean> {
+  const child = activeWorkerChild
+  activeWorkerChild = null
+
+  if (!child) {
+    return false
+  }
+
+  if (childHasExited(child)) {
+    return true
+  }
+
+  await stopChild(child)
+  return true
+}
+
 export async function startLocalWorker(): Promise<WorkerStatusResult> {
   const existing = await resolveConnectionFromUserData()
   if (existing) {
@@ -102,6 +127,12 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
   }
 
   const workerScriptPath = resolveWorkerScriptPath()
+  if (!existsSync(workerScriptPath)) {
+    throw new Error(
+      `Local worker entry is missing: ${workerScriptPath}. Run \`pnpm build\` once before using Worker/Web UI in dev.`,
+    )
+  }
+
   const userDataPath = app.getPath('userData')
   const args = [
     workerScriptPath,
@@ -127,6 +158,11 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
   })
 
   activeWorkerChild = child
+  child.once('exit', () => {
+    if (activeWorkerChild === child) {
+      activeWorkerChild = null
+    }
+  })
 
   child.stderr.on('data', chunk => {
     process.stderr.write(chunk)
@@ -185,10 +221,7 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
 }
 
 export async function stopLocalWorker(): Promise<WorkerStatusResult> {
-  const child = activeWorkerChild
-  activeWorkerChild = null
-  if (child) {
-    await stopChild(child)
+  if (await stopOwnedLocalWorker()) {
     return { status: 'stopped', connection: null }
   }
 

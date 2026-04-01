@@ -394,7 +394,7 @@ export function WorkerSection(): React.JSX.Element {
               type="button"
               className="secondary"
               data-testid="settings-worker-local-start"
-              disabled={isBusy || localStatus?.status === 'running' || savedMode !== 'local'}
+              disabled={isBusy || localStatus?.status === 'running'}
               onClick={startLocalWorker}
             >
               {t('settingsPanel.worker.local.start')}

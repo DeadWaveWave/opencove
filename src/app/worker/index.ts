@@ -101,8 +101,13 @@ async function main(): Promise<void> {
 
   const info = await server.ready
   process.stdout.write(`${JSON.stringify(info)}\n`)
-  process.stderr.write(`[opencove-worker] web shell: http://${info.hostname}:${info.port}/\n`)
-  process.stderr.write(`[opencove-worker] token required (use Authorization: Bearer <token>)\n`)
+  process.stderr.write(`[opencove-worker] web ui: http://${info.hostname}:${info.port}/\n`)
+  process.stderr.write(
+    `[opencove-worker] debug shell: http://${info.hostname}:${info.port}/debug/shell\n`,
+  )
+  process.stderr.write(
+    `[opencove-worker] auth required (use Authorization: Bearer <token> or a Desktop-issued /auth/claim ticket)\n`,
+  )
 
   const disposeAndExit = (code: number): void => {
     try {

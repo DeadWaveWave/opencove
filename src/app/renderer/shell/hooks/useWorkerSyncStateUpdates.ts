@@ -111,6 +111,7 @@ function resolveNextActiveWorkspaceId(
 export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
   const refreshTimerRef = useRef<number | null>(null)
   const refreshInFlightRef = useRef(false)
+  const refreshPendingRef = useRef(false)
 
   useEffect(() => {
     if (!options.enabled) {
@@ -119,6 +120,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
 
     const scheduleRefresh = (): void => {
       if (refreshInFlightRef.current) {
+        refreshPendingRef.current = true
         return
       }
 
@@ -152,6 +154,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           })
           .finally(() => {
             refreshInFlightRef.current = false
+            if (refreshPendingRef.current) {
+              refreshPendingRef.current = false
+              scheduleRefresh()
+            }
           })
       }, 150)
     }
@@ -171,6 +177,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       }
 
       refreshInFlightRef.current = false
+      refreshPendingRef.current = false
       unsubscribe?.()
     }
   }, [options.enabled])
