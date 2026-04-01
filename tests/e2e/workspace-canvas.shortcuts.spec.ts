@@ -108,6 +108,16 @@ test.describe('Workspace Canvas - Shortcuts', () => {
           canvas.focus({ preventScroll: true })
         }
       })
+      await expect
+        .poll(async () => {
+          return await window.evaluate(() => {
+            return (
+              document.activeElement instanceof HTMLElement &&
+              document.activeElement.classList.contains('workspace-canvas')
+            )
+          })
+        })
+        .toBe(true)
       await window.keyboard.press(`${commandModifier}+G`)
 
       await expect
