@@ -6,6 +6,7 @@ import type { Readable } from 'node:stream'
 import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../shared/contracts/dto'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
+import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -40,6 +41,7 @@ function toDto(info: {
 async function resolveConnectionFromUserData(): Promise<WorkerConnectionInfoDto | null> {
   const info = await resolveControlSurfaceConnectionInfoFromUserData({
     userDataPath: app.getPath('userData'),
+    fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
   })
 
   return info ? toDto(info) : null

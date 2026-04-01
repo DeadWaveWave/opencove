@@ -5,6 +5,7 @@ import { createApprovedWorkspaceStoreForPath } from '../../contexts/workspace/in
 import { createHeadlessPtyRuntime } from './headlessPtyRuntime'
 import { resolveWorkerUserDataDir } from './userData'
 import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
+import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/controlSurface'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -65,7 +66,10 @@ async function main(): Promise<void> {
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
-    const connectionInfo = await resolveControlSurfaceConnectionInfoFromUserData({ userDataPath })
+    const connectionInfo = await resolveControlSurfaceConnectionInfoFromUserData({
+      userDataPath,
+      fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
+    })
     if (connectionInfo) {
       process.stdout.write(`${JSON.stringify(connectionInfo)}\n`)
     }
@@ -92,6 +96,7 @@ async function main(): Promise<void> {
     ownsPtyRuntime: true,
     dbPath: resolve(userDataPath, 'opencove.db'),
     enableWebShell: true,
+    connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
   })
 
   const info = await server.ready
