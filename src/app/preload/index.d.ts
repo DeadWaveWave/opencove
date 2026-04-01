@@ -79,6 +79,14 @@ import type {
   FileSystemStat,
   SyncEventPayload,
   WriteFileTextInput,
+  ActivateWebsiteWindowInput,
+  ConfigureWebsiteWindowPolicyInput,
+  NavigateWebsiteWindowInput,
+  SetWebsiteWindowBoundsInput,
+  SetWebsiteWindowPinnedInput,
+  SetWebsiteWindowSessionInput,
+  WebsiteWindowEventPayload,
+  WebsiteWindowNodeIdInput,
 } from '../../shared/contracts/dto'
 
 type UnsubscribeFn = () => void
@@ -126,6 +134,19 @@ export interface OpenCoveApi {
   }
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void) => UnsubscribeFn
+  }
+  websiteWindow: {
+    configurePolicy: (payload: ConfigureWebsiteWindowPolicyInput) => Promise<void>
+    activate: (payload: ActivateWebsiteWindowInput) => Promise<void>
+    setBounds: (payload: SetWebsiteWindowBoundsInput) => void
+    navigate: (payload: NavigateWebsiteWindowInput) => Promise<void>
+    goBack: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    goForward: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    reload: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    close: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    setPinned: (payload: SetWebsiteWindowPinnedInput) => Promise<void>
+    setSession: (payload: SetWebsiteWindowSessionInput) => Promise<void>
+    onEvent: (listener: (event: WebsiteWindowEventPayload) => void) => UnsubscribeFn
   }
   workspace: {
     selectDirectory: () => Promise<WorkspaceDirectory | null>

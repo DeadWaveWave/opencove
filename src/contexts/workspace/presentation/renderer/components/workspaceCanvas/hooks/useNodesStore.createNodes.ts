@@ -29,6 +29,8 @@ import type {
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
 import { resolveDocumentTitleFromUri } from './useNodesStore.documentTitle'
+import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
+import { useWorkspaceCanvasWebsiteNodeCreation } from './useNodesStore.createWebsiteNode'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 interface UseWorkspaceCanvasNodeCreationParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -132,11 +134,8 @@ export function useWorkspaceCanvasNodeCreation({
             normalizedExpectedDirectory && normalizedExpectedDirectory.length > 0
               ? normalizedExpectedDirectory
               : null,
+          ...EMPTY_NODE_KIND_DATA,
           agent: kind === 'agent' ? (agent ?? null) : null,
-          task: null,
-          note: null,
-          image: null,
-          document: null,
         },
         draggable: true,
         selectable: false,
@@ -239,13 +238,10 @@ export function useWorkspaceCanvasNodeCreation({
           exitCode: null,
           lastError: null,
           scrollback: null,
-          agent: null,
-          task: null,
+          ...EMPTY_NODE_KIND_DATA,
           note: {
             text: '',
           },
-          image: null,
-          document: null,
         },
         draggable: true,
         selectable: true,
@@ -320,7 +316,7 @@ export function useWorkspaceCanvasNodeCreation({
           exitCode: null,
           lastError: null,
           scrollback: null,
-          agent: null,
+          ...EMPTY_NODE_KIND_DATA,
           task: {
             requirement,
             status: 'todo',
@@ -333,9 +329,6 @@ export function useWorkspaceCanvasNodeCreation({
             createdAt: now,
             updatedAt: now,
           },
-          note: null,
-          image: null,
-          document: null,
         },
         draggable: true,
         selectable: true,
@@ -404,11 +397,8 @@ export function useWorkspaceCanvasNodeCreation({
           exitCode: null,
           lastError: null,
           scrollback: null,
-          agent: null,
-          task: null,
-          note: null,
+          ...EMPTY_NODE_KIND_DATA,
           image,
-          document: null,
         },
         draggable: true,
         selectable: true,
@@ -463,10 +453,7 @@ export function useWorkspaceCanvasNodeCreation({
           exitCode: null,
           lastError: null,
           scrollback: null,
-          agent: null,
-          task: null,
-          note: null,
-          image: null,
+          ...EMPTY_NODE_KIND_DATA,
           document,
         },
         draggable: true,
@@ -490,11 +477,22 @@ export function useWorkspaceCanvasNodeCreation({
     ],
   )
 
+  const createWebsiteNode = useWorkspaceCanvasWebsiteNodeCreation({
+    nodesRef,
+    spacesRef,
+    onRequestPersistFlush,
+    onShowMessage,
+    onNodeCreated,
+    setNodes,
+    standardWindowSizeBucket,
+  })
+
   return {
     createNodeForSession,
     createNoteNode,
     createTaskNode,
     createImageNode,
     createDocumentNode,
+    createWebsiteNode,
   }
 }

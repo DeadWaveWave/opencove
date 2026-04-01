@@ -28,13 +28,8 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const {
-    nodeDragPointerAnchorRef,
-    nodeSpaceFramePreview,
-    nodeSpaceFramePreviewRef,
-    setNodeSpaceFramePreview,
-  } = workspaceCanvasHooks.useWorkspaceCanvasNodeDragPreviewState(workspaceId)
-
+  const nodeDragPreviewState =
+    workspaceCanvasHooks.useWorkspaceCanvasNodeDragPreviewState(workspaceId)
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
     spaces,
@@ -44,7 +39,6 @@ export function WorkspaceCanvasInner({
   const exclusiveNodeDragAnchorIdRef =
     workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
-  const idsRef = canvasState.selectedNodeIdsRef
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     nodes: canvasState.flowNodes,
     spacesRef: canvasState.spacesRef,
@@ -138,8 +132,8 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
-    nodeDragPointerAnchorRef,
-    nodeSpaceFramePreviewRef,
+    nodeDragPointerAnchorRef: nodeDragPreviewState.nodeDragPointerAnchorRef,
+    nodeSpaceFramePreviewRef: nodeDragPreviewState.nodeSpaceFramePreviewRef,
   })
   const {
     buildAgentNodeTitle,
@@ -253,6 +247,7 @@ export function WorkspaceCanvasInner({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
+    createWebsiteNodeFromContextMenu,
     handleCanvasPaste,
     handleCanvasDragOver,
     handleCanvasDrop,
@@ -284,6 +279,7 @@ export function WorkspaceCanvasInner({
     createNoteNode: nodeStore.createNoteNode,
     onShowMessage,
     createImageNode: nodeStore.createImageNode,
+    createWebsiteNode: nodeStore.createWebsiteNode,
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     enabled: shortcutsEnabled,
@@ -334,6 +330,9 @@ export function WorkspaceCanvasInner({
     closeNode: requestNodeClose,
     resizeNode: nodeStore.resizeNode,
     updateNoteText: nodeStore.updateNoteText,
+    updateWebsiteUrl: nodeStore.updateWebsiteUrl,
+    setWebsitePinned: nodeStore.setWebsitePinned,
+    setWebsiteSession: nodeStore.setWebsiteSession,
     updateNodeScrollback: nodeStore.updateNodeScrollback,
     updateTerminalTitle: nodeStore.updateTerminalTitle,
     renameTerminalTitle: nodeStore.renameTerminalTitle,
@@ -358,8 +357,8 @@ export function WorkspaceCanvasInner({
     exclusiveNodeDragAnchorIdRef,
     onSpacesChange,
     onRequestPersistFlush,
-    setSpaceFramePreview: setNodeSpaceFramePreview,
-    nodeDragPointerAnchorRef,
+    setSpaceFramePreview: nodeDragPreviewState.setNodeSpaceFramePreview,
+    nodeDragPointerAnchorRef: nodeDragPreviewState.nodeDragPointerAnchorRef,
   })
   const {
     taskTitleProviderLabel,
@@ -428,7 +427,7 @@ export function WorkspaceCanvasInner({
       selectionDraft={canvasState.selectionDraftUi}
       snapGuides={canvasState.snapGuides}
       spaceVisuals={spaceVisuals}
-      spaceFramePreview={spaceFramePreview ?? nodeSpaceFramePreview}
+      spaceFramePreview={spaceFramePreview ?? nodeDragPreviewState.nodeSpaceFramePreview}
       selectedSpaceIds={canvasState.selectedSpaceIds}
       handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
       editingSpaceId={editingSpaceId}
@@ -452,6 +451,7 @@ export function WorkspaceCanvasInner({
       onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+      createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
       arrangeAll={arrangeAll}
       arrangeCanvas={arrangeCanvas}
       arrangeInSpace={arrangeInSpace}
@@ -464,7 +464,7 @@ export function WorkspaceCanvasInner({
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
       setSelectedNodeLabelColorOverride={override =>
-        nodeStore.setNodeLabelColorOverride(idsRef.current, override)
+        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIdsRef.current, override)
       }
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}

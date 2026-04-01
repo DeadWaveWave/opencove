@@ -8,9 +8,14 @@ import type {
   SpaceArchiveRecord,
   TaskAgentSessionRecord,
   TaskNodeData,
+  WebsiteNodeData,
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
-import type { CanvasImageMimeType, TerminalRuntimeKind } from '@shared/contracts/dto'
+import type {
+  CanvasImageMimeType,
+  TerminalRuntimeKind,
+  WebsiteWindowSessionMode,
+} from '@shared/contracts/dto'
 import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
@@ -248,6 +253,34 @@ function ensurePersistedDocumentData(value: unknown): DocumentNodeData | null {
   return { uri }
 }
 
+function ensurePersistedWebsiteData(value: unknown): WebsiteNodeData | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const url = typeof record.url === 'string' ? record.url.trim() : ''
+  const pinned = typeof record.pinned === 'boolean' ? record.pinned : false
+  const normalizedProfileId = normalizeOptionalString(record.profileId)
+  const sessionModeInput = typeof record.sessionMode === 'string' ? record.sessionMode.trim() : ''
+  const sessionMode: WebsiteWindowSessionMode =
+    sessionModeInput === 'incognito' ||
+    sessionModeInput === 'profile' ||
+    sessionModeInput === 'shared'
+      ? (sessionModeInput as WebsiteWindowSessionMode)
+      : 'shared'
+
+  const effectiveSessionMode =
+    sessionMode === 'profile' && !normalizedProfileId ? 'shared' : sessionMode
+
+  return {
+    url,
+    pinned,
+    sessionMode: effectiveSessionMode,
+    profileId: effectiveSessionMode === 'profile' ? normalizedProfileId : null,
+  }
+}
+
 function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   if (!node || typeof node !== 'object') {
     return null
@@ -282,6 +315,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   const note = ensurePersistedNoteData(record.task)
   const image = ensurePersistedImageData(record.task)
   const document = ensurePersistedDocumentData(record.task)
+  const website = ensurePersistedWebsiteData(record.task)
   const runtimeKindInput = record.runtimeKind
   const runtimeKind: TerminalRuntimeKind | undefined =
     runtimeKindInput === 'windows' || runtimeKindInput === 'wsl' || runtimeKindInput === 'posix'
@@ -316,7 +350,9 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
             ? image
             : kind === 'document'
               ? document
-              : null,
+              : kind === 'website'
+                ? (website ?? { url: '', pinned: false, sessionMode: 'shared', profileId: null })
+                : null,
     position: {
       x: positionRecord.x,
       y: positionRecord.y,

@@ -1,0 +1,18 @@
+export const zhCNWebsiteNode = {
+  title: '网页',
+  back: '后退',
+  forward: '前进',
+  reload: '刷新',
+  close: '关闭',
+  urlPlaceholder: '输入网址',
+  pin: '保持激活',
+  unpin: '取消固定',
+  sessionMode: '会话',
+  sessionShared: '共享',
+  sessionIncognito: '无痕',
+  sessionProfile: 'Profile',
+  profilePlaceholder: 'Profile ID',
+  snapshotAlt: '网页快照',
+  warmHint: '点击激活',
+  coldHint: '点击重新加载',
+}

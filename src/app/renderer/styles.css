@@ -16,6 +16,7 @@
 @import './styles/task-node.css';
 @import './styles/note-node.css';
 @import './styles/document-node.css';
+@import './styles/website-node.css';
 @import './styles/image-node.css';
 @import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';

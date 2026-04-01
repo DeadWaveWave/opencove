@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type {
   DocumentNodeData,
   ImageNodeData,
@@ -8,6 +9,7 @@ import type {
   Size,
   TerminalNodeData,
   TaskPriority,
+  WebsiteNodeData,
 } from '../../../types'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
@@ -50,6 +52,13 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   renameTerminalTitle: (nodeId: string, title: string) => void
   setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
   updateNoteText: (nodeId: string, text: string) => void
+  updateWebsiteUrl: (nodeId: string, url: string) => void
+  setWebsitePinned: (nodeId: string, pinned: boolean) => void
+  setWebsiteSession: (
+    nodeId: string,
+    sessionMode: WebsiteWindowSessionMode,
+    profileId: string | null,
+  ) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (anchor: Point, options?: CreateNoteNodeOptions) => Node<TerminalNodeData> | null
   createTaskNode: (
@@ -69,6 +78,11 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   createDocumentNode: (
     anchor: Point,
     document: DocumentNodeData,
+    placement?: NodePlacementOptions,
+  ) => Node<TerminalNodeData> | null
+  createWebsiteNode: (
+    anchor: Point,
+    website: WebsiteNodeData,
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
 }

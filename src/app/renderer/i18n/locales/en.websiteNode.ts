@@ -1,0 +1,18 @@
+export const enWebsiteNode = {
+  title: 'Website',
+  back: 'Back',
+  forward: 'Forward',
+  reload: 'Reload',
+  close: 'Close',
+  urlPlaceholder: 'Enter URL',
+  pin: 'Keep active',
+  unpin: 'Unpin',
+  sessionMode: 'Session',
+  sessionShared: 'Shared',
+  sessionIncognito: 'Incognito',
+  sessionProfile: 'Profile',
+  profilePlaceholder: 'Profile ID',
+  snapshotAlt: 'Website snapshot',
+  warmHint: 'Click to activate',
+  coldHint: 'Click to reload',
+}

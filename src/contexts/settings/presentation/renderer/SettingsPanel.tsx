@@ -14,7 +14,6 @@ import {
   type UiLanguage,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
-import type { AppUpdateState } from '@shared/contracts/dto'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
@@ -25,64 +24,14 @@ import { SettingsPanelNavButton } from './settingsPanel/SettingsPanelNavButton'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
-import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-
-interface ProviderModelCatalogEntry {
-  models: string[]
-  source: string | null
-  fetchedAt: string | null
-  isLoading: boolean
-  error: string | null
-}
-
-interface SettingsPanelProps {
-  settings: AgentSettings
-  updateState: AppUpdateState | null
-  modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
-  workspaces: WorkspaceState[]
-  onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
-  isFocusNodeTargetZoomPreviewing: boolean
-  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
-  onChange: (settings: AgentSettings) => void
-  onCheckForUpdates: () => void
-  onDownloadUpdate: () => void
-  onInstallUpdate: () => void
-  onClose: () => void
-}
-
-type CorePageId =
-  | 'general'
-  | 'agent'
-  | 'notifications'
-  | 'canvas'
-  | 'shortcuts'
-  | 'task-configuration'
-  | 'integrations'
-type WorkspacePageId = `workspace:${string}`
-type SettingsPageId = CorePageId | WorkspacePageId
-
-function getWorkspacePageId(workspaceId: string): WorkspacePageId {
-  return `workspace:${workspaceId}`
-}
-
-function isWorkspacePageId(pageId: SettingsPageId): pageId is WorkspacePageId {
-  return pageId.startsWith('workspace:')
-}
-
-function createInitialInputState(): Record<AgentProvider, string> {
-  return AGENT_PROVIDERS.reduce<Record<AgentProvider, string>>(
-    (acc, provider) => {
-      acc[provider] = ''
-      return acc
-    },
-    {} as Record<AgentProvider, string>,
-  )
-}
-
-function getFolderName(path: string): string {
-  const parts = path.split(/[/]/).filter(Boolean)
-  return parts[parts.length - 1] || path
-}
+import {
+  createInitialInputState,
+  getFolderName,
+  getWorkspacePageId,
+  isWorkspacePageId,
+  type SettingsPageId,
+  type SettingsPanelProps,
+} from './SettingsPanel.shared'
 
 export function SettingsPanel({
   settings,
@@ -103,7 +52,7 @@ export function SettingsPanel({
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
-  >(() => createInitialInputState())
+  >(() => createInitialInputState(AGENT_PROVIDERS))
   const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
 
@@ -139,6 +88,8 @@ export function SettingsPanel({
     onChange({ ...settings, canvasInputMode: mode })
   const updateStandardWindowSizeBucket = (bucket: StandardWindowSizeBucket): void =>
     onChange({ ...settings, standardWindowSizeBucket: bucket })
+  const updateWebsiteWindowPolicy = (policy: AgentSettings['websiteWindowPolicy']): void =>
+    onChange({ ...settings, websiteWindowPolicy: policy })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
@@ -435,6 +386,7 @@ export function SettingsPanel({
                 standardWindowSizeBucket={settings.standardWindowSizeBucket}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
+                websiteWindowPolicy={settings.websiteWindowPolicy}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
@@ -443,6 +395,7 @@ export function SettingsPanel({
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
+                onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
               />
             ) : null}

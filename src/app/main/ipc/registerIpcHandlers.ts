@@ -25,6 +25,7 @@ import { registerSystemIpcHandlers } from '../../../contexts/system/presentation
 import type { ControlSurfaceRemoteEndpoint } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
 import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBridge'
+import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -83,6 +84,7 @@ export function registerIpcHandlers(deps?: {
     registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),
     registerSystemIpcHandlers(),
+    registerWebsiteWindowIpcHandlers(),
   ]
 
   if (workerEndpoint) {

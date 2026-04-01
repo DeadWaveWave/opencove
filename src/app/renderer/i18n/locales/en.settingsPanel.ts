@@ -117,6 +117,17 @@ export const enSettingsPanel = {
     focusTargetZoomLabel: 'Target Zoom',
     focusTargetZoomHelp:
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
+    websiteWindowsTitle: 'Website Windows',
+    websiteWindowsHelp: 'Embedded web pages rendered as nodes on the canvas.',
+    websiteWindowMaxActiveLabel: 'Max Active',
+    websiteWindowMaxActiveHelp: 'Limits how many website nodes stay interactive at once.',
+    websiteWindowDiscardAfterLabel: 'Discard After',
+    websiteWindowDiscardAfterHelp:
+      'Idle time (in minutes) before discarding a background website window.',
+    websiteWindowKeepAliveHostsLabel: 'Keep-Alive Hosts',
+    websiteWindowKeepAliveHostsHelp:
+      'Host patterns that should not be discarded (e.g. slack.com, *.figma.com).',
+    websiteWindowKeepAliveHostsPlaceholder: 'Add host pattern (e.g. *.figma.com)',
   },
   shortcuts: {
     title: 'Shortcuts',

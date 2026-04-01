@@ -78,7 +78,9 @@ export function toPersistedState(
               ? node.data.image
               : node.data.kind === 'document'
                 ? node.data.document
-                : node.data.task,
+                : node.data.kind === 'website'
+                  ? node.data.website
+                  : node.data.task,
       })),
     })),
     settings,

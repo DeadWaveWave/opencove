@@ -1,9 +1,14 @@
-import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import type {
+  AppUpdateChannel,
+  AppUpdatePolicy,
+  WebsiteWindowPolicy,
+} from '../../../shared/contracts/dto'
 import type {
   AgentCustomModelByProvider,
   AgentCustomModelEnabledByProvider,
   AgentCustomModelOptionsByProvider,
 } from './agentSettings.customModels'
+import { isOneOf, normalizeStringOrder } from './agentSettings.enumUtils'
 import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
 import {
   isValidUpdateChannel,
@@ -108,6 +113,7 @@ export interface AgentSettings {
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
   standardWindowSizeBucket: StandardWindowSizeBucket
+  websiteWindowPolicy: WebsiteWindowPolicy
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   terminalFontFamily: string | null
@@ -162,6 +168,11 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   keybindings: {},
   canvasInputMode: 'auto',
   standardWindowSizeBucket: 'regular',
+  websiteWindowPolicy: {
+    maxActiveCount: 1,
+    discardAfterMinutes: 20,
+    keepAliveHosts: [],
+  },
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,
@@ -173,77 +184,14 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   hideWorktreeMismatchDropWarning: false,
 }
 
-function isValidProvider(value: unknown): value is AgentProvider {
-  return typeof value === 'string' && AGENT_PROVIDERS.includes(value as AgentProvider)
-}
-
 export function isTaskTitleAgentProvider(value: unknown): value is TaskTitleAgentProvider {
-  return typeof value === 'string' && TASK_TITLE_PROVIDERS.includes(value as TaskTitleAgentProvider)
+  return isOneOf(value, TASK_TITLE_PROVIDERS)
 }
 
 export function isWorktreeNameSuggestionProvider(
   value: unknown,
 ): value is WorktreeNameSuggestionAgentProvider {
-  return (
-    typeof value === 'string' &&
-    WORKTREE_NAME_SUGGESTION_PROVIDERS.includes(value as WorktreeNameSuggestionAgentProvider)
-  )
-}
-
-function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
-  return value === 'default' || isTaskTitleAgentProvider(value)
-}
-
-function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
-  return typeof value === 'string' && CANVAS_INPUT_MODES.includes(value as CanvasInputMode)
-}
-
-function isValidStandardWindowSizeBucket(value: unknown): value is StandardWindowSizeBucket {
-  return (
-    typeof value === 'string' &&
-    STANDARD_WINDOW_SIZE_BUCKETS.includes(value as StandardWindowSizeBucket)
-  )
-}
-
-function isValidUiLanguage(value: unknown): value is UiLanguage {
-  return typeof value === 'string' && UI_LANGUAGES.includes(value as UiLanguage)
-}
-
-function isValidUiTheme(value: unknown): value is UiTheme {
-  return typeof value === 'string' && UI_THEMES.includes(value as UiTheme)
-}
-
-function normalizeAgentProviderOrder(value: unknown): AgentProvider[] {
-  if (!Array.isArray(value)) {
-    return [...AGENT_PROVIDERS]
-  }
-
-  const normalized: AgentProvider[] = []
-  const seen = new Set<AgentProvider>()
-
-  for (const item of value) {
-    if (!isValidProvider(item)) {
-      continue
-    }
-
-    if (seen.has(item)) {
-      continue
-    }
-
-    seen.add(item)
-    normalized.push(item)
-  }
-
-  for (const provider of AGENT_PROVIDERS) {
-    if (seen.has(provider)) {
-      continue
-    }
-
-    seen.add(provider)
-    normalized.push(provider)
-  }
-
-  return normalized
+  return isOneOf(value, WORKTREE_NAME_SUGGESTION_PROVIDERS)
 }
 
 export function resolveAgentModel(settings: AgentSettings, provider: AgentProvider): string | null {
@@ -283,13 +231,13 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     return DEFAULT_AGENT_SETTINGS
   }
 
-  const defaultProvider = isValidProvider(value.defaultProvider)
+  const defaultProvider = isOneOf(value.defaultProvider, AGENT_PROVIDERS)
     ? value.defaultProvider
     : DEFAULT_AGENT_SETTINGS.defaultProvider
-  const language = isValidUiLanguage(value.language)
+  const language = isOneOf(value.language, UI_LANGUAGES)
     ? value.language
     : DEFAULT_AGENT_SETTINGS.language
-  const uiTheme = isValidUiTheme(value.uiTheme) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
+  const uiTheme = isOneOf(value.uiTheme, UI_THEMES) ? value.uiTheme : DEFAULT_AGENT_SETTINGS.uiTheme
   const isPrimarySidebarCollapsed =
     normalizeBoolean(value.isPrimarySidebarCollapsed) ??
     DEFAULT_AGENT_SETTINGS.isPrimarySidebarCollapsed
@@ -299,7 +247,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     MIN_WORKSPACE_SEARCH_PANEL_WIDTH,
     MAX_WORKSPACE_SEARCH_PANEL_WIDTH,
   )
-  const agentProviderOrder = normalizeAgentProviderOrder(value.agentProviderOrder)
+  const agentProviderOrder = normalizeStringOrder(value.agentProviderOrder, AGENT_PROVIDERS)
 
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess
@@ -363,9 +311,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ),
   )
 
-  const taskTitleProvider = isValidTaskTitleProvider(value.taskTitleProvider)
-    ? value.taskTitleProvider
-    : DEFAULT_AGENT_SETTINGS.taskTitleProvider
+  const taskTitleProvider =
+    value.taskTitleProvider === 'default' || isTaskTitleAgentProvider(value.taskTitleProvider)
+      ? (value.taskTitleProvider as TaskTitleProvider)
+      : DEFAULT_AGENT_SETTINGS.taskTitleProvider
 
   const taskTitleModel = normalizeTextValue(value.taskTitleModel)
   const taskTagOptions = normalizeUniqueStringArrayWithFallback(
@@ -400,12 +349,31 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     normalizeBoolean(value.disableAppShortcutsWhenTerminalFocused) ??
     DEFAULT_AGENT_SETTINGS.disableAppShortcutsWhenTerminalFocused
   const keybindings = normalizeKeybindingOverrides(value.keybindings)
-  const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
+  const canvasInputMode = isOneOf(value.canvasInputMode, CANVAS_INPUT_MODES)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
-  const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
+  const standardWindowSizeBucket = isOneOf(
+    value.standardWindowSizeBucket,
+    STANDARD_WINDOW_SIZE_BUCKETS,
+  )
     ? value.standardWindowSizeBucket
     : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
+  const websitePolicyInput = isRecord(value.websiteWindowPolicy) ? value.websiteWindowPolicy : {}
+  const websiteWindowPolicy: WebsiteWindowPolicy = {
+    maxActiveCount: normalizeIntegerInRange(
+      websitePolicyInput.maxActiveCount,
+      DEFAULT_AGENT_SETTINGS.websiteWindowPolicy.maxActiveCount,
+      1,
+      6,
+    ),
+    discardAfterMinutes: normalizeIntegerInRange(
+      websitePolicyInput.discardAfterMinutes,
+      DEFAULT_AGENT_SETTINGS.websiteWindowPolicy.discardAfterMinutes,
+      1,
+      240,
+    ),
+    keepAliveHosts: normalizeUniqueStringArray(websitePolicyInput.keepAliveHosts).slice(0, 64),
+  }
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -485,6 +453,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     keybindings,
     canvasInputMode,
     standardWindowSizeBucket,
+    websiteWindowPolicy,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     terminalFontFamily,
