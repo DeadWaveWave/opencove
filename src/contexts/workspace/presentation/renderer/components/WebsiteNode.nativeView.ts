@@ -9,8 +9,7 @@ import {
   type WebsiteViewportState,
 } from './WebsiteNode.helpers'
 
-const CANVAS_ZOOM_FREEZE_TRIGGER_WINDOW_MS = 90
-const CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS = 180
+const CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS = 260
 const VIEWPORT_FOCUS_SNAPSHOT_ENTER_RATIO = 0.8
 const VIEWPORT_FOCUS_SNAPSHOT_EXIT_RATIO = 0.7
 const VIEWPORT_FOCUS_POLL_INTERVAL_MS = 140
@@ -72,11 +71,11 @@ export function useWebsiteNodeNativeView({
   const isViewportFocusSnapshotRef = useRef(false)
   const lastActivatedAtRef = useRef<number | null>(null)
 
-  const lastCanvasZoomChangedAtRef = useRef<number | null>(null)
+  const lastCanvasZoomValueRef = useRef(canvasZoom)
   const releaseCanvasZoomFreezeTimerRef = useRef<number | null>(null)
   useEffect(() => {
     if (lifecycle !== 'active' || isOccluded) {
-      lastCanvasZoomChangedAtRef.current = null
+      lastCanvasZoomValueRef.current = canvasZoom
       if (releaseCanvasZoomFreezeTimerRef.current !== null) {
         window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
         releaseCanvasZoomFreezeTimerRef.current = null
@@ -87,9 +86,11 @@ export function useWebsiteNodeNativeView({
       return
     }
 
-    const now = performance.now()
-    const lastChangedAt = lastCanvasZoomChangedAtRef.current
-    lastCanvasZoomChangedAtRef.current = now
+    const previousZoom = lastCanvasZoomValueRef.current
+    lastCanvasZoomValueRef.current = canvasZoom
+    if (previousZoom === canvasZoom) {
+      return
+    }
 
     if (releaseCanvasZoomFreezeTimerRef.current !== null) {
       window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
@@ -99,11 +100,7 @@ export function useWebsiteNodeNativeView({
       setIsCanvasZoomFrozen(false)
     }, CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS)
 
-    if (isCanvasZoomFrozenRef.current) {
-      return
-    }
-
-    if (lastChangedAt !== null && now - lastChangedAt < CANVAS_ZOOM_FREEZE_TRIGGER_WINDOW_MS) {
+    if (!isCanvasZoomFrozenRef.current) {
       setIsCanvasZoomFrozen(true)
     }
   }, [canvasZoom, isOccluded, lifecycle])

@@ -151,12 +151,40 @@ export function WebsiteNode({
 
   const displayTitle = runtime?.title?.trim().length ? runtime.title : title
   const snapshotDataUrl = runtime?.snapshotDataUrl ?? null
+  const hasRequestedInitialSnapshotRef = useRef(false)
   const overlayHint =
     url.trim().length === 0
       ? t('websiteNode.emptyHint')
       : lifecycle === 'warm'
         ? t('websiteNode.warmHint')
         : t('websiteNode.coldHint')
+
+  useEffect(() => {
+    if (lifecycle !== 'active') {
+      hasRequestedInitialSnapshotRef.current = false
+      return
+    }
+
+    if (url.trim().length === 0) {
+      return
+    }
+
+    if (isLoading || snapshotDataUrl) {
+      return
+    }
+
+    if (hasRequestedInitialSnapshotRef.current) {
+      return
+    }
+
+    const api = window.opencoveApi?.websiteWindow
+    if (!api || typeof api.captureSnapshot !== 'function') {
+      return
+    }
+
+    hasRequestedInitialSnapshotRef.current = true
+    api.captureSnapshot({ nodeId, quality: 60 })
+  }, [isLoading, lifecycle, nodeId, snapshotDataUrl, url])
 
   return (
     <div
