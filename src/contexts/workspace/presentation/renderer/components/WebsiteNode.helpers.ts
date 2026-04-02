@@ -63,6 +63,20 @@ function resolveWorkspaceBounds(element: HTMLDivElement | null): WebsiteWindowBo
     }
   }
 
+  const workspaceSidebar = document.querySelector('.workspace-sidebar')
+  if (workspaceSidebar instanceof HTMLElement) {
+    const sidebarRect = workspaceSidebar.getBoundingClientRect()
+    const right = clipRect.left + clipRect.width
+    const sidebarRight = sidebarRect.left + sidebarRect.width
+    if (Number.isFinite(sidebarRight) && sidebarRight > clipRect.left) {
+      clipRect = {
+        ...clipRect,
+        left: sidebarRight,
+        width: right - sidebarRight,
+      }
+    }
+  }
+
   if (
     !Number.isFinite(clipRect.left) ||
     !Number.isFinite(clipRect.top) ||

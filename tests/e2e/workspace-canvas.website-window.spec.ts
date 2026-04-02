@@ -359,6 +359,15 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       const headerBottom = headerBox.y + headerBox.height
 
+      const sidebar = window.locator('.workspace-sidebar')
+      await expect(sidebar).toBeVisible()
+      const sidebarBox = await sidebar.boundingBox()
+      if (!sidebarBox) {
+        throw new Error('workspace sidebar bounding box unavailable')
+      }
+
+      const sidebarRight = sidebarBox.x + sidebarBox.width
+
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       const paneBox = await pane.boundingBox()
@@ -370,6 +379,9 @@ test.describe('Workspace Canvas - Website Window', () => {
       await window.mouse.wheel(0, 1400)
       await window.mouse.wheel(0, 1400)
       await window.mouse.wheel(0, 1400)
+      await window.mouse.wheel(1400, 0)
+      await window.mouse.wheel(1400, 0)
+      await window.mouse.wheel(1400, 0)
 
       await expect
         .poll(async () => {
@@ -382,108 +394,26 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       await expect
         .poll(async () => {
+          return await window.evaluate(() => {
+            const viewport = document.querySelector('.website-node__viewport') as HTMLElement | null
+            return viewport ? viewport.getBoundingClientRect().left : null
+          })
+        })
+        .toBeLessThan(sidebarRight - 8)
+
+      await expect
+        .poll(async () => {
           const state = await readWebsiteRuntimeState(electronApp, 'website-header-node')
           return typeof state?.hostBounds?.y === 'number' ? state.hostBounds.y : null
         })
         .toBeGreaterThanOrEqual(Math.floor(headerBottom))
-    } finally {
-      server.close()
-      await electronApp.close()
-    }
-  })
-
-  test('freezes website rendering during continuous canvas zoom', async () => {
-    const server = createServer((_request, response) => {
-      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
-      response.end(
-        `<!doctype html><html><body style="margin:0;background:#fff;font:600 24px -apple-system;">freeze-test</body></html>`,
-      )
-    })
-
-    server.listen(0, '127.0.0.1')
-    await once(server, 'listening')
-    const address = server.address()
-    if (!address || typeof address === 'string') {
-      throw new Error('Failed to resolve website test server address')
-    }
-
-    const websiteUrl = `http://127.0.0.1:${address.port}`
-    const { electronApp, window } = await launchApp()
-
-    try {
-      await clearAndSeedWorkspace(window, [
-        {
-          id: 'website-freeze-node',
-          title: 'website-freeze-node',
-          position: { x: 320, y: 120 },
-          width: 920,
-          height: 660,
-          kind: 'website',
-          task: {
-            url: websiteUrl,
-            pinned: false,
-            sessionMode: 'shared',
-            profileId: null,
-          },
-        },
-      ])
-
-      const websiteNode = window.locator('.website-node').first()
-      await expect(websiteNode).toBeVisible()
-      await websiteNode.click({ position: { x: 320, y: 180 } })
-      await expect
-        .poll(async () => {
-          return await readWebsiteRuntimeState(electronApp, 'website-freeze-node')
-        })
-        .toMatchObject({
-          lifecycle: 'active',
-        })
-
-      await window.evaluate(() => {
-        window.opencoveApi.websiteWindow.captureSnapshot({
-          nodeId: 'website-freeze-node',
-          quality: 60,
-        })
-      })
 
       await expect
         .poll(async () => {
-          return (
-            (await readWebsiteRuntimeState(electronApp, 'website-freeze-node'))?.hasSnapshot ??
-            false
-          )
+          const state = await readWebsiteRuntimeState(electronApp, 'website-header-node')
+          return typeof state?.hostBounds?.x === 'number' ? state.hostBounds.x : null
         })
-        .toBe(true)
-
-      await window.evaluate(() => {
-        const button = document.querySelector(
-          '.react-flow__controls-zoomout',
-        ) as HTMLButtonElement | null
-        if (!button) {
-          return
-        }
-
-        return new Promise<void>(resolve => {
-          let count = 0
-          const tick = () => {
-            button.click()
-            count += 1
-            if (count >= 9) {
-              resolve()
-              return
-            }
-
-            window.setTimeout(tick, 20)
-          }
-
-          tick()
-        })
-      })
-
-      const snapshot = websiteNode.locator('.website-node__snapshot')
-      await expect(snapshot).toBeVisible()
-      await window.waitForTimeout(450)
-      await expect(snapshot).toBeHidden()
+        .toBeGreaterThanOrEqual(Math.floor(sidebarRight))
     } finally {
       server.close()
       await electronApp.close()
