@@ -102,6 +102,13 @@ export function applyWebsiteWindowViewportMetrics({
       }
     }
 
+    // Ensure the view is clipped to the hostView bounds when viewportBounds is offset
+    // (e.g. when the node is partially outside the workspace viewport). Without an
+    // explicit clip, child views can paint outside the host bounds and cover app chrome.
+    if (typeof hostView.setBorderRadius === 'function') {
+      hostView.setBorderRadius(1)
+    }
+
     view.setBorderRadius(resolveWebsiteViewBorderRadius(normalizedCanvasZoom))
 
     const resolvedViewportBounds =
