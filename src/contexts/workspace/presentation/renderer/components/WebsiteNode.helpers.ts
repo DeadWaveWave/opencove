@@ -41,11 +41,27 @@ function resolveViewportBounds(element: HTMLDivElement | null): WebsiteWindowBou
 }
 
 function resolveWorkspaceBounds(element: HTMLDivElement | null): WebsiteWindowBounds | null {
-  const clipElement = element?.closest('.workspace-main')
-  const clipRect =
+  const workspaceMain = document.querySelector('.workspace-main')
+  const clipElement =
+    workspaceMain instanceof HTMLElement ? workspaceMain : element?.closest('.workspace-main')
+  let clipRect =
     clipElement instanceof HTMLElement
       ? clipElement.getBoundingClientRect()
       : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+
+  const appHeader = document.querySelector('.app-header')
+  if (appHeader instanceof HTMLElement) {
+    const headerRect = appHeader.getBoundingClientRect()
+    const bottom = clipRect.top + clipRect.height
+    const headerBottom = headerRect.top + headerRect.height
+    if (Number.isFinite(headerBottom) && headerBottom > clipRect.top) {
+      clipRect = {
+        ...clipRect,
+        top: headerBottom,
+        height: bottom - headerBottom,
+      }
+    }
+  }
 
   if (
     !Number.isFinite(clipRect.left) ||

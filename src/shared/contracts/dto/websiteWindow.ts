@@ -57,6 +57,11 @@ export interface SetWebsiteWindowSessionInput {
   profileId: string | null
 }
 
+export interface CaptureWebsiteWindowSnapshotInput {
+  nodeId: string
+  quality?: number | null
+}
+
 export interface WebsiteWindowStateEvent {
   type: 'state'
   nodeId: string

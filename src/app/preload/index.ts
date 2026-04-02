@@ -82,6 +82,7 @@ import type {
   SyncEventPayload,
   WriteFileTextInput,
   ActivateWebsiteWindowInput,
+  CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowBoundsInput,
@@ -210,6 +211,9 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.websiteWindowSetPinned, payload),
     setSession: (payload: SetWebsiteWindowSessionInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.websiteWindowSetSession, payload),
+    captureSnapshot: (payload: CaptureWebsiteWindowSnapshotInput): void => {
+      ipcRenderer.send(IPC_CHANNELS.websiteWindowCaptureSnapshot, payload)
+    },
     onEvent: (listener: (event: WebsiteWindowEventPayload) => void): UnsubscribeFn => {
       const handler = (_event: Electron.IpcRendererEvent, payload: WebsiteWindowEventPayload) => {
         listener(payload)

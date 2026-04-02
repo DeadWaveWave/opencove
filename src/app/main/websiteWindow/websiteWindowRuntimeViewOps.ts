@@ -2,6 +2,12 @@ import type { WebsiteWindowBounds, WebsiteWindowEventPayload } from '../../../sh
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
 import { normalizeWebsiteCanvasZoom, resolveWebsiteViewBorderRadius } from './websiteWindowView'
 
+export function normalizeWebsiteWindowSnapshotQuality(value: unknown): number {
+  const resolved = typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : 60
+
+  return Math.min(95, Math.max(25, resolved))
+}
+
 export function captureWebsiteWindowRuntimeSnapshot({
   runtime,
   quality,

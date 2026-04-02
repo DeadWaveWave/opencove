@@ -2,6 +2,7 @@ import { View } from 'electron'
 import type { BrowserWindow, Session, WebContents } from 'electron'
 import type {
   ActivateWebsiteWindowInput,
+  CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowBoundsInput,
@@ -20,6 +21,7 @@ import { normalizeWebsiteCanvasZoom } from './websiteWindowView'
 import {
   applyWebsiteWindowViewportMetrics,
   captureWebsiteWindowRuntimeSnapshot,
+  normalizeWebsiteWindowSnapshotQuality,
 } from './websiteWindowRuntimeViewOps'
 import { ensureWebsiteWindowView } from './websiteWindowEnsureView'
 import {
@@ -282,9 +284,26 @@ export class WebsiteWindowManager {
     }
   }
 
+  captureSnapshot(payload: CaptureWebsiteWindowSnapshotInput): void {
+    const nodeId = typeof payload?.nodeId === 'string' ? payload.nodeId.trim() : ''
+    if (nodeId.length === 0) {
+      return
+    }
+
+    const runtime = this.runtimeByNodeId.get(nodeId) ?? null
+    if (!runtime) {
+      return
+    }
+
+    captureWebsiteWindowRuntimeSnapshot({
+      runtime,
+      quality: normalizeWebsiteWindowSnapshotQuality(payload.quality),
+      emit: eventPayload => this.emit(eventPayload),
+    })
+  }
+
   private markActive(runtime: WebsiteWindowRuntime): void {
     runtime.lastActivatedAt = Date.now()
-    runtime.snapshotDataUrl = null
 
     if (runtime.lifecycle !== 'active') {
       runtime.lifecycle = 'active'
@@ -455,7 +474,6 @@ export class WebsiteWindowManager {
       emitState: nextRuntime => this.emitState(nextRuntime),
     })
   }
-
   private emitState(runtime: WebsiteWindowRuntime): void {
     this.emit({
       type: 'state',
@@ -468,17 +486,14 @@ export class WebsiteWindowManager {
       canGoForward: runtime.canGoForward,
     })
   }
-
   private emit(payload: WebsiteWindowEventPayload): void {
     if (!this.window || this.window.isDestroyed()) {
       return
     }
-
     const contents = this.window.webContents
     if (contents.isDestroyed()) {
       return
     }
-
     contents.send(IPC_CHANNELS.websiteWindowEvent, payload)
   }
 }

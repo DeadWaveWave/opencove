@@ -80,6 +80,7 @@ import type {
   SyncEventPayload,
   WriteFileTextInput,
   ActivateWebsiteWindowInput,
+  CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowBoundsInput,
@@ -146,6 +147,7 @@ export interface OpenCoveApi {
     close: (payload: WebsiteWindowNodeIdInput) => Promise<void>
     setPinned: (payload: SetWebsiteWindowPinnedInput) => Promise<void>
     setSession: (payload: SetWebsiteWindowSessionInput) => Promise<void>
+    captureSnapshot: (payload: CaptureWebsiteWindowSnapshotInput) => void
     onEvent: (listener: (event: WebsiteWindowEventPayload) => void) => UnsubscribeFn
   }
   workspace: {

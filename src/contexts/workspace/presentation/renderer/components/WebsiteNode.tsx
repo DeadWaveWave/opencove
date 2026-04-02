@@ -1,21 +1,15 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { ArrowLeft, ArrowRight, Globe, LoaderCircle, Pin, PinOff, RotateCw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import { useStore } from '@xyflow/react'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type { NodeFrame, Point } from '../types'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
-import {
-  HIDDEN_WEBSITE_BOUNDS,
-  resolveViewportState,
-  viewportStateEqual,
-} from './WebsiteNode.helpers'
-import type { WebsiteViewportState } from './WebsiteNode.helpers'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { useWebsiteWindowStore } from '../store/useWebsiteWindowStore'
+import { useWebsiteNodeNativeView } from './WebsiteNode.nativeView'
 
 interface WebsiteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -64,17 +58,14 @@ export function WebsiteNode({
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const runtime = useWebsiteWindowStore(state => state.runtimeByNodeId[nodeId] ?? null)
   const lifecycle = runtime?.lifecycle ?? 'cold'
-  const canvasZoom = useStore(storeState => {
-    const state = storeState as unknown as { transform?: [number, number, number] }
-    const zoom = state.transform?.[2] ?? 1
-    const normalized = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
-    const clamped = Math.min(2, Math.max(0.1, normalized))
-    return Math.round(clamped * 1000) / 1000
+  const { activate, isCanvasZoomFrozen } = useWebsiteNodeNativeView({
+    nodeId,
+    pinned,
+    sessionMode,
+    profileId,
+    lifecycle,
+    viewportRef,
   })
-  const canvasZoomRef = useRef(canvasZoom)
-  useLayoutEffect(() => {
-    canvasZoomRef.current = canvasZoom
-  }, [canvasZoom])
 
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
@@ -117,97 +108,6 @@ export function WebsiteNode({
   useEffect(() => {
     setDraftProfileId(profileId ?? '')
   }, [profileId, sessionMode])
-
-  const activate = useCallback(
-    (desiredUrl: string) => {
-      const api = window.opencoveApi?.websiteWindow
-      if (!api || typeof api.activate !== 'function') {
-        return
-      }
-
-      const resolvedCanvasZoom = canvasZoomRef.current
-      const viewportState = resolveViewportState(viewportRef.current, resolvedCanvasZoom)
-      void api
-        .activate({
-          nodeId,
-          url: desiredUrl,
-          pinned,
-          sessionMode,
-          profileId,
-          bounds: viewportState?.bounds ?? HIDDEN_WEBSITE_BOUNDS,
-          viewportBounds: viewportState?.viewportBounds ?? HIDDEN_WEBSITE_BOUNDS,
-          canvasZoom: resolvedCanvasZoom,
-        })
-        .catch(() => undefined)
-    },
-    [nodeId, pinned, profileId, sessionMode],
-  )
-
-  const lastSentViewportStateRef = useRef<WebsiteViewportState | null>(null)
-  useEffect(() => {
-    if (lifecycle !== 'active') {
-      lastSentViewportStateRef.current = null
-      return
-    }
-
-    const api = window.opencoveApi?.websiteWindow
-    if (!api || typeof api.setBounds !== 'function') {
-      return
-    }
-
-    let raf = 0
-    const tick = () => {
-      const resolvedCanvasZoom = canvasZoomRef.current
-      const viewportState = resolveViewportState(viewportRef.current, resolvedCanvasZoom) ?? {
-        bounds: HIDDEN_WEBSITE_BOUNDS,
-        viewportBounds: HIDDEN_WEBSITE_BOUNDS,
-        canvasZoom: resolvedCanvasZoom,
-      }
-      if (viewportState && !viewportStateEqual(lastSentViewportStateRef.current, viewportState)) {
-        lastSentViewportStateRef.current = viewportState
-        api.setBounds({
-          nodeId,
-          bounds: viewportState.bounds,
-          viewportBounds: viewportState.viewportBounds,
-          canvasZoom: viewportState.canvasZoom,
-        })
-      }
-
-      raf = window.requestAnimationFrame(tick)
-    }
-
-    raf = window.requestAnimationFrame(tick)
-    return () => {
-      window.cancelAnimationFrame(raf)
-    }
-  }, [lifecycle, nodeId])
-
-  useLayoutEffect(() => {
-    if (lifecycle !== 'active') {
-      return
-    }
-
-    const api = window.opencoveApi?.websiteWindow
-    if (!api || typeof api.setBounds !== 'function') {
-      return
-    }
-
-    const viewportState = resolveViewportState(viewportRef.current, canvasZoom) ?? {
-      bounds: HIDDEN_WEBSITE_BOUNDS,
-      viewportBounds: HIDDEN_WEBSITE_BOUNDS,
-      canvasZoom,
-    }
-
-    if (!viewportStateEqual(lastSentViewportStateRef.current, viewportState)) {
-      lastSentViewportStateRef.current = viewportState
-      api.setBounds({
-        nodeId,
-        bounds: viewportState.bounds,
-        viewportBounds: viewportState.viewportBounds,
-        canvasZoom: viewportState.canvasZoom,
-      })
-    }
-  }, [canvasZoom, lifecycle, nodeId])
 
   const canGoBack = runtime?.canGoBack === true
   const canGoForward = runtime?.canGoForward === true
@@ -427,7 +327,7 @@ export function WebsiteNode({
 
         <div className="website-node__body">
           <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
-            {lifecycle !== 'active' && snapshotDataUrl ? (
+            {snapshotDataUrl && (lifecycle !== 'active' || isCanvasZoomFrozen) ? (
               <img
                 className="website-node__snapshot"
                 src={snapshotDataUrl}

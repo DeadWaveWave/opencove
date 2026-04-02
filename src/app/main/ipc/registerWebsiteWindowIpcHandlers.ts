@@ -3,6 +3,7 @@ import type { IpcMainEvent, IpcMainInvokeEvent } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type {
   ActivateWebsiteWindowInput,
+  CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowBoundsInput,
@@ -148,6 +149,21 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     ipcMain.on(IPC_CHANNELS.websiteWindowSetBounds, handleSetBounds)
   }
 
+  const handleCaptureSnapshot =
+    typeof ipcMain.on === 'function' && typeof ipcMain.removeListener === 'function'
+      ? (event: IpcMainEvent, payload: CaptureWebsiteWindowSnapshotInput): void => {
+          try {
+            resolveManager(event).captureSnapshot(payload)
+          } catch {
+            // ignore - snapshot requests must never crash
+          }
+        }
+      : null
+
+  if (handleCaptureSnapshot) {
+    ipcMain.on(IPC_CHANNELS.websiteWindowCaptureSnapshot, handleCaptureSnapshot)
+  }
+
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowConfigurePolicy)
@@ -161,6 +177,9 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowSetSession)
       if (handleSetBounds) {
         ipcMain.removeListener(IPC_CHANNELS.websiteWindowSetBounds, handleSetBounds)
+      }
+      if (handleCaptureSnapshot) {
+        ipcMain.removeListener(IPC_CHANNELS.websiteWindowCaptureSnapshot, handleCaptureSnapshot)
       }
     },
   }

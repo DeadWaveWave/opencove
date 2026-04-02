@@ -54,6 +54,7 @@ export const IPC_CHANNELS = {
   websiteWindowClose: 'website-window:close',
   websiteWindowSetPinned: 'website-window:set-pinned',
   websiteWindowSetSession: 'website-window:set-session',
+  websiteWindowCaptureSnapshot: 'website-window:capture-snapshot',
   websiteWindowEvent: 'website-window:event',
   terminalDiagnosticsLog: 'terminal:diagnostics-log',
   ptySpawn: 'pty:spawn',

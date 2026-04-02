@@ -54,7 +54,7 @@ export const useWebsiteWindowStore = create<WebsiteWindowStoreState>(set => ({
               isLoading: event.isLoading,
               canGoBack: event.canGoBack,
               canGoForward: event.canGoForward,
-              snapshotDataUrl: event.lifecycle === 'active' ? null : previous.snapshotDataUrl,
+              snapshotDataUrl: previous.snapshotDataUrl,
               errorMessage: null,
             }
           : event.type === 'snapshot'
