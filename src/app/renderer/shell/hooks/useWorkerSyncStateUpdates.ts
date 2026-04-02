@@ -1,125 +1,11 @@
 import { useEffect, useRef } from 'react'
-import type { Node } from '@xyflow/react'
-import type {
-  PersistedAppState,
-  PersistedWorkspaceState,
-  TerminalNodeData,
-  WorkspaceState,
-} from '@contexts/workspace/presentation/renderer/types'
-import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
-import { isNodeGuardedFromSyncOverwrite } from '@contexts/workspace/presentation/renderer/utils/syncNodeGuards'
-import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
+import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
 import { readPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { useAppStore } from '../store/useAppStore'
 import type { SyncEventPayload } from '@shared/contracts/dto'
+import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
 
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
-
-function mergeRuntimeNode(
-  persistedNode: Node<TerminalNodeData>,
-  existingNode: Node<TerminalNodeData> | undefined,
-): Node<TerminalNodeData> {
-  if (!existingNode) {
-    return persistedNode
-  }
-
-  if (isNodeGuardedFromSyncOverwrite(persistedNode.id)) {
-    return existingNode
-  }
-
-  const isDragging = existingNode.dragging === true
-  const persistedSessionId = persistedNode.data.sessionId.trim()
-  const existingSessionId = existingNode.data.sessionId.trim()
-  const kind = persistedNode.data.kind
-
-  return {
-    ...persistedNode,
-    ...(isDragging ? { position: existingNode.position, dragging: true } : {}),
-    width: existingNode.width,
-    height: existingNode.height,
-    data: {
-      ...persistedNode.data,
-      sessionId: persistedSessionId.length > 0 ? persistedSessionId : existingSessionId,
-      scrollback: existingNode.data.scrollback ?? persistedNode.data.scrollback,
-      agent:
-        kind === 'agent'
-          ? (existingNode.data.agent ?? persistedNode.data.agent)
-          : persistedNode.data.agent,
-    },
-  }
-}
-
-function toShellWorkspaceStateForSync(
-  workspace: PersistedWorkspaceState,
-  existingWorkspace: WorkspaceState | undefined,
-): WorkspaceState {
-  const persistedNodes = toRuntimeNodes(workspace)
-  const existingNodeById = new Map(
-    (existingWorkspace?.nodes ?? []).map(node => [node.id, node] as const),
-  )
-  const persistedNodeIds = new Set(persistedNodes.map(node => node.id))
-
-  const mergedPersistedNodes = persistedNodes.map(node =>
-    mergeRuntimeNode(node, existingNodeById.get(node.id)),
-  )
-
-  const extraRuntimeNodes = (existingWorkspace?.nodes ?? []).filter(
-    node => !persistedNodeIds.has(node.id) && isNodeGuardedFromSyncOverwrite(node.id),
-  )
-
-  const nodes = [...mergedPersistedNodes, ...extraRuntimeNodes]
-  const validNodeIds = new Set(nodes.map(node => node.id))
-
-  const existingSpaceById = new Map(
-    (existingWorkspace?.spaces ?? []).map(space => [space.id, space] as const),
-  )
-
-  const sanitizedSpaces = sanitizeWorkspaceSpaces(
-    workspace.spaces.map(space => {
-      const existing = existingSpaceById.get(space.id) ?? null
-      const extraNodeIds = existing
-        ? existing.nodeIds.filter(
-            nodeId => !space.nodeIds.includes(nodeId) && isNodeGuardedFromSyncOverwrite(nodeId),
-          )
-        : []
-
-      return {
-        ...space,
-        nodeIds: [...space.nodeIds, ...extraNodeIds].filter(nodeId => validNodeIds.has(nodeId)),
-      }
-    }),
-  )
-
-  const hasActiveSpace =
-    workspace.activeSpaceId !== null &&
-    sanitizedSpaces.some(space => space.id === workspace.activeSpaceId)
-
-  const existingActiveSpaceId = existingWorkspace?.activeSpaceId ?? null
-  const resolvedActiveSpaceId =
-    existingActiveSpaceId && sanitizedSpaces.some(space => space.id === existingActiveSpaceId)
-      ? existingActiveSpaceId
-      : hasActiveSpace
-        ? workspace.activeSpaceId
-        : null
-
-  return {
-    id: workspace.id,
-    name: workspace.name,
-    path: workspace.path,
-    worktreesRoot: workspace.worktreesRoot,
-    pullRequestBaseBranchOptions: workspace.pullRequestBaseBranchOptions ?? [],
-    nodes,
-    viewport: {
-      x: existingWorkspace?.viewport.x ?? workspace.viewport.x,
-      y: existingWorkspace?.viewport.y ?? workspace.viewport.y,
-      zoom: existingWorkspace?.viewport.zoom ?? workspace.viewport.zoom,
-    },
-    isMinimapVisible: existingWorkspace?.isMinimapVisible ?? workspace.isMinimapVisible,
-    spaces: sanitizedSpaces,
-    activeSpaceId: resolvedActiveSpaceId,
-    spaceArchiveRecords: workspace.spaceArchiveRecords,
-  }
-}
 
 function resolveNextActiveWorkspaceId(
   state: PersistedAppState,
@@ -278,9 +164,18 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
 
         useAppStore.getState().setWorkspaces(previous => {
           const currentById = new Map(previous.map(ws => [ws.id, ws] as const))
-          return persisted.workspaces.map(workspace =>
+          const nextWorkspaces = persisted.workspaces.map(workspace =>
             toShellWorkspaceStateForSync(workspace, currentById.get(workspace.id)),
           )
+
+          if (
+            nextWorkspaces.length === previous.length &&
+            nextWorkspaces.every((workspace, index) => workspace === previous[index])
+          ) {
+            return previous
+          }
+
+          return nextWorkspaces
         })
 
         useAppStore

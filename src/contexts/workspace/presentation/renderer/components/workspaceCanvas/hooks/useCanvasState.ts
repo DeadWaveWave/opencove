@@ -110,12 +110,17 @@ export function useWorkspaceCanvasState({
     () =>
       nodes.map(node => {
         const isSelected = selectedNodeIdSet.has(node.id)
+        const dragHandle =
+          isSelected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR
+
+        if (node.selected === isSelected && node.dragHandle === dragHandle) {
+          return node
+        }
 
         return {
           ...node,
           selected: isSelected,
-          dragHandle:
-            isSelected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR,
+          dragHandle,
         }
       }),
     [isDragSurfaceSelectionMode, nodes, selectedNodeIdSet],
