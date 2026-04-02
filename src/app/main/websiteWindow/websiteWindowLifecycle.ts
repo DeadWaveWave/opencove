@@ -13,23 +13,45 @@ function cancelDiscardTimer(runtime: WebsiteWindowRuntime): void {
 }
 
 function disposeWebContents(runtime: WebsiteWindowRuntime, window: BrowserWindow): void {
+  const hostView = runtime.hostView
   const view = runtime.view
   if (!view) {
+    if (hostView && !window.isDestroyed()) {
+      try {
+        window.contentView.removeChildView(hostView)
+      } catch {
+        // ignore - window/view may already be gone during shutdown
+      }
+    }
+    runtime.hostView = null
     return
   }
 
   if (!window.isDestroyed()) {
     try {
-      window.contentView.removeChildView(view)
+      if (hostView) {
+        window.contentView.removeChildView(hostView)
+      } else {
+        window.contentView.removeChildView(view)
+      }
     } catch {
       // ignore - window/view may already be gone during shutdown
     }
   }
 
   try {
+    hostView?.setVisible(false)
     view.setVisible(false)
   } catch {
     // ignore - view may already be destroyed during shutdown
+  }
+
+  if (hostView) {
+    try {
+      hostView.removeChildView(view)
+    } catch {
+      // ignore - host/view may already be gone during shutdown
+    }
   }
 
   try {
@@ -49,6 +71,7 @@ function disposeWebContents(runtime: WebsiteWindowRuntime, window: BrowserWindow
   }
 
   runtime.view = null
+  runtime.hostView = null
 }
 
 function isKeepAliveHost(runtime: WebsiteWindowRuntime, policy: WebsiteWindowPolicy): boolean {
@@ -94,6 +117,7 @@ export function transitionWebsiteWindowToCold({
 
   cancelDiscardTimer(runtime)
 
+  const hostView = runtime.hostView
   const view = runtime.view
   let contents: WebContents | null = null
   if (view) {
@@ -103,7 +127,22 @@ export function transitionWebsiteWindowToCold({
       contents = null
     }
   }
-  if (view) {
+  if (hostView) {
+    if (!window.isDestroyed()) {
+      try {
+        window.contentView.removeChildView(hostView)
+      } catch {
+        // ignore - window/view may already be gone during shutdown
+      }
+    }
+
+    try {
+      hostView.setVisible(false)
+      view?.setVisible(false)
+    } catch {
+      // ignore - view may already be destroyed during shutdown
+    }
+  } else if (view) {
     if (!window.isDestroyed()) {
       try {
         window.contentView.removeChildView(view)

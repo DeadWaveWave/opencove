@@ -5,7 +5,13 @@ import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspac
 
 interface WebsiteRuntimeState {
   lifecycle: string
-  bounds: {
+  viewBounds: {
+    x: number
+    y: number
+    width: number
+    height: number
+  } | null
+  hostBounds: {
     x: number
     y: number
     width: number
@@ -23,11 +29,17 @@ async function readWebsiteRuntimeState(
     const win = BrowserWindow.getAllWindows()[0]
     const manager = win.__opencoveWebsiteWindowManager
     const runtime = manager?.runtimeByNodeId.get(targetNodeId) ?? null
-    if (!runtime || !runtime.view || runtime.view.webContents.isDestroyed()) {
+    if (!runtime) {
+      return null
+    }
+
+    const hostBounds = runtime.hostView ? runtime.hostView.getBounds() : null
+    if (!runtime.view || runtime.view.webContents.isDestroyed()) {
       return runtime
         ? {
             lifecycle: runtime.lifecycle,
-            bounds: runtime.bounds,
+            viewBounds: runtime.bounds,
+            hostBounds,
             zoomFactor: null,
             innerWidth: null,
           }
@@ -37,7 +49,8 @@ async function readWebsiteRuntimeState(
     const innerWidth = await runtime.view.webContents.executeJavaScript('window.innerWidth')
     return {
       lifecycle: runtime.lifecycle,
-      bounds: runtime.view.getBounds(),
+      viewBounds: runtime.view.getBounds(),
+      hostBounds,
       zoomFactor: runtime.view.webContents.getZoomFactor(),
       innerWidth: typeof innerWidth === 'number' ? innerWidth : null,
     }
@@ -115,9 +128,9 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       const beforeCanvasZoom = await readCanvasViewport(window)
       const before = await readWebsiteRuntimeState(electronApp, 'website-zoom-node')
-      expect(before?.bounds).toBeTruthy()
+      expect(before?.viewBounds).toBeTruthy()
       expect(before?.zoomFactor).toBe(1)
-      expect(before?.innerWidth).toBe(before?.bounds?.width ?? null)
+      expect(before?.innerWidth).toBe(before?.viewBounds?.width ?? null)
       const beforeLogicalWidth = before?.innerWidth ?? null
 
       const zoomOutButton = window.locator('.react-flow__controls-zoomout')
@@ -146,20 +159,130 @@ test.describe('Workspace Canvas - Website Window', () => {
       await expect
         .poll(async () => {
           return (
-            (await readWebsiteRuntimeState(electronApp, 'website-zoom-node'))?.bounds?.width ?? null
+            (await readWebsiteRuntimeState(electronApp, 'website-zoom-node'))?.viewBounds?.width ??
+            null
           )
         })
-        .not.toBe(before?.bounds?.width ?? null)
+        .not.toBe(before?.viewBounds?.width ?? null)
 
       const after = await readWebsiteRuntimeState(electronApp, 'website-zoom-node')
       expect(after?.lifecycle).toBe('active')
-      expect(after?.bounds).toBeTruthy()
+      expect(after?.viewBounds).toBeTruthy()
       expect(after?.zoomFactor).toBe(normalizedExpectedZoomFactor)
       expect(after?.innerWidth).toBeTruthy()
       if (beforeLogicalWidth !== null && typeof after?.innerWidth === 'number') {
         expect(Math.abs(after.innerWidth - beforeLogicalWidth)).toBeLessThanOrEqual(2)
       }
-      expect(after?.bounds?.width).not.toBe(before?.bounds?.width)
+      expect(after?.viewBounds?.width).not.toBe(before?.viewBounds?.width)
+    } finally {
+      server.close()
+      await electronApp.close()
+    }
+  })
+
+  test('clips website view at workspace edge without shrinking the web contents view', async () => {
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+      response.end(
+        `<!doctype html><html><body style="margin:0;background:#fff;font:600 20px -apple-system;">edge-test</body></html>`,
+      )
+    })
+
+    server.listen(0, '127.0.0.1')
+    await once(server, 'listening')
+    const address = server.address()
+    if (!address || typeof address === 'string') {
+      throw new Error('Failed to resolve website test server address')
+    }
+
+    const websiteUrl = `http://127.0.0.1:${address.port}`
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'website-edge-node',
+            title: 'website-edge-node',
+            position: { x: 320, y: 120 },
+            width: 720,
+            height: 520,
+            kind: 'website',
+            task: {
+              url: websiteUrl,
+              pinned: false,
+              sessionMode: 'shared',
+              profileId: null,
+            },
+          },
+        ],
+        {
+          settings: {
+            canvasInputMode: 'trackpad',
+          },
+        },
+      )
+
+      const websiteNode = window.locator('.website-node').first()
+      await expect(websiteNode).toBeVisible()
+
+      await websiteNode.click({ position: { x: 320, y: 180 } })
+      await expect
+        .poll(async () => {
+          return await readWebsiteRuntimeState(electronApp, 'website-edge-node')
+        })
+        .toMatchObject({
+          lifecycle: 'active',
+        })
+
+      const before = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
+      const beforeWidth = before?.viewBounds?.width ?? null
+      expect(typeof beforeWidth).toBe('number')
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+      const paneBox = await pane.boundingBox()
+      if (!paneBox) {
+        throw new Error('workspace pane bounding box unavailable')
+      }
+
+      await window.mouse.move(paneBox.x + 24, paneBox.y + 24)
+      await window.mouse.wheel(1800, 0)
+      await window.mouse.wheel(1800, 0)
+
+      await expect
+        .poll(async () => {
+          const state = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
+          if (
+            typeof beforeWidth !== 'number' ||
+            !state?.hostBounds ||
+            !state?.viewBounds ||
+            state.lifecycle !== 'active'
+          ) {
+            return false
+          }
+
+          const hostWidth = state.hostBounds.width
+          const viewWidth = state.viewBounds.width
+          const viewX = state.viewBounds.x
+
+          return hostWidth < beforeWidth - 4 && Math.abs(viewWidth - beforeWidth) <= 2 && viewX < 0
+        })
+        .toBe(true)
+
+      const after = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
+      expect(after?.hostBounds).toBeTruthy()
+      expect(after?.viewBounds).toBeTruthy()
+      if (typeof after?.hostBounds?.width === 'number' && typeof beforeWidth === 'number') {
+        expect(after.hostBounds.width).toBeLessThan(beforeWidth)
+      }
+      if (typeof after?.viewBounds?.width === 'number' && typeof beforeWidth === 'number') {
+        expect(Math.abs(after.viewBounds.width - beforeWidth)).toBeLessThanOrEqual(2)
+      }
+      if (typeof after?.viewBounds?.x === 'number') {
+        expect(after.viewBounds.x).toBeLessThan(0)
+      }
     } finally {
       server.close()
       await electronApp.close()

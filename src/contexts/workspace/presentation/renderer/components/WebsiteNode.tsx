@@ -135,6 +135,7 @@ export function WebsiteNode({
           sessionMode,
           profileId,
           bounds: viewportState?.bounds ?? HIDDEN_WEBSITE_BOUNDS,
+          viewportBounds: viewportState?.viewportBounds ?? HIDDEN_WEBSITE_BOUNDS,
           canvasZoom: resolvedCanvasZoom,
         })
         .catch(() => undefined)
@@ -159,6 +160,7 @@ export function WebsiteNode({
       const resolvedCanvasZoom = canvasZoomRef.current
       const viewportState = resolveViewportState(viewportRef.current, resolvedCanvasZoom) ?? {
         bounds: HIDDEN_WEBSITE_BOUNDS,
+        viewportBounds: HIDDEN_WEBSITE_BOUNDS,
         canvasZoom: resolvedCanvasZoom,
       }
       if (viewportState && !viewportStateEqual(lastSentViewportStateRef.current, viewportState)) {
@@ -166,6 +168,7 @@ export function WebsiteNode({
         api.setBounds({
           nodeId,
           bounds: viewportState.bounds,
+          viewportBounds: viewportState.viewportBounds,
           canvasZoom: viewportState.canvasZoom,
         })
       }
@@ -191,6 +194,7 @@ export function WebsiteNode({
 
     const viewportState = resolveViewportState(viewportRef.current, canvasZoom) ?? {
       bounds: HIDDEN_WEBSITE_BOUNDS,
+      viewportBounds: HIDDEN_WEBSITE_BOUNDS,
       canvasZoom,
     }
 
@@ -199,6 +203,7 @@ export function WebsiteNode({
       api.setBounds({
         nodeId,
         bounds: viewportState.bounds,
+        viewportBounds: viewportState.viewportBounds,
         canvasZoom: viewportState.canvasZoom,
       })
     }

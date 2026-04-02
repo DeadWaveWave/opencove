@@ -2,6 +2,7 @@ import type { WebsiteWindowBounds } from '@shared/contracts/dto'
 
 export interface WebsiteViewportState {
   bounds: WebsiteWindowBounds
+  viewportBounds: WebsiteWindowBounds
   canvasZoom: number
 }
 
@@ -36,6 +37,34 @@ function resolveViewportBounds(element: HTMLDivElement | null): WebsiteWindowBou
     y: rect.top,
     width: rect.width,
     height: rect.height,
+  }
+}
+
+function resolveWorkspaceBounds(element: HTMLDivElement | null): WebsiteWindowBounds | null {
+  const clipElement = element?.closest('.workspace-main')
+  const clipRect =
+    clipElement instanceof HTMLElement
+      ? clipElement.getBoundingClientRect()
+      : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
+
+  if (
+    !Number.isFinite(clipRect.left) ||
+    !Number.isFinite(clipRect.top) ||
+    !Number.isFinite(clipRect.width) ||
+    !Number.isFinite(clipRect.height)
+  ) {
+    return null
+  }
+
+  if (clipRect.width <= 0 || clipRect.height <= 0) {
+    return null
+  }
+
+  return {
+    x: clipRect.left,
+    y: clipRect.top,
+    width: clipRect.width,
+    height: clipRect.height,
   }
 }
 
@@ -81,40 +110,30 @@ function normalizeBounds(bounds: WebsiteWindowBounds): WebsiteWindowBounds {
   }
 }
 
-function resolveVisibleBounds(
-  element: HTMLDivElement | null,
-  rawBounds: WebsiteWindowBounds,
-): WebsiteWindowBounds | null {
-  const clipElement = element?.closest('.workspace-main')
-  const clipRect =
-    clipElement instanceof HTMLElement
-      ? clipElement.getBoundingClientRect()
-      : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight }
-
-  return intersectBounds(rawBounds, {
-    x: clipRect.left,
-    y: clipRect.top,
-    width: clipRect.width,
-    height: clipRect.height,
-  })
-}
-
 export function resolveViewportState(
   element: HTMLDivElement | null,
   canvasZoom: number,
 ): WebsiteViewportState | null {
-  const rawBounds = resolveViewportBounds(element)
-  if (!rawBounds) {
+  const rawViewportBounds = resolveViewportBounds(element)
+  if (!rawViewportBounds) {
     return null
   }
 
-  const visibleBounds = resolveVisibleBounds(element, rawBounds)
+  const rawWorkspaceBounds = resolveWorkspaceBounds(element)
+  if (!rawWorkspaceBounds) {
+    return null
+  }
+
+  const viewportBounds = normalizeBounds(rawViewportBounds)
+  const workspaceBounds = normalizeBounds(rawWorkspaceBounds)
+  const visibleBounds = intersectBounds(viewportBounds, workspaceBounds)
   if (!visibleBounds) {
     return null
   }
 
   return {
-    bounds: normalizeBounds(visibleBounds),
+    bounds: visibleBounds,
+    viewportBounds,
     canvasZoom,
   }
 }
@@ -135,5 +154,9 @@ export function viewportStateEqual(
     return a === b
   }
 
-  return boundsEqual(a.bounds, b.bounds) && a.canvasZoom === b.canvasZoom
+  return (
+    boundsEqual(a.bounds, b.bounds) &&
+    boundsEqual(a.viewportBounds, b.viewportBounds) &&
+    a.canvasZoom === b.canvasZoom
+  )
 }

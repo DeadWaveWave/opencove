@@ -1,4 +1,4 @@
-import { WebContentsView } from 'electron'
+import { View } from 'electron'
 import type { BrowserWindow, Session, WebContents } from 'electron'
 import type {
   ActivateWebsiteWindowInput,
@@ -16,20 +16,12 @@ import { boundsEqual, normalizeBounds } from './websiteWindowBounds'
 import { DEFAULT_WEBSITE_WINDOW_POLICY, normalizeWebsiteWindowPolicy } from './websiteWindowPolicy'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
 import { ensureWebsiteWindowRuntime } from './websiteWindowRuntimeFactory'
-import {
-  configureWebsiteViewAppearance,
-  configureWebsiteSessionPermissions,
-  normalizeWebsiteCanvasZoom,
-  resolveWebsiteViewPartition,
-} from './websiteWindowView'
+import { normalizeWebsiteCanvasZoom } from './websiteWindowView'
 import {
   applyWebsiteWindowViewportMetrics,
   captureWebsiteWindowRuntimeSnapshot,
 } from './websiteWindowRuntimeViewOps'
-import {
-  configureWebsiteWebContents,
-  registerWebsiteWebContentsRuntimeListeners,
-} from './websiteWindowWebContents'
+import { ensureWebsiteWindowView } from './websiteWindowEnsureView'
 import {
   disposeWebsiteWindowRuntime,
   refreshWebsiteWindowDiscardTimer,
@@ -99,7 +91,15 @@ export class WebsiteWindowManager {
     runtime.desiredUrl = payload.url
 
     if (payload.bounds) {
-      runtime.bounds = normalizeBounds(payload.bounds)
+      const normalized = normalizeBounds(payload.bounds)
+      runtime.bounds = normalized
+      if (!payload.viewportBounds) {
+        runtime.viewportBounds = normalized
+      }
+    }
+
+    if (payload.viewportBounds) {
+      runtime.viewportBounds = normalizeBounds(payload.viewportBounds)
     }
 
     if (payload.canvasZoom !== undefined) {
@@ -112,6 +112,7 @@ export class WebsiteWindowManager {
       applyWebsiteWindowViewportMetrics({
         runtime,
         bounds: runtime.bounds,
+        viewportBounds: runtime.viewportBounds,
         canvasZoom: runtime.canvasZoom,
       })
     }
@@ -130,21 +131,28 @@ export class WebsiteWindowManager {
       return
     }
 
-    const normalized = normalizeBounds(payload.bounds)
-    if (boundsEqual(runtime.bounds, normalized)) {
-      if (payload.canvasZoom === undefined) {
-        return
-      }
+    const normalizedBounds = normalizeBounds(payload.bounds)
+    const normalizedViewportBounds = payload.viewportBounds
+      ? normalizeBounds(payload.viewportBounds)
+      : normalizedBounds
+    if (
+      boundsEqual(runtime.bounds, normalizedBounds) &&
+      boundsEqual(runtime.viewportBounds, normalizedViewportBounds) &&
+      payload.canvasZoom === undefined
+    ) {
+      return
     }
 
-    runtime.bounds = normalized
+    runtime.bounds = normalizedBounds
+    runtime.viewportBounds = normalizedViewportBounds
     if (payload.canvasZoom !== undefined) {
       runtime.canvasZoom = normalizeWebsiteCanvasZoom(payload.canvasZoom)
     }
     if (runtime.lifecycle === 'active') {
       applyWebsiteWindowViewportMetrics({
         runtime,
-        bounds: normalized,
+        bounds: normalizedBounds,
+        viewportBounds: runtime.viewportBounds,
         canvasZoom: runtime.canvasZoom,
       })
     }
@@ -248,6 +256,7 @@ export class WebsiteWindowManager {
 
     const wasActive = runtime.lifecycle === 'active'
     const currentBounds = runtime.bounds
+    const currentViewportBounds = runtime.viewportBounds
     const currentUrl = runtime.desiredUrl
 
     transitionWebsiteWindowToCold({
@@ -265,6 +274,7 @@ export class WebsiteWindowManager {
         applyWebsiteWindowViewportMetrics({
           runtime,
           bounds: currentBounds,
+          viewportBounds: currentViewportBounds,
           canvasZoom: runtime.canvasZoom,
         })
       }
@@ -280,22 +290,45 @@ export class WebsiteWindowManager {
       runtime.lifecycle = 'active'
     }
 
-    this.ensureView(runtime)
+    ensureWebsiteWindowView({
+      runtime,
+      configuredSessions: this.configuredSessions,
+      emitState: nextRuntime => this.emitState(nextRuntime),
+      emit: payload => this.emit(payload),
+    })
 
     const view = runtime.view
     if (!view) {
       throw new Error('Failed to create WebContentsView for website window')
     }
 
+    if (!runtime.hostView) {
+      const hostView = new View()
+      hostView.setBackgroundColor('#00000000')
+      runtime.hostView = hostView
+    }
+
+    const hostView = runtime.hostView
+    if (hostView) {
+      try {
+        hostView.addChildView(view)
+      } catch {
+        // ignore - view may already be gone during shutdown
+      }
+    }
+
     this.refreshDiscardTimer(runtime)
     if (!this.window.isDestroyed()) {
       try {
-        this.window.contentView.addChildView(view)
+        if (hostView) {
+          this.window.contentView.addChildView(hostView)
+        }
       } catch {
         // ignore - window/view may already be gone during shutdown
       }
 
       try {
+        hostView?.setVisible(false)
         view.setVisible(false)
       } catch {
         // ignore - view may already be destroyed during shutdown
@@ -361,15 +394,23 @@ export class WebsiteWindowManager {
 
     runtime.lifecycle = 'warm'
 
-    if (runtime.view) {
+    if (runtime.hostView) {
       if (!this.window.isDestroyed()) {
         try {
-          this.window.contentView.removeChildView(runtime.view)
+          this.window.contentView.removeChildView(runtime.hostView)
         } catch {
           // ignore - window/view may already be gone during shutdown
         }
       }
 
+      try {
+        runtime.hostView.setVisible(false)
+      } catch {
+        // ignore - view may already be destroyed during shutdown
+      }
+    }
+
+    if (runtime.view) {
       try {
         runtime.view.setVisible(false)
       } catch {
@@ -379,59 +420,6 @@ export class WebsiteWindowManager {
 
     this.refreshDiscardTimer(runtime)
     this.emitState(runtime)
-  }
-
-  private ensureView(runtime: WebsiteWindowRuntime): void {
-    if (runtime.view) {
-      try {
-        if (!runtime.view.webContents.isDestroyed()) {
-          return
-        }
-      } catch {
-        runtime.view = null
-      }
-    }
-
-    const { partition, session } = resolveWebsiteViewPartition({
-      sessionMode: runtime.sessionMode,
-      profileId: runtime.profileId,
-    })
-
-    configureWebsiteSessionPermissions(this.configuredSessions, session)
-
-    const view = new WebContentsView({
-      webPreferences: {
-        partition,
-        contextIsolation: true,
-        nodeIntegration: false,
-        sandbox: true,
-      },
-    })
-
-    configureWebsiteViewAppearance(view)
-    this.configureWebContents(runtime.nodeId, view.webContents)
-
-    runtime.view = view
-    runtime.disposeWebContentsListeners = registerWebsiteWebContentsRuntimeListeners({
-      runtime,
-      contents: view.webContents,
-      emitState: nextRuntime => {
-        this.emitState(nextRuntime)
-      },
-      emit: payload => {
-        this.emit(payload)
-      },
-    })
-  }
-
-  private configureWebContents(nodeId: string, contents: WebContents): void {
-    configureWebsiteWebContents({
-      nodeId,
-      contents,
-      emit: payload => {
-        this.emit(payload)
-      },
-    })
   }
 
   private loadDesiredUrl(runtime: WebsiteWindowRuntime): void {

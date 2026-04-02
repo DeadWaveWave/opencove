@@ -1,4 +1,4 @@
-import type { WebContentsView } from 'electron'
+import type { View, WebContentsView } from 'electron'
 import type {
   WebsiteWindowBounds,
   WebsiteWindowLifecycle,
@@ -14,8 +14,10 @@ export interface WebsiteWindowRuntime {
   sessionMode: WebsiteWindowSessionMode
   profileId: string | null
   desiredUrl: string
+  hostView: View | null
   view: WebContentsView | null
   bounds: WebsiteWindowBounds | null
+  viewportBounds: WebsiteWindowBounds | null
   canvasZoom: number
   lastActivatedAt: number
   canGoBack: boolean

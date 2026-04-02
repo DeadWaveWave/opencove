@@ -42,19 +42,22 @@ export function applyWebsiteWindowBounds(
   runtime: WebsiteWindowRuntime,
   bounds: WebsiteWindowBounds,
 ): void {
-  const view = runtime.view
-  if (!view) {
+  const hostView = runtime.hostView
+  if (!hostView) {
     return
   }
 
   try {
     if (bounds.width <= 0 || bounds.height <= 0) {
-      view.setVisible(false)
+      hostView.setVisible(false)
+      if (runtime.view) {
+        runtime.view.setVisible(false)
+      }
       return
     }
 
-    view.setVisible(true)
-    view.setBounds(bounds)
+    hostView.setVisible(true)
+    hostView.setBounds(bounds)
   } catch {
     // ignore - view may already be destroyed during shutdown
   }
@@ -63,14 +66,17 @@ export function applyWebsiteWindowBounds(
 export function applyWebsiteWindowViewportMetrics({
   runtime,
   bounds,
+  viewportBounds,
   canvasZoom,
 }: {
   runtime: WebsiteWindowRuntime
   bounds: WebsiteWindowBounds
+  viewportBounds: WebsiteWindowBounds | null
   canvasZoom: unknown
 }): void {
+  const hostView = runtime.hostView
   const view = runtime.view
-  if (!view) {
+  if (!hostView || !view) {
     return
   }
 
@@ -91,6 +97,18 @@ export function applyWebsiteWindowViewportMetrics({
     }
 
     view.setBorderRadius(resolveWebsiteViewBorderRadius(normalizedCanvasZoom))
+
+    const resolvedViewportBounds =
+      viewportBounds && viewportBounds.width > 0 && viewportBounds.height > 0
+        ? viewportBounds
+        : bounds
+    view.setBounds({
+      x: resolvedViewportBounds.x - bounds.x,
+      y: resolvedViewportBounds.y - bounds.y,
+      width: resolvedViewportBounds.width,
+      height: resolvedViewportBounds.height,
+    })
+    view.setVisible(true)
   } catch {
     // ignore - view may already be destroyed during shutdown
   }
