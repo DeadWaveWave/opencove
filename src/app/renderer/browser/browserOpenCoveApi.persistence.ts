@@ -1,10 +1,12 @@
 import { toAppErrorDescriptor } from '@shared/errors/appError'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import { isPersistedAppState, mergePersistedAppStates } from './browserOpenCoveApi.helpers'
+import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
 
 type PersistenceApi = Window['opencoveApi']['persistence']
 
 let lastKnownSyncRevision: number | null = null
+let lastKnownSyncState: PersistedAppState | null = null
 const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
 function setLastKnownSyncRevision(value: unknown): void {
@@ -13,6 +15,10 @@ function setLastKnownSyncRevision(value: unknown): void {
   }
 
   lastKnownSyncRevision = Math.floor(value)
+}
+
+function setLastKnownSyncState(value: unknown): void {
+  lastKnownSyncState = isPersistedAppState(value) ? value : null
 }
 
 function publishLocalSyncWrite(revision: number): void {
@@ -55,6 +61,7 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         payload: null,
       })
       setLastKnownSyncRevision(value.revision)
+      setLastKnownSyncState(value.state)
       return { state: value.state, recovery: null }
     },
     writeAppState: async payload => {
@@ -68,11 +75,14 @@ export function createBrowserPersistenceApi(): PersistenceApi {
           },
         })
         setLastKnownSyncRevision(response.revision)
+        setLastKnownSyncState(state)
         publishLocalSyncWrite(response.revision)
         return response.revision
       }
 
       const state = payload.state
+
+      const baseSnapshot = lastKnownSyncState
 
       try {
         const baseRevision =
@@ -105,10 +115,11 @@ export function createBrowserPersistenceApi(): PersistenceApi {
             payload: null,
           })
           setLastKnownSyncRevision(latest.revision)
+          setLastKnownSyncState(latest.state)
 
           const merged =
             latest.state && isPersistedAppState(latest.state) && isPersistedAppState(state)
-              ? mergePersistedAppStates(latest.state, state)
+              ? mergePersistedAppStates(latest.state, state, baseSnapshot)
               : state
 
           await attemptWrite(merged, latest.revision)

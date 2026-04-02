@@ -3,9 +3,7 @@ import type {
   ReadAgentLastMessageResult,
 } from '@shared/contracts/dto'
 import { AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings'
-import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { invokeBrowserControlSurface } from './browserControlSurface'
-import { resolveBrowserPlatform, resolveSpaceIdForCwd } from './browserOpenCoveApi.helpers'
 
 type AgentApi = Window['opencoveApi']['agent']
 
@@ -29,29 +27,10 @@ export function createBrowserAgentApi(): AgentApi {
       providers: [...AGENT_PROVIDERS],
     }),
     launch: async payload => {
-      const platform = resolveBrowserPlatform()
       const cwd = payload.cwd.trim()
 
-      const runtimeAppState = {
-        workspaces: useAppStore.getState().workspaces,
-      }
-      let spaceId = resolveSpaceIdForCwd({ appState: runtimeAppState, cwd, platform })
-
-      if (!spaceId) {
-        const persisted = await invokeBrowserControlSurface<{
-          revision: number
-          state: unknown | null
-        }>({
-          kind: 'query',
-          id: 'sync.state',
-          payload: null,
-        })
-
-        spaceId = resolveSpaceIdForCwd({ appState: persisted.state, cwd, platform })
-      }
-
-      if (!spaceId) {
-        throw new Error(`No matching space found for cwd: ${cwd}`)
+      if (cwd.length === 0) {
+        throw new Error('agent.launch requires a cwd')
       }
 
       const launched = await invokeBrowserControlSurface<{
@@ -67,11 +46,11 @@ export function createBrowserAgentApi(): AgentApi {
         kind: 'command',
         id: 'session.launchAgent',
         payload: {
-          spaceId,
+          cwd,
           prompt: payload.prompt,
           provider: payload.provider,
           model: payload.model ?? null,
-          agentFullAccess: payload.agentFullAccess ?? true,
+          agentFullAccess: payload.agentFullAccess ?? null,
         },
       })
 

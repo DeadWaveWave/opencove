@@ -24,10 +24,6 @@ import type { PtyRuntime } from '../../../contexts/terminal/presentation/main-ip
 import { isRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
 import { AGENT_PROVIDERS } from '../../../contexts/settings/domain/agentSettings.providers'
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
 function normalizeRequiredString(value: unknown, debugName: string): string {
   if (typeof value !== 'string') {
     throw createAppError('common.invalid_input', { debugMessage: `Invalid ${debugName}` })
@@ -48,79 +44,6 @@ function normalizeStartedAtMs(value: string): number {
   }
 
   return timestamp
-}
-
-type WorkspaceSummary = {
-  id: string
-  path: string
-  spaces: Array<{ id: string; directoryPath: string }>
-}
-
-function extractWorkspaces(appState: unknown): WorkspaceSummary[] {
-  if (!isRecord(appState) || !Array.isArray(appState.workspaces)) {
-    return []
-  }
-
-  const workspaces: WorkspaceSummary[] = []
-  for (const candidate of appState.workspaces) {
-    if (!isRecord(candidate)) {
-      continue
-    }
-
-    const id = typeof candidate.id === 'string' ? candidate.id.trim() : ''
-    const path = typeof candidate.path === 'string' ? candidate.path.trim() : ''
-    if (id.length === 0 || path.length === 0) {
-      continue
-    }
-
-    const spacesRaw = Array.isArray(candidate.spaces) ? candidate.spaces : []
-    const spaces: WorkspaceSummary['spaces'] = []
-    for (const spaceCandidate of spacesRaw) {
-      if (!isRecord(spaceCandidate)) {
-        continue
-      }
-
-      const spaceId = typeof spaceCandidate.id === 'string' ? spaceCandidate.id.trim() : ''
-      const directoryPath =
-        typeof spaceCandidate.directoryPath === 'string' ? spaceCandidate.directoryPath.trim() : ''
-      if (spaceId.length === 0 || directoryPath.length === 0) {
-        continue
-      }
-
-      spaces.push({ id: spaceId, directoryPath })
-    }
-
-    workspaces.push({ id, path, spaces })
-  }
-
-  return workspaces
-}
-
-function resolveSpaceIdForCwd(options: { cwd: string; appState: unknown | null }): string {
-  const cwd = options.cwd.trim()
-  if (cwd.length === 0) {
-    throw createAppError('common.invalid_input', { debugMessage: 'agent.launch requires a cwd' })
-  }
-
-  const workspaces = extractWorkspaces(options.appState)
-  const workspaceMatch =
-    workspaces.find(workspace => workspace.path.trim() === cwd) ??
-    workspaces.find(workspace => cwd.startsWith(`${workspace.path.trim()}/`)) ??
-    null
-
-  const spaceMatch =
-    workspaceMatch?.spaces?.find(space => space.directoryPath.trim() === cwd) ??
-    workspaceMatch?.spaces?.find(space => cwd.startsWith(`${space.directoryPath.trim()}/`)) ??
-    workspaceMatch?.spaces?.[0] ??
-    null
-
-  if (!spaceMatch) {
-    throw createAppError('space.not_found', {
-      debugMessage: `No matching space found for cwd: ${cwd}`,
-    })
-  }
-
-  return spaceMatch.id
 }
 
 async function resolveWorkerEndpoint(
@@ -281,12 +204,6 @@ export function registerRemoteAgentIpcHandlers(options: {
       }
 
       const endpoint = await resolveWorkerEndpoint(options.endpointResolver)
-      const sync = await invokeOk<{ revision: number; state: unknown | null }>(endpoint, {
-        kind: 'query',
-        id: 'sync.state',
-        payload: null,
-      })
-      const spaceId = resolveSpaceIdForCwd({ cwd, appState: sync.state })
 
       const launched = await invokeOk<{
         sessionId: string
@@ -300,7 +217,7 @@ export function registerRemoteAgentIpcHandlers(options: {
         kind: 'command',
         id: 'session.launchAgent',
         payload: {
-          spaceId,
+          cwd,
           prompt: typeof payload?.prompt === 'string' ? payload.prompt : '',
           provider,
           model,

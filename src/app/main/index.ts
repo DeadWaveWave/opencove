@@ -453,6 +453,6 @@ app.on('will-quit', () => {
   ipcDisposable?.dispose()
   ipcDisposable = null
 
-  controlSurfaceDisposable?.dispose()
+  void controlSurfaceDisposable?.dispose()
   controlSurfaceDisposable = null
 })

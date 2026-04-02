@@ -124,6 +124,23 @@ function mockMainIndexDependencies(params: {
   vi.doMock('../../../src/app/main/ipc/registerIpcHandlers', () => ({
     registerIpcHandlers: () => ({ dispose: params.dispose }),
   }))
+
+  vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/runtime', () => ({
+    createPtyRuntime: () => ({
+      dispose: vi.fn(),
+    }),
+  }))
+
+  vi.doMock('../../../src/app/main/controlSurface/registerControlSurfaceServer', () => ({
+    registerControlSurfaceServer: () => ({
+      dispose: vi.fn(),
+    }),
+  }))
+
+  vi.doMock('../../../src/app/main/worker/localWorkerManager', () => ({
+    hasOwnedLocalWorkerProcess: () => false,
+    stopOwnedLocalWorker: vi.fn(async () => true),
+  }))
 }
 
 async function importMainIndex(): Promise<void> {

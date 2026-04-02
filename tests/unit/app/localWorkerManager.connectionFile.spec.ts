@@ -37,11 +37,14 @@ vi.mock('electron', () => {
 import {
   getLocalWorkerStatus,
   startLocalWorker,
+  stopOwnedLocalWorker,
 } from '../../../src/app/main/worker/localWorkerManager'
 
 describe('local worker manager connection file', () => {
   afterEach(async () => {
     spawnMock.mockReset()
+    vi.unstubAllGlobals()
+    await stopOwnedLocalWorker().catch(() => undefined)
 
     if (userDataDir) {
       await rm(userDataDir, { recursive: true, force: true })
@@ -92,6 +95,25 @@ describe('local worker manager connection file', () => {
       `${JSON.stringify(info)}\n`,
       'utf8',
     )
+
+    const fetchMock = vi.fn(async () => {
+      return new Response(
+        JSON.stringify({
+          __opencoveControlEnvelope: true,
+          ok: true,
+          value: {
+            ok: true,
+            now: new Date().toISOString(),
+            pid: process.pid,
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        },
+      )
+    })
+    vi.stubGlobal('fetch', fetchMock)
 
     const status = await getLocalWorkerStatus()
     expect(status.status).toBe('running')

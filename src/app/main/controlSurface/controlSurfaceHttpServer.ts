@@ -45,7 +45,7 @@ export interface ControlSurfaceConnectionInfo {
 }
 
 export interface ControlSurfaceServerDisposable {
-  dispose: () => void
+  dispose: () => Promise<void>
 }
 
 export interface ControlSurfaceHttpServerInstance extends ControlSurfaceServerDisposable {
@@ -164,7 +164,7 @@ export function registerControlSurfaceHttpServer(options: {
   registerSyncHandlers(controlSurface, getPersistenceStore)
 
   let closed = false
-  let closeRequested = false
+  let disposePromise: Promise<void> | null = null
   let pendingConnectionWrite: Promise<void> | null = null
   const syncClients = new Set<ServerResponse>()
   const syncEventBuffer: SyncEventPayload[] = []
@@ -414,14 +414,12 @@ export function registerControlSurfaceHttpServer(options: {
 
   return {
     ready,
-    dispose: () => {
-      if (closeRequested) {
-        return
+    dispose: async () => {
+      if (disposePromise) {
+        return await disposePromise
       }
 
-      closeRequested = true
-
-      void (async () => {
+      disposePromise = (async () => {
         const storePromise = persistenceStorePromise
         persistenceStorePromise = null
 
@@ -479,6 +477,8 @@ export function registerControlSurfaceHttpServer(options: {
           // ignore
         }
       })()
+
+      return await disposePromise
     },
   }
 }

@@ -150,6 +150,21 @@ test.describe('Worker web shell', () => {
 
     await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
+    const baseStateResponse = await page.request.post('/invoke', {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      data: { kind: 'query', id: 'sync.state', payload: null },
+    })
+    expect(baseStateResponse.status()).toBe(200)
+    const baseStateEnvelope = (await baseStateResponse.json()) as {
+      ok?: boolean
+      value?: { revision?: number }
+    }
+    expect(baseStateEnvelope.ok).toBe(true)
+    const baseRevision = baseStateEnvelope.value?.revision ?? 0
+
     const writeStateResponse = await page.request.post('/invoke', {
       headers: {
         authorization: `Bearer ${token}`,
@@ -158,7 +173,7 @@ test.describe('Worker web shell', () => {
       data: {
         kind: 'command',
         id: 'sync.writeState',
-        payload: { state: initialState },
+        payload: { state: initialState, baseRevision },
       },
     })
     expect(writeStateResponse.status()).toBe(200)
@@ -287,6 +302,21 @@ test.describe('Worker web shell', () => {
 
     await page.goto(`/debug/shell?token=${encodeURIComponent(token)}`)
 
+    const baseStateResponse = await page.request.post('/invoke', {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      data: { kind: 'query', id: 'sync.state', payload: null },
+    })
+    expect(baseStateResponse.status()).toBe(200)
+    const baseStateEnvelope = (await baseStateResponse.json()) as {
+      ok?: boolean
+      value?: { revision?: number }
+    }
+    expect(baseStateEnvelope.ok).toBe(true)
+    const baseRevision = baseStateEnvelope.value?.revision ?? 0
+
     const writeStateResponse = await page.request.post('/invoke', {
       headers: {
         authorization: `Bearer ${token}`,
@@ -295,7 +325,7 @@ test.describe('Worker web shell', () => {
       data: {
         kind: 'command',
         id: 'sync.writeState',
-        payload: { state: initialState },
+        payload: { state: initialState, baseRevision },
       },
     })
     expect(writeStateResponse.status()).toBe(200)

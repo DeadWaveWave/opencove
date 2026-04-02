@@ -3,10 +3,12 @@ import { randomUUID } from 'node:crypto'
 import {
   buildAppState,
   createWorkspaceDir,
+  fileUri,
   invokeValue,
   openAuthedCanvas,
   readSharedState,
   writeAppState,
+  writeTextFile,
 } from './helpers'
 
 test.describe('Worker web canvas sync resilience', () => {
@@ -127,6 +129,74 @@ test.describe('Worker web canvas sync resilience', () => {
         const shared = await readSharedState(page.request)
         const nodes = shared.state?.workspaces[0]?.nodes ?? []
         return nodes.some(node => node.kind === 'terminal')
+      })
+      .toBe(false)
+  })
+
+  test('keeps closed document nodes closed after a sync refresh', async ({ page }) => {
+    const workspacePath = await createWorkspaceDir('document-close-refresh')
+    const documentPath = `${workspacePath}/readme.md`
+    await writeTextFile(documentPath, '# doc\n')
+
+    await writeAppState(
+      page.request,
+      buildAppState({
+        workspacePath,
+        spaces: [
+          {
+            id: 'space-1',
+            name: 'Main',
+            directoryPath: workspacePath,
+            nodeIds: ['note-1', 'doc-1'],
+            rect: { x: 0, y: 0, width: 1200, height: 800 },
+          },
+        ],
+        nodes: [
+          {
+            id: 'note-1',
+            title: 'note',
+            kind: 'note',
+            position: { x: 40, y: 40 },
+            width: 240,
+            height: 180,
+            text: 'anchor',
+          },
+          {
+            id: 'doc-1',
+            title: 'readme.md',
+            kind: 'document',
+            position: { x: 220, y: 160 },
+            width: 420,
+            height: 320,
+            uri: fileUri(documentPath),
+          },
+        ],
+      }),
+    )
+
+    await openAuthedCanvas(page)
+
+    const documentNode = page.locator('.document-node').first()
+    await expect(documentNode).toBeVisible()
+    await expect(documentNode.locator('[data-testid="document-node-textarea"]')).toBeVisible()
+
+    await documentNode.locator('.document-node__close').click()
+    await expect(page.locator('.document-node')).toHaveCount(0)
+
+    await invokeValue(page.request, 'command', 'note.create', {
+      spaceId: 'space-1',
+      text: 'external note after doc close',
+      x: 520,
+      y: 180,
+    })
+
+    await expect(page.locator('.document-node')).toHaveCount(0)
+
+    await expect
+      .poll(async () => {
+        const shared = await readSharedState(page.request)
+        const nodes = shared.state?.workspaces[0]?.nodes ?? []
+        return nodes.some(node => node.kind === 'document')
       })
       .toBe(false)
   })

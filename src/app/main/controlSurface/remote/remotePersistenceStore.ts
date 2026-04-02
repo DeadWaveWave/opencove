@@ -1,11 +1,17 @@
 import { Buffer } from 'node:buffer'
 import type {
+  AppErrorDescriptor,
   PersistWriteResult,
   WriteAppStateInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
 } from '../../../../shared/contracts/dto'
 import { createAppErrorDescriptor } from '../../../../shared/errors/appError'
+import {
+  isPersistedAppState,
+  mergePersistedAppStates,
+} from '../../../../shared/sync/mergePersistedAppStates'
+import type { PersistedAppState } from '../../../../contexts/workspace/presentation/renderer/types'
 import type {
   PersistenceRecoveryReason,
   PersistenceStore,
@@ -25,6 +31,14 @@ function resolveIoFailure(error: unknown): PersistWriteResult {
         error instanceof Error ? `${error.name}: ${error.message}` : 'Remote persistence failed.',
     }),
   }
+}
+
+function isAppErrorDescriptor(value: unknown): value is AppErrorDescriptor {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false
+  }
+
+  return typeof (value as { code?: unknown }).code === 'string'
 }
 
 async function invokeValue<TResult>(
@@ -71,6 +85,36 @@ async function invokePersistResult(
 export function createRemotePersistenceStore(
   endpointResolver: ControlSurfaceRemoteEndpointResolver,
 ): PersistenceStore {
+  let lastKnownSyncRevision: number | null = null
+  let lastKnownSyncState: PersistedAppState | null = null
+
+  function setLastKnownSyncRevision(value: unknown): void {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      return
+    }
+
+    lastKnownSyncRevision = Math.floor(value)
+  }
+
+  function setLastKnownSyncState(value: unknown): void {
+    lastKnownSyncState = isPersistedAppState(value) ? value : null
+  }
+
+  function isRevisionConflictError(value: unknown): boolean {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return false
+    }
+
+    const record = value as { code?: unknown; debugMessage?: unknown }
+    if (record.code !== 'persistence.invalid_state') {
+      return false
+    }
+
+    return (
+      typeof record.debugMessage === 'string' && record.debugMessage.includes('revision conflict')
+    )
+  }
+
   return {
     readWorkspaceStateRaw: async () => {
       try {
@@ -100,6 +144,10 @@ export function createRemotePersistenceStore(
           'sync.state',
           null,
         )
+        if (result) {
+          setLastKnownSyncRevision(result.revision)
+          setLastKnownSyncState(result.state)
+        }
         return result?.state ?? null
       } catch {
         return null
@@ -113,6 +161,10 @@ export function createRemotePersistenceStore(
           'sync.state',
           null,
         )
+        if (result) {
+          setLastKnownSyncRevision(result.revision)
+          setLastKnownSyncState(result.state)
+        }
         return typeof result?.revision === 'number' &&
           Number.isFinite(result.revision) &&
           result.revision >= 0
@@ -123,30 +175,114 @@ export function createRemotePersistenceStore(
       }
     },
     writeAppState: async state => {
-      const payload: WriteAppStateInput = { state }
-      const bytes = Buffer.byteLength(JSON.stringify(state), 'utf8')
-
       try {
         const endpoint = await endpointResolver()
         if (!endpoint) {
           return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
         }
 
-        const { result } = await invokeControlSurface(endpoint, {
-          kind: 'command',
-          id: 'sync.writeState',
-          payload,
-        })
+        const ensureBaseRevision = async (): Promise<number | null> => {
+          if (typeof lastKnownSyncRevision === 'number') {
+            return lastKnownSyncRevision
+          }
 
-        if (!result) {
-          return resolveIoFailure(null)
+          const latest = await invokeValue<{ revision: number; state: unknown | null }>(
+            endpointResolver,
+            'query',
+            'sync.state',
+            null,
+          )
+          if (latest) {
+            setLastKnownSyncRevision(latest.revision)
+            setLastKnownSyncState(latest.state)
+            return lastKnownSyncRevision
+          }
+
+          return null
         }
 
-        if (result.ok === false) {
-          return { ok: false, reason: 'io', error: result.error }
+        const attemptWrite = async (
+          nextState: unknown,
+          baseRevision: number | null,
+        ): Promise<number> => {
+          const payload: WriteAppStateInput & { baseRevision?: number } = {
+            state: nextState,
+            ...(typeof baseRevision === 'number' ? { baseRevision } : {}),
+          }
+
+          const { result } = await invokeControlSurface(endpoint, {
+            kind: 'command',
+            id: 'sync.writeState',
+            payload,
+          })
+
+          if (!result) {
+            throw new Error('Remote control surface unavailable.')
+          }
+
+          if (result.ok === false) {
+            throw result.error
+          }
+
+          const revision = (result.value as { revision?: unknown }).revision
+          if (typeof revision !== 'number' || !Number.isFinite(revision) || revision < 0) {
+            throw new Error('sync.writeState returned an invalid revision.')
+          }
+
+          setLastKnownSyncRevision(revision)
+          setLastKnownSyncState(nextState)
+          return Math.floor(revision)
         }
 
-        return { ok: true, level: 'full', bytes }
+        const baseSnapshot = lastKnownSyncState
+        const baseRevision = await ensureBaseRevision()
+        if (baseRevision === null) {
+          return resolveIoFailure(new Error('Remote worker sync revision unavailable.'))
+        }
+
+        try {
+          await attemptWrite(state, baseRevision)
+          const bytes = Buffer.byteLength(JSON.stringify(state), 'utf8')
+          return { ok: true, level: 'full', bytes }
+        } catch (error) {
+          if (!isRevisionConflictError(error)) {
+            return {
+              ok: false,
+              reason: 'io',
+              error: isAppErrorDescriptor(error)
+                ? error
+                : createAppErrorDescriptor('persistence.io_failed', {
+                    debugMessage:
+                      error instanceof Error
+                        ? `${error.name}: ${error.message}`
+                        : 'Remote persistence failed.',
+                  }),
+            }
+          }
+
+          const latest = await invokeValue<{ revision: number; state: unknown | null }>(
+            endpointResolver,
+            'query',
+            'sync.state',
+            null,
+          )
+          if (!latest) {
+            return resolveIoFailure(new Error('Remote worker endpoint unavailable.'))
+          }
+
+          setLastKnownSyncRevision(latest.revision)
+          setLastKnownSyncState(latest.state)
+
+          const merged =
+            latest.state && isPersistedAppState(latest.state) && isPersistedAppState(state)
+              ? mergePersistedAppStates(latest.state, state, baseSnapshot)
+              : state
+
+          await attemptWrite(merged, latest.revision)
+
+          const bytes = Buffer.byteLength(JSON.stringify(merged), 'utf8')
+          return { ok: true, level: 'full', bytes }
+        }
       } catch (error) {
         return resolveIoFailure(error)
       }

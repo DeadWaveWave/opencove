@@ -10,7 +10,11 @@ import {
 } from '../../../../contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../../../contexts/agent/infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
-import { resolveAgentModel } from '../../../../contexts/settings/domain/agentSettings'
+import {
+  normalizeAgentSettings,
+  resolveAgentModel,
+} from '../../../../contexts/settings/domain/agentSettings'
+import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type {
   AgentProviderId,
@@ -109,18 +113,22 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
   }
 
   const spaceIdRaw = payload.spaceId
-  if (typeof spaceIdRaw !== 'string') {
+  if (spaceIdRaw !== undefined && spaceIdRaw !== null && typeof spaceIdRaw !== 'string') {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid payload for session.launchAgent spaceId.',
     })
   }
 
-  const spaceId = spaceIdRaw.trim()
-  if (spaceId.length === 0) {
+  const spaceId = typeof spaceIdRaw === 'string' ? spaceIdRaw.trim() : ''
+
+  const cwdRaw = payload.cwd
+  if (cwdRaw !== undefined && cwdRaw !== null && typeof cwdRaw !== 'string') {
     throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for session.launchAgent spaceId.',
+      debugMessage: 'Invalid payload for session.launchAgent cwd.',
     })
   }
+
+  const cwd = typeof cwdRaw === 'string' ? cwdRaw.trim() : ''
 
   const promptRaw = payload.prompt
   if (typeof promptRaw !== 'string') {
@@ -160,8 +168,15 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     })
   }
 
+  if (spaceId.length === 0 && cwd.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'session.launchAgent requires either spaceId or cwd.',
+    })
+  }
+
   return {
-    spaceId,
+    ...(spaceId.length > 0 ? { spaceId } : {}),
+    ...(cwd.length > 0 ? { cwd } : {}),
     prompt,
     provider,
     model,
@@ -215,10 +230,29 @@ export function registerSessionHandlers(
     kind: 'command',
     validate: normalizeLaunchAgentPayload,
     handle: async (_ctx, payload): Promise<LaunchAgentSessionResult> => {
-      const { workingDirectory, agentSettings } = await resolveSpaceWorkingDirectoryFromStore({
-        spaceId: payload.spaceId,
-        getPersistenceStore: deps.getPersistenceStore,
-      })
+      const resolvedSpaceId = typeof payload.spaceId === 'string' ? payload.spaceId.trim() : ''
+      const resolvedCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : ''
+
+      const { workingDirectory, agentSettings } = resolvedSpaceId
+        ? await resolveSpaceWorkingDirectoryFromStore({
+            spaceId: resolvedSpaceId,
+            getPersistenceStore: deps.getPersistenceStore,
+          })
+        : await (async () => {
+            if (resolvedCwd.length === 0) {
+              throw createAppError('common.invalid_input', {
+                debugMessage: 'session.launchAgent missing cwd.',
+              })
+            }
+
+            const store = await deps.getPersistenceStore()
+            const normalized = normalizePersistedAppState(await store.readAppState())
+
+            return {
+              workingDirectory: resolvedCwd,
+              agentSettings: normalizeAgentSettings(normalized?.settings),
+            }
+          })()
 
       const isApproved = await deps.approvedWorkspaces.isPathApproved(workingDirectory)
       if (!isApproved) {

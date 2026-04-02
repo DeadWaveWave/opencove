@@ -13,6 +13,7 @@ import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
+import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
@@ -349,6 +350,7 @@ export function useWorkspaceCanvasNodesStore({
 
   const updateNoteText = useCallback(
     (nodeId: string, text: string) => {
+      guardNodeFromSyncOverwrite(nodeId)
       setNodes(
         prevNodes => {
           let hasChanged = false

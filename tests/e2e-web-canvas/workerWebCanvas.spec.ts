@@ -348,15 +348,7 @@ test.describe('Worker web canvas', () => {
       page.request,
       buildAppState({
         workspacePath,
-        spaces: [
-          {
-            id: 'space-1',
-            name: 'Main',
-            directoryPath: workspacePath,
-            nodeIds: [],
-            rect: { x: 0, y: 0, width: 1200, height: 800 },
-          },
-        ],
+        spaces: [],
         settings: {
           defaultProvider: 'codex',
           customModelEnabledByProvider: {

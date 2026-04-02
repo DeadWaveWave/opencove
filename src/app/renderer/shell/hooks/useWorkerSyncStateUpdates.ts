@@ -7,6 +7,7 @@ import type {
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
+import { isNodeGuardedFromSyncOverwrite } from '@contexts/workspace/presentation/renderer/utils/syncNodeGuards'
 import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { readPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { useAppStore } from '../store/useAppStore'
@@ -22,13 +23,13 @@ function mergeRuntimeNode(
     return persistedNode
   }
 
+  if (isNodeGuardedFromSyncOverwrite(persistedNode.id)) {
+    return existingNode
+  }
+
   const persistedSessionId = persistedNode.data.sessionId.trim()
   const existingSessionId = existingNode.data.sessionId.trim()
   const kind = persistedNode.data.kind
-
-  if (kind === 'note' || kind === 'task' || kind === 'image' || kind === 'document') {
-    return existingNode
-  }
 
   return {
     ...persistedNode,
@@ -59,7 +60,7 @@ function toShellWorkspaceStateForSync(
   )
 
   const extraRuntimeNodes = (existingWorkspace?.nodes ?? []).filter(
-    node => !persistedNodeIds.has(node.id),
+    node => !persistedNodeIds.has(node.id) && isNodeGuardedFromSyncOverwrite(node.id),
   )
 
   const nodes = [...mergedPersistedNodes, ...extraRuntimeNodes]
@@ -73,7 +74,9 @@ function toShellWorkspaceStateForSync(
     workspace.spaces.map(space => {
       const existing = existingSpaceById.get(space.id) ?? null
       const extraNodeIds = existing
-        ? existing.nodeIds.filter(nodeId => !space.nodeIds.includes(nodeId))
+        ? existing.nodeIds.filter(
+            nodeId => !space.nodeIds.includes(nodeId) && isNodeGuardedFromSyncOverwrite(nodeId),
+          )
         : []
 
       return {

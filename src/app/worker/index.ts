@@ -35,6 +35,20 @@ function resolvePort(argv: string[]): number | null {
   return value
 }
 
+function resolveParentPid(argv: string[]): number | null {
+  const raw = readFlagValue(argv, '--parent-pid')
+  if (!raw) {
+    return null
+  }
+
+  const value = Number(raw)
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(`[worker] invalid --parent-pid: ${raw}`)
+  }
+
+  return Math.floor(value)
+}
+
 function readRepeatedFlagValues(argv: string[], flag: string): string[] {
   const values = []
 
@@ -63,6 +77,7 @@ async function main(): Promise<void> {
   const hostname = readFlagValue(argv, '--hostname') ?? '127.0.0.1'
   const port = resolvePort(argv) ?? 0
   const token = readFlagValue(argv, '--token')
+  const parentPid = resolveParentPid(argv)
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
@@ -109,17 +124,54 @@ async function main(): Promise<void> {
     `[opencove-worker] auth required (use Authorization: Bearer <token> or a Desktop-issued /auth/claim ticket)\n`,
   )
 
-  const disposeAndExit = (code: number): void => {
-    try {
-      server.dispose()
-    } finally {
-      void lock.release()
-      setTimeout(() => process.exit(code), 250).unref()
+  let shutdownRequested = false
+  const disposeAndExit = async (code: number): Promise<void> => {
+    if (shutdownRequested) {
+      return
     }
+
+    shutdownRequested = true
+
+    const forceExitTimer = setTimeout(() => {
+      process.exit(code)
+    }, 5_000)
+    forceExitTimer.unref()
+
+    try {
+      await server.dispose()
+    } catch {
+      // ignore
+    }
+
+    try {
+      await lock.release()
+    } catch {
+      // ignore
+    } finally {
+      clearTimeout(forceExitTimer)
+    }
+
+    process.exit(code)
   }
 
-  process.once('SIGINT', () => disposeAndExit(0))
-  process.once('SIGTERM', () => disposeAndExit(0))
+  process.once('SIGINT', () => {
+    void disposeAndExit(0)
+  })
+  process.once('SIGTERM', () => {
+    void disposeAndExit(0)
+  })
+
+  if (typeof parentPid === 'number') {
+    const timer = setInterval(() => {
+      try {
+        process.kill(parentPid, 0)
+      } catch {
+        process.stderr.write('[opencove-worker] parent process exited; shutting down.\n')
+        void disposeAndExit(0)
+      }
+    }, 1_000)
+    timer.unref()
+  }
 }
 
 void main().catch(error => {

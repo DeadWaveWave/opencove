@@ -166,7 +166,11 @@ export function buildAppState(options: {
 }
 
 export async function writeAppState(request: APIRequestContext, state: unknown): Promise<void> {
-  await invokeValue(request, 'command', 'sync.writeState', { state })
+  const current = await invokeValue<{ revision: number }>(request, 'query', 'sync.state', null)
+  await invokeValue(request, 'command', 'sync.writeState', {
+    state,
+    baseRevision: current.revision,
+  })
 }
 
 export async function readSharedState(request: APIRequestContext): Promise<{

@@ -230,7 +230,8 @@ export function hydrateCliEnvironmentForAppLaunch(isPackaged: boolean): void {
 
   const shellPathFromLogin =
     isPackaged && process.platform !== 'win32' ? readLoginShellPath(shellPath) : ''
-  const loginShellLocaleEnv = process.platform !== 'win32' ? readLoginShellLocaleEnv(shellPath) : {}
+  const loginShellLocaleEnv =
+    isPackaged && process.platform !== 'win32' ? readLoginShellLocaleEnv(shellPath) : {}
 
   const applyHydratedLocaleEnv = (): void => {
     const nextLocaleEnv = computeHydratedLocaleEnv({

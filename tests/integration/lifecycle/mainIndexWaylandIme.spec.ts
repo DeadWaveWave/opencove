@@ -89,6 +89,23 @@ describe('main process Wayland IME flags', () => {
         registerIpcHandlers: () => ({ dispose }),
       }))
 
+      vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/runtime', () => ({
+        createPtyRuntime: () => ({
+          dispose: vi.fn(),
+        }),
+      }))
+
+      vi.doMock('../../../src/app/main/controlSurface/registerControlSurfaceServer', () => ({
+        registerControlSurfaceServer: () => ({
+          dispose: vi.fn(),
+        }),
+      }))
+
+      vi.doMock('../../../src/app/main/worker/localWorkerManager', () => ({
+        hasOwnedLocalWorkerProcess: () => false,
+        stopOwnedLocalWorker: vi.fn(async () => true),
+      }))
+
       await import('../../../src/app/main/index')
       await Promise.resolve()
 

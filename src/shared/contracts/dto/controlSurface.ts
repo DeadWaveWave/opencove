@@ -150,7 +150,8 @@ export interface ArchiveWorktreeResult {
 }
 
 export interface LaunchAgentSessionInput {
-  spaceId: string
+  spaceId?: string | null
+  cwd?: string | null
   prompt: string
   provider?: AgentProviderId | null
   model?: string | null

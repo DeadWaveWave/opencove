@@ -21,6 +21,24 @@ function resolveWorkerScriptPath(): string {
   return resolve(app.getAppPath(), 'out', 'main', 'worker.js')
 }
 
+export function buildLocalWorkerSpawnArgs(options: {
+  workerScriptPath: string
+  userDataPath: string
+  parentPid: number
+}): string[] {
+  return [
+    options.workerScriptPath,
+    '--parent-pid',
+    String(options.parentPid),
+    '--hostname',
+    '127.0.0.1',
+    '--port',
+    '0',
+    '--user-data',
+    options.userDataPath,
+  ]
+}
+
 function toDto(info: {
   version: number
   pid: number
@@ -56,6 +74,56 @@ function childHasExited(child: WorkerChildProcess): boolean {
   return child.exitCode !== null || child.signalCode !== null
 }
 
+async function isConnectionAlive(connection: WorkerConnectionInfoDto): Promise<boolean> {
+  try {
+    const { httpStatus, result } = await invokeControlSurface(
+      {
+        hostname: connection.hostname,
+        port: connection.port,
+        token: connection.token,
+      },
+      {
+        kind: 'query',
+        id: 'system.ping',
+        payload: null,
+      },
+      { timeoutMs: 750 },
+    )
+
+    return httpStatus === 200 && result?.ok === true
+  } catch {
+    return false
+  }
+}
+
+async function waitForPidExit(pid: number, timeoutMs: number): Promise<void> {
+  if (!Number.isFinite(pid) || pid <= 0) {
+    return
+  }
+
+  const startedAtMs = Date.now()
+
+  await new Promise<void>(resolvePromise => {
+    const interval = setInterval(() => {
+      const elapsedMs = Date.now() - startedAtMs
+      if (elapsedMs >= timeoutMs) {
+        clearInterval(interval)
+        resolvePromise()
+        return
+      }
+
+      try {
+        process.kill(pid, 0)
+      } catch {
+        clearInterval(interval)
+        resolvePromise()
+      }
+    }, 100)
+
+    interval.unref()
+  })
+}
+
 async function stopChild(child: WorkerChildProcess): Promise<void> {
   if (child.killed || childHasExited(child)) {
     return
@@ -68,7 +136,7 @@ async function stopChild(child: WorkerChildProcess): Promise<void> {
       } catch {
         child.kill()
       }
-    }, 3_000)
+    }, 7_500)
 
     child.once('exit', () => {
       clearTimeout(timeout)
@@ -97,7 +165,13 @@ async function stopByPid(pid: number): Promise<void> {
 
 export async function getLocalWorkerStatus(): Promise<WorkerStatusResult> {
   const connection = await resolveConnectionFromUserData()
-  return connection ? { status: 'running', connection } : { status: 'stopped', connection: null }
+  if (!connection) {
+    return { status: 'stopped', connection: null }
+  }
+
+  return (await isConnectionAlive(connection))
+    ? { status: 'running', connection }
+    : { status: 'stopped', connection: null }
 }
 
 export function hasOwnedLocalWorkerProcess(): boolean {
@@ -123,7 +197,12 @@ export async function stopOwnedLocalWorker(): Promise<boolean> {
 export async function startLocalWorker(): Promise<WorkerStatusResult> {
   const existing = await resolveConnectionFromUserData()
   if (existing) {
-    return { status: 'running', connection: existing }
+    if (await isConnectionAlive(existing)) {
+      return { status: 'running', connection: existing }
+    }
+
+    await stopByPid(existing.pid)
+    await waitForPidExit(existing.pid, 1_500)
   }
 
   const workerScriptPath = resolveWorkerScriptPath()
@@ -134,15 +213,11 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
   }
 
   const userDataPath = app.getPath('userData')
-  const args = [
+  const args = buildLocalWorkerSpawnArgs({
     workerScriptPath,
-    '--hostname',
-    '127.0.0.1',
-    '--port',
-    '0',
-    '--user-data',
     userDataPath,
-  ]
+    parentPid: process.pid,
+  })
 
   const child = spawn(process.execPath, args, {
     env: {

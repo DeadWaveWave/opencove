@@ -305,6 +305,80 @@ describe('control surface session handlers', () => {
     }
   })
 
+  it('launches an agent session by cwd when no spaces exist', async () => {
+    const appState = {
+      formatVersion: 1,
+      activeWorkspaceId: 'ws1',
+      workspaces: [
+        {
+          id: 'ws1',
+          name: 'Workspace',
+          path: '/repo',
+          worktreesRoot: '',
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [],
+          activeSpaceId: null,
+          nodes: [],
+          spaceArchiveRecords: [],
+        },
+      ],
+      settings: {},
+    }
+
+    const controlSurface = createControlSurface()
+    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
+      registerSessionMetadata: () => undefined,
+      hasSession: () => false,
+    }
+
+    registerSessionHandlers(controlSurface, {
+      approvedWorkspaces: {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      },
+      getPersistenceStore: async () => createStubStore(appState),
+      ptyRuntime: {
+        spawnSession: async () => ({ sessionId: 'pty-cwd' }),
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+        attach: () => undefined,
+        detach: () => undefined,
+        snapshot: () => '',
+        startSessionStateWatcher: () => undefined,
+        dispose: () => undefined,
+      },
+      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
+    })
+
+    const launched = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'session.launchAgent',
+      payload: { cwd: '/repo', prompt: 'hello' },
+    })
+
+    expect(launched.ok).toBe(true)
+    if (!launched.ok) {
+      return
+    }
+
+    expect(launched.value.sessionId).toBe('pty-cwd')
+
+    const fetched = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'session.get',
+      payload: { sessionId: launched.value.sessionId },
+    })
+
+    expect(fetched.ok).toBe(true)
+    if (fetched.ok) {
+      expect(fetched.value.cwd).toBe('/repo')
+    }
+  })
+
   it('rejects invalid providers', async () => {
     const appState = {
       formatVersion: 1,
