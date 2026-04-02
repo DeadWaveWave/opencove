@@ -1,7 +1,9 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { expect, test, type ElectronApplication } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
+
+const WEBSITE_MIN_LIVE_CANVAS_ZOOM = 0.25
 
 interface WebsiteRuntimeState {
   lifecycle: string
@@ -119,8 +121,14 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       const snapshot = websiteNode.locator('.website-node__snapshot')
       await expect(snapshot).toBeVisible()
+
+      const canvasViewport = await readCanvasViewport(window)
       await window.waitForTimeout(450)
-      await expect(snapshot).toBeHidden()
+      if (canvasViewport.zoom <= WEBSITE_MIN_LIVE_CANVAS_ZOOM + 0.001) {
+        await expect(snapshot).toBeVisible()
+      } else {
+        await expect(snapshot).toBeHidden()
+      }
     } finally {
       server.close()
       await electronApp.close()

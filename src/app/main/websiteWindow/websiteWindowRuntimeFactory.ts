@@ -44,6 +44,9 @@ export function ensureWebsiteWindowRuntime({
     title: null,
     url: null,
     snapshotDataUrl: null,
+    scrollbarCssKey: null,
+    scrollbarCssSizePx: null,
+    scrollbarCssVersion: 0,
     discardTimer: null,
     disposeWebContentsListeners: null,
   }

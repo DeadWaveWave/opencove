@@ -254,7 +254,6 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       await window.mouse.move(paneBox.x + 24, paneBox.y + 24)
       await window.mouse.wheel(1800, 0)
-      await window.mouse.wheel(1800, 0)
 
       await expect
         .poll(async () => {

@@ -40,6 +40,9 @@ export function ensureWebsiteWindowView({
       }
     }
 
+    runtime.scrollbarCssKey = null
+    runtime.scrollbarCssSizePx = null
+    runtime.scrollbarCssVersion += 1
     runtime.view = null
   }
 

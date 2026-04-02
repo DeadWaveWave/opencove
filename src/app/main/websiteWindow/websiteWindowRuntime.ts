@@ -26,6 +26,9 @@ export interface WebsiteWindowRuntime {
   title: string | null
   url: string | null
   snapshotDataUrl: string | null
+  scrollbarCssKey: string | null
+  scrollbarCssSizePx: number | null
+  scrollbarCssVersion: number
   discardTimer: DiscardTimer | null
   disposeWebContentsListeners: (() => void) | null
 }

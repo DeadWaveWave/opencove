@@ -71,6 +71,10 @@ function disposeWebContents(runtime: WebsiteWindowRuntime, window: BrowserWindow
     // ignore - webContents may already be destroyed during shutdown
   }
 
+  runtime.scrollbarCssKey = null
+  runtime.scrollbarCssSizePx = null
+  runtime.scrollbarCssVersion += 1
+
   runtime.view = null
   runtime.hostView = null
 }

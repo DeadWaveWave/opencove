@@ -1,5 +1,6 @@
 import type { WebsiteWindowBounds, WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { syncWebsiteWindowScrollbarStyle } from './websiteWindowScrollbarStyle'
 import { normalizeWebsiteCanvasZoom, resolveWebsiteViewBorderRadius } from './websiteWindowView'
 
 export function normalizeWebsiteWindowSnapshotQuality(value: unknown): number {
@@ -100,6 +101,12 @@ export function applyWebsiteWindowViewportMetrics({
       if (!Number.isFinite(currentZoom) || Math.abs(currentZoom - normalizedCanvasZoom) > 0.001) {
         contents.setZoomFactor(normalizedCanvasZoom)
       }
+
+      syncWebsiteWindowScrollbarStyle({
+        runtime,
+        contents,
+        canvasZoom: normalizedCanvasZoom,
+      })
     }
 
     // Ensure the view is clipped to the hostView bounds when viewportBounds is offset

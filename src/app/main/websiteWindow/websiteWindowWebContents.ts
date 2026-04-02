@@ -1,6 +1,7 @@
 import type { WebContents } from 'electron'
 import type { WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { syncWebsiteWindowScrollbarStyle } from './websiteWindowScrollbarStyle'
 import { openExternalIfSafe } from './websiteWindowSecurity'
 import { resolveWebsiteNavigationUrl } from './websiteWindowUrl'
 
@@ -63,6 +64,12 @@ export function registerWebsiteWebContentsRuntimeListeners({
   const handleStopLoading = () => {
     runtime.isLoading = false
     publishState()
+
+    syncWebsiteWindowScrollbarStyle({
+      runtime,
+      contents,
+      canvasZoom: runtime.canvasZoom,
+    })
   }
 
   const handleDidNavigate = (_event: Electron.Event, url: string) => {

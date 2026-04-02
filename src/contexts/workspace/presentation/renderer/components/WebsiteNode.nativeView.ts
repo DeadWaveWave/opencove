@@ -10,10 +10,24 @@ import {
 } from './WebsiteNode.helpers'
 
 const CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS = 260
+const CANVAS_ZOOM_MIN_LIVE_ENTER = 0.25
+const CANVAS_ZOOM_MIN_LIVE_EXIT = 0.28
 const VIEWPORT_FOCUS_SNAPSHOT_ENTER_RATIO = 0.8
 const VIEWPORT_FOCUS_SNAPSHOT_EXIT_RATIO = 0.7
 const VIEWPORT_FOCUS_POLL_INTERVAL_MS = 140
 const VIEWPORT_FOCUS_ACTIVATION_GRACE_PERIOD_MS = 240
+
+function resolveCanvasZoomTooSmallForLiveView(nextZoom: number, wasTooSmall: boolean): boolean {
+  if (!Number.isFinite(nextZoom) || nextZoom <= 0) {
+    return false
+  }
+
+  if (wasTooSmall) {
+    return nextZoom <= CANVAS_ZOOM_MIN_LIVE_EXIT
+  }
+
+  return nextZoom <= CANVAS_ZOOM_MIN_LIVE_ENTER
+}
 
 export function useWebsiteNodeNativeView({
   nodeId,
@@ -71,10 +85,13 @@ export function useWebsiteNodeNativeView({
   const isViewportFocusSnapshotRef = useRef(false)
   const lastActivatedAtRef = useRef<number | null>(null)
 
+  const isCanvasZoomTooSmallForLiveViewRef = useRef(false)
+
   const lastCanvasZoomValueRef = useRef(canvasZoom)
   const releaseCanvasZoomFreezeTimerRef = useRef<number | null>(null)
   useEffect(() => {
     if (lifecycle !== 'active' || isOccluded) {
+      isCanvasZoomTooSmallForLiveViewRef.current = false
       lastCanvasZoomValueRef.current = canvasZoom
       if (releaseCanvasZoomFreezeTimerRef.current !== null) {
         window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
@@ -82,6 +99,21 @@ export function useWebsiteNodeNativeView({
       }
       if (isCanvasZoomFrozenRef.current) {
         setIsCanvasZoomFrozen(false)
+      }
+      return
+    }
+
+    const wasTooSmallForLive = isCanvasZoomTooSmallForLiveViewRef.current
+    const isTooSmallForLive = resolveCanvasZoomTooSmallForLiveView(canvasZoom, wasTooSmallForLive)
+    isCanvasZoomTooSmallForLiveViewRef.current = isTooSmallForLive
+    if (isTooSmallForLive) {
+      lastCanvasZoomValueRef.current = canvasZoom
+      if (releaseCanvasZoomFreezeTimerRef.current !== null) {
+        window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
+        releaseCanvasZoomFreezeTimerRef.current = null
+      }
+      if (!isCanvasZoomFrozenRef.current) {
+        setIsCanvasZoomFrozen(true)
       }
       return
     }
@@ -97,6 +129,16 @@ export function useWebsiteNodeNativeView({
     }
 
     releaseCanvasZoomFreezeTimerRef.current = window.setTimeout(() => {
+      const resolvedZoom = canvasZoomRef.current
+      const shouldKeepFrozen = resolveCanvasZoomTooSmallForLiveView(
+        resolvedZoom,
+        isCanvasZoomTooSmallForLiveViewRef.current,
+      )
+      isCanvasZoomTooSmallForLiveViewRef.current = shouldKeepFrozen
+      if (shouldKeepFrozen) {
+        setIsCanvasZoomFrozen(true)
+        return
+      }
       setIsCanvasZoomFrozen(false)
     }, CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS)
 
