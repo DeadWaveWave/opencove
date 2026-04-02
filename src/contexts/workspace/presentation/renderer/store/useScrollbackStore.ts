@@ -26,9 +26,9 @@ export const useScrollbackStore = create<ScrollbackStoreState>(set => ({
           return state
         }
 
-        const next = { ...state.scrollbackByNodeId }
-        delete next[normalizedId]
-        return { scrollbackByNodeId: next }
+        const record = state.scrollbackByNodeId
+        delete record[normalizedId]
+        return { scrollbackByNodeId: record }
       })
       return
     }
@@ -38,11 +38,9 @@ export const useScrollbackStore = create<ScrollbackStoreState>(set => ({
         return state
       }
 
+      state.scrollbackByNodeId[normalizedId] = normalized
       return {
-        scrollbackByNodeId: {
-          ...state.scrollbackByNodeId,
-          [normalizedId]: normalized,
-        },
+        scrollbackByNodeId: state.scrollbackByNodeId,
       }
     })
   },
@@ -58,9 +56,9 @@ export const useScrollbackStore = create<ScrollbackStoreState>(set => ({
         return state
       }
 
-      const next = { ...state.scrollbackByNodeId }
-      delete next[normalized]
-      return { scrollbackByNodeId: next }
+      const record = state.scrollbackByNodeId
+      delete record[normalized]
+      return { scrollbackByNodeId: record }
     })
   },
 
