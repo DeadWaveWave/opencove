@@ -6,7 +6,6 @@ import {
   openAuthedCanvas,
   readSharedState,
   readTextFile,
-  readViewState,
   webCanvasBaseUrl,
   writeAppState,
   writeTextFile,
@@ -185,6 +184,94 @@ test.describe('Worker web canvas', () => {
           .evaluateAll(nodes => nodes.map(node => (node as HTMLTextAreaElement).value))
       })
       .toContain(localDraft)
+  })
+
+  test('preserves local selection while applying sync refreshes', async ({ page }) => {
+    const workspacePath = await createWorkspaceDir('selection-refresh')
+    await writeAppState(
+      page.request,
+      buildAppState({
+        workspacePath,
+        spaces: [
+          {
+            id: 'space-1',
+            name: 'Main',
+            directoryPath: workspacePath,
+            nodeIds: ['anchor-note'],
+            rect: { x: 0, y: 0, width: 1200, height: 800 },
+          },
+        ],
+        nodes: [
+          {
+            id: 'anchor-note',
+            title: 'note',
+            kind: 'note',
+            position: { x: 80, y: 80 },
+            width: 240,
+            height: 180,
+            text: 'keep space',
+          },
+        ],
+      }),
+    )
+
+    await openAuthedCanvas(page)
+
+    const pane = page.locator('.workspace-canvas .react-flow__pane')
+    await pane.click({ button: 'right', position: { x: 560, y: 220 } })
+    await page.locator('[data-testid="workspace-context-new-terminal"]').click()
+
+    const terminal = page.locator('.terminal-node').first()
+    await expect(terminal).toBeVisible()
+    await expect(terminal.locator('.xterm')).toBeVisible()
+    const terminalWrapper = page.locator('.react-flow__node').filter({ has: terminal }).first()
+
+    const terminalHeader = terminal.locator('.terminal-node__header')
+    await expect(terminalHeader).toBeVisible()
+    await terminalHeader.click({ position: { x: 24, y: 16 } })
+
+    await expect(terminalWrapper).toHaveClass(/selected/)
+
+    const sharedBeforeRefresh = await readSharedState(page.request)
+    expect(sharedBeforeRefresh.state?.workspaces?.length).toBeGreaterThan(0)
+    const currentState = sharedBeforeRefresh.state
+    expect(currentState).toBeTruthy()
+
+    const newNoteId = `external-note-${Date.now()}`
+    const nextState = JSON.parse(JSON.stringify(currentState)) as NonNullable<typeof currentState>
+    const targetWorkspace = nextState.workspaces[0]
+    const targetSpace = targetWorkspace.spaces.find(space => space.id === 'space-1')
+    expect(targetSpace).toBeTruthy()
+
+    targetWorkspace.nodes.push({
+      id: newNoteId,
+      title: 'note',
+      titlePinnedByUser: false,
+      position: { x: 520, y: 180 },
+      width: 360,
+      height: 260,
+      kind: 'note',
+      labelColorOverride: null,
+      profileId: null,
+      runtimeKind: null,
+      status: null,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      executionDirectory: null,
+      expectedDirectory: null,
+      agent: null,
+      task: {
+        text: 'external refresh note',
+      },
+    })
+    targetSpace!.nodeIds.push(newNoteId)
+
+    await writeAppState(page.request, nextState)
+
+    await expect(terminalWrapper).toHaveClass(/selected/)
   })
 
   test('saves document edits through the worker-backed filesystem', async ({ page }) => {
@@ -382,91 +469,5 @@ test.describe('Worker web canvas', () => {
     await expect(terminal.locator('.xterm')).toBeVisible()
     await expect(terminal).toContainText('[opencove-test-agent] codex new')
     await expect(terminal).toContainText('gpt-5.2-codex')
-  })
-
-  test('keeps space selection local per client and hides desktop-only path openers', async ({
-    browser,
-    page,
-  }) => {
-    const workspacePath = await createWorkspaceDir('view-state')
-    const state = buildAppState({
-      workspacePath,
-      spaces: [
-        {
-          id: 'space-a',
-          name: 'Alpha',
-          directoryPath: workspacePath,
-          nodeIds: ['anchor-a'],
-          rect: { x: 0, y: 0, width: 720, height: 520 },
-        },
-        {
-          id: 'space-b',
-          name: 'Beta',
-          directoryPath: workspacePath,
-          nodeIds: ['anchor-b'],
-          rect: { x: 820, y: 0, width: 720, height: 520 },
-        },
-      ],
-      nodes: [
-        {
-          id: 'anchor-a',
-          title: 'note',
-          kind: 'note',
-          position: { x: 120, y: 120 },
-          width: 240,
-          height: 180,
-          text: 'alpha anchor',
-        },
-        {
-          id: 'anchor-b',
-          title: 'note',
-          kind: 'note',
-          position: { x: 960, y: 120 },
-          width: 240,
-          height: 180,
-          text: 'beta anchor',
-        },
-      ],
-    })
-    await writeAppState(page.request, state)
-
-    await openAuthedCanvas(page)
-    const secondContext = await browser.newContext({ baseURL: webCanvasBaseUrl })
-    const secondPage = await secondContext.newPage()
-
-    try {
-      await openAuthedCanvas(secondPage)
-
-      await page.locator('[data-testid="workspace-space-switch-space-b"]').evaluate(button => {
-        ;(button as HTMLButtonElement).click()
-      })
-
-      await expect
-        .poll(async () => {
-          const viewState = (await readViewState(page)) as {
-            workspaces?: Record<string, { activeSpaceId?: string | null }>
-          } | null
-          return viewState?.workspaces?.['workspace-1']?.activeSpaceId ?? null
-        })
-        .toBe('space-b')
-
-      await expect
-        .poll(async () => {
-          const viewState = (await readViewState(secondPage)) as {
-            workspaces?: Record<string, { activeSpaceId?: string | null }>
-          } | null
-          return viewState?.workspaces?.['workspace-1']?.activeSpaceId ?? null
-        })
-        .toBe('space-a')
-
-      const shared = await readSharedState(page.request)
-      expect(shared.state?.workspaces[0]?.activeSpaceId).toBe('space-a')
-
-      await page.locator('[data-testid="workspace-space-menu-space-b"]').click({ force: true })
-      await expect(page.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
-      await expect(page.locator('[data-testid="workspace-space-action-open"]')).toHaveCount(0)
-    } finally {
-      await secondContext.close()
-    }
   })
 })

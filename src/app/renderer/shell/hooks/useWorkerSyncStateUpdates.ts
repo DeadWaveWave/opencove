@@ -33,6 +33,10 @@ function mergeRuntimeNode(
 
   return {
     ...persistedNode,
+    selected: existingNode.selected,
+    dragging: existingNode.dragging,
+    width: existingNode.width,
+    height: existingNode.height,
     data: {
       ...persistedNode.data,
       sessionId: persistedSessionId.length > 0 ? persistedSessionId : existingSessionId,

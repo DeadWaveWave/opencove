@@ -90,14 +90,35 @@ export function useWorkspaceCanvasState({
   const trackpadGestureLockRef = useRef<TrackpadGestureLockState | null>(null)
   const viewportRef = useRef<Viewport>(viewport)
 
+  const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds])
+
+  useLayoutEffect(() => {
+    if (!selectedNodeIds.length) {
+      return
+    }
+
+    const nodeIdSet = new Set(nodes.map(node => node.id))
+    const resolvedSelection = selectedNodeIds.filter(nodeId => nodeIdSet.has(nodeId))
+    if (resolvedSelection.length === selectedNodeIds.length) {
+      return
+    }
+
+    setSelectedNodeIds(resolvedSelection)
+  }, [nodes, selectedNodeIds])
+
   const flowNodes = useMemo(
     () =>
-      nodes.map(node => ({
-        ...node,
-        dragHandle:
-          node.selected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR,
-      })),
-    [isDragSurfaceSelectionMode, nodes],
+      nodes.map(node => {
+        const isSelected = selectedNodeIdSet.has(node.id)
+
+        return {
+          ...node,
+          selected: isSelected,
+          dragHandle:
+            isSelected && isDragSurfaceSelectionMode ? undefined : NODE_DRAG_HANDLE_SELECTOR,
+        }
+      }),
+    [isDragSurfaceSelectionMode, nodes, selectedNodeIdSet],
   )
 
   useLayoutEffect(() => {
