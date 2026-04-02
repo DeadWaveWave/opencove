@@ -47,6 +47,10 @@ function isMacLikePlatform(): boolean {
   return platform.toLowerCase().includes('mac')
 }
 
+function isTestEnvironment(): boolean {
+  return typeof window !== 'undefined' && window.opencoveApi?.meta?.isTest === true
+}
+
 function resolveWheelZoomDelta(event: WheelEvent): number {
   const sample: WheelInputSample = {
     deltaX: event.deltaX,
@@ -76,17 +80,6 @@ function resolveEffectiveWheelZoomModifierKey(
   }
 }
 
-function applyViewport(
-  nextViewport: Viewport,
-  viewportRef: MutableRefObject<Viewport>,
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
-  onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void,
-): void {
-  viewportRef.current = nextViewport
-  reactFlow.setViewport(nextViewport, { duration: 0 })
-  onViewportChange(nextViewport)
-}
-
 export function useWorkspaceCanvasTrackpadGestures({
   canvasInputModeSetting,
   canvasWheelBehaviorSetting,
@@ -102,6 +95,39 @@ export function useWorkspaceCanvasTrackpadGestures({
 }: UseTrackpadGesturesParams): { handleCanvasWheelCapture: (event: WheelEvent) => void } {
   const reactFlowStore = useStoreApi()
   const interactionClearTimerRef = useRef<number | null>(null)
+  const pendingViewportCommitRef = useRef<Viewport | null>(null)
+  const pendingPanPixelDeltaRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 })
+  const pendingPanFrameRef = useRef<number | null>(null)
+
+  const flushPendingPan = useCallback(
+    ({ applyToReactFlow }: { applyToReactFlow: boolean }): void => {
+      if (pendingPanFrameRef.current !== null) {
+        window.cancelAnimationFrame(pendingPanFrameRef.current)
+        pendingPanFrameRef.current = null
+      }
+
+      const pendingDelta = pendingPanPixelDeltaRef.current
+      if (pendingDelta.x === 0 && pendingDelta.y === 0) {
+        return
+      }
+
+      pendingPanPixelDeltaRef.current = { x: 0, y: 0 }
+
+      const viewport = viewportRef.current
+      const nextViewport = {
+        x: viewport.x - (pendingDelta.x / viewport.zoom) * TRACKPAD_PAN_SCROLL_SPEED,
+        y: viewport.y - (pendingDelta.y / viewport.zoom) * TRACKPAD_PAN_SCROLL_SPEED,
+        zoom: viewport.zoom,
+      }
+
+      viewportRef.current = nextViewport
+      if (applyToReactFlow) {
+        reactFlow.setViewport(nextViewport, { duration: 0 })
+      }
+      pendingViewportCommitRef.current = nextViewport
+    },
+    [reactFlow, viewportRef],
+  )
 
   const handleCanvasWheelCapture = useCallback(
     (event: WheelEvent) => {
@@ -169,6 +195,18 @@ export function useWorkspaceCanvasTrackpadGestures({
         reactFlowStore.setState({
           coveViewportInteractionActive: false,
         } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+
+        flushPendingPan({ applyToReactFlow: true })
+
+        const pendingViewport = pendingViewportCommitRef.current
+        if (pendingViewport !== null) {
+          pendingViewportCommitRef.current = null
+          onViewportChange({
+            x: pendingViewport.x,
+            y: pendingViewport.y,
+            zoom: pendingViewport.zoom,
+          })
+        }
       }, 120)
 
       event.preventDefault()
@@ -186,13 +224,29 @@ export function useWorkspaceCanvasTrackpadGestures({
           deltaY = 0
         }
 
-        const nextViewport = {
-          x: currentViewport.x - (deltaX / currentViewport.zoom) * TRACKPAD_PAN_SCROLL_SPEED,
-          y: currentViewport.y - (deltaY / currentViewport.zoom) * TRACKPAD_PAN_SCROLL_SPEED,
-          zoom: currentViewport.zoom,
+        if (isTestEnvironment()) {
+          const nextViewport = {
+            x: currentViewport.x - (deltaX / currentViewport.zoom) * TRACKPAD_PAN_SCROLL_SPEED,
+            y: currentViewport.y - (deltaY / currentViewport.zoom) * TRACKPAD_PAN_SCROLL_SPEED,
+            zoom: currentViewport.zoom,
+          }
+
+          viewportRef.current = nextViewport
+          reactFlow.setViewport(nextViewport, { duration: 0 })
+          pendingViewportCommitRef.current = nextViewport
+          return
         }
 
-        applyViewport(nextViewport, viewportRef, reactFlow, onViewportChange)
+        pendingPanPixelDeltaRef.current.x += deltaX
+        pendingPanPixelDeltaRef.current.y += deltaY
+
+        if (pendingPanFrameRef.current === null) {
+          pendingPanFrameRef.current = window.requestAnimationFrame(() => {
+            pendingPanFrameRef.current = null
+            flushPendingPan({ applyToReactFlow: true })
+          })
+        }
+
         return
       }
 
@@ -227,7 +281,9 @@ export function useWorkspaceCanvasTrackpadGestures({
         zoom: nextZoom,
       }
 
-      applyViewport(nextViewport, viewportRef, reactFlow, onViewportChange)
+      viewportRef.current = nextViewport
+      reactFlow.setViewport(nextViewport, { duration: 0 })
+      pendingViewportCommitRef.current = nextViewport
     },
     [
       canvasInputModeSetting,
@@ -235,6 +291,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       canvasWheelZoomModifierSetting,
       canvasRef,
       inputModalityStateRef,
+      flushPendingPan,
       onViewportChange,
       reactFlowStore,
       reactFlow,
@@ -251,8 +308,20 @@ export function useWorkspaceCanvasTrackpadGestures({
         window.clearTimeout(interactionClearTimerRef.current)
         interactionClearTimerRef.current = null
       }
+
+      flushPendingPan({ applyToReactFlow: false })
+
+      const pendingViewport = pendingViewportCommitRef.current
+      if (pendingViewport !== null) {
+        pendingViewportCommitRef.current = null
+        onViewportChange({
+          x: pendingViewport.x,
+          y: pendingViewport.y,
+          zoom: pendingViewport.zoom,
+        })
+      }
     }
-  }, [])
+  }, [flushPendingPan, onViewportChange])
 
   return { handleCanvasWheelCapture }
 }
