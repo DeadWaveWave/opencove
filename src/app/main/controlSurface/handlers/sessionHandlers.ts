@@ -33,6 +33,7 @@ import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
 const SESSION_FILE_RESOLVE_TIMEOUT_MS = 1_500
+const WORKER_TEST_AGENT_STUB_MODE = 'new' as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
@@ -71,6 +72,35 @@ function normalizeAgentProviderId(value: unknown): AgentProviderId | null {
   })
 }
 
+function resolveWorkerAgentTestStub(options: {
+  provider: AgentProviderId
+  cwd: string
+  model: string | null
+}): { command: string; args: string[] } | null {
+  if (process.env.NODE_ENV !== 'test') {
+    return null
+  }
+
+  const sessionScenario = process.env['OPENCOVE_TEST_AGENT_SESSION_SCENARIO']?.trim() ?? ''
+  const stubScriptPath = process.env['OPENCOVE_TEST_AGENT_STUB_SCRIPT']?.trim() ?? ''
+
+  if (sessionScenario.length === 0 || stubScriptPath.length === 0) {
+    return null
+  }
+
+  return {
+    command: process.execPath,
+    args: [
+      stubScriptPath,
+      options.provider,
+      options.cwd,
+      WORKER_TEST_AGENT_STUB_MODE,
+      options.model ?? 'default-model',
+      sessionScenario,
+    ],
+  }
+}
+
 function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -100,11 +130,6 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
   }
 
   const prompt = promptRaw.trim()
-  if (prompt.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for session.launchAgent prompt.',
-    })
-  }
 
   const providerRaw = payload.provider
   if (providerRaw !== undefined && providerRaw !== null && typeof providerRaw !== 'string') {
@@ -206,23 +231,27 @@ export function registerSessionHandlers(
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
 
+      const testStub = resolveWorkerAgentTestStub({ provider, cwd: workingDirectory, model })
+
       const opencodeServer =
-        provider === 'opencode'
+        provider === 'opencode' && !testStub
           ? {
               hostname: OPENCODE_SERVER_HOSTNAME,
               port: await reserveLoopbackPort(OPENCODE_SERVER_HOSTNAME),
             }
           : null
 
-      const launchCommand = buildAgentLaunchCommand({
-        provider,
-        mode: 'new',
-        prompt: payload.prompt,
-        model,
-        resumeSessionId: null,
-        agentFullAccess,
-        opencodeServer,
-      })
+      const launchCommand = testStub
+        ? { command: testStub.command, args: testStub.args, effectiveModel: model }
+        : buildAgentLaunchCommand({
+            provider,
+            mode: 'new',
+            prompt: payload.prompt,
+            model,
+            resumeSessionId: null,
+            agentFullAccess,
+            opencodeServer,
+          })
 
       const startedAtMs = Date.now()
       const startedAt = new Date(startedAtMs).toISOString()

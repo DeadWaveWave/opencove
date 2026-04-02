@@ -2,7 +2,6 @@ import type {
   ControlSurfaceInvokeRequest,
   ControlSurfaceInvokeResult,
 } from '@shared/contracts/controlSurface'
-import { toErrorMessage } from '@app/renderer/shell/utils/format'
 
 function resolveQueryToken(): string | null {
   if (typeof window === 'undefined') {
@@ -51,7 +50,7 @@ export async function invokeBrowserControlSurface<TValue>(
   }
 
   if (result.ok === false) {
-    throw new Error(toErrorMessage(result.error))
+    throw result.error
   }
 
   return result.value

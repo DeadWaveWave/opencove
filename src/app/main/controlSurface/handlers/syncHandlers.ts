@@ -314,6 +314,7 @@ export function registerSyncHandlers(
 
       const nextNode = {
         id: nodeId,
+        sessionId: null,
         title,
         titlePinnedByUser: false,
         position: {

@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -284,7 +284,7 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
   }
 }
 
-describe('PersistenceStore', () => {
+describe('PersistenceStore (migrations)', () => {
   let tempDir = ''
 
   afterEach(async () => {
@@ -301,104 +301,93 @@ describe('PersistenceStore', () => {
   })
 
   it(
-    'writes workspace sort_order from the in-memory array order',
+    'applies cumulative migrations when upgrading a version 2 db',
     async () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
-      const mockDbByPath = new Map<string, MockDbState>()
+      const mockDbByPath = new Map<string, MockDbState>([
+        [dbPath, createMockDbState({ userVersion: 2, version2Schema: true })],
+      ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
       const { createPersistenceStore } =
         await import('../../../src/platform/persistence/sqlite/PersistenceStore')
 
       const store = await createPersistenceStore({ dbPath })
+      expect(store.consumeRecovery()).toBeNull()
 
       const result = await store.writeAppState({
         formatVersion: 1,
-        activeWorkspaceId: 'ws-2',
+        activeWorkspaceId: 'ws-1',
         workspaces: [
           {
-            id: 'ws-2',
-            name: 'Workspace 2',
-            path: '/tmp/ws-2',
-            worktreesRoot: '/tmp',
-            pullRequestBaseBranchOptions: [],
-            spaceArchiveRecords: [],
-            viewport: { x: 0, y: 0, zoom: 1 },
-            isMinimapVisible: false,
-            activeSpaceId: null,
-            nodes: [],
-            spaces: [],
-          },
-          {
             id: 'ws-1',
-            name: 'Workspace 1',
-            path: '/tmp/ws-1',
+            name: 'Workspace',
+            path: '/tmp/workspace',
             worktreesRoot: '/tmp',
             pullRequestBaseBranchOptions: [],
-            spaceArchiveRecords: [],
-            viewport: { x: 0, y: 0, zoom: 1 },
+            viewport: { x: 1, y: 2, zoom: 1 },
             isMinimapVisible: false,
-            activeSpaceId: null,
-            nodes: [],
-            spaces: [],
+            activeSpaceId: 'space-1',
+            nodes: [
+              {
+                id: 'node-1',
+                title: 'Node',
+                titlePinnedByUser: false,
+                position: { x: 10, y: 20 },
+                width: 300,
+                height: 200,
+                kind: 'task',
+                labelColorOverride: 'blue',
+                status: null,
+                startedAt: null,
+                endedAt: null,
+                exitCode: null,
+                lastError: null,
+                executionDirectory: null,
+                expectedDirectory: null,
+                task: null,
+                agent: null,
+                scrollback: null,
+              },
+            ],
+            spaces: [
+              {
+                id: 'space-1',
+                name: 'Space',
+                directoryPath: '/tmp/workspace',
+                labelColor: 'green',
+                rect: { x: 0, y: 0, width: 100, height: 100 },
+                nodeIds: ['node-1'],
+              },
+            ],
           },
         ],
         settings: {},
       })
-
       expect(result).toMatchObject({ ok: true, level: 'full' })
-      expect(mockDbByPath.get(dbPath)?.workspaceRows).toEqual([
-        { id: 'ws-2', sortOrder: 0 },
-        { id: 'ws-1', sortOrder: 1 },
-      ])
-
       store.dispose()
+
+      const migratedState = mockDbByPath.get(dbPath)
+      expect(migratedState?.userVersion).toBe(6)
+      expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
+      expect(migratedState?.tables.get('nodes')).toContain('session_id')
+      expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
+      expect(migratedState?.tables.get('workspaces')).toContain(
+        'pull_request_base_branch_options_json',
+      )
+      expect(migratedState?.tables.get('workspaces')).toContain('space_archive_records_json')
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )
 
   it(
-    'creates a backup when migrating an existing db file',
+    'repairs a schema marked current when additive columns are missing',
     async () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-02-28T00:00:00.000Z'))
-
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
-      await writeFile(dbPath, 'legacy-db')
-
-      const mockDbByPath = new Map<string, MockDbState>()
-      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
-
-      const { createPersistenceStore } =
-        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
-
-      const store = await createPersistenceStore({ dbPath })
-      store.dispose()
-
-      const files = await readdir(tempDir)
-      const backupFiles = files.filter(name => name.startsWith('opencove.db.bak-'))
-      expect(backupFiles).toHaveLength(1)
-
-      const backupContent = await readFile(join(tempDir, backupFiles[0] as string), 'utf8')
-      expect(backupContent).toBe('legacy-db')
-    },
-    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
-  )
-
-  it(
-    'renames the db file when sqlite open fails (corruption recovery)',
-    async () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-02-28T00:00:00.000Z'))
-
-      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
-      const dbPath = join(tempDir, 'opencove.db')
-      await writeFile(dbPath, 'corrupt-db')
-
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ failOnFirstOpen: true })],
+        [dbPath, createMockDbState({ userVersion: 6, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
@@ -406,63 +395,23 @@ describe('PersistenceStore', () => {
         await import('../../../src/platform/persistence/sqlite/PersistenceStore')
 
       const store = await createPersistenceStore({ dbPath })
-      store.dispose()
-
-      const files = await readdir(tempDir)
-      expect(files).toContain('opencove.db.corrupt-2026-02-28T00-00-00-000Z')
-      expect(
-        await readFile(join(tempDir, 'opencove.db.corrupt-2026-02-28T00-00-00-000Z'), 'utf8'),
-      ).toBe('corrupt-db')
-    },
-    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
-  )
-
-  it(
-    'measures workspace state payload size in UTF-8 bytes',
-    async () => {
-      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
-      const mockDbByPath = new Map<string, MockDbState>()
-      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
-
-      const { createPersistenceStore } =
-        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
-
-      const raw = JSON.stringify({
+      expect(store.consumeRecovery()).toBeNull()
+      const result = await store.writeAppState({
         formatVersion: 1,
         activeWorkspaceId: null,
         workspaces: [],
-        settings: { label: '中😀' },
+        settings: {},
       })
-      const rawBytes = Buffer.byteLength(raw, 'utf8')
-      expect(rawBytes).toBeGreaterThan(raw.length)
-
-      const oversizedStore = await createPersistenceStore({
-        dbPath: join(tempDir, 'oversized.db'),
-        maxRawBytes: raw.length,
-      })
-      const oversizedResult = await oversizedStore.writeWorkspaceStateRaw(raw)
-      expect(oversizedResult).toEqual({
-        ok: false,
-        reason: 'payload_too_large',
-        error: {
-          code: 'persistence.payload_too_large',
-          params: {
-            bytes: rawBytes,
-            maxBytes: raw.length,
-          },
-          debugMessage: `Workspace state payload too large to persist (${rawBytes} bytes).`,
-        },
-      })
-      oversizedStore.dispose()
-
-      const store = await createPersistenceStore({
-        dbPath: join(tempDir, 'opencove.db'),
-        maxRawBytes: rawBytes,
-      })
-
-      const result = await store.writeWorkspaceStateRaw(raw)
-      expect(result).toEqual({ ok: true, level: 'full', bytes: rawBytes })
+      expect(result).toMatchObject({ ok: true, level: 'full' })
       store.dispose()
+
+      const repairedState = mockDbByPath.get(dbPath)
+      expect(repairedState?.tables.get('nodes')).toContain('label_color_override')
+      expect(repairedState?.tables.get('workspace_spaces')).toContain('label_color')
+      expect(repairedState?.tables.get('workspaces')).toContain(
+        'pull_request_base_branch_options_json',
+      )
+      expect(repairedState?.tables.get('workspaces')).toContain('space_archive_records_json')
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )

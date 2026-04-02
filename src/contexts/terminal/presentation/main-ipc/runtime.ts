@@ -34,14 +34,14 @@ export interface PtyRuntime {
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
-  write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => void
-  resize: (sessionId: string, cols: number, rows: number) => void
-  kill: (sessionId: string) => void
+  write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => Promise<void>
+  resize: (sessionId: string, cols: number, rows: number) => Promise<void>
+  kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
-  attach: (contentsId: number, sessionId: string) => void
-  detach: (contentsId: number, sessionId: string) => void
-  snapshot: (sessionId: string) => string
+  attach: (contentsId: number, sessionId: string) => Promise<void>
+  detach: (contentsId: number, sessionId: string) => Promise<void>
+  snapshot: (sessionId: string) => Promise<string>
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
   debugCrashHost?: () => void
   dispose: () => void
@@ -230,14 +230,14 @@ export function createPtyRuntime(): PtyRuntime {
       registerSessionProbeState(sessionId)
       return { sessionId }
     },
-    write: (sessionId, data, encoding = 'utf8') => {
+    write: async (sessionId, data, encoding = 'utf8') => {
       ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: (sessionId, cols, rows) => {
+    resize: async (sessionId, cols, rows) => {
       ptyHost.resize(sessionId, cols, rows)
     },
-    kill: sessionId => {
+    kill: async sessionId => {
       manager.kill(sessionId)
       clearSessionProbeState(sessionId)
       ptyHost.kill(sessionId)
@@ -254,13 +254,13 @@ export function createPtyRuntime(): PtyRuntime {
         externalExitListeners.delete(listener)
       }
     },
-    attach: (contentsId, sessionId) => {
+    attach: async (contentsId, sessionId) => {
       manager.attach(contentsId, sessionId)
     },
-    detach: (contentsId, sessionId) => {
+    detach: async (contentsId, sessionId) => {
       manager.detach(contentsId, sessionId)
     },
-    snapshot: sessionId => {
+    snapshot: async sessionId => {
       return manager.snapshot(sessionId)
     },
     startSessionStateWatcher: ({

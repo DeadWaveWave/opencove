@@ -57,6 +57,13 @@ async function startWorker(options) {
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
+        ...(options.agentStubScriptPath
+          ? { OPENCOVE_TEST_AGENT_STUB_SCRIPT: options.agentStubScriptPath }
+          : {}),
+        ...(options.agentSessionScenario
+          ? { OPENCOVE_TEST_AGENT_SESSION_SCENARIO: options.agentSessionScenario }
+          : {}),
+        ...(options.nodeEnv ? { NODE_ENV: options.nodeEnv } : {}),
       },
       shell: process.platform === 'win32',
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -136,7 +143,8 @@ async function stopWorker(child) {
 }
 
 async function main() {
-  const forwardedArgs = process.argv.slice(2)
+  const forwardedArgsRaw = process.argv.slice(2)
+  const forwardedArgs = forwardedArgsRaw[0] === '--' ? forwardedArgsRaw.slice(1) : forwardedArgsRaw
 
   if (!isTruthyEnv(process.env['OPENCOVE_E2E_SKIP_BUILD'])) {
     const buildCode = await runCommand(['build'])
@@ -149,6 +157,7 @@ async function main() {
   const userDataPath = await mkdtemp(resolve(tmpdir(), 'opencove-web-canvas-userdata-'))
   const workspaceRoot = await mkdtemp(resolve(tmpdir(), 'opencove-web-canvas-workspace-'))
   const token = randomBytes(16).toString('hex')
+  const agentStubScriptPath = resolve(process.cwd(), 'scripts', 'test-agent-session-stub.mjs')
 
   let worker = null
   let exitCode = 1
@@ -159,6 +168,9 @@ async function main() {
       userDataPath,
       approvedRoot: workspaceRoot,
       token,
+      nodeEnv: 'test',
+      agentStubScriptPath,
+      agentSessionScenario: 'codex-standby-only',
     })
 
     worker = started.child

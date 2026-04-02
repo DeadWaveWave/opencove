@@ -46,6 +46,7 @@ function createTables(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS nodes (
       id TEXT PRIMARY KEY,
       workspace_id TEXT NOT NULL,
+      session_id TEXT,
       title TEXT NOT NULL,
       title_pinned_by_user INTEGER NOT NULL,
       position_x REAL NOT NULL,
@@ -194,6 +195,12 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'nodes',
     columnName: 'label_color_override',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'session_id',
     definitionSql: 'TEXT',
   })
 

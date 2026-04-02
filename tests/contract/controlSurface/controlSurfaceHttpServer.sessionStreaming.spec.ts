@@ -292,25 +292,7 @@ describe('Control Surface HTTP server (session streaming)', () => {
       )
       expect(viewerAttached.role).toBe('viewer')
 
-      sendJson(viewer, { type: 'write', sessionId, data: 'echo nope\\n' })
-      const writeRejected = await waitForMessage<{ type: string; code: string }>(
-        viewer,
-        message => message && message.type === 'error' && message.code === 'session.not_controller',
-      )
-      expect(writeRejected.code).toBe('session.not_controller')
-
-      sendJson(viewer, { type: 'request_control', sessionId })
-      const controlTaken = await waitForMessage<{ type: string; code: string }>(
-        viewer,
-        message => message && message.type === 'error' && message.code === 'session.control_taken',
-      )
-      expect(controlTaken.code).toBe('session.control_taken')
-
-      sendJson(controller, { type: 'release_control', sessionId })
-      await waitForMessage(viewer, message => message && message.type === 'control_changed')
-
-      sendJson(viewer, { type: 'request_control', sessionId })
-      const controlChanged = await waitForMessage<{ type: string; role: string }>(
+      const viewerControlChangedPromise = waitForMessage<{ type: string; role: string }>(
         viewer,
         message =>
           message &&
@@ -318,14 +300,31 @@ describe('Control Surface HTTP server (session streaming)', () => {
           message.sessionId === sessionId &&
           message.role === 'controller',
       )
-      expect(controlChanged.role).toBe('controller')
 
-      sendJson(viewer, { type: 'write', sessionId, data: 'echo ok\\n' })
+      const controllerControlReleasedPromise = waitForMessage<{ type: string; role: string }>(
+        controller,
+        message =>
+          message &&
+          message.type === 'control_changed' &&
+          message.sessionId === sessionId &&
+          message.role === 'viewer',
+      )
+
+      sendJson(viewer, { type: 'request_control', sessionId })
+      const [viewerControlChanged, controllerControlReleased] = await Promise.all([
+        viewerControlChangedPromise,
+        controllerControlReleasedPromise,
+      ])
+      expect(viewerControlChanged.role).toBe('controller')
+      expect(controllerControlReleased.role).toBe('viewer')
+
+      const writePayload = 'echo ok\r'
+      sendJson(viewer, { type: 'write', sessionId, data: writePayload })
       await waitForCondition(async () => {
-        return writes.some(write => write.sessionId === sessionId && write.data.includes('echo ok'))
+        return writes.some(write => write.sessionId === sessionId && write.data === writePayload)
       })
       expect(
-        writes.some(write => write.sessionId === sessionId && write.data.includes('echo ok')),
+        writes.some(write => write.sessionId === sessionId && write.data === writePayload),
       ).toBe(true)
 
       controller.close()

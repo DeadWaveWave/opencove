@@ -1,94 +1,17 @@
-import type {
-  AppUpdateState,
-  CliPathStatusResult,
-  HomeWorkerConfigDto,
-  ListInstalledAgentProvidersResult,
-  ListSystemFontsResult,
-  ListWorkspacePathOpenersResult,
-  ReadAgentLastMessageResult,
-  ReleaseNotesCurrentResult,
-  WorkerStatusResult,
-} from '@shared/contracts/dto'
-import { AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings'
+import type { ListSystemFontsResult } from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
-
-function resolveBrowserPlatform(): string {
-  const platform =
-    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
-    navigator.platform ??
-    ''
-  const normalized = platform.toLowerCase()
-  if (normalized.includes('mac')) {
-    return 'darwin'
-  }
-  if (normalized.includes('win')) {
-    return 'win32'
-  }
-  if (normalized.includes('linux')) {
-    return 'linux'
-  }
-  return 'browser'
-}
-
-function createUnsupportedUpdateState(): AppUpdateState {
-  return {
-    policy: 'off',
-    channel: 'stable',
-    currentVersion: 'web',
-    status: 'unsupported',
-    latestVersion: null,
-    releaseName: null,
-    releaseDate: null,
-    releaseNotesUrl: null,
-    downloadPercent: null,
-    downloadedBytes: null,
-    totalBytes: null,
-    checkedAt: null,
-    message: 'Updates are unavailable in browser runtime.',
-  }
-}
-
-function unsupportedWorkerStatus(): WorkerStatusResult {
-  return {
-    status: 'running',
-    connection: null,
-  }
-}
-
-function unsupportedCliStatus(): CliPathStatusResult {
-  return {
-    installed: false,
-    path: null,
-  }
-}
-
-function unsupportedWorkerConfig(): HomeWorkerConfigDto {
-  return {
-    version: 1,
-    mode: 'remote',
-    remote: null,
-    updatedAt: null,
-  }
-}
-
-function unsupportedReleaseNotes(): ReleaseNotesCurrentResult {
-  return {
-    currentVersion: 'web',
-    channel: 'stable',
-    publishedAt: null,
-    provenance: 'fallback',
-    summary: null,
-    compareUrl: null,
-    items: [],
-  }
-}
-
-function unsupportedPathOpeners(): ListWorkspacePathOpenersResult {
-  return {
-    openers: [],
-  }
-}
+import {
+  createUnsupportedUpdateState,
+  resolveBrowserPlatform,
+  unsupportedCliStatus,
+  unsupportedPathOpeners,
+  unsupportedReleaseNotes,
+  unsupportedWorkerConfig,
+  unsupportedWorkerStatus,
+} from './browserOpenCoveApi.helpers'
+import { createBrowserPersistenceApi } from './browserOpenCoveApi.persistence'
+import { createBrowserAgentApi } from './browserOpenCoveApi.agent'
 
 const ptyClient = new BrowserPtyClient()
 const unsupportedUpdateState = createUnsupportedUpdateState()
@@ -196,54 +119,7 @@ export function installBrowserOpenCoveApi(): void {
         }),
     },
     persistence: {
-      readWorkspaceStateRaw: async () =>
-        await invokeBrowserControlSurface<string | null>({
-          kind: 'query',
-          id: 'sync.readWorkspaceStateRaw',
-          payload: null,
-        }),
-      writeWorkspaceStateRaw: async payload =>
-        await invokeBrowserControlSurface({
-          kind: 'command',
-          id: 'sync.writeWorkspaceStateRaw',
-          payload,
-        }),
-      readAppState: async () => {
-        const value = await invokeBrowserControlSurface<{
-          revision: number
-          state: unknown | null
-        }>({
-          kind: 'query',
-          id: 'sync.state',
-          payload: null,
-        })
-        return { state: value.state, recovery: null }
-      },
-      writeAppState: async payload => {
-        await invokeBrowserControlSurface<{ revision: number }>({
-          kind: 'command',
-          id: 'sync.writeState',
-          payload,
-        })
-
-        return {
-          ok: true,
-          level: 'full',
-          bytes: JSON.stringify(payload.state).length,
-        } as const
-      },
-      readNodeScrollback: async payload =>
-        await invokeBrowserControlSurface<string | null>({
-          kind: 'query',
-          id: 'sync.readNodeScrollback',
-          payload,
-        }),
-      writeNodeScrollback: async payload =>
-        await invokeBrowserControlSurface({
-          kind: 'command',
-          id: 'sync.writeNodeScrollback',
-          payload,
-        }),
+      ...createBrowserPersistenceApi(),
     },
     sync: {
       onStateUpdated: listener => {
@@ -344,95 +220,7 @@ export function installBrowserOpenCoveApi(): void {
       onMetadata: listener => ptyClient.onMetadata(listener),
     },
     agent: {
-      listModels: async payload => ({
-        provider: payload.provider,
-        source:
-          payload.provider === 'claude-code'
-            ? 'claude-static'
-            : payload.provider === 'codex'
-              ? 'codex-cli'
-              : payload.provider === 'opencode'
-                ? 'opencode-cli'
-                : 'gemini-cli',
-        fetchedAt: new Date().toISOString(),
-        models: [],
-        error: null,
-      }),
-      listInstalledProviders: async (): Promise<ListInstalledAgentProvidersResult> => ({
-        providers: [...AGENT_PROVIDERS],
-      }),
-      launch: async payload => {
-        const state = await invokeBrowserControlSurface<{
-          revision: number
-          state: unknown | null
-        }>({
-          kind: 'query',
-          id: 'sync.state',
-          payload: null,
-        })
-        const appState = state.state as {
-          workspaces?: Array<{
-            id: string
-            path: string
-            spaces?: Array<{ id: string; directoryPath: string }>
-          }>
-        } | null
-
-        const cwd = payload.cwd.trim()
-        const workspaces = appState?.workspaces ?? []
-        const workspaceMatch =
-          workspaces.find(workspace => workspace.path.trim() === cwd) ??
-          workspaces.find(workspace => cwd.startsWith(`${workspace.path.trim()}/`)) ??
-          null
-        const spaceMatch =
-          workspaceMatch?.spaces?.find(space => space.directoryPath.trim() === cwd) ??
-          workspaceMatch?.spaces?.find(space => cwd.startsWith(`${space.directoryPath.trim()}/`)) ??
-          workspaceMatch?.spaces?.[0] ??
-          null
-
-        if (!spaceMatch) {
-          throw new Error(`No matching space found for cwd: ${cwd}`)
-        }
-
-        const launched = await invokeBrowserControlSurface<{
-          sessionId: string
-          provider: string
-          startedAt: string
-          executionContext: unknown
-          resumeSessionId: string | null
-          effectiveModel: string | null
-          command: string
-          args: string[]
-        }>({
-          kind: 'command',
-          id: 'session.launchAgent',
-          payload: {
-            spaceId: spaceMatch.id,
-            prompt: payload.prompt,
-            provider: payload.provider,
-            model: payload.model ?? null,
-            agentFullAccess: payload.agentFullAccess ?? true,
-          },
-        })
-
-        return {
-          sessionId: launched.sessionId,
-          provider: payload.provider,
-          profileId: payload.profileId ?? null,
-          runtimeKind: 'posix',
-          command: launched.command,
-          args: launched.args,
-          launchMode: payload.mode ?? 'new',
-          effectiveModel: launched.effectiveModel,
-          resumeSessionId: launched.resumeSessionId,
-        }
-      },
-      readLastMessage: async (): Promise<ReadAgentLastMessageResult> => ({
-        message: null,
-      }),
-      resolveResumeSessionId: async () => ({
-        resumeSessionId: null,
-      }),
+      ...createBrowserAgentApi(),
     },
     task: {
       suggestTitle: async payload => ({

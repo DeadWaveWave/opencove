@@ -127,6 +127,66 @@ test.describe('Worker web canvas', () => {
       .toContain('created from external sync')
   })
 
+  test('does not rollback local note edits while applying sync refreshes', async ({ page }) => {
+    const workspacePath = await createWorkspaceDir('note-no-rollback')
+    await writeAppState(
+      page.request,
+      buildAppState({
+        workspacePath,
+        spaces: [
+          {
+            id: 'space-1',
+            name: 'Main',
+            directoryPath: workspacePath,
+            nodeIds: ['note-1'],
+            rect: { x: 0, y: 0, width: 1200, height: 800 },
+          },
+        ],
+        nodes: [
+          {
+            id: 'note-1',
+            title: 'note',
+            kind: 'note',
+            position: { x: 80, y: 80 },
+            width: 240,
+            height: 180,
+            text: 'initial',
+          },
+        ],
+      }),
+    )
+
+    await openAuthedCanvas(page)
+
+    const localDraft = `local-${'x'.repeat(8000)}`
+    const textarea = page.locator('[data-testid="note-node-textarea"]').first()
+    await expect(textarea).toBeVisible()
+    await textarea.fill(localDraft)
+
+    await invokeValue(page.request, 'command', 'note.create', {
+      spaceId: 'space-1',
+      text: 'external refresh note',
+      x: 520,
+      y: 180,
+    })
+
+    await expect
+      .poll(async () => {
+        return await page
+          .locator('[data-testid="note-node-textarea"]')
+          .evaluateAll(nodes => nodes.map(node => (node as HTMLTextAreaElement).value))
+      })
+      .toContain('external refresh note')
+
+    await expect
+      .poll(async () => {
+        return await page
+          .locator('[data-testid="note-node-textarea"]')
+          .evaluateAll(nodes => nodes.map(node => (node as HTMLTextAreaElement).value))
+      })
+      .toContain(localDraft)
+  })
+
   test('saves document edits through the worker-backed filesystem', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('document-save')
     const documentPath = `${workspacePath}/readme.md`
@@ -219,6 +279,117 @@ test.describe('Worker web canvas', () => {
     await page.keyboard.type(`echo ${secondToken}`)
     await page.keyboard.press('Enter')
     await expect(reloadedTerminal).toContainText(secondToken)
+  })
+
+  test('allows controlling a shared terminal session from multiple web clients', async ({
+    browser,
+    page,
+  }) => {
+    const workspacePath = await createWorkspaceDir('terminal-multi-client')
+    await writeAppState(
+      page.request,
+      buildAppState({
+        workspacePath,
+        spaces: [
+          {
+            id: 'space-1',
+            name: 'Main',
+            directoryPath: workspacePath,
+            nodeIds: [],
+            rect: { x: 0, y: 0, width: 1200, height: 800 },
+          },
+        ],
+      }),
+    )
+
+    await openAuthedCanvas(page)
+
+    const pane = page.locator('.workspace-canvas .react-flow__pane')
+    await pane.click({ button: 'right', position: { x: 240, y: 180 } })
+    await page.locator('[data-testid="workspace-context-new-terminal"]').click()
+
+    const terminal = page.locator('.terminal-node').first()
+    await expect(terminal).toBeVisible()
+    await expect(terminal.locator('.xterm')).toBeVisible()
+
+    const firstToken = `WEB_MULTI_CLIENT_${Date.now()}`
+    await terminal.locator('.xterm').click()
+    await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+    await page.keyboard.type(`echo ${firstToken}`)
+    await page.keyboard.press('Enter')
+    await expect(terminal).toContainText(firstToken)
+
+    const secondContext = await browser.newContext({ baseURL: webCanvasBaseUrl })
+    const secondPage = await secondContext.newPage()
+
+    try {
+      await openAuthedCanvas(secondPage)
+
+      const secondTerminal = secondPage.locator('.terminal-node').first()
+      await expect(secondTerminal).toBeVisible()
+      await expect(secondTerminal.locator('.xterm')).toBeVisible()
+
+      const secondToken = `WEB_MULTI_CLIENT_2_${Date.now()}`
+      await secondTerminal.locator('.xterm').click()
+      await expect(secondTerminal.locator('.xterm-helper-textarea')).toBeFocused()
+      await secondPage.keyboard.type(`echo ${secondToken}`)
+      await secondPage.keyboard.press('Enter')
+
+      await expect(secondTerminal).toContainText(secondToken)
+      await expect(terminal).toContainText(secondToken)
+    } finally {
+      await secondContext.close()
+    }
+  })
+
+  test('launches agent sessions from the context menu and streams output', async ({ page }) => {
+    const workspacePath = await createWorkspaceDir('agent-launch')
+    await writeAppState(
+      page.request,
+      buildAppState({
+        workspacePath,
+        spaces: [
+          {
+            id: 'space-1',
+            name: 'Main',
+            directoryPath: workspacePath,
+            nodeIds: [],
+            rect: { x: 0, y: 0, width: 1200, height: 800 },
+          },
+        ],
+        settings: {
+          defaultProvider: 'codex',
+          customModelEnabledByProvider: {
+            'claude-code': false,
+            codex: true,
+          },
+          customModelByProvider: {
+            'claude-code': '',
+            codex: 'gpt-5.2-codex',
+          },
+          customModelOptionsByProvider: {
+            'claude-code': [],
+            codex: ['gpt-5.2-codex'],
+          },
+        },
+      }),
+    )
+
+    await openAuthedCanvas(page)
+
+    const pane = page.locator('.workspace-canvas .react-flow__pane')
+    await expect(pane).toBeVisible()
+    await pane.click({ button: 'right', position: { x: 320, y: 220 } })
+
+    const runButton = page.locator('[data-testid="workspace-context-run-default-agent"]')
+    await expect(runButton).toBeVisible()
+    await runButton.click()
+
+    const terminal = page.locator('.terminal-node').first()
+    await expect(terminal).toBeVisible()
+    await expect(terminal.locator('.xterm')).toBeVisible()
+    await expect(terminal).toContainText('[opencove-test-agent] codex new')
+    await expect(terminal).toContainText('gpt-5.2-codex')
   })
 
   test('keeps space selection local per client and hides desktop-only path openers', async ({

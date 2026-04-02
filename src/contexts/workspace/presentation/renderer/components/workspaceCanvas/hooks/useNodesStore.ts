@@ -161,8 +161,10 @@ export function useWorkspaceCanvasNodesStore({
           now,
         })
       })
+
+      onRequestPersistFlush?.()
     },
-    [clearAgentLaunchToken, setNodes],
+    [clearAgentLaunchToken, onRequestPersistFlush, setNodes],
   )
 
   const normalizePosition = useCallback((nodeId: string, desired: Point, size: Size): Point => {

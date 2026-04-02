@@ -43,6 +43,7 @@ export function normalizeScrollback(value: unknown): string | null {
 
 export type NormalizedPersistedNode = {
   id: string
+  sessionId: string | null
   title: string
   titlePinnedByUser?: boolean
   position: { x: number; y: number }
@@ -218,8 +219,12 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
           }
         : { x: 0, y: 0 }
 
+      const sessionIdRaw = typeof node.sessionId === 'string' ? node.sessionId.trim() : ''
+      const sessionId = sessionIdRaw.length > 0 ? sessionIdRaw : null
+
       normalizedNodes.push({
         id: nodeId,
+        sessionId,
         title: normalizeString(node.title),
         titlePinnedByUser: node.titlePinnedByUser === true,
         position,

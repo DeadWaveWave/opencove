@@ -30,6 +30,7 @@ export const workspaces = sqliteTable('workspaces', {
 export const nodes = sqliteTable('nodes', {
   id: text('id').primaryKey(),
   workspaceId: text('workspace_id').notNull(),
+  sessionId: text('session_id'),
   title: text('title').notNull(),
   titlePinnedByUser: integer('title_pinned_by_user', { mode: 'number' }).notNull(),
   positionX: real('position_x').notNull(),

@@ -3,16 +3,16 @@ import { Readable } from 'node:stream'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const { sendMock, getAllWebContentsMock } = vi.hoisted(() => {
-  const sendMock = vi.fn()
-  const getAllWebContentsMock = vi.fn(() => [
+  const sendMockInner = vi.fn()
+  const getAllWebContentsMockInner = vi.fn(() => [
     {
       isDestroyed: () => false,
       getType: () => 'window',
-      send: sendMock,
+      send: sendMockInner,
     },
   ])
 
-  return { sendMock, getAllWebContentsMock }
+  return { sendMock: sendMockInner, getAllWebContentsMock: getAllWebContentsMockInner }
 })
 
 vi.mock('electron', () => {

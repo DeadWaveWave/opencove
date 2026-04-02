@@ -222,6 +222,89 @@ describe('control surface session handlers', () => {
     expect(killed).toBe('pty-123')
   })
 
+  it('allows launching agent sessions with an empty prompt', async () => {
+    const appState = {
+      formatVersion: 1,
+      activeWorkspaceId: 'ws1',
+      workspaces: [
+        {
+          id: 'ws1',
+          name: 'Workspace',
+          path: '/repo',
+          worktreesRoot: '',
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [
+            {
+              id: 's1',
+              name: 'Space A',
+              directoryPath: '/repo',
+              labelColor: null,
+              nodeIds: [],
+              rect: null,
+            },
+          ],
+          activeSpaceId: null,
+          nodes: [],
+          spaceArchiveRecords: [],
+        },
+      ],
+      settings: {},
+    }
+
+    const controlSurface = createControlSurface()
+    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
+      registerSessionMetadata: () => undefined,
+      hasSession: () => false,
+    }
+
+    registerSessionHandlers(controlSurface, {
+      approvedWorkspaces: {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      },
+      getPersistenceStore: async () => createStubStore(appState),
+      ptyRuntime: {
+        spawnSession: async () => ({ sessionId: 'pty-empty-prompt' }),
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+        attach: () => undefined,
+        detach: () => undefined,
+        snapshot: () => '',
+        startSessionStateWatcher: () => undefined,
+        dispose: () => undefined,
+      },
+      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
+    })
+
+    const launched = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'session.launchAgent',
+      payload: { spaceId: 's1', prompt: '' },
+    })
+
+    expect(launched.ok).toBe(true)
+    if (!launched.ok) {
+      return
+    }
+
+    expect(launched.value.sessionId).toBe('pty-empty-prompt')
+
+    const fetched = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'session.get',
+      payload: { sessionId: launched.value.sessionId },
+    })
+
+    expect(fetched.ok).toBe(true)
+    if (fetched.ok) {
+      expect(fetched.value.prompt).toBe('')
+    }
+  })
+
   it('rejects invalid providers', async () => {
     const appState = {
       formatVersion: 1,

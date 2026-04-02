@@ -11,6 +11,7 @@ import {
 
 export const testWorkspacePath = path.resolve(__dirname, '../../')
 export const storageKey = 'opencove:m0:workspace-state'
+export const viewStateStorageKey = 'opencove:m5.6:view-state'
 export const seededWorkspaceId = 'workspace-seeded'
 export { beginDragMouse, dragLocatorTo, dragMouse } from './workspace-canvas.gestures'
 export {
@@ -270,6 +271,75 @@ export async function readCanvasViewport(
 
     return { x, y, zoom }
   })
+}
+
+export async function readWorkspaceViewState(
+  window: Page,
+  workspaceId: string,
+): Promise<{
+  viewport: { x: number; y: number; zoom: number }
+  isMinimapVisible: boolean
+  activeSpaceId: string | null
+} | null> {
+  return await window.evaluate(
+    ({ key, id }) => {
+      const raw = window.localStorage.getItem(key)
+      if (!raw) {
+        return null
+      }
+
+      try {
+        const parsed = JSON.parse(raw) as {
+          workspaces?: Record<
+            string,
+            {
+              viewport?: { x?: unknown; y?: unknown; zoom?: unknown }
+              isMinimapVisible?: unknown
+              activeSpaceId?: unknown
+            }
+          >
+        }
+
+        const workspace = parsed.workspaces?.[id]
+        if (!workspace) {
+          return null
+        }
+
+        const viewportRecord = workspace.viewport ?? {}
+        const x =
+          typeof viewportRecord.x === 'number' && Number.isFinite(viewportRecord.x)
+            ? viewportRecord.x
+            : 0
+        const y =
+          typeof viewportRecord.y === 'number' && Number.isFinite(viewportRecord.y)
+            ? viewportRecord.y
+            : 0
+        const zoom =
+          typeof viewportRecord.zoom === 'number' &&
+          Number.isFinite(viewportRecord.zoom) &&
+          viewportRecord.zoom > 0
+            ? viewportRecord.zoom
+            : 1
+
+        const isMinimapVisible =
+          typeof workspace.isMinimapVisible === 'boolean' ? workspace.isMinimapVisible : true
+
+        const activeSpaceId =
+          typeof workspace.activeSpaceId === 'string' && workspace.activeSpaceId.trim().length > 0
+            ? workspace.activeSpaceId
+            : null
+
+        return {
+          viewport: { x, y, zoom },
+          isMinimapVisible,
+          activeSpaceId,
+        }
+      } catch {
+        return null
+      }
+    },
+    { key: viewStateStorageKey, id: workspaceId },
+  )
 }
 
 export async function selectCoveOption(

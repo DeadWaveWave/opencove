@@ -249,6 +249,7 @@ export interface SpaceArchiveNoteSnapshot {
 
 export interface PersistedTerminalNode {
   id: string
+  sessionId?: string | null
   title: string
   titlePinnedByUser?: boolean
   position: Point

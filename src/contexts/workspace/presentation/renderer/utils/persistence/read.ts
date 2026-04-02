@@ -8,6 +8,7 @@ import {
   persistLocalViewStateFromAppState,
   stripLocalViewStateFromPersistedState,
 } from './viewState'
+import { markPersistedStateAsSynced } from './write'
 
 function parsePersistedStateValue(value: unknown): {
   state: PersistedAppState | null
@@ -93,8 +94,10 @@ export async function readPersistedStateWithMeta(): Promise<{
   if (primary?.state) {
     const parsed = parsePersistedStateValue(primary.state)
     if (parsed.state) {
+      const state = applyLocalViewStateToPersistedState(parsed.state)
+      markPersistedStateAsSynced(state)
       return {
-        state: applyLocalViewStateToPersistedState(parsed.state),
+        state,
         recovery,
         hasStandardWindowSizeBucket: parsed.hasStandardWindowSizeBucket,
       }
@@ -133,7 +136,11 @@ export async function readPersistedStateWithMeta(): Promise<{
   )
 
   return {
-    state: applyLocalViewStateToPersistedState(migratedState),
+    state: (() => {
+      const state = applyLocalViewStateToPersistedState(migratedState)
+      markPersistedStateAsSynced(state)
+      return state
+    })(),
     recovery,
     hasStandardWindowSizeBucket: false,
   }

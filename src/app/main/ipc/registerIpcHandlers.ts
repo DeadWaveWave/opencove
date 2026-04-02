@@ -27,10 +27,12 @@ import type {
   ControlSurfaceRemoteEndpointResolver,
 } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
+import { createRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
 import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBridge'
 import { registerLocalWorkerIpcHandlers } from './registerLocalWorkerIpcHandlers'
 import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandlers'
 import { registerCliIpcHandlers } from './registerCliIpcHandlers'
+import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -40,13 +42,23 @@ export function registerIpcHandlers(deps?: {
   workerEndpoint?: ControlSurfaceRemoteEndpoint
   workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver
 }): IpcRegistrationDisposable {
-  const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const appUpdateService = createAppUpdateService()
   const releaseNotesService = createReleaseNotesService()
   const workerEndpointResolver =
     deps?.workerEndpointResolver ??
     (deps?.workerEndpoint ? async () => deps.workerEndpoint ?? null : null)
+
+  const ptyRuntime = workerEndpointResolver
+    ? createRemotePtyRuntime({ endpointResolver: workerEndpointResolver })
+    : (deps?.ptyRuntime ?? createPtyRuntime())
+
+  const ptyApprovedWorkspaces = workerEndpointResolver
+    ? {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      }
+    : approvedWorkspaces
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
@@ -91,8 +103,10 @@ export function registerIpcHandlers(deps?: {
     registerWindowChromeIpcHandlers(),
     registerWindowMetricsIpcHandlers(),
     registerDiagnosticsIpcHandlers(),
-    registerPtyIpcHandlers(ptyRuntime, approvedWorkspaces),
-    registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
+    registerPtyIpcHandlers(ptyRuntime, ptyApprovedWorkspaces),
+    workerEndpointResolver
+      ? registerRemoteAgentIpcHandlers({ endpointResolver: workerEndpointResolver, ptyRuntime })
+      : registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),
     registerSystemIpcHandlers(),
   ]

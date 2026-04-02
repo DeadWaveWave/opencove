@@ -1,0 +1,133 @@
+import { expect, test } from '@playwright/test'
+import { randomUUID } from 'node:crypto'
+import {
+  buildAppState,
+  createWorkspaceDir,
+  invokeValue,
+  openAuthedCanvas,
+  readSharedState,
+  writeAppState,
+} from './helpers'
+
+test.describe('Worker web canvas sync resilience', () => {
+  test('does not rollback note edits when a sync update lands mid-typing', async ({ page }) => {
+    const workspacePath = await createWorkspaceDir('note-no-rollback-mid-typing')
+    await writeAppState(
+      page.request,
+      buildAppState({
+        workspacePath,
+        spaces: [
+          {
+            id: 'space-1',
+            name: 'Main',
+            directoryPath: workspacePath,
+            nodeIds: ['note-1'],
+            rect: { x: 0, y: 0, width: 1200, height: 800 },
+          },
+        ],
+        nodes: [
+          {
+            id: 'note-1',
+            title: 'note',
+            kind: 'note',
+            position: { x: 80, y: 80 },
+            width: 240,
+            height: 180,
+            text: '',
+          },
+        ],
+      }),
+    )
+
+    await openAuthedCanvas(page)
+
+    const textarea = page.locator('[data-testid="note-node-textarea"]').first()
+    await expect(textarea).toBeVisible()
+    await textarea.click()
+
+    const localDraft = `local-${randomUUID()}-${'x'.repeat(1200)}`
+
+    const typing = page.keyboard.type(localDraft, { delay: 2 })
+    await page.waitForTimeout(80)
+
+    await invokeValue(page.request, 'command', 'note.create', {
+      spaceId: 'space-1',
+      text: 'external refresh note',
+      x: 520,
+      y: 180,
+    })
+
+    await typing
+
+    await expect(textarea).toHaveValue(localDraft)
+
+    await expect
+      .poll(async () => {
+        return await page
+          .locator('[data-testid="note-node-textarea"]')
+          .evaluateAll(nodes => nodes.map(node => (node as HTMLTextAreaElement).value))
+      })
+      .toContain('external refresh note')
+  })
+
+  test('keeps closed terminal nodes closed after a sync refresh', async ({ page }) => {
+    const workspacePath = await createWorkspaceDir('terminal-close-sync')
+    await writeAppState(
+      page.request,
+      buildAppState({
+        workspacePath,
+        spaces: [
+          {
+            id: 'space-1',
+            name: 'Main',
+            directoryPath: workspacePath,
+            nodeIds: ['note-1'],
+            rect: { x: 0, y: 0, width: 1200, height: 800 },
+          },
+        ],
+        nodes: [
+          {
+            id: 'note-1',
+            title: 'note',
+            kind: 'note',
+            position: { x: 40, y: 40 },
+            width: 240,
+            height: 180,
+            text: 'anchor note',
+          },
+        ],
+      }),
+    )
+
+    await openAuthedCanvas(page)
+
+    const pane = page.locator('.workspace-canvas .react-flow__pane')
+    await expect(pane).toBeVisible()
+    await pane.click({ button: 'right', position: { x: 600, y: 600 } })
+    await page.locator('[data-testid="workspace-context-new-terminal"]').click()
+
+    const terminal = page.locator('.terminal-node').first()
+    await expect(terminal).toBeVisible()
+    await expect(terminal.locator('.xterm')).toBeVisible()
+
+    await terminal.locator('.terminal-node__close').click()
+    await expect(page.locator('.terminal-node')).toHaveCount(0)
+
+    await invokeValue(page.request, 'command', 'note.create', {
+      spaceId: 'space-1',
+      text: 'external note after close',
+      x: 520,
+      y: 180,
+    })
+
+    await expect(page.locator('.terminal-node')).toHaveCount(0)
+
+    await expect
+      .poll(async () => {
+        const shared = await readSharedState(page.request)
+        const nodes = shared.state?.workspaces[0]?.nodes ?? []
+        return nodes.some(node => node.kind === 'terminal')
+      })
+      .toBe(false)
+  })
+})

@@ -106,11 +106,12 @@ export function buildAppState(options: {
     rect: { x: number; y: number; width: number; height: number } | null
   }>
   nodes?: SeedNode[]
+  settings?: Record<string, unknown>
 }): {
   formatVersion: number
   activeWorkspaceId: string
   workspaces: unknown[]
-  settings: Record<string, never>
+  settings: Record<string, unknown>
 } {
   const workspaceId = 'workspace-1'
   const nodes = (options.nodes ?? []).map(node => ({
@@ -160,7 +161,7 @@ export function buildAppState(options: {
         nodes,
       },
     ],
-    settings: {},
+    settings: options.settings ?? {},
   }
 }
 

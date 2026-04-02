@@ -37,10 +37,12 @@ export function useWorkspaceStateHandlers({
 
         const nodeIds = new Set(nodes.map(node => node.id))
         const nextSpaces = sanitizeWorkspaceSpaces(
-          workspace.spaces.map(space => ({
-            ...space,
-            nodeIds: space.nodeIds.filter(nodeId => nodeIds.has(nodeId)),
-          })),
+          workspace.spaces
+            .map(space => ({
+              ...space,
+              nodeIds: space.nodeIds.filter(nodeId => nodeIds.has(nodeId)),
+            }))
+            .filter(space => space.nodeIds.length > 0),
         )
         const hasActiveSpace =
           workspace.activeSpaceId !== null &&

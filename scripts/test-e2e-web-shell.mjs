@@ -138,7 +138,8 @@ async function stopWorker(child) {
 }
 
 async function main() {
-  const forwardedArgs = process.argv.slice(2)
+  const forwardedArgsRaw = process.argv.slice(2)
+  const forwardedArgs = forwardedArgsRaw[0] === '--' ? forwardedArgsRaw.slice(1) : forwardedArgsRaw
 
   if (!isTruthyEnv(process.env['OPENCOVE_E2E_SKIP_BUILD'])) {
     const buildCode = await runCommand(['build'])

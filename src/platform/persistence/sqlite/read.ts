@@ -79,6 +79,10 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
     workspaces: workspaceRows.map(workspace => {
       const workspaceNodes = (nodesByWorkspaceId.get(workspace.id) ?? []).map(node => ({
         id: node.id,
+        sessionId:
+          typeof node.sessionId === 'string' && node.sessionId.trim().length > 0
+            ? node.sessionId
+            : null,
         title: node.title,
         titlePinnedByUser: node.titlePinnedByUser === 1,
         position: { x: node.positionX, y: node.positionY },

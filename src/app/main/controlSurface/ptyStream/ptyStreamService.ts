@@ -35,6 +35,18 @@ function normalizeOptionalString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
+function normalizePtyWriteData(value: unknown): string {
+  if (value === null || value === undefined) {
+    return ''
+  }
+
+  if (typeof value !== 'string') {
+    return ''
+  }
+
+  return value
+}
+
 function normalizeSessionId(value: unknown): string | null {
   const sessionId = normalizeOptionalString(value)
   return sessionId
@@ -295,7 +307,7 @@ export function createPtyStreamService(options: {
 
       if (type === 'write') {
         const sessionId = normalizeSessionId(message.sessionId)
-        const data = normalizeOptionalString(message.data) ?? ''
+        const data = normalizePtyWriteData(message.data)
         if (!sessionId) {
           closeWithError(ws, 'protocol.invalid_message', 'Missing sessionId.')
           return

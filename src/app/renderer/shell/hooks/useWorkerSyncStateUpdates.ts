@@ -12,6 +12,8 @@ import { readPersistedState } from '@contexts/workspace/presentation/renderer/ut
 import { useAppStore } from '../store/useAppStore'
 import type { SyncEventPayload } from '@shared/contracts/dto'
 
+const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
+
 function mergeRuntimeNode(
   persistedNode: Node<TerminalNodeData>,
   existingNode: Node<TerminalNodeData> | undefined,
@@ -20,12 +22,24 @@ function mergeRuntimeNode(
     return persistedNode
   }
 
+  const persistedSessionId = persistedNode.data.sessionId.trim()
+  const existingSessionId = existingNode.data.sessionId.trim()
+  const kind = persistedNode.data.kind
+
+  if (kind === 'note' || kind === 'task' || kind === 'image' || kind === 'document') {
+    return existingNode
+  }
+
   return {
     ...persistedNode,
     data: {
       ...persistedNode.data,
-      sessionId: existingNode.data.sessionId || '',
+      sessionId: persistedSessionId.length > 0 ? persistedSessionId : existingSessionId,
       scrollback: existingNode.data.scrollback ?? persistedNode.data.scrollback,
+      agent:
+        kind === 'agent'
+          ? (existingNode.data.agent ?? persistedNode.data.agent)
+          : persistedNode.data.agent,
     },
   }
 }
@@ -110,65 +124,134 @@ function resolveNextActiveWorkspaceId(
 
 export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
   const refreshTimerRef = useRef<number | null>(null)
+  const refreshScheduledAtMsRef = useRef<number | null>(null)
   const refreshInFlightRef = useRef(false)
   const refreshPendingRef = useRef(false)
+  const lastLocalSyncWriteRevisionRef = useRef(0)
+  const pendingSyncWriteRevisionRef = useRef<number | null>(null)
+  const needsFullRefreshRef = useRef(false)
 
   useEffect(() => {
     if (!options.enabled) {
       return
     }
 
-    const scheduleRefresh = (): void => {
+    const handleLocalSyncWrite = (event: Event): void => {
+      const revision = (event as CustomEvent<{ revision?: unknown }>).detail?.revision
+      if (typeof revision !== 'number' || !Number.isFinite(revision) || revision < 0) {
+        return
+      }
+
+      lastLocalSyncWriteRevisionRef.current = Math.max(
+        lastLocalSyncWriteRevisionRef.current,
+        Math.floor(revision),
+      )
+    }
+
+    window.addEventListener(LOCAL_SYNC_WRITE_EVENT_NAME, handleLocalSyncWrite as EventListener)
+
+    function scheduleRefresh(delayMs = 150): void {
       if (refreshInFlightRef.current) {
         refreshPendingRef.current = true
         return
       }
 
+      const normalizedDelay = Math.max(0, Math.floor(delayMs))
+      const nextScheduledAt = Date.now() + normalizedDelay
+
       if (refreshTimerRef.current !== null) {
-        return
+        const currentScheduledAt = refreshScheduledAtMsRef.current
+        if (currentScheduledAt !== null && nextScheduledAt >= currentScheduledAt) {
+          return
+        }
+
+        window.clearTimeout(refreshTimerRef.current)
+        refreshTimerRef.current = null
+        refreshScheduledAtMsRef.current = null
       }
 
+      refreshScheduledAtMsRef.current = nextScheduledAt
       refreshTimerRef.current = window.setTimeout(() => {
         refreshTimerRef.current = null
-        refreshInFlightRef.current = true
-
-        void readPersistedState()
-          .then(persisted => {
-            if (!persisted) {
-              return
-            }
-
-            const current = useAppStore.getState()
-            const currentById = new Map(current.workspaces.map(ws => [ws.id, ws] as const))
-
-            const nextWorkspaces = persisted.workspaces.map(workspace =>
-              toShellWorkspaceStateForSync(workspace, currentById.get(workspace.id)),
-            )
-
-            useAppStore.getState().setWorkspaces(nextWorkspaces)
-            useAppStore
-              .getState()
-              .setActiveWorkspaceId(
-                resolveNextActiveWorkspaceId(persisted, current.activeWorkspaceId),
-              )
-          })
-          .finally(() => {
-            refreshInFlightRef.current = false
-            if (refreshPendingRef.current) {
-              refreshPendingRef.current = false
-              scheduleRefresh()
-            }
-          })
-      }, 150)
+        refreshScheduledAtMsRef.current = null
+        void runRefresh()
+      }, normalizedDelay)
     }
 
     const syncApi = window.opencoveApi?.sync
+    const SYNC_WRITE_EVENT_DELAY_MS = 200
     const unsubscribe =
       typeof syncApi?.onStateUpdated === 'function'
-        ? syncApi.onStateUpdated((_event: SyncEventPayload) => {
-            scheduleRefresh()
+        ? syncApi.onStateUpdated((event: SyncEventPayload) => {
+            if (
+              event.type === 'app_state.updated' &&
+              event.operationId === 'sync.writeState' &&
+              typeof event.revision === 'number' &&
+              Number.isFinite(event.revision)
+            ) {
+              const revision = Math.floor(event.revision)
+              if (revision <= lastLocalSyncWriteRevisionRef.current) {
+                return
+              }
+
+              pendingSyncWriteRevisionRef.current =
+                pendingSyncWriteRevisionRef.current === null
+                  ? revision
+                  : Math.max(pendingSyncWriteRevisionRef.current, revision)
+              scheduleRefresh(SYNC_WRITE_EVENT_DELAY_MS)
+              return
+            }
+
+            needsFullRefreshRef.current = true
+            scheduleRefresh(0)
           })
         : null
+
+    async function runRefresh(): Promise<void> {
+      const pendingSyncWriteRevision = pendingSyncWriteRevisionRef.current
+      const shouldRefreshForSyncWrite =
+        typeof pendingSyncWriteRevision === 'number' &&
+        pendingSyncWriteRevision > lastLocalSyncWriteRevisionRef.current
+
+      if (!needsFullRefreshRef.current && !shouldRefreshForSyncWrite) {
+        pendingSyncWriteRevisionRef.current = null
+        return
+      }
+
+      refreshInFlightRef.current = true
+
+      try {
+        needsFullRefreshRef.current = false
+        pendingSyncWriteRevisionRef.current = null
+
+        const persisted = await readPersistedState()
+        if (!persisted) {
+          return
+        }
+
+        useAppStore.getState().setWorkspaces(previous => {
+          const currentById = new Map(previous.map(ws => [ws.id, ws] as const))
+          return persisted.workspaces.map(workspace =>
+            toShellWorkspaceStateForSync(workspace, currentById.get(workspace.id)),
+          )
+        })
+
+        useAppStore
+          .getState()
+          .setActiveWorkspaceId(currentActive =>
+            resolveNextActiveWorkspaceId(persisted, currentActive),
+          )
+      } catch {
+        // ignore refresh failures
+      } finally {
+        refreshInFlightRef.current = false
+
+        if (refreshPendingRef.current) {
+          refreshPendingRef.current = false
+          scheduleRefresh()
+        }
+      }
+    }
 
     return () => {
       if (refreshTimerRef.current !== null) {
@@ -176,9 +259,11 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         refreshTimerRef.current = null
       }
 
+      refreshScheduledAtMsRef.current = null
       refreshInFlightRef.current = false
       refreshPendingRef.current = false
       unsubscribe?.()
+      window.removeEventListener(LOCAL_SYNC_WRITE_EVENT_NAME, handleLocalSyncWrite as EventListener)
     }
   }, [options.enabled])
 }

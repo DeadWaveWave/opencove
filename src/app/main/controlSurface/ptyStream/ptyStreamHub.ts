@@ -57,6 +57,24 @@ export class PtyStreamHub {
     return created
   }
 
+  private setSessionController(session: SessionState, controllerClientId: string | null): void {
+    session.controllerClientId = controllerClientId
+
+    for (const subscriberId of session.subscribers) {
+      const client = this.clients.get(subscriberId)
+      if (!client) {
+        continue
+      }
+
+      client.rolesBySessionId.set(
+        session.sessionId,
+        subscriberId === controllerClientId ? 'controller' : 'viewer',
+      )
+    }
+
+    this.broadcastControlChanged(session.sessionId)
+  }
+
   public registerClient(options: {
     clientId: string
     kind: PtyStreamClientKind
@@ -327,8 +345,7 @@ export class PtyStreamHub {
     client.rolesBySessionId.set(options.sessionId, role)
 
     if (role === 'controller' && !session.controllerClientId) {
-      session.controllerClientId = client.clientId
-      this.broadcastControlChanged(options.sessionId)
+      this.setSessionController(session, client.clientId)
     }
 
     const controllerClient = session.controllerClientId
@@ -379,8 +396,7 @@ export class PtyStreamHub {
     client.rolesBySessionId.delete(sessionId)
 
     if (session.controllerClientId === clientId) {
-      session.controllerClientId = null
-      this.broadcastControlChanged(sessionId)
+      this.setSessionController(session, null)
     }
   }
 
@@ -396,19 +412,7 @@ export class PtyStreamHub {
       return
     }
 
-    if (session.controllerClientId && session.controllerClientId !== options.clientId) {
-      sendPtyError(
-        client.ws,
-        options.sessionId,
-        'session.control_taken',
-        'Session is controlled by another client.',
-      )
-      return
-    }
-
-    session.controllerClientId = options.clientId
-    client.rolesBySessionId.set(options.sessionId, 'controller')
-    this.broadcastControlChanged(options.sessionId)
+    this.setSessionController(session, options.clientId)
   }
 
   public releaseControl(options: { clientId: string; sessionId: string }): void {
@@ -422,9 +426,7 @@ export class PtyStreamHub {
       return
     }
 
-    session.controllerClientId = null
-    client.rolesBySessionId.set(options.sessionId, 'viewer')
-    this.broadcastControlChanged(options.sessionId)
+    this.setSessionController(session, null)
   }
 
   public write(options: { clientId: string; sessionId: string; data: string }): void {
@@ -434,14 +436,13 @@ export class PtyStreamHub {
       return
     }
 
-    if (session.controllerClientId !== options.clientId) {
-      sendPtyError(
-        client.ws,
-        options.sessionId,
-        'session.not_controller',
-        'Only controller can write.',
-      )
+    if (!session.subscribers.has(options.clientId)) {
+      sendPtyError(client.ws, options.sessionId, 'session.not_attached', 'Not attached.')
       return
+    }
+
+    if (session.controllerClientId !== options.clientId) {
+      this.setSessionController(session, options.clientId)
     }
 
     this.ptyRuntime.write(options.sessionId, options.data)

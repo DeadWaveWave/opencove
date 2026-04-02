@@ -46,13 +46,13 @@ export function writeNormalizedAppState(
   const insertNode = db.prepare(
     `
       INSERT INTO nodes (
-        id, workspace_id, title, title_pinned_by_user,
+        id, workspace_id, session_id, title, title_pinned_by_user,
         position_x, position_y, width, height,
         kind, label_color_override,
         status, started_at, ended_at, exit_code, last_error,
         execution_directory, expected_directory, agent_json, task_json
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -118,6 +118,7 @@ export function writeNormalizedAppState(
         insertNode.run(
           node.id,
           workspace.id,
+          node.sessionId ?? null,
           node.title,
           node.titlePinnedByUser === true ? 1 : 0,
           node.position.x,
