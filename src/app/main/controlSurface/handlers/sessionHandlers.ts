@@ -33,11 +33,11 @@ import {
 } from './sessionLaunchSupport'
 import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
+import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
 const SESSION_FILE_RESOLVE_TIMEOUT_MS = 1_500
-const WORKER_TEST_AGENT_STUB_MODE = 'new' as const
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
@@ -74,35 +74,6 @@ function normalizeAgentProviderId(value: unknown): AgentProviderId | null {
   throw createAppError('common.invalid_input', {
     debugMessage: `Invalid payload for session.launchAgent provider: ${provider}`,
   })
-}
-
-function resolveWorkerAgentTestStub(options: {
-  provider: AgentProviderId
-  cwd: string
-  model: string | null
-}): { command: string; args: string[] } | null {
-  if (process.env.NODE_ENV !== 'test') {
-    return null
-  }
-
-  const sessionScenario = process.env['OPENCOVE_TEST_AGENT_SESSION_SCENARIO']?.trim() ?? ''
-  const stubScriptPath = process.env['OPENCOVE_TEST_AGENT_STUB_SCRIPT']?.trim() ?? ''
-
-  if (sessionScenario.length === 0 || stubScriptPath.length === 0) {
-    return null
-  }
-
-  return {
-    command: process.execPath,
-    args: [
-      stubScriptPath,
-      options.provider,
-      options.cwd,
-      WORKER_TEST_AGENT_STUB_MODE,
-      options.model ?? 'default-model',
-      sessionScenario,
-    ],
-  }
 }
 
 function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput {
@@ -157,6 +128,29 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
 
   const model = modelRaw === null ? null : normalizeOptionalString(modelRaw)
   const agentFullAccess = payload.agentFullAccess
+  const modeRaw = payload.mode
+
+  if (modeRaw !== undefined && modeRaw !== null && typeof modeRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent mode.',
+    })
+  }
+
+  const mode = modeRaw === 'resume' ? 'resume' : 'new'
+
+  const resumeSessionIdRaw = payload.resumeSessionId
+  if (
+    resumeSessionIdRaw !== undefined &&
+    resumeSessionIdRaw !== null &&
+    typeof resumeSessionIdRaw !== 'string'
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent resumeSessionId.',
+    })
+  }
+
+  const resumeSessionId =
+    resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw)
 
   if (
     agentFullAccess !== undefined &&
@@ -179,7 +173,9 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     ...(cwd.length > 0 ? { cwd } : {}),
     prompt,
     provider,
+    mode,
     model,
+    resumeSessionId,
     agentFullAccess: agentFullAccess ?? null,
   }
 }
@@ -232,6 +228,8 @@ export function registerSessionHandlers(
     handle: async (_ctx, payload): Promise<LaunchAgentSessionResult> => {
       const resolvedSpaceId = typeof payload.spaceId === 'string' ? payload.spaceId.trim() : ''
       const resolvedCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : ''
+      const mode = payload.mode === 'resume' ? 'resume' : 'new'
+      const resumeSessionId = normalizeOptionalString(payload.resumeSessionId)
 
       const { workingDirectory, agentSettings } = resolvedSpaceId
         ? await resolveSpaceWorkingDirectoryFromStore({
@@ -265,7 +263,12 @@ export function registerSessionHandlers(
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
 
-      const testStub = resolveWorkerAgentTestStub({ provider, cwd: workingDirectory, model })
+      const testStub = resolveWorkerAgentTestStub({
+        provider,
+        cwd: workingDirectory,
+        mode,
+        model,
+      })
 
       const opencodeServer =
         provider === 'opencode' && !testStub
@@ -279,10 +282,10 @@ export function registerSessionHandlers(
         ? { command: testStub.command, args: testStub.args, effectiveModel: model }
         : buildAgentLaunchCommand({
             provider,
-            mode: 'new',
-            prompt: payload.prompt,
+            mode,
+            prompt: mode === 'new' ? payload.prompt : '',
             model,
-            resumeSessionId: null,
+            resumeSessionId,
             agentFullAccess,
             opencodeServer,
           })
@@ -330,7 +333,7 @@ export function registerSessionHandlers(
         model,
         effectiveModel: launchCommand.effectiveModel,
         executionContext,
-        resumeSessionId: null,
+        resumeSessionId,
         startedAtMs,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
@@ -351,7 +354,7 @@ export function registerSessionHandlers(
         provider,
         startedAt,
         executionContext,
-        resumeSessionId: null,
+        resumeSessionId,
         effectiveModel: launchCommand.effectiveModel,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,

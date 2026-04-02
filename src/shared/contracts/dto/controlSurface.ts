@@ -154,7 +154,9 @@ export interface LaunchAgentSessionInput {
   cwd?: string | null
   prompt: string
   provider?: AgentProviderId | null
+  mode?: 'new' | 'resume' | null
   model?: string | null
+  resumeSessionId?: string | null
   agentFullAccess?: boolean | null
 }
 

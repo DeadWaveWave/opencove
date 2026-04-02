@@ -3,6 +3,7 @@ export const APP_ERROR_CODES = [
   'common.approved_path_required',
   'common.unavailable',
   'common.unexpected',
+  'worker.unavailable',
   'space.not_found',
   'session.not_found',
   'control_surface.unauthorized',

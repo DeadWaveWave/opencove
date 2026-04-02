@@ -7,6 +7,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.approved_path_required': 'The selected path is outside approved workspaces.',
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
+    'worker.unavailable': 'Worker is unavailable.',
     'space.not_found': 'Space not found.',
     'session.not_found': 'Session not found.',
     'control_surface.unauthorized': 'Unauthorized request.',

@@ -20,6 +20,9 @@ import {
   createRemotePtyStreamMessageHandler,
   type AttachedSessionState,
 } from './remotePtyStreamMessageHandler'
+import { createRemotePtyRuntimeAgentMetadataWatcher } from './remotePtyRuntime.agentMetadataWatcher'
+import { sendToWebContentsSessionSubscribers } from './remotePtyRuntime.webContents'
+
 function resolveWsUrl(endpoint: { hostname: string; port: number }): string {
   return `ws://${endpoint.hostname}:${endpoint.port}${PTY_STREAM_WS_PATH}`
 }
@@ -47,36 +50,15 @@ export function createRemotePtyRuntime(options: {
   let socketHandshakeReject: ((error: Error) => void) | null = null
   let reconnectTimer: NodeJS.Timeout | null = null
   let disposed = false
-  const sendToSubscriber = <Payload>(
-    contentsId: number,
-    channel: string,
-    payload: Payload,
-  ): void => {
-    const content = webContents.fromId(contentsId)
-    if (!content || content.isDestroyed() || content.getType() !== 'window') {
-      return
-    }
-
-    try {
-      content.send(channel, payload)
-    } catch {
-      // ignore send failures
-    }
+  const sendToSessionSubscribers = (sessionId: string, channel: string, payload: unknown): void => {
+    sendToWebContentsSessionSubscribers(subscribersBySessionId, sessionId, channel, payload)
   }
-  const sendToSessionSubscribers = <Payload>(
-    sessionId: string,
-    channel: string,
-    payload: Payload,
-  ): void => {
-    const subscribers = subscribersBySessionId.get(sessionId)
-    if (!subscribers || subscribers.size === 0) {
-      return
-    }
 
-    for (const contentsId of subscribers) {
-      sendToSubscriber(contentsId, channel, payload)
-    }
-  }
+  const agentMetadataWatcher = createRemotePtyRuntimeAgentMetadataWatcher({
+    endpointResolver: options.endpointResolver,
+    sendToSessionSubscribers,
+  })
+
   const cleanupContents = (contentsId: number): void => {
     const sessions = sessionsByContentsId.get(contentsId)
     if (!sessions) {
@@ -88,6 +70,7 @@ export function createRemotePtyRuntime(options: {
       subscribers?.delete(contentsId)
       if (subscribers && subscribers.size === 0) {
         subscribersBySessionId.delete(sessionId)
+        agentMetadataWatcher.cancel(sessionId)
         void sendSocketMessage({ type: 'detach', sessionId }).catch(() => undefined)
       }
     }
@@ -133,9 +116,7 @@ export function createRemotePtyRuntime(options: {
 
   const handleMessage = createRemotePtyStreamMessageHandler({
     attachedSessions,
-    sendToSessionSubscribers: (sessionId, channel, payload) => {
-      sendToSessionSubscribers(sessionId, channel, payload)
-    },
+    sendToSessionSubscribers,
     externalDataListeners,
     externalExitListeners,
     snapshot: async sessionId => await runtime.snapshot(sessionId),
@@ -160,9 +141,7 @@ export function createRemotePtyRuntime(options: {
   const connectSocket = async (): Promise<void> => {
     const endpoint = await options.endpointResolver()
     if (!endpoint) {
-      throw createAppError('common.unavailable', {
-        debugMessage: 'Worker endpoint is unavailable for PTY streaming.',
-      })
+      throw createAppError('worker.unavailable')
     }
 
     const url = resolveWsUrl(endpoint)
@@ -304,9 +283,7 @@ export function createRemotePtyRuntime(options: {
   const spawnTerminalSession = async (input: SpawnTerminalInput): Promise<SpawnTerminalResult> => {
     const endpoint = await options.endpointResolver()
     if (!endpoint) {
-      throw createAppError('common.unavailable', {
-        debugMessage: 'Worker endpoint is unavailable for terminal spawn.',
-      })
+      throw createAppError('worker.unavailable')
     }
 
     const { httpStatus, result } = await invokeControlSurface(endpoint, {
@@ -374,9 +351,7 @@ export function createRemotePtyRuntime(options: {
     kill: async (sessionId: string) => {
       const endpoint = await options.endpointResolver()
       if (!endpoint) {
-        throw createAppError('common.unavailable', {
-          debugMessage: 'Worker endpoint is unavailable for session.kill.',
-        })
+        throw createAppError('worker.unavailable')
       }
 
       const { httpStatus, result } = await invokeControlSurface(endpoint, {
@@ -422,6 +397,8 @@ export function createRemotePtyRuntime(options: {
           role: rolePreferenceBySessionId.get(sessionId) ?? 'controller',
         })
       }
+
+      agentMetadataWatcher.ensure(sessionId)
     },
     detach: async (contentsId: number, sessionId: string) => {
       const sessions = sessionsByContentsId.get(contentsId)
@@ -434,6 +411,7 @@ export function createRemotePtyRuntime(options: {
       sessionSubscribers?.delete(contentsId)
       if (sessionSubscribers && sessionSubscribers.size === 0) {
         subscribersBySessionId.delete(sessionId)
+        agentMetadataWatcher.cancel(sessionId)
         await sendSocketMessage({ type: 'detach', sessionId })
       }
 
@@ -444,9 +422,7 @@ export function createRemotePtyRuntime(options: {
     snapshot: async (sessionId: string) => {
       const endpoint = await options.endpointResolver()
       if (!endpoint) {
-        throw createAppError('common.unavailable', {
-          debugMessage: 'Worker endpoint is unavailable for session.snapshot.',
-        })
+        throw createAppError('worker.unavailable')
       }
 
       const { httpStatus, result } = await invokeControlSurface(endpoint, {
@@ -489,6 +465,7 @@ export function createRemotePtyRuntime(options: {
       closeSocket()
       externalDataListeners.clear()
       externalExitListeners.clear()
+      agentMetadataWatcher.dispose()
       subscribersBySessionId.clear()
       sessionsByContentsId.clear()
       attachedSessions.clear()

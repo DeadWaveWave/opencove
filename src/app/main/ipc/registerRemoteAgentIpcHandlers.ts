@@ -51,9 +51,7 @@ async function resolveWorkerEndpoint(
 ): Promise<ControlSurfaceRemoteEndpoint> {
   const endpoint = await resolver()
   if (!endpoint) {
-    throw createAppError('common.unavailable', {
-      debugMessage: 'Worker endpoint unavailable.',
-    })
+    throw createAppError('worker.unavailable')
   }
 
   return endpoint
@@ -196,12 +194,11 @@ export function registerRemoteAgentIpcHandlers(options: {
       const cwd = normalizeRequiredString(payload?.cwd, 'agent.launch cwd')
       const provider = payload?.provider as AgentProviderId
       const model = payload?.model ?? null
-
-      if (payload?.mode === 'resume') {
-        throw createAppError('common.unavailable', {
-          debugMessage: 'Remote agent resume is not supported yet.',
-        })
-      }
+      const mode = payload?.mode === 'resume' ? 'resume' : 'new'
+      const resumeSessionId =
+        typeof payload?.resumeSessionId === 'string' && payload.resumeSessionId.trim().length > 0
+          ? payload.resumeSessionId.trim()
+          : null
 
       const endpoint = await resolveWorkerEndpoint(options.endpointResolver)
 
@@ -220,7 +217,9 @@ export function registerRemoteAgentIpcHandlers(options: {
           cwd,
           prompt: typeof payload?.prompt === 'string' ? payload.prompt : '',
           provider,
+          mode,
           model,
+          resumeSessionId,
           agentFullAccess: payload?.agentFullAccess ?? null,
         },
       })
@@ -233,7 +232,7 @@ export function registerRemoteAgentIpcHandlers(options: {
         profileId: payload?.profileId ?? null,
         command: launched.command,
         args: launched.args,
-        launchMode: 'new',
+        launchMode: mode,
         effectiveModel: launched.effectiveModel,
         resumeSessionId: launched.resumeSessionId,
       }

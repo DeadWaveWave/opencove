@@ -44,10 +44,106 @@ export class BrowserPtyClient {
   private socketReadyPromise: Promise<void> | null = null
   private reconnectTimer: number | null = null
   private attachedSessions = new Map<string, AttachedSessionState>()
+  private readonly metadataWatchers = new Map<
+    string,
+    { timer: number | null; attempt: number; cancelled: boolean }
+  >()
   private readonly dataListeners = new Set<(event: TerminalDataEvent) => void>()
   private readonly exitListeners = new Set<(event: TerminalExitEvent) => void>()
   private readonly stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   private readonly metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
+
+  private cancelMetadataWatcher(sessionId: string): void {
+    const watcher = this.metadataWatchers.get(sessionId)
+    if (!watcher) {
+      return
+    }
+
+    watcher.cancelled = true
+    if (watcher.timer !== null) {
+      window.clearTimeout(watcher.timer)
+      watcher.timer = null
+    }
+
+    this.metadataWatchers.delete(sessionId)
+  }
+
+  private ensureAgentMetadataWatcher(sessionId: string): void {
+    if (this.metadataListeners.size === 0) {
+      return
+    }
+
+    const normalizedSessionId = sessionId.trim()
+    if (normalizedSessionId.length === 0) {
+      return
+    }
+
+    if (this.metadataWatchers.has(normalizedSessionId)) {
+      return
+    }
+
+    const watcher: { timer: number | null; attempt: number; cancelled: boolean } = {
+      timer: null,
+      attempt: 0,
+      cancelled: false,
+    }
+    this.metadataWatchers.set(normalizedSessionId, watcher)
+
+    const attemptResolve = async (): Promise<void> => {
+      if (watcher.cancelled) {
+        return
+      }
+
+      try {
+        await invokeBrowserControlSurface({
+          kind: 'query',
+          id: 'session.get',
+          payload: { sessionId: normalizedSessionId },
+        })
+      } catch {
+        this.cancelMetadataWatcher(normalizedSessionId)
+        return
+      }
+
+      try {
+        const final = await invokeBrowserControlSurface<{ resumeSessionId: string | null }>({
+          kind: 'query',
+          id: 'session.finalMessage',
+          payload: { sessionId: normalizedSessionId },
+        })
+
+        const resumeSessionId =
+          typeof final.resumeSessionId === 'string' && final.resumeSessionId.trim().length > 0
+            ? final.resumeSessionId.trim()
+            : null
+
+        if (resumeSessionId) {
+          emitToListeners(this.metadataListeners, {
+            sessionId: normalizedSessionId,
+            resumeSessionId,
+          })
+          this.cancelMetadataWatcher(normalizedSessionId)
+          return
+        }
+      } catch {
+        // Ignore session.finalMessage failures; we will retry with backoff.
+      }
+
+      if (watcher.attempt >= 6) {
+        this.cancelMetadataWatcher(normalizedSessionId)
+        return
+      }
+
+      const delayMs = Math.min(750 * 2 ** watcher.attempt, 6_000)
+      watcher.attempt += 1
+      watcher.timer = window.setTimeout(() => {
+        watcher.timer = null
+        void attemptResolve()
+      }, delayMs)
+    }
+
+    void attemptResolve()
+  }
 
   private ensureSocket(): Promise<void> {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -266,10 +362,13 @@ export class BrowserPtyClient {
       afterSeq: existing && existing.lastSeq > 0 ? existing.lastSeq : undefined,
       role: 'controller',
     })
+
+    this.ensureAgentMetadataWatcher(payload.sessionId)
   }
 
   public async detach(payload: DetachTerminalInput): Promise<void> {
     this.attachedSessions.delete(payload.sessionId)
+    this.cancelMetadataWatcher(payload.sessionId)
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return
     }

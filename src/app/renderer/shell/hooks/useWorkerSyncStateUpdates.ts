@@ -27,14 +27,14 @@ function mergeRuntimeNode(
     return existingNode
   }
 
+  const isDragging = existingNode.dragging === true
   const persistedSessionId = persistedNode.data.sessionId.trim()
   const existingSessionId = existingNode.data.sessionId.trim()
   const kind = persistedNode.data.kind
 
   return {
     ...persistedNode,
-    selected: existingNode.selected,
-    dragging: existingNode.dragging,
+    ...(isDragging ? { position: existingNode.position, dragging: true } : {}),
     width: existingNode.width,
     height: existingNode.height,
     data: {
@@ -94,6 +94,14 @@ function toShellWorkspaceStateForSync(
     workspace.activeSpaceId !== null &&
     sanitizedSpaces.some(space => space.id === workspace.activeSpaceId)
 
+  const existingActiveSpaceId = existingWorkspace?.activeSpaceId ?? null
+  const resolvedActiveSpaceId =
+    existingActiveSpaceId && sanitizedSpaces.some(space => space.id === existingActiveSpaceId)
+      ? existingActiveSpaceId
+      : hasActiveSpace
+        ? workspace.activeSpaceId
+        : null
+
   return {
     id: workspace.id,
     name: workspace.name,
@@ -102,13 +110,13 @@ function toShellWorkspaceStateForSync(
     pullRequestBaseBranchOptions: workspace.pullRequestBaseBranchOptions ?? [],
     nodes,
     viewport: {
-      x: workspace.viewport.x,
-      y: workspace.viewport.y,
-      zoom: workspace.viewport.zoom,
+      x: existingWorkspace?.viewport.x ?? workspace.viewport.x,
+      y: existingWorkspace?.viewport.y ?? workspace.viewport.y,
+      zoom: existingWorkspace?.viewport.zoom ?? workspace.viewport.zoom,
     },
-    isMinimapVisible: workspace.isMinimapVisible,
+    isMinimapVisible: existingWorkspace?.isMinimapVisible ?? workspace.isMinimapVisible,
     spaces: sanitizedSpaces,
-    activeSpaceId: hasActiveSpace ? workspace.activeSpaceId : null,
+    activeSpaceId: resolvedActiveSpaceId,
     spaceArchiveRecords: workspace.spaceArchiveRecords,
   }
 }
@@ -135,7 +143,9 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
   const refreshInFlightRef = useRef(false)
   const refreshPendingRef = useRef(false)
   const lastLocalSyncWriteRevisionRef = useRef(0)
+  const lastAppliedRevisionRef = useRef(0)
   const pendingSyncWriteRevisionRef = useRef<number | null>(null)
+  const pendingFullRefreshRevisionRef = useRef<number | null>(null)
   const needsFullRefreshRef = useRef(false)
 
   useEffect(() => {
@@ -190,6 +200,18 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
     const unsubscribe =
       typeof syncApi?.onStateUpdated === 'function'
         ? syncApi.onStateUpdated((event: SyncEventPayload) => {
+            const eventRevision =
+              typeof event.revision === 'number' && Number.isFinite(event.revision)
+                ? Math.floor(event.revision)
+                : null
+
+            if (
+              typeof eventRevision === 'number' &&
+              eventRevision <= lastAppliedRevisionRef.current
+            ) {
+              return
+            }
+
             if (
               event.type === 'app_state.updated' &&
               event.operationId === 'sync.writeState' &&
@@ -210,7 +232,13 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
             }
 
             needsFullRefreshRef.current = true
-            scheduleRefresh(0)
+            if (typeof eventRevision === 'number') {
+              pendingFullRefreshRevisionRef.current =
+                pendingFullRefreshRevisionRef.current === null
+                  ? eventRevision
+                  : Math.max(pendingFullRefreshRevisionRef.current, eventRevision)
+            }
+            scheduleRefresh(60)
           })
         : null
 
@@ -219,9 +247,20 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       const shouldRefreshForSyncWrite =
         typeof pendingSyncWriteRevision === 'number' &&
         pendingSyncWriteRevision > lastLocalSyncWriteRevisionRef.current
+      const pendingFullRefreshRevision = pendingFullRefreshRevisionRef.current
+      const targetRevision = Math.max(
+        typeof pendingFullRefreshRevision === 'number' ? pendingFullRefreshRevision : 0,
+        shouldRefreshForSyncWrite && typeof pendingSyncWriteRevision === 'number'
+          ? pendingSyncWriteRevision
+          : 0,
+      )
 
-      if (!needsFullRefreshRef.current && !shouldRefreshForSyncWrite) {
+      if (
+        (!needsFullRefreshRef.current && !shouldRefreshForSyncWrite) ||
+        targetRevision <= lastAppliedRevisionRef.current
+      ) {
         pendingSyncWriteRevisionRef.current = null
+        pendingFullRefreshRevisionRef.current = null
         return
       }
 
@@ -230,6 +269,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
       try {
         needsFullRefreshRef.current = false
         pendingSyncWriteRevisionRef.current = null
+        pendingFullRefreshRevisionRef.current = null
 
         const persisted = await readPersistedState()
         if (!persisted) {
@@ -248,6 +288,8 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           .setActiveWorkspaceId(currentActive =>
             resolveNextActiveWorkspaceId(persisted, currentActive),
           )
+
+        lastAppliedRevisionRef.current = Math.max(lastAppliedRevisionRef.current, targetRevision)
       } catch {
         // ignore refresh failures
       } finally {
