@@ -7,6 +7,7 @@ import type {
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowBoundsInput,
+  SetWebsiteWindowOccludedInput,
   SetWebsiteWindowPinnedInput,
   SetWebsiteWindowSessionInput,
   WebsiteWindowNodeIdInput,
@@ -67,9 +68,30 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
   )
 
   registerHandledIpc(
+    IPC_CHANNELS.websiteWindowSetOccluded,
+    (event: IpcMainInvokeEvent, payload: SetWebsiteWindowOccludedInput): void => {
+      if (!payload || typeof payload?.occluded !== 'boolean') {
+        throw new Error('Invalid website window occlusion payload')
+      }
+
+      resolveManager(event).setOccluded(payload)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
     IPC_CHANNELS.websiteWindowActivate,
     (event: IpcMainInvokeEvent, payload: ActivateWebsiteWindowInput): void => {
       resolveManager(event).activate(payload)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.websiteWindowDeactivate,
+    (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
+      const normalized = normalizeNodeIdInput(payload)
+      resolveManager(event).deactivate(normalized.nodeId)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -167,7 +189,9 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowConfigurePolicy)
+      ipcMain.removeHandler(IPC_CHANNELS.websiteWindowSetOccluded)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowActivate)
+      ipcMain.removeHandler(IPC_CHANNELS.websiteWindowDeactivate)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowNavigate)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowGoBack)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowGoForward)

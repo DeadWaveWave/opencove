@@ -58,12 +58,15 @@ export function WebsiteNode({
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const runtime = useWebsiteWindowStore(state => state.runtimeByNodeId[nodeId] ?? null)
   const lifecycle = runtime?.lifecycle ?? 'cold'
+  const isOccluded = runtime?.isOccluded === true
   const { activate, isCanvasZoomFrozen } = useWebsiteNodeNativeView({
     nodeId,
+    desiredUrl: url,
     pinned,
     sessionMode,
     profileId,
     lifecycle,
+    isOccluded,
     viewportRef,
   })
 
@@ -327,7 +330,7 @@ export function WebsiteNode({
 
         <div className="website-node__body">
           <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
-            {snapshotDataUrl && (lifecycle !== 'active' || isCanvasZoomFrozen) ? (
+            {snapshotDataUrl && (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) ? (
               <img
                 className="website-node__snapshot"
                 src={snapshotDataUrl}

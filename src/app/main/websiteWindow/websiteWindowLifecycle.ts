@@ -2,6 +2,7 @@ import type { BrowserWindow, WebContents } from 'electron'
 import type { WebsiteWindowEventPayload, WebsiteWindowPolicy } from '../../../shared/contracts/dto'
 import { matchesAnyHostPattern } from '../../../shared/utils/hostPatterns'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { captureWebsiteWindowRuntimeSnapshot } from './websiteWindowRuntimeViewOps'
 
 function cancelDiscardTimer(runtime: WebsiteWindowRuntime): void {
   if (!runtime.discardTimer) {
@@ -181,6 +182,66 @@ export function transitionWebsiteWindowToCold({
   } else {
     disposeWebContents(runtime, window)
   }
+
+  emitState(runtime)
+}
+
+export function transitionWebsiteWindowToWarm({
+  runtime,
+  policy,
+  window,
+  emit,
+  emitState,
+}: {
+  runtime: WebsiteWindowRuntime
+  policy: WebsiteWindowPolicy
+  window: BrowserWindow
+  emit: (payload: WebsiteWindowEventPayload) => void
+  emitState: (runtime: WebsiteWindowRuntime) => void
+}): void {
+  if (runtime.lifecycle !== 'active') {
+    return
+  }
+
+  captureWebsiteWindowRuntimeSnapshot({
+    runtime,
+    quality: 60,
+    emit,
+  })
+
+  runtime.lifecycle = 'warm'
+
+  if (runtime.hostView) {
+    if (!window.isDestroyed()) {
+      try {
+        window.contentView.removeChildView(runtime.hostView)
+      } catch {
+        // ignore - window/view may already be gone during shutdown
+      }
+    }
+
+    try {
+      runtime.hostView.setVisible(false)
+    } catch {
+      // ignore - view may already be destroyed during shutdown
+    }
+  }
+
+  if (runtime.view) {
+    try {
+      runtime.view.setVisible(false)
+    } catch {
+      // ignore - view may already be destroyed during shutdown
+    }
+  }
+
+  refreshWebsiteWindowDiscardTimer({
+    runtime,
+    policy,
+    window,
+    emit,
+    emitState,
+  })
 
   emitState(runtime)
 }

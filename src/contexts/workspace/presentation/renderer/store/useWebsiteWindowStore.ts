@@ -3,6 +3,7 @@ import type { WebsiteWindowEventPayload, WebsiteWindowLifecycle } from '@shared/
 
 export type WebsiteWindowRuntimeState = {
   lifecycle: WebsiteWindowLifecycle
+  isOccluded: boolean
   url: string | null
   title: string | null
   isLoading: boolean
@@ -22,6 +23,7 @@ type WebsiteWindowStoreState = {
 function resolveDefaultRuntime(): WebsiteWindowRuntimeState {
   return {
     lifecycle: 'cold',
+    isOccluded: false,
     url: null,
     title: null,
     isLoading: false,
@@ -49,6 +51,7 @@ export const useWebsiteWindowStore = create<WebsiteWindowStoreState>(set => ({
           ? {
               ...previous,
               lifecycle: event.lifecycle,
+              isOccluded: event.isOccluded,
               url: event.url,
               title: event.title,
               isLoading: event.isLoading,

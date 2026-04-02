@@ -168,6 +168,34 @@ export function resolveViewportState(
   }
 }
 
+export function resolveViewportFocusRatio(element: HTMLDivElement | null): number | null {
+  const viewportBounds = resolveViewportBounds(element)
+  if (!viewportBounds) {
+    return null
+  }
+
+  const workspaceBounds = resolveWorkspaceBounds(element)
+  if (!workspaceBounds) {
+    return null
+  }
+
+  const viewportCenterX = viewportBounds.x + viewportBounds.width / 2
+  const viewportCenterY = viewportBounds.y + viewportBounds.height / 2
+  const workspaceCenterX = workspaceBounds.x + workspaceBounds.width / 2
+  const workspaceCenterY = workspaceBounds.y + workspaceBounds.height / 2
+
+  const halfWorkspaceWidth = workspaceBounds.width / 2
+  const halfWorkspaceHeight = workspaceBounds.height / 2
+  if (halfWorkspaceWidth <= 0 || halfWorkspaceHeight <= 0) {
+    return null
+  }
+
+  const ratioX = Math.abs(viewportCenterX - workspaceCenterX) / halfWorkspaceWidth
+  const ratioY = Math.abs(viewportCenterY - workspaceCenterY) / halfWorkspaceHeight
+
+  return Math.max(ratioX, ratioY)
+}
+
 function boundsEqual(a: WebsiteWindowBounds | null, b: WebsiteWindowBounds | null): boolean {
   if (!a || !b) {
     return a === b

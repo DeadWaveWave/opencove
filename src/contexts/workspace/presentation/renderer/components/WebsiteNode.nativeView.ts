@@ -3,6 +3,7 @@ import { useStore } from '@xyflow/react'
 import type { WebsiteWindowLifecycle, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import {
   HIDDEN_WEBSITE_BOUNDS,
+  resolveViewportFocusRatio,
   resolveViewportState,
   viewportStateEqual,
   type WebsiteViewportState,
@@ -10,22 +11,45 @@ import {
 
 const CANVAS_ZOOM_FREEZE_TRIGGER_WINDOW_MS = 90
 const CANVAS_ZOOM_FREEZE_RELEASE_DELAY_MS = 180
+const VIEWPORT_FOCUS_SNAPSHOT_ENTER_RATIO = 0.8
+const VIEWPORT_FOCUS_SNAPSHOT_EXIT_RATIO = 0.7
+const VIEWPORT_FOCUS_POLL_INTERVAL_MS = 140
+const VIEWPORT_FOCUS_ACTIVATION_GRACE_PERIOD_MS = 240
 
 export function useWebsiteNodeNativeView({
   nodeId,
+  desiredUrl,
   pinned,
   sessionMode,
   profileId,
   lifecycle,
+  isOccluded,
   viewportRef,
 }: {
   nodeId: string
+  desiredUrl: string
   pinned: boolean
   sessionMode: WebsiteWindowSessionMode
   profileId: string | null
   lifecycle: WebsiteWindowLifecycle
+  isOccluded: boolean
   viewportRef: React.RefObject<HTMLDivElement | null>
 }): { activate: (desiredUrl: string) => void; isCanvasZoomFrozen: boolean } {
+  const desiredUrlRef = useRef(desiredUrl)
+  useEffect(() => {
+    desiredUrlRef.current = desiredUrl
+  }, [desiredUrl])
+
+  const pinnedRef = useRef(pinned)
+  useEffect(() => {
+    pinnedRef.current = pinned
+  }, [pinned])
+
+  const lifecycleRef = useRef(lifecycle)
+  useEffect(() => {
+    lifecycleRef.current = lifecycle
+  }, [lifecycle])
+
   const canvasZoom = useStore(storeState => {
     const state = storeState as unknown as { transform?: [number, number, number] }
     const zoom = state.transform?.[2] ?? 1
@@ -45,10 +69,13 @@ export function useWebsiteNodeNativeView({
     isCanvasZoomFrozenRef.current = isCanvasZoomFrozen
   }, [isCanvasZoomFrozen])
 
+  const isViewportFocusSnapshotRef = useRef(false)
+  const lastActivatedAtRef = useRef<number | null>(null)
+
   const lastCanvasZoomChangedAtRef = useRef<number | null>(null)
   const releaseCanvasZoomFreezeTimerRef = useRef<number | null>(null)
   useEffect(() => {
-    if (lifecycle !== 'active') {
+    if (lifecycle !== 'active' || isOccluded) {
       lastCanvasZoomChangedAtRef.current = null
       if (releaseCanvasZoomFreezeTimerRef.current !== null) {
         window.clearTimeout(releaseCanvasZoomFreezeTimerRef.current)
@@ -79,21 +106,24 @@ export function useWebsiteNodeNativeView({
     if (lastChangedAt !== null && now - lastChangedAt < CANVAS_ZOOM_FREEZE_TRIGGER_WINDOW_MS) {
       setIsCanvasZoomFrozen(true)
     }
-  }, [canvasZoom, lifecycle])
+  }, [canvasZoom, isOccluded, lifecycle])
 
   const activate = useCallback(
-    (desiredUrl: string) => {
+    (nextUrl: string) => {
       const api = window.opencoveApi?.websiteWindow
       if (!api || typeof api.activate !== 'function') {
         return
       }
+
+      lastActivatedAtRef.current = performance.now()
+      isViewportFocusSnapshotRef.current = false
 
       const resolvedCanvasZoom = canvasZoomRef.current
       const viewportState = resolveViewportState(viewportRef.current, resolvedCanvasZoom)
       void api
         .activate({
           nodeId,
-          url: desiredUrl,
+          url: nextUrl,
           pinned,
           sessionMode,
           profileId,
@@ -108,7 +138,7 @@ export function useWebsiteNodeNativeView({
 
   const lastSentViewportStateRef = useRef<WebsiteViewportState | null>(null)
   useEffect(() => {
-    if (lifecycle !== 'active' || isCanvasZoomFrozen) {
+    if (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
       lastSentViewportStateRef.current = null
       return
     }
@@ -120,6 +150,32 @@ export function useWebsiteNodeNativeView({
 
     let raf = 0
     const tick = () => {
+      if (
+        !isViewportFocusSnapshotRef.current &&
+        lifecycleRef.current === 'active' &&
+        !isCanvasZoomFrozenRef.current
+      ) {
+        const ratio = resolveViewportFocusRatio(viewportRef.current)
+        const lastActivatedAt = lastActivatedAtRef.current
+        const shouldRespectGracePeriod =
+          lastActivatedAt !== null &&
+          performance.now() - lastActivatedAt < VIEWPORT_FOCUS_ACTIVATION_GRACE_PERIOD_MS
+
+        if (
+          !shouldRespectGracePeriod &&
+          ratio !== null &&
+          ratio >= VIEWPORT_FOCUS_SNAPSHOT_ENTER_RATIO
+        ) {
+          const websiteApi = window.opencoveApi?.websiteWindow
+          if (websiteApi && typeof websiteApi.deactivate === 'function') {
+            isViewportFocusSnapshotRef.current = true
+            void websiteApi.deactivate({ nodeId }).catch(() => {
+              isViewportFocusSnapshotRef.current = false
+            })
+          }
+        }
+      }
+
       const resolvedCanvasZoom = canvasZoomRef.current
       const viewportState = resolveViewportState(viewportRef.current, resolvedCanvasZoom) ?? {
         bounds: HIDDEN_WEBSITE_BOUNDS,
@@ -143,10 +199,65 @@ export function useWebsiteNodeNativeView({
     return () => {
       window.cancelAnimationFrame(raf)
     }
-  }, [isCanvasZoomFrozen, lifecycle, nodeId, viewportRef])
+  }, [isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
+
+  useEffect(() => {
+    if (lifecycle === 'active' || isOccluded) {
+      return
+    }
+
+    if (!isViewportFocusSnapshotRef.current && !(lifecycle === 'cold' && pinned)) {
+      return
+    }
+
+    let intervalId: number | null = null
+
+    const stop = () => {
+      if (intervalId === null) {
+        return
+      }
+      window.clearInterval(intervalId)
+      intervalId = null
+    }
+
+    const tick = () => {
+      const ratio = resolveViewportFocusRatio(viewportRef.current)
+      if (ratio === null || ratio > VIEWPORT_FOCUS_SNAPSHOT_EXIT_RATIO) {
+        return
+      }
+
+      const currentLifecycle = lifecycleRef.current
+      const shouldRestore =
+        currentLifecycle === 'warm' || (currentLifecycle === 'cold' && pinnedRef.current)
+
+      if (!shouldRestore) {
+        isViewportFocusSnapshotRef.current = false
+        stop()
+        return
+      }
+
+      const nextUrl = desiredUrlRef.current.trim()
+      if (nextUrl.length === 0) {
+        isViewportFocusSnapshotRef.current = false
+        stop()
+        return
+      }
+
+      isViewportFocusSnapshotRef.current = false
+      stop()
+      activate(nextUrl)
+    }
+
+    intervalId = window.setInterval(tick, VIEWPORT_FOCUS_POLL_INTERVAL_MS)
+    tick()
+
+    return () => {
+      stop()
+    }
+  }, [activate, isOccluded, lifecycle, pinned, viewportRef])
 
   useLayoutEffect(() => {
-    if (lifecycle !== 'active' || isCanvasZoomFrozen) {
+    if (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
       return
     }
 
@@ -170,10 +281,10 @@ export function useWebsiteNodeNativeView({
         canvasZoom: viewportState.canvasZoom,
       })
     }
-  }, [canvasZoom, isCanvasZoomFrozen, lifecycle, nodeId, viewportRef])
+  }, [canvasZoom, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
 
   useEffect(() => {
-    if (lifecycle !== 'active') {
+    if (lifecycle !== 'active' || isOccluded) {
       return
     }
 
@@ -195,7 +306,7 @@ export function useWebsiteNodeNativeView({
       bounds: HIDDEN_WEBSITE_BOUNDS,
       viewportBounds: HIDDEN_WEBSITE_BOUNDS,
     })
-  }, [isCanvasZoomFrozen, lifecycle, nodeId])
+  }, [isCanvasZoomFrozen, isOccluded, lifecycle, nodeId])
 
   return { activate, isCanvasZoomFrozen }
 }

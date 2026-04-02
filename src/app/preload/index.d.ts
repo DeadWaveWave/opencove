@@ -83,6 +83,7 @@ import type {
   CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
+  SetWebsiteWindowOccludedInput,
   SetWebsiteWindowBoundsInput,
   SetWebsiteWindowPinnedInput,
   SetWebsiteWindowSessionInput,
@@ -138,7 +139,9 @@ export interface OpenCoveApi {
   }
   websiteWindow: {
     configurePolicy: (payload: ConfigureWebsiteWindowPolicyInput) => Promise<void>
+    setOccluded: (payload: SetWebsiteWindowOccludedInput) => Promise<void>
     activate: (payload: ActivateWebsiteWindowInput) => Promise<void>
+    deactivate: (payload: WebsiteWindowNodeIdInput) => Promise<void>
     setBounds: (payload: SetWebsiteWindowBoundsInput) => void
     navigate: (payload: NavigateWebsiteWindowInput) => Promise<void>
     goBack: (payload: WebsiteWindowNodeIdInput) => Promise<void>

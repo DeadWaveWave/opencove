@@ -19,6 +19,10 @@ export interface ConfigureWebsiteWindowPolicyInput {
   policy: WebsiteWindowPolicy
 }
 
+export interface SetWebsiteWindowOccludedInput {
+  occluded: boolean
+}
+
 export interface ActivateWebsiteWindowInput {
   nodeId: string
   url: string
@@ -66,6 +70,7 @@ export interface WebsiteWindowStateEvent {
   type: 'state'
   nodeId: string
   lifecycle: WebsiteWindowLifecycle
+  isOccluded: boolean
   url: string | null
   title: string | null
   isLoading: boolean

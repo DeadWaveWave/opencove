@@ -85,6 +85,7 @@ import type {
   CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
+  SetWebsiteWindowOccludedInput,
   SetWebsiteWindowBoundsInput,
   SetWebsiteWindowPinnedInput,
   SetWebsiteWindowSessionInput,
@@ -192,8 +193,12 @@ const opencoveApi = {
   websiteWindow: {
     configurePolicy: (payload: ConfigureWebsiteWindowPolicyInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.websiteWindowConfigurePolicy, payload),
+    setOccluded: (payload: SetWebsiteWindowOccludedInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowSetOccluded, payload),
     activate: (payload: ActivateWebsiteWindowInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.websiteWindowActivate, payload),
+    deactivate: (payload: WebsiteWindowNodeIdInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowDeactivate, payload),
     setBounds: (payload: SetWebsiteWindowBoundsInput): void => {
       ipcRenderer.send(IPC_CHANNELS.websiteWindowSetBounds, payload)
     },
