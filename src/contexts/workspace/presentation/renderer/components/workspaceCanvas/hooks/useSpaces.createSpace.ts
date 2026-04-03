@@ -319,22 +319,41 @@ export function useWorkspaceCanvasCreateSpace({
   )
 
   const createSpaceFromSelectedNodes = useCallback(() => {
-    const selectedIdsRefValue = selectedNodeIdsRef.current
-    const selectedIds =
-      selectedIdsRefValue.length > 0
-        ? selectedIdsRefValue
-        : reactFlow
-            .getNodes()
-            .filter(node => node.selected)
-            .map(node => node.id)
-    if (selectedIds.length === 0) {
-      setContextMenu(null)
+    const resolveSelectedIds = (): string[] => {
+      const selectedIdsRefValue = selectedNodeIdsRef.current
+      if (selectedIdsRefValue.length > 0) {
+        return selectedIdsRefValue
+      }
+
+      return reactFlow
+        .getNodes()
+        .filter(node => node.selected)
+        .map(node => node.id)
+    }
+
+    const commitSelectedNodes = (): boolean => {
+      const selectedIds = resolveSelectedIds()
+      if (selectedIds.length === 0) {
+        return false
+      }
+
+      createSpace({
+        nodeIds: selectedIds,
+        rect: null,
+      })
+      return true
+    }
+
+    if (commitSelectedNodes()) {
       return
     }
 
-    createSpace({
-      nodeIds: selectedIds,
-      rect: null,
+    window.requestAnimationFrame(() => {
+      if (commitSelectedNodes()) {
+        return
+      }
+
+      setContextMenu(null)
     })
   }, [createSpace, reactFlow, selectedNodeIdsRef, setContextMenu])
 
