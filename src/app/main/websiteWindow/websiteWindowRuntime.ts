@@ -29,6 +29,11 @@ export interface WebsiteWindowRuntime {
   scrollbarCssKey: string | null
   scrollbarCssSizePx: number | null
   scrollbarCssVersion: number
+  deviceMetricsDebuggerAttached: boolean
+  deviceMetricsScaleFactor: number | null
+  deviceMetricsWidth: number | null
+  deviceMetricsHeight: number | null
+  deviceMetricsVersion: number
   discardTimer: DiscardTimer | null
   disposeWebContentsListeners: (() => void) | null
 }

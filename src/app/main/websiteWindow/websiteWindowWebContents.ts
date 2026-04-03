@@ -1,9 +1,17 @@
+import { BrowserWindow } from 'electron'
 import type { WebContents } from 'electron'
 import type { WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { syncWebsiteWindowDeviceMetrics } from './websiteWindowDeviceMetrics'
 import { syncWebsiteWindowScrollbarStyle } from './websiteWindowScrollbarStyle'
+import { resolveBrowserWindowScaleFactor } from './websiteWindowScaleFactor'
 import { openExternalIfSafe } from './websiteWindowSecurity'
 import { resolveWebsiteNavigationUrl } from './websiteWindowUrl'
+
+function resolveWebsiteOwnerWindowScaleFactor(contents: WebContents): number {
+  const ownerWindow = BrowserWindow.fromWebContents(contents)
+  return resolveBrowserWindowScaleFactor(ownerWindow)
+}
 
 export function configureWebsiteWebContents({
   nodeId,
@@ -64,6 +72,23 @@ export function registerWebsiteWebContentsRuntimeListeners({
   const handleStopLoading = () => {
     runtime.isLoading = false
     publishState()
+
+    const resolvedViewportBounds =
+      runtime.viewportBounds &&
+      runtime.viewportBounds.width > 0 &&
+      runtime.viewportBounds.height > 0
+        ? runtime.viewportBounds
+        : runtime.bounds
+    if (resolvedViewportBounds) {
+      syncWebsiteWindowDeviceMetrics({
+        runtime,
+        contents,
+        canvasZoom: runtime.canvasZoom,
+        windowScaleFactor: resolveWebsiteOwnerWindowScaleFactor(contents),
+        viewportWidth: resolvedViewportBounds.width,
+        viewportHeight: resolvedViewportBounds.height,
+      })
+    }
 
     syncWebsiteWindowScrollbarStyle({
       runtime,

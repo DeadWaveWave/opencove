@@ -47,6 +47,11 @@ export function ensureWebsiteWindowRuntime({
     scrollbarCssKey: null,
     scrollbarCssSizePx: null,
     scrollbarCssVersion: 0,
+    deviceMetricsDebuggerAttached: false,
+    deviceMetricsScaleFactor: null,
+    deviceMetricsWidth: null,
+    deviceMetricsHeight: null,
+    deviceMetricsVersion: 0,
     discardTimer: null,
     disposeWebContentsListeners: null,
   }

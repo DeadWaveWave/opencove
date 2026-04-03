@@ -2,6 +2,7 @@ import { WebContentsView } from 'electron'
 import type { Session, WebContents } from 'electron'
 import type { WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { disposeWebsiteWindowDeviceMetrics } from './websiteWindowDeviceMetrics'
 import {
   configureWebsiteViewAppearance,
   configureWebsiteSessionPermissions,
@@ -38,6 +39,16 @@ export function ensureWebsiteWindowView({
       } catch {
         // ignore - host/view may already be gone during shutdown
       }
+    }
+
+    try {
+      disposeWebsiteWindowDeviceMetrics({ runtime, contents: runtime.view.webContents })
+    } catch {
+      runtime.deviceMetricsDebuggerAttached = false
+      runtime.deviceMetricsScaleFactor = null
+      runtime.deviceMetricsWidth = null
+      runtime.deviceMetricsHeight = null
+      runtime.deviceMetricsVersion += 1
     }
 
     runtime.scrollbarCssKey = null

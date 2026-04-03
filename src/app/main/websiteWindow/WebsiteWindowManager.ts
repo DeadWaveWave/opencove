@@ -39,15 +39,13 @@ import {
   loadWebsiteWindowRuntimeDesiredUrl,
   resolveWebsiteWindowRuntimeWebContents,
 } from './websiteWindowNavigationOps'
-
+import { resolveBrowserWindowScaleFactor } from './websiteWindowScaleFactor'
 export class WebsiteWindowManager {
   private policy: WebsiteWindowPolicy = { ...DEFAULT_WEBSITE_WINDOW_POLICY }
   private runtimeByNodeId = new Map<string, WebsiteWindowRuntime>()
   private configuredSessions = new WeakSet<Session>()
   private isOccluded = false
-
   constructor(private window: BrowserWindow) {}
-
   dispose(): void {
     for (const runtime of this.runtimeByNodeId.values()) {
       disposeWebsiteWindowRuntime(runtime, this.window)
@@ -55,7 +53,6 @@ export class WebsiteWindowManager {
 
     this.runtimeByNodeId.clear()
   }
-
   configurePolicy(payload: ConfigureWebsiteWindowPolicyInput): void {
     const normalized = normalizeWebsiteWindowPolicy(payload.policy)
     this.policy = normalized
@@ -86,6 +83,7 @@ export class WebsiteWindowManager {
         detachWebsiteWindowRuntimeViewFromWindow(runtime, this.window)
       }
     } else {
+      const windowScaleFactor = resolveBrowserWindowScaleFactor(this.window)
       for (const runtime of this.runtimeByNodeId.values()) {
         if (runtime.lifecycle !== 'active') {
           continue
@@ -98,6 +96,7 @@ export class WebsiteWindowManager {
             bounds: runtime.bounds,
             viewportBounds: runtime.viewportBounds,
             canvasZoom: runtime.canvasZoom,
+            windowScaleFactor,
           })
         }
       }
@@ -146,12 +145,14 @@ export class WebsiteWindowManager {
 
     this.markActive(runtime)
 
+    const windowScaleFactor = resolveBrowserWindowScaleFactor(this.window)
     if (runtime.bounds && !this.isOccluded) {
       applyWebsiteWindowViewportMetrics({
         runtime,
         bounds: runtime.bounds,
         viewportBounds: runtime.viewportBounds,
         canvasZoom: runtime.canvasZoom,
+        windowScaleFactor,
       })
     }
 
@@ -210,11 +211,13 @@ export class WebsiteWindowManager {
       runtime.canvasZoom = normalizeWebsiteCanvasZoom(payload.canvasZoom)
     }
     if (runtime.lifecycle === 'active' && !this.isOccluded) {
+      const windowScaleFactor = resolveBrowserWindowScaleFactor(this.window)
       applyWebsiteWindowViewportMetrics({
         runtime,
         bounds: normalizedBounds,
         viewportBounds: runtime.viewportBounds,
         canvasZoom: runtime.canvasZoom,
+        windowScaleFactor,
       })
     }
   }
@@ -335,11 +338,13 @@ export class WebsiteWindowManager {
     if (wasActive) {
       this.markActive(runtime)
       if (currentBounds) {
+        const windowScaleFactor = resolveBrowserWindowScaleFactor(this.window)
         applyWebsiteWindowViewportMetrics({
           runtime,
           bounds: currentBounds,
           viewportBounds: currentViewportBounds,
           canvasZoom: runtime.canvasZoom,
+          windowScaleFactor,
         })
       }
       loadWebsiteWindowRuntimeDesiredUrl({
@@ -460,7 +465,6 @@ export class WebsiteWindowManager {
       })
     }
   }
-
   private refreshDiscardTimer(runtime: WebsiteWindowRuntime): void {
     refreshWebsiteWindowDiscardTimer({
       runtime,

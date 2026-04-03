@@ -15,7 +15,7 @@ const CANVAS_ZOOM_MIN_LIVE_EXIT = 0.28
 const VIEWPORT_FOCUS_SNAPSHOT_ENTER_RATIO = 0.8
 const VIEWPORT_FOCUS_SNAPSHOT_EXIT_RATIO = 0.7
 const VIEWPORT_FOCUS_POLL_INTERVAL_MS = 140
-const VIEWPORT_FOCUS_ACTIVATION_GRACE_PERIOD_MS = 240
+const VIEWPORT_FOCUS_ACTIVATION_GRACE_PERIOD_MS = 900
 
 function resolveCanvasZoomTooSmallForLiveView(nextZoom: number, wasTooSmall: boolean): boolean {
   if (!Number.isFinite(nextZoom) || nextZoom <= 0) {

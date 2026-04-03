@@ -2,6 +2,7 @@ import type { BrowserWindow, WebContents } from 'electron'
 import type { WebsiteWindowEventPayload, WebsiteWindowPolicy } from '../../../shared/contracts/dto'
 import { matchesAnyHostPattern } from '../../../shared/utils/hostPatterns'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { disposeWebsiteWindowDeviceMetrics } from './websiteWindowDeviceMetrics'
 import { captureWebsiteWindowRuntimeSnapshot } from './websiteWindowRuntimeViewOps'
 
 function cancelDiscardTimer(runtime: WebsiteWindowRuntime): void {
@@ -53,6 +54,16 @@ function disposeWebContents(runtime: WebsiteWindowRuntime, window: BrowserWindow
     } catch {
       // ignore - host/view may already be gone during shutdown
     }
+  }
+
+  try {
+    disposeWebsiteWindowDeviceMetrics({ runtime, contents: view.webContents })
+  } catch {
+    runtime.deviceMetricsDebuggerAttached = false
+    runtime.deviceMetricsScaleFactor = null
+    runtime.deviceMetricsWidth = null
+    runtime.deviceMetricsHeight = null
+    runtime.deviceMetricsVersion += 1
   }
 
   try {

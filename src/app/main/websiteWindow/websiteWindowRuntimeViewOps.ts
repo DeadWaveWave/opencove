@@ -1,5 +1,6 @@
 import type { WebsiteWindowBounds, WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { syncWebsiteWindowDeviceMetrics } from './websiteWindowDeviceMetrics'
 import { syncWebsiteWindowScrollbarStyle } from './websiteWindowScrollbarStyle'
 import { normalizeWebsiteCanvasZoom, resolveWebsiteViewBorderRadius } from './websiteWindowView'
 
@@ -75,11 +76,13 @@ export function applyWebsiteWindowViewportMetrics({
   bounds,
   viewportBounds,
   canvasZoom,
+  windowScaleFactor,
 }: {
   runtime: WebsiteWindowRuntime
   bounds: WebsiteWindowBounds
   viewportBounds: WebsiteWindowBounds | null
   canvasZoom: unknown
+  windowScaleFactor: number
 }): void {
   const hostView = runtime.hostView
   const view = runtime.view
@@ -93,6 +96,10 @@ export function applyWebsiteWindowViewportMetrics({
   }
 
   const normalizedCanvasZoom = normalizeWebsiteCanvasZoom(canvasZoom)
+  const resolvedViewportBounds =
+    viewportBounds && viewportBounds.width > 0 && viewportBounds.height > 0
+      ? viewportBounds
+      : bounds
 
   try {
     const contents = view.webContents
@@ -101,6 +108,15 @@ export function applyWebsiteWindowViewportMetrics({
       if (!Number.isFinite(currentZoom) || Math.abs(currentZoom - normalizedCanvasZoom) > 0.001) {
         contents.setZoomFactor(normalizedCanvasZoom)
       }
+
+      syncWebsiteWindowDeviceMetrics({
+        runtime,
+        contents,
+        canvasZoom: normalizedCanvasZoom,
+        windowScaleFactor,
+        viewportWidth: resolvedViewportBounds.width,
+        viewportHeight: resolvedViewportBounds.height,
+      })
 
       syncWebsiteWindowScrollbarStyle({
         runtime,
@@ -118,10 +134,6 @@ export function applyWebsiteWindowViewportMetrics({
 
     view.setBorderRadius(resolveWebsiteViewBorderRadius(normalizedCanvasZoom))
 
-    const resolvedViewportBounds =
-      viewportBounds && viewportBounds.width > 0 && viewportBounds.height > 0
-        ? viewportBounds
-        : bounds
     view.setBounds({
       x: resolvedViewportBounds.x - bounds.x,
       y: resolvedViewportBounds.y - bounds.y,
