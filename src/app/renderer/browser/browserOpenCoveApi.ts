@@ -1,4 +1,4 @@
-import type { ListSystemFontsResult } from '@shared/contracts/dto'
+import type { ListSystemFontsResult, WorkspaceDirectory } from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import {
@@ -12,9 +12,74 @@ import {
 } from './browserOpenCoveApi.helpers'
 import { createBrowserPersistenceApi } from './browserOpenCoveApi.persistence'
 import { createBrowserAgentApi } from './browserOpenCoveApi.agent'
+import {
+  WORKSPACE_SELECT_DIRECTORY_REQUEST_EVENT,
+  WORKSPACE_SELECT_DIRECTORY_RESPONSE_EVENT,
+  type WorkspaceSelectDirectoryResponseDetail,
+} from '../workspaceDirectoryPickerEvents'
 
 const ptyClient = new BrowserPtyClient()
 const unsupportedUpdateState = createUnsupportedUpdateState()
+
+function randomRequestId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+
+  return `request-${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
+
+async function selectWorkspaceDirectoryInBrowser(): Promise<WorkspaceDirectory | null> {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  const requestId = randomRequestId()
+
+  return await new Promise(resolve => {
+    let settled = false
+    let timeoutHandle: number | null = null
+
+    const finalize = (value: WorkspaceDirectory | null) => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      window.removeEventListener(
+        WORKSPACE_SELECT_DIRECTORY_RESPONSE_EVENT,
+        onResponse as EventListener,
+      )
+      if (timeoutHandle !== null) {
+        window.clearTimeout(timeoutHandle)
+      }
+      resolve(value)
+    }
+
+    const onResponse = (event: Event) => {
+      const detail = (event as CustomEvent<WorkspaceSelectDirectoryResponseDetail>).detail
+      if (!detail || detail.requestId !== requestId) {
+        return
+      }
+
+      finalize(detail.directory ?? null)
+    }
+
+    timeoutHandle = window.setTimeout(() => {
+      finalize(null)
+    }, 60_000)
+
+    window.addEventListener(WORKSPACE_SELECT_DIRECTORY_RESPONSE_EVENT, onResponse as EventListener)
+
+    try {
+      window.dispatchEvent(
+        new CustomEvent(WORKSPACE_SELECT_DIRECTORY_REQUEST_EVENT, { detail: { requestId } }),
+      )
+    } catch {
+      finalize(null)
+    }
+  })
+}
 
 export function installBrowserOpenCoveApi(): void {
   const api = {
@@ -22,6 +87,7 @@ export function installBrowserOpenCoveApi(): void {
       isTest: false,
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
+      runtime: 'browser',
       platform: resolveBrowserPlatform(),
       windowsPty: null,
     },
@@ -146,7 +212,7 @@ export function installBrowserOpenCoveApi(): void {
       },
     },
     workspace: {
-      selectDirectory: async () => null,
+      selectDirectory: async () => await selectWorkspaceDirectoryInBrowser(),
       ensureDirectory: async payload => {
         await invokeBrowserControlSurface<void>({
           kind: 'command',
@@ -168,25 +234,54 @@ export function installBrowserOpenCoveApi(): void {
       deleteCanvasImage: async () => undefined,
     },
     worktree: {
-      listBranches: async () => ({ branches: [] }),
-      listWorktrees: async () => ({ worktrees: [] }),
-      statusSummary: async () => ({ changedFileCount: 0 }),
-      getDefaultBranch: async () => ({ branch: null }),
-      create: async () => {
-        throw new Error('Worktree creation is unavailable in browser runtime')
-      },
-      remove: async () => {
-        throw new Error('Worktree removal is unavailable in browser runtime')
-      },
-      renameBranch: async () => {
-        throw new Error('Branch rename is unavailable in browser runtime')
-      },
-      suggestNames: async payload => ({
-        branchName: payload.spaceName,
-        worktreeName: payload.spaceName,
-        provider: payload.provider,
-        effectiveModel: payload.model ?? null,
-      }),
+      listBranches: async payload =>
+        await invokeBrowserControlSurface({
+          kind: 'query',
+          id: 'gitWorktree.listBranches',
+          payload,
+        }),
+      listWorktrees: async payload =>
+        await invokeBrowserControlSurface({
+          kind: 'query',
+          id: 'gitWorktree.listWorktrees',
+          payload,
+        }),
+      statusSummary: async payload =>
+        await invokeBrowserControlSurface({
+          kind: 'query',
+          id: 'gitWorktree.statusSummary',
+          payload,
+        }),
+      getDefaultBranch: async payload =>
+        await invokeBrowserControlSurface({
+          kind: 'query',
+          id: 'gitWorktree.getDefaultBranch',
+          payload,
+        }),
+      create: async payload =>
+        await invokeBrowserControlSurface({
+          kind: 'command',
+          id: 'gitWorktree.create',
+          payload,
+        }),
+      remove: async payload =>
+        await invokeBrowserControlSurface({
+          kind: 'command',
+          id: 'gitWorktree.remove',
+          payload,
+        }),
+      renameBranch: async payload =>
+        await invokeBrowserControlSurface<void>({
+          kind: 'command',
+          id: 'gitWorktree.renameBranch',
+          payload,
+        }),
+      suggestNames: async payload =>
+        await invokeBrowserControlSurface({
+          kind: 'query',
+          id: 'gitWorktree.suggestNames',
+          payload,
+        }),
     },
     integration: {
       github: {

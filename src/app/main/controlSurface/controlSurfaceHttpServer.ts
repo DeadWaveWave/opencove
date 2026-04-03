@@ -13,7 +13,9 @@ import { registerProjectHandlers } from './handlers/projectHandlers'
 import { registerSpaceHandlers } from './handlers/spaceHandlers'
 import { registerFilesystemHandlers } from './handlers/filesystemHandlers'
 import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
+import { registerGitWorktreeHandlers } from './handlers/gitWorktreeHandlers'
 import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
+import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
 import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
@@ -142,9 +144,11 @@ export function registerControlSurfaceHttpServer(options: {
   registerAuthHandlers(controlSurface, { webSessions })
   registerProjectHandlers(controlSurface, getPersistenceStore)
   registerSpaceHandlers(controlSurface, getPersistenceStore)
+  registerWorkspaceHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
   registerFilesystemHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
   })
+  registerGitWorktreeHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
   registerWorktreeHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
     getPersistenceStore,

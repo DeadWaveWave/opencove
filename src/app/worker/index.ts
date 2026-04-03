@@ -6,6 +6,7 @@ import { createHeadlessPtyRuntime } from './headlessPtyRuntime'
 import { resolveWorkerUserDataDir } from './userData'
 import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/controlSurface'
+import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -72,6 +73,11 @@ function readRepeatedFlagValues(argv: string[], flag: string): string[] {
 }
 
 async function main(): Promise<void> {
+  // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
+  // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
+  // Web UI, and remote/headless installs.
+  hydrateCliEnvironmentForAppLaunch(true)
+
   const argv = process.argv.slice(2)
   const userDataPath = readFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
   const hostname = readFlagValue(argv, '--hostname') ?? '127.0.0.1'

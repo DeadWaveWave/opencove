@@ -305,6 +305,7 @@ export function Sidebar({
         </div>
         <button
           type="button"
+          data-testid="sidebar-add-project"
           onClick={() => {
             onAddWorkspace()
           }}

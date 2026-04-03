@@ -8,6 +8,7 @@ type TerminalBodyPointerDraft = {
   pointerId: number
   startX: number
   startY: number
+  didDrag: boolean
 }
 
 export function useTerminalBodyClickFallback(
@@ -34,19 +35,23 @@ export function useTerminalBodyClickFallback(
       pointerId: event.pointerId,
       startX: event.clientX,
       startY: event.clientY,
+      didDrag: false,
     }
   }, [])
 
   const handlePointerMoveCapture = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
     const draft = terminalBodyPointerDownRef.current
-    if (!draft || draft.pointerId !== event.pointerId) {
+    if (!draft || draft.pointerId !== event.pointerId || draft.didDrag) {
       return
     }
 
     const dx = event.clientX - draft.startX
     const dy = event.clientY - draft.startY
     if (Math.hypot(dx, dy) > TERMINAL_BODY_CLICK_DISTANCE_THRESHOLD_PX) {
-      terminalBodyPointerDownRef.current = null
+      terminalBodyPointerDownRef.current = {
+        ...draft,
+        didDrag: true,
+      }
     }
   }, [])
 
@@ -56,6 +61,14 @@ export function useTerminalBodyClickFallback(
       terminalBodyPointerDownRef.current = null
 
       if (!draft || draft.pointerId !== event.pointerId) {
+        return
+      }
+
+      if (draft.didDrag) {
+        ignoreNextTerminalBodyClickRef.current = true
+        window.setTimeout(() => {
+          ignoreNextTerminalBodyClickRef.current = false
+        }, 0)
         return
       }
 

@@ -34,6 +34,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'filesystem.stat_failed': 'Unable to read file details.',
     'worktree.api_unavailable':
       'Worktree API is unavailable. Please restart OpenCove and try again.',
+    'worktree.git_unavailable': 'Git is unavailable. Install Git and restart OpenCove.',
+    'worktree.not_a_git_repo': 'This directory is not a Git repository.',
     'worktree.list_branches_failed': 'Unable to load Git branches.',
     'worktree.list_worktrees_failed': 'Unable to load Git worktrees.',
     'worktree.status_summary_failed': 'Unable to load Git status.',

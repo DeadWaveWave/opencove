@@ -92,6 +92,7 @@ export interface OpenCoveApi {
     isTest: boolean
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
+    runtime: 'electron' | 'browser'
     platform: string
     windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null
   }

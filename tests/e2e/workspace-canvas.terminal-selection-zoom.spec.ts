@@ -48,6 +48,9 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
         })
         .toBeGreaterThan(1.01)
 
+      await xterm.click()
+      await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+
       const dragPoints = await window
         .waitForFunction(
           nodeId => {

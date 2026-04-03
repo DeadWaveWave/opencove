@@ -29,6 +29,8 @@ export const APP_ERROR_CODES = [
   'filesystem.read_directory_failed',
   'filesystem.stat_failed',
   'worktree.api_unavailable',
+  'worktree.git_unavailable',
+  'worktree.not_a_git_repo',
   'worktree.list_branches_failed',
   'worktree.list_worktrees_failed',
   'worktree.status_summary_failed',

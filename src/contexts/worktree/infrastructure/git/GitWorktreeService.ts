@@ -14,6 +14,7 @@ import {
   runGitWorktreeRemoveWithRetry,
 } from './GitWorktreeRemoveCleanup'
 import { ensureGitWorktreeRemovable } from './GitWorktreeRemovePreflight'
+import { ensureGitRepoHasCommits } from './GitWorktreeRepoGuards'
 
 export { getGitStatusSummary } from './GitWorktreeStatusSummary'
 
@@ -39,12 +40,22 @@ export async function listGitBranches({
 
   await ensureGitRepo(normalizedRepoPath)
 
-  const currentResult = await runGit(['branch', '--show-current'], normalizedRepoPath)
+  const currentResult = await runGit(
+    ['symbolic-ref', '--quiet', '--short', 'HEAD'],
+    normalizedRepoPath,
+  )
   const current = currentResult.exitCode === 0 ? normalizeOptionalText(currentResult.stdout) : null
 
-  const result = await runGit(['branch', '--format=%(refname:short)'], normalizedRepoPath)
+  const result = await runGit(
+    ['for-each-ref', '--format=%(refname:short)', 'refs/heads'],
+    normalizedRepoPath,
+  )
   if (result.exitCode !== 0) {
-    throw new Error(normalizeOptionalText(result.stderr) ?? 'git branch list failed')
+    const stderr = normalizeOptionalText(result.stderr) ?? 'git branch list failed'
+    if (/xcrun: error: invalid active developer path/i.test(stderr)) {
+      throw createAppError('worktree.git_unavailable', { debugMessage: stderr })
+    }
+    throw new Error(stderr)
   }
 
   const branches = result.stdout
@@ -264,19 +275,6 @@ async function allocateWorktreePath({
   }
 
   throw new Error('Unable to allocate a unique worktree directory')
-}
-
-async function ensureGitRepoHasCommits(repoPath: string): Promise<void> {
-  // A repo can be a valid git working tree while still having an "unborn" HEAD (no commits yet).
-  // Worktree creation requires a commit-ish to check out, so surface an actionable error early.
-  const result = await runGit(['rev-parse', '--verify', '--quiet', 'HEAD'], repoPath)
-  if (result.exitCode === 0) {
-    return
-  }
-
-  throw createAppError('worktree.repo_has_no_commits', {
-    debugMessage: 'git rev-parse --verify HEAD failed; repository has no commits yet',
-  })
 }
 
 export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<GitWorktreeEntry> {
