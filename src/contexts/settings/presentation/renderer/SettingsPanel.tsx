@@ -8,6 +8,8 @@ import {
   type AgentProvider,
   type AgentSettings,
   type CanvasInputMode,
+  type CanvasWheelBehavior,
+  type CanvasWheelZoomModifier,
   type FocusNodeTargetZoom,
   type StandardWindowSizeBucket,
   type TaskTitleProvider,
@@ -24,6 +26,7 @@ import { NotificationsSection } from './settingsPanel/NotificationsSection'
 import { SettingsPanelNavButton } from './settingsPanel/SettingsPanelNavButton'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
+import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import {
   createInitialInputState,
@@ -87,6 +90,10 @@ export function SettingsPanel({
     onChange({ ...settings, standbyBannerShowPullRequest: enabled })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
+  const updateCanvasWheelBehavior = (behavior: CanvasWheelBehavior): void =>
+    onChange({ ...settings, canvasWheelBehavior: behavior })
+  const updateCanvasWheelZoomModifier = (modifier: CanvasWheelZoomModifier): void =>
+    onChange({ ...settings, canvasWheelZoomModifier: modifier })
   const updateStandardWindowSizeBucket = (bucket: StandardWindowSizeBucket): void =>
     onChange({ ...settings, standardWindowSizeBucket: bucket })
   const updateWebsiteWindowPolicy = (policy: AgentSettings['websiteWindowPolicy']): void =>
@@ -255,6 +262,12 @@ export function SettingsPanel({
             onClick={() => setActivePageId('general')}
           />
           <SettingsPanelNavButton
+            isActive={activePageId === 'worker'}
+            label={t('settingsPanel.nav.worker')}
+            testId="settings-section-nav-worker"
+            onClick={() => setActivePageId('worker')}
+          />
+          <SettingsPanelNavButton
             isActive={activePageId === 'agent'}
             label={t('settingsPanel.nav.agent')}
             testId="settings-section-nav-agent"
@@ -343,6 +356,8 @@ export function SettingsPanel({
               />
             ) : null}
 
+            {activePageId === 'worker' ? <WorkerSection /> : null}
+
             {activePageId === 'agent' ? (
               <>
                 <AgentSection
@@ -392,6 +407,8 @@ export function SettingsPanel({
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}
+                canvasWheelBehavior={settings.canvasWheelBehavior}
+                canvasWheelZoomModifier={settings.canvasWheelZoomModifier}
                 standardWindowSizeBucket={settings.standardWindowSizeBucket}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
@@ -399,6 +416,8 @@ export function SettingsPanel({
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
                 onChangeCanvasInputMode={updateCanvasInputMode}
+                onChangeCanvasWheelBehavior={updateCanvasWheelBehavior}
+                onChangeCanvasWheelZoomModifier={updateCanvasWheelZoomModifier}
                 onChangeStandardWindowSizeBucket={updateStandardWindowSizeBucket}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}

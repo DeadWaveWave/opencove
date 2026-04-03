@@ -7,6 +7,21 @@ export interface ControlSurfacePingResult {
   pid: number
 }
 
+export interface ControlSurfaceCapabilitiesResult {
+  ok: true
+  now: string
+  pid: number
+  protocolVersion: number
+  appVersion: string | null
+  features: {
+    webShell: boolean
+    sync: {
+      state: boolean
+      events: boolean
+    }
+  }
+}
+
 export type CanvasNodeKind = 'terminal' | 'agent' | 'task' | 'note' | 'image' | 'unknown'
 
 export interface CanvasNodeSummary {

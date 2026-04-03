@@ -273,12 +273,21 @@ export function useHydrateAppState({
       return
     }
 
-    useScrollbackStore.setState(state => ({
-      scrollbackByNodeId: {
-        ...state.scrollbackByNodeId,
-        ...scrollbacks,
-      },
-    }))
+    useScrollbackStore.setState(state => {
+      const record = state.scrollbackByNodeId
+      let didChange = false
+
+      Object.entries(scrollbacks).forEach(([nodeId, scrollback]) => {
+        if (record[nodeId]) {
+          return
+        }
+
+        record[nodeId] = scrollback
+        didChange = true
+      })
+
+      return didChange ? { scrollbackByNodeId: record } : state
+    })
   }, [])
 
   const applyHydratedNode = useCallback(

@@ -14,6 +14,7 @@ import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
+import { usePtySessionBindingsSync } from './hooks/usePtySessionBindingsSync'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
@@ -83,6 +84,7 @@ export default function App(): React.JSX.Element {
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()
 
+  usePtySessionBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
   useWebsiteWindowEvents()

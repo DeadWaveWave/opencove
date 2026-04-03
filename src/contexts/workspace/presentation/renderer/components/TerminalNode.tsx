@@ -33,7 +33,7 @@ import { useTerminalFind } from './terminalNode/useTerminalFind'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
 import { createCommittedScreenStateRecorder } from './terminalNode/committedScreenState'
-import { MAX_SCROLLBACK_CHARS } from './terminalNode/constants'
+import { DEFAULT_TERMINAL_FONT_FAMILY, MAX_SCROLLBACK_CHARS } from './terminalNode/constants'
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { hydrateTerminalFromSnapshot } from './terminalNode/hydrateFromSnapshot'
@@ -83,6 +83,7 @@ export function TerminalNode({
   const suppressPtyResizeRef = useRef(false)
   const commandInputStateRef = useRef(createTerminalCommandInputState())
   const onCommandRunRef = useRef(onCommandRun)
+  const titleRef = useRef(title)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
   const {
@@ -101,6 +102,9 @@ export function TerminalNode({
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
   }, [onCommandRun])
+  useEffect(() => {
+    titleRef.current = title
+  }, [title])
   useEffect(() => {
     isViewportInteractionActiveRef.current = isViewportInteractionActive
     outputSchedulerRef.current?.onViewportInteractionActiveChange(isViewportInteractionActive)
@@ -172,8 +176,7 @@ export function TerminalNode({
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const terminal = new Terminal({
       cursorBlink: true,
-      fontFamily:
-        'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
       theme: initialTerminalTheme,
       allowProposedApi: true,
       convertEol: true,
@@ -232,7 +235,7 @@ export function TerminalNode({
       nodeId,
       sessionId,
       nodeKind: kind === 'agent' ? 'agent' : 'terminal',
-      title,
+      title: titleRef.current,
       terminal,
       container: containerRef.current,
       terminalThemeMode,
@@ -393,8 +396,6 @@ export function TerminalNode({
 
       cancelMouseServicePatch()
       isDisposed = true
-      const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
-      void detachPromise?.catch(() => undefined)
       disposeLayoutSync()
       terminalDiagnostics.dispose()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
@@ -430,7 +431,6 @@ export function TerminalNode({
     sessionId,
     syncTerminalSize,
     terminalThemeMode,
-    title,
     kind,
   ])
   useEffect(() => {
@@ -448,9 +448,7 @@ export function TerminalNode({
       return
     }
 
-    terminal.options.fontFamily =
-      terminalFontFamily ??
-      'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
+    terminal.options.fontFamily = terminalFontFamily ?? DEFAULT_TERMINAL_FONT_FAMILY
     syncTerminalSize()
   }, [syncTerminalSize, terminalFontFamily])
   useEffect(() => {

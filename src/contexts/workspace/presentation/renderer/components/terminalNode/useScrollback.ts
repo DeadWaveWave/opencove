@@ -96,6 +96,11 @@ export function useTerminalScrollback({
 
   const markScrollbackDirty = useCallback(
     (immediate = false) => {
+      if (!onScrollbackChangeRef.current) {
+        hasPendingScrollbackRef.current = false
+        return
+      }
+
       hasPendingScrollbackRef.current = true
 
       if (isPointerResizingRef.current) {

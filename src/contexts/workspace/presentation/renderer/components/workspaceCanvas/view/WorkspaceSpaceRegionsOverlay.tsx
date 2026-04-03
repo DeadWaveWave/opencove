@@ -30,8 +30,10 @@ import {
   resolveGitStatusRepoKey,
   useWorkspaceGitStatusSummary,
 } from './WorkspaceSpaceRegionsOverlay.gitStatus'
+import { isWorktreeInfoMapEqual } from './WorkspaceSpaceRegionsOverlay.worktrees'
 
 const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
+const WORKTREE_REFRESH_INTERVAL_MS = 10_000
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -96,7 +98,23 @@ export function WorkspaceSpaceRegionsOverlay({
     () => new Map(),
   )
 
+  React.useEffect(() => {
+    setWorktreeInfoByPath(new Map())
+  }, [normalizedWorkspacePath])
+
   const worktrees = React.useMemo(() => [...worktreeInfoByPath.values()], [worktreeInfoByPath])
+
+  const worktreeDirectoriesKey = React.useMemo(() => {
+    const unique = new Set<string>()
+    spaceVisuals.forEach(space => {
+      const normalized = normalizeComparablePath(space.directoryPath)
+      if (normalized.length > 0) {
+        unique.add(normalized)
+      }
+    })
+
+    return [...unique].sort((left, right) => left.localeCompare(right)).join('|')
+  }, [spaceVisuals])
 
   const changedFilesByRepoKey = useWorkspaceGitStatusSummary({
     workspacePath,
@@ -137,6 +155,11 @@ export function WorkspaceSpaceRegionsOverlay({
   const worktreeBranchesKey = React.useMemo(() => worktreeBranches.join('|'), [worktreeBranches])
 
   React.useEffect(() => {
+    if (workspacePath.trim().length === 0) {
+      setWorktreeInfoByPath(new Map())
+      return
+    }
+
     const listWorktrees = window.opencoveApi?.worktree?.listWorktrees
     if (typeof listWorktrees !== 'function') {
       setWorktreeInfoByPath(new Map())
@@ -144,8 +167,20 @@ export function WorkspaceSpaceRegionsOverlay({
     }
 
     let cancelled = false
+    let refreshInFlight = false
+    let intervalId: number | null = null
 
-    void (async () => {
+    const refreshWorktrees = async (): Promise<void> => {
+      if (refreshInFlight) {
+        return
+      }
+
+      if (typeof document !== 'undefined' && document.hidden) {
+        return
+      }
+
+      refreshInFlight = true
+
       try {
         const result = await listWorktrees({ repoPath: workspacePath })
         if (cancelled) {
@@ -157,20 +192,29 @@ export function WorkspaceSpaceRegionsOverlay({
           nextMap.set(normalizeComparablePath(entry.path), entry)
         })
 
-        setWorktreeInfoByPath(nextMap)
+        setWorktreeInfoByPath(previous =>
+          isWorktreeInfoMapEqual(previous, nextMap) ? previous : nextMap,
+        )
       } catch {
-        if (cancelled) {
-          return
-        }
-
-        setWorktreeInfoByPath(new Map())
+        // Keep the last known worktree snapshot on transient failures.
+      } finally {
+        refreshInFlight = false
       }
-    })()
+    }
+
+    void refreshWorktrees()
+
+    intervalId = window.setInterval(() => {
+      void refreshWorktrees()
+    }, WORKTREE_REFRESH_INTERVAL_MS)
 
     return () => {
       cancelled = true
+      if (intervalId !== null) {
+        window.clearInterval(intervalId)
+      }
     }
-  }, [refreshNonce, workspacePath])
+  }, [refreshNonce, worktreeDirectoriesKey, workspacePath])
 
   React.useEffect(() => {
     if (worktreeBranches.length === 0) {

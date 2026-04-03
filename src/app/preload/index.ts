@@ -49,6 +49,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -91,6 +92,10 @@ import type {
   SetWebsiteWindowSessionInput,
   WebsiteWindowEventPayload,
   WebsiteWindowNodeIdInput,
+  HomeWorkerConfigDto,
+  SetHomeWorkerConfigInput,
+  WorkerStatusResult,
+  CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 
@@ -312,6 +317,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyAttach, payload),
     detach: (payload: DetachTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
+    syncSessionBindings: (payload: SyncPtySessionBindingsInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.ptySyncSessionBindings, payload),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
     debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),
@@ -383,6 +390,22 @@ const opencoveApi = {
   },
   system: {
     listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
+  },
+  worker: {
+    getStatus: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerGetStatus),
+    start: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStart),
+    stop: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStop),
+  },
+  workerClient: {
+    getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
+    setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
+    relaunch: (): Promise<void> => invokeIpc(IPC_CHANNELS.workerClientRelaunch),
+  },
+  cli: {
+    getStatus: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliGetStatus),
+    install: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliInstall),
+    uninstall: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliUninstall),
   },
 }
 

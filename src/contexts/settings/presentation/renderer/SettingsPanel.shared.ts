@@ -27,6 +27,7 @@ export interface SettingsPanelProps {
 
 type CorePageId =
   | 'general'
+  | 'worker'
   | 'agent'
   | 'notifications'
   | 'canvas'

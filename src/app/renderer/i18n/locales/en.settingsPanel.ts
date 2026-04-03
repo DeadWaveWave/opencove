@@ -2,6 +2,7 @@ export const enSettingsPanel = {
   title: 'Settings',
   nav: {
     general: 'General',
+    worker: 'Worker / Web UI',
     agent: 'Agent',
     notifications: 'Notifications',
     canvas: 'Canvas',
@@ -57,6 +58,7 @@ export const enSettingsPanel = {
       status: {
         disabled: 'Update checks are turned off.',
         unsupported: 'Update checks are unavailable in this build.',
+        unsupportedWithMessage: 'Update checks are unavailable in this build: {{message}}',
         idle: 'Waiting for the next background check.',
         checking: 'Checking GitHub Releases…',
         available: 'Version {{version}} is available.',
@@ -95,6 +97,19 @@ export const enSettingsPanel = {
     title: 'Canvas',
     inputModeLabel: 'Input Mode',
     inputModeHelp: 'How interactions are handled on the canvas.',
+    wheelBehaviorLabel: 'Mouse Wheel',
+    wheelBehaviorHelp: 'Choose what scrolling does on the canvas.',
+    wheelBehavior: {
+      zoom: 'Zoom (Default)',
+      pan: 'Pan (Scroll)',
+    },
+    wheelZoomModifierLabel: 'Zoom Modifier',
+    wheelZoomModifierHelp: 'Hold {{modifier}} and scroll to zoom.',
+    wheelZoomModifier: {
+      primary: '{{primaryKey}} (Default)',
+      ctrl: 'Ctrl',
+      alt: 'Alt',
+    },
     terminalProfileLabel: 'Terminal Environment',
     terminalProfileHelp:
       'Choose the shell profile used for new Windows terminals. Auto falls back to {{defaultProfile}}.',
@@ -237,6 +252,66 @@ export const enSettingsPanel = {
     githubPullRequestsLabel: 'GitHub PR Links',
     githubPullRequestsHelp:
       'Show pull request links on the canvas and open them on GitHub (requires `gh`).',
+  },
+  worker: {
+    title: 'Worker / Web UI',
+    errors: {
+      remoteRequired: 'Remote worker hostname, port, and token are required.',
+      stopLocalWorkerFirst: 'Stop the local worker before switching to Standalone.',
+      enableLocalRequiresRestart: 'Enable Local Worker and restart before starting it.',
+    },
+    home: {
+      title: 'Home Worker',
+      help: 'Choose where Desktop reads and writes durable state.',
+      modeLabel: 'Mode',
+      mode: {
+        standalone: 'Standalone (No Worker)',
+        local: 'Local Worker',
+        remote: 'Remote Worker',
+      },
+      applyLabel: 'Apply',
+      applyHelp: 'Changes require a restart to take effect.',
+      applyRestart: 'Apply & Restart',
+    },
+    remote: {
+      hostnameLabel: 'Hostname',
+      portLabel: 'Port',
+      tokenLabel: 'Token',
+      revealToken: 'Reveal',
+      hideToken: 'Hide',
+    },
+    cli: {
+      title: 'CLI',
+      help: 'Install the `opencove` command in your PATH.',
+      statusLabel: 'Status',
+      status: {
+        installed: 'Installed ({{path}})',
+        notInstalled: 'Not installed',
+      },
+      actionsLabel: 'Actions',
+      install: 'Install CLI',
+      uninstall: 'Uninstall CLI',
+    },
+    local: {
+      title: 'Local Worker',
+      help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access.',
+      statusLabel: 'Status',
+      status: {
+        running: 'Running',
+        stopped: 'Stopped',
+      },
+      actionsLabel: 'Actions',
+      start: 'Start',
+      stop: 'Stop',
+      baseUrlLabel: 'Base URL',
+      copyBaseUrl: 'Copy',
+      tokenLabel: 'Token',
+      revealToken: 'Reveal',
+      hideToken: 'Hide',
+      copyToken: 'Copy',
+      webUiLabel: 'Web UI',
+      openWebUi: 'Open Web UI',
+    },
   },
   workspace: {
     title: 'Workspace Worktree',

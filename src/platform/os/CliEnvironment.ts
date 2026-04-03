@@ -230,6 +230,10 @@ export function computeHydratedLocaleEnv(
 }
 
 export function hydrateCliEnvironmentForAppLaunch(isPackaged: boolean): void {
+  if (!isPackaged) {
+    return
+  }
+
   const currentPath = process.env.PATH ?? ''
   const shellPath = resolvePosixShellPath(process.env.SHELL)
 

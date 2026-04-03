@@ -7,8 +7,9 @@ import { fileURLToPath } from 'node:url'
 
 import { readFlagValue, requireFlagValue, resolveTimeoutMs, stripGlobalOptions } from './args.mjs'
 import { resolveConnectionInfo } from './connection.mjs'
-import { invokeAndPrint } from './invoke.mjs'
+import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
+import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -90,13 +91,19 @@ async function main() {
       workerArgs.push('--approve-root', root)
     }
 
-    const child = spawn(process.execPath, [workerPath, ...workerArgs], { stdio: 'inherit' })
+    const child = spawn(process.execPath, [workerPath, ...workerArgs], {
+      stdio: 'inherit',
+      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      windowsHide: true,
+    })
     child.on('exit', code => {
       process.exit(code ?? 1)
     })
 
     return
   }
+
+  const capabilitiesRequest = { kind: 'query', id: 'system.capabilities', payload: null }
 
   const connection = endpoint
     ? (() => {
@@ -127,6 +134,28 @@ async function main() {
     process.stderr.write(
       '[opencove] control surface is not running (no valid connection info found).\n',
     )
+    process.exit(2)
+  }
+
+  try {
+    const { result } = await invokeControlSurface(connection, capabilitiesRequest, { timeoutMs })
+    if (!result || result.ok !== true) {
+      process.stderr.write('[opencove] incompatible worker: missing system.capabilities.\n')
+      process.exit(2)
+    }
+
+    const value = result.value
+    const protocolVersion =
+      value && typeof value === 'object' && !Array.isArray(value) ? value.protocolVersion : null
+
+    if (protocolVersion !== CONTROL_SURFACE_PROTOCOL_VERSION) {
+      process.stderr.write(
+        `[opencove] incompatible protocol (cli=${CONTROL_SURFACE_PROTOCOL_VERSION}, worker=${protocolVersion ?? 'unknown'}).\n`,
+      )
+      process.exit(2)
+    }
+  } catch (error) {
+    process.stderr.write(`[opencove] capabilities check failed: ${toErrorMessage(error)}\n`)
     process.exit(2)
   }
 
