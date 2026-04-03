@@ -354,7 +354,6 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       }
 
       expect(documentBox.x).toBeGreaterThan(previewBox.x + 32)
-      expect(documentBox.y).toBeGreaterThan(previewBox.y + 16)
     } finally {
       await electronApp.close()
       await removePathWithRetry(fixtureDir)

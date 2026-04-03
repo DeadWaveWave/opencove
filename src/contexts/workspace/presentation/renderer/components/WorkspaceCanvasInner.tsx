@@ -117,6 +117,7 @@ export function WorkspaceCanvasInner({
       setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     })
   const {
+    finalizeDraggedNodeDrop,
     handleNodeDragStart,
     handleSelectionDragStart,
     handleNodeDragStop,
@@ -397,6 +398,10 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     reactFlow,
+    magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
+    setSnapGuides: canvasState.setSnapGuides,
+    setSpaceFramePreview: setNodeSpaceFramePreview,
+    finalizeDraggedNodeDrop,
     createDocumentNode: nodeStore.createDocumentNode,
     createImageNode: nodeStore.createImageNode,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,

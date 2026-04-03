@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useRef, useState, type MutableRefObject } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { TranslateFn } from '@app/renderer/i18n'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
@@ -9,6 +9,7 @@ import {
   restoreSelectionAfterDrop,
   type SetNodes,
 } from './useSpaceOwnership.helpers'
+import { resolveSpaceAtPoint as resolveSpaceAtPointFromHelpers } from './useSpaceOwnership.drop.helpers'
 
 function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
@@ -32,6 +33,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   applyOwnershipForDrop,
   reactFlow,
   resolveDropTargetSpaceAtPoint,
+  spacesRef,
   setNodes,
   hideWorktreeMismatchDropWarning,
   workspacePath,
@@ -43,6 +45,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
   ) => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   resolveDropTargetSpaceAtPoint: (point: { x: number; y: number }) => WorkspaceSpaceState | null
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: SetNodes
   hideWorktreeMismatchDropWarning: boolean
   workspacePath: string
@@ -116,7 +119,16 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
               y: draggedDropRect.y + draggedDropRect.height / 2,
             }
           : dropFlowPoint
-      const targetSpace = resolveDropTargetSpaceAtPoint(dropTargetPoint)
+      const targetSpace =
+        spaceRectOverrideById && spaceRectOverrideById.size > 0
+          ? resolveSpaceAtPointFromHelpers(
+              spacesRef.current.map(space => {
+                const rect = spaceRectOverrideById.get(space.id) ?? null
+                return rect ? { ...space, rect: { ...rect } } : space
+              }),
+              dropTargetPoint,
+            )
+          : resolveDropTargetSpaceAtPoint(dropTargetPoint)
       const targetDirectory = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
 
       if (hideWorktreeMismatchDropWarning) {
@@ -224,6 +236,7 @@ export function useWorkspaceCanvasSpaceOwnershipWorktreeWarning({
       hideWorktreeMismatchDropWarning,
       reactFlow,
       resolveDropTargetSpaceAtPoint,
+      spacesRef,
       setNodes,
       t,
       workspacePath,
