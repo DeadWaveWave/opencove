@@ -241,9 +241,9 @@ export function createRemotePersistenceStore(
         }
 
         try {
-          await attemptWrite(state, baseRevision)
+          const revision = await attemptWrite(state, baseRevision)
           const bytes = Buffer.byteLength(JSON.stringify(state), 'utf8')
-          return { ok: true, level: 'full', bytes }
+          return { ok: true, level: 'full', bytes, revision }
         } catch (error) {
           if (!isRevisionConflictError(error)) {
             return {
@@ -278,10 +278,10 @@ export function createRemotePersistenceStore(
               ? mergePersistedAppStates(latest.state, state, baseSnapshot)
               : state
 
-          await attemptWrite(merged, latest.revision)
+          const revision = await attemptWrite(merged, latest.revision)
 
           const bytes = Buffer.byteLength(JSON.stringify(merged), 'utf8')
-          return { ok: true, level: 'full', bytes }
+          return { ok: true, level: 'full', bytes, revision }
         }
       } catch (error) {
         return resolveIoFailure(error)

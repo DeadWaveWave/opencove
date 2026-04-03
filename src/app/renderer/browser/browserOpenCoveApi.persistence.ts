@@ -7,7 +7,6 @@ type PersistenceApi = Window['opencoveApi']['persistence']
 
 let lastKnownSyncRevision: number | null = null
 let lastKnownSyncState: PersistedAppState | null = null
-const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
 
 function setLastKnownSyncRevision(value: unknown): void {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
@@ -19,22 +18,6 @@ function setLastKnownSyncRevision(value: unknown): void {
 
 function setLastKnownSyncState(value: unknown): void {
   lastKnownSyncState = isPersistedAppState(value) ? value : null
-}
-
-function publishLocalSyncWrite(revision: number): void {
-  if (typeof window === 'undefined') {
-    return
-  }
-
-  try {
-    window.dispatchEvent(
-      new CustomEvent(LOCAL_SYNC_WRITE_EVENT_NAME, {
-        detail: { revision },
-      }),
-    )
-  } catch {
-    // ignore event failures
-  }
 }
 
 export function createBrowserPersistenceApi(): PersistenceApi {
@@ -76,7 +59,6 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         })
         setLastKnownSyncRevision(response.revision)
         setLastKnownSyncState(state)
-        publishLocalSyncWrite(response.revision)
         return response.revision
       }
 
@@ -87,12 +69,13 @@ export function createBrowserPersistenceApi(): PersistenceApi {
       try {
         const baseRevision =
           typeof lastKnownSyncRevision === 'number' ? lastKnownSyncRevision : null
-        await attemptWrite(state, baseRevision)
+        const revision = await attemptWrite(state, baseRevision)
 
         return {
           ok: true,
           level: 'full',
           bytes: JSON.stringify(state).length,
+          revision,
         } as const
       } catch (error) {
         const descriptor = toAppErrorDescriptor(error, 'persistence.invalid_state')
@@ -122,12 +105,13 @@ export function createBrowserPersistenceApi(): PersistenceApi {
               ? mergePersistedAppStates(latest.state, state, baseSnapshot)
               : state
 
-          await attemptWrite(merged, latest.revision)
+          const revision = await attemptWrite(merged, latest.revision)
 
           return {
             ok: true,
             level: 'full',
             bytes: JSON.stringify(merged).length,
+            revision,
           } as const
         } catch (retryError) {
           return {

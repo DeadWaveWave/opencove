@@ -21,7 +21,6 @@ function isNodePositionEqual(
   }
   return left.position.x === right.position.x && left.position.y === right.position.y
 }
-
 function isNodeSizeEqual(
   left: Node<TerminalNodeData> | null,
   right: Node<TerminalNodeData> | null,
@@ -31,7 +30,6 @@ function isNodeSizeEqual(
   }
   return left.width === right.width && left.height === right.height
 }
-
 function shallowEqualRecord(left: UnknownRecord, right: UnknownRecord): boolean {
   if (left === right) {
     return true
@@ -51,7 +49,6 @@ function shallowEqualRecord(left: UnknownRecord, right: UnknownRecord): boolean 
   }
   return true
 }
-
 function areStringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
   if (left === right) {
     return true
@@ -261,6 +258,7 @@ function isNodeEquivalent(
 function mergeRuntimeNode(
   persistedNode: Node<TerminalNodeData>,
   existingNode: Node<TerminalNodeData> | undefined,
+  workspaceHasActiveDrag: boolean,
 ): Node<TerminalNodeData> {
   if (!existingNode) {
     return persistedNode
@@ -271,6 +269,7 @@ function mergeRuntimeNode(
   }
 
   const isDragging = existingNode.dragging === true
+  const shouldPreservePosition = workspaceHasActiveDrag || isDragging
   const persistedSessionId = persistedNode.data.sessionId.trim()
   const existingSessionId = existingNode.data.sessionId.trim()
   const kind = persistedNode.data.kind
@@ -281,7 +280,8 @@ function mergeRuntimeNode(
     draggable: existingNode.draggable ?? persistedNode.draggable,
     selectable: existingNode.selectable ?? persistedNode.selectable,
     selected: existingNode.selected,
-    ...(isDragging ? { position: existingNode.position, dragging: true } : {}),
+    ...(shouldPreservePosition ? { position: existingNode.position } : {}),
+    ...(isDragging ? { dragging: true } : {}),
     ...(existingNode.dragging === false ? { dragging: false } : {}),
     width: existingNode.width,
     height: existingNode.height,
@@ -304,13 +304,14 @@ export function toShellWorkspaceStateForSync(
   existingWorkspace: WorkspaceState | undefined,
 ): WorkspaceState {
   const existingNodes = existingWorkspace?.nodes ?? []
+  const workspaceHasActiveDrag = existingNodes.some(node => node.dragging === true)
   const persistedNodes = toRuntimeNodes(workspace)
   const existingNodeById = new Map(existingNodes.map(node => [node.id, node] as const))
   const persistedNodeIds = new Set(persistedNodes.map(node => node.id))
 
   const mergedNodeById = new Map<string, Node<TerminalNodeData>>()
   const mergedPersistedNodes = persistedNodes.map(node => {
-    const mergedNode = mergeRuntimeNode(node, existingNodeById.get(node.id))
+    const mergedNode = mergeRuntimeNode(node, existingNodeById.get(node.id), workspaceHasActiveDrag)
     mergedNodeById.set(node.id, mergedNode)
     return mergedNode
   })

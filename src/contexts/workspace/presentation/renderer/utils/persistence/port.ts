@@ -17,6 +17,28 @@ export interface PersistencePort {
 
 const NODE_SCROLLBACK_KEY_PREFIX = 'opencove:m0:node-scrollback:'
 const LEGACY_NODE_SCROLLBACK_KEY_PREFIX = 'cove:m0:node-scrollback:'
+const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
+
+function publishLocalSyncWriteRevision(revision: unknown): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (typeof revision !== 'number' || !Number.isFinite(revision) || revision < 0) {
+    return
+  }
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent(LOCAL_SYNC_WRITE_EVENT_NAME, {
+        detail: { revision: Math.floor(revision) },
+      }),
+    )
+  } catch {
+    // ignore event failures
+  }
+}
+
 function createIpcPort(): PersistencePort | null {
   if (typeof window === 'undefined') {
     return null
@@ -38,7 +60,11 @@ function createIpcPort(): PersistencePort | null {
     },
     writeAppState: async state => {
       try {
-        return await persistenceApi.writeAppState({ state })
+        const result = await persistenceApi.writeAppState({ state })
+        if (result.ok) {
+          publishLocalSyncWriteRevision(result.revision)
+        }
+        return result
       } catch (error) {
         return {
           ok: false,

@@ -461,7 +461,11 @@ describe('PersistenceStore', () => {
       })
 
       const result = await store.writeWorkspaceStateRaw(raw)
-      expect(result).toEqual({ ok: true, level: 'full', bytes: rawBytes })
+      expect(result).toMatchObject({ ok: true, level: 'full', bytes: rawBytes })
+      if (result.ok) {
+        expect(result.revision).toBeTypeOf('number')
+        expect(result.revision).toBeGreaterThan(0)
+      }
       store.dispose()
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,

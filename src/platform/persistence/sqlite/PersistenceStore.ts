@@ -147,12 +147,13 @@ export async function createPersistenceStore(options: {
     }
 
     try {
+      let revision = 0
       sqlite.transaction(() => {
-        writeNormalizedAppState(sqlite, normalized)
+        revision = writeNormalizedAppState(sqlite, normalized)
         writeNormalizedScrollbacks(sqlite, normalized)
       })()
 
-      return { ok: true, level: 'full', bytes: rawBytes }
+      return { ok: true, level: 'full', bytes: rawBytes, revision }
     } catch (error) {
       return {
         ok: false,
@@ -177,9 +178,9 @@ export async function createPersistenceStore(options: {
     }
 
     try {
-      writeNormalizedAppState(sqlite, normalized)
+      const revision = writeNormalizedAppState(sqlite, normalized)
       const bytes = utf8ByteLength(safeJsonStringify(normalized))
-      return { ok: true, level: 'full', bytes }
+      return { ok: true, level: 'full', bytes, revision }
     } catch (error) {
       return {
         ok: false,

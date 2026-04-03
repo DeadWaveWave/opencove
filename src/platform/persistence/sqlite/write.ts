@@ -7,7 +7,7 @@ import { safeJsonStringify } from './utils'
 export function writeNormalizedAppState(
   db: Database.Database,
   state: NormalizedPersistedAppState,
-): void {
+): number {
   const readMetaValue = db.prepare(
     `
       SELECT value
@@ -160,9 +160,11 @@ export function writeNormalizedAppState(
 
     // Keep scrollback only for still-present nodes.
     db.exec('DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT id FROM nodes)')
+
+    return nextRevision
   })
 
-  writeTx()
+  return writeTx()
 }
 
 export function writeNormalizedScrollbacks(
