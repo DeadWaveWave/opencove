@@ -47,6 +47,7 @@ function TerminalNodeType({
   closeNodeRef,
   resizeNodeRef,
   copyAgentLastMessageRef,
+  updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
   updateTerminalTitleRef,
   renameTerminalTitleRef,
@@ -61,14 +62,12 @@ function TerminalNodeType({
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
-  const scrollback = useMemo(
-    () => useScrollbackStore.getState().scrollbackByNodeId[id] ?? null,
-    [id],
-  )
+  const scrollback = useScrollbackStore(state => state.scrollbackByNodeId[id] ?? null)
   const nodePosition = useNodePosition(id)
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -123,7 +122,7 @@ function TerminalNodeType({
           : undefined
       }
       onResize={frame => resizeNodeRef.current(id, frame)}
-      onScrollbackChange={undefined}
+      onScrollbackChange={nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)}
       onCommandRun={
         data.kind === 'terminal'
           ? command => {
@@ -264,7 +263,7 @@ export function useWorkspaceCanvasNodeTypes({
   resizeNodeRef,
   copyAgentLastMessageRef,
   updateNoteTextRef,
-  updateNodeScrollbackRef: _updateNodeScrollbackRef,
+  updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
   requestNodeDeleteRef,
   openTaskEditorRef,
@@ -448,6 +447,7 @@ export function useWorkspaceCanvasNodeTypes({
             closeNodeRef={closeNodeRef}
             resizeNodeRef={resizeNodeRef}
             copyAgentLastMessageRef={copyAgentLastMessageRef}
+            updateNodeScrollbackRef={updateNodeScrollbackRef}
             normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
             updateTerminalTitleRef={updateTerminalTitleRef}
             renameTerminalTitleRef={renameTerminalTitleRef}
@@ -491,6 +491,7 @@ export function useWorkspaceCanvasNodeTypes({
     copyAgentLastMessageRef,
     resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef,
+    updateNodeScrollbackRef,
     updateTaskStatusRef,
     updateTerminalTitleRef,
     renameTerminalTitleRef,

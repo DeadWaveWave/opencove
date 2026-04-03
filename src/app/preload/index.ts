@@ -49,6 +49,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -265,6 +266,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyAttach, payload),
     detach: (payload: DetachTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
+    syncSessionBindings: (payload: SyncPtySessionBindingsInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.ptySyncSessionBindings, payload),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
     debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),

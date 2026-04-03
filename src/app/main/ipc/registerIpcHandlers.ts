@@ -14,7 +14,7 @@ import { createAppUpdateService } from '../../../contexts/update/infrastructure/
 import { registerReleaseNotesIpcHandlers } from '../../../contexts/releaseNotes/presentation/main-ipc/register'
 import { createReleaseNotesService } from '../../../contexts/releaseNotes/infrastructure/main/ReleaseNotesService'
 import { registerFilesystemIpcHandlers } from '../../../contexts/filesystem/presentation/main-ipc/register'
-import { app } from 'electron'
+import { app, ipcMain } from 'electron'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createPersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { registerPersistenceIpcHandlers } from '../../../platform/persistence/sqlite/ipc/register'
@@ -28,6 +28,12 @@ import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBri
 import { registerLocalWorkerIpcHandlers } from './registerLocalWorkerIpcHandlers'
 import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandlers'
 import { registerCliIpcHandlers } from './registerCliIpcHandlers'
+import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
+import { registerHandledIpc } from './handle'
+import {
+  createPtyScrollbackMirror,
+  normalizePtySessionNodeBindingsPayload,
+} from './ptyScrollbackMirror'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -70,6 +76,29 @@ export function registerIpcHandlers(deps?: {
     void approvedWorkspaces.registerRoot(resolve(process.env.OPENCOVE_TEST_WORKSPACE))
   }
 
+  const scrollbackMirror = createPtyScrollbackMirror({
+    source: {
+      snapshot: sessionId => ptyRuntime.snapshot(sessionId),
+    },
+    getPersistenceStore,
+  })
+
+  registerHandledIpc(
+    IPC_CHANNELS.ptySyncSessionBindings,
+    async (_event, payload: unknown): Promise<void> => {
+      const normalized = normalizePtySessionNodeBindingsPayload(payload)
+
+      const MAX_BINDINGS = 15_000
+      const limitedBindings =
+        normalized.bindings.length > MAX_BINDINGS
+          ? normalized.bindings.slice(0, MAX_BINDINGS)
+          : normalized.bindings
+
+      scrollbackMirror.setBindings(limitedBindings)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
   const disposables: IpcRegistrationDisposable[] = [
     registerLocalWorkerIpcHandlers(),
     registerWorkerClientIpcHandlers(),
@@ -94,6 +123,13 @@ export function registerIpcHandlers(deps?: {
   if (workerEndpoint) {
     disposables.push(registerWorkerSyncBridge(workerEndpoint))
   }
+
+  disposables.push({
+    dispose: () => {
+      ipcMain.removeHandler(IPC_CHANNELS.ptySyncSessionBindings)
+      scrollbackMirror.dispose()
+    },
+  })
 
   return {
     dispose: () => {

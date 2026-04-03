@@ -5,7 +5,6 @@ import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
-import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollbackSchedule'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
@@ -234,7 +233,6 @@ export function useWorkspaceCanvasNodesStore({
         }
 
         setNodeScrollback(nodeId, pending)
-        scheduleNodeScrollbackWrite(nodeId, pending)
       }
 
       pendingScrollbacks.clear()
@@ -256,7 +254,6 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       setNodeScrollback(nodeId, scrollback)
-      scheduleNodeScrollbackWrite(nodeId, scrollback)
     },
     [setNodeScrollback],
   )

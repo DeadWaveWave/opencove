@@ -14,8 +14,8 @@ import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
+import { usePtySessionBindingsSync } from './hooks/usePtySessionBindingsSync'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
-import { usePtyWorkspaceScrollbackKeepalive } from './hooks/usePtyWorkspaceScrollbackKeepalive'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
@@ -81,8 +81,8 @@ export default function App(): React.JSX.Element {
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()
 
+  usePtySessionBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
-  usePtyWorkspaceScrollbackKeepalive()
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
 
   const activeWorkspace = useMemo(

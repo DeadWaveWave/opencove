@@ -47,6 +47,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -177,6 +178,7 @@ export interface OpenCoveApi {
     kill: (payload: KillTerminalInput) => Promise<void>
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>
+    syncSessionBindings: (payload: SyncPtySessionBindingsInput) => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
     debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn

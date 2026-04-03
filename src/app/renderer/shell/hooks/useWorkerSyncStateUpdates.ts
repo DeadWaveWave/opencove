@@ -80,7 +80,7 @@ function toShellWorkspaceStateForSync(
     worktreesRoot: workspace.worktreesRoot,
     pullRequestBaseBranchOptions: workspace.pullRequestBaseBranchOptions ?? [],
     nodes,
-    viewport: {
+    viewport: existingWorkspace?.viewport ?? {
       x: workspace.viewport.x,
       y: workspace.viewport.y,
       zoom: workspace.viewport.zoom,
