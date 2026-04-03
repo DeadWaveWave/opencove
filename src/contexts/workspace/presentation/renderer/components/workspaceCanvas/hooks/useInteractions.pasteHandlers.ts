@@ -9,7 +9,7 @@ import type {
 } from '../../../types'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import { isEditableDomTarget } from '../domTargets'
-import { resolveWebsiteNavigationUrl } from '@shared/utils/websiteUrl'
+import { resolveWebsitePasteUrl } from '@shared/utils/websiteUrl'
 import { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
 import { createWebsiteNodeAtFlowPosition } from './useInteractions.paneNodeCreation'
 import type { SetNodes } from './useInteractions.types'
@@ -25,6 +25,8 @@ export function useWorkspaceCanvasPasteHandlers({
   createImageNode,
   createWebsiteNode,
   standardWindowSizeBucket,
+  websiteWindowsEnabled,
+  websiteWindowPasteEnabled,
 }: {
   canvasRef: React.RefObject<HTMLDivElement | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
@@ -44,6 +46,8 @@ export function useWorkspaceCanvasPasteHandlers({
     placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
   ) => Node<TerminalNodeData> | null
   standardWindowSizeBucket: StandardWindowSizeBucket
+  websiteWindowsEnabled: boolean
+  websiteWindowPasteEnabled: boolean
 }): {
   handleCanvasPaste: React.ClipboardEventHandler<HTMLDivElement>
   handleCanvasDragOver: React.DragEventHandler<HTMLDivElement>
@@ -71,8 +75,12 @@ export function useWorkspaceCanvasPasteHandlers({
         return
       }
 
+      if (!websiteWindowsEnabled || !websiteWindowPasteEnabled) {
+        return
+      }
+
       const text = event.clipboardData?.getData('text/plain') ?? ''
-      const resolved = resolveWebsiteNavigationUrl(text)
+      const resolved = resolveWebsitePasteUrl(text)
       if (!resolved.url) {
         return
       }
@@ -105,6 +113,8 @@ export function useWorkspaceCanvasPasteHandlers({
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      websiteWindowPasteEnabled,
+      websiteWindowsEnabled,
     ],
   )
 

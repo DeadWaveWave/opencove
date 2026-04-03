@@ -10,6 +10,7 @@ export interface WebsiteWindowBounds {
 }
 
 export interface WebsiteWindowPolicy {
+  enabled: boolean
   maxActiveCount: number
   discardAfterMinutes: number
   keepAliveHosts: string[]
@@ -95,8 +96,15 @@ export interface WebsiteWindowErrorEvent {
   message: string
 }
 
+export interface WebsiteWindowOpenUrlEvent {
+  type: 'open-url'
+  sourceNodeId: string
+  url: string
+}
+
 export type WebsiteWindowEventPayload =
   | WebsiteWindowStateEvent
   | WebsiteWindowSnapshotEvent
   | WebsiteWindowClosedEvent
   | WebsiteWindowErrorEvent
+  | WebsiteWindowOpenUrlEvent

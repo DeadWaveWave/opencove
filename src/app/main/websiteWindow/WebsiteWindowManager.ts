@@ -17,6 +17,10 @@ import { boundsEqual, normalizeBounds } from './websiteWindowBounds'
 import { DEFAULT_WEBSITE_WINDOW_POLICY, normalizeWebsiteWindowPolicy } from './websiteWindowPolicy'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
 import { countActiveWebsiteWindowRuntimes } from './websiteWindowActiveCount'
+import {
+  applyWebsiteWindowManagerOcclusionState,
+  transitionAllWebsiteWindowRuntimesToCold,
+} from './websiteWindowManagerOps'
 import { ensureWebsiteWindowRuntime } from './websiteWindowRuntimeFactory'
 import { normalizeWebsiteCanvasZoom } from './websiteWindowView'
 import {
@@ -31,10 +35,6 @@ import {
   transitionWebsiteWindowToWarm,
   transitionWebsiteWindowToCold,
 } from './websiteWindowLifecycle'
-import {
-  attachWebsiteWindowRuntimeViewToWindow,
-  detachWebsiteWindowRuntimeViewFromWindow,
-} from './websiteWindowRuntimeAttachment'
 import {
   loadWebsiteWindowRuntimeDesiredUrl,
   resolveWebsiteWindowRuntimeWebContents,
@@ -56,6 +56,16 @@ export class WebsiteWindowManager {
   configurePolicy(payload: ConfigureWebsiteWindowPolicyInput): void {
     const normalized = normalizeWebsiteWindowPolicy(payload.policy)
     this.policy = normalized
+
+    if (!normalized.enabled) {
+      transitionAllWebsiteWindowRuntimesToCold({
+        runtimes: this.runtimeByNodeId.values(),
+        window: this.window,
+        emit: eventPayload => this.emit(eventPayload),
+        emitState: nextRuntime => this.emitState(nextRuntime),
+      })
+    }
+
     this.enforceActiveBudget()
 
     for (const runtime of this.runtimeByNodeId.values()) {
@@ -71,43 +81,20 @@ export class WebsiteWindowManager {
 
     this.isOccluded = nextOccluded
 
-    if (nextOccluded) {
-      for (const runtime of this.runtimeByNodeId.values()) {
-        if (runtime.lifecycle === 'active') {
-          captureWebsiteWindowRuntimeSnapshot({
-            runtime,
-            quality: 58,
-            emit: eventPayload => this.emit(eventPayload),
-          })
-        }
-        detachWebsiteWindowRuntimeViewFromWindow(runtime, this.window)
-      }
-    } else {
-      const windowScaleFactor = resolveBrowserWindowScaleFactor(this.window)
-      for (const runtime of this.runtimeByNodeId.values()) {
-        if (runtime.lifecycle !== 'active') {
-          continue
-        }
-
-        attachWebsiteWindowRuntimeViewToWindow(runtime, this.window)
-        if (runtime.bounds) {
-          applyWebsiteWindowViewportMetrics({
-            runtime,
-            bounds: runtime.bounds,
-            viewportBounds: runtime.viewportBounds,
-            canvasZoom: runtime.canvasZoom,
-            windowScaleFactor,
-          })
-        }
-      }
-    }
-
-    for (const runtime of this.runtimeByNodeId.values()) {
-      this.emitState(runtime)
-    }
+    applyWebsiteWindowManagerOcclusionState({
+      runtimes: this.runtimeByNodeId.values(),
+      nextOccluded,
+      window: this.window,
+      emit: eventPayload => this.emit(eventPayload),
+      emitState: nextRuntime => this.emitState(nextRuntime),
+    })
   }
 
   activate(payload: ActivateWebsiteWindowInput): void {
+    if (!this.policy.enabled) {
+      return
+    }
+
     const nodeId = payload.nodeId.trim()
     if (nodeId.length === 0) {
       throw new Error('Invalid website nodeId')
@@ -234,6 +221,10 @@ export class WebsiteWindowManager {
     }
 
     runtime.desiredUrl = payload.url
+    if (!this.policy.enabled) {
+      return
+    }
+
     loadWebsiteWindowRuntimeDesiredUrl({
       runtime,
       emit: eventPayload => this.emit(eventPayload),

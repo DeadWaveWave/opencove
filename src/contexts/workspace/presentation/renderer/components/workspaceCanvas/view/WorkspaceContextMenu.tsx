@@ -34,6 +34,7 @@ export function WorkspaceContextMenu({
   createTerminalNode,
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
+  websiteWindowsEnabled,
   openTaskCreator,
   openAgentLauncher,
   agentProviderOrder,
@@ -419,6 +420,7 @@ export function WorkspaceContextMenu({
             createTerminalNode={createTerminalNode}
             createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
             createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+            websiteWindowsEnabled={websiteWindowsEnabled}
             openTaskCreator={openTaskCreator}
             openAgentLauncher={openAgentLauncher}
             openAgentProviderSubmenu={openAgentProviderSubmenu}

@@ -1,12 +1,14 @@
 import type { WebsiteWindowPolicy } from '../../../shared/contracts/dto'
 
 export const DEFAULT_WEBSITE_WINDOW_POLICY: WebsiteWindowPolicy = {
+  enabled: false,
   maxActiveCount: 1,
   discardAfterMinutes: 20,
   keepAliveHosts: [],
 }
 
 export function normalizeWebsiteWindowPolicy(input: WebsiteWindowPolicy): WebsiteWindowPolicy {
+  const enabled = input.enabled === true
   const maxActiveCount =
     typeof input.maxActiveCount === 'number' && Number.isFinite(input.maxActiveCount)
       ? Math.max(1, Math.min(6, Math.round(input.maxActiveCount)))
@@ -26,6 +28,7 @@ export function normalizeWebsiteWindowPolicy(input: WebsiteWindowPolicy): Websit
     : []
 
   return {
+    enabled,
     maxActiveCount,
     discardAfterMinutes,
     keepAliveHosts,

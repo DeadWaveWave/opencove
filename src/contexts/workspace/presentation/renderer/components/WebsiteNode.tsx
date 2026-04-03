@@ -116,6 +116,16 @@ export function WebsiteNode({
   const canGoForward = runtime?.canGoForward === true
   const isLoading = runtime?.isLoading === true
 
+  useEffect(() => {
+    const runtimeUrl = runtime?.url?.trim() ?? ''
+    const currentUrl = url.trim()
+    if (runtimeUrl.length === 0 || runtimeUrl === currentUrl) {
+      return
+    }
+
+    onUrlCommit(runtimeUrl)
+  }, [onUrlCommit, runtime?.url, url])
+
   const commitUrl = useCallback(() => {
     const nextUrl = draftUrl.trim()
     onUrlCommit(nextUrl)
@@ -152,12 +162,6 @@ export function WebsiteNode({
   const displayTitle = runtime?.title?.trim().length ? runtime.title : title
   const snapshotDataUrl = runtime?.snapshotDataUrl ?? null
   const hasRequestedInitialSnapshotRef = useRef(false)
-  const overlayHint =
-    url.trim().length === 0
-      ? t('websiteNode.emptyHint')
-      : lifecycle === 'warm'
-        ? t('websiteNode.warmHint')
-        : t('websiteNode.coldHint')
 
   useEffect(() => {
     if (lifecycle !== 'active') {
@@ -286,6 +290,12 @@ export function WebsiteNode({
           </form>
 
           <div className="website-node__actions">
+            {lifecycle === 'cold' ? (
+              <span className="website-node__status" aria-label="cold">
+                zzz
+              </span>
+            ) : null}
+
             <button
               type="button"
               className="website-node__icon-button nodrag"
@@ -365,15 +375,6 @@ export function WebsiteNode({
                 alt={t('websiteNode.snapshotAlt')}
                 draggable={false}
               />
-            ) : null}
-
-            {lifecycle !== 'active' ? (
-              <div className="website-node__overlay" aria-hidden="true">
-                <div className="website-node__overlay-badge">
-                  <div className="website-node__overlay-title">{displayTitle}</div>
-                  <div className="website-node__overlay-subtitle">{overlayHint}</div>
-                </div>
-              </div>
             ) : null}
           </div>
         </div>

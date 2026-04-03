@@ -16,6 +16,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
+import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
@@ -90,6 +91,8 @@ export function SettingsPanel({
     onChange({ ...settings, standardWindowSizeBucket: bucket })
   const updateWebsiteWindowPolicy = (policy: AgentSettings['websiteWindowPolicy']): void =>
     onChange({ ...settings, websiteWindowPolicy: policy })
+  const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
@@ -270,6 +273,12 @@ export function SettingsPanel({
             onClick={() => setActivePageId('canvas')}
           />
           <SettingsPanelNavButton
+            isActive={activePageId === 'experimental'}
+            label={t('settingsPanel.nav.experimental')}
+            testId="settings-section-nav-experimental"
+            onClick={() => setActivePageId('experimental')}
+          />
+          <SettingsPanelNavButton
             isActive={activePageId === 'shortcuts'}
             label={t('settingsPanel.nav.shortcuts')}
             testId="settings-section-nav-shortcuts"
@@ -386,7 +395,6 @@ export function SettingsPanel({
                 standardWindowSizeBucket={settings.standardWindowSizeBucket}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
-                websiteWindowPolicy={settings.websiteWindowPolicy}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
@@ -395,8 +403,16 @@ export function SettingsPanel({
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
-                onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
+              />
+            ) : null}
+
+            {activePageId === 'experimental' ? (
+              <ExperimentalSection
+                websiteWindowPolicy={settings.websiteWindowPolicy}
+                websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
+                onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
+                onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
               />
             ) : null}
 

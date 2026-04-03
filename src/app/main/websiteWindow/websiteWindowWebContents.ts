@@ -27,6 +27,12 @@ export function configureWebsiteWebContents({
   }
 
   contents.setWindowOpenHandler(({ url }) => {
+    const resolved = resolveWebsiteNavigationUrl(url)
+    if (resolved.url) {
+      emit({ type: 'open-url', sourceNodeId: nodeId, url: resolved.url })
+      return { action: 'deny' }
+    }
+
     openExternalIfSafe(url)
     return { action: 'deny' }
   })

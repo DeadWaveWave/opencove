@@ -30,6 +30,8 @@ export interface UseWorkspaceCanvasInteractionsParams {
   isTrackpadCanvasMode: boolean
   focusNodeOnClick: boolean
   focusNodeTargetZoom: number
+  websiteWindowsEnabled: boolean
+  websiteWindowPasteEnabled: boolean
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>

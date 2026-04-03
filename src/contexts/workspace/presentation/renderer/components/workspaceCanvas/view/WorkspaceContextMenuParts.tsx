@@ -33,6 +33,7 @@ export function WorkspaceContextPaneMenuContent({
   createTerminalNode,
   createNoteNodeFromContextMenu,
   createWebsiteNodeFromContextMenu,
+  websiteWindowsEnabled,
   openTaskCreator,
   openAgentLauncher,
   openAgentProviderSubmenu,
@@ -50,6 +51,7 @@ export function WorkspaceContextPaneMenuContent({
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
   createWebsiteNodeFromContextMenu: () => void
+  websiteWindowsEnabled: boolean
   openTaskCreator: () => void
   openAgentLauncher: () => void
   openAgentProviderSubmenu: () => void
@@ -90,18 +92,20 @@ export function WorkspaceContextPaneMenuContent({
         <FileText className="workspace-context-menu__icon" aria-hidden="true" />
         <span className="workspace-context-menu__label">{t('workspaceContextMenu.newNote')}</span>
       </button>
-      <button
-        type="button"
-        data-testid="workspace-context-new-website"
-        onClick={() => {
-          createWebsiteNodeFromContextMenu()
-        }}
-      >
-        <Globe className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('workspaceContextMenu.newWebsite')}
-        </span>
-      </button>
+      {websiteWindowsEnabled ? (
+        <button
+          type="button"
+          data-testid="workspace-context-new-website"
+          onClick={() => {
+            createWebsiteNodeFromContextMenu()
+          }}
+        >
+          <Globe className="workspace-context-menu__icon" aria-hidden="true" />
+          <span className="workspace-context-menu__label">
+            {t('workspaceContextMenu.newWebsite')}
+          </span>
+        </button>
+      ) : null}
       <button
         type="button"
         data-testid="workspace-context-new-task"

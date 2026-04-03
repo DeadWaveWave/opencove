@@ -256,6 +256,8 @@ export function WorkspaceCanvasInner({
     isTrackpadCanvasMode,
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
+    websiteWindowsEnabled: agentSettings.websiteWindowPolicy.enabled,
+    websiteWindowPasteEnabled: agentSettings.experimentalWebsiteWindowPasteEnabled,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     selectionDraftRef: canvasState.selectionDraftRef,
     setSelectionDraftUi: canvasState.setSelectionDraftUi,

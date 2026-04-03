@@ -12,6 +12,7 @@ export interface WorkspaceContextMenuProps {
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
   createWebsiteNodeFromContextMenu: () => void
+  websiteWindowsEnabled: boolean
   openTaskCreator: () => void
   openAgentLauncher: () => void
   agentProviderOrder: AgentProvider[]

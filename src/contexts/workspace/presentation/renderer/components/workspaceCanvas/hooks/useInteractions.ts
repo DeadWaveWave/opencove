@@ -20,12 +20,15 @@ import {
   createWebsiteNodeFromPaneContextMenu,
 } from './useInteractions.paneNodeCreation'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
+import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
 
 export function useWorkspaceCanvasInteractions({
   canvasRef,
   isTrackpadCanvasMode,
   focusNodeOnClick,
   focusNodeTargetZoom,
+  websiteWindowsEnabled,
+  websiteWindowPasteEnabled,
   isShiftPressedRef,
   selectionDraftRef,
   setSelectionDraftUi,
@@ -50,28 +53,7 @@ export function useWorkspaceCanvasInteractions({
   onShowMessage,
   createImageNode,
   createWebsiteNode,
-}: UseWorkspaceCanvasInteractionsParams): {
-  clearNodeSelection: () => void
-  handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
-  handleNodeClick: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
-  handleSelectionContextMenu: (
-    event: React.MouseEvent,
-    selectedNodes: Node<TerminalNodeData>[],
-  ) => void
-  handleNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
-  handlePaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
-  handleSelectionChange: (params: { nodes: Node<TerminalNodeData>[] }) => void
-  handleCanvasPointerDownCapture: React.PointerEventHandler<HTMLDivElement>
-  handleCanvasPointerMoveCapture: React.PointerEventHandler<HTMLDivElement>
-  handleCanvasPointerUpCapture: React.PointerEventHandler<HTMLDivElement>
-  handlePaneClick: (_event: React.MouseEvent | MouseEvent) => void
-  createTerminalNode: () => Promise<void>
-  createNoteNodeFromContextMenu: () => void
-  createWebsiteNodeFromContextMenu: () => void
-  handleCanvasPaste: React.ClipboardEventHandler<HTMLDivElement>
-  handleCanvasDragOver: React.DragEventHandler<HTMLDivElement>
-  handleCanvasDrop: React.DragEventHandler<HTMLDivElement>
-} {
+}: UseWorkspaceCanvasInteractionsParams) {
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
@@ -424,6 +406,10 @@ export function useWorkspaceCanvasInteractions({
   ])
 
   const createWebsiteNodeFromContextMenu = useCallback(() => {
+    if (!websiteWindowsEnabled) {
+      return
+    }
+
     createWebsiteNodeFromPaneContextMenu({
       contextMenu,
       url: '',
@@ -444,6 +430,7 @@ export function useWorkspaceCanvasInteractions({
     setNodes,
     spacesRef,
     standardWindowSizeBucket,
+    websiteWindowsEnabled,
   ])
 
   const pasteHandlers = useWorkspaceCanvasPasteHandlers({
@@ -456,6 +443,20 @@ export function useWorkspaceCanvasInteractions({
     onShowMessage,
     createImageNode,
     createWebsiteNode,
+    standardWindowSizeBucket,
+    websiteWindowsEnabled,
+    websiteWindowPasteEnabled,
+  })
+
+  useWebsiteWindowOpenUrlNodeCreation({
+    canvasRef,
+    createWebsiteNode,
+    enabled: websiteWindowsEnabled,
+    nodesRef,
+    onSpacesChange,
+    reactFlow,
+    setNodes,
+    spacesRef,
     standardWindowSizeBucket,
   })
 

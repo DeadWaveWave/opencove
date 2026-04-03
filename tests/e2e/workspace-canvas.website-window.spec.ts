@@ -96,22 +96,30 @@ test.describe('Workspace Canvas - Website Window', () => {
     const { electronApp, window } = await launchApp()
 
     try {
-      await clearAndSeedWorkspace(window, [
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'website-zoom-node',
+            title: 'website-zoom-node',
+            position: { x: 320, y: 120 },
+            width: 980,
+            height: 680,
+            kind: 'website',
+            task: {
+              url: websiteUrl,
+              pinned: false,
+              sessionMode: 'shared',
+              profileId: null,
+            },
+          },
+        ],
         {
-          id: 'website-zoom-node',
-          title: 'website-zoom-node',
-          position: { x: 320, y: 120 },
-          width: 980,
-          height: 680,
-          kind: 'website',
-          task: {
-            url: websiteUrl,
-            pinned: false,
-            sessionMode: 'shared',
-            profileId: null,
+          settings: {
+            websiteWindowPolicy: { enabled: true },
           },
         },
-      ])
+      )
 
       const websiteNode = window.locator('.website-node').first()
       await expect(websiteNode).toBeVisible()
@@ -225,6 +233,7 @@ test.describe('Workspace Canvas - Website Window', () => {
         {
           settings: {
             canvasInputMode: 'trackpad',
+            websiteWindowPolicy: { enabled: true },
           },
         },
       )
@@ -333,6 +342,7 @@ test.describe('Workspace Canvas - Website Window', () => {
         {
           settings: {
             canvasInputMode: 'trackpad',
+            websiteWindowPolicy: { enabled: true },
           },
         },
       )

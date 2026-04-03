@@ -50,22 +50,30 @@ test.describe('Workspace Canvas - Website Window', () => {
     const { electronApp, window } = await launchApp()
 
     try {
-      await clearAndSeedWorkspace(window, [
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'website-freeze-node',
+            title: 'website-freeze-node',
+            position: { x: 320, y: 120 },
+            width: 920,
+            height: 660,
+            kind: 'website',
+            task: {
+              url: websiteUrl,
+              pinned: false,
+              sessionMode: 'shared',
+              profileId: null,
+            },
+          },
+        ],
         {
-          id: 'website-freeze-node',
-          title: 'website-freeze-node',
-          position: { x: 320, y: 120 },
-          width: 920,
-          height: 660,
-          kind: 'website',
-          task: {
-            url: websiteUrl,
-            pinned: false,
-            sessionMode: 'shared',
-            profileId: null,
+          settings: {
+            websiteWindowPolicy: { enabled: true },
           },
         },
-      ])
+      )
 
       const websiteNode = window.locator('.website-node').first()
       await expect(websiteNode).toBeVisible()

@@ -30,6 +30,7 @@ type CorePageId =
   | 'agent'
   | 'notifications'
   | 'canvas'
+  | 'experimental'
   | 'shortcuts'
   | 'task-configuration'
   | 'integrations'

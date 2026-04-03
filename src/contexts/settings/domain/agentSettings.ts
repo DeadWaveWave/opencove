@@ -114,6 +114,7 @@ export interface AgentSettings {
   canvasInputMode: CanvasInputMode
   standardWindowSizeBucket: StandardWindowSizeBucket
   websiteWindowPolicy: WebsiteWindowPolicy
+  experimentalWebsiteWindowPasteEnabled: boolean
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   terminalFontFamily: string | null
@@ -169,10 +170,12 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   canvasInputMode: 'auto',
   standardWindowSizeBucket: 'regular',
   websiteWindowPolicy: {
+    enabled: false,
     maxActiveCount: 1,
     discardAfterMinutes: 20,
     keepAliveHosts: [],
   },
+  experimentalWebsiteWindowPasteEnabled: false,
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,
@@ -360,6 +363,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
   const websitePolicyInput = isRecord(value.websiteWindowPolicy) ? value.websiteWindowPolicy : {}
   const websiteWindowPolicy: WebsiteWindowPolicy = {
+    enabled:
+      normalizeBoolean(websitePolicyInput.enabled) ??
+      DEFAULT_AGENT_SETTINGS.websiteWindowPolicy.enabled,
     maxActiveCount: normalizeIntegerInRange(
       websitePolicyInput.maxActiveCount,
       DEFAULT_AGENT_SETTINGS.websiteWindowPolicy.maxActiveCount,
@@ -374,6 +380,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ),
     keepAliveHosts: normalizeUniqueStringArray(websitePolicyInput.keepAliveHosts).slice(0, 64),
   }
+  const experimentalWebsiteWindowPasteEnabled =
+    normalizeBoolean(value.experimentalWebsiteWindowPasteEnabled) ??
+    DEFAULT_AGENT_SETTINGS.experimentalWebsiteWindowPasteEnabled
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -454,6 +463,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     canvasInputMode,
     standardWindowSizeBucket,
     websiteWindowPolicy,
+    experimentalWebsiteWindowPasteEnabled,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     terminalFontFamily,

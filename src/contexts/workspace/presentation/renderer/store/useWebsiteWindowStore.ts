@@ -45,6 +45,10 @@ export const useWebsiteWindowStore = create<WebsiteWindowStoreState>(set => ({
         return { runtimeByNodeId }
       }
 
+      if (event.type === 'open-url') {
+        return state
+      }
+
       const previous = runtimeByNodeId[event.nodeId] ?? resolveDefaultRuntime()
       const next: WebsiteWindowRuntimeState =
         event.type === 'state'

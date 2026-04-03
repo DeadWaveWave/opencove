@@ -347,6 +347,7 @@ export function WorkspaceCanvasView({
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
         createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+        websiteWindowsEnabled={agentSettings.websiteWindowPolicy.enabled}
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
         agentProviderOrder={agentSettings.agentProviderOrder}
