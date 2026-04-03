@@ -8,6 +8,7 @@ import type {
   WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../../types'
+import { findNearestFreePositionOnRight, type Rect } from '../../../utils/collision'
 import { resolveImageNodeSizeFromNaturalDimensions } from '../../../utils/workspaceNodeSizing'
 import {
   resolveDefaultDocumentWindowSize,
@@ -262,9 +263,20 @@ export function useWorkspaceCanvasSpaceExplorer({
   const [quickPreview, setQuickPreview] = React.useState<WorkspaceCanvasQuickPreviewState | null>(
     null,
   )
-  const previewSequenceRef = React.useRef(0)
+  const transientRequestSequenceRef = React.useRef(0)
+
+  const beginTransientRequest = React.useCallback(() => {
+    const next = transientRequestSequenceRef.current + 1
+    transientRequestSequenceRef.current = next
+    return next
+  }, [])
+
+  const isTransientRequestCurrent = React.useCallback((sequence: number): boolean => {
+    return transientRequestSequenceRef.current === sequence
+  }, [])
 
   const dismissQuickPreview = React.useCallback(() => {
+    transientRequestSequenceRef.current += 1
     setQuickPreview(null)
   }, [])
 
@@ -446,6 +458,12 @@ export function useWorkspaceCanvasSpaceExplorer({
         title: resolveFileNameFromFileUri(normalizedUri) ?? normalizedUri,
         kind,
         rect: placement.rect,
+        createAnchor: placement.anchor,
+        createPlacement: {
+          targetSpaceRect: spaceRect,
+          preferredDirection: placement.preferredDirection,
+          avoidRects: placement.avoidRects,
+        },
         naturalWidth,
         naturalHeight,
       }
@@ -456,8 +474,16 @@ export function useWorkspaceCanvasSpaceExplorer({
   const materializePreviewState = React.useCallback(
     async (
       preview: WorkspaceCanvasQuickPreviewState,
-      options?: { focusViewportOnCreate?: boolean },
+      options?: {
+        focusViewportOnCreate?: boolean
+        isRequestCurrent?: () => boolean
+        usePreviewRectAsAnchor?: boolean
+      },
     ): Promise<Node<TerminalNodeData> | null> => {
+      if (options?.isRequestCurrent && !options.isRequestCurrent()) {
+        return null
+      }
+
       const space = spacesRef.current.find(candidate => candidate.id === preview.spaceId) ?? null
       const rect = space?.rect ?? null
       if (!space || !rect) {
@@ -475,24 +501,71 @@ export function useWorkspaceCanvasSpaceExplorer({
           }) ?? null
 
         if (existingNode) {
+          if (options?.isRequestCurrent && !options.isRequestCurrent()) {
+            return null
+          }
+
           focusNodeInViewport(reactFlow, existingNode, { duration: 120, zoom: reactFlow.getZoom() })
           return existingNode
         }
 
+        if (options?.isRequestCurrent && !options.isRequestCurrent()) {
+          return null
+        }
+
+        const creationAnchor = options?.usePreviewRectAsAnchor
+          ? {
+              x: preview.rect.x,
+              y: preview.rect.y,
+            }
+          : preview.createAnchor
+
+        const creationPlacement = {
+          ...(preview.createPlacement ?? {}),
+          targetSpaceRect: rect,
+          focusViewportOnCreate: options?.focusViewportOnCreate,
+        }
+
         const created = createDocumentNode(
-          {
-            x: preview.rect.x,
-            y: preview.rect.y,
-          },
+          creationAnchor,
           { uri: preview.uri },
-          {
-            targetSpaceRect: rect,
-            focusViewportOnCreate: options?.focusViewportOnCreate,
-          },
+          creationPlacement,
         )
 
         if (!created) {
           return null
+        }
+
+        const preferRightPlacement = creationPlacement.preferredDirection === 'right'
+        if (preferRightPlacement && preview.createPlacement?.avoidRects?.length) {
+          const avoidObstacles: Rect[] = preview.createPlacement.avoidRects.map(avoidRect => ({
+            left: avoidRect.x,
+            top: avoidRect.y,
+            right: avoidRect.x + avoidRect.width,
+            bottom: avoidRect.y + avoidRect.height,
+          }))
+          const desired = creationAnchor
+          const size = { width: created.data.width, height: created.data.height }
+          const nextPlacement = findNearestFreePositionOnRight(
+            desired,
+            size,
+            nodesRef.current,
+            created.id,
+            avoidObstacles,
+          )
+
+          if (
+            nextPlacement &&
+            (nextPlacement.x !== created.position.x || nextPlacement.y !== created.position.y)
+          ) {
+            setNodes(
+              prevNodes =>
+                prevNodes.map(node =>
+                  node.id === created.id ? { ...node, position: nextPlacement } : node,
+                ),
+              { syncLayout: false },
+            )
+          }
         }
 
         assignNodeToSpaceAndExpand({
@@ -517,9 +590,16 @@ export function useWorkspaceCanvasSpaceExplorer({
 
       try {
         const { bytes } = await filesystem.readFileBytes({ uri: preview.uri })
+        if (options?.isRequestCurrent && !options.isRequestCurrent()) {
+          return null
+        }
+
         const assetId = crypto.randomUUID()
         const fileName = resolveFileNameFromFileUri(preview.uri)
         await workspace.writeCanvasImage({ assetId, bytes, mimeType, fileName })
+        if (options?.isRequestCurrent && !options.isRequestCurrent()) {
+          return null
+        }
 
         const resolvedDimensions =
           typeof preview.naturalWidth === 'number' && typeof preview.naturalHeight === 'number'
@@ -528,12 +608,25 @@ export function useWorkspaceCanvasSpaceExplorer({
                 naturalHeight: preview.naturalHeight,
               }
             : await readImageNaturalDimensions(bytes, mimeType)
+        if (options?.isRequestCurrent && !options.isRequestCurrent()) {
+          return null
+        }
+
+        const creationAnchor = options?.usePreviewRectAsAnchor
+          ? {
+              x: preview.rect.x,
+              y: preview.rect.y,
+            }
+          : preview.createAnchor
+
+        const creationPlacement = {
+          ...(preview.createPlacement ?? {}),
+          targetSpaceRect: rect,
+          focusViewportOnCreate: options?.focusViewportOnCreate,
+        }
 
         const created = createImageNode(
-          {
-            x: preview.rect.x,
-            y: preview.rect.y,
-          },
+          creationAnchor,
           {
             assetId,
             mimeType,
@@ -541,14 +634,43 @@ export function useWorkspaceCanvasSpaceExplorer({
             naturalWidth: resolvedDimensions.naturalWidth,
             naturalHeight: resolvedDimensions.naturalHeight,
           },
-          {
-            targetSpaceRect: rect,
-            focusViewportOnCreate: options?.focusViewportOnCreate,
-          },
+          creationPlacement,
         )
 
         if (!created) {
           return null
+        }
+
+        const preferRightPlacement = creationPlacement.preferredDirection === 'right'
+        if (preferRightPlacement && preview.createPlacement?.avoidRects?.length) {
+          const avoidObstacles: Rect[] = preview.createPlacement.avoidRects.map(avoidRect => ({
+            left: avoidRect.x,
+            top: avoidRect.y,
+            right: avoidRect.x + avoidRect.width,
+            bottom: avoidRect.y + avoidRect.height,
+          }))
+          const desired = creationAnchor
+          const size = { width: created.data.width, height: created.data.height }
+          const nextPlacement = findNearestFreePositionOnRight(
+            desired,
+            size,
+            nodesRef.current,
+            created.id,
+            avoidObstacles,
+          )
+
+          if (
+            nextPlacement &&
+            (nextPlacement.x !== created.position.x || nextPlacement.y !== created.position.y)
+          ) {
+            setNodes(
+              prevNodes =>
+                prevNodes.map(node =>
+                  node.id === created.id ? { ...node, position: nextPlacement } : node,
+                ),
+              { syncLayout: false },
+            )
+          }
         }
 
         assignNodeToSpaceAndExpand({
@@ -586,16 +708,16 @@ export function useWorkspaceCanvasSpaceExplorer({
         explorerPlacementPx?: ExplorerPlacementPx
       },
     ) => {
-      const sequence = (previewSequenceRef.current += 1)
+      const sequence = beginTransientRequest()
       void resolveQuickPreviewState(spaceId, uri, options).then(preview => {
-        if (previewSequenceRef.current !== sequence) {
+        if (!isTransientRequestCurrent(sequence)) {
           return
         }
 
         setQuickPreview(preview)
       })
     },
-    [resolveQuickPreviewState],
+    [beginTransientRequest, isTransientRequestCurrent, resolveQuickPreviewState],
   )
 
   const openFileInSpace = React.useCallback(
@@ -610,23 +732,32 @@ export function useWorkspaceCanvasSpaceExplorer({
         quickPreview && quickPreview.spaceId === spaceId && quickPreview.uri === uri.trim()
           ? quickPreview
           : null
+      const sequence = beginTransientRequest()
+      setQuickPreview(null)
 
       void (async () => {
         const preview =
           existingPreview ?? (await resolveQuickPreviewState(spaceId, uri, options)) ?? null
-        if (!preview) {
+        if (!preview || !isTransientRequestCurrent(sequence)) {
           return
         }
 
         const created = await materializePreviewState(preview, {
           focusViewportOnCreate: false,
+          isRequestCurrent: () => isTransientRequestCurrent(sequence),
         })
-        if (created) {
-          dismissQuickPreview()
+        if (created && isTransientRequestCurrent(sequence)) {
+          setQuickPreview(null)
         }
       })()
     },
-    [dismissQuickPreview, materializePreviewState, quickPreview, resolveQuickPreviewState],
+    [
+      beginTransientRequest,
+      isTransientRequestCurrent,
+      materializePreviewState,
+      quickPreview,
+      resolveQuickPreviewState,
+    ],
   )
 
   const materializeQuickPreview = React.useCallback(() => {
@@ -634,12 +765,14 @@ export function useWorkspaceCanvasSpaceExplorer({
       return
     }
 
-    void materializePreviewState(quickPreview, { focusViewportOnCreate: false }).then(created => {
-      if (created) {
-        dismissQuickPreview()
-      }
+    const sequence = beginTransientRequest()
+    setQuickPreview(null)
+    void materializePreviewState(quickPreview, {
+      focusViewportOnCreate: false,
+      isRequestCurrent: () => isTransientRequestCurrent(sequence),
+      usePreviewRectAsAnchor: false,
     })
-  }, [dismissQuickPreview, materializePreviewState, quickPreview])
+  }, [beginTransientRequest, isTransientRequestCurrent, materializePreviewState, quickPreview])
 
   const beginQuickPreviewDrag = React.useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
@@ -659,6 +792,7 @@ export function useWorkspaceCanvasSpaceExplorer({
       let cleanedUp = false
       let latestDraggedNodePositionById = new Map<string, { x: number; y: number }>()
       let latestSpaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null = null
+      const sequence = beginTransientRequest()
 
       const clearDragProjection = () => {
         latestSpaceFramePreview = null
@@ -732,6 +866,8 @@ export function useWorkspaceCanvasSpaceExplorer({
       const materialize = async () => {
         const created = await materializePreviewState(preview, {
           focusViewportOnCreate: false,
+          isRequestCurrent: () => isTransientRequestCurrent(sequence),
+          usePreviewRectAsAnchor: true,
         })
         if (!created) {
           clearDragProjection()
@@ -752,7 +888,9 @@ export function useWorkspaceCanvasSpaceExplorer({
             },
           ],
         ])
-        dismissQuickPreview()
+        if (isTransientRequestCurrent(sequence)) {
+          setQuickPreview(null)
+        }
         syncNodePosition()
 
         if (released) {
@@ -801,8 +939,9 @@ export function useWorkspaceCanvasSpaceExplorer({
       window.addEventListener('mouseup', handleMouseUp, true)
     },
     [
-      dismissQuickPreview,
+      beginTransientRequest,
       finalizeDraggedNodeDrop,
+      isTransientRequestCurrent,
       materializePreviewState,
       nodeDragSession,
       nodesRef,

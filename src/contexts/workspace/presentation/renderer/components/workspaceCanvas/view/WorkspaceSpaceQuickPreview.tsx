@@ -29,6 +29,7 @@ export function WorkspaceSpaceQuickPreview({
   const [contentState, setContentState] = React.useState<QuickPreviewContentState>({
     kind: 'loading',
   })
+  const gutterRef = React.useRef<HTMLPreElement | null>(null)
 
   const pixelRect = React.useMemo(() => {
     if (!preview) {
@@ -107,6 +108,18 @@ export function WorkspaceSpaceQuickPreview({
     return null
   }
 
+  const lineNumberText =
+    contentState.kind === 'text'
+      ? (() => {
+          const lineCount = Math.max(1, contentState.content.split('\n').length)
+          let buffer = ''
+          for (let line = 1; line <= lineCount; line += 1) {
+            buffer += line === lineCount ? `${line}` : `${line}\n`
+          }
+          return buffer
+        })()
+      : ''
+
   const content =
     contentState.kind === 'loading' ? (
       <div className="workspace-space-quick-preview__state">{t('common.loading')}</div>
@@ -138,12 +151,28 @@ export function WorkspaceSpaceQuickPreview({
         />
       </div>
     ) : (
-      <pre
-        className="workspace-space-quick-preview__text"
-        data-testid="workspace-space-quick-preview-text"
-      >
-        {contentState.content}
-      </pre>
+      <div className="workspace-space-quick-preview__text-shell">
+        <pre
+          ref={gutterRef}
+          className="workspace-space-quick-preview__gutter"
+          data-testid="workspace-space-quick-preview-gutter"
+          aria-hidden="true"
+        >
+          {lineNumberText}
+        </pre>
+        <pre
+          className="workspace-space-quick-preview__text"
+          data-testid="workspace-space-quick-preview-text"
+          onScroll={event => {
+            const gutter = gutterRef.current
+            if (gutter) {
+              gutter.scrollTop = event.currentTarget.scrollTop
+            }
+          }}
+        >
+          {contentState.content}
+        </pre>
+      </div>
     )
 
   return (

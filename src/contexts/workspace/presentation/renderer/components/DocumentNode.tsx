@@ -6,6 +6,7 @@ import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
+import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
 import {
   decodeUriPathname,
   loadDocumentNodeContent,
@@ -289,6 +290,9 @@ export function DocumentNode({
           <button
             type="button"
             className="document-node__action"
+            onPointerDown={event => {
+              event.stopPropagation()
+            }}
             onClick={event => {
               event.stopPropagation()
               void save()
@@ -304,6 +308,9 @@ export function DocumentNode({
             <button
               type="button"
               className="document-node__action document-node__action--secondary"
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
               onClick={event => {
                 event.stopPropagation()
                 discardChanges()
@@ -319,6 +326,10 @@ export function DocumentNode({
           <button
             type="button"
             className="document-node__close nodrag"
+            onPointerDown={event => {
+              event.stopPropagation()
+              suppressExplorerOverlayInteractions()
+            }}
             onClick={event => {
               event.stopPropagation()
               requestClose()
@@ -340,6 +351,10 @@ export function DocumentNode({
             <button
               type="button"
               className="document-node__close-prompt-action"
+              onPointerDown={event => {
+                event.stopPropagation()
+                suppressExplorerOverlayInteractions()
+              }}
               onClick={event => {
                 event.stopPropagation()
                 void confirmCloseSave()
@@ -351,6 +366,10 @@ export function DocumentNode({
             <button
               type="button"
               className="document-node__close-prompt-action document-node__close-prompt-action--secondary"
+              onPointerDown={event => {
+                event.stopPropagation()
+                suppressExplorerOverlayInteractions()
+              }}
               onClick={event => {
                 event.stopPropagation()
                 confirmCloseDiscard()
@@ -362,6 +381,9 @@ export function DocumentNode({
             <button
               type="button"
               className="document-node__close-prompt-action document-node__close-prompt-action--ghost"
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
               onClick={event => {
                 event.stopPropagation()
                 setClosePromptOpen(false)
@@ -384,6 +406,9 @@ export function DocumentNode({
             <button
               type="button"
               className="document-node__state-action nodrag"
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
               onClick={event => {
                 event.stopPropagation()
                 setReloadNonce(previous => previous + 1)

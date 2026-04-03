@@ -204,6 +204,8 @@ export interface WorkspaceCanvasQuickPreviewState {
   title: string
   kind: 'document' | 'image'
   rect: WorkspaceSpaceRect
+  createAnchor: Point
+  createPlacement?: NodeCreationPlacementOptions
   naturalWidth?: number | null
   naturalHeight?: number | null
 }

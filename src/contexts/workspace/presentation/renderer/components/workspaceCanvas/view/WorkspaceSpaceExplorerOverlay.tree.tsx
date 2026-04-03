@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
 import { shouldStopWheelPropagation } from '../../../components/taskNode/helpers'
+import { isExplorerOverlayInteractionSuppressed } from '../explorerInteractionGuard'
 import {
   resolveParentDirectoryUri,
   type SpaceExplorerClipboardItem,
@@ -319,6 +320,9 @@ export function WorkspaceSpaceExplorerTree({
             onClick={event => {
               event.stopPropagation()
               clearPendingFilePreview()
+              if (isExplorerOverlayInteractionSuppressed()) {
+                return
+              }
 
               if (row.entry.kind === 'directory') {
                 onEntryPreview(row.entry)
@@ -334,6 +338,9 @@ export function WorkspaceSpaceExplorerTree({
             onDoubleClick={event => {
               event.stopPropagation()
               clearPendingFilePreview()
+              if (isExplorerOverlayInteractionSuppressed()) {
+                return
+              }
               onEntryOpen(row.entry)
             }}
             onContextMenu={event => {
