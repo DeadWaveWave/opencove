@@ -55,6 +55,7 @@ function summarizeWarnings(warnings: WorkspaceArrangeWarning[]): { skippedSpaceC
 
 export function useWorkspaceCanvasArrange({
   reactFlow,
+  focusNodeTargetZoom: _focusNodeTargetZoom,
   nodesRef,
   spacesRef,
   setNodes,
@@ -64,6 +65,7 @@ export function useWorkspaceCanvasArrange({
   standardWindowSizeBucket,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
+  focusNodeTargetZoom: number
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   setNodes: (

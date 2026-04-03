@@ -28,16 +28,16 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const nodeDragPreviewState =
-    workspaceCanvasHooks.useWorkspaceCanvasNodeDragPreviewState(workspaceId)
+  // prettier-ignore
+  const nodeDragPreviewState = workspaceCanvasHooks.useWorkspaceCanvasNodeDragPreviewState(workspaceId)
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
     spaces,
     viewport,
     persistedMinimapVisible,
   })
-  const exclusiveNodeDragAnchorIdRef =
-    workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
+  // prettier-ignore
+  const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     nodes: canvasState.flowNodes,
@@ -48,16 +48,8 @@ export function WorkspaceCanvasInner({
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
-  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
-    workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
-      workspacePath,
-      spacesRef: canvasState.spacesRef,
-      nodesRef: nodeStore.nodesRef,
-      setNodes: nodeStore.setNodes,
-      onSpacesChange,
-      onRequestPersistFlush,
-      closeNode: nodeStore.closeNode,
-    })
+  // prettier-ignore
+  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, spacesRef: canvasState.spacesRef, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onSpacesChange, onRequestPersistFlush, closeNode: nodeStore.closeNode })
   const {
     editingSpaceId,
     spaceRenameDraft,
@@ -76,6 +68,7 @@ export function WorkspaceCanvasInner({
     activeSpaceId,
     onActiveSpaceChange,
     workspacePath,
+    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     reactFlow,
     nodes: canvasState.flowNodes,
     nodesRef: nodeStore.nodesRef,
@@ -199,6 +192,8 @@ export function WorkspaceCanvasInner({
     handleCanvasWheelCapture,
   } = workspaceCanvasHooks.useWorkspaceCanvasInputMode({
     canvasInputModeSetting: agentSettings.canvasInputMode,
+    canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior,
+    canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier,
     detectedCanvasInputMode: canvasState.detectedCanvasInputMode,
     inputModalityStateRef: canvasState.inputModalityStateRef,
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
@@ -323,6 +318,7 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
   })
   workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
     setNodes: nodeStore.setNodes,

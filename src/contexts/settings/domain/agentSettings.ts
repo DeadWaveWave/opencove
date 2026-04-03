@@ -51,6 +51,10 @@ export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 
 export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
 export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
+export const CANVAS_WHEEL_BEHAVIORS = ['zoom', 'pan'] as const
+export type CanvasWheelBehavior = (typeof CANVAS_WHEEL_BEHAVIORS)[number]
+export const CANVAS_WHEEL_ZOOM_MODIFIERS = ['primary', 'ctrl', 'alt'] as const
+export type CanvasWheelZoomModifier = (typeof CANVAS_WHEEL_ZOOM_MODIFIERS)[number]
 export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const
 export type StandardWindowSizeBucket = (typeof STANDARD_WINDOW_SIZE_BUCKETS)[number]
 
@@ -112,6 +116,8 @@ export interface AgentSettings {
   disableAppShortcutsWhenTerminalFocused: boolean
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
+  canvasWheelBehavior: CanvasWheelBehavior
+  canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
   websiteWindowPolicy: WebsiteWindowPolicy
   experimentalWebsiteWindowPasteEnabled: boolean
@@ -168,6 +174,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   disableAppShortcutsWhenTerminalFocused: true,
   keybindings: {},
   canvasInputMode: 'auto',
+  canvasWheelBehavior: 'zoom',
+  canvasWheelZoomModifier: 'primary',
   standardWindowSizeBucket: 'regular',
   websiteWindowPolicy: {
     enabled: false,
@@ -227,6 +235,10 @@ export function resolveWorktreeNameSuggestionProvider(
 export function resolveTaskTitleModel(settings: AgentSettings): string | null {
   const normalized = settings.taskTitleModel.trim()
   return normalized.length > 0 ? normalized : null
+}
+
+function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
+  return value === 'default' || isTaskTitleAgentProvider(value)
 }
 
 export function normalizeAgentSettings(value: unknown): AgentSettings {
@@ -314,10 +326,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ),
   )
 
-  const taskTitleProvider =
-    value.taskTitleProvider === 'default' || isTaskTitleAgentProvider(value.taskTitleProvider)
-      ? (value.taskTitleProvider as TaskTitleProvider)
-      : DEFAULT_AGENT_SETTINGS.taskTitleProvider
+  const taskTitleProvider = isValidTaskTitleProvider(value.taskTitleProvider)
+    ? value.taskTitleProvider
+    : DEFAULT_AGENT_SETTINGS.taskTitleProvider
 
   const taskTitleModel = normalizeTextValue(value.taskTitleModel)
   const taskTagOptions = normalizeUniqueStringArrayWithFallback(
@@ -355,6 +366,15 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const canvasInputMode = isOneOf(value.canvasInputMode, CANVAS_INPUT_MODES)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
+  const canvasWheelBehavior = isOneOf(value.canvasWheelBehavior, CANVAS_WHEEL_BEHAVIORS)
+    ? value.canvasWheelBehavior
+    : DEFAULT_AGENT_SETTINGS.canvasWheelBehavior
+  const canvasWheelZoomModifier = isOneOf(
+    value.canvasWheelZoomModifier,
+    CANVAS_WHEEL_ZOOM_MODIFIERS,
+  )
+    ? value.canvasWheelZoomModifier
+    : DEFAULT_AGENT_SETTINGS.canvasWheelZoomModifier
   const standardWindowSizeBucket = isOneOf(
     value.standardWindowSizeBucket,
     STANDARD_WINDOW_SIZE_BUCKETS,
@@ -461,6 +481,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     disableAppShortcutsWhenTerminalFocused,
     keybindings,
     canvasInputMode,
+    canvasWheelBehavior,
+    canvasWheelZoomModifier,
     standardWindowSizeBucket,
     websiteWindowPolicy,
     experimentalWebsiteWindowPasteEnabled,

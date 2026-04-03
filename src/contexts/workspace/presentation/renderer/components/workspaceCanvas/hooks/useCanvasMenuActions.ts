@@ -14,6 +14,7 @@ export function useWorkspaceCanvasMenuActions({
   spacesRef,
   onSpacesChange,
   standardWindowSizeBucket,
+  focusNodeTargetZoom,
 }: {
   selectedNodeIds: Parameters<typeof useWorkspaceCanvasNoteToTaskConversion>[0]['selectedNodeIds']
   selectedNodeIdsRef: Parameters<
@@ -33,6 +34,7 @@ export function useWorkspaceCanvasMenuActions({
   standardWindowSizeBucket: Parameters<
     typeof useWorkspaceCanvasArrange
   >[0]['standardWindowSizeBucket']
+  focusNodeTargetZoom: Parameters<typeof useWorkspaceCanvasArrange>[0]['focusNodeTargetZoom']
 }): ReturnType<typeof useWorkspaceCanvasNoteToTaskConversion> &
   ReturnType<typeof useWorkspaceCanvasArrange> {
   const noteToTask = useWorkspaceCanvasNoteToTaskConversion({
@@ -51,6 +53,7 @@ export function useWorkspaceCanvasMenuActions({
 
   const arrange = useWorkspaceCanvasArrange({
     reactFlow,
+    focusNodeTargetZoom,
     nodesRef,
     spacesRef,
     setNodes,

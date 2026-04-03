@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
+import type { FocusNodeTargetZoom } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -17,6 +18,7 @@ interface UseWorkspaceCanvasSpacesParams {
   activeSpaceId: string | null
   onActiveSpaceChange: (spaceId: string | null) => void
   workspacePath: string
+  focusNodeTargetZoom: FocusNodeTargetZoom
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -40,6 +42,7 @@ export function useWorkspaceCanvasSpaces({
   activeSpaceId,
   onActiveSpaceChange,
   workspacePath,
+  focusNodeTargetZoom: _focusNodeTargetZoom,
   reactFlow,
   nodes,
   nodesRef,

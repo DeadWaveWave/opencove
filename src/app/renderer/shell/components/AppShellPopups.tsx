@@ -1,5 +1,9 @@
 import React from 'react'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import type {
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+} from '@contexts/settings/domain/agentSettings'
 import type { ProjectContextMenuState } from '../types'
 import { CommandCenter } from './CommandCenter'
 import { DeleteProjectDialog } from './DeleteProjectDialog'
@@ -25,6 +29,8 @@ export function AppShellPopups({
   onSelectSpace,
   isSpaceArchivesOpen,
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
+  canvasWheelZoomModifierSetting,
   onDeleteSpaceArchiveRecord,
   onCloseSpaceArchives,
   projectContextMenu,
@@ -47,6 +53,8 @@ export function AppShellPopups({
   onSelectSpace: (spaceId: string | null) => void
   isSpaceArchivesOpen: boolean
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: CanvasWheelBehavior
+  canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
   onDeleteSpaceArchiveRecord: (recordId: string) => void
   onCloseSpaceArchives: () => void
   projectContextMenu: ProjectContextMenuState | null
@@ -90,6 +98,8 @@ export function AppShellPopups({
         isOpen={isSpaceArchivesOpen}
         workspace={activeWorkspace}
         canvasInputModeSetting={canvasInputModeSetting}
+        canvasWheelBehaviorSetting={canvasWheelBehaviorSetting}
+        canvasWheelZoomModifierSetting={canvasWheelZoomModifierSetting}
         onDeleteRecord={onDeleteSpaceArchiveRecord}
         onClose={() => {
           onCloseSpaceArchives()
