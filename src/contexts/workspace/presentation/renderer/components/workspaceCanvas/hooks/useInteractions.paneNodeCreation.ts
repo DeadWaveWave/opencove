@@ -2,9 +2,13 @@ import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState, CreateNodeInput } from '../types'
-import { resolveDefaultNoteWindowSize, resolveDefaultTerminalWindowSize } from '../constants'
+import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
+import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'
+import {
+  resolveDefaultNoteWindowSize,
+  resolveDefaultTerminalWindowSize,
+  resolveDefaultWebsiteWindowSize,
+} from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import {
   assignNodeToSpaceAndExpand,
@@ -123,6 +127,67 @@ export function createNoteNodeAtFlowPosition({
   })
 }
 
+export function createWebsiteNodeAtFlowPosition({
+  anchor,
+  standardWindowSizeBucket,
+  url,
+  createWebsiteNode,
+  spacesRef,
+  nodesRef,
+  setNodes,
+  onSpacesChange,
+}: {
+  anchor: Point
+  standardWindowSizeBucket: StandardWindowSizeBucket
+  url: string
+  createWebsiteNode: (
+    anchor: Point,
+    website: WebsiteNodeData,
+    placement?: NodePlacementOptions,
+  ) => Node<TerminalNodeData> | null
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  setNodes: SetNodes
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+}): void {
+  const cursorAnchor = {
+    x: anchor.x,
+    y: anchor.y,
+  }
+  const nodeAnchor = resolveNodePlacementAnchorFromViewportCenter(
+    cursorAnchor,
+    resolveDefaultWebsiteWindowSize(standardWindowSizeBucket),
+  )
+
+  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+
+  const created = createWebsiteNode(
+    nodeAnchor,
+    {
+      url,
+      pinned: false,
+      sessionMode: 'shared',
+      profileId: null,
+    },
+    {
+      targetSpaceRect: targetSpace?.rect ?? null,
+    },
+  )
+
+  if (!created || !targetSpace) {
+    return
+  }
+
+  assignNodeToSpaceAndExpand({
+    createdNodeId: created.id,
+    targetSpaceId: targetSpace.id,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+  })
+}
+
 export async function createTerminalNodeFromPaneContextMenu({
   contextMenu,
   defaultTerminalProfileId,
@@ -164,6 +229,51 @@ export async function createTerminalNodeFromPaneContextMenu({
     setNodes,
     onSpacesChange,
     createNodeForSession,
+  })
+}
+
+export function createWebsiteNodeFromPaneContextMenu({
+  contextMenu,
+  url,
+  createWebsiteNode,
+  standardWindowSizeBucket,
+  spacesRef,
+  nodesRef,
+  setNodes,
+  onSpacesChange,
+  setContextMenu,
+}: {
+  contextMenu: ContextMenuState | null
+  url: string
+  createWebsiteNode: (
+    anchor: Point,
+    website: WebsiteNodeData,
+    placement?: NodePlacementOptions,
+  ) => Node<TerminalNodeData> | null
+  standardWindowSizeBucket: StandardWindowSizeBucket
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
+  setNodes: SetNodes
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  setContextMenu: (next: ContextMenuState | null) => void
+}): void {
+  if (!contextMenu || contextMenu.kind !== 'pane') {
+    return
+  }
+
+  setContextMenu(null)
+  createWebsiteNodeAtFlowPosition({
+    anchor: {
+      x: contextMenu.flowX,
+      y: contextMenu.flowY,
+    },
+    url,
+    standardWindowSizeBucket,
+    createWebsiteNode,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
   })
 }
 

@@ -322,6 +322,10 @@ function createWindow(): void {
     }
   })
 
+  if (typeof mainWindow.webContents.setVisualZoomLevelLimits === 'function') {
+    void mainWindow.webContents.setVisualZoomLevelLimits(1, 1).catch(() => undefined)
+  }
+
   // HMR for renderer based on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {

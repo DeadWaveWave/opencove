@@ -34,10 +34,9 @@ export function WorkspaceCanvasInner({
     viewport,
     persistedMinimapVisible,
   })
-  const exclusiveNodeDragAnchorIdRef =
-    workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
+  // prettier-ignore
+  const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
-  const idsRef = canvasState.selectedNodeIdsRef
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     nodes: canvasState.flowNodes,
     spacesRef: canvasState.spacesRef,
@@ -260,6 +259,7 @@ export function WorkspaceCanvasInner({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
+    createWebsiteNodeFromContextMenu,
     handleCanvasPaste,
     handleCanvasDragOver,
     handleCanvasDrop,
@@ -268,6 +268,8 @@ export function WorkspaceCanvasInner({
     isTrackpadCanvasMode,
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
+    websiteWindowsEnabled: agentSettings.websiteWindowPolicy.enabled,
+    websiteWindowPasteEnabled: agentSettings.experimentalWebsiteWindowPasteEnabled,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     selectionDraftRef: canvasState.selectionDraftRef,
     setSelectionDraftUi: canvasState.setSelectionDraftUi,
@@ -291,6 +293,7 @@ export function WorkspaceCanvasInner({
     createNoteNode: nodeStore.createNoteNode,
     onShowMessage,
     createImageNode: nodeStore.createImageNode,
+    createWebsiteNode: nodeStore.createWebsiteNode,
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     enabled: shortcutsEnabled,
@@ -342,6 +345,9 @@ export function WorkspaceCanvasInner({
     closeNode: requestNodeClose,
     resizeNode: nodeStore.resizeNode,
     updateNoteText: nodeStore.updateNoteText,
+    updateWebsiteUrl: nodeStore.updateWebsiteUrl,
+    setWebsitePinned: nodeStore.setWebsitePinned,
+    setWebsiteSession: nodeStore.setWebsiteSession,
     updateNodeScrollback: nodeStore.updateNodeScrollback,
     updateTerminalTitle: nodeStore.updateTerminalTitle,
     renameTerminalTitle: nodeStore.renameTerminalTitle,
@@ -456,6 +462,7 @@ export function WorkspaceCanvasInner({
       onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+      createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
       arrangeAll={arrangeAll}
       arrangeCanvas={arrangeCanvas}
       arrangeInSpace={arrangeInSpace}
@@ -468,7 +475,7 @@ export function WorkspaceCanvasInner({
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
       setSelectedNodeLabelColorOverride={override =>
-        nodeStore.setNodeLabelColorOverride(idsRef.current, override)
+        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIdsRef.current, override)
       }
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}

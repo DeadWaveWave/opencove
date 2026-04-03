@@ -1,8 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
 import { AGENT_PROVIDERS, type AgentProvider } from '@contexts/settings/domain/agentSettings'
-import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState } from '../types'
 import type {
   WorkspaceArrangeOrder,
   WorkspaceArrangeSpaceFit,
@@ -29,39 +26,15 @@ import {
   placeContextMenuAtPoint,
   placeSubmenuAtItem,
 } from './WorkspaceContextMenu.helpers'
-
-type OpenSubmenu = 'arrangeBy' | 'agent-providers' | 'label-color' | null
-
-interface WorkspaceContextMenuProps {
-  contextMenu: ContextMenuState | null
-  closeContextMenu: () => void
-  createTerminalNode: () => Promise<void>
-  createNoteNodeFromContextMenu: () => void
-  openTaskCreator: () => void
-  openAgentLauncher: () => void
-  agentProviderOrder: AgentProvider[]
-  openAgentLauncherForProvider: (provider: AgentProvider) => void
-  spaces: WorkspaceSpaceState[]
-  magneticSnappingEnabled: boolean
-  onToggleMagneticSnapping: () => void
-  canArrangeAll: boolean
-  canArrangeCanvas: boolean
-  arrangeAll: (style?: WorkspaceArrangeStyle) => void
-  arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
-  arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
-  createSpaceFromSelectedNodes: () => void
-  clearNodeSelection: () => void
-  canConvertSelectedNoteToTask: boolean
-  isConvertSelectedNoteToTaskDisabled: boolean
-  convertSelectedNoteToTask: () => void
-  setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
-}
+import type { OpenSubmenu, WorkspaceContextMenuProps } from './WorkspaceContextMenu.types'
 
 export function WorkspaceContextMenu({
   contextMenu,
   closeContextMenu,
   createTerminalNode,
   createNoteNodeFromContextMenu,
+  createWebsiteNodeFromContextMenu,
+  websiteWindowsEnabled,
   openTaskCreator,
   openAgentLauncher,
   agentProviderOrder,
@@ -446,6 +419,8 @@ export function WorkspaceContextMenu({
           <WorkspaceContextPaneMenuContent
             createTerminalNode={createTerminalNode}
             createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+            createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+            websiteWindowsEnabled={websiteWindowsEnabled}
             openTaskCreator={openTaskCreator}
             openAgentLauncher={openAgentLauncher}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
