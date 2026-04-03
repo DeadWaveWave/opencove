@@ -1,0 +1,118 @@
+.workspace-space-quick-preview {
+  position: absolute;
+  z-index: 24;
+  display: flex;
+  flex-direction: column;
+  min-width: 240px;
+  min-height: 180px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: #111317;
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.34),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset;
+}
+
+.workspace-space-quick-preview__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: #15181d;
+}
+
+.workspace-space-quick-preview__drag-handle {
+  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--cove-text);
+  cursor: grab;
+  user-select: none;
+}
+
+.workspace-space-quick-preview__drag-handle:active {
+  cursor: grabbing;
+}
+
+.workspace-space-quick-preview__drag-handle span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.workspace-space-quick-preview__body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  background: #181b20;
+}
+
+.workspace-space-quick-preview__text {
+  margin: 0;
+  padding: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.55;
+  color: #d7dbe2;
+  background: #181b20;
+}
+
+.workspace-space-quick-preview__image-shell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 180px;
+  padding: 16px;
+  background: #181b20;
+}
+
+.workspace-space-quick-preview__image {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.28);
+  background:
+    linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(255, 255, 255, 0.04) 75%);
+  background-position:
+    0 0,
+    0 8px,
+    8px -8px,
+    -8px 0;
+  background-size: 16px 16px;
+}
+
+.workspace-space-quick-preview__state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  min-height: 180px;
+  padding: 18px 16px;
+  color: var(--cove-text-muted);
+  background: #181b20;
+}
+
+.workspace-space-quick-preview__state-title {
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  color: var(--cove-text);
+}
+
+.workspace-space-quick-preview__state-message {
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  line-height: 1.5;
+}

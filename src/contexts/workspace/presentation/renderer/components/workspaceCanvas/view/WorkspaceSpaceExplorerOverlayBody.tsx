@@ -25,7 +25,9 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
     explorerClipboard,
     setExplorerClipboard,
     findBlockingOpenDocument,
+    onPreviewFile,
     onOpenFile,
+    onDismissQuickPreview,
     onClose,
     onShowMessage,
     createInputRef,
@@ -38,7 +40,9 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
     explorerClipboard: SpaceExplorerClipboardItem | null
     setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
     findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
+    onPreviewFile: (uri: string) => void
     onOpenFile: (uri: string) => void
+    onDismissQuickPreview: () => void
     onClose: () => void
     onShowMessage?: ShowWorkspaceCanvasMessage
     createInputRef: React.RefObject<HTMLInputElement | null>
@@ -52,7 +56,9 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
       explorerClipboard,
       setExplorerClipboard,
       findBlockingOpenDocument,
+      onPreviewFile,
       onOpenFile,
+      onDismissQuickPreview,
       onShowMessage,
     })
     const explorerContextMenu = model.contextMenu
@@ -315,7 +321,9 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
             explorerClipboard={explorerClipboard}
             onRefresh={model.refresh}
             onRootContextMenu={model.openRootContextMenu}
-            onEntryActivate={model.handleEntryActivate}
+            onEntrySelect={model.selectEntry}
+            onEntryPreview={model.previewEntrySelection}
+            onEntryOpen={model.openEntry}
             onEntryContextMenu={model.openEntryContextMenu}
             onRenameDraftChange={model.rename.setDraftName}
             onRenameSubmit={model.rename.submit}

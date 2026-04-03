@@ -25,12 +25,13 @@ import { WorkspaceSnapGuidesOverlay } from './view/WorkspaceSnapGuidesOverlay'
 import { WorkspaceCanvasTopOverlays } from './view/WorkspaceCanvasTopOverlays'
 import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
 import { WorkspaceSpaceExplorerOverlay } from './view/WorkspaceSpaceExplorerOverlay'
+import { WorkspaceSpaceQuickPreview } from './view/WorkspaceSpaceQuickPreview'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
 import { isEditableDomTarget } from './domTargets'
 import { selectDragSurfaceSelectionMode } from '../terminalNode/reactFlowState'
 
 const WHEEL_BLOCK_SELECTOR =
-  '.cove-window, .cove-window-backdrop, .workspace-context-menu, .workspace-space-explorer'
+  '.cove-window, .cove-window-backdrop, .workspace-context-menu, .workspace-space-explorer, .workspace-space-quick-preview'
 
 export function WorkspaceCanvasView({
   canvasRef,
@@ -70,11 +71,16 @@ export function WorkspaceCanvasView({
   selectedSpaceIds,
   openExplorerSpaceId,
   explorerClipboard,
+  quickPreview,
   toggleSpaceExplorer,
   closeSpaceExplorer,
   setExplorerClipboard,
   findBlockingOpenDocument,
+  previewFileInSpace,
   openFileInSpace,
+  dismissQuickPreview,
+  materializeQuickPreview,
+  beginQuickPreviewDrag,
   handleSpaceDragHandlePointerDown,
   editingSpaceId,
   spaceRenameInputRef,
@@ -315,11 +321,21 @@ export function WorkspaceCanvasView({
           findBlockingOpenDocument={findBlockingOpenDocument}
           onShowMessage={onShowMessage}
           onClose={closeSpaceExplorer}
+          onPreviewFile={(uri, options) => {
+            previewFileInSpace(activeExplorerSpace.id, uri, options)
+          }}
           onOpenFile={(uri, options) => {
             openFileInSpace(activeExplorerSpace.id, uri, options)
           }}
+          onDismissQuickPreview={dismissQuickPreview}
         />
       ) : null}
+
+      <WorkspaceSpaceQuickPreview
+        preview={quickPreview}
+        onOpen={materializeQuickPreview}
+        onDragStart={beginQuickPreviewDrag}
+      />
 
       <WorkspaceSnapGuidesOverlay guides={snapGuides} />
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />

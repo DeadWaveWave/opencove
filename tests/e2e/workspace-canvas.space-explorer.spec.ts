@@ -103,11 +103,30 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         contentType: 'image/png',
       })
 
-      await window
-        .locator(
-          `[data-testid="workspace-space-explorer-entry-space-explorer-${encodeURIComponent(fixtureFileUri)}"]`,
-        )
-        .click()
+      const textEntry = window.locator(
+        `[data-testid="workspace-space-explorer-entry-space-explorer-${encodeURIComponent(fixtureFileUri)}"]`,
+      )
+      await textEntry.click()
+
+      const previewWindow = window.locator('[data-testid="workspace-space-quick-preview"]')
+      await expect(previewWindow).toBeVisible()
+      await expect(previewWindow.locator('.workspace-space-quick-preview__drag-handle span')).toHaveText(
+        'hello.md',
+      )
+      await expect(
+        previewWindow.locator('[data-testid="workspace-space-quick-preview-text"]'),
+      ).toHaveText(initialContent)
+      const previewBox = await previewWindow.boundingBox()
+      if (!previewBox) {
+        throw new Error('Quick preview bounding box unavailable')
+      }
+      expect(previewBox.x).toBeGreaterThanOrEqual(explorerBox.x + explorerBox.width - 4)
+      await expect(window.locator('.document-node').filter({ hasText: 'hello.md' })).toHaveCount(0)
+      await explorer.locator('.workspace-space-explorer__title').click()
+      await expect(previewWindow).toHaveCount(0)
+      await expect(textEntry).toBeVisible()
+
+      await textEntry.dblclick()
 
       const documentNode = window.locator('.document-node').filter({ hasText: 'hello.md' }).first()
       await expect(documentNode).toBeVisible()
@@ -170,7 +189,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         .locator(
           `[data-testid="workspace-space-explorer-entry-space-explorer-${encodeURIComponent(fixtureImageUri)}"]`,
         )
-        .click()
+        .dblclick()
 
       const imageNode = window.locator('.image-node').first()
       await expect(imageNode).toBeVisible()
@@ -186,7 +205,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         .locator(
           `[data-testid="workspace-space-explorer-entry-space-explorer-${encodeURIComponent(fixtureBinaryUri)}"]`,
         )
-        .click()
+        .dblclick()
 
       const binaryNode = window.locator('.document-node').filter({ hasText: 'data.bin' }).first()
       await expect(binaryNode).toBeVisible()
@@ -199,6 +218,143 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       await textarea.fill(nextContent)
 
       await expect.poll(async () => await readFile(fixtureFilePath, 'utf8')).toBe(nextContent)
+    } finally {
+      await electronApp.close()
+      await removePathWithRetry(fixtureDir)
+    }
+  })
+
+  test('materializes a quick preview into a document node when dragged', async () => {
+    const fixtureDir = path.join(
+      testWorkspacePath,
+      'artifacts',
+      'e2e',
+      'space-explorer',
+      randomUUID(),
+    )
+    const fixtureFilePath = path.join(fixtureDir, 'drag-me.md')
+    const fixtureFileUri = toFileUri(fixtureFilePath)
+
+    await mkdir(fixtureDir, { recursive: true })
+    await writeFile(fixtureFilePath, 'drag me', 'utf8')
+
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'space-explorer-drag-anchor',
+            title: 'Anchor note',
+            position: { x: 380, y: 320 },
+            width: 320,
+            height: 220,
+            kind: 'note',
+            task: {
+              text: 'Keep this space alive',
+            },
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'space-explorer-drag',
+              name: 'Explorer Space',
+              directoryPath: fixtureDir,
+              nodeIds: ['space-explorer-drag-anchor'],
+              rect: {
+                x: 340,
+                y: 280,
+                width: 960,
+                height: 520,
+              },
+            },
+          ],
+          activeSpaceId: 'space-explorer-drag',
+        },
+      )
+
+      await window.locator('[data-testid="workspace-space-switch-space-explorer-drag"]').click()
+      await window.locator('[data-testid="workspace-space-files-space-explorer-drag"]').click()
+      await expect(window.locator('[data-testid="workspace-space-explorer"]')).toBeVisible()
+
+      const fileEntry = window.locator(
+        `[data-testid="workspace-space-explorer-entry-space-explorer-drag-${encodeURIComponent(fixtureFileUri)}"]`,
+      )
+      await expect(fileEntry).toBeVisible()
+      await fileEntry.click()
+
+      const previewWindow = window.locator('[data-testid="workspace-space-quick-preview"]')
+      await expect(previewWindow).toBeVisible()
+
+      const previewBox = await previewWindow.boundingBox()
+      const dragHandle = previewWindow.locator('.workspace-space-quick-preview__drag-handle')
+      const dragHandleBox = await dragHandle.boundingBox()
+      if (!previewBox || !dragHandleBox) {
+        throw new Error('Quick preview bounding box unavailable')
+      }
+
+      const start = {
+        x: dragHandleBox.x + dragHandleBox.width / 2,
+        y: dragHandleBox.y + dragHandleBox.height / 2,
+      }
+      const end = {
+        x: start.x + 140,
+        y: start.y + 96,
+      }
+
+      await dragHandle.evaluate((element, point) => {
+        element.dispatchEvent(
+          new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 1,
+            clientX: point.x,
+            clientY: point.y,
+          }),
+        )
+      }, start)
+
+      await window.evaluate(point => {
+        window.dispatchEvent(
+          new MouseEvent('mousemove', {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 1,
+            clientX: point.x,
+            clientY: point.y,
+          }),
+        )
+      }, end)
+
+      await window.evaluate(point => {
+        window.dispatchEvent(
+          new MouseEvent('mouseup', {
+            bubbles: true,
+            cancelable: true,
+            button: 0,
+            buttons: 0,
+            clientX: point.x,
+            clientY: point.y,
+          }),
+        )
+      }, end)
+
+      await expect(previewWindow).toHaveCount(0)
+
+      const documentNode = window.locator('.document-node').filter({ hasText: 'drag-me.md' }).first()
+      await expect(documentNode).toBeVisible()
+
+      const documentBox = await documentNode.boundingBox()
+      if (!documentBox) {
+        throw new Error('Document node bounding box unavailable after drag materialization')
+      }
+
+      expect(documentBox.x).toBeGreaterThan(previewBox.x + 32)
+      expect(documentBox.y).toBeGreaterThan(previewBox.y + 16)
     } finally {
       await electronApp.close()
       await removePathWithRetry(fixtureDir)

@@ -194,6 +194,20 @@ export interface NodePlacementOptions {
   avoidRects?: WorkspaceSpaceRect[]
 }
 
+export interface NodeCreationPlacementOptions extends NodePlacementOptions {
+  focusViewportOnCreate?: boolean
+}
+
+export interface WorkspaceCanvasQuickPreviewState {
+  spaceId: string
+  uri: string
+  title: string
+  kind: 'document' | 'image'
+  rect: WorkspaceSpaceRect
+  naturalWidth?: number | null
+  naturalHeight?: number | null
+}
+
 export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void
 export type QuickUpdateTaskRequirement = (nodeId: string, requirement: string) => void
 export type UpdateTaskStatus = (nodeId: string, status: TaskRuntimeStatus) => void

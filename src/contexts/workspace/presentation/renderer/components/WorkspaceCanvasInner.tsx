@@ -399,6 +399,7 @@ export function WorkspaceCanvasInner({
     reactFlow,
     createDocumentNode: nodeStore.createDocumentNode,
     createImageNode: nodeStore.createImageNode,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
   return (
     <WorkspaceCanvasView

@@ -8,7 +8,7 @@ import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import {
   decodeUriPathname,
-  isProbablyBinaryText,
+  loadDocumentNodeContent,
   type DocumentNodeProps,
 } from './DocumentNode.helpers'
 
@@ -90,35 +90,15 @@ export function DocumentNode({
     let cancelled = false
     void (async () => {
       try {
-        const stat = await api.stat({ uri })
+        const result = await loadDocumentNodeContent(api, uri, t('documentNode.notAFile'))
         if (cancelled) {
           return
         }
 
-        if (stat.kind !== 'file') {
-          throw new Error(t('documentNode.notAFile'))
-        }
-
-        if (typeof stat.sizeBytes === 'number' && Number.isFinite(stat.sizeBytes)) {
-          const maxBytes = 5 * 1024 * 1024
-          if (stat.sizeBytes > maxBytes) {
-            setContent('')
-            setSavedContent('')
-            setUnsupportedKind('tooLarge')
-            setIsLoading(false)
-            return
-          }
-        }
-
-        const result = await api.readFileText({ uri })
-        if (cancelled) {
-          return
-        }
-
-        if (isProbablyBinaryText(result.content)) {
+        if (result.kind === 'unsupported') {
           setContent('')
           setSavedContent('')
-          setUnsupportedKind('binary')
+          setUnsupportedKind(result.unsupportedKind)
           setIsLoading(false)
           return
         }

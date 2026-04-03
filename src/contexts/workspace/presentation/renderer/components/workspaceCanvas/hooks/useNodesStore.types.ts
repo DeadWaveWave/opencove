@@ -11,7 +11,12 @@ import type {
 } from '../../../types'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { CreateNodeInput, NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
+import type {
+  CreateNodeInput,
+  NodeCreationPlacementOptions,
+  NodePlacementOptions,
+  ShowWorkspaceCanvasMessage,
+} from '../types'
 
 export interface CreateNoteNodeOptions {
   placementStrategy?: 'default' | 'right-no-push'
@@ -64,11 +69,11 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   createImageNode: (
     anchor: Point,
     image: ImageNodeData,
-    placement?: NodePlacementOptions,
+    placement?: NodeCreationPlacementOptions,
   ) => Node<TerminalNodeData> | null
   createDocumentNode: (
     anchor: Point,
     document: DocumentNodeData,
-    placement?: NodePlacementOptions,
+    placement?: NodeCreationPlacementOptions,
   ) => Node<TerminalNodeData> | null
 }
