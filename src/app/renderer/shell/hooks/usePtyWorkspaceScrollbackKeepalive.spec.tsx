@@ -163,4 +163,57 @@ describe('usePtyWorkspaceScrollbackKeepalive', () => {
 
     expect(useScrollbackStore.getState().scrollbackByNodeId['node-1']).toContain('hello')
   })
+
+  it('defers heavy scrollback flush work during wheel interaction', async () => {
+    useAppStore.setState({
+      workspaces: [
+        createWorkspaceState({
+          nodes: [
+            {
+              id: 'node-1',
+              type: 'terminalNode',
+              position: { x: 0, y: 0 },
+              data: {
+                sessionId: 'session-1',
+                title: 'Agent',
+                width: 480,
+                height: 320,
+                kind: 'agent',
+                status: 'running',
+                startedAt: null,
+                endedAt: null,
+                exitCode: null,
+                lastError: null,
+                scrollback: null,
+                agent: null,
+                task: null,
+                note: null,
+                image: null,
+                document: null,
+              },
+              draggable: true,
+            },
+          ],
+        }),
+      ],
+    })
+
+    render(<TestHarness />)
+
+    getTestPtyEmitter().emitData({ sessionId: 'session-1', data: 'hello' })
+
+    for (let time = 0; time < 2_000; time += 50) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new WheelEvent('wheel'))
+      }, time)
+    }
+
+    await vi.advanceTimersByTimeAsync(2_000)
+
+    expect(useScrollbackStore.getState().scrollbackByNodeId['node-1'] ?? '').not.toContain('hello')
+
+    await vi.advanceTimersByTimeAsync(240)
+
+    expect(useScrollbackStore.getState().scrollbackByNodeId['node-1']).toContain('hello')
+  })
 })

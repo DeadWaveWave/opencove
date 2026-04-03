@@ -13,12 +13,49 @@ import { getPtyEventHub } from '../utils/ptyEventHub'
 
 const SCROLLBACK_FLUSH_INTERVAL_MS = 2_000
 const SCROLLBACK_PERSIST_DELAY_MS = 2_000
+const INTERACTION_IDLE_FLUSH_DELAY_MS = 220
+const INTERACTION_FLUSH_SUPPRESSION_MS = 180
 
 type SessionIndex = Map<string, Set<string>>
 
 function normalizeSessionId(sessionId: string): string | null {
   const normalized = sessionId.trim()
   return normalized.length > 0 ? normalized : null
+}
+
+function resolveWorkspaceNodesIndex(
+  workspaces: WorkspaceState[],
+): Map<string, WorkspaceState['nodes']> {
+  const index = new Map<string, WorkspaceState['nodes']>()
+
+  for (const workspace of workspaces) {
+    index.set(workspace.id, workspace.nodes)
+  }
+
+  return index
+}
+
+function didWorkspaceNodesChange(
+  nextWorkspaces: WorkspaceState[],
+  prevWorkspaces: WorkspaceState[],
+): boolean {
+  if (nextWorkspaces.length !== prevWorkspaces.length) {
+    return true
+  }
+
+  const prevIndex = resolveWorkspaceNodesIndex(prevWorkspaces)
+
+  if (prevIndex.size !== nextWorkspaces.length) {
+    return true
+  }
+
+  for (const workspace of nextWorkspaces) {
+    if (prevIndex.get(workspace.id) !== workspace.nodes) {
+      return true
+    }
+  }
+
+  return false
 }
 
 function resolveWorkspaceSessionIndex(workspaces: WorkspaceState[]): SessionIndex {
@@ -57,6 +94,8 @@ export function usePtyWorkspaceScrollbackKeepalive(): void {
   const dirtySessionIdsRef = useRef<Set<string>>(new Set())
   const workspaceSyncTimerRef = useRef<number | null>(null)
   const flushTimerRef = useRef<number | null>(null)
+  const interactionTimestampRef = useRef(0)
+  const interactionFlushTimerRef = useRef<number | null>(null)
   const isDisposedRef = useRef(false)
 
   useEffect(() => {
@@ -121,16 +160,26 @@ export function usePtyWorkspaceScrollbackKeepalive(): void {
       }, 200)
     }
 
-    const flushDirtyScrollbacks = () => {
+    const flushDirtyScrollbacks = ({ force = false }: { force?: boolean } = {}) => {
       if (isDisposedRef.current) {
         return
       }
 
-      const pendingSessionIds = Array.from(dirtySessionIds)
-      if (pendingSessionIds.length === 0) {
+      if (dirtySessionIds.size === 0) {
         return
       }
 
+      if (!force) {
+        const lastInteraction = interactionTimestampRef.current
+        if (
+          lastInteraction > 0 &&
+          Date.now() - lastInteraction < INTERACTION_FLUSH_SUPPRESSION_MS
+        ) {
+          return
+        }
+      }
+
+      const pendingSessionIds = Array.from(dirtySessionIds)
       dirtySessionIds.clear()
 
       const updatesByNodeId = new Map<string, string>()
@@ -188,11 +237,27 @@ export function usePtyWorkspaceScrollbackKeepalive(): void {
       }, SCROLLBACK_FLUSH_INTERVAL_MS)
     }
 
+    const scheduleInteractionIdleFlush = () => {
+      if (interactionFlushTimerRef.current !== null) {
+        window.clearTimeout(interactionFlushTimerRef.current)
+      }
+
+      interactionFlushTimerRef.current = window.setTimeout(() => {
+        interactionFlushTimerRef.current = null
+        flushDirtyScrollbacks()
+      }, INTERACTION_IDLE_FLUSH_DELAY_MS)
+    }
+
+    const handleWheelCapture = () => {
+      interactionTimestampRef.current = Date.now()
+      scheduleInteractionIdleFlush()
+    }
+
     syncWorkspaceSessions(useAppStore.getState().workspaces)
     scheduleFlushTimer()
 
     const unsubscribeStore = useAppStore.subscribe((nextState, prevState) => {
-      if (nextState.workspaces !== prevState.workspaces) {
+      if (didWorkspaceNodesChange(nextState.workspaces, prevState.workspaces)) {
         scheduleWorkspaceSessionSync()
       }
     })
@@ -217,8 +282,10 @@ export function usePtyWorkspaceScrollbackKeepalive(): void {
       }
 
       dirtySessionIds.add(normalizedSessionId)
-      flushDirtyScrollbacks()
+      flushDirtyScrollbacks({ force: true })
     })
+
+    window.addEventListener('wheel', handleWheelCapture, { capture: true, passive: true })
 
     return () => {
       isDisposedRef.current = true
@@ -226,6 +293,8 @@ export function usePtyWorkspaceScrollbackKeepalive(): void {
       unsubscribeStore()
       unsubscribeData()
       unsubscribeExit()
+
+      window.removeEventListener('wheel', handleWheelCapture, { capture: true })
 
       if (workspaceSyncTimerRef.current !== null) {
         window.clearTimeout(workspaceSyncTimerRef.current)
@@ -235,6 +304,11 @@ export function usePtyWorkspaceScrollbackKeepalive(): void {
       if (flushTimerRef.current !== null) {
         window.clearInterval(flushTimerRef.current)
         flushTimerRef.current = null
+      }
+
+      if (interactionFlushTimerRef.current !== null) {
+        window.clearTimeout(interactionFlushTimerRef.current)
+        interactionFlushTimerRef.current = null
       }
 
       sessionIndex.clear()
