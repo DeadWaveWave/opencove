@@ -273,12 +273,6 @@ export function SettingsPanel({
             onClick={() => setActivePageId('canvas')}
           />
           <SettingsPanelNavButton
-            isActive={activePageId === 'experimental'}
-            label={t('settingsPanel.nav.experimental')}
-            testId="settings-section-nav-experimental"
-            onClick={() => setActivePageId('experimental')}
-          />
-          <SettingsPanelNavButton
             isActive={activePageId === 'shortcuts'}
             label={t('settingsPanel.nav.shortcuts')}
             testId="settings-section-nav-shortcuts"
@@ -295,6 +289,12 @@ export function SettingsPanel({
             label={t('settingsPanel.nav.integrations')}
             testId="settings-section-nav-integrations"
             onClick={() => setActivePageId('integrations')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'experimental'}
+            label={t('settingsPanel.nav.experimental')}
+            testId="settings-section-nav-experimental"
+            onClick={() => setActivePageId('experimental')}
           />
 
           <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>

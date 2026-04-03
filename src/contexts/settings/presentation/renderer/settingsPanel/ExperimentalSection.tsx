@@ -58,7 +58,6 @@ export function ExperimentalSection({
 
       <div className="settings-panel__subsection">
         <div className="settings-panel__subsection-header">
-          <strong>{t('settingsPanel.experimental.websiteWindowsTitle')}</strong>
           <span>{t('settingsPanel.experimental.websiteWindowsHelp')}</span>
         </div>
 

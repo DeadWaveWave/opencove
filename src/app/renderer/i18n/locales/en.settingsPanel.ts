@@ -120,7 +120,7 @@ export const enSettingsPanel = {
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
   },
   experimental: {
-    title: 'Experimental',
+    title: 'Website Windows',
     websiteWindowsTitle: 'Website Windows',
     websiteWindowsHelp:
       'Embeds web pages as native canvas nodes. This stays opt-in while lifecycle and performance policies keep evolving.',

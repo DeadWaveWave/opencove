@@ -119,7 +119,7 @@ export const zhCNSettingsPanel = {
     focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
   },
   experimental: {
-    title: '实验性',
+    title: '网页窗口',
     websiteWindowsTitle: '网页窗口',
     websiteWindowsHelp:
       '把网页作为原生画布节点嵌入显示。该功能保持可选开启，便于继续打磨生命周期与性能策略。',
