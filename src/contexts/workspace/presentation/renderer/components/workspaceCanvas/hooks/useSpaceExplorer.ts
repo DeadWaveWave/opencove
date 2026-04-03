@@ -9,12 +9,6 @@ import type {
   WorkspaceSpaceState,
 } from '../../../types'
 import { resolveImageNodeSizeFromNaturalDimensions } from '../../../utils/workspaceNodeSizing'
-import { WORKSPACE_ARRANGE_GRID_PX } from '../../../utils/workspaceArrange.shared'
-import { resolveWorkspaceSnap, type WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
-import {
-  resolveWorkspaceNodeSnapCandidateRects,
-  unionWorkspaceNodeRects,
-} from '../../../utils/workspaceSnap.nodes'
 import {
   resolveDefaultDocumentWindowSize,
   resolveDefaultImageWindowSize,
@@ -27,12 +21,6 @@ import type {
 import { focusNodeInViewport } from '../helpers'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
 import {
-  areSpaceRectsEqual,
-  buildDragBaselineNodes,
-  setResolvedSnapGuides,
-  setResolvedSpaceFramePreview,
-} from './useApplyNodeChanges.helpers'
-import {
   findBlockingOpenDocumentForMutation,
   type SpaceExplorerOpenDocumentBlock,
 } from './useSpaceExplorer.guards'
@@ -42,8 +30,8 @@ import {
   resolveFileNameFromFileUri,
 } from './useSpaceExplorer.helpers'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
-import { projectWorkspaceNodeDropLayout } from './useSpaceOwnership.projectDropLayout'
 import type { SpaceExplorerClipboardItem } from '../view/WorkspaceSpaceExplorerOverlay.operations'
+import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
 interface ExplorerPlacementPx {
   left: number
@@ -206,9 +194,7 @@ export function useWorkspaceCanvasSpaceExplorer({
   onSpacesChange,
   onRequestPersistFlush,
   reactFlow,
-  magneticSnappingEnabledRef,
-  setSnapGuides,
-  setSpaceFramePreview,
+  nodeDragSession,
   finalizeDraggedNodeDrop,
   createDocumentNode,
   createImageNode,
@@ -225,11 +211,7 @@ export function useWorkspaceCanvasSpaceExplorer({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   onRequestPersistFlush?: () => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  magneticSnappingEnabledRef: React.MutableRefObject<boolean>
-  setSnapGuides: React.Dispatch<React.SetStateAction<WorkspaceSnapGuide[] | null>>
-  setSpaceFramePreview: React.Dispatch<
-    React.SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>
-  >
+  nodeDragSession: WorkspaceCanvasNodeDragSession
   finalizeDraggedNodeDrop: (input: {
     draggedNodeIds: string[]
     draggedNodePositionById: Map<string, { x: number; y: number }>
@@ -513,42 +495,6 @@ export function useWorkspaceCanvasSpaceExplorer({
           return null
         }
 
-        setNodes(
-          prevNodes => {
-            let didUpdateCreatedNode = false
-            const nextNodes = prevNodes.map(node => {
-              if (node.id !== created.id) {
-                return node
-              }
-
-              didUpdateCreatedNode = true
-              return {
-                ...node,
-                position: {
-                  x: preview.rect.x,
-                  y: preview.rect.y,
-                },
-              }
-            })
-
-            if (didUpdateCreatedNode) {
-              return nextNodes
-            }
-
-            return [
-              ...prevNodes,
-              {
-                ...created,
-                position: {
-                  x: preview.rect.x,
-                  y: preview.rect.y,
-                },
-              },
-            ]
-          },
-          { syncLayout: false },
-        )
-
         assignNodeToSpaceAndExpand({
           createdNodeId: created.id,
           targetSpaceId: space.id,
@@ -604,42 +550,6 @@ export function useWorkspaceCanvasSpaceExplorer({
         if (!created) {
           return null
         }
-
-        setNodes(
-          prevNodes => {
-            let didUpdateCreatedNode = false
-            const nextNodes = prevNodes.map(node => {
-              if (node.id !== created.id) {
-                return node
-              }
-
-              didUpdateCreatedNode = true
-              return {
-                ...node,
-                position: {
-                  x: preview.rect.x,
-                  y: preview.rect.y,
-                },
-              }
-            })
-
-            if (didUpdateCreatedNode) {
-              return nextNodes
-            }
-
-            return [
-              ...prevNodes,
-              {
-                ...created,
-                position: {
-                  x: preview.rect.x,
-                  y: preview.rect.y,
-                },
-              },
-            ]
-          },
-          { syncLayout: false },
-        )
 
         assignNodeToSpaceAndExpand({
           createdNodeId: created.id,
@@ -747,25 +657,16 @@ export function useWorkspaceCanvasSpaceExplorer({
       let didCrossDragThreshold = false
       let released = false
       let cleanedUp = false
-      let dragStartNodePositionById: Map<string, { x: number; y: number }> | null = null
-      let dragStartAllNodePositionById: Map<string, { x: number; y: number }> | null = null
-      let dragStartSpaceRectById: Map<string, WorkspaceSpaceRect> | null = null
       let latestDraggedNodePositionById = new Map<string, { x: number; y: number }>()
       let latestSpaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null = null
 
       const clearDragProjection = () => {
         latestSpaceFramePreview = null
-        setResolvedSnapGuides(setSnapGuides, null)
-        setResolvedSpaceFramePreview(setSpaceFramePreview, null)
+        nodeDragSession.clearNodeDragProjection()
       }
 
       const syncNodePosition = () => {
-        if (
-          !materializedNodeId ||
-          !dragStartNodePositionById ||
-          !dragStartAllNodePositionById ||
-          !dragStartSpaceRectById
-        ) {
+        if (!materializedNodeId) {
           return
         }
 
@@ -776,127 +677,18 @@ export function useWorkspaceCanvasSpaceExplorer({
           x: preview.rect.x + dx,
           y: preview.rect.y + dy,
         }
-        const dragStartPosition =
-          dragStartNodePositionById.get(materializedNodeId) ?? desiredPosition
         const dropFlowPoint = reactFlow.screenToFlowPosition(latestClient)
 
         setNodes(prevNodes => {
-          const baselineNodes = buildDragBaselineNodes({
-            nodes: prevNodes,
-            baselinePositionById: dragStartAllNodePositionById,
-            shiftNodeIds: null,
-          })
-          let draggedNodePositionById = new Map([[materializedNodeId!, desiredPosition]])
-
-          if (magneticSnappingEnabledRef.current) {
-            const snapNodes = baselineNodes.map(node =>
-              node.id === materializedNodeId
-                ? {
-                    ...node,
-                    position: desiredPosition,
-                  }
-                : node,
-            )
-            const movingNodes = snapNodes.filter(node => node.id === materializedNodeId)
-            const movingRect = unionWorkspaceNodeRects(movingNodes)
-
-            if (movingRect) {
-              const snapped = resolveWorkspaceSnap({
-                movingRect,
-                candidateRects: resolveWorkspaceNodeSnapCandidateRects({
-                  movingNodeIds: new Set([materializedNodeId!]),
-                  nodes: snapNodes,
-                  spaces: spacesRef.current,
-                }),
-                grid: WORKSPACE_ARRANGE_GRID_PX,
-                threshold: 8,
-                enableGrid: true,
-                enableObject: true,
-              })
-
-              setResolvedSnapGuides(
-                setSnapGuides,
-                snapped.guides.length > 0 ? snapped.guides : null,
-              )
-
-              if (snapped.dx !== 0 || snapped.dy !== 0) {
-                draggedNodePositionById = new Map([
-                  [
-                    materializedNodeId!,
-                    {
-                      x: desiredPosition.x + snapped.dx,
-                      y: desiredPosition.y + snapped.dy,
-                    },
-                  ],
-                ])
-              }
-            } else {
-              setResolvedSnapGuides(setSnapGuides, null)
-            }
-          } else {
-            setResolvedSnapGuides(setSnapGuides, null)
-          }
-
-          const snappedPosition =
-            draggedNodePositionById.get(materializedNodeId!) ?? desiredPosition
-          const projected = projectWorkspaceNodeDropLayout({
-            nodes: baselineNodes,
-            spaces: spacesRef.current,
+          const projected = nodeDragSession.projectNodeDrag({
+            currentNodes: prevNodes,
             draggedNodeIds: [materializedNodeId!],
-            draggedNodePositionById,
-            dragDx: snappedPosition.x - dragStartPosition.x,
-            dragDy: snappedPosition.y - dragStartPosition.y,
+            desiredDraggedPositionById: new Map([[materializedNodeId!, desiredPosition]]),
             dropFlowPoint,
           })
-
-          const currentRectsById = new Map(
-            spacesRef.current
-              .filter(space => Boolean(space.rect))
-              .map(space => [space.id, space.rect!] as const),
-          )
-          let hasSpacePreviewChange = false
-          for (const space of projected.nextSpaces) {
-            if (!space.rect) {
-              continue
-            }
-
-            if (!areSpaceRectsEqual(space.rect, currentRectsById.get(space.id) ?? null)) {
-              hasSpacePreviewChange = true
-              break
-            }
-          }
-
-          latestSpaceFramePreview = hasSpacePreviewChange
-            ? new Map(
-                projected.nextSpaces
-                  .filter(space => Boolean(space.rect))
-                  .map(space => [space.id, space.rect!] as const),
-              )
-            : null
-          setResolvedSpaceFramePreview(setSpaceFramePreview, latestSpaceFramePreview)
-
-          latestDraggedNodePositionById = new Map([
-            [
-              materializedNodeId!,
-              projected.nextNodePositionById.get(materializedNodeId!) ?? snappedPosition,
-            ],
-          ])
-
-          return prevNodes.map(node => {
-            const nextPosition = projected.nextNodePositionById.get(node.id)
-            if (!nextPosition) {
-              return node
-            }
-
-            if (node.position.x === nextPosition.x && node.position.y === nextPosition.y) {
-              return node
-            }
-
-            return {
-              ...node,
-              position: nextPosition,
-            }
-          })
+          latestSpaceFramePreview = projected.nextSpaceFramePreview
+          latestDraggedNodePositionById = projected.nextDraggedNodePositionById
+          return projected.nextNodes
         }, { syncLayout: false })
       }
 
@@ -911,13 +703,11 @@ export function useWorkspaceCanvasSpaceExplorer({
       }
 
       const finalizeMaterializedDrag = () => {
-        if (
-          !materializedNodeId ||
-          !dragStartNodePositionById ||
-          !dragStartAllNodePositionById ||
-          !dragStartSpaceRectById
-        ) {
+        const dragStartNodePositionById = nodeDragSession.dragBaselinePositionByIdRef.current
+        const dragStartSpaceRectById = nodeDragSession.dragBaselineSpaceRectByIdRef.current
+        if (!materializedNodeId || !dragStartNodePositionById || !dragStartSpaceRectById) {
           clearDragProjection()
+          nodeDragSession.endNodeDragSession()
           cleanup()
           return
         }
@@ -929,13 +719,13 @@ export function useWorkspaceCanvasSpaceExplorer({
           draggedNodeIds: [materializedNodeId],
           draggedNodePositionById: latestDraggedNodePositionById,
           dragStartNodePositionById,
-          dragStartAllNodePositionById,
+          dragStartAllNodePositionById: dragStartNodePositionById,
           dragStartSpaceRectById,
           dropFlowPoint: reactFlow.screenToFlowPosition(latestClient),
           fallbackNodes: fallbackNode ? [fallbackNode] : [],
           spaceRectOverrideById: latestSpaceFramePreview,
         })
-        clearDragProjection()
+        nodeDragSession.endNodeDragSession()
         cleanup()
       }
 
@@ -952,23 +742,7 @@ export function useWorkspaceCanvasSpaceExplorer({
         materializedNodeId = created.id
         const materializedNode =
           nodesRef.current.find(node => node.id === created.id) ?? created
-        dragStartNodePositionById = new Map([
-          [
-            materializedNode.id,
-            {
-              x: materializedNode.position.x,
-              y: materializedNode.position.y,
-            },
-          ],
-        ])
-        dragStartAllNodePositionById = new Map(
-          nodesRef.current.map(node => [node.id, { x: node.position.x, y: node.position.y }]),
-        )
-        dragStartSpaceRectById = new Map(
-          spacesRef.current
-            .filter(space => Boolean(space.rect))
-            .map(space => [space.id, { ...space.rect! }] as const),
-        )
+        nodeDragSession.beginNodeDragSession(nodesRef.current)
         latestDraggedNodePositionById = new Map([
           [
             materializedNode.id,
@@ -1029,15 +803,12 @@ export function useWorkspaceCanvasSpaceExplorer({
     [
       dismissQuickPreview,
       finalizeDraggedNodeDrop,
-      magneticSnappingEnabledRef,
       materializePreviewState,
+      nodeDragSession,
       nodesRef,
       quickPreview,
       reactFlow,
       setNodes,
-      setSnapGuides,
-      setSpaceFramePreview,
-      spacesRef,
     ],
   )
 
