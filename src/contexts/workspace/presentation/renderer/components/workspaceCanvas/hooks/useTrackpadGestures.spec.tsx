@@ -28,7 +28,7 @@ describe('useWorkspaceCanvasTrackpadGestures', () => {
     vi.useRealTimers()
   })
 
-  it('debounces viewport persistence during wheel panning', async () => {
+  it('updates the persisted viewport during wheel panning', async () => {
     const handlerRef = { current: null as WheelHandler | null }
     const canvasRef = { current: null as HTMLDivElement | null }
     const trackpadGestureLockRef = { current: null }
@@ -97,11 +97,11 @@ describe('useWorkspaceCanvasTrackpadGestures', () => {
     } as unknown as WheelEvent)
 
     expect(reactFlow.setViewport).toHaveBeenCalledTimes(1)
-    expect(onViewportChange).not.toHaveBeenCalled()
+    expect(onViewportChange).toHaveBeenCalledTimes(1)
+    expect(onViewportChange).toHaveBeenCalledWith({ x: -50, y: 0, zoom: 1 })
 
     await vi.advanceTimersByTimeAsync(120)
 
     expect(onViewportChange).toHaveBeenCalledTimes(1)
-    expect(onViewportChange).toHaveBeenCalledWith({ x: -50, y: 0, zoom: 1 })
   })
 })
