@@ -386,11 +386,7 @@ export function useWorkspaceCanvasSpaceOwnership({
         })
       }
     },
-    [
-      applyOwnershipForDrop,
-      requestWorktreeMismatchDropWarning,
-      resolveSnappedDraggedNodePositions,
-    ],
+    [applyOwnershipForDrop, requestWorktreeMismatchDropWarning, resolveSnappedDraggedNodePositions],
   )
 
   const handleNodeDragStop = useCallback(

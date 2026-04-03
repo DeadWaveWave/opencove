@@ -428,7 +428,11 @@ export function useWorkspaceCanvasNodeCreation({
   )
 
   const createDocumentNode = useCallback(
-    (anchor: Point, document: DocumentNodeData, placementOptions?: NodeCreationPlacementOptions) => {
+    (
+      anchor: Point,
+      document: DocumentNodeData,
+      placementOptions?: NodeCreationPlacementOptions,
+    ) => {
       const defaultSize = resolveDefaultDocumentWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         anchor,

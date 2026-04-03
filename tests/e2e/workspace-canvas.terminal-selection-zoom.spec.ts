@@ -47,45 +47,56 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
           return (await readCanvasViewport(window)).zoom
         })
         .toBeGreaterThan(1.01)
+      await window.waitForTimeout(150)
 
       await xterm.click()
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
 
-      const dragPoints = await window
-        .waitForFunction(
-          nodeId => {
-            const api = window.__opencoveTerminalSelectionTestApi
-            if (!api) {
-              return null
-            }
+      const resolveDragPoints = async (): Promise<{
+        start: { x: number; y: number }
+        end: { x: number; y: number }
+      }> => {
+        return await window
+          .waitForFunction(
+            nodeId => {
+              const api = window.__opencoveTerminalSelectionTestApi
+              if (!api) {
+                return null
+              }
 
-            // Row 1 contains the printed alphabet after the ANSI clear + home.
-            const start = api.getCellCenter(nodeId, 2, 1)
-            const end = api.getCellCenter(nodeId, 6, 1)
-            if (!start || !end) {
-              return null
-            }
+              // Row 1 contains the printed alphabet after the ANSI clear + home.
+              const start = api.getCellCenter(nodeId, 2, 1)
+              const end = api.getCellCenter(nodeId, 6, 1)
+              if (!start || !end) {
+                return null
+              }
 
-            const startElement = document.elementFromPoint(start.x, start.y)
-            const endElement = document.elementFromPoint(end.x, end.y)
-            if (!startElement?.closest('.xterm-screen') || !endElement?.closest('.xterm-screen')) {
-              return null
-            }
+              const startElement = document.elementFromPoint(start.x, start.y)
+              const endElement = document.elementFromPoint(end.x, end.y)
+              if (
+                !startElement?.closest('.xterm-screen') ||
+                !endElement?.closest('.xterm-screen')
+              ) {
+                return null
+              }
 
-            api.clearSelection(nodeId)
+              api.clearSelection(nodeId)
 
-            return { start, end }
-          },
-          'node-selection-zoom',
-          { timeout: 15_000 },
-        )
-        .then(handle => handle.jsonValue())
+              return { start, end }
+            },
+            'node-selection-zoom',
+            { timeout: 15_000 },
+          )
+          .then(handle => handle.jsonValue())
+      }
 
-      await window.mouse.move(dragPoints.start.x, dragPoints.start.y)
       const dragOnce = async (): Promise<void> => {
+        const dragPoints = await resolveDragPoints()
         await window.mouse.move(dragPoints.start.x, dragPoints.start.y)
         await window.mouse.down()
-        await window.mouse.move(dragPoints.end.x, dragPoints.end.y, { steps: 8 })
+        await window.waitForTimeout(40)
+        await window.mouse.move(dragPoints.end.x, dragPoints.end.y, { steps: 12 })
+        await window.waitForTimeout(40)
         await window.mouse.up()
       }
 
@@ -106,16 +117,24 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
         }, 'node-selection-zoom')
       }
 
-      try {
-        await dragOnce()
-        await waitForSelection()
-      } catch {
-        await clearSelection()
-        await xterm.click()
-        await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
-        await dragOnce()
-        await waitForSelection()
+      const attemptSelectionDrag = async (remainingAttempts: number): Promise<void> => {
+        try {
+          await dragOnce()
+          await waitForSelection()
+        } catch (error) {
+          if (remainingAttempts <= 1) {
+            throw error
+          }
+
+          await clearSelection()
+          await xterm.click()
+          await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+          await window.waitForTimeout(100)
+          await attemptSelectionDrag(remainingAttempts - 1)
+        }
       }
+
+      await attemptSelectionDrag(3)
     } finally {
       await electronApp.close()
     }

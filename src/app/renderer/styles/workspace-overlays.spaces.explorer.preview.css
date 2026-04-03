@@ -8,12 +8,11 @@
   overflow: hidden;
   border: 1px solid var(--cove-border-subtle);
   border-radius: 14px;
-  background:
-    linear-gradient(
-      180deg,
-      color-mix(in srgb, var(--cove-window-surface) 98%, var(--cove-surface)) 0%,
-      color-mix(in srgb, var(--cove-surface-strong) 96%, var(--cove-window-surface)) 100%
-    );
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--cove-window-surface) 98%, var(--cove-surface)) 0%,
+    color-mix(in srgb, var(--cove-surface-strong) 96%, var(--cove-window-surface)) 100%
+  );
   box-shadow:
     0 18px 36px color-mix(in srgb, var(--cove-shadow-color-elevated) 88%, transparent),
     0 0 0 1px color-mix(in srgb, var(--cove-border-subtle) 54%, transparent) inset;
@@ -112,10 +111,26 @@
   border-radius: 12px;
   box-shadow: 0 14px 28px color-mix(in srgb, var(--cove-shadow-color-elevated) 78%, transparent);
   background:
-    linear-gradient(45deg, color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 25%, transparent 25%),
-    linear-gradient(-45deg, color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 75%),
-    linear-gradient(-45deg, transparent 75%, color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 75%);
+    linear-gradient(
+      45deg,
+      color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 25%,
+      transparent 25%
+    ),
+    linear-gradient(
+      45deg,
+      transparent 75%,
+      color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 75%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 75%,
+      color-mix(in srgb, var(--cove-border-subtle) 70%, transparent) 75%
+    );
   background-position:
     0 0,
     0 8px,

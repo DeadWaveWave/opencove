@@ -110,9 +110,9 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const previewWindow = window.locator('[data-testid="workspace-space-quick-preview"]')
       await expect(previewWindow).toBeVisible()
-      await expect(previewWindow.locator('.workspace-space-quick-preview__drag-handle span')).toHaveText(
-        'hello.md',
-      )
+      await expect(
+        previewWindow.locator('.workspace-space-quick-preview__drag-handle span'),
+      ).toHaveText('hello.md')
       await expect(
         previewWindow.locator('[data-testid="workspace-space-quick-preview-text"]'),
       ).toHaveText(initialContent)
@@ -363,7 +363,10 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       await expect(previewWindow).toHaveCount(0)
 
-      const documentNode = window.locator('.document-node').filter({ hasText: 'drag-me.md' }).first()
+      const documentNode = window
+        .locator('.document-node')
+        .filter({ hasText: 'drag-me.md' })
+        .first()
       await expect(documentNode).toBeVisible()
 
       const documentBox = await documentNode.boundingBox()
@@ -460,9 +463,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
           return [Number(rgbMatch[1]), Number(rgbMatch[2]), Number(rgbMatch[3])]
         }
 
-        const srgbMatch = value.match(
-          /color\(srgb\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)/i,
-        )
+        const srgbMatch = value.match(/color\(srgb\s+([0-9.]+)\s+([0-9.]+)\s+([0-9.]+)/i)
         if (srgbMatch) {
           return [
             Math.round(Number(srgbMatch[1]) * 255),

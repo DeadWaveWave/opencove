@@ -4,9 +4,7 @@ import type { Node, NodeChange, NodePositionChange } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
-import {
-  type UseApplyNodeChangesParams,
-} from './useApplyNodeChanges.helpers'
+import { type UseApplyNodeChangesParams } from './useApplyNodeChanges.helpers'
 
 export function useWorkspaceCanvasApplyNodeChanges({
   nodesRef,
@@ -15,7 +13,6 @@ export function useWorkspaceCanvasApplyNodeChanges({
   normalizePosition,
   applyPendingScrollbacks,
   isNodeDraggingRef,
-  dragSelectedSpaceIdsRef,
   exclusiveNodeDragAnchorIdRef,
   nodeDragSession,
 }: UseApplyNodeChangesParams): (changes: NodeChange<Node<TerminalNodeData>>[]) => void {
@@ -82,7 +79,10 @@ export function useWorkspaceCanvasApplyNodeChanges({
 
       if (!wasDragging && isDraggingThisFrame) {
         nodeDragSession.beginNodeDragSession(currentNodes)
-      } else if (wasDragging && !isDraggingThisFrame) {
+      }
+
+      if (wasDragging && !isDraggingThisFrame) {
+        nextNodes = nodeDragSession.applyPendingReleaseProjection(nextNodes)
         nodeDragSession.endNodeDragSession()
       }
 
@@ -241,7 +241,6 @@ export function useWorkspaceCanvasApplyNodeChanges({
     [
       applyPendingScrollbacks,
       clearAgentLaunchToken,
-      dragSelectedSpaceIdsRef,
       exclusiveNodeDragAnchorIdRef,
       isNodeDraggingRef,
       nodeDragSession,

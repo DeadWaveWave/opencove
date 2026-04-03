@@ -10,10 +10,7 @@ import type {
 } from '../../../types'
 import { findNearestFreePositionOnRight, type Rect } from '../../../utils/collision'
 import { resolveImageNodeSizeFromNaturalDimensions } from '../../../utils/workspaceNodeSizing'
-import {
-  resolveDefaultDocumentWindowSize,
-  resolveDefaultImageWindowSize,
-} from '../constants'
+import { resolveDefaultDocumentWindowSize, resolveDefaultImageWindowSize } from '../constants'
 import type {
   NodeCreationPlacementOptions,
   NodePlacementOptions,
@@ -526,11 +523,7 @@ export function useWorkspaceCanvasSpaceExplorer({
           focusViewportOnCreate: options?.focusViewportOnCreate,
         }
 
-        const created = createDocumentNode(
-          creationAnchor,
-          { uri: preview.uri },
-          creationPlacement,
-        )
+        const created = createDocumentNode(creationAnchor, { uri: preview.uri }, creationPlacement)
 
         if (!created) {
           return null
@@ -813,17 +806,20 @@ export function useWorkspaceCanvasSpaceExplorer({
         }
         const dropFlowPoint = reactFlow.screenToFlowPosition(latestClient)
 
-        setNodes(prevNodes => {
-          const projected = nodeDragSession.projectNodeDrag({
-            currentNodes: prevNodes,
-            draggedNodeIds: [materializedNodeId!],
-            desiredDraggedPositionById: new Map([[materializedNodeId!, desiredPosition]]),
-            dropFlowPoint,
-          })
-          latestSpaceFramePreview = projected.nextSpaceFramePreview
-          latestDraggedNodePositionById = projected.nextDraggedNodePositionById
-          return projected.nextNodes
-        }, { syncLayout: false })
+        setNodes(
+          prevNodes => {
+            const projected = nodeDragSession.projectNodeDrag({
+              currentNodes: prevNodes,
+              draggedNodeIds: [materializedNodeId!],
+              desiredDraggedPositionById: new Map([[materializedNodeId!, desiredPosition]]),
+              dropFlowPoint,
+            })
+            latestSpaceFramePreview = projected.nextSpaceFramePreview
+            latestDraggedNodePositionById = projected.nextDraggedNodePositionById
+            return projected.nextNodes
+          },
+          { syncLayout: false },
+        )
       }
 
       const cleanup = () => {
@@ -846,8 +842,7 @@ export function useWorkspaceCanvasSpaceExplorer({
           return
         }
 
-        const fallbackNode =
-          nodesRef.current.find(node => node.id === materializedNodeId) ?? null
+        const fallbackNode = nodesRef.current.find(node => node.id === materializedNodeId) ?? null
 
         finalizeDraggedNodeDrop({
           draggedNodeIds: [materializedNodeId],
@@ -876,8 +871,7 @@ export function useWorkspaceCanvasSpaceExplorer({
         }
 
         materializedNodeId = created.id
-        const materializedNode =
-          nodesRef.current.find(node => node.id === created.id) ?? created
+        const materializedNode = nodesRef.current.find(node => node.id === created.id) ?? created
         nodeDragSession.beginNodeDragSession(nodesRef.current)
         latestDraggedNodePositionById = new Map([
           [
