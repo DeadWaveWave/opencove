@@ -66,6 +66,8 @@ test.describe('Worker web canvas agent resume', () => {
     await expect(agentTerminal.locator('.xterm')).toBeVisible()
     await expect(agentTerminal).toContainText('[opencove-test-agent] codex new')
 
+    await expect(page.locator('.workspace-task-agent-edge')).toHaveCount(1)
+
     await expect
       .poll(async () => {
         const shared = await readSharedState(page.request)

@@ -58,6 +58,30 @@ function mergeNodes(
   const seen = new Set<string>()
   const merged: PersistedTerminalNode[] = []
 
+  type TaskNodeDataShape = {
+    requirement: string
+    linkedAgentNodeId?: string | null
+    [key: string]: unknown
+  }
+
+  function isTaskNodeData(value: PersistedTerminalNode['task']): value is TaskNodeDataShape {
+    return (
+      value !== null &&
+      typeof value === 'object' &&
+      !Array.isArray(value) &&
+      typeof (value as Record<string, unknown>).requirement === 'string'
+    )
+  }
+
+  function normalizeLinkedAgentNodeId(value: unknown): string | null {
+    if (typeof value !== 'string') {
+      return null
+    }
+
+    const normalized = value.trim()
+    return normalized.length > 0 ? normalized : null
+  }
+
   function isPointEqual(
     left: PersistedTerminalNode['position'],
     right: PersistedTerminalNode['position'],
@@ -89,6 +113,41 @@ function mergeNodes(
       continue
     }
 
+    const task = (() => {
+      if (baseNode.kind !== 'task' || localNode.kind !== 'task' || snapshotNode.kind !== 'task') {
+        return localNode.task
+      }
+
+      if (!isTaskNodeData(baseNode.task) || !isTaskNodeData(localNode.task)) {
+        return localNode.task
+      }
+
+      const snapshotTask = isTaskNodeData(snapshotNode.task) ? snapshotNode.task : null
+      if (!snapshotTask) {
+        return localNode.task
+      }
+
+      const baseLinkedAgentNodeId = normalizeLinkedAgentNodeId(baseNode.task.linkedAgentNodeId)
+      const localLinkedAgentNodeId = normalizeLinkedAgentNodeId(localNode.task.linkedAgentNodeId)
+      const snapshotLinkedAgentNodeId = normalizeLinkedAgentNodeId(snapshotTask.linkedAgentNodeId)
+
+      const mergedLinkedAgentNodeId = mergeSnapshotField(
+        baseLinkedAgentNodeId,
+        localLinkedAgentNodeId,
+        snapshotLinkedAgentNodeId,
+        (left, right) => left === right,
+      )
+
+      if (mergedLinkedAgentNodeId === localLinkedAgentNodeId) {
+        return localNode.task
+      }
+
+      return {
+        ...localNode.task,
+        linkedAgentNodeId: mergedLinkedAgentNodeId,
+      }
+    })()
+
     merged.push({
       ...localNode,
       position: mergeSnapshotField(
@@ -109,6 +168,7 @@ function mergeNodes(
         snapshotNode.height,
         (left, right) => left === right,
       ),
+      task,
     })
     seen.add(baseNode.id)
   }
