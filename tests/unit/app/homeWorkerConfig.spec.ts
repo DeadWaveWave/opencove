@@ -33,6 +33,10 @@ describe('home worker config', () => {
       version: 1,
       mode: 'standalone',
       remote: null,
+      webUi: {
+        exposeOnLan: false,
+        passwordSet: false,
+      },
       updatedAt: null,
     })
   })

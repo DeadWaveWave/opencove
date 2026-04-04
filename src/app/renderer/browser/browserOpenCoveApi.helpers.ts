@@ -182,6 +182,10 @@ export function unsupportedWorkerConfig(): HomeWorkerConfigDto {
     version: 1,
     mode: 'remote',
     remote: null,
+    webUi: {
+      exposeOnLan: false,
+      passwordSet: false,
+    },
     updatedAt: null,
   }
 }

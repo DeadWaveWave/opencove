@@ -21,7 +21,10 @@ export function useWorkspaceCanvasApplyNodeChanges({
       const wasDragging = isNodeDraggingRef.current
       const exclusiveAnchorId = exclusiveNodeDragAnchorIdRef?.current ?? null
       const filteredChanges = changes
-        .filter(change => change.type !== 'select')
+        .filter(
+          change =>
+            change.type !== 'add' && change.type !== 'replace' && change.type !== 'dimensions',
+        )
         .filter(change => {
           if (!exclusiveAnchorId) {
             return true

@@ -2,7 +2,6 @@ import { createServer, type ServerResponse } from 'node:http'
 import { resolve } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { createAppErrorDescriptor } from '../../../shared/errors/appError'
-import type { ControlSurfaceInvokeResult } from '../../../shared/contracts/controlSurface'
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createPersistenceStore as createSqlitePersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createControlSurface } from './controlSurface'
@@ -12,12 +11,10 @@ import { registerSystemHandlers } from './handlers/systemHandlers'
 import { registerProjectHandlers } from './handlers/projectHandlers'
 import { registerSpaceHandlers } from './handlers/spaceHandlers'
 import { registerFilesystemHandlers } from './handlers/filesystemHandlers'
-import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import { registerGitWorktreeHandlers } from './handlers/gitWorktreeHandlers'
 import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
 import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
-import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
 import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
 import { registerSyncHandlers } from './handlers/syncHandlers'
 import { renderWorkerWebShellPage } from './workerWebShellPage'
@@ -29,7 +26,12 @@ import { removeConnectionFile, writeConnectionFile } from './http/connectionFile
 import { resolveRequestAuth } from './http/requestAuth'
 import { writeSseEvent, type SyncEventPayload } from './http/syncSse'
 import { tryHandleWebAuthRoutes } from './http/webAuthRoutes'
+import { gateWebUiEntrypoint } from './http/webUiEntryGate'
+import { publishSyncEvent } from './http/publishSyncEvent'
+import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
+import { buildUnauthorizedResult } from './http/unauthorizedResult'
 import { createPtyStreamService, PTY_STREAM_PROTOCOL_VERSION } from './ptyStream/ptyStreamService'
+import type { RegisterControlSurfaceHttpServerOptions } from './controlSurfaceHttpServerOptions'
 
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
@@ -54,31 +56,15 @@ export interface ControlSurfaceHttpServerInstance extends ControlSurfaceServerDi
   ready: Promise<ControlSurfaceConnectionInfo>
 }
 
-function buildUnauthorizedResult(): ControlSurfaceInvokeResult<unknown> {
-  return {
-    __opencoveControlEnvelope: true,
-    ok: false,
-    error: createAppErrorDescriptor('control_surface.unauthorized'),
-  }
-}
-
-export function registerControlSurfaceHttpServer(options: {
-  userDataPath: string
-  dbPath?: string
-  createPersistenceStore?: (options: { dbPath: string }) => Promise<PersistenceStore>
-  hostname?: string
-  port?: number
-  token?: string
-  connectionFileName?: string
-  approvedWorkspaces: ApprovedWorkspaceStore
-  ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
-  ownsPtyRuntime?: boolean
-  enableWebShell?: boolean
-}): ControlSurfaceHttpServerInstance {
+export function registerControlSurfaceHttpServer(
+  options: RegisterControlSurfaceHttpServerOptions,
+): ControlSurfaceHttpServerInstance {
   const token = options.token ?? randomBytes(32).toString('base64url')
   const hostname = options.hostname ?? DEFAULT_CONTROL_SURFACE_HOSTNAME
+  const bindHostname = options.bindHostname ?? hostname
   const port = options.port ?? 0
   const connectionFileName = options.connectionFileName ?? DEFAULT_CONTROL_SURFACE_CONNECTION_FILE
+  const webUiPasswordHash = options.webUiPasswordHash ?? null
 
   const webSessions = new WebSessionManager()
 
@@ -173,27 +159,6 @@ export function registerControlSurfaceHttpServer(options: {
   const syncClients = new Set<ServerResponse>()
   const syncEventBuffer: SyncEventPayload[] = []
 
-  const publishSyncEvent = (payload: SyncEventPayload): void => {
-    syncEventBuffer.push(payload)
-    if (syncEventBuffer.length > MAX_SYNC_EVENT_BUFFER) {
-      syncEventBuffer.splice(0, syncEventBuffer.length - MAX_SYNC_EVENT_BUFFER)
-    }
-
-    for (const client of syncClients) {
-      try {
-        writeSseEvent(client, payload)
-      } catch {
-        try {
-          client.end()
-        } catch {
-          // ignore
-        }
-
-        syncClients.delete(client)
-      }
-    }
-  }
-
   let resolveReady: ((info: ControlSurfaceConnectionInfo) => void) | null = null
   let rejectReady: ((error: Error) => void) | null = null
   const ready = new Promise<ControlSurfaceConnectionInfo>((resolvePromise, rejectPromise) => {
@@ -208,9 +173,40 @@ export function registerControlSurfaceHttpServer(options: {
       return
     }
 
-    if (req.method === 'GET' && req.url) {
-      const url = new URL(req.url, 'http://localhost')
-      if (tryHandleWebAuthRoutes({ res, url, now: ctx.now, webSessions })) {
+    if (!req.url) {
+      res.statusCode = 400
+      res.end()
+      return
+    }
+
+    const url = new URL(req.url, 'http://localhost')
+
+    if (
+      await tryHandleWebAuthRoutes({
+        req,
+        res,
+        url,
+        now: ctx.now,
+        webSessions,
+        webUiPasswordHash,
+      })
+    ) {
+      return
+    }
+
+    if (req.method === 'GET') {
+      if (
+        gateWebUiEntrypoint({
+          req,
+          res,
+          url,
+          token,
+          webSessions,
+          enableWebShell: options.enableWebShell === true,
+          webUiPasswordHash,
+          now: ctx.now(),
+        })
+      ) {
         return
       }
 
@@ -224,7 +220,11 @@ export function registerControlSurfaceHttpServer(options: {
 
       const webUiResponse =
         options.enableWebShell && url.pathname !== '/events' && !url.pathname.startsWith('/auth/')
-          ? tryResolveWebUiResponse(url.pathname)
+          ? tryResolveWebUiResponse(url.pathname, {
+              allowDevOrigin: shouldAllowDevWebUiOrigin(
+                typeof req.headers.host === 'string' ? req.headers.host : null,
+              ),
+            })
           : null
 
       if (webUiResponse) {
@@ -324,7 +324,10 @@ export function registerControlSurfaceHttpServer(options: {
       const body = await readJsonBody(req)
       const request = normalizeInvokeRequest(body)
 
-      if (request.id === 'auth.issueWebSessionTicket' && auth.kind !== 'bearer') {
+      if (
+        request.id === 'auth.issueWebSessionTicket' &&
+        (webUiPasswordHash || auth.kind !== 'bearer')
+      ) {
         sendJson(res, 403, {
           __opencoveControlEnvelope: true,
           ok: false,
@@ -343,9 +346,14 @@ export function registerControlSurfaceHttpServer(options: {
           const revisionAfter = await (await getPersistenceStore()).readAppStateRevision()
           if (typeof revisionBefore === 'number' && revisionAfter !== revisionBefore) {
             publishSyncEvent({
-              type: 'app_state.updated',
-              revision: revisionAfter,
-              operationId: request.id,
+              syncClients,
+              syncEventBuffer,
+              maxBufferSize: MAX_SYNC_EVENT_BUFFER,
+              payload: {
+                type: 'app_state.updated',
+                revision: revisionAfter,
+                operationId: request.id,
+              },
             })
           }
         } catch {
@@ -380,7 +388,7 @@ export function registerControlSurfaceHttpServer(options: {
     resolveReady = null
   })
 
-  server.listen(port, hostname, () => {
+  server.listen(port, bindHostname, () => {
     const address = server.address()
     if (!address || typeof address === 'string') {
       const detail = '[opencove] control surface server did not return a TCP address.'

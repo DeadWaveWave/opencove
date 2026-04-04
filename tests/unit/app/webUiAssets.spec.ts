@@ -31,4 +31,19 @@ describe('web UI assets', () => {
     expect(body).toContain('http://127.0.0.1:5173/@vite/client')
     expect(body).toContain('http://127.0.0.1:5173/web-main.tsx')
   })
+
+  it('can disable the dev renderer origin for non-loopback requests', () => {
+    process.env['ELECTRON_RENDERER_URL'] = 'http://127.0.0.1:5173/'
+
+    const response = tryResolveWebUiResponse('/', { allowDevOrigin: false })
+    expect(response).not.toBeNull()
+    if (!response) {
+      return
+    }
+
+    const bodyText =
+      typeof response.body === 'string' ? response.body : response.body.toString('utf8')
+    expect(bodyText).not.toContain('http://127.0.0.1:5173/@vite/client')
+    expect(bodyText).not.toContain('http://127.0.0.1:5173/@react-refresh')
+  })
 })

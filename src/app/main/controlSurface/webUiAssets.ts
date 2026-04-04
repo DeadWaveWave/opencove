@@ -81,12 +81,16 @@ function renderDevWebUiHtml(devOrigin: string): string {
 </html>`
 }
 
-export function tryResolveWebUiResponse(pathname: string): {
+export function tryResolveWebUiResponse(
+  pathname: string,
+  options: { allowDevOrigin?: boolean } = {},
+): {
   statusCode: number
   contentType: string
   body: string | Buffer
 } | null {
-  const devOrigin = resolveDevRendererOrigin()
+  const allowDevOrigin = options.allowDevOrigin !== false
+  const devOrigin = allowDevOrigin ? resolveDevRendererOrigin() : null
   if (devOrigin) {
     if (pathname === '/' || pathname === '/web.html') {
       return {

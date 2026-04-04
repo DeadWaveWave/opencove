@@ -35,6 +35,12 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   render(): React.ReactNode {
     if (this.state.hasError) {
+      const isTestEnvironment = window.opencoveApi?.meta?.isTest === true
+      const errorDetails =
+        this.state.error?.stack && isTestEnvironment
+          ? this.state.error.stack
+          : (this.state.error?.message ?? null)
+
       return (
         <div
           style={{
@@ -63,7 +69,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           >
             {translate('errorBoundary.description')}
           </p>
-          {this.state.error && (
+          {errorDetails && (
             <pre
               style={{
                 fontSize: '0.75rem',
@@ -71,15 +77,15 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 backgroundColor: '#171717',
                 padding: '1rem',
                 borderRadius: '0.5rem',
-                maxWidth: '40rem',
-                maxHeight: '8rem',
+                maxWidth: isTestEnvironment ? '72rem' : '40rem',
+                maxHeight: isTestEnvironment ? '60vh' : '8rem',
                 overflow: 'auto',
                 marginBottom: '1.5rem',
                 whiteSpace: 'pre-wrap',
                 wordBreak: 'break-word',
               }}
             >
-              {this.state.error.message}
+              {errorDetails}
             </pre>
           )}
           <div style={{ display: 'flex', gap: '0.75rem' }}>

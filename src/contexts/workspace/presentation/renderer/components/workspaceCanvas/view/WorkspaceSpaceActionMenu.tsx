@@ -13,6 +13,14 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
 import type { SpaceActionMenuState } from '../types'
+import {
+  MENU_WIDTH,
+  SUBMENU_CLOSE_DELAY_MS,
+  SUBMENU_GAP,
+  SUBMENU_MAX_HEIGHT,
+  VIEWPORT_PADDING,
+  placeSubmenuAtItem,
+} from './WorkspaceContextMenu.helpers'
 
 interface WorkspaceSpaceActionMenuProps {
   menu: SpaceActionMenuState | null
@@ -29,10 +37,7 @@ interface WorkspaceSpaceActionMenuProps {
   onOpenPath: (openerId: WorkspacePathOpenerId) => void | Promise<void>
 }
 
-const MENU_WIDTH = 188
-const SUBMENU_WIDTH = 188
-const VIEWPORT_PADDING = 12
-const SUBMENU_CLOSE_DELAY_MS = 120
+const SUBMENU_WIDTH = MENU_WIDTH
 
 function getWorkspacePathOpenerSortRank(openerId: WorkspacePathOpenerId): number {
   if (openerId === 'finder') {
@@ -76,6 +81,13 @@ export function WorkspaceSpaceActionMenu({
   const { t } = useTranslation()
   const [openSubmenu, setOpenSubmenu] = React.useState<'open' | 'label-color' | null>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  const openButtonRef = React.useRef<HTMLButtonElement | null>(null)
+  const labelColorButtonRef = React.useRef<HTMLButtonElement | null>(null)
+  const submenuRef = React.useRef<HTMLDivElement | null>(null)
+  const [measuredSubmenuSize, setMeasuredSubmenuSize] = React.useState<{
+    width: number
+    height: number
+  } | null>(null)
   const sortedOpeners = React.useMemo(
     () => sortWorkspacePathOpeners(availableOpeners),
     [availableOpeners],
@@ -109,6 +121,28 @@ export function WorkspaceSpaceActionMenu({
     }
   }, [cancelScheduledSubmenuClose])
 
+  React.useLayoutEffect(() => {
+    if (!openSubmenu) {
+      setMeasuredSubmenuSize(null)
+      return
+    }
+
+    const submenuElement = submenuRef.current
+    if (!submenuElement) {
+      setMeasuredSubmenuSize(null)
+      return
+    }
+
+    const nextRect = submenuElement.getBoundingClientRect()
+    setMeasuredSubmenuSize(previous =>
+      previous !== null &&
+      Math.abs(previous.width - nextRect.width) < 0.5 &&
+      Math.abs(previous.height - nextRect.height) < 0.5
+        ? previous
+        : { width: nextRect.width, height: nextRect.height },
+    )
+  }, [openSubmenu, menu?.spaceId, menu?.x, menu?.y, sortedOpeners.length])
+
   if (!menu) {
     return null
   }
@@ -119,10 +153,45 @@ export function WorkspaceSpaceActionMenu({
   const menuTop = Math.min(menu.y, viewportHeight - 120)
   const shouldShowOpenSubmenu = openSubmenu === 'open' && sortedOpeners.length > 0
   const shouldShowLabelColorSubmenu = openSubmenu === 'label-color'
-  const submenuWouldOverflow =
-    menuLeft + MENU_WIDTH + SUBMENU_WIDTH > viewportWidth - VIEWPORT_PADDING
-  const submenuLeft = submenuWouldOverflow ? menuLeft - SUBMENU_WIDTH : menuLeft + MENU_WIDTH
-  const submenuTop = menuTop
+  const rootMenuRect = {
+    left: menuLeft,
+    top: menuTop,
+    width: MENU_WIDTH,
+    height: 0,
+  }
+  const activeSubmenuAnchor =
+    openSubmenu === 'open'
+      ? openButtonRef.current
+      : openSubmenu === 'label-color'
+        ? labelColorButtonRef.current
+        : null
+  const measuredSubmenuAnchorRect = activeSubmenuAnchor?.getBoundingClientRect() ?? null
+  const submenuMaxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
+  const submenuVisibleHeight =
+    measuredSubmenuSize !== null
+      ? Math.min(submenuMaxHeight, measuredSubmenuSize.height)
+      : submenuMaxHeight
+  const submenuPlacement = placeSubmenuAtItem({
+    parentMenuRect: rootMenuRect,
+    itemRect: measuredSubmenuAnchorRect
+      ? {
+          left: measuredSubmenuAnchorRect.left,
+          top: measuredSubmenuAnchorRect.top,
+          width: measuredSubmenuAnchorRect.width,
+          height: measuredSubmenuAnchorRect.height,
+        }
+      : rootMenuRect,
+    submenuSize: {
+      width: measuredSubmenuSize?.width ?? SUBMENU_WIDTH,
+      height: submenuVisibleHeight,
+    },
+    viewport: { width: viewportWidth, height: viewportHeight },
+    gap: SUBMENU_GAP,
+  })
+  const submenuStyle = {
+    maxHeight: submenuMaxHeight,
+    overflow: 'auto',
+  } as const
 
   return (
     <>
@@ -183,6 +252,7 @@ export function WorkspaceSpaceActionMenu({
           <button
             type="button"
             data-testid="workspace-space-action-open"
+            ref={openButtonRef}
             onMouseEnter={() => {
               cancelScheduledSubmenuClose()
               setOpenSubmenu('open')
@@ -210,6 +280,7 @@ export function WorkspaceSpaceActionMenu({
         <button
           type="button"
           data-testid="workspace-space-action-label-color"
+          ref={labelColorButtonRef}
           onMouseEnter={() => {
             cancelScheduledSubmenuClose()
             setOpenSubmenu('label-color')
@@ -251,14 +322,16 @@ export function WorkspaceSpaceActionMenu({
 
       {shouldShowOpenSubmenu ? (
         <ViewportMenuSurface
+          ref={submenuRef}
           open={true}
           className="workspace-context-menu workspace-space-action-menu workspace-space-action-menu--submenu"
           data-testid="workspace-space-action-open-menu"
           placement={{
             type: 'absolute',
-            top: submenuTop,
-            left: submenuLeft,
+            top: submenuPlacement.top,
+            left: submenuPlacement.left,
           }}
+          style={submenuStyle}
           onMouseEnter={() => {
             cancelScheduledSubmenuClose()
             setOpenSubmenu('open')
@@ -283,14 +356,16 @@ export function WorkspaceSpaceActionMenu({
 
       {shouldShowLabelColorSubmenu ? (
         <ViewportMenuSurface
+          ref={submenuRef}
           open={true}
           className="workspace-context-menu workspace-space-action-menu workspace-space-action-menu--submenu"
           data-testid="workspace-space-action-label-color-menu"
           placement={{
             type: 'absolute',
-            top: submenuTop,
-            left: submenuLeft,
+            top: submenuPlacement.top,
+            left: submenuPlacement.left,
           }}
+          style={submenuStyle}
           onMouseEnter={() => {
             cancelScheduledSubmenuClose()
             setOpenSubmenu('label-color')

@@ -6,6 +6,7 @@ import { join, resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { registerControlSurfaceHttpServer } from '../../../src/app/main/controlSurface/controlSurfaceHttpServer'
 import { createApprovedWorkspaceStoreForPath } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
+import { hashWebUiPassword } from '../../../src/app/main/controlSurface/http/webUiPassword'
 
 async function fileExists(filePath: string): Promise<boolean> {
   try {
@@ -213,6 +214,91 @@ describe('Control Surface HTTP server (web session auth)', () => {
         body: JSON.stringify({ kind: 'query', id: 'system.ping', payload: null }),
       })
       expect(wrongOriginPing.status).toBe(401)
+    } finally {
+      await disposeAndCleanup({
+        server,
+        userDataPath,
+        connectionFilePath,
+        baseUrl: `http://127.0.0.1:${(await server.ready).port}`,
+      })
+    }
+  })
+
+  it('supports password login and gates the Web UI', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-'))
+    const connectionFileName = 'control-surface.web-password.test.json'
+    const connectionFilePath = resolve(userDataPath, connectionFileName)
+
+    const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
+      resolve(userDataPath, 'approved-workspaces.json'),
+    )
+
+    const webUiPasswordHash = await hashWebUiPassword('test-password')
+
+    const server = registerControlSurfaceHttpServer({
+      userDataPath,
+      hostname: '127.0.0.1',
+      port: 0,
+      token: 'test-token',
+      connectionFileName,
+      approvedWorkspaces,
+      ptyRuntime: {
+        spawnSession: async () => ({ sessionId: 'test-session' }),
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+      },
+      enableWebShell: true,
+      webUiPasswordHash,
+    })
+
+    try {
+      const info = await server.ready
+      const baseUrl = `http://${info.hostname}:${info.port}`
+
+      const gatedHome = await fetch(`${baseUrl}/`, { redirect: 'manual' })
+      expect(gatedHome.status).toBe(302)
+      expect(gatedHome.headers.get('location')).toBe('/auth/login?redirectPath=%2F')
+
+      const claimDisabled = await fetch(`${baseUrl}/auth/claim?ticket=anything`, {
+        redirect: 'manual',
+      })
+      expect(claimDisabled.status).toBe(403)
+
+      const wrongPassword = await fetch(`${baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ password: 'wrong', redirectPath: '/' }).toString(),
+        redirect: 'manual',
+      })
+      expect(wrongPassword.status).toBe(401)
+
+      const okPassword = await fetch(`${baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ password: 'test-password', redirectPath: '/' }).toString(),
+        redirect: 'manual',
+      })
+      expect(okPassword.status).toBe(302)
+
+      const cookiePair = parseCookiePair(okPassword.headers.get('set-cookie'))
+      expect(cookiePair).toContain('opencove_session=')
+      expect(okPassword.headers.get('location')).toBe('/')
+
+      const cookiePing = await fetch(`${baseUrl}/invoke`, {
+        method: 'POST',
+        headers: {
+          cookie: cookiePair ?? '',
+          origin: baseUrl,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ kind: 'query', id: 'system.ping', payload: null }),
+      })
+      expect(cookiePing.status).toBe(200)
+      const cookiePingBody = (await cookiePing.json()) as { ok?: boolean }
+      expect(cookiePingBody.ok).toBe(true)
     } finally {
       await disposeAndCleanup({
         server,

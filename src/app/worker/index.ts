@@ -80,9 +80,11 @@ async function main(): Promise<void> {
 
   const argv = process.argv.slice(2)
   const userDataPath = readFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()
-  const hostname = readFlagValue(argv, '--hostname') ?? '127.0.0.1'
+  const bindHostname = readFlagValue(argv, '--hostname') ?? '127.0.0.1'
+  const hostname = readFlagValue(argv, '--advertise-hostname') ?? bindHostname
   const port = resolvePort(argv) ?? 0
   const token = readFlagValue(argv, '--token')
+  const webUiPasswordHash = readFlagValue(argv, '--web-ui-password-hash')
   const parentPid = resolveParentPid(argv)
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
@@ -110,6 +112,7 @@ async function main(): Promise<void> {
   const server = registerControlSurfaceHttpServer({
     userDataPath,
     hostname,
+    bindHostname,
     port,
     token: token ?? undefined,
     approvedWorkspaces,
@@ -117,17 +120,23 @@ async function main(): Promise<void> {
     ownsPtyRuntime: true,
     dbPath: resolve(userDataPath, 'opencove.db'),
     enableWebShell: true,
+    webUiPasswordHash: webUiPasswordHash ?? null,
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
   })
 
   const info = await server.ready
   process.stdout.write(`${JSON.stringify(info)}\n`)
   process.stderr.write(`[opencove-worker] web ui: http://${info.hostname}:${info.port}/\n`)
+  if (bindHostname === '0.0.0.0' || bindHostname === '::') {
+    process.stderr.write(
+      `[opencove-worker] listening on all interfaces. Use your machine's LAN IP to connect from other devices.\n`,
+    )
+  }
   process.stderr.write(
     `[opencove-worker] debug shell: http://${info.hostname}:${info.port}/debug/shell\n`,
   )
   process.stderr.write(
-    `[opencove-worker] auth required (use Authorization: Bearer <token> or a Desktop-issued /auth/claim ticket)\n`,
+    `[opencove-worker] auth required (use Authorization: Bearer <token>${webUiPasswordHash ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
   )
 
   let shutdownRequested = false

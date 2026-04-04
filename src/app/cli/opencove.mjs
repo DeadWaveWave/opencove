@@ -51,8 +51,10 @@ async function main() {
 
     const workerArgs = []
     const hostname = readFlagValue(argv, '--hostname')
+    const advertiseHostname = readFlagValue(argv, '--advertise-hostname')
     const port = readFlagValue(argv, '--port')
     const userData = readFlagValue(argv, '--user-data')
+    const webUiPasswordHash = readFlagValue(argv, '--web-ui-password-hash')
     const approvedRoots = []
 
     for (let index = 0; index < argv.length; index += 1) {
@@ -75,6 +77,10 @@ async function main() {
       workerArgs.push('--hostname', hostname)
     }
 
+    if (advertiseHostname) {
+      workerArgs.push('--advertise-hostname', advertiseHostname)
+    }
+
     if (port) {
       workerArgs.push('--port', port)
     }
@@ -85,6 +91,10 @@ async function main() {
 
     if (token) {
       workerArgs.push('--token', token)
+    }
+
+    if (webUiPasswordHash) {
+      workerArgs.push('--web-ui-password-hash', webUiPasswordHash)
     }
 
     for (const root of approvedRoots) {

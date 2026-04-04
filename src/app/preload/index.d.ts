@@ -93,6 +93,7 @@ import type {
   WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
@@ -239,6 +240,7 @@ export interface OpenCoveApi {
   workerClient: {
     getConfig: () => Promise<HomeWorkerConfigDto>
     setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
+    setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput) => Promise<HomeWorkerConfigDto>
     relaunch: () => Promise<void>
   }
   cli: {

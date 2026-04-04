@@ -189,8 +189,7 @@ describe('mergePersistedAppStates', () => {
     const mergedTask = merged.workspaces[0]?.nodes.find(node => node.id === 'task-1')
 
     expect(mergedTask?.task).toBeTruthy()
-    expect((mergedTask?.task as { linkedAgentNodeId?: unknown }).linkedAgentNodeId).toBe(
-      baseLinkedAgentNodeId,
-    )
+    const mergedTaskData = mergedTask?.task as { linkedAgentNodeId?: unknown } | undefined | null
+    expect(mergedTaskData?.linkedAgentNodeId).toBe(baseLinkedAgentNodeId)
   })
 })

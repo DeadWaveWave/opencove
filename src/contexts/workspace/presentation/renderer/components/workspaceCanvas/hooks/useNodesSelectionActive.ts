@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react'
+import { useEffect } from 'react'
 import { useStore, useStoreApi } from '@xyflow/react'
 
 export function useWorkspaceCanvasNodesSelectionActive(): void {
@@ -7,7 +7,7 @@ export function useWorkspaceCanvasNodesSelectionActive(): void {
   const nodesSelectionActive = useStore(state => state.nodesSelectionActive)
   const selectedNodeCount = useStore(state => state.nodes.filter(node => node.selected).length)
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (userSelectionActive) {
       return
     }

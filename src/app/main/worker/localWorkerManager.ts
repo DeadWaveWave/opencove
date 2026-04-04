@@ -8,6 +8,7 @@ import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../share
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
+import { readHomeWorkerConfigFile } from './homeWorkerConfig'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -25,18 +26,31 @@ export function buildLocalWorkerSpawnArgs(options: {
   workerScriptPath: string
   userDataPath: string
   parentPid: number
+  bindHostname: string
+  advertiseHostname: string
+  webUiPasswordHash: string | null
 }): string[] {
-  return [
+  const args = [
     options.workerScriptPath,
     '--parent-pid',
     String(options.parentPid),
     '--hostname',
-    '127.0.0.1',
+    options.bindHostname,
     '--port',
     '0',
     '--user-data',
     options.userDataPath,
   ]
+
+  if (options.advertiseHostname !== options.bindHostname) {
+    args.push('--advertise-hostname', options.advertiseHostname)
+  }
+
+  if (options.webUiPasswordHash) {
+    args.push('--web-ui-password-hash', options.webUiPasswordHash)
+  }
+
+  return args
 }
 
 function toDto(info: {
@@ -213,10 +227,18 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
   }
 
   const userDataPath = app.getPath('userData')
+  const workerConfig = await readHomeWorkerConfigFile(userDataPath)
+  const exposeOnLan = workerConfig.webUi.exposeOnLan
+  const bindHostname = exposeOnLan ? '0.0.0.0' : '127.0.0.1'
+  const advertiseHostname = '127.0.0.1'
+  const webUiPasswordHash = exposeOnLan ? workerConfig.webUi.passwordHash : null
   const args = buildLocalWorkerSpawnArgs({
     workerScriptPath,
     userDataPath,
     parentPid: process.pid,
+    bindHostname,
+    advertiseHostname,
+    webUiPasswordHash,
   })
 
   const child = spawn(process.execPath, args, {
@@ -325,6 +347,11 @@ export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
   const connection = await resolveConnectionFromUserData()
   if (!connection) {
     return null
+  }
+
+  const workerConfig = await readHomeWorkerConfigFile(app.getPath('userData'))
+  if (workerConfig.webUi.exposeOnLan && workerConfig.webUi.passwordHash) {
+    return `http://${connection.hostname}:${connection.port}/`
   }
 
   const { httpStatus, result } = await invokeControlSurface(

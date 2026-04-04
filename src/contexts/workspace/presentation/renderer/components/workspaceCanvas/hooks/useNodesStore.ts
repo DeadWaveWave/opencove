@@ -10,6 +10,7 @@ import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
 import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
+import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDimensions'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
@@ -102,7 +103,7 @@ export function useWorkspaceCanvasNodesStore({
       options: { syncLayout?: boolean } = {},
     ) => {
       const previousNodes = nodesRef.current
-      const nextNodes = updater(previousNodes)
+      const nextNodes = ensureNodesHaveInitialDimensions(updater(previousNodes))
       if (nextNodes === previousNodes) {
         return
       }

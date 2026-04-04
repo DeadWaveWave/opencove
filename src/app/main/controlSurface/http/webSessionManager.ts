@@ -84,6 +84,11 @@ export class WebSessionManager {
       return null
     }
 
+    const session = this.issueSession(now)
+    return { ...session, redirectPath: record.redirectPath }
+  }
+
+  public issueSession(now: Date): { cookieValue: string; expiresAt: string } {
     const expiresAtMs = nowMs(now) + WEB_SESSION_TTL_MS
     const cookieValue = randomBytes(32).toString('base64url')
     this.sessions.set(cookieValue, { expiresAtMs })
@@ -91,7 +96,6 @@ export class WebSessionManager {
     return {
       cookieValue,
       expiresAt: toIso(expiresAtMs),
-      redirectPath: record.redirectPath,
     }
   }
 
