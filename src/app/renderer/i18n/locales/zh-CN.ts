@@ -187,6 +187,12 @@ export const zhCN = {
     warning: '警告',
     error: '错误',
   },
+  errorBoundary: {
+    title: '出现异常',
+    description: '渲染进程遇到了不可恢复的错误。你的工作区数据仍然安全。',
+    reload: '重新加载',
+    dismiss: '忽略',
+  },
   agentRuntime: {
     working: '运行中',
     standby: '待命',

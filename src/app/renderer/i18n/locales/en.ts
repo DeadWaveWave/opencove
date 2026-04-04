@@ -185,6 +185,12 @@ export const en = {
     warning: 'Warning',
     error: 'Error',
   },
+  errorBoundary: {
+    title: 'Something went wrong',
+    description: 'The renderer hit an unrecoverable error. Your workspace data is safe.',
+    reload: 'Reload',
+    dismiss: 'Dismiss',
+  },
   agentRuntime: {
     working: 'Working',
     standby: 'Standby',

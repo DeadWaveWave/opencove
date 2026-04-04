@@ -1,4 +1,5 @@
 import React from 'react'
+import { translate } from '../i18n'
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -49,7 +50,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           }}
         >
           <h1 style={{ fontSize: '1.25rem', marginBottom: '0.75rem', color: '#f87171' }}>
-            Something went wrong
+            {translate('errorBoundary.title')}
           </h1>
           <p
             style={{
@@ -60,7 +61,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
               textAlign: 'center',
             }}
           >
-            The renderer hit an unrecoverable error. Your workspace data is safe.
+            {translate('errorBoundary.description')}
           </p>
           {this.state.error && (
             <pre
@@ -94,7 +95,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 cursor: 'pointer',
               }}
             >
-              Reload
+              {translate('errorBoundary.reload')}
             </button>
             <button
               onClick={this.handleDismiss}
@@ -108,7 +109,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
                 cursor: 'pointer',
               }}
             >
-              Dismiss
+              {translate('errorBoundary.dismiss')}
             </button>
           </div>
         </div>
