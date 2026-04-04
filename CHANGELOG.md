@@ -7,7 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Workspace canvas: experimental website window nodes with opt-in settings, shared-session profile modes, snapshot-backed warm/cold lifecycle, and in-canvas navigation handling. (#141)
 - Space Explorer: VS Code-like file and folder operations, including drag-move, context menu actions, cut/copy/paste, rename, delete, and copy path. (#123)
+- Space Explorer: side-by-side quick preview with drag-to-materialize document nodes, line numbers, theme-aware styling, and stabilized formal open/close behavior. (#143)
 - Sidebar: drag-to-reorder workspace projects with dnd-kit, persisted sort order, and migration backfill for existing databases. (#87)
 - Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
 - Workspace canvas: Arrange By menu (scope, ordering, space sizing, magnetic snapping). (#42)
@@ -52,6 +54,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - OpenCode: Stabilized embedded terminal rendering and cursor hit-testing to eliminate shutter-like artifacts and cursor flicker in restored canvas sessions. (#144)
+- Crash recovery: recover from renderer and child-process failures with a localized error boundary and lifecycle logging to prevent silent white screens. (#137)
+- Website window: keep embedded pages clipped inside canvas nodes during zoom/occlusion, preserve stable 100% page scale, and route in-page/new-window navigation back into OpenCove. (#141)
+- Startup + shortcuts: avoid non-packaged locale hydration stalls and stabilize `Cmd/Ctrl+G` space creation when selected terminal nodes are involved. (#141)
+- Terminal: Added Linux terminal-node shortcuts for `Ctrl+Shift+C` copy and `Ctrl+Shift+V` paste while preserving plain `Ctrl+C` as `SIGINT`. (#142)
 - Agent windows now inherit terminal profile runtime/env semantics during launch, recovery, and fallback; Windows raw-TUI wheel handling is covered by regression tests. (#110)
 - UI: unified shared menu overlays to fix prompt template, task session, and related context-menu offset issues. (#121)
 - Persistence: Repair cumulative SQLite schema upgrades and auto-heal mis-versioned local databases so workspace state saves no longer fail after upgrading from older installs. (#76)

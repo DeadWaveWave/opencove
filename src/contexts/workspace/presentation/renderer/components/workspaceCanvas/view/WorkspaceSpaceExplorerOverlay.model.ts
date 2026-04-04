@@ -45,7 +45,9 @@ export function useSpaceExplorerOverlayModel({
   explorerClipboard,
   setExplorerClipboard,
   findBlockingOpenDocument,
+  onPreviewFile,
   onOpenFile,
+  onDismissQuickPreview,
   onShowMessage,
 }: {
   rootUri: string
@@ -53,7 +55,9 @@ export function useSpaceExplorerOverlayModel({
   explorerClipboard: SpaceExplorerClipboardItem | null
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
   findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
+  onPreviewFile: (uri: string) => void
   onOpenFile: (uri: string) => void
+  onDismissQuickPreview: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }) {
   const { t } = useTranslation()
@@ -231,7 +235,9 @@ export function useSpaceExplorerOverlayModel({
     t,
     rootUri,
     findBlockingOpenDocument,
+    onPreviewFile,
     onOpenFile,
+    onDismissQuickPreview,
     onShowMessage,
     entriesByUri,
     entryRows,
@@ -290,9 +296,10 @@ export function useSpaceExplorerOverlayModel({
   const startRenameSelection = React.useCallback(() => {
     const entry = actions.resolveSelectedEntry()
     if (entry) {
+      onDismissQuickPreview()
       mutations.rename.start(entry)
     }
-  }, [actions, mutations.rename])
+  }, [actions, mutations.rename, onDismissQuickPreview])
 
   return {
     isLoadingRoot,
@@ -317,7 +324,8 @@ export function useSpaceExplorerOverlayModel({
     openRootContextMenu: actions.openRootContextMenu,
     openEntryContextMenu: actions.openEntryContextMenu,
     closeContextMenu: actions.closeContextMenu,
-    handleEntryActivate: actions.handleEntryActivate,
+    previewEntrySelection: actions.previewEntrySelection,
+    openEntry: actions.openEntry,
     moveSelection: actions.moveSelection,
     collapseSelectionOrFocusParent: actions.collapseSelectionOrFocusParent,
     expandSelectionOrOpen: actions.expandSelectionOrOpen,

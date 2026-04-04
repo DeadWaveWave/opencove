@@ -16,9 +16,9 @@ import {
   type UiLanguage,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
-import type { AppUpdateState } from '@shared/contracts/dto'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
+import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
@@ -28,86 +28,14 @@ import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
-import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-interface ProviderModelCatalogEntry {
-  models: string[]
-  source: string | null
-  fetchedAt: string | null
-  isLoading: boolean
-  error: string | null
-}
-interface SettingsPanelProps {
-  settings: AgentSettings
-  updateState: AppUpdateState | null
-  modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
-  workspaces: WorkspaceState[]
-  onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
-  isFocusNodeTargetZoomPreviewing: boolean
-  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
-  onChange: (settings: AgentSettings) => void
-  onCheckForUpdates: () => void
-  onDownloadUpdate: () => void
-  onInstallUpdate: () => void
-  onClose: () => void
-}
-type CorePageId =
-  | 'general'
-  | 'worker'
-  | 'agent'
-  | 'notifications'
-  | 'canvas'
-  | 'shortcuts'
-  | 'task-configuration'
-  | 'integrations'
-type WorkspacePageId = `workspace:${string}`
-type SettingsPageId = CorePageId | WorkspacePageId
-
-const CORE_NAV_ITEMS: Array<{ id: CorePageId; labelKey: string; testId: string }> = [
-  { id: 'general', labelKey: 'settingsPanel.nav.general', testId: 'settings-section-nav-general' },
-  { id: 'worker', labelKey: 'settingsPanel.nav.worker', testId: 'settings-section-nav-worker' },
-  { id: 'agent', labelKey: 'settingsPanel.nav.agent', testId: 'settings-section-nav-agent' },
-  {
-    id: 'notifications',
-    labelKey: 'settingsPanel.nav.notifications',
-    testId: 'settings-section-nav-notifications',
-  },
-  { id: 'canvas', labelKey: 'settingsPanel.nav.canvas', testId: 'settings-section-nav-canvas' },
-  {
-    id: 'shortcuts',
-    labelKey: 'settingsPanel.nav.shortcuts',
-    testId: 'settings-section-nav-shortcuts',
-  },
-  {
-    id: 'task-configuration',
-    labelKey: 'settingsPanel.nav.tasks',
-    testId: 'settings-section-nav-task-configuration',
-  },
-  {
-    id: 'integrations',
-    labelKey: 'settingsPanel.nav.integrations',
-    testId: 'settings-section-nav-integrations',
-  },
-]
-function getWorkspacePageId(workspaceId: string): WorkspacePageId {
-  return `workspace:${workspaceId}`
-}
-function isWorkspacePageId(pageId: SettingsPageId): pageId is WorkspacePageId {
-  return pageId.startsWith('workspace:')
-}
-function createInitialInputState(): Record<AgentProvider, string> {
-  return AGENT_PROVIDERS.reduce<Record<AgentProvider, string>>(
-    (acc, provider) => {
-      acc[provider] = ''
-      return acc
-    },
-    {} as Record<AgentProvider, string>,
-  )
-}
-
-function getFolderName(path: string): string {
-  const parts = path.split(/[/]/).filter(Boolean)
-  return parts[parts.length - 1] || path
-}
+import {
+  createInitialInputState,
+  getFolderName,
+  getWorkspacePageId,
+  isWorkspacePageId,
+  type SettingsPageId,
+  type SettingsPanelProps,
+} from './SettingsPanel.shared'
 
 export function SettingsPanel({
   settings,
@@ -128,7 +56,7 @@ export function SettingsPanel({
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
-  >(() => createInitialInputState())
+  >(() => createInitialInputState(AGENT_PROVIDERS))
   const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
 
@@ -168,6 +96,10 @@ export function SettingsPanel({
     onChange({ ...settings, canvasWheelZoomModifier: modifier })
   const updateStandardWindowSizeBucket = (bucket: StandardWindowSizeBucket): void =>
     onChange({ ...settings, standardWindowSizeBucket: bucket })
+  const updateWebsiteWindowPolicy = (policy: AgentSettings['websiteWindowPolicy']): void =>
+    onChange({ ...settings, websiteWindowPolicy: policy })
+  const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
@@ -323,15 +255,60 @@ export function SettingsPanel({
           className="settings-panel__sidebar"
           aria-label={t('settingsPanel.nav.sectionsLabel')}
         >
-          {CORE_NAV_ITEMS.map(item => (
-            <SettingsPanelNavButton
-              key={item.id}
-              isActive={activePageId === item.id}
-              label={t(item.labelKey)}
-              testId={item.testId}
-              onClick={() => setActivePageId(item.id)}
-            />
-          ))}
+          <SettingsPanelNavButton
+            isActive={activePageId === 'general'}
+            label={t('settingsPanel.nav.general')}
+            testId="settings-section-nav-general"
+            onClick={() => setActivePageId('general')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'worker'}
+            label={t('settingsPanel.nav.worker')}
+            testId="settings-section-nav-worker"
+            onClick={() => setActivePageId('worker')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'agent'}
+            label={t('settingsPanel.nav.agent')}
+            testId="settings-section-nav-agent"
+            onClick={() => setActivePageId('agent')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'notifications'}
+            label={t('settingsPanel.nav.notifications')}
+            testId="settings-section-nav-notifications"
+            onClick={() => setActivePageId('notifications')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'canvas'}
+            label={t('settingsPanel.nav.canvas')}
+            testId="settings-section-nav-canvas"
+            onClick={() => setActivePageId('canvas')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'shortcuts'}
+            label={t('settingsPanel.nav.shortcuts')}
+            testId="settings-section-nav-shortcuts"
+            onClick={() => setActivePageId('shortcuts')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'task-configuration'}
+            label={t('settingsPanel.nav.tasks')}
+            testId="settings-section-nav-task-configuration"
+            onClick={() => setActivePageId('task-configuration')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'integrations'}
+            label={t('settingsPanel.nav.integrations')}
+            testId="settings-section-nav-integrations"
+            onClick={() => setActivePageId('integrations')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'experimental'}
+            label={t('settingsPanel.nav.experimental')}
+            testId="settings-section-nav-experimental"
+            onClick={() => setActivePageId('experimental')}
+          />
 
           <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
           <div className="settings-panel__nav-group">
@@ -446,6 +423,15 @@ export function SettingsPanel({
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
+              />
+            ) : null}
+
+            {activePageId === 'experimental' ? (
+              <ExperimentalSection
+                websiteWindowPolicy={settings.websiteWindowPolicy}
+                websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
+                onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
+                onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
               />
             ) : null}
 

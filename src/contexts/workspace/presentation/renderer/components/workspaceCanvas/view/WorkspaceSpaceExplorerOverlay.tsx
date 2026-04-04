@@ -23,7 +23,9 @@ export function WorkspaceSpaceExplorerOverlay({
   findBlockingOpenDocument,
   onShowMessage,
   onClose,
+  onPreviewFile,
   onOpenFile,
+  onDismissQuickPreview,
 }: {
   canvasRef: React.RefObject<HTMLDivElement | null>
   spaceId: string
@@ -35,12 +37,19 @@ export function WorkspaceSpaceExplorerOverlay({
   findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
   onShowMessage?: ShowWorkspaceCanvasMessage
   onClose: () => void
+  onPreviewFile: (
+    uri: string,
+    options?: {
+      explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+    },
+  ) => void
   onOpenFile: (
     uri: string,
     options?: {
       explorerPlacementPx?: { left: number; top: number; width: number; height: number }
     },
   ) => void
+  onDismissQuickPreview: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const transform = useStore(selectViewportTransform)
@@ -169,6 +178,23 @@ export function WorkspaceSpaceExplorerOverlay({
     [onOpenFile],
   )
 
+  const handlePreviewFile = React.useCallback(
+    (uri: string) => {
+      const nextPlacement = placementRef.current
+      onPreviewFile(uri, {
+        explorerPlacementPx: nextPlacement
+          ? {
+              left: nextPlacement.left,
+              top: nextPlacement.top,
+              width: nextPlacement.width,
+              height: nextPlacement.height,
+            }
+          : undefined,
+      })
+    },
+    [onPreviewFile],
+  )
+
   return (
     <section
       ref={containerRef}
@@ -204,7 +230,9 @@ export function WorkspaceSpaceExplorerOverlay({
         createInputRef={createInputRef}
         renameInputRef={renameInputRef}
         containerRef={containerRef}
+        onPreviewFile={handlePreviewFile}
         onOpenFile={handleOpenFile}
+        onDismissQuickPreview={onDismissQuickPreview}
       />
 
       <div

@@ -28,6 +28,7 @@ import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBri
 import { registerLocalWorkerIpcHandlers } from './registerLocalWorkerIpcHandlers'
 import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandlers'
 import { registerCliIpcHandlers } from './registerCliIpcHandlers'
+import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { registerHandledIpc } from './handle'
 import {
@@ -118,6 +119,7 @@ export function registerIpcHandlers(deps?: {
     registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),
     registerSystemIpcHandlers(),
+    registerWebsiteWindowIpcHandlers(),
   ]
 
   if (workerEndpoint) {

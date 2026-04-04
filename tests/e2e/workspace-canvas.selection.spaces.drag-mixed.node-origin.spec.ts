@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -166,11 +167,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         throw new Error('failed to read initial node-origin space rects')
       }
 
-      const outsideTitleBox = await outsideTitle.boundingBox()
-      if (!outsideTitleBox) {
-        throw new Error('outside node title bounding box unavailable for node-origin drag')
-      }
-
+      const outsideTitleBox = await readLocatorClientRect(outsideTitle)
       const dragStartX = outsideTitleBox.x + outsideTitleBox.width * 0.5
       const dragStartY = outsideTitleBox.y + outsideTitleBox.height * 0.5
       const dragDx = 420

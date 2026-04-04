@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -280,11 +281,7 @@ test.describe('Workspace Canvas - Spaces (Drop Ownership)', () => {
         .filter({ hasText: 'Overlap Scope' })
         .first()
       await expect(spaceRegion).toBeVisible()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!spaceBox) {
-        throw new Error('space bounding box unavailable')
-      }
-
+      const spaceBox = await readLocatorClientRect(spaceRegion)
       const draggedNode = window
         .locator('.terminal-node')
         .filter({ hasText: 'terminal-drag' })

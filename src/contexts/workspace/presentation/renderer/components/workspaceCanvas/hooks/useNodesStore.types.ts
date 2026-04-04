@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type {
   DocumentNodeData,
   ImageNodeData,
@@ -8,10 +9,16 @@ import type {
   Size,
   TerminalNodeData,
   TaskPriority,
+  WebsiteNodeData,
 } from '../../../types'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { CreateNodeInput, NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
+import type {
+  CreateNodeInput,
+  NodeCreationPlacementOptions,
+  NodePlacementOptions,
+  ShowWorkspaceCanvasMessage,
+} from '../types'
 
 export interface CreateNoteNodeOptions {
   placementStrategy?: 'default' | 'right-no-push'
@@ -50,6 +57,13 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   renameTerminalTitle: (nodeId: string, title: string) => void
   setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
   updateNoteText: (nodeId: string, text: string) => void
+  updateWebsiteUrl: (nodeId: string, url: string) => void
+  setWebsitePinned: (nodeId: string, pinned: boolean) => void
+  setWebsiteSession: (
+    nodeId: string,
+    sessionMode: WebsiteWindowSessionMode,
+    profileId: string | null,
+  ) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (anchor: Point, options?: CreateNoteNodeOptions) => Node<TerminalNodeData> | null
   createTaskNode: (
@@ -64,11 +78,16 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   createImageNode: (
     anchor: Point,
     image: ImageNodeData,
-    placement?: NodePlacementOptions,
+    placement?: NodeCreationPlacementOptions,
   ) => Node<TerminalNodeData> | null
   createDocumentNode: (
     anchor: Point,
     document: DocumentNodeData,
+    placement?: NodeCreationPlacementOptions,
+  ) => Node<TerminalNodeData> | null
+  createWebsiteNode: (
+    anchor: Point,
+    website: WebsiteNodeData,
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
 }

@@ -58,12 +58,6 @@ describe('workspace persistence (write)', () => {
       }
     }
 
-    Object.defineProperty(window, 'localStorage', {
-      configurable: true,
-      writable: true,
-      value: new LimitedStorage(1500),
-    })
-
     const state = toPersistedState(
       [
         {
@@ -103,6 +97,18 @@ describe('workspace persistence (write)', () => {
       ],
       'workspace-1',
     )
+    const settingsOnlyBytes = JSON.stringify({
+      formatVersion: state.formatVersion,
+      activeWorkspaceId: state.activeWorkspaceId,
+      workspaces: [],
+      settings: state.settings,
+    }).length
+
+    Object.defineProperty(window, 'localStorage', {
+      configurable: true,
+      writable: true,
+      value: new LimitedStorage(settingsOnlyBytes + 64),
+    })
 
     const result = await writePersistedState(state)
     expect(result.ok).toBe(true)

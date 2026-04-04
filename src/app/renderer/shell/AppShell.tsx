@@ -26,6 +26,9 @@ import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
+import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
+import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
+import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useAppStore } from './store/useAppStore'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
@@ -84,6 +87,8 @@ export default function App(): React.JSX.Element {
   usePtySessionBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
+  useWebsiteWindowEvents()
+  useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
@@ -99,6 +104,15 @@ export default function App(): React.JSX.Element {
   const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
+
+  useWebsiteWindowOcclusionSync(
+    isSettingsOpen ||
+      isCommandCenterOpen ||
+      isControlCenterOpen ||
+      isWorkspaceSearchOpen ||
+      isSpaceArchivesOpen ||
+      projectDeleteConfirmation !== null,
+  )
 
   const toggleCommandCenter = useCallback((): void => {
     setIsWorkspaceSearchOpen(false)

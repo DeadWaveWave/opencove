@@ -21,6 +21,7 @@ import type {
   SpaceWorktreeDialogState,
   TaskCreatorState,
   TaskEditorState,
+  WorkspaceCanvasQuickPreviewState,
   WorkspaceCanvasProps,
 } from './types'
 import type { SpaceExplorerClipboardItem } from './view/WorkspaceSpaceExplorerOverlay.operations'
@@ -76,10 +77,18 @@ export interface WorkspaceCanvasViewProps {
   selectedSpaceIds: string[]
   openExplorerSpaceId: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
+  quickPreview: WorkspaceCanvasQuickPreviewState | null
   toggleSpaceExplorer: (spaceId: string) => void
   closeSpaceExplorer: () => void
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
   findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
+  previewFileInSpace: (
+    spaceId: string,
+    uri: string,
+    options?: {
+      explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+    },
+  ) => void
   openFileInSpace: (
     spaceId: string,
     uri: string,
@@ -87,6 +96,9 @@ export interface WorkspaceCanvasViewProps {
       explorerPlacementPx?: { left: number; top: number; width: number; height: number }
     },
   ) => void
+  dismissQuickPreview: () => void
+  materializeQuickPreview: () => void
+  beginQuickPreviewDrag: (event: React.MouseEvent<HTMLElement>) => void
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
@@ -114,6 +126,7 @@ export interface WorkspaceCanvasViewProps {
   onToggleMagneticSnapping: () => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
+  createWebsiteNodeFromContextMenu: () => void
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
