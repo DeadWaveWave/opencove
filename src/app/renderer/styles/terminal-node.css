@@ -68,10 +68,35 @@
   padding: 8px;
   opacity: 1;
   transition: opacity 0.12s ease;
+  cursor: text;
+}
+
+.terminal-node__terminal:has(.xterm.enable-mouse-events) {
+  cursor: default;
+}
+
+.terminal-node__terminal:has(.xterm.xterm-cursor-pointer),
+.terminal-node__terminal:has(.xterm .xterm-cursor-pointer) {
+  cursor: pointer;
 }
 
 .terminal-node__terminal--hydrating {
   opacity: 0;
+}
+
+.terminal-node__transcript {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: pre-wrap;
+  pointer-events: none;
+  user-select: none;
 }
 
 .terminal-node__find {
@@ -156,6 +181,31 @@
 .terminal-node__terminal .xterm {
   width: 100%;
   height: 100%;
+}
+
+.terminal-node__terminal .xterm,
+.terminal-node__terminal .xterm .xterm-helpers,
+.terminal-node__terminal .xterm .xterm-helper-textarea,
+.terminal-node__terminal .xterm .xterm-screen,
+.terminal-node__terminal .xterm .xterm-screen canvas,
+.terminal-node__terminal .xterm .xterm-viewport {
+  cursor: text;
+}
+
+.terminal-node__terminal .xterm.enable-mouse-events,
+.terminal-node__terminal .xterm.enable-mouse-events .xterm-helpers,
+.terminal-node__terminal .xterm.enable-mouse-events .xterm-helper-textarea,
+.terminal-node__terminal .xterm.enable-mouse-events .xterm-screen,
+.terminal-node__terminal .xterm.enable-mouse-events .xterm-screen canvas,
+.terminal-node__terminal .xterm.enable-mouse-events .xterm-viewport {
+  cursor: default;
+}
+
+.terminal-node__terminal .xterm.xterm-cursor-pointer,
+.terminal-node__terminal .xterm.xterm-cursor-pointer .xterm-screen,
+.terminal-node__terminal .xterm.xterm-cursor-pointer .xterm-screen canvas,
+.terminal-node__terminal .xterm .xterm-cursor-pointer {
+  cursor: pointer;
 }
 
 .terminal-node__terminal .xterm-viewport {

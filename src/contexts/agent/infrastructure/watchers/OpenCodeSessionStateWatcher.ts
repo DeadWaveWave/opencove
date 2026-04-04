@@ -12,6 +12,7 @@ interface OpenCodeSessionStateWatcherOptions {
 }
 
 const OPENCODE_STATUS_POLL_INTERVAL_MS = 500
+const OPENCODE_STATE_TRANSITION_STABILITY_POLLS = 2
 
 export class OpenCodeSessionStateWatcher {
   private readonly sessionId: string
@@ -25,6 +26,8 @@ export class OpenCodeSessionStateWatcher {
   private disposed = false
   private lastState: TerminalSessionState | null = null
   private hasObservedActiveState = false
+  private pendingState: TerminalSessionState | null = null
+  private pendingStatePollCount = 0
   private timer: NodeJS.Timeout | null = null
 
   public constructor(options: OpenCodeSessionStateWatcherOptions) {
@@ -91,9 +94,8 @@ export class OpenCodeSessionStateWatcher {
       }
 
       const nextState = this.resolveNextState(status)
-      if (nextState && nextState !== this.lastState) {
-        this.lastState = nextState
-        this.onState(this.sessionId, nextState)
+      if (nextState) {
+        this.commitStateIfStable(nextState)
       }
 
       this.scheduleNextPoll()
@@ -104,5 +106,37 @@ export class OpenCodeSessionStateWatcher {
 
       this.onError?.(error)
     }
+  }
+
+  private commitStateIfStable(nextState: TerminalSessionState): void {
+    if (this.lastState === null) {
+      this.lastState = nextState
+      this.pendingState = null
+      this.pendingStatePollCount = 0
+      this.onState(this.sessionId, nextState)
+      return
+    }
+
+    if (nextState === this.lastState) {
+      this.pendingState = null
+      this.pendingStatePollCount = 0
+      return
+    }
+
+    if (this.pendingState !== nextState) {
+      this.pendingState = nextState
+      this.pendingStatePollCount = 1
+      return
+    }
+
+    this.pendingStatePollCount += 1
+    if (this.pendingStatePollCount < OPENCODE_STATE_TRANSITION_STABILITY_POLLS) {
+      return
+    }
+
+    this.lastState = nextState
+    this.pendingState = null
+    this.pendingStatePollCount = 0
+    this.onState(this.sessionId, nextState)
   }
 }

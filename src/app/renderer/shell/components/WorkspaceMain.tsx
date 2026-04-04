@@ -10,7 +10,7 @@ import type {
 import type { FocusRequest } from '../types'
 import { WorkspaceEmptyState } from './WorkspaceEmptyState'
 
-export function WorkspaceMain({
+function WorkspaceMainComponent({
   activeWorkspace,
   agentSettings,
   focusRequest,
@@ -82,3 +82,5 @@ export function WorkspaceMain({
     </main>
   )
 }
+
+export const WorkspaceMain = React.memo(WorkspaceMainComponent)

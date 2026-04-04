@@ -82,6 +82,33 @@
   cursor: default;
 }
 
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='text']
+  .react-flow__pane,
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='text']
+  .react-flow__pane.selection,
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='text']
+  .react-flow__renderer {
+  cursor: text;
+}
+
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='default']
+  .react-flow__pane,
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='default']
+  .react-flow__pane.selection,
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='default']
+  .react-flow__renderer {
+  cursor: default;
+}
+
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='pointer']
+  .react-flow__pane,
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='pointer']
+  .react-flow__pane.selection,
+.workspace-canvas[data-cove-terminal-hit-target-active='true'][data-cove-terminal-hit-target-cursor='pointer']
+  .react-flow__renderer {
+  cursor: pointer;
+}
+
 .workspace-canvas .react-flow__node,
 .workspace-canvas .react-flow__node.selectable,
 .workspace-canvas .react-flow__node.draggable,

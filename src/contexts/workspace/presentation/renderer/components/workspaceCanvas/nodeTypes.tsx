@@ -80,6 +80,7 @@ function TerminalNodeType({
       title={data.title}
       kind={data.kind}
       labelColor={labelColor}
+      terminalProvider={data.kind === 'agent' ? (data.agent?.provider ?? null) : null}
       terminalThemeMode={
         data.kind === 'agent' && data.agent?.provider === 'opencode' ? 'dark' : 'sync-with-ui'
       }

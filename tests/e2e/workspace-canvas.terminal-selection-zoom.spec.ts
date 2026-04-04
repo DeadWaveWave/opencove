@@ -48,6 +48,14 @@ test.describe('Workspace Canvas - Terminal Selection (Zoom)', () => {
         })
         .toBeGreaterThan(1.01)
 
+      await window.evaluate(() => {
+        const textarea = document.querySelector('.xterm-helper-textarea')
+        if (textarea instanceof HTMLTextAreaElement) {
+          textarea.focus()
+        }
+      })
+      await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+
       const dragPoints = await window
         .waitForFunction(
           nodeId => {

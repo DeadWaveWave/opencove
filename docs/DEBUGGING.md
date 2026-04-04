@@ -164,6 +164,63 @@ await page.mouse.move(x, y)
 - 拖拽/缩放是否仅更新位置与尺寸，而不是替换节点身份
 - 当前 E2E 是否使用了最新 `out/` 产物
 
+### OpenCode / xterm 鼠标样式闪烁、百叶窗残影、命中偶发穿透到底层画布
+
+这类问题在 `Electron + xterm + React Flow + canvas transform` 组合下，**不要只看 DOM 几何和 CSS**。本次真实 case 里，xterm 的 canvas / screen / viewport 几何上都覆盖了命中点，但 `document.elementFromPoint(...)` 仍会偶发返回底下的 `.react-flow__pane`，最终表现为：
+
+- 鼠标在输入区或终端 body 上在 `text/default` 之间跳变
+- OpenCode 终端出现“百叶窗 / 断层 / 残影”
+- 日志里看不到明显异常，但用户体感明显抖动
+
+排查顺序：
+
+1. **先用真实用户数据复现**  
+   这类问题常依赖恢复后的多节点、多 Agent、真实输出负载。优先用共享 userData 跑：
+
+```bash
+OPENCOVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev
+```
+
+或用 Electron + Playwright 直接启动现有 app 数据，而不是只看 seed 出来的最小测试态。
+
+2. **确保跑的是最新构建，且窗口真的拿到系统焦点**  
+   单独做 Electron/Playwright 采样前先 `pnpm build`。  
+   若需要复现真实输入/hover 命中问题，优先用可见窗口并显式 `show()/focus()`；`inactive/offscreen` 适合回归，不一定适合抓这类 OS/Chromium 命中异常。
+
+3. **不要只采一次命中，要固定一个点持续采样**  
+   选择用户真正停留的点位（通常是 `.xterm-helper-textarea` 对应的输入光标附近），连续采 `200~500` 次：
+
+- `document.elementFromPoint(x, y)`
+- `document.activeElement`
+- `.xterm` 的 class（尤其 `focus` / `enable-mouse-events` / `xterm-cursor-pointer`）
+- 终端 body / pane 的 computed `cursor`
+
+如果命中在 `xterm-*` 和 `.react-flow__pane` 之间切换，就说明不是纯焦点问题，而是**合成层 / hit-test 层偶发漏命中**。
+
+4. **命中异常时同步记录几何，证明“几何正确但命中错误”**  
+   在命中落到 `.react-flow__pane` 的那一帧，同时采：
+
+- `.terminal-node__terminal`
+- `.xterm`
+- `.xterm-screen`
+- `.xterm-viewport`
+- `.xterm-screen canvas`
+
+的 `getBoundingClientRect()`、`display`、`opacity`、`pointer-events`。  
+如果这些层几何上仍覆盖命中点，而 `elementFromPoint` 依旧落到 pane，说明是 Chromium/Electron hit-test 级别问题，不要再把时间耗在“是不是简单 z-index / pointer-events 写错了”上。
+
+5. **先区分两类根因，再决定修法**
+
+- **DOM renderer 残影 / 断层**：优先考虑切到 WebGL renderer 做主路径，尤其是 OpenCode/TUI 这类高频重绘终端。
+- **WebGL 下仍有鼠标态闪烁**：通常要接受“偶发漏命中无法彻底靠普通 CSS 消灭”，改为做**受控兜底**：
+  - 以“终端确实 focus 且鼠标仍在该终端矩形内”为条件
+  - 给底层画布命中层同步相同的 cursor / 交互语义
+  - 目标是先消除用户可见的 cursor 跳变，再继续观察是否还存在更深层的功能回归
+
+6. **不要把“overlay 盖一层”当默认方案**  
+   这很容易修掉闪烁，但会直接破坏 TUI 鼠标事件、文本选择、链接点击或 React Flow 自身交互。  
+   优先做“命中穿透时的语义同步”，最后才考虑真正改命中层。
+
 ### 切换 workspace 或重启应用后终端历史丢失
 
 优先检查：

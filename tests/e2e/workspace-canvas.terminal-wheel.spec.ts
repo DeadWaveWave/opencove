@@ -66,16 +66,20 @@ test.describe('Workspace Canvas - Terminal Wheel', () => {
 
       const viewport = terminal.locator('.xterm-viewport')
       await expect(viewport).toBeVisible()
-
-      const visibleRows = terminal.locator('.xterm-rows')
-      const beforeRows = await visibleRows.innerText()
+      const beforeViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'node-scroll')
 
       await terminal.hover()
       await window.mouse.wheel(0, -1200)
       await window.waitForTimeout(120)
 
-      const afterRows = await visibleRows.innerText()
-      expect(afterRows).not.toBe(beforeRows)
+      const afterViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'node-scroll')
+      expect(beforeViewportY).not.toBeNull()
+      expect(afterViewportY).not.toBeNull()
+      expect(afterViewportY).toBeLessThan(beforeViewportY as number)
     } finally {
       await electronApp.close()
     }
@@ -126,18 +130,25 @@ test.describe('Workspace Canvas - Terminal Wheel', () => {
       await window.keyboard.press('Enter')
       await expect(agentNode).toContainText('OPENCOVE_AGENT_SCROLL_260')
 
-      const viewport = window.locator('.react-flow__viewport')
-      const beforeTransform = await viewport.getAttribute('style')
-      const visibleRows = agentNode.locator('.xterm-rows')
-      const beforeRows = await visibleRows.innerText()
+      const canvasViewport = window.locator('.react-flow__viewport')
+      const beforeTransform = await canvasViewport.getAttribute('style')
+      const terminalViewport = agentNode.locator('.xterm-viewport')
+      await expect(terminalViewport).toBeVisible()
+      const beforeViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'node-agent-scroll')
 
       await agentNode.hover()
       await window.mouse.wheel(0, -1200)
       await window.waitForTimeout(120)
 
-      const afterRows = await visibleRows.innerText()
-      const afterTransform = await viewport.getAttribute('style')
-      expect(afterRows).not.toBe(beforeRows)
+      const afterViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'node-agent-scroll')
+      const afterTransform = await canvasViewport.getAttribute('style')
+      expect(beforeViewportY).not.toBeNull()
+      expect(afterViewportY).not.toBeNull()
+      expect(afterViewportY).toBeLessThan(beforeViewportY as number)
       expect(afterTransform).toBe(beforeTransform)
     } finally {
       await electronApp.close()
