@@ -1,6 +1,9 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
-import type { RuntimeDiagnosticsLogInput, TerminalDiagnosticsLogInput } from '../../../shared/contracts/dto'
+import type {
+  RuntimeDiagnosticsLogInput,
+  TerminalDiagnosticsLogInput,
+} from '../../../shared/contracts/dto'
 import type { IpcRegistrationDisposable } from './types'
 import { createMainRuntimeDiagnosticsLogger } from '../runtimeDiagnostics'
 
