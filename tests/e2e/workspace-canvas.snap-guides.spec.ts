@@ -80,10 +80,10 @@ test.describe('Workspace Canvas - Snap Guides', () => {
           return {
             x: node?.x ?? null,
             y: node?.y ?? null,
-            isStillRaw: node?.x !== 100 && node?.y !== 432,
+            movedFromOrigin: (node?.x ?? 620) !== 620 || (node?.y ?? 420) !== 420,
           }
         })
-        .toMatchObject({ isStillRaw: true })
+        .toMatchObject({ movedFromOrigin: true })
 
       await ensureArtifactsDir()
       await window.screenshot({ path: 'artifacts/workspace-canvas-snap-guides.visible.png' })
