@@ -92,7 +92,6 @@ export function CanvasSection(props: {
   )
     ? defaultTerminalProfileId
     : null
-
   return (
     <div className="settings-panel__section" id="settings-section-canvas">
       <h3 className="settings-panel__section-title">{t('settingsPanel.canvas.title')}</h3>

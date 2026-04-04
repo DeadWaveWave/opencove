@@ -13,7 +13,9 @@ export function useSpaceExplorerOverlayActions({
   t,
   rootUri,
   findBlockingOpenDocument,
+  onPreviewFile,
   onOpenFile,
+  onDismissQuickPreview,
   onShowMessage,
   entriesByUri,
   entryRows,
@@ -25,7 +27,9 @@ export function useSpaceExplorerOverlayActions({
   t: TranslateFn
   rootUri: string
   findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
+  onPreviewFile: (uri: string) => void
   onOpenFile: (uri: string) => void
+  onDismissQuickPreview: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
   entriesByUri: Map<string, FileSystemEntry>
   entryRows: Array<Extract<SpaceExplorerRow, { kind: 'entry' }>>
@@ -71,27 +75,51 @@ export function useSpaceExplorerOverlayActions({
     setContextMenu(null)
   }, [])
 
-  const handleEntryActivate = React.useCallback(
+  const toggleDirectoryExpanded = React.useCallback(
+    (entry: FileSystemEntry) => {
+      setExpandedDirectoryUris(previous => {
+        const next = new Set(previous)
+        if (next.has(entry.uri)) {
+          next.delete(entry.uri)
+        } else {
+          next.add(entry.uri)
+        }
+        return next
+      })
+    },
+    [setExpandedDirectoryUris],
+  )
+
+  const previewEntrySelection = React.useCallback(
     (entry: FileSystemEntry) => {
       selectEntry(entry)
       closeContextMenu()
 
       if (entry.kind === 'directory') {
-        setExpandedDirectoryUris(previous => {
-          const next = new Set(previous)
-          if (next.has(entry.uri)) {
-            next.delete(entry.uri)
-          } else {
-            next.add(entry.uri)
-          }
-          return next
-        })
+        onDismissQuickPreview()
+        toggleDirectoryExpanded(entry)
+        return
+      }
+
+      onPreviewFile(entry.uri)
+    },
+    [closeContextMenu, onDismissQuickPreview, onPreviewFile, selectEntry, toggleDirectoryExpanded],
+  )
+
+  const openEntry = React.useCallback(
+    (entry: FileSystemEntry) => {
+      selectEntry(entry)
+      closeContextMenu()
+      onDismissQuickPreview()
+
+      if (entry.kind === 'directory') {
+        toggleDirectoryExpanded(entry)
         return
       }
 
       onOpenFile(entry.uri)
     },
-    [closeContextMenu, onOpenFile, selectEntry, setExpandedDirectoryUris],
+    [closeContextMenu, onDismissQuickPreview, onOpenFile, selectEntry, toggleDirectoryExpanded],
   )
 
   const moveSelection = React.useCallback(
@@ -155,33 +183,36 @@ export function useSpaceExplorerOverlayActions({
       return
     }
 
-    handleEntryActivate(entry)
-  }, [expandedDirectoryUris, handleEntryActivate, resolveSelectedEntry, setExpandedDirectoryUris])
+    openEntry(entry)
+  }, [expandedDirectoryUris, openEntry, resolveSelectedEntry, setExpandedDirectoryUris])
 
   const openRootContextMenu = React.useCallback(
     (point: { x: number; y: number }) => {
       selectEntry(null)
+      onDismissQuickPreview()
       setContextMenu({ kind: 'root', x: point.x, y: point.y, entry: null })
     },
-    [selectEntry],
+    [onDismissQuickPreview, selectEntry],
   )
 
   const openEntryContextMenu = React.useCallback(
     (entry: FileSystemEntry, point: { x: number; y: number }) => {
       selectEntry(entry)
+      onDismissQuickPreview()
       setContextMenu({ kind: 'entry', x: point.x, y: point.y, entry })
     },
-    [selectEntry],
+    [onDismissQuickPreview, selectEntry],
   )
 
   const handleEntryDragStart = React.useCallback(
     (entry: FileSystemEntry) => {
       closeContextMenu()
+      onDismissQuickPreview()
       setDraggedEntryUri(entry.uri)
       setDropTargetDirectoryUri(null)
       selectEntry(entry)
     },
-    [closeContextMenu, selectEntry],
+    [closeContextMenu, onDismissQuickPreview, selectEntry],
   )
 
   const handleEntryDragEnd = React.useCallback(() => {
@@ -196,7 +227,8 @@ export function useSpaceExplorerOverlayActions({
     ensureEntryMutable,
     resolveSelectedEntry,
     closeContextMenu,
-    handleEntryActivate,
+    previewEntrySelection,
+    openEntry,
     moveSelection,
     collapseSelectionOrFocusParent,
     expandSelectionOrOpen,

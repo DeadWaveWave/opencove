@@ -59,6 +59,15 @@ export interface DetachTerminalInput {
   sessionId: string
 }
 
+export interface PtySessionNodeBinding {
+  sessionId: string
+  nodeId: string
+}
+
+export interface SyncPtySessionBindingsInput {
+  bindings: PtySessionNodeBinding[]
+}
+
 export interface SnapshotTerminalInput {
   sessionId: string
 }

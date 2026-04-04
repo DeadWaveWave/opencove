@@ -23,6 +23,7 @@ interface ComputeHydratedCliPathInput {
 }
 
 interface ComputeHydratedLocaleEnvInput {
+  isPackaged: boolean
   platform: NodeJS.Platform
   currentEnv: NodeJS.ProcessEnv
   loginShellEnv: Partial<Pick<NodeJS.ProcessEnv, 'LANG' | 'LC_ALL' | 'LC_CTYPE'>>
@@ -195,6 +196,10 @@ export function computeHydratedCliPath(input: ComputeHydratedCliPathInput): stri
 export function computeHydratedLocaleEnv(
   input: ComputeHydratedLocaleEnvInput,
 ): Partial<Pick<NodeJS.ProcessEnv, 'LANG' | 'LC_ALL' | 'LC_CTYPE'>> {
+  if (!input.isPackaged) {
+    return {}
+  }
+
   if (input.platform === 'win32') {
     return {}
   }
@@ -225,6 +230,10 @@ export function computeHydratedLocaleEnv(
 }
 
 export function hydrateCliEnvironmentForAppLaunch(isPackaged: boolean): void {
+  if (!isPackaged) {
+    return
+  }
+
   const currentPath = process.env.PATH ?? ''
   const shellPath = resolvePosixShellPath(process.env.SHELL)
 
@@ -235,6 +244,7 @@ export function hydrateCliEnvironmentForAppLaunch(isPackaged: boolean): void {
 
   const applyHydratedLocaleEnv = (): void => {
     const nextLocaleEnv = computeHydratedLocaleEnv({
+      isPackaged,
       platform: process.platform,
       currentEnv: process.env,
       loginShellEnv: loginShellLocaleEnv,

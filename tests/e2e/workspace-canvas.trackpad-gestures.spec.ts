@@ -242,16 +242,20 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       })
 
       await window.waitForTimeout(280)
-
-      const visibleRows = terminal.locator('.xterm-rows')
-      const beforeRows = await visibleRows.innerText()
+      const beforeViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'trackpad-terminal-scroll-after-pan')
 
       await terminal.hover()
       await window.mouse.wheel(0, -900)
       await window.waitForTimeout(120)
 
-      const afterRows = await visibleRows.innerText()
-      expect(afterRows).not.toBe(beforeRows)
+      const afterViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'trackpad-terminal-scroll-after-pan')
+      expect(beforeViewportY).not.toBeNull()
+      expect(afterViewportY).not.toBeNull()
+      expect(afterViewportY).toBeLessThan(beforeViewportY as number)
     } finally {
       await electronApp.close()
     }
@@ -294,16 +298,20 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       await window.keyboard.type(buildEchoSequenceCommand('AUTO_WHEEL_SCROLL', 260))
       await window.keyboard.press('Enter')
       await expect(terminal).toContainText('AUTO_WHEEL_SCROLL_260')
-
-      const visibleRows = terminal.locator('.xterm-rows')
-      const beforeRows = await visibleRows.innerText()
+      const beforeViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'auto-terminal-wheel-scroll-node')
 
       await terminal.hover()
       await window.mouse.wheel(0, -900)
       await window.waitForTimeout(120)
 
-      const afterRows = await visibleRows.innerText()
-      expect(afterRows).not.toBe(beforeRows)
+      const afterViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'auto-terminal-wheel-scroll-node')
+      expect(beforeViewportY).not.toBeNull()
+      expect(afterViewportY).not.toBeNull()
+      expect(afterViewportY).toBeLessThan(beforeViewportY as number)
       await expect(canvas).toHaveAttribute('data-canvas-input-mode', 'trackpad')
       expect(await readResolvedCanvasInputMode(window)).toBe('trackpad')
     } finally {

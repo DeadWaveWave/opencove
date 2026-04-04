@@ -47,6 +47,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -64,6 +65,7 @@ import type {
   WriteTerminalInput,
   DeleteCanvasImageInput,
   CopyEntryInput,
+  RuntimeDiagnosticsLogInput,
   TerminalDiagnosticsLogInput,
   CreateDirectoryInput,
   DeleteEntryInput,
@@ -79,6 +81,16 @@ import type {
   FileSystemStat,
   SyncEventPayload,
   WriteFileTextInput,
+  ActivateWebsiteWindowInput,
+  CaptureWebsiteWindowSnapshotInput,
+  ConfigureWebsiteWindowPolicyInput,
+  NavigateWebsiteWindowInput,
+  SetWebsiteWindowOccludedInput,
+  SetWebsiteWindowBoundsInput,
+  SetWebsiteWindowPinnedInput,
+  SetWebsiteWindowSessionInput,
+  WebsiteWindowEventPayload,
+  WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
   WorkerStatusResult,
@@ -98,6 +110,7 @@ export interface OpenCoveApi {
   }
   debug?: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
+    logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
@@ -131,6 +144,22 @@ export interface OpenCoveApi {
   }
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void) => UnsubscribeFn
+  }
+  websiteWindow: {
+    configurePolicy: (payload: ConfigureWebsiteWindowPolicyInput) => Promise<void>
+    setOccluded: (payload: SetWebsiteWindowOccludedInput) => Promise<void>
+    activate: (payload: ActivateWebsiteWindowInput) => Promise<void>
+    deactivate: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    setBounds: (payload: SetWebsiteWindowBoundsInput) => void
+    navigate: (payload: NavigateWebsiteWindowInput) => Promise<void>
+    goBack: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    goForward: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    reload: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    close: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    setPinned: (payload: SetWebsiteWindowPinnedInput) => Promise<void>
+    setSession: (payload: SetWebsiteWindowSessionInput) => Promise<void>
+    captureSnapshot: (payload: CaptureWebsiteWindowSnapshotInput) => void
+    onEvent: (listener: (event: WebsiteWindowEventPayload) => void) => UnsubscribeFn
   }
   workspace: {
     selectDirectory: () => Promise<WorkspaceDirectory | null>
@@ -178,6 +207,7 @@ export interface OpenCoveApi {
     kill: (payload: KillTerminalInput) => Promise<void>
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>
+    syncSessionBindings: (payload: SyncPtySessionBindingsInput) => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
     debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn

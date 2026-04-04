@@ -3,6 +3,10 @@ export function isEditableDomTarget(target: EventTarget | null): boolean {
     return false
   }
 
+  if (target.closest('[data-cove-focus-scope="terminal"]')) {
+    return true
+  }
+
   if (target.isContentEditable || target.closest('[contenteditable="true"]')) {
     return true
   }

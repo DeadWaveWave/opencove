@@ -3,6 +3,7 @@ import type { TranslationDictionary } from './schema'
 import { zhCNMessages } from './zh-CN.messages'
 import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
 import { zhCNSettingsPanel } from './zh-CN.settingsPanel'
+import { zhCNWebsiteNode } from './zh-CN.websiteNode'
 
 export const zhCN = {
   common: {
@@ -30,6 +31,7 @@ export const zhCN = {
     unknownError: '未知错误',
     percentUnit: '%',
     pixelUnit: 'px',
+    minuteUnit: '分钟',
   },
   taskPriorities: {
     low: '低',
@@ -185,6 +187,12 @@ export const zhCN = {
     warning: '警告',
     error: '错误',
   },
+  errorBoundary: {
+    title: '出现异常',
+    description: '渲染进程遇到了不可恢复的错误。你的工作区数据仍然安全。',
+    reload: '重新加载',
+    dismiss: '忽略',
+  },
   agentRuntime: {
     working: '运行中',
     standby: '待命',
@@ -275,6 +283,7 @@ export const zhCN = {
     resizeWidth: '调整图片宽度',
     resizeHeight: '调整图片高度',
   },
+  websiteNode: zhCNWebsiteNode,
   terminalNode: {
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
@@ -305,6 +314,7 @@ export const zhCN = {
   workspaceContextMenu: {
     newTerminal: '新建终端',
     newNote: '新建便签',
+    newWebsite: '新建网页窗口',
     newTask: '新建任务',
     runAgent: '运行 Agent',
     arrange: '整理',

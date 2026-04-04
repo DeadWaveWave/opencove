@@ -1,9 +1,115 @@
 import { describe, expect, it } from 'vitest'
 import { updateWorkspacesWithAgentExit } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
-import { applyAgentExitToNodes } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
+import {
+  applyAgentExitToNodes,
+  applyAgentStateToNodes,
+} from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 describe('PTY task completion side effects', () => {
+  it('returns the original node array when a state event does not change any agent node', () => {
+    const prevNodes = [
+      {
+        id: 'agent-1',
+        type: 'terminal',
+        position: { x: 0, y: 0 },
+        width: 320,
+        height: 240,
+        data: {
+          kind: 'agent',
+          title: 'Agent',
+          sessionId: 'session-1',
+          status: 'standby',
+          startedAt: null,
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: null,
+          agent: {
+            provider: 'opencode',
+            prompt: 'Ship it',
+            model: null,
+            effectiveModel: null,
+            launchMode: 'resume',
+            resumeSessionId: 'resume-1',
+            resumeSessionIdVerified: true,
+            executionDirectory: '/tmp/workspace',
+            expectedDirectory: '/tmp/workspace',
+            directoryMode: 'workspace',
+            customDirectory: null,
+            shouldCreateDirectory: false,
+            taskId: null,
+          },
+          task: null,
+          note: null,
+        },
+      },
+    ]
+
+    const sameStatusResult = applyAgentStateToNodes(prevNodes, {
+      sessionId: 'session-1',
+      state: 'standby',
+    })
+    expect(sameStatusResult.didChange).toBe(false)
+    expect(sameStatusResult.nextNodes).toBe(prevNodes)
+
+    const unrelatedSessionResult = applyAgentStateToNodes(prevNodes, {
+      sessionId: 'session-2',
+      state: 'working',
+    })
+    expect(unrelatedSessionResult.didChange).toBe(false)
+    expect(unrelatedSessionResult.nextNodes).toBe(prevNodes)
+  })
+
+  it('updates the matching agent node when a state event changes runtime status', () => {
+    const prevNodes = [
+      {
+        id: 'agent-1',
+        type: 'terminal',
+        position: { x: 0, y: 0 },
+        width: 320,
+        height: 240,
+        data: {
+          kind: 'agent',
+          title: 'Agent',
+          sessionId: 'session-1',
+          status: 'standby',
+          startedAt: null,
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: null,
+          agent: {
+            provider: 'opencode',
+            prompt: 'Ship it',
+            model: null,
+            effectiveModel: null,
+            launchMode: 'resume',
+            resumeSessionId: 'resume-1',
+            resumeSessionIdVerified: true,
+            executionDirectory: '/tmp/workspace',
+            expectedDirectory: '/tmp/workspace',
+            directoryMode: 'workspace',
+            customDirectory: null,
+            shouldCreateDirectory: false,
+            taskId: null,
+          },
+          task: null,
+          note: null,
+        },
+      },
+    ]
+
+    const result = applyAgentStateToNodes(prevNodes, {
+      sessionId: 'session-1',
+      state: 'working',
+    })
+
+    expect(result.didChange).toBe(true)
+    expect(result.nextNodes).not.toBe(prevNodes)
+    expect(result.nextNodes[0]?.data.status).toBe('running')
+  })
+
   it('does not mark linked tasks as ai_done in canvas node updates', () => {
     const result = applyAgentExitToNodes(
       [

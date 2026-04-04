@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   captureTerminalDiagnosticsSnapshot,
+  captureTerminalInteractionDetails,
   resolveTerminalBufferKind,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/diagnostics'
 
@@ -62,5 +63,83 @@ describe('terminal diagnostics helpers', () => {
       hasViewport: true,
       hasVerticalScrollbar: true,
     })
+  })
+
+  it('captures interaction details for the current hit target and cursor surfaces', () => {
+    const workspaceCanvas = document.createElement('div')
+    workspaceCanvas.className = 'workspace-canvas'
+    workspaceCanvas.dataset.coveDragSurfaceSelectionMode = 'true'
+
+    const reactFlowNode = document.createElement('div')
+    reactFlowNode.className = 'react-flow__node selected'
+
+    const terminalNode = document.createElement('div')
+    terminalNode.className = 'terminal-node terminal-node--selected-surface'
+
+    const terminalBody = document.createElement('div')
+    terminalBody.className = 'terminal-node__terminal'
+
+    const xterm = document.createElement('div')
+    xterm.className = 'xterm enable-mouse-events'
+
+    const viewport = document.createElement('div')
+    viewport.className = 'xterm-viewport'
+
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+
+    const canvas = document.createElement('canvas')
+    screen.append(canvas)
+    xterm.append(viewport, screen)
+    terminalBody.append(xterm)
+    terminalNode.append(terminalBody)
+    reactFlowNode.append(terminalNode)
+    workspaceCanvas.append(reactFlowNode)
+    document.body.append(workspaceCanvas)
+
+    const originalElementFromPoint = document.elementFromPoint
+    document.elementFromPoint = () => canvas
+
+    const originalGetComputedStyle = window.getComputedStyle.bind(window)
+    window.getComputedStyle = ((element: Element) => {
+      const cursor =
+        element === xterm || element === viewport || element === screen || element === canvas
+          ? 'default'
+          : 'text'
+
+      return {
+        cursor,
+        getPropertyValue: () => '',
+      } as CSSStyleDeclaration
+    }) as typeof window.getComputedStyle
+
+    try {
+      expect(
+        captureTerminalInteractionDetails({
+          container: terminalBody,
+          rendererKind: 'webgl',
+          point: { x: 120, y: 48 },
+        }),
+      ).toMatchObject({
+        rendererKind: 'webgl',
+        dragSurfaceSelectionMode: true,
+        reactFlowNodeSelected: true,
+        selectedSurfaceActive: true,
+        xtermMouseEventsEnabled: true,
+        xtermCursor: 'default',
+        viewportCursor: 'default',
+        screenCursor: 'default',
+        canvasCursor: 'default',
+        hitTarget: 'canvas',
+        hitTargetCursor: 'default',
+        hitTargetInsideTerminal: true,
+        hitTargetInsideViewport: false,
+        hitTargetInsideScreen: true,
+      })
+    } finally {
+      document.elementFromPoint = originalElementFromPoint
+      window.getComputedStyle = originalGetComputedStyle
+      workspaceCanvas.remove()
+    }
   })
 })

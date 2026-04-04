@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { NodeFrame, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
+import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 
 export interface WorkspaceCanvasActionRefs {
   clearNodeSelectionRef: React.MutableRefObject<() => void>
@@ -9,6 +10,11 @@ export interface WorkspaceCanvasActionRefs {
   resizeNodeRef: React.MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   updateNoteTextRef: React.MutableRefObject<(nodeId: string, text: string) => void>
+  updateWebsiteUrlRef: React.MutableRefObject<(nodeId: string, url: string) => void>
+  setWebsitePinnedRef: React.MutableRefObject<(nodeId: string, pinned: boolean) => void>
+  setWebsiteSessionRef: React.MutableRefObject<
+    (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
+  >
   runTaskAgentRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   resumeTaskAgentSessionRef: React.MutableRefObject<
     (taskNodeId: string, recordId: string) => Promise<void>
@@ -42,6 +48,18 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   )
   const updateNoteTextRef = useRef<(nodeId: string, text: string) => void>(
     (_nodeId: string, _text: string) => undefined,
+  )
+  const updateWebsiteUrlRef = useRef<(nodeId: string, url: string) => void>(
+    (_nodeId: string, _url: string) => undefined,
+  )
+  const setWebsitePinnedRef = useRef<(nodeId: string, pinned: boolean) => void>(
+    (_nodeId: string, _pinned: boolean) => undefined,
+  )
+  const setWebsiteSessionRef = useRef<
+    (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
+  >(
+    (_nodeId: string, _sessionMode: WebsiteWindowSessionMode, _profileId: string | null) =>
+      undefined,
   )
   const runTaskAgentRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
@@ -82,6 +100,9 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     resizeNodeRef,
     copyAgentLastMessageRef,
     updateNoteTextRef,
+    updateWebsiteUrlRef,
+    setWebsitePinnedRef,
+    setWebsiteSessionRef,
     runTaskAgentRef,
     resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef,
@@ -104,6 +125,13 @@ interface SyncActionRefsParams {
   resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   copyAgentLastMessage: (nodeId: string) => Promise<void>
   updateNoteText: (nodeId: string, text: string) => void
+  updateWebsiteUrl: (nodeId: string, url: string) => void
+  setWebsitePinned: (nodeId: string, pinned: boolean) => void
+  setWebsiteSession: (
+    nodeId: string,
+    sessionMode: WebsiteWindowSessionMode,
+    profileId: string | null,
+  ) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
@@ -120,6 +148,9 @@ export function useWorkspaceCanvasSyncActionRefs({
   resizeNode,
   copyAgentLastMessage,
   updateNoteText,
+  updateWebsiteUrl,
+  setWebsitePinned,
+  setWebsiteSession,
   updateNodeScrollback,
   updateTerminalTitle,
   renameTerminalTitle,
@@ -149,6 +180,24 @@ export function useWorkspaceCanvasSyncActionRefs({
       updateNoteText(nodeId, text)
     }
   }, [actionRefs.updateNoteTextRef, updateNoteText])
+
+  useLayoutEffect(() => {
+    actionRefs.updateWebsiteUrlRef.current = (nodeId, url) => {
+      updateWebsiteUrl(nodeId, url)
+    }
+  }, [actionRefs.updateWebsiteUrlRef, updateWebsiteUrl])
+
+  useLayoutEffect(() => {
+    actionRefs.setWebsitePinnedRef.current = (nodeId, pinned) => {
+      setWebsitePinned(nodeId, pinned)
+    }
+  }, [actionRefs.setWebsitePinnedRef, setWebsitePinned])
+
+  useLayoutEffect(() => {
+    actionRefs.setWebsiteSessionRef.current = (nodeId, sessionMode, profileId) => {
+      setWebsiteSession(nodeId, sessionMode, profileId)
+    }
+  }, [actionRefs.setWebsiteSessionRef, setWebsiteSession])
 
   useLayoutEffect(() => {
     actionRefs.updateNodeScrollbackRef.current = (nodeId, scrollback) => {

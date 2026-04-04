@@ -1,6 +1,11 @@
 import { useEffect, useRef } from 'react'
-import type { PersistedAppState } from '@contexts/workspace/presentation/renderer/types'
-import { readPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
+import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type {
+  PersistedAppState,
+  PersistedWorkspaceState,
+  WorkspaceState,
+} from '@contexts/workspace/presentation/renderer/types'
+import { readPersistedState, toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { useAppStore } from '../store/useAppStore'
 import type { SyncEventPayload } from '@shared/contracts/dto'
 import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
@@ -21,6 +26,74 @@ function resolveNextActiveWorkspaceId(
   }
 
   return ids[0] ?? null
+}
+
+function buildPersistedStateSignature(state: PersistedAppState): string {
+  return JSON.stringify(state)
+}
+
+function buildPersistedWorkspaceSignature(state: PersistedWorkspaceState): string {
+  return JSON.stringify(state)
+}
+
+function buildCurrentWorkspacePersistedSignature(workspace: WorkspaceState): string {
+  const persistedWorkspace = toPersistedState([workspace], workspace.id).workspaces[0]
+  return JSON.stringify(persistedWorkspace)
+}
+
+export function shouldApplyWorkerSyncRefresh({
+  currentState,
+  persistedState,
+}: {
+  currentState: {
+    workspaces: WorkspaceState[]
+    activeWorkspaceId: string | null
+    agentSettings: AgentSettings
+  }
+  persistedState: PersistedAppState
+}): boolean {
+  const currentPersistedState = toPersistedState(
+    currentState.workspaces,
+    currentState.activeWorkspaceId,
+    currentState.agentSettings,
+  )
+
+  return (
+    buildPersistedStateSignature(currentPersistedState) !==
+    buildPersistedStateSignature(persistedState)
+  )
+}
+
+export function resolveWorkspacesForWorkerSync({
+  currentWorkspaces,
+  persistedWorkspaces,
+}: {
+  currentWorkspaces: WorkspaceState[]
+  persistedWorkspaces: PersistedWorkspaceState[]
+}): WorkspaceState[] {
+  const currentById = new Map(
+    currentWorkspaces.map(workspace => [workspace.id, workspace] as const),
+  )
+
+  const nextWorkspaces = persistedWorkspaces.map(workspace => {
+    const existingWorkspace = currentById.get(workspace.id)
+    if (!existingWorkspace) {
+      return toShellWorkspaceStateForSync(workspace, undefined)
+    }
+
+    return buildCurrentWorkspacePersistedSignature(existingWorkspace) ===
+      buildPersistedWorkspaceSignature(workspace)
+      ? existingWorkspace
+      : toShellWorkspaceStateForSync(workspace, existingWorkspace)
+  })
+
+  if (nextWorkspaces.length !== currentWorkspaces.length) {
+    return nextWorkspaces
+  }
+
+  return nextWorkspaces.every((workspace, index) => workspace === currentWorkspaces[index])
+    ? currentWorkspaces
+    : nextWorkspaces
 }
 
 export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
@@ -162,27 +235,30 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           return
         }
 
-        useAppStore.getState().setWorkspaces(previous => {
-          const currentById = new Map(previous.map(ws => [ws.id, ws] as const))
-          const nextWorkspaces = persisted.workspaces.map(workspace =>
-            toShellWorkspaceStateForSync(workspace, currentById.get(workspace.id)),
-          )
+        const current = useAppStore.getState()
+        if (
+          !shouldApplyWorkerSyncRefresh({
+            currentState: current,
+            persistedState: persisted,
+          })
+        ) {
+          lastAppliedRevisionRef.current = Math.max(lastAppliedRevisionRef.current, targetRevision)
+          return
+        }
 
-          if (
-            nextWorkspaces.length === previous.length &&
-            nextWorkspaces.every((workspace, index) => workspace === previous[index])
-          ) {
-            return previous
-          }
-
-          return nextWorkspaces
+        const nextWorkspaces = resolveWorkspacesForWorkerSync({
+          currentWorkspaces: current.workspaces,
+          persistedWorkspaces: persisted.workspaces,
         })
+        const nextActiveWorkspaceId = resolveNextActiveWorkspaceId(persisted, current.activeWorkspaceId)
 
-        useAppStore
-          .getState()
-          .setActiveWorkspaceId(currentActive =>
-            resolveNextActiveWorkspaceId(persisted, currentActive),
-          )
+        if (nextWorkspaces !== current.workspaces) {
+          current.setWorkspaces(nextWorkspaces)
+        }
+
+        if (nextActiveWorkspaceId !== current.activeWorkspaceId) {
+          current.setActiveWorkspaceId(nextActiveWorkspaceId)
+        }
 
         lastAppliedRevisionRef.current = Math.max(lastAppliedRevisionRef.current, targetRevision)
       } catch {

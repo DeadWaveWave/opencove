@@ -14,6 +14,7 @@ import { createPtyRuntime } from '../../contexts/terminal/presentation/main-ipc/
 import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
 import { createHomeWorkerEndpointResolver } from './worker/homeWorkerEndpointResolver'
 import { hasOwnedLocalWorkerProcess, stopOwnedLocalWorker } from './worker/localWorkerManager'
+import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
@@ -90,6 +91,8 @@ if (process.env.NODE_ENV === 'test' && process.env['OPENCOVE_TEST_USER_DATA_DIR'
 const EXTERNAL_PROTOCOL_ALLOWLIST = new Set(['http:', 'https:', 'mailto:'])
 const E2E_OFFSCREEN_COORDINATE = -50_000
 type E2EWindowMode = 'normal' | 'inactive' | 'hidden' | 'offscreen'
+const mainWindowRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-window')
+const mainAppRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-app')
 
 function parseUrl(rawUrl: string): URL | null {
   try {
@@ -306,6 +309,25 @@ function createWindow(): void {
     mainWindow.once('closed', clearFallback)
   }
 
+  // ── Crash recovery: reload the renderer on crash or GPU failure ──
+  mainWindow.webContents.on('render-process-gone', (_event, details) => {
+    mainWindowRuntimeLogger.error('render-process-gone', 'Renderer process gone.', {
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
+    if (!mainWindow.isDestroyed()) {
+      mainWindow.webContents.reload()
+    }
+  })
+
+  mainWindow.on('unresponsive', () => {
+    mainWindowRuntimeLogger.error('window-unresponsive', 'Window became unresponsive.')
+  })
+
+  mainWindow.on('responsive', () => {
+    mainWindowRuntimeLogger.info('window-responsive', 'Window became responsive again.')
+  })
+
   mainWindow.webContents.setWindowOpenHandler(details => {
     if (shouldOpenUrlExternally(details.url)) {
       void shell.openExternal(details.url)
@@ -324,6 +346,10 @@ function createWindow(): void {
       void shell.openExternal(url)
     }
   })
+
+  if (typeof mainWindow.webContents.setVisualZoomLevelLimits === 'function') {
+    void mainWindow.webContents.setVisualZoomLevelLimits(1, 1).catch(() => undefined)
+  }
 
   // HMR for renderer based on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
@@ -346,6 +372,15 @@ app.whenReady().then(async () => {
   // and ignore CommandOrControl + R in production.
   app.on('browser-window-created', (_, window) => {
     optimizer.watchWindowShortcuts(window)
+  })
+
+  // Log GPU and child process crashes (these can cause white screens)
+  app.on('child-process-gone', (_event, details) => {
+    mainAppRuntimeLogger.error('child-process-gone', 'Child process gone.', {
+      type: details.type,
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
   })
 
   const runtimeIconPath = resolveRuntimeIconPath()

@@ -3,10 +3,12 @@ import { ReactFlowProvider } from '@xyflow/react'
 import { WorkspaceCanvasInner } from './WorkspaceCanvasInner'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 
-export function WorkspaceCanvas(props: WorkspaceCanvasProps): React.JSX.Element {
+function WorkspaceCanvasComponent(props: WorkspaceCanvasProps): React.JSX.Element {
   return (
     <ReactFlowProvider>
       <WorkspaceCanvasInner {...props} />
     </ReactFlowProvider>
   )
 }
+
+export const WorkspaceCanvas = React.memo(WorkspaceCanvasComponent)

@@ -353,7 +353,7 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await expect.poll(async () => await readFile(movedChildPath, 'utf8')).toBe('drag token')
 
       const openEntry = explorerEntry(window, spaceId, toFileUri(openPath))
-      await openEntry.dispatchEvent('click')
+      await openEntry.dblclick()
 
       const documentNode = window
         .locator('.document-node')
@@ -361,7 +361,7 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
         .first()
       await expect(documentNode).toBeVisible()
 
-      await openEntry.dispatchEvent('click')
+      await openEntry.click()
       await expect(openEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
       await explorer.focus()
       await dispatchExplorerShortcut(window, {

@@ -1,7 +1,47 @@
 import { useEffect } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData } from '../../../types'
+import type { AgentRuntimeStatus, TerminalNodeData } from '../../../types'
+
+export function applyAgentStateToNodes(
+  prevNodes: Node<TerminalNodeData>[],
+  event: { sessionId: string; state: 'working' | 'standby' },
+): { nextNodes: Node<TerminalNodeData>[]; didChange: boolean } {
+  let didChange = false
+
+  const nextNodes = prevNodes.map(node => {
+    if (node.data.kind !== 'agent' || node.data.sessionId !== event.sessionId) {
+      return node
+    }
+
+    if (
+      node.data.status === 'failed' ||
+      node.data.status === 'stopped' ||
+      node.data.status === 'exited'
+    ) {
+      return node
+    }
+
+    const nextStatus: AgentRuntimeStatus = event.state === 'standby' ? 'standby' : 'running'
+    if (node.data.status === nextStatus) {
+      return node
+    }
+
+    didChange = true
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        status: nextStatus,
+      },
+    }
+  })
+
+  return {
+    nextNodes: didChange ? nextNodes : prevNodes,
+    didChange,
+  }
+}
 
 export function applyAgentExitToNodes(
   prevNodes: Node<TerminalNodeData>[],
@@ -51,36 +91,9 @@ export function useWorkspaceCanvasPtyTaskCompletion({
     const ptyEventHub = getPtyEventHub()
 
     const unsubscribeState = ptyEventHub.onState(event => {
-      setNodes(
-        prevNodes =>
-          prevNodes.map(node => {
-            if (node.data.kind !== 'agent' || node.data.sessionId !== event.sessionId) {
-              return node
-            }
-
-            if (
-              node.data.status === 'failed' ||
-              node.data.status === 'stopped' ||
-              node.data.status === 'exited'
-            ) {
-              return node
-            }
-
-            const nextStatus = event.state === 'standby' ? 'standby' : 'running'
-            if (node.data.status === nextStatus) {
-              return node
-            }
-
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                status: nextStatus,
-              },
-            }
-          }),
-        { syncLayout: false },
-      )
+      setNodes(prevNodes => applyAgentStateToNodes(prevNodes, event).nextNodes, {
+        syncLayout: false,
+      })
     })
 
     const unsubscribeMetadata = ptyEventHub.onMetadata(event => {

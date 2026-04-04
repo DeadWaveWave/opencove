@@ -30,8 +30,8 @@ function isEditableKeyboardTarget(target: EventTarget | null): boolean {
 }
 
 function isTerminalFocusActive(target: EventTarget | null): boolean {
-  if (target instanceof Element && target.closest(TERMINAL_FOCUS_SCOPE_SELECTOR)) {
-    return true
+  if (target instanceof Element) {
+    return !!target.closest(TERMINAL_FOCUS_SCOPE_SELECTOR)
   }
 
   const activeElement = document.activeElement instanceof Element ? document.activeElement : null

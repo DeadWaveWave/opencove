@@ -11,6 +11,7 @@ type TerminalSelectionTestApi = {
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
   getFontOptions: (nodeId: string) => { fontSize: number | null; fontFamily: string | null } | null
   getSize: (nodeId: string) => { cols: number; rows: number } | null
+  getViewportY: (nodeId: string) => number | null
   getCachedScreenStateSummary: (nodeId: string) => {
     sessionId: string
     serializedLength: number
@@ -132,6 +133,13 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
           cols: terminal.cols,
           rows: terminal.rows,
         }
+      },
+      getViewportY: nodeId => {
+        const terminal = terminalHandles.get(nodeId) as unknown as {
+          buffer?: { active?: { viewportY?: unknown } }
+        }
+        const viewportY = terminal?.buffer?.active?.viewportY
+        return typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null
       },
       getCachedScreenStateSummary: nodeId => {
         const cached = peekCachedTerminalScreenState(nodeId)

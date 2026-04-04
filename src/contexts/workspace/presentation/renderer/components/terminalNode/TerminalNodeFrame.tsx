@@ -24,6 +24,7 @@ interface TerminalNodeFrameProps {
   lastError: string | null
   sessionId: string
   isTerminalHydrated: boolean
+  transcriptRef: React.RefObject<HTMLDivElement | null>
   sizeStyle: React.CSSProperties
   containerRef: React.RefObject<HTMLDivElement | null>
   handleTerminalBodyPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void
@@ -59,6 +60,7 @@ export function TerminalNodeFrame({
   lastError,
   sessionId,
   isTerminalHydrated,
+  transcriptRef,
   sizeStyle,
   containerRef,
   handleTerminalBodyPointerDownCapture,
@@ -170,6 +172,7 @@ export function TerminalNodeFrame({
         data-cove-focus-scope="terminal"
         aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
       />
+      <div ref={transcriptRef} className="terminal-node__transcript" aria-hidden="true" />
 
       <NodeResizeHandles
         classNamePrefix="terminal-node"
