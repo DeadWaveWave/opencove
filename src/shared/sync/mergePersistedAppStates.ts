@@ -19,14 +19,55 @@ export function isPersistedAppState(value: unknown): value is PersistedAppState 
   )
 }
 
+function mergeSnapshotField<T>(
+  baseValue: T,
+  localValue: T,
+  snapshotValue: T | undefined,
+  equals: (left: T, right: T) => boolean,
+): T {
+  if (snapshotValue === undefined) {
+    return localValue
+  }
+
+  const baseChanged = !equals(baseValue, snapshotValue)
+  const localChanged = !equals(localValue, snapshotValue)
+
+  if (localChanged && !baseChanged) {
+    return localValue
+  }
+
+  if (!localChanged && baseChanged) {
+    return baseValue
+  }
+
+  if (!localChanged && !baseChanged) {
+    return baseValue
+  }
+
+  return localValue
+}
+
 function mergeNodes(
   baseNodes: PersistedTerminalNode[],
   localNodes: PersistedTerminalNode[],
+  baseSnapshotNodes: PersistedTerminalNode[] | null,
   deletedNodeIds: Set<string>,
 ): PersistedTerminalNode[] {
   const localById = new Map(localNodes.map(node => [node.id, node] as const))
+  const snapshotById = new Map((baseSnapshotNodes ?? []).map(node => [node.id, node] as const))
   const seen = new Set<string>()
   const merged: PersistedTerminalNode[] = []
+
+  function isPointEqual(
+    left: PersistedTerminalNode['position'],
+    right: PersistedTerminalNode['position'],
+  ): boolean {
+    if (left === right) {
+      return true
+    }
+
+    return left.x === right.x && left.y === right.y
+  }
 
   for (const baseNode of baseNodes) {
     if (deletedNodeIds.has(baseNode.id)) {
@@ -34,7 +75,41 @@ function mergeNodes(
       continue
     }
 
-    merged.push(localById.get(baseNode.id) ?? baseNode)
+    const localNode = localById.get(baseNode.id)
+    if (!localNode) {
+      merged.push(baseNode)
+      seen.add(baseNode.id)
+      continue
+    }
+
+    const snapshotNode = snapshotById.get(baseNode.id)
+    if (!snapshotNode) {
+      merged.push(localNode)
+      seen.add(baseNode.id)
+      continue
+    }
+
+    merged.push({
+      ...localNode,
+      position: mergeSnapshotField(
+        baseNode.position,
+        localNode.position,
+        snapshotNode.position,
+        isPointEqual,
+      ),
+      width: mergeSnapshotField(
+        baseNode.width,
+        localNode.width,
+        snapshotNode.width,
+        (left, right) => left === right,
+      ),
+      height: mergeSnapshotField(
+        baseNode.height,
+        localNode.height,
+        snapshotNode.height,
+        (left, right) => left === right,
+      ),
+    })
     seen.add(baseNode.id)
   }
 
@@ -56,11 +131,30 @@ function mergeNodes(
 function mergeSpaces(options: {
   baseSpaces: WorkspaceSpaceState[]
   localSpaces: WorkspaceSpaceState[]
+  baseSnapshotSpaces: WorkspaceSpaceState[] | null
   validNodeIds: Set<string>
 }): WorkspaceSpaceState[] {
   const localSpaceById = new Map(options.localSpaces.map(space => [space.id, space] as const))
+  const snapshotSpaceById = new Map(
+    (options.baseSnapshotSpaces ?? []).map(space => [space.id, space] as const),
+  )
   const baseSpaceIds = new Set(options.baseSpaces.map(space => space.id))
   const assignmentByNodeId = new Map<string, string>()
+
+  function isSpaceRectEqual(left: WorkspaceSpaceState['rect'], right: WorkspaceSpaceState['rect']) {
+    if (left === right) {
+      return true
+    }
+    if (!left || !right) {
+      return false
+    }
+    return (
+      left.x === right.x &&
+      left.y === right.y &&
+      left.width === right.width &&
+      left.height === right.height
+    )
+  }
 
   for (const space of options.baseSpaces) {
     for (const nodeId of space.nodeIds) {
@@ -88,6 +182,7 @@ function mergeSpaces(options: {
 
   for (const baseSpace of options.baseSpaces) {
     const localSpace = localSpaceById.get(baseSpace.id) ?? null
+    const snapshotSpace = snapshotSpaceById.get(baseSpace.id)
 
     const baseOrder = baseSpace.nodeIds.filter(
       nodeId => assignmentByNodeId.get(nodeId) === baseSpace.id && options.validNodeIds.has(nodeId),
@@ -102,10 +197,42 @@ function mergeSpaces(options: {
       : []
 
     const nodeIds = [...new Set([...baseOrder, ...localOrder])]
-    mergedSpaces.push({
-      ...(localSpace ? { ...baseSpace, ...localSpace } : baseSpace),
+
+    if (!localSpace) {
+      mergedSpaces.push({ ...baseSpace, nodeIds })
+      continue
+    }
+
+    const mergedSpace: WorkspaceSpaceState = {
+      ...baseSpace,
+      name: mergeSnapshotField(
+        baseSpace.name,
+        localSpace.name,
+        snapshotSpace?.name,
+        (left, right) => left === right,
+      ),
+      directoryPath: mergeSnapshotField(
+        baseSpace.directoryPath,
+        localSpace.directoryPath,
+        snapshotSpace?.directoryPath,
+        (left, right) => left === right,
+      ),
+      labelColor: mergeSnapshotField(
+        baseSpace.labelColor,
+        localSpace.labelColor,
+        snapshotSpace?.labelColor,
+        (left, right) => left === right,
+      ),
+      rect: mergeSnapshotField(
+        baseSpace.rect,
+        localSpace.rect,
+        snapshotSpace?.rect,
+        isSpaceRectEqual,
+      ),
       nodeIds,
-    })
+    }
+
+    mergedSpaces.push(mergedSpace)
   }
 
   for (const localSpace of options.localSpaces) {
@@ -170,14 +297,24 @@ function mergeWorkspaces(
     }
   }
 
-  const nodes = mergeNodes(base.nodes, local.nodes, deletedNodeIds)
+  const nodes = mergeNodes(
+    base.nodes,
+    local.nodes,
+    baseSnapshotWorkspace?.nodes ?? null,
+    deletedNodeIds,
+  )
   const validNodeIds = new Set(nodes.map(node => node.id))
 
   return {
     ...base,
     ...local,
     nodes,
-    spaces: mergeSpaces({ baseSpaces: base.spaces, localSpaces: local.spaces, validNodeIds }),
+    spaces: mergeSpaces({
+      baseSpaces: base.spaces,
+      localSpaces: local.spaces,
+      baseSnapshotSpaces: baseSnapshotWorkspace?.spaces ?? null,
+      validNodeIds,
+    }),
     viewport: base.viewport,
     isMinimapVisible: base.isMinimapVisible,
     activeSpaceId: base.activeSpaceId,
