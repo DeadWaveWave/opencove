@@ -238,6 +238,8 @@
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .workspace-space-switcher__item[data-cove-label-color] {
@@ -258,6 +260,7 @@
 .workspace-space-switcher__item-label {
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
 
 .workspace-space-switcher__worktree-badge {
@@ -310,7 +313,8 @@
 .workspace-canvas .react-flow__node.selected .terminal-node,
 .workspace-canvas .react-flow__node.selected .task-node,
 .workspace-canvas .react-flow__node.selected .note-node,
-.workspace-canvas .react-flow__node.selected .image-node {
+.workspace-canvas .react-flow__node.selected .image-node,
+.workspace-canvas .react-flow__node.selected .website-node {
   border-color: var(--cove-node-selection-border);
   box-shadow: var(--cove-node-selection-shadow);
 }

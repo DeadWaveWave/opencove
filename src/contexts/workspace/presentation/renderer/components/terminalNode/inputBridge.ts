@@ -29,6 +29,14 @@ export function isWindowsPlatform(platformInfo: PlatformInfo | undefined = navig
   return /win/i.test(platformInfo.platform ?? '') || /windows/i.test(platformInfo.userAgent ?? '')
 }
 
+export function isLinuxPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
+  if (!platformInfo) {
+    return false
+  }
+
+  return /linux/i.test(platformInfo.platform ?? '') || /linux/i.test(platformInfo.userAgent ?? '')
+}
+
 export function isWindowsTerminalCopyShortcut(
   event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
   platformInfo: PlatformInfo | undefined = navigator,
@@ -58,16 +66,23 @@ export function isWindowsTerminalPasteShortcut(
   return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
 }
 
-export function isLinuxPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
+export function isMacPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
   if (!platformInfo) {
     return false
   }
 
-  return (
-    !isWindowsPlatform(platformInfo) &&
-    !isMacPlatform(platformInfo) &&
-    /linux/i.test(platformInfo.platform ?? platformInfo.userAgent ?? '')
-  )
+  return /mac/i.test(platformInfo.platform ?? '') || /macintosh/i.test(platformInfo.userAgent ?? '')
+}
+
+export function isMacTerminalPasteShortcut(
+  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
+  platformInfo: PlatformInfo | undefined = navigator,
+): boolean {
+  if (!isMacPlatform(platformInfo) || event.ctrlKey || event.altKey) {
+    return false
+  }
+
+  return event.key.toLowerCase() === 'v' && event.metaKey && !event.shiftKey
 }
 
 export function isLinuxTerminalCopyShortcut(
@@ -88,34 +103,14 @@ export function isLinuxTerminalPasteShortcut(
   event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
   platformInfo: PlatformInfo | undefined = navigator,
 ): boolean {
-  if (!isLinuxPlatform(platformInfo) || event.metaKey || event.altKey) {
-    return false
-  }
-
-  if (event.key.toLowerCase() === 'v') {
-    return event.ctrlKey && event.shiftKey
-  }
-
-  return event.key === 'Insert' && event.shiftKey && !event.ctrlKey
-}
-
-export function isMacPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
-  if (!platformInfo) {
-    return false
-  }
-
-  return /mac/i.test(platformInfo.platform ?? '') || /macintosh/i.test(platformInfo.userAgent ?? '')
-}
-
-export function isMacTerminalPasteShortcut(
-  event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'>,
-  platformInfo: PlatformInfo | undefined = navigator,
-): boolean {
-  if (!isMacPlatform(platformInfo) || event.ctrlKey || event.altKey) {
-    return false
-  }
-
-  return event.key.toLowerCase() === 'v' && event.metaKey && !event.shiftKey
+  return (
+    isLinuxPlatform(platformInfo) &&
+    event.key.toLowerCase() === 'v' &&
+    event.ctrlKey &&
+    event.shiftKey &&
+    !event.metaKey &&
+    !event.altKey
+  )
 }
 
 function isTerminalFindShortcut(
@@ -254,35 +249,23 @@ export function handleTerminalCustomKeyEvent({
     return false
   }
 
-  if (event.type === 'keydown' && isLinuxTerminalCopyShortcut(event, platformInfo)) {
-    if (!terminal.hasSelection()) {
-      return true
-    }
-
-    const linuxSelection = terminal.getSelection()
-    if (linuxSelection.length === 0) {
-      return true
-    }
-
+  if (
+    event.type === 'keydown' &&
+    (isWindowsTerminalPasteShortcut(event, platformInfo) ||
+      isMacTerminalPasteShortcut(event, platformInfo) ||
+      isLinuxTerminalPasteShortcut(event, platformInfo))
+  ) {
     event.preventDefault()
     event.stopPropagation()
-    void copySelectedText(linuxSelection)
+    void pasteClipboardText({ terminal })
     return false
   }
 
-  if (event.type !== 'keydown' || !isWindowsTerminalCopyShortcut(event, platformInfo)) {
-    if (
-      event.type === 'keydown' &&
-      (isWindowsTerminalPasteShortcut(event, platformInfo) ||
-        isMacTerminalPasteShortcut(event, platformInfo) ||
-        isLinuxTerminalPasteShortcut(event, platformInfo))
-    ) {
-      event.preventDefault()
-      event.stopPropagation()
-      void pasteClipboardText({ terminal })
-      return false
-    }
-
+  if (
+    event.type !== 'keydown' ||
+    (!isWindowsTerminalCopyShortcut(event, platformInfo) &&
+      !isLinuxTerminalCopyShortcut(event, platformInfo))
+  ) {
     return true
   }
 
@@ -295,6 +278,8 @@ export function handleTerminalCustomKeyEvent({
     return true
   }
 
+  event.preventDefault()
+  event.stopPropagation()
   void copySelectedText(selection)
   return false
 }

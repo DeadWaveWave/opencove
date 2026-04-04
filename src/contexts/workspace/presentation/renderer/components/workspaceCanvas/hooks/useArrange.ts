@@ -1,7 +1,16 @@
 import { useCallback } from 'react'
-import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import {
+  getViewportForBounds,
+  useStore,
+  type Edge,
+  type Node,
+  type ReactFlowInstance,
+} from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type {
+  FocusNodeTargetZoom,
+  StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
   arrangeWorkspaceAll,
@@ -55,6 +64,7 @@ function summarizeWarnings(warnings: WorkspaceArrangeWarning[]): { skippedSpaceC
 
 export function useWorkspaceCanvasArrange({
   reactFlow,
+  focusNodeTargetZoom,
   nodesRef,
   spacesRef,
   setNodes,
@@ -64,6 +74,7 @@ export function useWorkspaceCanvasArrange({
   standardWindowSizeBucket,
 }: {
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
+  focusNodeTargetZoom: FocusNodeTargetZoom
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   setNodes: (
@@ -80,13 +91,20 @@ export function useWorkspaceCanvasArrange({
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
 } {
   const { t } = useTranslation()
+  const viewportWidth = useStore(state => state.width)
+  const viewportHeight = useStore(state => state.height)
+  const viewportMinZoom = useStore(state => state.minZoom)
+  const viewportMaxZoom = useStore(state => state.maxZoom)
 
   const commitArrange = useCallback(
-    (result: {
-      nodes: Node<TerminalNodeData>[]
-      spaces: WorkspaceSpaceState[]
-      didChange: boolean
-    }) => {
+    (
+      result: {
+        nodes: Node<TerminalNodeData>[]
+        spaces: WorkspaceSpaceState[]
+        didChange: boolean
+      },
+      options?: { focusSpaceId?: string },
+    ) => {
       if (!result.didChange) {
         return
       }
@@ -106,17 +124,51 @@ export function useWorkspaceCanvasArrange({
           : (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0)
 
       schedule(() => {
-        if (nodesRef.current.length === 0) {
+        if (options?.focusSpaceId) {
+          const space = spacesRef.current.find(item => item.id === options.focusSpaceId) ?? null
+          if (!space?.rect) {
+            return
+          }
+
+          const width = viewportWidth > 0 ? viewportWidth : DEFAULT_VIEWPORT_WIDTH
+          const height = viewportHeight > 0 ? viewportHeight : DEFAULT_VIEWPORT_HEIGHT
+          const maxZoom = Math.max(viewportMinZoom, Math.min(viewportMaxZoom, focusNodeTargetZoom))
+          const viewport = getViewportForBounds(
+            space.rect,
+            width,
+            height,
+            viewportMinZoom,
+            maxZoom,
+            0.16,
+          )
+
+          void reactFlow.setViewport(viewport, {
+            duration: resolveWorkspaceCanvasAnimationDuration(220),
+          })
           return
         }
 
-        void reactFlow.fitView({
-          padding: 0.16,
-          duration: resolveWorkspaceCanvasAnimationDuration(220),
-        })
+        if (nodesRef.current.length > 0) {
+          void reactFlow.fitView({
+            padding: 0.16,
+            duration: resolveWorkspaceCanvasAnimationDuration(220),
+          })
+        }
       })
     },
-    [nodesRef, onRequestPersistFlush, onSpacesChange, reactFlow, setNodes, spacesRef],
+    [
+      focusNodeTargetZoom,
+      nodesRef,
+      onRequestPersistFlush,
+      onSpacesChange,
+      reactFlow,
+      setNodes,
+      spacesRef,
+      viewportHeight,
+      viewportMaxZoom,
+      viewportMinZoom,
+      viewportWidth,
+    ],
   )
 
   const arrangeAll = useCallback(
@@ -180,7 +232,7 @@ export function useWorkspaceCanvasArrange({
         return
       }
 
-      commitArrange(result)
+      commitArrange(result, { focusSpaceId: spaceId })
     },
     [commitArrange, nodesRef, onShowMessage, spacesRef, standardWindowSizeBucket, t],
   )

@@ -102,6 +102,7 @@ function createWorkspace(id: string, options?: { hasAgent?: boolean }): Workspac
               note: null,
               image: null,
               document: null,
+              website: null,
             },
             type: 'default',
             measured: { width: 320, height: 240 },

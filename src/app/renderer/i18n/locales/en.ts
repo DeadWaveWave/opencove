@@ -1,6 +1,7 @@
 import { enMessages } from './en.messages'
 import { enSpaceExplorer } from './en.spaceExplorer'
 import { enSettingsPanel } from './en.settingsPanel'
+import { enWebsiteNode } from './en.websiteNode'
 
 export const en = {
   common: {
@@ -28,6 +29,7 @@ export const en = {
     unknownError: 'Unknown error',
     percentUnit: '%',
     pixelUnit: 'px',
+    minuteUnit: 'min',
   },
   taskPriorities: {
     low: 'Low',
@@ -263,6 +265,7 @@ export const en = {
     resizeWidth: 'Resize image width',
     resizeHeight: 'Resize image height',
   },
+  websiteNode: enWebsiteNode,
   terminalNode: {
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
@@ -296,6 +299,7 @@ export const en = {
   workspaceContextMenu: {
     newTerminal: 'New Terminal',
     newNote: 'New Note',
+    newWebsite: 'New Website',
     newTask: 'New Task',
     runAgent: 'Run Agent',
     arrange: 'Arrange',

@@ -35,6 +35,32 @@ describe('CoveSelect', () => {
     expect(screen.getByTestId('theme-select-trigger')).toHaveTextContent('Light')
   })
 
+  it('updates the highlighted option on hover', () => {
+    renderHarness()
+
+    fireEvent.click(screen.getByTestId('theme-select-trigger'))
+
+    const darkOption = screen.getByRole('option', { name: 'Dark' })
+    const lightOption = screen.getByRole('option', { name: 'Light' })
+
+    expect(darkOption).toHaveClass('cove-select__option--highlighted')
+    fireEvent.mouseEnter(lightOption)
+    expect(lightOption).toHaveClass('cove-select__option--highlighted')
+    expect(darkOption).not.toHaveClass('cove-select__option--highlighted')
+  })
+
+  it('moves the highlighted option with keyboard navigation', () => {
+    renderHarness()
+
+    const trigger = screen.getByTestId('theme-select-trigger')
+    fireEvent.click(trigger)
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+
+    expect(screen.getByRole('option', { name: 'Light' })).toHaveClass(
+      'cove-select__option--highlighted',
+    )
+  })
+
   it('does not open when disabled', () => {
     renderHarness(true)
 

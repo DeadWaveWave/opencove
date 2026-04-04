@@ -14,6 +14,7 @@ import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
+import { usePtySessionBindingsSync } from './hooks/usePtySessionBindingsSync'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
@@ -25,6 +26,9 @@ import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
+import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
+import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
+import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useAppStore } from './store/useAppStore'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
@@ -80,8 +84,11 @@ export default function App(): React.JSX.Element {
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()
 
+  usePtySessionBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
+  useWebsiteWindowEvents()
+  useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
@@ -97,6 +104,15 @@ export default function App(): React.JSX.Element {
   const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
+
+  useWebsiteWindowOcclusionSync(
+    isSettingsOpen ||
+      isCommandCenterOpen ||
+      isControlCenterOpen ||
+      isWorkspaceSearchOpen ||
+      isSpaceArchivesOpen ||
+      projectDeleteConfirmation !== null,
+  )
 
   const toggleCommandCenter = useCallback((): void => {
     setIsWorkspaceSearchOpen(false)
@@ -412,6 +428,8 @@ export default function App(): React.JSX.Element {
         onSelectSpace={handleWorkspaceActiveSpaceChange}
         isSpaceArchivesOpen={isSpaceArchivesOpen}
         canvasInputModeSetting={agentSettings.canvasInputMode}
+        canvasWheelBehaviorSetting={agentSettings.canvasWheelBehavior}
+        canvasWheelZoomModifierSetting={agentSettings.canvasWheelZoomModifier}
         onDeleteSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordRemove}
         onCloseSpaceArchives={closeSpaceArchives}
         projectContextMenu={projectContextMenu}

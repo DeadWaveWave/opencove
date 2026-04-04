@@ -28,23 +28,15 @@ export function WorkspaceCanvasInner({
   focusSequence,
 }: WorkspaceCanvasProps): React.JSX.Element {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
-  const {
-    nodeDragPointerAnchorRef,
-    nodeSpaceFramePreview,
-    nodeSpaceFramePreviewRef,
-    setNodeSpaceFramePreview,
-  } = workspaceCanvasHooks.useWorkspaceCanvasNodeDragPreviewState(workspaceId)
-
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
     spaces,
     viewport,
     persistedMinimapVisible,
   })
-  const exclusiveNodeDragAnchorIdRef =
-    workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
+  // prettier-ignore
+  const exclusiveNodeDragAnchorIdRef = workspaceCanvasHooks.useWorkspaceCanvasWorkspaceReset(workspaceId)
   const actionRefs = workspaceCanvasHooks.useWorkspaceCanvasActionRefs()
-  const idsRef = canvasState.selectedNodeIdsRef
   const nodeStore = workspaceCanvasHooks.useWorkspaceCanvasNodesStore({
     nodes: canvasState.flowNodes,
     spacesRef: canvasState.spacesRef,
@@ -53,6 +45,16 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+  })
+  const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
+    workspaceId,
+    spacesRef: canvasState.spacesRef,
+    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
+    dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
+    magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
+    setSnapGuides: canvasState.setSnapGuides,
+    onSpacesChange,
+    onRequestPersistFlush,
   })
   const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
@@ -82,6 +84,7 @@ export function WorkspaceCanvasInner({
     activeSpaceId,
     onActiveSpaceChange,
     workspacePath,
+    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     reactFlow,
     nodes: canvasState.flowNodes,
     nodesRef: nodeStore.nodesRef,
@@ -116,6 +119,7 @@ export function WorkspaceCanvasInner({
       setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     })
   const {
+    finalizeDraggedNodeDrop,
     handleNodeDragStart,
     handleSelectionDragStart,
     handleNodeDragStop,
@@ -138,8 +142,8 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     hideWorktreeMismatchDropWarning: agentSettings.hideWorktreeMismatchDropWarning === true,
-    nodeDragPointerAnchorRef,
-    nodeSpaceFramePreviewRef,
+    nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
+    nodeSpaceFramePreviewRef: nodeDragSession.nodeSpaceFramePreviewRef,
   })
   const {
     buildAgentNodeTitle,
@@ -205,6 +209,8 @@ export function WorkspaceCanvasInner({
     handleCanvasWheelCapture,
   } = workspaceCanvasHooks.useWorkspaceCanvasInputMode({
     canvasInputModeSetting: agentSettings.canvasInputMode,
+    canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior,
+    canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier,
     detectedCanvasInputMode: canvasState.detectedCanvasInputMode,
     inputModalityStateRef: canvasState.inputModalityStateRef,
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
@@ -253,6 +259,7 @@ export function WorkspaceCanvasInner({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
+    createWebsiteNodeFromContextMenu,
     handleCanvasPaste,
     handleCanvasDragOver,
     handleCanvasDrop,
@@ -261,6 +268,8 @@ export function WorkspaceCanvasInner({
     isTrackpadCanvasMode,
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
+    websiteWindowsEnabled: agentSettings.websiteWindowPolicy.enabled,
+    websiteWindowPasteEnabled: agentSettings.experimentalWebsiteWindowPasteEnabled,
     isShiftPressedRef: canvasState.isShiftPressedRef,
     selectionDraftRef: canvasState.selectionDraftRef,
     setSelectionDraftUi: canvasState.setSelectionDraftUi,
@@ -284,6 +293,7 @@ export function WorkspaceCanvasInner({
     createNoteNode: nodeStore.createNoteNode,
     onShowMessage,
     createImageNode: nodeStore.createImageNode,
+    createWebsiteNode: nodeStore.createWebsiteNode,
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     enabled: shortcutsEnabled,
@@ -325,6 +335,7 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
   })
   workspaceCanvasHooks.useWorkspaceCanvasRuntimeBindings({
     setNodes: nodeStore.setNodes,
@@ -334,6 +345,9 @@ export function WorkspaceCanvasInner({
     closeNode: requestNodeClose,
     resizeNode: nodeStore.resizeNode,
     updateNoteText: nodeStore.updateNoteText,
+    updateWebsiteUrl: nodeStore.updateWebsiteUrl,
+    setWebsitePinned: nodeStore.setWebsitePinned,
+    setWebsiteSession: nodeStore.setWebsiteSession,
     updateNodeScrollback: nodeStore.updateNodeScrollback,
     updateTerminalTitle: nodeStore.updateTerminalTitle,
     renameTerminalTitle: nodeStore.renameTerminalTitle,
@@ -350,16 +364,9 @@ export function WorkspaceCanvasInner({
     normalizePosition: nodeStore.normalizePosition,
     applyPendingScrollbacks: nodeStore.applyPendingScrollbacks,
     isNodeDraggingRef: nodeStore.isNodeDraggingRef,
-    spacesRef: canvasState.spacesRef,
-    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     dragSelectedSpaceIdsRef: canvasState.dragSelectedSpaceIdsRef,
-    magneticSnappingEnabledRef: canvasState.magneticSnappingEnabledRef,
-    setSnapGuides: canvasState.setSnapGuides,
     exclusiveNodeDragAnchorIdRef,
-    onSpacesChange,
-    onRequestPersistFlush,
-    setSpaceFramePreview: setNodeSpaceFramePreview,
-    nodeDragPointerAnchorRef,
+    nodeDragSession,
   })
   const {
     taskTitleProviderLabel,
@@ -393,8 +400,11 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     reactFlow,
+    nodeDragSession,
+    finalizeDraggedNodeDrop,
     createDocumentNode: nodeStore.createDocumentNode,
     createImageNode: nodeStore.createImageNode,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
   })
   return (
     <WorkspaceCanvasView
@@ -428,7 +438,7 @@ export function WorkspaceCanvasInner({
       selectionDraft={canvasState.selectionDraftUi}
       snapGuides={canvasState.snapGuides}
       spaceVisuals={spaceVisuals}
-      spaceFramePreview={spaceFramePreview ?? nodeSpaceFramePreview}
+      spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
       selectedSpaceIds={canvasState.selectedSpaceIds}
       handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
       editingSpaceId={editingSpaceId}
@@ -452,6 +462,7 @@ export function WorkspaceCanvasInner({
       onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
       createTerminalNode={createTerminalNode}
       createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+      createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
       arrangeAll={arrangeAll}
       arrangeCanvas={arrangeCanvas}
       arrangeInSpace={arrangeInSpace}
@@ -464,7 +475,7 @@ export function WorkspaceCanvasInner({
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
       setSelectedNodeLabelColorOverride={override =>
-        nodeStore.setNodeLabelColorOverride(idsRef.current, override)
+        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIdsRef.current, override)
       }
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}

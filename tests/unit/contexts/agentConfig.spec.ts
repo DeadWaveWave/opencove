@@ -22,6 +22,8 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowBranch).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.standbyBannerShowPullRequest).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
+    expect(DEFAULT_AGENT_SETTINGS.canvasWheelBehavior).toBe('zoom')
+    expect(DEFAULT_AGENT_SETTINGS.canvasWheelZoomModifier).toBe('primary')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
     expect(DEFAULT_AGENT_SETTINGS.uiFontSize).toBe(18)

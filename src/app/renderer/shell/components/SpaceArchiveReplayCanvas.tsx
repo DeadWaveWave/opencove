@@ -21,13 +21,21 @@ import {
   type SpaceArchiveReplayNode,
 } from './SpaceArchiveReplayNodes'
 import { useSpaceArchiveReplayWheelGestures } from './useSpaceArchiveReplayWheelGestures'
+import type {
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+} from '@contexts/settings/domain/agentSettings'
 
 export function SpaceArchiveReplayCanvas({
   record,
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
+  canvasWheelZoomModifierSetting,
 }: {
   record: SpaceArchiveRecord
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: CanvasWheelBehavior
+  canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
 }): React.JSX.Element {
   const { t } = useTranslation()
   const nodes = React.useMemo(() => toSpaceArchiveReplayNodes(record), [record])
@@ -39,6 +47,8 @@ export function SpaceArchiveReplayCanvas({
   const { resolvedCanvasInputMode, useManualCanvasWheelGestures, handleWheelCapture } =
     useSpaceArchiveReplayWheelGestures({
       canvasInputModeSetting,
+      canvasWheelBehaviorSetting,
+      canvasWheelZoomModifierSetting,
       canvasRef,
       reactFlowInstanceRef,
       viewportRef,

@@ -7,7 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Workspace canvas: experimental website window nodes with opt-in settings, shared-session profile modes, snapshot-backed warm/cold lifecycle, and in-canvas navigation handling. (#141)
 - Space Explorer: VS Code-like file and folder operations, including drag-move, context menu actions, cut/copy/paste, rename, delete, and copy path. (#123)
+- Space Explorer: side-by-side quick preview with drag-to-materialize document nodes, line numbers, theme-aware styling, and stabilized formal open/close behavior. (#143)
 - Sidebar: drag-to-reorder workspace projects with dnd-kit, persisted sort order, and migration backfill for existing databases. (#87)
 - Workspace canvas: arrange all / arrange canvas / arrange in space actions. (#42)
 - Workspace canvas: Arrange By menu (scope, ordering, space sizing, magnetic snapping). (#42)
@@ -26,6 +28,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: Label colors for Spaces and windows, plus a single-color filter. (#54)
 - Settings: configurable focus target zoom with slider-only live preview and neutral 100% marker. (#56)
 - Settings: standard window size bucket (compact/regular/large) for node create/arrange sizing (replaces runtime auto-sizing). (#70)
+- Settings: configurable canvas mouse-wheel behavior (zoom vs pan) with a configurable zoom modifier (Cmd/Ctrl+wheel by default). (#127)
 - Task: prompt templates for task requirement prefix injection (Global + Project scopes). (#71)
 - Sync-first: multi-client snapshot + revision + SSE `/events` for the worker control surface (Desktop/Web/CLI). (#122)
 
@@ -50,11 +53,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: warn before closing the last node in a space when it would become empty and auto-close, using the shared warning dialog shell. (#66)
 
 ### 🐞 Fixed
+- Website window: keep embedded pages clipped inside canvas nodes during zoom/occlusion, preserve stable 100% page scale, and route in-page/new-window navigation back into OpenCove. (#141)
+- Startup + shortcuts: avoid non-packaged locale hydration stalls and stabilize `Cmd/Ctrl+G` space creation when selected terminal nodes are involved. (#141)
+- Terminal: Added Linux terminal-node shortcuts for `Ctrl+Shift+C` copy and `Ctrl+Shift+V` paste while preserving plain `Ctrl+C` as `SIGINT`. (#142)
 - Agent windows now inherit terminal profile runtime/env semantics during launch, recovery, and fallback; Windows raw-TUI wheel handling is covered by regression tests. (#110)
 - UI: unified shared menu overlays to fix prompt template, task session, and related context-menu offset issues. (#121)
 - Persistence: Repair cumulative SQLite schema upgrades and auto-heal mis-versioned local databases so workspace state saves no longer fail after upgrading from older installs. (#76)
 - Spaces: New windows created from a crowded space now preserve existing window layout, expand the space only as needed, and keep the viewport centered on the final position. (#62)
 - Settings: update status now summarizes updater feed parsing errors instead of dumping raw parser/CSP output. (#67)
+- macOS: Disable in-app update checks for unsigned/ad-hoc builds and show actionable guidance instead of failing code signature validation. (#128)
 - Workspace canvas: fix pane context menu rendering regression and harden right-click coordinates. (#42)
 - Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
 - Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
@@ -71,12 +78,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Canvas: Stabilized auto input-mode detection to default to mouse semantics until high-confidence trackpad gestures are observed. (#47)
 - Worktree window: Fixed light theme text colors in the create/archive dialog. (#47)
 - Worktree create: Detect repos without commits and show an actionable error instead of failing to create the worktree. (#120)
+- Worktree create: Branch dropdown no longer jumps to the top while scrolling. (#126)
 - Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)
 - Improved canvas drag smoothness under heavy terminal output by throttling terminal screen writes during viewport interaction while keeping output live. (#50)
 - Normalized node resize and terminal selection drags while the canvas is zoomed. (#56)
 - Stabilized and optimized space-bounded push-away reflow during node dragging to prevent edge overlaps/stacking. (#57)
 - Workspace canvas: arrange is now aspect-aware, avoids large empty gaps, and auto-fits the viewport after arranging; created-time ordering is deterministic across node types. (#72)
+- Workspace canvas: arrange-in-space now focuses the space bounds and caps zoom at the configured focus target zoom. (#131)
 - Terminal: Prevented `node-pty` native aborts from crashing the whole app by isolating PTY into a utility process. (#75)
+- Spaces: Fixed Space pills truncating and made worktree branch/PR chips refresh without switching projects. (#129)
+- Terminal: Prevent focus loss and font resets when submitting commands or after clicking header then terminal body. (#130)
 
 ---
 

@@ -1,6 +1,7 @@
 import {
   classifyCurrentWheelInputMode,
   inferCanvasInputModalityFromWheel,
+  isPinchLikeZoomWheelSample,
   type CanvasInputModalityState,
   type DetectedCanvasInputMode,
   type WheelInputSample,
@@ -14,11 +15,13 @@ import type {
 
 export interface ResolveCanvasWheelGestureParams {
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: 'zoom' | 'pan'
   resolvedCanvasInputMode: DetectedCanvasInputMode
   inputModalityState: CanvasInputModalityState
   trackpadGestureLock: TrackpadGestureLockState | null
   wheelTarget: TrackpadGestureTarget
   isTargetWithinCanvas: boolean
+  wheelZoomModifierKey: 'ctrl' | 'meta' | 'alt'
   sample: WheelInputSample
   lockTimestamp: number
 }
@@ -60,22 +63,36 @@ function resolveFixedModeDecision(
 
 export function resolveCanvasWheelGesture({
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
   resolvedCanvasInputMode,
   inputModalityState,
   trackpadGestureLock,
   wheelTarget,
   isTargetWithinCanvas,
+  wheelZoomModifierKey,
   sample,
   lockTimestamp,
 }: ResolveCanvasWheelGestureParams): CanvasWheelGestureDecision {
   const activeLock = resolveActiveGestureLock(trackpadGestureLock, lockTimestamp)
   const isCanvasSurfaceEvent = isTargetWithinCanvas && wheelTarget === 'canvas'
+  const isPinchZoom = isPinchLikeZoomWheelSample(sample)
+  const isZoomModifierPressed =
+    wheelZoomModifierKey === 'ctrl'
+      ? sample.ctrlKey
+      : wheelZoomModifierKey === 'meta'
+        ? sample.metaKey
+        : sample.altKey
 
   if (canvasInputModeSetting === 'mouse') {
     const fixedModeDecision = resolveFixedModeDecision(canvasInputModeSetting, inputModalityState)
 
     return {
-      canvasAction: null,
+      canvasAction:
+        canvasWheelBehaviorSetting === 'pan' && isCanvasSurfaceEvent
+          ? isPinchZoom || isZoomModifierPressed
+            ? 'zoom'
+            : 'pan'
+          : null,
       ...fixedModeDecision,
     }
   }
@@ -102,14 +119,27 @@ export function resolveCanvasWheelGesture({
 
   if (eventMode === 'mouse') {
     return {
-      canvasAction: isCanvasSurfaceEvent ? 'zoom' : null,
+      canvasAction: isCanvasSurfaceEvent
+        ? canvasWheelBehaviorSetting === 'pan'
+          ? isPinchZoom || isZoomModifierPressed
+            ? 'zoom'
+            : 'pan'
+          : 'zoom'
+        : null,
       nextDetectedCanvasInputMode,
       nextInputModalityState,
       nextTrackpadGestureLock: null,
     }
   }
 
-  const action: TrackpadGestureAction = sample.ctrlKey ? 'pinch' : 'pan'
+  const action: TrackpadGestureAction =
+    canvasWheelBehaviorSetting === 'pan'
+      ? isPinchZoom || isZoomModifierPressed
+        ? 'pinch'
+        : 'pan'
+      : isPinchZoom
+        ? 'pinch'
+        : 'pan'
   const canContinueCanvasLock =
     activeLock !== null && activeLock.action === action && activeLock.target === 'canvas'
 

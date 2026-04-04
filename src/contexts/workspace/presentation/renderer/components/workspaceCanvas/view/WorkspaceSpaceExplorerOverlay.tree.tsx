@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, FileText, Folder } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { FileSystemEntry } from '@shared/contracts/dto'
 import { shouldStopWheelPropagation } from '../../../components/taskNode/helpers'
+import { isExplorerOverlayInteractionSuppressed } from '../explorerInteractionGuard'
 import {
   resolveParentDirectoryUri,
   type SpaceExplorerClipboardItem,
@@ -33,7 +34,9 @@ export function WorkspaceSpaceExplorerTree({
   explorerClipboard,
   onRefresh,
   onRootContextMenu,
-  onEntryActivate,
+  onEntrySelect,
+  onEntryPreview,
+  onEntryOpen,
   onEntryContextMenu,
   onRenameDraftChange,
   onRenameSubmit,
@@ -58,7 +61,9 @@ export function WorkspaceSpaceExplorerTree({
   explorerClipboard: SpaceExplorerClipboardItem | null
   onRefresh: () => void
   onRootContextMenu: (point: { x: number; y: number }) => void
-  onEntryActivate: (entry: FileSystemEntry) => void
+  onEntrySelect: (entry: FileSystemEntry) => void
+  onEntryPreview: (entry: FileSystemEntry) => void
+  onEntryOpen: (entry: FileSystemEntry) => void
   onEntryContextMenu: (entry: FileSystemEntry, point: { x: number; y: number }) => void
   onRenameDraftChange: (value: string) => void
   onRenameSubmit: () => void
@@ -69,6 +74,16 @@ export function WorkspaceSpaceExplorerTree({
   onRequestDropMove: (targetDirectoryUri: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const pendingFilePreviewTimerRef = React.useRef<number | null>(null)
+  const clearPendingFilePreview = React.useCallback(() => {
+    if (pendingFilePreviewTimerRef.current !== null) {
+      window.clearTimeout(pendingFilePreviewTimerRef.current)
+      pendingFilePreviewTimerRef.current = null
+    }
+  }, [])
+
+  React.useEffect(() => clearPendingFilePreview, [clearPendingFilePreview])
+
   const resolveRowDropDirectoryUri = React.useCallback(
     (row: SpaceExplorerRow): string =>
       row.kind === 'state'
@@ -304,15 +319,39 @@ export function WorkspaceSpaceExplorerTree({
             style={{ paddingLeft: `${10 + row.depth * 14}px` }}
             onClick={event => {
               event.stopPropagation()
-              onEntryActivate(row.entry)
+              clearPendingFilePreview()
+              if (isExplorerOverlayInteractionSuppressed()) {
+                return
+              }
+
+              if (row.entry.kind === 'directory') {
+                onEntryPreview(row.entry)
+                return
+              }
+
+              onEntrySelect(row.entry)
+              pendingFilePreviewTimerRef.current = window.setTimeout(() => {
+                pendingFilePreviewTimerRef.current = null
+                onEntryPreview(row.entry)
+              }, 220)
+            }}
+            onDoubleClick={event => {
+              event.stopPropagation()
+              clearPendingFilePreview()
+              if (isExplorerOverlayInteractionSuppressed()) {
+                return
+              }
+              onEntryOpen(row.entry)
             }}
             onContextMenu={event => {
               event.preventDefault()
               event.stopPropagation()
+              clearPendingFilePreview()
               onEntryContextMenu(row.entry, { x: event.clientX, y: event.clientY })
             }}
             onDragStart={event => {
               event.stopPropagation()
+              clearPendingFilePreview()
               event.dataTransfer.effectAllowed = 'move'
               onEntryDragStart(row.entry)
             }}

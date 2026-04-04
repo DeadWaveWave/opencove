@@ -13,8 +13,14 @@ import { resolveCanvasWheelGesture } from '@contexts/workspace/presentation/rend
 import type { TrackpadGestureLockState } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/types'
 import {
   createCanvasInputModalityState,
+  isPinchLikeZoomWheelSample,
   type DetectedCanvasInputMode,
+  type WheelInputSample,
 } from '@contexts/workspace/presentation/renderer/utils/inputModality'
+import type {
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+} from '@contexts/settings/domain/agentSettings'
 import type { SpaceArchiveReplayNode } from './SpaceArchiveReplayNodes'
 
 function isMacLikePlatform(): boolean {
@@ -35,17 +41,45 @@ function isMacLikePlatform(): boolean {
 }
 
 function resolveWheelZoomDelta(event: WheelEvent): number {
-  const factor = event.ctrlKey && isMacLikePlatform() ? 10 : 1
+  const sample: WheelInputSample = {
+    deltaX: event.deltaX,
+    deltaY: event.deltaY,
+    deltaMode: event.deltaMode,
+    altKey: event.altKey,
+    ctrlKey: event.ctrlKey,
+    metaKey: event.metaKey,
+    shiftKey: event.shiftKey,
+    timeStamp: Number.isFinite(event.timeStamp) && event.timeStamp >= 0 ? event.timeStamp : 0,
+  }
+  const factor = isMacLikePlatform() && isPinchLikeZoomWheelSample(sample) ? 10 : 1
   return -event.deltaY * (event.deltaMode === 1 ? 0.05 : event.deltaMode ? 1 : 0.002) * factor
+}
+
+function resolveEffectiveWheelZoomModifierKey(
+  setting: CanvasWheelZoomModifier,
+  platform: string | undefined,
+): 'ctrl' | 'meta' | 'alt' {
+  switch (setting) {
+    case 'primary':
+      return platform === 'darwin' ? 'meta' : 'ctrl'
+    case 'ctrl':
+      return 'ctrl'
+    case 'alt':
+      return 'alt'
+  }
 }
 
 export function useSpaceArchiveReplayWheelGestures({
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
+  canvasWheelZoomModifierSetting,
   canvasRef,
   reactFlowInstanceRef,
   viewportRef,
 }: {
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: CanvasWheelBehavior
+  canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
   canvasRef: React.MutableRefObject<HTMLDivElement | null>
   reactFlowInstanceRef: React.MutableRefObject<ReactFlowInstance<SpaceArchiveReplayNode> | null>
   viewportRef: React.MutableRefObject<Viewport>
@@ -63,7 +97,8 @@ export function useSpaceArchiveReplayWheelGestures({
     canvasInputModeSetting === 'auto'
       ? detectedCanvasInputMode
       : (canvasInputModeSetting as DetectedCanvasInputMode)
-  const useManualCanvasWheelGestures = canvasInputModeSetting !== 'mouse'
+  const useManualCanvasWheelGestures =
+    canvasInputModeSetting !== 'mouse' || canvasWheelBehaviorSetting === 'pan'
 
   const handleWheelCapture = React.useCallback(
     (event: WheelEvent) => {
@@ -71,6 +106,14 @@ export function useSpaceArchiveReplayWheelGestures({
         return
       }
 
+      const platform =
+        typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
+          ? window.opencoveApi.meta.platform
+          : undefined
+      const effectiveWheelZoomModifierKey = resolveEffectiveWheelZoomModifierKey(
+        canvasWheelZoomModifierSetting,
+        platform,
+      )
       const reactFlow = reactFlowInstanceRef.current
       const canvasElement = canvasRef.current
 
@@ -90,16 +133,21 @@ export function useSpaceArchiveReplayWheelGestures({
 
       const decision = resolveCanvasWheelGesture({
         canvasInputModeSetting,
+        canvasWheelBehaviorSetting,
         resolvedCanvasInputMode,
         inputModalityState: inputModalityStateRef.current,
         trackpadGestureLock: trackpadGestureLockRef.current,
         wheelTarget,
         isTargetWithinCanvas,
+        wheelZoomModifierKey: effectiveWheelZoomModifierKey,
         sample: {
           deltaX: event.deltaX,
           deltaY: event.deltaY,
           deltaMode: event.deltaMode,
+          altKey: event.altKey,
           ctrlKey: event.ctrlKey,
+          metaKey: event.metaKey,
+          shiftKey: event.shiftKey,
           timeStamp: event.timeStamp,
         },
         lockTimestamp,
@@ -176,6 +224,8 @@ export function useSpaceArchiveReplayWheelGestures({
     },
     [
       canvasInputModeSetting,
+      canvasWheelBehaviorSetting,
+      canvasWheelZoomModifierSetting,
       canvasRef,
       reactFlowInstanceRef,
       resolvedCanvasInputMode,

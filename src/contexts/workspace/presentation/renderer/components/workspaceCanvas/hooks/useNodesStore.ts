@@ -3,9 +3,9 @@ import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
+import { useWebsiteWindowStore } from '../../../store/useWebsiteWindowStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
-import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollbackSchedule'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
@@ -13,6 +13,7 @@ import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
+import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
@@ -152,6 +153,15 @@ export function useWorkspaceCanvasNodesStore({
         }
       }
 
+      if (target?.data.kind === 'website') {
+        const closeWebsiteWindow = window.opencoveApi?.websiteWindow?.close
+        if (typeof closeWebsiteWindow === 'function') {
+          await closeWebsiteWindow({ nodeId }).catch(() => undefined)
+        }
+
+        useWebsiteWindowStore.getState().clearNode(nodeId)
+      }
+
       setNodes(prevNodes => {
         const now = new Date().toISOString()
         return removeNodeWithRelations({
@@ -234,7 +244,6 @@ export function useWorkspaceCanvasNodesStore({
         }
 
         setNodeScrollback(nodeId, pending)
-        scheduleNodeScrollbackWrite(nodeId, pending)
       }
 
       pendingScrollbacks.clear()
@@ -256,7 +265,6 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       setNodeScrollback(nodeId, scrollback)
-      scheduleNodeScrollbackWrite(nodeId, scrollback)
     },
     [setNodeScrollback],
   )
@@ -380,6 +388,8 @@ export function useWorkspaceCanvasNodesStore({
     },
     [setNodes],
   )
+  const { updateWebsiteUrl, setWebsitePinned, setWebsiteSession } =
+    useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
 
   const setNodeLabelColorOverride = useCallback(
     (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => {
@@ -428,6 +438,7 @@ export function useWorkspaceCanvasNodesStore({
     createTaskNode,
     createImageNode,
     createDocumentNode,
+    createWebsiteNode,
   } = useWorkspaceCanvasNodeCreation({
     nodesRef,
     spacesRef,
@@ -456,10 +467,14 @@ export function useWorkspaceCanvasNodesStore({
     renameTerminalTitle,
     setNodeLabelColorOverride,
     updateNoteText,
+    updateWebsiteUrl,
+    setWebsitePinned,
+    setWebsiteSession,
     createNodeForSession,
     createNoteNode,
     createTaskNode,
     createImageNode,
     createDocumentNode,
+    createWebsiteNode,
   }
 }

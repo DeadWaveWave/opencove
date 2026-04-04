@@ -1,6 +1,9 @@
 import { expect, type Page } from '@playwright/test'
 import path from 'path'
-import type { TaskAgentSessionRecord } from '../../src/contexts/workspace/presentation/renderer/types'
+import type {
+  TaskAgentSessionRecord,
+  WebsiteNodeData,
+} from '../../src/contexts/workspace/presentation/renderer/types'
 import { createTestUserDataDir, launchApp } from './workspace-canvas.app'
 import {
   buildEchoSequenceCommand,
@@ -51,6 +54,7 @@ export interface SeedTaskData {
 }
 
 export type SeedNoteData = { text: string }
+export type SeedWebsiteData = WebsiteNodeData
 
 export interface SeedNode {
   id: string
@@ -58,7 +62,7 @@ export interface SeedNode {
   position: { x: number; y: number }
   width: number
   height: number
-  kind?: 'terminal' | 'agent' | 'task' | 'note'
+  kind?: 'terminal' | 'agent' | 'task' | 'note' | 'website'
   status?: 'running' | 'standby' | 'exited' | 'failed' | 'stopped' | 'restoring' | null
   startedAt?: string | null
   endedAt?: string | null
@@ -69,7 +73,7 @@ export interface SeedNode {
   executionDirectory?: string | null
   expectedDirectory?: string | null
   agent?: SeedAgentData | null
-  task?: SeedTaskData | SeedNoteData | null
+  task?: SeedTaskData | SeedNoteData | SeedWebsiteData | null
 }
 
 export interface SeedWorkspace {

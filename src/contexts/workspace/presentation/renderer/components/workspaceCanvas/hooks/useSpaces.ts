@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Node, ReactFlowInstance } from '@xyflow/react'
+import { getViewportForBounds, useStore, type Node, type ReactFlowInstance } from '@xyflow/react'
+import type { FocusNodeTargetZoom } from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -12,11 +13,15 @@ import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
 import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
 
+const DEFAULT_VIEWPORT_WIDTH = 1440
+const DEFAULT_VIEWPORT_HEIGHT = 900
+
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
   activeSpaceId: string | null
   onActiveSpaceChange: (spaceId: string | null) => void
   workspacePath: string
+  focusNodeTargetZoom: FocusNodeTargetZoom
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -40,6 +45,7 @@ export function useWorkspaceCanvasSpaces({
   activeSpaceId,
   onActiveSpaceChange,
   workspacePath,
+  focusNodeTargetZoom,
   reactFlow,
   nodes,
   nodesRef,
@@ -74,6 +80,10 @@ export function useWorkspaceCanvasSpaces({
   const spaceRenameInputRef = useRef<HTMLInputElement>(null)
   const lastAppliedWorkspaceIdRef = useRef<string | null>(null)
   const lastAppliedActiveSpaceIdRef = useRef<string | null | undefined>(undefined)
+  const viewportWidth = useStore(state => state.width)
+  const viewportHeight = useStore(state => state.height)
+  const viewportMinZoom = useStore(state => state.minZoom)
+  const viewportMaxZoom = useStore(state => state.maxZoom)
 
   useLayoutEffect(() => {
     spacesRef.current = spaces
@@ -253,17 +263,56 @@ export function useWorkspaceCanvasSpaces({
 
   const focusSpaceInViewport = useCallback(
     (spaceId: string): void => {
-      const targetSpace = spaceVisuals.find(space => space.id === spaceId)
-      if (!targetSpace) {
+      const space = spacesRef.current.find(item => item.id === spaceId) ?? null
+      if (!space) {
         return
       }
 
-      void reactFlow.fitBounds(targetSpace.rect, {
-        padding: 0.16,
+      const rect =
+        space.rect ??
+        (() => {
+          const nodeById = new Map(nodesRef.current.map(node => [node.id, node]))
+          const ownedNodes = space.nodeIds
+            .map(nodeId => nodeById.get(nodeId))
+            .filter((node): node is Node<TerminalNodeData> => Boolean(node))
+
+          if (ownedNodes.length === 0) {
+            return null
+          }
+
+          return computeSpaceRectFromNodes(
+            ownedNodes.map(node => ({
+              x: node.position.x,
+              y: node.position.y,
+              width: node.data.width,
+              height: node.data.height,
+            })),
+          )
+        })()
+
+      if (!rect) {
+        return
+      }
+
+      const width = viewportWidth > 0 ? viewportWidth : DEFAULT_VIEWPORT_WIDTH
+      const height = viewportHeight > 0 ? viewportHeight : DEFAULT_VIEWPORT_HEIGHT
+      const maxZoom = Math.max(viewportMinZoom, Math.min(viewportMaxZoom, focusNodeTargetZoom))
+      const nextViewport = getViewportForBounds(rect, width, height, viewportMinZoom, maxZoom, 0.16)
+
+      void reactFlow.setViewport(nextViewport, {
         duration: resolveWorkspaceCanvasAnimationDuration(220),
       })
     },
-    [reactFlow, spaceVisuals],
+    [
+      focusNodeTargetZoom,
+      nodesRef,
+      reactFlow,
+      spacesRef,
+      viewportHeight,
+      viewportMaxZoom,
+      viewportMinZoom,
+      viewportWidth,
+    ],
   )
 
   const focusAllInViewport = useCallback((): void => {
