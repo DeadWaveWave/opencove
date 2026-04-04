@@ -29,10 +29,37 @@ interface DragMouseSession {
   release(): Promise<void>
 }
 
+export interface LocatorClientRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 async function releaseHeldModifier(window: Page, holdsShift: boolean): Promise<void> {
   if (holdsShift) {
     await window.keyboard.up('Shift').catch(() => undefined)
   }
+}
+
+export async function readLocatorClientRect(locator: Locator): Promise<LocatorClientRect> {
+  await expect(locator).toBeVisible()
+
+  const rect = await locator.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    return {
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+    }
+  })
+
+  if (rect.width <= 0 || rect.height <= 0) {
+    throw new Error('locator client rect unavailable')
+  }
+
+  return rect
 }
 
 export async function beginDragMouse(
@@ -154,15 +181,8 @@ export async function dragLocatorTo(
     steps?: number
   } = {},
 ): Promise<void> {
-  const sourceBox = await source.boundingBox()
-  if (!sourceBox) {
-    throw new Error('source locator bounding box unavailable')
-  }
-
-  const targetBox = await target.boundingBox()
-  if (!targetBox) {
-    throw new Error('target locator bounding box unavailable')
-  }
+  const sourceBox = await readLocatorClientRect(source)
+  const targetBox = await readLocatorClientRect(target)
 
   const startX = sourceBox.x + (options.sourcePosition?.x ?? sourceBox.width / 2)
   const startY = sourceBox.y + (options.sourcePosition?.y ?? sourceBox.height / 2)

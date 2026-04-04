@@ -15,7 +15,12 @@ import {
 export const testWorkspacePath = path.resolve(__dirname, '../../')
 export const storageKey = 'opencove:m0:workspace-state'
 export const seededWorkspaceId = 'workspace-seeded'
-export { beginDragMouse, dragLocatorTo, dragMouse } from './workspace-canvas.gestures'
+export {
+  beginDragMouse,
+  dragLocatorTo,
+  dragMouse,
+  readLocatorClientRect,
+} from './workspace-canvas.gestures'
 export {
   buildEchoSequenceCommand,
   buildNodeEvalCommand,
