@@ -127,28 +127,6 @@ export function WorkerSection(): React.JSX.Element {
     }
   }
 
-  const openLocalWebUi = async (): Promise<void> => {
-    if (!localConnection) {
-      return
-    }
-
-    setError(null)
-    setIsBusy(true)
-
-    try {
-      const url = await window.opencoveApi.worker.getWebUiUrl()
-      if (!url) {
-        return
-      }
-
-      window.open(url)
-    } catch (caughtError) {
-      setError(toErrorMessage(caughtError))
-    } finally {
-      setIsBusy(false)
-    }
-  }
-
   const copyLocalBaseUrl = async (): Promise<void> => {
     if (!localConnection) {
       return
@@ -464,22 +442,6 @@ export function WorkerSection(): React.JSX.Element {
                   data-testid="settings-worker-local-copy-token"
                 >
                   {t('settingsPanel.worker.local.copyToken')}
-                </button>
-              </div>
-            </div>
-
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.local.webUiLabel')}</strong>
-              </div>
-              <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={() => void openLocalWebUi()}
-                  data-testid="settings-worker-local-open-web-ui"
-                >
-                  {t('settingsPanel.worker.local.openWebUi')}
                 </button>
               </div>
             </div>

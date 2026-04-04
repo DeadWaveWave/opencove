@@ -1,6 +1,7 @@
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { WebsiteWindowPolicy } from '@shared/contracts/dto'
+import type { HomeWorkerConfigDto, WebsiteWindowPolicy, WorkerStatusResult } from '@shared/contracts/dto'
+import { toErrorMessage } from './workerSectionUtils'
 
 export function ExperimentalSection({
   websiteWindowPolicy,
@@ -15,6 +16,10 @@ export function ExperimentalSection({
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [keepAliveHostDraft, setKeepAliveHostDraft] = useState('')
+  const [workerConfig, setWorkerConfig] = useState<HomeWorkerConfigDto | null>(null)
+  const [workerStatus, setWorkerStatus] = useState<WorkerStatusResult | null>(null)
+  const [workerWebUiError, setWorkerWebUiError] = useState<string | null>(null)
+  const [workerWebUiBusy, setWorkerWebUiBusy] = useState(false)
 
   const updateWebsiteWindowPolicy = useCallback(
     (patch: Partial<WebsiteWindowPolicy>) => {
@@ -52,12 +57,133 @@ export function ExperimentalSection({
     setKeepAliveHostDraft('')
   }, [keepAliveHostDraft, updateWebsiteWindowPolicy, websiteWindowPolicy.keepAliveHosts])
 
+  const loadWorkerWebUiState = useCallback(async (): Promise<void> => {
+    setWorkerWebUiError(null)
+
+    try {
+      const [config, status] = await Promise.all([
+        window.opencoveApi.workerClient.getConfig(),
+        window.opencoveApi.worker.getStatus(),
+      ])
+
+      setWorkerConfig(config)
+      setWorkerStatus(status)
+    } catch (caughtError) {
+      setWorkerWebUiError(toErrorMessage(caughtError))
+    }
+  }, [])
+
+  useEffect(() => {
+    void loadWorkerWebUiState()
+  }, [loadWorkerWebUiState])
+
+  const workerWebUiStatusLabel = useMemo((): string => {
+    if (!workerConfig || !workerStatus) {
+      return t('common.loading')
+    }
+
+    if (workerConfig.mode !== 'local') {
+      return t('settingsPanel.experimental.workerWebUi.status.requiresLocal')
+    }
+
+    return workerStatus.status === 'running' && workerStatus.connection
+      ? t('settingsPanel.experimental.workerWebUi.status.running')
+      : t('settingsPanel.experimental.workerWebUi.status.stopped')
+  }, [t, workerConfig, workerStatus])
+
+  const canOpenWorkerWebUi = useMemo((): boolean => {
+    return Boolean(workerConfig?.mode === 'local' && workerStatus?.status === 'running' && workerStatus.connection)
+  }, [workerConfig, workerStatus])
+
+  const openWorkerWebUi = useCallback(async (): Promise<void> => {
+    setWorkerWebUiError(null)
+    setWorkerWebUiBusy(true)
+
+    try {
+      const url = await window.opencoveApi.worker.getWebUiUrl()
+      if (!url) {
+        setWorkerWebUiError(t('settingsPanel.experimental.workerWebUi.errors.noUrl'))
+        return
+      }
+
+      window.open(url)
+    } catch (caughtError) {
+      setWorkerWebUiError(toErrorMessage(caughtError))
+    } finally {
+      setWorkerWebUiBusy(false)
+    }
+  }, [t])
+
   return (
     <div className="settings-panel__section" id="settings-section-experimental">
       <h3 className="settings-panel__section-title">{t('settingsPanel.experimental.title')}</h3>
 
       <div className="settings-panel__subsection">
         <div className="settings-panel__subsection-header">
+          <h4 className="settings-panel__section-title">{t('settingsPanel.experimental.workerWebUi.title')}</h4>
+          <span>{t('settingsPanel.experimental.workerWebUi.help')}</span>
+        </div>
+
+        {workerWebUiError ? (
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('common.error')}</strong>
+            </div>
+            <div className="settings-panel__control">
+              <span className="settings-panel__value" style={{ color: 'var(--cove-danger-text)' }}>
+                {workerWebUiError}
+              </span>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.experimental.workerWebUi.statusLabel')}</strong>
+            <span>{t('settingsPanel.experimental.workerWebUi.statusHelp')}</span>
+          </div>
+          <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
+            <span
+              className="settings-panel__value"
+              data-testid="settings-experimental-worker-web-ui-status"
+            >
+              {workerWebUiStatusLabel}
+            </span>
+            <button
+              type="button"
+              className="secondary"
+              data-testid="settings-experimental-worker-web-ui-refresh"
+              disabled={workerWebUiBusy}
+              onClick={() => void loadWorkerWebUiState()}
+            >
+              {t('settingsPanel.experimental.workerWebUi.refresh')}
+            </button>
+          </div>
+        </div>
+
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.experimental.workerWebUi.actionsLabel')}</strong>
+          </div>
+          <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="primary"
+              data-testid="settings-experimental-worker-web-ui-open"
+              disabled={!canOpenWorkerWebUi || workerWebUiBusy}
+              onClick={() => void openWorkerWebUi()}
+            >
+              {t('settingsPanel.experimental.workerWebUi.open')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-panel__subsection">
+        <div className="settings-panel__subsection-header">
+          <h4 className="settings-panel__section-title">
+            {t('settingsPanel.experimental.websiteWindowsTitle')}
+          </h4>
           <span>{t('settingsPanel.experimental.websiteWindowsHelp')}</span>
         </div>
 
