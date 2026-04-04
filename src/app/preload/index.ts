@@ -49,6 +49,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -81,6 +82,16 @@ import type {
   FileSystemStat,
   SyncEventPayload,
   WriteFileTextInput,
+  ActivateWebsiteWindowInput,
+  CaptureWebsiteWindowSnapshotInput,
+  ConfigureWebsiteWindowPolicyInput,
+  NavigateWebsiteWindowInput,
+  SetWebsiteWindowOccludedInput,
+  SetWebsiteWindowBoundsInput,
+  SetWebsiteWindowPinnedInput,
+  SetWebsiteWindowSessionInput,
+  WebsiteWindowEventPayload,
+  WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
   WorkerStatusResult,
@@ -184,6 +195,47 @@ const opencoveApi = {
       }
     },
   },
+  websiteWindow: {
+    configurePolicy: (payload: ConfigureWebsiteWindowPolicyInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowConfigurePolicy, payload),
+    setOccluded: (payload: SetWebsiteWindowOccludedInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowSetOccluded, payload),
+    activate: (payload: ActivateWebsiteWindowInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowActivate, payload),
+    deactivate: (payload: WebsiteWindowNodeIdInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowDeactivate, payload),
+    setBounds: (payload: SetWebsiteWindowBoundsInput): void => {
+      ipcRenderer.send(IPC_CHANNELS.websiteWindowSetBounds, payload)
+    },
+    navigate: (payload: NavigateWebsiteWindowInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowNavigate, payload),
+    goBack: (payload: WebsiteWindowNodeIdInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowGoBack, payload),
+    goForward: (payload: WebsiteWindowNodeIdInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowGoForward, payload),
+    reload: (payload: WebsiteWindowNodeIdInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowReload, payload),
+    close: (payload: WebsiteWindowNodeIdInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowClose, payload),
+    setPinned: (payload: SetWebsiteWindowPinnedInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowSetPinned, payload),
+    setSession: (payload: SetWebsiteWindowSessionInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.websiteWindowSetSession, payload),
+    captureSnapshot: (payload: CaptureWebsiteWindowSnapshotInput): void => {
+      ipcRenderer.send(IPC_CHANNELS.websiteWindowCaptureSnapshot, payload)
+    },
+    onEvent: (listener: (event: WebsiteWindowEventPayload) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: WebsiteWindowEventPayload) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.websiteWindowEvent, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.websiteWindowEvent, handler)
+      }
+    },
+  },
   workspace: {
     selectDirectory: (): Promise<WorkspaceDirectory | null> =>
       invokeIpc(IPC_CHANNELS.workspaceSelectDirectory),
@@ -265,6 +317,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyAttach, payload),
     detach: (payload: DetachTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
+    syncSessionBindings: (payload: SyncPtySessionBindingsInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.ptySyncSessionBindings, payload),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
     debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),

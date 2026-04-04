@@ -76,17 +76,6 @@ function resolveEffectiveWheelZoomModifierKey(
   }
 }
 
-function applyViewport(
-  nextViewport: Viewport,
-  viewportRef: MutableRefObject<Viewport>,
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
-  onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void,
-): void {
-  viewportRef.current = nextViewport
-  reactFlow.setViewport(nextViewport, { duration: 0 })
-  onViewportChange(nextViewport)
-}
-
 export function useWorkspaceCanvasTrackpadGestures({
   canvasInputModeSetting,
   canvasWheelBehaviorSetting,
@@ -102,6 +91,7 @@ export function useWorkspaceCanvasTrackpadGestures({
 }: UseTrackpadGesturesParams): { handleCanvasWheelCapture: (event: WheelEvent) => void } {
   const reactFlowStore = useStoreApi()
   const interactionClearTimerRef = useRef<number | null>(null)
+  const viewportCommitTimerRef = useRef<number | null>(null)
 
   const handleCanvasWheelCapture = useCallback(
     (event: WheelEvent) => {
@@ -176,6 +166,10 @@ export function useWorkspaceCanvasTrackpadGestures({
 
       const currentViewport = viewportRef.current
 
+      if (viewportCommitTimerRef.current !== null) {
+        window.clearTimeout(viewportCommitTimerRef.current)
+      }
+
       if (decision.canvasAction === 'pan') {
         const deltaNormalize = event.deltaMode === 1 ? 20 : 1
         let deltaX = event.deltaX * deltaNormalize
@@ -192,7 +186,12 @@ export function useWorkspaceCanvasTrackpadGestures({
           zoom: currentViewport.zoom,
         }
 
-        applyViewport(nextViewport, viewportRef, reactFlow, onViewportChange)
+        viewportRef.current = nextViewport
+        reactFlow.setViewport(nextViewport, { duration: 0 })
+        viewportCommitTimerRef.current = window.setTimeout(() => {
+          viewportCommitTimerRef.current = null
+          onViewportChange(viewportRef.current)
+        }, 120)
         return
       }
 
@@ -227,7 +226,12 @@ export function useWorkspaceCanvasTrackpadGestures({
         zoom: nextZoom,
       }
 
-      applyViewport(nextViewport, viewportRef, reactFlow, onViewportChange)
+      viewportRef.current = nextViewport
+      reactFlow.setViewport(nextViewport, { duration: 0 })
+      viewportCommitTimerRef.current = window.setTimeout(() => {
+        viewportCommitTimerRef.current = null
+        onViewportChange(viewportRef.current)
+      }, 120)
     },
     [
       canvasInputModeSetting,
@@ -250,6 +254,11 @@ export function useWorkspaceCanvasTrackpadGestures({
       if (interactionClearTimerRef.current !== null) {
         window.clearTimeout(interactionClearTimerRef.current)
         interactionClearTimerRef.current = null
+      }
+
+      if (viewportCommitTimerRef.current !== null) {
+        window.clearTimeout(viewportCommitTimerRef.current)
+        viewportCommitTimerRef.current = null
       }
     }
   }, [])

@@ -1,87 +1,34 @@
 import { useCallback, useRef } from 'react'
-import { useStoreApi, type Edge, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
-import type { ImageNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type {
-  ContextMenuState,
-  CreateNodeInput,
-  EmptySelectionPromptState,
-  SelectionDraftState,
-  ShowWorkspaceCanvasMessage,
-} from '../types'
+import { useStoreApi, type Node } from '@xyflow/react'
+import type { Point, TerminalNodeData } from '../../../types'
 import { resolveDefaultNoteWindowSize } from '../constants'
 import { focusNodeInViewport, resolveNodePlacementAnchorFromViewportCenter } from '../helpers'
 import { useWorkspaceCanvasSelectionDraft } from './useSelectionDraft'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
-import { useWorkspaceCanvasImageImport } from './useCanvasImageImport'
 import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
+import { useWorkspaceCanvasPasteHandlers } from './useInteractions.pasteHandlers'
 import {
   isCanvasDoubleClickCreateTarget,
   isPanePointerDragStartTarget,
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
 import { resolveMouseClientPoint } from './useInteractions.clientPoint'
-import { createNoteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
-
-type SetNodes = (
-  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
-  options?: { syncLayout?: boolean },
-) => void
-
-type SelectionDraftUiState = Pick<
-  SelectionDraftState,
-  'startX' | 'startY' | 'currentX' | 'currentY' | 'phase'
->
-
-interface UseWorkspaceCanvasInteractionsParams {
-  canvasRef: React.RefObject<HTMLDivElement | null>
-  isTrackpadCanvasMode: boolean
-  focusNodeOnClick: boolean
-  focusNodeTargetZoom: number
-  isShiftPressedRef: React.MutableRefObject<boolean>
-  selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
-  setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
-  reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
-  setNodes: SetNodes
-  setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
-  setSelectedSpaceIds: React.Dispatch<React.SetStateAction<string[]>>
-  setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
-  setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
-  cancelSpaceRename: () => void
-  selectedNodeIdsRef: React.MutableRefObject<string[]>
-  selectedSpaceIdsRef: React.MutableRefObject<string[]>
-  contextMenu: ContextMenuState | null
-  workspacePath: string
-  defaultTerminalProfileId: string | null
-  spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
-  standardWindowSizeBucket: StandardWindowSizeBucket
-  createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  createNoteNode: (
-    anchor: Point,
-    options?: {
-      placementStrategy?: 'default' | 'right-no-push'
-      placement?: {
-        targetSpaceRect?: WorkspaceSpaceState['rect']
-      }
-    },
-  ) => Node<TerminalNodeData> | null
-  onShowMessage?: ShowWorkspaceCanvasMessage
-  createImageNode: (
-    anchor: Point,
-    image: ImageNodeData,
-    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
-  ) => Node<TerminalNodeData> | null
-}
+import {
+  createNoteNodeFromPaneContextMenu,
+  createWebsiteNodeFromPaneContextMenu,
+} from './useInteractions.paneNodeCreation'
+import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
+import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
 
 export function useWorkspaceCanvasInteractions({
   canvasRef,
   isTrackpadCanvasMode,
   focusNodeOnClick,
   focusNodeTargetZoom,
+  websiteWindowsEnabled,
+  websiteWindowPasteEnabled,
   isShiftPressedRef,
   selectionDraftRef,
   setSelectionDraftUi,
@@ -105,27 +52,8 @@ export function useWorkspaceCanvasInteractions({
   createNoteNode,
   onShowMessage,
   createImageNode,
-}: UseWorkspaceCanvasInteractionsParams): {
-  clearNodeSelection: () => void
-  handleCanvasDoubleClickCapture: React.MouseEventHandler<HTMLDivElement>
-  handleNodeClick: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
-  handleSelectionContextMenu: (
-    event: React.MouseEvent,
-    selectedNodes: Node<TerminalNodeData>[],
-  ) => void
-  handleNodeContextMenu: (event: React.MouseEvent, node: Node<TerminalNodeData>) => void
-  handlePaneContextMenu: (event: React.MouseEvent | MouseEvent) => void
-  handleSelectionChange: (params: { nodes: Node<TerminalNodeData>[] }) => void
-  handleCanvasPointerDownCapture: React.PointerEventHandler<HTMLDivElement>
-  handleCanvasPointerMoveCapture: React.PointerEventHandler<HTMLDivElement>
-  handleCanvasPointerUpCapture: React.PointerEventHandler<HTMLDivElement>
-  handlePaneClick: (_event: React.MouseEvent | MouseEvent) => void
-  createTerminalNode: () => Promise<void>
-  createNoteNodeFromContextMenu: () => void
-  handleCanvasPaste: React.ClipboardEventHandler<HTMLDivElement>
-  handleCanvasDragOver: React.DragEventHandler<HTMLDivElement>
-  handleCanvasDrop: React.DragEventHandler<HTMLDivElement>
-} {
+  createWebsiteNode,
+}: UseWorkspaceCanvasInteractionsParams) {
   const reactFlowStore = useStoreApi()
   const selectNode = useWorkspaceCanvasSelectNode({
     setNodes,
@@ -477,17 +405,60 @@ export function useWorkspaceCanvasInteractions({
     standardWindowSizeBucket,
   ])
 
-  const { handleCanvasPaste, handleCanvasDragOver, handleCanvasDrop } =
-    useWorkspaceCanvasImageImport({
-      canvasRef,
-      reactFlow,
+  const createWebsiteNodeFromContextMenu = useCallback(() => {
+    if (!websiteWindowsEnabled) {
+      return
+    }
+
+    createWebsiteNodeFromPaneContextMenu({
+      contextMenu,
+      url: '',
+      createWebsiteNode,
+      standardWindowSizeBucket,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
-      onShowMessage,
-      createImageNode,
+      setContextMenu,
     })
+  }, [
+    contextMenu,
+    createWebsiteNode,
+    nodesRef,
+    onSpacesChange,
+    setContextMenu,
+    setNodes,
+    spacesRef,
+    standardWindowSizeBucket,
+    websiteWindowsEnabled,
+  ])
+
+  const pasteHandlers = useWorkspaceCanvasPasteHandlers({
+    canvasRef,
+    reactFlow,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+    onShowMessage,
+    createImageNode,
+    createWebsiteNode,
+    standardWindowSizeBucket,
+    websiteWindowsEnabled,
+    websiteWindowPasteEnabled,
+  })
+
+  useWebsiteWindowOpenUrlNodeCreation({
+    canvasRef,
+    createWebsiteNode,
+    enabled: websiteWindowsEnabled,
+    nodesRef,
+    onSpacesChange,
+    reactFlow,
+    setNodes,
+    spacesRef,
+    standardWindowSizeBucket,
+  })
 
   return {
     clearNodeSelection,
@@ -503,8 +474,9 @@ export function useWorkspaceCanvasInteractions({
     handlePaneClick,
     createTerminalNode,
     createNoteNodeFromContextMenu,
-    handleCanvasPaste,
-    handleCanvasDragOver,
-    handleCanvasDrop,
+    createWebsiteNodeFromContextMenu,
+    handleCanvasPaste: pasteHandlers.handleCanvasPaste,
+    handleCanvasDragOver: pasteHandlers.handleCanvasDragOver,
+    handleCanvasDrop: pasteHandlers.handleCanvasDrop,
   }
 }

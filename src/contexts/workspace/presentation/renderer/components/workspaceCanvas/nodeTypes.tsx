@@ -1,40 +1,21 @@
 import { useMemo, type MutableRefObject, type ReactElement } from 'react'
-import { useStore, type Node } from '@xyflow/react'
+import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import { NoteNode } from '../NoteNode'
-import { TaskNode } from '../TaskNode'
 import { TerminalNode } from '../TerminalNode'
-import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
+import { WorkspaceCanvasTaskNodeType } from './nodeTypes.task'
+import { WorkspaceCanvasWebsiteNodeType } from './nodeTypes.website'
+import { useNodePosition } from './nodePosition'
 import type {
   QuickUpdateTaskRequirement,
   QuickUpdateTaskTitle,
   UpdateNodeScrollback,
   UpdateTaskStatus,
 } from './types'
-
-function useNodePosition(nodeId: string): { x: number; y: number } {
-  return useStore(storeState => {
-    const state = storeState as unknown as {
-      nodeLookup?: { get?: unknown }
-      nodeInternals?: { get?: unknown }
-      nodes?: Array<Node<TerminalNodeData>>
-    }
-
-    const lookup = state.nodeLookup ?? state.nodeInternals
-    if (lookup && typeof lookup.get === 'function') {
-      const node = (lookup as Map<string, Node<TerminalNodeData>>).get(nodeId) ?? null
-      if (node) {
-        return node.position
-      }
-    }
-
-    return state.nodes?.find(node => node.id === nodeId)?.position ?? { x: 0, y: 0 }
-  })
-}
 
 function TerminalNodeType({
   data,
@@ -250,6 +231,11 @@ interface WorkspaceCanvasNodeTypesParams {
   updateTaskStatusRef: MutableRefObject<UpdateTaskStatus>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
+  updateWebsiteUrlRef: MutableRefObject<(nodeId: string, url: string) => void>
+  setWebsitePinnedRef: MutableRefObject<(nodeId: string, pinned: boolean) => void>
+  setWebsiteSessionRef: MutableRefObject<
+    (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
+  >
 }
 
 export function useWorkspaceCanvasNodeTypes({
@@ -275,6 +261,9 @@ export function useWorkspaceCanvasNodeTypes({
   updateTaskStatusRef,
   updateTerminalTitleRef,
   renameTerminalTitleRef,
+  updateWebsiteUrlRef,
+  setWebsitePinnedRef,
+  setWebsiteSessionRef,
 }: WorkspaceCanvasNodeTypesParams): Record<
   string,
   (props: {
@@ -286,108 +275,26 @@ export function useWorkspaceCanvasNodeTypes({
 > {
   return useMemo(() => {
     const TaskNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
-      const linkedAgentNodeId = data.task?.linkedAgentNodeId ?? null
       const nodePosition = useNodePosition(id)
-      const labelColor =
-        (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null })
-          .effectiveLabelColor ?? null
-      const linkedAgentNode = useStore(storeState => {
-        if (!linkedAgentNodeId) {
-          return null
-        }
-
-        const state = storeState as unknown as {
-          nodeLookup?: { get?: unknown }
-          nodeInternals?: { get?: unknown }
-          nodes?: Array<Node<TerminalNodeData>>
-        }
-
-        const lookup = state.nodeLookup ?? state.nodeInternals
-        if (lookup && typeof lookup.get === 'function') {
-          return (lookup as Map<string, Node<TerminalNodeData>>).get(linkedAgentNodeId) ?? null
-        }
-
-        return state.nodes?.find(node => node.id === linkedAgentNodeId) ?? null
-      })
-
-      if (!data.task) {
-        return null
-      }
-
-      const taskExecutionContext = resolveTaskExecutionContext({
-        spaces: spacesRef.current,
-        taskNodeId: id,
-        workspacePath,
-      })
-      const currentDirectory = taskExecutionContext.workingDirectory
-
-      const linkedAgentSummary =
-        linkedAgentNode && linkedAgentNode.data.kind === 'agent' && linkedAgentNode.data.agent
-          ? {
-              nodeId: linkedAgentNode.id,
-              title: linkedAgentNode.data.title,
-              provider: linkedAgentNode.data.agent.provider,
-              status: linkedAgentNode.data.status,
-              startedAt: linkedAgentNode.data.startedAt,
-            }
-          : null
 
       return (
-        <TaskNode
-          title={data.title}
-          requirement={data.task.requirement}
-          status={data.task.status}
-          priority={data.task.priority}
-          tags={data.task.tags}
-          isEnriching={data.task.isEnriching === true}
-          linkedAgentNode={linkedAgentSummary}
-          agentSessions={data.task.agentSessions ?? []}
-          currentDirectory={currentDirectory}
-          labelColor={labelColor}
-          position={nodePosition}
-          width={data.width}
-          height={data.height}
-          onClose={() => {
-            requestNodeDeleteRef.current([id])
-          }}
-          onOpenEditor={() => {
-            openTaskEditorRef.current(id)
-          }}
-          onQuickTitleSave={title => {
-            quickUpdateTaskTitleRef.current(id, title)
-          }}
-          onQuickRequirementSave={requirement => {
-            quickUpdateTaskRequirementRef.current(id, requirement)
-          }}
-          onRunAgent={() => {
-            void runTaskAgentRef.current(id)
-          }}
-          onResize={frame => resizeNodeRef.current(id, frame)}
-          onStatusChange={status => {
-            updateTaskStatusRef.current(id, status)
-          }}
-          onResumeAgentSession={recordId => {
-            void resumeTaskAgentSessionRef.current(id, recordId)
-          }}
-          onRemoveAgentSessionRecord={recordId => {
-            removeTaskAgentSessionRecordRef.current(id, recordId)
-          }}
-          onInteractionStart={options => {
-            if (options?.selectNode !== false) {
-              if (options?.shiftKey === true) {
-                selectNode(id, { toggle: true })
-                return
-              }
-
-              selectNode(id)
-            }
-
-            if (options?.normalizeViewport === false) {
-              return
-            }
-
-            normalizeViewportForTerminalInteractionRef.current(id)
-          }}
+        <WorkspaceCanvasTaskNodeType
+          data={data}
+          id={id}
+          nodePosition={nodePosition}
+          spacesRef={spacesRef}
+          workspacePath={workspacePath}
+          selectNode={selectNode}
+          resizeNodeRef={resizeNodeRef}
+          normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+          requestNodeDeleteRef={requestNodeDeleteRef}
+          openTaskEditorRef={openTaskEditorRef}
+          quickUpdateTaskTitleRef={quickUpdateTaskTitleRef}
+          quickUpdateTaskRequirementRef={quickUpdateTaskRequirementRef}
+          runTaskAgentRef={runTaskAgentRef}
+          resumeTaskAgentSessionRef={resumeTaskAgentSessionRef}
+          removeTaskAgentSessionRecordRef={removeTaskAgentSessionRecordRef}
+          updateTaskStatusRef={updateTaskStatusRef}
         />
       )
     }
@@ -419,6 +326,24 @@ export function useWorkspaceCanvasNodeTypes({
           closeNodeRef={closeNodeRef}
           resizeNodeRef={resizeNodeRef}
           normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+        />
+      )
+    }
+
+    const WebsiteNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+      const nodePosition = useNodePosition(id)
+      return (
+        <WorkspaceCanvasWebsiteNodeType
+          data={data}
+          id={id}
+          nodePosition={nodePosition}
+          selectNode={selectNode}
+          closeNodeRef={closeNodeRef}
+          resizeNodeRef={resizeNodeRef}
+          normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+          updateWebsiteUrlRef={updateWebsiteUrlRef}
+          setWebsitePinnedRef={setWebsitePinnedRef}
+          setWebsiteSessionRef={setWebsiteSessionRef}
         />
       )
     }
@@ -469,6 +394,7 @@ export function useWorkspaceCanvasNodeTypes({
         )
       },
       documentNode: DocumentNodeType,
+      websiteNode: WebsiteNodeType,
       imageNode: ImageNodeType,
       taskNode: TaskNodeType,
     }
@@ -495,5 +421,8 @@ export function useWorkspaceCanvasNodeTypes({
     updateTaskStatusRef,
     updateTerminalTitleRef,
     renameTerminalTitleRef,
+    updateWebsiteUrlRef,
+    setWebsitePinnedRef,
+    setWebsiteSessionRef,
   ])
 }

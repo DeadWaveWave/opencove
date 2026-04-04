@@ -6,11 +6,19 @@ import type {
   CanvasImageMimeType,
   GitHubPullRequestSummary,
   TerminalRuntimeKind,
+  WebsiteWindowSessionMode,
 } from '@shared/contracts/dto'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 
-export type WorkspaceNodeKind = 'terminal' | 'agent' | 'task' | 'note' | 'image' | 'document'
+export type WorkspaceNodeKind =
+  | 'terminal'
+  | 'agent'
+  | 'task'
+  | 'note'
+  | 'image'
+  | 'document'
+  | 'website'
 
 export type TaskRuntimeStatus = 'todo' | 'doing' | 'ai_done' | 'done'
 
@@ -83,6 +91,13 @@ export interface DocumentNodeData {
   uri: string
 }
 
+export interface WebsiteNodeData {
+  url: string
+  pinned: boolean
+  sessionMode: WebsiteWindowSessionMode
+  profileId: string | null
+}
+
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
@@ -107,6 +122,7 @@ export interface TerminalNodeData {
   note: NoteNodeData | null
   image: ImageNodeData | null
   document: DocumentNodeData | null
+  website: WebsiteNodeData | null
 }
 
 export interface WorkspaceState {
@@ -267,7 +283,7 @@ export interface PersistedTerminalNode {
   executionDirectory?: string | null
   expectedDirectory?: string | null
   agent: AgentNodeData | null
-  task: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | null
+  task: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | WebsiteNodeData | null
 }
 
 export interface PersistedAppState {

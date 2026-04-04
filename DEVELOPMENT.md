@@ -45,6 +45,13 @@
     - 同一次改动同时触及 `lifecycle / persistence / hydration / resume / watcher` 中两项及以上。
 3.  **高风险路径先写不变量**：启动、恢复、关闭、重试、fallback、异步乱序相关改动，先写 `1-3` 条 invariant，再决定实现位置与测试层级。
 4.  **结构性风险先升级判断**：以下信号任中其一，就必须按 Large Change 处理，而不是直接以最小改动修补：`多个 mutable state owner`、`边界或 authority 难以解释`、`同一入口/输入/观测承载多套竞争语义或状态迁移`、`局部 patch 可能制造新的矛盾状态或隐藏状态`、`同一真相被 runtime observation 与 durable state 同时改写`。是否“已经复发”只作为额外证据，不作为触发前提。
+5.  **当“补丁在增加复杂度”而不是“降低复杂度”时，必须优先重构**：下面任一命中，默认暂停继续堆条件/缓存/协调代码，先做结构收敛（拆 owner、收口写入口、隔离副作用）：
+    - **改动开始非局部扩散**：一个小需求/修复需要同时修改多个模块、边界或层才能生效。
+    - **真相分裂或覆盖规则不清**：同一事实出现多份镜像状态/缓存/派生值，且无法明确“谁能覆盖谁”。
+    - **特殊情况快速增长**：修复主要靠追加分支、开关、临时状态、时序约束，而不是删除分支或合并抽象。
+    - **可测试性下降**：无法写出稳定回归测试或不变量，必须依赖真实时序/IO/全局环境才能复现。
+    - **同类问题短期内反复出现**：同一类故障在一个迭代内出现多次，说明边界/owner/不变量未收敛。
+    - 需要具体案例时，参考：`docs/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`。
 
 ### 高风险问题预防策略（只列最容易漏的）
 
@@ -178,6 +185,9 @@
     -   任务 UI 标准：`docs/TASK_UI_STANDARD.md`
     -   视口导航标准：`docs/VIEWPORT_NAVIGATION_STANDARD.md`
 -   **终端渲染基准**：`docs/TERMINAL_TUI_RENDERING_BASELINE.md`
+-   **诊断与复盘案例**：
+    -   Win10 Codex Scroll：`docs/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
+    -   画布抖动与终端持久化：`docs/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
 -   **参考优秀项目与方案调研法**：`docs/REFERENCE_RESEARCH_METHOD.md`
 -   **调试指南**：`docs/DEBUGGING.md`
 -   **贡献代码指南**：`CONTRIBUTING.md`

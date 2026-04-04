@@ -396,8 +396,6 @@ export function TerminalNode({
 
       cancelMouseServicePatch()
       isDisposed = true
-      const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
-      void detachPromise?.catch(() => undefined)
       disposeLayoutSync()
       terminalDiagnostics.dispose()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)

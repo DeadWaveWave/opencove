@@ -1,4 +1,8 @@
-import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import type {
+  AppUpdateChannel,
+  AppUpdatePolicy,
+  WebsiteWindowPolicy,
+} from '../../../shared/contracts/dto'
 import type {
   AgentCustomModelByProvider,
   AgentCustomModelEnabledByProvider,
@@ -52,6 +56,10 @@ import {
   normalizeTaskPromptTemplates,
   normalizeTaskPromptTemplatesByWorkspaceId,
 } from './taskPromptTemplates'
+import {
+  DEFAULT_WEBSITE_WINDOW_POLICY,
+  normalizeWebsiteWindowPolicy,
+} from './websiteWindowSettings'
 
 export {
   FOCUS_NODE_TARGET_ZOOM_STEP,
@@ -142,6 +150,8 @@ export interface AgentSettings {
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
+  websiteWindowPolicy: WebsiteWindowPolicy
+  experimentalWebsiteWindowPasteEnabled: boolean
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   terminalFontFamily: string | null
@@ -198,6 +208,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   canvasWheelBehavior: 'zoom',
   canvasWheelZoomModifier: 'primary',
   standardWindowSizeBucket: 'regular',
+  websiteWindowPolicy: DEFAULT_WEBSITE_WINDOW_POLICY,
+  experimentalWebsiteWindowPasteEnabled: false,
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,
@@ -379,6 +391,13 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
     ? value.standardWindowSizeBucket
     : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
+  const websiteWindowPolicy = normalizeWebsiteWindowPolicy(
+    value.websiteWindowPolicy,
+    DEFAULT_AGENT_SETTINGS.websiteWindowPolicy,
+  )
+  const experimentalWebsiteWindowPasteEnabled =
+    normalizeBoolean(value.experimentalWebsiteWindowPasteEnabled) ??
+    DEFAULT_AGENT_SETTINGS.experimentalWebsiteWindowPasteEnabled
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -460,6 +479,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     canvasWheelBehavior,
     canvasWheelZoomModifier,
     standardWindowSizeBucket,
+    websiteWindowPolicy,
+    experimentalWebsiteWindowPasteEnabled,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     terminalFontFamily,

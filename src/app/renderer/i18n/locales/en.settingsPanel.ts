@@ -6,6 +6,7 @@ export const enSettingsPanel = {
     agent: 'Agent',
     notifications: 'Notifications',
     canvas: 'Canvas',
+    experimental: 'Experimental',
     shortcuts: 'Shortcuts',
     tasks: 'Tasks',
     models: 'Models',
@@ -132,6 +133,27 @@ export const enSettingsPanel = {
     focusTargetZoomLabel: 'Target Zoom',
     focusTargetZoomHelp:
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
+  },
+  experimental: {
+    title: 'Website Windows',
+    websiteWindowsTitle: 'Website Windows',
+    websiteWindowsHelp:
+      'Embeds web pages as native canvas nodes. This stays opt-in while lifecycle and performance policies keep evolving.',
+    websiteWindowEnabledLabel: 'Enable Website Windows',
+    websiteWindowEnabledHelp:
+      'Turns the feature on and allows website nodes to render live web content.',
+    websiteWindowPasteLabel: 'Auto-create from Paste',
+    websiteWindowPasteHelp:
+      'When enabled, pasting a valid website URL onto the canvas creates a website node automatically.',
+    websiteWindowMaxActiveLabel: 'Max Active',
+    websiteWindowMaxActiveHelp: 'Limits how many website nodes stay interactive at once.',
+    websiteWindowDiscardAfterLabel: 'Discard After',
+    websiteWindowDiscardAfterHelp:
+      'Idle time (in minutes) before discarding a background website window.',
+    websiteWindowKeepAliveHostsLabel: 'Keep-Alive Hosts',
+    websiteWindowKeepAliveHostsHelp:
+      'Host patterns that should not be discarded (e.g. slack.com, *.figma.com).',
+    websiteWindowKeepAliveHostsPlaceholder: 'Add host pattern (e.g. *.figma.com)',
   },
   shortcuts: {
     title: 'Shortcuts',
