@@ -27,3 +27,15 @@ export interface TerminalDiagnosticsLogInput {
   details?: Record<string, TerminalDiagnosticsDetailValue>
   snapshot: TerminalDiagnosticsSnapshot
 }
+
+export type RuntimeDiagnosticsLevel = 'info' | 'error'
+export type RuntimeDiagnosticsSource = 'main-app' | 'main-window' | 'renderer-error-boundary'
+export type RuntimeDiagnosticsDetailValue = string | number | boolean | null
+
+export interface RuntimeDiagnosticsLogInput {
+  source: RuntimeDiagnosticsSource
+  level: RuntimeDiagnosticsLevel
+  event: string
+  message: string
+  details?: Record<string, RuntimeDiagnosticsDetailValue>
+}

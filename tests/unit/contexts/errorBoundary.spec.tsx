@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { applyUiLanguage } from '../../../src/app/renderer/i18n'
 import { ErrorBoundary } from '../../../src/app/renderer/components/ErrorBoundary'
 
@@ -9,8 +9,19 @@ function ThrowOnRender(): never {
 }
 
 describe('ErrorBoundary', () => {
+  const logRuntimeDiagnostics = vi.fn()
+
+  beforeEach(() => {
+    window.opencoveApi = {
+      debug: {
+        logRuntimeDiagnostics,
+      },
+    } as typeof window.opencoveApi
+  })
+
   afterEach(async () => {
     await applyUiLanguage('en')
+    logRuntimeDiagnostics.mockReset()
     vi.restoreAllMocks()
   })
 
@@ -30,6 +41,17 @@ describe('ErrorBoundary', () => {
     expect(screen.getByText('renderer exploded')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reload' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument()
+    expect(logRuntimeDiagnostics).toHaveBeenCalledWith({
+      source: 'renderer-error-boundary',
+      level: 'error',
+      event: 'component-did-catch',
+      message: 'Renderer error boundary caught an uncaught error.',
+      details: expect.objectContaining({
+        errorName: 'Error',
+        errorMessage: 'renderer exploded',
+        componentStack: expect.any(String),
+      }),
+    })
   })
 
   it('uses the active UI language for fallback copy', async () => {

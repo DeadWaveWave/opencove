@@ -67,6 +67,7 @@ import type {
   WriteTerminalInput,
   DeleteCanvasImageInput,
   CopyEntryInput,
+  RuntimeDiagnosticsLogInput,
   TerminalDiagnosticsLogInput,
   CreateDirectoryInput,
   DeleteEntryInput,
@@ -131,6 +132,9 @@ const opencoveApi = {
   debug: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput): void => {
       ipcRenderer.send(IPC_CHANNELS.terminalDiagnosticsLog, payload)
+    },
+    logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput): void => {
+      ipcRenderer.send(IPC_CHANNELS.runtimeDiagnosticsLog, payload)
     },
   },
   windowChrome: {

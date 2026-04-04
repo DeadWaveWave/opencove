@@ -62,6 +62,7 @@ export const IPC_CHANNELS = {
   websiteWindowCaptureSnapshot: 'website-window:capture-snapshot',
   websiteWindowEvent: 'website-window:event',
   terminalDiagnosticsLog: 'terminal:diagnostics-log',
+  runtimeDiagnosticsLog: 'runtime:diagnostics-log',
   ptySpawn: 'pty:spawn',
   ptyListProfiles: 'pty:list-profiles',
   ptyWrite: 'pty:write',

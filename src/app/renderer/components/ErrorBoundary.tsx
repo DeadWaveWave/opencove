@@ -1,5 +1,6 @@
 import React from 'react'
 import { translate } from '../i18n'
+import { logRendererErrorBoundaryDiagnostic } from '../debug/runtimeDiagnostics'
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -21,8 +22,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    console.error('[ErrorBoundary] Uncaught error in renderer:', error)
-    console.error('[ErrorBoundary] Component stack:', errorInfo.componentStack)
+    logRendererErrorBoundaryDiagnostic(error, errorInfo)
   }
 
   handleReload = (): void => {

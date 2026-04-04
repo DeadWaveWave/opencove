@@ -12,6 +12,7 @@ import { shouldEnableWaylandIme } from './waylandIme'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createPtyRuntime } from '../../contexts/terminal/presentation/main-ipc/runtime'
 import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
+import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
@@ -87,6 +88,8 @@ if (process.env.NODE_ENV === 'test' && process.env['OPENCOVE_TEST_USER_DATA_DIR'
 const EXTERNAL_PROTOCOL_ALLOWLIST = new Set(['http:', 'https:', 'mailto:'])
 const E2E_OFFSCREEN_COORDINATE = -50_000
 type E2EWindowMode = 'normal' | 'inactive' | 'hidden' | 'offscreen'
+const mainWindowRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-window')
+const mainAppRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-app')
 
 function parseUrl(rawUrl: string): URL | null {
   try {
@@ -305,18 +308,21 @@ function createWindow(): void {
 
   // ── Crash recovery: reload the renderer on crash or GPU failure ──
   mainWindow.webContents.on('render-process-gone', (_event, details) => {
-    console.error('[main] Renderer process gone:', details.reason, details.exitCode)
+    mainWindowRuntimeLogger.error('render-process-gone', 'Renderer process gone.', {
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
     if (!mainWindow.isDestroyed()) {
       mainWindow.webContents.reload()
     }
   })
 
   mainWindow.on('unresponsive', () => {
-    console.error('[main] Window became unresponsive')
+    mainWindowRuntimeLogger.error('window-unresponsive', 'Window became unresponsive.')
   })
 
   mainWindow.on('responsive', () => {
-    console.info('[main] Window became responsive again')
+    mainWindowRuntimeLogger.info('window-responsive', 'Window became responsive again.')
   })
 
   mainWindow.webContents.setWindowOpenHandler(details => {
@@ -367,7 +373,11 @@ app.whenReady().then(async () => {
 
   // Log GPU and child process crashes (these can cause white screens)
   app.on('child-process-gone', (_event, details) => {
-    console.error('[main] Child process gone:', details.type, details.reason, details.exitCode)
+    mainAppRuntimeLogger.error('child-process-gone', 'Child process gone.', {
+      type: details.type,
+      reason: details.reason,
+      exitCode: details.exitCode,
+    })
   })
 
   const runtimeIconPath = resolveRuntimeIconPath()

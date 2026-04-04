@@ -65,6 +65,7 @@ import type {
   WriteTerminalInput,
   DeleteCanvasImageInput,
   CopyEntryInput,
+  RuntimeDiagnosticsLogInput,
   TerminalDiagnosticsLogInput,
   CreateDirectoryInput,
   DeleteEntryInput,
@@ -108,6 +109,7 @@ export interface OpenCoveApi {
   }
   debug?: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
+    logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
