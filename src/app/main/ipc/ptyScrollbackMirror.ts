@@ -8,7 +8,7 @@ export type PtySessionNodeBinding = {
 export type PtyScrollbackMirrorPersistence = Pick<PersistenceStore, 'writeNodeScrollback'>
 
 export type PtyScrollbackMirrorSnapshotSource = {
-  snapshot: (sessionId: string) => string
+  snapshot: (sessionId: string) => Promise<string>
 }
 
 export type PtyScrollbackMirror = {
@@ -110,7 +110,7 @@ export function createPtyScrollbackMirror({
           continue
         }
 
-        const snapshot = source.snapshot(sessionId)
+        const snapshot = await source.snapshot(sessionId)
         if (snapshot.length === 0) {
           continue
         }

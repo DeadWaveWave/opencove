@@ -28,7 +28,7 @@ describe('ptyScrollbackMirror', () => {
       async (): Promise<PersistWriteResult> => ({ ok: true, level: 'full', bytes: 0 }),
     )
     const getPersistenceStore = vi.fn(async () => ({ writeNodeScrollback }))
-    const snapshot = vi.fn(() => 'hello')
+    const snapshot = vi.fn(async () => 'hello')
 
     const mirror = createPtyScrollbackMirror({
       source: { snapshot },
@@ -54,7 +54,7 @@ describe('ptyScrollbackMirror', () => {
       async (): Promise<PersistWriteResult> => ({ ok: true, level: 'full', bytes: 0 }),
     )
     const getPersistenceStore = vi.fn(async () => ({ writeNodeScrollback }))
-    const snapshot = vi.fn(() => 'hello')
+    const snapshot = vi.fn(async () => 'hello')
 
     const mirror = createPtyScrollbackMirror({
       source: { snapshot },

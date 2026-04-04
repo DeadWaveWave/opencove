@@ -2,6 +2,7 @@ import type {
   PersistedAppState,
   PersistedTerminalNode,
   PersistedWorkspaceState,
+  TaskNodeData,
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 
@@ -58,18 +59,21 @@ function mergeNodes(
   const seen = new Set<string>()
   const merged: PersistedTerminalNode[] = []
 
-  type TaskNodeDataShape = {
-    requirement: string
-    linkedAgentNodeId?: string | null
-    [key: string]: unknown
-  }
-
-  function isTaskNodeData(value: PersistedTerminalNode['task']): value is TaskNodeDataShape {
+  function isTaskNodeData(value: unknown): value is TaskNodeData {
     return (
       value !== null &&
       typeof value === 'object' &&
       !Array.isArray(value) &&
-      typeof (value as Record<string, unknown>).requirement === 'string'
+      (() => {
+        const record = value as Record<string, unknown>
+        return (
+          typeof record.requirement === 'string' &&
+          typeof record.status === 'string' &&
+          typeof record.priority === 'string' &&
+          Array.isArray(record.tags) &&
+          Array.isArray(record.agentSessions)
+        )
+      })()
     )
   }
 
