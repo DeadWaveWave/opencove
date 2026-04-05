@@ -205,10 +205,16 @@ async function launchAppInMode(
   let electronApp: ElectronApplication | null = null
 
   try {
+    const baseEnv = { ...process.env }
+    // When running Playwright from inside Electron/GUI environments, macOS can inherit a
+    // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
+    // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
+    delete baseEnv['__CFBundleIdentifier']
+
     electronApp = await electron.launch({
       args: resolveElectronLaunchArgs(),
       env: {
-        ...process.env,
+        ...baseEnv,
         NODE_ENV: 'test',
         HOME: testHomeDir,
         USERPROFILE: testHomeDir,

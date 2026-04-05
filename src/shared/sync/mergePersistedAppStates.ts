@@ -203,6 +203,16 @@ function mergeSpaces(options: {
     (options.baseSnapshotSpaces ?? []).map(space => [space.id, space] as const),
   )
   const baseSpaceIds = new Set(options.baseSpaces.map(space => space.id))
+  const deletedSpaceIds = new Set<string>()
+
+  if (options.baseSnapshotSpaces) {
+    const localSpaceIds = new Set(options.localSpaces.map(space => space.id))
+    for (const snapshotSpace of options.baseSnapshotSpaces) {
+      if (!baseSpaceIds.has(snapshotSpace.id) || !localSpaceIds.has(snapshotSpace.id)) {
+        deletedSpaceIds.add(snapshotSpace.id)
+      }
+    }
+  }
   const assignmentByNodeId = new Map<string, string>()
 
   function isSpaceRectEqual(left: WorkspaceSpaceState['rect'], right: WorkspaceSpaceState['rect']) {
@@ -221,6 +231,9 @@ function mergeSpaces(options: {
   }
 
   for (const space of options.baseSpaces) {
+    if (deletedSpaceIds.has(space.id)) {
+      continue
+    }
     for (const nodeId of space.nodeIds) {
       if (!options.validNodeIds.has(nodeId)) {
         continue
@@ -233,6 +246,9 @@ function mergeSpaces(options: {
   }
 
   for (const space of options.localSpaces) {
+    if (deletedSpaceIds.has(space.id)) {
+      continue
+    }
     for (const nodeId of space.nodeIds) {
       if (!options.validNodeIds.has(nodeId)) {
         continue
@@ -245,6 +261,9 @@ function mergeSpaces(options: {
   const mergedSpaces: WorkspaceSpaceState[] = []
 
   for (const baseSpace of options.baseSpaces) {
+    if (deletedSpaceIds.has(baseSpace.id)) {
+      continue
+    }
     const localSpace = localSpaceById.get(baseSpace.id) ?? null
     const snapshotSpace = snapshotSpaceById.get(baseSpace.id)
 
@@ -300,6 +319,9 @@ function mergeSpaces(options: {
   }
 
   for (const localSpace of options.localSpaces) {
+    if (deletedSpaceIds.has(localSpace.id)) {
+      continue
+    }
     if (baseSpaceIds.has(localSpace.id)) {
       continue
     }
