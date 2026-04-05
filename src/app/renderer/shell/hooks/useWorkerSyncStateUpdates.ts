@@ -5,7 +5,10 @@ import type {
   PersistedWorkspaceState,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
-import { readPersistedState, toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
+import {
+  readPersistedState,
+  toPersistedState,
+} from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { useAppStore } from '../store/useAppStore'
 import type { SyncEventPayload } from '@shared/contracts/dto'
 import { toShellWorkspaceStateForSync } from './workerSync/mergeWorkspaceStateForSync'
@@ -250,7 +253,10 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
           currentWorkspaces: current.workspaces,
           persistedWorkspaces: persisted.workspaces,
         })
-        const nextActiveWorkspaceId = resolveNextActiveWorkspaceId(persisted, current.activeWorkspaceId)
+        const nextActiveWorkspaceId = resolveNextActiveWorkspaceId(
+          persisted,
+          current.activeWorkspaceId,
+        )
 
         if (nextWorkspaces !== current.workspaces) {
           current.setWorkspaces(nextWorkspaces)

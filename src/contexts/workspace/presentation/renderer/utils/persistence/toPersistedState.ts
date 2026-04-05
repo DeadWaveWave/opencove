@@ -84,7 +84,7 @@ export function toPersistedState(
                   ? node.data.document
                   : node.data.kind === 'website'
                     ? node.data.website
-                  : node.data.task,
+                    : node.data.task,
         }
       }),
     })),
