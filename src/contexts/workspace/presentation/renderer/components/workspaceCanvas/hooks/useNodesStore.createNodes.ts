@@ -14,6 +14,7 @@ import type {
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import { findNearestFreePositionOnRight, inflateRect, type Rect } from '../../../utils/collision'
 import { SPACE_NODE_PADDING } from '../../../utils/spaceLayout'
+import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { resolveImageNodeSizeFromNaturalDimensions } from '../../../utils/workspaceNodeSizing'
 import {
   resolveDefaultAgentWindowSize,
@@ -66,7 +67,6 @@ export function useWorkspaceCanvasNodeCreation({
     },
     [onNodeCreated],
   )
-
   const createNodeForSession = useCallback(
     async ({
       sessionId,
@@ -84,7 +84,6 @@ export function useWorkspaceCanvasNodeCreation({
         kind === 'agent'
           ? resolveDefaultAgentWindowSize(standardWindowSizeBucket)
           : resolveDefaultTerminalWindowSize(standardWindowSizeBucket)
-
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
         size: defaultSize,
@@ -100,13 +99,11 @@ export function useWorkspaceCanvasNodeCreation({
         preferredDirection: placement?.preferredDirection,
         avoidRects: placement?.avoidRects,
       })
-
       if (resolvedPlacement.canPlace !== true) {
         await window.opencoveApi.pty.kill({ sessionId })
         onShowMessage?.(t('messages.noTerminalSlotNearby'), 'warning')
         return null
       }
-
       const now = new Date().toISOString()
       const normalizedExecutionDirectory =
         kind === 'agent'
@@ -116,7 +113,6 @@ export function useWorkspaceCanvasNodeCreation({
         kind === 'agent'
           ? (agent?.expectedDirectory ?? agent?.executionDirectory ?? null)
           : (expectedDirectory?.trim() ?? executionDirectory?.trim() ?? null)
-
       const nextNode: Node<TerminalNodeData> = {
         id: crypto.randomUUID(),
         type: 'terminalNode',
@@ -156,6 +152,7 @@ export function useWorkspaceCanvasNodeCreation({
         selectable: false,
       }
 
+      guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])
       onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
@@ -172,7 +169,6 @@ export function useWorkspaceCanvasNodeCreation({
       t,
     ],
   )
-
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
       const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
@@ -262,6 +258,7 @@ export function useWorkspaceCanvasNodeCreation({
         selectable: true,
       }
 
+      guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])
       onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
@@ -349,6 +346,7 @@ export function useWorkspaceCanvasNodeCreation({
         selectable: true,
       }
 
+      guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])
       onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
@@ -419,6 +417,7 @@ export function useWorkspaceCanvasNodeCreation({
         selectable: true,
       }
 
+      guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])
       notifyNodeCreated(nextNode.id, placementOptions?.focusViewportOnCreate)
       onRequestPersistFlush?.()
@@ -479,6 +478,7 @@ export function useWorkspaceCanvasNodeCreation({
         selectable: false,
       }
 
+      guardNodeFromSyncOverwrite(nextNode.id, 2_500)
       setNodes(prevNodes => [...prevNodes, nextNode])
       notifyNodeCreated(nextNode.id, placementOptions?.focusViewportOnCreate)
       onRequestPersistFlush?.()

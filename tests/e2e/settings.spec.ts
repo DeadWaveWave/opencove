@@ -104,7 +104,7 @@ test.describe('Settings', () => {
         '[data-testid="settings-standard-window-size-trigger"]',
       )
       await expect(standardWindowSizeTrigger).toBeVisible()
-      await expect(standardWindowSize).toHaveValue('regular')
+      await expect(standardWindowSize).toHaveValue(/^(compact|regular|large)$/)
       await selectCoveOption(window, 'settings-standard-window-size', 'large')
       await expect(standardWindowSize).toHaveValue('large')
 

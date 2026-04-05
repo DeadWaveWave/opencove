@@ -17,8 +17,7 @@ test.describe('Application Startup', () => {
       const title = await window.title()
       expect(title).toBeDefined()
 
-      const bodyHandle = await window.$('body')
-      expect(bodyHandle).toBeTruthy()
+      await expect(window.locator('body')).toBeVisible()
 
       await window.screenshot({ path: 'test-results/smoke-test-window.png' })
     } finally {

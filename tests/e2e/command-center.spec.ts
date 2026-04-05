@@ -145,12 +145,11 @@ test.describe('Command Center', () => {
       const commandCenterInput = window.locator('[data-testid="command-center-input"]')
       await expect(commandCenterInput).toBeFocused()
       await commandCenterInput.fill('Focus Scope')
-      // In the full E2E suite, React state updates can lag behind the Enter keypress.
-      // Wait for the filtered space result to appear so Enter deterministically selects it.
-      await expect(
-        window.locator('[data-testid="command-center-item-space:space-focus"]'),
-      ).toBeVisible()
-      await commandCenterInput.press('Enter')
+      // In the full E2E suite, React state updates can lag behind input updates.
+      // Wait for the filtered space result to appear so selection is deterministic.
+      const focusScopeItem = window.locator('[data-testid="command-center-item-space:space-focus"]')
+      await expect(focusScopeItem).toBeVisible()
+      await focusScopeItem.click()
       await expect(window.locator('[data-testid="command-center"]')).toBeHidden()
 
       const targetSpace = {

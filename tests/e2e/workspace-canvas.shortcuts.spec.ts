@@ -7,6 +7,7 @@ import {
   clearAndSeedWorkspace,
   launchApp,
   readCanvasViewport,
+  readWorkspaceViewState,
   seededWorkspaceId,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -108,6 +109,16 @@ test.describe('Workspace Canvas - Shortcuts', () => {
           canvas.focus({ preventScroll: true })
         }
       })
+      await expect
+        .poll(async () => {
+          return await window.evaluate(() => {
+            return (
+              document.activeElement instanceof HTMLElement &&
+              document.activeElement.classList.contains('workspace-canvas')
+            )
+          })
+        })
+        .toBe(true)
       await window.keyboard.press(`${commandModifier}+G`)
 
       await expect
@@ -239,17 +250,17 @@ test.describe('Workspace Canvas - Shortcuts', () => {
 
       await window.keyboard.press(`${commandModifier}+]`)
       await expect
-        .poll(async () => (await readPersistedWorkspace(window))?.activeSpaceId ?? null)
+        .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-1')
 
       await window.keyboard.press(`${commandModifier}+]`)
       await expect
-        .poll(async () => (await readPersistedWorkspace(window))?.activeSpaceId ?? null)
+        .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-2')
 
       await window.keyboard.press(`${commandModifier}+[`)
       await expect
-        .poll(async () => (await readPersistedWorkspace(window))?.activeSpaceId ?? null)
+        .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-1')
     } finally {
       await electronApp.close()

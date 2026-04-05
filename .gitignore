@@ -113,6 +113,8 @@ test-results/
 playwright-report/
 test-results-web-shell/
 playwright-report-web-shell/
+test-results-web-canvas/
+playwright-report-web-canvas/
 artifacts/
 tmp/
 

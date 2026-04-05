@@ -310,6 +310,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   }
 
   const kind = normalizeNodeKind(record.kind)
+  const sessionId = normalizeOptionalString(record.sessionId)
   const agent = ensurePersistedAgentData(record.agent)
   const task = ensurePersistedTaskData(record.task)
   const note = ensurePersistedNoteData(record.task)
@@ -324,6 +325,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
 
   return {
     id,
+    ...(sessionId ? { sessionId } : {}),
     title,
     titlePinnedByUser: record.titlePinnedByUser === true,
     width,

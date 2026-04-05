@@ -34,12 +34,14 @@ export interface PtyRuntime {
   listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
-  write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => void
-  resize: (sessionId: string, cols: number, rows: number) => void
-  kill: (sessionId: string) => void
-  attach: (contentsId: number, sessionId: string) => void
-  detach: (contentsId: number, sessionId: string) => void
-  snapshot: (sessionId: string) => string
+  write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => Promise<void>
+  resize: (sessionId: string, cols: number, rows: number) => Promise<void>
+  kill: (sessionId: string) => Promise<void>
+  onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
+  onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
+  attach: (contentsId: number, sessionId: string) => Promise<void>
+  detach: (contentsId: number, sessionId: string) => Promise<void>
+  snapshot: (sessionId: string) => Promise<string>
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
   debugCrashHost?: () => void
   dispose: () => void
@@ -161,6 +163,9 @@ export function createPtyRuntime(): PtyRuntime {
 
   // --- PtyHost event wiring ---
 
+  const externalDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+  const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+
   ptyHost.onData(({ sessionId, data }) => {
     if (!manager.hasPtyDataSubscribers(sessionId)) {
       const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${data}`
@@ -169,11 +174,19 @@ export function createPtyRuntime(): PtyRuntime {
     }
 
     manager.handleData(sessionId, data)
+
+    externalDataListeners.forEach(listener => {
+      listener({ sessionId, data })
+    })
   })
 
   ptyHost.onExit(({ sessionId, exitCode }) => {
     manager.handleExit(sessionId, exitCode)
     clearSessionProbeState(sessionId)
+
+    externalExitListeners.forEach(listener => {
+      listener({ sessionId, exitCode })
+    })
   })
 
   // --- PtyRuntime interface ---
@@ -217,25 +230,37 @@ export function createPtyRuntime(): PtyRuntime {
       registerSessionProbeState(sessionId)
       return { sessionId }
     },
-    write: (sessionId, data, encoding = 'utf8') => {
+    write: async (sessionId, data, encoding = 'utf8') => {
       ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: (sessionId, cols, rows) => {
+    resize: async (sessionId, cols, rows) => {
       ptyHost.resize(sessionId, cols, rows)
     },
-    kill: sessionId => {
+    kill: async sessionId => {
       manager.kill(sessionId)
       clearSessionProbeState(sessionId)
       ptyHost.kill(sessionId)
     },
-    attach: (contentsId, sessionId) => {
+    onData: listener => {
+      externalDataListeners.add(listener)
+      return () => {
+        externalDataListeners.delete(listener)
+      }
+    },
+    onExit: listener => {
+      externalExitListeners.add(listener)
+      return () => {
+        externalExitListeners.delete(listener)
+      }
+    },
+    attach: async (contentsId, sessionId) => {
       manager.attach(contentsId, sessionId)
     },
-    detach: (contentsId, sessionId) => {
+    detach: async (contentsId, sessionId) => {
       manager.detach(contentsId, sessionId)
     },
-    snapshot: sessionId => {
+    snapshot: async sessionId => {
       return manager.snapshot(sessionId)
     },
     startSessionStateWatcher: ({
@@ -267,6 +292,8 @@ export function createPtyRuntime(): PtyRuntime {
     dispose: () => {
       manager.dispose()
       terminalProbeBufferBySession.clear()
+      externalDataListeners.clear()
+      externalExitListeners.clear()
       ptyHost.dispose()
     },
   }

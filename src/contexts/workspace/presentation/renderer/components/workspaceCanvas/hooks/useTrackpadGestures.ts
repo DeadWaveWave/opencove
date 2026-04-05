@@ -215,10 +215,12 @@ export function useWorkspaceCanvasTrackpadGestures({
           ? event.clientY - canvasRect.top
           : event.clientY
 
-      const anchorFlow = {
-        x: (anchorLocalX - currentViewport.x) / currentViewport.zoom,
-        y: (anchorLocalY - currentViewport.y) / currentViewport.zoom,
-      }
+      const anchorFlow = reactFlow.screenToFlowPosition
+        ? reactFlow.screenToFlowPosition({ x: event.clientX, y: event.clientY })
+        : {
+            x: (anchorLocalX - currentViewport.x) / currentViewport.zoom,
+            y: (anchorLocalY - currentViewport.y) / currentViewport.zoom,
+          }
 
       const nextViewport = {
         x: anchorLocalX - anchorFlow.x * nextZoom,

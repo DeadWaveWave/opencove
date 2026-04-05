@@ -95,6 +95,7 @@ import type {
   WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
@@ -126,6 +127,7 @@ const opencoveApi = {
     isTest: process.env.NODE_ENV === 'test',
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
+    runtime: 'electron',
     platform: process.platform,
     windowsPty: resolveWindowsPtyMeta(),
   },
@@ -399,11 +401,14 @@ const opencoveApi = {
     getStatus: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerGetStatus),
     start: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStart),
     stop: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerStop),
+    getWebUiUrl: (): Promise<string | null> => invokeIpc(IPC_CHANNELS.workerGetWebUiUrl),
   },
   workerClient: {
     getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
     setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
       invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
+    setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput): Promise<HomeWorkerConfigDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientSetWebUiSecurity, payload),
     relaunch: (): Promise<void> => invokeIpc(IPC_CHANNELS.workerClientRelaunch),
   },
   cli: {

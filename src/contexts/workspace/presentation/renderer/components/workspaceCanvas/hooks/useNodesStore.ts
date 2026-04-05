@@ -10,9 +10,11 @@ import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
 import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
+import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDimensions'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
+import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
@@ -101,7 +103,7 @@ export function useWorkspaceCanvasNodesStore({
       options: { syncLayout?: boolean } = {},
     ) => {
       const previousNodes = nodesRef.current
-      const nextNodes = updater(previousNodes)
+      const nextNodes = ensureNodesHaveInitialDimensions(updater(previousNodes))
       if (nextNodes === previousNodes) {
         return
       }
@@ -143,7 +145,9 @@ export function useWorkspaceCanvasNodesStore({
       const target = nodesRef.current.find(node => node.id === nodeId)
       if (target && target.data.sessionId.length > 0) {
         cleanupNodeRuntimeArtifacts(nodeId, target.data.sessionId)
-        await window.opencoveApi.pty.kill({ sessionId: target.data.sessionId })
+        await window.opencoveApi.pty
+          .kill({ sessionId: target.data.sessionId })
+          .catch(() => undefined)
       }
 
       if (target?.data.kind === 'image' && target.data.image) {
@@ -171,8 +175,10 @@ export function useWorkspaceCanvasNodesStore({
           now,
         })
       })
+
+      onRequestPersistFlush?.()
     },
-    [clearAgentLaunchToken, setNodes],
+    [clearAgentLaunchToken, onRequestPersistFlush, setNodes],
   )
 
   const normalizePosition = useCallback((nodeId: string, desired: Point, size: Size): Point => {
@@ -355,6 +361,7 @@ export function useWorkspaceCanvasNodesStore({
 
   const updateNoteText = useCallback(
     (nodeId: string, text: string) => {
+      guardNodeFromSyncOverwrite(nodeId)
       setNodes(
         prevNodes => {
           let hasChanged = false

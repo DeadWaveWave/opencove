@@ -2,9 +2,30 @@ import { describe, expect, it } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
+import type { PtyStreamHub } from '../../../src/app/main/controlSurface/ptyStream/ptyStreamHub'
 
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-03-27T00:00:00.000Z'),
+  capabilities: {
+    webShell: false,
+    sync: {
+      state: true,
+      events: true,
+    },
+    sessionStreaming: {
+      enabled: true,
+      ptyProtocolVersion: 1,
+      replayWindowMaxBytes: 400_000,
+      roles: {
+        viewer: true,
+        controller: true,
+      },
+      webAuth: {
+        ticketToCookie: true,
+        cookieSession: true,
+      },
+    },
+  },
 }
 
 function createStubStore(state: unknown) {
@@ -52,6 +73,10 @@ describe('control surface session handlers', () => {
     }
 
     const controlSurface = createControlSurface()
+    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
+      registerSessionMetadata: () => undefined,
+      hasSession: () => false,
+    }
     registerSessionHandlers(controlSurface, {
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -63,12 +88,15 @@ describe('control surface session handlers', () => {
         write: () => undefined,
         resize: () => undefined,
         kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
         attach: () => undefined,
         detach: () => undefined,
         snapshot: () => '',
         startSessionStateWatcher: () => undefined,
         dispose: () => undefined,
       },
+      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
     })
 
     const result = await controlSurface.invoke(ctx, {
@@ -120,6 +148,10 @@ describe('control surface session handlers', () => {
     } | null = null
 
     const controlSurface = createControlSurface()
+    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
+      registerSessionMetadata: () => undefined,
+      hasSession: () => false,
+    }
     registerSessionHandlers(controlSurface, {
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -139,12 +171,15 @@ describe('control surface session handlers', () => {
         kill: sessionId => {
           killed = sessionId
         },
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
         attach: () => undefined,
         detach: () => undefined,
         snapshot: () => '',
         startSessionStateWatcher: () => undefined,
         dispose: () => undefined,
       },
+      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
     })
 
     const launched = await controlSurface.invoke(ctx, {
@@ -187,6 +222,163 @@ describe('control surface session handlers', () => {
     expect(killed).toBe('pty-123')
   })
 
+  it('allows launching agent sessions with an empty prompt', async () => {
+    const appState = {
+      formatVersion: 1,
+      activeWorkspaceId: 'ws1',
+      workspaces: [
+        {
+          id: 'ws1',
+          name: 'Workspace',
+          path: '/repo',
+          worktreesRoot: '',
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [
+            {
+              id: 's1',
+              name: 'Space A',
+              directoryPath: '/repo',
+              labelColor: null,
+              nodeIds: [],
+              rect: null,
+            },
+          ],
+          activeSpaceId: null,
+          nodes: [],
+          spaceArchiveRecords: [],
+        },
+      ],
+      settings: {},
+    }
+
+    const controlSurface = createControlSurface()
+    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
+      registerSessionMetadata: () => undefined,
+      hasSession: () => false,
+    }
+
+    registerSessionHandlers(controlSurface, {
+      approvedWorkspaces: {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      },
+      getPersistenceStore: async () => createStubStore(appState),
+      ptyRuntime: {
+        spawnSession: async () => ({ sessionId: 'pty-empty-prompt' }),
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+        attach: () => undefined,
+        detach: () => undefined,
+        snapshot: () => '',
+        startSessionStateWatcher: () => undefined,
+        dispose: () => undefined,
+      },
+      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
+    })
+
+    const launched = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'session.launchAgent',
+      payload: { spaceId: 's1', prompt: '' },
+    })
+
+    expect(launched.ok).toBe(true)
+    if (!launched.ok) {
+      return
+    }
+
+    expect(launched.value.sessionId).toBe('pty-empty-prompt')
+
+    const fetched = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'session.get',
+      payload: { sessionId: launched.value.sessionId },
+    })
+
+    expect(fetched.ok).toBe(true)
+    if (fetched.ok) {
+      expect(fetched.value.prompt).toBe('')
+    }
+  })
+
+  it('launches an agent session by cwd when no spaces exist', async () => {
+    const appState = {
+      formatVersion: 1,
+      activeWorkspaceId: 'ws1',
+      workspaces: [
+        {
+          id: 'ws1',
+          name: 'Workspace',
+          path: '/repo',
+          worktreesRoot: '',
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [],
+          activeSpaceId: null,
+          nodes: [],
+          spaceArchiveRecords: [],
+        },
+      ],
+      settings: {},
+    }
+
+    const controlSurface = createControlSurface()
+    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
+      registerSessionMetadata: () => undefined,
+      hasSession: () => false,
+    }
+
+    registerSessionHandlers(controlSurface, {
+      approvedWorkspaces: {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      },
+      getPersistenceStore: async () => createStubStore(appState),
+      ptyRuntime: {
+        spawnSession: async () => ({ sessionId: 'pty-cwd' }),
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+        attach: () => undefined,
+        detach: () => undefined,
+        snapshot: () => '',
+        startSessionStateWatcher: () => undefined,
+        dispose: () => undefined,
+      },
+      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
+    })
+
+    const launched = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'session.launchAgent',
+      payload: { cwd: '/repo', prompt: 'hello' },
+    })
+
+    expect(launched.ok).toBe(true)
+    if (!launched.ok) {
+      return
+    }
+
+    expect(launched.value.sessionId).toBe('pty-cwd')
+
+    const fetched = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'session.get',
+      payload: { sessionId: launched.value.sessionId },
+    })
+
+    expect(fetched.ok).toBe(true)
+    if (fetched.ok) {
+      expect(fetched.value.cwd).toBe('/repo')
+    }
+  })
+
   it('rejects invalid providers', async () => {
     const appState = {
       formatVersion: 1,
@@ -218,6 +410,10 @@ describe('control surface session handlers', () => {
     }
 
     const controlSurface = createControlSurface()
+    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
+      registerSessionMetadata: () => undefined,
+      hasSession: () => false,
+    }
     registerSessionHandlers(controlSurface, {
       approvedWorkspaces: {
         registerRoot: async () => undefined,
@@ -229,12 +425,15 @@ describe('control surface session handlers', () => {
         write: () => undefined,
         resize: () => undefined,
         kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
         attach: () => undefined,
         detach: () => undefined,
         snapshot: () => '',
         startSessionStateWatcher: () => undefined,
         dispose: () => undefined,
       },
+      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
     })
 
     const result = await controlSurface.invoke(ctx, {

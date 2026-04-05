@@ -12,10 +12,13 @@ import { shouldEnableWaylandIme } from './waylandIme'
 import { createApprovedWorkspaceStore } from '../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createPtyRuntime } from '../../contexts/terminal/presentation/main-ipc/runtime'
 import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
+import { createHomeWorkerEndpointResolver } from './worker/homeWorkerEndpointResolver'
+import { hasOwnedLocalWorkerProcess, stopOwnedLocalWorker } from './worker/localWorkerManager'
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
+let isCleaningUpOwnedLocalWorkerOnQuit = false
 const APP_USER_DATA_DIRECTORY_NAME = 'opencove'
 const OPENCOVE_APP_USER_MODEL_ID = 'dev.deadwave.opencove'
 
@@ -425,21 +428,26 @@ app.whenReady().then(async () => {
     process.stderr.write(`[opencove] ${message}\n`)
   }
 
+  const workerEndpointResolver =
+    homeWorker.effectiveMode !== 'standalone'
+      ? createHomeWorkerEndpointResolver({
+          userDataPath: app.getPath('userData'),
+          config: homeWorker.config,
+          effectiveMode: homeWorker.effectiveMode,
+        })
+      : null
+
   ipcDisposable = registerIpcHandlers({
     approvedWorkspaces,
     ptyRuntime,
-    ...(homeWorker.endpoint
+    ...(workerEndpointResolver
       ? {
-          workerEndpoint: {
-            hostname: homeWorker.endpoint.hostname,
-            port: homeWorker.endpoint.port,
-            token: homeWorker.endpoint.token,
-          },
+          workerEndpointResolver,
         }
       : {}),
   })
 
-  if (process.env.NODE_ENV !== 'test' && !homeWorker.endpoint) {
+  if (process.env.NODE_ENV !== 'test' && !workerEndpointResolver) {
     controlSurfaceDisposable = registerControlSurfaceServer({ approvedWorkspaces, ptyRuntime })
   }
 
@@ -462,10 +470,24 @@ app.on('window-all-closed', () => {
   }
 })
 
+app.on('before-quit', event => {
+  if (isCleaningUpOwnedLocalWorkerOnQuit || !hasOwnedLocalWorkerProcess()) {
+    return
+  }
+
+  event.preventDefault()
+  isCleaningUpOwnedLocalWorkerOnQuit = true
+  void stopOwnedLocalWorker()
+    .catch(() => undefined)
+    .finally(() => {
+      app.quit()
+    })
+})
+
 app.on('will-quit', () => {
   ipcDisposable?.dispose()
   ipcDisposable = null
 
-  controlSurfaceDisposable?.dispose()
+  void controlSurfaceDisposable?.dispose()
   controlSurfaceDisposable = null
 })

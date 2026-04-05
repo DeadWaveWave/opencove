@@ -27,13 +27,13 @@ function createApprovedWorkspaceStoreMock(): ApprovedWorkspaceStore {
 
 function createPtyRuntimeMock(): PtyRuntime {
   return {
-    spawnSession: vi.fn(() => ({ sessionId: 'session-1' })),
-    write: vi.fn(),
-    resize: vi.fn(),
-    kill: vi.fn(),
-    attach: vi.fn(),
-    detach: vi.fn(),
-    snapshot: vi.fn(() => ''),
+    spawnSession: vi.fn(async () => ({ sessionId: 'session-1' })),
+    write: vi.fn(async () => undefined),
+    resize: vi.fn(async () => undefined),
+    kill: vi.fn(async () => undefined),
+    attach: vi.fn(async () => undefined),
+    detach: vi.fn(async () => undefined),
+    snapshot: vi.fn(async () => ''),
     startSessionStateWatcher: vi.fn(),
     dispose: vi.fn(),
   }

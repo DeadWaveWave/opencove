@@ -5,6 +5,7 @@ import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infr
 import { createAppError } from '../../../../shared/errors/appError'
 import { createLocalFileSystemPort } from '../../../../contexts/filesystem/infrastructure/localFileSystemPort'
 import {
+  createDirectoryUseCase,
   copyEntryUseCase,
   readDirectoryUseCase,
   readFileTextUseCase,
@@ -25,6 +26,7 @@ import type {
   StatInput,
   FileSystemStat,
   WriteFileTextInput,
+  CreateDirectoryInput,
 } from '../../../../shared/contracts/dto'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -147,6 +149,18 @@ function normalizeReadDirectoryPayload(payload: unknown): ReadDirectoryInput {
   }
 }
 
+function normalizeCreateDirectoryPayload(payload: unknown): CreateDirectoryInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for filesystem.createDirectory.',
+    })
+  }
+
+  return {
+    uri: normalizeFileSystemUri(payload.uri, 'filesystem.createDirectory'),
+  }
+}
+
 function normalizeDeleteEntryPayload(payload: unknown): DeleteEntryInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -181,6 +195,19 @@ export function registerFilesystemHandlers(
     handle: async (_ctx, payload): Promise<ReadFileTextResult> => {
       await assertApprovedUri(payload.uri, 'filesystem.readFileText uri is outside approved roots')
       return await readFileTextUseCase(port, payload)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('filesystem.createDirectory', {
+    kind: 'command',
+    validate: normalizeCreateDirectoryPayload,
+    handle: async (_ctx, payload): Promise<void> => {
+      await assertApprovedUri(
+        payload.uri,
+        'filesystem.createDirectory uri is outside approved roots',
+      )
+      await createDirectoryUseCase(port, payload)
     },
     defaultErrorCode: 'common.unexpected',
   })

@@ -7,12 +7,10 @@ import { DEFAULT_WORKSPACE_VIEWPORT } from '@contexts/workspace/presentation/ren
 export function sanitizeWorkspaceSpaces(
   spaces: WorkspaceState['spaces'],
 ): WorkspaceState['spaces'] {
-  return spaces
-    .map(space => ({
-      ...space,
-      nodeIds: [...new Set(space.nodeIds)],
-    }))
-    .filter(space => space.nodeIds.length > 0)
+  return spaces.map(space => ({
+    ...space,
+    nodeIds: [...new Set(space.nodeIds)],
+  }))
 }
 
 export function createDefaultWorkspaceViewport(): WorkspaceViewport {

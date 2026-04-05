@@ -79,8 +79,10 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
                   ? 'websiteNode'
                   : 'terminalNode',
       position: node.position,
+      initialWidth: node.width,
+      initialHeight: node.height,
       data: {
-        sessionId: '',
+        sessionId: typeof node.sessionId === 'string' ? node.sessionId : '',
         profileId: node.profileId,
         runtimeKind: node.runtimeKind,
         labelColorOverride: node.labelColorOverride ?? null,

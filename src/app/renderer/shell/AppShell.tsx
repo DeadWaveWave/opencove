@@ -7,6 +7,7 @@ import { AppShellOverlays } from './components/AppShellOverlays'
 import { AppShellModals } from './components/AppShellModals'
 import { AppShellPopups } from './components/AppShellPopups'
 import { Sidebar } from './components/Sidebar'
+import { WorkspaceDirectoryPickerBridge } from './components/WorkspaceDirectoryPickerBridge'
 import { WorkspaceMain } from './components/WorkspaceMain'
 import { WorkspaceSearchOverlay } from './components/WorkspaceSearchOverlay'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
@@ -468,6 +469,8 @@ export default function App(): React.JSX.Element {
         }}
         whatsNew={whatsNew}
       />
+
+      <WorkspaceDirectoryPickerBridge />
     </>
   )
 }

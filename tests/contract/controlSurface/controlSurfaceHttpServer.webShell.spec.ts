@@ -90,8 +90,8 @@ async function disposeAndCleanup(options: {
   )
 }
 
-describe('Control Surface HTTP server (worker web shell)', () => {
-  it('serves GET / when enabled and enforces bearer token for POST /invoke', async () => {
+describe('Control Surface HTTP server (worker web surfaces)', () => {
+  it('serves the full web UI at /, exposes the debug shell at /debug/shell, and enforces bearer token for POST /invoke', async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-'))
     const connectionFileName = 'control-surface.test.json'
     const connectionFilePath = resolve(userDataPath, connectionFileName)
@@ -99,6 +99,9 @@ describe('Control Surface HTTP server (worker web shell)', () => {
     const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
       resolve(userDataPath, 'approved-workspaces.json'),
     )
+
+    const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+    const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
 
     const server = registerControlSurfaceHttpServer({
       userDataPath,
@@ -109,7 +112,21 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       approvedWorkspaces,
       ptyRuntime: {
         spawnSession: async () => ({ sessionId: 'test-session' }),
+        write: () => undefined,
+        resize: () => undefined,
         kill: () => undefined,
+        onData: listener => {
+          dataListeners.add(listener)
+          return () => {
+            dataListeners.delete(listener)
+          }
+        },
+        onExit: listener => {
+          exitListeners.add(listener)
+          return () => {
+            exitListeners.delete(listener)
+          }
+        },
       },
       enableWebShell: true,
     })
@@ -127,9 +144,15 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       const rootRes = await fetch(`${baseUrl}/`)
       expect(rootRes.status).toBe(200)
       const rootHtml = await rootRes.text()
-      expect(rootHtml).toContain('<title>OpenCove Worker Shell</title>')
-      expect(rootHtml).toContain('POST <code>/invoke</code>')
-      expect(rootHtml).toContain("fetch('/invoke'")
+      expect(rootHtml).toContain('<title>OpenCove Web</title>')
+      expect(rootHtml).toContain('<div id="root"></div>')
+
+      const debugShellRes = await fetch(`${baseUrl}/debug/shell`)
+      expect(debugShellRes.status).toBe(200)
+      const debugShellHtml = await debugShellRes.text()
+      expect(debugShellHtml).toContain('<title>OpenCove Worker Shell</title>')
+      expect(debugShellHtml).toContain('POST <code>/invoke</code>')
+      expect(debugShellHtml).toContain("fetch('/invoke'")
 
       const missingToken = await fetch(`${baseUrl}/invoke`, {
         method: 'POST',
@@ -177,6 +200,9 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       resolve(userDataPath, 'approved-workspaces.json'),
     )
 
+    const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+    const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+
     const server = registerControlSurfaceHttpServer({
       userDataPath,
       hostname: '127.0.0.1',
@@ -186,7 +212,21 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       approvedWorkspaces,
       ptyRuntime: {
         spawnSession: async () => ({ sessionId: 'test-session' }),
+        write: () => undefined,
+        resize: () => undefined,
         kill: () => undefined,
+        onData: listener => {
+          dataListeners.add(listener)
+          return () => {
+            dataListeners.delete(listener)
+          }
+        },
+        onExit: listener => {
+          exitListeners.add(listener)
+          return () => {
+            exitListeners.delete(listener)
+          }
+        },
       },
     })
 
@@ -214,6 +254,9 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       resolve(userDataPath, 'approved-workspaces.json'),
     )
 
+    const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+    const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+
     const server = registerControlSurfaceHttpServer({
       userDataPath,
       hostname: '127.0.0.1',
@@ -223,7 +266,21 @@ describe('Control Surface HTTP server (worker web shell)', () => {
       approvedWorkspaces,
       ptyRuntime: {
         spawnSession: async () => ({ sessionId: 'test-session' }),
+        write: () => undefined,
+        resize: () => undefined,
         kill: () => undefined,
+        onData: listener => {
+          dataListeners.add(listener)
+          return () => {
+            dataListeners.delete(listener)
+          }
+        },
+        onExit: listener => {
+          exitListeners.add(listener)
+          return () => {
+            exitListeners.delete(listener)
+          }
+        },
       },
     })
 

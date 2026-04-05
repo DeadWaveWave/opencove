@@ -5,6 +5,33 @@ import {
 } from '../../../src/app/main/ipc/ptyScrollbackMirror'
 import type { PersistWriteResult } from '../../../src/shared/contracts/dto/persistence'
 
+async function flushMicrotasks(iterations = 10): Promise<void> {
+  let chain = Promise.resolve()
+  for (let index = 0; index < iterations; index += 1) {
+    chain = chain.then(() => undefined)
+  }
+  await chain
+}
+
+async function waitForMockCalls(
+  mockFn: { mock: { calls: unknown[] } },
+  expectedCalls: number,
+  remainingChecks = 50,
+): Promise<void> {
+  if (mockFn.mock.calls.length >= expectedCalls) {
+    return
+  }
+
+  if (remainingChecks <= 0) {
+    throw new Error(
+      `Timed out waiting for ${expectedCalls} calls (got ${mockFn.mock.calls.length}).`,
+    )
+  }
+
+  await Promise.resolve()
+  await waitForMockCalls(mockFn, expectedCalls, remainingChecks - 1)
+}
+
 describe('ptyScrollbackMirror', () => {
   it('normalizes session/node bindings payloads', () => {
     expect(
@@ -28,7 +55,7 @@ describe('ptyScrollbackMirror', () => {
       async (): Promise<PersistWriteResult> => ({ ok: true, level: 'full', bytes: 0 }),
     )
     const getPersistenceStore = vi.fn(async () => ({ writeNodeScrollback }))
-    const snapshot = vi.fn(() => 'hello')
+    const snapshot = vi.fn(async () => 'hello')
 
     const mirror = createPtyScrollbackMirror({
       source: { snapshot },
@@ -38,8 +65,7 @@ describe('ptyScrollbackMirror', () => {
 
     mirror.setBindings([{ sessionId: 'session-1', nodeId: 'node-1' }])
 
-    await Promise.resolve()
-    await Promise.resolve()
+    await waitForMockCalls(writeNodeScrollback, 1)
 
     expect(writeNodeScrollback).toHaveBeenCalledTimes(1)
     expect(writeNodeScrollback).toHaveBeenCalledWith('node-1', 'hello')
@@ -54,7 +80,7 @@ describe('ptyScrollbackMirror', () => {
       async (): Promise<PersistWriteResult> => ({ ok: true, level: 'full', bytes: 0 }),
     )
     const getPersistenceStore = vi.fn(async () => ({ writeNodeScrollback }))
-    const snapshot = vi.fn(() => 'hello')
+    const snapshot = vi.fn(async () => 'hello')
 
     const mirror = createPtyScrollbackMirror({
       source: { snapshot },
@@ -64,14 +90,12 @@ describe('ptyScrollbackMirror', () => {
 
     mirror.setBindings([{ sessionId: 'session-1', nodeId: 'node-1' }])
 
-    await Promise.resolve()
-    await Promise.resolve()
+    await waitForMockCalls(writeNodeScrollback, 1)
 
     expect(writeNodeScrollback).toHaveBeenCalledTimes(1)
 
     await vi.advanceTimersByTimeAsync(10)
-    await Promise.resolve()
-    await Promise.resolve()
+    await flushMicrotasks()
 
     expect(writeNodeScrollback).toHaveBeenCalledTimes(1)
 

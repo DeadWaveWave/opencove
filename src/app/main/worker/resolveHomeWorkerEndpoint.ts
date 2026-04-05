@@ -2,6 +2,7 @@ import { app } from 'electron'
 import type { HomeWorkerConfigDto, HomeWorkerMode } from '../../../shared/contracts/dto'
 import type { ControlSurfaceRemoteEndpoint } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
+import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
 import { createDefaultHomeWorkerConfig, readHomeWorkerConfig } from './homeWorkerConfig'
 import { startLocalWorker } from './localWorkerManager'
 
@@ -35,6 +36,7 @@ export interface HomeWorkerEndpointResolution {
 async function resolveLocalDiscoveryEndpoint(): Promise<ControlSurfaceRemoteEndpoint | null> {
   const workerConnection = await resolveControlSurfaceConnectionInfoFromUserData({
     userDataPath: app.getPath('userData'),
+    fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
   })
 
   return workerConnection ? toEndpoint(workerConnection) : null

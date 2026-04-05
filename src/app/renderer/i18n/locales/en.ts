@@ -212,6 +212,19 @@ export const en = {
   projectContextMenu: {
     removeProject: 'Remove Project',
   },
+  addProjectDialog: {
+    title: 'Add project',
+    description: 'Enter an absolute path on the worker machine.',
+    pathLabel: 'Project path',
+    pathPlaceholder: '/path/to/project',
+    nameLabel: 'Project name',
+    namePlaceholder: 'Leave empty to use the folder name',
+    pathRequired: 'Project path is required.',
+    pathMustBeAbsolute: 'Project path must be an absolute path.',
+    pathMustBeDirectory: 'Project path must be a directory.',
+    nameRequired: 'Project name is required.',
+    failed: 'Failed to add project: {{message}}',
+  },
   deleteProjectDialog: {
     title: 'Remove Project?',
     description: 'This will close all terminals and agents in {{workspaceName}}.',

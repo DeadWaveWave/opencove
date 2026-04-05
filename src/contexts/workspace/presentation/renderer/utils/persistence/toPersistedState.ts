@@ -51,37 +51,42 @@ export function toPersistedState(
       spaceArchiveRecords: Array.isArray(workspace.spaceArchiveRecords)
         ? workspace.spaceArchiveRecords.slice(0, 50)
         : [],
-      nodes: workspace.nodes.map(node => ({
-        id: node.id,
-        title: node.data.title,
-        titlePinnedByUser: node.data.titlePinnedByUser === true,
-        position: node.position,
-        width: node.data.width,
-        height: node.data.height,
-        kind: node.data.kind,
-        profileId: normalizeOptionalString(node.data.profileId),
-        runtimeKind: node.data.runtimeKind,
-        labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
-        status: node.data.status,
-        startedAt: node.data.startedAt,
-        endedAt: node.data.endedAt,
-        exitCode: node.data.exitCode,
-        lastError: node.data.lastError,
-        scrollback: null,
-        executionDirectory: normalizeOptionalString(node.data.executionDirectory),
-        expectedDirectory: normalizeOptionalString(node.data.expectedDirectory),
-        agent: node.data.agent,
-        task:
-          node.data.kind === 'note'
-            ? node.data.note
-            : node.data.kind === 'image'
-              ? node.data.image
-              : node.data.kind === 'document'
-                ? node.data.document
-                : node.data.kind === 'website'
-                  ? node.data.website
-                  : node.data.task,
-      })),
+      nodes: workspace.nodes.map(node => {
+        const sessionId = normalizeOptionalString(node.data.sessionId)
+
+        return {
+          id: node.id,
+          ...(sessionId ? { sessionId } : {}),
+          title: node.data.title,
+          titlePinnedByUser: node.data.titlePinnedByUser === true,
+          position: node.position,
+          width: node.data.width,
+          height: node.data.height,
+          kind: node.data.kind,
+          profileId: normalizeOptionalString(node.data.profileId),
+          runtimeKind: node.data.runtimeKind,
+          labelColorOverride: normalizeNodeLabelColorOverride(node.data.labelColorOverride),
+          status: node.data.status,
+          startedAt: node.data.startedAt,
+          endedAt: node.data.endedAt,
+          exitCode: node.data.exitCode,
+          lastError: node.data.lastError,
+          scrollback: null,
+          executionDirectory: normalizeOptionalString(node.data.executionDirectory),
+          expectedDirectory: normalizeOptionalString(node.data.expectedDirectory),
+          agent: node.data.agent,
+          task:
+            node.data.kind === 'note'
+              ? node.data.note
+              : node.data.kind === 'image'
+                ? node.data.image
+                : node.data.kind === 'document'
+                  ? node.data.document
+                  : node.data.kind === 'website'
+                    ? node.data.website
+                    : node.data.task,
+        }
+      }),
     })),
     settings,
   }

@@ -19,6 +19,19 @@ export interface ControlSurfaceCapabilitiesResult {
       state: boolean
       events: boolean
     }
+    sessionStreaming: {
+      enabled: boolean
+      ptyProtocolVersion: number
+      replayWindowMaxBytes: number
+      roles: {
+        viewer: boolean
+        controller: boolean
+      }
+      webAuth: {
+        ticketToCookie: boolean
+        cookieSession: boolean
+      }
+    }
   }
 }
 
@@ -137,10 +150,13 @@ export interface ArchiveWorktreeResult {
 }
 
 export interface LaunchAgentSessionInput {
-  spaceId: string
+  spaceId?: string | null
+  cwd?: string | null
   prompt: string
   provider?: AgentProviderId | null
+  mode?: 'new' | 'resume' | null
   model?: string | null
+  resumeSessionId?: string | null
   agentFullAccess?: boolean | null
 }
 
@@ -184,4 +200,66 @@ export interface GetSessionFinalMessageResult {
   cwd: string
   resumeSessionId: string | null
   message: string | null
+}
+
+export interface IssueWebSessionTicketInput {
+  redirectPath?: string | null
+}
+
+export interface IssueWebSessionTicketResult {
+  ticket: string
+  expiresAt: string
+}
+
+export type ControlSurfaceSessionKind = 'agent' | 'terminal'
+
+export interface ListSessionsResult {
+  sessions: Array<{
+    sessionId: string
+    kind: ControlSurfaceSessionKind
+    startedAt: string
+    cwd: string
+    command: string
+    args: string[]
+    status: 'running' | 'exited'
+    exitCode: number | null
+    seq: number
+    earliestSeq: number
+    controller: {
+      clientId: string
+      kind: 'web' | 'desktop' | 'cli' | 'unknown'
+    } | null
+  }>
+}
+
+export interface GetSessionSnapshotInput {
+  sessionId: string
+}
+
+export interface GetSessionSnapshotResult {
+  sessionId: string
+  fromSeq: number
+  toSeq: number
+  scrollback: string
+  truncated: boolean
+}
+
+export type ControlSurfaceTerminalRuntime = 'shell' | 'node'
+
+export interface SpawnTerminalSessionInput {
+  spaceId: string
+  runtime?: ControlSurfaceTerminalRuntime | null
+  command?: string | null
+  args?: string[] | null
+  cols?: number | null
+  rows?: number | null
+}
+
+export interface SpawnTerminalSessionResult {
+  sessionId: string
+  startedAt: string
+  cwd: string
+  command: string
+  args: string[]
+  executionContext: ExecutionContextDto
 }

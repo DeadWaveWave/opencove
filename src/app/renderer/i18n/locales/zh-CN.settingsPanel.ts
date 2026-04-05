@@ -2,7 +2,7 @@ export const zhCNSettingsPanel = {
   title: '设置',
   nav: {
     general: '通用',
-    worker: 'Worker / Web UI',
+    worker: 'Worker',
     agent: 'Agent',
     notifications: '通知',
     canvas: '画布',
@@ -134,7 +134,34 @@ export const zhCNSettingsPanel = {
     focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
   },
   experimental: {
-    title: '网页窗口',
+    title: '实验性',
+    workerWebUi: {
+      title: 'Worker Web UI',
+      help: '通过 Worker 提供的浏览器 UI（实验性）。当前需要 Home Worker = Local Worker。',
+      statusLabel: '状态',
+      statusHelp: '请先在 Worker 设置里启动 Local Worker。',
+      status: {
+        requiresLocal: '需要将 Home Worker 设为 Local Worker',
+        stopped: '未运行',
+        running: '就绪',
+      },
+      actionsLabel: '操作',
+      refresh: '刷新',
+      open: '打开 Web UI',
+      lanLabel: '内网访问',
+      lanHelp: '将 Worker Web UI 暴露到本地局域网。需要设置密码。仅建议在可信网络中使用。',
+      passwordLabel: '密码',
+      passwordHelpUnset: '启用内网访问前请先设置密码。',
+      passwordHelpSet: '密码已设置。修改密码会重启 Local Worker。',
+      passwordPlaceholder: '输入密码…',
+      passwordShow: '显示',
+      passwordHide: '隐藏',
+      passwordSave: '设置密码',
+      errors: {
+        noUrl: 'Worker 未返回 Web UI 地址。',
+        passwordRequired: '启用内网访问需要先设置密码。',
+      },
+    },
     websiteWindowsTitle: '网页窗口',
     websiteWindowsHelp:
       '把网页作为原生画布节点嵌入显示。该功能保持可选开启，便于继续打磨生命周期与性能策略。',
@@ -247,7 +274,7 @@ export const zhCNSettingsPanel = {
     githubPullRequestsHelp: '在画布中显示 PR 链接，点击后在 GitHub 打开（需要 `gh`）。',
   },
   worker: {
-    title: 'Worker / Web UI',
+    title: 'Worker',
     errors: {
       remoteRequired: '远程 Worker 需要填写主机、端口和 Token。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
@@ -255,7 +282,7 @@ export const zhCNSettingsPanel = {
     },
     home: {
       title: 'Home Worker',
-      help: '选择 Desktop 读写 durable state 的位置。',
+      help: '选择 Desktop 读写 durable state 的位置。Worker Web UI 当前需要 Local Worker。',
       modeLabel: '模式',
       mode: {
         standalone: 'Standalone（无 Worker）',
@@ -287,7 +314,7 @@ export const zhCNSettingsPanel = {
     },
     local: {
       title: 'Local Worker',
-      help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。',
+      help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。Worker Web UI 为实验性功能（见“实验性”设置）。',
       statusLabel: '状态',
       status: {
         running: '运行中',
@@ -302,8 +329,6 @@ export const zhCNSettingsPanel = {
       revealToken: '显示',
       hideToken: '隐藏',
       copyToken: '复制',
-      webUiLabel: 'Web UI',
-      openWebUi: '打开 Web UI',
     },
   },
   workspace: {

@@ -3,7 +3,14 @@ import { Readable } from 'node:stream'
 import type { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type { SyncEventPayload } from '../../../../shared/contracts/dto'
-import type { ControlSurfaceRemoteEndpoint } from './controlSurfaceHttpClient'
+import type { ControlSurfaceRemoteEndpointResolver } from './controlSurfaceHttpClient'
+
+class WorkerEndpointUnavailableError extends Error {
+  constructor() {
+    super('Worker endpoint unavailable.')
+    this.name = 'WorkerEndpointUnavailableError'
+  }
+}
 
 function sendToAllWindows<Payload>(channel: string, payload: Payload): void {
   for (const content of webContents.getAllWebContents()) {
@@ -19,7 +26,7 @@ function sendToAllWindows<Payload>(channel: string, payload: Payload): void {
   }
 }
 
-export function registerWorkerSyncBridge(endpoint: ControlSurfaceRemoteEndpoint): {
+export function registerWorkerSyncBridge(endpointResolver: ControlSurfaceRemoteEndpointResolver): {
   dispose: () => void
 } {
   let disposed = false
@@ -27,6 +34,11 @@ export function registerWorkerSyncBridge(endpoint: ControlSurfaceRemoteEndpoint)
   const abortController = new AbortController()
 
   const connectOnce = async (): Promise<void> => {
+    const endpoint = await endpointResolver()
+    if (!endpoint) {
+      throw new WorkerEndpointUnavailableError()
+    }
+
     const url = `http://${endpoint.hostname}:${endpoint.port}/events?afterRevision=${lastRevision}`
     const response = await fetch(url, {
       method: 'GET',
@@ -173,8 +185,10 @@ export function registerWorkerSyncBridge(endpoint: ControlSurfaceRemoteEndpoint)
           return
         }
 
-        const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-        process.stderr.write(`[opencove] worker sync bridge reconnecting: ${detail}\n`)
+        if (!(error instanceof WorkerEndpointUnavailableError)) {
+          const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+          process.stderr.write(`[opencove] worker sync bridge reconnecting: ${detail}\n`)
+        }
         setTimeout(() => {
           connectLoop()
         }, 750)

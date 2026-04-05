@@ -22,12 +22,17 @@ import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandle
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
-import type { ControlSurfaceRemoteEndpoint } from '../controlSurface/remote/controlSurfaceHttpClient'
+import type {
+  ControlSurfaceRemoteEndpoint,
+  ControlSurfaceRemoteEndpointResolver,
+} from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
+import { createRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
 import { registerWorkerSyncBridge } from '../controlSurface/remote/workerSyncBridge'
 import { registerLocalWorkerIpcHandlers } from './registerLocalWorkerIpcHandlers'
 import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandlers'
 import { registerCliIpcHandlers } from './registerCliIpcHandlers'
+import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers'
 import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { registerHandledIpc } from './handle'
@@ -42,12 +47,25 @@ export function registerIpcHandlers(deps?: {
   ptyRuntime?: ReturnType<typeof createPtyRuntime>
   approvedWorkspaces?: ReturnType<typeof createApprovedWorkspaceStore>
   workerEndpoint?: ControlSurfaceRemoteEndpoint
+  workerEndpointResolver?: ControlSurfaceRemoteEndpointResolver
 }): IpcRegistrationDisposable {
-  const ptyRuntime = deps?.ptyRuntime ?? createPtyRuntime()
   const approvedWorkspaces = deps?.approvedWorkspaces ?? createApprovedWorkspaceStore()
   const appUpdateService = createAppUpdateService()
   const releaseNotesService = createReleaseNotesService()
-  const workerEndpoint = deps?.workerEndpoint ?? null
+  const workerEndpointResolver =
+    deps?.workerEndpointResolver ??
+    (deps?.workerEndpoint ? async () => deps.workerEndpoint ?? null : null)
+
+  const ptyRuntime = workerEndpointResolver
+    ? createRemotePtyRuntime({ endpointResolver: workerEndpointResolver })
+    : (deps?.ptyRuntime ?? createPtyRuntime())
+
+  const ptyApprovedWorkspaces = workerEndpointResolver
+    ? {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      }
+    : approvedWorkspaces
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
@@ -56,8 +74,8 @@ export function registerIpcHandlers(deps?: {
     }
 
     const nextStorePromise = (
-      workerEndpoint
-        ? Promise.resolve(createRemotePersistenceStore(workerEndpoint))
+      workerEndpointResolver
+        ? Promise.resolve(createRemotePersistenceStore(workerEndpointResolver))
         : (() => {
             const dbPath = resolve(app.getPath('userData'), 'opencove.db')
             return createPersistenceStore({ dbPath })
@@ -115,15 +133,17 @@ export function registerIpcHandlers(deps?: {
     registerWindowChromeIpcHandlers(),
     registerWindowMetricsIpcHandlers(),
     registerDiagnosticsIpcHandlers(),
-    registerPtyIpcHandlers(ptyRuntime, approvedWorkspaces),
-    registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
+    registerPtyIpcHandlers(ptyRuntime, ptyApprovedWorkspaces),
+    workerEndpointResolver
+      ? registerRemoteAgentIpcHandlers({ endpointResolver: workerEndpointResolver, ptyRuntime })
+      : registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
     registerTaskIpcHandlers(approvedWorkspaces),
     registerSystemIpcHandlers(),
     registerWebsiteWindowIpcHandlers(),
   ]
 
-  if (workerEndpoint) {
-    disposables.push(registerWorkerSyncBridge(workerEndpoint))
+  if (workerEndpointResolver) {
+    disposables.push(registerWorkerSyncBridge(workerEndpointResolver))
   }
 
   disposables.push({

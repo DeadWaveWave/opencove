@@ -3,6 +3,12 @@ import type { PersistedAppState, PersistedWorkspaceState } from '../../types'
 import { ensurePersistedWorkspace } from './ensure'
 import { getPersistencePort, readLegacyLocalStorageRaw } from './port'
 import type { PersistenceRecoveryReason } from '@shared/contracts/dto'
+import {
+  applyLocalViewStateToPersistedState,
+  persistLocalViewStateFromAppState,
+  stripLocalViewStateFromPersistedState,
+} from './viewState'
+import { markPersistedStateAsSynced } from './write'
 
 function parsePersistedStateValue(value: unknown): {
   state: PersistedAppState | null
@@ -88,8 +94,10 @@ export async function readPersistedStateWithMeta(): Promise<{
   if (primary?.state) {
     const parsed = parsePersistedStateValue(primary.state)
     if (parsed.state) {
+      const state = applyLocalViewStateToPersistedState(parsed.state)
+      markPersistedStateAsSynced(state)
       return {
-        state: parsed.state,
+        state,
         recovery,
         hasStandardWindowSizeBucket: parsed.hasStandardWindowSizeBucket,
       }
@@ -111,7 +119,10 @@ export async function readPersistedStateWithMeta(): Promise<{
   }
 
   const migratedState = stripScrollbackFromState(legacyParsed)
-  const migratedAppStateResult = await port.writeAppState(migratedState)
+  persistLocalViewStateFromAppState(migratedState)
+  const migratedAppStateResult = await port.writeAppState(
+    stripLocalViewStateFromPersistedState(migratedState),
+  )
   if (!migratedAppStateResult.ok) {
     return { state: migratedState, recovery, hasStandardWindowSizeBucket: false }
   }
@@ -124,7 +135,15 @@ export async function readPersistedStateWithMeta(): Promise<{
     ),
   )
 
-  return { state: migratedState, recovery, hasStandardWindowSizeBucket: false }
+  return {
+    state: (() => {
+      const state = applyLocalViewStateToPersistedState(migratedState)
+      markPersistedStateAsSynced(state)
+      return state
+    })(),
+    recovery,
+    hasStandardWindowSizeBucket: false,
+  }
 }
 
 export async function readPersistedState(): Promise<PersistedAppState | null> {

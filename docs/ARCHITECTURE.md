@@ -153,6 +153,7 @@ OpenCove 将把所有可被外部驱动的能力收敛为一套 **Control Surfac
 - 所有输入必须 **runtime validate**，输出必须走统一的结构化错误语义（例如 `AppErrorDescriptor`），避免把异常形态泄漏给调用方。
 
 详细约束见 `docs/CONTROL_SURFACE.md`。
+Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Surface 在不同 transport（HTTP/WS/IPC）上的适配与复用；常见 Web UI 问题与调试见 `docs/WEB_UI_TROUBLESHOOTING.md`。
 
 ## 10. 测试映射规则
 

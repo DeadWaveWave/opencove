@@ -2,30 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { CliPathStatusResult, HomeWorkerMode, WorkerStatusResult } from '@shared/contracts/dto'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
-
-function toErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
-  }
-
-  return String(error)
-}
-
-function toBaseUrl(connection: { hostname: string; port: number }): string {
-  return `http://${connection.hostname}:${connection.port}`
-}
-
-function formatToken(token: string, revealed: boolean): string {
-  if (revealed) {
-    return token
-  }
-
-  if (token.length <= 10) {
-    return '•'.repeat(Math.max(6, token.length))
-  }
-
-  return `${token.slice(0, 4)}…${token.slice(-4)}`
-}
+import { formatToken, toBaseUrl, toErrorMessage } from './workerSectionUtils'
 
 export function WorkerSection(): React.JSX.Element {
   const { t } = useTranslation()
@@ -148,14 +125,6 @@ export function WorkerSection(): React.JSX.Element {
     } finally {
       setIsBusy(false)
     }
-  }
-
-  const openLocalWebUi = (): void => {
-    if (!localConnection) {
-      return
-    }
-
-    window.open(`${toBaseUrl(localConnection)}/?token=${encodeURIComponent(localConnection.token)}`)
   }
 
   const copyLocalBaseUrl = async (): Promise<void> => {
@@ -403,7 +372,7 @@ export function WorkerSection(): React.JSX.Element {
               type="button"
               className="secondary"
               data-testid="settings-worker-local-start"
-              disabled={isBusy || localStatus?.status === 'running' || savedMode !== 'local'}
+              disabled={isBusy || localStatus?.status === 'running'}
               onClick={startLocalWorker}
             >
               {t('settingsPanel.worker.local.start')}
@@ -473,22 +442,6 @@ export function WorkerSection(): React.JSX.Element {
                   data-testid="settings-worker-local-copy-token"
                 >
                   {t('settingsPanel.worker.local.copyToken')}
-                </button>
-              </div>
-            </div>
-
-            <div className="settings-panel__row">
-              <div className="settings-panel__row-label">
-                <strong>{t('settingsPanel.worker.local.webUiLabel')}</strong>
-              </div>
-              <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-                <button
-                  type="button"
-                  className="primary"
-                  onClick={openLocalWebUi}
-                  data-testid="settings-worker-local-open-web-ui"
-                >
-                  {t('settingsPanel.worker.local.openWebUi')}
                 </button>
               </div>
             </div>

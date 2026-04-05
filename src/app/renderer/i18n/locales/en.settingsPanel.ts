@@ -2,7 +2,7 @@ export const enSettingsPanel = {
   title: 'Settings',
   nav: {
     general: 'General',
-    worker: 'Worker / Web UI',
+    worker: 'Worker',
     agent: 'Agent',
     notifications: 'Notifications',
     canvas: 'Canvas',
@@ -135,7 +135,35 @@ export const enSettingsPanel = {
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
   },
   experimental: {
-    title: 'Website Windows',
+    title: 'Experimental',
+    workerWebUi: {
+      title: 'Worker Web UI',
+      help: 'Open the experimental browser UI served by your worker. Requires Home Worker: Local Worker.',
+      statusLabel: 'Status',
+      statusHelp: 'Start the Local Worker in Worker settings first.',
+      status: {
+        requiresLocal: 'Requires Home Worker: Local Worker',
+        stopped: 'Stopped',
+        running: 'Ready',
+      },
+      actionsLabel: 'Actions',
+      refresh: 'Refresh',
+      open: 'Open Web UI',
+      lanLabel: 'LAN Access',
+      lanHelp:
+        'Expose the Worker Web UI to your local network. Requires a password. Use only on trusted networks.',
+      passwordLabel: 'Password',
+      passwordHelpUnset: 'Set a password before enabling LAN access.',
+      passwordHelpSet: 'Password is set. Changing it restarts the Local Worker.',
+      passwordPlaceholder: 'Enter a password…',
+      passwordShow: 'Show',
+      passwordHide: 'Hide',
+      passwordSave: 'Set Password',
+      errors: {
+        noUrl: 'Local worker did not return a Web UI URL.',
+        passwordRequired: 'A password is required for LAN Web UI access.',
+      },
+    },
     websiteWindowsTitle: 'Website Windows',
     websiteWindowsHelp:
       'Embeds web pages as native canvas nodes. This stays opt-in while lifecycle and performance policies keep evolving.',
@@ -254,7 +282,7 @@ export const enSettingsPanel = {
       'Show pull request links on the canvas and open them on GitHub (requires `gh`).',
   },
   worker: {
-    title: 'Worker / Web UI',
+    title: 'Worker',
     errors: {
       remoteRequired: 'Remote worker hostname, port, and token are required.',
       stopLocalWorkerFirst: 'Stop the local worker before switching to Standalone.',
@@ -262,7 +290,7 @@ export const enSettingsPanel = {
     },
     home: {
       title: 'Home Worker',
-      help: 'Choose where Desktop reads and writes durable state.',
+      help: 'Choose where Desktop reads and writes durable state. Worker Web UI currently requires Local Worker.',
       modeLabel: 'Mode',
       mode: {
         standalone: 'Standalone (No Worker)',
@@ -294,7 +322,7 @@ export const enSettingsPanel = {
     },
     local: {
       title: 'Local Worker',
-      help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access.',
+      help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access. Worker Web UI is experimental (see Experimental settings).',
       statusLabel: 'Status',
       status: {
         running: 'Running',
@@ -309,8 +337,6 @@ export const enSettingsPanel = {
       revealToken: 'Reveal',
       hideToken: 'Hide',
       copyToken: 'Copy',
-      webUiLabel: 'Web UI',
-      openWebUi: 'Open Web UI',
     },
   },
   workspace: {

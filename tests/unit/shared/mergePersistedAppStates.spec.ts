@@ -1,0 +1,241 @@
+import { describe, expect, it } from 'vitest'
+import { mergePersistedAppStates } from '@shared/sync/mergePersistedAppStates'
+import { DEFAULT_AGENT_SETTINGS } from '@contexts/settings/domain/agentSettings'
+import type {
+  PersistedAppState,
+  WorkspaceSpaceRect,
+} from '@contexts/workspace/presentation/renderer/types'
+
+function createState(options: {
+  rect: WorkspaceSpaceRect
+  nodeTitle: string
+  nodePosition?: { x: number; y: number }
+}): PersistedAppState {
+  const nodePosition = options.nodePosition ?? { x: 0, y: 0 }
+  return {
+    formatVersion: 1,
+    activeWorkspaceId: 'w1',
+    settings: DEFAULT_AGENT_SETTINGS,
+    workspaces: [
+      {
+        id: 'w1',
+        name: 'Workspace',
+        path: '/tmp/workspace',
+        worktreesRoot: '/tmp/workspace',
+        viewport: { x: 0, y: 0, zoom: 1 },
+        isMinimapVisible: true,
+        spaces: [
+          {
+            id: 's1',
+            name: 'Space',
+            directoryPath: '/tmp/workspace',
+            labelColor: null,
+            nodeIds: ['n1'],
+            rect: options.rect,
+          },
+        ],
+        activeSpaceId: 's1',
+        spaceArchiveRecords: [],
+        nodes: [
+          {
+            id: 'n1',
+            title: options.nodeTitle,
+            position: nodePosition,
+            width: 120,
+            height: 90,
+            kind: 'note',
+            status: null,
+            startedAt: null,
+            endedAt: null,
+            exitCode: null,
+            lastError: null,
+            scrollback: null,
+            agent: null,
+            task: { text: '' },
+          },
+        ],
+      },
+    ],
+  }
+}
+
+describe('mergePersistedAppStates', () => {
+  it('keeps base space rect when local did not change it (snapshot-aware)', () => {
+    const snapshotRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 100, height: 100 }
+    const expandedRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 180, height: 120 }
+
+    const baseSnapshot = createState({ rect: snapshotRect, nodeTitle: 'snapshot' })
+    const base = createState({
+      rect: expandedRect,
+      nodeTitle: 'base',
+      nodePosition: { x: 50, y: 25 },
+    })
+    const local = createState({ rect: snapshotRect, nodeTitle: 'local-change' })
+
+    const merged = mergePersistedAppStates(base, local, baseSnapshot)
+
+    expect(merged.workspaces[0]?.spaces[0]?.rect).toEqual(expandedRect)
+    expect(merged.workspaces[0]?.nodes[0]?.title).toBe('local-change')
+    expect(merged.workspaces[0]?.nodes[0]?.position).toEqual({ x: 50, y: 25 })
+  })
+
+  it('keeps local space rect when base did not change it (snapshot-aware)', () => {
+    const snapshotRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 100, height: 100 }
+    const localRect: WorkspaceSpaceRect = { x: 10, y: 20, width: 160, height: 140 }
+
+    const baseSnapshot = createState({ rect: snapshotRect, nodeTitle: 'snapshot' })
+    const base = createState({ rect: snapshotRect, nodeTitle: 'base' })
+    const local = createState({ rect: localRect, nodeTitle: 'local-change' })
+
+    const merged = mergePersistedAppStates(base, local, baseSnapshot)
+
+    expect(merged.workspaces[0]?.spaces[0]?.rect).toEqual(localRect)
+  })
+
+  it('keeps base task linkedAgentNodeId when local did not change it (snapshot-aware)', () => {
+    const baseLinkedAgentNodeId = 'agent-1'
+
+    const createTaskState = (options: { linkedAgentNodeId: string | null }) =>
+      ({
+        formatVersion: 1,
+        activeWorkspaceId: 'w1',
+        settings: DEFAULT_AGENT_SETTINGS,
+        workspaces: [
+          {
+            id: 'w1',
+            name: 'Workspace',
+            path: '/tmp/workspace',
+            worktreesRoot: '/tmp/workspace',
+            viewport: { x: 0, y: 0, zoom: 1 },
+            isMinimapVisible: true,
+            spaces: [
+              {
+                id: 's1',
+                name: 'Space',
+                directoryPath: '/tmp/workspace',
+                labelColor: null,
+                nodeIds: ['task-1'],
+                rect: { x: 0, y: 0, width: 1200, height: 800 },
+              },
+            ],
+            activeSpaceId: 's1',
+            spaceArchiveRecords: [],
+            nodes: [
+              {
+                id: 'task-1',
+                title: 'task',
+                position: { x: 0, y: 0 },
+                width: 320,
+                height: 240,
+                kind: 'task',
+                status: null,
+                startedAt: null,
+                endedAt: null,
+                exitCode: null,
+                lastError: null,
+                scrollback: null,
+                agent: null,
+                task: {
+                  requirement: 'do the thing',
+                  status: 'todo',
+                  priority: 'medium',
+                  tags: [],
+                  linkedAgentNodeId: options.linkedAgentNodeId,
+                  agentSessions: [],
+                  lastRunAt: null,
+                  autoGeneratedTitle: false,
+                  createdAt: null,
+                  updatedAt: null,
+                },
+              },
+            ],
+          },
+        ],
+      }) satisfies PersistedAppState
+
+    const baseSnapshot = createTaskState({ linkedAgentNodeId: null })
+
+    const base: PersistedAppState = {
+      ...createTaskState({ linkedAgentNodeId: baseLinkedAgentNodeId }),
+      workspaces: [
+        {
+          ...createTaskState({ linkedAgentNodeId: baseLinkedAgentNodeId }).workspaces[0],
+          nodes: [
+            ...createTaskState({ linkedAgentNodeId: baseLinkedAgentNodeId }).workspaces[0].nodes,
+            {
+              id: baseLinkedAgentNodeId,
+              title: 'agent',
+              position: { x: 420, y: 0 },
+              width: 320,
+              height: 240,
+              kind: 'agent',
+              status: 'running',
+              startedAt: null,
+              endedAt: null,
+              exitCode: null,
+              lastError: null,
+              scrollback: null,
+              agent: null,
+              task: null,
+            },
+          ],
+        },
+      ],
+    }
+
+    const local = createTaskState({ linkedAgentNodeId: null })
+
+    const merged = mergePersistedAppStates(base, local, baseSnapshot)
+    const mergedTask = merged.workspaces[0]?.nodes.find(node => node.id === 'task-1')
+
+    expect(mergedTask?.task).toBeTruthy()
+    const mergedTaskData = mergedTask?.task as { linkedAgentNodeId?: unknown } | undefined | null
+    expect(mergedTaskData?.linkedAgentNodeId).toBe(baseLinkedAgentNodeId)
+  })
+
+  it('removes a space when local deletes it (snapshot-aware)', () => {
+    const snapshotRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 100, height: 100 }
+
+    const baseSnapshot = createState({ rect: snapshotRect, nodeTitle: 'snapshot' })
+    const base = createState({ rect: snapshotRect, nodeTitle: 'base' })
+    const local: PersistedAppState = {
+      ...baseSnapshot,
+      workspaces: [
+        {
+          ...baseSnapshot.workspaces[0],
+          spaces: [],
+          nodes: [],
+          activeSpaceId: null,
+        },
+      ],
+    }
+
+    const merged = mergePersistedAppStates(base, local, baseSnapshot)
+
+    expect(merged.workspaces[0]?.spaces).toHaveLength(0)
+    expect(merged.workspaces[0]?.nodes).toHaveLength(0)
+  })
+
+  it('removes a space when base deletes it (snapshot-aware)', () => {
+    const snapshotRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 100, height: 100 }
+
+    const baseSnapshot = createState({ rect: snapshotRect, nodeTitle: 'snapshot' })
+    const base: PersistedAppState = {
+      ...baseSnapshot,
+      workspaces: [
+        {
+          ...baseSnapshot.workspaces[0],
+          spaces: [],
+          nodes: [],
+          activeSpaceId: null,
+        },
+      ],
+    }
+    const local = createState({ rect: snapshotRect, nodeTitle: 'local' })
+
+    const merged = mergePersistedAppStates(base, local, baseSnapshot)
+
+    expect(merged.workspaces[0]?.spaces).toHaveLength(0)
+    expect(merged.workspaces[0]?.nodes).toHaveLength(0)
+  })
+})

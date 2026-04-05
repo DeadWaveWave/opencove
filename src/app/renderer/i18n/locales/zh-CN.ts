@@ -214,6 +214,19 @@ export const zhCN = {
   projectContextMenu: {
     removeProject: '移除项目',
   },
+  addProjectDialog: {
+    title: '添加项目',
+    description: '请输入 Worker 机器上的绝对路径。',
+    pathLabel: '项目路径',
+    pathPlaceholder: '/path/to/project',
+    nameLabel: '项目名称',
+    namePlaceholder: '留空则使用文件夹名',
+    pathRequired: '项目路径不能为空。',
+    pathMustBeAbsolute: '项目路径必须是绝对路径。',
+    pathMustBeDirectory: '项目路径必须是文件夹。',
+    nameRequired: '项目名称不能为空。',
+    failed: '添加项目失败：{{message}}',
+  },
   deleteProjectDialog: {
     title: '移除项目？',
     description: '这会关闭 {{workspaceName}} 中的所有终端和 Agent。',

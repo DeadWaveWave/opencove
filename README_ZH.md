@@ -100,6 +100,18 @@ pnpm dev
 
 > 更多底层构建与打包发布说明，请查阅 [RELEASING.md](docs/RELEASING.md)。
 
+### Web UI（实验性）
+
+OpenCove 提供一个**实验性的 Worker Web UI**，允许你用浏览器打开画布（包括在同一内网的其他设备，例如平板）。
+
+- 在 **Settings → Experimental → Worker Web UI** 中开启并启动 Worker。
+- 默认只监听本机回环地址（`127.0.0.1`）。如需内网访问，开启 **LAN Access** 并设置 Web UI 密码。
+- 开发提示：LAN 访问会使用 `out/renderer` 的 build 产物（无 HMR）。修改 UI 后需要先跑 `pnpm build` 再刷新。
+
+更多说明：
+- `docs/CONTROL_SURFACE.md`
+- `docs/WEB_UI_TROUBLESHOOTING.md`
+
 ## 🏗️ 技术架构
 
 OpenCove 致力于探索现代化的技术选型与极致的客户端性能体验：

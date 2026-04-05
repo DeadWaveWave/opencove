@@ -351,7 +351,7 @@ describe('PersistenceStore sort order migration', () => {
         [
           dbPath,
           createMockDbState({
-            userVersion: 5,
+            userVersion: 6,
             version2Schema: true,
             workspaceRows: [
               { id: 'ws-2', sortOrder: 0 },
@@ -390,7 +390,7 @@ describe('PersistenceStore sort order migration', () => {
         [
           dbPath,
           createMockDbState({
-            userVersion: 5,
+            userVersion: 6,
             workspaceRows: [
               { id: 'ws-2', sortOrder: 0 },
               { id: 'ws-4', sortOrder: 0 },
@@ -487,7 +487,7 @@ describe('PersistenceStore sort order migration', () => {
       expect(store.consumeRecovery()).toBeNull()
       store.dispose()
 
-      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(5)
+      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(6)
       expect(mockDbByPath.get(dbPath)?.workspaceRows).toEqual([
         { id: 'ws-2', sortOrder: 0 },
         { id: 'ws-4', sortOrder: 1 },

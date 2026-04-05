@@ -5,6 +5,7 @@ export type {
 } from './persistence/types'
 export {
   flushScheduledPersistedStateWrite,
+  flushScheduledPersistedStateWriteAsync,
   schedulePersistedStateWrite,
 } from './persistence/schedule'
 export { readPersistedState, readPersistedStateWithMeta } from './persistence/read'

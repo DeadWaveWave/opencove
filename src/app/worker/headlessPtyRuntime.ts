@@ -13,7 +13,11 @@ type SpawnSessionOptions = {
 
 export interface HeadlessPtyRuntime {
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
+  write: (sessionId: string, data: string) => void
+  resize: (sessionId: string, cols: number, rows: number) => void
   kill: (sessionId: string) => void
+  onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
+  onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
   dispose: () => void
 }
 
@@ -54,9 +58,17 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
 
   return {
     spawnSession: async input => await supervisor.spawn(input),
+    write: (sessionId, data) => {
+      supervisor.write(sessionId, data)
+    },
+    resize: (sessionId, cols, rows) => {
+      supervisor.resize(sessionId, cols, rows)
+    },
     kill: sessionId => {
       supervisor.kill(sessionId)
     },
+    onData: listener => supervisor.onData(listener),
+    onExit: listener => supervisor.onExit(listener),
     dispose: () => {
       supervisor.dispose()
     },

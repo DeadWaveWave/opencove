@@ -31,6 +31,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Settings: configurable canvas mouse-wheel behavior (zoom vs pan) with a configurable zoom modifier (Cmd/Ctrl+wheel by default). (#127)
 - Task: prompt templates for task requirement prefix injection (Global + Project scopes). (#71)
 - Sync-first: multi-client snapshot + revision + SSE `/events` for the worker control surface (Desktop/Web/CLI). (#122)
+- Worker: PTY session streaming over the control surface (`WS /pty`) + ticket→cookie web auth for the Worker Web Shell. (#133)
 
 ### 💅 Changed
 - Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
@@ -68,6 +69,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: align collision normalization with the 24px snap grid to avoid post-drag drift. (#42)
 - Workspace canvas: clamp live snap-guide overlays to the viewport so vertical guides no longer trigger canvas scrollbars while dragging. (#42)
 - Workspace canvas: note-to-task conversion now resizes to the standard task size and pushes away overlapping nodes. (#63)
+- Workspace canvas: keep push-away projection live during drag while sync refreshes apply. (#133)
 - Prevented canvas zoom/pan when scrolling inside overlay windows.
 - Codex: Fixed agents getting stuck on `working` and missing standby notifications when switching projects or after restart. (#81)
 - Restored packaged terminal rendering by allowing xterm's required inline style channels in production and ignoring invalid cached terminal dimensions during hydration.

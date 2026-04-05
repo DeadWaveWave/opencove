@@ -7,6 +7,7 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.approved_path_required': 'The selected path is outside approved workspaces.',
     'common.unavailable': 'This feature is unavailable.',
     'common.unexpected': 'Something went wrong. Please try again.',
+    'worker.unavailable': 'Worker is unavailable.',
     'space.not_found': 'Space not found.',
     'session.not_found': 'Session not found.',
     'control_surface.unauthorized': 'Unauthorized request.',
@@ -33,6 +34,8 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'filesystem.stat_failed': 'Unable to read file details.',
     'worktree.api_unavailable':
       'Worktree API is unavailable. Please restart OpenCove and try again.',
+    'worktree.git_unavailable': 'Git is unavailable. Install Git and restart OpenCove.',
+    'worktree.not_a_git_repo': 'This directory is not a Git repository.',
     'worktree.list_branches_failed': 'Unable to load Git branches.',
     'worktree.list_worktrees_failed': 'Unable to load Git worktrees.',
     'worktree.status_summary_failed': 'Unable to load Git status.',

@@ -2,7 +2,10 @@
 
 import { spawn } from 'node:child_process'
 
-const forwardedArgs = process.argv.slice(2)
+// Package managers may preserve the `--` separator in argv when forwarding script arguments.
+// Playwright treats a bare `--` as a positional filter and reports "No tests found", so
+// normalize it away before we pass args through.
+const forwardedArgs = process.argv.slice(2).filter((arg, index) => !(index === 0 && arg === '--'))
 const pnpmCommand = 'pnpm'
 
 /**

@@ -1,10 +1,14 @@
 import { app } from 'electron'
 import { spawn, type ChildProcessByStdio } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../shared/contracts/dto'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
+import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
+import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
+import { readHomeWorkerConfigFile } from './homeWorkerConfig'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -16,6 +20,37 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
 
 function resolveWorkerScriptPath(): string {
   return resolve(app.getAppPath(), 'out', 'main', 'worker.js')
+}
+
+export function buildLocalWorkerSpawnArgs(options: {
+  workerScriptPath: string
+  userDataPath: string
+  parentPid: number
+  bindHostname: string
+  advertiseHostname: string
+  webUiPasswordHash: string | null
+}): string[] {
+  const args = [
+    options.workerScriptPath,
+    '--parent-pid',
+    String(options.parentPid),
+    '--hostname',
+    options.bindHostname,
+    '--port',
+    '0',
+    '--user-data',
+    options.userDataPath,
+  ]
+
+  if (options.advertiseHostname !== options.bindHostname) {
+    args.push('--advertise-hostname', options.advertiseHostname)
+  }
+
+  if (options.webUiPasswordHash) {
+    args.push('--web-ui-password-hash', options.webUiPasswordHash)
+  }
+
+  return args
 }
 
 function toDto(info: {
@@ -39,6 +74,7 @@ function toDto(info: {
 async function resolveConnectionFromUserData(): Promise<WorkerConnectionInfoDto | null> {
   const info = await resolveControlSurfaceConnectionInfoFromUserData({
     userDataPath: app.getPath('userData'),
+    fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
   })
 
   return info ? toDto(info) : null
@@ -48,8 +84,62 @@ type WorkerChildProcess = ChildProcessByStdio<null, Readable, Readable>
 
 let activeWorkerChild: WorkerChildProcess | null = null
 
+function childHasExited(child: WorkerChildProcess): boolean {
+  return child.exitCode !== null || child.signalCode !== null
+}
+
+async function isConnectionAlive(connection: WorkerConnectionInfoDto): Promise<boolean> {
+  try {
+    const { httpStatus, result } = await invokeControlSurface(
+      {
+        hostname: connection.hostname,
+        port: connection.port,
+        token: connection.token,
+      },
+      {
+        kind: 'query',
+        id: 'system.ping',
+        payload: null,
+      },
+      { timeoutMs: 750 },
+    )
+
+    return httpStatus === 200 && result?.ok === true
+  } catch {
+    return false
+  }
+}
+
+async function waitForPidExit(pid: number, timeoutMs: number): Promise<void> {
+  if (!Number.isFinite(pid) || pid <= 0) {
+    return
+  }
+
+  const startedAtMs = Date.now()
+
+  await new Promise<void>(resolvePromise => {
+    const interval = setInterval(() => {
+      const elapsedMs = Date.now() - startedAtMs
+      if (elapsedMs >= timeoutMs) {
+        clearInterval(interval)
+        resolvePromise()
+        return
+      }
+
+      try {
+        process.kill(pid, 0)
+      } catch {
+        clearInterval(interval)
+        resolvePromise()
+      }
+    }, 100)
+
+    interval.unref()
+  })
+}
+
 async function stopChild(child: WorkerChildProcess): Promise<void> {
-  if (child.killed) {
+  if (child.killed || childHasExited(child)) {
     return
   }
 
@@ -60,7 +150,7 @@ async function stopChild(child: WorkerChildProcess): Promise<void> {
       } catch {
         child.kill()
       }
-    }, 3_000)
+    }, 7_500)
 
     child.once('exit', () => {
       clearTimeout(timeout)
@@ -89,26 +179,67 @@ async function stopByPid(pid: number): Promise<void> {
 
 export async function getLocalWorkerStatus(): Promise<WorkerStatusResult> {
   const connection = await resolveConnectionFromUserData()
-  return connection ? { status: 'running', connection } : { status: 'stopped', connection: null }
+  if (!connection) {
+    return { status: 'stopped', connection: null }
+  }
+
+  return (await isConnectionAlive(connection))
+    ? { status: 'running', connection }
+    : { status: 'stopped', connection: null }
+}
+
+export function hasOwnedLocalWorkerProcess(): boolean {
+  return activeWorkerChild !== null && !childHasExited(activeWorkerChild)
+}
+
+export async function stopOwnedLocalWorker(): Promise<boolean> {
+  const child = activeWorkerChild
+  activeWorkerChild = null
+
+  if (!child) {
+    return false
+  }
+
+  if (childHasExited(child)) {
+    return true
+  }
+
+  await stopChild(child)
+  return true
 }
 
 export async function startLocalWorker(): Promise<WorkerStatusResult> {
   const existing = await resolveConnectionFromUserData()
   if (existing) {
-    return { status: 'running', connection: existing }
+    if (await isConnectionAlive(existing)) {
+      return { status: 'running', connection: existing }
+    }
+
+    await stopByPid(existing.pid)
+    await waitForPidExit(existing.pid, 1_500)
   }
 
   const workerScriptPath = resolveWorkerScriptPath()
+  if (!existsSync(workerScriptPath)) {
+    throw new Error(
+      `Local worker entry is missing: ${workerScriptPath}. Run \`pnpm build\` once before using Worker/Web UI in dev.`,
+    )
+  }
+
   const userDataPath = app.getPath('userData')
-  const args = [
+  const workerConfig = await readHomeWorkerConfigFile(userDataPath)
+  const exposeOnLan = workerConfig.webUi.exposeOnLan
+  const bindHostname = exposeOnLan ? '0.0.0.0' : '127.0.0.1'
+  const advertiseHostname = '127.0.0.1'
+  const webUiPasswordHash = exposeOnLan ? workerConfig.webUi.passwordHash : null
+  const args = buildLocalWorkerSpawnArgs({
     workerScriptPath,
-    '--hostname',
-    '127.0.0.1',
-    '--port',
-    '0',
-    '--user-data',
     userDataPath,
-  ]
+    parentPid: process.pid,
+    bindHostname,
+    advertiseHostname,
+    webUiPasswordHash,
+  })
 
   const child = spawn(process.execPath, args, {
     env: {
@@ -124,6 +255,11 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
   })
 
   activeWorkerChild = child
+  child.once('exit', () => {
+    if (activeWorkerChild === child) {
+      activeWorkerChild = null
+    }
+  })
 
   child.stderr.on('data', chunk => {
     process.stderr.write(chunk)
@@ -182,10 +318,7 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
 }
 
 export async function stopLocalWorker(): Promise<WorkerStatusResult> {
-  const child = activeWorkerChild
-  activeWorkerChild = null
-  if (child) {
-    await stopChild(child)
+  if (await stopOwnedLocalWorker()) {
     return { status: 'stopped', connection: null }
   }
 
@@ -195,4 +328,49 @@ export async function stopLocalWorker(): Promise<WorkerStatusResult> {
   }
 
   return await getLocalWorkerStatus()
+}
+
+function normalizeTicketResult(value: unknown): { ticket: string } {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Invalid auth.issueWebSessionTicket response payload')
+  }
+
+  const ticket = (value as Record<string, unknown>).ticket
+  if (typeof ticket !== 'string' || ticket.trim().length === 0) {
+    throw new Error('Invalid auth.issueWebSessionTicket ticket value')
+  }
+
+  return { ticket: ticket.trim() }
+}
+
+export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
+  const connection = await resolveConnectionFromUserData()
+  if (!connection) {
+    return null
+  }
+
+  const workerConfig = await readHomeWorkerConfigFile(app.getPath('userData'))
+  if (workerConfig.webUi.exposeOnLan && workerConfig.webUi.passwordHash) {
+    return `http://${connection.hostname}:${connection.port}/`
+  }
+
+  const { httpStatus, result } = await invokeControlSurface(
+    {
+      hostname: connection.hostname,
+      port: connection.port,
+      token: connection.token,
+    },
+    {
+      kind: 'query',
+      id: 'auth.issueWebSessionTicket',
+      payload: { redirectPath: '/' },
+    },
+  )
+
+  if (httpStatus !== 200 || !result || result.ok !== true) {
+    throw new Error('Failed to issue web session ticket')
+  }
+
+  const { ticket } = normalizeTicketResult(result.value)
+  return `http://${connection.hostname}:${connection.port}/auth/claim?ticket=${encodeURIComponent(ticket)}`
 }

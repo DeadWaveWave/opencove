@@ -93,6 +93,7 @@ import type {
   WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
@@ -104,6 +105,7 @@ export interface OpenCoveApi {
     isTest: boolean
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
+    runtime: 'electron' | 'browser'
     platform: string
     windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null
   }
@@ -233,10 +235,12 @@ export interface OpenCoveApi {
     getStatus: () => Promise<WorkerStatusResult>
     start: () => Promise<WorkerStatusResult>
     stop: () => Promise<WorkerStatusResult>
+    getWebUiUrl: () => Promise<string | null>
   }
   workerClient: {
     getConfig: () => Promise<HomeWorkerConfigDto>
     setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
+    setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput) => Promise<HomeWorkerConfigDto>
     relaunch: () => Promise<void>
   }
   cli: {

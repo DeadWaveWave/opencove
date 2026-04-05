@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WebsiteWindowPolicy } from '@shared/contracts/dto'
+import { ExperimentalWorkerWebUiSection } from './ExperimentalWorkerWebUiSection'
 
 export function ExperimentalSection({
   websiteWindowPolicy,
@@ -56,8 +57,13 @@ export function ExperimentalSection({
     <div className="settings-panel__section" id="settings-section-experimental">
       <h3 className="settings-panel__section-title">{t('settingsPanel.experimental.title')}</h3>
 
+      <ExperimentalWorkerWebUiSection />
+
       <div className="settings-panel__subsection">
         <div className="settings-panel__subsection-header">
+          <h4 className="settings-panel__section-title">
+            {t('settingsPanel.experimental.websiteWindowsTitle')}
+          </h4>
           <span>{t('settingsPanel.experimental.websiteWindowsHelp')}</span>
         </div>
 

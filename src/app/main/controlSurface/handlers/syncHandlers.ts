@@ -256,7 +256,13 @@ export function registerSyncHandlers(
       const store = await getPersistenceStore()
       const currentRevision = await store.readAppStateRevision()
 
-      if (typeof payload.baseRevision === 'number' && payload.baseRevision !== currentRevision) {
+      if (typeof payload.baseRevision !== 'number') {
+        if (currentRevision > 0) {
+          throw createAppError('persistence.invalid_state', {
+            debugMessage: `sync.writeState requires baseRevision (current=${currentRevision})`,
+          })
+        }
+      } else if (payload.baseRevision !== currentRevision) {
         throw createAppError('persistence.invalid_state', {
           debugMessage: `sync.writeState revision conflict (base=${payload.baseRevision}, current=${currentRevision})`,
         })
@@ -314,6 +320,7 @@ export function registerSyncHandlers(
 
       const nextNode = {
         id: nodeId,
+        sessionId: null,
         title,
         titlePinnedByUser: false,
         position: {

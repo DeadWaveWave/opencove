@@ -46,7 +46,7 @@ async function readWebsiteDevicePixelRatio(
     }
 
     try {
-      const dpr = await wc.executeJavaScript('window.devicePixelRatio', true)
+      const dpr = await wc.executeJavaScript('window.devicePixelRatio')
       return typeof dpr === 'number' && Number.isFinite(dpr) ? dpr : null
     } catch {
       return null
@@ -71,7 +71,7 @@ test.describe('Workspace Canvas - Website Window', () => {
     }
 
     const websiteUrl = `http://127.0.0.1:${address.port}`
-    const { electronApp, window } = await launchApp()
+    const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
 
     try {
       await clearAndSeedWorkspace(

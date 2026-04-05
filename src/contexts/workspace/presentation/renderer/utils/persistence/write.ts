@@ -3,6 +3,13 @@ import { createAppErrorDescriptor, toAppErrorDescriptor } from '@shared/errors/a
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import type { PersistWriteResult } from './types'
 import { getPersistencePort } from './port'
+import {
+  persistLocalViewStateFromAppState,
+  stripLocalViewStateFromPersistedState,
+} from './viewState'
+
+let lastSuccessfulSharedState: { portKind: string; raw: string } | null = null
+
 function stripScrollbackFromState(state: PersistedAppState): PersistedAppState {
   return {
     ...state,
@@ -43,10 +50,20 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
     ...state,
     formatVersion: PERSISTED_APP_STATE_FORMAT_VERSION,
   }
+  persistLocalViewStateFromAppState(normalizedState)
+  const sharedState = stripLocalViewStateFromPersistedState(normalizedState)
+  const sharedStateRaw = JSON.stringify(sharedState)
+
+  if (
+    lastSuccessfulSharedState?.portKind === port.kind &&
+    lastSuccessfulSharedState.raw === sharedStateRaw
+  ) {
+    return { ok: true, level: 'full', bytes: 0 }
+  }
 
   let fullResult: PersistWriteResult
   try {
-    fullResult = await port.writeAppState(normalizedState)
+    fullResult = await port.writeAppState(sharedState)
   } catch (error) {
     return {
       ok: false,
@@ -58,6 +75,7 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
   }
 
   if (fullResult.ok) {
+    lastSuccessfulSharedState = { portKind: port.kind, raw: sharedStateRaw }
     return { ok: true, level: 'full', bytes: fullResult.bytes }
   }
 
@@ -65,8 +83,11 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
     return fullResult
   }
 
-  const degradedResult = await port.writeAppState(stripScrollbackFromState(normalizedState))
+  const degradedState = stripScrollbackFromState(sharedState)
+  const degradedRaw = JSON.stringify(degradedState)
+  const degradedResult = await port.writeAppState(degradedState)
   if (degradedResult.ok) {
+    lastSuccessfulSharedState = { portKind: port.kind, raw: degradedRaw }
     return { ok: true, level: 'no_scrollback', bytes: degradedResult.bytes }
   }
 
@@ -74,8 +95,11 @@ export async function writePersistedState(state: PersistedAppState): Promise<Per
     return degradedResult
   }
 
-  const minimalResult = await port.writeAppState(settingsOnlyState(normalizedState))
+  const minimalState = settingsOnlyState(sharedState)
+  const minimalRaw = JSON.stringify(minimalState)
+  const minimalResult = await port.writeAppState(minimalState)
   if (minimalResult.ok) {
+    lastSuccessfulSharedState = { portKind: port.kind, raw: minimalRaw }
     return { ok: true, level: 'settings_only', bytes: minimalResult.bytes }
   }
 
@@ -98,5 +122,24 @@ export async function writeRawPersistedState(raw: string): Promise<PersistWriteR
         debugMessage: toAppErrorDescriptor(error).debugMessage,
       }),
     }
+  }
+}
+
+export function markPersistedStateAsSynced(state: PersistedAppState): void {
+  const port = getPersistencePort()
+  if (!port) {
+    return
+  }
+
+  try {
+    const normalizedState: PersistedAppState = {
+      ...state,
+      formatVersion: PERSISTED_APP_STATE_FORMAT_VERSION,
+    }
+    persistLocalViewStateFromAppState(normalizedState)
+    const sharedState = stripLocalViewStateFromPersistedState(normalizedState)
+    lastSuccessfulSharedState = { portKind: port.kind, raw: JSON.stringify(sharedState) }
+  } catch {
+    // ignore cache failures
   }
 }

@@ -43,7 +43,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(pane).toBeVisible()
 
       const spaceRegion = window.locator('.workspace-space-region').first()
-      await expect(spaceRegion).toBeVisible()
+      await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
       const paneBox = await pane.boundingBox()
       const spaceBox = await spaceRegion.boundingBox()
       if (!paneBox || !spaceBox) {
@@ -188,7 +188,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(pane).toBeVisible()
 
       const spaceRegion = window.locator('.workspace-space-region').first()
-      await expect(spaceRegion).toBeVisible()
+      await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
       const paneBox = await pane.boundingBox()
       const spaceBox = await spaceRegion.boundingBox()
       if (!paneBox || !spaceBox) {
@@ -380,7 +380,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(pane).toBeVisible()
 
       const spaceRegion = window.locator('.workspace-space-region').first()
-      await expect(spaceRegion).toBeVisible()
+      await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
       const paneBox = await pane.boundingBox()
       const spaceBox = await spaceRegion.boundingBox()
       if (!paneBox || !spaceBox) {

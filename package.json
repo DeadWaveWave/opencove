@@ -75,6 +75,7 @@
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",
+    "test:e2e:web-canvas": "node scripts/test-e2e-web-canvas.mjs",
     "test:e2e:web-shell": "node scripts/test-e2e-web-shell.mjs",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
@@ -124,6 +125,7 @@
     "react-router-dom": "^7.13.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
+    "ws": "^8.20.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {

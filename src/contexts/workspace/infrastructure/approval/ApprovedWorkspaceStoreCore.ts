@@ -9,9 +9,57 @@ interface ApprovedWorkspaceSnapshot {
   roots: string[]
 }
 
-function normalizePathForComparison(pathValue: string): string {
+function normalizeResolvedPathForComparison(pathValue: string): string {
   const normalized = resolve(pathValue)
   return process.platform === 'win32' ? normalized.toLowerCase() : normalized
+}
+
+async function toCanonicalPathEvenIfMissing(pathValue: string): Promise<string> {
+  const normalized = resolve(pathValue)
+
+  try {
+    return await fs.realpath(normalized)
+  } catch {
+    // Walk up the directory chain until we can resolve an existing parent. This lets us
+    // canonicalize paths that do not exist yet (e.g. `.opencove/worktrees`) while still
+    // handling macOS `/var` -> `/private/var` style symlinks.
+    const parentCandidates: string[] = []
+    let current = normalized
+    let parent = dirname(current)
+
+    while (parent !== current) {
+      parentCandidates.push(parent)
+      current = parent
+      parent = dirname(current)
+    }
+
+    const resolvedParents = await Promise.all(
+      parentCandidates.map(async candidate => {
+        try {
+          return await fs.realpath(candidate)
+        } catch {
+          return null
+        }
+      }),
+    )
+
+    for (let index = 0; index < parentCandidates.length; index += 1) {
+      const realParent = resolvedParents[index]
+      if (!realParent) {
+        continue
+      }
+
+      const suffix = relative(parentCandidates[index], normalized)
+      return resolve(realParent, suffix)
+    }
+
+    return normalized
+  }
+}
+
+async function normalizePathForComparison(pathValue: string): Promise<string> {
+  const canonical = await toCanonicalPathEvenIfMissing(pathValue)
+  return process.platform === 'win32' ? canonical.toLowerCase() : canonical
 }
 
 function isPathWithinRoot(rootPath: string, targetPath: string): boolean {
@@ -93,8 +141,11 @@ export function createApprovedWorkspaceStoreForPath(storePath: string): Approved
         return
       }
 
-      snapshot.roots.forEach(root => {
-        approvedRoots.add(normalizePathForComparison(root))
+      const normalizedRoots = await Promise.all(
+        snapshot.roots.map(root => normalizePathForComparison(root)),
+      )
+      normalizedRoots.forEach(root => {
+        approvedRoots.add(root)
       })
     })()
 
@@ -112,14 +163,14 @@ export function createApprovedWorkspaceStoreForPath(storePath: string): Approved
         return
       }
 
-      const normalized = normalizePathForComparison(trimmed)
+      await loadOnce()
+
+      const normalized = await normalizePathForComparison(trimmed)
       if (approvedRoots.has(normalized)) {
-        await loadOnce()
         return
       }
 
       approvedRoots.add(normalized)
-      await loadOnce()
       await persist()
     },
     isPathApproved: async targetPath => {
@@ -130,9 +181,20 @@ export function createApprovedWorkspaceStoreForPath(storePath: string): Approved
 
       await loadOnce()
 
-      const normalizedTarget = normalizePathForComparison(trimmed)
+      const resolvedTarget = normalizeResolvedPathForComparison(trimmed)
       for (const root of approvedRoots) {
-        if (isPathWithinRoot(root, normalizedTarget)) {
+        if (isPathWithinRoot(root, resolvedTarget)) {
+          return true
+        }
+      }
+
+      const canonicalTarget = await normalizePathForComparison(trimmed)
+      if (canonicalTarget === resolvedTarget) {
+        return false
+      }
+
+      for (const root of approvedRoots) {
+        if (isPathWithinRoot(root, canonicalTarget)) {
           return true
         }
       }

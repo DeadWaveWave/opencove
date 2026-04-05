@@ -278,7 +278,11 @@ export class TerminalSessionManager {
   snapshot(sessionId: string): string {
     this.flushPtyDataBroadcast(sessionId)
     const snapshot = this.snapshots.get(sessionId)
-    return snapshot ? snapshotToString(snapshot) : ''
+    if (!snapshot) {
+      throw new Error(`Unknown terminal session: ${sessionId}`)
+    }
+
+    return snapshotToString(snapshot)
   }
 
   kill(sessionId: string): void {

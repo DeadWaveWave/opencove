@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import path from 'path'
 import {
+  buildNodeEvalCommand,
   clearAndSeedWorkspace,
   createTestUserDataDir,
   launchApp,
@@ -44,6 +45,10 @@ async function readTerminalBoundDirectory(window: Parameters<typeof clearAndSeed
       return null
     }
   })
+}
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
 test.describe('Recovery - Terminal worktree reopen', () => {
@@ -112,16 +117,24 @@ test.describe('Recovery - Terminal worktree reopen', () => {
       })
 
       try {
+        const cwdToken = `OPENCOVE_RESTART_CWD_${Date.now()}:`
         const restartedTerminal = restartedWindow.locator('.terminal-node').first()
         await expect(restartedTerminal).toBeVisible()
         await expect(restartedTerminal.locator('.xterm')).toBeVisible()
 
         await restartedTerminal.locator('.xterm').click()
         await expect(restartedTerminal.locator('.xterm-helper-textarea')).toBeFocused()
-        await restartedWindow.keyboard.type('node -p "require(\'path\').basename(process.cwd())"')
+        await restartedWindow.waitForTimeout(250)
+        await restartedWindow.keyboard.type(
+          buildNodeEvalCommand(
+            `process.stdout.write(${JSON.stringify(cwdToken)} + process.cwd() + '\\n')`,
+          ),
+        )
         await restartedWindow.keyboard.press('Enter')
 
-        await expect(restartedTerminal).toContainText(worktreeName)
+        await expect
+          .poll(async () => await restartedTerminal.textContent())
+          .toMatch(new RegExp(`${escapeRegex(cwdToken)}[\\s\\S]*${escapeRegex(worktreeName)}`))
       } finally {
         await restartedApp.close()
       }

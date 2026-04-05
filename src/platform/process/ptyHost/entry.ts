@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process'
 import process from 'node:process'
 import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
@@ -24,6 +25,92 @@ type ParentPort = {
 type ChildProcessPort = {
   on: (event: 'message', listener: (message: unknown) => void) => void
   send?: (message: unknown) => void
+}
+
+function isProcessAlive(pid: number): boolean {
+  if (!Number.isFinite(pid) || pid <= 0) {
+    return false
+  }
+
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function cleanupOrphanedNodePtySpawnHelpers(): void {
+  if (process.platform === 'win32') {
+    return
+  }
+
+  const spawnHelperMarker = '/node-pty/build/Release/spawn-helper'
+
+  const psResult = spawnSync('ps', ['ax', '-o', 'pid=,ppid=,command='], {
+    encoding: 'utf8',
+    env: process.env,
+  })
+
+  if (psResult.status !== 0 || typeof psResult.stdout !== 'string') {
+    return
+  }
+
+  const candidates: number[] = []
+  for (const line of psResult.stdout.split('\n')) {
+    const trimmed = line.trim()
+    if (!trimmed) {
+      continue
+    }
+
+    const match = trimmed.match(/^(\d+)\s+(\d+)\s+(.+)$/)
+    if (!match) {
+      continue
+    }
+
+    const pid = Number(match[1])
+    const ppid = Number(match[2])
+    const command = match[3] ?? ''
+
+    if (!Number.isFinite(pid) || pid <= 0 || pid === process.pid) {
+      continue
+    }
+
+    if (ppid !== 1) {
+      continue
+    }
+
+    const normalizedCommand = command.replaceAll('\\', '/')
+    if (!normalizedCommand.includes(spawnHelperMarker)) {
+      continue
+    }
+
+    candidates.push(pid)
+  }
+
+  if (candidates.length === 0) {
+    return
+  }
+
+  for (const pid of candidates) {
+    try {
+      process.kill(pid, 'SIGTERM')
+    } catch {
+      // ignore
+    }
+  }
+
+  for (const pid of candidates) {
+    if (!isProcessAlive(pid)) {
+      continue
+    }
+
+    try {
+      process.kill(pid, 'SIGKILL')
+    } catch {
+      // ignore
+    }
+  }
 }
 
 function resolveParentPort(): ParentPort {
@@ -72,9 +159,52 @@ function resolveParentPort(): ParentPort {
 const parentPort = resolveParentPort()
 parentPort.start()
 const sessions = new Map<string, IPty>()
+let hasCleanedSessions = false
+
+const cleanupSessions = (): void => {
+  if (hasCleanedSessions) {
+    return
+  }
+
+  hasCleanedSessions = true
+
+  for (const [sessionId, pty] of sessions.entries()) {
+    sessions.delete(sessionId)
+    try {
+      pty.kill()
+    } catch {
+      // ignore
+    }
+  }
+}
+
+cleanupOrphanedNodePtySpawnHelpers()
+
+process.once('SIGINT', () => {
+  cleanupSessions()
+  process.exit(0)
+})
+
+process.once('SIGTERM', () => {
+  cleanupSessions()
+  process.exit(0)
+})
+
+process.once('disconnect', () => {
+  cleanupSessions()
+  process.exit(0)
+})
+
+process.once('exit', () => {
+  cleanupSessions()
+})
 
 const send = (message: PtyHostMessage): void => {
-  parentPort.postMessage(message)
+  try {
+    parentPort.postMessage(message)
+  } catch {
+    // ignore (parentPort disconnected during shutdown)
+  }
 }
 
 const respondOk = (requestId: string, sessionId: string): void => {
@@ -159,14 +289,7 @@ function killSession(request: PtyHostKillRequest): void {
 function shutdown(request: PtyHostShutdownRequest): void {
   void request
 
-  for (const [sessionId, pty] of sessions.entries()) {
-    sessions.delete(sessionId)
-    try {
-      pty.kill()
-    } catch {
-      // ignore
-    }
-  }
+  cleanupSessions()
 
   process.exit(0)
 }

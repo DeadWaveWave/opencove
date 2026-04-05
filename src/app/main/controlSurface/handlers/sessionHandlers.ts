@@ -1,6 +1,5 @@
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
-import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
@@ -11,11 +10,11 @@ import {
 } from '../../../../contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../../../contexts/agent/infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
-import { resolveSpaceWorkingDirectory } from '../../../../contexts/space/application/resolveSpaceWorkingDirectory'
 import {
   normalizeAgentSettings,
   resolveAgentModel,
 } from '../../../../contexts/settings/domain/agentSettings'
+import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type {
   AgentProviderId,
@@ -32,6 +31,9 @@ import {
   resolveProviderFromSettings,
   resolveSessionLaunchSpawn,
 } from './sessionLaunchSupport'
+import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
+import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
+import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
@@ -82,18 +84,22 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
   }
 
   const spaceIdRaw = payload.spaceId
-  if (typeof spaceIdRaw !== 'string') {
+  if (spaceIdRaw !== undefined && spaceIdRaw !== null && typeof spaceIdRaw !== 'string') {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid payload for session.launchAgent spaceId.',
     })
   }
 
-  const spaceId = spaceIdRaw.trim()
-  if (spaceId.length === 0) {
+  const spaceId = typeof spaceIdRaw === 'string' ? spaceIdRaw.trim() : ''
+
+  const cwdRaw = payload.cwd
+  if (cwdRaw !== undefined && cwdRaw !== null && typeof cwdRaw !== 'string') {
     throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for session.launchAgent spaceId.',
+      debugMessage: 'Invalid payload for session.launchAgent cwd.',
     })
   }
+
+  const cwd = typeof cwdRaw === 'string' ? cwdRaw.trim() : ''
 
   const promptRaw = payload.prompt
   if (typeof promptRaw !== 'string') {
@@ -103,11 +109,6 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
   }
 
   const prompt = promptRaw.trim()
-  if (prompt.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Missing payload for session.launchAgent prompt.',
-    })
-  }
 
   const providerRaw = payload.provider
   if (providerRaw !== undefined && providerRaw !== null && typeof providerRaw !== 'string') {
@@ -127,6 +128,29 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
 
   const model = modelRaw === null ? null : normalizeOptionalString(modelRaw)
   const agentFullAccess = payload.agentFullAccess
+  const modeRaw = payload.mode
+
+  if (modeRaw !== undefined && modeRaw !== null && typeof modeRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent mode.',
+    })
+  }
+
+  const mode = modeRaw === 'resume' ? 'resume' : 'new'
+
+  const resumeSessionIdRaw = payload.resumeSessionId
+  if (
+    resumeSessionIdRaw !== undefined &&
+    resumeSessionIdRaw !== null &&
+    typeof resumeSessionIdRaw !== 'string'
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.launchAgent resumeSessionId.',
+    })
+  }
+
+  const resumeSessionId =
+    resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw)
 
   if (
     agentFullAccess !== undefined &&
@@ -138,11 +162,20 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     })
   }
 
+  if (spaceId.length === 0 && cwd.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'session.launchAgent requires either spaceId or cwd.',
+    })
+  }
+
   return {
-    spaceId,
+    ...(spaceId.length > 0 ? { spaceId } : {}),
+    ...(cwd.length > 0 ? { cwd } : {}),
     prompt,
     provider,
+    mode,
     model,
+    resumeSessionId,
     agentFullAccess: agentFullAccess ?? null,
   }
 }
@@ -184,40 +217,40 @@ export function registerSessionHandlers(
     approvedWorkspaces: ApprovedWorkspaceStore
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyRuntime: ControlSurfacePtyRuntime
+    ptyStreamHub: PtyStreamHub
   },
 ): void {
   const sessions = new Map<string, SessionRecord>()
-
-  const resolveSpaceWorkingDirectoryFromStore = async (spaceId: string) => {
-    const store = await deps.getPersistenceStore()
-    const normalized = normalizePersistedAppState(await store.readAppState())
-    const workspaces = normalized?.workspaces ?? []
-
-    for (const workspace of workspaces) {
-      const space = workspace.spaces.find(candidate => candidate.id === spaceId) ?? null
-      if (!space) {
-        continue
-      }
-
-      return {
-        workspacePath: workspace.path,
-        workingDirectory: resolveSpaceWorkingDirectory(space, workspace.path),
-        agentSettings: normalizeAgentSettings(normalized?.settings),
-      }
-    }
-
-    throw createAppError('space.not_found', {
-      debugMessage: `session.launchAgent: unknown space id: ${spaceId}`,
-    })
-  }
 
   controlSurface.register('session.launchAgent', {
     kind: 'command',
     validate: normalizeLaunchAgentPayload,
     handle: async (_ctx, payload): Promise<LaunchAgentSessionResult> => {
-      const { workingDirectory, agentSettings } = await resolveSpaceWorkingDirectoryFromStore(
-        payload.spaceId,
-      )
+      const resolvedSpaceId = typeof payload.spaceId === 'string' ? payload.spaceId.trim() : ''
+      const resolvedCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : ''
+      const mode = payload.mode === 'resume' ? 'resume' : 'new'
+      const resumeSessionId = normalizeOptionalString(payload.resumeSessionId)
+
+      const { workingDirectory, agentSettings } = resolvedSpaceId
+        ? await resolveSpaceWorkingDirectoryFromStore({
+            spaceId: resolvedSpaceId,
+            getPersistenceStore: deps.getPersistenceStore,
+          })
+        : await (async () => {
+            if (resolvedCwd.length === 0) {
+              throw createAppError('common.invalid_input', {
+                debugMessage: 'session.launchAgent missing cwd.',
+              })
+            }
+
+            const store = await deps.getPersistenceStore()
+            const normalized = normalizePersistedAppState(await store.readAppState())
+
+            return {
+              workingDirectory: resolvedCwd,
+              agentSettings: normalizeAgentSettings(normalized?.settings),
+            }
+          })()
 
       const isApproved = await deps.approvedWorkspaces.isPathApproved(workingDirectory)
       if (!isApproved) {
@@ -230,23 +263,32 @@ export function registerSessionHandlers(
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
 
+      const testStub = resolveWorkerAgentTestStub({
+        provider,
+        cwd: workingDirectory,
+        mode,
+        model,
+      })
+
       const opencodeServer =
-        provider === 'opencode'
+        provider === 'opencode' && !testStub
           ? {
               hostname: OPENCODE_SERVER_HOSTNAME,
               port: await reserveLoopbackPort(OPENCODE_SERVER_HOSTNAME),
             }
           : null
 
-      const launchCommand = buildAgentLaunchCommand({
-        provider,
-        mode: 'new',
-        prompt: payload.prompt,
-        model,
-        resumeSessionId: null,
-        agentFullAccess,
-        opencodeServer,
-      })
+      const launchCommand = testStub
+        ? { command: testStub.command, args: testStub.args, effectiveModel: model }
+        : buildAgentLaunchCommand({
+            provider,
+            mode,
+            prompt: mode === 'new' ? payload.prompt : '',
+            model,
+            resumeSessionId,
+            agentFullAccess,
+            opencodeServer,
+          })
 
       const startedAtMs = Date.now()
       const startedAt = new Date(startedAtMs).toISOString()
@@ -291,20 +333,28 @@ export function registerSessionHandlers(
         model,
         effectiveModel: launchCommand.effectiveModel,
         executionContext,
-        resumeSessionId: null,
+        resumeSessionId,
         startedAtMs,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
       }
 
       sessions.set(sessionId, record)
+      deps.ptyStreamHub.registerSessionMetadata({
+        sessionId,
+        kind: 'agent',
+        startedAt,
+        cwd: workingDirectory,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
+      })
 
       return {
         sessionId,
         provider,
         startedAt,
         executionContext,
-        resumeSessionId: null,
+        resumeSessionId,
         effectiveModel: launchCommand.effectiveModel,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
@@ -420,14 +470,14 @@ export function registerSessionHandlers(
     kind: 'command',
     validate: payload => normalizeSessionIdPayload(payload, 'session.kill'),
     handle: async (_ctx, payload): Promise<void> => {
-      const record = sessions.get(payload.sessionId)
-      if (!record) {
+      const record = sessions.get(payload.sessionId) ?? null
+      if (!record && !deps.ptyStreamHub.hasSession(payload.sessionId)) {
         throw createAppError('session.not_found', {
           debugMessage: `session.kill: unknown session id: ${payload.sessionId}`,
         })
       }
 
-      deps.ptyRuntime.kill(record.sessionId)
+      deps.ptyRuntime.kill(record?.sessionId ?? payload.sessionId)
     },
     defaultErrorCode: 'terminal.kill_failed',
   })

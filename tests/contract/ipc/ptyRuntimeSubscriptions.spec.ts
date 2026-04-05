@@ -70,12 +70,12 @@ describe('Pty runtime subscriptions', () => {
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([
       [IPC_CHANNELS.ptyData, { sessionId, data: 'hello' }],
     ])
-    expect(runtime.snapshot(sessionId)).toBe('hello')
+    expect(await runtime.snapshot(sessionId)).toBe('hello')
 
     onExitHandler?.({ sessionId, exitCode: 0 })
 
     expect(send.mock.calls.some(([channel]) => channel === IPC_CHANNELS.ptyExit)).toBe(true)
-    expect(runtime.snapshot(sessionId)).toBe('hello')
+    expect(await runtime.snapshot(sessionId)).toBe('hello')
 
     send.mockClear()
 
@@ -370,7 +370,7 @@ describe('Pty runtime subscriptions', () => {
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([
       [IPC_CHANNELS.ptyData, { sessionId, data: 'hello' }],
     ])
-    expect(runtime.snapshot(sessionId)).toBe('hello')
+    expect(await runtime.snapshot(sessionId)).toBe('hello')
 
     runtime.dispose()
     vi.useRealTimers()
@@ -425,10 +425,10 @@ describe('Pty runtime subscriptions', () => {
     onDataHandler?.({ sessionId, data: 'snap' })
     onDataHandler?.({ sessionId, data: 'shot' })
 
-    expect(runtime.snapshot(sessionId)).toBe('snapshot')
+    expect(await runtime.snapshot(sessionId)).toBe('snapshot')
 
     await vi.advanceTimersByTimeAsync(40)
-    expect(runtime.snapshot(sessionId)).toBe('snapshot')
+    expect(await runtime.snapshot(sessionId)).toBe('snapshot')
 
     runtime.dispose()
     vi.useRealTimers()
