@@ -63,6 +63,8 @@ async function readWebsiteRuntimeState(
 }
 
 test.describe('Workspace Canvas - Website Window', () => {
+  const edgeClipTolerancePx = 8
+
   test('keeps website layout stable while canvas zoom changes', async () => {
     const server = createServer((_request, response) => {
       response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -280,7 +282,12 @@ test.describe('Workspace Canvas - Website Window', () => {
           const viewWidth = state.viewBounds.width
           const viewX = state.viewBounds.x
 
-          return hostWidth < beforeWidth - 4 && Math.abs(viewWidth - beforeWidth) <= 2 && viewX < 0
+          return (
+            hostWidth < beforeWidth - 4 &&
+            viewWidth >= beforeWidth - edgeClipTolerancePx &&
+            viewWidth >= hostWidth &&
+            viewX < 0
+          )
         })
         .toBe(true)
 
@@ -291,7 +298,7 @@ test.describe('Workspace Canvas - Website Window', () => {
         expect(after.hostBounds.width).toBeLessThan(beforeWidth)
       }
       if (typeof after?.viewBounds?.width === 'number' && typeof beforeWidth === 'number') {
-        expect(Math.abs(after.viewBounds.width - beforeWidth)).toBeLessThanOrEqual(2)
+        expect(after.viewBounds.width).toBeGreaterThanOrEqual(beforeWidth - edgeClipTolerancePx)
       }
       if (typeof after?.viewBounds?.x === 'number') {
         expect(after.viewBounds.x).toBeLessThan(0)

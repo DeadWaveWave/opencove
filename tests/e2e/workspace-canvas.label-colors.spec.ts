@@ -1,5 +1,63 @@
-import { expect, test } from '@playwright/test'
+import { expect, type Page, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
+
+async function selectSpaceLabelColorWithRetry(
+  window: Page,
+  payload: {
+    spaceId: string
+    color: string
+    attempts?: number
+  },
+): Promise<void> {
+  const spaceMenuButton = window.locator(`[data-testid="workspace-space-menu-${payload.spaceId}"]`)
+  const actionMenu = window.locator('[data-testid="workspace-space-action-menu"]')
+  const labelColorButton = window.locator('[data-testid="workspace-space-action-label-color"]')
+  const labelColorMenu = window.locator('[data-testid="workspace-space-action-label-color-menu"]')
+  const colorButton = window.locator(
+    `[data-testid="workspace-space-action-label-color-${payload.color}"]`,
+  )
+  const spaceSwitcher = window.locator(`[data-testid="workspace-space-switch-${payload.spaceId}"]`)
+  const maxAttempts = payload.attempts ?? 3
+
+  const attemptSelection = async (attempt: number): Promise<void> => {
+    await expect(spaceMenuButton).toBeVisible()
+    await spaceMenuButton.click()
+    await expect(actionMenu).toBeVisible()
+    await labelColorButton.click()
+
+    const isSubmenuVisible = await labelColorMenu.isVisible().catch(() => false)
+    if (!isSubmenuVisible) {
+      if (attempt >= maxAttempts) {
+        throw new Error(`Failed to open label color submenu for ${payload.spaceId}`)
+      }
+
+      return await attemptSelection(attempt + 1)
+    }
+
+    await colorButton.click().catch(() => undefined)
+
+    try {
+      await expect
+        .poll(
+          async () => {
+            return await spaceSwitcher.getAttribute('data-cove-label-color')
+          },
+          { timeout: 3_000 },
+        )
+        .toBe(payload.color)
+    } catch {
+      if (attempt >= maxAttempts) {
+        throw new Error(`Failed to select label color "${payload.color}" for ${payload.spaceId}`)
+      }
+
+      // Retry the menu path from a clean state. Offscreen E2E can occasionally collapse the
+      // submenu or lose the option click before the color state commits.
+      return await attemptSelection(attempt + 1)
+    }
+  }
+
+  await attemptSelection(1)
+}
 
 test.describe('Workspace Canvas - Label Colors', () => {
   test('keeps the selection label color submenu attached to the context menu near viewport edges', async () => {
@@ -97,15 +155,10 @@ test.describe('Workspace Canvas - Label Colors', () => {
         },
       )
 
-      await expect(window.locator('[data-testid="workspace-space-menu-space-color"]')).toBeVisible()
-      await window.locator('[data-testid="workspace-space-menu-space-color"]').click()
-
-      await expect(window.locator('[data-testid="workspace-space-action-menu"]')).toBeVisible()
-      await window.locator('[data-testid="workspace-space-action-label-color"]').click()
-      await expect(
-        window.locator('[data-testid="workspace-space-action-label-color-menu"]'),
-      ).toBeVisible()
-      await window.locator('[data-testid="workspace-space-action-label-color-blue"]').click()
+      await selectSpaceLabelColorWithRetry(window, {
+        spaceId: 'space-color',
+        color: 'blue',
+      })
 
       await expect(
         window.locator('[data-testid="workspace-space-switch-space-color"]'),

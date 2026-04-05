@@ -23,6 +23,7 @@ process.env['OPENCOVE_E2E_WINDOW_MODE'] = resolveE2EWindowMode(
   process.env['OPENCOVE_E2E_WINDOW_MODE'],
 )
 const configuredTestMatch = process.env['OPENCOVE_E2E_TEST_MATCH']?.trim()
+const isCi = process.env.CI === '1' || process.env.CI === 'true'
 
 /**
  * Playwright 配置 - Electron E2E 测试
@@ -69,10 +70,9 @@ export default defineConfig({
       use: {
         // 截图配置
         screenshot: 'only-on-failure',
-        // 视频录制
-        video: 'retain-on-failure',
-        // Trace 配置
-        trace: 'retain-on-failure',
+        // CI 只保留重试 trace，避免全量失败视频把 runner 磁盘打满。
+        video: isCi ? 'off' : 'retain-on-failure',
+        trace: isCi ? 'on-first-retry' : 'retain-on-failure',
       },
     },
   ],

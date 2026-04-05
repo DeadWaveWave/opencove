@@ -80,6 +80,7 @@ export function WorkspaceSpaceActionMenu({
 }: WorkspaceSpaceActionMenuProps): React.JSX.Element | null {
   const { t } = useTranslation()
   const [openSubmenu, setOpenSubmenu] = React.useState<'open' | 'label-color' | null>(null)
+  const [pinnedSubmenu, setPinnedSubmenu] = React.useState<'open' | 'label-color' | null>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const openButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const labelColorButtonRef = React.useRef<HTMLButtonElement | null>(null)
@@ -104,15 +105,38 @@ export function WorkspaceSpaceActionMenu({
 
   const scheduleSubmenuClose = React.useCallback(() => {
     cancelScheduledSubmenuClose()
+    if (pinnedSubmenu !== null) {
+      return
+    }
+
     closeSubmenuTimeoutRef.current = setTimeout(() => {
       closeSubmenuTimeoutRef.current = null
       setOpenSubmenu(null)
     }, SUBMENU_CLOSE_DELAY_MS)
-  }, [cancelScheduledSubmenuClose])
+  }, [cancelScheduledSubmenuClose, pinnedSubmenu])
+
+  const openSubmenuTransient = React.useCallback(
+    (submenu: 'open' | 'label-color') => {
+      cancelScheduledSubmenuClose()
+      setPinnedSubmenu(null)
+      setOpenSubmenu(submenu)
+    },
+    [cancelScheduledSubmenuClose],
+  )
+
+  const openSubmenuPinned = React.useCallback(
+    (submenu: 'open' | 'label-color') => {
+      cancelScheduledSubmenuClose()
+      setPinnedSubmenu(submenu)
+      setOpenSubmenu(submenu)
+    },
+    [cancelScheduledSubmenuClose],
+  )
 
   React.useEffect(() => {
     cancelScheduledSubmenuClose()
     setOpenSubmenu(null)
+    setPinnedSubmenu(null)
   }, [cancelScheduledSubmenuClose, menu?.spaceId, menu?.x, menu?.y])
 
   React.useEffect(() => {
@@ -253,18 +277,9 @@ export function WorkspaceSpaceActionMenu({
             type="button"
             data-testid="workspace-space-action-open"
             ref={openButtonRef}
-            onMouseEnter={() => {
-              cancelScheduledSubmenuClose()
-              setOpenSubmenu('open')
-            }}
-            onFocus={() => {
-              cancelScheduledSubmenuClose()
-              setOpenSubmenu('open')
-            }}
-            onClick={() => {
-              cancelScheduledSubmenuClose()
-              setOpenSubmenu(previous => (previous === 'open' ? null : 'open'))
-            }}
+            onMouseEnter={() => openSubmenuTransient('open')}
+            onFocus={() => openSubmenuTransient('open')}
+            onClick={() => openSubmenuPinned('open')}
           >
             <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
             <span className="workspace-context-menu__label">{t('spaceActions.open')}</span>
@@ -281,18 +296,9 @@ export function WorkspaceSpaceActionMenu({
           type="button"
           data-testid="workspace-space-action-label-color"
           ref={labelColorButtonRef}
-          onMouseEnter={() => {
-            cancelScheduledSubmenuClose()
-            setOpenSubmenu('label-color')
-          }}
-          onFocus={() => {
-            cancelScheduledSubmenuClose()
-            setOpenSubmenu('label-color')
-          }}
-          onClick={() => {
-            cancelScheduledSubmenuClose()
-            setOpenSubmenu('label-color')
-          }}
+          onMouseEnter={() => openSubmenuTransient('label-color')}
+          onFocus={() => openSubmenuTransient('label-color')}
+          onClick={() => openSubmenuPinned('label-color')}
         >
           <Tag className="workspace-context-menu__icon" aria-hidden="true" />
           <span className="workspace-context-menu__label">{t('labelColors.title')}</span>
@@ -334,6 +340,7 @@ export function WorkspaceSpaceActionMenu({
           style={submenuStyle}
           onMouseEnter={() => {
             cancelScheduledSubmenuClose()
+            setPinnedSubmenu(null)
             setOpenSubmenu('open')
           }}
           onMouseLeave={scheduleSubmenuClose}
@@ -368,6 +375,7 @@ export function WorkspaceSpaceActionMenu({
           style={submenuStyle}
           onMouseEnter={() => {
             cancelScheduledSubmenuClose()
+            setPinnedSubmenu(null)
             setOpenSubmenu('label-color')
           }}
           onMouseLeave={scheduleSubmenuClose}

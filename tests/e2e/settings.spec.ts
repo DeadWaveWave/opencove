@@ -29,6 +29,25 @@ test.describe('Settings', () => {
           }`,
         )
       }
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            try {
+              const parsed = JSON.parse(raw) as {
+                settings?: { standardWindowSizeBucket?: string }
+              }
+              return parsed.settings?.standardWindowSizeBucket ?? null
+            } catch {
+              return null
+            }
+          })
+        })
+        .toBe('regular')
       await window.reload({ waitUntil: 'domcontentloaded' })
 
       const settingsButton = window.locator('[data-testid="app-header-settings"]')
@@ -104,6 +123,25 @@ test.describe('Settings', () => {
         '[data-testid="settings-standard-window-size-trigger"]',
       )
       await expect(standardWindowSizeTrigger).toBeVisible()
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            try {
+              const parsed = JSON.parse(raw) as {
+                settings?: { standardWindowSizeBucket?: string }
+              }
+              return parsed.settings?.standardWindowSizeBucket ?? null
+            } catch {
+              return null
+            }
+          })
+        })
+        .toBe('regular')
       await expect(standardWindowSize).toHaveValue('regular')
       await selectCoveOption(window, 'settings-standard-window-size', 'large')
       await expect(standardWindowSize).toHaveValue('large')

@@ -52,34 +52,55 @@ describe('WorkspaceSpaceActionMenu', () => {
     expect(labels).toEqual(['Finder', 'Terminal', 'Android Studio', 'Cursor', 'Zed'])
   })
 
-  it('keeps the submenu open while the pointer moves into it', () => {
+  it('keeps a hover-opened submenu alive while the pointer moves into it, then closes it', () => {
     renderMenu([
       { id: 'finder', label: 'Finder' },
       { id: 'terminal', label: 'Terminal' },
       { id: 'cursor', label: 'Cursor' },
     ])
 
-    fireEvent.mouseEnter(screen.getByTestId('workspace-space-action-open'))
+    act(() => {
+      fireEvent.mouseEnter(screen.getByTestId('workspace-space-action-open'))
+    })
     expect(screen.getByTestId('workspace-space-action-open-menu')).toBeVisible()
 
-    fireEvent.mouseLeave(screen.getByTestId('workspace-space-action-menu'))
     act(() => {
+      fireEvent.mouseLeave(screen.getByTestId('workspace-space-action-menu'))
       vi.advanceTimersByTime(60)
     })
 
-    fireEvent.mouseEnter(screen.getByTestId('workspace-space-action-open-menu'))
     act(() => {
+      fireEvent.mouseEnter(screen.getByTestId('workspace-space-action-open-menu'))
       vi.advanceTimersByTime(200)
     })
 
     expect(screen.getByTestId('workspace-space-action-open-menu')).toBeVisible()
 
-    fireEvent.mouseLeave(screen.getByTestId('workspace-space-action-open-menu'))
     act(() => {
-      vi.advanceTimersByTime(200)
+      fireEvent.mouseLeave(screen.getByTestId('workspace-space-action-open-menu'))
+      vi.advanceTimersByTime(300)
     })
 
     expect(screen.queryByTestId('workspace-space-action-open-menu')).not.toBeInTheDocument()
+  })
+
+  it('keeps a click-opened submenu pinned after the pointer leaves', () => {
+    renderMenu([
+      { id: 'finder', label: 'Finder' },
+      { id: 'terminal', label: 'Terminal' },
+    ])
+
+    act(() => {
+      fireEvent.click(screen.getByTestId('workspace-space-action-open'))
+    })
+    expect(screen.getByTestId('workspace-space-action-open-menu')).toBeVisible()
+
+    act(() => {
+      fireEvent.mouseLeave(screen.getByTestId('workspace-space-action-menu'))
+      vi.advanceTimersByTime(400)
+    })
+
+    expect(screen.getByTestId('workspace-space-action-open-menu')).toBeVisible()
   })
 
   it('can render both create and archive actions together', () => {
