@@ -46,7 +46,7 @@ async function readWebsiteDevicePixelRatio(
     }
 
     try {
-      const dpr = await wc.executeJavaScript('window.devicePixelRatio', true)
+      const dpr = await wc.executeJavaScript('window.devicePixelRatio')
       return typeof dpr === 'number' && Number.isFinite(dpr) ? dpr : null
     } catch {
       return null

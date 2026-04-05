@@ -111,6 +111,11 @@ jobs:
           retention-days: 7
 
   ci-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
     runs-on: macos-latest
 
     steps:
@@ -134,25 +139,18 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - name: E2E tests (smoke)
-        timeout-minutes: 20
+      - name: E2E tests (shard)
+        timeout-minutes: 30
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_WINDOW_MODE: inactive
-          OPENCOVE_E2E_TEST_MATCH: |
-            **/smoke.spec.ts,
-            **/app-shell.preload-sandbox.spec.ts,
-            **/command-center.spec.ts,
-            **/control-center.spec.ts,
-            **/app-header.primary-sidebar-toggle.spec.ts,
-            **/workspace-canvas.drag-resize.spec.ts
-        run: pnpm test:e2e -- --max-failures=1
+        run: pnpm test:e2e -- --shard=${{ matrix.shard }}/3 --max-failures=2
 
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-artifacts-macos
+          name: playwright-artifacts-macos-shard-${{ matrix.shard }}
           path: |
             test-results/
             playwright-report/
