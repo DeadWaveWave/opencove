@@ -22,7 +22,26 @@ function resolveE2EWindowMode(rawValue: string | undefined): E2EWindowMode {
 process.env['OPENCOVE_E2E_WINDOW_MODE'] = resolveE2EWindowMode(
   process.env['OPENCOVE_E2E_WINDOW_MODE'],
 )
-const configuredTestMatch = process.env['OPENCOVE_E2E_TEST_MATCH']?.trim()
+
+function resolveConfiguredTestMatch(): string | string[] | undefined {
+  const rawValue = process.env['OPENCOVE_E2E_TEST_MATCH']?.trim()
+  if (!rawValue) {
+    return undefined
+  }
+
+  const patterns = rawValue
+    .split(/[\n,]+/g)
+    .map(pattern => pattern.trim())
+    .filter(pattern => pattern.length > 0)
+
+  if (patterns.length <= 1) {
+    return patterns[0]
+  }
+
+  return patterns
+}
+
+const configuredTestMatch = resolveConfiguredTestMatch()
 const isCi = process.env.CI === '1' || process.env.CI === 'true'
 
 /**
@@ -37,7 +56,9 @@ export default defineConfig({
 
   // 测试文件匹配模式
   testMatch:
-    configuredTestMatch && configuredTestMatch.length > 0 ? configuredTestMatch : '**/*.spec.ts',
+    configuredTestMatch && (Array.isArray(configuredTestMatch) || configuredTestMatch.length > 0)
+      ? configuredTestMatch
+      : '**/*.spec.ts',
 
   // 全局超时：每个测试 120 秒 (考虑 Electron 启动时间)
   timeout: 120_000,
