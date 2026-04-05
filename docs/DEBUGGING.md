@@ -5,6 +5,7 @@
 - 凡遇到 `pnpm pre-commit`、`pnpm test -- --run`、`pnpm test:e2e` 或单独 `Playwright` 用例失败，**继续排查前先读本文件**。
 - 先缩小复现范围，再改代码；不要一上来跑全量。
 - 若 UI 表现与代码不一致，先怀疑是否跑到了旧构建产物。
+- Web UI（Worker Web Canvas / Debug Shell）常见问题速查见：`docs/WEB_UI_TROUBLESHOOTING.md`。
 
 ## 失败后的首轮动作
 

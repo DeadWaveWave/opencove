@@ -101,7 +101,18 @@ opencove ping --endpoint http://127.0.0.1:16661 --token <token>
 
 可选（用于验证/调试）：
 
-- Worker 启动后可访问 `http://127.0.0.1:<port>/` 打开最小 web shell，通过 `Authorization: Bearer <token>` 调用 `/invoke`。
+- Worker 启动后可访问 `http://127.0.0.1:<port>/` 打开 Worker 同源托管的 Web UI（Full Web Canvas）。
+- Debug shell 位于：`http://127.0.0.1:<port>/debug/shell`（用于快速验证 transport/权限/调用链路）。
+- 鉴权（以代码实现为准，以下为 v0 约束）：
+  - 程序化调用：`/invoke` 使用 `Authorization: Bearer <token>`。
+  - 浏览器访问（避免在 URL 暴露 token）：
+    - 默认（loopback/tunnel）：Desktop 可签发一次性 `/auth/claim` ticket 并换取 cookie session。
+    - 开启 LAN Access 后：要求走 `/auth/login` 输入 Web UI 密码（cookie session）。
+
+开发模式提示（避免内网白屏/CORS）：
+
+- 当存在 `ELECTRON_RENDERER_URL`（Vite dev server）时，仅对 loopback host（`localhost/127.0.0.1/::1`）使用 dev origin（保留 HMR）。
+- 对 LAN host（例如 `192.168.x.x`）一律回落到 worker 同源托管的 build 产物（需要先 `pnpm build`）。
 
 原则：
 
