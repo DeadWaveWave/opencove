@@ -57,17 +57,19 @@ jobs:
 
       - name: E2E tests
         if: matrix.os == 'macos-latest'
+        timeout-minutes: 25
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_WINDOW_MODE: inactive
-        run: pnpm test:e2e
+        run: pnpm test:e2e -- --max-failures=2
 
       - name: E2E tests
         if: matrix.os == 'ubuntu-latest'
+        timeout-minutes: 25
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_WINDOW_MODE: inactive
-        run: xvfb-run -a pnpm test:e2e
+        run: xvfb-run -a pnpm test:e2e -- --max-failures=2
 
       - name: Upload coverage artifact
         if: matrix.os == 'macos-latest' && always()

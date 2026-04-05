@@ -71,7 +71,7 @@ test.describe('Workspace Canvas - Website Window', () => {
     }
 
     const websiteUrl = `http://127.0.0.1:${address.port}`
-    const { electronApp, window } = await launchApp()
+    const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
 
     try {
       await clearAndSeedWorkspace(
