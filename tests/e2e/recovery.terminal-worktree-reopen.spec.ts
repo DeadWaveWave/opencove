@@ -118,7 +118,7 @@ test.describe('Recovery - Terminal worktree reopen', () => {
 
         await restartedTerminal.locator('.xterm').click()
         await expect(restartedTerminal.locator('.xterm-helper-textarea')).toBeFocused()
-        await restartedWindow.keyboard.type('node -p "require(\'path\').basename(process.cwd())"')
+        await restartedWindow.keyboard.type('pwd')
         await restartedWindow.keyboard.press('Enter')
 
         await expect(restartedTerminal).toContainText(worktreeName)
