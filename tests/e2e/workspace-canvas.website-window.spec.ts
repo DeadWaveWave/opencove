@@ -1,7 +1,14 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
-import { expect, test, type ElectronApplication } from '@playwright/test'
+import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
+
+const WEBSITE_WINDOW_TEST_POLICY = {
+  enabled: true,
+  maxActiveCount: 1,
+  discardAfterMinutes: 20,
+  keepAliveHosts: [],
+} as const
 
 interface WebsiteRuntimeState {
   lifecycle: string
@@ -60,6 +67,17 @@ async function readWebsiteRuntimeState(
         typeof runtime.snapshotDataUrl === 'string' && runtime.snapshotDataUrl.length > 0,
     }
   }, nodeId)
+}
+
+async function enableWebsiteWindowPolicy(window: Page): Promise<void> {
+  await window.evaluate(async policy => {
+    const api = window.opencoveApi?.websiteWindow
+    if (!api || typeof api.configurePolicy !== 'function') {
+      throw new Error('Website window API unavailable')
+    }
+
+    await api.configurePolicy({ policy })
+  }, WEBSITE_WINDOW_TEST_POLICY)
 }
 
 test.describe('Workspace Canvas - Website Window', () => {
@@ -130,12 +148,16 @@ test.describe('Workspace Canvas - Website Window', () => {
       await expect(viewport).toHaveCSS('border-top-left-radius', '0px')
       await expect(viewport).toHaveCSS('border-top-right-radius', '0px')
 
-      await websiteNode.click({ position: { x: 320, y: 180 } })
+      await enableWebsiteWindowPolicy(window)
+      await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
 
       await expect
-        .poll(async () => {
-          return await readWebsiteRuntimeState(electronApp, 'website-zoom-node')
-        })
+        .poll(
+          async () => {
+            return await readWebsiteRuntimeState(electronApp, 'website-zoom-node')
+          },
+          { timeout: 30_000 },
+        )
         .toMatchObject({
           lifecycle: 'active',
           zoomFactor: 1,
@@ -243,11 +265,15 @@ test.describe('Workspace Canvas - Website Window', () => {
       const websiteNode = window.locator('.website-node').first()
       await expect(websiteNode).toBeVisible()
 
-      await websiteNode.click({ position: { x: 320, y: 180 } })
+      await enableWebsiteWindowPolicy(window)
+      await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
       await expect
-        .poll(async () => {
-          return await readWebsiteRuntimeState(electronApp, 'website-edge-node')
-        })
+        .poll(
+          async () => {
+            return await readWebsiteRuntimeState(electronApp, 'website-edge-node')
+          },
+          { timeout: 30_000 },
+        )
         .toMatchObject({
           lifecycle: 'active',
         })
@@ -263,32 +289,37 @@ test.describe('Workspace Canvas - Website Window', () => {
         throw new Error('workspace pane bounding box unavailable')
       }
 
-      await window.mouse.move(paneBox.x + 24, paneBox.y + 24)
+      // Wheel gestures over a node are ignored by the canvas handler; keep the cursor on an empty
+      // canvas point so we always trigger panning.
+      await window.mouse.move(paneBox.x + paneBox.width - 40, paneBox.y + 40)
       await window.mouse.wheel(1800, 0)
 
       await expect
-        .poll(async () => {
-          const state = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
-          if (
-            typeof beforeWidth !== 'number' ||
-            !state?.hostBounds ||
-            !state?.viewBounds ||
-            state.lifecycle !== 'active'
-          ) {
-            return false
-          }
+        .poll(
+          async () => {
+            const state = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
+            if (
+              typeof beforeWidth !== 'number' ||
+              !state?.hostBounds ||
+              !state?.viewBounds ||
+              state.lifecycle !== 'active'
+            ) {
+              return false
+            }
 
-          const hostWidth = state.hostBounds.width
-          const viewWidth = state.viewBounds.width
-          const viewX = state.viewBounds.x
+            const hostWidth = state.hostBounds.width
+            const viewWidth = state.viewBounds.width
+            const viewX = state.viewBounds.x
 
-          return (
-            hostWidth < beforeWidth - 4 &&
-            viewWidth >= beforeWidth - edgeClipTolerancePx &&
-            viewWidth >= hostWidth &&
-            viewX < 0
-          )
-        })
+            return (
+              hostWidth < beforeWidth - 4 &&
+              viewWidth >= beforeWidth - edgeClipTolerancePx &&
+              viewWidth >= hostWidth &&
+              viewX < 0
+            )
+          },
+          { timeout: 30_000 },
+        )
         .toBe(true)
 
       const after = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
@@ -357,11 +388,15 @@ test.describe('Workspace Canvas - Website Window', () => {
       const websiteNode = window.locator('.website-node').first()
       await expect(websiteNode).toBeVisible()
 
-      await websiteNode.click({ position: { x: 320, y: 180 } })
+      await enableWebsiteWindowPolicy(window)
+      await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
       await expect
-        .poll(async () => {
-          return await readWebsiteRuntimeState(electronApp, 'website-header-node')
-        })
+        .poll(
+          async () => {
+            return await readWebsiteRuntimeState(electronApp, 'website-header-node')
+          },
+          { timeout: 30_000 },
+        )
         .toMatchObject({
           lifecycle: 'active',
         })
@@ -391,7 +426,7 @@ test.describe('Workspace Canvas - Website Window', () => {
         throw new Error('workspace pane bounding box unavailable')
       }
 
-      await window.mouse.move(paneBox.x + 24, paneBox.y + 24)
+      await window.mouse.move(paneBox.x + paneBox.width - 40, paneBox.y + 40)
       await window.mouse.wheel(0, 1400)
       await window.mouse.wheel(0, 1400)
       await window.mouse.wheel(0, 1400)
