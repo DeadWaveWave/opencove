@@ -235,47 +235,54 @@ test.describe('Workspace Canvas - Website Window', () => {
       // canvas point so we always trigger panning.
       const panX = paneBox.x + paneBox.width - 48
       const panY = paneBox.y + paneBox.height * 0.5
+      // Refresh activation to avoid the focus-based snapshot heuristic flipping us to warm/cold
+      // mid-test on slower CI runs.
+      await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
       await window.mouse.move(panX, panY)
       await pane
         .click({ position: { x: paneBox.width - 48, y: paneBox.height * 0.5 } })
         .catch(() => undefined)
 
-      await window.mouse.wheel(900, 0)
-      await window.waitForTimeout(80)
-      await window.mouse.wheel(900, 0)
-      await window.waitForTimeout(80)
-      await window.mouse.wheel(900, 0)
-      await window.waitForTimeout(80)
-      await window.mouse.wheel(900, 0)
-      await window.waitForTimeout(80)
+      const isClipped = async (): Promise<boolean> => {
+        const state = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
+        if (
+          typeof beforeWidth !== 'number' ||
+          !state?.hostBounds ||
+          !state?.viewBounds ||
+          state.lifecycle !== 'active'
+        ) {
+          return false
+        }
 
-      await expect
-        .poll(
-          async () => {
-            const state = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
-            if (
-              typeof beforeWidth !== 'number' ||
-              !state?.hostBounds ||
-              !state?.viewBounds ||
-              state.lifecycle !== 'active'
-            ) {
-              return false
-            }
+        const hostWidth = state.hostBounds.width
+        const viewWidth = state.viewBounds.width
+        const viewX = state.viewBounds.x
 
-            const hostWidth = state.hostBounds.width
-            const viewWidth = state.viewBounds.width
-            const viewX = state.viewBounds.x
-
-            return (
-              hostWidth < beforeWidth - 2 &&
-              viewWidth >= beforeWidth - Math.max(edgeClipTolerancePx, 24) &&
-              viewWidth >= hostWidth &&
-              viewX < 2
-            )
-          },
-          { timeout: 30_000 },
+        return (
+          hostWidth < beforeWidth - 2 &&
+          viewWidth >= beforeWidth - Math.max(edgeClipTolerancePx, 24) &&
+          viewWidth >= hostWidth &&
+          viewX < 2
         )
-        .toBe(true)
+      }
+
+      const panUntilClipped = async (attemptsRemaining: number): Promise<void> => {
+        if (attemptsRemaining <= 0) {
+          return
+        }
+
+        if (await isClipped()) {
+          return
+        }
+
+        await window.mouse.wheel(600, 0)
+        await window.waitForTimeout(80)
+        await panUntilClipped(attemptsRemaining - 1)
+      }
+
+      await panUntilClipped(3)
+
+      await expect.poll(async () => await isClipped(), { timeout: 30_000 }).toBe(true)
 
       const after = await readWebsiteRuntimeState(electronApp, 'website-edge-node')
       expect(after?.hostBounds).toBeTruthy()

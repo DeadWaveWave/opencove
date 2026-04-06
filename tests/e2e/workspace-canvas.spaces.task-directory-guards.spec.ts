@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -296,10 +297,7 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
 
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!spaceBox) {
-        throw new Error('space bounding box unavailable')
-      }
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const taskNode = window.locator('.task-node').filter({ hasText: 'space-task' }).first()
       await expect(taskNode).toBeVisible()
@@ -310,7 +308,7 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
           x: Math.min(Math.max(420, Math.round(spaceBox.width * 0.72)), spaceBox.width - 80),
           y: Math.min(Math.max(260, Math.round(spaceBox.height * 0.62)), spaceBox.height - 60),
         },
-        steps: 18,
+        steps: 12,
       })
 
       await expect(window.locator('[data-testid="app-message"]')).toHaveCount(0)
