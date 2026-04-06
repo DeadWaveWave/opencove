@@ -240,10 +240,14 @@ test.describe('Workspace Canvas - Website Window', () => {
         .click({ position: { x: paneBox.width - 48, y: paneBox.height * 0.5 } })
         .catch(() => undefined)
 
-      for (let attempt = 0; attempt < 4; attempt += 1) {
-        await window.mouse.wheel(900, 0)
-        await window.waitForTimeout(80)
-      }
+      await window.mouse.wheel(900, 0)
+      await window.waitForTimeout(80)
+      await window.mouse.wheel(900, 0)
+      await window.waitForTimeout(80)
+      await window.mouse.wheel(900, 0)
+      await window.waitForTimeout(80)
+      await window.mouse.wheel(900, 0)
+      await window.waitForTimeout(80)
 
       await expect
         .poll(
