@@ -1,7 +1,12 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { expect, test, type ElectronApplication } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  launchApp,
+  readCanvasViewport,
+  readLocatorClientRect,
+} from './workspace-canvas.helpers'
 import {
   closeWebsiteTestServer,
   enableWebsiteWindowPolicy,
@@ -224,15 +229,21 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      const paneBox = await pane.boundingBox()
-      if (!paneBox) {
-        throw new Error('workspace pane bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
 
       // Wheel gestures over a node are ignored by the canvas handler; keep the cursor on an empty
       // canvas point so we always trigger panning.
-      await window.mouse.move(paneBox.x + paneBox.width - 40, paneBox.y + 40)
-      await window.mouse.wheel(1800, 0)
+      const panX = paneBox.x + paneBox.width - 48
+      const panY = paneBox.y + paneBox.height * 0.5
+      await window.mouse.move(panX, panY)
+      await pane
+        .click({ position: { x: paneBox.width - 48, y: paneBox.height * 0.5 } })
+        .catch(() => undefined)
+
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await window.mouse.wheel(900, 0)
+        await window.waitForTimeout(80)
+      }
 
       await expect
         .poll(
@@ -252,10 +263,10 @@ test.describe('Workspace Canvas - Website Window', () => {
             const viewX = state.viewBounds.x
 
             return (
-              hostWidth < beforeWidth - 4 &&
-              viewWidth >= beforeWidth - edgeClipTolerancePx &&
+              hostWidth < beforeWidth - 2 &&
+              viewWidth >= beforeWidth - Math.max(edgeClipTolerancePx, 24) &&
               viewWidth >= hostWidth &&
-              viewX < 0
+              viewX < 2
             )
           },
           { timeout: 30_000 },

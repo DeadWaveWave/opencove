@@ -137,7 +137,11 @@ export async function seedWorkspaceState(
       )
     }
 
-    await window.reload({ waitUntil: 'domcontentloaded' })
+    try {
+      await window.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 })
+    } catch {
+      return await trySeed(attempt + 1)
+    }
 
     const expectedWorkspaces = payload.workspaces.map(workspace => ({
       id: workspace.id,

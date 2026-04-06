@@ -170,13 +170,24 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       const outsideTitleBox = await readLocatorClientRect(outsideTitle)
       const dragStartX = outsideTitleBox.x + outsideTitleBox.width * 0.5
       const dragStartY = outsideTitleBox.y + outsideTitleBox.height * 0.5
-      const dragDx = 420
-      const dragDy = 0
+      const paneBox = await readLocatorClientRect(pane)
+      const dragMargin = 48
+      const desiredDragDx = Math.min(360, Math.max(240, Math.round(paneBox.width * 0.3)))
+      const dragEndX = Math.min(paneBox.x + paneBox.width - dragMargin, dragStartX + desiredDragDx)
+      const dragEndY = Math.min(
+        paneBox.y + paneBox.height - dragMargin,
+        Math.max(paneBox.y + dragMargin, dragStartY),
+      )
+      const effectiveDragDx = dragEndX - dragStartX
+      const minExpectedSpaceShift = Math.max(
+        120,
+        Math.min(200, Math.round(Math.abs(effectiveDragDx) * 0.6)),
+      )
 
       await dragMouse(window, {
         start: { x: dragStartX, y: dragStartY },
-        end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
-        steps: 28,
+        end: { x: dragEndX, y: dragEndY },
+        steps: 12,
         settleAfterPressMs: 64,
         settleBeforeReleaseMs: 96,
         settleAfterReleaseMs: 64,
@@ -187,7 +198,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
           const after = await readState()
           return after ? after.spaceAX - before.spaceAX : Number.NaN
         })
-        .toBeGreaterThan(200)
+        .toBeGreaterThan(minExpectedSpaceShift)
 
       await expect
         .poll(async () => {

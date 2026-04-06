@@ -1,4 +1,5 @@
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import { once } from 'node:events'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'path'
@@ -8,7 +9,7 @@ const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agen
 const testWorkspacePath = path.resolve(__dirname, '../../')
 type E2EWindowMode = 'inactive' | 'offscreen' | 'hidden'
 const E2E_APP_CLOSE_TIMEOUT_MS = 5_000
-const E2E_APP_FORCE_KILL_TIMEOUT_MS = 2_000
+const E2E_APP_FORCE_KILL_TIMEOUT_MS = 10_000
 const E2E_APP_FORCE_KILL_POLL_MS = 50
 const E2E_USER_DATA_DIR_CLEANUP_RETRY_DELAY_MS = 100
 const E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS = 6
@@ -151,6 +152,21 @@ async function waitForProcessExit(pid: number, timeoutMs: number): Promise<void>
   await waitForProcessExit(pid, timeoutMs - nextDelayMs)
 }
 
+async function waitForChildProcessExit(
+  appProcess: ReturnType<ElectronApplication['process']>,
+  timeoutMs: number,
+): Promise<void> {
+  if (!appProcess || appProcess.exitCode !== null || timeoutMs <= 0) {
+    return
+  }
+
+  await Promise.race([
+    once(appProcess, 'exit').then(() => undefined),
+    once(appProcess, 'close').then(() => undefined),
+    delay(timeoutMs),
+  ]).catch(() => undefined)
+}
+
 async function closeElectronAppAndCleanup(
   electronApp: ElectronApplication,
   originalClose: () => Promise<void>,
@@ -159,29 +175,43 @@ async function closeElectronAppAndCleanup(
 ): Promise<void> {
   const appProcess = electronApp.process()
   const appPid = typeof appProcess.pid === 'number' && appProcess.pid > 0 ? appProcess.pid : null
+  const closeEventPromise = electronApp
+    .waitForEvent('close', { timeout: E2E_APP_CLOSE_TIMEOUT_MS })
+    .then(() => undefined)
+    .catch(() => undefined)
+  const closeAttemptPromise = originalClose()
+    .then(() => undefined)
+    .catch(() => undefined)
 
   try {
     await Promise.race([
-      (async () => {
-        const closeEventPromise = electronApp
-          .waitForEvent('close', { timeout: E2E_APP_CLOSE_TIMEOUT_MS })
-          .catch(() => undefined)
-
-        await originalClose().catch(() => undefined)
-        await closeEventPromise
-      })(),
+      Promise.all([closeAttemptPromise, closeEventPromise]),
       delay(E2E_APP_CLOSE_TIMEOUT_MS),
     ])
   } finally {
     if (appPid !== null && isProcessAlive(appPid)) {
       try {
-        process.kill(appPid, 'SIGKILL')
+        appProcess.kill('SIGKILL')
       } catch {
         // ignore force-kill failures
       }
 
-      await waitForProcessExit(appPid, E2E_APP_FORCE_KILL_TIMEOUT_MS).catch(() => undefined)
+      await waitForChildProcessExit(appProcess, E2E_APP_FORCE_KILL_TIMEOUT_MS)
+
+      if (isProcessAlive(appPid)) {
+        try {
+          process.kill(appPid, 'SIGKILL')
+        } catch {
+          // ignore force-kill failures
+        }
+
+        await waitForProcessExit(appPid, E2E_APP_FORCE_KILL_TIMEOUT_MS).catch(() => undefined)
+      }
     }
+
+    // Give Playwright a moment to tear down the transport, but never hang close.
+    await Promise.race([closeAttemptPromise, delay(500)]).catch(() => undefined)
+    await Promise.race([closeEventPromise, delay(500)]).catch(() => undefined)
 
     if (cleanupUserDataDir) {
       await cleanupUserDataDirWithRetry(userDataDir)

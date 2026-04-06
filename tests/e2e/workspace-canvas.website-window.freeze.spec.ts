@@ -2,6 +2,10 @@ import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { expect, test, type ElectronApplication } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
+import {
+  closeWebsiteTestServer,
+  enableWebsiteWindowPolicy,
+} from './workspace-canvas.website-window.shared'
 
 const WEBSITE_MIN_LIVE_CANVAS_ZOOM = 0.25
 
@@ -41,6 +45,7 @@ test.describe('Workspace Canvas - Website Window', () => {
 
     server.listen(0, '127.0.0.1')
     await once(server, 'listening')
+    server.unref()
     const address = server.address()
     if (!address || typeof address === 'string') {
       throw new Error('Failed to resolve website test server address')
@@ -77,7 +82,8 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       const websiteNode = window.locator('.website-node').first()
       await expect(websiteNode).toBeVisible()
-      await websiteNode.click({ position: { x: 320, y: 180 } })
+      await enableWebsiteWindowPolicy(window)
+      await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
       await expect
         .poll(async () => {
           return await readWebsiteRuntimeState(electronApp, 'website-freeze-node')
@@ -138,8 +144,8 @@ test.describe('Workspace Canvas - Website Window', () => {
         await expect(snapshot).toBeHidden()
       }
     } finally {
-      server.close()
       await electronApp.close()
+      await closeWebsiteTestServer(server)
     }
   })
 })

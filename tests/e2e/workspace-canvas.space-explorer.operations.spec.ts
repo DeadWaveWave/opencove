@@ -57,11 +57,16 @@ async function openExplorer(
     },
   )
 
-  await window.locator(`[data-testid="workspace-space-switch-${spaceId}"]`).click()
-
+  const spaceSwitch = window.locator(`[data-testid="workspace-space-switch-${spaceId}"]`)
   const filesPill = window.locator(`[data-testid="workspace-space-files-${spaceId}"]`)
+  await expect(spaceSwitch).toBeVisible()
+
+  if (!(await filesPill.isVisible())) {
+    await spaceSwitch.click({ noWaitAfter: true })
+  }
+
   await expect(filesPill).toBeVisible()
-  await filesPill.click()
+  await filesPill.click({ noWaitAfter: true })
 
   const explorer = window.locator('[data-testid="workspace-space-explorer"]')
   await expect(explorer).toBeVisible()
