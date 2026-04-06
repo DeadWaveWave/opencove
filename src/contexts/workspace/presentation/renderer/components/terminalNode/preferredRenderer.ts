@@ -30,8 +30,14 @@ function usesFractionalDisplayScaling(): boolean {
   return Math.abs(devicePixelRatio - Math.round(devicePixelRatio)) > 0.001
 }
 
-function shouldPreferDomRendererOnCurrentPlatform(): boolean {
+function shouldPreferDomRendererOnCurrentPlatform(
+  terminalProvider?: AgentProvider | null,
+): boolean {
   if (typeof window === 'undefined') {
+    return false
+  }
+
+  if (terminalProvider === 'opencode') {
     return false
   }
 
@@ -54,9 +60,9 @@ function canUseWebglRenderer(): boolean {
 
 export function activatePreferredTerminalRenderer(
   terminal: Terminal,
-  _terminalProvider?: AgentProvider | null,
+  terminalProvider?: AgentProvider | null,
 ): ActiveTerminalRenderer {
-  if (shouldPreferDomRendererOnCurrentPlatform() || !canUseWebglRenderer()) {
+  if (shouldPreferDomRendererOnCurrentPlatform(terminalProvider) || !canUseWebglRenderer()) {
     return createDomRenderer()
   }
 

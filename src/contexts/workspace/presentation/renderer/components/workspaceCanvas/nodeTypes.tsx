@@ -53,6 +53,8 @@ function TerminalNodeType({
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
+  const resolvedTerminalProvider =
+    data.kind === 'agent' ? (data.agent?.provider ?? null) : (data.terminalProviderHint ?? null)
 
   return (
     <TerminalNode
@@ -61,8 +63,8 @@ function TerminalNodeType({
       title={data.title}
       kind={data.kind}
       labelColor={labelColor}
-      terminalProvider={data.kind === 'agent' ? (data.agent?.provider ?? null) : null}
-      terminalThemeMode="sync-with-ui"
+      terminalProvider={resolvedTerminalProvider}
+      terminalThemeMode={resolvedTerminalProvider === 'opencode' ? 'dark' : 'sync-with-ui'}
       isSelected={selected === true}
       isDragging={dragging === true}
       status={data.status}

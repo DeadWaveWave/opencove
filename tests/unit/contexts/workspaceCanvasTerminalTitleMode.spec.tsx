@@ -71,16 +71,19 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
   return {
     TerminalNode: ({
       title,
+      terminalProvider,
       onCommandRun,
       onTitleCommit,
     }: {
       title: string
+      terminalProvider?: string | null
       onCommandRun?: (command: string) => void
       onTitleCommit?: (title: string) => void
     }) => {
       return (
         <div>
           <span data-testid="terminal-title">{title}</span>
+          <span data-testid="terminal-provider">{terminalProvider ?? 'none'}</span>
           <button
             type="button"
             data-testid="terminal-command-auto-1"
@@ -98,6 +101,15 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
             }}
           >
             Auto 2
+          </button>
+          <button
+            type="button"
+            data-testid="terminal-command-opencode"
+            onClick={() => {
+              onCommandRun?.('opencode .')
+            }}
+          >
+            OpenCode
           </button>
           <button
             type="button"
@@ -221,6 +233,7 @@ describe('WorkspaceCanvas terminal title mode', () => {
     render(<Harness />)
 
     expect(screen.getByTestId('terminal-title')).toHaveTextContent('terminal-1')
+    expect(screen.getByTestId('terminal-provider')).toHaveTextContent('none')
 
     fireEvent.click(screen.getByTestId('terminal-command-auto-1'))
 
@@ -242,5 +255,115 @@ describe('WorkspaceCanvas terminal title mode', () => {
       expect(screen.getByTestId('terminal-title')).toHaveTextContent('manual-name')
     })
     expect(latestNodes[0]?.data.title).toBe('manual-name')
+  })
+
+  it('tracks opencode command launches as a terminal provider hint', async () => {
+    const kill = vi.fn(async () => undefined)
+    const onExit = vi.fn(() => () => undefined)
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        pty: {
+          kill,
+          onExit,
+          spawn: vi.fn(async () => ({ sessionId: 'spawned-session' })),
+        },
+        workspace: {
+          ensureDirectory: vi.fn(async () => undefined),
+        },
+        agent: {
+          launch: vi.fn(async () => ({
+            sessionId: 'agent-session',
+            provider: 'codex',
+            command: 'codex',
+            args: [],
+            launchMode: 'new',
+            effectiveModel: null,
+            resumeSessionId: null,
+          })),
+        },
+        task: {
+          suggestTitle: vi.fn(async () => ({
+            title: 'task-title',
+            priority: 'medium',
+            tags: [],
+            provider: 'codex',
+            effectiveModel: null,
+          })),
+        },
+      },
+    })
+
+    const initialNodes: Node<TerminalNodeData>[] = [
+      {
+        id: 'terminal-1',
+        type: 'terminalNode',
+        position: { x: 0, y: 0 },
+        data: {
+          sessionId: 'session-1',
+          title: 'terminal-1',
+          titlePinnedByUser: false,
+          width: 520,
+          height: 400,
+          kind: 'terminal',
+          status: null,
+          startedAt: null,
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: null,
+          agent: null,
+          task: null,
+          note: null,
+        },
+        draggable: true,
+        selectable: true,
+      },
+    ]
+
+    const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
+    const spaces: WorkspaceSpaceState[] = []
+    let latestNodes = initialNodes
+
+    function Harness() {
+      const [nodes, setNodes] = useState(initialNodes)
+      latestNodes = nodes
+
+      return (
+        <WorkspaceCanvas
+          workspaceId="workspace-1"
+          workspacePath="/tmp"
+          worktreesRoot=""
+          nodes={nodes}
+          onNodesChange={next => {
+            latestNodes = next
+            setNodes(next)
+          }}
+          spaces={spaces}
+          activeSpaceId={null}
+          onSpacesChange={() => undefined}
+          onActiveSpaceChange={() => undefined}
+          viewport={viewport}
+          isMinimapVisible={false}
+          onViewportChange={() => undefined}
+          onMinimapVisibilityChange={() => undefined}
+          agentSettings={DEFAULT_AGENT_SETTINGS}
+        />
+      )
+    }
+
+    render(<Harness />)
+
+    fireEvent.click(screen.getByTestId('terminal-command-opencode'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('terminal-title')).toHaveTextContent('opencode .')
+    })
+    await waitFor(() => {
+      expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
+    })
+    expect(latestNodes[0]?.data.terminalProviderHint).toBe('opencode')
   })
 })
