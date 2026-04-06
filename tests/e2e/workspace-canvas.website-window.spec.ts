@@ -1,84 +1,12 @@
 import { createServer } from 'node:http'
 import { once } from 'node:events'
-import { expect, test, type ElectronApplication, type Page } from '@playwright/test'
+import { expect, test, type ElectronApplication } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readCanvasViewport } from './workspace-canvas.helpers'
-
-const WEBSITE_WINDOW_TEST_POLICY = {
-  enabled: true,
-  maxActiveCount: 1,
-  discardAfterMinutes: 20,
-  keepAliveHosts: [],
-} as const
-
-interface WebsiteRuntimeState {
-  lifecycle: string
-  viewBounds: {
-    x: number
-    y: number
-    width: number
-    height: number
-  } | null
-  hostBounds: {
-    x: number
-    y: number
-    width: number
-    height: number
-  } | null
-  zoomFactor: number | null
-  innerWidth: number | null
-  hasSnapshot: boolean
-}
-
-async function readWebsiteRuntimeState(
-  electronApp: ElectronApplication,
-  nodeId: string,
-): Promise<WebsiteRuntimeState | null> {
-  return await electronApp.evaluate(async ({ BrowserWindow }, targetNodeId) => {
-    const win = BrowserWindow.getAllWindows()[0]
-    const manager = win.__opencoveWebsiteWindowManager
-    const runtime = manager?.runtimeByNodeId.get(targetNodeId) ?? null
-    if (!runtime) {
-      return null
-    }
-
-    const hostBounds = runtime.hostView ? runtime.hostView.getBounds() : null
-    if (!runtime.view || runtime.view.webContents.isDestroyed()) {
-      return runtime
-        ? {
-            lifecycle: runtime.lifecycle,
-            viewBounds: runtime.bounds,
-            hostBounds,
-            zoomFactor: null,
-            innerWidth: null,
-            hasSnapshot:
-              typeof runtime.snapshotDataUrl === 'string' && runtime.snapshotDataUrl.length > 0,
-          }
-        : null
-    }
-
-    const innerWidth = await runtime.view.webContents.executeJavaScript('window.innerWidth')
-    return {
-      lifecycle: runtime.lifecycle,
-      viewBounds: runtime.view.getBounds(),
-      hostBounds,
-      zoomFactor: runtime.view.webContents.getZoomFactor(),
-      innerWidth: typeof innerWidth === 'number' ? innerWidth : null,
-      hasSnapshot:
-        typeof runtime.snapshotDataUrl === 'string' && runtime.snapshotDataUrl.length > 0,
-    }
-  }, nodeId)
-}
-
-async function enableWebsiteWindowPolicy(window: Page): Promise<void> {
-  await window.evaluate(async policy => {
-    const api = window.opencoveApi?.websiteWindow
-    if (!api || typeof api.configurePolicy !== 'function') {
-      throw new Error('Website window API unavailable')
-    }
-
-    await api.configurePolicy({ policy })
-  }, WEBSITE_WINDOW_TEST_POLICY)
-}
+import {
+  closeWebsiteTestServer,
+  enableWebsiteWindowPolicy,
+  readWebsiteRuntimeState,
+} from './workspace-canvas.website-window.shared'
 
 test.describe('Workspace Canvas - Website Window', () => {
   const edgeClipTolerancePx = 8
@@ -107,15 +35,20 @@ test.describe('Workspace Canvas - Website Window', () => {
 
     server.listen(0, '127.0.0.1')
     await once(server, 'listening')
+    server.unref()
     const address = server.address()
     if (!address || typeof address === 'string') {
       throw new Error('Failed to resolve website test server address')
     }
 
     const websiteUrl = `http://127.0.0.1:${address.port}`
-    const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+    let electronApp: ElectronApplication | null = null
 
     try {
+      const launched = await launchApp({ windowMode: 'offscreen' })
+      electronApp = launched.electronApp
+      const window = launched.window
+
       await clearAndSeedWorkspace(
         window,
         [
@@ -212,8 +145,10 @@ test.describe('Workspace Canvas - Website Window', () => {
       }
       expect(after?.viewBounds?.width).not.toBe(before?.viewBounds?.width)
     } finally {
-      server.close()
-      await electronApp.close()
+      if (electronApp) {
+        await electronApp.close()
+      }
+      await closeWebsiteTestServer(server)
     }
   })
 
@@ -227,15 +162,20 @@ test.describe('Workspace Canvas - Website Window', () => {
 
     server.listen(0, '127.0.0.1')
     await once(server, 'listening')
+    server.unref()
     const address = server.address()
     if (!address || typeof address === 'string') {
       throw new Error('Failed to resolve website test server address')
     }
 
     const websiteUrl = `http://127.0.0.1:${address.port}`
-    const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+    let electronApp: ElectronApplication | null = null
 
     try {
+      const launched = await launchApp({ windowMode: 'offscreen' })
+      electronApp = launched.electronApp
+      const window = launched.window
+
       await clearAndSeedWorkspace(
         window,
         [
@@ -335,8 +275,10 @@ test.describe('Workspace Canvas - Website Window', () => {
         expect(after.viewBounds.x).toBeLessThan(0)
       }
     } finally {
-      server.close()
-      await electronApp.close()
+      if (electronApp) {
+        await electronApp.close()
+      }
+      await closeWebsiteTestServer(server)
     }
   })
 
@@ -350,15 +292,20 @@ test.describe('Workspace Canvas - Website Window', () => {
 
     server.listen(0, '127.0.0.1')
     await once(server, 'listening')
+    server.unref()
     const address = server.address()
     if (!address || typeof address === 'string') {
       throw new Error('Failed to resolve website test server address')
     }
 
     const websiteUrl = `http://127.0.0.1:${address.port}`
-    const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
+    let electronApp: ElectronApplication | null = null
 
     try {
+      const launched = await launchApp({ windowMode: 'offscreen' })
+      electronApp = launched.electronApp
+      const window = launched.window
+
       await clearAndSeedWorkspace(
         window,
         [
@@ -466,8 +413,10 @@ test.describe('Workspace Canvas - Website Window', () => {
         })
         .toBeGreaterThanOrEqual(Math.floor(sidebarRight))
     } finally {
-      server.close()
-      await electronApp.close()
+      if (electronApp) {
+        await electronApp.close()
+      }
+      await closeWebsiteTestServer(server)
     }
   })
 })
