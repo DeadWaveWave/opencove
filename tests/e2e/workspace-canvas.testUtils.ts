@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'path'
 
@@ -17,7 +17,13 @@ function isRetryablePathCleanupError(error: unknown): boolean {
 }
 
 export async function createTestUserDataDir(): Promise<string> {
-  return await mkdtemp(path.join(tmpdir(), 'cove-e2e-user-data-'))
+  const configuredTmpDir = process.env['OPENCOVE_E2E_TMPDIR']?.trim()
+  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
+  const baseTmpDir = configuredTmpDir || runnerTempDir || tmpdir()
+
+  const parentDir = path.join(baseTmpDir, 'opencove-e2e')
+  await mkdir(parentDir, { recursive: true })
+  return await mkdtemp(path.join(parentDir, 'cove-e2e-user-data-'))
 }
 
 export async function removePathWithRetry(

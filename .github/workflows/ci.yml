@@ -110,6 +110,13 @@ jobs:
             playwright-report/
           retention-days: 7
 
+      - name: Cleanup E2E temp dirs
+        if: always()
+        run: |
+          if [ -n "${RUNNER_TEMP:-}" ]; then rm -rf "${RUNNER_TEMP}/opencove-e2e" || true; fi
+          rm -rf "/tmp/opencove-e2e" || true
+          rm -rf "/tmp/cove-e2e-user-data-"* || true
+
   ci-macos:
     strategy:
       fail-fast: false
@@ -155,6 +162,13 @@ jobs:
             test-results/
             playwright-report/
           retention-days: 7
+
+      - name: Cleanup E2E temp dirs
+        if: always()
+        run: |
+          if [ -n "${RUNNER_TEMP:-}" ]; then rm -rf "${RUNNER_TEMP}/opencove-e2e" || true; fi
+          rm -rf "/tmp/opencove-e2e" || true
+          rm -rf "/tmp/cove-e2e-user-data-"* || true
 
   platform-e2e-windows:
     runs-on: windows-latest

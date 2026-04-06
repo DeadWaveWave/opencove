@@ -123,7 +123,13 @@ async function cleanupUserDataDirWithRetry(userDataDir: string, attempt = 1): Pr
 }
 
 export async function createTestUserDataDir(): Promise<string> {
-  return await mkdtemp(path.join(tmpdir(), 'cove-e2e-user-data-'))
+  const configuredTmpDir = process.env['OPENCOVE_E2E_TMPDIR']?.trim()
+  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
+  const baseTmpDir = configuredTmpDir || runnerTempDir || tmpdir()
+
+  const parentDir = path.join(baseTmpDir, 'opencove-e2e')
+  await mkdir(parentDir, { recursive: true })
+  return await mkdtemp(path.join(parentDir, 'cove-e2e-user-data-'))
 }
 
 function isProcessAlive(pid: number): boolean {
