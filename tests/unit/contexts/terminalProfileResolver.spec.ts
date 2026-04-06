@@ -144,6 +144,28 @@ describe('TerminalProfileResolver', () => {
     expect(result.env.FOO).toBe('bar')
   })
 
+  it('adds terminal capability env for Windows PowerShell sessions', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32' }),
+      locateWindowsCommands: async () => [
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ],
+      listWslDistros: async () => [],
+    })
+
+    const result = await resolver.resolveTerminalSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'powershell',
+      cols: 80,
+      rows: 24,
+    })
+
+    expect(result.env.TERM).toBe('xterm-256color')
+    expect(result.env.COLORTERM).toBe('truecolor')
+    expect(result.env.TERM_PROGRAM).toBe('OpenCove')
+  })
+
   it('matches Windows profile ids case-insensitively during restore', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',

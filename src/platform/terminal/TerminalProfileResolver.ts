@@ -100,6 +100,39 @@ function resolvePosixShell(shell: string | undefined): string {
   return process.platform === 'darwin' ? '/bin/zsh' : '/bin/bash'
 }
 
+function hasMeaningfulEnvValue(value: string | undefined): boolean {
+  return typeof value === 'string' && value.trim().length > 0
+}
+
+function withTerminalCapabilityEnv(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+): NodeJS.ProcessEnv {
+  if (platform !== 'win32') {
+    return env
+  }
+
+  const nextEnv = { ...env }
+
+  if (!hasMeaningfulEnvValue(nextEnv.TERM)) {
+    nextEnv.TERM = 'xterm-256color'
+  }
+
+  if (!hasMeaningfulEnvValue(nextEnv.COLORTERM)) {
+    nextEnv.COLORTERM = 'truecolor'
+  }
+
+  if (!hasMeaningfulEnvValue(nextEnv.TERM_PROGRAM)) {
+    nextEnv.TERM_PROGRAM = 'OpenCove'
+  }
+
+  if (!hasMeaningfulEnvValue(nextEnv.CLICOLOR) && !hasMeaningfulEnvValue(nextEnv.NO_COLOR)) {
+    nextEnv.CLICOLOR = '1'
+  }
+
+  return nextEnv
+}
+
 export class TerminalProfileResolver {
   private readonly deps: TerminalProfileResolverDeps
 
@@ -131,7 +164,7 @@ export class TerminalProfileResolver {
   }
 
   public async resolveTerminalSpawn(input: SpawnTerminalInput): Promise<ResolvedTerminalSpawn> {
-    const env = { ...this.deps.env() }
+    const env = withTerminalCapabilityEnv({ ...this.deps.env() }, this.deps.platform)
 
     if (this.deps.platform !== 'win32') {
       const shell = input.shell ?? resolvePosixShell(this.deps.env().SHELL)
@@ -185,13 +218,14 @@ export class TerminalProfileResolver {
       ...this.deps.env(),
       ...(input.env ?? {}),
     }
+    const resolvedEnv = withTerminalCapabilityEnv(env, this.deps.platform)
 
     if (this.deps.platform !== 'win32') {
       return {
         command,
         args,
         cwd: input.cwd,
-        env,
+        env: resolvedEnv,
         profileId: input.profileId?.trim() || null,
         runtimeKind: 'posix',
       }
@@ -208,13 +242,13 @@ export class TerminalProfileResolver {
         command,
         args,
         cwd: resolveWindowsHostCwd(input.cwd, this.deps.homeDir().trim(), this.deps.processCwd()),
-        env,
+        env: resolvedEnv,
         profileId: null,
         runtimeKind: 'windows',
       }
     }
 
-    const shellSpawn = selectedProfile.resolveSpawn(input.cwd, env)
+    const shellSpawn = selectedProfile.resolveSpawn(input.cwd, resolvedEnv)
     const profileId = selectedProfile.id
 
     if (selectedProfile.runtimeKind === 'wsl') {

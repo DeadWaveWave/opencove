@@ -16,6 +16,29 @@ function createDomRenderer(): ActiveTerminalRenderer {
   }
 }
 
+function resolveDevicePixelRatio(): number {
+  if (typeof window === 'undefined') {
+    return 1
+  }
+
+  const { devicePixelRatio } = window
+  return Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1
+}
+
+function usesFractionalDisplayScaling(): boolean {
+  const devicePixelRatio = resolveDevicePixelRatio()
+  return Math.abs(devicePixelRatio - Math.round(devicePixelRatio)) > 0.001
+}
+
+function shouldPreferDomRendererOnCurrentPlatform(): boolean {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  const platform = window.opencoveApi?.meta?.platform
+  return platform === 'win32' && usesFractionalDisplayScaling()
+}
+
 function canUseWebglRenderer(): boolean {
   if (typeof document === 'undefined') {
     return false
@@ -33,7 +56,7 @@ export function activatePreferredTerminalRenderer(
   terminal: Terminal,
   _terminalProvider?: AgentProvider | null,
 ): ActiveTerminalRenderer {
-  if (!canUseWebglRenderer()) {
+  if (shouldPreferDomRendererOnCurrentPlatform() || !canUseWebglRenderer()) {
     return createDomRenderer()
   }
 
