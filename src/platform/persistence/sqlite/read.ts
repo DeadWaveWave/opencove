@@ -165,7 +165,9 @@ export function readWorkspaceStateRawFromDb(
     return null
   }
 
-  const nodeIds = appState.workspaces.flatMap(workspace => workspace.nodes.map(node => node.id))
+  const nodeIds = appState.workspaces.flatMap(workspace =>
+    workspace.nodes.filter(node => node.kind === 'terminal').map(node => node.id),
+  )
   const scrollbacks =
     nodeIds.length > 0
       ? db

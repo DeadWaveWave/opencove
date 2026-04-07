@@ -188,7 +188,9 @@ export function useWorkspaceCanvasSpaces({
 
   const startSpaceRename = useCallback(
     (spaceId: string) => {
-      const space = spacesRef.current.find(item => item.id === spaceId)
+      // Prefer the render-prop `spaces` snapshot. Refs can lag behind React commits just long enough
+      // for fast automated clicks (Playwright) to hit a space label before `spacesRef` updates.
+      const space = spaces.find(item => item.id === spaceId)
       if (!space) {
         return
       }
@@ -198,7 +200,7 @@ export function useWorkspaceCanvasSpaces({
       setContextMenu(null)
       setEmptySelectionPrompt(null)
     },
-    [setContextMenu, setEmptySelectionPrompt, spacesRef],
+    [setContextMenu, setEmptySelectionPrompt, spaces],
   )
 
   const commitSpaceRename = useCallback(

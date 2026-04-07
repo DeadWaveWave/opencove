@@ -258,7 +258,7 @@ export function useHydrateAppState({
       return
     }
 
-    const nodeIds = workspace.nodes.filter(node => node.kind !== 'task').map(node => node.id)
+    const nodeIds = workspace.nodes.filter(node => node.kind === 'terminal').map(node => node.id)
     if (nodeIds.length === 0) {
       return
     }
