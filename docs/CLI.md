@@ -36,3 +36,20 @@ CLI 的默认运行模型应满足：
 
 这样才能保证未来 Web/Remote 复用同一条链路，而不是每个 client 各自实现一套语义。
 
+## 5. Multi-endpoint Orchestration（M6，实验性）
+
+Milestone 6 引入 “Home Worker 编排多个 endpoints” 的最小 CLI 入口（client 仍只连接 Home Worker）：
+
+- endpoint registry：`opencove endpoint list/register/ping/remove`
+- mounts：`opencove mount list/create/resolve/remove`
+- mount-aware filesystem：`opencove fs read-in-mount/write-in-mount/stat-in-mount/ls-in-mount`
+- mount-aware session：`opencove pty spawn-in-mount` + `opencove pty attach`
+
+示例（先连 Home Worker，再由 Home 路由到 remote）：
+
+```bash
+opencove endpoint register --hostname <host> --port <port> --remote-token <token>
+opencove mount create --space <spaceId> --endpoint-id <endpointId> --root-path <remoteRootPath>
+opencove pty spawn-in-mount --mount <mountId>
+opencove pty attach --session <homeSessionId>
+```

@@ -47,6 +47,23 @@ Control Surface 提供以下操作（Command/Query）：
 - `filesystem.writeFileText`（command）
 - `filesystem.readDirectory`（query）
 - `filesystem.stat`（query）
+- `filesystem.createDirectory`（command）
+- `filesystem.deleteEntry`（command）
+- `filesystem.copyEntry`（command）
+- `filesystem.moveEntry`（command）
+- `filesystem.renameEntry`（command）
+
+Multi-endpoint（M6）新增 mount-aware 变体（Home 侧 `mountId -> endpointId` 路由）：
+
+- `filesystem.readFileTextInMount`（query）
+- `filesystem.writeFileTextInMount`（command）
+- `filesystem.readDirectoryInMount`（query）
+- `filesystem.statInMount`（query）
+- `filesystem.createDirectoryInMount`（command）
+- `filesystem.deleteEntryInMount`（command）
+- `filesystem.copyEntryInMount`（command）
+- `filesystem.moveEntryInMount`（command）
+- `filesystem.renameEntryInMount`（command）
 
 对应 DTO：`src/shared/contracts/dto/filesystem.ts`
 
@@ -54,8 +71,9 @@ Control Surface 提供以下操作（Command/Query）：
 
 注意：
 
-- 当前 `readFileBytes/createDirectory` 仅通过 Desktop IPC（`window.opencoveApi.filesystem.*`）供 renderer 使用，用于图片打开与文件树创建操作。
+- 当前 `readFileBytes` 仅通过 Desktop IPC（`window.opencoveApi.filesystem.*`）供 renderer 使用，用于图片打开等 bytes 级别能力。
 - Control Surface 暂不暴露 bytes 级别结果（避免在 CLI/Remote 场景中引入不稳定的编码与体积风险）。
+- `*InMount` 的语义是 “先做 mount root containment + endpoint 路由，再执行具体 filesystem 操作”，用于 multi-endpoint 与 scope 收口。
 
 ## 4. Guardrails（安全与一致性门禁）
 
@@ -76,6 +94,10 @@ Control Surface 提供以下操作（Command/Query）：
 
 - 保证 Space Boundary 的“只收缩不扩张”可被实现
 - 为 multi-mount / remote / 插件权限奠定正确约束
+
+现状（v0）：
+
+- `filesystem.*InMount` 已在 Home 侧强制 `uri ∈ mount.rootUri`（mount root containment），并在 remote 场景下先路由到对应 endpoint 再执行。
 
 ## 5. Desktop 集成约束（Renderer/Main）
 

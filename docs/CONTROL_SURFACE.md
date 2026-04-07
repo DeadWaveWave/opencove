@@ -118,3 +118,42 @@ opencove ping --endpoint http://127.0.0.1:16661 --token <token>
 
 - 远端 worker 默认不暴露公网端口；SSH/tunnel 是保守默认路径。
 - CLI/Web/Desktop 只作为 client；durable truth 与副作用由 worker owner。
+
+## 8. Multi-endpoint Orchestration（M6，Hub-and-spoke）
+
+Milestone 6 引入同一客户端会话内的多 endpoint 编排（local + remote / 多 remote），并保持 **客户端单连接心智**：
+
+- client（Desktop/Web/CLI）只连接 **Home Worker**
+- Home Worker 维护 durable topology（endpoints + mounts），并对 remote endpoints 做 **路由/代理**
+- remote endpoints（spokes）只提供标准 Control Surface（`/invoke` + `WS /pty`），不写入该 Project 的 durable truth
+
+### 8.1 不变量（必须）
+
+- **Single durable truth owner**：topology/mounts/targets 只由 Home Worker 写入与解释。
+- **Credentials 不进入 sync**：remote token 只存 Home Worker 私有 `userData`（0600），不会出现在 sync snapshot，也不会由 `endpoint.list` 返回。
+- **Routing 显式且可解释**：对 mount-aware 的能力，必须先 `mountId -> endpointId/targetId/rootUri` 再执行。
+
+### 8.2 Control Surface contracts（v0）
+
+控制面（control-plane）新增：
+
+- `endpoint.list/register/remove/ping`
+- `mount.list/create/remove`
+- `mountTarget.resolve`（`mountId -> { endpointId, targetId, rootUri, ... }`）
+
+文件系统（mount-aware 路由）新增：
+
+- `filesystem.*InMount`：在 Home 侧做 mount root containment + endpoint 路由（local 直执行，remote 走 spoke `/invoke`）
+
+PTY 数据面（data-plane）：
+
+- client 始终只连 Home 的 `WS /pty`
+- 当 session 位于 remote endpoint 时，Home 会将 `attach/write/resize/kill` 与 `data/exit` 在 Home↔spoke 之间转发（v0）
+
+参考实现：
+
+- DTO：`src/shared/contracts/dto/topology.ts`
+- handlers：`src/app/main/controlSurface/handlers/topologyHandlers.ts`
+- topology store：`src/app/main/controlSurface/topology/topologyStore.ts`
+- mount-aware filesystem handlers：`src/app/main/controlSurface/handlers/filesystemMountHandlers.ts`
+- multi-endpoint PTY runtime（proxy）：`src/app/main/controlSurface/ptyStream/multiEndpointPtyRuntime.ts`
