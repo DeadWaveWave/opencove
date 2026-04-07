@@ -1,9 +1,6 @@
 import { createServer, type ServerResponse } from 'node:http'
-import { resolve } from 'node:path'
 import { randomBytes } from 'node:crypto'
 import { createAppErrorDescriptor } from '../../../shared/errors/appError'
-import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
-import { createPersistenceStore as createSqlitePersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import { createControlSurface } from './controlSurface'
 import { normalizeInvokeRequest } from './validate'
 import type { ControlSurfaceContext } from './types'
@@ -11,12 +8,15 @@ import { registerSystemHandlers } from './handlers/systemHandlers'
 import { registerProjectHandlers } from './handlers/projectHandlers'
 import { registerSpaceHandlers } from './handlers/spaceHandlers'
 import { registerFilesystemHandlers } from './handlers/filesystemHandlers'
+import { registerFilesystemMountHandlers } from './handlers/filesystemMountHandlers'
 import { registerGitWorktreeHandlers } from './handlers/gitWorktreeHandlers'
 import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
 import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
 import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
+import { registerPtyMountHandlers } from './handlers/ptyMountHandlers'
 import { registerSyncHandlers } from './handlers/syncHandlers'
+import { registerTopologyHandlers } from './handlers/topologyHandlers'
 import { renderWorkerWebShellPage } from './workerWebShellPage'
 import { tryResolveWebUiResponse } from './webUiAssets'
 import { WebSessionManager } from './http/webSessionManager'
@@ -30,8 +30,11 @@ import { gateWebUiEntrypoint } from './http/webUiEntryGate'
 import { publishSyncEvent } from './http/publishSyncEvent'
 import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
 import { buildUnauthorizedResult } from './http/unauthorizedResult'
+import { createLazyPersistenceStore } from './http/lazyPersistenceStore'
 import { createPtyStreamService, PTY_STREAM_PROTOCOL_VERSION } from './ptyStream/ptyStreamService'
+import { createMultiEndpointPtyRuntime } from './ptyStream/multiEndpointPtyRuntime'
 import type { RegisterControlSurfaceHttpServerOptions } from './controlSurfaceHttpServerOptions'
+import { createWorkerTopologyStore } from './topology/topologyStore'
 
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
@@ -92,47 +95,43 @@ export function registerControlSurfaceHttpServer(
     },
   }
 
+  const topology = createWorkerTopologyStore({ userDataPath: options.userDataPath })
+
+  const ptyRuntime = createMultiEndpointPtyRuntime({
+    localRuntime: options.ptyRuntime,
+    topology,
+    disposeLocalRuntime: options.ownsPtyRuntime === true,
+  })
+
   const ptyStreamService = createPtyStreamService({
     token,
     webSessions,
     now: ctx.now,
-    ptyRuntime: options.ptyRuntime,
+    ptyRuntime,
     replayWindowMaxBytes: PTY_STREAM_DEFAULT_REPLAY_WINDOW_MAX_BYTES,
     allowQueryToken: true,
   })
 
-  let persistenceStorePromise: Promise<PersistenceStore> | null = null
-  const createPersistenceStore =
-    options.createPersistenceStore ??
-    (async ({ dbPath }: { dbPath: string }) => {
-      return await createSqlitePersistenceStore({ dbPath })
-    })
-  const getPersistenceStore = async (): Promise<PersistenceStore> => {
-    if (persistenceStorePromise) {
-      return await persistenceStorePromise
-    }
-
-    const dbPath = options.dbPath ?? resolve(options.userDataPath, 'opencove.db')
-    const nextPromise = createPersistenceStore({ dbPath }).catch(error => {
-      if (persistenceStorePromise === nextPromise) {
-        persistenceStorePromise = null
-      }
-
-      throw error
-    })
-
-    persistenceStorePromise = nextPromise
-    return await persistenceStorePromise
-  }
+  const persistence = createLazyPersistenceStore({
+    userDataPath: options.userDataPath,
+    dbPath: options.dbPath,
+    createPersistenceStore: options.createPersistenceStore,
+  })
+  const getPersistenceStore = persistence.getPersistenceStore
 
   const controlSurface = createControlSurface()
   registerSystemHandlers(controlSurface)
   registerAuthHandlers(controlSurface, { webSessions })
+  registerTopologyHandlers(controlSurface, { topology })
   registerProjectHandlers(controlSurface, getPersistenceStore)
   registerSpaceHandlers(controlSurface, getPersistenceStore)
   registerWorkspaceHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
   registerFilesystemHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
+  })
+  registerFilesystemMountHandlers(controlSurface, {
+    approvedWorkspaces: options.approvedWorkspaces,
+    topology,
   })
   registerGitWorktreeHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
   registerWorktreeHandlers(controlSurface, {
@@ -142,13 +141,19 @@ export function registerControlSurfaceHttpServer(
   registerSessionHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
     getPersistenceStore,
-    ptyRuntime: options.ptyRuntime,
+    ptyRuntime,
     ptyStreamHub: ptyStreamService.hub,
   })
   registerSessionStreamingHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
     getPersistenceStore,
-    ptyRuntime: options.ptyRuntime,
+    ptyRuntime,
+    ptyStreamHub: ptyStreamService.hub,
+  })
+  registerPtyMountHandlers(controlSurface, {
+    approvedWorkspaces: options.approvedWorkspaces,
+    topology,
+    ptyRuntime,
     ptyStreamHub: ptyStreamService.hub,
   })
   registerSyncHandlers(controlSurface, getPersistenceStore)
@@ -432,9 +437,6 @@ export function registerControlSurfaceHttpServer(
       }
 
       disposePromise = (async () => {
-        const storePromise = persistenceStorePromise
-        persistenceStorePromise = null
-
         try {
           await pendingConnectionWrite
         } catch {
@@ -472,19 +474,14 @@ export function registerControlSurfaceHttpServer(
           server.close(() => resolveClose())
         })
 
-        if (options.ownsPtyRuntime) {
-          try {
-            options.ptyRuntime.dispose?.()
-          } catch {
-            // ignore
-          }
+        try {
+          ptyRuntime.dispose()
+        } catch {
+          // ignore
         }
 
         try {
-          if (storePromise) {
-            const store = await storePromise
-            store.dispose()
-          }
+          await persistence.dispose()
         } catch {
           // ignore
         }

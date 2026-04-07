@@ -10,6 +10,7 @@ import { resolveConnectionInfo } from './connection.mjs'
 import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
+import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -176,6 +177,18 @@ async function main() {
       { pretty, timeoutMs },
     )
 
+    return
+  }
+
+  if (
+    await tryHandleMultiEndpointCommands({
+      command,
+      args,
+      connection,
+      pretty,
+      timeoutMs,
+    })
+  ) {
     return
   }
 

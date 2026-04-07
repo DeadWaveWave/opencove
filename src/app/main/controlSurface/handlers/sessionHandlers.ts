@@ -231,11 +231,15 @@ export function registerSessionHandlers(
       const mode = payload.mode === 'resume' ? 'resume' : 'new'
       const resumeSessionId = normalizeOptionalString(payload.resumeSessionId)
 
-      const { workingDirectory, agentSettings } = resolvedSpaceId
+      const resolvedSpace = resolvedSpaceId
         ? await resolveSpaceWorkingDirectoryFromStore({
             spaceId: resolvedSpaceId,
             getPersistenceStore: deps.getPersistenceStore,
           })
+        : null
+
+      const { workingDirectory, agentSettings } = resolvedSpace
+        ? resolvedSpace
         : await (async () => {
             if (resolvedCwd.length === 0) {
               throw createAppError('common.invalid_input', {
@@ -322,7 +326,10 @@ export function registerSessionHandlers(
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
-      const executionContext = resolveExecutionContextDto(workingDirectory)
+      const executionContext = resolveExecutionContextDto(workingDirectory, {
+        projectId: resolvedSpace?.projectId ?? null,
+        spaceId: resolvedSpaceId.length > 0 ? resolvedSpaceId : null,
+      })
 
       const record: SessionRecord = {
         sessionId,
