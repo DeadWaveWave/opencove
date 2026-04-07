@@ -92,6 +92,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Terminal: Prevented `node-pty` native aborts from crashing the whole app by isolating PTY into a utility process. (#75)
 - Spaces: Fixed Space pills truncating and made worktree branch/PR chips refresh without switching projects. (#129)
 - Terminal: Prevent focus loss and font resets when submitting commands or after clicking header then terminal body. (#130)
+- Workspace canvas: Keep node focus rings stable while typing in terminal/task inputs (reduces border “wink”). (#151)
 
 ---
 
