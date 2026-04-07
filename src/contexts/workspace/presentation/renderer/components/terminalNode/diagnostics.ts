@@ -36,12 +36,32 @@ function toNonEmptyString(value: string | null | undefined): string | null {
   return normalized.length > 0 ? normalized : null
 }
 
+function safeMatches(element: Element | null, selector: string): boolean {
+  if (!(element instanceof Element)) {
+    return false
+  }
+
+  try {
+    return element.matches(selector)
+  } catch {
+    return false
+  }
+}
+
 function getComputedCursor(element: Element | null): string | null {
   if (!(element instanceof Element)) {
     return null
   }
 
   return toNonEmptyString(window.getComputedStyle(element).cursor)
+}
+
+function getComputedBorderColor(element: Element | null): string | null {
+  if (!(element instanceof Element)) {
+    return null
+  }
+
+  return toNonEmptyString(window.getComputedStyle(element).borderColor)
 }
 
 function describeElement(element: Element | null): string | null {
@@ -95,6 +115,7 @@ export function captureTerminalInteractionDetails({
     container?.closest('.workspace-canvas') instanceof HTMLElement
       ? (container.closest('.workspace-canvas') as HTMLElement)
       : null
+  const activeElement = document.activeElement
   const hitTarget =
     point && Number.isFinite(point.x) && Number.isFinite(point.y)
       ? document.elementFromPoint(point.x, point.y)
@@ -103,12 +124,21 @@ export function captureTerminalInteractionDetails({
   const dragSurfaceSelectionMode = workspaceCanvas?.dataset.coveDragSurfaceSelectionMode === 'true'
   const reactFlowNodeSelected = reactFlowNode?.classList.contains('selected') ?? false
   const selectedSurfaceActive = dragSurfaceSelectionMode && reactFlowNodeSelected
+  const terminalNodeFocusWithin = safeMatches(terminalNode, ':focus-within')
+  const activeElementInsideTerminalNode =
+    terminalNode instanceof HTMLElement && activeElement instanceof Element
+      ? terminalNode.contains(activeElement)
+      : false
 
   return {
     rendererKind: rendererKind ?? null,
     xtermClassName: toNonEmptyString(xtermElement?.className),
     reactFlowNodeClassName: toNonEmptyString(reactFlowNode?.className),
     terminalNodeClassName: toNonEmptyString(terminalNode?.className),
+    activeElement: describeElement(activeElement),
+    activeElementInsideTerminalNode,
+    terminalNodeFocusWithin,
+    terminalNodeBorderColor: getComputedBorderColor(terminalNode),
     dragSurfaceSelectionMode,
     reactFlowNodeSelected,
     selectedSurfaceActive,

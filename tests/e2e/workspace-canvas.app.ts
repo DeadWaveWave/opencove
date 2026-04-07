@@ -22,6 +22,10 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
   return rawValue === '1' || rawValue.toLowerCase() === 'true'
 }
 
+function shouldPipeElectronLogs(): boolean {
+  return isTruthyEnv(process.env['OPENCOVE_E2E_PIPE_ELECTRON_LOGS'])
+}
+
 function isRetryableLaunchError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return (
@@ -265,6 +269,16 @@ async function launchAppInMode(
         ...options.env,
       },
     })
+
+    if (shouldPipeElectronLogs()) {
+      const appProcess = electronApp.process()
+      appProcess?.stdout?.on('data', chunk => {
+        process.stdout.write(chunk)
+      })
+      appProcess?.stderr?.on('data', chunk => {
+        process.stderr.write(chunk)
+      })
+    }
 
     const originalClose = electronApp.close.bind(electronApp)
     let closePromise: Promise<void> | null = null
