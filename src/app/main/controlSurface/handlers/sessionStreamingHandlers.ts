@@ -192,10 +192,11 @@ export function registerSessionStreamingHandlers(
     kind: 'command',
     validate: normalizeSpawnTerminalPayload,
     handle: async (ctx, payload): Promise<SpawnTerminalSessionResult> => {
-      const { workingDirectory, agentSettings } = await resolveSpaceWorkingDirectoryFromStore({
-        spaceId: payload.spaceId,
-        getPersistenceStore: deps.getPersistenceStore,
-      })
+      const { workingDirectory, agentSettings, projectId } =
+        await resolveSpaceWorkingDirectoryFromStore({
+          spaceId: payload.spaceId,
+          getPersistenceStore: deps.getPersistenceStore,
+        })
 
       const isApproved = await deps.approvedWorkspaces.isPathApproved(workingDirectory)
       if (!isApproved) {
@@ -250,7 +251,10 @@ export function registerSessionStreamingHandlers(
         cwd: resolvedSpawn.cwd,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
-        executionContext: resolveExecutionContextDto(workingDirectory),
+        executionContext: resolveExecutionContextDto(workingDirectory, {
+          projectId,
+          spaceId: payload.spaceId,
+        }),
       }
     },
     defaultErrorCode: 'terminal.spawn_failed',

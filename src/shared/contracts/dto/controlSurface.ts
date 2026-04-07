@@ -1,4 +1,5 @@
 import type { AgentProviderId } from './agent'
+import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
 
 export interface ControlSurfacePingResult {
@@ -45,8 +46,8 @@ export interface CanvasNodeSummary {
 }
 
 export interface WorkerEndpointRefDto {
-  id: 'local'
-  kind: 'local'
+  endpointId: string
+  kind: WorkerEndpointKindDto
 }
 
 export interface MountTargetDto {
@@ -61,6 +62,10 @@ export interface ExecutionScopeDto {
 }
 
 export interface ExecutionContextDto {
+  projectId: string | null
+  spaceId: string | null
+  mountId: string | null
+  targetId: string | null
   endpoint: WorkerEndpointRefDto
   target: MountTargetDto
   scope: ExecutionScopeDto
