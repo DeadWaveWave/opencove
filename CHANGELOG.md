@@ -32,6 +32,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Task: prompt templates for task requirement prefix injection (Global + Project scopes). (#71)
 - Sync-first: multi-client snapshot + revision + SSE `/events` for the worker control surface (Desktop/Web/CLI). (#122)
 - Worker: PTY session streaming over the control surface (`WS /pty`) + ticket→cookie web auth for the Worker Web Shell. (#133)
+- Worker: multi-endpoint orchestration (hub-and-spoke) with durable endpoint registry, mount-aware filesystem routing, and PTY proxy. (#152)
 
 ### 💅 Changed
 - Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
