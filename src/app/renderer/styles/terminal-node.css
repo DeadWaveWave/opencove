@@ -65,7 +65,8 @@
 .terminal-node__terminal {
   flex: 1;
   min-height: 0;
-  padding: 8px;
+  padding: 0;
+  background: var(--cove-terminal-background);
   opacity: 1;
   transition: opacity 0.12s ease;
   cursor: text;
@@ -181,6 +182,7 @@
 .terminal-node__terminal .xterm {
   width: 100%;
   height: 100%;
+  padding: 8px;
 }
 
 .terminal-node__terminal .xterm,
@@ -210,6 +212,8 @@
 
 .terminal-node__terminal .xterm-viewport {
   overscroll-behavior: contain;
+  background-color: transparent;
+  overflow-y: hidden;
 }
 
 .terminal-node__resizer {

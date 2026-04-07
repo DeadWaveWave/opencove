@@ -6,6 +6,10 @@
     0 0 0 1px rgba(168, 233, 255, 0.42), 0 18px 40px rgba(0, 0, 0, 0.52);
   --cove-terminal-node-surface: rgba(7, 12, 24, 0.9);
   --cove-terminal-node-header-surface: rgba(18, 28, 50, 0.96);
+  --cove-terminal-background: #0a0f1d;
+  --cove-terminal-foreground: #d6e4ff;
+  --cove-terminal-selection: rgba(94, 156, 255, 0.35);
+  --cove-terminal-cursor: #d6e4ff;
   --cove-text: rgba(255, 255, 255, 0.92);
   --cove-text-muted: rgba(255, 255, 255, 0.6);
   --cove-text-faint: rgba(255, 255, 255, 0.4);
