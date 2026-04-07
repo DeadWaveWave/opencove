@@ -90,6 +90,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: arrange is now aspect-aware, avoids large empty gaps, and auto-fits the viewport after arranging; created-time ordering is deterministic across node types. (#72)
 - Workspace canvas: arrange-in-space now focuses the space bounds and caps zoom at the configured focus target zoom. (#131)
 - Terminal: Prevented `node-pty` native aborts from crashing the whole app by isolating PTY into a utility process. (#75)
+- Terminal: Prevented terminal/agent nodes from clipping the last row/column and showing a black gutter around the embedded terminal. (#150)
 - Spaces: Fixed Space pills truncating and made worktree branch/PR chips refresh without switching projects. (#129)
 - Terminal: Prevent focus loss and font resets when submitting commands or after clicking header then terminal body. (#130)
 
