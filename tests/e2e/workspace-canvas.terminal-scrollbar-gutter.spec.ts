@@ -74,7 +74,9 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
         const xterm = node.locator('.xterm')
         await xterm.click()
         await expect(node.locator('.xterm-helper-textarea')).toBeFocused()
-        await window.keyboard.type(buildEchoSequenceCommand(`OPENCOVE_SCROLLBAR_GUTTER_${nodeId}`, 220))
+        await window.keyboard.type(
+          buildEchoSequenceCommand(`OPENCOVE_SCROLLBAR_GUTTER_${nodeId}`, 220),
+        )
         await window.keyboard.press('Enter')
 
         const scrollbar = node.locator('.xterm-scrollable-element .scrollbar.vertical')
@@ -117,15 +119,17 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
             point: center,
             tagName: hitTarget.tagName,
             className: hitTarget instanceof HTMLElement ? hitTarget.className : '',
-            insideScrollbar: hitTarget.closest('.xterm-scrollable-element .scrollbar.vertical') !== null,
+            insideScrollbar:
+              hitTarget.closest('.xterm-scrollable-element .scrollbar.vertical') !== null,
             insideResizer: hitTarget.closest('.terminal-node__resizer') !== null,
             insideScreen: hitTarget.closest('.xterm-screen') !== null,
           }
         }, nodeId)
 
-        expect(hitTest.ok ? hitTest.insideScreen : false, hitTest.ok ? undefined : hitTest.reason).toBe(
-          true,
-        )
+        expect(
+          hitTest.ok ? hitTest.insideScreen : false,
+          hitTest.ok ? undefined : hitTest.reason,
+        ).toBe(true)
         expect(
           hitTest.ok ? hitTest.insideScrollbar : true,
           hitTest.ok ? undefined : hitTest.reason,
