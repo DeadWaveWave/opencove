@@ -23,6 +23,16 @@ interface TerminalForDiagnosticsLike {
   buffer?: TerminalBufferNamespaceLike
 }
 
+interface TerminalDiagnosticElements {
+  xtermElement: HTMLElement | null
+  viewportElement: HTMLElement | null
+  screenElement: HTMLElement | null
+  canvasElement: HTMLCanvasElement | null
+  reactFlowNode: HTMLElement | null
+  terminalNode: HTMLElement | null
+  workspaceCanvas: HTMLElement | null
+}
+
 function toFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
@@ -58,15 +68,13 @@ function describeElement(element: Element | null): string | null {
   return className.length > 0 ? `${tagName}.${className}` : tagName
 }
 
-export function captureTerminalInteractionDetails({
-  container,
-  rendererKind,
-  point,
-}: {
-  container: HTMLElement | null
-  rendererKind?: 'webgl' | 'dom' | null
-  point?: { x: number; y: number } | null
-}): Record<string, TerminalDiagnosticsDetailValue> {
+function roundDiagnosticNumber(value: number): number {
+  return Math.round(value * 1000) / 1000
+}
+
+function resolveTerminalDiagnosticElements(
+  container: HTMLElement | null,
+): TerminalDiagnosticElements {
   const xtermElement =
     container?.querySelector('.xterm') instanceof HTMLElement
       ? (container.querySelector('.xterm') as HTMLElement)
@@ -95,6 +103,49 @@ export function captureTerminalInteractionDetails({
     container?.closest('.workspace-canvas') instanceof HTMLElement
       ? (container.closest('.workspace-canvas') as HTMLElement)
       : null
+
+  return {
+    xtermElement,
+    viewportElement,
+    screenElement,
+    canvasElement,
+    reactFlowNode,
+    terminalNode,
+    workspaceCanvas,
+  }
+}
+
+function resolveDevicePixelOffset(
+  value: number | null,
+  devicePixelRatio: number | null,
+): number | null {
+  if (value === null || devicePixelRatio === null || devicePixelRatio <= 0) {
+    return null
+  }
+
+  const devicePixelValue = value * devicePixelRatio
+  const fractionalOffset = devicePixelValue - Math.round(devicePixelValue)
+  return roundDiagnosticNumber(Math.abs(fractionalOffset))
+}
+
+export function captureTerminalInteractionDetails({
+  container,
+  rendererKind,
+  point,
+}: {
+  container: HTMLElement | null
+  rendererKind?: 'webgl' | 'dom' | null
+  point?: { x: number; y: number } | null
+}): Record<string, TerminalDiagnosticsDetailValue> {
+  const {
+    xtermElement,
+    viewportElement,
+    screenElement,
+    canvasElement,
+    reactFlowNode,
+    terminalNode,
+    workspaceCanvas,
+  } = resolveTerminalDiagnosticElements(container)
   const hitTarget =
     point && Number.isFinite(point.x) && Number.isFinite(point.y)
       ? document.elementFromPoint(point.x, point.y)
@@ -127,6 +178,66 @@ export function captureTerminalInteractionDetails({
       hitTarget instanceof Element &&
       hitTarget.closest('.react-flow__node.selected') !== null &&
       selectedSurfaceActive,
+  }
+}
+
+export function captureTerminalRenderSurfaceDetails({
+  container,
+  rendererKind,
+}: {
+  container: HTMLElement | null
+  rendererKind?: 'webgl' | 'dom' | null
+}): Record<string, TerminalDiagnosticsDetailValue> {
+  const { screenElement, canvasElement } = resolveTerminalDiagnosticElements(container)
+  const devicePixelRatio =
+    typeof window !== 'undefined' ? toFiniteNumber(window.devicePixelRatio) : null
+  const screenRect = screenElement?.getBoundingClientRect() ?? null
+  const canvasRect = canvasElement?.getBoundingClientRect() ?? null
+  const canvasCssWidth = canvasRect ? roundDiagnosticNumber(canvasRect.width) : null
+  const canvasCssHeight = canvasRect ? roundDiagnosticNumber(canvasRect.height) : null
+  const canvasCssX = canvasRect ? roundDiagnosticNumber(canvasRect.x) : null
+  const canvasCssY = canvasRect ? roundDiagnosticNumber(canvasRect.y) : null
+  const canvasExpectedBitmapWidth =
+    canvasCssWidth !== null && devicePixelRatio !== null
+      ? Math.round(canvasCssWidth * devicePixelRatio)
+      : null
+  const canvasExpectedBitmapHeight =
+    canvasCssHeight !== null && devicePixelRatio !== null
+      ? Math.round(canvasCssHeight * devicePixelRatio)
+      : null
+  const canvasBitmapWidth = toFiniteNumber(canvasElement?.width)
+  const canvasBitmapHeight = toFiniteNumber(canvasElement?.height)
+  const canvasDevicePixelOffsetX = resolveDevicePixelOffset(canvasCssX, devicePixelRatio)
+  const canvasDevicePixelOffsetY = resolveDevicePixelOffset(canvasCssY, devicePixelRatio)
+
+  return {
+    rendererKind: rendererKind ?? null,
+    windowDevicePixelRatio: devicePixelRatio,
+    screenCssX: screenRect ? roundDiagnosticNumber(screenRect.x) : null,
+    screenCssY: screenRect ? roundDiagnosticNumber(screenRect.y) : null,
+    screenCssWidth: screenRect ? roundDiagnosticNumber(screenRect.width) : null,
+    screenCssHeight: screenRect ? roundDiagnosticNumber(screenRect.height) : null,
+    canvasCssX,
+    canvasCssY,
+    canvasCssWidth,
+    canvasCssHeight,
+    canvasBitmapWidth,
+    canvasBitmapHeight,
+    canvasExpectedBitmapWidth,
+    canvasExpectedBitmapHeight,
+    canvasBitmapWidthDelta:
+      canvasBitmapWidth !== null && canvasExpectedBitmapWidth !== null
+        ? roundDiagnosticNumber(canvasBitmapWidth - canvasExpectedBitmapWidth)
+        : null,
+    canvasBitmapHeightDelta:
+      canvasBitmapHeight !== null && canvasExpectedBitmapHeight !== null
+        ? roundDiagnosticNumber(canvasBitmapHeight - canvasExpectedBitmapHeight)
+        : null,
+    canvasDevicePixelOffsetX,
+    canvasDevicePixelOffsetY,
+    canvasSubpixelOffsetDetected:
+      (canvasDevicePixelOffsetX !== null && canvasDevicePixelOffsetX > 0.001) ||
+      (canvasDevicePixelOffsetY !== null && canvasDevicePixelOffsetY > 0.001),
   }
 }
 

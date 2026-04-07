@@ -1,9 +1,14 @@
-import type { TerminalWindowsPty, TerminalDiagnosticsLogInput } from '@shared/contracts/dto'
+import type {
+  TerminalWindowsPty,
+  TerminalDiagnosticsDetailValue,
+  TerminalDiagnosticsLogInput,
+} from '@shared/contracts/dto'
 import type { Terminal } from '@xterm/xterm'
 import type { TerminalThemeMode } from './theme'
 import {
   captureTerminalDiagnosticsSnapshot,
   captureTerminalInteractionDetails,
+  captureTerminalRenderSurfaceDetails,
   createTerminalDiagnosticsLogger,
 } from './diagnostics'
 
@@ -33,6 +38,7 @@ export function registerTerminalDiagnostics({
   windowsPty: TerminalWindowsPty | null
 }): {
   logHydrated: (details: { rawSnapshotLength: number; bufferedExitCode: number | null }) => void
+  logKeyboardShortcut: (details: Record<string, TerminalDiagnosticsDetailValue>) => void
   dispose: () => void
 } {
   const viewportElement =
@@ -57,12 +63,18 @@ export function registerTerminalDiagnostics({
       rendererKind,
       point,
     })
+  const collectRenderSurfaceDetails = () =>
+    captureTerminalRenderSurfaceDetails({
+      container,
+      rendererKind,
+    })
 
   diagnostics.log('init', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
     windowsPtyBackend: windowsPty?.backend ?? null,
     windowsPtyBuild: windowsPty?.buildNumber ?? null,
     terminalThemeMode,
     ...collectInteractionDetails(),
+    ...collectRenderSurfaceDetails(),
   })
 
   const resizeDisposable =
@@ -99,6 +111,10 @@ export function registerTerminalDiagnostics({
     container?.querySelector('.xterm') instanceof HTMLElement
       ? (container.querySelector('.xterm') as HTMLElement)
       : null
+  const canvasElement =
+    container?.querySelector('.xterm-screen canvas') instanceof HTMLCanvasElement
+      ? (container.querySelector('.xterm-screen canvas') as HTMLCanvasElement)
+      : null
   const reactFlowNode =
     container?.closest('.react-flow__node') instanceof HTMLElement
       ? (container.closest('.react-flow__node') as HTMLElement)
@@ -111,6 +127,7 @@ export function registerTerminalDiagnostics({
   const logInteractionEvent = (event: string, point?: { x: number; y: number } | null): void => {
     diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
       ...collectInteractionDetails(point),
+      ...collectRenderSurfaceDetails(),
     })
   }
 
@@ -164,6 +181,7 @@ export function registerTerminalDiagnostics({
   let pointerInsideTerminal = false
   let lastPointerPoint: { x: number; y: number } | null = null
   let lastPointerSignature: string | null = null
+  let lastWebglSurfaceSignature: string | null = null
   const pointerPollTimer =
     enabled && typeof window !== 'undefined'
       ? window.setInterval(() => {
@@ -210,11 +228,59 @@ export function registerTerminalDiagnostics({
     lastPointerSignature = null
   }
 
+  const webglSurfaceObserver =
+    enabled &&
+    rendererKind === 'webgl' &&
+    window.opencoveApi?.meta?.platform === 'win32' &&
+    canvasElement &&
+    typeof ResizeObserver !== 'undefined'
+      ? new ResizeObserver(entries => {
+          const entry = entries.find(candidate => candidate.target === canvasElement)
+          if (!entry) {
+            return
+          }
+
+          const details: Record<string, TerminalDiagnosticsDetailValue> = {
+            ...collectRenderSurfaceDetails(),
+            devicePixelContentBoxInlineSize:
+              'devicePixelContentBoxSize' in entry &&
+              Array.isArray(entry.devicePixelContentBoxSize) &&
+              entry.devicePixelContentBoxSize[0]
+                ? entry.devicePixelContentBoxSize[0].inlineSize
+                : null,
+            devicePixelContentBoxBlockSize:
+              'devicePixelContentBoxSize' in entry &&
+              Array.isArray(entry.devicePixelContentBoxSize) &&
+              entry.devicePixelContentBoxSize[0]
+                ? entry.devicePixelContentBoxSize[0].blockSize
+                : null,
+          }
+          const signature = JSON.stringify(details)
+          if (signature === lastWebglSurfaceSignature) {
+            return
+          }
+
+          lastWebglSurfaceSignature = signature
+          diagnostics.log(
+            'webgl-device-pixel-box',
+            captureTerminalDiagnosticsSnapshot(terminal, viewportElement),
+            details,
+          )
+        })
+      : null
+
   viewportElement?.addEventListener('wheel', handleViewportWheel, { passive: true })
   viewportElement?.addEventListener('scroll', handleViewportScroll, { passive: true })
   container?.addEventListener('pointerenter', handlePointerEnter, { passive: true })
   container?.addEventListener('pointermove', handlePointerMove, { passive: true })
   container?.addEventListener('pointerleave', handlePointerLeave, { passive: true })
+  if (webglSurfaceObserver && canvasElement) {
+    try {
+      webglSurfaceObserver.observe(canvasElement, { box: ['device-pixel-content-box'] } as never)
+    } catch {
+      webglSurfaceObserver.observe(canvasElement)
+    }
+  }
 
   return {
     logHydrated: ({ rawSnapshotLength, bufferedExitCode }) => {
@@ -223,9 +289,17 @@ export function registerTerminalDiagnostics({
         bufferedExitCode,
       })
     },
+    logKeyboardShortcut: details => {
+      diagnostics.log(
+        'keyboard-shortcut',
+        captureTerminalDiagnosticsSnapshot(terminal, viewportElement),
+        details,
+      )
+    },
     dispose: () => {
       resizeDisposable.dispose()
       mutationObserver?.disconnect()
+      webglSurfaceObserver?.disconnect()
       if (pointerPollTimer !== null) {
         window.clearInterval(pointerPollTimer)
       }

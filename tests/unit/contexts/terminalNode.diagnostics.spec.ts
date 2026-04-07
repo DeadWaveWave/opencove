@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { registerTerminalDiagnostics } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/registerDiagnostics'
 import {
   captureTerminalDiagnosticsSnapshot,
   captureTerminalInteractionDetails,
+  captureTerminalRenderSurfaceDetails,
   resolveTerminalBufferKind,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/diagnostics'
 
@@ -140,6 +142,189 @@ describe('terminal diagnostics helpers', () => {
       document.elementFromPoint = originalElementFromPoint
       window.getComputedStyle = originalGetComputedStyle
       workspaceCanvas.remove()
+    }
+  })
+
+  it('captures WebGL surface geometry and subpixel diagnostics', () => {
+    const terminalBody = document.createElement('div')
+    terminalBody.className = 'terminal-node__terminal'
+
+    const xterm = document.createElement('div')
+    xterm.className = 'xterm'
+
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 1002
+    canvas.height = 502
+
+    screen.append(canvas)
+    xterm.append(screen)
+    terminalBody.append(xterm)
+    document.body.append(terminalBody)
+
+    Object.defineProperty(window, 'devicePixelRatio', {
+      configurable: true,
+      value: 1.25,
+    })
+
+    terminalBody.getBoundingClientRect = () =>
+      ({
+        x: 10,
+        y: 20,
+        width: 801.6,
+        height: 401.6,
+        left: 10,
+        top: 20,
+        right: 811.6,
+        bottom: 421.6,
+        toJSON: () => ({}),
+      }) as DOMRect
+
+    screen.getBoundingClientRect = () =>
+      ({
+        x: 10.2,
+        y: 20.6,
+        width: 801.6,
+        height: 401.6,
+        left: 10.2,
+        top: 20.6,
+        right: 811.8,
+        bottom: 422.2,
+        toJSON: () => ({}),
+      }) as DOMRect
+
+    canvas.getBoundingClientRect = () =>
+      ({
+        x: 10.2,
+        y: 20.6,
+        width: 801.6,
+        height: 401.6,
+        left: 10.2,
+        top: 20.6,
+        right: 811.8,
+        bottom: 422.2,
+        toJSON: () => ({}),
+      }) as DOMRect
+
+    try {
+      expect(
+        captureTerminalRenderSurfaceDetails({
+          container: terminalBody,
+          rendererKind: 'webgl',
+        }),
+      ).toMatchObject({
+        rendererKind: 'webgl',
+        windowDevicePixelRatio: 1.25,
+        canvasBitmapWidth: 1002,
+        canvasBitmapHeight: 502,
+        canvasCssWidth: 801.6,
+        canvasCssHeight: 401.6,
+        canvasExpectedBitmapWidth: 1002,
+        canvasExpectedBitmapHeight: 502,
+        canvasBitmapWidthDelta: 0,
+        canvasBitmapHeightDelta: 0,
+        canvasDevicePixelOffsetX: 0.25,
+        canvasDevicePixelOffsetY: 0.25,
+        canvasSubpixelOffsetDetected: true,
+      })
+    } finally {
+      terminalBody.remove()
+    }
+  })
+
+  it('emits WebGL surface diagnostics on init for Windows terminals', () => {
+    const terminalBody = document.createElement('div')
+    terminalBody.className = 'terminal-node__terminal'
+
+    const viewport = document.createElement('div')
+    viewport.className = 'xterm-viewport'
+
+    const xterm = document.createElement('div')
+    xterm.className = 'xterm'
+
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 1002
+    canvas.height = 502
+
+    screen.append(canvas)
+    xterm.append(viewport, screen)
+    terminalBody.append(xterm)
+    document.body.append(terminalBody)
+
+    Object.defineProperty(window, 'devicePixelRatio', {
+      configurable: true,
+      value: 1.25,
+    })
+
+    canvas.getBoundingClientRect = () =>
+      ({
+        x: 10.2,
+        y: 20.6,
+        width: 801.6,
+        height: 401.6,
+        left: 10.2,
+        top: 20.6,
+        right: 811.8,
+        bottom: 422.2,
+        toJSON: () => ({}),
+      }) as DOMRect
+
+    screen.getBoundingClientRect = () =>
+      ({
+        x: 10.2,
+        y: 20.6,
+        width: 801.6,
+        height: 401.6,
+        left: 10.2,
+        top: 20.6,
+        right: 811.8,
+        bottom: 422.2,
+        toJSON: () => ({}),
+      }) as DOMRect
+
+    const emit = vi.fn()
+
+    try {
+      const registration = registerTerminalDiagnostics({
+        enabled: true,
+        emit,
+        nodeId: 'node-1',
+        sessionId: 'session-1',
+        nodeKind: 'terminal',
+        title: 'terminal',
+        terminal: {
+          cols: 120,
+          rows: 40,
+          buffer: {
+            active: { baseY: 1, viewportY: 0, length: 10 },
+          },
+        } as never,
+        container: terminalBody,
+        rendererKind: 'webgl',
+        terminalThemeMode: 'sync-with-ui',
+        windowsPty: { backend: 'conpty', buildNumber: 22621 },
+      })
+
+      expect(emit).toHaveBeenCalledTimes(1)
+      expect(emit.mock.calls[0]?.[0]).toMatchObject({
+        event: 'init',
+        details: expect.objectContaining({
+          rendererKind: 'webgl',
+          windowDevicePixelRatio: 1.25,
+          canvasBitmapWidth: 1002,
+          canvasExpectedBitmapWidth: 1002,
+          canvasSubpixelOffsetDetected: true,
+        }),
+      })
+
+      registration.dispose()
+    } finally {
+      terminalBody.remove()
     }
   })
 })
