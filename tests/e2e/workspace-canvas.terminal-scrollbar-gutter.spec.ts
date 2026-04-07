@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import {
   buildEchoSequenceCommand,
   clearAndSeedWorkspace,
@@ -70,12 +70,7 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
       await expect(nodes.nth(0).locator('.xterm')).toBeVisible()
       await expect(nodes.nth(1).locator('.xterm')).toBeVisible()
 
-      const nodeConfigs = [
-        { nodeId: 'node-a', locator: nodes.nth(0) },
-        { nodeId: 'node-b', locator: nodes.nth(1) },
-      ] as const
-
-      for (const { nodeId, locator: node } of nodeConfigs) {
+      const assertTerminalSurface = async (nodeId: string, node: Locator) => {
         const xterm = node.locator('.xterm')
         await xterm.click()
         await expect(node.locator('.xterm-helper-textarea')).toBeFocused()
@@ -140,6 +135,9 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
           hitTest.ok ? undefined : hitTest.reason,
         ).toBe(false)
       }
+
+      await assertTerminalSurface('node-a', nodes.nth(0))
+      await assertTerminalSurface('node-b', nodes.nth(1))
     } finally {
       await electronApp.close()
     }
