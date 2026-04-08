@@ -1,6 +1,7 @@
 .terminal-node[data-cove-terminal-node-theme='dark'] {
   --cove-node-border: rgba(107, 138, 236, 0.65);
   --cove-node-header-border: rgba(104, 137, 226, 0.45);
+  --cove-node-shadow-color: rgba(0, 0, 0, 0.45);
   --cove-node-selection-border: rgba(153, 223, 255, 0.88);
   --cove-node-selection-shadow:
     0 0 0 1px rgba(168, 233, 255, 0.42), 0 18px 40px rgba(0, 0, 0, 0.52);
@@ -13,6 +14,7 @@
   --cove-text: rgba(255, 255, 255, 0.92);
   --cove-text-muted: rgba(255, 255, 255, 0.6);
   --cove-text-faint: rgba(255, 255, 255, 0.4);
+  --cove-border: rgba(255, 255, 255, 0.12);
   --cove-border-subtle: rgba(255, 255, 255, 0.08);
   --cove-field: rgba(255, 255, 255, 0.04);
   --cove-surface-hover: rgba(255, 255, 255, 0.08);
