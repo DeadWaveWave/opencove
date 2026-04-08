@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '@xyflow/react'
 import { SerializeAddon } from '@xterm/addon-serialize'
-import { SearchAddon } from '@xterm/addon-search'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
@@ -11,7 +10,8 @@ import {
   createTerminalCommandInputState,
   parseTerminalCommandInput,
 } from './terminalNode/commandInput'
-import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './terminalNode/inputBridge'
+import { bindTerminalCustomKeyHandler } from './terminalNode/customKeyHandler'
+import { createPtyWriteQueue } from './terminalNode/inputBridge'
 import { registerTerminalLayoutSync } from './terminalNode/layoutSync'
 import {
   clearCachedTerminalScreenStateInvalidation,
@@ -32,6 +32,8 @@ import { registerTerminalHitTargetCursorScope } from './terminalNode/hitTargetCu
 import { useTerminalAppearanceSync } from './terminalNode/useTerminalAppearanceSync'
 import { useTerminalTestTranscriptMirror } from './terminalNode/useTerminalTestTranscriptMirror'
 import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
+import { createOpenCodeTuiThemeBridge } from './terminalNode/opencodeTuiThemeBridge'
+import { maybeBindTerminalSearchAddon } from './terminalNode/searchAddonSupport'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalFind } from './terminalNode/useTerminalFind'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
@@ -200,14 +202,10 @@ export function TerminalNode({
     let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider)
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
-    const disposeTerminalFind =
-      typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
-        ? (() => {
-            const searchAddon = new SearchAddon()
-            terminal.loadAddon(searchAddon)
-            return bindSearchAddonToFind(searchAddon)
-          })()
-        : () => undefined
+    const disposeTerminalFind = maybeBindTerminalSearchAddon({
+      terminal,
+      bindSearchAddonToFind,
+    })
     let disposeTerminalSelectionTestHandle: () => void = () => undefined
     const ptyWriteQueue = createPtyWriteQueue(({ data, encoding }) =>
       window.opencoveApi.pty.write({
@@ -216,14 +214,11 @@ export function TerminalNode({
         ...(encoding === 'binary' ? { encoding } : {}),
       }),
     )
-    terminal.attachCustomKeyEventHandler(event =>
-      handleTerminalCustomKeyEvent({
-        event,
-        ptyWriteQueue,
-        terminal,
-        onOpenFind: openTerminalFind,
-      }),
-    )
+    const openCodeThemeBridge =
+      terminalProvider === 'opencode'
+        ? createOpenCodeTuiThemeBridge({ terminal, ptyWriteQueue, terminalThemeMode })
+        : null
+    bindTerminalCustomKeyHandler({ terminal, ptyWriteQueue, onOpenFind: openTerminalFind })
     let cancelMouseServicePatch: () => void = () => undefined
     let disposeTerminalHitTargetCursorScope: () => void = () => undefined
     if (containerRef.current) {
@@ -313,6 +308,8 @@ export function TerminalNode({
     outputSchedulerRef.current = outputScheduler
     outputScheduler.onViewportInteractionActiveChange(isViewportInteractionActiveRef.current)
     const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
+      openCodeThemeBridge?.handlePtyOutputChunk(event.data)
+
       if (isHydrating) {
         hydrationBuffer.dataChunks.push(event.data)
         return
@@ -355,6 +352,7 @@ export function TerminalNode({
             isTerminalHydratedRef.current = true
             setIsTerminalHydrated(true)
             scheduleTranscriptSync()
+            openCodeThemeBridge?.reportThemeMode()
           }
         },
       })
@@ -390,6 +388,7 @@ export function TerminalNode({
       applyTerminalTheme()
       activeRenderer.clearTextureAtlas()
       syncTerminalSize()
+      openCodeThemeBridge?.reportThemeMode()
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
     return () => {
@@ -420,6 +419,7 @@ export function TerminalNode({
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       ptyWriteQueue.dispose()
+      openCodeThemeBridge?.dispose()
       if (isInvalidated) {
         cancelScrollbackPublish()
         clearCachedTerminalScreenStateInvalidation(nodeId, sessionId)
