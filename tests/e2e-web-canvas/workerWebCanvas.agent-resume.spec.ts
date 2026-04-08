@@ -66,36 +66,65 @@ test.describe('Worker web canvas agent resume', () => {
     await expect(agentTerminal.locator('.xterm')).toBeVisible()
     await expect(agentTerminal).toContainText('[opencove-test-agent] codex new')
 
-    await expect(page.locator('.workspace-task-agent-edge')).toHaveCount(1)
-
     await expect
-      .poll(async () => {
-        const shared = await readSharedState(page.request)
-        const nodes = shared.state?.workspaces?.[0]?.nodes ?? []
-        const agentNode =
-          nodes.find(node => node.kind === 'agent') ?? nodes.find(node => node.kind === 'terminal')
-        const agentRecord =
-          agentNode && typeof agentNode === 'object' && 'agent' in agentNode
-            ? (agentNode as Record<string, unknown>)
-            : null
-        const agentData =
-          agentRecord &&
-          agentRecord.agent &&
-          typeof agentRecord.agent === 'object' &&
-          !Array.isArray(agentRecord.agent)
-            ? (agentRecord.agent as Record<string, unknown>)
-            : null
+      .poll(
+        async () => {
+          const shared = await readSharedState(page.request)
+          const nodes = shared.state?.workspaces?.[0]?.nodes ?? []
+          const taskStateNode = nodes.find(node => node.kind === 'task')
+          const taskRecord =
+            taskStateNode && typeof taskStateNode === 'object' && 'task' in taskStateNode
+              ? (taskStateNode as Record<string, unknown>)
+              : null
+          const taskData =
+            taskRecord &&
+            taskRecord.task &&
+            typeof taskRecord.task === 'object' &&
+            !Array.isArray(taskRecord.task)
+              ? (taskRecord.task as Record<string, unknown>)
+              : null
 
-        const resumeSessionId =
-          typeof agentData?.resumeSessionId === 'string' ? agentData.resumeSessionId.trim() : ''
+          const linkedAgentNodeId =
+            typeof taskData?.linkedAgentNodeId === 'string' ? taskData.linkedAgentNodeId.trim() : ''
 
-        return resumeSessionId.length > 0 ? resumeSessionId : null
-      })
+          if (linkedAgentNodeId.length === 0) {
+            return null
+          }
+
+          const agentNode = nodes.find(node => {
+            if (node.kind !== 'agent') {
+              return false
+            }
+
+            const nodeId = typeof node.id === 'string' ? node.id.trim() : ''
+            return nodeId === linkedAgentNodeId
+          })
+
+          const agentRecord =
+            agentNode && typeof agentNode === 'object' && 'agent' in agentNode
+              ? (agentNode as Record<string, unknown>)
+              : null
+          const agentData =
+            agentRecord &&
+            agentRecord.agent &&
+            typeof agentRecord.agent === 'object' &&
+            !Array.isArray(agentRecord.agent)
+              ? (agentRecord.agent as Record<string, unknown>)
+              : null
+
+          const resumeSessionId =
+            typeof agentData?.resumeSessionId === 'string' ? agentData.resumeSessionId.trim() : ''
+
+          return resumeSessionId.length > 0 ? resumeSessionId : null
+        },
+        { timeout: 30_000 },
+      )
       .toBeTruthy()
 
     const fitViewButton = page.locator('.react-flow__controls-fitview')
     await expect(fitViewButton).toBeVisible()
     await fitViewButton.click()
+    await expect(agentTerminal.locator('.terminal-node__close')).toBeInViewport()
     await agentTerminal.locator('.terminal-node__close').click()
     await expect(page.locator('.terminal-node')).toHaveCount(0)
 

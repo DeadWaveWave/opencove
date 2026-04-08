@@ -6,6 +6,7 @@ import { OpenCoveAppError } from '../../../src/shared/errors/appError'
 import {
   readHomeWorkerConfig,
   setHomeWorkerConfig,
+  setHomeWorkerWebUiSettings,
 } from '../../../src/app/main/worker/homeWorkerConfig'
 
 describe('home worker config', () => {
@@ -34,6 +35,8 @@ describe('home worker config', () => {
       mode: 'standalone',
       remote: null,
       webUi: {
+        enabled: false,
+        port: null,
         exposeOnLan: false,
         passwordSet: false,
       },
@@ -64,6 +67,33 @@ describe('home worker config', () => {
         mode: 'remote',
         remote: null,
       }),
+    ).rejects.toBeInstanceOf(OpenCoveAppError)
+  })
+
+  it('persists web ui settings', async () => {
+    const dir = await createTempUserDataDir()
+
+    const saved = await setHomeWorkerWebUiSettings(dir, { enabled: true, port: 16661 })
+    expect(saved.webUi.enabled).toBe(true)
+    expect(saved.webUi.port).toBe(16661)
+
+    const loaded = await readHomeWorkerConfig(dir)
+    expect(loaded.webUi.enabled).toBe(true)
+    expect(loaded.webUi.port).toBe(16661)
+  })
+
+  it('normalizes port 0 to random', async () => {
+    const dir = await createTempUserDataDir()
+
+    const saved = await setHomeWorkerWebUiSettings(dir, { enabled: true, port: 0 })
+    expect(saved.webUi.port).toBeNull()
+  })
+
+  it('rejects invalid web ui port', async () => {
+    const dir = await createTempUserDataDir()
+
+    await expect(
+      setHomeWorkerWebUiSettings(dir, { enabled: true, port: 70_000 }),
     ).rejects.toBeInstanceOf(OpenCoveAppError)
   })
 })

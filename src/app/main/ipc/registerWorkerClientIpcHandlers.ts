@@ -3,6 +3,7 @@ import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type {
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSecurityInput,
+  SetHomeWorkerWebUiSettingsInput,
 } from '../../../shared/contracts/dto'
 import type { IpcRegistrationDisposable } from './types'
 import { registerHandledIpc } from './handle'
@@ -10,6 +11,7 @@ import {
   readHomeWorkerConfig,
   setHomeWorkerConfig,
   setHomeWorkerWebUiSecurity,
+  setHomeWorkerWebUiSettings,
 } from '../worker/homeWorkerConfig'
 
 export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
@@ -23,6 +25,13 @@ export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
     IPC_CHANNELS.workerClientSetConfig,
     async (_event, payload: SetHomeWorkerConfigInput) =>
       await setHomeWorkerConfig(app.getPath('userData'), payload),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.workerClientSetWebUiSettings,
+    async (_event, payload: SetHomeWorkerWebUiSettingsInput) =>
+      await setHomeWorkerWebUiSettings(app.getPath('userData'), payload),
     { defaultErrorCode: 'common.unexpected' },
   )
 
@@ -50,6 +59,7 @@ export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.workerClientGetConfig)
       ipcMain.removeHandler(IPC_CHANNELS.workerClientSetConfig)
+      ipcMain.removeHandler(IPC_CHANNELS.workerClientSetWebUiSettings)
       ipcMain.removeHandler(IPC_CHANNELS.workerClientSetWebUiSecurity)
       ipcMain.removeHandler(IPC_CHANNELS.workerClientRelaunch)
     },
