@@ -51,7 +51,7 @@
     - **特殊情况快速增长**：修复主要靠追加分支、开关、临时状态、时序约束，而不是删除分支或合并抽象。
     - **可测试性下降**：无法写出稳定回归测试或不变量，必须依赖真实时序/IO/全局环境才能复现。
     - **同类问题短期内反复出现**：同一类故障在一个迭代内出现多次，说明边界/owner/不变量未收敛。
-    - 需要具体案例时，参考：`docs/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`。
+    - 需要具体案例时，参考：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`。
 
 ### 高风险问题预防策略（只列最容易漏的）
 
@@ -186,8 +186,8 @@
     -   视口导航标准：`docs/VIEWPORT_NAVIGATION_STANDARD.md`
 -   **终端渲染基准**：`docs/TERMINAL_TUI_RENDERING_BASELINE.md`
 -   **诊断与复盘案例**：
-    -   Win10 Codex Scroll：`docs/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
-    -   画布抖动与终端持久化：`docs/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
+    -   Win10 Codex Scroll：`docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
+    -   画布抖动与终端持久化：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
 -   **参考优秀项目与方案调研法**：`docs/REFERENCE_RESEARCH_METHOD.md`
 -   **调试指南**：`docs/DEBUGGING.md`
 -   **贡献代码指南**：`CONTRIBUTING.md`
