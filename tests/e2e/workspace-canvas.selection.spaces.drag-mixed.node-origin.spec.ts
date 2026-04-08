@@ -106,60 +106,68 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         spaceBWidth: number
         spaceBHeight: number
       } | null> => {
-        return await window.evaluate(
-          async ({ key, spaceAId, spaceBId }) => {
-            void key
+        const evaluation = window
+          .evaluate(
+            async ({ key, spaceAId, spaceBId }) => {
+              void key
 
-            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-            if (!raw) {
-              return null
-            }
+              const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+              if (!raw) {
+                return null
+              }
 
-            const parsed = JSON.parse(raw) as {
-              workspaces?: Array<{
-                spaces?: Array<{
-                  id?: string
-                  rect?: { x?: number; y?: number; width?: number; height?: number } | null
+              const parsed = JSON.parse(raw) as {
+                workspaces?: Array<{
+                  spaces?: Array<{
+                    id?: string
+                    rect?: { x?: number; y?: number; width?: number; height?: number } | null
+                  }>
                 }>
-              }>
-            }
+              }
 
-            const workspace = parsed.workspaces?.[0]
-            const spaceA = workspace?.spaces?.find(entry => entry.id === spaceAId)
-            const spaceB = workspace?.spaces?.find(entry => entry.id === spaceBId)
+              const workspace = parsed.workspaces?.[0]
+              const spaceA = workspace?.spaces?.find(entry => entry.id === spaceAId)
+              const spaceB = workspace?.spaces?.find(entry => entry.id === spaceBId)
 
-            if (
-              !spaceA?.rect ||
-              typeof spaceA.rect.x !== 'number' ||
-              typeof spaceA.rect.y !== 'number' ||
-              typeof spaceA.rect.width !== 'number' ||
-              typeof spaceA.rect.height !== 'number' ||
-              !spaceB?.rect ||
-              typeof spaceB.rect.x !== 'number' ||
-              typeof spaceB.rect.y !== 'number' ||
-              typeof spaceB.rect.width !== 'number' ||
-              typeof spaceB.rect.height !== 'number'
-            ) {
-              return null
-            }
+              if (
+                !spaceA?.rect ||
+                typeof spaceA.rect.x !== 'number' ||
+                typeof spaceA.rect.y !== 'number' ||
+                typeof spaceA.rect.width !== 'number' ||
+                typeof spaceA.rect.height !== 'number' ||
+                !spaceB?.rect ||
+                typeof spaceB.rect.x !== 'number' ||
+                typeof spaceB.rect.y !== 'number' ||
+                typeof spaceB.rect.width !== 'number' ||
+                typeof spaceB.rect.height !== 'number'
+              ) {
+                return null
+              }
 
-            return {
-              spaceAX: spaceA.rect.x,
-              spaceAY: spaceA.rect.y,
-              spaceAWidth: spaceA.rect.width,
-              spaceAHeight: spaceA.rect.height,
-              spaceBX: spaceB.rect.x,
-              spaceBY: spaceB.rect.y,
-              spaceBWidth: spaceB.rect.width,
-              spaceBHeight: spaceB.rect.height,
-            }
-          },
-          {
-            key: storageKey,
-            spaceAId: 'mixed-node-origin-space-a',
-            spaceBId: 'mixed-node-origin-space-b',
-          },
-        )
+              return {
+                spaceAX: spaceA.rect.x,
+                spaceAY: spaceA.rect.y,
+                spaceAWidth: spaceA.rect.width,
+                spaceAHeight: spaceA.rect.height,
+                spaceBX: spaceB.rect.x,
+                spaceBY: spaceB.rect.y,
+                spaceBWidth: spaceB.rect.width,
+                spaceBHeight: spaceB.rect.height,
+              }
+            },
+            {
+              key: storageKey,
+              spaceAId: 'mixed-node-origin-space-a',
+              spaceBId: 'mixed-node-origin-space-b',
+            },
+          )
+          .catch(() => null)
+
+        const timeout = new Promise<null>(resolve => {
+          setTimeout(() => resolve(null), 2_000)
+        })
+
+        return (await Promise.race([evaluation, timeout])) as Awaited<typeof evaluation>
       }
 
       const before = await readState()
