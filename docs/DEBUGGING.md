@@ -77,6 +77,19 @@ pnpm exec playwright show-trace test-results/<failed-case>/trace.zip
 pnpm test:e2e
 ```
 
+## 真实 Agent / 外部 CLI 复现
+
+默认 `NODE_ENV=test` 下，OpenCove 会用测试 stub 避免真的启动外部 Agent CLI。调试 OpenCode 这类“真实 TUI 行为”（例如主题切换、alternate screen、颜色查询）时，需要禁用 stub：
+
+```bash
+OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencode-embedded-theme.spec.ts --project electron --reporter=line
+```
+
+补充：
+
+- 该开关会让测试直接 spawn 本机安装的 CLI（如 `opencode`），可能触发真实网络请求/账号权限；仅建议用于本地调试。
+- 产物在 `test-results/**`：优先看 `trace.zip`、失败截图与控制台日志。
+
 ## Playwright 交互排查重点
 
 ### 1) 复杂拖拽优先使用真实鼠标事件
