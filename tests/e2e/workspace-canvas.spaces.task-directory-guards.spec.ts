@@ -16,30 +16,29 @@ async function clickCreateSpaceFromSelectionContextMenu(
   window: Page,
   trigger: Locator,
   triggerPosition: { x: number; y: number },
+  attempt = 0,
 ): Promise<void> {
   const createSpaceAction = window.locator('[data-testid="workspace-selection-create-space"]')
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await trigger.click({
-      button: 'right',
-      position: triggerPosition,
-      timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+  await trigger.click({
+    button: 'right',
+    position: triggerPosition,
+    timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+  })
+
+  try {
+    await createSpaceAction.waitFor({
+      state: 'visible',
+      timeout: CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS,
     })
-
-    try {
-      await createSpaceAction.waitFor({
-        state: 'visible',
-        timeout: CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS,
-      })
-      await createSpaceAction.click({ timeout: CONTEXT_MENU_ITEM_CLICK_TIMEOUT_MS })
-      return
-    } catch (error) {
-      if (attempt >= 2) {
-        throw error
-      }
-
-      await window.keyboard.press('Escape').catch(() => undefined)
+    await createSpaceAction.click({ timeout: CONTEXT_MENU_ITEM_CLICK_TIMEOUT_MS })
+  } catch (error) {
+    if (attempt >= 2) {
+      throw error
     }
+
+    await window.keyboard.press('Escape').catch(() => undefined)
+    await clickCreateSpaceFromSelectionContextMenu(window, trigger, triggerPosition, attempt + 1)
   }
 }
 
