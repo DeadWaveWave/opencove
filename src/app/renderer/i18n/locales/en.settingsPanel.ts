@@ -139,10 +139,19 @@ export const enSettingsPanel = {
     workerWebUi: {
       title: 'Worker Web UI',
       help: 'Open the experimental browser UI served by your worker. Requires Home Worker: Local Worker.',
+      enabledLabel: 'Enable Web UI',
+      enabledHelp:
+        'Turns on the Worker-hosted Web UI and debug shell. Changing this restarts the Local Worker.',
+      portLabel: 'Port',
+      portHelp:
+        'Leave empty (or 0) to use a random port. Changing the port restarts the Local Worker.',
+      portPlaceholder: 'Random',
+      portSave: 'Apply',
       statusLabel: 'Status',
       statusHelp: 'Start the Local Worker in Worker settings first.',
       status: {
         requiresLocal: 'Requires Home Worker: Local Worker',
+        disabled: 'Disabled',
         stopped: 'Stopped',
         running: 'Ready',
       },
@@ -161,6 +170,7 @@ export const enSettingsPanel = {
       passwordSave: 'Set Password',
       errors: {
         noUrl: 'Local worker did not return a Web UI URL.',
+        invalidPort: 'Port must be empty (random) or an integer between 1 and 65535.',
         passwordRequired: 'A password is required for LAN Web UI access.',
       },
     },

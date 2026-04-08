@@ -93,6 +93,7 @@ import type {
   WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
@@ -240,6 +241,7 @@ export interface OpenCoveApi {
   workerClient: {
     getConfig: () => Promise<HomeWorkerConfigDto>
     setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
+    setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput) => Promise<HomeWorkerConfigDto>
     setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput) => Promise<HomeWorkerConfigDto>
     relaunch: () => Promise<void>
   }

@@ -7,12 +7,15 @@ import type {
   RemoteWorkerEndpointDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSecurityInput,
+  SetHomeWorkerWebUiSettingsInput,
 } from '../../../shared/contracts/dto'
 import { hashWebUiPassword, isValidWebUiPasswordHash } from '../controlSurface/http/webUiPassword'
 
 const HOME_WORKER_CONFIG_FILE = 'home-worker.json'
 
 const DEFAULT_WEB_UI_CONFIG = {
+  enabled: false,
+  port: null as number | null,
   exposeOnLan: false,
   passwordHash: null as string | null,
 } as const
@@ -44,6 +47,23 @@ function normalizeOptionalString(value: unknown): string | null {
 
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
+}
+
+function normalizeOptionalPort(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null
+  }
+
+  const normalized = Math.floor(value)
+  if (normalized <= 0 || normalized > 65_535) {
+    return null
+  }
+
+  return normalized
 }
 
 function normalizeHomeWorkerMode(value: unknown): HomeWorkerMode | null {
@@ -82,6 +102,8 @@ function normalizeRemoteEndpoint(value: unknown): RemoteWorkerEndpointDto | null
 }
 
 export type HomeWorkerWebUiConfigFile = {
+  enabled: boolean
+  port: number | null
   exposeOnLan: boolean
   passwordHash: string | null
 }
@@ -91,6 +113,8 @@ function normalizeWebUiConfig(value: unknown): HomeWorkerWebUiConfigFile {
     return { ...DEFAULT_WEB_UI_CONFIG }
   }
 
+  const enabled = normalizeOptionalBoolean(value.enabled) ?? DEFAULT_WEB_UI_CONFIG.enabled
+  const port = normalizeOptionalPort(value.port) ?? DEFAULT_WEB_UI_CONFIG.port
   const exposeOnLan =
     normalizeOptionalBoolean(value.exposeOnLan) ?? DEFAULT_WEB_UI_CONFIG.exposeOnLan
   const passwordHash =
@@ -99,6 +123,8 @@ function normalizeWebUiConfig(value: unknown): HomeWorkerWebUiConfigFile {
       : DEFAULT_WEB_UI_CONFIG.passwordHash
 
   return {
+    enabled,
+    port,
     exposeOnLan: exposeOnLan && passwordHash !== null,
     passwordHash,
   }
@@ -118,6 +144,8 @@ function toDto(config: HomeWorkerConfigFile): HomeWorkerConfigDto {
     mode: config.mode,
     remote: config.remote,
     webUi: {
+      enabled: config.webUi.enabled,
+      port: config.webUi.port,
       exposeOnLan: config.webUi.exposeOnLan,
       passwordSet: config.webUi.passwordHash !== null,
     },
@@ -259,8 +287,62 @@ export async function setHomeWorkerWebUiSecurity(
   const next: HomeWorkerConfigFile = {
     ...previous,
     webUi: {
+      ...previous.webUi,
       exposeOnLan,
       passwordHash: nextPasswordHash,
+    },
+    updatedAt: new Date().toISOString(),
+  }
+
+  await writeHomeWorkerConfigFile(userDataPath, next)
+  return toDto(next)
+}
+
+function normalizeWebUiSettingsInput(value: unknown): { enabled: boolean; port: number | null } {
+  if (!isRecord(value)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid home worker web ui settings config.',
+    })
+  }
+
+  const enabled = normalizeOptionalBoolean(value.enabled)
+  if (enabled === null) {
+    throw createAppError('common.invalid_input', { debugMessage: 'Invalid web ui enabled value.' })
+  }
+
+  const rawPort = (value as Record<string, unknown>).port
+  const port = (() => {
+    if (rawPort === null || rawPort === undefined) {
+      return null
+    }
+
+    if (typeof rawPort !== 'number' || !Number.isFinite(rawPort)) {
+      throw createAppError('common.invalid_input', { debugMessage: 'Invalid web ui port value.' })
+    }
+
+    if (!Number.isInteger(rawPort) || rawPort < 0 || rawPort > 65_535) {
+      throw createAppError('common.invalid_input', { debugMessage: 'Invalid web ui port value.' })
+    }
+
+    return rawPort === 0 ? null : rawPort
+  })()
+
+  return { enabled, port }
+}
+
+export async function setHomeWorkerWebUiSettings(
+  userDataPath: string,
+  input: SetHomeWorkerWebUiSettingsInput,
+): Promise<HomeWorkerConfigDto> {
+  const { enabled, port } = normalizeWebUiSettingsInput(input)
+  const previous = await readHomeWorkerConfigFile(userDataPath)
+
+  const next: HomeWorkerConfigFile = {
+    ...previous,
+    webUi: {
+      ...previous.webUi,
+      enabled,
+      port,
     },
     updatedAt: new Date().toISOString(),
   }

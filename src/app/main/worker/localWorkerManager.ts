@@ -28,6 +28,8 @@ export function buildLocalWorkerSpawnArgs(options: {
   parentPid: number
   bindHostname: string
   advertiseHostname: string
+  port: number
+  enableWebUi: boolean
   webUiPasswordHash: string | null
 }): string[] {
   const args = [
@@ -37,10 +39,14 @@ export function buildLocalWorkerSpawnArgs(options: {
     '--hostname',
     options.bindHostname,
     '--port',
-    '0',
+    String(options.port),
     '--user-data',
     options.userDataPath,
   ]
+
+  if (!options.enableWebUi) {
+    args.push('--disable-web-ui')
+  }
 
   if (options.advertiseHostname !== options.bindHostname) {
     args.push('--advertise-hostname', options.advertiseHostname)
@@ -228,7 +234,9 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
 
   const userDataPath = app.getPath('userData')
   const workerConfig = await readHomeWorkerConfigFile(userDataPath)
-  const exposeOnLan = workerConfig.webUi.exposeOnLan
+  const enableWebUi = workerConfig.webUi.enabled
+  const port = workerConfig.webUi.port ?? 0
+  const exposeOnLan = enableWebUi && workerConfig.webUi.exposeOnLan
   const bindHostname = exposeOnLan ? '0.0.0.0' : '127.0.0.1'
   const advertiseHostname = '127.0.0.1'
   const webUiPasswordHash = exposeOnLan ? workerConfig.webUi.passwordHash : null
@@ -238,6 +246,8 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
     parentPid: process.pid,
     bindHostname,
     advertiseHostname,
+    port,
+    enableWebUi,
     webUiPasswordHash,
   })
 
@@ -282,13 +292,13 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
 
         const record = parsed as Record<string, unknown>
         const hostname = typeof record.hostname === 'string' ? record.hostname : null
-        const port = typeof record.port === 'number' ? record.port : null
+        const resolvedPort = typeof record.port === 'number' ? record.port : null
         const token = typeof record.token === 'string' ? record.token : null
         const pid = typeof record.pid === 'number' ? record.pid : null
         const version = typeof record.version === 'number' ? record.version : null
         const createdAt = typeof record.createdAt === 'string' ? record.createdAt : null
 
-        if (!hostname || !port || !token || !pid || !version || !createdAt) {
+        if (!hostname || !resolvedPort || !token || !pid || !version || !createdAt) {
           return
         }
 
@@ -298,7 +308,7 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
           version,
           pid,
           hostname,
-          port,
+          port: resolvedPort,
           token,
           createdAt,
         })
@@ -350,6 +360,10 @@ export async function getLocalWorkerWebUiUrl(): Promise<string | null> {
   }
 
   const workerConfig = await readHomeWorkerConfigFile(app.getPath('userData'))
+  if (!workerConfig.webUi.enabled) {
+    return null
+  }
+
   if (workerConfig.webUi.exposeOnLan && workerConfig.webUi.passwordHash) {
     return `http://${connection.hostname}:${connection.port}/`
   }

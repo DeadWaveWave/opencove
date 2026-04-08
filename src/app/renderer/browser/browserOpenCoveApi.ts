@@ -338,6 +338,7 @@ export function installBrowserOpenCoveApi(): void {
     workerClient: {
       getConfig: async () => unsupportedWorkerConfig(),
       setConfig: async () => unsupportedWorkerConfig(),
+      setWebUiSettings: async () => unsupportedWorkerConfig(),
       setWebUiSecurity: async () => unsupportedWorkerConfig(),
       relaunch: async () => undefined,
     },
