@@ -1,0 +1,53 @@
+.terminal-node__terminal-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.terminal-node__hydration-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  cursor: wait;
+  background: color-mix(in srgb, var(--cove-terminal-node-surface) 78%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.terminal-node__hydration-overlay-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--cove-border-subtle);
+  background: color-mix(in srgb, var(--cove-terminal-node-header-surface) 82%, transparent);
+  color: var(--cove-text);
+  box-shadow: 0 8px 20px var(--cove-node-shadow-color);
+}
+
+.terminal-node__hydration-spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--cove-text-muted) 35%, transparent);
+  border-top-color: var(--cove-text);
+  animation: terminal-node-spin 0.9s linear infinite;
+}
+
+.terminal-node__hydration-label {
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+}
+
+@keyframes terminal-node-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}

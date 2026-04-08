@@ -1,5 +1,6 @@
 import React, { type JSX } from 'react'
 import { Handle, Position } from '@xyflow/react'
+import { useTranslation } from '@app/renderer/i18n'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
@@ -78,9 +79,11 @@ export function TerminalNodeFrame({
   onFindClose,
   handleResizePointerDown,
 }: TerminalNodeFrameProps): JSX.Element {
+  const { t } = useTranslation()
   const isAgentNode = kind === 'agent'
   const hasSelectedDragSurface = isSelected || isDragging
   const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
+  const shouldShowHydrationOverlay = sessionId.trim().length > 0 && !isTerminalHydrated
 
   return (
     <div
@@ -166,12 +169,25 @@ export function TerminalNodeFrame({
         onClose={onFindClose}
       />
 
-      <div
-        ref={containerRef}
-        className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
-        data-cove-focus-scope="terminal"
-        aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
-      />
+      <div className="terminal-node__terminal-wrap">
+        <div
+          ref={containerRef}
+          className={`terminal-node__terminal nodrag ${isTerminalHydrated ? '' : 'terminal-node__terminal--hydrating'}`.trim()}
+          data-cove-focus-scope="terminal"
+          aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
+        />
+        {shouldShowHydrationOverlay ? (
+          <div
+            className="terminal-node__hydration-overlay nodrag"
+            aria-label={t('agentRuntime.restoring')}
+          >
+            <div className="terminal-node__hydration-overlay-inner">
+              <span className="terminal-node__hydration-spinner" aria-hidden="true" />
+              <span className="terminal-node__hydration-label">{t('agentRuntime.restoring')}</span>
+            </div>
+          </div>
+        ) : null}
+      </div>
       <div ref={transcriptRef} className="terminal-node__transcript" aria-hidden="true" />
 
       <NodeResizeHandles

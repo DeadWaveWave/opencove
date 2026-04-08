@@ -90,6 +90,12 @@ function createTables(db: Database.Database): void {
       scrollback TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS agent_node_placeholder_scrollback (
+      node_id TEXT PRIMARY KEY,
+      scrollback TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
   `)
 }
 

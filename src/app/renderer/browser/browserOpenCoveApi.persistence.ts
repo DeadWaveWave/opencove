@@ -134,5 +134,11 @@ export function createBrowserPersistenceApi(): PersistenceApi {
         id: 'sync.writeNodeScrollback',
         payload,
       }),
+    readAgentNodePlaceholderScrollback: async () => null,
+    writeAgentNodePlaceholderScrollback: async () => ({
+      ok: true,
+      level: 'full',
+      bytes: 0,
+    }),
   }
 }

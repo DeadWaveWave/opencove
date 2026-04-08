@@ -314,7 +314,7 @@ describe('TerminalNode hydration buffering', () => {
 
     const { __getLastTerminal } = await import('@xterm/xterm')
     await waitFor(() => {
-      expect(__getLastTerminal()?.written).toEqual(['SERIALIZED_SCREEN!!'])
+      expect(__getLastTerminal()?.written).toEqual(['SERIALIZED_SCREEN', '!!'])
     })
     expect(__getLastTerminal()?.cols).toBe(92)
     expect(__getLastTerminal()?.rows).toBe(28)

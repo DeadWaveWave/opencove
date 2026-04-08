@@ -309,6 +309,8 @@ export function createRemotePersistenceStore(
         return resolveIoFailure(error)
       }
     },
+    readAgentNodePlaceholderScrollback: async () => null,
+    writeAgentNodePlaceholderScrollback: async () => ({ ok: true, level: 'full', bytes: 0 }),
     consumeRecovery: (): PersistenceRecoveryReason | null => null,
     dispose: () => {
       // noop

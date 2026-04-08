@@ -164,6 +164,12 @@ export function writeNormalizedAppState(
       "DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'terminal')",
     )
 
+    // Agent placeholder scrollback is a UI cache only. Clear placeholders for nodes that no longer
+    // exist (or aren't agents) so we don't accumulate unreferenced cache entries over time.
+    db.exec(
+      "DELETE FROM agent_node_placeholder_scrollback WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'agent')",
+    )
+
     return nextRevision
   })
 

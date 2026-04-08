@@ -16,6 +16,7 @@ import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
 import { usePtySessionBindingsSync } from './hooks/usePtySessionBindingsSync'
+import { usePtyAgentPlaceholderBindingsSync } from './hooks/usePtyAgentPlaceholderBindingsSync'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
@@ -86,6 +87,7 @@ export default function App(): React.JSX.Element {
     useAgentStandbyNotifications()
 
   usePtySessionBindingsSync()
+  usePtyAgentPlaceholderBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
   useWebsiteWindowEvents()

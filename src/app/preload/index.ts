@@ -40,6 +40,7 @@ import type {
   ReadCanvasImageInput,
   ReadCanvasImageResult,
   WindowDisplayInfo,
+  ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -49,6 +50,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtyAgentPlaceholderBindingsInput,
   SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
@@ -62,6 +64,7 @@ import type {
   WorkspaceDirectory,
   WriteCanvasImageInput,
   WriteAppStateInput,
+  WriteAgentNodePlaceholderScrollbackInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
@@ -187,6 +190,14 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.persistenceReadNodeScrollback, payload),
     writeNodeScrollback: (payload: WriteNodeScrollbackInput): Promise<PersistWriteResult> =>
       invokeIpc(IPC_CHANNELS.persistenceWriteNodeScrollback, payload),
+    readAgentNodePlaceholderScrollback: (
+      payload: ReadAgentNodePlaceholderScrollbackInput,
+    ): Promise<string | null> =>
+      invokeIpc(IPC_CHANNELS.persistenceReadAgentNodePlaceholderScrollback, payload),
+    writeAgentNodePlaceholderScrollback: (
+      payload: WriteAgentNodePlaceholderScrollbackInput,
+    ): Promise<PersistWriteResult> =>
+      invokeIpc(IPC_CHANNELS.persistenceWriteAgentNodePlaceholderScrollback, payload),
   },
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void): UnsubscribeFn => {
@@ -325,6 +336,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
     syncSessionBindings: (payload: SyncPtySessionBindingsInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptySyncSessionBindings, payload),
+    syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.ptySyncAgentPlaceholderBindings, payload),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
     debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),

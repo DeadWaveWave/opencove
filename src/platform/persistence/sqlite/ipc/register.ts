@@ -6,8 +6,10 @@ import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import type { PersistenceStore } from '../PersistenceStore'
 import {
   PayloadTooLargeError,
+  normalizeReadAgentNodePlaceholderScrollbackPayload,
   normalizeReadNodeScrollbackPayload,
   normalizeWriteAppStatePayload,
+  normalizeWriteAgentNodePlaceholderScrollbackPayload,
   normalizeWriteNodeScrollbackPayload,
   normalizeWriteWorkspaceStateRawPayload,
 } from './validate'
@@ -174,6 +176,63 @@ export function registerPersistenceIpcHandlers(
     { defaultErrorCode: 'persistence.io_failed' },
   )
 
+  registerHandledIpc(
+    IPC_CHANNELS.persistenceReadAgentNodePlaceholderScrollback,
+    async (_event, payload: unknown): Promise<string | null> => {
+      let normalized: { nodeId: string }
+
+      try {
+        normalized = normalizeReadAgentNodePlaceholderScrollbackPayload(payload)
+      } catch {
+        return null
+      }
+
+      try {
+        const store = await getStore()
+        return await store.readAgentNodePlaceholderScrollback(normalized.nodeId)
+      } catch {
+        return null
+      }
+    },
+    { defaultErrorCode: 'persistence.io_failed' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.persistenceWriteAgentNodePlaceholderScrollback,
+    async (_event, payload: unknown): Promise<PersistWriteResult> => {
+      let normalized: { nodeId: string; scrollback: string | null }
+
+      try {
+        normalized = normalizeWriteAgentNodePlaceholderScrollbackPayload(payload)
+      } catch (error) {
+        return {
+          ok: false,
+          reason: 'unknown',
+          error: createAppErrorDescriptor('persistence.invalid_node_id', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
+      }
+
+      try {
+        const store = await getStore()
+        return await store.writeAgentNodePlaceholderScrollback(
+          normalized.nodeId,
+          normalized.scrollback,
+        )
+      } catch (error) {
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
+      }
+    },
+    { defaultErrorCode: 'persistence.io_failed' },
+  )
+
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.persistenceReadWorkspaceStateRaw)
@@ -182,6 +241,8 @@ export function registerPersistenceIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.persistenceWriteAppState)
       ipcMain.removeHandler(IPC_CHANNELS.persistenceReadNodeScrollback)
       ipcMain.removeHandler(IPC_CHANNELS.persistenceWriteNodeScrollback)
+      ipcMain.removeHandler(IPC_CHANNELS.persistenceReadAgentNodePlaceholderScrollback)
+      ipcMain.removeHandler(IPC_CHANNELS.persistenceWriteAgentNodePlaceholderScrollback)
     },
   }
 }

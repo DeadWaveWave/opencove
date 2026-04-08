@@ -7,6 +7,11 @@ export type PtySessionNodeBinding = {
 
 export type PtyScrollbackMirrorPersistence = Pick<PersistenceStore, 'writeNodeScrollback'>
 
+export type PtyAgentPlaceholderMirrorPersistence = Pick<
+  PersistenceStore,
+  'writeAgentNodePlaceholderScrollback'
+>
+
 export type PtyScrollbackMirrorSnapshotSource = {
   snapshot: (sessionId: string) => Promise<string>
 }
@@ -74,13 +79,15 @@ export function normalizePtySessionNodeBindingsPayload(payload: unknown): {
   return { bindings }
 }
 
-export function createPtyScrollbackMirror({
+function createPtySnapshotMirror<TStore>({
   source,
   getPersistenceStore,
+  persistSnapshot,
   flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
 }: {
   source: PtyScrollbackMirrorSnapshotSource
-  getPersistenceStore: () => Promise<PtyScrollbackMirrorPersistence>
+  getPersistenceStore: () => Promise<TStore>
+  persistSnapshot: (store: TStore, nodeId: string, snapshot: string) => Promise<unknown>
   flushIntervalMs?: number
 }): PtyScrollbackMirror {
   let disposed = false
@@ -133,7 +140,7 @@ export function createPtyScrollbackMirror({
         lastFingerprintBySessionId.set(sessionId, fingerprint)
 
         for (const nodeId of nodeIds) {
-          writes.push(store.writeNodeScrollback(nodeId, snapshot))
+          writes.push(persistSnapshot(store, nodeId, snapshot))
         }
       }
 
@@ -191,4 +198,39 @@ export function createPtyScrollbackMirror({
       lastFingerprintBySessionId.clear()
     },
   }
+}
+
+export function createPtyScrollbackMirror({
+  source,
+  getPersistenceStore,
+  flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
+}: {
+  source: PtyScrollbackMirrorSnapshotSource
+  getPersistenceStore: () => Promise<PtyScrollbackMirrorPersistence>
+  flushIntervalMs?: number
+}): PtyScrollbackMirror {
+  return createPtySnapshotMirror({
+    source,
+    getPersistenceStore,
+    persistSnapshot: (store, nodeId, snapshot) => store.writeNodeScrollback(nodeId, snapshot),
+    flushIntervalMs,
+  })
+}
+
+export function createPtyAgentPlaceholderMirror({
+  source,
+  getPersistenceStore,
+  flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
+}: {
+  source: PtyScrollbackMirrorSnapshotSource
+  getPersistenceStore: () => Promise<PtyAgentPlaceholderMirrorPersistence>
+  flushIntervalMs?: number
+}): PtyScrollbackMirror {
+  return createPtySnapshotMirror({
+    source,
+    getPersistenceStore,
+    persistSnapshot: (store, nodeId, snapshot) =>
+      store.writeAgentNodePlaceholderScrollback(nodeId, snapshot),
+    flushIntervalMs,
+  })
 }

@@ -364,6 +364,7 @@ export function TerminalNode({
       attachPromise,
       sessionId,
       terminal,
+      kind: kind === 'agent' ? 'agent' : 'terminal',
       cachedScreenState,
       persistedSnapshot: scrollbackBuffer.snapshot(),
       takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),

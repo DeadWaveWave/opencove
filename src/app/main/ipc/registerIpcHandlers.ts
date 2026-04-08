@@ -37,6 +37,7 @@ import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHand
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { registerHandledIpc } from './handle'
 import {
+  createPtyAgentPlaceholderMirror,
   createPtyScrollbackMirror,
   normalizePtySessionNodeBindingsPayload,
 } from './ptyScrollbackMirror'
@@ -102,6 +103,13 @@ export function registerIpcHandlers(deps?: {
     getPersistenceStore,
   })
 
+  const agentPlaceholderMirror = createPtyAgentPlaceholderMirror({
+    source: {
+      snapshot: sessionId => ptyRuntime.snapshot(sessionId),
+    },
+    getPersistenceStore,
+  })
+
   registerHandledIpc(
     IPC_CHANNELS.ptySyncSessionBindings,
     async (_event, payload: unknown): Promise<void> => {
@@ -114,6 +122,22 @@ export function registerIpcHandlers(deps?: {
           : normalized.bindings
 
       scrollbackMirror.setBindings(limitedBindings)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.ptySyncAgentPlaceholderBindings,
+    async (_event, payload: unknown): Promise<void> => {
+      const normalized = normalizePtySessionNodeBindingsPayload(payload)
+
+      const MAX_BINDINGS = 15_000
+      const limitedBindings =
+        normalized.bindings.length > MAX_BINDINGS
+          ? normalized.bindings.slice(0, MAX_BINDINGS)
+          : normalized.bindings
+
+      agentPlaceholderMirror.setBindings(limitedBindings)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -149,7 +173,9 @@ export function registerIpcHandlers(deps?: {
   disposables.push({
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.ptySyncSessionBindings)
+      ipcMain.removeHandler(IPC_CHANNELS.ptySyncAgentPlaceholderBindings)
       scrollbackMirror.dispose()
+      agentPlaceholderMirror.dispose()
     },
   })
 

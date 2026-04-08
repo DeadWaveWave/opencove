@@ -79,3 +79,9 @@ export const nodeScrollback = sqliteTable('node_scrollback', {
   scrollback: text('scrollback').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+export const agentNodePlaceholderScrollback = sqliteTable('agent_node_placeholder_scrollback', {
+  nodeId: text('node_id').primaryKey(),
+  scrollback: text('scrollback').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
