@@ -41,4 +41,4 @@ To enforce the policy:
 
 - We do **not** require retroactive signatures for contributions merged before the CLA check was enabled.
 - The authoritative agreement text lives in `CLA.md` (and should match the configured Gist).
-
+- If a PR was opened *before* CLA Assistant was linked, you may need to re-trigger the check by pushing a new commit to the PR branch or closing/reopening the PR.
