@@ -102,7 +102,34 @@ async function main() {
       workerArgs.push('--approve-root', root)
     }
 
-    const child = spawn(process.execPath, [workerPath, ...workerArgs], {
+    let electronBinary = null
+
+    try {
+      const electronImport = await import('electron')
+      const candidate = electronImport?.default ?? electronImport?.['module.exports']
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        electronBinary = candidate
+      }
+    } catch {
+      electronBinary = null
+    }
+
+    if (!electronBinary) {
+      process.stderr.write(
+        '[opencove] unable to resolve Electron runtime for starting the worker. Ensure dependencies are installed.\n',
+      )
+      process.exit(2)
+    }
+
+    const shouldDisableSandbox =
+      process.platform === 'linux' &&
+      (process.env.CI === '1' ||
+        process.env.CI?.toLowerCase() === 'true' ||
+        (typeof process.getuid === 'function' && process.getuid() === 0))
+
+    const electronArgs = shouldDisableSandbox ? ['--no-sandbox', '--disable-dev-shm-usage'] : []
+
+    const child = spawn(electronBinary, [...electronArgs, workerPath, ...workerArgs], {
       stdio: 'inherit',
       env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
       windowsHide: true,

@@ -360,6 +360,7 @@ export function ProjectMountManagerWindow({
             <label>{t('projectMountManager.addRemoteLabel')}</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
               <CoveSelect
+                testId="workspace-project-mount-remote-endpoint"
                 value={remoteEndpointId}
                 options={remoteEndpoints.map(endpoint => ({
                   value: endpoint.endpointId,

@@ -412,6 +412,7 @@ export function AddProjectWizardWindow({
             <label>{t('addProjectWizard.addRemoteLabel')}</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
               <CoveSelect
+                testId="workspace-project-create-remote-endpoint"
                 value={remoteEndpointId}
                 options={endpointOptions}
                 disabled={isBusy || endpointOptions.length === 0}
