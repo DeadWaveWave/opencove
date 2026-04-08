@@ -145,9 +145,7 @@ export function useWorkspaceCanvasNodesStore({
       const target = nodesRef.current.find(node => node.id === nodeId)
       if (target && target.data.sessionId.length > 0) {
         cleanupNodeRuntimeArtifacts(nodeId, target.data.sessionId)
-        await window.opencoveApi.pty
-          .kill({ sessionId: target.data.sessionId })
-          .catch(() => undefined)
+        void window.opencoveApi.pty.kill({ sessionId: target.data.sessionId }).catch(() => undefined)
       }
 
       if (target?.data.kind === 'image' && target.data.image) {
