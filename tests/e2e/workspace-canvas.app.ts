@@ -8,6 +8,7 @@ const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const testWorkspacePath = path.resolve(__dirname, '../../')
 type E2EWindowMode = 'inactive' | 'offscreen' | 'hidden'
+const E2E_APP_LAUNCH_TIMEOUT_MS = 45_000
 const E2E_APP_CLOSE_TIMEOUT_MS = 5_000
 const E2E_APP_FORCE_KILL_TIMEOUT_MS = 10_000
 const E2E_APP_FORCE_KILL_POLL_MS = 50
@@ -27,6 +28,7 @@ function isRetryableLaunchError(error: unknown): boolean {
   return (
     message.includes('Process failed to launch') ||
     message.includes('electronApplication.firstWindow') ||
+    message.toLowerCase().includes('timeout') ||
     message.includes('SIGABRT') ||
     message.includes('SIGSEGV') ||
     message.includes('Target page, context or browser has been closed')
@@ -248,6 +250,7 @@ async function launchAppInMode(
     delete baseEnv['__CFBundleIdentifier']
 
     electronApp = await electron.launch({
+      timeout: E2E_APP_LAUNCH_TIMEOUT_MS,
       args: resolveElectronLaunchArgs(),
       env: {
         ...baseEnv,
