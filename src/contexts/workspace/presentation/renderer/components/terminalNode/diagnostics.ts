@@ -28,6 +28,8 @@ interface TerminalDiagnosticElements {
   viewportElement: HTMLElement | null
   screenElement: HTMLElement | null
   canvasElement: HTMLCanvasElement | null
+  textareaElement: HTMLTextAreaElement | null
+  transcriptElement: HTMLElement | null
   reactFlowNode: HTMLElement | null
   terminalNode: HTMLElement | null
   workspaceCanvas: HTMLElement | null
@@ -72,6 +74,46 @@ function roundDiagnosticNumber(value: number): number {
   return Math.round(value * 1000) / 1000
 }
 
+function summarizeTail(
+  text: string,
+  maxChars: number,
+): { tail: string | null; truncated: boolean } {
+  if (maxChars <= 0 || text.length === 0) {
+    return {
+      tail: null,
+      truncated: text.length > 0,
+    }
+  }
+
+  const truncated = text.length > maxChars
+  return {
+    tail: truncated ? text.slice(Math.max(0, text.length - maxChars)) : text,
+    truncated,
+  }
+}
+
+function toVisibleControlCharacters(text: string): string {
+  return Array.from(text, char => {
+    const code = char.charCodeAt(0)
+    if (code === 0x7f) {
+      return '\u2421'
+    }
+
+    if (code >= 0 && code <= 0x1f) {
+      return String.fromCharCode(0x2400 + code)
+    }
+
+    return char
+  }).join('')
+}
+
+function containsControlCharacters(text: string): boolean {
+  return Array.from(text).some(char => {
+    const code = char.charCodeAt(0)
+    return (code >= 0x00 && code <= 0x1f) || code === 0x7f
+  })
+}
+
 function resolveTerminalDiagnosticElements(
   container: HTMLElement | null,
 ): TerminalDiagnosticElements {
@@ -91,6 +133,17 @@ function resolveTerminalDiagnosticElements(
     screenElement?.querySelector('canvas') instanceof HTMLCanvasElement
       ? (screenElement.querySelector('canvas') as HTMLCanvasElement)
       : null
+  const textareaElement =
+    container?.querySelector('.xterm-helper-textarea') instanceof HTMLTextAreaElement
+      ? (container.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement)
+      : null
+  const transcriptElement =
+    container?.closest('.terminal-node')?.querySelector('.terminal-node__transcript') instanceof
+    HTMLElement
+      ? ((container.closest('.terminal-node') as HTMLElement).querySelector(
+          '.terminal-node__transcript',
+        ) as HTMLElement)
+      : null
   const reactFlowNode =
     container?.closest('.react-flow__node') instanceof HTMLElement
       ? (container.closest('.react-flow__node') as HTMLElement)
@@ -109,6 +162,8 @@ function resolveTerminalDiagnosticElements(
     viewportElement,
     screenElement,
     canvasElement,
+    textareaElement,
+    transcriptElement,
     reactFlowNode,
     terminalNode,
     workspaceCanvas,
@@ -126,6 +181,83 @@ function resolveDevicePixelOffset(
   const devicePixelValue = value * devicePixelRatio
   const fractionalOffset = devicePixelValue - Math.round(devicePixelValue)
   return roundDiagnosticNumber(Math.abs(fractionalOffset))
+}
+
+export function captureTerminalTranscriptDetails({
+  container,
+  maxChars = 400,
+}: {
+  container: HTMLElement | null
+  maxChars?: number
+}): Record<string, TerminalDiagnosticsDetailValue> {
+  const { transcriptElement } = resolveTerminalDiagnosticElements(container)
+  const transcript = transcriptElement?.textContent ?? ''
+  const normalizedTranscript = transcript.replace(/\r\n/g, '\n')
+  const transcriptLength = normalizedTranscript.length
+  const transcriptTail =
+    transcriptLength > maxChars
+      ? normalizedTranscript.slice(Math.max(0, transcriptLength - maxChars))
+      : normalizedTranscript
+  const transcriptLineCount = transcriptLength === 0 ? 0 : normalizedTranscript.split('\n').length
+
+  return {
+    transcriptAvailable: transcriptElement !== null,
+    transcriptLength,
+    transcriptLineCount,
+    transcriptTail: transcriptTail.length > 0 ? transcriptTail : null,
+    transcriptTailTruncated: transcriptLength > maxChars,
+  }
+}
+
+export function captureTerminalTextareaDetails({
+  container,
+  maxChars = 120,
+}: {
+  container: HTMLElement | null
+  maxChars?: number
+}): Record<string, TerminalDiagnosticsDetailValue> {
+  const { textareaElement } = resolveTerminalDiagnosticElements(container)
+  const textareaValue = textareaElement?.value ?? ''
+  const visibleValue = toVisibleControlCharacters(textareaValue)
+  const { tail, truncated } = summarizeTail(visibleValue, maxChars)
+  const selectionStart = textareaElement?.selectionStart
+  const selectionEnd = textareaElement?.selectionEnd
+  const selectionDirection =
+    typeof textareaElement?.selectionDirection === 'string'
+      ? textareaElement.selectionDirection
+      : null
+
+  return {
+    textareaAvailable: textareaElement !== null,
+    textareaFocused: textareaElement !== null && textareaElement === document.activeElement,
+    textareaValueLength: textareaValue.length,
+    textareaValueTail: tail,
+    textareaValueTailTruncated: truncated,
+    textareaSelectionStart: typeof selectionStart === 'number' ? selectionStart : null,
+    textareaSelectionEnd: typeof selectionEnd === 'number' ? selectionEnd : null,
+    textareaSelectionDirection: selectionDirection,
+  }
+}
+
+export function captureTerminalInputDataDetails({
+  data,
+  maxChars = 120,
+  prefix = 'inputData',
+}: {
+  data: string
+  maxChars?: number
+  prefix?: string
+}): Record<string, TerminalDiagnosticsDetailValue> {
+  const visibleData = toVisibleControlCharacters(data)
+  const { tail, truncated } = summarizeTail(visibleData, maxChars)
+
+  return {
+    [`${prefix}Length`]: data.length,
+    [`${prefix}Preview`]: tail,
+    [`${prefix}PreviewTruncated`]: truncated,
+    [`${prefix}ContainsControl`]: containsControlCharacters(data),
+    [`${prefix}Json`]: data.length > 0 ? JSON.stringify(data) : null,
+  }
 }
 
 export function captureTerminalInteractionDetails({

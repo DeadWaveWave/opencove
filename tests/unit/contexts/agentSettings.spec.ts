@@ -34,4 +34,14 @@ describe('normalizeAgentSettings', () => {
       normalizeAgentSettings({ standardWindowSizeBucket: 'invalid' }).standardWindowSizeBucket,
     ).toBe(DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket)
   })
+
+  it('defaults and normalizes the voice input Ctrl+C optimization toggle', () => {
+    expect(DEFAULT_AGENT_SETTINGS.experimentalVoiceInputCtrlCOptimizationEnabled).toBe(true)
+    expect(normalizeAgentSettings({}).experimentalVoiceInputCtrlCOptimizationEnabled).toBe(true)
+    expect(
+      normalizeAgentSettings({
+        experimentalVoiceInputCtrlCOptimizationEnabled: false,
+      }).experimentalVoiceInputCtrlCOptimizationEnabled,
+    ).toBe(false)
+  })
 })

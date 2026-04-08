@@ -145,6 +145,9 @@ export const enSettingsPanel = {
     websiteWindowPasteLabel: 'Auto-create from Paste',
     websiteWindowPasteHelp:
       'When enabled, pasting a valid website URL onto the canvas creates a website node automatically.',
+    voiceInputCtrlCOptimizationLabel: 'Voice Input Ctrl+C Optimization',
+    voiceInputCtrlCOptimizationHelp:
+      'Reduces terminal interruptions when voice input tools accidentally send Ctrl+C.',
     websiteWindowMaxActiveLabel: 'Max Active',
     websiteWindowMaxActiveHelp: 'Limits how many website nodes stay interactive at once.',
     websiteWindowDiscardAfterLabel: 'Discard After',

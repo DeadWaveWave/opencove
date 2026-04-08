@@ -1,3 +1,5 @@
+import type { WindowsAutomationPasteGuard } from './windowsAutomationPasteGuard'
+
 type PtyWriteEncoding = 'utf8' | 'binary'
 
 type PtyWritePayload = {
@@ -6,6 +8,7 @@ type PtyWritePayload = {
 }
 
 type TerminalClipboardController = {
+  clearSelection?: () => void
   getSelection: () => string
   hasSelection: () => boolean
   paste: (data: string) => void
@@ -19,6 +22,46 @@ type PtyWriteQueue = {
 type PlatformInfo = {
   platform?: string
   userAgent?: string
+}
+
+type TerminalShortcutPlatform = 'windows' | 'linux' | 'mac' | 'unknown'
+
+export type TerminalShortcutDecision = {
+  action: 'copy-interrupt' | 'copy-selection' | 'find' | 'paste' | 'shift-enter'
+  eventType: string
+  key: string
+  code: string | null
+  platform: TerminalShortcutPlatform
+  ctrlKey: boolean
+  shiftKey: boolean
+  altKey: boolean
+  metaKey: boolean
+  windowsCopyShortcut: boolean
+  windowsPasteShortcut: boolean
+  linuxCopyShortcut: boolean
+  linuxPasteShortcut: boolean
+  macPasteShortcut: boolean
+  terminalFindShortcut: boolean
+  hasSelection: boolean
+  isPhysicalKeyCodeMissing: boolean
+}
+
+function resolveTerminalShortcutPlatform(
+  platformInfo: PlatformInfo | undefined = navigator,
+): TerminalShortcutPlatform {
+  if (isWindowsPlatform(platformInfo)) {
+    return 'windows'
+  }
+
+  if (isLinuxPlatform(platformInfo)) {
+    return 'linux'
+  }
+
+  if (isMacPlatform(platformInfo)) {
+    return 'mac'
+  }
+
+  return 'unknown'
 }
 
 export function isWindowsPlatform(platformInfo: PlatformInfo | undefined = navigator): boolean {
@@ -209,16 +252,20 @@ export async function pasteTextFromClipboard({
 }
 
 export function handleTerminalCustomKeyEvent({
+  automationPasteGuard,
   copySelectedText = copyTextToClipboard,
   event,
+  logShortcutDecision,
   pasteClipboardText = pasteTextFromClipboard,
   onOpenFind,
   platformInfo,
   ptyWriteQueue,
   terminal,
 }: {
+  automationPasteGuard?: WindowsAutomationPasteGuard | null
   copySelectedText?: (text: string) => Promise<void> | void
   event: KeyboardEvent
+  logShortcutDecision?: (decision: TerminalShortcutDecision) => void
   pasteClipboardText?: (
     options: Pick<Parameters<typeof pasteTextFromClipboard>[0], 'terminal'>,
   ) => Promise<void> | void
@@ -227,6 +274,46 @@ export function handleTerminalCustomKeyEvent({
   ptyWriteQueue: PtyWriteQueue
   terminal: TerminalClipboardController
 }): boolean {
+  const windowsCopyShortcut = isWindowsTerminalCopyShortcut(event, platformInfo)
+  const windowsPasteShortcut = isWindowsTerminalPasteShortcut(event, platformInfo)
+  const linuxCopyShortcut = isLinuxTerminalCopyShortcut(event, platformInfo)
+  const linuxPasteShortcut = isLinuxTerminalPasteShortcut(event, platformInfo)
+  const macPasteShortcut = isMacTerminalPasteShortcut(event, platformInfo)
+  const terminalFindShortcut = isTerminalFindShortcut(event)
+  const isPhysicalKeyCodeMissing = typeof event.code !== 'string' || event.code.length === 0
+  if (event.type === 'keydown' || event.type === 'keyup') {
+    automationPasteGuard?.noteKeyboardEvent({
+      type: event.type,
+      key: event.key,
+      code: event.code || null,
+      repeat: event.repeat,
+    })
+  }
+  const logDecision = (
+    action: TerminalShortcutDecision['action'],
+    hasSelection = terminal.hasSelection(),
+  ): void => {
+    logShortcutDecision?.({
+      action,
+      eventType: event.type,
+      key: event.key,
+      code: event.code || null,
+      platform: resolveTerminalShortcutPlatform(platformInfo),
+      ctrlKey: event.ctrlKey,
+      shiftKey: event.shiftKey,
+      altKey: event.altKey,
+      metaKey: event.metaKey,
+      windowsCopyShortcut,
+      windowsPasteShortcut,
+      linuxCopyShortcut,
+      linuxPasteShortcut,
+      macPasteShortcut,
+      terminalFindShortcut,
+      hasSelection,
+      isPhysicalKeyCodeMissing,
+    })
+  }
+
   if (
     event.key === 'Enter' &&
     event.shiftKey &&
@@ -235,6 +322,7 @@ export function handleTerminalCustomKeyEvent({
     !event.metaKey
   ) {
     if (event.type === 'keydown') {
+      logDecision('shift-enter', false)
       ptyWriteQueue.enqueue('\u001b\r')
       ptyWriteQueue.flush()
     }
@@ -242,7 +330,8 @@ export function handleTerminalCustomKeyEvent({
     return false
   }
 
-  if (event.type === 'keydown' && isTerminalFindShortcut(event)) {
+  if (event.type === 'keydown' && terminalFindShortcut) {
+    logDecision('find')
     event.preventDefault()
     event.stopPropagation()
     onOpenFind?.()
@@ -251,33 +340,48 @@ export function handleTerminalCustomKeyEvent({
 
   if (
     event.type === 'keydown' &&
-    (isWindowsTerminalPasteShortcut(event, platformInfo) ||
-      isMacTerminalPasteShortcut(event, platformInfo) ||
-      isLinuxTerminalPasteShortcut(event, platformInfo))
+    (windowsPasteShortcut || macPasteShortcut || linuxPasteShortcut)
   ) {
+    const canceledPendingInterrupt = automationPasteGuard?.cancelPendingInterrupt() ?? false
+    if (canceledPendingInterrupt && terminal.hasSelection()) {
+      terminal.clearSelection?.()
+    }
+    logDecision('paste')
     event.preventDefault()
     event.stopPropagation()
     void pasteClipboardText({ terminal })
     return false
   }
 
-  if (
-    event.type !== 'keydown' ||
-    (!isWindowsTerminalCopyShortcut(event, platformInfo) &&
-      !isLinuxTerminalCopyShortcut(event, platformInfo))
-  ) {
+  if (event.type !== 'keydown' || (!windowsCopyShortcut && !linuxCopyShortcut)) {
     return true
   }
 
   if (!terminal.hasSelection()) {
+    logDecision('copy-interrupt', false)
+    if (automationPasteGuard && windowsCopyShortcut && isPhysicalKeyCodeMissing) {
+      event.preventDefault()
+      event.stopPropagation()
+      automationPasteGuard.scheduleInterrupt()
+      return false
+    }
     return true
   }
 
   const selection = terminal.getSelection()
   if (selection.length === 0) {
+    logDecision('copy-interrupt', false)
     return true
   }
 
+  if (automationPasteGuard?.shouldSuppressSelectionCopy()) {
+    event.preventDefault()
+    event.stopPropagation()
+    terminal.clearSelection?.()
+    return false
+  }
+
+  logDecision('copy-selection', true)
   event.preventDefault()
   event.stopPropagation()
   void copySelectedText(selection)

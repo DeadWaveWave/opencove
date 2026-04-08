@@ -6,11 +6,15 @@ import type {
 import type { Terminal } from '@xterm/xterm'
 import type { TerminalThemeMode } from './theme'
 import {
+  captureTerminalInputDataDetails,
   captureTerminalDiagnosticsSnapshot,
   captureTerminalInteractionDetails,
   captureTerminalRenderSurfaceDetails,
+  captureTerminalTextareaDetails,
+  captureTerminalTranscriptDetails,
   createTerminalDiagnosticsLogger,
 } from './diagnostics'
+import { registerTerminalTextareaDiagnostics } from './registerDiagnostics.textarea'
 
 export function registerTerminalDiagnostics({
   enabled,
@@ -39,6 +43,7 @@ export function registerTerminalDiagnostics({
 }): {
   logHydrated: (details: { rawSnapshotLength: number; bufferedExitCode: number | null }) => void
   logKeyboardShortcut: (details: Record<string, TerminalDiagnosticsDetailValue>) => void
+  logPtyWrite: (payload: { data: string; encoding: 'utf8' | 'binary' }) => void
   dispose: () => void
 } {
   const viewportElement =
@@ -58,16 +63,19 @@ export function registerTerminalDiagnostics({
   })
 
   const collectInteractionDetails = (point?: { x: number; y: number } | null) =>
-    captureTerminalInteractionDetails({
-      container,
-      rendererKind,
-      point,
-    })
+    captureTerminalInteractionDetails({ container, rendererKind, point })
   const collectRenderSurfaceDetails = () =>
-    captureTerminalRenderSurfaceDetails({
-      container,
-      rendererKind,
-    })
+    captureTerminalRenderSurfaceDetails({ container, rendererKind })
+  const collectTextareaDetails = () => captureTerminalTextareaDetails({ container })
+  const collectTranscriptDetails = () => captureTerminalTranscriptDetails({ container })
+  const textareaDiagnostics = registerTerminalTextareaDiagnostics({
+    enabled,
+    diagnostics,
+    terminal,
+    viewportElement,
+    container,
+    collectTranscriptDetails,
+  })
 
   diagnostics.log('init', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
     windowsPtyBackend: windowsPty?.backend ?? null,
@@ -75,6 +83,7 @@ export function registerTerminalDiagnostics({
     terminalThemeMode,
     ...collectInteractionDetails(),
     ...collectRenderSurfaceDetails(),
+    ...collectTranscriptDetails(),
   })
 
   const resizeDisposable =
@@ -89,6 +98,7 @@ export function registerTerminalDiagnostics({
           diagnostics.log('resize', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
             cols: size.cols,
             rows: size.rows,
+            ...collectTranscriptDetails(),
           })
         })
       : { dispose: () => undefined }
@@ -100,11 +110,14 @@ export function registerTerminalDiagnostics({
       deltaMode: event.deltaMode,
       ctrlKey: event.ctrlKey,
       shiftKey: event.shiftKey,
+      ...collectTranscriptDetails(),
     })
   }
 
   const handleViewportScroll = (): void => {
-    diagnostics.log('scroll', captureTerminalDiagnosticsSnapshot(terminal, viewportElement))
+    diagnostics.log('scroll', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+      ...collectTranscriptDetails(),
+    })
   }
 
   const xtermElement =
@@ -128,6 +141,7 @@ export function registerTerminalDiagnostics({
     diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
       ...collectInteractionDetails(point),
       ...collectRenderSurfaceDetails(),
+      ...collectTranscriptDetails(),
     })
   }
 
@@ -199,7 +213,10 @@ export function registerTerminalDiagnostics({
           diagnostics.log(
             'hover-hit-target-change',
             captureTerminalDiagnosticsSnapshot(terminal, viewportElement),
-            details,
+            {
+              ...details,
+              ...collectTranscriptDetails(),
+            },
           )
         }, 120)
       : null
@@ -287,19 +304,34 @@ export function registerTerminalDiagnostics({
       diagnostics.log('hydrated', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
         rawSnapshotLength,
         bufferedExitCode,
+        ...collectTranscriptDetails(),
       })
     },
     logKeyboardShortcut: details => {
       diagnostics.log(
         'keyboard-shortcut',
         captureTerminalDiagnosticsSnapshot(terminal, viewportElement),
-        details,
+        {
+          ...details,
+          ...collectTranscriptDetails(),
+        },
       )
+    },
+    logPtyWrite: payload => {
+      diagnostics.log('pty-write', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+        inputEncoding: payload.encoding,
+        ...captureTerminalInputDataDetails({
+          data: payload.data,
+        }),
+        ...collectTextareaDetails(),
+        ...collectTranscriptDetails(),
+      })
     },
     dispose: () => {
       resizeDisposable.dispose()
       mutationObserver?.disconnect()
       webglSurfaceObserver?.disconnect()
+      textareaDiagnostics.dispose()
       if (pointerPollTimer !== null) {
         window.clearInterval(pointerPollTimer)
       }

@@ -104,6 +104,7 @@ export interface OpenCoveApi {
     isTest: boolean
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
+    enableWindowsAutomationPasteGuard?: boolean
     platform: string
     windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null
   }
