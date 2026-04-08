@@ -1,11 +1,16 @@
 import { app, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type { ControlSurfaceInvokeRequest } from '../../../shared/contracts/controlSurface'
+import type { ControlSurfaceRemoteEndpointResolver } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createAppError, OpenCoveAppError } from '../../../shared/errors/appError'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { registerHandledIpc } from './handle'
 import type { IpcRegistrationDisposable } from './types'
+
+export type RegisterControlSurfaceIpcHandlersOptions = {
+  endpointResolver?: ControlSurfaceRemoteEndpointResolver | null
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -39,19 +44,24 @@ function normalizeInvokeRequestPayload(payload: unknown): ControlSurfaceInvokeRe
   }
 }
 
-export function registerControlSurfaceIpcHandlers(): IpcRegistrationDisposable {
+export function registerControlSurfaceIpcHandlers(
+  options: RegisterControlSurfaceIpcHandlersOptions = {},
+): IpcRegistrationDisposable {
+  const endpointResolver = options.endpointResolver ?? null
+
   registerHandledIpc(
     IPC_CHANNELS.controlSurfaceInvoke,
     async (_event, payload: unknown): Promise<unknown> => {
       const request = normalizeInvokeRequestPayload(payload)
 
-      const connection = await resolveControlSurfaceConnectionInfoFromUserData({
-        userDataPath: app.getPath('userData'),
-      })
+      const connection =
+        (endpointResolver ? await endpointResolver() : null) ??
+        (await resolveControlSurfaceConnectionInfoFromUserData({
+          userDataPath: app.getPath('userData'),
+        }))
+
       if (!connection) {
-        throw createAppError('worker.unavailable', {
-          debugMessage: 'Home control surface is unavailable.',
-        })
+        throw createAppError('worker.unavailable', { debugMessage: 'Home worker is unavailable.' })
       }
 
       try {
@@ -95,4 +105,3 @@ export function registerControlSurfaceIpcHandlers(): IpcRegistrationDisposable {
     },
   }
 }
-

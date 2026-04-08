@@ -4,10 +4,12 @@ import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
 } from '@contexts/settings/domain/agentSettings'
-import type { ProjectContextMenuState } from '../types'
+import type { ProjectContextMenuState, ProjectMountManagerState } from '../types'
 import { CommandCenter } from './CommandCenter'
+import { AddProjectWizardWindow } from './AddProjectWizardWindow'
 import { DeleteProjectDialog } from './DeleteProjectDialog'
 import { ProjectContextMenu } from './ProjectContextMenu'
+import { ProjectMountManagerWindow } from './ProjectMountManagerWindow'
 import { SpaceArchiveRecordsWindow } from './SpaceArchiveRecordsWindow'
 
 interface ProjectDeleteConfirmation {
@@ -33,7 +35,12 @@ export function AppShellPopups({
   canvasWheelZoomModifierSetting,
   onDeleteSpaceArchiveRecord,
   onCloseSpaceArchives,
+  isAddProjectWizardOpen,
+  onCloseAddProjectWizard,
   projectContextMenu,
+  projectMountManager,
+  onCloseProjectMountManager,
+  onRequestManageProjectMounts,
   onRequestRemoveProject,
   projectDeleteConfirmation,
   isRemovingProject,
@@ -57,7 +64,12 @@ export function AppShellPopups({
   canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
   onDeleteSpaceArchiveRecord: (recordId: string) => void
   onCloseSpaceArchives: () => void
+  isAddProjectWizardOpen: boolean
+  onCloseAddProjectWizard: () => void
   projectContextMenu: ProjectContextMenuState | null
+  projectMountManager: ProjectMountManagerState | null
+  onCloseProjectMountManager: () => void
+  onRequestManageProjectMounts: (workspaceId: string) => void
   onRequestRemoveProject: (workspaceId: string) => void
   projectDeleteConfirmation: ProjectDeleteConfirmation | null
   isRemovingProject: boolean
@@ -106,14 +118,35 @@ export function AppShellPopups({
         }}
       />
 
+      {isAddProjectWizardOpen ? (
+        <AddProjectWizardWindow
+          existingWorkspaces={workspaces}
+          onClose={() => {
+            onCloseAddProjectWizard()
+          }}
+        />
+      ) : null}
+
       {projectContextMenu ? (
         <ProjectContextMenu
           workspaceId={projectContextMenu.workspaceId}
           x={projectContextMenu.x}
           y={projectContextMenu.y}
+          onRequestManageMounts={workspaceId => {
+            onRequestManageProjectMounts(workspaceId)
+          }}
           onRequestRemove={workspaceId => {
             onRequestRemoveProject(workspaceId)
           }}
+        />
+      ) : null}
+
+      {projectMountManager ? (
+        <ProjectMountManagerWindow
+          workspace={
+            workspaces.find(workspace => workspace.id === projectMountManager.workspaceId) ?? null
+          }
+          onClose={onCloseProjectMountManager}
         />
       ) : null}
 

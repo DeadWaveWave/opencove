@@ -117,11 +117,11 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       expect(endpointRes.status, JSON.stringify(endpointRes.data)).toBe(200)
       const endpointId = endpointRes.data.value.endpoint.endpointId
 
-      const spaceId = randomUUID()
+      const projectId = randomUUID()
       const mountRes = await invoke(homeBaseUrl, 'home-token', {
         kind: 'command',
         id: 'mount.create',
-        payload: { spaceId, endpointId, rootPath: remoteRootPath, name: 'remote-root' },
+        payload: { projectId, endpointId, rootPath: remoteRootPath, name: 'remote-root' },
       })
       expect(mountRes.status, JSON.stringify(mountRes.data)).toBe(200)
       const mountId = mountRes.data.value.mount.mountId

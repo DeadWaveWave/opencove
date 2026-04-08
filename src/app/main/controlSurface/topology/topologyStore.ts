@@ -210,28 +210,30 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
   const listMounts = async (input: ListMountsInput): Promise<ListMountsResult> => {
     await ensureLoaded()
 
-    const spaceId = normalizeNonEmptyString(input.spaceId)
-    if (!spaceId) {
-      throw createAppError('common.invalid_input', { debugMessage: 'mount.list requires spaceId.' })
+    const projectId = normalizeNonEmptyString(input.projectId)
+    if (!projectId) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'mount.list requires projectId.',
+      })
     }
 
     const mounts = topology.mounts
-      .filter(mount => mount.spaceId === spaceId)
+      .filter(mount => mount.projectId === projectId)
       .map(toMountDto)
       .sort((a, b) => a.sortOrder - b.sortOrder)
 
-    return { spaceId, mounts }
+    return { projectId, mounts }
   }
 
   const createMount = async (input: CreateMountInput): Promise<CreateMountResult> => {
     await ensureLoaded()
 
-    const spaceId = normalizeNonEmptyString(input.spaceId)
+    const projectId = normalizeNonEmptyString(input.projectId)
     const endpointId = normalizeNonEmptyString(input.endpointId)
     const rootPath = normalizeNonEmptyString(input.rootPath)
-    if (!spaceId || !endpointId || !rootPath) {
+    if (!projectId || !endpointId || !rootPath) {
       throw createAppError('common.invalid_input', {
-        debugMessage: 'mount.create requires spaceId/endpointId/rootPath.',
+        debugMessage: 'mount.create requires projectId/endpointId/rootPath.',
       })
     }
 
@@ -255,12 +257,12 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
     const rootUri = toFileUri(rootPath)
     const sortOrder =
       topology.mounts
-        .filter(mount => mount.spaceId === spaceId)
+        .filter(mount => mount.projectId === projectId)
         .reduce((acc, mount) => Math.max(acc, mount.sortOrder), -1) + 1
 
     const record: MountRecord = {
       mountId,
-      spaceId,
+      projectId,
       name,
       sortOrder,
       endpointId,

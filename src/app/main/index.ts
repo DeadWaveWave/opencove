@@ -447,7 +447,7 @@ app.whenReady().then(async () => {
       : {}),
   })
 
-  if (process.env.NODE_ENV !== 'test' && !workerEndpointResolver) {
+  if (!workerEndpointResolver) {
     controlSurfaceDisposable = registerControlSurfaceServer({ approvedWorkspaces, ptyRuntime })
   }
 

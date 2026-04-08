@@ -2,6 +2,7 @@ import { resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
+import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
 import {
   assignAgentNodeToTaskSpace,
   clearStaleTaskLinkedAgent,
@@ -140,25 +141,58 @@ export async function runTaskAgentAction(
   const provider = context.agentSettings.defaultProvider
   const model = resolveAgentModel(context.agentSettings, provider)
   const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
+  const mountId = taskSpace?.targetMountId ?? null
 
   try {
-    const launched = await window.opencoveApi.agent.launch({
-      provider,
-      cwd: taskDirectory,
-      profileId: context.agentSettings.defaultTerminalProfileId,
-      prompt: requirement,
-      mode: 'new',
-      model,
-      agentFullAccess: context.agentSettings.agentFullAccess,
-      cols: 80,
-      rows: 24,
-    })
+    let launchedSessionId = ''
+    let launchedProfileId: string | null = null
+    let launchedRuntimeKind: TerminalRuntimeKind | undefined = undefined
+    let launchedEffectiveModel: string | null = null
+    let agentDirectory = taskDirectory
+
+    if (mountId) {
+      const launched = await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
+        kind: 'command',
+        id: 'session.launchAgentInMount',
+        payload: {
+          mountId,
+          cwdUri: null,
+          prompt: requirement,
+          provider,
+          mode: 'new',
+          model,
+          agentFullAccess: context.agentSettings.agentFullAccess,
+        },
+      })
+
+      launchedSessionId = launched.sessionId
+      launchedProfileId = context.agentSettings.defaultTerminalProfileId
+      launchedEffectiveModel = launched.effectiveModel
+      agentDirectory = launched.executionContext.workingDirectory
+    } else {
+      const launched = await window.opencoveApi.agent.launch({
+        provider,
+        cwd: taskDirectory,
+        profileId: context.agentSettings.defaultTerminalProfileId,
+        prompt: requirement,
+        mode: 'new',
+        model,
+        agentFullAccess: context.agentSettings.agentFullAccess,
+        cols: 80,
+        rows: 24,
+      })
+
+      launchedSessionId = launched.sessionId
+      launchedProfileId = launched.profileId ?? null
+      launchedRuntimeKind = launched.runtimeKind
+      launchedEffectiveModel = launched.effectiveModel
+    }
 
     const createdAgentNode = await context.createNodeForSession({
-      sessionId: launched.sessionId,
-      profileId: launched.profileId,
-      runtimeKind: launched.runtimeKind,
-      title: context.buildAgentNodeTitle(provider, launched.effectiveModel),
+      sessionId: launchedSessionId,
+      profileId: launchedProfileId,
+      runtimeKind: launchedRuntimeKind,
+      title: context.buildAgentNodeTitle(provider, launchedEffectiveModel),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',
       placement: {
@@ -169,11 +203,11 @@ export async function runTaskAgentAction(
         provider,
         prompt: requirement,
         model,
-        effectiveModel: launched.effectiveModel,
-        launchMode: launched.launchMode,
+        effectiveModel: launchedEffectiveModel,
+        launchMode: 'new',
         ...clearResumeSessionBinding(),
-        executionDirectory: taskDirectory,
-        expectedDirectory: taskDirectory,
+        executionDirectory: agentDirectory,
+        expectedDirectory: agentDirectory,
         directoryMode: 'workspace',
         customDirectory: null,
         shouldCreateDirectory: false,

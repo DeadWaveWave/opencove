@@ -18,6 +18,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
+import { EndpointsSection } from './settingsPanel/EndpointsSection'
 import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
@@ -268,6 +269,12 @@ export function SettingsPanel({
             onClick={() => setActivePageId('worker')}
           />
           <SettingsPanelNavButton
+            isActive={activePageId === 'endpoints'}
+            label={t('settingsPanel.nav.endpoints')}
+            testId="settings-section-nav-endpoints"
+            onClick={() => setActivePageId('endpoints')}
+          />
+          <SettingsPanelNavButton
             isActive={activePageId === 'agent'}
             label={t('settingsPanel.nav.agent')}
             testId="settings-section-nav-agent"
@@ -357,6 +364,8 @@ export function SettingsPanel({
             ) : null}
 
             {activePageId === 'worker' ? <WorkerSection /> : null}
+
+            {activePageId === 'endpoints' ? <EndpointsSection /> : null}
 
             {activePageId === 'agent' ? (
               <>

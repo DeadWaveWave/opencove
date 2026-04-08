@@ -1,5 +1,6 @@
 import type { ControlSurface } from '../controlSurface'
 import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appError'
+import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type {
   CreateMountInput,
   ListMountsInput,
@@ -84,7 +85,9 @@ function normalizeListMountsPayload(payload: unknown): ListMountsInput {
     })
   }
 
-  return { spaceId: normalizeRequiredString(payload.spaceId, 'mount.list spaceId') }
+  return {
+    projectId: normalizeRequiredString(payload.projectId, 'mount.list projectId'),
+  }
 }
 
 function normalizeCreateMountPayload(payload: unknown): CreateMountInput {
@@ -95,7 +98,7 @@ function normalizeCreateMountPayload(payload: unknown): CreateMountInput {
   }
 
   return {
-    spaceId: normalizeRequiredString(payload.spaceId, 'mount.create spaceId'),
+    projectId: normalizeRequiredString(payload.projectId, 'mount.create projectId'),
     name: normalizeOptionalString(payload.name),
     endpointId: normalizeRequiredString(payload.endpointId, 'mount.create endpointId'),
     rootPath: normalizeRequiredString(payload.rootPath, 'mount.create rootPath'),
@@ -143,7 +146,7 @@ function normalizePingEndpointPayload(payload: unknown): PingWorkerEndpointInput
 
 export function registerTopologyHandlers(
   controlSurface: ControlSurface,
-  deps: { topology: WorkerTopologyStore },
+  deps: { topology: WorkerTopologyStore; approvedWorkspaces: ApprovedWorkspaceStore },
 ): void {
   controlSurface.register('endpoint.list', {
     kind: 'query',
@@ -239,7 +242,38 @@ export function registerTopologyHandlers(
   controlSurface.register('mount.create', {
     kind: 'command',
     validate: normalizeCreateMountPayload,
-    handle: async (_ctx, payload) => await deps.topology.createMount(payload),
+    handle: async (_ctx, payload) => {
+      if (payload.endpointId === 'local') {
+        await deps.approvedWorkspaces.registerRoot(payload.rootPath)
+      } else {
+        void deps.topology
+          .resolveRemoteEndpointConnection(payload.endpointId)
+          .then(endpoint => {
+            if (!endpoint) {
+              return
+            }
+
+            return invokeControlSurface(endpoint, {
+              kind: 'command',
+              id: 'workspace.approveRoot',
+              payload: { path: payload.rootPath },
+            })
+          })
+          .then(resultEnvelope => {
+            const result = resultEnvelope?.result
+            if (!result) {
+              return
+            }
+
+            if (result.ok === false) {
+              return
+            }
+          })
+          .catch(() => undefined)
+      }
+
+      return await deps.topology.createMount(payload)
+    },
     defaultErrorCode: 'common.unexpected',
   })
 

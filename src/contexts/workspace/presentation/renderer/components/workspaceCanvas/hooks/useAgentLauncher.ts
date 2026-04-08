@@ -12,6 +12,7 @@ import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { resolveDefaultAgentWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
+import type { LaunchAgentSessionResult } from '@shared/contracts/dto'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
@@ -79,24 +80,63 @@ export function useWorkspaceCanvasAgentLauncher({
           )
           const model = resolveAgentModel(agentSettings, provider)
           const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-          const executionDirectory = resolveSpaceWorkingDirectory(anchorSpace, workspacePath)
-          const launched = await window.opencoveApi.agent.launch({
-            provider,
-            cwd: executionDirectory,
-            profileId: agentSettings.defaultTerminalProfileId,
-            prompt: '',
-            mode: 'new',
-            model,
-            agentFullAccess: agentSettings.agentFullAccess,
-            cols: 80,
-            rows: 24,
-          })
+          const mountId = anchorSpace?.targetMountId ?? null
+          const fallbackExecutionDirectory = resolveSpaceWorkingDirectory(
+            anchorSpace,
+            workspacePath,
+          )
 
-          const modelLabel = launched.effectiveModel ?? model
+          let launchedSessionId = ''
+          let launchedProfileId: string | null = null
+          let launchedRuntimeKind: CreateNodeInput['runtimeKind'] = undefined
+          let launchedEffectiveModel: string | null = null
+          let executionDirectory = fallbackExecutionDirectory
+
+          if (mountId) {
+            const launched =
+              await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
+                kind: 'command',
+                id: 'session.launchAgentInMount',
+                payload: {
+                  mountId,
+                  cwdUri: null,
+                  prompt: '',
+                  provider,
+                  mode: 'new',
+                  model,
+                  agentFullAccess: agentSettings.agentFullAccess,
+                },
+              })
+
+            launchedSessionId = launched.sessionId
+            launchedProfileId = agentSettings.defaultTerminalProfileId
+            launchedEffectiveModel = launched.effectiveModel
+            executionDirectory = launched.executionContext.workingDirectory
+          } else {
+            const launched = await window.opencoveApi.agent.launch({
+              provider,
+              cwd: fallbackExecutionDirectory,
+              profileId: agentSettings.defaultTerminalProfileId,
+              prompt: '',
+              mode: 'new',
+              model,
+              agentFullAccess: agentSettings.agentFullAccess,
+              cols: 80,
+              rows: 24,
+            })
+
+            launchedSessionId = launched.sessionId
+            launchedProfileId = launched.profileId ?? null
+            launchedRuntimeKind = launched.runtimeKind
+            launchedEffectiveModel = launched.effectiveModel
+          }
+
+          const modelLabel = launchedEffectiveModel ?? model
+
           const created = await createNodeForSession({
-            sessionId: launched.sessionId,
-            profileId: launched.profileId,
-            runtimeKind: launched.runtimeKind,
+            sessionId: launchedSessionId,
+            profileId: launchedProfileId,
+            runtimeKind: launchedRuntimeKind,
             title: buildAgentNodeTitle(provider, modelLabel),
             anchor,
             kind: 'agent',
@@ -107,8 +147,8 @@ export function useWorkspaceCanvasAgentLauncher({
               provider,
               prompt: '',
               model,
-              effectiveModel: launched.effectiveModel,
-              launchMode: launched.launchMode,
+              effectiveModel: launchedEffectiveModel,
+              launchMode: 'new',
               ...clearResumeSessionBinding(),
               executionDirectory,
               expectedDirectory: executionDirectory,

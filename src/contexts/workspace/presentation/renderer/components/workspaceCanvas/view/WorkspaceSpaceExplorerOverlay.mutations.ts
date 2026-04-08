@@ -18,10 +18,12 @@ import {
   type SpaceExplorerDeleteConfirmationState,
 } from './WorkspaceSpaceExplorerOverlay.operations'
 import { useSpaceExplorerOverlayMoveHistory } from './WorkspaceSpaceExplorerOverlay.moveHistory'
+import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 export function useSpaceExplorerOverlayMutations({
   t,
   rootUri,
+  mountId,
   explorerClipboard,
   setExplorerClipboard,
   closeContextMenu,
@@ -39,6 +41,7 @@ export function useSpaceExplorerOverlayMutations({
 }: {
   t: TranslateFn
   rootUri: string
+  mountId: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
   closeContextMenu: () => void
@@ -98,7 +101,7 @@ export function useSpaceExplorerOverlayMutations({
   )
 
   const submitCreate = React.useCallback(async (): Promise<void> => {
-    const api = window.opencoveApi?.filesystem
+    const api = resolveFilesystemApiForMount(mountId)
     if (!createMode || !api) {
       setCreateError(t('documentNode.filesystemUnavailable'))
       return
@@ -140,6 +143,7 @@ export function useSpaceExplorerOverlayMutations({
   }, [
     createDraftName,
     createMode,
+    mountId,
     refresh,
     resolveCreateBaseUri,
     selectEntry,
@@ -165,7 +169,7 @@ export function useSpaceExplorerOverlayMutations({
   )
   const submitRename = React.useCallback(async (): Promise<void> => {
     const entry = renameEntryUri ? (entriesByUri.get(renameEntryUri) ?? null) : null
-    const api = window.opencoveApi?.filesystem
+    const api = resolveFilesystemApiForMount(mountId)
     if (!entry || !api) {
       setRenameError(t('documentNode.filesystemUnavailable'))
       return
@@ -209,6 +213,7 @@ export function useSpaceExplorerOverlayMutations({
   }, [
     entriesByUri,
     explorerClipboard,
+    mountId,
     refresh,
     renameDraftName,
     renameEntryUri,
@@ -223,13 +228,13 @@ export function useSpaceExplorerOverlayMutations({
       if (listing && !listing.isLoading && !listing.error) {
         return listing.entries
       }
-      const api = window.opencoveApi?.filesystem
+      const api = resolveFilesystemApiForMount(mountId)
       if (!api) {
         throw new Error(t('documentNode.filesystemUnavailable'))
       }
       return (await api.readDirectory({ uri: directoryUri })).entries
     },
-    [directoryListings, t],
+    [directoryListings, mountId, t],
   )
 
   const resolveSelectionTargetDirectory = React.useCallback((): string => {
@@ -245,6 +250,7 @@ export function useSpaceExplorerOverlayMutations({
   const { canUndoMove, canRedoMove, executeMove, pasteIntoDirectory, undoMove, redoMove } =
     useSpaceExplorerOverlayMoveHistory({
       t,
+      mountId,
       explorerClipboard,
       setExplorerClipboard,
       onShowMessage,
@@ -310,7 +316,7 @@ export function useSpaceExplorerOverlayMutations({
 
   const confirmDelete = React.useCallback(async () => {
     const entry = deleteConfirmation?.entry
-    const api = window.opencoveApi?.filesystem
+    const api = resolveFilesystemApiForMount(mountId)
     if (!entry || !api) {
       return
     }
@@ -334,6 +340,7 @@ export function useSpaceExplorerOverlayMutations({
   }, [
     deleteConfirmation,
     explorerClipboard,
+    mountId,
     onShowMessage,
     refresh,
     selectedEntryUri,

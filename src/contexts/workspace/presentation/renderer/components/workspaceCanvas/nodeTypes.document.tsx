@@ -7,6 +7,7 @@ export function WorkspaceCanvasDocumentNodeType({
   data,
   id,
   nodePosition,
+  mountId,
   selectNode,
   clearNodeSelectionRef,
   closeNodeRef,
@@ -16,6 +17,7 @@ export function WorkspaceCanvasDocumentNodeType({
   data: TerminalNodeData
   id: string
   nodePosition: { x: number; y: number }
+  mountId: string | null
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -34,6 +36,7 @@ export function WorkspaceCanvasDocumentNodeType({
     <DocumentNode
       title={data.title}
       uri={data.document.uri}
+      mountId={mountId}
       labelColor={labelColor}
       position={nodePosition}
       width={data.width}

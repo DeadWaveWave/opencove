@@ -17,7 +17,7 @@ export type RemoteEndpointRecord = {
 
 export type MountRecord = {
   mountId: string
-  spaceId: string
+  projectId: string
   name: string
   sortOrder: number
   endpointId: string
@@ -119,7 +119,8 @@ function normalizeMountRecord(value: unknown): MountRecord | null {
   }
 
   const mountId = normalizeNonEmptyString(value.mountId)
-  const spaceId = normalizeNonEmptyString(value.spaceId)
+  const projectId =
+    normalizeNonEmptyString(value.projectId) ?? normalizeNonEmptyString(value.spaceId)
   const name = normalizeNonEmptyString(value.name)
   const endpointId = normalizeNonEmptyString(value.endpointId)
   const targetId = normalizeNonEmptyString(value.targetId)
@@ -132,7 +133,7 @@ function normalizeMountRecord(value: unknown): MountRecord | null {
       ? Math.max(0, Math.floor(sortOrderRaw))
       : null
 
-  if (!mountId || !spaceId || !name || !endpointId || !targetId || !rootPath || !rootUri) {
+  if (!mountId || !projectId || !name || !endpointId || !targetId || !rootPath || !rootUri) {
     return null
   }
 
@@ -145,7 +146,7 @@ function normalizeMountRecord(value: unknown): MountRecord | null {
 
   return {
     mountId,
-    spaceId,
+    projectId,
     name,
     sortOrder,
     endpointId,
@@ -223,7 +224,7 @@ export function toEndpointDto(record: RemoteEndpointRecord): WorkerEndpointDto {
 export function toMountDto(record: MountRecord): MountDto {
   return {
     mountId: record.mountId,
-    spaceId: record.spaceId,
+    projectId: record.projectId,
     name: record.name,
     sortOrder: record.sortOrder,
     endpointId: record.endpointId,

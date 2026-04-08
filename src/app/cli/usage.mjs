@@ -15,9 +15,9 @@ export function printUsage() {
   process.stdout.write(`  opencove project list [--pretty]\n`)
   process.stdout.write(`  opencove space list [--project <id>] [--pretty]\n\n`)
   process.stdout.write(`  opencove space get --space <id> [--pretty]\n\n`)
-  process.stdout.write(`  opencove mount list --space <id> [--pretty]\n`)
+  process.stdout.write(`  opencove mount list --project <id> [--pretty]\n`)
   process.stdout.write(
-    `  opencove mount create --space <id> --endpoint-id <id> --root-path <path> [--name <text>] [--pretty]\n\n`,
+    `  opencove mount create --project <id> --endpoint-id <id> --root-path <path> [--name <text>] [--pretty]\n\n`,
   )
   process.stdout.write(`  opencove mount resolve --mount <id> [--pretty]\n`)
   process.stdout.write(`  opencove mount remove --mount <id> [--pretty]\n\n`)

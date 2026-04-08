@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
+import type { SpawnTerminalResult } from '@shared/contracts/dto'
 import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'
 import {
   resolveDefaultNoteWindowSize,
@@ -55,12 +56,26 @@ export async function createTerminalNodeAtFlowPosition({
 
   const resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
 
-  const spawned = await window.opencoveApi.pty.spawn({
-    cwd: resolvedCwd,
-    profileId: defaultTerminalProfileId ?? undefined,
-    cols: 80,
-    rows: 24,
-  })
+  const mountId = targetSpace?.targetMountId ?? null
+
+  const spawned = mountId
+    ? await window.opencoveApi.controlSurface.invoke<SpawnTerminalResult>({
+        kind: 'command',
+        id: 'pty.spawnInMount',
+        payload: {
+          mountId,
+          cwdUri: null,
+          profileId: defaultTerminalProfileId,
+          cols: 80,
+          rows: 24,
+        },
+      })
+    : await window.opencoveApi.pty.spawn({
+        cwd: resolvedCwd,
+        profileId: defaultTerminalProfileId ?? undefined,
+        cols: 80,
+        rows: 24,
+      })
 
   const created = await createNodeForSession({
     sessionId: spawned.sessionId,

@@ -122,7 +122,7 @@ export function registerIpcHandlers(deps?: {
   const disposables: IpcRegistrationDisposable[] = [
     registerLocalWorkerIpcHandlers(),
     registerWorkerClientIpcHandlers(),
-    registerControlSurfaceIpcHandlers(),
+    registerControlSurfaceIpcHandlers({ endpointResolver: workerEndpointResolver }),
     registerCliIpcHandlers(),
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),

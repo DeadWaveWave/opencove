@@ -96,10 +96,14 @@ export async function tryHandleMultiEndpointCommands({
   }
 
   if (command === 'mount' && args[1] === 'list') {
-    const spaceId = requireFlagValue(args, '--space')
+    const projectId =
+      readFlagValue(args, '--project') ??
+      readFlagValue(args, '--project-id') ??
+      readFlagValue(args, '--space') ??
+      requireFlagValue(args, '--project')
     await invokeAndPrint(
       connection,
-      { kind: 'query', id: 'mount.list', payload: { spaceId } },
+      { kind: 'query', id: 'mount.list', payload: { projectId } },
       { pretty, timeoutMs },
     )
 
@@ -107,7 +111,11 @@ export async function tryHandleMultiEndpointCommands({
   }
 
   if (command === 'mount' && args[1] === 'create') {
-    const spaceId = requireFlagValue(args, '--space')
+    const projectId =
+      readFlagValue(args, '--project') ??
+      readFlagValue(args, '--project-id') ??
+      readFlagValue(args, '--space') ??
+      requireFlagValue(args, '--project')
     const endpointId = requireFlagValue(args, '--endpoint-id')
     const rootPath = requireFlagValue(args, '--root-path')
     const name = readFlagValue(args, '--name')
@@ -118,7 +126,7 @@ export async function tryHandleMultiEndpointCommands({
         kind: 'command',
         id: 'mount.create',
         payload: {
-          spaceId,
+          projectId,
           endpointId,
           rootPath,
           ...(name ? { name } : {}),

@@ -9,6 +9,7 @@ import {
   SquareDashed,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import { useWorkspaceMountSummaries } from '../hooks/useWorkspaceMountSummaries'
 import type {
   WorkspaceSpaceState,
   WorkspaceState,
@@ -132,6 +133,7 @@ export function CommandCenter({
   const restoreFocusRef = useRef<HTMLElement | null>(null)
   const itemRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
   const interactionModeRef = useRef<'keyboard' | 'pointer'>('keyboard')
+  const mountSummaryByWorkspaceId = useWorkspaceMountSummaries({ workspaces })
 
   const { space: activeSpace } = useMemo(
     () => resolveActiveSpace(activeWorkspace),
@@ -191,7 +193,7 @@ export function CommandCenter({
     const projectItems: CommandCenterItem[] = workspaces.map(workspace => ({
       id: `workspace:${workspace.id}`,
       title: workspace.name,
-      subtitle: workspace.path,
+      subtitle: mountSummaryByWorkspaceId[workspace.id] ?? '—',
       icon: <Folder aria-hidden="true" size={16} />,
       onSelect: () => {
         onSelectWorkspace(workspace.id)
@@ -202,7 +204,7 @@ export function CommandCenter({
       activeWorkspace?.spaces.map(space => ({
         id: `space:${space.id}`,
         title: space.name,
-        subtitle: space.directoryPath,
+        subtitle: undefined,
         icon: <SquareDashed aria-hidden="true" size={16} />,
         onSelect: () => {
           onSelectSpace(space.id)
@@ -236,6 +238,7 @@ export function CommandCenter({
     t,
     activeWorkspace,
     isPrimarySidebarCollapsed,
+    mountSummaryByWorkspaceId,
     onAddWorkspace,
     onOpenSettings,
     onOpenSpaceArchives,

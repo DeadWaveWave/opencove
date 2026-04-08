@@ -13,6 +13,7 @@ function HookHost(): React.JSX.Element {
       id: 'space-1',
       name: 'Space 1',
       directoryPath: '/tmp/opencove-space',
+      targetMountId: null,
       labelColor: null,
       nodeIds: [],
       rect: null,

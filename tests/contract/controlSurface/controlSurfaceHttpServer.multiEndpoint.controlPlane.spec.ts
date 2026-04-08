@@ -26,7 +26,7 @@ function isEnvelopeErr(value: unknown): value is { ok: false; error: { code?: st
 }
 
 describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
-  it('assigns mount sortOrder per space', async () => {
+  it('assigns mount sortOrder per project', async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-m6-home-sort-'))
     const connectionFileName = 'control-surface.m6.sort.test.json'
     const connectionFilePath = resolve(userDataPath, connectionFileName)
@@ -57,13 +57,13 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       const info = await server.ready
       const baseUrl = `http://${info.hostname}:${info.port}`
 
-      const spaceA = randomUUID()
-      const spaceB = randomUUID()
+      const projectA = randomUUID()
+      const projectB = randomUUID()
 
       const mountA0 = await invoke(baseUrl, 'home-token', {
         kind: 'command',
         id: 'mount.create',
-        payload: { spaceId: spaceA, endpointId: 'local', rootPath: '/tmp/a', name: 'A0' },
+        payload: { projectId: projectA, endpointId: 'local', rootPath: '/tmp/a', name: 'A0' },
       })
       expect(mountA0.status, JSON.stringify(mountA0.data)).toBe(200)
       expect(mountA0.data.value.mount.sortOrder).toBe(0)
@@ -71,7 +71,7 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       const mountB0 = await invoke(baseUrl, 'home-token', {
         kind: 'command',
         id: 'mount.create',
-        payload: { spaceId: spaceB, endpointId: 'local', rootPath: '/tmp/b', name: 'B0' },
+        payload: { projectId: projectB, endpointId: 'local', rootPath: '/tmp/b', name: 'B0' },
       })
       expect(mountB0.status, JSON.stringify(mountB0.data)).toBe(200)
       expect(mountB0.data.value.mount.sortOrder).toBe(0)
@@ -79,7 +79,7 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       const mountA1 = await invoke(baseUrl, 'home-token', {
         kind: 'command',
         id: 'mount.create',
-        payload: { spaceId: spaceA, endpointId: 'local', rootPath: '/tmp/c', name: 'A1' },
+        payload: { projectId: projectA, endpointId: 'local', rootPath: '/tmp/c', name: 'A1' },
       })
       expect(mountA1.status, JSON.stringify(mountA1.data)).toBe(200)
       expect(mountA1.data.value.mount.sortOrder).toBe(1)
@@ -210,11 +210,11 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       expect(isEnvelopeErr(pingRes.data)).toBe(true)
       expect(pingRes.data.error.code).toBe('worker.unavailable')
 
-      const spaceId = randomUUID()
+      const projectId = randomUUID()
       const mountRes = await invoke(baseUrl, 'home-token', {
         kind: 'command',
         id: 'mount.create',
-        payload: { spaceId, endpointId, rootPath: '/tmp', name: 'remote' },
+        payload: { projectId, endpointId, rootPath: '/tmp', name: 'remote' },
       })
       expect(mountRes.status, JSON.stringify(mountRes.data)).toBe(200)
       const mountId = mountRes.data.value.mount.mountId
@@ -286,12 +286,12 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
     try {
       const info = await server.ready
       const baseUrl = `http://${info.hostname}:${info.port}`
-      const spaceId = randomUUID()
+      const projectId = randomUUID()
 
       const mountRes = await invoke(baseUrl, 'home-token', {
         kind: 'command',
         id: 'mount.create',
-        payload: { spaceId, endpointId: 'local', rootPath: mountRootPath, name: 'scope' },
+        payload: { projectId, endpointId: 'local', rootPath: mountRootPath, name: 'scope' },
       })
       expect(mountRes.status, JSON.stringify(mountRes.data)).toBe(200)
       const mountId = mountRes.data.value.mount.mountId

@@ -165,6 +165,17 @@ export interface LaunchAgentSessionInput {
   agentFullAccess?: boolean | null
 }
 
+export interface LaunchAgentSessionInMountInput {
+  mountId: string
+  cwdUri?: string | null
+  prompt: string
+  provider?: AgentProviderId | null
+  mode?: 'new' | 'resume' | null
+  model?: string | null
+  resumeSessionId?: string | null
+  agentFullAccess?: boolean | null
+}
+
 export interface LaunchAgentSessionResult {
   sessionId: string
   provider: AgentProviderId

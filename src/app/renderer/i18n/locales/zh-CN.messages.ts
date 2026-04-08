@@ -34,6 +34,8 @@ export const zhCNMessages = {
   terminalSpaceDirectoryMismatch: '终端窗口不能进入或离开目录不同的 Space。',
   taskSpaceMoveBlocked: '带有活动 Agent 的任务不能在 Space 之间移动。',
   spaceRequiresNode: '空间至少要包含一个任务或 Agent。',
+  projectHasNoMounts: '该项目还没有 mounts，请先添加一个 mount。',
+  mountListFailed: '加载 mounts 失败：{{message}}',
   canvasImageUnsupportedType: '不支持的图片格式，请使用 PNG、JPEG、WebP、GIF 或 AVIF。',
   canvasImageTooLarge: '图片太大（最大 {{maxMb}} MB）。',
   canvasImageImportFailed: '导入图片失败：{{message}}',

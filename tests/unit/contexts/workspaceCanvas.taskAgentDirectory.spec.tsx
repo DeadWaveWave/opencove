@@ -171,6 +171,8 @@ describe('WorkspaceCanvas task agent directory', () => {
         id: 'space-1',
         name: 'Worktree Space',
         directoryPath: worktreeDirectory,
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['task-1'],
         rect: null,
       },

@@ -45,7 +45,7 @@ export interface PingWorkerEndpointResult {
 
 export interface MountDto {
   mountId: string
-  spaceId: string
+  projectId: string
   name: string
   sortOrder: number
   endpointId: string
@@ -57,16 +57,16 @@ export interface MountDto {
 }
 
 export interface ListMountsInput {
-  spaceId: string
+  projectId: string
 }
 
 export interface ListMountsResult {
-  spaceId: string
+  projectId: string
   mounts: MountDto[]
 }
 
 export interface CreateMountInput {
-  spaceId: string
+  projectId: string
   name?: string | null
   endpointId: string
   rootPath: string

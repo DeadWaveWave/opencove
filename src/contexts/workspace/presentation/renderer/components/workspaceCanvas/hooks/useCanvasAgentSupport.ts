@@ -49,6 +49,7 @@ export function useWorkspaceCanvasAgentSupport({
   const { buildAgentNodeTitle, launchAgentInNode, stopAgentNode } =
     useWorkspaceCanvasAgentNodeLifecycle({
       nodesRef,
+      spacesRef,
       setNodes,
       bumpAgentLaunchToken,
       isAgentLaunchTokenCurrent,

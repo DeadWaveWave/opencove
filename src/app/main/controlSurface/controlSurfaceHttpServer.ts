@@ -122,10 +122,16 @@ export function registerControlSurfaceHttpServer(
   const controlSurface = createControlSurface()
   registerSystemHandlers(controlSurface)
   registerAuthHandlers(controlSurface, { webSessions })
-  registerTopologyHandlers(controlSurface, { topology })
+  registerTopologyHandlers(controlSurface, {
+    topology,
+    approvedWorkspaces: options.approvedWorkspaces,
+  })
   registerProjectHandlers(controlSurface, getPersistenceStore)
   registerSpaceHandlers(controlSurface, getPersistenceStore)
-  registerWorkspaceHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
+  registerWorkspaceHandlers(controlSurface, {
+    approvedWorkspaces: options.approvedWorkspaces,
+    userDataPath: options.userDataPath,
+  })
   registerFilesystemHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
   })
@@ -143,6 +149,7 @@ export function registerControlSurfaceHttpServer(
     getPersistenceStore,
     ptyRuntime,
     ptyStreamHub: ptyStreamService.hub,
+    topology,
   })
   registerSessionStreamingHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,

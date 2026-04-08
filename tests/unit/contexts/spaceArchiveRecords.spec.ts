@@ -98,6 +98,7 @@ describe('space archive records', () => {
       id: 'space-1',
       name: 'Archived Space',
       directoryPath: '/tmp/cove',
+      targetMountId: null,
       labelColor: null,
       nodeIds: ['note-1', 'task-1', 'terminal-1'],
       rect: null,

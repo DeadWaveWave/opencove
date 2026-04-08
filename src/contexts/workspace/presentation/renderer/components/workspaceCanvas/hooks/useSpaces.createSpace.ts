@@ -3,10 +3,12 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { ListMountsResult } from '@shared/contracts/dto'
 import type {
   ContextMenuState,
   EmptySelectionPromptState,
   ShowWorkspaceCanvasMessage,
+  SpaceTargetMountPickerState,
 } from '../types'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
 import {
@@ -21,6 +23,7 @@ type SetNodes = (
 ) => void
 
 export function useWorkspaceCanvasCreateSpace({
+  workspaceId,
   workspacePath,
   reactFlow,
   nodesRef,
@@ -31,9 +34,11 @@ export function useWorkspaceCanvasCreateSpace({
   onRequestPersistFlush,
   setContextMenu,
   setEmptySelectionPrompt,
+  setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
 }: {
+  workspaceId: string
   workspacePath: string
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -44,15 +49,23 @@ export function useWorkspaceCanvasCreateSpace({
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
+  setSpaceTargetMountPicker: React.Dispatch<
+    React.SetStateAction<SpaceTargetMountPickerState | null>
+  >
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   createSpaceFromSelectedNodes: () => void
+  createSpaceWithTargetMount: (payload: {
+    nodeIds: string[]
+    rect: WorkspaceSpaceRect | null
+    targetMountId: string
+  }) => void
 } {
   const { t } = useTranslation()
 
   const createSpace = useCallback(
-    (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null }) => {
+    (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null; targetMountId: string }) => {
       const normalizedNodeIds = payload.nodeIds.filter(nodeId =>
         nodesRef.current.some(node => node.id === nodeId),
       )
@@ -110,6 +123,7 @@ export function useWorkspaceCanvasCreateSpace({
         id: nextSpaceId,
         name: normalizedName,
         directoryPath: workspacePath,
+        targetMountId: payload.targetMountId,
         labelColor: null,
         nodeIds: normalizedNodeIds,
         rect,
@@ -301,6 +315,7 @@ export function useWorkspaceCanvasCreateSpace({
       onRequestPersistFlush?.()
       setContextMenu(null)
       setEmptySelectionPrompt(null)
+      setSpaceTargetMountPicker(null)
       cancelSpaceRename()
     },
     [
@@ -312,10 +327,18 @@ export function useWorkspaceCanvasCreateSpace({
       setContextMenu,
       setEmptySelectionPrompt,
       setNodes,
+      setSpaceTargetMountPicker,
       spacesRef,
       workspacePath,
       t,
     ],
+  )
+
+  const createSpaceWithTargetMount = useCallback(
+    (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null; targetMountId: string }) => {
+      createSpace(payload)
+    },
+    [createSpace],
   )
 
   const createSpaceFromSelectedNodes = useCallback(() => {
@@ -337,10 +360,48 @@ export function useWorkspaceCanvasCreateSpace({
         return false
       }
 
-      createSpace({
-        nodeIds: selectedIds,
-        rect: null,
-      })
+      void (async () => {
+        try {
+          const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+            kind: 'query',
+            id: 'mount.list',
+            payload: { projectId: workspaceId },
+          })
+
+          if (mountResult.mounts.length === 0) {
+            onShowMessage?.(t('messages.projectHasNoMounts'), 'warning')
+            setContextMenu(null)
+            setEmptySelectionPrompt(null)
+            cancelSpaceRename()
+            return
+          }
+
+          if (mountResult.mounts.length === 1) {
+            createSpace({
+              nodeIds: selectedIds,
+              rect: null,
+              targetMountId: mountResult.mounts[0].mountId,
+            })
+            return
+          }
+
+          setSpaceTargetMountPicker({
+            nodeIds: selectedIds,
+            rect: null,
+            mounts: mountResult.mounts,
+            selectedMountId: mountResult.mounts[0].mountId,
+          })
+          setContextMenu(null)
+          setEmptySelectionPrompt(null)
+          cancelSpaceRename()
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error)
+          onShowMessage?.(t('messages.mountListFailed', { message }), 'error')
+          setContextMenu(null)
+          setEmptySelectionPrompt(null)
+          cancelSpaceRename()
+        }
+      })()
       return true
     }
 
@@ -355,9 +416,21 @@ export function useWorkspaceCanvasCreateSpace({
 
       setContextMenu(null)
     })
-  }, [createSpace, reactFlow, selectedNodeIdsRef, setContextMenu])
+  }, [
+    cancelSpaceRename,
+    createSpace,
+    onShowMessage,
+    reactFlow,
+    selectedNodeIdsRef,
+    setContextMenu,
+    setEmptySelectionPrompt,
+    setSpaceTargetMountPicker,
+    t,
+    workspaceId,
+  ])
 
   return {
     createSpaceFromSelectedNodes,
+    createSpaceWithTargetMount,
   }
 }
