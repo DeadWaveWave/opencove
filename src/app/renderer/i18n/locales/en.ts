@@ -67,6 +67,8 @@ export const en = {
     commandCenter: 'Command Center',
     commandCenterHint: 'Command Center ({{shortcut}})',
     commandCenterFallbackTitle: 'Search',
+    enterFullscreen: 'Enter Full Screen',
+    exitFullscreen: 'Exit Full Screen',
     updateAvailableShort: 'Update',
     updateAvailableTitle: 'Version {{version}} is available',
     updateDownloadingTitle: 'Downloading version {{version}} ({{percent}})',

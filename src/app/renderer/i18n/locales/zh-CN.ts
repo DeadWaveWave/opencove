@@ -69,6 +69,8 @@ export const zhCN = {
     commandCenter: '命令中心',
     commandCenterHint: '命令中心（{{shortcut}}）',
     commandCenterFallbackTitle: '搜索',
+    enterFullscreen: '进入全屏',
+    exitFullscreen: '退出全屏',
     updateAvailableShort: '更新',
     updateAvailableTitle: '发现新版本 {{version}}',
     updateDownloadingTitle: '正在下载 {{version}}（{{percent}}）',
