@@ -74,7 +74,6 @@ export function resolveCanvasWheelGesture({
   lockTimestamp,
 }: ResolveCanvasWheelGestureParams): CanvasWheelGestureDecision {
   const activeLock = resolveActiveGestureLock(trackpadGestureLock, lockTimestamp)
-  const isCanvasSurfaceEvent = isTargetWithinCanvas && wheelTarget === 'canvas'
   const isPinchZoom = isPinchLikeZoomWheelSample(sample)
   const isZoomModifierPressed =
     wheelZoomModifierKey === 'ctrl'
@@ -82,6 +81,8 @@ export function resolveCanvasWheelGesture({
       : wheelZoomModifierKey === 'meta'
         ? sample.metaKey
         : sample.altKey
+  const isCanvasSurfaceEvent =
+    isTargetWithinCanvas && (wheelTarget === 'canvas' || isPinchZoom || isZoomModifierPressed)
 
   if (canvasInputModeSetting === 'mouse') {
     const fixedModeDecision = resolveFixedModeDecision(canvasInputModeSetting, inputModalityState)
