@@ -161,7 +161,24 @@ OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencod
 - space overlay / drag handle / label 区域是否抢占事件
 - 点击点是否过于贴边
 
-### 4) 缩放/transform 场景避免依赖 `locator.boundingBox()` 做像素命中与断言
+### 4) React Flow：元素“可见但不在 viewport”
+
+现象：
+
+- Playwright 日志提示 `element is outside of the viewport`
+- 但 `await expect(locator).toBeVisible()` 仍然通过
+
+原因：
+
+- React Flow 画布使用 `transform`（viewport 缩放/平移）。元素在 DOM 上“可见”，但实际绘制区域可能在屏幕外。
+- `scrollIntoViewIfNeeded()` 对 transform 场景不一定有效。
+
+处理：
+
+- 先把目标节点带回视口（最简单：点击 `Fit View` 控制按钮 `.react-flow__controls-fitview`），再执行 click/drag。
+- 对“节点创建后立即点击 close/resize”等操作，建议先做一次 `Fit View` 或 focus 到该节点，避免视口偏移造成误判。
+
+### 5) 缩放/transform 场景避免依赖 `locator.boundingBox()` 做像素命中与断言
 
 在 React Flow 缩放（viewport transform）场景下，尤其是 CI 里的 `inactive/offscreen` 窗口模式，`locator.boundingBox()` 偶发返回不稳定坐标，导致鼠标按下点不到目标元素，进而出现“mouse 走完了但 resize/drag 根本没发生”的假操作。
 
