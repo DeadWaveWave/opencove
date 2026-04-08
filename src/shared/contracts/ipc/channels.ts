@@ -92,6 +92,7 @@ export const IPC_CHANNELS = {
   workerClientSetConfig: 'worker-client:set-config',
   workerClientSetWebUiSecurity: 'worker-client:set-web-ui-security',
   workerClientRelaunch: 'worker-client:relaunch',
+  controlSurfaceInvoke: 'control-surface:invoke',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
