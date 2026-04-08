@@ -93,6 +93,10 @@ test.describe('Worker web canvas agent resume', () => {
       })
       .toBeTruthy()
 
+    const fitViewButton = page.locator('.react-flow__controls-fitview')
+    await expect(fitViewButton).toBeVisible()
+    await fitViewButton.click()
+
     await agentTerminal.locator('.terminal-node__close').click()
     await expect(page.locator('.terminal-node')).toHaveCount(0)
 
