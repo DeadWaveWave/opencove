@@ -122,7 +122,7 @@ export function useWorkspaceCanvasGlobalDismissals({
 
           const isEditableActiveElement = Boolean(
             activeElement &&
-              (activeElement.isContentEditable || activeElement.closest(editableDomSelector)),
+            (activeElement.isContentEditable || activeElement.closest(editableDomSelector)),
           )
 
           if (isEditableActiveElement) {
