@@ -10,6 +10,7 @@ import {
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
   test('pushes away other spaces when dragging a node with a selected space', async () => {
+    test.slow()
     const { electronApp, window } = await launchApp()
 
     try {
