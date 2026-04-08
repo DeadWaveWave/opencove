@@ -103,6 +103,17 @@ export interface SeedWorkspace {
   activeSpaceId?: string | null
 }
 
+function isRetryableNavigationError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return (
+    message.includes('Execution context was destroyed') ||
+    message.includes('most likely because of a navigation') ||
+    message.includes('Target page, context or browser has been closed') ||
+    message.includes('Navigation failed') ||
+    message.includes('Navigation timeout')
+  )
+}
+
 export async function seedWorkspaceState(
   window: Page,
   payload: {
@@ -119,7 +130,7 @@ export async function seedWorkspaceState(
   }
 
   const trySeed = async (attempt: number): Promise<boolean> => {
-    if (attempt >= 3) {
+    if (attempt >= 4) {
       return false
     }
 
@@ -139,6 +150,7 @@ export async function seedWorkspaceState(
 
     try {
       await window.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 })
+      await window.waitForLoadState('load', { timeout: 15_000 }).catch(() => undefined)
     } catch {
       return await trySeed(attempt + 1)
     }
@@ -148,54 +160,72 @@ export async function seedWorkspaceState(
       nodeIds: workspace.nodes.map(node => node.id),
     }))
 
-    const seededReady = await window.evaluate(async workspaceExpectations => {
-      const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-      if (!raw) {
-        return false
-      }
-
-      try {
-        const parsed = JSON.parse(raw) as {
-          workspaces?: Array<{
-            id?: string
-            nodes?: Array<{
-              id?: string
-            }>
-          }>
-        }
-
-        if (!Array.isArray(parsed.workspaces)) {
+    let seededReady = false
+    try {
+      seededReady = await window.evaluate(async workspaceExpectations => {
+        const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+        if (!raw) {
           return false
         }
 
-        const workspaceById = new Map(
-          parsed.workspaces
-            .filter(workspace => typeof workspace.id === 'string')
-            .map(workspace => [workspace.id as string, workspace]),
-        )
+        try {
+          const parsed = JSON.parse(raw) as {
+            workspaces?: Array<{
+              id?: string
+              nodes?: Array<{
+                id?: string
+              }>
+            }>
+          }
 
-        return workspaceExpectations.every(expectedWorkspace => {
-          const loadedWorkspace = workspaceById.get(expectedWorkspace.id)
-          if (!loadedWorkspace || !Array.isArray(loadedWorkspace.nodes)) {
+          if (!Array.isArray(parsed.workspaces)) {
             return false
           }
 
-          const loadedNodeIds = loadedWorkspace.nodes
-            .map(node => (typeof node.id === 'string' ? node.id : ''))
-            .filter(id => id.length > 0)
+          const workspaceById = new Map(
+            parsed.workspaces
+              .filter(workspace => typeof workspace.id === 'string')
+              .map(workspace => [workspace.id as string, workspace]),
+          )
 
-          if (loadedNodeIds.length !== expectedWorkspace.nodeIds.length) {
-            return false
-          }
+          return workspaceExpectations.every(expectedWorkspace => {
+            const loadedWorkspace = workspaceById.get(expectedWorkspace.id)
+            if (!loadedWorkspace || !Array.isArray(loadedWorkspace.nodes)) {
+              return false
+            }
 
-          return expectedWorkspace.nodeIds.every(nodeId => loadedNodeIds.includes(nodeId))
-        })
-      } catch {
-        return false
+            const loadedNodeIds = loadedWorkspace.nodes
+              .map(node => (typeof node.id === 'string' ? node.id : ''))
+              .filter(id => id.length > 0)
+
+            if (loadedNodeIds.length !== expectedWorkspace.nodeIds.length) {
+              return false
+            }
+
+            return expectedWorkspace.nodeIds.every(nodeId => loadedNodeIds.includes(nodeId))
+          })
+        } catch {
+          return false
+        }
+      }, expectedWorkspaces)
+    } catch (error) {
+      if (isRetryableNavigationError(error)) {
+        return await trySeed(attempt + 1)
       }
-    }, expectedWorkspaces)
 
-    const workspaceCount = await window.locator('.workspace-item').count()
+      throw error
+    }
+
+    let workspaceCount = 0
+    try {
+      workspaceCount = await window.locator('.workspace-item').count()
+    } catch (error) {
+      if (isRetryableNavigationError(error)) {
+        return await trySeed(attempt + 1)
+      }
+
+      throw error
+    }
     if (seededReady && workspaceCount >= payload.workspaces.length) {
       return true
     }
