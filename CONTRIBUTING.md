@@ -13,6 +13,7 @@ OpenCove is an ambitious open-source project aimed at redefining how we interact
 ## 🧭 Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
+- [Contributor License Agreement (CLA)](#-contributor-license-agreement-cla)
 - [Development Workflow](#-development-workflow)
 - [The Golden Rules of Engineering](#-the-golden-rules-of-engineering)
 - [Pull Request Process](#-pull-request-process)
@@ -22,6 +23,16 @@ OpenCove is an ambitious open-source project aimed at redefining how we interact
 ## Code of Conduct
 
 This project and everyone participating in it is governed by the [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
+
+## 📄 Contributor License Agreement (CLA)
+
+To keep the Project healthy and to preserve future distribution options (including commercial licensing), we require most contributions to be covered by our Contributor License Agreement (CLA).
+
+- Read the agreement: [CLA.md](./CLA.md)
+- **Signing flow**: When you open a PR, an automated CLA check may ask you to sign/confirm the CLA before we can merge.
+- **No retroactive chasing**: We do not require retroactive signatures for contributions merged before the CLA check was enabled.
+- **Contributing on behalf of an employer**: Make sure you have permission to contribute under the CLA terms. If your company requires a corporate CLA, contact the Steward listed in `CLA.md`.
+  - Maintainers: see `docs/CLA_SETUP.md`.
 
 ## 💻 Development Workflow
 
