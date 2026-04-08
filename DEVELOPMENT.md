@@ -148,6 +148,7 @@
     -   通过上述检查后，再执行 `pnpm pre-commit` （type, lint, format, test）。
 -   **测试失败排查前置**：
     -   凡遇到 `pnpm pre-commit`、`pnpm test -- --run`、`pnpm test:e2e` 或单独 `Playwright` 用例失败，继续排查前**必须先阅读** `docs/DEBUGGING.md`。
+    -   需要复现/定位 bug 时：先阅读 `docs/DEBUGGING.md` 选择合适的调试方法与测试层级；若没有覆盖到的合适方法，则自行探索新方法；当用户反馈“确实解决了困难问题”后，应补充对应案例到 `docs/cases/`，并按需更新 `docs/DEBUGGING.md`（方法+适用场景）及其它必要信息。
 -   **安全（Electron Security）**：
     -   始终开启 Context Isolation。
     -   Renderer 进程禁止开启 Node Integration。
