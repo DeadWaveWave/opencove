@@ -33,6 +33,7 @@ To keep the Project healthy and to preserve future distribution options (includi
 - **No retroactive chasing**: We do not require retroactive signatures for contributions merged before the CLA check was enabled.
 - **Contributing on behalf of an employer**: Make sure you have permission to contribute under the CLA terms. If your company requires a corporate CLA, contact the Steward listed in `CLA.md`.
   - Maintainers: see `docs/CLA_SETUP.md`.
+- Trademarks & branding: see `TRADEMARKS.md` (forks/redistributions should not use the "OpenCove" name/logo in a confusing way).
 
 ## 💻 Development Workflow
 

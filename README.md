@@ -128,6 +128,7 @@ Read our guidelines below:
 - [Contributing Guidelines (CONTRIBUTING.md)](./CONTRIBUTING.md)
 - [Code of Conduct (CODE_OF_CONDUCT.md)](./CODE_OF_CONDUCT.md)
 - [Support (SUPPORT.md)](./SUPPORT.md)
+- [Trademarks & Brand Guidelines (TRADEMARKS.md)](./TRADEMARKS.md)
 
 ## 💬 Community Group
 
