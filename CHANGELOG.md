@@ -93,6 +93,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Terminal: Prevented terminal/agent nodes from clipping the last row/column and showing a black gutter around the embedded terminal. (#150)
 - Spaces: Fixed Space pills truncating and made worktree branch/PR chips refresh without switching projects. (#129)
 - Terminal: Prevent focus loss and font resets when submitting commands or after clicking header then terminal body. (#130)
+- Workspace canvas: Keep node focus rings stable while typing in terminal/task inputs (reduces border “wink”). (#151)
 
 ---
 
