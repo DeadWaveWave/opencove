@@ -301,10 +301,8 @@ export function useWorkspaceCanvasTrackpadGestures({
       const clientX = Number.isFinite(event.clientX) ? Number(event.clientX) : 0
       const clientY = Number.isFinite(event.clientY) ? Number(event.clientY) : 0
 
-      const x =
-        canvasRect && Number.isFinite(canvasRect.left) ? clientX - canvasRect.left : clientX
-      const y =
-        canvasRect && Number.isFinite(canvasRect.top) ? clientY - canvasRect.top : clientY
+      const x = canvasRect && Number.isFinite(canvasRect.left) ? clientX - canvasRect.left : clientX
+      const y = canvasRect && Number.isFinite(canvasRect.top) ? clientY - canvasRect.top : clientY
 
       return { x, y }
     }

@@ -166,7 +166,10 @@ describe('useWorkspaceCanvasTrackpadGestures', () => {
     expect(changeEvent.defaultPrevented).toBe(true)
 
     expect(reactFlow.setViewport).toHaveBeenCalledTimes(1)
-    expect(reactFlow.setViewport).toHaveBeenCalledWith({ x: -100, y: -50, zoom: 2 }, { duration: 0 })
+    expect(reactFlow.setViewport).toHaveBeenCalledWith(
+      { x: -100, y: -50, zoom: 2 },
+      { duration: 0 },
+    )
 
     await vi.advanceTimersByTimeAsync(120)
 
