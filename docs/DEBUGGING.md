@@ -15,6 +15,49 @@
 4. 只重跑目标失败项，确认是否稳定复现。
 5. 若是 E2E，优先看 `screenshot`、`trace`、`console` 与持久化状态。
 
+## 测试层级选择（策略）
+
+目标：用 **最低成本** 的测试层级先定位问题；确认根因后再补足能防回归的覆盖。
+
+### Unit（最快）
+
+适用场景：
+
+- 纯函数/协议解析/颜色转换等“无 IO、无时序”的逻辑
+- 需要快速验证边界条件（例如 escape sequence/解析分片）
+
+运行：
+
+```bash
+pnpm test -- --run tests/unit/<target>.spec.ts
+```
+
+### Contract（边界正确性）
+
+适用场景：
+
+- IPC/DTO 校验、approved workspace guard、主进程 handler 的输入/输出契约
+- 需要验证“错误 code/debugMessage/guard 行为”是否符合约定
+
+运行：
+
+```bash
+pnpm test -- --run tests/contract/<target>.spec.ts
+```
+
+### E2E（用户可见/跨边界）
+
+适用场景：
+
+- 主题切换、拖拽/缩放、focus、持久化/恢复、外部 CLI（OpenCode/Codex）行为
+- 任何“只有把 Main/Renderer/PTY/外部进程串起来才会出现”的问题
+
+运行：
+
+```bash
+pnpm test:e2e tests/e2e/<target>.spec.ts --project electron --reporter=line
+```
+
 ## E2E 稳定运行原则
 
 ### 优先使用仓库脚本
