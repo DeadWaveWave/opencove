@@ -93,6 +93,7 @@ test.describe('Worker web canvas agent resume', () => {
       })
       .toBeTruthy()
 
+    await page.locator('.workspace-canvas').getByRole('button', { name: 'Fit View' }).click()
     await agentTerminal.locator('.terminal-node__close').click()
     await expect(page.locator('.terminal-node')).toHaveCount(0)
 
