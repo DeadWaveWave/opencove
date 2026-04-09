@@ -4,27 +4,6 @@ import type { CachedTerminalScreenState } from './screenStateCache'
 
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
 const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
-const SNAPSHOT_FINGERPRINT_TAIL_CHARS = 128
-
-type SnapshotFingerprint = { length: number; tail: string }
-
-function fingerprintSnapshot(snapshot: string): SnapshotFingerprint {
-  if (snapshot.length === 0) {
-    return { length: 0, tail: '' }
-  }
-
-  return {
-    length: snapshot.length,
-    tail:
-      snapshot.length <= SNAPSHOT_FINGERPRINT_TAIL_CHARS
-        ? snapshot
-        : snapshot.slice(-SNAPSHOT_FINGERPRINT_TAIL_CHARS),
-  }
-}
-
-function areFingerprintsEqual(left: SnapshotFingerprint, right: SnapshotFingerprint): boolean {
-  return left.length === right.length && left.tail === right.tail
-}
 
 function shouldSkipRawDeltaForSerializedScreen(serialized: string, delta: string): boolean {
   // xterm serialize addon prefixes alternate buffer content with ESC[?1049h ESC[H. When a TUI is in
@@ -103,46 +82,41 @@ export async function hydrateTerminalFromSnapshot({
     await attachPromise.catch(() => undefined)
 
     if (kind === 'agent') {
-      const MAX_WAIT_MS = 12_000
-      const POLL_INTERVAL_MS = 200
-      const REQUIRED_STABLE_READS = 3
+      // Agent CLIs restore their own history. We want to swap from the persisted placeholder to a
+      // real PTY snapshot quickly so the node feels responsive, and then let live output take over.
+      const MAX_SNAPSHOT_ATTEMPTS = 4
+      const SNAPSHOT_RETRY_DELAY_MS = 200
 
-      const start = Date.now()
-      let stableReads = 0
-      let lastFingerprint: SnapshotFingerprint | null = null
+      let didReadSnapshot = false
       let lastSnapshot = ''
 
-      while (!isDisposed() && Date.now() - start < MAX_WAIT_MS) {
+      for (let attempt = 0; attempt < MAX_SNAPSHOT_ATTEMPTS && !isDisposed(); attempt += 1) {
+        if (attempt > 0) {
+          // eslint-disable-next-line no-await-in-loop -- bounded retries
+          await delay(SNAPSHOT_RETRY_DELAY_MS)
+        }
+
         try {
-          // eslint-disable-next-line no-await-in-loop -- intentional polling until snapshot stabilizes
+          // eslint-disable-next-line no-await-in-loop -- bounded retries
           const snapshot = await takePtySnapshot({ sessionId })
+          didReadSnapshot = true
           lastSnapshot = typeof snapshot?.data === 'string' ? snapshot.data : ''
         } catch {
           break
         }
 
-        const fingerprint = fingerprintSnapshot(lastSnapshot)
-        if (
-          lastSnapshot.length > 0 &&
-          lastFingerprint &&
-          areFingerprintsEqual(lastFingerprint, fingerprint)
-        ) {
-          stableReads += 1
-          if (stableReads >= REQUIRED_STABLE_READS) {
-            break
-          }
-        } else {
-          stableReads = 0
+        if (lastSnapshot.length > 0) {
+          break
         }
-
-        lastFingerprint = fingerprint
-        // eslint-disable-next-line no-await-in-loop -- intentional polling delay
-        await delay(POLL_INTERVAL_MS)
       }
 
-      if (!isDisposed() && lastSnapshot.length > 0) {
+      // If we can reach the session snapshot endpoint, clear the placeholder to avoid mixing old
+      // UI cache output with live data.
+      if (!isDisposed() && didReadSnapshot) {
         terminal.clear()
-        await writeTerminal(terminal, lastSnapshot)
+        if (lastSnapshot.length > 0) {
+          await writeTerminal(terminal, lastSnapshot)
+        }
         rawSnapshot = lastSnapshot
       }
     } else {

@@ -150,7 +150,7 @@ describe('workspace persistence (read/normalize)', () => {
     expect(restored?.workspaces[0].nodes[1].task?.status).toBe('doing')
     expect(restored?.workspaces[0].nodes[2].kind).toBe('agent')
     expect(restored?.workspaces[0].nodes[2].agent?.provider).toBe('codex')
-    expect(restored?.workspaces[0].nodes[2].agent?.resumeSessionIdVerified).toBe(false)
+    expect(restored?.workspaces[0].nodes[2].agent?.resumeSessionIdVerified).toBe(true)
     expect(restored?.workspaces[0].spaces).toEqual([])
     expect(restored?.workspaces[0].activeSpaceId).toBeNull()
     expect(restored?.settings.defaultProvider).toBe('claude-code')

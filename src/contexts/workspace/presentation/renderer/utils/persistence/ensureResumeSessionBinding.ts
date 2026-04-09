@@ -10,8 +10,21 @@ export function normalizeResumeSessionBinding(
   resumeSessionIdVerified: boolean
 } {
   const resumeSessionId = normalizeOptionalString(record.resumeSessionId)
+  const hasResumeSessionVerifiedField = Object.prototype.hasOwnProperty.call(
+    record,
+    'resumeSessionIdVerified',
+  )
   const resumeSessionIdVerifiedInput =
     typeof record.resumeSessionIdVerified === 'boolean' ? record.resumeSessionIdVerified : undefined
+
+  // Legacy persisted states (pre `resumeSessionIdVerified`) stored resume IDs without an explicit
+  // verification bit. Treat those as verified so old agent windows can resume after upgrades.
+  if (resumeSessionId && resumeSessionIdVerifiedInput === undefined && !hasResumeSessionVerifiedField) {
+    return {
+      resumeSessionId,
+      resumeSessionIdVerified: true,
+    }
+  }
 
   if (
     !isResumeSessionBindingVerified({
