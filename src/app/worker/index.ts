@@ -72,6 +72,10 @@ function readRepeatedFlagValues(argv: string[], flag: string): string[] {
   return values
 }
 
+function hasFlag(argv: string[], flag: string): boolean {
+  return argv.includes(flag)
+}
+
 async function main(): Promise<void> {
   // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
   // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
@@ -86,6 +90,7 @@ async function main(): Promise<void> {
   const token = readFlagValue(argv, '--token')
   const webUiPasswordHash = readFlagValue(argv, '--web-ui-password-hash')
   const parentPid = resolveParentPid(argv)
+  const enableWebUi = !hasFlag(argv, '--disable-web-ui')
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
@@ -119,22 +124,26 @@ async function main(): Promise<void> {
     ptyRuntime,
     ownsPtyRuntime: true,
     dbPath: resolve(userDataPath, 'opencove.db'),
-    enableWebShell: true,
+    enableWebShell: enableWebUi,
     webUiPasswordHash: webUiPasswordHash ?? null,
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
   })
 
   const info = await server.ready
   process.stdout.write(`${JSON.stringify(info)}\n`)
-  process.stderr.write(`[opencove-worker] web ui: http://${info.hostname}:${info.port}/\n`)
+  if (enableWebUi) {
+    process.stderr.write(`[opencove-worker] web ui: http://${info.hostname}:${info.port}/\n`)
+    process.stderr.write(
+      `[opencove-worker] debug shell: http://${info.hostname}:${info.port}/debug/shell\n`,
+    )
+  } else {
+    process.stderr.write('[opencove-worker] web ui: disabled\n')
+  }
   if (bindHostname === '0.0.0.0' || bindHostname === '::') {
     process.stderr.write(
       `[opencove-worker] listening on all interfaces. Use your machine's LAN IP to connect from other devices.\n`,
     )
   }
-  process.stderr.write(
-    `[opencove-worker] debug shell: http://${info.hostname}:${info.port}/debug/shell\n`,
-  )
   process.stderr.write(
     `[opencove-worker] auth required (use Authorization: Bearer <token>${webUiPasswordHash ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
   )

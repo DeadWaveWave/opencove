@@ -1,3 +1,4 @@
+import { app } from 'electron'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -32,6 +33,15 @@ import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
+
+function resolveOpenCodeEmbeddedXdgStateHome(): string {
+  if (typeof app?.getPath === 'function') {
+    return app.getPath('userData')
+  }
+
+  const fallback = process.env['OPENCOVE_TEST_USER_DATA_DIR']?.trim()
+  return fallback && fallback.length > 0 ? fallback : process.cwd()
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object'
@@ -293,6 +303,7 @@ export function registerSessionHandlers(
           ? {
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
               OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
+              XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
           : undefined

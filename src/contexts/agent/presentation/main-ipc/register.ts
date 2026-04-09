@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import * as electron from 'electron'
 import { createServer } from 'node:net'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
@@ -45,6 +45,19 @@ const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
 const READ_LAST_MESSAGE_FILE_TIMEOUT_MS = 1_500
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 const terminalProfileResolver = new TerminalProfileResolver()
+
+function resolveOpenCodeEmbeddedXdgStateHome(): string {
+  try {
+    if (typeof electron.app?.getPath === 'function') {
+      return electron.app.getPath('userData')
+    }
+  } catch {
+    // Vitest electron mocks may throw when accessing undefined exports.
+  }
+
+  const fallback = process.env['OPENCOVE_TEST_USER_DATA_DIR']?.trim()
+  return fallback && fallback.length > 0 ? fallback : process.cwd()
+}
 
 function normalizeOptionalEnvValue(value: string | undefined): string | null {
   const normalized = value?.trim()
@@ -240,6 +253,7 @@ export function registerAgentIpcHandlers(
           ? {
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
               OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
+              XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
           : undefined
@@ -315,11 +329,11 @@ export function registerAgentIpcHandlers(
 
   return {
     dispose: () => {
-      ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
-      ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
-      ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
-      ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
-      ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
       disposeAgentModelService()
     },
   }

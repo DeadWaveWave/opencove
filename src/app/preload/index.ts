@@ -96,6 +96,7 @@ import type {
   WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
@@ -412,6 +413,8 @@ const opencoveApi = {
     getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
     setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
       invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
+    setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput): Promise<HomeWorkerConfigDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientSetWebUiSettings, payload),
     setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput): Promise<HomeWorkerConfigDto> =>
       invokeIpc(IPC_CHANNELS.workerClientSetWebUiSecurity, payload),
     relaunch: (): Promise<void> => invokeIpc(IPC_CHANNELS.workerClientRelaunch),

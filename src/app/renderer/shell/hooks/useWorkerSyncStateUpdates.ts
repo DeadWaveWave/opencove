@@ -104,7 +104,8 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
   const refreshScheduledAtMsRef = useRef<number | null>(null)
   const refreshInFlightRef = useRef(false)
   const refreshPendingRef = useRef(false)
-  const lastLocalSyncWriteRevisionRef = useRef(0)
+  const localSyncWriteRevisionsRef = useRef<Set<number>>(new Set())
+  const localSyncWriteRevisionQueueRef = useRef<number[]>([])
   const lastAppliedRevisionRef = useRef(0)
   const pendingSyncWriteRevisionRef = useRef<number | null>(null)
   const pendingFullRefreshRevisionRef = useRef<number | null>(null)
@@ -121,10 +122,21 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
         return
       }
 
-      lastLocalSyncWriteRevisionRef.current = Math.max(
-        lastLocalSyncWriteRevisionRef.current,
-        Math.floor(revision),
-      )
+      const normalizedRevision = Math.floor(revision)
+      const trackedRevisions = localSyncWriteRevisionsRef.current
+      if (trackedRevisions.has(normalizedRevision)) {
+        return
+      }
+
+      trackedRevisions.add(normalizedRevision)
+      localSyncWriteRevisionQueueRef.current.push(normalizedRevision)
+
+      if (localSyncWriteRevisionQueueRef.current.length > 60) {
+        const expired = localSyncWriteRevisionQueueRef.current.shift()
+        if (typeof expired === 'number') {
+          trackedRevisions.delete(expired)
+        }
+      }
     }
 
     window.addEventListener(LOCAL_SYNC_WRITE_EVENT_NAME, handleLocalSyncWrite as EventListener)
@@ -181,7 +193,8 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
               Number.isFinite(event.revision)
             ) {
               const revision = Math.floor(event.revision)
-              if (revision <= lastLocalSyncWriteRevisionRef.current) {
+              if (localSyncWriteRevisionsRef.current.has(revision)) {
+                localSyncWriteRevisionsRef.current.delete(revision)
                 return
               }
 
@@ -206,9 +219,7 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
 
     async function runRefresh(): Promise<void> {
       const pendingSyncWriteRevision = pendingSyncWriteRevisionRef.current
-      const shouldRefreshForSyncWrite =
-        typeof pendingSyncWriteRevision === 'number' &&
-        pendingSyncWriteRevision > lastLocalSyncWriteRevisionRef.current
+      const shouldRefreshForSyncWrite = typeof pendingSyncWriteRevision === 'number'
       const pendingFullRefreshRevision = pendingFullRefreshRevisionRef.current
       const targetRevision = Math.max(
         typeof pendingFullRefreshRevision === 'number' ? pendingFullRefreshRevision : 0,

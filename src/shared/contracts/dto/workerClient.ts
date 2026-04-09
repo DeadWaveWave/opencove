@@ -7,6 +7,8 @@ export interface RemoteWorkerEndpointDto {
 }
 
 export interface HomeWorkerWebUiConfigDto {
+  enabled: boolean
+  port: number | null
   exposeOnLan: boolean
   passwordSet: boolean
 }
@@ -27,4 +29,9 @@ export interface SetHomeWorkerConfigInput {
 export interface SetHomeWorkerWebUiSecurityInput {
   exposeOnLan: boolean
   password: string | null
+}
+
+export interface SetHomeWorkerWebUiSettingsInput {
+  enabled: boolean
+  port: number | null
 }

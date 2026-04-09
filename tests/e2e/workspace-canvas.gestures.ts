@@ -42,6 +42,33 @@ async function releaseHeldModifier(window: Page, holdsShift: boolean): Promise<v
   }
 }
 
+async function moveMouseWithSteps(
+  window: Page,
+  from: DragMousePoint,
+  to: DragMousePoint,
+  steps: number,
+): Promise<void> {
+  // Avoid Playwright's built-in `steps` interpolation, which can hang on CI runners.
+  // We still want intermediate mousemove events for drag interactions like snap guides.
+  const clampedSteps = Math.max(1, Math.min(Math.floor(steps), 64))
+
+  const step = async (index: number): Promise<void> => {
+    const ratio = index / clampedSteps
+    const x = from.x + (to.x - from.x) * ratio
+    const y = from.y + (to.y - from.y) * ratio
+
+    await window.mouse.move(x, y)
+
+    if (index >= clampedSteps) {
+      return
+    }
+
+    await step(index + 1)
+  }
+
+  await step(1)
+}
+
 export async function readLocatorClientRect(locator: Locator): Promise<LocatorClientRect> {
   await expect(locator).toBeVisible()
 
@@ -83,6 +110,7 @@ export async function beginDragMouse(
     y: options.start.y + deltaY * triggerRatio,
   }
   const holdsShift = (options.modifiers ?? []).includes('Shift')
+  let cursorPoint = { x: options.start.x, y: options.start.y }
   let released = false
 
   if (holdsShift) {
@@ -94,9 +122,8 @@ export async function beginDragMouse(
     await window.mouse.down()
 
     if (triggerRatio > 0) {
-      await window.mouse.move(triggerPoint.x, triggerPoint.y, {
-        steps: Math.max(2, Math.min(steps, 4)),
-      })
+      await moveMouseWithSteps(window, cursorPoint, triggerPoint, Math.max(2, Math.min(steps, 4)))
+      cursorPoint = triggerPoint
     }
 
     if (options.draft) {
@@ -119,14 +146,13 @@ export async function beginDragMouse(
     const moveSteps = moveOptions.steps ?? steps
     const repeatAtTarget = moveOptions.repeatAtTarget ?? true
 
-    await window.mouse.move(target.x, target.y, { steps: moveSteps })
+    await moveMouseWithSteps(window, cursorPoint, target, moveSteps)
+    cursorPoint = target
 
     // Playwright documents that some drag targets need a second move to
     // reliably receive dragover before release.
     if (repeatAtTarget) {
-      await window.mouse.move(target.x, target.y, {
-        steps: Math.max(2, Math.min(moveSteps, 4)),
-      })
+      await moveMouseWithSteps(window, cursorPoint, target, Math.max(2, Math.min(moveSteps, 4)))
     }
 
     if ((moveOptions.settleAfterMoveMs ?? 0) > 0) {

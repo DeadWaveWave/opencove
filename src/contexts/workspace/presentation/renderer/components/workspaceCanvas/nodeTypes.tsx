@@ -62,9 +62,7 @@ function TerminalNodeType({
       kind={data.kind}
       labelColor={labelColor}
       terminalProvider={data.kind === 'agent' ? (data.agent?.provider ?? null) : null}
-      terminalThemeMode={
-        data.kind === 'agent' && data.agent?.provider === 'opencode' ? 'dark' : 'sync-with-ui'
-      }
+      terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}
       status={data.status}

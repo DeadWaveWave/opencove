@@ -92,6 +92,28 @@ export function useWorkspaceCanvasTrackpadGestures({
   const reactFlowStore = useStoreApi()
   const interactionClearTimerRef = useRef<number | null>(null)
   const viewportCommitTimerRef = useRef<number | null>(null)
+  const safariPinchSessionRef = useRef<{
+    startScale: number
+    anchorFlow: { x: number; y: number }
+    startViewport: Viewport
+  } | null>(null)
+
+  const markViewportInteractionActive = useCallback(() => {
+    reactFlowStore.setState({
+      coveViewportInteractionActive: true,
+    } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+
+    if (interactionClearTimerRef.current !== null) {
+      window.clearTimeout(interactionClearTimerRef.current)
+    }
+
+    interactionClearTimerRef.current = window.setTimeout(() => {
+      interactionClearTimerRef.current = null
+      reactFlowStore.setState({
+        coveViewportInteractionActive: false,
+      } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+    }, 120)
+  }, [reactFlowStore])
 
   const handleCanvasWheelCapture = useCallback(
     (event: WheelEvent) => {
@@ -148,18 +170,7 @@ export function useWorkspaceCanvasTrackpadGestures({
         return
       }
 
-      reactFlowStore.setState({
-        coveViewportInteractionActive: true,
-      } as unknown as Parameters<typeof reactFlowStore.setState>[0])
-      if (interactionClearTimerRef.current !== null) {
-        window.clearTimeout(interactionClearTimerRef.current)
-      }
-      interactionClearTimerRef.current = window.setTimeout(() => {
-        interactionClearTimerRef.current = null
-        reactFlowStore.setState({
-          coveViewportInteractionActive: false,
-        } as unknown as Parameters<typeof reactFlowStore.setState>[0])
-      }, 120)
+      markViewportInteractionActive()
 
       event.preventDefault()
       event.stopPropagation()
@@ -241,8 +252,8 @@ export function useWorkspaceCanvasTrackpadGestures({
       canvasWheelZoomModifierSetting,
       canvasRef,
       inputModalityStateRef,
+      markViewportInteractionActive,
       onViewportChange,
-      reactFlowStore,
       reactFlow,
       resolvedCanvasInputMode,
       setDetectedCanvasInputMode,
@@ -264,6 +275,182 @@ export function useWorkspaceCanvasTrackpadGestures({
       }
     }
   }, [])
+
+  useEffect(() => {
+    const useManualCanvasWheelGestures =
+      canvasInputModeSetting !== 'mouse' || canvasWheelBehaviorSetting === 'pan'
+    if (!useManualCanvasWheelGestures) {
+      return
+    }
+
+    const canvasElement = canvasRef.current
+    if (!canvasElement) {
+      return
+    }
+
+    type SafariGestureEvent = Event & {
+      scale?: number
+      clientX?: number
+      clientY?: number
+    }
+
+    const resolveAnchorLocal = (
+      event: SafariGestureEvent,
+      canvasRect: DOMRect | null,
+    ): { x: number; y: number } => {
+      const clientX = Number.isFinite(event.clientX) ? Number(event.clientX) : 0
+      const clientY = Number.isFinite(event.clientY) ? Number(event.clientY) : 0
+
+      const x = canvasRect && Number.isFinite(canvasRect.left) ? clientX - canvasRect.left : clientX
+      const y = canvasRect && Number.isFinite(canvasRect.top) ? clientY - canvasRect.top : clientY
+
+      return { x, y }
+    }
+
+    const resolveAnchorFlow = (
+      anchorLocal: { x: number; y: number },
+      clientPoint: { x: number; y: number },
+      viewport: Viewport,
+    ): { x: number; y: number } => {
+      if (reactFlow.screenToFlowPosition) {
+        return reactFlow.screenToFlowPosition({ x: clientPoint.x, y: clientPoint.y })
+      }
+
+      return {
+        x: (anchorLocal.x - viewport.x) / viewport.zoom,
+        y: (anchorLocal.y - viewport.y) / viewport.zoom,
+      }
+    }
+
+    const commitViewportSoon = (): void => {
+      if (viewportCommitTimerRef.current !== null) {
+        window.clearTimeout(viewportCommitTimerRef.current)
+      }
+
+      viewportCommitTimerRef.current = window.setTimeout(() => {
+        viewportCommitTimerRef.current = null
+        onViewportChange(viewportRef.current)
+      }, 120)
+    }
+
+    const handleGestureStart = (rawEvent: Event): void => {
+      const event = rawEvent as SafariGestureEvent
+
+      const lockTimestamp =
+        Number.isFinite(event.timeStamp) && event.timeStamp > 0
+          ? event.timeStamp
+          : performance.now()
+      inputModalityStateRef.current = {
+        ...inputModalityStateRef.current,
+        mode: 'trackpad',
+        lastEventTimestamp: lockTimestamp,
+        burstEventCount: 0,
+        gestureLikeEventCount: 0,
+        burstMode: 'trackpad',
+      }
+      setDetectedCanvasInputMode(previous => (previous === 'trackpad' ? previous : 'trackpad'))
+      trackpadGestureLockRef.current = {
+        action: 'pinch',
+        target: 'canvas',
+        lastTimestamp: lockTimestamp,
+      }
+
+      markViewportInteractionActive()
+
+      const canvasRect = canvasElement.getBoundingClientRect()
+      const anchorLocal = resolveAnchorLocal(event, canvasRect)
+      const clientX = Number.isFinite(event.clientX) ? Number(event.clientX) : 0
+      const clientY = Number.isFinite(event.clientY) ? Number(event.clientY) : 0
+
+      const startViewport = viewportRef.current
+      safariPinchSessionRef.current = {
+        startScale:
+          typeof event.scale === 'number' && Number.isFinite(event.scale) && event.scale > 0
+            ? event.scale
+            : 1,
+        anchorFlow: resolveAnchorFlow(anchorLocal, { x: clientX, y: clientY }, startViewport),
+        startViewport,
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    const handleGestureChange = (rawEvent: Event): void => {
+      const event = rawEvent as SafariGestureEvent
+      const session = safariPinchSessionRef.current
+      if (!session) {
+        return
+      }
+
+      const scale =
+        typeof event.scale === 'number' && Number.isFinite(event.scale) && event.scale > 0
+          ? event.scale
+          : 1
+      const nextZoom = clampNumber(
+        session.startViewport.zoom * (scale / session.startScale),
+        MIN_CANVAS_ZOOM,
+        MAX_CANVAS_ZOOM,
+      )
+
+      if (Math.abs(nextZoom - viewportRef.current.zoom) < 0.0001) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+
+      markViewportInteractionActive()
+
+      const canvasRect = canvasElement.getBoundingClientRect()
+      const anchorLocal = resolveAnchorLocal(event, canvasRect)
+
+      const nextViewport = {
+        x: anchorLocal.x - session.anchorFlow.x * nextZoom,
+        y: anchorLocal.y - session.anchorFlow.y * nextZoom,
+        zoom: nextZoom,
+      }
+
+      viewportRef.current = nextViewport
+      reactFlow.setViewport(nextViewport, { duration: 0 })
+      commitViewportSoon()
+
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    const handleGestureEnd = (rawEvent: Event): void => {
+      const event = rawEvent as SafariGestureEvent
+      safariPinchSessionRef.current = null
+      commitViewportSoon()
+
+      event.preventDefault()
+      event.stopPropagation()
+    }
+
+    const gestureListenerOptions = { passive: false, capture: true } as const
+
+    canvasElement.addEventListener('gesturestart', handleGestureStart, gestureListenerOptions)
+    canvasElement.addEventListener('gesturechange', handleGestureChange, gestureListenerOptions)
+    canvasElement.addEventListener('gestureend', handleGestureEnd, gestureListenerOptions)
+
+    return () => {
+      safariPinchSessionRef.current = null
+      canvasElement.removeEventListener('gesturestart', handleGestureStart, true)
+      canvasElement.removeEventListener('gesturechange', handleGestureChange, true)
+      canvasElement.removeEventListener('gestureend', handleGestureEnd, true)
+    }
+  }, [
+    canvasInputModeSetting,
+    canvasWheelBehaviorSetting,
+    canvasRef,
+    inputModalityStateRef,
+    markViewportInteractionActive,
+    onViewportChange,
+    reactFlow,
+    setDetectedCanvasInputMode,
+    trackpadGestureLockRef,
+    viewportRef,
+  ])
 
   return { handleCanvasWheelCapture }
 }
