@@ -64,6 +64,7 @@
 
 .terminal-node__terminal {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   padding: 8px;
   opacity: 1;
