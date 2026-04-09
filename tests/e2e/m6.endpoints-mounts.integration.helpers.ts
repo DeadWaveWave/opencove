@@ -12,10 +12,6 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
   return rawValue === '1' || rawValue.toLowerCase() === 'true'
 }
 
-function shouldDisableElectronSandboxForLinuxCi(): boolean {
-  return process.platform === 'linux' && isTruthyEnv(process.env['CI'])
-}
-
 async function resolveElectronBinaryPath(): Promise<string> {
   const electronImport = await import('electron')
   const candidate =
@@ -147,14 +143,12 @@ export async function startRemoteWorker(options: {
   const stdout: string[] = []
   const stderr: string[] = []
 
-  const electronArgs = shouldDisableElectronSandboxForLinuxCi()
-    ? ['--no-sandbox', '--disable-dev-shm-usage', workerPath]
-    : [workerPath]
+  const shouldDisableSandbox = process.platform === 'linux' && isTruthyEnv(process.env['CI'])
 
   const child = spawn(
     electronBinary,
     [
-      ...electronArgs,
+      workerPath,
       '--hostname',
       options.hostname,
       '--port',
@@ -171,6 +165,7 @@ export async function startRemoteWorker(options: {
         ...process.env,
         NODE_ENV: 'test',
         ELECTRON_RUN_AS_NODE: '1',
+        ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
         HOME: options.homeDir,
         USERPROFILE: options.homeDir,
         OPENCOVE_TEST_AGENT_STUB_SCRIPT: stubScriptPath,

@@ -127,11 +127,13 @@ async function main() {
         process.env.CI?.toLowerCase() === 'true' ||
         (typeof process.getuid === 'function' && process.getuid() === 0))
 
-    const electronArgs = shouldDisableSandbox ? ['--no-sandbox', '--disable-dev-shm-usage'] : []
-
-    const child = spawn(electronBinary, [...electronArgs, workerPath, ...workerArgs], {
+    const child = spawn(electronBinary, [workerPath, ...workerArgs], {
       stdio: 'inherit',
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',
+        ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
+      },
       windowsHide: true,
     })
     child.on('exit', code => {
