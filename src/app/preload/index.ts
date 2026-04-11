@@ -199,6 +199,38 @@ const opencoveApi = {
     ): Promise<PersistWriteResult> =>
       invokeIpc(IPC_CHANNELS.persistenceWriteAgentNodePlaceholderScrollback, payload),
   },
+  lifecycle: {
+    onRequestPersistFlush: (
+      listener: (payload: { requestId: string }) => void | Promise<void>,
+    ): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        const requestIdRaw =
+          payload && typeof payload === 'object'
+            ? (payload as { requestId?: unknown }).requestId
+            : null
+        const requestId =
+          typeof requestIdRaw === 'string' && requestIdRaw.trim().length > 0
+            ? requestIdRaw.trim()
+            : null
+        if (!requestId) {
+          return
+        }
+
+        void Promise.resolve()
+          .then(() => listener({ requestId }))
+          .catch(() => undefined)
+          .finally(() => {
+            ipcRenderer.send(IPC_CHANNELS.appPersistFlushComplete, { requestId })
+          })
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.appRequestPersistFlush, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.appRequestPersistFlush, handler)
+      }
+    },
+  },
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void): UnsubscribeFn => {
       const handler = (_event: Electron.IpcRendererEvent, payload: SyncEventPayload) => {

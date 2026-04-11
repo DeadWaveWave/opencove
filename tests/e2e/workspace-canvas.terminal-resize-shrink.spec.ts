@@ -47,9 +47,7 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
       await window.mouse.move(rightStartX + 240, rightStartY, { steps: 12 })
       await window.mouse.up()
 
-      await expect
-        .poll(async () => (await readSize())?.cols ?? 0)
-        .toBeGreaterThan(initialSize.cols)
+      await expect.poll(async () => (await readSize())?.cols ?? 0).toBeGreaterThan(initialSize.cols)
       const expandedWidthSize = (await readSize())!
 
       const rightBoxAfterExpand = await rightResizer.boundingBox()
@@ -113,4 +111,3 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
     }
   })
 })
-

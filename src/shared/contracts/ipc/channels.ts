@@ -1,4 +1,6 @@
 export const IPC_CHANNELS = {
+  appRequestPersistFlush: 'app:request-persist-flush',
+  appPersistFlushComplete: 'app:persist-flush-complete',
   cliGetStatus: 'cli:get-status',
   cliInstall: 'cli:install',
   cliUninstall: 'cli:uninstall',

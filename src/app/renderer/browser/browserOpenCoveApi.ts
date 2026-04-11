@@ -187,6 +187,9 @@ export function installBrowserOpenCoveApi(): void {
     persistence: {
       ...createBrowserPersistenceApi(),
     },
+    lifecycle: {
+      onRequestPersistFlush: () => () => undefined,
+    },
     sync: {
       onStateUpdated: listener => {
         const token = new URLSearchParams(window.location.search).get('token')

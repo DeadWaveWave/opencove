@@ -14,6 +14,7 @@ import { useHydrateAppState } from './hooks/useHydrateAppState'
 import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
+import { useAppQuitPersistenceFlush } from './hooks/useAppQuitPersistenceFlush'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
 import { usePtySessionBindingsSync } from './hooks/usePtySessionBindingsSync'
 import { usePtyAgentPlaceholderBindingsSync } from './hooks/usePtyAgentPlaceholderBindingsSync'
@@ -89,6 +90,7 @@ export default function App(): React.JSX.Element {
   usePtySessionBindingsSync()
   usePtyAgentPlaceholderBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
+  useAppQuitPersistenceFlush({ enabled: isPersistReady })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
   useWebsiteWindowEvents()
   useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)

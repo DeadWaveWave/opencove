@@ -152,6 +152,11 @@ export interface OpenCoveApi {
       payload: WriteAgentNodePlaceholderScrollbackInput,
     ) => Promise<PersistWriteResult>
   }
+  lifecycle: {
+    onRequestPersistFlush: (
+      listener: (payload: { requestId: string }) => void | Promise<void>,
+    ) => UnsubscribeFn
+  }
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void) => UnsubscribeFn
   }

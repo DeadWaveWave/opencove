@@ -15,6 +15,16 @@ import {
 } from './validate'
 import { createAppErrorDescriptor, toAppErrorDescriptor } from '../../../../shared/errors/appError'
 
+async function delay(ms: number): Promise<void> {
+  if (!Number.isFinite(ms) || ms <= 0) {
+    return
+  }
+
+  await new Promise(resolve => {
+    setTimeout(resolve, ms)
+  })
+}
+
 export function registerPersistenceIpcHandlers(
   getStore: () => Promise<PersistenceStore>,
   options: { maxRawBytes?: number } = {},
@@ -107,6 +117,13 @@ export function registerPersistenceIpcHandlers(
       }
 
       try {
+        const delayMsRaw = process.env['OPENCOVE_TEST_PERSIST_APP_STATE_WRITE_DELAY_MS']
+        const delayMs =
+          process.env.NODE_ENV === 'test' && delayMsRaw ? Number.parseInt(delayMsRaw, 10) : 0
+        if (delayMs > 0) {
+          await delay(delayMs)
+        }
+
         const store = await getStore()
         return await store.writeAppState(normalized.state)
       } catch (error) {

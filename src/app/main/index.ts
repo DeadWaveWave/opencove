@@ -15,10 +15,10 @@ import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
 import { createHomeWorkerEndpointResolver } from './worker/homeWorkerEndpointResolver'
 import { hasOwnedLocalWorkerProcess, stopOwnedLocalWorker } from './worker/localWorkerManager'
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
+import { registerQuitCoordinator } from './quitCoordinator'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
-let isCleaningUpOwnedLocalWorkerOnQuit = false
 const APP_USER_DATA_DIRECTORY_NAME = 'opencove'
 const OPENCOVE_APP_USER_MODEL_ID = 'dev.deadwave.opencove'
 
@@ -470,18 +470,9 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.on('before-quit', event => {
-  if (isCleaningUpOwnedLocalWorkerOnQuit || !hasOwnedLocalWorkerProcess()) {
-    return
-  }
-
-  event.preventDefault()
-  isCleaningUpOwnedLocalWorkerOnQuit = true
-  void stopOwnedLocalWorker()
-    .catch(() => undefined)
-    .finally(() => {
-      app.quit()
-    })
+registerQuitCoordinator({
+  hasOwnedLocalWorkerProcess,
+  stopOwnedLocalWorker,
 })
 
 app.on('will-quit', () => {
