@@ -6,6 +6,7 @@ import type {
   ListMountsInput,
   PingWorkerEndpointInput,
   PingWorkerEndpointResult,
+  PromoteMountInput,
   RegisterWorkerEndpointInput,
   RemoveMountInput,
   RemoveWorkerEndpointInput,
@@ -113,6 +114,16 @@ function normalizeRemoveMountPayload(payload: unknown): RemoveMountInput {
   }
 
   return { mountId: normalizeRequiredString(payload.mountId, 'mount.remove mountId') }
+}
+
+function normalizePromoteMountPayload(payload: unknown): PromoteMountInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for mount.promote.',
+    })
+  }
+
+  return { mountId: normalizeRequiredString(payload.mountId, 'mount.promote mountId') }
 }
 
 function normalizeResolveMountTargetPayload(payload: unknown): ResolveMountTargetInput {
@@ -281,6 +292,13 @@ export function registerTopologyHandlers(
     kind: 'command',
     validate: normalizeRemoveMountPayload,
     handle: async (_ctx, payload) => await deps.topology.removeMount(payload),
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('mount.promote', {
+    kind: 'command',
+    validate: normalizePromoteMountPayload,
+    handle: async (_ctx, payload) => await deps.topology.promoteMount(payload),
     defaultErrorCode: 'common.unexpected',
   })
 

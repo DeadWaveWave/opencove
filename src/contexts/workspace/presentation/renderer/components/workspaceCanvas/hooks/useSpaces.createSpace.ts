@@ -60,12 +60,18 @@ export function useWorkspaceCanvasCreateSpace({
     nodeIds: string[]
     rect: WorkspaceSpaceRect | null
     targetMountId: string
+    directoryPath: string
   }) => void
 } {
   const { t } = useTranslation()
 
   const createSpace = useCallback(
-    (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null; targetMountId: string }) => {
+    (payload: {
+      nodeIds: string[]
+      rect: WorkspaceSpaceRect | null
+      targetMountId: string
+      directoryPath: string
+    }) => {
       const normalizedNodeIds = payload.nodeIds.filter(nodeId =>
         nodesRef.current.some(node => node.id === nodeId),
       )
@@ -119,10 +125,12 @@ export function useWorkspaceCanvasCreateSpace({
         )
 
       const nextSpaceId = crypto.randomUUID()
+      const directoryPath =
+        payload.directoryPath.trim().length > 0 ? payload.directoryPath.trim() : workspacePath
       const nextSpace: WorkspaceSpaceState = {
         id: nextSpaceId,
         name: normalizedName,
-        directoryPath: workspacePath,
+        directoryPath,
         targetMountId: payload.targetMountId,
         labelColor: null,
         nodeIds: normalizedNodeIds,
@@ -335,7 +343,12 @@ export function useWorkspaceCanvasCreateSpace({
   )
 
   const createSpaceWithTargetMount = useCallback(
-    (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null; targetMountId: string }) => {
+    (payload: {
+      nodeIds: string[]
+      rect: WorkspaceSpaceRect | null
+      targetMountId: string
+      directoryPath: string
+    }) => {
       createSpace(payload)
     },
     [createSpace],
@@ -377,10 +390,12 @@ export function useWorkspaceCanvasCreateSpace({
           }
 
           if (mountResult.mounts.length === 1) {
+            const mount = mountResult.mounts[0]
             createSpace({
               nodeIds: selectedIds,
               rect: null,
-              targetMountId: mountResult.mounts[0].mountId,
+              targetMountId: mount.mountId,
+              directoryPath: mount.rootPath,
             })
             return
           }

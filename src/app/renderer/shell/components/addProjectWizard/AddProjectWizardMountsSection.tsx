@@ -24,7 +24,7 @@ export function AddProjectWizardMountsSection({
             {t('addProjectWizard.mountsEmpty')}
           </div>
         ) : (
-          draftMounts.map(mount => (
+          draftMounts.map((mount, index) => (
             <div
               key={mount.id}
               style={{
@@ -39,8 +39,26 @@ export function AddProjectWizardMountsSection({
               }}
             >
               <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--cove-text)' }}>
-                  {mount.name ?? t('addProjectWizard.mountUnnamed')}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--cove-text)' }}>
+                    {mount.name ?? t('addProjectWizard.mountUnnamed')}
+                  </div>
+                  {index === 0 ? (
+                    <span
+                      style={{
+                        borderRadius: 999,
+                        padding: '2px 8px',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        lineHeight: 1.2,
+                        background: 'rgba(42, 255, 140, 0.18)',
+                        border: '1px solid rgba(42, 255, 140, 0.35)',
+                        color: 'var(--cove-text)',
+                      }}
+                    >
+                      {t('addProjectWizard.defaultMountBadge')}
+                    </span>
+                  ) : null}
                 </div>
                 <div style={{ fontSize: 12, color: 'var(--cove-text-muted)' }}>
                   {endpointLabelById.get(mount.endpointId) ?? mount.endpointId} · {mount.rootPath}

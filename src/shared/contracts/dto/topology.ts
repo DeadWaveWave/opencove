@@ -80,6 +80,10 @@ export interface RemoveMountInput {
   mountId: string
 }
 
+export interface PromoteMountInput {
+  mountId: string
+}
+
 export interface ResolveMountTargetInput {
   mountId: string
 }

@@ -1,4 +1,3 @@
-import React from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
@@ -26,7 +25,7 @@ export function WorkspaceCanvasInner({
   isFocusNodeTargetZoomPreviewing = false,
   focusNodeId,
   focusSequence,
-}: WorkspaceCanvasProps): React.JSX.Element {
+}: WorkspaceCanvasProps) {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
@@ -132,17 +131,14 @@ export function WorkspaceCanvasInner({
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
     nodeSpaceFramePreviewRef: nodeDragSession.nodeSpaceFramePreviewRef,
   })
-  const {
-    buildAgentNodeTitle,
-    launchAgentInNode,
-    openAgentLauncher,
-    openAgentLauncherForProvider,
-  } = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
+  // prettier-ignore
+  const { buildAgentNodeTitle, launchAgentInNode, openAgentLauncher, openAgentLauncherForProvider } = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
     agentSettings,
+    workspaceId,
     workspacePath,
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
@@ -183,6 +179,7 @@ export function WorkspaceCanvasInner({
     buildAgentNodeTitle,
     launchAgentInNode,
     agentSettings,
+    workspaceId,
     workspacePath,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createTaskNode: nodeStore.createTaskNode,
@@ -270,6 +267,7 @@ export function WorkspaceCanvasInner({
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     contextMenu: canvasState.contextMenu,
+    workspaceId,
     workspacePath,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     spacesRef: canvasState.spacesRef,
@@ -284,6 +282,7 @@ export function WorkspaceCanvasInner({
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     enabled: shortcutsEnabled,
+    workspaceId,
     activeSpaceId,
     spaces,
     agentSettings,
@@ -301,6 +300,7 @@ export function WorkspaceCanvasInner({
     createNoteNode: nodeStore.createNoteNode,
     createSpaceFromSelectedNodes: spacesActions.createSpaceFromSelectedNodes,
     activateSpace: spacesActions.activateSpace,
+    onShowMessage,
   })
   const {
     canConvertSelectedNoteToTask,
@@ -466,7 +466,7 @@ export function WorkspaceCanvasInner({
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
       setSelectedNodeLabelColorOverride={override =>
-        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIdsRef.current, override)
+        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIds, override)
       }
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}

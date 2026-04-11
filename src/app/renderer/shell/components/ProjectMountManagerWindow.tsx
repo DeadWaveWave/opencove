@@ -11,6 +11,8 @@ import type {
 } from '@shared/contracts/dto'
 import { toErrorMessage } from '../utils/format'
 import { notifyTopologyChanged } from '../utils/topologyEvents'
+import { basename, isAbsolutePath } from './addProjectWizard/helpers'
+import { ProjectMountManagerMountRow } from './ProjectMountManagerMountRow'
 
 function toEndpointLabel(endpoint: WorkerEndpointDto): string {
   return endpoint.displayName
@@ -121,11 +123,20 @@ export function ProjectMountManagerWindow({
 
   const createLocalMount = async (): Promise<void> => {
     const rootPath = localRootPath.trim()
-    const name = localMountName.trim().length > 0 ? localMountName.trim() : null
 
     if (rootPath.length === 0) {
       return
     }
+
+    if (!isAbsolutePath(rootPath)) {
+      setError(t('projectMountManager.localPathMustBeAbsolute'))
+      return
+    }
+
+    const normalizedName = localMountName.trim()
+    const fallbackName = basename(rootPath).trim()
+    const name =
+      normalizedName.length > 0 ? normalizedName : fallbackName.length > 0 ? fallbackName : null
 
     setError(null)
     setIsBusy(true)
@@ -183,6 +194,16 @@ export function ProjectMountManagerWindow({
       return
     }
 
+    if (!isAbsolutePath(rootPath)) {
+      setError(t('projectMountManager.remotePathMustBeAbsolute'))
+      return
+    }
+
+    const normalizedName = remoteMountName.trim()
+    const fallbackName = basename(rootPath).trim()
+    const resolvedName =
+      normalizedName.length > 0 ? normalizedName : fallbackName.length > 0 ? fallbackName : null
+
     setError(null)
     setIsBusy(true)
     try {
@@ -193,7 +214,7 @@ export function ProjectMountManagerWindow({
           projectId: workspace.id,
           endpointId,
           rootPath,
-          name: remoteMountName.trim().length > 0 ? remoteMountName.trim() : null,
+          name: resolvedName,
         },
       })
 
@@ -226,7 +247,31 @@ export function ProjectMountManagerWindow({
     }
   }
 
+  const promoteMount = async (mountId: string): Promise<void> => {
+    setError(null)
+    setIsBusy(true)
+    try {
+      await window.opencoveApi.controlSurface.invoke({
+        kind: 'command',
+        id: 'mount.promote',
+        payload: { mountId },
+      })
+      await reload()
+      notifyTopologyChanged()
+    } catch (caughtError) {
+      setError(toErrorMessage(caughtError))
+    } finally {
+      setIsBusy(false)
+    }
+  }
+
   const canCreateRemote = remoteEndpointId.trim().length > 0 && remoteRootPath.trim().length > 0
+  const handleRemoveMount = (mountId: string) => {
+    void removeMount(mountId)
+  }
+  const handlePromoteMount = (mountId: string) => {
+    void promoteMount(mountId)
+  }
 
   return (
     <div
@@ -268,41 +313,16 @@ export function ProjectMountManagerWindow({
                   {t('projectMountManager.empty')}
                 </div>
               ) : (
-                mounts.map(mount => (
-                  <div
+                mounts.map((mount, index) => (
+                  <ProjectMountManagerMountRow
                     key={mount.mountId}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      border: '1px solid var(--cove-border-subtle)',
-                      background: 'var(--cove-field)',
-                      borderRadius: 12,
-                      padding: '10px 12px',
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                      <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--cove-text)' }}>
-                        {mount.name}
-                      </div>
-                      <div style={{ fontSize: 12, color: 'var(--cove-text-muted)' }}>
-                        {endpointLabelById.get(mount.endpointId) ?? mount.endpointId} ·{' '}
-                        {mount.rootPath}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="cove-window__action cove-window__action--danger"
-                      disabled={isBusy}
-                      data-testid={`workspace-project-mount-remove-${mount.mountId}`}
-                      onClick={() => {
-                        void removeMount(mount.mountId)
-                      }}
-                    >
-                      {t('common.remove')}
-                    </button>
-                  </div>
+                    mount={mount}
+                    endpointLabel={endpointLabelById.get(mount.endpointId) ?? mount.endpointId}
+                    isDefault={index === 0}
+                    isBusy={isBusy}
+                    onPromote={handlePromoteMount}
+                    onRemove={handleRemoveMount}
+                  />
                 ))
               )}
             </div>

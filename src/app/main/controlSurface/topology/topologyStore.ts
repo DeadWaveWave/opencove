@@ -9,6 +9,7 @@ import type {
   ListMountsInput,
   ListMountsResult,
   ListWorkerEndpointsResult,
+  PromoteMountInput,
   RegisterWorkerEndpointInput,
   RegisterWorkerEndpointResult,
   RemoveMountInput,
@@ -58,6 +59,7 @@ export interface WorkerTopologyStore {
   listMounts: (input: ListMountsInput) => Promise<ListMountsResult>
   createMount: (input: CreateMountInput) => Promise<CreateMountResult>
   removeMount: (input: RemoveMountInput) => Promise<void>
+  promoteMount: (input: PromoteMountInput) => Promise<void>
   resolveMountTarget: (input: ResolveMountTargetInput) => Promise<ResolveMountTargetResult | null>
 }
 
@@ -298,6 +300,61 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
     await persistQueued()
   }
 
+  const promoteMount = async (input: PromoteMountInput): Promise<void> => {
+    await ensureLoaded()
+
+    const mountId = normalizeNonEmptyString(input.mountId)
+    if (!mountId) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'mount.promote requires mountId.',
+      })
+    }
+
+    const selected = topology.mounts.find(candidate => candidate.mountId === mountId) ?? null
+    if (!selected) {
+      return
+    }
+
+    const projectId = selected.projectId
+    const projectMounts = topology.mounts
+      .filter(mount => mount.projectId === projectId)
+      .sort((a, b) => a.sortOrder - b.sortOrder)
+
+    if (projectMounts.length === 0) {
+      return
+    }
+
+    const nextMountIds = [
+      mountId,
+      ...projectMounts.filter(mount => mount.mountId !== mountId).map(mount => mount.mountId),
+    ]
+
+    const nextOrderById = new Map<string, number>()
+    for (const [index, id] of nextMountIds.entries()) {
+      nextOrderById.set(id, index)
+    }
+
+    const now = new Date().toISOString()
+    topology.mounts = topology.mounts.map(mount => {
+      if (mount.projectId !== projectId) {
+        return mount
+      }
+
+      const nextOrder = nextOrderById.get(mount.mountId)
+      if (nextOrder === undefined || mount.sortOrder === nextOrder) {
+        return mount
+      }
+
+      return {
+        ...mount,
+        sortOrder: nextOrder,
+        updatedAt: now,
+      }
+    })
+
+    await persistQueued()
+  }
+
   const resolveMountTarget = async (
     input: ResolveMountTargetInput,
   ): Promise<ResolveMountTargetResult | null> => {
@@ -332,6 +389,7 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
     listMounts,
     createMount,
     removeMount,
+    promoteMount,
     resolveMountTarget,
   }
 }

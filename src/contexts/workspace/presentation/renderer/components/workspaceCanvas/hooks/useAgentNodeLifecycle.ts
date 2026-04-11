@@ -1,8 +1,9 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
+import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
-import type { LaunchAgentSessionResult } from '@shared/contracts/dto'
+import type { LaunchAgentSessionResult, ListMountsResult } from '@shared/contracts/dto'
 import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
@@ -12,6 +13,7 @@ import { providerTitlePrefix, toErrorMessage } from '../helpers'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 
 interface UseAgentNodeLifecycleParams {
+  workspaceId: string
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   setNodes: (
@@ -25,6 +27,7 @@ interface UseAgentNodeLifecycleParams {
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
+  workspaceId,
   nodesRef,
   spacesRef,
   setNodes,
@@ -56,8 +59,47 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       }
 
       const launchData = node.data.agent
-      const mountId =
-        spacesRef.current.find(space => space.nodeIds.includes(nodeId))?.targetMountId ?? null
+      const owningSpace = spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
+      let mountId = owningSpace?.targetMountId ?? null
+
+      const normalizedWorkspaceId = typeof workspaceId === 'string' ? workspaceId.trim() : ''
+
+      if (!mountId && normalizedWorkspaceId.length > 0) {
+        const controlSurfaceInvoke = (
+          window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
+        ).opencoveApi?.controlSurface?.invoke
+
+        if (typeof controlSurfaceInvoke === 'function') {
+          try {
+            const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+              kind: 'query',
+              id: 'mount.list',
+              payload: { projectId: normalizedWorkspaceId },
+            })
+            mountId = mountResult.mounts[0]?.mountId ?? null
+          } catch (error) {
+            setNodes(
+              prevNodes =>
+                prevNodes.map(item => {
+                  if (item.id !== nodeId) {
+                    return item
+                  }
+
+                  return {
+                    ...item,
+                    data: {
+                      ...item.data,
+                      status: 'failed',
+                      lastError: t('messages.mountListFailed', { message: toErrorMessage(error) }),
+                    },
+                  }
+                }),
+              { syncLayout: false },
+            )
+            return
+          }
+        }
+      }
 
       if (mode === 'resume' && !isResumeSessionBindingVerified(launchData)) {
         setNodes(
@@ -165,13 +207,15 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         let launchedExecutionDirectory = launchData.executionDirectory
 
         if (mountId) {
+          const cwd = launchData.executionDirectory.trim()
+          const cwdUri = cwd.length > 0 ? toFileUri(cwd) : null
           const launched = await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>(
             {
               kind: 'command',
               id: 'session.launchAgentInMount',
               payload: {
                 mountId,
-                cwdUri: null,
+                cwdUri,
                 prompt: launchData.prompt,
                 provider: launchData.provider,
                 mode,
@@ -302,6 +346,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       spacesRef,
       setNodes,
       t,
+      workspaceId,
     ],
   )
 

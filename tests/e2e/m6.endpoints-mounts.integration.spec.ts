@@ -11,6 +11,7 @@ import {
   removePathWithRetry,
   selectCoveOption,
 } from './workspace-canvas.helpers'
+import { verifyRemoteOnlyProjectDefaultMount } from './m6.endpoints-mounts.remoteOnly.steps'
 import {
   closeSettings,
   explorerEntry,
@@ -22,10 +23,8 @@ import {
   stopRemoteWorker,
   switchSettingsPage,
 } from './m6.endpoints-mounts.integration.helpers'
-
 test.describe('M6 - Desktop endpoints/mounts integration', () => {
   test.setTimeout(180_000)
-
   test('registers endpoint, creates projects, and routes space/terminal/agent via remote mount', async () => {
     const remoteToken = `m6-e2e-${randomUUID()}`
     const remotePort = await reserveLoopbackPort()
@@ -35,6 +34,11 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
     const multiRemoteDir = path.join(remoteBaseDir, 'multi-remote')
     await mkdir(remoteOnlyDir, { recursive: true })
     await mkdir(multiRemoteDir, { recursive: true })
+    const remoteOnlyDirCanonical = await realpath(remoteOnlyDir).catch(() => remoteOnlyDir)
+    const remoteOnlyDirHashes = new Set([
+      createHash('sha1').update(remoteOnlyDir).digest('hex').slice(0, 12),
+      createHash('sha1').update(remoteOnlyDirCanonical).digest('hex').slice(0, 12),
+    ])
     const multiRemoteDirCanonical = await realpath(multiRemoteDir).catch(() => multiRemoteDir)
     const multiRemoteDirHashes = new Set([
       createHash('sha1').update(multiRemoteDir).digest('hex').slice(0, 12),
@@ -42,13 +46,11 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
     ])
     const remoteSeedFile = path.join(multiRemoteDir, 'seed.txt')
     await writeFile(remoteSeedFile, 'seed', 'utf8')
-
     const remoteWorkerUserDataDir = await mkdtemp(
       path.join(tmpdir(), 'opencove-e2e-m6-remote-worker-'),
     )
     const remoteWorkerHomeDir = path.join(remoteWorkerUserDataDir, 'home')
     await mkdir(remoteWorkerHomeDir, { recursive: true })
-
     const remoteWorker = await startRemoteWorker({
       hostname: remoteHost,
       port: remotePort,
@@ -58,13 +60,11 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
       approveRoot: remoteBaseDir,
       agentSessionScenario: 'codex-standby-only',
     })
-
     const { electronApp, window } = await launchApp({
       env: {
         OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-standby-only',
       },
     })
-
     try {
       const resetResult = await window.evaluate(async () => {
         return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
@@ -90,7 +90,6 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
           }),
         })
       })
-
       if (!resetResult.ok) {
         throw new Error(
           `Failed to reset workspace state: ${resetResult.reason}: ${resetResult.error.code}${
@@ -99,7 +98,6 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
         )
       }
       await window.reload({ waitUntil: 'domcontentloaded' })
-
       const endpointDisplayName = 'Local Remote Worker'
       await openSettings(window)
       await switchSettingsPage(window, 'endpoints')
@@ -170,6 +168,14 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
           )
         })
         .toContain('RemoteOnlyMount')
+
+      await verifyRemoteOnlyProjectDefaultMount({
+        window,
+        projectName: remoteOnlyProjectName,
+        remoteEndpointId,
+        remoteOnlyDir,
+        remoteOnlyDirHashes,
+      })
 
       const multiMountProjectName = 'Multi Mount'
       await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })

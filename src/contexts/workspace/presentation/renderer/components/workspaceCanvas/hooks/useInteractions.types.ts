@@ -45,6 +45,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
   contextMenu: ContextMenuState | null
+  workspaceId: string
   workspacePath: string
   defaultTerminalProfileId: string | null
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>

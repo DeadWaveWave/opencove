@@ -139,10 +139,15 @@ export function AddProjectWizardWindow({
       return
     }
 
+    const normalizedName = localMountName.trim()
+    const fallbackName = basename(rootPath).trim()
+    const resolvedName =
+      normalizedName.length > 0 ? normalizedName : fallbackName.length > 0 ? fallbackName : null
+
     addMountDraft({
       endpointId: 'local',
       rootPath,
-      name: localMountName.trim().length > 0 ? localMountName.trim() : null,
+      name: resolvedName,
     })
     setLocalRootPath('')
     setLocalMountName('')
@@ -176,10 +181,15 @@ export function AddProjectWizardWindow({
       return
     }
 
+    const normalizedName = remoteMountName.trim()
+    const fallbackName = basename(rootPath).trim()
+    const resolvedName =
+      normalizedName.length > 0 ? normalizedName : fallbackName.length > 0 ? fallbackName : null
+
     addMountDraft({
       endpointId,
       rootPath,
-      name: remoteMountName.trim().length > 0 ? remoteMountName.trim() : null,
+      name: resolvedName,
     })
     setRemoteRootPath('')
     setRemoteMountName('')
@@ -238,9 +248,9 @@ export function AddProjectWizardWindow({
             })
           ).path
 
-      const mountCreationResults = await Promise.allSettled(
-        draftMounts.map(mount =>
-          window.opencoveApi.controlSurface.invoke<CreateMountResult>({
+      await draftMounts.reduce<Promise<void>>((acc, mount) => {
+        return acc.then(async () => {
+          const created = await window.opencoveApi.controlSurface.invoke<CreateMountResult>({
             kind: 'command',
             id: 'mount.create',
             payload: {
@@ -249,23 +259,10 @@ export function AddProjectWizardWindow({
               rootPath: mount.rootPath,
               name: mount.name,
             },
-          }),
-        ),
-      )
-
-      const mountCreationError = mountCreationResults.find(
-        (result): result is PromiseRejectedResult => result.status === 'rejected',
-      )
-
-      for (const result of mountCreationResults) {
-        if (result.status === 'fulfilled') {
-          createdMountIds.push(result.value.mount.mountId)
-        }
-      }
-
-      if (mountCreationError) {
-        throw mountCreationError.reason
-      }
+          })
+          createdMountIds.push(created.mount.mountId)
+        })
+      }, Promise.resolve())
 
       const nextWorkspace: WorkspaceState = {
         id: projectId,

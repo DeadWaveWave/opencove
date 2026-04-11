@@ -1,3 +1,5 @@
+import type { SessionStateWatcherStartInput } from '../../../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
+
 export interface ControlSurfacePtyRuntime {
   spawnSession: (options: {
     cwd: string
@@ -12,4 +14,5 @@ export interface ControlSurfacePtyRuntime {
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
+  startSessionStateWatcher?: (input: SessionStateWatcherStartInput) => void
 }

@@ -273,7 +273,7 @@ export function registerSessionHandlers(
       })
 
       const opencodeServer =
-        provider === 'opencode' && !testStub
+        provider === 'opencode'
           ? {
               hostname: OPENCODE_SERVER_HOSTNAME,
               port: await reserveLoopbackPort(OPENCODE_SERVER_HOSTNAME),

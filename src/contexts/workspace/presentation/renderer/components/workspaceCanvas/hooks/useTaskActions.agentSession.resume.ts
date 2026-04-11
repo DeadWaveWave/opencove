@@ -1,7 +1,11 @@
-import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
+import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
-import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
+import type {
+  LaunchAgentSessionResult,
+  ListMountsResult,
+  TerminalRuntimeKind,
+} from '@shared/contracts/dto'
 import {
   assignAgentNodeToTaskSpace,
   createTaskAgentAnchor,
@@ -46,14 +50,45 @@ export async function resumeTaskAgentSessionAction(
     return
   }
 
-  const taskExecutionContext = resolveTaskExecutionContext({
-    spaces: context.spacesRef.current,
-    taskNodeId,
-    workspacePath: context.workspacePath,
-  })
-  const taskDirectory = taskExecutionContext.workingDirectory
   const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
-  const mountId = taskSpace?.targetMountId ?? null
+  let mountId = taskSpace?.targetMountId ?? null
+  let taskDirectory =
+    taskSpace && taskSpace.directoryPath.trim().length > 0
+      ? taskSpace.directoryPath.trim()
+      : context.workspacePath
+
+  const normalizedWorkspaceId =
+    typeof context.workspaceId === 'string' ? context.workspaceId.trim() : ''
+
+  if (!mountId && normalizedWorkspaceId.length > 0) {
+    const controlSurfaceInvoke = (
+      window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
+    ).opencoveApi?.controlSurface?.invoke
+
+    if (typeof controlSurfaceInvoke === 'function') {
+      try {
+        const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+          kind: 'query',
+          id: 'mount.list',
+          payload: { projectId: normalizedWorkspaceId },
+        })
+
+        const defaultMount = mountResult.mounts[0] ?? null
+        if (defaultMount) {
+          mountId = defaultMount.mountId
+          taskDirectory = defaultMount.rootPath
+        }
+      } catch (error) {
+        setTaskLastError({
+          taskNodeId,
+          message: context.t('messages.mountListFailed', { message: toErrorMessage(error) }),
+          setNodes: context.setNodes,
+        })
+        context.onRequestPersistFlush?.()
+        return
+      }
+    }
+  }
 
   try {
     let launchedSessionId = ''
@@ -64,12 +99,15 @@ export async function resumeTaskAgentSessionAction(
     let agentDirectory = record.boundDirectory
 
     if (mountId) {
+      const cwd =
+        record.boundDirectory.trim().length > 0 ? record.boundDirectory.trim() : taskDirectory
+      const cwdUri = cwd.trim().length > 0 ? toFileUri(cwd.trim()) : null
       const launched = await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
         kind: 'command',
         id: 'session.launchAgentInMount',
         payload: {
           mountId,
-          cwdUri: null,
+          cwdUri,
           prompt: record.prompt,
           provider: record.provider,
           mode: 'resume',

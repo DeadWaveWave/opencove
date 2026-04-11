@@ -134,6 +134,9 @@ export function createMultiEndpointPtyRuntime(options: {
         exitListeners.delete(listener)
       }
     },
+    startSessionStateWatcher: input => {
+      options.localRuntime.startSessionStateWatcher?.(input)
+    },
     dispose: () => {
       disposeLocalDataListener()
       disposeLocalExitListener()

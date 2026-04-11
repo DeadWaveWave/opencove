@@ -264,10 +264,14 @@ export function useWorkspaceCanvasSpaces({
       return
     }
 
+    const selectedMount =
+      picker.mounts.find(mount => mount.mountId === picker.selectedMountId) ?? null
+
     createSpaceWithTargetMount({
       nodeIds: picker.nodeIds,
       rect: picker.rect,
       targetMountId: picker.selectedMountId,
+      directoryPath: selectedMount?.rootPath ?? '',
     })
     setSpaceTargetMountPicker(null)
   }, [createSpaceWithTargetMount, spaceTargetMountPicker])
