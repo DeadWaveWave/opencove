@@ -120,9 +120,12 @@ test.describe('Workspace Canvas - Website Window', () => {
       await enableWebsiteWindowPolicy(window)
       await websiteNode.click({ position: { x: 320, y: 180 }, noWaitAfter: true })
       await expect
-        .poll(async () => {
-          return await readWebsiteRuntimeState(electronApp, 'website-dpr-node')
-        }, { timeout: 30_000 })
+        .poll(
+          async () => {
+            return await readWebsiteRuntimeState(electronApp, 'website-dpr-node')
+          },
+          { timeout: 30_000 },
+        )
         .toMatchObject({
           lifecycle: 'active',
         })
@@ -152,10 +155,13 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       let baselineDpr: number | null = null
       await expect
-        .poll(async () => {
-          baselineDpr = await readWebsiteDevicePixelRatio(electronApp, 'website-dpr-node')
-          return baselineDpr
-        }, { timeout: 30_000 })
+        .poll(
+          async () => {
+            baselineDpr = await readWebsiteDevicePixelRatio(electronApp, 'website-dpr-node')
+            return baselineDpr
+          },
+          { timeout: 30_000 },
+        )
         .not.toBeNull()
 
       if (baselineDpr === null) {
@@ -203,10 +209,13 @@ test.describe('Workspace Canvas - Website Window', () => {
 
       let dprAfterZoom: number | null = null
       await expect
-        .poll(async () => {
-          dprAfterZoom = await readWebsiteDevicePixelRatio(electronApp, 'website-dpr-node')
-          return dprAfterZoom
-        }, { timeout: 30_000 })
+        .poll(
+          async () => {
+            dprAfterZoom = await readWebsiteDevicePixelRatio(electronApp, 'website-dpr-node')
+            return dprAfterZoom
+          },
+          { timeout: 30_000 },
+        )
         .not.toBeNull()
 
       if (dprAfterZoom === null) {
