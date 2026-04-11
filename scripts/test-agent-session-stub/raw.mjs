@@ -6,6 +6,7 @@ const ENTER_ALTERNATE_SCREEN = '\u001b[?1049h'
 const EXIT_ALTERNATE_SCREEN = '\u001b[?1049l'
 const ENABLE_SGR_MOUSE = '\u001b[?1000h\u001b[?1006h'
 const DISABLE_SGR_MOUSE = '\u001b[?1000l\u001b[?1006l'
+const DEVICE_STATUS_REPORT = '\u001b[6n'
 
 function extractBracketedPastePayload(buffer) {
   const startIndex = buffer.indexOf(BRACKETED_PASTE_START)
@@ -158,5 +159,26 @@ export async function runRawAltScreenWheelEchoScenario() {
     process.stdin.resume()
   })
 
+  await sleep(20_000)
+}
+
+export async function runRawDsrReplyEchoScenario() {
+  // xterm will reply to DSR (ESC[6n) via stdin. If the reply is delayed until after raw/noecho
+  // is disabled, many PTYs will echo it back visibly (for example `^[[1;1R`). This scenario is
+  // used to catch regressions where hydration/replay delays terminal replies.
+  if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+    process.stdin.setRawMode(true)
+  }
+
+  process.stdout.write(DEVICE_STATUS_REPORT)
+
+  setTimeout(() => {
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+      process.stdin.setRawMode(false)
+    }
+  }, 200)
+
+  await sleep(1200)
+  process.stdout.write('[opencove-test-dsr] done\n')
   await sleep(20_000)
 }

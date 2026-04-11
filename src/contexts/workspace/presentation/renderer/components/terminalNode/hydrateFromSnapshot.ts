@@ -23,12 +23,6 @@ function shouldSkipRawDeltaForSerializedScreen(serialized: string, delta: string
   return true
 }
 
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => {
-    window.setTimeout(resolve, ms)
-  })
-}
-
 async function writeTerminal(terminal: Terminal, data: string): Promise<void> {
   if (data.length === 0) {
     return
@@ -82,41 +76,10 @@ export async function hydrateTerminalFromSnapshot({
     await attachPromise.catch(() => undefined)
 
     if (kind === 'agent') {
-      // Agent CLIs restore their own history. We want to swap from the persisted placeholder to a
-      // real PTY snapshot quickly so the node feels responsive, and then let live output take over.
-      const MAX_SNAPSHOT_ATTEMPTS = 4
-      const SNAPSHOT_RETRY_DELAY_MS = 200
-
-      let didReadSnapshot = false
-      let lastSnapshot = ''
-
-      for (let attempt = 0; attempt < MAX_SNAPSHOT_ATTEMPTS && !isDisposed(); attempt += 1) {
-        if (attempt > 0) {
-          // eslint-disable-next-line no-await-in-loop -- bounded retries
-          await delay(SNAPSHOT_RETRY_DELAY_MS)
-        }
-
-        try {
-          // eslint-disable-next-line no-await-in-loop -- bounded retries
-          const snapshot = await takePtySnapshot({ sessionId })
-          lastSnapshot = typeof snapshot?.data === 'string' ? snapshot.data : ''
-        } catch {
-          break
-        }
-
-        if (lastSnapshot.length > 0) {
-          didReadSnapshot = true
-          break
-        }
-      }
-
-      // Only swap away from the persisted placeholder once we have real content; clearing to an
-      // empty snapshot produces a confusing black terminal.
-      if (!isDisposed() && didReadSnapshot && lastSnapshot.length > 0) {
-        terminal.clear()
-        await writeTerminal(terminal, lastSnapshot)
-        rawSnapshot = lastSnapshot
-      }
+      // Agent CLIs restore their own history after attach. Do not block hydration on snapshot
+      // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
+      // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
+      // arrive after the CLI has exited raw/noecho mode.
     } else {
       const snapshot = await takePtySnapshot({ sessionId })
       if (cachedSerializedScreen.length > 0) {

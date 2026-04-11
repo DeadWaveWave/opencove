@@ -265,13 +265,22 @@ export function TerminalNode({
         suppressPtyResizeRef.current = false
         syncTerminalSize()
       }
-      ptyWriteQueue.enqueue(data)
-      if (shouldForwardTerminalData) {
-        ptyWriteQueue.flush()
-      }
+
+      // During hydration we replay persisted/serialized output into xterm. xterm can emit terminal
+      // reply sequences (starting with ESC) while parsing that output. If we queue them and flush
+      // later, they can get echoed as visible `^[[...` / `^[]...` "garbage" on restart for some
+      // agent CLIs. We still allow basic user typing to be buffered during hydration.
       if (!shouldForwardTerminalData) {
+        if (data.startsWith('\u001b')) {
+          return
+        }
+
+        ptyWriteQueue.enqueue(data)
         return
       }
+
+      ptyWriteQueue.enqueue(data)
+      ptyWriteQueue.flush()
       const commandRunHandler = onCommandRunRef.current
       if (!commandRunHandler) {
         return
@@ -287,13 +296,18 @@ export function TerminalNode({
         suppressPtyResizeRef.current = false
         syncTerminalSize()
       }
-      ptyWriteQueue.enqueue(data, 'binary')
-      if (shouldForwardTerminalData) {
-        ptyWriteQueue.flush()
-      }
+
       if (!shouldForwardTerminalData) {
+        if (data.startsWith('\u001b')) {
+          return
+        }
+
+        ptyWriteQueue.enqueue(data, 'binary')
         return
       }
+
+      ptyWriteQueue.enqueue(data, 'binary')
+      ptyWriteQueue.flush()
     })
     let isHydrating = true
     const hydrationBuffer = { dataChunks: [] as string[], exitCode: null as number | null }

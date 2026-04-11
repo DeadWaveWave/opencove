@@ -16,6 +16,7 @@ import { runOpenCodeIdleWithMessageScenario } from './test-agent-session-stub/op
 import {
   runRawAltScreenWheelEchoScenario,
   runRawBracketedPasteEchoScenario,
+  runRawDsrReplyEchoScenario,
 } from './test-agent-session-stub/raw.mjs'
 
 async function main() {
@@ -60,6 +61,11 @@ async function main() {
 
   if (scenario === 'raw-alt-screen-wheel-echo') {
     await runRawAltScreenWheelEchoScenario()
+    return
+  }
+
+  if (scenario === 'raw-dsr-reply-echo') {
+    await runRawDsrReplyEchoScenario()
     return
   }
 
