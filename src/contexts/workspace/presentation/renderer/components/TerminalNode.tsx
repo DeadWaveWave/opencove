@@ -283,6 +283,49 @@ export function TerminalNode({
     height,
   })
 
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) {
+      return undefined
+    }
+
+    const handleDragOver = (e: DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy'
+      }
+    }
+
+    const handleDrop = (e: DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      const files = e.dataTransfer?.files
+      if (!files || files.length === 0) {
+        return
+      }
+
+      const paths = Array.from(files)
+        .map(f => window.opencoveApi.filesystem.getPathForFile(f))
+        .filter(p => p.length > 0)
+        .map(p => (/^[a-zA-Z0-9_./-]+$/.test(p) ? p : "'" + p.replace(/'/g, "'\\''") + "'"))
+        .join(' ')
+
+      if (paths.length > 0) {
+        terminalRef.current?.paste(paths)
+      }
+    }
+
+    container.addEventListener('dragover', handleDragOver)
+    container.addEventListener('drop', handleDrop)
+
+    return () => {
+      container.removeEventListener('dragover', handleDragOver)
+      container.removeEventListener('drop', handleDrop)
+    }
+  }, [])
+
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,

@@ -135,6 +135,7 @@ export interface OpenCoveApi {
     writeText: (text: string) => Promise<void>
   }
   filesystem: {
+    getPathForFile: (file: File) => string
     createDirectory: (payload: CreateDirectoryInput) => Promise<void>
     copyEntry: (payload: CopyEntryInput) => Promise<void>
     moveEntry: (payload: MoveEntryInput) => Promise<void>
