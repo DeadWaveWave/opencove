@@ -261,15 +261,17 @@ export function TerminalNode({
     let isDisposed = false,
       shouldForwardTerminalData = false
     const dataDisposable = terminal.onData(data => {
-      if (!shouldForwardTerminalData) {
-        return
-      }
       if (suppressPtyResizeRef.current) {
         suppressPtyResizeRef.current = false
         syncTerminalSize()
       }
       ptyWriteQueue.enqueue(data)
-      ptyWriteQueue.flush()
+      if (shouldForwardTerminalData) {
+        ptyWriteQueue.flush()
+      }
+      if (!shouldForwardTerminalData) {
+        return
+      }
       const commandRunHandler = onCommandRunRef.current
       if (!commandRunHandler) {
         return
@@ -281,17 +283,18 @@ export function TerminalNode({
       })
     })
     const binaryDisposable = terminal.onBinary(data => {
-      if (!shouldForwardTerminalData) {
-        return
-      }
       if (suppressPtyResizeRef.current) {
         suppressPtyResizeRef.current = false
         syncTerminalSize()
       }
       ptyWriteQueue.enqueue(data, 'binary')
-      ptyWriteQueue.flush()
+      if (shouldForwardTerminalData) {
+        ptyWriteQueue.flush()
+      }
+      if (!shouldForwardTerminalData) {
+        return
+      }
     })
-
     let isHydrating = true
     const hydrationBuffer = { dataChunks: [] as string[], exitCode: null as number | null }
     const ptyEventHub = getPtyEventHub()
@@ -319,13 +322,11 @@ export function TerminalNode({
       }
       outputScheduler.handleChunk(event.data)
     })
-
     const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
       if (isHydrating) {
         hydrationBuffer.exitCode = event.exitCode
         return
       }
-
       outputScheduler.handleChunk(`\r\n[process exited with code ${event.exitCode}]\r\n`, {
         immediateScrollbackPublish: true,
       })

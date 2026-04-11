@@ -100,6 +100,7 @@ describe('main process sandbox flags', () => {
 
       vi.doMock('../../../src/app/main/worker/localWorkerManager', () => ({
         hasOwnedLocalWorkerProcess: () => false,
+        startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
         stopOwnedLocalWorker: vi.fn(async () => true),
       }))
 

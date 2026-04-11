@@ -195,7 +195,24 @@ export async function seedWorkspaceState(
       }
     }, expectedWorkspaces)
 
-    const workspaceCount = await window.locator('.workspace-item').count()
+    const expectedWorkspaceCount = payload.workspaces.length
+    const workspaceCount = await (async () => {
+      const deadline = Date.now() + 3_000
+      let count = 0
+
+      while (Date.now() < deadline) {
+        // eslint-disable-next-line no-await-in-loop -- bounded UI polling
+        count = await window.locator('.workspace-item').count()
+        if (count >= expectedWorkspaceCount) {
+          break
+        }
+
+        // eslint-disable-next-line no-await-in-loop -- bounded UI polling
+        await window.waitForTimeout(50)
+      }
+
+      return count
+    })()
     if (seededReady && workspaceCount >= payload.workspaces.length) {
       return true
     }

@@ -246,6 +246,9 @@ async function launchAppInMode(
     // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
     // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
     delete baseEnv['__CFBundleIdentifier']
+    // `ELECTRON_RUN_AS_NODE=1` turns the Electron binary into a plain Node.js process, which
+    // breaks Playwright's Electron launch (and can show up in dev shells after running tools).
+    delete baseEnv['ELECTRON_RUN_AS_NODE']
 
     electronApp = await electron.launch({
       args: resolveElectronLaunchArgs(),

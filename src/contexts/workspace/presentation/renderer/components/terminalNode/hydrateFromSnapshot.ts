@@ -99,24 +99,22 @@ export async function hydrateTerminalFromSnapshot({
         try {
           // eslint-disable-next-line no-await-in-loop -- bounded retries
           const snapshot = await takePtySnapshot({ sessionId })
-          didReadSnapshot = true
           lastSnapshot = typeof snapshot?.data === 'string' ? snapshot.data : ''
         } catch {
           break
         }
 
         if (lastSnapshot.length > 0) {
+          didReadSnapshot = true
           break
         }
       }
 
-      // If we can reach the session snapshot endpoint, clear the placeholder to avoid mixing old
-      // UI cache output with live data.
-      if (!isDisposed() && didReadSnapshot) {
+      // Only swap away from the persisted placeholder once we have real content; clearing to an
+      // empty snapshot produces a confusing black terminal.
+      if (!isDisposed() && didReadSnapshot && lastSnapshot.length > 0) {
         terminal.clear()
-        if (lastSnapshot.length > 0) {
-          await writeTerminal(terminal, lastSnapshot)
-        }
+        await writeTerminal(terminal, lastSnapshot)
         rawSnapshot = lastSnapshot
       }
     } else {

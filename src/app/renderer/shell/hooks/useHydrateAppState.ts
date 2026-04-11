@@ -39,6 +39,12 @@ async function inferInitialStandardWindowSizeBucket(): Promise<StandardWindowSiz
   }
 }
 
+async function delay(ms: number): Promise<void> {
+  await new Promise(resolve => {
+    window.setTimeout(resolve, ms)
+  })
+}
+
 export function useHydrateAppState({
   activeWorkspaceId,
   setAgentSettings,
@@ -79,14 +85,12 @@ export function useHydrateAppState({
 
   const loadWorkspaceScrollbacks = useCallback(async (workspace: PersistedWorkspaceState) => {
     if (scrollbackLoadedWorkspaceIdsRef.current.has(workspace.id)) {
-      return
+      return true
     }
-
-    scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
 
     const port = getPersistencePort()
     if (!port) {
-      return
+      return false
     }
 
     const terminalNodeIds = workspace.nodes
@@ -95,7 +99,8 @@ export function useHydrateAppState({
     const agentNodeIds = workspace.nodes.filter(node => node.kind === 'agent').map(node => node.id)
 
     if (terminalNodeIds.length === 0 && agentNodeIds.length === 0) {
-      return
+      scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
+      return true
     }
 
     const [terminalScrollbackResults, agentPlaceholderResults] = await Promise.all([
@@ -110,7 +115,7 @@ export function useHydrateAppState({
     ])
 
     if (isCancelledRef.current) {
-      return
+      return false
     }
 
     const scrollbacks: Record<string, string> = {}
@@ -130,7 +135,7 @@ export function useHydrateAppState({
     })
 
     if (Object.keys(scrollbacks).length === 0) {
-      return
+      return false
     }
 
     useScrollbackStore.setState(state => {
@@ -148,6 +153,9 @@ export function useHydrateAppState({
 
       return didChange ? { scrollbackByNodeId: record } : state
     })
+
+    scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
+    return true
   }, [])
 
   const applyHydratedNode = useCallback(
@@ -316,7 +324,26 @@ export function useHydrateAppState({
           persistedWorkspaceByIdRef.current.get(resolvedActiveWorkspaceId) ?? null
 
         if (activePersistedWorkspace) {
-          await loadWorkspaceScrollbacks(activePersistedWorkspace)
+          // Cold-start scrollback loads can race persistence IPC readiness. Retry briefly for the
+          // initial workspace so we keep the previous durable UI visible on first paint.
+          const MAX_SCROLLBACK_LOAD_ATTEMPTS =
+            window.opencoveApi?.meta?.runtime === 'electron' ? 2 : 1
+          for (
+            let attempt = 0;
+            attempt < MAX_SCROLLBACK_LOAD_ATTEMPTS && !isCancelledRef.current;
+            attempt += 1
+          ) {
+            // eslint-disable-next-line no-await-in-loop -- bounded retries
+            const didLoad = await loadWorkspaceScrollbacks(activePersistedWorkspace)
+            if (didLoad) {
+              break
+            }
+
+            if (attempt < MAX_SCROLLBACK_LOAD_ATTEMPTS - 1) {
+              // eslint-disable-next-line no-await-in-loop -- bounded retries
+              await delay(80)
+            }
+          }
 
           if (isCancelledRef.current) {
             return
