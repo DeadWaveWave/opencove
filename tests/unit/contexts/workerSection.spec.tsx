@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WorkerSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/WorkerSection'
 
@@ -73,18 +73,17 @@ describe('WorkerSection', () => {
     })
   })
 
-  it('hides standalone mode in packaged builds', async () => {
+  it('shows local home worker as fixed in packaged builds', async () => {
     installWorkerApi('local', { isPackaged: true })
 
     render(<WorkerSection />)
 
-    const trigger = await screen.findByTestId('settings-worker-home-mode-trigger')
-    fireEvent.click(trigger)
-
-    const menu = await screen.findByTestId('settings-worker-home-mode-menu')
-    expect(menu).toBeVisible()
-    expect(screen.queryByText('Standalone (No Worker)')).not.toBeInTheDocument()
-    expect(within(menu).getByText('Local Worker')).toBeVisible()
-    expect(within(menu).getByText('Remote Worker')).toBeVisible()
+    expect(await screen.findByText('In Use')).toBeVisible()
+    expect(await screen.findByTestId('settings-worker-home-mode-value')).toHaveTextContent(
+      'Worker on this device',
+    )
+    expect(screen.queryByTestId('settings-worker-home-mode-trigger')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-worker-apply-restart')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('settings-worker-remote-hostname')).not.toBeInTheDocument()
   })
 })

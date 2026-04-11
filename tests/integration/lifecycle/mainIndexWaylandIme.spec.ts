@@ -6,6 +6,7 @@ function createMockApp() {
   const listeners = new Map<string, Listener[]>()
 
   return {
+    isPackaged: false,
     whenReady: vi.fn(() => Promise.resolve()),
     getPath: vi.fn((_name: string) => '/tmp/opencove-test-userdata'),
     setPath: vi.fn(),
@@ -103,6 +104,7 @@ describe('main process Wayland IME flags', () => {
 
       vi.doMock('../../../src/app/main/worker/localWorkerManager', () => ({
         hasOwnedLocalWorkerProcess: () => false,
+        startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
         stopOwnedLocalWorker: vi.fn(async () => true),
       }))
 

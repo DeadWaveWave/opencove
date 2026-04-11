@@ -34,7 +34,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Worker: PTY session streaming over the control surface (`WS /pty`) + ticket→cookie web auth for the Worker Web Shell. (#133)
 
 ### 💅 Changed
-- Worker: packaged builds now hide the unsupported Standalone home-worker mode, repair legacy standalone configs on launch, recover cleanly if local-worker startup fails, and successfully boot the packaged local worker without Electron-only runtime imports. (#162)
+- Worker: packaged Desktop is now local-only for Home Worker, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162)
 - Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
 - What's New: switched update notes from runtime GitHub compare fetching to release-manifest delivery embedded in each build. (#67)
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)

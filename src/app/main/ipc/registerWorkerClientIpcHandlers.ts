@@ -16,7 +16,10 @@ import {
 } from '../worker/homeWorkerConfig'
 
 export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
-  const configOptions = { allowStandaloneMode: app.isPackaged === false }
+  const configOptions = {
+    allowStandaloneMode: app.isPackaged === false,
+    allowRemoteMode: app.isPackaged === false,
+  }
 
   registerHandledIpc(
     IPC_CHANNELS.workerClientGetConfig,

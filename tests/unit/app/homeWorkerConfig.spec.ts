@@ -48,7 +48,10 @@ describe('home worker config', () => {
 
   it('uses local mode as the packaged default when standalone is disabled', async () => {
     const dir = await createTempUserDataDir()
-    const config = await readHomeWorkerConfig(dir, { allowStandaloneMode: false })
+    const config = await readHomeWorkerConfig(dir, {
+      allowStandaloneMode: false,
+      allowRemoteMode: false,
+    })
 
     expect(config.mode).toBe('local')
   })
@@ -89,7 +92,22 @@ describe('home worker config', () => {
           mode: 'standalone',
           remote: null,
         },
-        { allowStandaloneMode: false },
+        { allowStandaloneMode: false, allowRemoteMode: false },
+      ),
+    ).rejects.toBeInstanceOf(OpenCoveAppError)
+  })
+
+  it('rejects remote mode when remote is disabled', async () => {
+    const dir = await createTempUserDataDir()
+
+    await expect(
+      setHomeWorkerConfig(
+        dir,
+        {
+          mode: 'remote',
+          remote: { hostname: 'example.com', port: 1234, token: 'token123' },
+        },
+        { allowStandaloneMode: false, allowRemoteMode: false },
       ),
     ).rejects.toBeInstanceOf(OpenCoveAppError)
   })
@@ -115,11 +133,50 @@ describe('home worker config', () => {
       'utf8',
     )
 
-    const repaired = await ensureHomeWorkerConfig(dir, { allowStandaloneMode: false })
+    const repaired = await ensureHomeWorkerConfig(dir, {
+      allowStandaloneMode: false,
+      allowRemoteMode: false,
+    })
     expect(repaired.mode).toBe('local')
 
     const persisted = JSON.parse(await readFile(configPath, 'utf8')) as { mode: string }
     expect(persisted.mode).toBe('local')
+  })
+
+  it('repairs legacy remote configs when packaged desktop is local-only', async () => {
+    const dir = await createTempUserDataDir()
+    const configPath = resolveHomeWorkerConfigPath(dir)
+
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        version: 1,
+        mode: 'remote',
+        remote: { hostname: 'remote.example', port: 7443, token: 'remote-token' },
+        webUi: {
+          enabled: false,
+          port: null,
+          exposeOnLan: false,
+          passwordHash: null,
+        },
+        updatedAt: '2026-04-11T07:45:00.000Z',
+      })}\n`,
+      'utf8',
+    )
+
+    const repaired = await ensureHomeWorkerConfig(dir, {
+      allowStandaloneMode: false,
+      allowRemoteMode: false,
+    })
+    expect(repaired.mode).toBe('local')
+    expect(repaired.remote).toBeNull()
+
+    const persisted = JSON.parse(await readFile(configPath, 'utf8')) as {
+      mode: string
+      remote: unknown
+    }
+    expect(persisted.mode).toBe('local')
+    expect(persisted.remote).toBeNull()
   })
 
   it('persists web ui settings', async () => {

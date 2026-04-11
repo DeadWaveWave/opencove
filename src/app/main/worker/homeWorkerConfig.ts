@@ -140,10 +140,15 @@ export type HomeWorkerConfigFile = {
 
 export interface HomeWorkerConfigModeOptions {
   allowStandaloneMode?: boolean
+  allowRemoteMode?: boolean
 }
 
 function isStandaloneModeAllowed(options?: HomeWorkerConfigModeOptions): boolean {
   return options?.allowStandaloneMode ?? true
+}
+
+function isRemoteModeAllowed(options?: HomeWorkerConfigModeOptions): boolean {
+  return options?.allowRemoteMode ?? true
 }
 
 function resolveDefaultHomeWorkerMode(options?: HomeWorkerConfigModeOptions): HomeWorkerMode {
@@ -151,7 +156,15 @@ function resolveDefaultHomeWorkerMode(options?: HomeWorkerConfigModeOptions): Ho
 }
 
 function isModeSupported(mode: HomeWorkerMode, options?: HomeWorkerConfigModeOptions): boolean {
-  return mode !== 'standalone' || isStandaloneModeAllowed(options)
+  if (mode === 'standalone') {
+    return isStandaloneModeAllowed(options)
+  }
+
+  if (mode === 'remote') {
+    return isRemoteModeAllowed(options)
+  }
+
+  return true
 }
 
 function toDto(config: HomeWorkerConfigFile): HomeWorkerConfigDto {
@@ -194,10 +207,14 @@ function normalizeConfigFile(
     return { config: createDefaultHomeWorkerConfigFile(options), repaired: true }
   }
 
-  const mode = isModeSupported(parsedMode, options)
-    ? parsedMode
-    : resolveDefaultHomeWorkerMode(options)
-  const remote = normalizeRemoteEndpoint(value.remote)
+  const parsedRemote = normalizeRemoteEndpoint(value.remote)
+  const mode =
+    parsedMode === 'remote' && parsedRemote === null
+      ? resolveDefaultHomeWorkerMode(options)
+      : isModeSupported(parsedMode, options)
+        ? parsedMode
+        : resolveDefaultHomeWorkerMode(options)
+  const remote = mode === 'remote' ? parsedRemote : null
   const updatedAt = normalizeOptionalString(value.updatedAt)
   const webUi = normalizeWebUiConfig(value.webUi)
 
@@ -211,6 +228,7 @@ function normalizeConfigFile(
     },
     repaired:
       mode !== parsedMode ||
+      remote !== parsedRemote ||
       !isRecord(value.webUi) ||
       updatedAt !== (typeof value.updatedAt === 'string' ? value.updatedAt.trim() || null : null),
   }
@@ -301,7 +319,7 @@ export async function setHomeWorkerConfig(
 
   if (!isModeSupported(mode, options)) {
     throw createAppError('common.invalid_input', {
-      debugMessage: 'Standalone home worker mode is disabled in packaged builds.',
+      debugMessage: `Home worker mode "${mode}" is disabled in this build.`,
     })
   }
 

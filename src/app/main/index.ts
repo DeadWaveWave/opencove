@@ -424,6 +424,7 @@ app.whenReady().then(async () => {
   const homeWorker = await resolveHomeWorkerEndpoint({
     allowConfig: process.env.NODE_ENV !== 'test',
     allowStandaloneMode: app.isPackaged === false,
+    allowRemoteMode: app.isPackaged === false,
   })
   for (const message of homeWorker.diagnostics) {
     process.stderr.write(`[opencove] ${message}\n`)

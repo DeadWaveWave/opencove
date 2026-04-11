@@ -301,6 +301,10 @@ export const enSettingsPanel = {
     home: {
       title: 'Home Worker',
       help: 'Choose where Desktop reads and writes durable state. Worker Web UI currently requires Local Worker.',
+      packagedHelp:
+        'OpenCove uses the worker on this device. Most of the time, you only need to start or restart it below.',
+      packagedModeLabel: 'In Use',
+      packagedModeValue: 'Worker on this device',
       modeLabel: 'Mode',
       mode: {
         standalone: 'Standalone (No Worker)',

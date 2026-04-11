@@ -291,6 +291,9 @@ export const zhCNSettingsPanel = {
     home: {
       title: 'Home Worker',
       help: '选择 Desktop 读写 durable state 的位置。Worker Web UI 当前需要 Local Worker。',
+      packagedHelp: 'OpenCove 会直接使用这台电脑上的 Worker。通常你只需要在下面启动或重启它。',
+      packagedModeLabel: '当前使用',
+      packagedModeValue: '本机 Worker',
       modeLabel: '模式',
       mode: {
         standalone: 'Standalone（无 Worker）',

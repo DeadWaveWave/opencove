@@ -49,6 +49,7 @@ async function resolveLocalDiscoveryEndpoint(): Promise<ControlSurfaceRemoteEndp
 export async function resolveHomeWorkerEndpoint(options: {
   allowConfig: boolean
   allowStandaloneMode?: boolean
+  allowRemoteMode?: boolean
 }): Promise<HomeWorkerEndpointResolution> {
   const diagnostics: string[] = []
 
@@ -56,6 +57,7 @@ export async function resolveHomeWorkerEndpoint(options: {
   if (!options.allowConfig && !wantsWorkerClientMode) {
     const config = createDefaultHomeWorkerConfig({
       allowStandaloneMode: options.allowStandaloneMode,
+      allowRemoteMode: options.allowRemoteMode,
     })
     return { config, effectiveMode: config.mode, endpoint: null, diagnostics }
   }
@@ -69,6 +71,7 @@ export async function resolveHomeWorkerEndpoint(options: {
       return {
         config: await readHomeWorkerConfig(app.getPath('userData'), {
           allowStandaloneMode: options.allowStandaloneMode,
+          allowRemoteMode: options.allowRemoteMode,
         }),
         effectiveMode: 'standalone',
         endpoint: null,
@@ -79,6 +82,7 @@ export async function resolveHomeWorkerEndpoint(options: {
     return {
       config: await readHomeWorkerConfig(app.getPath('userData'), {
         allowStandaloneMode: options.allowStandaloneMode,
+        allowRemoteMode: options.allowRemoteMode,
       }),
       effectiveMode: 'local',
       endpoint,
@@ -89,8 +93,12 @@ export async function resolveHomeWorkerEndpoint(options: {
   const config = options.allowConfig
     ? await ensureHomeWorkerConfig(app.getPath('userData'), {
         allowStandaloneMode: options.allowStandaloneMode,
+        allowRemoteMode: options.allowRemoteMode,
       })
-    : createDefaultHomeWorkerConfig({ allowStandaloneMode: options.allowStandaloneMode })
+    : createDefaultHomeWorkerConfig({
+        allowStandaloneMode: options.allowStandaloneMode,
+        allowRemoteMode: options.allowRemoteMode,
+      })
 
   if (config.mode === 'remote' && config.remote) {
     return {
