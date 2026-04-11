@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { OpenCoveAppError } from '../../../src/shared/errors/appError'
 import {
+  ensureHomeWorkerConfig,
   readHomeWorkerConfig,
+  resolveHomeWorkerConfigPath,
   setHomeWorkerConfig,
   setHomeWorkerWebUiSettings,
 } from '../../../src/app/main/worker/homeWorkerConfig'
@@ -44,6 +46,13 @@ describe('home worker config', () => {
     })
   })
 
+  it('uses local mode as the packaged default when standalone is disabled', async () => {
+    const dir = await createTempUserDataDir()
+    const config = await readHomeWorkerConfig(dir, { allowStandaloneMode: false })
+
+    expect(config.mode).toBe('local')
+  })
+
   it('persists and loads remote config', async () => {
     const dir = await createTempUserDataDir()
     const saved = await setHomeWorkerConfig(dir, {
@@ -68,6 +77,49 @@ describe('home worker config', () => {
         remote: null,
       }),
     ).rejects.toBeInstanceOf(OpenCoveAppError)
+  })
+
+  it('rejects standalone mode when standalone is disabled', async () => {
+    const dir = await createTempUserDataDir()
+
+    await expect(
+      setHomeWorkerConfig(
+        dir,
+        {
+          mode: 'standalone',
+          remote: null,
+        },
+        { allowStandaloneMode: false },
+      ),
+    ).rejects.toBeInstanceOf(OpenCoveAppError)
+  })
+
+  it('repairs legacy standalone configs when standalone is disabled', async () => {
+    const dir = await createTempUserDataDir()
+    const configPath = resolveHomeWorkerConfigPath(dir)
+
+    await writeFile(
+      configPath,
+      `${JSON.stringify({
+        version: 1,
+        mode: 'standalone',
+        remote: null,
+        webUi: {
+          enabled: false,
+          port: null,
+          exposeOnLan: false,
+          passwordHash: null,
+        },
+        updatedAt: '2026-04-10T08:35:22.180Z',
+      })}\n`,
+      'utf8',
+    )
+
+    const repaired = await ensureHomeWorkerConfig(dir, { allowStandaloneMode: false })
+    expect(repaired.mode).toBe('local')
+
+    const persisted = JSON.parse(await readFile(configPath, 'utf8')) as { mode: string }
+    expect(persisted.mode).toBe('local')
   })
 
   it('persists web ui settings', async () => {

@@ -6,8 +6,10 @@ import { formatToken, toBaseUrl, toErrorMessage } from './workerSectionUtils'
 
 export function WorkerSection(): React.JSX.Element {
   const { t } = useTranslation()
-  const [savedMode, setSavedMode] = useState<HomeWorkerMode>('standalone')
-  const [draftMode, setDraftMode] = useState<HomeWorkerMode>('standalone')
+  const supportsStandaloneMode = !window.opencoveApi.meta.isPackaged
+  const defaultMode: HomeWorkerMode = supportsStandaloneMode ? 'standalone' : 'local'
+  const [savedMode, setSavedMode] = useState<HomeWorkerMode>(defaultMode)
+  const [draftMode, setDraftMode] = useState<HomeWorkerMode>(defaultMode)
   const [remoteHostname, setRemoteHostname] = useState('')
   const [remotePort, setRemotePort] = useState('')
   const [remoteToken, setRemoteToken] = useState('')
@@ -18,6 +20,17 @@ export function WorkerSection(): React.JSX.Element {
   const [revealLocalToken, setRevealLocalToken] = useState(false)
   const [revealRemoteToken, setRevealRemoteToken] = useState(false)
   const localConnection = localStatus?.connection ?? null
+  const modeOptions = useMemo(
+    () =>
+      [
+        supportsStandaloneMode
+          ? { value: 'standalone', label: t('settingsPanel.worker.home.mode.standalone') }
+          : null,
+        { value: 'local', label: t('settingsPanel.worker.home.mode.local') },
+        { value: 'remote', label: t('settingsPanel.worker.home.mode.remote') },
+      ].filter(option => option !== null),
+    [supportsStandaloneMode, t],
+  )
 
   const canApplyRemote = useMemo(() => {
     if (draftMode !== 'remote') {
@@ -203,11 +216,7 @@ export function WorkerSection(): React.JSX.Element {
               id="settings-worker-home-mode"
               testId="settings-worker-home-mode"
               value={draftMode}
-              options={[
-                { value: 'standalone', label: t('settingsPanel.worker.home.mode.standalone') },
-                { value: 'local', label: t('settingsPanel.worker.home.mode.local') },
-                { value: 'remote', label: t('settingsPanel.worker.home.mode.remote') },
-              ]}
+              options={modeOptions}
               onChange={nextValue => setDraftMode(nextValue as HomeWorkerMode)}
             />
           </div>

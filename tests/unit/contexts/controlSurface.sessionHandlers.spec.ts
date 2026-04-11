@@ -78,6 +78,7 @@ describe('control surface session handlers', () => {
       hasSession: () => false,
     }
     registerSessionHandlers(controlSurface, {
+      userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
@@ -153,6 +154,7 @@ describe('control surface session handlers', () => {
       hasSession: () => false,
     }
     registerSessionHandlers(controlSurface, {
+      userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
@@ -259,6 +261,7 @@ describe('control surface session handlers', () => {
     }
 
     registerSessionHandlers(controlSurface, {
+      userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
@@ -333,6 +336,7 @@ describe('control surface session handlers', () => {
     }
 
     registerSessionHandlers(controlSurface, {
+      userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,
@@ -415,6 +419,7 @@ describe('control surface session handlers', () => {
       hasSession: () => false,
     }
     registerSessionHandlers(controlSurface, {
+      userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
         registerRoot: async () => undefined,
         isPathApproved: async () => true,

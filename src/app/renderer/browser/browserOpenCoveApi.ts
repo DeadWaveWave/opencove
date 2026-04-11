@@ -85,6 +85,7 @@ export function installBrowserOpenCoveApi(): void {
   const api = {
     meta: {
       isTest: false,
+      isPackaged: false,
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
       runtime: 'browser',

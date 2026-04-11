@@ -3,7 +3,11 @@ import type { HomeWorkerConfigDto, HomeWorkerMode } from '../../../shared/contra
 import type { ControlSurfaceRemoteEndpoint } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
-import { createDefaultHomeWorkerConfig, readHomeWorkerConfig } from './homeWorkerConfig'
+import {
+  createDefaultHomeWorkerConfig,
+  ensureHomeWorkerConfig,
+  readHomeWorkerConfig,
+} from './homeWorkerConfig'
 import { startLocalWorker } from './localWorkerManager'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
@@ -44,12 +48,15 @@ async function resolveLocalDiscoveryEndpoint(): Promise<ControlSurfaceRemoteEndp
 
 export async function resolveHomeWorkerEndpoint(options: {
   allowConfig: boolean
+  allowStandaloneMode?: boolean
 }): Promise<HomeWorkerEndpointResolution> {
   const diagnostics: string[] = []
 
   const wantsWorkerClientMode = isTruthyEnv(process.env['OPENCOVE_WORKER_CLIENT'])
   if (!options.allowConfig && !wantsWorkerClientMode) {
-    const config = createDefaultHomeWorkerConfig()
+    const config = createDefaultHomeWorkerConfig({
+      allowStandaloneMode: options.allowStandaloneMode,
+    })
     return { config, effectiveMode: config.mode, endpoint: null, diagnostics }
   }
 
@@ -60,7 +67,9 @@ export async function resolveHomeWorkerEndpoint(options: {
         'OPENCOVE_WORKER_CLIENT=1 but no worker control surface connection file was found.',
       )
       return {
-        config: await readHomeWorkerConfig(app.getPath('userData')),
+        config: await readHomeWorkerConfig(app.getPath('userData'), {
+          allowStandaloneMode: options.allowStandaloneMode,
+        }),
         effectiveMode: 'standalone',
         endpoint: null,
         diagnostics,
@@ -68,7 +77,9 @@ export async function resolveHomeWorkerEndpoint(options: {
     }
 
     return {
-      config: await readHomeWorkerConfig(app.getPath('userData')),
+      config: await readHomeWorkerConfig(app.getPath('userData'), {
+        allowStandaloneMode: options.allowStandaloneMode,
+      }),
       effectiveMode: 'local',
       endpoint,
       diagnostics,
@@ -76,8 +87,10 @@ export async function resolveHomeWorkerEndpoint(options: {
   }
 
   const config = options.allowConfig
-    ? await readHomeWorkerConfig(app.getPath('userData'))
-    : createDefaultHomeWorkerConfig()
+    ? await ensureHomeWorkerConfig(app.getPath('userData'), {
+        allowStandaloneMode: options.allowStandaloneMode,
+      })
+    : createDefaultHomeWorkerConfig({ allowStandaloneMode: options.allowStandaloneMode })
 
   if (config.mode === 'remote' && config.remote) {
     return {
@@ -89,14 +102,19 @@ export async function resolveHomeWorkerEndpoint(options: {
   }
 
   if (config.mode === 'local') {
-    const status = await startLocalWorker()
-    if (status.status === 'running' && status.connection) {
-      return {
-        config,
-        effectiveMode: 'local',
-        endpoint: toEndpoint(status.connection),
-        diagnostics,
+    try {
+      const status = await startLocalWorker()
+      if (status.status === 'running' && status.connection) {
+        return {
+          config,
+          effectiveMode: 'local',
+          endpoint: toEndpoint(status.connection),
+          diagnostics,
+        }
       }
+    } catch (error) {
+      const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+      diagnostics.push(`Failed to start local worker: ${detail}`)
     }
 
     diagnostics.push('Home worker mode is local but worker did not start.')

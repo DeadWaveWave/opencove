@@ -104,6 +104,7 @@ type UnsubscribeFn = () => void
 export interface OpenCoveApi {
   meta: {
     isTest: boolean
+    isPackaged: boolean
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
     runtime: 'electron' | 'browser'

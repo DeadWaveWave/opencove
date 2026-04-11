@@ -1,19 +1,31 @@
 import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { WorkerSection } from '../../../src/contexts/settings/presentation/renderer/settingsPanel/WorkerSection'
 
-function installWorkerApi(mode: 'standalone' | 'local' | 'remote') {
+function installWorkerApi(
+  mode: 'standalone' | 'local' | 'remote',
+  options?: { isPackaged?: boolean },
+) {
   const workerStart = vi.fn()
 
   Object.defineProperty(window, 'opencoveApi', {
     configurable: true,
     value: {
+      meta: {
+        isPackaged: options?.isPackaged ?? false,
+      },
       workerClient: {
         getConfig: vi.fn().mockResolvedValue({
           version: 1,
           mode,
           remote: null,
+          webUi: {
+            enabled: false,
+            port: null,
+            exposeOnLan: false,
+            passwordSet: false,
+          },
           updatedAt: null,
         }),
         setConfig: vi.fn(),
@@ -59,5 +71,20 @@ describe('WorkerSection', () => {
     await waitFor(() => {
       expect(screen.getByText('Enable Local Worker and restart before starting it.')).toBeVisible()
     })
+  })
+
+  it('hides standalone mode in packaged builds', async () => {
+    installWorkerApi('local', { isPackaged: true })
+
+    render(<WorkerSection />)
+
+    const trigger = await screen.findByTestId('settings-worker-home-mode-trigger')
+    fireEvent.click(trigger)
+
+    const menu = await screen.findByTestId('settings-worker-home-mode-menu')
+    expect(menu).toBeVisible()
+    expect(screen.queryByText('Standalone (No Worker)')).not.toBeInTheDocument()
+    expect(within(menu).getByText('Local Worker')).toBeVisible()
+    expect(within(menu).getByText('Remote Worker')).toBeVisible()
   })
 })

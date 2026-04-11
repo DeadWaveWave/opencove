@@ -1,4 +1,5 @@
-import { app } from 'electron'
+import { app, shell } from 'electron'
+import { fileURLToPath } from 'node:url'
 import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createPtyRuntime } from '../../../contexts/terminal/presentation/main-ipc/runtime'
 import {
@@ -25,5 +26,6 @@ export function registerControlSurfaceServer(deps?: {
     approvedWorkspaces,
     ptyRuntime,
     ownsPtyRuntime,
+    deleteEntry: async uri => await shell.trashItem(fileURLToPath(uri)),
   })
 }
