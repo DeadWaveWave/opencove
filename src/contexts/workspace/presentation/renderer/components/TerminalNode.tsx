@@ -216,6 +216,7 @@ export function TerminalNode({
       }),
     )
     let cancelMouseServicePatch: () => void = () => undefined
+    let removeDragListeners: () => void = () => undefined
     if (containerRef.current) {
       terminal.open(containerRef.current)
       containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
@@ -227,6 +228,43 @@ export function TerminalNode({
       requestAnimationFrame(syncTerminalSize)
       if (window.opencoveApi.meta.isTest) {
         terminal.focus()
+      }
+
+      // --- File drag-and-drop support ---
+      const container = containerRef.current
+
+      const handleDragOver = (e: DragEvent): void => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (e.dataTransfer) {
+          e.dataTransfer.dropEffect = 'copy'
+        }
+      }
+
+      const handleDrop = (e: DragEvent): void => {
+        e.preventDefault()
+        e.stopPropagation()
+
+        const files = e.dataTransfer?.files
+        if (!files || files.length === 0) return
+
+        const paths = Array.from(files)
+          .map(f => window.opencoveApi.filesystem.getPathForFile(f))
+          .filter(p => p.length > 0)
+          .map(p => (/^[a-zA-Z0-9_.\/\-]+$/.test(p) ? p : "'" + p.replace(/'/g, "'\\''") + "'"))
+          .join(' ')
+
+        if (paths.length > 0) {
+          terminal.paste(paths)
+        }
+      }
+
+      container.addEventListener('dragover', handleDragOver)
+      container.addEventListener('drop', handleDrop)
+
+      removeDragListeners = () => {
+        container.removeEventListener('dragover', handleDragOver)
+        container.removeEventListener('drop', handleDrop)
       }
     }
     const terminalDiagnostics = registerTerminalDiagnostics({
@@ -395,6 +433,7 @@ export function TerminalNode({
       })
 
       cancelMouseServicePatch()
+      removeDragListeners()
       isDisposed = true
       const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
       void detachPromise?.catch(() => undefined)

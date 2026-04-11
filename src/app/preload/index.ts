@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { IPC_CHANNELS } from '../../shared/contracts/ipc'
 import type {
   AttachTerminalInput,
@@ -136,6 +136,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.clipboardWriteText, { text }),
   },
   filesystem: {
+    getPathForFile: (file: File): string => webUtils.getPathForFile(file),
     createDirectory: (payload: CreateDirectoryInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.filesystemCreateDirectory, payload),
     copyEntry: (payload: CopyEntryInput): Promise<void> =>
