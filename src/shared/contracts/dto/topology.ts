@@ -43,6 +43,27 @@ export interface PingWorkerEndpointResult {
   pid: number
 }
 
+export interface GetEndpointHomeDirectoryInput {
+  endpointId: string
+}
+
+export interface GetEndpointHomeDirectoryResult {
+  endpointId: string
+  platform: string
+  homeDirectory: string
+}
+
+export interface ReadEndpointDirectoryInput {
+  endpointId: string
+  path: string
+}
+
+export interface ReadEndpointDirectoryResult {
+  endpointId: string
+  path: string
+  entries: import('./filesystem').FileSystemEntry[]
+}
+
 export interface MountDto {
   mountId: string
   projectId: string

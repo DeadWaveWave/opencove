@@ -2,11 +2,16 @@ import type { ControlSurface } from '../controlSurface'
 import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appError'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type {
+  ControlSurfaceHomeDirectoryResult,
   CreateMountInput,
+  GetEndpointHomeDirectoryInput,
+  GetEndpointHomeDirectoryResult,
   ListMountsInput,
   PingWorkerEndpointInput,
   PingWorkerEndpointResult,
   PromoteMountInput,
+  ReadEndpointDirectoryInput,
+  ReadEndpointDirectoryResult,
   RegisterWorkerEndpointInput,
   RemoveMountInput,
   RemoveWorkerEndpointInput,
@@ -14,6 +19,8 @@ import type {
 } from '../../../../shared/contracts/dto'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
+import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
+import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -52,6 +59,21 @@ function normalizeRequiredPort(value: unknown, debugName: string): number {
   }
 
   return port
+}
+
+function isAbsolutePathLike(pathValue: string): boolean {
+  return /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(pathValue)
+}
+
+function normalizeRequiredAbsolutePath(value: unknown, debugName: string): string {
+  const path = normalizeRequiredString(value, debugName)
+  if (!isAbsolutePathLike(path)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: `${debugName} requires an absolute path`,
+    })
+  }
+
+  return path
 }
 
 function normalizeRegisterEndpointPayload(payload: unknown): RegisterWorkerEndpointInput {
@@ -155,6 +177,31 @@ function normalizePingEndpointPayload(payload: unknown): PingWorkerEndpointInput
   }
 }
 
+function normalizeEndpointHomeDirectoryPayload(payload: unknown): GetEndpointHomeDirectoryInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for endpoint.homeDirectory.',
+    })
+  }
+
+  return {
+    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.homeDirectory endpointId'),
+  }
+}
+
+function normalizeEndpointReadDirectoryPayload(payload: unknown): ReadEndpointDirectoryInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for endpoint.readDirectory.',
+    })
+  }
+
+  return {
+    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.readDirectory endpointId'),
+    path: normalizeRequiredAbsolutePath(payload.path, 'endpoint.readDirectory path'),
+  }
+}
+
 export function registerTopologyHandlers(
   controlSurface: ControlSurface,
   deps: { topology: WorkerTopologyStore; approvedWorkspaces: ApprovedWorkspaceStore },
@@ -226,6 +273,143 @@ export function registerTopologyHandlers(
           now: typeof value.now === 'string' ? value.now : ctx.now().toISOString(),
           pid:
             typeof value.pid === 'number' && Number.isFinite(value.pid) ? Math.floor(value.pid) : 0,
+        }
+      } catch (error) {
+        if (error instanceof OpenCoveAppError) {
+          throw error
+        }
+
+        throw createAppError('worker.unavailable', {
+          debugMessage:
+            error instanceof Error
+              ? `${error.name}: ${error.message}`
+              : `Remote endpoint unavailable: ${payload.endpointId}`,
+        })
+      }
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('endpoint.homeDirectory', {
+    kind: 'query',
+    validate: normalizeEndpointHomeDirectoryPayload,
+    handle: async (_ctx, payload): Promise<GetEndpointHomeDirectoryResult> => {
+      if (payload.endpointId === 'local') {
+        return {
+          endpointId: 'local',
+          platform: process.platform,
+          homeDirectory: resolveHomeDirectory(),
+        }
+      }
+
+      const endpoint = await deps.topology.resolveRemoteEndpointConnection(payload.endpointId)
+      if (!endpoint) {
+        throw createAppError('worker.unavailable', {
+          debugMessage: `Remote endpoint unavailable: ${payload.endpointId}`,
+        })
+      }
+
+      try {
+        const { result } = await invokeControlSurface(endpoint, {
+          kind: 'query',
+          id: 'system.homeDirectory',
+          payload: null,
+        })
+
+        if (!result) {
+          throw createAppError('worker.unavailable', {
+            debugMessage: `Remote control surface unavailable: ${payload.endpointId}`,
+          })
+        }
+
+        if (result.ok === false) {
+          throw createAppError(result.error)
+        }
+
+        const value = result.value as Partial<ControlSurfaceHomeDirectoryResult>
+        const homeDirectory =
+          typeof value.homeDirectory === 'string' && value.homeDirectory.trim().length > 0
+            ? value.homeDirectory.trim()
+            : '/'
+
+        return {
+          endpointId: payload.endpointId,
+          platform: typeof value.platform === 'string' ? value.platform : 'unknown',
+          homeDirectory: homeDirectory,
+        }
+      } catch (error) {
+        if (error instanceof OpenCoveAppError) {
+          throw error
+        }
+
+        throw createAppError('worker.unavailable', {
+          debugMessage:
+            error instanceof Error
+              ? `${error.name}: ${error.message}`
+              : `Remote endpoint unavailable: ${payload.endpointId}`,
+        })
+      }
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('endpoint.readDirectory', {
+    kind: 'query',
+    validate: normalizeEndpointReadDirectoryPayload,
+    handle: async (_ctx, payload): Promise<ReadEndpointDirectoryResult> => {
+      if (payload.endpointId === 'local') {
+        throw createAppError('common.unavailable', {
+          debugMessage: 'endpoint.readDirectory only supports remote endpoints.',
+        })
+      }
+
+      const endpoint = await deps.topology.resolveRemoteEndpointConnection(payload.endpointId)
+      if (!endpoint) {
+        throw createAppError('worker.unavailable', {
+          debugMessage: `Remote endpoint unavailable: ${payload.endpointId}`,
+        })
+      }
+
+      try {
+        const approve = await invokeControlSurface(endpoint, {
+          kind: 'command',
+          id: 'workspace.approveRoot',
+          payload: { path: payload.path },
+        })
+
+        if (!approve.result) {
+          throw createAppError('worker.unavailable', {
+            debugMessage: `Remote control surface unavailable: ${payload.endpointId}`,
+          })
+        }
+
+        if (approve.result.ok === false) {
+          throw createAppError(approve.result.error)
+        }
+
+        const { result } = await invokeControlSurface(endpoint, {
+          kind: 'query',
+          id: 'filesystem.readDirectory',
+          payload: { uri: toFileUri(payload.path) },
+        })
+
+        if (!result) {
+          throw createAppError('worker.unavailable', {
+            debugMessage: `Remote control surface unavailable: ${payload.endpointId}`,
+          })
+        }
+
+        if (result.ok === false) {
+          throw createAppError(result.error)
+        }
+
+        const value = result.value as { entries?: unknown }
+        return {
+          endpointId: payload.endpointId,
+          path: payload.path,
+          entries: Array.isArray(value.entries)
+            ? (value.entries as ReadEndpointDirectoryResult['entries'])
+            : [],
         }
       } catch (error) {
         if (error instanceof OpenCoveAppError) {

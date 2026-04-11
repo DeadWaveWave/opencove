@@ -5,12 +5,11 @@ import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import type { GetSessionResult } from '../../src/shared/contracts/dto'
+import { buildNodeEvalCommand, launchApp, removePathWithRetry } from './workspace-canvas.helpers'
 import {
-  buildNodeEvalCommand,
-  launchApp,
-  removePathWithRetry,
-  selectCoveOption,
-} from './workspace-canvas.helpers'
+  createMultiMountProjectViaWizard,
+  createRemoteOnlyProjectViaWizard,
+} from './m6.endpoints-mounts.addProjectWizard.steps'
 import { verifyRemoteOnlyProjectDefaultMount } from './m6.endpoints-mounts.remoteOnly.steps'
 import {
   closeSettings,
@@ -49,8 +48,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
     const remoteWorkerUserDataDir = await mkdtemp(
       path.join(tmpdir(), 'opencove-e2e-m6-remote-worker-'),
     )
-    const remoteWorkerHomeDir = path.join(remoteWorkerUserDataDir, 'home')
-    await mkdir(remoteWorkerHomeDir, { recursive: true })
+    const remoteWorkerHomeDir = remoteBaseDir
     const remoteWorker = await startRemoteWorker({
       hostname: remoteHost,
       port: remotePort,
@@ -139,21 +137,13 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
       await closeSettings(window)
 
       const remoteOnlyProjectName = 'Remote Only'
-      await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
-      await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
-      await window
-        .locator('[data-testid="workspace-project-create-name"]')
-        .fill(remoteOnlyProjectName)
-      await selectCoveOption(window, 'workspace-project-create-remote-endpoint', remoteEndpointId)
-      await window
-        .locator('[data-testid="workspace-project-create-remote-root"]')
-        .fill(remoteOnlyDir)
-      await window
-        .locator('[data-testid="workspace-project-create-remote-name"]')
-        .fill('RemoteOnlyMount')
-      await window.locator('[data-testid="workspace-project-create-remote-add"]').click()
-      await window.locator('[data-testid="workspace-project-create-confirm"]').click()
-      await expect(window.locator('[data-testid="workspace-project-create-window"]')).toHaveCount(0)
+      await createRemoteOnlyProjectViaWizard({
+        window,
+        projectName: remoteOnlyProjectName,
+        remoteEndpointId,
+        remoteRootPath: remoteOnlyDir,
+        mountName: 'RemoteOnlyMount',
+      })
 
       const remoteOnlySidebarItem = window
         .locator('.workspace-sidebar [data-testid^="workspace-item-"]')
@@ -178,29 +168,15 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
       })
 
       const multiMountProjectName = 'Multi Mount'
-      await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
-      await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
-      await window
-        .locator('[data-testid="workspace-project-create-name"]')
-        .fill(multiMountProjectName)
-
-      await window
-        .locator('[data-testid="workspace-project-create-local-root"]')
-        .fill(path.resolve(__dirname, '../../'))
-      await window.locator('[data-testid="workspace-project-create-local-name"]').fill('LocalMount')
-      await window.locator('[data-testid="workspace-project-create-local-add"]').click()
-
-      await selectCoveOption(window, 'workspace-project-create-remote-endpoint', remoteEndpointId)
-      await window
-        .locator('[data-testid="workspace-project-create-remote-root"]')
-        .fill(multiRemoteDir)
-      await window
-        .locator('[data-testid="workspace-project-create-remote-name"]')
-        .fill('RemoteMount')
-      await window.locator('[data-testid="workspace-project-create-remote-add"]').click()
-
-      await window.locator('[data-testid="workspace-project-create-confirm"]').click()
-      await expect(window.locator('[data-testid="workspace-project-create-window"]')).toHaveCount(0)
+      await createMultiMountProjectViaWizard({
+        window,
+        projectName: multiMountProjectName,
+        localRootPath: path.resolve(__dirname, '../../'),
+        localMountName: 'LocalMount',
+        remoteEndpointId,
+        remoteRootPath: multiRemoteDir,
+        remoteMountName: 'RemoteMount',
+      })
 
       const multiSidebarItem = window
         .locator('.workspace-sidebar [data-testid^="workspace-item-"]')

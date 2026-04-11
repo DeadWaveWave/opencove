@@ -24,6 +24,7 @@ export function AppShellPopups({
   isPrimarySidebarCollapsed,
   onCloseCommandCenter,
   onOpenSettings,
+  onRequestOpenEndpoints,
   onOpenSpaceArchives,
   onTogglePrimarySidebar,
   onAddWorkspace,
@@ -53,6 +54,7 @@ export function AppShellPopups({
   isPrimarySidebarCollapsed: boolean
   onCloseCommandCenter: () => void
   onOpenSettings: () => void
+  onRequestOpenEndpoints: () => void
   onOpenSpaceArchives: () => void
   onTogglePrimarySidebar: () => void
   onAddWorkspace: () => void
@@ -124,6 +126,7 @@ export function AppShellPopups({
           onClose={() => {
             onCloseAddProjectWizard()
           }}
+          onRequestOpenEndpoints={onRequestOpenEndpoints}
         />
       ) : null}
 
@@ -147,6 +150,7 @@ export function AppShellPopups({
             workspaces.find(workspace => workspace.id === projectMountManager.workspaceId) ?? null
           }
           onClose={onCloseProjectMountManager}
+          onRequestOpenEndpoints={onRequestOpenEndpoints}
         />
       ) : null}
 

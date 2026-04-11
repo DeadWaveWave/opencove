@@ -8,6 +8,14 @@ export interface ControlSurfacePingResult {
   pid: number
 }
 
+export interface ControlSurfaceHomeDirectoryResult {
+  ok: true
+  now: string
+  pid: number
+  platform: string
+  homeDirectory: string
+}
+
 export interface ControlSurfaceCapabilitiesResult {
   ok: true
   now: string

@@ -91,6 +91,7 @@ export default function App(): React.JSX.Element {
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
   const [isAddProjectWizardOpen, setIsAddProjectWizardOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
+  const [settingsInitialPageId, setSettingsInitialPageId] = useState<'endpoints' | null>(null)
 
   useWebsiteWindowOcclusionSync(
     isSettingsOpen ||
@@ -159,6 +160,7 @@ export default function App(): React.JSX.Element {
       closeWorkspaceSearch()
       closeControlCenter()
       closeSpaceArchives()
+      setSettingsInitialPageId(null)
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
@@ -315,11 +317,15 @@ export default function App(): React.JSX.Element {
     [requestPersistFlush],
   )
 
-  const handleOpenSettings = useCallback((): void => {
-    setIsFocusNodeTargetZoomPreviewing(false)
-    closeControlCenter()
-    setIsSettingsOpen(true)
-  }, [closeControlCenter, setIsSettingsOpen])
+  const handleOpenSettings = useCallback(
+    (initialPageId: 'endpoints' | null = null): void => {
+      setIsFocusNodeTargetZoomPreviewing(false)
+      setSettingsInitialPageId(initialPageId)
+      closeControlCenter()
+      setIsSettingsOpen(true)
+    },
+    [closeControlCenter, setIsSettingsOpen],
+  )
 
   return (
     <>
@@ -416,7 +422,6 @@ export default function App(): React.JSX.Element {
         onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
         onOpenSettings={handleOpenSettings}
       />
-
       <AppShellPopups
         isCommandCenterOpen={isCommandCenterOpen}
         activeWorkspace={activeWorkspace}
@@ -424,6 +429,7 @@ export default function App(): React.JSX.Element {
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
         onCloseCommandCenter={closeCommandCenter}
         onOpenSettings={handleOpenSettings}
+        onRequestOpenEndpoints={() => handleOpenSettings('endpoints')}
         onOpenSpaceArchives={openSpaceArchives}
         onTogglePrimarySidebar={() => {
           setAgentSettings(prev => ({
@@ -467,6 +473,7 @@ export default function App(): React.JSX.Element {
 
       <AppShellModals
         isSettingsOpen={isSettingsOpen}
+        settingsInitialPageId={settingsInitialPageId}
         settings={agentSettings}
         updateState={updateState}
         modelCatalogByProvider={providerModelCatalog}
@@ -481,6 +488,7 @@ export default function App(): React.JSX.Element {
         onCloseSettings={() => {
           flushPersistNow()
           setIsFocusNodeTargetZoomPreviewing(false)
+          setSettingsInitialPageId(null)
           setIsSettingsOpen(false)
         }}
         whatsNew={whatsNew}

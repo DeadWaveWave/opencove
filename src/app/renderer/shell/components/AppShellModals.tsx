@@ -26,6 +26,7 @@ export interface WhatsNewDialogState {
 
 export function AppShellModals({
   isSettingsOpen,
+  settingsInitialPageId,
   settings,
   updateState,
   modelCatalogByProvider,
@@ -41,6 +42,7 @@ export function AppShellModals({
   whatsNew,
 }: {
   isSettingsOpen: boolean
+  settingsInitialPageId: 'endpoints' | null
   settings: AgentSettings
   updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
@@ -59,6 +61,7 @@ export function AppShellModals({
     <>
       {isSettingsOpen ? (
         <SettingsPanel
+          initialPageId={settingsInitialPageId}
           settings={settings}
           updateState={updateState}
           modelCatalogByProvider={modelCatalogByProvider}

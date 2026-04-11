@@ -39,6 +39,7 @@ import {
 } from './SettingsPanel.shared'
 
 export function SettingsPanel({
+  initialPageId,
   settings,
   updateState,
   modelCatalogByProvider,
@@ -58,8 +59,14 @@ export function SettingsPanel({
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState(AGENT_PROVIDERS))
-  const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
+  const [activePageId, setActivePageId] = useState<SettingsPageId>(() => initialPageId ?? 'general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
+
+  useEffect(() => {
+    if (initialPageId) {
+      setActivePageId(initialPageId)
+    }
+  }, [initialPageId])
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })

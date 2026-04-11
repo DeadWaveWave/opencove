@@ -3,7 +3,7 @@ export const zhCNSettingsPanel = {
   nav: {
     general: '通用',
     worker: 'Worker',
-    endpoints: 'Endpoints',
+    endpoints: '远程 Worker',
     agent: 'Agent',
     notifications: '通知',
     canvas: '画布',
