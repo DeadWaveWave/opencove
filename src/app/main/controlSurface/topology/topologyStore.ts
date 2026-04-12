@@ -51,7 +51,7 @@ type RemoteEndpointConnection = {
 }
 
 export interface WorkerTopologyStore {
-  listEndpoints: () => ListWorkerEndpointsResult
+  listEndpoints: () => Promise<ListWorkerEndpointsResult>
   registerEndpoint: (input: RegisterWorkerEndpointInput) => Promise<RegisterWorkerEndpointResult>
   removeEndpoint: (input: RemoveWorkerEndpointInput) => Promise<void>
   resolveRemoteEndpointConnection: (endpointId: string) => Promise<RemoteEndpointConnection | null>
@@ -108,7 +108,9 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
     return await writeQueue
   }
 
-  const listEndpoints = (): ListWorkerEndpointsResult => {
+  const listEndpoints = async (): Promise<ListWorkerEndpointsResult> => {
+    await ensureLoaded()
+
     const local: WorkerEndpointDto = {
       endpointId: 'local',
       kind: 'local',
@@ -382,7 +384,7 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
   }
 
   return {
-    listEndpoints: () => listEndpoints(),
+    listEndpoints,
     registerEndpoint,
     removeEndpoint,
     resolveRemoteEndpointConnection,

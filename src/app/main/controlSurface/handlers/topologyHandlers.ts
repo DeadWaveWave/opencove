@@ -21,9 +21,26 @@ import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
+import type { AppErrorDescriptor } from '../../../../shared/contracts/dto'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+function isUnknownControlSurfaceOperationError(
+  error: AppErrorDescriptor | null | undefined,
+  operationId: string,
+): boolean {
+  if (!error) {
+    return false
+  }
+
+  if (error.code !== 'common.invalid_input') {
+    return false
+  }
+
+  const debugMessage = typeof error.debugMessage === 'string' ? error.debugMessage : ''
+  return debugMessage.includes('Unknown control surface') && debugMessage.includes(operationId)
 }
 
 function normalizeOptionalString(value: unknown): string | null {
@@ -209,9 +226,7 @@ export function registerTopologyHandlers(
   controlSurface.register('endpoint.list', {
     kind: 'query',
     validate: payload => payload ?? null,
-    handle: async (): Promise<ReturnType<WorkerTopologyStore['listEndpoints']>> => {
-      return deps.topology.listEndpoints()
-    },
+    handle: async () => await deps.topology.listEndpoints(),
     defaultErrorCode: 'common.unexpected',
   })
 
@@ -250,11 +265,10 @@ export function registerTopologyHandlers(
       }
 
       try {
-        const { result } = await invokeControlSurface(
-          endpoint,
-          { kind: 'query', id: 'system.ping', payload: null },
-          { timeoutMs: payload.timeoutMs ?? undefined },
-        )
+        const primaryRequest = { kind: 'query' as const, id: 'system.ping', payload: null }
+        const { result } = await invokeControlSurface(endpoint, primaryRequest, {
+          timeoutMs: payload.timeoutMs ?? undefined,
+        })
 
         if (!result) {
           throw createAppError('worker.unavailable', {
@@ -263,6 +277,30 @@ export function registerTopologyHandlers(
         }
 
         if (result.ok === false) {
+          if (isUnknownControlSurfaceOperationError(result.error, primaryRequest.id)) {
+            const fallbackRequest = { kind: 'query' as const, id: 'project.list', payload: null }
+            const fallback = await invokeControlSurface(endpoint, fallbackRequest, {
+              timeoutMs: payload.timeoutMs ?? undefined,
+            })
+
+            if (!fallback.result) {
+              throw createAppError('worker.unavailable', {
+                debugMessage: `Remote control surface unavailable: ${payload.endpointId}`,
+              })
+            }
+
+            if (fallback.result.ok === false) {
+              throw createAppError(fallback.result.error)
+            }
+
+            return {
+              ok: true,
+              endpointId: payload.endpointId,
+              now: ctx.now().toISOString(),
+              pid: 0,
+            }
+          }
+
           throw createAppError(result.error)
         }
 
@@ -310,11 +348,8 @@ export function registerTopologyHandlers(
       }
 
       try {
-        const { result } = await invokeControlSurface(endpoint, {
-          kind: 'query',
-          id: 'system.homeDirectory',
-          payload: null,
-        })
+        const request = { kind: 'query' as const, id: 'system.homeDirectory', payload: null }
+        const { result } = await invokeControlSurface(endpoint, request)
 
         if (!result) {
           throw createAppError('worker.unavailable', {
@@ -323,6 +358,14 @@ export function registerTopologyHandlers(
         }
 
         if (result.ok === false) {
+          if (isUnknownControlSurfaceOperationError(result.error, request.id)) {
+            return {
+              endpointId: payload.endpointId,
+              platform: 'unknown',
+              homeDirectory: '/',
+            }
+          }
+
           throw createAppError(result.error)
         }
 
@@ -371,11 +414,12 @@ export function registerTopologyHandlers(
       }
 
       try {
-        const approve = await invokeControlSurface(endpoint, {
-          kind: 'command',
+        const approveRequest = {
+          kind: 'command' as const,
           id: 'workspace.approveRoot',
           payload: { path: payload.path },
-        })
+        }
+        const approve = await invokeControlSurface(endpoint, approveRequest)
 
         if (!approve.result) {
           throw createAppError('worker.unavailable', {
@@ -384,7 +428,9 @@ export function registerTopologyHandlers(
         }
 
         if (approve.result.ok === false) {
-          throw createAppError(approve.result.error)
+          if (!isUnknownControlSurfaceOperationError(approve.result.error, approveRequest.id)) {
+            throw createAppError(approve.result.error)
+          }
         }
 
         const { result } = await invokeControlSurface(endpoint, {
