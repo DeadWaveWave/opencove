@@ -89,6 +89,36 @@ describe('TerminalProfileResolver', () => {
     ])
   })
 
+  it('does not hang when WSL distro discovery stalls', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      commandDiscoveryTimeoutMs: 10,
+      locateWindowsCommands: async commands => {
+        if (commands.includes('powershell.exe')) {
+          return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+        }
+
+        return []
+      },
+      listWslDistros: async () => await new Promise<string[]>(() => undefined),
+    })
+
+    const result = await Promise.race<
+      Awaited<ReturnType<typeof resolver.listProfiles>> | 'timed-out'
+    >([
+      resolver.listProfiles(),
+      new Promise(resolve => {
+        setTimeout(() => resolve('timed-out'), 100)
+      }),
+    ])
+
+    expect(result).not.toBe('timed-out')
+    expect(result).toEqual({
+      profiles: [{ id: 'powershell', label: 'PowerShell', runtimeKind: 'windows' }],
+      defaultProfileId: 'powershell',
+    })
+  })
+
   it('resolves WSL sessions with linux cwd translation and Windows host cwd fallback', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',
