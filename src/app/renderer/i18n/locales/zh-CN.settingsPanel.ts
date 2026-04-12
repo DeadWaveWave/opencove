@@ -113,7 +113,9 @@ export const zhCNSettingsPanel = {
       urlLabel: 'URL',
       urlPlaceholder: 'https://example.com',
       enabled: '启用',
+      enabledHelp: '控制该指令是否显示在工作区右键菜单中。',
       pinned: '置顶',
+      pinnedHelp: '置顶后会直接显示在右键菜单根级（位于「快捷指令」子菜单之上）。',
     },
     phrases: {
       title: '快捷短语',

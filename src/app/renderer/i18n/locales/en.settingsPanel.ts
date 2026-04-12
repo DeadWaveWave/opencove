@@ -113,7 +113,10 @@ export const enSettingsPanel = {
       urlLabel: 'URL',
       urlPlaceholder: 'https://example.com',
       enabled: 'Enabled',
+      enabledHelp: 'Controls whether this command appears in the workspace context menu.',
       pinned: 'Pinned',
+      pinnedHelp:
+        'Pinned commands show directly in the root context menu (above the Quick Commands submenu).',
     },
     phrases: {
       title: 'Quick Phrases',
