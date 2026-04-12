@@ -72,11 +72,13 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
     TerminalNode: ({
       title,
       terminalProvider,
+      terminalThemeMode,
       onCommandRun,
       onTitleCommit,
     }: {
       title: string
       terminalProvider?: string | null
+      terminalThemeMode?: string
       onCommandRun?: (command: string) => void
       onTitleCommit?: (title: string) => void
     }) => {
@@ -84,6 +86,7 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/Termin
         <div>
           <span data-testid="terminal-title">{title}</span>
           <span data-testid="terminal-provider">{terminalProvider ?? 'none'}</span>
+          <span data-testid="terminal-theme-mode">{terminalThemeMode ?? 'sync-with-ui'}</span>
           <button
             type="button"
             data-testid="terminal-command-auto-1"
@@ -479,5 +482,79 @@ describe('WorkspaceCanvas terminal title mode', () => {
     })
     expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
     expect(latestNodes[0]?.data.terminalProviderHint).toBe('opencode')
+  })
+
+  it('keeps opencode agent nodes on the provider-specific renderer path without forcing dark theme', async () => {
+    const initialNodes: Node<TerminalNodeData>[] = [
+      {
+        id: 'agent-opencode-1',
+        type: 'terminalNode',
+        position: { x: 0, y: 0 },
+        data: {
+          sessionId: 'session-opencode-agent',
+          title: 'opencode · qwen',
+          titlePinnedByUser: false,
+          width: 520,
+          height: 400,
+          kind: 'agent',
+          status: 'running',
+          startedAt: '2026-03-23T10:00:00.000Z',
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: null,
+          terminalProviderHint: null,
+          agent: {
+            provider: 'opencode',
+            prompt: 'Investigate theme sync behavior',
+            model: 'qwen',
+            effectiveModel: 'qwen',
+            launchMode: 'new',
+            resumeSessionId: 'session-opencode-agent',
+            resumeSessionIdVerified: true,
+            executionDirectory: '/tmp',
+            expectedDirectory: null,
+            directoryMode: 'workspace',
+            customDirectory: null,
+            shouldCreateDirectory: false,
+            taskId: null,
+          },
+          task: null,
+          note: null,
+          image: null,
+          document: null,
+          website: null,
+        },
+        draggable: true,
+        selectable: true,
+      },
+    ]
+
+    const viewport: WorkspaceViewport = { x: 0, y: 0, zoom: 1 }
+    const spaces: WorkspaceSpaceState[] = []
+
+    render(
+      <WorkspaceCanvas
+        workspaceId="workspace-opencode-theme"
+        workspacePath="/tmp"
+        worktreesRoot=""
+        nodes={initialNodes}
+        onNodesChange={() => undefined}
+        spaces={spaces}
+        activeSpaceId={null}
+        onSpacesChange={() => undefined}
+        onActiveSpaceChange={() => undefined}
+        viewport={viewport}
+        isMinimapVisible={false}
+        onViewportChange={() => undefined}
+        onMinimapVisibilityChange={() => undefined}
+        agentSettings={DEFAULT_AGENT_SETTINGS}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('terminal-provider')).toHaveTextContent('opencode')
+    })
+    expect(screen.getByTestId('terminal-theme-mode')).toHaveTextContent('sync-with-ui')
   })
 })
