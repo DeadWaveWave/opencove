@@ -1,6 +1,7 @@
 import type { Terminal } from '@xterm/xterm'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
+import { writeTerminalAsync } from './writeTerminal'
 
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
 const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
@@ -21,18 +22,6 @@ function shouldSkipRawDeltaForSerializedScreen(serialized: string, delta: string
   }
 
   return true
-}
-
-async function writeTerminal(terminal: Terminal, data: string): Promise<void> {
-  if (data.length === 0) {
-    return
-  }
-
-  await new Promise<void>(resolve => {
-    terminal.write(data, () => {
-      resolve()
-    })
-  })
 }
 
 export async function hydrateTerminalFromSnapshot({
@@ -68,7 +57,7 @@ export async function hydrateTerminalFromSnapshot({
   let rawSnapshot = baseRawSnapshot
 
   if (placeholderPayload.length > 0) {
-    await writeTerminal(terminal, placeholderPayload)
+    await writeTerminalAsync(terminal, placeholderPayload)
     onHydratedWriteCommitted(rawSnapshot)
   }
 
@@ -84,7 +73,7 @@ export async function hydrateTerminalFromSnapshot({
         const snapshot = await takePtySnapshot({ sessionId })
         rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
         const delta = resolveScrollbackDelta(persistedSnapshot, rawSnapshot)
-        await writeTerminal(terminal, delta)
+        await writeTerminalAsync(terminal, delta)
       }
     } else {
       const snapshot = await takePtySnapshot({ sessionId })
@@ -93,12 +82,12 @@ export async function hydrateTerminalFromSnapshot({
         rawSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
 
         if (!shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)) {
-          await writeTerminal(terminal, delta)
+          await writeTerminalAsync(terminal, delta)
         }
       } else {
         rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
         const delta = resolveScrollbackDelta(persistedSnapshot, rawSnapshot)
-        await writeTerminal(terminal, delta)
+        await writeTerminalAsync(terminal, delta)
       }
     }
   } catch {

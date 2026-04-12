@@ -1,31 +1,12 @@
 import { useEffect } from 'react'
-import { FitAddon } from '@xterm/addon-fit'
-import { SearchAddon } from '@xterm/addon-search'
-import { SerializeAddon } from '@xterm/addon-serialize'
-import { Terminal } from '@xterm/xterm'
-import '@xterm/xterm/css/xterm.css'
+import type { FitAddon } from '@xterm/addon-fit'
+import type { SearchAddon } from '@xterm/addon-search'
+import type { Terminal } from '@xterm/xterm'
 import type { WorkspaceNodeKind } from '../../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
-import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
-import { activatePreferredTerminalRenderer } from './preferredRenderer'
-import { patchXtermMouseServiceWithRetry } from './patchXtermMouseService'
-import { registerTerminalHitTargetCursorScope } from './hitTargetCursorScope'
-import { DEFAULT_TERMINAL_FONT_FAMILY } from './constants'
-import { resolveInitialTerminalDimensions } from './initialDimensions'
-import { registerTerminalSelectionTestHandle } from './testHarness'
-import { registerTerminalDiagnostics } from './registerDiagnostics'
-
-async function writeTerminal(terminal: Terminal, data: string): Promise<void> {
-  if (data.length === 0) {
-    return
-  }
-
-  await new Promise<void>(resolve => {
-    terminal.write(data, () => {
-      resolve()
-    })
-  })
-}
+import type { TerminalThemeMode } from './theme'
+import { writeTerminalAsync } from './writeTerminal'
+import { createMountedXtermSession } from './xtermSession'
 
 export function useTerminalPlaceholderSession({
   nodeId,
@@ -75,8 +56,6 @@ export function useTerminalPlaceholderSession({
       return undefined
     }
 
-    const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
-    const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
     const diagnosticsEnabled =
       window.opencoveApi.meta?.enableTerminalDiagnostics === true ||
@@ -85,73 +64,32 @@ export function useTerminalPlaceholderSession({
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
 
     suppressPtyResizeRef.current = false
-    const initialDimensions = resolveInitialTerminalDimensions(null)
-    const terminal = new Terminal({
+    const session = createMountedXtermSession({
+      nodeId,
+      ownerId: `${nodeId}:placeholder`,
+      sessionIdForDiagnostics: '',
+      nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
+      titleForDiagnostics: 'placeholder',
+      terminalProvider,
+      terminalThemeMode,
+      isTestEnvironment,
+      container: containerRef.current,
+      initialDimensions: null,
+      windowsPty,
       cursorBlink: false,
       disableStdin: true,
-      fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
-      theme: initialTerminalTheme,
-      allowProposedApi: true,
-      convertEol: true,
-      scrollback: 5000,
-      ...(windowsPty ? { windowsPty } : {}),
-      ...(initialDimensions ?? {}),
+      bindSearchAddonToFind,
+      syncTerminalSize,
+      diagnosticsEnabled,
+      logTerminalDiagnostics,
     })
-    const fitAddon = new FitAddon()
-    const serializeAddon = new SerializeAddon()
-    terminal.loadAddon(fitAddon)
-    terminal.loadAddon(serializeAddon)
-    let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider)
-    terminalRef.current = terminal
-    fitAddonRef.current = fitAddon
-
-    const disposeTerminalFind =
-      typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
-        ? (() => {
-            const searchAddon = new SearchAddon()
-            terminal.loadAddon(searchAddon)
-            return bindSearchAddonToFind(searchAddon)
-          })()
-        : () => undefined
-
-    let disposeTerminalSelectionTestHandle: () => void = () => undefined
-    let cancelMouseServicePatch: () => void = () => undefined
-    let disposeTerminalHitTargetCursorScope: () => void = () => undefined
-
-    if (containerRef.current) {
-      terminal.open(containerRef.current)
-      containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
-      cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
-      disposeTerminalHitTargetCursorScope = registerTerminalHitTargetCursorScope({
-        container: containerRef.current,
-        ownerId: `${nodeId}:placeholder`,
-      })
-      if (isTestEnvironment) {
-        disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
-      }
-      activeRenderer.clearTextureAtlas()
-      syncTerminalSize()
-      requestAnimationFrame(syncTerminalSize)
-    }
-
-    const terminalDiagnostics = registerTerminalDiagnostics({
-      enabled: diagnosticsEnabled,
-      emit: logTerminalDiagnostics,
-      nodeId,
-      sessionId: '',
-      nodeKind: kind === 'agent' ? 'agent' : 'terminal',
-      title: kind === 'agent' ? 'placeholder' : 'placeholder',
-      terminal,
-      container: containerRef.current,
-      rendererKind: activeRenderer.kind,
-      terminalThemeMode,
-      windowsPty,
-    })
+    terminalRef.current = session.terminal
+    fitAddonRef.current = session.fitAddon
 
     let isDisposed = false
     void (async () => {
       try {
-        await writeTerminal(terminal, scrollback ?? '')
+        await writeTerminalAsync(session.terminal, scrollback ?? '')
       } catch {
         // placeholder is best-effort; treat write failures as hydrated to unblock UI
       }
@@ -163,7 +101,7 @@ export function useTerminalPlaceholderSession({
       isTerminalHydratedRef.current = true
       setIsTerminalHydrated(true)
       scheduleTranscriptSync()
-      terminalDiagnostics.logHydrated({
+      session.diagnostics.logHydrated({
         rawSnapshotLength: (scrollback ?? '').length,
         bufferedExitCode: null,
       })
@@ -174,28 +112,21 @@ export function useTerminalPlaceholderSession({
         return
       }
       applyTerminalTheme()
-      activeRenderer.clearTextureAtlas()
+      session.renderer.clearTextureAtlas()
       syncTerminalSize()
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
 
     return () => {
       isDisposed = true
-      cancelMouseServicePatch()
-      disposeTerminalHitTargetCursorScope()
-      activeRenderer.dispose()
-      terminalDiagnostics.dispose()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
-      disposeTerminalSelectionTestHandle()
-      disposeTerminalFind()
-      terminal.dispose()
+      session.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
     }
   }, [
     applyTerminalTheme,
     bindSearchAddonToFind,
-    containerRef,
     fitAddonRef,
     isTerminalHydratedRef,
     isTestEnvironment,
@@ -210,5 +141,6 @@ export function useTerminalPlaceholderSession({
     terminalProvider,
     terminalRef,
     terminalThemeMode,
+    containerRef,
   ])
 }

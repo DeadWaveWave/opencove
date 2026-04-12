@@ -1,9 +1,7 @@
 import { useEffect } from 'react'
-import { FitAddon } from '@xterm/addon-fit'
-import { SearchAddon } from '@xterm/addon-search'
-import { SerializeAddon } from '@xterm/addon-serialize'
-import { Terminal } from '@xterm/xterm'
-import '@xterm/xterm/css/xterm.css'
+import type { FitAddon } from '@xterm/addon-fit'
+import type { SearchAddon } from '@xterm/addon-search'
+import type { Terminal } from '@xterm/xterm'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { AgentLaunchMode, AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
@@ -18,18 +16,14 @@ import {
 } from './screenStateCache'
 import { resolveAttachablePtyApi } from './attachablePty'
 import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
-import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
-import { registerTerminalSelectionTestHandle } from './testHarness'
-import { patchXtermMouseServiceWithRetry } from './patchXtermMouseService'
-import { finalizeTerminalHydration } from './finalizeHydration'
-import { registerTerminalDiagnostics } from './registerDiagnostics'
-import { activatePreferredTerminalRenderer } from './preferredRenderer'
-import { registerTerminalHitTargetCursorScope } from './hitTargetCursorScope'
-import { DEFAULT_TERMINAL_FONT_FAMILY, MAX_SCROLLBACK_CHARS } from './constants'
+import type { TerminalThemeMode } from './theme'
+import { MAX_SCROLLBACK_CHARS } from './constants'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
 import { createTerminalOutputScheduler, type TerminalOutputScheduler } from './outputScheduler'
 import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
 import { createCommittedScreenStateRecorder } from './committedScreenState'
+import { createTerminalHydrationRouter } from './hydrationRouter'
+import { createMountedXtermSession } from './xtermSession'
 
 export function useTerminalRuntimeSession({
   nodeId,
@@ -110,74 +104,41 @@ export function useTerminalRuntimeSession({
       maxChars: MAX_SCROLLBACK_CHARS,
       initial: scrollbackBuffer.snapshot(),
     })
-    const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
-    const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
     const inputDiagnosticsEnabled = window.opencoveApi.meta?.enableTerminalInputDiagnostics === true
     const diagnosticsEnabled =
       window.opencoveApi.meta?.enableTerminalDiagnostics === true || inputDiagnosticsEnabled
     const logTerminalDiagnostics =
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
-    const terminal = new Terminal({
-      cursorBlink: true,
-      fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
-      theme: initialTerminalTheme,
-      allowProposedApi: true,
-      convertEol: true,
-      scrollback: 5000,
-      ...(windowsPty ? { windowsPty } : {}),
-      ...(initialDimensions ?? {}),
-    })
-    const fitAddon = new FitAddon()
-    const serializeAddon = new SerializeAddon()
-    terminal.loadAddon(fitAddon)
-    terminal.loadAddon(serializeAddon)
-    let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider)
-    terminalRef.current = terminal
-    fitAddonRef.current = fitAddon
-    const disposeTerminalFind =
-      typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
-        ? (() => {
-            const searchAddon = new SearchAddon()
-            terminal.loadAddon(searchAddon)
-            return bindSearchAddonToFind(searchAddon)
-          })()
-        : () => undefined
-    let disposeTerminalSelectionTestHandle: () => void = () => undefined
-    let cancelMouseServicePatch: () => void = () => undefined
-    let disposeTerminalHitTargetCursorScope: () => void = () => undefined
-    if (containerRef.current) {
-      terminal.open(containerRef.current)
-      containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
-      cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
-      disposeTerminalHitTargetCursorScope = registerTerminalHitTargetCursorScope({
-        container: containerRef.current,
-        ownerId: `${nodeId}:${sessionId}`,
-      })
-      if (isTestEnvironment) {
-        disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
-      }
-      activeRenderer.clearTextureAtlas()
-      syncTerminalSize()
-      requestAnimationFrame(syncTerminalSize)
-      if (isTestEnvironment) {
-        terminal.focus()
-        scheduleTranscriptSync()
-      }
-    }
-    const terminalDiagnostics = registerTerminalDiagnostics({
-      enabled: diagnosticsEnabled,
-      emit: logTerminalDiagnostics,
+    const session = createMountedXtermSession({
       nodeId,
-      sessionId,
-      nodeKind: kind === 'agent' ? 'agent' : 'terminal',
-      title: titleRef.current,
-      terminal,
-      container: containerRef.current,
-      rendererKind: activeRenderer.kind,
+      ownerId: `${nodeId}:${sessionId}`,
+      sessionIdForDiagnostics: sessionId,
+      nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
+      titleForDiagnostics: titleRef.current,
+      terminalProvider,
       terminalThemeMode,
+      isTestEnvironment,
+      container: containerRef.current,
+      initialDimensions,
       windowsPty,
+      cursorBlink: true,
+      disableStdin: false,
+      bindSearchAddonToFind,
+      syncTerminalSize,
+      diagnosticsEnabled,
+      logTerminalDiagnostics,
     })
+    terminalRef.current = session.terminal
+    fitAddonRef.current = session.fitAddon
+    const terminal = session.terminal
+    const serializeAddon = session.serializeAddon
+    const terminalDiagnostics = session.diagnostics
+
+    if (isTestEnvironment && containerRef.current) {
+      terminal.focus()
+      scheduleTranscriptSync()
+    }
     const formatInputHeadHex = (value: string, limit = 12): string => {
       const chars = Array.from(value).slice(0, limit)
       return chars
@@ -309,8 +270,6 @@ export function useTerminalRuntimeSession({
       ptyWriteQueue.enqueue(data, 'binary')
       ptyWriteQueue.flush()
     })
-    let isHydrating = true
-    const hydrationBuffer = { dataChunks: [] as string[], exitCode: null as number | null }
     const ptyEventHub = getPtyEventHub()
     const committedScreenStateRecorder = createCommittedScreenStateRecorder({
       serializeAddon,
@@ -335,67 +294,38 @@ export function useTerminalRuntimeSession({
       (statusRef.current === 'running' ||
         statusRef.current === 'standby' ||
         statusRef.current === 'restoring')
-    let shouldReplaceAgentPlaceholderOnNextChunk = false
+    const hydrationRouter = createTerminalHydrationRouter({
+      terminal,
+      outputScheduler,
+      shouldReplaceAgentPlaceholderAfterHydration,
+      scrollbackBuffer,
+      committedScrollbackBuffer,
+      recordCommittedScreenState: nextRawSnapshot => {
+        committedScreenStateRecorder.record(nextRawSnapshot)
+      },
+      scheduleTranscriptSync,
+      ptyWriteQueue,
+      markScrollbackDirty,
+      logHydrated: details => {
+        terminalDiagnostics.logHydrated(details)
+      },
+      syncTerminalSize,
+      onRevealed: () => {
+        if (!isDisposed) {
+          isTerminalHydratedRef.current = true
+          setIsTerminalHydrated(true)
+          scheduleTranscriptSync()
+        }
+      },
+      isDisposed: () => isDisposed,
+    })
     const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
-      if (isHydrating) {
-        hydrationBuffer.dataChunks.push(event.data)
-        return
-      }
-
-      if (shouldReplaceAgentPlaceholderOnNextChunk) {
-        shouldReplaceAgentPlaceholderOnNextChunk = false
-        terminal.reset()
-        scrollbackBuffer.set('')
-        committedScrollbackBuffer.set('')
-        committedScreenStateRecorder.record('')
-        scheduleTranscriptSync()
-      }
-      outputScheduler.handleChunk(event.data)
+      hydrationRouter.handleDataChunk(event.data)
     })
     const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
-      if (isHydrating) {
-        hydrationBuffer.exitCode = event.exitCode
-        return
-      }
-      outputScheduler.handleChunk(`\r\n[process exited with code ${event.exitCode}]\r\n`, {
-        immediateScrollbackPublish: true,
-      })
+      hydrationRouter.handleExit(event.exitCode)
     })
     const attachPromise = Promise.resolve(ptyWithOptionalAttach.attach?.({ sessionId }))
-    const finalizeHydration = (rawSnapshot: string): void => {
-      isHydrating = false
-      const didReplaceBaseline = finalizeTerminalHydration({
-        isDisposed: () => isDisposed,
-        rawSnapshot,
-        replaceHydrationSnapshotWithBufferedOutput: shouldReplaceAgentPlaceholderAfterHydration,
-        scrollbackBuffer,
-        ptyWriteQueue,
-        bufferedDataChunks: hydrationBuffer.dataChunks,
-        bufferedExitCode: hydrationBuffer.exitCode,
-        terminal,
-        committedScrollbackBuffer,
-        onCommittedScreenState: nextRawSnapshot => {
-          committedScreenStateRecorder.record(nextRawSnapshot)
-        },
-        markScrollbackDirty,
-        logHydrated: details => {
-          terminalDiagnostics.logHydrated(details)
-        },
-        syncTerminalSize,
-        onRevealed: () => {
-          if (!isDisposed) {
-            isTerminalHydratedRef.current = true
-            setIsTerminalHydrated(true)
-            scheduleTranscriptSync()
-          }
-        },
-      })
-
-      if (shouldReplaceAgentPlaceholderAfterHydration && !didReplaceBaseline) {
-        shouldReplaceAgentPlaceholderOnNextChunk = true
-      }
-      hydrationBuffer.exitCode = null
-    }
     void hydrateTerminalFromSnapshot({
       attachPromise,
       sessionId,
@@ -412,7 +342,7 @@ export function useTerminalRuntimeSession({
       },
       finalizeHydration: rawSnapshot => {
         shouldForwardTerminalData = true
-        finalizeHydration(rawSnapshot)
+        hydrationRouter.finalizeHydration(rawSnapshot)
       },
     })
     const resizeObserver = new ResizeObserver(syncTerminalSize)
@@ -425,7 +355,7 @@ export function useTerminalRuntimeSession({
         return
       }
       applyTerminalTheme()
-      activeRenderer.clearTextureAtlas()
+      session.renderer.clearTextureAtlas()
       syncTerminalSize()
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
@@ -440,20 +370,14 @@ export function useTerminalRuntimeSession({
         rawSnapshot: scrollbackBuffer.snapshot(),
         resolveCommittedScreenState: committedScreenStateRecorder.resolve,
       })
-      cancelMouseServicePatch()
-      disposeTerminalHitTargetCursorScope()
-      activeRenderer.dispose()
       isDisposed = true
       disposeLayoutSync()
-      terminalDiagnostics.dispose()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
       dataDisposable.dispose()
       binaryDisposable.dispose()
       unsubscribeData()
       unsubscribeExit()
-      disposeTerminalSelectionTestHandle()
-      disposeTerminalFind()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       ptyWriteQueue.dispose()
@@ -463,7 +387,7 @@ export function useTerminalRuntimeSession({
       } else {
         disposeScrollbackPublish()
       }
-      terminal.dispose()
+      session.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
     }
