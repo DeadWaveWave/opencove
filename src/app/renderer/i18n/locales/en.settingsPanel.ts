@@ -130,6 +130,9 @@ export const enSettingsPanel = {
     },
     focusOnClickLabel: 'Auto-focus on Click',
     focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
+    focusVisibleCenterLabel: 'Center Within Visible Canvas',
+    focusVisibleCenterHelp:
+      'When focusing, use the center of the visible canvas. If the left sidebar is open, focus within the remaining space.',
     focusTargetZoomLabel: 'Target Zoom',
     focusTargetZoomHelp:
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',

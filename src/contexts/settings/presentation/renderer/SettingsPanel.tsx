@@ -78,6 +78,8 @@ export function SettingsPanel({
     onChange({ ...settings, focusNodeOnClick: enabled })
   const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
     onChange({ ...settings, focusNodeTargetZoom: zoom })
+  const updateFocusNodeUseVisibleCanvasCenter = (enabled: boolean): void =>
+    onChange({ ...settings, focusNodeUseVisibleCanvasCenter: enabled })
   const updateStandbyBannerEnabled = (enabled: boolean): void =>
     onChange({ ...settings, standbyBannerEnabled: enabled })
   const updateStandbyBannerShowTask = (enabled: boolean): void =>
@@ -412,6 +414,7 @@ export function SettingsPanel({
                 standardWindowSizeBucket={settings.standardWindowSizeBucket}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
+                focusNodeUseVisibleCanvasCenter={settings.focusNodeUseVisibleCanvasCenter}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
@@ -422,6 +425,7 @@ export function SettingsPanel({
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
+                onChangeFocusNodeUseVisibleCanvasCenter={updateFocusNodeUseVisibleCanvasCenter}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
               />
             ) : null}
