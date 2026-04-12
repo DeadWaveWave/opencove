@@ -19,12 +19,7 @@ import {
   type WorktreeNameSuggestionAgentProvider,
 } from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
-import {
-  isValidUiLanguage,
-  isValidUiTheme,
-  type UiLanguage,
-  type UiTheme,
-} from './uiSettings'
+import { isValidUiLanguage, isValidUiTheme, type UiLanguage, type UiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
   isValidUpdatePolicy,

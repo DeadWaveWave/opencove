@@ -284,10 +284,7 @@ export function handleTerminalCustomKeyEvent({
     return false
   }
 
-  if (
-    event.type !== 'keydown' ||
-    (!windowsCopyShortcut && !linuxCopyShortcut)
-  ) {
+  if (event.type !== 'keydown' || (!windowsCopyShortcut && !linuxCopyShortcut)) {
     return true
   }
 
