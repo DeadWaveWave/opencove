@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import {
+  createNoteNodeAtFlowPosition,
   createTerminalNodeAtFlowPosition,
   createWebsiteNodeAtFlowPosition,
 } from './useInteractions.paneNodeCreation'
@@ -14,6 +15,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     | 'websiteWindowsEnabled'
     | 'standardWindowSizeBucket'
     | 'createWebsiteNode'
+    | 'createNoteNode'
     | 'spacesRef'
     | 'nodesRef'
     | 'setNodes'
@@ -32,6 +34,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     websiteWindowsEnabled,
     standardWindowSizeBucket,
     createWebsiteNode,
+    createNoteNode,
     spacesRef,
     nodesRef,
     setNodes,
@@ -111,7 +114,27 @@ export function useWorkspaceCanvasQuickMenuActions(
 
   const insertQuickPhrase = useCallback(
     (phrase: QuickPhrase): void => {
-      setContextMenu(null)
+      if (contextMenu?.kind === 'pane') {
+        setContextMenu(null)
+
+        createNoteNodeAtFlowPosition({
+          anchor: {
+            x: contextMenu.flowX,
+            y: contextMenu.flowY,
+          },
+          standardWindowSizeBucket,
+          createNoteNode: (anchor, placementOptions) =>
+            createNoteNode(anchor, {
+              ...placementOptions,
+              initialText: phrase.content,
+            }),
+          spacesRef,
+          nodesRef,
+          setNodes,
+          onSpacesChange,
+        })
+        return
+      }
 
       const text = phrase.content
       const writeText = window.opencoveApi?.clipboard?.writeText
@@ -130,7 +153,16 @@ export function useWorkspaceCanvasQuickMenuActions(
         // ignore clipboard failures
       }
     },
-    [setContextMenu],
+    [
+      contextMenu,
+      createNoteNode,
+      nodesRef,
+      onSpacesChange,
+      setContextMenu,
+      setNodes,
+      spacesRef,
+      standardWindowSizeBucket,
+    ],
   )
 
   return { runQuickCommand, insertQuickPhrase }

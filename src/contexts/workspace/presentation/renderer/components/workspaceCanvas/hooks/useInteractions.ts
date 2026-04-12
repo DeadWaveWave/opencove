@@ -436,6 +436,7 @@ export function useWorkspaceCanvasInteractions({
     websiteWindowsEnabled,
     standardWindowSizeBucket,
     createWebsiteNode,
+    createNoteNode,
     spacesRef,
     nodesRef,
     setNodes,

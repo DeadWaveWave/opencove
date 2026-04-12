@@ -23,6 +23,7 @@ import type {
 export interface CreateNoteNodeOptions {
   placementStrategy?: 'default' | 'right-no-push'
   placement?: NodePlacementOptions
+  initialText?: string
 }
 
 export interface UseWorkspaceCanvasNodesStoreParams {
