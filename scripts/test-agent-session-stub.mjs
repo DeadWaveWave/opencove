@@ -16,6 +16,7 @@ import { runOpenCodeIdleWithMessageScenario } from './test-agent-session-stub/op
 import {
   runRawAltScreenWheelEchoScenario,
   runRawBracketedPasteEchoScenario,
+  runRawColorProbeScenario,
   runRawDsrReplyEchoScenario,
 } from './test-agent-session-stub/raw.mjs'
 
@@ -66,6 +67,11 @@ async function main() {
 
   if (scenario === 'raw-dsr-reply-echo') {
     await runRawDsrReplyEchoScenario()
+    return
+  }
+
+  if (scenario === 'raw-color-probe') {
+    await runRawColorProbeScenario()
     return
   }
 

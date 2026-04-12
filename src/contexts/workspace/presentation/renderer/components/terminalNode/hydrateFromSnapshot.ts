@@ -62,20 +62,17 @@ export async function hydrateTerminalFromSnapshot({
   }
 
   try {
-    await attachPromise.catch(() => undefined)
-
     if (kind === 'agent') {
       // Agent CLIs restore their own history after attach. Do not block hydration on snapshot
       // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
       // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
       // arrive after the CLI has exited raw/noecho mode.
-      if (placeholderPayload.length === 0) {
-        const snapshot = await takePtySnapshot({ sessionId })
-        rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
-        const delta = resolveScrollbackDelta(persistedSnapshot, rawSnapshot)
-        await writeTerminalAsync(terminal, delta)
-      }
+      // Do not await attach here: the PTY may start emitting terminal feature probes immediately,
+      // and buffering output while waiting for `attach()` can delay xterm replies enough for some
+      // CLIs to disable color.
+      void attachPromise.catch(() => undefined)
     } else {
+      await attachPromise.catch(() => undefined)
       const snapshot = await takePtySnapshot({ sessionId })
       if (cachedSerializedScreen.length > 0) {
         const delta = resolveScrollbackDelta(baseRawSnapshot, snapshot.data)

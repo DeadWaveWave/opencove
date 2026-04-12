@@ -58,6 +58,37 @@ function extractX10MouseReportBytes(buffer) {
   return Array.from(report, char => char.charCodeAt(0))
 }
 
+function containsDeviceStatusReply(buffer) {
+  const replyStart = buffer.lastIndexOf('\u001b[')
+  if (replyStart === -1) {
+    return false
+  }
+
+  const payload = buffer.slice(replyStart + '\u001b['.length)
+  let index = 0
+
+  while (index < payload.length && payload[index] >= '0' && payload[index] <= '9') {
+    index += 1
+  }
+
+  if (index === 0 || payload[index] !== ';') {
+    return false
+  }
+
+  index += 1
+  const colStart = index
+
+  while (index < payload.length && payload[index] >= '0' && payload[index] <= '9') {
+    index += 1
+  }
+
+  if (index === colStart || payload[index] !== 'R') {
+    return false
+  }
+
+  return true
+}
+
 export async function runRawBracketedPasteEchoScenario() {
   process.stdout.write('\u001b[?2004h')
 
@@ -180,5 +211,47 @@ export async function runRawDsrReplyEchoScenario() {
 
   await sleep(1200)
   process.stdout.write('[opencove-test-dsr] done\n')
+  await sleep(20_000)
+}
+
+export async function runRawColorProbeScenario() {
+  const runId = Date.now()
+  let buffer = ''
+  let sawDsrReply = false
+
+  if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+    process.stdin.setRawMode(true)
+  }
+
+  process.stdin.setEncoding('utf8')
+  process.stdin.on('data', chunk => {
+    buffer += chunk
+    if (containsDeviceStatusReply(buffer)) {
+      sawDsrReply = true
+    }
+    if (buffer.length > 256) {
+      buffer = buffer.slice(-128)
+    }
+  })
+  process.stdin.resume()
+
+  process.stdout.write(DEVICE_STATUS_REPORT)
+
+  await sleep(400)
+
+  // If the terminal replied promptly to DSR, output a colored token; otherwise output the same
+  // token without ANSI colors. This mimics CLIs that disable color when terminal replies are delayed.
+  const token = `COLOR_PROBE_${runId}`
+  if (sawDsrReply) {
+    process.stdout.write(`\u001b[31m${token}\u001b[0m\n`)
+  } else {
+    process.stdout.write(`${token}\n`)
+  }
+
+  if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+    process.stdin.setRawMode(false)
+  }
+
+  process.stdout.write(`[opencove-test-color] runId=${runId} done\n`)
   await sleep(20_000)
 }
