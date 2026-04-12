@@ -1,3 +1,5 @@
+import type { WindowsAutomationPasteGuard } from './windowsAutomationPasteGuard'
+
 type PtyWriteEncoding = 'utf8' | 'binary'
 
 type PtyWritePayload = {
@@ -6,6 +8,7 @@ type PtyWritePayload = {
 }
 
 type TerminalClipboardController = {
+  clearSelection?: () => void
   getSelection: () => string
   hasSelection: () => boolean
   paste: (data: string) => void
@@ -209,6 +212,7 @@ export async function pasteTextFromClipboard({
 }
 
 export function handleTerminalCustomKeyEvent({
+  automationPasteGuard,
   copySelectedText = copyTextToClipboard,
   event,
   pasteClipboardText = pasteTextFromClipboard,
@@ -217,6 +221,7 @@ export function handleTerminalCustomKeyEvent({
   ptyWriteQueue,
   terminal,
 }: {
+  automationPasteGuard?: WindowsAutomationPasteGuard | null
   copySelectedText?: (text: string) => Promise<void> | void
   event: KeyboardEvent
   pasteClipboardText?: (
@@ -227,6 +232,22 @@ export function handleTerminalCustomKeyEvent({
   ptyWriteQueue: PtyWriteQueue
   terminal: TerminalClipboardController
 }): boolean {
+  const windowsCopyShortcut = isWindowsTerminalCopyShortcut(event, platformInfo)
+  const windowsPasteShortcut = isWindowsTerminalPasteShortcut(event, platformInfo)
+  const linuxCopyShortcut = isLinuxTerminalCopyShortcut(event, platformInfo)
+  const linuxPasteShortcut = isLinuxTerminalPasteShortcut(event, platformInfo)
+  const macPasteShortcut = isMacTerminalPasteShortcut(event, platformInfo)
+  const isPhysicalKeyCodeMissing = typeof event.code !== 'string' || event.code.length === 0
+
+  if (event.type === 'keydown' || event.type === 'keyup') {
+    automationPasteGuard?.noteKeyboardEvent({
+      type: event.type,
+      key: event.key,
+      code: event.code || null,
+      repeat: event.repeat,
+    })
+  }
+
   if (
     event.key === 'Enter' &&
     event.shiftKey &&
@@ -251,10 +272,12 @@ export function handleTerminalCustomKeyEvent({
 
   if (
     event.type === 'keydown' &&
-    (isWindowsTerminalPasteShortcut(event, platformInfo) ||
-      isMacTerminalPasteShortcut(event, platformInfo) ||
-      isLinuxTerminalPasteShortcut(event, platformInfo))
+    (windowsPasteShortcut || macPasteShortcut || linuxPasteShortcut)
   ) {
+    const canceledPendingInterrupt = automationPasteGuard?.cancelPendingInterrupt() ?? false
+    if (canceledPendingInterrupt && terminal.hasSelection()) {
+      terminal.clearSelection?.()
+    }
     event.preventDefault()
     event.stopPropagation()
     void pasteClipboardText({ terminal })
@@ -263,19 +286,31 @@ export function handleTerminalCustomKeyEvent({
 
   if (
     event.type !== 'keydown' ||
-    (!isWindowsTerminalCopyShortcut(event, platformInfo) &&
-      !isLinuxTerminalCopyShortcut(event, platformInfo))
+    (!windowsCopyShortcut && !linuxCopyShortcut)
   ) {
     return true
   }
 
   if (!terminal.hasSelection()) {
+    if (automationPasteGuard && windowsCopyShortcut && isPhysicalKeyCodeMissing) {
+      event.preventDefault()
+      event.stopPropagation()
+      automationPasteGuard.scheduleInterrupt()
+      return false
+    }
     return true
   }
 
   const selection = terminal.getSelection()
   if (selection.length === 0) {
     return true
+  }
+
+  if (automationPasteGuard?.shouldSuppressSelectionCopy()) {
+    event.preventDefault()
+    event.stopPropagation()
+    terminal.clearSelection?.()
+    return false
   }
 
   event.preventDefault()

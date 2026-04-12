@@ -152,6 +152,7 @@ export interface AgentSettings {
   standardWindowSizeBucket: StandardWindowSizeBucket
   websiteWindowPolicy: WebsiteWindowPolicy
   experimentalWebsiteWindowPasteEnabled: boolean
+  experimentalVoiceInputCtrlCOptimizationEnabled: boolean
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   terminalFontFamily: string | null
@@ -210,6 +211,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   standardWindowSizeBucket: 'regular',
   websiteWindowPolicy: DEFAULT_WEBSITE_WINDOW_POLICY,
   experimentalWebsiteWindowPasteEnabled: false,
+  experimentalVoiceInputCtrlCOptimizationEnabled: true,
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,
@@ -398,6 +400,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const experimentalWebsiteWindowPasteEnabled =
     normalizeBoolean(value.experimentalWebsiteWindowPasteEnabled) ??
     DEFAULT_AGENT_SETTINGS.experimentalWebsiteWindowPasteEnabled
+  const experimentalVoiceInputCtrlCOptimizationEnabled =
+    normalizeBoolean(value.experimentalVoiceInputCtrlCOptimizationEnabled) ??
+    DEFAULT_AGENT_SETTINGS.experimentalVoiceInputCtrlCOptimizationEnabled
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -481,6 +486,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     standardWindowSizeBucket,
     websiteWindowPolicy,
     experimentalWebsiteWindowPasteEnabled,
+    experimentalVoiceInputCtrlCOptimizationEnabled,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     terminalFontFamily,

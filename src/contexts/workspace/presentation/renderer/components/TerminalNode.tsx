@@ -4,6 +4,7 @@ import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRollingTextBuffer } from '../utils/rollingTextBuffer'
 import {
@@ -43,6 +44,7 @@ import { DEFAULT_TERMINAL_FONT_FAMILY, MAX_SCROLLBACK_CHARS } from './terminalNo
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { hydrateTerminalFromSnapshot } from './terminalNode/hydrateFromSnapshot'
+import { createWindowsAutomationPasteGuard } from './terminalNode/windowsAutomationPasteGuard'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -78,6 +80,9 @@ export function TerminalNode({
   onCommandRun,
   onInteractionStart,
 }: TerminalNodeProps): JSX.Element {
+  const voiceInputCtrlCOptimizationEnabled = useAppStore(
+    state => state.agentSettings.experimentalVoiceInputCtrlCOptimizationEnabled,
+  )
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
   const isTestEnvironment = window.opencoveApi.meta.isTest
@@ -214,14 +219,49 @@ export function TerminalNode({
         ...(encoding === 'binary' ? { encoding } : {}),
       }),
     )
+    const windowsAutomationPasteGuardEnabled =
+      voiceInputCtrlCOptimizationEnabled ??
+      window.opencoveApi.meta?.enableWindowsAutomationPasteGuard === true
+    const windowsAutomationPasteGuard = windowsAutomationPasteGuardEnabled
+      ? createWindowsAutomationPasteGuard({ ptyWriteQueue })
+      : null
     const openCodeThemeBridge =
       terminalProvider === 'opencode'
         ? createOpenCodeTuiThemeBridge({ terminal, ptyWriteQueue, terminalThemeMode })
         : null
-    bindTerminalCustomKeyHandler({ terminal, ptyWriteQueue, onOpenFind: openTerminalFind })
+    bindTerminalCustomKeyHandler({
+      automationPasteGuard: windowsAutomationPasteGuard,
+      terminal,
+      ptyWriteQueue,
+      onOpenFind: openTerminalFind,
+    })
+    const selectionChangeDisposable =
+      windowsAutomationPasteGuard === null
+        ? { dispose: () => undefined }
+        : terminal.onSelectionChange(() => {
+            windowsAutomationPasteGuard.noteSelectionChange(terminal.hasSelection(), () =>
+              terminal.clearSelection(),
+            )
+          })
     let cancelMouseServicePatch: () => void = () => undefined
     let disposeTerminalHitTargetCursorScope: () => void = () => undefined
+    let removeManualPointerListener: () => void = () => undefined
     if (containerRef.current) {
+      if (windowsAutomationPasteGuard) {
+        const pointerContainer = containerRef.current
+        const handlePointerDown = () => {
+          windowsAutomationPasteGuard.noteManualPointerInteraction()
+        }
+        pointerContainer.addEventListener('pointerdown', handlePointerDown, {
+          capture: true,
+          passive: true,
+        })
+        removeManualPointerListener = () => {
+          pointerContainer.removeEventListener('pointerdown', handlePointerDown, {
+            capture: true,
+          })
+        }
+      }
       terminal.open(containerRef.current)
       containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
       cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
@@ -404,6 +444,7 @@ export function TerminalNode({
       })
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
+      removeManualPointerListener()
       activeRenderer.dispose()
       isDisposed = true
       disposeLayoutSync()
@@ -415,10 +456,12 @@ export function TerminalNode({
       unsubscribeData()
       unsubscribeExit()
       disposeTerminalSelectionTestHandle()
+      selectionChangeDisposable.dispose()
       disposeTerminalFind()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       ptyWriteQueue.dispose()
+      windowsAutomationPasteGuard?.dispose()
       openCodeThemeBridge?.dispose()
       if (isInvalidated) {
         cancelScrollbackPublish()
@@ -444,6 +487,7 @@ export function TerminalNode({
     syncTerminalSize,
     terminalThemeMode,
     terminalProvider,
+    voiceInputCtrlCOptimizationEnabled,
     isTestEnvironment,
     kind,
   ])

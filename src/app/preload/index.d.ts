@@ -107,6 +107,7 @@ export interface OpenCoveApi {
     isPackaged: boolean
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
+    enableWindowsAutomationPasteGuard?: boolean
     runtime: 'electron' | 'browser'
     platform: string
     windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null

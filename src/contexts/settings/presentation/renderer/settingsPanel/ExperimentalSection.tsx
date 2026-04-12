@@ -6,13 +6,17 @@ import { ExperimentalWorkerWebUiSection } from './ExperimentalWorkerWebUiSection
 export function ExperimentalSection({
   websiteWindowPolicy,
   websiteWindowPasteEnabled,
+  voiceInputCtrlCOptimizationEnabled,
   onChangeWebsiteWindowPolicy,
   onChangeWebsiteWindowPasteEnabled,
+  onChangeVoiceInputCtrlCOptimizationEnabled,
 }: {
   websiteWindowPolicy: WebsiteWindowPolicy
   websiteWindowPasteEnabled: boolean
+  voiceInputCtrlCOptimizationEnabled: boolean
   onChangeWebsiteWindowPolicy: (policy: WebsiteWindowPolicy) => void
   onChangeWebsiteWindowPasteEnabled: (enabled: boolean) => void
+  onChangeVoiceInputCtrlCOptimizationEnabled: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [keepAliveHostDraft, setKeepAliveHostDraft] = useState('')
@@ -83,6 +87,24 @@ export function ExperimentalSection({
                     enabled: event.target.checked,
                   })
                 }
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.experimental.voiceInputCtrlCOptimizationLabel')}</strong>
+            <span>{t('settingsPanel.experimental.voiceInputCtrlCOptimizationHelp')}</span>
+          </div>
+          <div className="settings-panel__control">
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                data-testid="settings-experimental-voice-input-ctrl-c-optimization"
+                checked={voiceInputCtrlCOptimizationEnabled}
+                onChange={event => onChangeVoiceInputCtrlCOptimizationEnabled(event.target.checked)}
               />
               <span className="cove-toggle__slider"></span>
             </label>

@@ -177,6 +177,8 @@ export const zhCNSettingsPanel = {
     websiteWindowEnabledHelp: '开启后允许网页节点渲染实时网页内容。',
     websiteWindowPasteLabel: '粘贴时自动创建',
     websiteWindowPasteHelp: '开启后，在画布中粘贴合法网页链接时会自动创建网页节点。',
+    voiceInputCtrlCOptimizationLabel: '语音输入 Ctrl+C 优化',
+    voiceInputCtrlCOptimizationHelp: '减少语音输入工具误发 Ctrl+C 导致终端输入被打断。',
     websiteWindowMaxActiveLabel: '同时激活数量',
     websiteWindowMaxActiveHelp: '限制同一时刻保持可交互的网页窗口数量。',
     websiteWindowDiscardAfterLabel: '后台回收时间',

@@ -179,6 +179,40 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('toggles the voice input Ctrl+C optimization from experimental settings', () => {
+    const onChange = vi.fn()
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={onChange}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-experimental'))
+    fireEvent.click(screen.getByTestId('settings-experimental-voice-input-ctrl-c-optimization'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      experimentalVoiceInputCtrlCOptimizationEnabled: false,
+    })
+  })
+
   it('updates release channel settings and exposes update actions', () => {
     const onChange = vi.fn()
     const onCheckForUpdates = vi.fn()

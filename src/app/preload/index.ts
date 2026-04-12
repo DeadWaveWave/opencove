@@ -129,6 +129,7 @@ const opencoveApi = {
     isPackaged: process.env.NODE_ENV !== 'test' && process.defaultApp !== true,
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
+    enableWindowsAutomationPasteGuard: process.env.OPENCOVE_WINDOWS_AUTOMATION_PASTE_GUARD === '1',
     runtime: 'electron',
     platform: process.platform,
     windowsPty: resolveWindowsPtyMeta(),

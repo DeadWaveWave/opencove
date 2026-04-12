@@ -100,6 +100,8 @@ export function SettingsPanel({
     onChange({ ...settings, websiteWindowPolicy: policy })
   const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
     onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
+  const updateExperimentalVoiceInputCtrlCOptimizationEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalVoiceInputCtrlCOptimizationEnabled: enabled })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
@@ -430,8 +432,14 @@ export function SettingsPanel({
               <ExperimentalSection
                 websiteWindowPolicy={settings.websiteWindowPolicy}
                 websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
+                voiceInputCtrlCOptimizationEnabled={
+                  settings.experimentalVoiceInputCtrlCOptimizationEnabled
+                }
                 onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
                 onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
+                onChangeVoiceInputCtrlCOptimizationEnabled={
+                  updateExperimentalVoiceInputCtrlCOptimizationEnabled
+                }
               />
             ) : null}
 
