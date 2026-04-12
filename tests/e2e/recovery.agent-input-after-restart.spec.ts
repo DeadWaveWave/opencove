@@ -6,8 +6,8 @@ import {
   removePathWithRetry,
 } from './workspace-canvas.helpers'
 
-test.describe('Recovery - Agent terminal replies', () => {
-  test('does not echo delayed xterm replies as visible ^[[ garbage after restart', async () => {
+test.describe('Recovery - Agent input after restart', () => {
+  test('remains interactive (stdin forwarded) after app restart', async () => {
     const userDataDir = await createTestUserDataDir()
 
     try {
@@ -16,7 +16,8 @@ test.describe('Recovery - Agent terminal replies', () => {
         userDataDir,
         cleanupUserDataDir: false,
         env: {
-          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'raw-dsr-reply-echo',
+          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'jsonl-stdin-submit-delayed-turn',
         },
       })
 
@@ -41,19 +42,15 @@ test.describe('Recovery - Agent terminal replies', () => {
 
         const pane = window.locator('.workspace-canvas .react-flow__pane')
         await expect(pane).toBeVisible()
-
-        await pane.click({
-          button: 'right',
-          position: { x: 320, y: 220 },
-        })
+        await pane.click({ button: 'right', position: { x: 320, y: 220 } })
 
         const runButton = window.locator('[data-testid="workspace-context-run-default-agent"]')
         await expect(runButton).toBeVisible()
         await runButton.click()
 
-        const terminalNode = window.locator('.terminal-node').first()
-        await expect(terminalNode).toContainText('[opencove-test-dsr] done', { timeout: 20_000 })
-        await expect(terminalNode).not.toContainText('^[[1;1R')
+        const agentNode = window.locator('.terminal-node').first()
+        await expect(agentNode).toBeVisible()
+        await expect(agentNode.locator('.terminal-node__status')).toHaveText('Standby')
       } finally {
         await electronApp.close()
       }
@@ -63,15 +60,29 @@ test.describe('Recovery - Agent terminal replies', () => {
         userDataDir,
         cleanupUserDataDir: true,
         env: {
-          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'raw-dsr-reply-echo',
+          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'jsonl-stdin-submit-delayed-turn',
         },
       })
 
       try {
-        await expect(restartedWindow.locator('.terminal-node')).toHaveCount(1)
-        const terminalNode = restartedWindow.locator('.terminal-node').first()
-        await expect(terminalNode).toContainText('[opencove-test-dsr] done', { timeout: 20_000 })
-        await expect(terminalNode).not.toContainText('^[[1;1R')
+        const agentNode = restartedWindow.locator('.terminal-node').first()
+        const nodeStatus = agentNode.locator('.terminal-node__status')
+
+        await expect(agentNode).toBeVisible()
+        await expect(nodeStatus).toHaveText('Standby')
+        await expect(agentNode.locator('.terminal-node__terminal')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        )
+
+        await agentNode.locator('.xterm').click()
+        await expect(agentNode.locator('.xterm-helper-textarea')).toBeFocused()
+        await restartedWindow.waitForTimeout(250)
+        await restartedWindow.keyboard.press('Enter')
+
+        await expect(nodeStatus).toHaveText('Working', { timeout: 5000 })
+        await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
       } finally {
         await restartedApp.close()
       }

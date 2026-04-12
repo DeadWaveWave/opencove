@@ -94,8 +94,9 @@ describe('remote persistence store', () => {
     await expect(store.readAgentNodePlaceholderScrollback('node-1')).resolves.toEqual(
       'PLACEHOLDER_SCROLLBACK',
     )
-    await expect(store.writeAgentNodePlaceholderScrollback('node-1', 'PLACEHOLDER_SCROLLBACK'))
-      .resolves.toEqual({ ok: true, level: 'full', bytes: 19 })
+    await expect(
+      store.writeAgentNodePlaceholderScrollback('node-1', 'PLACEHOLDER_SCROLLBACK'),
+    ).resolves.toEqual({ ok: true, level: 'full', bytes: 19 })
 
     const firstRequest = JSON.parse(
       String((fetchMock.mock.calls[0]?.[1] as { body?: unknown } | undefined)?.body ?? ''),

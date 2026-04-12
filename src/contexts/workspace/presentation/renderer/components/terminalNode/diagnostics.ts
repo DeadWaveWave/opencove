@@ -67,9 +67,14 @@ export function captureTerminalInteractionDetails({
   rendererKind?: 'webgl' | 'dom' | null
   point?: { x: number; y: number } | null
 }): Record<string, TerminalDiagnosticsDetailValue> {
+  const activeElement = document.activeElement instanceof Element ? document.activeElement : null
   const xtermElement =
     container?.querySelector('.xterm') instanceof HTMLElement
       ? (container.querySelector('.xterm') as HTMLElement)
+      : null
+  const xtermHelperTextarea =
+    container?.querySelector('.xterm-helper-textarea') instanceof HTMLTextAreaElement
+      ? (container.querySelector('.xterm-helper-textarea') as HTMLTextAreaElement)
       : null
   const viewportElement =
     container?.querySelector('.xterm-viewport') instanceof HTMLElement
@@ -118,6 +123,13 @@ export function captureTerminalInteractionDetails({
     viewportCursor: getComputedCursor(viewportElement),
     screenCursor: getComputedCursor(screenElement),
     canvasCursor: getComputedCursor(canvasElement),
+    activeElement: describeElement(activeElement),
+    activeElementCursor: getComputedCursor(activeElement),
+    activeElementInsideTerminal: activeElement
+      ? activeElement.closest('.terminal-node__terminal') !== null
+      : false,
+    xtermHelperTextareaPresent: xtermHelperTextarea instanceof HTMLTextAreaElement,
+    xtermHelperTextareaFocused: xtermHelperTextarea ? activeElement === xtermHelperTextarea : false,
     hitTarget: describeElement(hitTarget),
     hitTargetCursor: getComputedCursor(hitTarget),
     hitTargetInsideTerminal: hitTarget?.closest('.terminal-node__terminal') !== null,

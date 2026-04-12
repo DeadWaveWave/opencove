@@ -63,6 +63,7 @@ export function useHydrateAppState({
   const hydratedWorkspaceIdsRef = useRef<Set<string>>(new Set())
   const hydratingWorkspacePromisesRef = useRef<Map<string, Promise<void>>>(new Map())
   const scrollbackLoadedWorkspaceIdsRef = useRef<Set<string>>(new Set())
+  const shouldDropRuntimeSessionIdsRef = useRef(false)
   const initialHydrationWorkspaceIdRef = useRef<string | null>(null)
   const initialHydrationCompletedRef = useRef(false)
 
@@ -210,7 +211,26 @@ export function useHydrateAppState({
 
       void loadWorkspaceScrollbacks(persistedWorkspace)
 
-      const runtimeNodes = toRuntimeNodes(persistedWorkspace).filter(requiresRuntimeHydration)
+      const dropRuntimeSessionIds = shouldDropRuntimeSessionIdsRef.current
+      const runtimeNodes = toRuntimeNodes(persistedWorkspace)
+        .filter(requiresRuntimeHydration)
+        .map(node => {
+          if (!dropRuntimeSessionIds) {
+            return node
+          }
+
+          if (node.data.kind !== 'terminal' && node.data.kind !== 'agent') {
+            return node
+          }
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              sessionId: '',
+            },
+          }
+        })
       if (runtimeNodes.length === 0) {
         hydratedWorkspaceIdsRef.current.add(workspaceId)
         markInitialHydrationComplete(workspaceId)
@@ -257,6 +277,34 @@ export function useHydrateAppState({
     setIsPersistReady(false)
 
     const hydrateAppState = async (): Promise<void> => {
+      const shouldDropRuntimeSessionIds = (() => {
+        const currentMainPid = window.opencoveApi?.meta?.mainPid ?? null
+        if (typeof currentMainPid !== 'number' || !Number.isFinite(currentMainPid)) {
+          return false
+        }
+
+        const storageKey = 'opencove:runtime:main-pid'
+        let previousMainPid: number | null = null
+        try {
+          const raw = window.localStorage?.getItem(storageKey)
+          const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN
+          if (Number.isFinite(parsed) && parsed > 0) {
+            previousMainPid = parsed
+          }
+        } catch {
+          previousMainPid = null
+        }
+
+        try {
+          window.localStorage?.setItem(storageKey, String(currentMainPid))
+        } catch {
+          // ignore localStorage failures
+        }
+
+        return previousMainPid !== currentMainPid
+      })()
+
+      shouldDropRuntimeSessionIdsRef.current = shouldDropRuntimeSessionIds
       const {
         state: persisted,
         recovery,
@@ -351,7 +399,11 @@ export function useHydrateAppState({
         }
       }
 
-      setWorkspaces(persisted.workspaces.map(workspace => toShellWorkspaceState(workspace)))
+      setWorkspaces(
+        persisted.workspaces.map(workspace =>
+          toShellWorkspaceState(workspace, { dropRuntimeSessionIds: shouldDropRuntimeSessionIds }),
+        ),
+      )
       setActiveWorkspaceId(resolvedActiveWorkspaceId)
       setIsPersistReady(true)
 

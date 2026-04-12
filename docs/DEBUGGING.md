@@ -165,6 +165,29 @@ await page.mouse.move(x, y)
 - 拖拽/缩放是否仅更新位置与尺寸，而不是替换节点身份
 - 当前 E2E 是否使用了最新 `out/` 产物
 
+### 终端 / Agent 恢复后无法输入（确认输入是否被拦截）
+
+开启输入链路追踪（会打印较多日志）：
+
+```bash
+OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS=1 pnpm dev
+```
+
+在日志中你会看到两类关键输出：
+
+- `[opencove-terminal-diagnostics]`（来自 renderer 的 xterm 侧）
+  - `event=xterm-onData` 表示 xterm 确实捕获到了输入
+  - `event=xterm-onData-dropped` 表示输入被丢弃（通常是 hydration 阶段的 `ESC...` 序列）
+  - `event=pty-write` 表示 renderer 正在把输入写入指定 `sessionId`
+- `[opencove-pty-write]`（来自 main 的 PTY runtime）
+  - `event=write-to-inactive-session` 表示输入写到了一个 `unknown/terminated` 的 session 上
+    - 这通常意味着恢复后节点仍在用旧 `sessionId`，但 PTY 进程已经不存在，表现就是“怎么点都打不进去”
+
+排查 focus 问题时，重点看 `details` 里的：
+
+- `xtermHelperTextareaFocused` 是否为 `true`
+- `activeElement` / `activeElementInsideTerminal` 是否符合预期
+
 ### OpenCode / xterm 鼠标样式闪烁、百叶窗残影、命中偶发穿透到底层画布
 
 这类问题在 `Electron + xterm + React Flow + canvas transform` 组合下，**不要只看 DOM 几何和 CSS**。本次真实 case 里，xterm 的 canvas / screen / viewport 几何上都覆盖了命中点，但 `document.elementFromPoint(...)` 仍会偶发返回底下的 `.react-flow__pane`，最终表现为：

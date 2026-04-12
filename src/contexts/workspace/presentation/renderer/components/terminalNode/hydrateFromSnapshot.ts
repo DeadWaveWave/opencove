@@ -80,6 +80,12 @@ export async function hydrateTerminalFromSnapshot({
       // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
       // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
       // arrive after the CLI has exited raw/noecho mode.
+      if (placeholderPayload.length === 0) {
+        const snapshot = await takePtySnapshot({ sessionId })
+        rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
+        const delta = resolveScrollbackDelta(persistedSnapshot, rawSnapshot)
+        await writeTerminal(terminal, delta)
+      }
     } else {
       const snapshot = await takePtySnapshot({ sessionId })
       if (cachedSerializedScreen.length > 0) {

@@ -130,8 +130,10 @@ const opencoveApi = {
     isTest: process.env.NODE_ENV === 'test',
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
+    enableTerminalInputDiagnostics: process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1',
     runtime: 'electron',
     platform: process.platform,
+    mainPid: typeof process.ppid === 'number' && process.ppid > 0 ? process.ppid : null,
     windowsPty: resolveWindowsPtyMeta(),
   },
   debug: {

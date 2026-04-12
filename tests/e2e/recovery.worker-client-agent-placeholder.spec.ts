@@ -133,9 +133,12 @@ async function stopWorker(child: ChildProcessWithoutNullStreams | null): Promise
 }
 
 async function writeAgentPlaceholder(window: Page, nodeId: string, scrollback: string) {
-  const result = await window.evaluate(async payload => {
-    return await window.opencoveApi.persistence.writeAgentNodePlaceholderScrollback(payload)
-  }, { nodeId, scrollback })
+  const result = await window.evaluate(
+    async payload => {
+      return await window.opencoveApi.persistence.writeAgentNodePlaceholderScrollback(payload)
+    },
+    { nodeId, scrollback },
+  )
 
   expect(result.ok).toBe(true)
 }

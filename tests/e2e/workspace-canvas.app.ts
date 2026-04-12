@@ -269,6 +269,16 @@ async function launchAppInMode(
       },
     })
 
+    if (isTruthyEnv(process.env['OPENCOVE_E2E_PIPE_ELECTRON_LOGS'])) {
+      const childProcess = electronApp.process()
+      childProcess.stdout?.on('data', chunk => {
+        process.stdout.write(chunk)
+      })
+      childProcess.stderr?.on('data', chunk => {
+        process.stderr.write(chunk)
+      })
+    }
+
     const originalClose = electronApp.close.bind(electronApp)
     let closePromise: Promise<void> | null = null
     ;(electronApp as unknown as { close: () => Promise<void> }).close = async () => {

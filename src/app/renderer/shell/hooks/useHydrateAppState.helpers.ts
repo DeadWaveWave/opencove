@@ -8,8 +8,26 @@ import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/render
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
 
-export function toShellWorkspaceState(workspace: PersistedWorkspaceState): WorkspaceState {
-  const nodes = toRuntimeNodes(workspace)
+export function toShellWorkspaceState(
+  workspace: PersistedWorkspaceState,
+  options?: { dropRuntimeSessionIds?: boolean },
+): WorkspaceState {
+  const dropRuntimeSessionIds = options?.dropRuntimeSessionIds === true
+  const nodes = dropRuntimeSessionIds
+    ? toRuntimeNodes(workspace).map(node => {
+        if (node.data.kind !== 'terminal' && node.data.kind !== 'agent') {
+          return node
+        }
+
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            sessionId: '',
+          },
+        }
+      })
+    : toRuntimeNodes(workspace)
   const validNodeIds = new Set(nodes.map(node => node.id))
   const sanitizedSpaces = sanitizeWorkspaceSpaces(
     workspace.spaces.map(space => ({

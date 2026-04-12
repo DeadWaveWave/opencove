@@ -111,6 +111,18 @@ export class TerminalSessionManager {
 
   // --- Data broadcasting ---
 
+  resolveSessionLifecycleState(sessionId: string): 'active' | 'terminated' | 'unknown' {
+    if (this.activeSessions.has(sessionId)) {
+      return 'active'
+    }
+
+    if (this.terminatedSessions.has(sessionId)) {
+      return 'terminated'
+    }
+
+    return 'unknown'
+  }
+
   hasPtyDataSubscribers(sessionId: string): boolean {
     const subscribers = this.ptyDataSubscribersBySessionId.get(sessionId)
     return Boolean(subscribers && subscribers.size > 0)

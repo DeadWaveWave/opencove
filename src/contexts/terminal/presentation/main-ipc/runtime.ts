@@ -57,6 +57,34 @@ function reportStateWatcherIssue(message: string): void {
 
 export function createPtyRuntime(): PtyRuntime {
   const profileResolver = new TerminalProfileResolver()
+  const writeDiagnosticsEnabled =
+    process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1' ||
+    process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1'
+  const warnedWriteSessions = new Map<string, string>()
+
+  const formatInputHeadHex = (value: string, limit = 12): string => {
+    const chars = Array.from(value).slice(0, limit)
+    return chars
+      .map(char => {
+        const codePoint = char.codePointAt(0)
+        if (codePoint === undefined) {
+          return ''
+        }
+        return codePoint.toString(16).padStart(2, '0')
+      })
+      .filter(Boolean)
+      .join(' ')
+  }
+
+  const logPtyWriteDiagnostics = (payload: Record<string, unknown>): void => {
+    if (!writeDiagnosticsEnabled) {
+      return
+    }
+
+    process.stderr.write(
+      `[opencove-pty-write] ${JSON.stringify({ ts: new Date().toISOString(), ...payload })}\n`,
+    )
+  }
 
   const sendToAllWindows = <Payload>(channel: string, payload: Payload): void => {
     for (const content of webContents.getAllWebContents()) {
@@ -231,6 +259,22 @@ export function createPtyRuntime(): PtyRuntime {
       return { sessionId }
     },
     write: async (sessionId, data, encoding = 'utf8') => {
+      const lifecycle = manager.resolveSessionLifecycleState(sessionId)
+      if (lifecycle !== 'active') {
+        const signature = `${lifecycle}:${encoding}`
+        if (warnedWriteSessions.get(sessionId) !== signature) {
+          warnedWriteSessions.set(sessionId, signature)
+          logPtyWriteDiagnostics({
+            event: 'write-to-inactive-session',
+            sessionId,
+            lifecycle,
+            encoding,
+            dataLength: data.length,
+            dataStartsWithEsc: data.startsWith('\u001b'),
+            dataHeadHex: formatInputHeadHex(data),
+          })
+        }
+      }
       ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
@@ -294,6 +338,7 @@ export function createPtyRuntime(): PtyRuntime {
       terminalProbeBufferBySession.clear()
       externalDataListeners.clear()
       externalExitListeners.clear()
+      warnedWriteSessions.clear()
       ptyHost.dispose()
     },
   }

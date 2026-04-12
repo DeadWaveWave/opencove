@@ -63,6 +63,7 @@ function TerminalNodeType({
       kind={data.kind}
       labelColor={labelColor}
       terminalProvider={data.kind === 'agent' ? (data.agent?.provider ?? null) : null}
+      agentLaunchMode={data.kind === 'agent' ? (data.agent?.launchMode ?? null) : null}
       terminalThemeMode={
         data.kind === 'agent' && data.agent?.provider === 'opencode' ? 'dark' : 'sync-with-ui'
       }
