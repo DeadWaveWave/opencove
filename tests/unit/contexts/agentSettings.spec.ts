@@ -44,4 +44,14 @@ describe('normalizeAgentSettings', () => {
       }).experimentalVoiceInputCtrlCOptimizationEnabled,
     ).toBe(false)
   })
+
+  it('defaults and normalizes the visible-canvas focus centering toggle', () => {
+    expect(DEFAULT_AGENT_SETTINGS.focusNodeUseVisibleCanvasCenter).toBe(true)
+    expect(normalizeAgentSettings({}).focusNodeUseVisibleCanvasCenter).toBe(true)
+    expect(
+      normalizeAgentSettings({
+        focusNodeUseVisibleCanvasCenter: false,
+      }).focusNodeUseVisibleCanvasCenter,
+    ).toBe(false)
+  })
 })

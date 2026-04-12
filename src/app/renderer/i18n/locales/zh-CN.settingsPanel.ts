@@ -130,6 +130,9 @@ export const zhCNSettingsPanel = {
     },
     focusOnClickLabel: '点击自动定位',
     focusOnClickHelp: '点击节点时自动将画布居中到该节点。',
+    focusVisibleCenterLabel: '以可视画布居中',
+    focusVisibleCenterHelp:
+      '自动定位时以可视画布的中心为参照。打开左侧栏时，会在剩余右侧空间居中。',
     focusTargetZoomLabel: '定位缩放',
     focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
   },
