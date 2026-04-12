@@ -369,5 +369,11 @@ export const enSettingsPanel = {
       'Suggestions shown when creating PRs on the canvas. The repository default branch is always included.',
     pullRequestBaseBranchesEmpty: 'No base branches configured.',
     pullRequestBaseBranchesPlaceholder: 'e.g. develop',
+    environmentVariablesTitle: 'Environment Variables',
+    environmentVariablesHelp:
+      'Custom environment variables injected into terminals and agents in this workspace.',
+    environmentVariablesEmpty: 'No environment variables configured.',
+    environmentVariablesKeyPlaceholder: 'e.g. NODE_ENV',
+    environmentVariablesValuePlaceholder: 'e.g. development',
   },
 }

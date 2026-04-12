@@ -31,6 +31,7 @@ export function AppShellModals({
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  onWorkspaceEnvironmentVariablesChange,
   isFocusNodeTargetZoomPreviewing,
   onFocusNodeTargetZoomPreviewChange,
   onChangeSettings,
@@ -46,6 +47,10 @@ export function AppShellModals({
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  onWorkspaceEnvironmentVariablesChange: (
+    workspaceId: string,
+    environmentVariables: Record<string, string>,
+  ) => void
   isFocusNodeTargetZoomPreviewing: boolean
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChangeSettings: (settings: AgentSettings) => void
@@ -64,6 +69,7 @@ export function AppShellModals({
           modelCatalogByProvider={modelCatalogByProvider}
           workspaces={workspaces}
           onWorkspaceWorktreesRootChange={onWorkspaceWorktreesRootChange}
+          onWorkspaceEnvironmentVariablesChange={onWorkspaceEnvironmentVariablesChange}
           isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
           onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
           onChange={onChangeSettings}

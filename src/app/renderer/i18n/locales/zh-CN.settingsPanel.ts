@@ -357,5 +357,10 @@ export const zhCNSettingsPanel = {
     pullRequestBaseBranchesHelp: '用于画布创建 PR 时的目标分支建议。默认分支会自动出现。',
     pullRequestBaseBranchesEmpty: '暂无候选分支。',
     pullRequestBaseBranchesPlaceholder: '例如 develop',
+    environmentVariablesTitle: '环境变量',
+    environmentVariablesHelp: '自定义环境变量将注入到该工作区下启动的所有终端和 Agent 中。',
+    environmentVariablesEmpty: '暂无环境变量。',
+    environmentVariablesKeyPlaceholder: '例如 NODE_ENV',
+    environmentVariablesValuePlaceholder: '例如 development',
   },
 }
