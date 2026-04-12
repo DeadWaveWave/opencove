@@ -15,6 +15,8 @@ describe('WorkspaceSection', () => {
         onChangeWorktreesRoot={onChangeWorktreesRoot}
         pullRequestBaseBranchOptions={[]}
         onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{}}
+        onChangeEnvironmentVariables={() => undefined}
       />,
     )
 
@@ -49,10 +51,131 @@ describe('WorkspaceSection', () => {
         onChangeWorktreesRoot={() => undefined}
         pullRequestBaseBranchOptions={[]}
         onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{}}
+        onChangeEnvironmentVariables={() => undefined}
       />,
     )
 
     expect(screen.getByText(/Select a project first/i)).toBeVisible()
     expect(screen.queryByTestId('settings-worktree-root')).not.toBeInTheDocument()
+  })
+
+  it('renders Environment Variables section when workspace is selected', () => {
+    render(
+      <WorkspaceSection
+        workspaceName="Demo"
+        workspacePath="/repo/demo"
+        worktreesRoot=""
+        onChangeWorktreesRoot={() => undefined}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{}}
+        onChangeEnvironmentVariables={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText('Environment Variables')).toBeVisible()
+    expect(screen.getByText(/No environment variables configured/i)).toBeVisible()
+  })
+
+  it('does not render Environment Variables section when no workspace is selected', () => {
+    render(
+      <WorkspaceSection
+        workspaceName={null}
+        workspacePath={null}
+        worktreesRoot=""
+        onChangeWorktreesRoot={() => undefined}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{}}
+        onChangeEnvironmentVariables={() => undefined}
+      />,
+    )
+
+    expect(screen.queryByText('Environment Variables')).not.toBeInTheDocument()
+  })
+
+  it('renders existing environment variables', () => {
+    render(
+      <WorkspaceSection
+        workspaceName="Demo"
+        workspacePath="/repo/demo"
+        worktreesRoot=""
+        onChangeWorktreesRoot={() => undefined}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{ NODE_ENV: 'production', DEBUG: 'true' }}
+        onChangeEnvironmentVariables={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText('NODE_ENV')).toBeVisible()
+    expect(screen.getByText('DEBUG')).toBeVisible()
+    expect(screen.queryByText(/No environment variables configured/i)).not.toBeInTheDocument()
+  })
+
+  it('adds a new environment variable', () => {
+    const onChangeEnvironmentVariables = vi.fn()
+
+    render(
+      <WorkspaceSection
+        workspaceName="Demo"
+        workspacePath="/repo/demo"
+        worktreesRoot=""
+        onChangeWorktreesRoot={() => undefined}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{}}
+        onChangeEnvironmentVariables={onChangeEnvironmentVariables}
+      />,
+    )
+
+    fireEvent.change(screen.getByTestId('settings-env-var-key-input'), {
+      target: { value: 'NODE_ENV' },
+    })
+    fireEvent.change(screen.getByTestId('settings-env-var-value-input'), {
+      target: { value: 'development' },
+    })
+    fireEvent.click(screen.getByTestId('settings-env-var-add-button'))
+
+    expect(onChangeEnvironmentVariables).toHaveBeenCalledWith({ NODE_ENV: 'development' })
+  })
+
+  it('removes an environment variable', () => {
+    const onChangeEnvironmentVariables = vi.fn()
+
+    render(
+      <WorkspaceSection
+        workspaceName="Demo"
+        workspacePath="/repo/demo"
+        worktreesRoot=""
+        onChangeWorktreesRoot={() => undefined}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{ NODE_ENV: 'production', DEBUG: 'true' }}
+        onChangeEnvironmentVariables={onChangeEnvironmentVariables}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('settings-env-var-remove-NODE_ENV'))
+
+    expect(onChangeEnvironmentVariables).toHaveBeenCalledWith({ DEBUG: 'true' })
+  })
+
+  it('disables Add button when key input is empty', () => {
+    render(
+      <WorkspaceSection
+        workspaceName="Demo"
+        workspacePath="/repo/demo"
+        worktreesRoot=""
+        onChangeWorktreesRoot={() => undefined}
+        pullRequestBaseBranchOptions={[]}
+        onChangePullRequestBaseBranchOptions={() => undefined}
+        environmentVariables={{}}
+        onChangeEnvironmentVariables={() => undefined}
+      />,
+    )
+
+    expect(screen.getByTestId('settings-env-var-add-button')).toBeDisabled()
   })
 })

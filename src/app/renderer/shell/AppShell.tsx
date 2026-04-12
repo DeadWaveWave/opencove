@@ -258,6 +258,7 @@ export default function App(): React.JSX.Element {
     handleWorkspaceSpaceArchiveRecordAppend,
     handleWorkspaceSpaceArchiveRecordRemove,
     handleAnyWorkspaceWorktreesRootChange,
+    handleAnyWorkspaceEnvironmentVariablesChange,
   } = useWorkspaceStateHandlers({ requestPersistFlush })
 
   const handleRemoveWorkspace = useCallback(async (workspaceId: string): Promise<void> => {
@@ -456,6 +457,7 @@ export default function App(): React.JSX.Element {
         modelCatalogByProvider={providerModelCatalog}
         workspaces={workspaces}
         onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
+        onWorkspaceEnvironmentVariablesChange={handleAnyWorkspaceEnvironmentVariablesChange}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
         onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
         onChangeSettings={setAgentSettings}
