@@ -131,6 +131,7 @@ export interface AgentSettings {
   taskPromptTemplatesByWorkspaceId: TaskPromptTemplatesByWorkspaceId
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
+  focusNodeUseVisibleCanvasCenter: boolean
   standbyBannerEnabled: boolean
   standbyBannerShowTask: boolean
   standbyBannerShowSpace: boolean
