@@ -81,6 +81,8 @@ export function TerminalNode({
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
   const isTestEnvironment = window.opencoveApi.meta.isTest
+  const shouldMirrorTranscript =
+    window.opencoveApi.meta.enableTerminalTranscriptMirror === true || isTestEnvironment
   const outputSchedulerRef = useRef<ReturnType<typeof createTerminalOutputScheduler> | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
@@ -151,7 +153,7 @@ export function TerminalNode({
     terminalThemeMode,
   })
   const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
-    enabled: isTestEnvironment,
+    enabled: shouldMirrorTranscript,
     resetKey: sessionId,
     terminalRef,
   })

@@ -127,6 +127,8 @@ function resolveWindowsPtyMeta(): { backend: 'conpty'; buildNumber: number } | n
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
+    enableTerminalTranscriptMirror:
+      process.env.NODE_ENV === 'test' || process.env.OPENCOVE_E2E_DEV_PROFILE === '1',
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
     runtime: 'electron',
