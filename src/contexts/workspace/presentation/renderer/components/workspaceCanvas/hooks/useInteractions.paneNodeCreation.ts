@@ -26,6 +26,7 @@ export async function createTerminalNodeAtFlowPosition({
   defaultTerminalProfileId,
   standardWindowSizeBucket,
   workspacePath,
+  environmentVariables,
   spacesRef,
   nodesRef,
   setNodes,
@@ -36,6 +37,7 @@ export async function createTerminalNodeAtFlowPosition({
   defaultTerminalProfileId: string | null
   standardWindowSizeBucket: StandardWindowSizeBucket
   workspacePath: string
+  environmentVariables?: Record<string, string>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
@@ -60,6 +62,9 @@ export async function createTerminalNodeAtFlowPosition({
     profileId: defaultTerminalProfileId ?? undefined,
     cols: 80,
     rows: 24,
+    ...(environmentVariables && Object.keys(environmentVariables).length > 0
+      ? { env: environmentVariables }
+      : {}),
   })
 
   const created = await createNodeForSession({
@@ -192,6 +197,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   contextMenu,
   defaultTerminalProfileId,
   workspacePath,
+  environmentVariables,
   spacesRef,
   nodesRef,
   standardWindowSizeBucket,
@@ -203,6 +209,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   contextMenu: ContextMenuState | null
   defaultTerminalProfileId: string | null
   workspacePath: string
+  environmentVariables?: Record<string, string>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
@@ -224,6 +231,7 @@ export async function createTerminalNodeFromPaneContextMenu({
     defaultTerminalProfileId,
     standardWindowSizeBucket,
     workspacePath,
+    environmentVariables,
     spacesRef,
     nodesRef,
     setNodes,

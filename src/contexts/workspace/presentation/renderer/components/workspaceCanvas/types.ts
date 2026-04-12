@@ -26,6 +26,7 @@ export interface WorkspaceCanvasProps {
   workspaceId: string
   onShowMessage?: ShowWorkspaceCanvasMessage
   workspacePath: string
+  environmentVariables?: Record<string, string>
   worktreesRoot: string
   nodes: Node<TerminalNodeData>[]
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void

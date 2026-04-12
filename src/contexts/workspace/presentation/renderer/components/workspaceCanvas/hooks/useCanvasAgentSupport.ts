@@ -8,6 +8,7 @@ export function useWorkspaceCanvasAgentSupport({
   isAgentLaunchTokenCurrent,
   agentSettings,
   workspacePath,
+  environmentVariables,
   spacesRef,
   onSpacesChange,
   onRequestPersistFlush,
@@ -27,6 +28,7 @@ export function useWorkspaceCanvasAgentSupport({
   >[0]['isAgentLaunchTokenCurrent']
   agentSettings: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['agentSettings']
   workspacePath: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['workspacePath']
+  environmentVariables?: Record<string, string>
   spacesRef: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['spacesRef']
   onSpacesChange: Parameters<typeof useWorkspaceCanvasAgentLauncher>[0]['onSpacesChange']
   onRequestPersistFlush?: Parameters<
@@ -54,11 +56,13 @@ export function useWorkspaceCanvasAgentSupport({
       isAgentLaunchTokenCurrent,
       agentFullAccess: agentSettings.agentFullAccess,
       defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
+      environmentVariables,
     })
 
   const { openAgentLauncher, openAgentLauncherForProvider } = useWorkspaceCanvasAgentLauncher({
     agentSettings,
     workspacePath,
+    environmentVariables,
     nodesRef,
     setNodes,
     spacesRef,

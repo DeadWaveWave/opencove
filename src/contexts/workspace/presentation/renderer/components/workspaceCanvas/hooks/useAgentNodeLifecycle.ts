@@ -20,6 +20,7 @@ interface UseAgentNodeLifecycleParams {
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
+  environmentVariables?: Record<string, string>
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
@@ -29,6 +30,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   isAgentLaunchTokenCurrent,
   agentFullAccess,
   defaultTerminalProfileId,
+  environmentVariables,
 }: UseAgentNodeLifecycleParams): {
   buildAgentNodeTitle: (
     provider: AgentNodeData['provider'],
@@ -162,6 +164,9 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           agentFullAccess,
           cols: 80,
           rows: 24,
+          ...(environmentVariables && Object.keys(environmentVariables).length > 0
+            ? { env: environmentVariables }
+            : {}),
         })
 
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
@@ -250,6 +255,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       buildAgentNodeTitle,
       bumpAgentLaunchToken,
       defaultTerminalProfileId,
+      environmentVariables,
       isAgentLaunchTokenCurrent,
       nodesRef,
       setNodes,
