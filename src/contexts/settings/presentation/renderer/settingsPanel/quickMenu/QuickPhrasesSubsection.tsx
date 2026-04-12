@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react'
-import { ChevronDown, ChevronUp } from 'lucide-react'
+import { ChevronDown, ChevronUp, Power } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import { moveItem } from './moveItem'
@@ -117,24 +117,31 @@ export function QuickPhrasesSubsection({
             </div>
 
             <div className="settings-agent-order__actions">
-              <label className="cove-toggle">
-                <input
-                  type="checkbox"
-                  data-testid={`settings-quick-phrase-enabled-${phrase.id}`}
-                  checked={phrase.enabled}
-                  aria-label={t('settingsPanel.quickMenu.phrases.enabled')}
-                  onChange={event => {
-                    onChangeQuickPhrases(
-                      quickPhrases.map(existing =>
-                        existing.id === phrase.id
-                          ? { ...existing, enabled: event.target.checked }
-                          : existing,
-                      ),
-                    )
-                  }}
-                />
-                <span className="cove-toggle__slider"></span>
-              </label>
+              <div
+                className="settings-quick-menu__toggle"
+                data-active={phrase.enabled ? 'true' : 'false'}
+                title={t('settingsPanel.quickMenu.phrases.enabled')}
+              >
+                <Power className="settings-quick-menu__toggle-icon" aria-hidden="true" />
+                <label className="cove-toggle">
+                  <input
+                    type="checkbox"
+                    data-testid={`settings-quick-phrase-enabled-${phrase.id}`}
+                    checked={phrase.enabled}
+                    aria-label={t('settingsPanel.quickMenu.phrases.enabled')}
+                    onChange={event => {
+                      onChangeQuickPhrases(
+                        quickPhrases.map(existing =>
+                          existing.id === phrase.id
+                            ? { ...existing, enabled: event.target.checked }
+                            : existing,
+                        ),
+                      )
+                    }}
+                  />
+                  <span className="cove-toggle__slider"></span>
+                </label>
+              </div>
 
               <button
                 type="button"
