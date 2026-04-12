@@ -75,16 +75,19 @@ export function WorkspaceSpaceExplorerOverlay({
   const [manualWidth, setManualWidth] = React.useState<number | null>(null)
   const [canvasSize, setCanvasSize] = React.useState({ width: 0, height: 0 })
 
-  const fallbackRootUri = React.useMemo(() => toFileUri(directoryPath.trim()), [directoryPath])
-  const [resolvedRootUri, setResolvedRootUri] = React.useState<string | null>(null)
+  const trimmedDirectoryPath = directoryPath.trim()
+  const directoryRootUri = React.useMemo(
+    () => (trimmedDirectoryPath.length > 0 ? toFileUri(trimmedDirectoryPath) : null),
+    [trimmedDirectoryPath],
+  )
+  const [resolvedMountRootUri, setResolvedMountRootUri] = React.useState<string | null>(null)
   const [rootResolveError, setRootResolveError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
-    setResolvedRootUri(null)
+    setResolvedMountRootUri(null)
     setRootResolveError(null)
 
-    if (!targetMountId) {
-      setResolvedRootUri(fallbackRootUri)
+    if (!targetMountId || directoryRootUri) {
       return
     }
 
@@ -93,7 +96,7 @@ export function WorkspaceSpaceExplorerOverlay({
     ).opencoveApi?.controlSurface?.invoke
 
     if (typeof controlSurfaceInvoke !== 'function') {
-      setResolvedRootUri(null)
+      setResolvedMountRootUri(null)
       setRootResolveError(t('documentNode.filesystemUnavailable'))
       return
     }
@@ -112,13 +115,19 @@ export function WorkspaceSpaceExplorerOverlay({
           return
         }
 
-        setResolvedRootUri(result.rootUri)
+        if (!result) {
+          setResolvedMountRootUri(null)
+          setRootResolveError(t('documentNode.filesystemUnavailable'))
+          return
+        }
+
+        setResolvedMountRootUri(result.rootUri)
       } catch (error) {
         if (cancelled) {
           return
         }
 
-        setResolvedRootUri(null)
+        setResolvedMountRootUri(null)
         setRootResolveError(toErrorMessage(error))
       }
     })()
@@ -126,12 +135,15 @@ export function WorkspaceSpaceExplorerOverlay({
     return () => {
       cancelled = true
     }
-  }, [fallbackRootUri, t, targetMountId])
+  }, [directoryRootUri, t, targetMountId])
 
   const isResolvingMountRoot =
-    !!targetMountId && resolvedRootUri === null && rootResolveError === null
-  const rootUri = isResolvingMountRoot ? null : (resolvedRootUri ?? fallbackRootUri)
-  const mountIdForFilesystem = resolvedRootUri ? targetMountId : null
+    !!targetMountId &&
+    !directoryRootUri &&
+    resolvedMountRootUri === null &&
+    rootResolveError === null
+  const rootUri = isResolvingMountRoot ? null : (directoryRootUri ?? resolvedMountRootUri)
+  const mountIdForFilesystem = targetMountId
 
   const pixelRect = React.useMemo(() => {
     const [translateX, translateY, zoom] = transform

@@ -26,6 +26,7 @@ import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
+import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
 import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
@@ -73,6 +74,7 @@ export default function App(): React.JSX.Element {
   usePtySessionBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
+  useWorkspaceMountRepair({ enabled: isPersistReady, workspaces, requestPersistFlush })
   useWebsiteWindowEvents()
   useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
 
@@ -470,7 +472,6 @@ export default function App(): React.JSX.Element {
           void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
         }}
       />
-
       <AppShellModals
         isSettingsOpen={isSettingsOpen}
         settingsInitialPageId={settingsInitialPageId}
@@ -493,7 +494,6 @@ export default function App(): React.JSX.Element {
         }}
         whatsNew={whatsNew}
       />
-
       <WorkspaceDirectoryPickerBridge />
     </>
   )

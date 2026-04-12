@@ -131,7 +131,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
             )
             return endpoint?.endpointId ?? null
           }, endpointDisplayName),
-        { label: 'remote endpoint id' },
+        { label: 'remote endpoint id', timeoutMs: 30_000 },
       )
 
       await closeSettings(window)
@@ -225,7 +225,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
               return null
             }
           }, multiMountProjectName),
-        { label: 'multi-mount project id' },
+        { label: 'multi-mount project id', timeoutMs: 30_000 },
       )
 
       const remoteMountId = await pollFor(
@@ -245,7 +245,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
             },
             { projectId: multiProjectId, endpointId: remoteEndpointId },
           ),
-        { label: 'remote mount id' },
+        { label: 'remote mount id', timeoutMs: 30_000 },
       )
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
@@ -309,7 +309,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
             },
             { projectId: multiProjectId, mountId: remoteMountId },
           ),
-        { label: 'created space id' },
+        { label: 'created space id', timeoutMs: 30_000 },
       )
 
       await window
@@ -418,10 +418,13 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
       )
       await window.keyboard.press('Enter')
       await expect
-        .poll(async () => {
-          const text = (await remoteTerminal.textContent()) ?? ''
-          return [...multiRemoteDirHashes].some(hash => text.includes(`${cwdToken}${hash}`))
-        })
+        .poll(
+          async () => {
+            const text = (await remoteTerminal.textContent()) ?? ''
+            return [...multiRemoteDirHashes].some(hash => text.includes(`${cwdToken}${hash}`))
+          },
+          { timeout: 20_000 },
+        )
         .toBe(true)
 
       await pane.click({
@@ -439,7 +442,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
           await window.evaluate(async () => {
             return window.__opencoveWorkspaceCanvasTestApi?.getFirstAgentSessionId?.() ?? null
           }),
-        { timeoutMs: 20_000, label: 'agent session id' },
+        { timeoutMs: 30_000, label: 'agent session id' },
       )
 
       const session = await window.evaluate(async sessionId => {

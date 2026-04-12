@@ -54,6 +54,13 @@ export function registerFilesystemMountReadHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.readFileTextInMount uri is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.uri,
@@ -61,10 +68,6 @@ export function registerFilesystemMountReadHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.uri,
-          'filesystem.readFileTextInMount uri is outside approved roots',
-        )
         return await readFileTextUseCase(deps.port, payload satisfies ReadFileTextInput)
       }
 
@@ -99,6 +102,13 @@ export function registerFilesystemMountReadHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.statInMount uri is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.uri,
@@ -106,10 +116,6 @@ export function registerFilesystemMountReadHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.uri,
-          'filesystem.statInMount uri is outside approved roots',
-        )
         return await statUseCase(deps.port, payload satisfies StatInput)
       }
 
@@ -144,6 +150,13 @@ export function registerFilesystemMountReadHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.readDirectoryInMount uri is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.uri,
@@ -151,10 +164,6 @@ export function registerFilesystemMountReadHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.uri,
-          'filesystem.readDirectoryInMount uri is outside approved roots',
-        )
         return await readDirectoryUseCase(deps.port, payload satisfies ReadDirectoryInput)
       }
 

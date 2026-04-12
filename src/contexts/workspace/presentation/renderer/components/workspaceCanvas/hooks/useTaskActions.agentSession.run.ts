@@ -94,6 +94,48 @@ function reuseLinkedAgentForTask({
   return true
 }
 
+function normalizePathForMountComparison(path: string): string {
+  return path
+    .trim()
+    .replace(/[\\/]+$/, '')
+    .replace(/\\/g, '/')
+}
+
+function mountContainsPath(mountRootPath: string, targetPath: string): boolean {
+  const normalizedRoot = normalizePathForMountComparison(mountRootPath)
+  const normalizedTarget = normalizePathForMountComparison(targetPath)
+
+  if (normalizedRoot.length === 0 || normalizedTarget.length === 0) {
+    return false
+  }
+
+  return normalizedTarget === normalizedRoot || normalizedTarget.startsWith(`${normalizedRoot}/`)
+}
+
+function resolveBestMount(
+  mounts: ListMountsResult['mounts'],
+  taskDirectory: string,
+): ListMountsResult['mounts'][number] | null {
+  if (!Array.isArray(mounts) || mounts.length === 0) {
+    return null
+  }
+
+  const normalizedTaskDirectory = normalizePathForMountComparison(taskDirectory)
+  if (normalizedTaskDirectory.length === 0) {
+    return mounts[0] ?? null
+  }
+
+  const matches = mounts
+    .filter(mount => mountContainsPath(mount.rootPath, normalizedTaskDirectory))
+    .sort(
+      (a, b) =>
+        normalizePathForMountComparison(b.rootPath).length -
+        normalizePathForMountComparison(a.rootPath).length,
+    )
+
+  return matches[0] ?? mounts[0] ?? null
+}
+
 export async function runTaskAgentAction(
   taskNodeId: string,
   context: TaskActionContext,
@@ -123,32 +165,62 @@ export async function runTaskAgentAction(
   const normalizedWorkspaceId =
     typeof context.workspaceId === 'string' ? context.workspaceId.trim() : ''
 
-  if (!mountId && normalizedWorkspaceId.length > 0) {
-    const controlSurfaceInvoke = (
-      window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
-    ).opencoveApi?.controlSurface?.invoke
+  const controlSurfaceInvoke = (
+    window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
+  ).opencoveApi?.controlSurface?.invoke
 
-    if (typeof controlSurfaceInvoke === 'function') {
-      try {
-        const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-          kind: 'query',
-          id: 'mount.list',
-          payload: { projectId: normalizedWorkspaceId },
-        })
+  const canQueryMounts =
+    typeof controlSurfaceInvoke === 'function' && normalizedWorkspaceId.length > 0
 
-        const defaultMount = mountResult.mounts[0] ?? null
-        if (defaultMount) {
-          mountId = defaultMount.mountId
-          taskDirectory = defaultMount.rootPath
+  const listMounts = async (): Promise<ListMountsResult | null> => {
+    if (!canQueryMounts) {
+      return null
+    }
+
+    try {
+      return await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+        kind: 'query',
+        id: 'mount.list',
+        payload: { projectId: normalizedWorkspaceId },
+      })
+    } catch {
+      return null
+    }
+  }
+
+  const updateTaskSpaceTargetMountId = (nextMountId: string): void => {
+    if (!taskSpace || taskSpace.targetMountId === nextMountId) {
+      return
+    }
+
+    const updatedSpaces = context.spacesRef.current.map(space =>
+      space.id === taskSpace.id ? { ...space, targetMountId: nextMountId } : space,
+    )
+    context.onSpacesChange(updatedSpaces)
+    context.onRequestPersistFlush?.()
+  }
+
+  const mountResult = await listMounts()
+  if (mountResult && mountResult.mounts.length > 0) {
+    const hasMountId =
+      typeof mountId === 'string' &&
+      mountId.trim().length > 0 &&
+      mountResult.mounts.some(mount => mount.mountId === mountId)
+
+    if (!hasMountId) {
+      const resolvedMount = resolveBestMount(mountResult.mounts, taskDirectory)
+      if (resolvedMount) {
+        mountId = resolvedMount.mountId
+        updateTaskSpaceTargetMountId(mountId)
+
+        const normalizedTaskDirectory = taskDirectory.trim().replace(/[\\/]+$/, '')
+        const normalizedWorkspacePath = context.workspacePath.trim().replace(/[\\/]+$/, '')
+        if (
+          normalizedTaskDirectory.length === 0 ||
+          normalizedTaskDirectory === normalizedWorkspacePath
+        ) {
+          taskDirectory = resolvedMount.rootPath
         }
-      } catch (error) {
-        setTaskLastError({
-          taskNodeId,
-          message: context.t('messages.mountListFailed', { message: toErrorMessage(error) }),
-          setNodes: context.setNodes,
-        })
-        context.onRequestPersistFlush?.()
-        return
       }
     }
   }
@@ -186,20 +258,42 @@ export async function runTaskAgentAction(
     let agentDirectory = taskDirectory
 
     if (mountId) {
-      const cwdUri = taskDirectory.trim().length > 0 ? toFileUri(taskDirectory.trim()) : null
-      const launched = await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
-        kind: 'command',
-        id: 'session.launchAgentInMount',
-        payload: {
-          mountId,
-          cwdUri,
-          prompt: requirement,
-          provider,
-          mode: 'new',
-          model,
-          agentFullAccess: context.agentSettings.agentFullAccess,
-        },
-      })
+      const invokeLaunchInMount = async (
+        nextMountId: string,
+      ): Promise<LaunchAgentSessionResult> => {
+        const cwdUri = taskDirectory.trim().length > 0 ? toFileUri(taskDirectory.trim()) : null
+        return await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
+          kind: 'command',
+          id: 'session.launchAgentInMount',
+          payload: {
+            mountId: nextMountId,
+            cwdUri,
+            prompt: requirement,
+            provider,
+            mode: 'new',
+            model,
+            agentFullAccess: context.agentSettings.agentFullAccess,
+          },
+        })
+      }
+
+      let launched: LaunchAgentSessionResult
+      try {
+        launched = await invokeLaunchInMount(mountId)
+      } catch (error) {
+        const refreshedMounts = await listMounts()
+        const nextMount = refreshedMounts
+          ? resolveBestMount(refreshedMounts.mounts, taskDirectory)
+          : null
+
+        if (!nextMount || nextMount.mountId === mountId) {
+          throw error
+        }
+
+        mountId = nextMount.mountId
+        updateTaskSpaceTargetMountId(mountId)
+        launched = await invokeLaunchInMount(mountId)
+      }
 
       launchedSessionId = launched.sessionId
       launchedProfileId = context.agentSettings.defaultTerminalProfileId

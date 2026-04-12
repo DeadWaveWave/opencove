@@ -71,6 +71,13 @@ export function registerFilesystemMountWriteHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.writeFileTextInMount uri is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.uri,
@@ -78,10 +85,6 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.uri,
-          'filesystem.writeFileTextInMount uri is outside approved roots',
-        )
         await writeFileTextUseCase(deps.port, payload satisfies WriteFileTextInput)
         return
       }
@@ -117,6 +120,13 @@ export function registerFilesystemMountWriteHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.createDirectoryInMount uri is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.uri,
@@ -124,10 +134,6 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.uri,
-          'filesystem.createDirectoryInMount uri is outside approved roots',
-        )
         await createDirectoryUseCase(deps.port, payload satisfies CreateDirectoryInput)
         return
       }
@@ -163,6 +169,13 @@ export function registerFilesystemMountWriteHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.deleteEntryInMount uri is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.uri,
@@ -170,10 +183,6 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.uri,
-          'filesystem.deleteEntryInMount uri is outside approved roots',
-        )
         await shell.trashItem(fileURLToPath(payload.uri))
         return
       }
@@ -199,6 +208,17 @@ export function registerFilesystemMountWriteHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.sourceUri,
+          'filesystem.copyEntryInMount source is outside approved roots',
+        )
+        await deps.assertApprovedUri(
+          payload.targetUri,
+          'filesystem.copyEntryInMount target is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.sourceUri,
@@ -211,14 +231,6 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.sourceUri,
-          'filesystem.copyEntryInMount source is outside approved roots',
-        )
-        await deps.assertApprovedUri(
-          payload.targetUri,
-          'filesystem.copyEntryInMount target is outside approved roots',
-        )
         await copyEntryUseCase(deps.port, payload satisfies CopyEntryInput)
         return
       }
@@ -247,6 +259,17 @@ export function registerFilesystemMountWriteHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.sourceUri,
+          'filesystem.moveEntryInMount source is outside approved roots',
+        )
+        await deps.assertApprovedUri(
+          payload.targetUri,
+          'filesystem.moveEntryInMount target is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.sourceUri,
@@ -259,14 +282,6 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.sourceUri,
-          'filesystem.moveEntryInMount source is outside approved roots',
-        )
-        await deps.assertApprovedUri(
-          payload.targetUri,
-          'filesystem.moveEntryInMount target is outside approved roots',
-        )
         await moveEntryUseCase(deps.port, payload satisfies MoveEntryInput)
         return
       }
@@ -298,6 +313,17 @@ export function registerFilesystemMountWriteHandlers(
         mountId: payload.mountId,
       })
 
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.sourceUri,
+          'filesystem.renameEntryInMount source is outside approved roots',
+        )
+        await deps.assertApprovedUri(
+          payload.targetUri,
+          'filesystem.renameEntryInMount target is outside approved roots',
+        )
+      }
+
       assertFileUriWithinMountRoot({
         target,
         uri: payload.sourceUri,
@@ -310,14 +336,6 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deps.assertApprovedUri(
-          payload.sourceUri,
-          'filesystem.renameEntryInMount source is outside approved roots',
-        )
-        await deps.assertApprovedUri(
-          payload.targetUri,
-          'filesystem.renameEntryInMount target is outside approved roots',
-        )
         await renameEntryUseCase(deps.port, payload satisfies RenameEntryInput)
         return
       }
