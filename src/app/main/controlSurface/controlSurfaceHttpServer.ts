@@ -10,6 +10,7 @@ import { registerSpaceHandlers } from './handlers/spaceHandlers'
 import { registerFilesystemHandlers } from './handlers/filesystemHandlers'
 import { registerFilesystemMountHandlers } from './handlers/filesystemMountHandlers'
 import { registerGitWorktreeHandlers } from './handlers/gitWorktreeHandlers'
+import { registerGitWorktreeMountHandlers } from './handlers/gitWorktreeMountHandlers'
 import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
 import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
@@ -35,7 +36,6 @@ import { createPtyStreamService, PTY_STREAM_PROTOCOL_VERSION } from './ptyStream
 import { createMultiEndpointPtyRuntime } from './ptyStream/multiEndpointPtyRuntime'
 import type { RegisterControlSurfaceHttpServerOptions } from './controlSurfaceHttpServerOptions'
 import { createWorkerTopologyStore } from './topology/topologyStore'
-
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
@@ -68,9 +68,7 @@ export function registerControlSurfaceHttpServer(
   const port = options.port ?? 0
   const connectionFileName = options.connectionFileName ?? DEFAULT_CONTROL_SURFACE_CONNECTION_FILE
   const webUiPasswordHash = options.webUiPasswordHash ?? null
-
   const webSessions = new WebSessionManager()
-
   const ctx: ControlSurfaceContext = {
     now: () => new Date(),
     capabilities: {
@@ -96,7 +94,6 @@ export function registerControlSurfaceHttpServer(
   }
 
   const topology = createWorkerTopologyStore({ userDataPath: options.userDataPath })
-
   const ptyRuntime = createMultiEndpointPtyRuntime({
     localRuntime: options.ptyRuntime,
     topology,
@@ -140,6 +137,10 @@ export function registerControlSurfaceHttpServer(
     topology,
   })
   registerGitWorktreeHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
+  registerGitWorktreeMountHandlers(controlSurface, {
+    approvedWorkspaces: options.approvedWorkspaces,
+    topology,
+  })
   registerWorktreeHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
     getPersistenceStore,
@@ -164,7 +165,6 @@ export function registerControlSurfaceHttpServer(
     ptyStreamHub: ptyStreamService.hub,
   })
   registerSyncHandlers(controlSurface, getPersistenceStore)
-
   let closed = false
   let disposePromise: Promise<void> | null = null
   let pendingConnectionWrite: Promise<void> | null = null

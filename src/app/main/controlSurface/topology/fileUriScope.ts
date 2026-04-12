@@ -6,6 +6,18 @@ function normalizeFileHost(host: string): string {
   return normalized === 'localhost' ? '' : normalized
 }
 
+function normalizeMacPrivateAlias(pathname: string): string {
+  if (pathname === '/private/var' || pathname.startsWith('/private/var/')) {
+    return pathname.slice('/private'.length)
+  }
+
+  if (pathname === '/private/tmp' || pathname.startsWith('/private/tmp/')) {
+    return pathname.slice('/private'.length)
+  }
+
+  return pathname
+}
+
 function normalizeFileUriPathname(uri: string): { host: string; pathname: string } {
   let parsed: URL
   try {
@@ -27,6 +39,8 @@ function normalizeFileUriPathname(uri: string): { host: string; pathname: string
   if (pathname.length > 1 && pathname.endsWith('/')) {
     pathname = pathname.slice(0, -1)
   }
+
+  pathname = normalizeMacPrivateAlias(pathname)
 
   return { host, pathname }
 }

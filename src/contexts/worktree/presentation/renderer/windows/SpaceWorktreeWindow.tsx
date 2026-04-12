@@ -22,6 +22,7 @@ import {
   getWorktreeApiMethod,
   normalizeComparablePath,
   type PendingOperation,
+  resolveWorktreeRepoRootPath,
   resolveWorktreesRoot,
   type SpaceWorktreeViewMode,
   type UpdateSpaceDirectoryOptions,
@@ -30,6 +31,7 @@ import { useSpaceWorktreeGuardActions } from './useSpaceWorktreeGuardActions'
 import { useSpaceWorktreePanelHandlers } from './useSpaceWorktreePanelHandlers'
 import { useSpaceWorktreeRefresh } from './useSpaceWorktreeRefresh'
 import { useSpaceWorktreeSuggestNames } from './useSpaceWorktreeSuggestNames'
+import { resolveGitWorktreeApiForMount } from './mountAwareGitWorktreeApi'
 import { getSpaceArchiveCounts, resolveSpaceWorktreeStatusPath } from './spaceWorktreeWindowState'
 import { buildArchiveWarningMessage } from './spaceWorktreeWarnings'
 import { toSpaceWorktreeErrorMessage } from './spaceWorktreeErrorMessage'
@@ -37,7 +39,6 @@ import { buildSpaceArchiveRecord } from '@contexts/workspace/presentation/render
 import { closeBlockingNodesForArchive } from './closeBlockingNodesForArchive'
 import { resolveSpaceArchiveGitSnapshot } from './resolveSpaceArchiveGitSnapshot'
 import { resolveSpaceTasks } from './resolveSpaceTasks'
-
 export function SpaceWorktreeWindow({
   spaceId,
   initialViewMode = 'create',
@@ -84,7 +85,6 @@ export function SpaceWorktreeWindow({
   const [isLoading, setIsLoading] = useState(false)
   const [isMutating, setIsMutating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-
   const [branchMode, setBranchMode] = useState<BranchMode>('new')
   const [newBranchName, setNewBranchName] = useState('')
   const [startPoint, setStartPoint] = useState('HEAD')
@@ -92,22 +92,29 @@ export function SpaceWorktreeWindow({
   const [isSuggesting, setIsSuggesting] = useState(false)
   const [deleteBranchOnArchive, setDeleteBranchOnArchive] = useState(false)
   const [forceArchiveConfirmed, setForceArchiveConfirmed] = useState(false)
-
   const [guard, setGuard] = useState<
     (SpaceWorktreeGuardState & { pending: PendingOperation; spaceId: string }) | null
   >(null)
-
+  const worktreeApi = useMemo(
+    () => resolveGitWorktreeApiForMount(space?.targetMountId ?? null),
+    [space?.targetMountId],
+  )
+  const worktreeRepoRootPath = useMemo(
+    () =>
+      space?.targetMountId ? resolveWorktreeRepoRootPath(workspacePath, worktrees) : workspacePath,
+    [space?.targetMountId, workspacePath, worktrees],
+  )
   const resolvedWorktreesRoot = useMemo(
-    () => resolveWorktreesRoot(workspacePath, worktreesRoot),
-    [workspacePath, worktreesRoot],
+    () => resolveWorktreesRoot(worktreeRepoRootPath, worktreesRoot),
+    [worktreeRepoRootPath, worktreesRoot],
   )
   const normalizedWorkspacePath = useMemo(
-    () => normalizeComparablePath(workspacePath),
-    [workspacePath],
+    () => normalizeComparablePath(worktreeRepoRootPath),
+    [worktreeRepoRootPath],
   )
   const normalizedSpaceDirectory = useMemo(
-    () => normalizeComparablePath(space?.directoryPath ?? workspacePath),
-    [space?.directoryPath, workspacePath],
+    () => normalizeComparablePath(space?.directoryPath ?? worktreeRepoRootPath),
+    [space?.directoryPath, worktreeRepoRootPath],
   )
 
   const isSpaceOnWorkspaceRoot = normalizedSpaceDirectory === normalizedWorkspacePath
@@ -123,12 +130,12 @@ export function SpaceWorktreeWindow({
   const statusPath = useMemo(
     () =>
       resolveSpaceWorktreeStatusPath({
-        workspacePath,
+        workspacePath: worktreeRepoRootPath,
         isSpaceOnWorkspaceRoot,
         currentWorktree,
         spaceDirectoryPath: space?.directoryPath,
       }),
-    [currentWorktree, isSpaceOnWorkspaceRoot, space?.directoryPath, workspacePath],
+    [currentWorktree, isSpaceOnWorkspaceRoot, space?.directoryPath, worktreeRepoRootPath],
   )
 
   const spaceTasks = useMemo(() => resolveSpaceTasks(space, nodes), [nodes, space])
@@ -136,6 +143,7 @@ export function SpaceWorktreeWindow({
   const archiveCounts = useMemo(() => getSpaceArchiveCounts({ space, nodes }), [nodes, space])
 
   const refresh = useSpaceWorktreeRefresh({
+    worktreeApi,
     workspacePath,
     statusPath,
     setIsLoading,
@@ -215,9 +223,9 @@ export function SpaceWorktreeWindow({
       options?: UpdateSpaceDirectoryOptions,
     ) => {
       if (pending.kind === 'create') {
-        const createWorktree = getWorktreeApiMethod('create', t)
+        const createWorktree = getWorktreeApiMethod(worktreeApi, 'create', t)
         const created = await createWorktree({
-          repoPath: workspacePath,
+          repoPath: worktreeRepoRootPath,
           worktreesRoot: pending.worktreesRoot,
           branchMode: pending.branchMode,
         })
@@ -244,16 +252,16 @@ export function SpaceWorktreeWindow({
       let removedWorktreeResult: RemoveGitWorktreeResult | null = null
 
       if (pending.worktreePath) {
-        const removeWorktree = getWorktreeApiMethod('remove', t)
+        const removeWorktree = getWorktreeApiMethod(worktreeApi, 'remove', t)
         removedWorktreeResult = await removeWorktree({
-          repoPath: workspacePath,
+          repoPath: worktreeRepoRootPath,
           worktreePath: pending.worktreePath,
           force: pending.force,
           deleteBranch: pending.deleteBranch,
         })
       }
 
-      onUpdateSpaceDirectory(targetSpaceId, workspacePath, nextUpdateOptions)
+      onUpdateSpaceDirectory(targetSpaceId, worktreeRepoRootPath, nextUpdateOptions)
       setDeleteBranchOnArchive(false)
       await refresh()
 
@@ -264,7 +272,7 @@ export function SpaceWorktreeWindow({
         }
       }
     },
-    [onShowMessage, onUpdateSpaceDirectory, refresh, t, workspacePath],
+    [onShowMessage, onUpdateSpaceDirectory, refresh, t, worktreeApi, worktreeRepoRootPath],
   )
 
   const runOperation = useCallback(
@@ -311,6 +319,7 @@ export function SpaceWorktreeWindow({
     spaceTasks,
     agentSettings,
     workspacePath,
+    worktreeApi,
     setIsSuggesting,
     setError,
     setNewBranchName,
@@ -365,7 +374,7 @@ export function SpaceWorktreeWindow({
 
     const git = await resolveSpaceArchiveGitSnapshot({
       agentSettings,
-      workspacePath,
+      workspacePath: worktreeRepoRootPath,
       isSpaceOnWorkspaceRoot,
       spaceDirectoryPath: space.directoryPath,
       currentBranch,
@@ -415,7 +424,7 @@ export function SpaceWorktreeWindow({
     space,
     t,
     nodes,
-    workspacePath,
+    worktreeRepoRootPath,
   ])
   const panelHandlers = useSpaceWorktreePanelHandlers({
     setError,
@@ -432,7 +441,6 @@ export function SpaceWorktreeWindow({
   if (!space) {
     return null
   }
-
   return (
     <>
       <SpaceWorktreeWindowDialog
@@ -470,7 +478,6 @@ export function SpaceWorktreeWindow({
         onForceArchiveConfirmedChange={panelHandlers.onForceArchiveConfirmedChange}
         onArchive={panelHandlers.onArchive}
       />
-
       {guard ? (
         <SpaceWorktreeGuardWindow
           guard={guard}

@@ -350,7 +350,7 @@ export function WorkspaceSpaceRegionsOverlay({
     )
 
     try {
-      const renameBranch = getWorktreeApiMethod('renameBranch', t)
+      const renameBranch = getWorktreeApiMethod(window.opencoveApi?.worktree, 'renameBranch', t)
       await renameBranch({
         repoPath: workspacePath,
         worktreePath: branchRename.worktreePath,
