@@ -27,6 +27,7 @@ export interface TaskActionContext {
   ) => string
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
   agentSettings: AgentSettings
+  workspaceId: string
   workspacePath: string
   t: TranslateFn
   onRequestPersistFlush?: () => void

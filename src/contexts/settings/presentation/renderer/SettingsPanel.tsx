@@ -18,6 +18,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
+import { EndpointsSection } from './settingsPanel/EndpointsSection'
 import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
@@ -38,6 +39,7 @@ import {
 } from './SettingsPanel.shared'
 
 export function SettingsPanel({
+  initialPageId,
   settings,
   updateState,
   modelCatalogByProvider,
@@ -57,8 +59,14 @@ export function SettingsPanel({
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState(AGENT_PROVIDERS))
-  const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
+  const [activePageId, setActivePageId] = useState<SettingsPageId>(() => initialPageId ?? 'general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
+
+  useEffect(() => {
+    if (initialPageId) {
+      setActivePageId(initialPageId)
+    }
+  }, [initialPageId])
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
@@ -268,6 +276,12 @@ export function SettingsPanel({
             onClick={() => setActivePageId('worker')}
           />
           <SettingsPanelNavButton
+            isActive={activePageId === 'endpoints'}
+            label={t('settingsPanel.nav.endpoints')}
+            testId="settings-section-nav-endpoints"
+            onClick={() => setActivePageId('endpoints')}
+          />
+          <SettingsPanelNavButton
             isActive={activePageId === 'agent'}
             label={t('settingsPanel.nav.agent')}
             testId="settings-section-nav-agent"
@@ -357,6 +371,8 @@ export function SettingsPanel({
             ) : null}
 
             {activePageId === 'worker' ? <WorkerSection /> : null}
+
+            {activePageId === 'endpoints' ? <EndpointsSection /> : null}
 
             {activePageId === 'agent' ? (
               <>

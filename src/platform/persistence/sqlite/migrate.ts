@@ -71,6 +71,7 @@ function createTables(db: Database.Database): void {
       workspace_id TEXT NOT NULL,
       name TEXT NOT NULL,
       directory_path TEXT NOT NULL,
+      target_mount_id TEXT,
       label_color TEXT,
       rect_x REAL,
       rect_y REAL,
@@ -207,6 +208,12 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'workspace_spaces',
     columnName: 'label_color',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'target_mount_id',
     definitionSql: 'TEXT',
   })
 }

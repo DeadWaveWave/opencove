@@ -8,6 +8,7 @@ import { isWithinRootUri, sortEntries } from './WorkspaceSpaceExplorerOverlay.he
 import { useSpaceExplorerOverlayActions } from './WorkspaceSpaceExplorerOverlay.actions'
 import { useSpaceExplorerOverlayMutations } from './WorkspaceSpaceExplorerOverlay.mutations'
 import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
+import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 export type SpaceExplorerCreateMode = 'file' | 'directory' | null
 
@@ -41,6 +42,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 
 export function useSpaceExplorerOverlayModel({
   rootUri,
+  mountId,
   spaceId,
   explorerClipboard,
   setExplorerClipboard,
@@ -51,6 +53,7 @@ export function useSpaceExplorerOverlayModel({
   onShowMessage,
 }: {
   rootUri: string
+  mountId: string | null
   spaceId: string
   explorerClipboard: SpaceExplorerClipboardItem | null
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
@@ -75,7 +78,7 @@ export function useSpaceExplorerOverlayModel({
 
   const loadDirectory = React.useCallback(
     async (uri: string): Promise<void> => {
-      const api = window.opencoveApi?.filesystem
+      const api = resolveFilesystemApiForMount(mountId)
       if (!api) {
         setDirectoryListings(previous => ({
           ...previous,
@@ -118,7 +121,7 @@ export function useSpaceExplorerOverlayModel({
         }))
       }
     },
-    [t],
+    [mountId, t],
   )
 
   React.useEffect(() => {
@@ -127,7 +130,7 @@ export function useSpaceExplorerOverlayModel({
     setRefreshNonce(previous => previous + 1)
     setSelectedEntryUri(null)
     setSelectedEntryKind(null)
-  }, [rootUri, spaceId])
+  }, [mountId, rootUri, spaceId])
 
   React.useEffect(() => {
     void loadDirectory(rootUri)
@@ -250,6 +253,7 @@ export function useSpaceExplorerOverlayModel({
   const mutations = useSpaceExplorerOverlayMutations({
     t,
     rootUri,
+    mountId,
     explorerClipboard,
     setExplorerClipboard,
     closeContextMenu: actions.closeContextMenu,

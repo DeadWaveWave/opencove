@@ -106,6 +106,7 @@ describe('main process Wayland IME flags', () => {
         hasOwnedLocalWorkerProcess: () => false,
         startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
         stopOwnedLocalWorker: vi.fn(async () => true),
+        startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
       }))
 
       await import('../../../src/app/main/index')

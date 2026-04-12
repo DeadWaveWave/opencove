@@ -2,8 +2,10 @@ import React from 'react'
 import { useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import type { ResolveMountTargetResult } from '@shared/contracts/dto'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'
+import { toErrorMessage } from '../helpers'
 import { selectViewportTransform } from './WorkspaceSpaceExplorerOverlay.helpers'
 import {
   resolveExplorerAutoPreferredWidth,
@@ -16,6 +18,7 @@ export function WorkspaceSpaceExplorerOverlay({
   canvasRef,
   spaceId,
   spaceName,
+  targetMountId,
   directoryPath,
   rect,
   explorerClipboard,
@@ -30,6 +33,7 @@ export function WorkspaceSpaceExplorerOverlay({
   canvasRef: React.RefObject<HTMLDivElement | null>
   spaceId: string
   spaceName: string
+  targetMountId: string | null
   directoryPath: string
   rect: { x: number; y: number; width: number; height: number }
   explorerClipboard: SpaceExplorerClipboardItem | null
@@ -71,7 +75,63 @@ export function WorkspaceSpaceExplorerOverlay({
   const [manualWidth, setManualWidth] = React.useState<number | null>(null)
   const [canvasSize, setCanvasSize] = React.useState({ width: 0, height: 0 })
 
-  const rootUri = React.useMemo(() => toFileUri(directoryPath.trim()), [directoryPath])
+  const fallbackRootUri = React.useMemo(() => toFileUri(directoryPath.trim()), [directoryPath])
+  const [resolvedRootUri, setResolvedRootUri] = React.useState<string | null>(null)
+  const [rootResolveError, setRootResolveError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    setResolvedRootUri(null)
+    setRootResolveError(null)
+
+    if (!targetMountId) {
+      setResolvedRootUri(fallbackRootUri)
+      return
+    }
+
+    const controlSurfaceInvoke = (
+      window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
+    ).opencoveApi?.controlSurface?.invoke
+
+    if (typeof controlSurfaceInvoke !== 'function') {
+      setResolvedRootUri(null)
+      setRootResolveError(t('documentNode.filesystemUnavailable'))
+      return
+    }
+
+    let cancelled = false
+
+    void (async () => {
+      try {
+        const result = await window.opencoveApi.controlSurface.invoke<ResolveMountTargetResult>({
+          kind: 'query',
+          id: 'mountTarget.resolve',
+          payload: { mountId: targetMountId },
+        })
+
+        if (cancelled) {
+          return
+        }
+
+        setResolvedRootUri(result.rootUri)
+      } catch (error) {
+        if (cancelled) {
+          return
+        }
+
+        setResolvedRootUri(null)
+        setRootResolveError(toErrorMessage(error))
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [fallbackRootUri, t, targetMountId])
+
+  const isResolvingMountRoot =
+    !!targetMountId && resolvedRootUri === null && rootResolveError === null
+  const rootUri = isResolvingMountRoot ? null : (resolvedRootUri ?? fallbackRootUri)
+  const mountIdForFilesystem = resolvedRootUri ? targetMountId : null
 
   const pixelRect = React.useMemo(() => {
     const [translateX, translateY, zoom] = transform
@@ -222,6 +282,8 @@ export function WorkspaceSpaceExplorerOverlay({
         spaceName={spaceName}
         spaceId={spaceId}
         rootUri={rootUri}
+        mountId={mountIdForFilesystem}
+        rootResolveError={rootResolveError}
         explorerClipboard={explorerClipboard}
         setExplorerClipboard={setExplorerClipboard}
         findBlockingOpenDocument={findBlockingOpenDocument}

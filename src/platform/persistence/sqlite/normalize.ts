@@ -17,6 +17,15 @@ function normalizeString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
 function normalizeNullableString(value: unknown): string | null {
   return value === null ? null : typeof value === 'string' ? value : null
 }
@@ -67,6 +76,7 @@ export type NormalizedPersistedSpace = {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: { x: number; y: number; width: number; height: number } | null
@@ -267,6 +277,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         id: spaceId,
         name: normalizeString(space.name),
         directoryPath: normalizeString(space.directoryPath),
+        targetMountId: normalizeOptionalString(space.targetMountId),
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeNodeIds(space.nodeIds),
         rect: normalizeRect(space.rect),

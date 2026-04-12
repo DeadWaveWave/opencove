@@ -3,6 +3,7 @@ export const zhCNSettingsPanel = {
   nav: {
     general: '通用',
     worker: 'Worker',
+    endpoints: '远程 Worker',
     agent: 'Agent',
     notifications: '通知',
     canvas: '画布',
@@ -340,6 +341,31 @@ export const zhCNSettingsPanel = {
       revealToken: '显示',
       hideToken: '隐藏',
       copyToken: '复制',
+    },
+  },
+  endpoints: {
+    title: 'Endpoints',
+    list: {
+      title: '已注册端点',
+      help: 'Desktop 只连接 Home Worker；Home Worker 负责将操作路由到各个 endpoint。',
+      countLabel: '数量',
+      localSubtitle: '本机',
+      localRemoveHelp: '本机 endpoint 不可移除。',
+      lastPing: '最近一次 ping：pid {{pid}} · {{now}}',
+    },
+    actions: {
+      ping: 'Ping',
+      pinging: 'Ping 中…',
+    },
+    register: {
+      title: '注册端点',
+      help: '通过 hostname、port、token 注册一个远程 worker endpoint。Token 不会被写入 renderer state。',
+      displayNameLabel: '显示名称（可选）',
+      hostnameLabel: '主机',
+      portLabel: '端口',
+      tokenLabel: 'Token',
+      tokenHelp: 'Token 仅提交一次，注册后会自动清空。',
+      tokenRequired: 'Token 不能为空。',
     },
   },
   workspace: {

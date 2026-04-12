@@ -112,6 +112,10 @@ export function WorkspaceCanvasView({
   openAgentLauncher,
   openAgentLauncherForProvider,
   createSpaceFromSelectedNodes,
+  spaceTargetMountPicker,
+  setSpaceTargetMountPicker,
+  confirmSpaceTargetMountPicker,
+  cancelSpaceTargetMountPicker,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
@@ -331,6 +335,7 @@ export function WorkspaceCanvasView({
           canvasRef={canvasRef}
           spaceId={activeExplorerSpace.id}
           spaceName={activeExplorerSpace.name}
+          targetMountId={activeExplorerSpace.targetMountId ?? null}
           directoryPath={
             activeExplorerSpace.directoryPath.trim().length > 0
               ? activeExplorerSpace.directoryPath
@@ -449,6 +454,10 @@ export function WorkspaceCanvasView({
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
+        spaceTargetMountPicker={spaceTargetMountPicker}
+        setSpaceTargetMountPicker={setSpaceTargetMountPicker}
+        confirmSpaceTargetMountPicker={confirmSpaceTargetMountPicker}
+        cancelSpaceTargetMountPicker={cancelSpaceTargetMountPicker}
         nodeDeleteConfirmation={nodeDeleteConfirmation}
         setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}

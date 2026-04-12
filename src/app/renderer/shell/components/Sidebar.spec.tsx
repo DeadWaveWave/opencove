@@ -153,7 +153,9 @@ describe('Sidebar', () => {
     expect(overlayElement).not.toBeNull()
     expect(overlayElement?.textContent).toContain('workspace-b')
 
-    const draggedGroup = screen.getByTitle('/tmp/workspace-b').closest('.workspace-item-group')
+    const draggedGroup = screen
+      .getByTestId('workspace-item-workspace-b')
+      .closest('.workspace-item-group')
     expect(draggedGroup).not.toBeNull()
     expect((draggedGroup as HTMLElement).style.opacity).toBe('0.4')
 
@@ -189,7 +191,7 @@ describe('Sidebar', () => {
       />,
     )
 
-    const workspaceButton = screen.getByTitle('/tmp/workspace-a')
+    const workspaceButton = screen.getByTestId('workspace-item-workspace-a')
     const agentButton = screen.getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
 
     expect(workspaceButton.getAttribute('data-drag-listener')).toBe('true')

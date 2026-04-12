@@ -3,6 +3,7 @@ export const enSettingsPanel = {
   nav: {
     general: 'General',
     worker: 'Worker',
+    endpoints: 'Endpoints',
     agent: 'Agent',
     notifications: 'Notifications',
     canvas: 'Canvas',
@@ -351,6 +352,31 @@ export const enSettingsPanel = {
       revealToken: 'Reveal',
       hideToken: 'Hide',
       copyToken: 'Copy',
+    },
+  },
+  endpoints: {
+    title: 'Endpoints',
+    list: {
+      title: 'Registered endpoints',
+      help: 'Desktop only connects to the Home Worker. The Home Worker routes operations to endpoints.',
+      countLabel: 'Count',
+      localSubtitle: 'local',
+      localRemoveHelp: 'The local endpoint cannot be removed.',
+      lastPing: 'Last ping: pid {{pid}} · {{now}}',
+    },
+    actions: {
+      ping: 'Ping',
+      pinging: 'Pinging…',
+    },
+    register: {
+      title: 'Register endpoint',
+      help: 'Register a remote worker endpoint by hostname, port, and token. Token is never stored in renderer state.',
+      displayNameLabel: 'Display name (optional)',
+      hostnameLabel: 'Hostname',
+      portLabel: 'Port',
+      tokenLabel: 'Token',
+      tokenHelp: 'This token is submitted once and cleared after registration.',
+      tokenRequired: 'Token is required.',
     },
   },
   workspace: {

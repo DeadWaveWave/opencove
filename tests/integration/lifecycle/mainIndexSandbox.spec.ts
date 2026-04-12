@@ -104,6 +104,7 @@ describe('main process sandbox flags', () => {
         hasOwnedLocalWorkerProcess: () => false,
         startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
         stopOwnedLocalWorker: vi.fn(async () => true),
+        startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
       }))
 
       await import('../../../src/app/main/index')

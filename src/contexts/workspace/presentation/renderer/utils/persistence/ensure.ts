@@ -113,6 +113,7 @@ function ensurePersistedWorkspaceSpace(
     id,
     name,
     directoryPath: normalizedDirectoryPath,
+    targetMountId: normalizeOptionalString(record.targetMountId),
     labelColor: normalizeLabelColor(record.labelColor),
     nodeIds: normalizeWorkspaceSpaceNodeIds(record.nodeIds),
     rect: normalizeWorkspaceSpaceRect(record.rect),

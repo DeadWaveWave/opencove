@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../../shared/contracts/ipc'
+import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
 import type {
   AttachTerminalInput,
   CopyWorkspacePathInput,
@@ -140,6 +141,10 @@ const opencoveApi = {
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput): void => {
       ipcRenderer.send(IPC_CHANNELS.runtimeDiagnosticsLog, payload)
     },
+  },
+  controlSurface: {
+    invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
+      invokeIpc(IPC_CHANNELS.controlSurfaceInvoke, request),
   },
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>

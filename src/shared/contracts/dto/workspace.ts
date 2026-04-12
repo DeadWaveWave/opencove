@@ -39,6 +39,14 @@ export interface EnsureDirectoryInput {
   path: string
 }
 
+export interface AllocateProjectPlaceholderInput {
+  projectId: string
+}
+
+export interface AllocateProjectPlaceholderResult {
+  path: string
+}
+
 export interface CopyWorkspacePathInput {
   path: string
 }

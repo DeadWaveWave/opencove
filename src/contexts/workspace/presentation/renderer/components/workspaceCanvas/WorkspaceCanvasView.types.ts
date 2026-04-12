@@ -18,6 +18,7 @@ import type {
   SpaceActionMenuState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
+  SpaceTargetMountPickerState,
   SpaceWorktreeDialogState,
   TaskCreatorState,
   TaskEditorState,
@@ -134,6 +135,12 @@ export interface WorkspaceCanvasViewProps {
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
   createSpaceFromSelectedNodes: () => void
+  spaceTargetMountPicker: SpaceTargetMountPickerState | null
+  setSpaceTargetMountPicker: React.Dispatch<
+    React.SetStateAction<SpaceTargetMountPickerState | null>
+  >
+  confirmSpaceTargetMountPicker: () => void
+  cancelSpaceTargetMountPicker: () => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean

@@ -18,6 +18,8 @@ describe('useWorkspaceCanvasSpaceDirectoryOps renameSpaceTo', () => {
         id: 'space-1',
         name: 'Inbox',
         directoryPath: '/repo',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: [],
         rect: null,
       },
