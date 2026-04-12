@@ -250,6 +250,9 @@ async function launchAppInMode(
     // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
     // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
     delete baseEnv['__CFBundleIdentifier']
+    // Some developer environments export this (e.g. to run Electron as a plain Node binary),
+    // which breaks Playwright's Electron harness.
+    delete baseEnv['ELECTRON_RUN_AS_NODE']
 
     electronApp = await electron.launch({
       args: resolveElectronLaunchArgs(),
