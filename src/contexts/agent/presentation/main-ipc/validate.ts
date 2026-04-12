@@ -153,6 +153,27 @@ export function resolveAgentTestStub(
   }
 }
 
+const MAX_ENV_ENTRIES = 100
+
+function normalizeEnvPayload(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return undefined
+  }
+
+  const result: Record<string, string> = {}
+  let count = 0
+
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (count >= MAX_ENV_ENTRIES) break
+    const trimmedKey = key.trim()
+    if (trimmedKey.length === 0 || typeof value !== 'string') continue
+    result[trimmedKey] = value
+    count++
+  }
+
+  return count > 0 ? result : undefined
+}
+
 export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput {
   if (!payload || typeof payload !== 'object') {
     throw createAppError('common.invalid_input', {
@@ -195,6 +216,8 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
     })
   }
 
+  const env = normalizeEnvPayload(record.env)
+
   return {
     provider,
     cwd,
@@ -206,5 +229,6 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
     agentFullAccess,
     cols,
     rows,
+    ...(env ? { env } : {}),
   }
 }

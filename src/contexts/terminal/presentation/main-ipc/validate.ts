@@ -11,6 +11,27 @@ import type {
 import { isAbsolute } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
 
+const MAX_ENV_ENTRIES = 100
+
+function normalizeEnvPayload(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+    return undefined
+  }
+
+  const result: Record<string, string> = {}
+  let count = 0
+
+  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (count >= MAX_ENV_ENTRIES) break
+    const trimmedKey = key.trim()
+    if (trimmedKey.length === 0 || typeof value !== 'string') continue
+    result[trimmedKey] = value
+    count++
+  }
+
+  return count > 0 ? result : undefined
+}
+
 export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalInput {
   if (!payload || typeof payload !== 'object') {
     throw createAppError('common.invalid_input', {
@@ -44,12 +65,15 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalIn
     })
   }
 
+  const env = normalizeEnvPayload(record.env)
+
   return {
     cwd,
     profileId: profileId.length > 0 ? profileId : undefined,
     shell: shell.length > 0 ? shell : undefined,
     cols,
     rows,
+    ...(env ? { env } : {}),
   }
 }
 

@@ -65,6 +65,9 @@ export async function resumeTaskAgentSessionAction(
       agentFullAccess: context.agentSettings.agentFullAccess,
       cols: 80,
       rows: 24,
+      ...(context.environmentVariables && Object.keys(context.environmentVariables).length > 0
+        ? { env: context.environmentVariables }
+        : {}),
     })
 
     const createdAgentNode = await context.createNodeForSession({

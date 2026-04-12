@@ -20,6 +20,7 @@ import {
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
   workspacePath: string
+  environmentVariables?: Record<string, string>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -42,6 +43,7 @@ interface UseAgentLauncherParams {
 export function useWorkspaceCanvasAgentLauncher({
   agentSettings,
   workspacePath,
+  environmentVariables,
   nodesRef,
   setNodes,
   spacesRef,
@@ -90,6 +92,9 @@ export function useWorkspaceCanvasAgentLauncher({
             agentFullAccess: agentSettings.agentFullAccess,
             cols: 80,
             rows: 24,
+            ...(environmentVariables && Object.keys(environmentVariables).length > 0
+              ? { env: environmentVariables }
+              : {}),
           })
 
           const modelLabel = launched.effectiveModel ?? model
@@ -150,6 +155,7 @@ export function useWorkspaceCanvasAgentLauncher({
       buildAgentNodeTitle,
       contextMenu,
       createNodeForSession,
+      environmentVariables,
       nodesRef,
       onRequestPersistFlush,
       onShowMessage,

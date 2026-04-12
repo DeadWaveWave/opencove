@@ -60,6 +60,7 @@ function WorkspaceMainComponent({
         workspaceId={activeWorkspace.id}
         onShowMessage={onShowMessage}
         workspacePath={activeWorkspace.path}
+        environmentVariables={activeWorkspace.environmentVariables}
         worktreesRoot={activeWorkspace.worktreesRoot}
         nodes={activeWorkspace.nodes}
         onNodesChange={onNodesChange}

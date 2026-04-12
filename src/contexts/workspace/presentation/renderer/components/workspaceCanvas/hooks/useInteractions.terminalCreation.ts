@@ -15,6 +15,7 @@ export function useWorkspaceCanvasTerminalCreation({
   setContextMenu,
   spacesRef,
   workspacePath,
+  environmentVariables,
   defaultTerminalProfileId,
   nodesRef,
   standardWindowSizeBucket,
@@ -26,6 +27,7 @@ export function useWorkspaceCanvasTerminalCreation({
   setContextMenu: (next: ContextMenuState | null) => void
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
+  environmentVariables?: Record<string, string>
   defaultTerminalProfileId: string | null
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
@@ -47,6 +49,7 @@ export function useWorkspaceCanvasTerminalCreation({
       defaultTerminalProfileId,
       standardWindowSizeBucket,
       workspacePath,
+      environmentVariables,
       spacesRef,
       nodesRef,
       setNodes,
@@ -56,6 +59,7 @@ export function useWorkspaceCanvasTerminalCreation({
   }, [
     contextMenu,
     createNodeForSession,
+    environmentVariables,
     nodesRef,
     onSpacesChange,
     setContextMenu,

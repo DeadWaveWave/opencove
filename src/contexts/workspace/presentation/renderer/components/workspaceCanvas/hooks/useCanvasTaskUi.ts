@@ -12,6 +12,7 @@ export function useWorkspaceCanvasTaskUi({
   launchAgentInNode,
   agentSettings,
   workspacePath,
+  environmentVariables,
   onRequestPersistFlush,
   actionRefs,
   contextMenu,
@@ -30,6 +31,7 @@ export function useWorkspaceCanvasTaskUi({
   launchAgentInNode: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['launchAgentInNode']
   agentSettings: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['agentSettings']
   workspacePath: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['workspacePath']
+  environmentVariables?: Record<string, string>
   onRequestPersistFlush?: Parameters<
     typeof useWorkspaceCanvasTaskSupport
   >[0]['onRequestPersistFlush']
@@ -55,6 +57,7 @@ export function useWorkspaceCanvasTaskUi({
     launchAgentInNode,
     agentSettings,
     workspacePath,
+    environmentVariables,
     onRequestPersistFlush,
     actionRefs,
   })
