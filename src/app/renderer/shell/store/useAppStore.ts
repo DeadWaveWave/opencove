@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { arrayMove } from '@dnd-kit/sortable'
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
   FocusRequest,
@@ -23,6 +24,7 @@ export interface AppStoreState {
   isRemovingProject: boolean
   agentSettings: AgentSettings
   isSettingsOpen: boolean
+  settingsOpenPageId: SettingsPageId | null
   focusRequest: FocusRequest | null
   persistNotice: PersistNotice | null
 
@@ -35,6 +37,7 @@ export interface AppStoreState {
   setIsRemovingProject: (action: SetStateAction<boolean>) => void
   setAgentSettings: (action: SetStateAction<AgentSettings>) => void
   setIsSettingsOpen: (action: SetStateAction<boolean>) => void
+  setSettingsOpenPageId: (action: SetStateAction<SettingsPageId | null>) => void
   setFocusRequest: (action: SetStateAction<FocusRequest | null>) => void
   setPersistNotice: (action: SetStateAction<PersistNotice | null>) => void
   reorderWorkspaces: (activeId: string, overId: string) => void
@@ -48,6 +51,7 @@ export const useAppStore = create<AppStoreState>(set => ({
   isRemovingProject: false,
   agentSettings: DEFAULT_AGENT_SETTINGS,
   isSettingsOpen: false,
+  settingsOpenPageId: null,
   focusRequest: null,
   persistNotice: null,
 
@@ -67,6 +71,10 @@ export const useAppStore = create<AppStoreState>(set => ({
     set(state => ({ agentSettings: applySetStateAction(state.agentSettings, action) })),
   setIsSettingsOpen: action =>
     set(state => ({ isSettingsOpen: applySetStateAction(state.isSettingsOpen, action) })),
+  setSettingsOpenPageId: action =>
+    set(state => ({
+      settingsOpenPageId: applySetStateAction(state.settingsOpenPageId, action),
+    })),
   setFocusRequest: action =>
     set(state => ({ focusRequest: applySetStateAction(state.focusRequest, action) })),
   setPersistNotice: action =>

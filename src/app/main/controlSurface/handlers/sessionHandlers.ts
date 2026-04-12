@@ -34,6 +34,7 @@ import {
 import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
+import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
@@ -152,6 +153,8 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
   const resumeSessionId =
     resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw)
 
+  const env = normalizeLaunchAgentEnv(payload.env)
+
   if (
     agentFullAccess !== undefined &&
     agentFullAccess !== null &&
@@ -176,6 +179,7 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     mode,
     model,
     resumeSessionId,
+    env,
     agentFullAccess: agentFullAccess ?? null,
   }
 }
@@ -305,12 +309,17 @@ export function registerSessionHandlers(
             }
           : undefined
 
+      const mergedEnv =
+        payload.env && Object.keys(payload.env).length > 0
+          ? { ...(sessionEnv ?? {}), ...payload.env }
+          : sessionEnv
+
       const resolvedSpawn = await resolveSessionLaunchSpawn({
         workingDirectory,
         defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
         command: launchCommand.command,
         args: launchCommand.args,
-        ...(sessionEnv ? { env: sessionEnv } : {}),
+        ...(mergedEnv ? { env: mergedEnv } : {}),
       })
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({

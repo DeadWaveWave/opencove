@@ -12,11 +12,9 @@ import {
   AGENT_PROVIDERS,
   isTaskTitleAgentProvider,
   isValidProvider,
-  isWorktreeNameSuggestionProvider,
   normalizeAgentProviderOrder,
   type AgentProvider,
   type TaskTitleAgentProvider,
-  type WorktreeNameSuggestionAgentProvider,
 } from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
 import {
@@ -56,6 +54,12 @@ import {
   normalizeTaskPromptTemplates,
   normalizeTaskPromptTemplatesByWorkspaceId,
 } from './taskPromptTemplates'
+import type { QuickCommand } from './quickCommands'
+import { normalizeQuickCommands } from './quickCommands'
+import type { QuickPhrase } from './quickPhrases'
+import { normalizeQuickPhrases } from './quickPhrases'
+import type { AgentEnvByProvider } from './agentEnv'
+import { DEFAULT_AGENT_ENV_BY_PROVIDER, normalizeAgentEnvByProvider } from './agentEnv'
 import {
   DEFAULT_WEBSITE_WINDOW_POLICY,
   normalizeWebsiteWindowPolicy,
@@ -114,11 +118,19 @@ export {
   AGENT_PROVIDER_LABEL,
   type AgentProviderCapabilities,
 } from './agentSettings.providerMeta'
-
-const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
 export { UI_LANGUAGE_NATIVE_LABEL } from './agentSettings.uiLanguage'
 
 export type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
+export type { QuickCommand } from './quickCommands'
+export type { QuickPhrase } from './quickPhrases'
+export type { AgentEnvByProvider, AgentEnvRow } from './agentEnv'
+export {
+  resolveAgentLaunchEnv,
+  resolveAgentModel,
+  resolveTaskTitleModel,
+  resolveTaskTitleProvider,
+  resolveWorktreeNameSuggestionProvider,
+} from './agentSettings.resolvers'
 
 export interface AgentSettings {
   language: UiLanguage
@@ -137,6 +149,9 @@ export interface AgentSettings {
   taskTagOptions: string[]
   taskPromptTemplates: TaskPromptTemplate[]
   taskPromptTemplatesByWorkspaceId: TaskPromptTemplatesByWorkspaceId
+  quickCommands: QuickCommand[]
+  quickPhrases: QuickPhrase[]
+  agentEnvByProvider: AgentEnvByProvider
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   standbyBannerEnabled: boolean
@@ -195,6 +210,9 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
   taskPromptTemplates: [],
   taskPromptTemplatesByWorkspaceId: {},
+  quickCommands: [],
+  quickPhrases: [],
+  agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
   standbyBannerEnabled: true,
@@ -223,38 +241,6 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
 
 function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
   return value === 'default' || isTaskTitleAgentProvider(value)
-}
-
-export function resolveAgentModel(settings: AgentSettings, provider: AgentProvider): string | null {
-  if (!settings.customModelEnabledByProvider[provider]) {
-    return null
-  }
-
-  const model = settings.customModelByProvider[provider].trim()
-  return model.length > 0 ? model : null
-}
-
-export function resolveTaskTitleProvider(settings: AgentSettings): TaskTitleAgentProvider {
-  if (settings.taskTitleProvider !== 'default') {
-    return settings.taskTitleProvider
-  }
-
-  return isTaskTitleAgentProvider(settings.defaultProvider)
-    ? settings.defaultProvider
-    : DEFAULT_TASK_TITLE_PROVIDER
-}
-
-export function resolveWorktreeNameSuggestionProvider(
-  defaultProvider: AgentProvider,
-): WorktreeNameSuggestionAgentProvider {
-  return isWorktreeNameSuggestionProvider(defaultProvider)
-    ? defaultProvider
-    : DEFAULT_TASK_TITLE_PROVIDER
-}
-
-export function resolveTaskTitleModel(settings: AgentSettings): string | null {
-  const normalized = settings.taskTitleModel.trim()
-  return normalized.length > 0 ? normalized : null
 }
 
 export function normalizeAgentSettings(value: unknown): AgentSettings {
@@ -355,6 +341,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const taskPromptTemplatesByWorkspaceId = normalizeTaskPromptTemplatesByWorkspaceId(
     value.taskPromptTemplatesByWorkspaceId,
   )
+  const quickCommands = normalizeQuickCommands(value.quickCommands)
+  const quickPhrases = normalizeQuickPhrases(value.quickPhrases)
+  const agentEnvByProvider = normalizeAgentEnvByProvider(value.agentEnvByProvider)
   const focusNodeOnClick =
     normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
@@ -466,6 +455,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTagOptions,
     taskPromptTemplates,
     taskPromptTemplatesByWorkspaceId,
+    quickCommands,
+    quickPhrases,
+    agentEnvByProvider,
     focusNodeOnClick,
     focusNodeTargetZoom,
     standbyBannerEnabled,

@@ -149,6 +149,7 @@ export function createBrowserAgentApi(): AgentApi {
           mode,
           model: payload.model ?? null,
           resumeSessionId,
+          env: payload.env ?? null,
           agentFullAccess: payload.agentFullAccess ?? null,
         },
       })
