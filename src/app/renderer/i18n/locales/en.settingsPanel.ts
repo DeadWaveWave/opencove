@@ -83,7 +83,7 @@ export const enSettingsPanel = {
   },
   agentEnv: {
     title: 'Agent Environment Variables',
-    help: 'Add or override environment variables when starting an agent. Variables with the OPENCOVE_ prefix are reserved and won’t be overridden.',
+    help: 'Add or override environment variables when starting an agent.',
     add: 'Add Variable',
     enabled: 'Enabled',
     keyPlaceholder: 'KEY',

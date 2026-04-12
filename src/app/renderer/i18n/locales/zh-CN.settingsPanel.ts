@@ -83,7 +83,7 @@ export const zhCNSettingsPanel = {
   },
   agentEnv: {
     title: 'Agent 环境变量',
-    help: '启动 Agent 时新增或覆写环境变量。以 OPENCOVE_ 开头的是保留前缀，不会被覆写。',
+    help: '启动 Agent 时新增或覆写环境变量。',
     add: '添加变量',
     enabled: '启用',
     keyPlaceholder: 'KEY',
