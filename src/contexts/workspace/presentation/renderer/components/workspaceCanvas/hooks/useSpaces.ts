@@ -69,6 +69,7 @@ export function useWorkspaceCanvasSpaces({
   commitSpaceRename: (spaceId: string) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
   spaceVisuals: SpaceVisual[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
@@ -171,7 +172,7 @@ export function useWorkspaceCanvasSpaces({
     setSpaceRenameDraft('')
   }, [])
 
-  const { createSpaceFromSelectedNodes } = useWorkspaceCanvasCreateSpace({
+  const { createSpaceFromSelectedNodes, createEmptySpaceAtPoint } = useWorkspaceCanvasCreateSpace({
     workspacePath,
     reactFlow,
     nodesRef,
@@ -388,6 +389,7 @@ export function useWorkspaceCanvasSpaces({
     commitSpaceRename,
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
+    createEmptySpaceAtPoint,
     spaceVisuals,
     activateSpace,
     activateAllSpaces,

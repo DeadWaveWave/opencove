@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import { AGENT_PROVIDERS, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type {
   WorkspaceArrangeOrder,
   WorkspaceArrangeSpaceFit,
@@ -27,6 +26,7 @@ import {
   placeSubmenuAtItem,
 } from './WorkspaceContextMenu.helpers'
 import type { OpenSubmenu, WorkspaceContextMenuProps } from './WorkspaceContextMenu.types'
+import { useWorkspaceContextInstalledProviders } from './useWorkspaceContextInstalledProviders'
 
 export function WorkspaceContextMenu({
   contextMenu,
@@ -48,6 +48,7 @@ export function WorkspaceContextMenu({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
+  createEmptySpaceAtPoint,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
@@ -56,17 +57,8 @@ export function WorkspaceContextMenu({
 }: WorkspaceContextMenuProps): React.JSX.Element | null {
   const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [installedProviders, setInstalledProviders] = useState<AgentProvider[] | null>(null)
-  const [isLoadingInstalledProviders, setIsLoadingInstalledProviders] = useState(false)
-
-  const sortedInstalledProviders = useMemo(() => {
-    if (!installedProviders) {
-      return []
-    }
-
-    const effectiveOrder = agentProviderOrder.length > 0 ? agentProviderOrder : AGENT_PROVIDERS
-    return effectiveOrder.filter(provider => installedProviders.includes(provider))
-  }, [agentProviderOrder, installedProviders])
+  const { sortedInstalledProviders, isLoadingInstalledProviders, ensureInstalledProvidersLoaded } =
+    useWorkspaceContextInstalledProviders({ agentProviderOrder })
 
   const cancelScheduledSubmenuClose = useCallback(() => {
     if (closeSubmenuTimeoutRef.current === null) {
@@ -85,36 +77,12 @@ export function WorkspaceContextMenu({
     }, SUBMENU_CLOSE_DELAY_MS)
   }, [cancelScheduledSubmenuClose])
 
-  const loadInstalledProviders = useCallback(async () => {
-    if (installedProviders !== null || isLoadingInstalledProviders) {
-      return
-    }
-
-    setIsLoadingInstalledProviders(true)
-
-    try {
-      const result = await window.opencoveApi.agent.listInstalledProviders()
-      setInstalledProviders(result.providers)
-    } catch {
-      setInstalledProviders([])
-    } finally {
-      setIsLoadingInstalledProviders(false)
-    }
-  }, [installedProviders, isLoadingInstalledProviders])
-
   const openAgentProviderSubmenu = useCallback(() => {
     cancelScheduledSubmenuClose()
     setOpenSubmenu('agent-providers')
 
-    if (installedProviders === null && !isLoadingInstalledProviders) {
-      void loadInstalledProviders()
-    }
-  }, [
-    cancelScheduledSubmenuClose,
-    installedProviders,
-    isLoadingInstalledProviders,
-    loadInstalledProviders,
-  ])
+    ensureInstalledProvidersLoaded()
+  }, [cancelScheduledSubmenuClose, ensureInstalledProvidersLoaded])
 
   const openArrangeSubmenu = useCallback(() => {
     cancelScheduledSubmenuClose()
@@ -241,6 +209,16 @@ export function WorkspaceContextMenu({
     },
     [applyArrange, closeContextMenu],
   )
+
+  const createEmptySpaceFromContextMenu = useCallback(() => {
+    if (!contextMenu || contextMenu.kind !== 'pane') {
+      return
+    }
+
+    closeContextMenu()
+    setOpenSubmenu(null)
+    createEmptySpaceAtPoint({ x: contextMenu.flowX, y: contextMenu.flowY })
+  }, [closeContextMenu, contextMenu, createEmptySpaceAtPoint])
 
   const keepAgentProviderSubmenuOpen = useCallback(() => {
     cancelScheduledSubmenuClose()
@@ -423,6 +401,7 @@ export function WorkspaceContextMenu({
             websiteWindowsEnabled={websiteWindowsEnabled}
             openTaskCreator={openTaskCreator}
             openAgentLauncher={openAgentLauncher}
+            createEmptySpaceFromContextMenu={createEmptySpaceFromContextMenu}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
             agentProviderToggleRef={agentProviderToggleRef}
             isLoadingInstalledProviders={isLoadingInstalledProviders}

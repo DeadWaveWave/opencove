@@ -112,6 +112,7 @@ export function WorkspaceCanvasView({
   openAgentLauncher,
   openAgentLauncherForProvider,
   createSpaceFromSelectedNodes,
+  createEmptySpaceAtPoint,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
@@ -397,6 +398,7 @@ export function WorkspaceCanvasView({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+        createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}
         canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
         isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}

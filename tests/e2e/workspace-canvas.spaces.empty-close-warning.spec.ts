@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Empty Close Warning)', () => {
-  test('warns before closing the last node in a space and then auto-closes the empty space', async () => {
+  test('deletes the last node without warning and keeps the now-empty space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -46,51 +46,46 @@ test.describe('Workspace Canvas - Spaces (Empty Close Warning)', () => {
 
       await noteNode.locator('.note-node__close').click()
 
-      const deleteDialog = window.locator('[data-testid="workspace-node-delete-confirmation"]')
-      await expect(deleteDialog).toBeVisible()
+      await expect(
+        window.locator('[data-testid="workspace-node-delete-confirmation"]'),
+      ).toHaveCount(0)
       await expect(
         window.locator('[data-testid="workspace-node-delete-empty-space-warning"]'),
-      ).toContainText(/empty|变为空/i)
-      await expect(
-        window.locator('[data-testid="workspace-node-delete-empty-space-warning"]'),
-      ).toContainText(/close automatically|自动关闭/i)
-
-      await window.locator('[data-testid="workspace-node-delete-cancel"]').click()
-      await expect(deleteDialog).toBeHidden()
-      await expect(noteNode).toBeVisible()
-      await expect(window.locator('.workspace-space-region')).toHaveCount(1)
-
-      await noteNode.locator('.note-node__close').click()
-      await window.locator('[data-testid="workspace-node-delete-confirm"]').click()
+      ).toHaveCount(0)
 
       await expect(window.locator('.note-node')).toHaveCount(0)
-      await expect(window.locator('.workspace-space-region')).toHaveCount(0)
+      await expect(window.locator('.workspace-space-region')).toHaveCount(1)
 
       await expect
         .poll(async () => {
           return await window.evaluate(async () => {
             const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
             if (!raw) {
-              return { spaceCount: 0, activeSpaceId: null }
+              return { spaceCount: 0, activeSpaceId: null, lastSpaceNodeIdsCount: null }
             }
 
             const parsed = JSON.parse(raw) as {
               workspaces?: Array<{
-                spaces?: unknown[]
+                spaces?: Array<{ id?: string; nodeIds?: string[] }>
                 activeSpaceId?: string | null
               }>
             }
             const persistedWorkspace = parsed.workspaces?.[0] ?? null
+            const lastSpace = persistedWorkspace?.spaces?.find(
+              space => space.id === 'space-last-node',
+            )
 
             return {
               spaceCount: persistedWorkspace?.spaces?.length ?? 0,
               activeSpaceId: persistedWorkspace?.activeSpaceId ?? null,
+              lastSpaceNodeIdsCount: lastSpace?.nodeIds?.length ?? null,
             }
           })
         })
         .toEqual({
-          spaceCount: 0,
-          activeSpaceId: null,
+          spaceCount: 1,
+          activeSpaceId: 'space-last-node',
+          lastSpaceNodeIdsCount: 0,
         })
     } finally {
       await electronApp.close()
