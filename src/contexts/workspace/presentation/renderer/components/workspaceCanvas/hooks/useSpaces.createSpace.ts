@@ -481,6 +481,7 @@ export function useWorkspaceCanvasCreateSpace({
     setSpaceTargetMountPicker,
     t,
     workspaceId,
+    workspacePath,
   ])
 
   return {
