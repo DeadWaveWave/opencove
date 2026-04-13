@@ -120,6 +120,13 @@ export function SpaceWorktreeWindow({
     [normalizedSpaceDirectory, worktrees],
   )
 
+  const branchesWithWorktrees = useMemo(() => {
+    const candidates = worktrees
+      .map(entry => entry.branch?.trim())
+      .filter((branch): branch is string => Boolean(branch && branch.length > 0))
+    return new Set(candidates)
+  }, [worktrees])
+
   const statusPath = useMemo(
     () =>
       resolveSpaceWorktreeStatusPath({
@@ -444,6 +451,7 @@ export function SpaceWorktreeWindow({
         isMutating={isMutating}
         isSuggesting={isSuggesting}
         branches={branches}
+        branchesWithWorktrees={branchesWithWorktrees}
         currentBranch={currentBranch}
         changedFileCount={changedFileCount}
         branchMode={branchMode}

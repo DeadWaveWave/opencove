@@ -30,6 +30,7 @@ export function CanvasSection(props: {
   standardWindowSizeBucket: StandardWindowSizeBucket
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
+  focusNodeUseVisibleCanvasCenter: boolean
   defaultTerminalProfileId: string | null
   terminalProfiles: TerminalProfile[]
   detectedDefaultTerminalProfileId: string | null
@@ -40,6 +41,7 @@ export function CanvasSection(props: {
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
+  onChangeFocusNodeUseVisibleCanvasCenter: (enabled: boolean) => void
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -50,6 +52,7 @@ export function CanvasSection(props: {
     standardWindowSizeBucket,
     focusNodeOnClick,
     focusNodeTargetZoom,
+    focusNodeUseVisibleCanvasCenter,
     defaultTerminalProfileId,
     terminalProfiles,
     detectedDefaultTerminalProfileId,
@@ -60,6 +63,7 @@ export function CanvasSection(props: {
     onChangeDefaultTerminalProfileId,
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
+    onChangeFocusNodeUseVisibleCanvasCenter,
     onFocusNodeTargetZoomPreviewChange,
   } = props
   const platform =
@@ -236,6 +240,24 @@ export function CanvasSection(props: {
               data-testid="settings-focus-node-on-click"
               checked={focusNodeOnClick}
               onChange={event => onChangeFocusNodeOnClick(event.target.checked)}
+            />
+            <span className="cove-toggle__slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.canvas.focusVisibleCenterLabel')}</strong>
+          <span>{t('settingsPanel.canvas.focusVisibleCenterHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <label className="cove-toggle">
+            <input
+              type="checkbox"
+              data-testid="settings-focus-node-visible-center"
+              checked={focusNodeUseVisibleCanvasCenter}
+              onChange={event => onChangeFocusNodeUseVisibleCanvasCenter(event.target.checked)}
             />
             <span className="cove-toggle__slider"></span>
           </label>

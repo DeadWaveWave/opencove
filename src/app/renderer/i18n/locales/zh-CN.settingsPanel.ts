@@ -130,6 +130,9 @@ export const zhCNSettingsPanel = {
     },
     focusOnClickLabel: '点击自动定位',
     focusOnClickHelp: '点击节点时自动将画布居中到该节点。',
+    focusVisibleCenterLabel: '以可视画布居中',
+    focusVisibleCenterHelp:
+      '自动定位时以可视画布的中心为参照。打开左侧栏时，会在剩余右侧空间居中。',
     focusTargetZoomLabel: '定位缩放',
     focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
   },
@@ -138,10 +141,17 @@ export const zhCNSettingsPanel = {
     workerWebUi: {
       title: 'Worker Web UI',
       help: '通过 Worker 提供的浏览器 UI（实验性）。当前需要 Home Worker = Local Worker。',
+      enabledLabel: '启用 Web UI',
+      enabledHelp: '开启 Worker 同源托管的 Web UI 与 Debug Shell。修改后会重启 Local Worker。',
+      portLabel: '端口',
+      portHelp: '留空（或 0）表示随机端口。修改端口会重启 Local Worker。',
+      portPlaceholder: '随机',
+      portSave: '应用',
       statusLabel: '状态',
       statusHelp: '请先在 Worker 设置里启动 Local Worker。',
       status: {
         requiresLocal: '需要将 Home Worker 设为 Local Worker',
+        disabled: '已禁用',
         stopped: '未运行',
         running: '就绪',
       },
@@ -159,6 +169,7 @@ export const zhCNSettingsPanel = {
       passwordSave: '设置密码',
       errors: {
         noUrl: 'Worker 未返回 Web UI 地址。',
+        invalidPort: '端口必须为空（随机）或 1 到 65535 之间的整数。',
         passwordRequired: '启用内网访问需要先设置密码。',
       },
     },
@@ -283,6 +294,9 @@ export const zhCNSettingsPanel = {
     home: {
       title: 'Home Worker',
       help: '选择 Desktop 读写 durable state 的位置。Worker Web UI 当前需要 Local Worker。',
+      packagedHelp: 'OpenCove 会直接使用这台电脑上的 Worker。通常你只需要在下面启动或重启它。',
+      packagedModeLabel: '当前使用',
+      packagedModeValue: '本机 Worker',
       modeLabel: '模式',
       mode: {
         standalone: 'Standalone（无 Worker）',

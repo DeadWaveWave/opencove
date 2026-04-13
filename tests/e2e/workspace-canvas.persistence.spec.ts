@@ -338,7 +338,42 @@ test.describe('Workspace Canvas - Persistence', () => {
       await window.locator('.workspace-item').nth(1).click()
       await expect(window.locator('.workspace-item').nth(1)).toHaveClass(/workspace-item--active/)
 
-      await window.waitForTimeout(1_200)
+      await expect
+        .poll(
+          async () => {
+            return await window.evaluate(
+              async ({ key, nodeId, expected }) => {
+                void key
+
+                const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+                if (!raw) {
+                  return false
+                }
+
+                const parsed = JSON.parse(raw) as {
+                  workspaces?: Array<{
+                    id?: string
+                    nodes?: Array<{
+                      id?: string
+                      scrollback?: string | null
+                    }>
+                  }>
+                }
+
+                const workspace = parsed.workspaces?.find(item => item.id === 'workspace-a')
+                const node = workspace?.nodes?.find(item => item.id === nodeId)
+                return typeof node?.scrollback === 'string' && node.scrollback.includes(expected)
+              },
+              {
+                key: storageKey,
+                nodeId: 'node-a',
+                expected: rawModeDoneToken,
+              },
+            )
+          },
+          { timeout: 10_000 },
+        )
+        .toBe(true)
 
       await window.locator('.workspace-item').nth(0).click()
       await expect(window.locator('.workspace-item').nth(0)).toHaveClass(/workspace-item--active/)

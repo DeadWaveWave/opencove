@@ -1,6 +1,7 @@
 import { enMessages } from './en.messages'
 import { enSpaceExplorer } from './en.spaceExplorer'
 import { enSettingsPanel } from './en.settingsPanel'
+import { enWorktree } from './en.worktree'
 import { enWebsiteNode } from './en.websiteNode'
 
 export const en = {
@@ -67,6 +68,8 @@ export const en = {
     commandCenter: 'Command Center',
     commandCenterHint: 'Command Center ({{shortcut}})',
     commandCenterFallbackTitle: 'Search',
+    enterFullscreen: 'Enter Full Screen',
+    exitFullscreen: 'Exit Full Screen',
     updateAvailableShort: 'Update',
     updateAvailableTitle: 'Version {{version}} is available',
     updateDownloadingTitle: 'Downloading version {{version}} ({{percent}})',
@@ -426,73 +429,7 @@ export const en = {
     templateContent: 'Template content',
     templateContentPlaceholder: 'Write the prompt content to insert...',
   },
-  worktree: {
-    createWorktree: 'Create worktree',
-    branchMode: 'Branch mode',
-    newBranch: 'New Branch',
-    existingBranch: 'Existing Branch',
-    startPoint: 'Start point',
-    branchName: 'Branch name',
-    branch: 'Branch',
-    detached: 'Detached',
-    branchPlaceholder: 'e.g. space/infra-core',
-    createAndBind: 'Create & Bind',
-    removeSpaceContents: 'Remove {{name}} and everything inside it.',
-    removeWorktreeContents: 'Remove {{name}}, its worktree, and everything inside it.',
-    deleteBranch: 'Delete branch',
-    deleteBranchHelp: 'Also remove the current git branch.',
-    workspaceRoot: 'Workspace root',
-    detachedHead: 'Detached HEAD',
-    archiveSpace: 'Archive Space',
-    archiveWorktreeSpace: 'Archive Worktree Space',
-    closeWorktreeWindow: 'Close worktree window',
-    clean: 'clean',
-    apiUnavailable: 'Worktree API is unavailable. Please restart OpenCove and try again.',
-    changedFiles_one: '{{count}} change',
-    changedFiles_other: '{{count}} changes',
-    archiveAgents_one: '{{count}} agent',
-    archiveAgents_other: '{{count}} agents',
-    archiveTerminals_one: '{{count}} terminal',
-    archiveTerminals_other: '{{count}} terminals',
-    archiveTasks_one: '{{count}} task',
-    archiveTasks_other: '{{count}} tasks',
-    archiveNotes_one: '{{count}} note',
-    archiveNotes_other: '{{count}} notes',
-    aiSuggestionFailed: 'AI suggestion failed: {{message}}',
-    refreshFailed: 'Failed to load worktree info: {{message}}',
-    initialCommitRequired:
-      'This repository has no commits yet. Create an initial commit (e.g. git commit --allow-empty -m "Initial commit") and try again.',
-    archiveBranchDeleteFailed: 'Space archived, but the branch could not be deleted.',
-    archiveDirectoryCleanupFailed:
-      'Space archived, but the worktree directory could not be removed. Close any process still using it, then delete the directory manually.',
-    archiveUncommittedChangesWarning:
-      'This worktree has uncommitted changes. Archiving will discard them; commit or stash to keep them.',
-    forceArchiveConfirm: 'Force archive confirmation',
-    forceArchiveConfirmHelp: 'I understand uncommitted changes will be discarded.',
-    branchValidation: {
-      empty: 'Branch name cannot be empty.',
-      atSymbol: 'Branch name cannot be "@".',
-      doubleDot: 'Branch name cannot contain "..".',
-      atBrace: 'Branch name cannot contain "@{".',
-      unsupportedCharacters: 'Branch name contains unsupported characters.',
-      slashBoundary: 'Branch name cannot start or end with "/".',
-      consecutiveSlash: 'Branch name cannot contain consecutive "/".',
-      trailingDot: 'Branch name cannot end with ".".',
-      emptySegment: 'Branch name cannot contain empty path segments.',
-      leadingDotSegment: 'Branch name segments cannot start with ".".',
-      trailingLock: 'Branch name segments cannot end with ".lock".',
-    },
-  },
-  worktreeGuard: {
-    activeWindowsBound: 'Space {{name}} still has active windows bound to its current directory.',
-    closeFirstOrMark: 'Close them first, or continue by marking those windows as DIR MISMATCH.',
-    closeFirstOnly:
-      'Close those windows first. This action changes worktree binding and metadata for the space.',
-    markMismatchAndContinue: 'Mark Mismatch & Continue',
-    closeAllAndContinue: 'Close All & Continue',
-    closeFirstRequired: 'This action requires closing all windows first.',
-    closeFailed: 'Some windows could not be closed. Close them manually and try again.',
-  },
+  ...enWorktree,
   spaceDropGuard: {
     title: 'Move to “{{name}}”?',
     description: 'Windows keep their current directory and will be labeled {{badge}}.',

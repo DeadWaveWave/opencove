@@ -120,14 +120,16 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await terminalHeader.dblclick({ position: { x: 72, y: 16 } })
       await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill('terminal renamed')
-      await terminalTitleInput.press('Enter')
+      await terminalTitleInput.focus()
+      await window.keyboard.press('Enter')
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(terminalHeader).toContainText('terminal renamed')
 
       await taskHeader.dblclick({ position: { x: 72, y: 16 } })
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill('task renamed')
-      await taskTitleInput.press('Enter')
+      await taskTitleInput.focus()
+      await window.keyboard.press('Enter')
       await expect(taskTitleInput).toHaveCount(0)
       await expect(taskHeader).toContainText('task renamed')
     } finally {

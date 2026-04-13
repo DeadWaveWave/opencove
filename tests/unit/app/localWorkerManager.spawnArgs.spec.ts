@@ -19,6 +19,8 @@ describe('local worker manager spawn args', () => {
       parentPid: 1234,
       bindHostname: '127.0.0.1',
       advertiseHostname: '127.0.0.1',
+      port: 0,
+      enableWebUi: true,
       webUiPasswordHash: null,
     })
 
@@ -46,6 +48,8 @@ describe('local worker manager spawn args', () => {
       parentPid: 1234,
       bindHostname: '0.0.0.0',
       advertiseHostname: '127.0.0.1',
+      port: 0,
+      enableWebUi: true,
       webUiPasswordHash: 'scrypt:abc:def',
     })
 
@@ -64,5 +68,24 @@ describe('local worker manager spawn args', () => {
       '--web-ui-password-hash',
       'scrypt:abc:def',
     ])
+  })
+
+  it('includes disable flag when web ui is disabled', async () => {
+    vi.resetModules()
+    const { buildLocalWorkerSpawnArgs } =
+      await import('../../../src/app/main/worker/localWorkerManager')
+
+    const args = buildLocalWorkerSpawnArgs({
+      workerScriptPath: '/mock/app-path/out/main/worker.js',
+      userDataPath: '/mock/user-data',
+      parentPid: 1234,
+      bindHostname: '127.0.0.1',
+      advertiseHostname: '127.0.0.1',
+      port: 0,
+      enableWebUi: false,
+      webUiPasswordHash: null,
+    })
+
+    expect(args).toContain('--disable-web-ui')
   })
 })

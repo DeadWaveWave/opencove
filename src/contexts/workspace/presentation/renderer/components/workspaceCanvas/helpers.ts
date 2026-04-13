@@ -2,6 +2,7 @@ import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { translate, type TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import {
   formatAppErrorMessage,
   getAppErrorDebugMessage,
@@ -25,16 +26,49 @@ export function resolveWorkspaceCanvasAnimationDuration(duration: number): numbe
 export function focusNodeInViewport(
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
   node: Pick<Node<TerminalNodeData>, 'position' | 'data'>,
-  options: { duration?: number; zoom?: number } = {},
+  options: { duration?: number; zoom?: number; useVisibleCanvasCenter?: boolean } = {},
 ): void {
-  reactFlow.setCenter(
-    node.position.x + node.data.width / 2,
-    node.position.y + node.data.height / 2,
-    {
-      duration: resolveWorkspaceCanvasAnimationDuration(options.duration ?? 120),
-      zoom: options.zoom ?? 1,
-    },
-  )
+  const requestedZoom = options.zoom ?? 1
+  const zoom = Number.isFinite(requestedZoom) && requestedZoom > 0 ? requestedZoom : 1
+  const center = resolveNodeCenter(node)
+  const duration = resolveWorkspaceCanvasAnimationDuration(options.duration ?? 120)
+
+  if (typeof document !== 'undefined') {
+    const flowElement = document.querySelector('.workspace-canvas .react-flow')
+    if (flowElement instanceof HTMLElement) {
+      const flowRect = flowElement.getBoundingClientRect()
+      if (flowRect.width > 0 && flowRect.height > 0) {
+        // Always exclude the header (canvas lives below it). Optionally exclude the primary sidebar.
+        const desiredClientCenter = resolveWorkspaceContentCenterClientPx({
+          subtractSidebar:
+            (options.useVisibleCanvasCenter ?? shouldUseVisibleCanvasCenterFromAgentSettings()) ===
+            true,
+        })
+
+        if (desiredClientCenter) {
+          // ReactFlow viewport translation is relative to the wrapper's top-left in pixels.
+          const desiredInWrapper = {
+            x: desiredClientCenter.x - flowRect.left,
+            y: desiredClientCenter.y - flowRect.top,
+          }
+
+          const nextViewport = {
+            x: desiredInWrapper.x - center.x * zoom,
+            y: desiredInWrapper.y - center.y * zoom,
+            zoom,
+          }
+
+          reactFlow.setViewport(nextViewport, { duration })
+          return
+        }
+      }
+    }
+  }
+
+  reactFlow.setCenter(center.x, center.y, {
+    duration,
+    zoom,
+  })
 }
 
 export function centerNodeInViewport(
@@ -50,6 +84,112 @@ export function centerNodeInViewport(
       zoom: Number.isFinite(options.zoom) && options.zoom > 0 ? options.zoom : 1,
     },
   )
+}
+
+function shouldUseVisibleCanvasCenterFromAgentSettings(): boolean {
+  // Workspace canvas rendering already depends on the app store (task windows, etc.)
+  // so reading the setting here avoids threading it through large call sites.
+  return useAppStore.getState().agentSettings.focusNodeUseVisibleCanvasCenter === true
+}
+
+function resolveNodeCenter(node: Pick<Node<TerminalNodeData>, 'position' | 'data'>): {
+  x: number
+  y: number
+} {
+  return {
+    x: node.position.x + node.data.width / 2,
+    y: node.position.y + node.data.height / 2,
+  }
+}
+
+function resolveWorkspaceContentCenterClientPx(options: {
+  subtractSidebar: boolean
+}): { x: number; y: number } | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  const clipRect = resolveWorkspaceContentBounds(options)
+  if (!clipRect) {
+    return null
+  }
+
+  const x = clipRect.left + clipRect.width / 2
+  const y = clipRect.top + clipRect.height / 2
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    return null
+  }
+
+  return { x, y }
+}
+
+function resolveWorkspaceContentBounds(options: { subtractSidebar: boolean }): {
+  left: number
+  top: number
+  width: number
+  height: number
+} | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  // Base bounds: visible app viewport. We then subtract known occluders (header/sidebar).
+  // This intentionally does not rely on CSS grid placement, which can vary by platform.
+  let clipRect = {
+    left: 0,
+    top: 0,
+    width: window.innerWidth,
+    height: window.innerHeight,
+  }
+
+  const appHeader = document.querySelector('.app-header')
+  if (appHeader instanceof HTMLElement) {
+    const headerRect = appHeader.getBoundingClientRect()
+    const bottom = clipRect.top + clipRect.height
+    const headerBottom = headerRect.top + headerRect.height
+    if (Number.isFinite(headerBottom) && headerBottom > clipRect.top) {
+      clipRect = {
+        ...clipRect,
+        top: headerBottom,
+        height: bottom - headerBottom,
+      }
+    }
+  }
+
+  if (options.subtractSidebar) {
+    const workspaceSidebar = document.querySelector('.workspace-sidebar')
+    if (workspaceSidebar instanceof HTMLElement) {
+      const sidebarRect = workspaceSidebar.getBoundingClientRect()
+      const right = clipRect.left + clipRect.width
+      const sidebarRight = sidebarRect.left + sidebarRect.width
+      if (Number.isFinite(sidebarRight) && sidebarRight > clipRect.left) {
+        clipRect = {
+          ...clipRect,
+          left: sidebarRight,
+          width: right - sidebarRight,
+        }
+      }
+    }
+  }
+
+  if (
+    !Number.isFinite(clipRect.left) ||
+    !Number.isFinite(clipRect.top) ||
+    !Number.isFinite(clipRect.width) ||
+    !Number.isFinite(clipRect.height)
+  ) {
+    return null
+  }
+
+  if (clipRect.width <= 0 || clipRect.height <= 0) {
+    return null
+  }
+
+  return clipRect
 }
 
 export function resolveNodePlacementAnchorFromViewportCenter(center: Point, size: Size): Point {

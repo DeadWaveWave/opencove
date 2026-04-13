@@ -319,6 +319,24 @@
   box-shadow: var(--cove-node-selection-shadow);
 }
 
+.workspace-canvas .terminal-node:focus-within,
+.workspace-canvas .task-node:focus-within,
+.workspace-canvas .note-node:focus-within,
+.workspace-canvas .image-node:focus-within,
+.workspace-canvas .website-node:focus-within {
+  border-color: var(--cove-node-selection-border);
+  box-shadow: var(--cove-node-selection-shadow);
+}
+
+.workspace-canvas .terminal-node[data-cove-focus-transition='true'],
+.workspace-canvas .task-node[data-cove-focus-transition='true'],
+.workspace-canvas .note-node[data-cove-focus-transition='true'],
+.workspace-canvas .image-node[data-cove-focus-transition='true'],
+.workspace-canvas .website-node[data-cove-focus-transition='true'] {
+  border-color: var(--cove-node-selection-border);
+  box-shadow: var(--cove-node-selection-shadow);
+}
+
 .workspace-space-region__branch-badge {
   gap: 8px;
   max-width: 260px;

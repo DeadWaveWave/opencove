@@ -23,6 +23,7 @@ import { createTerminalOutputScheduler, type TerminalOutputScheduler } from './o
 import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
 import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
+import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
 import { createMountedXtermSession } from './xtermSession'
 
 export function useTerminalRuntimeSession({
@@ -185,6 +186,10 @@ export function useTerminalRuntimeSession({
         throw error
       }
     })
+    const openCodeThemeBridge =
+      terminalProvider === 'opencode'
+        ? createOpenCodeTuiThemeBridge({ terminal, ptyWriteQueue, terminalThemeMode })
+        : null
     terminal.attachCustomKeyEventHandler(event =>
       handleTerminalCustomKeyEvent({
         event,
@@ -321,11 +326,13 @@ export function useTerminalRuntimeSession({
           isTerminalHydratedRef.current = true
           setIsTerminalHydrated(true)
           scheduleTranscriptSync()
+          openCodeThemeBridge?.reportThemeMode()
         }
       },
       isDisposed: () => isDisposed,
     })
     const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
+      openCodeThemeBridge?.handlePtyOutputChunk(event.data)
       hydrationRouter.handleDataChunk(event.data)
     })
     const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
@@ -363,6 +370,7 @@ export function useTerminalRuntimeSession({
       applyTerminalTheme()
       session.renderer.clearTextureAtlas()
       syncTerminalSize()
+      openCodeThemeBridge?.reportThemeMode()
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
     return () => {
@@ -387,6 +395,7 @@ export function useTerminalRuntimeSession({
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       ptyWriteQueue.dispose()
+      openCodeThemeBridge?.dispose()
       if (isInvalidated) {
         cancelScrollbackPublish()
         clearCachedTerminalScreenStateInvalidation(nodeId, sessionId)

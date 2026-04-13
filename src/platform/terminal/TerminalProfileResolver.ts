@@ -14,6 +14,8 @@ import {
   type TerminalProfileResolverDeps,
 } from './TerminalProfileResolver.windows'
 
+const WINDOWS_COMMAND_DISCOVERY_TIMEOUT_MS = 2_000
+
 export interface ResolveCommandSpawnInput {
   cwd: string
   command: string
@@ -111,6 +113,8 @@ export class TerminalProfileResolver {
       processCwd: overrides.processCwd ?? (() => process.cwd()),
       locateWindowsCommands: overrides.locateWindowsCommands ?? locateWindowsCommands,
       listWslDistros: overrides.listWslDistros ?? listWslDistros,
+      commandDiscoveryTimeoutMs:
+        overrides.commandDiscoveryTimeoutMs ?? WINDOWS_COMMAND_DISCOVERY_TIMEOUT_MS,
     }
   }
 

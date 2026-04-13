@@ -15,6 +15,7 @@ export function SpaceWorktreePanels({
   changedFileCount,
   forceArchiveConfirmed,
   branches,
+  branchesWithWorktrees,
   currentBranch,
   branchMode,
   newBranchName,
@@ -41,6 +42,7 @@ export function SpaceWorktreePanels({
   changedFileCount: number
   forceArchiveConfirmed: boolean
   branches: string[]
+  branchesWithWorktrees: ReadonlySet<string>
   currentBranch: string | null
   branchMode: BranchMode
   newBranchName: string
@@ -169,6 +171,9 @@ export function SpaceWorktreePanels({
                       options={branches.map(branch => ({
                         value: branch,
                         label: branch,
+                        badge: branchesWithWorktrees.has(branch)
+                          ? t('worktree.branchHasWorktree')
+                          : undefined,
                       }))}
                       onChange={nextValue => {
                         onExistingBranchNameChange(nextValue)

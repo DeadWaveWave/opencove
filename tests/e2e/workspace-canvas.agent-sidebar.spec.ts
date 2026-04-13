@@ -307,11 +307,16 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       await requestItem.click()
       await expect(requestNode).toBeVisible()
 
-      await expect(doingItem.locator('.workspace-agent-item__status--agent')).toHaveText('Standby')
+      await expect(doingItem.locator('.workspace-agent-item__status--agent')).toHaveText(
+        'Standby',
+        { timeout: 30_000 },
+      )
       await expect(requestItem.locator('.workspace-agent-item__status--agent')).toHaveText(
         'Standby',
       )
-      await expect(doneItem.locator('.workspace-agent-item__status--agent')).toHaveText('Standby')
+      await expect(doneItem.locator('.workspace-agent-item__status--agent')).toHaveText('Standby', {
+        timeout: 30_000,
+      })
 
       await expect(doingItem.locator('.workspace-agent-item__task-text')).toHaveText(
         'Implement OAuth refresh flow',

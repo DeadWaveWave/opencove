@@ -115,6 +115,17 @@ export function registerTerminalDiagnostics({
     })
   }
 
+  const logInteractionEventWithDetails = (
+    event: string,
+    details: TerminalDiagnosticsLogInput['details'],
+    point?: { x: number; y: number } | null,
+  ): void => {
+    diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+      ...collectInteractionDetails(point),
+      ...details,
+    })
+  }
+
   const mutationObserver =
     enabled && typeof MutationObserver !== 'undefined'
       ? new MutationObserver(mutations => {
@@ -134,6 +145,23 @@ export function registerTerminalDiagnostics({
                   ? 'react-flow-node-class-change'
                   : 'workspace-canvas-drag-surface-change'
 
+            if (
+              mutation.attributeName === 'class' &&
+              mutation.target instanceof HTMLElement &&
+              typeof mutation.oldValue === 'string'
+            ) {
+              const nextClassName = mutation.target.className
+              if (nextClassName === mutation.oldValue) {
+                continue
+              }
+
+              logInteractionEventWithDetails(event, {
+                mutationOldClassName: mutation.oldValue,
+                mutationNewClassName: nextClassName,
+              })
+              continue
+            }
+
             logInteractionEvent(event)
           }
         })
@@ -144,6 +172,7 @@ export function registerTerminalDiagnostics({
       mutationObserver.observe(xtermElement, {
         attributes: true,
         attributeFilter: ['class'],
+        attributeOldValue: true,
       })
     }
 
@@ -151,6 +180,7 @@ export function registerTerminalDiagnostics({
       mutationObserver.observe(reactFlowNode, {
         attributes: true,
         attributeFilter: ['class'],
+        attributeOldValue: true,
       })
     }
 
@@ -183,6 +213,34 @@ export function registerTerminalDiagnostics({
             'hover-hit-target-change',
             captureTerminalDiagnosticsSnapshot(terminal, viewportElement),
             details,
+          )
+        }, 120)
+      : null
+
+  let lastRingSignature: string | null = null
+  const ringPollTimer =
+    enabled && typeof window !== 'undefined'
+      ? window.setInterval(() => {
+          const details = collectInteractionDetails()
+          const ringDetails = {
+            activeElement: details['activeElement'] ?? null,
+            activeElementInsideTerminalNode: details['activeElementInsideTerminalNode'] ?? null,
+            terminalNodeFocusWithin: details['terminalNodeFocusWithin'] ?? null,
+            terminalNodeBorderColor: details['terminalNodeBorderColor'] ?? null,
+            reactFlowNodeSelected: details['reactFlowNodeSelected'] ?? null,
+            selectedSurfaceActive: details['selectedSurfaceActive'] ?? null,
+            xtermClassName: details['xtermClassName'] ?? null,
+          }
+          const signature = JSON.stringify(ringDetails)
+          if (signature === lastRingSignature) {
+            return
+          }
+
+          lastRingSignature = signature
+          diagnostics.log(
+            'ring-state-change',
+            captureTerminalDiagnosticsSnapshot(terminal, viewportElement),
+            ringDetails,
           )
         }, 120)
       : null
@@ -252,6 +310,9 @@ export function registerTerminalDiagnostics({
       mutationObserver?.disconnect()
       if (pointerPollTimer !== null) {
         window.clearInterval(pointerPollTimer)
+      }
+      if (ringPollTimer !== null) {
+        window.clearInterval(ringPollTimer)
       }
       viewportElement?.removeEventListener('wheel', handleViewportWheel)
       viewportElement?.removeEventListener('scroll', handleViewportScroll)

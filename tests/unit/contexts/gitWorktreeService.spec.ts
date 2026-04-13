@@ -294,29 +294,40 @@ describe('GitWorktreeService', () => {
   )
 
   it(
-    'rejects adding a worktree for a branch already checked out elsewhere',
+    'reuses an existing worktree when the branch is already checked out',
     async () => {
       repoDir = await createTempRepo()
       const canonicalRepoDir = await realpath(repoDir)
       const worktreesRoot = join(repoDir, '.opencove', 'worktrees')
       await mkdir(worktreesRoot, { recursive: true })
 
-      const { createGitWorktree } =
+      const { createGitWorktree, listGitWorktrees } =
         await import('../../../src/contexts/worktree/infrastructure/git/GitWorktreeService')
 
-      await createGitWorktree({
+      const created = await createGitWorktree({
         repoPath: canonicalRepoDir,
         worktreesRoot,
         branchMode: { kind: 'new', name: 'space-b', startPoint: 'HEAD' },
       })
 
-      await expect(
-        createGitWorktree({
-          repoPath: canonicalRepoDir,
-          worktreesRoot,
-          branchMode: { kind: 'existing', name: 'space-b' },
+      const beforeReuse = await listGitWorktrees({ repoPath: canonicalRepoDir })
+
+      const reused = await createGitWorktree({
+        repoPath: canonicalRepoDir,
+        worktreesRoot,
+        branchMode: { kind: 'existing', name: 'space-b' },
+      })
+
+      expect(reused).toEqual(
+        expect.objectContaining({
+          path: created.path,
+          branch: 'space-b',
         }),
-      ).rejects.toThrow(/already checked out/i)
+      )
+
+      const afterReuse = await listGitWorktrees({ repoPath: canonicalRepoDir })
+      expect(afterReuse.worktrees.length).toBe(beforeReuse.worktrees.length)
+      expect(afterReuse.worktrees.filter(entry => entry.branch === 'space-b')).toHaveLength(1)
     },
     GIT_WORKTREE_TEST_TIMEOUT_MS,
   )

@@ -10,6 +10,13 @@ export function resolveWorkerAgentTestStub(options: {
     return null
   }
 
+  const wantsRealAgents =
+    process.env['OPENCOVE_TEST_USE_REAL_AGENTS'] === '1' ||
+    process.env['OPENCOVE_TEST_USE_REAL_AGENTS']?.toLowerCase() === 'true'
+  if (wantsRealAgents) {
+    return null
+  }
+
   const sessionScenario = process.env['OPENCOVE_TEST_AGENT_SESSION_SCENARIO']?.trim() ?? ''
   const stubScriptPath = process.env['OPENCOVE_TEST_AGENT_STUB_SCRIPT']?.trim() ?? ''
 

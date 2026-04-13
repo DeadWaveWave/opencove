@@ -190,6 +190,32 @@ export function WorkspaceCanvasView({
     return spaces.find(space => space.id === openExplorerSpaceId) ?? null
   }, [openExplorerSpaceId, spaces])
 
+  React.useEffect(() => {
+    if (!useManualCanvasWheelGestures) {
+      return
+    }
+
+    const canvasElement = canvasRef.current
+    if (!canvasElement) {
+      return
+    }
+
+    const handleWheel = (event: WheelEvent): void => {
+      if (event.target instanceof Element && event.target.closest(WHEEL_BLOCK_SELECTOR)) {
+        return
+      }
+
+      handleCanvasWheelCapture(event)
+    }
+
+    const wheelListenerOptions = { passive: false, capture: true } as const
+    canvasElement.addEventListener('wheel', handleWheel, wheelListenerOptions)
+
+    return () => {
+      canvasElement.removeEventListener('wheel', handleWheel, true)
+    }
+  }, [canvasRef, handleCanvasWheelCapture, useManualCanvasWheelGestures])
+
   return (
     <div
       ref={canvasRef}
@@ -221,12 +247,6 @@ export function WorkspaceCanvasView({
       }}
       onPointerMoveCapture={handleCanvasPointerMoveCapture}
       onPointerUpCapture={handleCanvasPointerUpCapture}
-      onWheelCapture={event => {
-        if (event.target instanceof Element && event.target.closest(WHEEL_BLOCK_SELECTOR)) {
-          return
-        }
-        handleCanvasWheelCapture(event.nativeEvent)
-      }}
     >
       <ReactFlow<Node<TerminalNodeData>, Edge>
         nodes={filteredNodes}

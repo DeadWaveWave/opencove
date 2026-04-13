@@ -34,6 +34,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Worker: PTY session streaming over the control surface (`WS /pty`) + ticket→cookie web auth for the Worker Web Shell. (#133)
 
 ### 💅 Changed
+- Worker: packaged Desktop is now local-only for Home Worker, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162)
+- Settings: allow auto-focus to center within the visible canvas (accounts for the primary sidebar). (#166)
 - Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
 - What's New: switched update notes from runtime GitHub compare fetching to release-manifest delivery embedded in each build. (#67)
 - Workspace canvas: keep Arrange By menu open while tweaking options (dismiss on outside click). (#42)
@@ -44,6 +46,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: drag now previews live snap guides continuously and only commits magnetic snapping on release for steadier pointer movement. (#42)
 - Workspace canvas: show drag-surface overlays only for multi-select (Shift+click/marquee) and treat mixed selection with Spaces as space-dominant drag. (#82)
 - Workspace canvas: Arrange By now simplifies Space sizing to `Tighten Space` / `Keep Space size`, defaults to `Tighten Space`, and moves magnetic snapping to the top-level context menu. (#42)
+- Worker Web UI: now opt-in via Settings (and supports an optional fixed port). (#161)
 - Settings: default UI theme is now dark. (#69)
 - Shortcuts: Yield app shortcuts to the terminal when it’s focused (configurable), and allow customizing keybindings in Settings → Shortcuts. (#59)
 - Shortcuts: unify app and workspace-canvas keybindings under single-bind customization, make canvas shortcuts recordable, and switch Command Center to Cmd/Ctrl+P by default. (#68)
@@ -55,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - OpenCode: Stabilized embedded terminal rendering and cursor hit-testing to eliminate shutter-like artifacts and cursor flicker in restored canvas sessions. (#144)
+- OpenCode: Embedded agent terminals now follow OpenCove UI theme and re-theme reliably when switching light/dark. (#155)
 - Crash recovery: recover from renderer and child-process failures with a localized error boundary and lifecycle logging to prevent silent white screens. (#137)
 - Website window: keep embedded pages clipped inside canvas nodes during zoom/occlusion, preserve stable 100% page scale, and route in-page/new-window navigation back into OpenCove. (#141)
 - Startup + shortcuts: avoid non-packaged locale hydration stalls and stabilize `Cmd/Ctrl+G` space creation when selected terminal nodes are involved. (#141)
@@ -90,8 +94,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Workspace canvas: arrange is now aspect-aware, avoids large empty gaps, and auto-fits the viewport after arranging; created-time ordering is deterministic across node types. (#72)
 - Workspace canvas: arrange-in-space now focuses the space bounds and caps zoom at the configured focus target zoom. (#131)
 - Terminal: Prevented `node-pty` native aborts from crashing the whole app by isolating PTY into a utility process. (#75)
+- Terminal: Prevented terminal/agent nodes from clipping the last row/column and showing a black gutter around the embedded terminal. (#150)
 - Spaces: Fixed Space pills truncating and made worktree branch/PR chips refresh without switching projects. (#129)
 - Terminal: Prevent focus loss and font resets when submitting commands or after clicking header then terminal body. (#130)
+- Workspace canvas: Keep node focus rings stable while typing in terminal/task inputs (reduces border “wink”). (#151)
 
 ---
 

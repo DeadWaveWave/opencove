@@ -8,11 +8,38 @@ const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const testWorkspacePath = path.resolve(__dirname, '../../')
 type E2EWindowMode = 'inactive' | 'offscreen' | 'hidden'
+const E2E_APP_LAUNCH_TIMEOUT_MS = 45_000
 const E2E_APP_CLOSE_TIMEOUT_MS = 5_000
 const E2E_APP_FORCE_KILL_TIMEOUT_MS = 10_000
 const E2E_APP_FORCE_KILL_POLL_MS = 50
 const E2E_USER_DATA_DIR_CLEANUP_RETRY_DELAY_MS = 100
 const E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS = 6
+
+function copyDefinedEnv(
+  source: Record<string, string | undefined> | NodeJS.ProcessEnv,
+): Record<string, string> {
+  const next: Record<string, string> = {}
+
+  for (const [key, value] of Object.entries(source)) {
+    if (typeof value === 'string') {
+      next[key] = value
+    }
+  }
+
+  return next
+}
+
+const INITIAL_E2E_PROCESS_ENV = (() => {
+  const env = copyDefinedEnv(process.env)
+  // When running Playwright from inside Electron/GUI environments, macOS can inherit a
+  // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
+  // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
+  delete env['__CFBundleIdentifier']
+  // Some developer environments export this (e.g. to run Electron as a plain Node binary),
+  // which breaks Playwright's Electron harness.
+  delete env['ELECTRON_RUN_AS_NODE']
+  return env
+})()
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -22,11 +49,16 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
   return rawValue === '1' || rawValue.toLowerCase() === 'true'
 }
 
+function shouldPipeElectronLogs(): boolean {
+  return isTruthyEnv(process.env['OPENCOVE_E2E_PIPE_ELECTRON_LOGS'])
+}
+
 function isRetryableLaunchError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return (
     message.includes('Process failed to launch') ||
     message.includes('electronApplication.firstWindow') ||
+    message.toLowerCase().includes('timeout') ||
     message.includes('SIGABRT') ||
     message.includes('SIGSEGV') ||
     message.includes('Target page, context or browser has been closed')
@@ -241,19 +273,13 @@ async function launchAppInMode(
   let electronApp: ElectronApplication | null = null
 
   try {
-    const baseEnv = { ...process.env }
-    // When running Playwright from inside Electron/GUI environments, macOS can inherit a
-    // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
-    // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
-    delete baseEnv['__CFBundleIdentifier']
-    // `ELECTRON_RUN_AS_NODE=1` turns the Electron binary into a plain Node.js process, which
-    // breaks Playwright's Electron launch (and can show up in dev shells after running tools).
-    delete baseEnv['ELECTRON_RUN_AS_NODE']
+    const envOverrides = copyDefinedEnv(options.env ?? {})
 
     electronApp = await electron.launch({
+      timeout: E2E_APP_LAUNCH_TIMEOUT_MS,
       args: resolveElectronLaunchArgs(),
       env: {
-        ...baseEnv,
+        ...INITIAL_E2E_PROCESS_ENV,
         NODE_ENV: 'test',
         HOME: testHomeDir,
         USERPROFILE: testHomeDir,
@@ -265,16 +291,16 @@ async function launchAppInMode(
         OPENCOVE_TEST_AGENT_STUB_SCRIPT: testAgentStubScriptPath,
         OPENCOVE_E2E_WINDOW_MODE: launchMode,
         ...(shouldDisableElectronSandboxForLinuxCi() ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
-        ...options.env,
+        ...envOverrides,
       },
     })
 
-    if (isTruthyEnv(process.env['OPENCOVE_E2E_PIPE_ELECTRON_LOGS'])) {
-      const childProcess = electronApp.process()
-      childProcess.stdout?.on('data', chunk => {
+    if (shouldPipeElectronLogs()) {
+      const appProcess = electronApp.process()
+      appProcess?.stdout?.on('data', chunk => {
         process.stdout.write(chunk)
       })
-      childProcess.stderr?.on('data', chunk => {
+      appProcess?.stderr?.on('data', chunk => {
         process.stderr.write(chunk)
       })
     }

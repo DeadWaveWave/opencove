@@ -4,6 +4,22 @@ const TERMINAL_HIT_TARGET_ACTIVE_ATTR = 'data-cove-terminal-hit-target-active'
 const TERMINAL_HIT_TARGET_CURSOR_ATTR = 'data-cove-terminal-hit-target-cursor'
 const TERMINAL_HIT_TARGET_OWNER_ATTR = 'data-cove-terminal-hit-target-owner'
 
+function setAttributeIfDifferent(element: HTMLElement, name: string, value: string): void {
+  if (element.getAttribute(name) === value) {
+    return
+  }
+
+  element.setAttribute(name, value)
+}
+
+function removeAttributeIfPresent(element: HTMLElement, name: string): void {
+  if (!element.hasAttribute(name)) {
+    return
+  }
+
+  element.removeAttribute(name)
+}
+
 function isPointInsideRect(point: { x: number; y: number } | null, rect: DOMRect): boolean {
   if (!point) {
     return false
@@ -51,9 +67,9 @@ export function registerTerminalHitTargetCursorScope({
       return
     }
 
-    workspaceCanvas.removeAttribute(TERMINAL_HIT_TARGET_ACTIVE_ATTR)
-    workspaceCanvas.removeAttribute(TERMINAL_HIT_TARGET_CURSOR_ATTR)
-    workspaceCanvas.removeAttribute(TERMINAL_HIT_TARGET_OWNER_ATTR)
+    removeAttributeIfPresent(workspaceCanvas, TERMINAL_HIT_TARGET_ACTIVE_ATTR)
+    removeAttributeIfPresent(workspaceCanvas, TERMINAL_HIT_TARGET_CURSOR_ATTR)
+    removeAttributeIfPresent(workspaceCanvas, TERMINAL_HIT_TARGET_OWNER_ATTR)
   }
 
   const syncScope = () => {
@@ -73,12 +89,13 @@ export function registerTerminalHitTargetCursorScope({
       return
     }
 
-    workspaceCanvas.setAttribute(TERMINAL_HIT_TARGET_ACTIVE_ATTR, 'true')
-    workspaceCanvas.setAttribute(
+    setAttributeIfDifferent(workspaceCanvas, TERMINAL_HIT_TARGET_ACTIVE_ATTR, 'true')
+    setAttributeIfDifferent(
+      workspaceCanvas,
       TERMINAL_HIT_TARGET_CURSOR_ATTR,
       resolveTerminalHitTargetCursor(xtermElement.classList),
     )
-    workspaceCanvas.setAttribute(TERMINAL_HIT_TARGET_OWNER_ATTR, ownerId)
+    setAttributeIfDifferent(workspaceCanvas, TERMINAL_HIT_TARGET_OWNER_ATTR, ownerId)
   }
 
   const handleWindowPointer = (event: PointerEvent) => {

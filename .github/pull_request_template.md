@@ -37,6 +37,7 @@ Please fill out the template completely to avoid delays in review.
 ## ✅ Delivery & Compliance Checklist
 
 - [ ] My code passes the ultimate gatekeeper: **`pnpm pre-commit` is completely green**.
+- [ ] I have signed the CLA if required (see `CLA.md`).
 - [ ] I have included new tests to lock down the behavior (or explicitly stated why it's untestable).
 - [ ] I have strictly adhered to the `DEVELOPMENT.md` architectural boundaries.
 - [ ] I have attached a screenshot or screen recording (if this touches the UI).
