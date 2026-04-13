@@ -342,7 +342,8 @@ export function useTerminalRuntimeSession({
         cachedScreenState === null &&
         (agentResumeSessionIdVerifiedRef.current === true ||
           agentLaunchModeRef.current === 'resume' ||
-          persistedSnapshot.trim().length > 0),
+          scrollbackBuffer.snapshot().trim().length > 0),
+      shouldDeferHydratedRedrawChunks: () => kind === 'agent',
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: nextRawSnapshot => {
@@ -467,6 +468,7 @@ export function useTerminalRuntimeSession({
     isTestEnvironment,
     kind,
     agentLaunchModeRef,
+    agentResumeSessionIdVerifiedRef,
     statusRef,
     titleRef,
     outputSchedulerRef,

@@ -1,6 +1,7 @@
 import type { Terminal } from '@xterm/xterm'
 import { finalizeTerminalHydration } from './finalizeHydration'
 import {
+  containsMeaningfulTerminalDisplayContent,
   shouldDeferHydratedTerminalRedrawChunk,
   shouldReplacePlaceholderWithBufferedOutput,
 } from './hydrationReplacement'
@@ -15,6 +16,7 @@ export function createTerminalHydrationRouter({
   terminal,
   outputScheduler,
   shouldReplaceAgentPlaceholderAfterHydration,
+  shouldDeferHydratedRedrawChunks,
   scrollbackBuffer,
   committedScrollbackBuffer,
   recordCommittedScreenState,
@@ -31,6 +33,7 @@ export function createTerminalHydrationRouter({
     handleChunk: (data: string, options?: { immediateScrollbackPublish?: boolean }) => void
   }
   shouldReplaceAgentPlaceholderAfterHydration: () => boolean
+  shouldDeferHydratedRedrawChunks: () => boolean
   scrollbackBuffer: {
     set: (snapshot: string) => void
     append: (data: string) => void
@@ -59,6 +62,7 @@ export function createTerminalHydrationRouter({
     dataChunks: [] as string[],
     exitCode: null as number | null,
   }
+  let deferredHydratedRedrawTimeout: ReturnType<typeof setTimeout> | null = null
 
   const resetAgentPlaceholder = (): void => {
     terminal.reset()
@@ -103,6 +107,11 @@ export function createTerminalHydrationRouter({
       return
     }
 
+    if (deferredHydratedRedrawTimeout) {
+      clearTimeout(deferredHydratedRedrawTimeout)
+      deferredHydratedRedrawTimeout = null
+    }
+
     const bufferedData = deferredHydratedRedrawBuffer.dataChunks.join('')
     if (bufferedData.length > 0) {
       outputScheduler.handleChunk(bufferedData)
@@ -119,6 +128,20 @@ export function createTerminalHydrationRouter({
 
     deferredHydratedRedrawBuffer.dataChunks.length = 0
     deferredHydratedRedrawBuffer.exitCode = null
+  }
+
+  const scheduleDeferredHydratedRedrawFlush = (): void => {
+    if (deferredHydratedRedrawTimeout) {
+      return
+    }
+
+    deferredHydratedRedrawTimeout = setTimeout(() => {
+      deferredHydratedRedrawTimeout = null
+      if (isDisposed()) {
+        return
+      }
+      flushDeferredHydratedRedraw()
+    }, 2_000)
   }
 
   return {
@@ -160,10 +183,12 @@ export function createTerminalHydrationRouter({
       }
 
       if (
-        shouldReplaceAgentPlaceholderAfterHydration() &&
-        shouldDeferHydratedTerminalRedrawChunk(data)
+        shouldDeferHydratedRedrawChunks() &&
+        (shouldDeferHydratedTerminalRedrawChunk(data) ||
+          (data.includes('\u001b') && !containsMeaningfulTerminalDisplayContent(data)))
       ) {
         deferredHydratedRedrawBuffer.dataChunks.push(data)
+        scheduleDeferredHydratedRedrawFlush()
         return
       }
 
