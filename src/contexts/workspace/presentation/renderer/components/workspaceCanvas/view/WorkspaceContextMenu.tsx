@@ -215,6 +215,10 @@ export function WorkspaceContextMenu({
       return
     }
 
+    if (contextHitSpaceIdRef.current) {
+      return
+    }
+
     closeContextMenu()
     setOpenSubmenu(null)
     createEmptySpaceAtPoint({ x: contextMenu.flowX, y: contextMenu.flowY })
@@ -402,6 +406,7 @@ export function WorkspaceContextMenu({
             openTaskCreator={openTaskCreator}
             openAgentLauncher={openAgentLauncher}
             createEmptySpaceFromContextMenu={createEmptySpaceFromContextMenu}
+            canCreateEmptySpace={contextHitSpaceId === null}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
             agentProviderToggleRef={agentProviderToggleRef}
             isLoadingInstalledProviders={isLoadingInstalledProviders}

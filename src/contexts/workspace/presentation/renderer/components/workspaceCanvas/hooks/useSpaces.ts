@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getViewportForBounds, useStore, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { FocusNodeTargetZoom } from '@contexts/settings/domain/agentSettings'
+import type {
+  FocusNodeTargetZoom,
+  StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -22,6 +25,7 @@ interface UseWorkspaceCanvasSpacesParams {
   onActiveSpaceChange: (spaceId: string | null) => void
   workspacePath: string
   focusNodeTargetZoom: FocusNodeTargetZoom
+  standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -46,6 +50,7 @@ export function useWorkspaceCanvasSpaces({
   onActiveSpaceChange,
   workspacePath,
   focusNodeTargetZoom,
+  standardWindowSizeBucket,
   reactFlow,
   nodes,
   nodesRef,
@@ -185,6 +190,7 @@ export function useWorkspaceCanvasSpaces({
     setEmptySelectionPrompt,
     cancelSpaceRename,
     onShowMessage,
+    standardWindowSizeBucket,
   })
 
   const startSpaceRename = useCallback(

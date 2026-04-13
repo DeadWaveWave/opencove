@@ -1,8 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
 import {
   clickPaneAtFlowPoint,
   openPaneContextMenuAtFlowPoint,
+  openPaneContextMenuInSpace,
+  rectsOverlap,
+  resolveCanonicalNodeSizes,
 } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Context Menu Note Create', () => {
@@ -195,6 +198,123 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
           nodeCount: 0,
           firstSpaceNodeIdsCount: 0,
         })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('does not offer empty space creation from the pane menu when right-clicking inside a space', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [], {
+        spaces: [
+          {
+            id: 'context-space-guard',
+            name: 'Context Scope',
+            directoryPath: testWorkspacePath,
+            nodeIds: [],
+            rect: { x: 120, y: 120, width: 780, height: 540 },
+          },
+        ],
+        activeSpaceId: null,
+      })
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await openPaneContextMenuInSpace(window, pane, 'context-space-guard')
+
+      await expect(
+        window.locator('[data-testid="workspace-context-create-empty-space"]'),
+      ).toHaveCount(0)
+      await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('places created empty spaces in available canvas room (does not overlap existing windows)', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'occupied-window',
+          title: 'terminal-occupied',
+          position: { x: 220, y: 180 },
+          width: 460,
+          height: 300,
+        },
+      ])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await openPaneContextMenuAtFlowPoint(window, pane, { x: 210, y: 170 })
+      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+
+      await expect
+        .poll(async () => {
+          const layout = await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                nodes?: Array<{
+                  id?: string
+                  position?: { x?: number; y?: number }
+                  width?: number
+                  height?: number
+                }>
+                spaces?: Array<{
+                  rect?: { x?: number; y?: number; width?: number; height?: number } | null
+                }>
+              }>
+            }
+
+            const workspace = parsed.workspaces?.[0]
+            const node = workspace?.nodes?.find(candidate => candidate.id === 'occupied-window')
+            const spaces = workspace?.spaces ?? []
+            const spaceRect = spaces.length > 0 ? (spaces[spaces.length - 1]?.rect ?? null) : null
+
+            if (!node?.position || !spaceRect) {
+              return null
+            }
+
+            return {
+              node: {
+                x: node.position.x ?? 0,
+                y: node.position.y ?? 0,
+                width: node.width ?? 0,
+                height: node.height ?? 0,
+              },
+              space: {
+                x: spaceRect.x ?? 0,
+                y: spaceRect.y ?? 0,
+                width: spaceRect.width ?? 0,
+                height: spaceRect.height ?? 0,
+              },
+            }
+          })
+
+          if (!layout) {
+            return null
+          }
+
+          return {
+            overlap: rectsOverlap(layout.node, layout.space),
+            meetsMin:
+              layout.space.width >= canonicalSizes.agent.width &&
+              layout.space.height >= canonicalSizes.agent.height,
+          }
+        })
+        .toEqual({ overlap: false, meetsMin: true })
     } finally {
       await electronApp.close()
     }

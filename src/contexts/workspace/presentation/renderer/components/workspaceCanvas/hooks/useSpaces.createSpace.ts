@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
@@ -9,9 +10,12 @@ import type {
   ShowWorkspaceCanvasMessage,
 } from '../types'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
+import { resolveDefaultAgentWindowSize } from '../constants'
+import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import {
   computeSpaceRectFromNodes,
   pushAwayLayout,
+  SPACE_NODE_PADDING,
   SPACE_MIN_SIZE,
   type LayoutItem,
 } from '../../../utils/spaceLayout'
@@ -23,6 +27,7 @@ type SetNodes = (
 
 export function useWorkspaceCanvasCreateSpace({
   workspacePath,
+  standardWindowSizeBucket,
   reactFlow,
   nodesRef,
   setNodes,
@@ -36,6 +41,7 @@ export function useWorkspaceCanvasCreateSpace({
   onShowMessage,
 }: {
   workspacePath: string
+  standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
@@ -381,11 +387,43 @@ export function useWorkspaceCanvasCreateSpace({
       const nextSpaceId = crypto.randomUUID()
       const normalizedName = resolveDefaultSpaceName()
 
+      const agentSize = resolveDefaultAgentWindowSize(standardWindowSizeBucket)
+      const size = {
+        width: Math.max(SPACE_MIN_SIZE.width, agentSize.width + SPACE_NODE_PADDING * 2),
+        height: Math.max(SPACE_MIN_SIZE.height, agentSize.height + SPACE_NODE_PADDING * 2),
+      }
+
+      const desiredAnchor = {
+        x: Math.round(point.x - size.width / 2),
+        y: Math.round(point.y - size.height / 2),
+      }
+
+      const resolved = resolveNodesPlacement({
+        anchor: desiredAnchor,
+        size,
+        getNodes: () => nodesRef.current,
+        getSpaceRects: () =>
+          spacesRef.current
+            .map(space => space.rect)
+            .filter(
+              (rect): rect is { x: number; y: number; width: number; height: number } =>
+                rect !== null,
+            ),
+      })
+
+      if (resolved.canPlace !== true) {
+        onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
+        setContextMenu(null)
+        setEmptySelectionPrompt(null)
+        cancelSpaceRename()
+        return
+      }
+
       const rect: WorkspaceSpaceRect = {
-        x: Math.round(point.x - SPACE_MIN_SIZE.width / 2),
-        y: Math.round(point.y - SPACE_MIN_SIZE.height / 2),
-        width: SPACE_MIN_SIZE.width,
-        height: SPACE_MIN_SIZE.height,
+        x: Math.round(resolved.placement.x),
+        y: Math.round(resolved.placement.y),
+        width: size.width,
+        height: size.height,
       }
 
       const nextSpace: WorkspaceSpaceState = {
@@ -405,13 +443,17 @@ export function useWorkspaceCanvasCreateSpace({
     },
     [
       cancelSpaceRename,
+      nodesRef,
       onRequestPersistFlush,
+      onShowMessage,
       onSpacesChange,
       resolveDefaultSpaceName,
       setContextMenu,
       setEmptySelectionPrompt,
       spacesRef,
+      standardWindowSizeBucket,
       workspacePath,
+      t,
     ],
   )
 
