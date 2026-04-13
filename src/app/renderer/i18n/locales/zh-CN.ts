@@ -434,6 +434,7 @@ export const zhCN = {
     branch: '分支',
     detached: '游离',
     branchPlaceholder: '例如：space/infra-core',
+    branchHasWorktree: '已有 worktree',
     createAndBind: '创建并绑定',
     removeSpaceContents: '移除 {{name}} 及其内部所有内容。',
     removeWorktreeContents: '移除 {{name}}、其 worktree 以及其中的所有内容。',

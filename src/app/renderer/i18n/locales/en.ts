@@ -438,6 +438,7 @@ export const en = {
     branch: 'Branch',
     detached: 'Detached',
     branchPlaceholder: 'e.g. space/infra-core',
+    branchHasWorktree: 'worktree exists',
     createAndBind: 'Create & Bind',
     removeSpaceContents: 'Remove {{name}} and everything inside it.',
     removeWorktreeContents: 'Remove {{name}}, its worktree, and everything inside it.',
