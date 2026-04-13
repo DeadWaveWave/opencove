@@ -263,6 +263,46 @@ OPENCOVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev
 - 是否应改为冒泡阶段的 `onWheel`
 - 是否阻断了 React Flow，同时保留了 xterm 默认滚动
 
+### 终端“无颜色 / 全白”（必须做视觉调试）
+
+这个症状非常容易被“数据层/替换层”的验证掩盖：  
+你可能在 `pty:snapshot` 里看到了 ANSI 转义序列（例如 `\u001b[32m`），但**实际画面仍然全白**，或相反。
+
+注意：`pnpm test:e2e` 默认运行在 `NODE_ENV=test`。在该模式下，为了保证 CI 可重复性，**Agent CLI 默认会被 test stub 替代**（不会启动真实 `codex/gemini/...` 进程）。因此 E2E 更适合做“协议/恢复/ANSI 序列是否仍被保留”的验证，但**不等价于真实 CLI 的视觉验证**。当问题是“真实 Codex TUI 看起来没颜色”时，必须用 `pnpm dev` / 真实应用环境做截图对照。
+
+另外，某些测试运行器会注入 `FORCE_COLOR`（即使你的 shell 里没设置），这会强制部分 CLI 输出颜色，从而掩盖“自动探测失败导致 no-color”这类问题。做 no-color 排查时，务必确认是否存在 `FORCE_COLOR` 干扰。
+
+先把问题分成两类再动手：
+
+1. **ANSI 根本没出现在 PTY 输出里（CLI 禁用了颜色）**  
+   证据：`pty:snapshot`/scrollback 里几乎找不到 `\u001b[` 的颜色序列，或只有极少与颜色无关的控制序列。  
+   典型诱因：
+   - 继承了 `NO_COLOR` / `NODE_DISABLE_COLORS` / 某些 test runner 的 color 禁用变量
+   - `TERM` 不正确（应优先是 `xterm-256color`）
+   - attach/hydration 期间延迟了终端 probe reply，导致 CLI 退回到 “no color / dumb terminal” 模式
+
+2. **ANSI 有了，但渲染出来还是“看起来没颜色”（palette/theme/renderer 问题）**  
+   证据：`pty:snapshot` 明确包含 `\u001b[3Xm`/`\u001b[38;...m`，但截图里对应位置仍是白/灰。
+
+最低成本的可复现验证（建议顺序）：
+
+1. **先确保没跑到旧构建**  
+   - 终端/恢复/Worker 相关行为异常时，先 `pnpm build` 再重启 App（见 `DEVELOPMENT.md`）。
+
+2. **做一次“视觉验证”而不是只看 snapshot**  
+   - 在 Terminal 节点里运行 `printf '\033[32mGREEN_TOKEN\033[0m\n'`（或你怀疑回归的 CLI，比如 `codex`），然后截图对照：绿色必须肉眼可见。
+   - 如果你要验证 “Codex 启动时的绿色指示符”，就必须真的在终端节点里启动 `codex` TUI，并截图对照“正常版本”。
+
+3. **再做“数据验证”定位是哪一层坏了**  
+   - `ANSI 缺失`：优先排查 spawn env（是否带入了禁用色彩变量）、`TERM`、以及 probe reply 时序。
+   - `ANSI 存在但画面无色`：优先排查 xterm theme/palette（CSS var 映射）、UI theme sync、以及 renderer（WebGL/Dom）行为差异。
+
+重要提醒：**不要用“替换历史/占位符看起来对了”来宣告修复**  
+恢复链路里可以短暂展示 placeholder，但最终必须满足：
+- placeholder 会被真实 session 输出替换（不是永远停在旧 scrollback）
+- 输入可交互（能敲命令得到回显）
+- 颜色可见（截图与正常版本一致），而不是“snapshot 里有 ANSI 就算通过”
+
 ## 一句话原则
 
 - **先确认是不是旧构建，再怀疑代码。**

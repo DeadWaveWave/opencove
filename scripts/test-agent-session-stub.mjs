@@ -8,6 +8,7 @@ import {
   runCodexStandbyOnlyScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
 } from './test-agent-session-stub/codex.mjs'
+import { runStdinEchoScenario } from './test-agent-session-stub/stdinEcho.mjs'
 import {
   runGeminiStdinSubmitThenReplyScenario,
   runGeminiUserThenGeminiScenario,
@@ -52,6 +53,11 @@ async function main() {
     scenario === 'jsonl-stdin-submit-delayed-turn'
   ) {
     await runJsonlStdinSubmitDelayedTurnScenario(provider, cwd)
+    return
+  }
+
+  if (scenario === 'stdin-echo') {
+    await runStdinEchoScenario()
     return
   }
 
