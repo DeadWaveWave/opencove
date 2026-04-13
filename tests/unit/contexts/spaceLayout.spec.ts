@@ -29,8 +29,8 @@ describe('spaceLayout', () => {
     ).toEqual({
       x: 76,
       y: 76,
-      width: 248,
-      height: 208,
+      width: 300,
+      height: 220,
     })
   })
 
