@@ -134,11 +134,26 @@ export async function seedWorkspaceState(
       return false
     }
 
-    const writeResult = await window.evaluate(async state => {
-      return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
-        raw: JSON.stringify(state),
-      })
-    }, seededState)
+    type WriteWorkspaceStateResult =
+      | { ok: true }
+      | { ok: false; reason: string; error: { code: string; debugMessage?: string } }
+    let writeResult: WriteWorkspaceStateResult
+    try {
+      writeResult = await window.evaluate(async state => {
+        return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
+          raw: JSON.stringify(state),
+        })
+      }, seededState)
+    } catch (error) {
+      if (isRetryableNavigationError(error)) {
+        await window
+          .waitForLoadState('domcontentloaded', { timeout: 60_000 })
+          .catch(() => undefined)
+        return await trySeed(attempt + 1)
+      }
+
+      throw error
+    }
 
     if (!writeResult.ok) {
       throw new Error(

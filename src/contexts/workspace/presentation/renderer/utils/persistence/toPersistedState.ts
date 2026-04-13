@@ -74,6 +74,7 @@ export function toPersistedState(
           scrollback: null,
           executionDirectory: normalizeOptionalString(node.data.executionDirectory),
           expectedDirectory: normalizeOptionalString(node.data.expectedDirectory),
+          terminalProviderHint: node.data.terminalProviderHint ?? null,
           agent: node.data.agent,
           task:
             node.data.kind === 'note'

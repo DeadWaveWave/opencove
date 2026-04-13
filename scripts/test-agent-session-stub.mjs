@@ -4,6 +4,7 @@ import { resolve } from 'node:path'
 import { sleep } from './test-agent-session-stub/sleep.mjs'
 import {
   runCodexCommentaryThenFinalScenario,
+  runCodexClickRedrawAfterClickScenario,
   runCodexStandbyNoNewlineScenario,
   runCodexStandbyOnlyScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
@@ -17,8 +18,10 @@ import { runOpenCodeIdleWithMessageScenario } from './test-agent-session-stub/op
 import {
   runRawAltScreenWheelEchoScenario,
   runRawBracketedPasteEchoScenario,
+  runRawClickRedrawAfterClickScenario,
   runRawColorProbeScenario,
   runRawDsrReplyEchoScenario,
+  runRawFocusRedrawAfterFocusScenario,
 } from './test-agent-session-stub/raw.mjs'
 
 async function main() {
@@ -45,6 +48,11 @@ async function main() {
 
   if (provider === 'codex' && scenario === 'codex-commentary-then-final') {
     await runCodexCommentaryThenFinalScenario(cwd)
+    return
+  }
+
+  if (provider === 'codex' && scenario === 'codex-click-redraw-after-click') {
+    await runCodexClickRedrawAfterClickScenario(cwd)
     return
   }
 
@@ -78,6 +86,16 @@ async function main() {
 
   if (scenario === 'raw-color-probe') {
     await runRawColorProbeScenario()
+    return
+  }
+
+  if (scenario === 'raw-focus-redraw-after-focus') {
+    await runRawFocusRedrawAfterFocusScenario()
+    return
+  }
+
+  if (scenario === 'raw-click-redraw-after-click') {
+    await runRawClickRedrawAfterClickScenario()
     return
   }
 

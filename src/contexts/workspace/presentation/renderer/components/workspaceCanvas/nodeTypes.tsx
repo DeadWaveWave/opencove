@@ -49,11 +49,12 @@ function TerminalNodeType({
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
   const scrollback = useScrollbackStore(state => state.scrollbackByNodeId[id] ?? null)
-  const initialScrollback = data.kind === 'terminal' || data.kind === 'agent' ? scrollback : null
   const nodePosition = useNodePosition(id)
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
     null
+  const resolvedTerminalProvider =
+    data.kind === 'agent' ? (data.agent?.provider ?? null) : (data.terminalProviderHint ?? null)
 
   return (
     <TerminalNode
@@ -62,8 +63,11 @@ function TerminalNodeType({
       title={data.title}
       kind={data.kind}
       labelColor={labelColor}
-      terminalProvider={data.kind === 'agent' ? (data.agent?.provider ?? null) : null}
       agentLaunchMode={data.kind === 'agent' ? (data.agent?.launchMode ?? null) : null}
+      agentResumeSessionIdVerified={
+        data.kind === 'agent' ? data.agent?.resumeSessionIdVerified === true : false
+      }
+      terminalProvider={resolvedTerminalProvider}
       terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}
@@ -92,7 +96,7 @@ function TerminalNodeType({
       height={data.height}
       terminalFontSize={terminalFontSize}
       terminalFontFamily={terminalFontFamily}
-      scrollback={initialScrollback}
+      scrollback={scrollback}
       onClose={() => {
         void closeNodeRef.current(id)
       }}
@@ -104,11 +108,7 @@ function TerminalNodeType({
           : undefined
       }
       onResize={frame => resizeNodeRef.current(id, frame)}
-      onScrollbackChange={
-        data.kind === 'terminal'
-          ? nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)
-          : undefined
-      }
+      onScrollbackChange={nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)}
       onCommandRun={
         data.kind === 'terminal'
           ? command => {

@@ -23,6 +23,7 @@ export interface TerminalNodeProps {
   labelColor?: LabelColor | null
   terminalProvider?: AgentProvider | null
   agentLaunchMode?: AgentLaunchMode | null
+  agentResumeSessionIdVerified?: boolean
   terminalThemeMode?: TerminalThemeMode
   isSelected?: boolean
   isDragging?: boolean

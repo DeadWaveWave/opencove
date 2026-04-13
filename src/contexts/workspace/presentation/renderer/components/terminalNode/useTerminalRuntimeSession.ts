@@ -25,6 +25,8 @@ import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
 import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
 import { createMountedXtermSession } from './xtermSession'
+import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
+import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
 
 export function useTerminalRuntimeSession({
   nodeId,
@@ -56,6 +58,10 @@ export function useTerminalRuntimeSession({
   isTerminalHydratedRef,
   setIsTerminalHydrated,
   shouldRestoreTerminalFocusRef,
+  activeRendererKindRef,
+  scheduleWebglPixelSnapping,
+  cancelWebglPixelSnapping,
+  setRendererKindAndApply,
 }: {
   nodeId: string
   sessionId: string
@@ -92,6 +98,10 @@ export function useTerminalRuntimeSession({
   isTerminalHydratedRef: { current: boolean }
   setIsTerminalHydrated: (hydrated: boolean) => void
   shouldRestoreTerminalFocusRef: { current: boolean }
+  activeRendererKindRef: { current: TerminalRendererKind }
+  scheduleWebglPixelSnapping: () => void
+  cancelWebglPixelSnapping: () => void
+  setRendererKindAndApply: (kind: TerminalRendererKind) => void
 }): void {
   useEffect(() => {
     if (sessionId.trim().length === 0) {
@@ -135,6 +145,12 @@ export function useTerminalRuntimeSession({
     terminalRef.current = session.terminal
     fitAddonRef.current = session.fitAddon
     const terminal = session.terminal
+    setRendererKindAndApply(session.renderer.kind)
+    const disposePositionObserver = registerWebglPixelSnappingMutationObserver({
+      container: containerRef.current,
+      isWebglRenderer: () => activeRendererKindRef.current === 'webgl',
+      scheduleWebglPixelSnapping,
+    })
     if (shouldRestoreTerminalFocusRef.current) {
       shouldRestoreTerminalFocusRef.current = false
       terminal.focus()
@@ -142,9 +158,25 @@ export function useTerminalRuntimeSession({
     const serializeAddon = session.serializeAddon
     const terminalDiagnostics = session.diagnostics
 
+    let testEnvironmentAutoFocusFrame: number | null = null
     if (isTestEnvironment && containerRef.current) {
-      terminal.focus()
-      scheduleTranscriptSync()
+      testEnvironmentAutoFocusFrame = window.requestAnimationFrame(() => {
+        const activeElement =
+          document.activeElement instanceof Element ? document.activeElement : null
+        const activeTerminalScope =
+          activeElement?.closest('[data-cove-focus-scope="terminal"]') ?? null
+        const shouldAutoFocusTerminal =
+          !activeElement ||
+          activeElement === document.body ||
+          activeElement === document.documentElement ||
+          activeTerminalScope === containerRef.current
+
+        if (shouldAutoFocusTerminal) {
+          terminal.focus()
+        }
+
+        scheduleTranscriptSync()
+      })
     }
     const formatInputHeadHex = (value: string, limit = 12): string => {
       const chars = Array.from(value).slice(0, limit)
@@ -374,6 +406,9 @@ export function useTerminalRuntimeSession({
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
     return () => {
+      if (testEnvironmentAutoFocusFrame !== null) {
+        window.cancelAnimationFrame(testEnvironmentAutoFocusFrame)
+      }
       suppressPtyResizeRef.current = false
       const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
       cacheTerminalScreenStateOnUnmount({
@@ -405,6 +440,9 @@ export function useTerminalRuntimeSession({
       session.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
+      activeRendererKindRef.current = 'dom'
+      disposePositionObserver()
+      cancelWebglPixelSnapping()
     }
   }, [
     cancelScrollbackPublish,
@@ -416,6 +454,10 @@ export function useTerminalRuntimeSession({
     openTerminalFind,
     scrollbackBufferRef,
     scheduleTranscriptSync,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+    activeRendererKindRef,
     sessionId,
     syncTerminalSize,
     terminalThemeMode,

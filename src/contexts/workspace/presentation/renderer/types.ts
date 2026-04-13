@@ -103,6 +103,7 @@ export interface TerminalNodeData {
   sessionId: string
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
   title: string
   titlePinnedByUser?: boolean
@@ -274,6 +275,7 @@ export interface PersistedTerminalNode {
   kind: WorkspaceNodeKind
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
   status: AgentRuntimeStatus | null
   startedAt: string | null

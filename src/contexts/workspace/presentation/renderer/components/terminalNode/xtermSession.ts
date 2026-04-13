@@ -9,6 +9,7 @@ import { DEFAULT_TERMINAL_FONT_FAMILY } from './constants'
 import { registerTerminalSelectionTestHandle } from './testHarness'
 import { patchXtermMouseServiceWithRetry } from './patchXtermMouseService'
 import { registerTerminalHitTargetCursorScope } from './hitTargetCursorScope'
+import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
 import { activatePreferredTerminalRenderer, type ActiveTerminalRenderer } from './preferredRenderer'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
@@ -42,6 +43,8 @@ export function createMountedXtermSession({
   syncTerminalSize,
   diagnosticsEnabled,
   logTerminalDiagnostics,
+  onRendererKindResolved,
+  scheduleWebglPixelSnapping,
 }: {
   nodeId: string
   ownerId: string
@@ -60,6 +63,8 @@ export function createMountedXtermSession({
   syncTerminalSize: () => void
   diagnosticsEnabled: boolean
   logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
+  onRendererKindResolved?: (kind: ActiveTerminalRenderer['kind']) => void
+  scheduleWebglPixelSnapping?: () => void
 }): XtermSession {
   const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
   const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
@@ -80,7 +85,13 @@ export function createMountedXtermSession({
   terminal.loadAddon(fitAddon)
   terminal.loadAddon(serializeAddon)
 
-  const renderer = activatePreferredTerminalRenderer(terminal, terminalProvider)
+  const renderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
+    onRendererKindChange: kind => {
+      onRendererKindResolved?.(kind)
+      scheduleWebglPixelSnapping?.()
+    },
+  })
+  onRendererKindResolved?.(renderer.kind)
 
   const disposeTerminalFind =
     typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
@@ -94,6 +105,7 @@ export function createMountedXtermSession({
   let disposeTerminalSelectionTestHandle: () => void = () => undefined
   let cancelMouseServicePatch: () => void = () => undefined
   let disposeTerminalHitTargetCursorScope: () => void = () => undefined
+  let disposeWebglPixelSnappingObserver: () => void = () => undefined
 
   if (container) {
     terminal.open(container)
@@ -103,12 +115,18 @@ export function createMountedXtermSession({
       container,
       ownerId,
     })
+    disposeWebglPixelSnappingObserver = registerWebglPixelSnappingMutationObserver({
+      container,
+      isWebglRenderer: () => renderer.kind === 'webgl',
+      scheduleWebglPixelSnapping: scheduleWebglPixelSnapping ?? (() => undefined),
+    })
     if (isTestEnvironment) {
       disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
     }
     renderer.clearTextureAtlas()
     syncTerminalSize()
     requestAnimationFrame(syncTerminalSize)
+    scheduleWebglPixelSnapping?.()
   }
 
   const diagnostics = registerTerminalDiagnostics({
@@ -134,6 +152,7 @@ export function createMountedXtermSession({
     dispose: () => {
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
+      disposeWebglPixelSnappingObserver()
       renderer.dispose()
       diagnostics.dispose()
       disposeTerminalSelectionTestHandle()

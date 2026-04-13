@@ -6,6 +6,8 @@ const ENTER_ALTERNATE_SCREEN = '\u001b[?1049h'
 const EXIT_ALTERNATE_SCREEN = '\u001b[?1049l'
 const ENABLE_SGR_MOUSE = '\u001b[?1000h\u001b[?1006h'
 const DISABLE_SGR_MOUSE = '\u001b[?1000l\u001b[?1006l'
+const ENABLE_FOCUS_EVENTS = '\u001b[?1004h'
+const DISABLE_FOCUS_EVENTS = '\u001b[?1004l'
 const DEVICE_STATUS_REPORT = '\u001b[6n'
 
 function extractBracketedPastePayload(buffer) {
@@ -56,6 +58,21 @@ function extractX10MouseReportBytes(buffer) {
   }
   const report = buffer.slice(x10Index, x10Index + 6)
   return Array.from(report, char => char.charCodeAt(0))
+}
+
+function containsMouseReport(buffer) {
+  const sgrStartIndex = buffer.indexOf('\u001b[<')
+  if (sgrStartIndex !== -1) {
+    const sgrMatch = /^(\d+);(\d+);(\d+)([mM])/.exec(
+      buffer.slice(sgrStartIndex + '\u001b[<'.length),
+    )
+    if (sgrMatch) {
+      return true
+    }
+  }
+
+  const x10Index = buffer.indexOf('\u001b[M')
+  return x10Index !== -1 && buffer.length >= x10Index + 6
 }
 
 function containsDeviceStatusReply(buffer) {
@@ -253,5 +270,121 @@ export async function runRawColorProbeScenario() {
   }
 
   process.stdout.write(`[opencove-test-color] runId=${runId} done\n`)
+  await sleep(20_000)
+}
+
+export async function runRawFocusRedrawAfterFocusScenario() {
+  process.stdout.write(`${ENABLE_FOCUS_EVENTS}[opencove-test-focus] ready\n`)
+
+  await new Promise(resolveScenario => {
+    let settled = false
+    let focusInCount = 0
+
+    const cleanup = () => {
+      process.stdin.off('data', handleData)
+      if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+        process.stdin.setRawMode(false)
+      }
+    }
+
+    const settle = message => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      clearTimeout(timeout)
+      cleanup()
+      process.stdout.write(`${message}${DISABLE_FOCUS_EVENTS}`)
+      resolveScenario()
+    }
+
+    const handleData = chunk => {
+      const focusInMatchCount = chunk.split('\u001b[I').length - 1
+      if (focusInMatchCount <= 0) {
+        return
+      }
+
+      focusInCount += focusInMatchCount
+      if (focusInCount < 2) {
+        return
+      }
+
+      process.stdout.write('\u001b[2J\u001b[H')
+      setTimeout(() => {
+        settle('[opencove-test-focus] redraw complete\n')
+      }, 700)
+    }
+
+    const timeout = setTimeout(() => {
+      settle('[opencove-test-focus] timeout\n')
+    }, 12_000)
+
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+      process.stdin.setRawMode(true)
+    }
+
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', handleData)
+    process.stdin.resume()
+  })
+
+  await sleep(20_000)
+}
+
+export async function runRawClickRedrawAfterClickScenario() {
+  process.stdout.write(`${ENABLE_SGR_MOUSE}[opencove-test-click] ready\n`)
+
+  await new Promise(resolveScenario => {
+    let settled = false
+    let buffer = ''
+
+    const cleanup = () => {
+      process.stdin.off('data', handleData)
+      if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+        process.stdin.setRawMode(false)
+      }
+    }
+
+    const settle = message => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      clearTimeout(timeout)
+      cleanup()
+      process.stdout.write(`${message}${DISABLE_SGR_MOUSE}`)
+      resolveScenario()
+    }
+
+    const handleData = chunk => {
+      buffer += chunk
+      if (!containsMouseReport(buffer)) {
+        if (buffer.length > 256) {
+          buffer = buffer.slice(-128)
+        }
+        return
+      }
+
+      process.stdout.write('\u001b[2J\u001b[H')
+      setTimeout(() => {
+        settle('[opencove-test-click] redraw complete\n')
+      }, 700)
+    }
+
+    const timeout = setTimeout(() => {
+      settle('[opencove-test-click] timeout\n')
+    }, 12_000)
+
+    if (process.stdin.isTTY && typeof process.stdin.setRawMode === 'function') {
+      process.stdin.setRawMode(true)
+    }
+
+    process.stdin.setEncoding('utf8')
+    process.stdin.on('data', handleData)
+    process.stdin.resume()
+  })
+
   await sleep(20_000)
 }

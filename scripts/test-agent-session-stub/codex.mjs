@@ -3,6 +3,7 @@ import {
   createCodexSessionFile,
   runJsonlStdinSubmitDelayedTurnScenario,
 } from '../test-agent-session-jsonl.mjs'
+import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
 
 export async function runCodexStandbyNoNewlineScenario(cwd) {
@@ -107,6 +108,11 @@ export async function runCodexCommentaryThenFinalScenario(cwd) {
   )
 
   await sleep(20_000)
+}
+
+export async function runCodexClickRedrawAfterClickScenario(cwd) {
+  await createCodexSessionFile(cwd)
+  await runRawClickRedrawAfterClickScenario()
 }
 
 export { runJsonlStdinSubmitDelayedTurnScenario }

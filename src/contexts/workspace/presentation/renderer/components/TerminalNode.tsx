@@ -15,6 +15,7 @@ import { useTerminalScrollback } from './terminalNode/useScrollback'
 import type { TerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { useTerminalRuntimeSession } from './terminalNode/useTerminalRuntimeSession'
 import { useTerminalPlaceholderSession } from './terminalNode/useTerminalPlaceholderSession'
+import { useWebglPixelSnappingScheduler } from './terminalNode/useWebglPixelSnappingScheduler'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -54,12 +55,19 @@ export function TerminalNode({
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
   const isTestEnvironment = window.opencoveApi.meta.isTest
+  const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
   const outputSchedulerRef = useRef<TerminalOutputScheduler | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const shouldRestoreTerminalFocusRef = useRef(false)
+  const {
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+  } = useWebglPixelSnappingScheduler({ containerRef })
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
   const suppressPtyResizeRef = useRef(false)
@@ -83,16 +91,19 @@ export function TerminalNode({
     terminalRef,
     terminalThemeMode,
   })
+
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
     titleRef.current = title
     agentLaunchModeRef.current = agentLaunchMode
     statusRef.current = status
   }, [agentLaunchMode, onCommandRun, status, title])
+
   useEffect(() => {
     isViewportInteractionActiveRef.current = isViewportInteractionActive
     outputSchedulerRef.current?.onViewportInteractionActiveChange(isViewportInteractionActive)
   }, [isViewportInteractionActive])
+
   const {
     scrollbackBufferRef,
     markScrollbackDirty,
@@ -105,6 +116,7 @@ export function TerminalNode({
     onScrollbackChange,
     isPointerResizingRef,
   })
+
   useEffect(() => {
     lastSyncedPtySizeRef.current = null
     suppressPtyResizeRef.current = false
@@ -112,6 +124,7 @@ export function TerminalNode({
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
+
   useLayoutEffect(() => {
     const terminalContainer = containerRef.current
     return () => {
@@ -124,6 +137,13 @@ export function TerminalNode({
       )
     }
   }, [sessionId])
+
+  useEffect(() => {
+    return () => {
+      cancelWebglPixelSnapping()
+    }
+  }, [cancelWebglPixelSnapping])
+
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
       terminalRef,
@@ -134,14 +154,16 @@ export function TerminalNode({
       sessionId,
       shouldResizePty: !suppressPtyResizeRef.current,
     })
-  }, [sessionId])
+    scheduleWebglPixelSnapping()
+  }, [scheduleWebglPixelSnapping, sessionId])
+
   const applyTerminalTheme = useTerminalThemeApplier({
     terminalRef,
     containerRef,
     terminalThemeMode,
   })
   const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
-    enabled: isTestEnvironment,
+    enabled: isTestEnvironment || diagnosticsEnabled,
     resetKey: sessionId,
     terminalRef,
   })
@@ -156,6 +178,7 @@ export function TerminalNode({
     isPointerResizingRef,
   })
   const sizeStyle = resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })
+
   useTerminalPlaceholderSession({
     nodeId,
     sessionId,
@@ -175,7 +198,12 @@ export function TerminalNode({
     setIsTerminalHydrated,
     scheduleTranscriptSync,
     shouldRestoreTerminalFocusRef,
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
   })
+
   useTerminalRuntimeSession({
     nodeId,
     sessionId,
@@ -206,7 +234,12 @@ export function TerminalNode({
     isTerminalHydratedRef,
     setIsTerminalHydrated,
     shouldRestoreTerminalFocusRef,
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
   })
+
   useTerminalAppearanceSync({
     terminalRef,
     syncTerminalSize,
@@ -215,6 +248,7 @@ export function TerminalNode({
     width,
     height,
   })
+
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
@@ -222,6 +256,7 @@ export function TerminalNode({
     handlePointerMoveCapture: handleTerminalBodyPointerMoveCapture,
     handlePointerUp: handleTerminalBodyPointerUp,
   } = useTerminalBodyClickFallback(onInteractionStart)
+
   return (
     <TerminalNodeFrame
       title={title}

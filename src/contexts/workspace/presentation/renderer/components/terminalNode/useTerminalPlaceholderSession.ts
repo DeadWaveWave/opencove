@@ -7,6 +7,8 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalThemeMode } from './theme'
 import { writeTerminalAsync } from './writeTerminal'
 import { createMountedXtermSession } from './xtermSession'
+import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
+import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
 
 export function useTerminalPlaceholderSession({
   nodeId,
@@ -27,6 +29,10 @@ export function useTerminalPlaceholderSession({
   setIsTerminalHydrated,
   scheduleTranscriptSync,
   shouldRestoreTerminalFocusRef,
+  activeRendererKindRef,
+  scheduleWebglPixelSnapping,
+  cancelWebglPixelSnapping,
+  setRendererKindAndApply,
 }: {
   nodeId: string
   sessionId: string
@@ -46,6 +52,10 @@ export function useTerminalPlaceholderSession({
   setIsTerminalHydrated: (hydrated: boolean) => void
   scheduleTranscriptSync: () => void
   shouldRestoreTerminalFocusRef: { current: boolean }
+  activeRendererKindRef: { current: TerminalRendererKind }
+  scheduleWebglPixelSnapping: () => void
+  cancelWebglPixelSnapping: () => void
+  setRendererKindAndApply: (kind: TerminalRendererKind) => void
 }): void {
   useEffect(() => {
     const normalizedSessionId = sessionId.trim()
@@ -87,6 +97,12 @@ export function useTerminalPlaceholderSession({
     })
     terminalRef.current = session.terminal
     fitAddonRef.current = session.fitAddon
+    setRendererKindAndApply(session.renderer.kind)
+    const disposePositionObserver = registerWebglPixelSnappingMutationObserver({
+      container: containerRef.current,
+      isWebglRenderer: () => activeRendererKindRef.current === 'webgl',
+      scheduleWebglPixelSnapping,
+    })
     if (shouldRestoreTerminalFocusRef.current) {
       shouldRestoreTerminalFocusRef.current = false
       session.terminal.focus()
@@ -126,13 +142,18 @@ export function useTerminalPlaceholderSession({
     return () => {
       isDisposed = true
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
+      disposePositionObserver()
       session.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
+      activeRendererKindRef.current = 'dom'
+      cancelWebglPixelSnapping()
     }
   }, [
     applyTerminalTheme,
+    activeRendererKindRef,
     bindSearchAddonToFind,
+    cancelWebglPixelSnapping,
     fitAddonRef,
     isTerminalHydratedRef,
     isTestEnvironment,
@@ -144,6 +165,8 @@ export function useTerminalPlaceholderSession({
     setIsTerminalHydrated,
     suppressPtyResizeRef,
     syncTerminalSize,
+    scheduleWebglPixelSnapping,
+    setRendererKindAndApply,
     terminalProvider,
     terminalRef,
     terminalThemeMode,

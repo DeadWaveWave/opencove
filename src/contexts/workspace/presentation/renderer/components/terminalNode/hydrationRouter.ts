@@ -1,5 +1,9 @@
 import type { Terminal } from '@xterm/xterm'
 import { finalizeTerminalHydration } from './finalizeHydration'
+import {
+  shouldDeferHydratedTerminalRedrawChunk,
+  shouldReplacePlaceholderWithBufferedOutput,
+} from './hydrationReplacement'
 
 export interface TerminalHydrationRouter {
   handleDataChunk: (data: string) => void
@@ -26,7 +30,7 @@ export function createTerminalHydrationRouter({
   outputScheduler: {
     handleChunk: (data: string, options?: { immediateScrollbackPublish?: boolean }) => void
   }
-  shouldReplaceAgentPlaceholderAfterHydration: boolean
+  shouldReplaceAgentPlaceholderAfterHydration: () => boolean
   scrollbackBuffer: {
     set: (snapshot: string) => void
     append: (data: string) => void
@@ -49,7 +53,12 @@ export function createTerminalHydrationRouter({
 }): TerminalHydrationRouter {
   let isHydrating = true
   const hydrationBuffer = { dataChunks: [] as string[], exitCode: null as number | null }
-  let shouldReplaceAgentPlaceholderOnNextChunk = false
+  const deferredPlaceholderBuffer = { dataChunks: [] as string[], exitCode: null as number | null }
+  let shouldReplaceAgentPlaceholderOnNextVisibleChunk = false
+  const deferredHydratedRedrawBuffer = {
+    dataChunks: [] as string[],
+    exitCode: null as number | null,
+  }
 
   const resetAgentPlaceholder = (): void => {
     terminal.reset()
@@ -59,6 +68,59 @@ export function createTerminalHydrationRouter({
     scheduleTranscriptSync()
   }
 
+  const flushDeferredPlaceholderReplacement = (): void => {
+    if (
+      deferredPlaceholderBuffer.dataChunks.length === 0 &&
+      deferredPlaceholderBuffer.exitCode === null
+    ) {
+      return
+    }
+
+    resetAgentPlaceholder()
+    const bufferedData = deferredPlaceholderBuffer.dataChunks.join('')
+    if (bufferedData.length > 0) {
+      outputScheduler.handleChunk(bufferedData)
+    }
+
+    if (deferredPlaceholderBuffer.exitCode !== null) {
+      outputScheduler.handleChunk(
+        `\r\n[process exited with code ${deferredPlaceholderBuffer.exitCode}]\r\n`,
+        {
+          immediateScrollbackPublish: true,
+        },
+      )
+    }
+
+    deferredPlaceholderBuffer.dataChunks.length = 0
+    deferredPlaceholderBuffer.exitCode = null
+  }
+
+  const flushDeferredHydratedRedraw = (): void => {
+    if (
+      deferredHydratedRedrawBuffer.dataChunks.length === 0 &&
+      deferredHydratedRedrawBuffer.exitCode === null
+    ) {
+      return
+    }
+
+    const bufferedData = deferredHydratedRedrawBuffer.dataChunks.join('')
+    if (bufferedData.length > 0) {
+      outputScheduler.handleChunk(bufferedData)
+    }
+
+    if (deferredHydratedRedrawBuffer.exitCode !== null) {
+      outputScheduler.handleChunk(
+        `\r\n[process exited with code ${deferredHydratedRedrawBuffer.exitCode}]\r\n`,
+        {
+          immediateScrollbackPublish: true,
+        },
+      )
+    }
+
+    deferredHydratedRedrawBuffer.dataChunks.length = 0
+    deferredHydratedRedrawBuffer.exitCode = null
+  }
+
   return {
     handleDataChunk: data => {
       if (isHydrating) {
@@ -66,9 +128,43 @@ export function createTerminalHydrationRouter({
         return
       }
 
-      if (shouldReplaceAgentPlaceholderOnNextChunk) {
-        shouldReplaceAgentPlaceholderOnNextChunk = false
-        resetAgentPlaceholder()
+      if (shouldReplaceAgentPlaceholderOnNextVisibleChunk) {
+        deferredPlaceholderBuffer.dataChunks.push(data)
+        if (
+          !shouldReplacePlaceholderWithBufferedOutput({
+            data,
+            exitCode: null,
+          })
+        ) {
+          return
+        }
+
+        shouldReplaceAgentPlaceholderOnNextVisibleChunk = false
+        flushDeferredPlaceholderReplacement()
+        return
+      }
+
+      if (deferredHydratedRedrawBuffer.dataChunks.length > 0) {
+        deferredHydratedRedrawBuffer.dataChunks.push(data)
+        if (
+          !shouldReplacePlaceholderWithBufferedOutput({
+            data,
+            exitCode: null,
+          })
+        ) {
+          return
+        }
+
+        flushDeferredHydratedRedraw()
+        return
+      }
+
+      if (
+        shouldReplaceAgentPlaceholderAfterHydration() &&
+        shouldDeferHydratedTerminalRedrawChunk(data)
+      ) {
+        deferredHydratedRedrawBuffer.dataChunks.push(data)
+        return
       }
 
       outputScheduler.handleChunk(data)
@@ -79,21 +175,50 @@ export function createTerminalHydrationRouter({
         return
       }
 
+      if (shouldReplaceAgentPlaceholderOnNextVisibleChunk) {
+        deferredPlaceholderBuffer.exitCode = exitCode
+        shouldReplaceAgentPlaceholderOnNextVisibleChunk = false
+        flushDeferredPlaceholderReplacement()
+        return
+      }
+
+      if (deferredHydratedRedrawBuffer.dataChunks.length > 0) {
+        deferredHydratedRedrawBuffer.exitCode = exitCode
+        flushDeferredHydratedRedraw()
+        return
+      }
+
       outputScheduler.handleChunk(`\r\n[process exited with code ${exitCode}]\r\n`, {
         immediateScrollbackPublish: true,
       })
     },
     finalizeHydration: rawSnapshot => {
       isHydrating = false
+      const bufferedData = hydrationBuffer.dataChunks.join('')
+      const shouldReplacePlaceholder = shouldReplaceAgentPlaceholderAfterHydration()
+      const shouldReplaceBufferedPlaceholder =
+        shouldReplacePlaceholder &&
+        shouldReplacePlaceholderWithBufferedOutput({
+          data: bufferedData,
+          exitCode: hydrationBuffer.exitCode,
+        })
+      const shouldDeferBufferedReplay =
+        shouldReplacePlaceholder && !shouldReplaceBufferedPlaceholder
+      const bufferedDataChunksForFinalize = shouldDeferBufferedReplay
+        ? []
+        : hydrationBuffer.dataChunks
+      const bufferedExitCodeForFinalize = shouldDeferBufferedReplay
+        ? null
+        : hydrationBuffer.exitCode
 
       const didReplaceBaseline = finalizeTerminalHydration({
         isDisposed,
         rawSnapshot,
-        replaceHydrationSnapshotWithBufferedOutput: shouldReplaceAgentPlaceholderAfterHydration,
+        replaceHydrationSnapshotWithBufferedOutput: shouldReplaceBufferedPlaceholder,
         scrollbackBuffer,
         ptyWriteQueue,
-        bufferedDataChunks: hydrationBuffer.dataChunks,
-        bufferedExitCode: hydrationBuffer.exitCode,
+        bufferedDataChunks: bufferedDataChunksForFinalize,
+        bufferedExitCode: bufferedExitCodeForFinalize,
         terminal,
         committedScrollbackBuffer,
         onCommittedScreenState: recordCommittedScreenState,
@@ -103,10 +228,13 @@ export function createTerminalHydrationRouter({
         onRevealed,
       })
 
-      if (shouldReplaceAgentPlaceholderAfterHydration && !didReplaceBaseline) {
-        shouldReplaceAgentPlaceholderOnNextChunk = true
+      if (shouldReplacePlaceholder && !didReplaceBaseline) {
+        deferredPlaceholderBuffer.dataChunks.push(...hydrationBuffer.dataChunks)
+        deferredPlaceholderBuffer.exitCode = hydrationBuffer.exitCode
+        shouldReplaceAgentPlaceholderOnNextVisibleChunk = true
       }
 
+      hydrationBuffer.dataChunks.length = 0
       hydrationBuffer.exitCode = null
     },
   }
