@@ -188,62 +188,36 @@ OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS=1 pnpm dev
 - `xtermHelperTextareaFocused` 是否为 `true`
 - `activeElement` / `activeElementInsideTerminal` 是否符合预期
 
+### 重启恢复后的 Agent 无法输入：本次有效调试法
+
+只保留可复用规则：
+
+- 先区分 **完整重启恢复** 和 **运行时 workspace/project 切换**；两者语义不同，不能互相代替复现。
+- 对 `recovery / worker / web UI / persistence` 相关问题，先 `pnpm build`，避免被旧 `out/` 产物误导。
+- 这类问题先看 **session ownership**，再看 focus。若恢复后仍挂着旧的 runtime `sessionId`，输入会看似进入终端却实际打到死 PTY。
+- 判断输入链路时固定看三层：`xterm-onData`、`pty-write`、以及目标 `sessionId` 是否有效；不要只看 textarea 有没有 focused。
+- placeholder -> restored session 的切换要单独验证焦点交接；“placeholder 可输入”不等于“恢复后的真实 session 可输入”。
+- 若恢复逻辑依赖“当前是不是冷启动/新主进程”，不要默认相信 `process.ppid` 这类间接信号；应优先使用显式传递的进程身份。
+- 真实修复后至少留下三类资产：最小 unit、真实 Electron E2E、可重复 repro 脚本。
+
+本次完整案例、复现命令、日志判读和根因分析见：
+
+- `docs/CASE_STUDY_AGENT_INPUT_AFTER_RESTART_RECOVERY.md`
+
 ### OpenCode / xterm 鼠标样式闪烁、百叶窗残影、命中偶发穿透到底层画布
 
-这类问题在 `Electron + xterm + React Flow + canvas transform` 组合下，**不要只看 DOM 几何和 CSS**。本次真实 case 里，xterm 的 canvas / screen / viewport 几何上都覆盖了命中点，但 `document.elementFromPoint(...)` 仍会偶发返回底下的 `.react-flow__pane`，最终表现为：
+只保留可复用规则：
 
-- 鼠标在输入区或终端 body 上在 `text/default` 之间跳变
-- OpenCode 终端出现“百叶窗 / 断层 / 残影”
-- 日志里看不到明显异常，但用户体感明显抖动
+- 这类问题不要只看 DOM 几何和 CSS；要把 **hit-test** 当成独立问题验证。
+- 优先用真实用户数据、最新构建、可见且已聚焦的窗口复现；`offscreen/inactive` 更适合回归，不一定适合抓命中异常。
+- 固定一个真实交互点持续采样 `elementFromPoint`、`activeElement`、xterm class 和 cursor，不要只采一次。
+- 若几何正确但命中偶发落到底层 pane，应按 Chromium/Electron hit-test 问题处理，而不是继续猜普通 `z-index/pointer-events`。
+- 先区分 **DOM renderer 重绘问题** 和 **WebGL 下的 hit-test 漏命中**，两者修法不同。
+- 不要把“加一层 overlay”当默认方案；它很容易破坏 TUI 鼠标事件、选择和链接交互。
 
-排查顺序：
+本次完整案例、采样方法和修复取舍见：
 
-1. **先用真实用户数据复现**  
-   这类问题常依赖恢复后的多节点、多 Agent、真实输出负载。优先用共享 userData 跑：
-
-```bash
-OPENCOVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev
-```
-
-或用 Electron + Playwright 直接启动现有 app 数据，而不是只看 seed 出来的最小测试态。
-
-2. **确保跑的是最新构建，且窗口真的拿到系统焦点**  
-   单独做 Electron/Playwright 采样前先 `pnpm build`。  
-   若需要复现真实输入/hover 命中问题，优先用可见窗口并显式 `show()/focus()`；`inactive/offscreen` 适合回归，不一定适合抓这类 OS/Chromium 命中异常。
-
-3. **不要只采一次命中，要固定一个点持续采样**  
-   选择用户真正停留的点位（通常是 `.xterm-helper-textarea` 对应的输入光标附近），连续采 `200~500` 次：
-
-- `document.elementFromPoint(x, y)`
-- `document.activeElement`
-- `.xterm` 的 class（尤其 `focus` / `enable-mouse-events` / `xterm-cursor-pointer`）
-- 终端 body / pane 的 computed `cursor`
-
-如果命中在 `xterm-*` 和 `.react-flow__pane` 之间切换，就说明不是纯焦点问题，而是**合成层 / hit-test 层偶发漏命中**。
-
-4. **命中异常时同步记录几何，证明“几何正确但命中错误”**  
-   在命中落到 `.react-flow__pane` 的那一帧，同时采：
-
-- `.terminal-node__terminal`
-- `.xterm`
-- `.xterm-screen`
-- `.xterm-viewport`
-- `.xterm-screen canvas`
-
-的 `getBoundingClientRect()`、`display`、`opacity`、`pointer-events`。  
-如果这些层几何上仍覆盖命中点，而 `elementFromPoint` 依旧落到 pane，说明是 Chromium/Electron hit-test 级别问题，不要再把时间耗在“是不是简单 z-index / pointer-events 写错了”上。
-
-5. **先区分两类根因，再决定修法**
-
-- **DOM renderer 残影 / 断层**：优先考虑切到 WebGL renderer 做主路径，尤其是 OpenCode/TUI 这类高频重绘终端。
-- **WebGL 下仍有鼠标态闪烁**：通常要接受“偶发漏命中无法彻底靠普通 CSS 消灭”，改为做**受控兜底**：
-  - 以“终端确实 focus 且鼠标仍在该终端矩形内”为条件
-  - 给底层画布命中层同步相同的 cursor / 交互语义
-  - 目标是先消除用户可见的 cursor 跳变，再继续观察是否还存在更深层的功能回归
-
-6. **不要把“overlay 盖一层”当默认方案**  
-   这很容易修掉闪烁，但会直接破坏 TUI 鼠标事件、文本选择、链接点击或 React Flow 自身交互。  
-   优先做“命中穿透时的语义同步”，最后才考虑真正改命中层。
+- `docs/CASE_STUDY_XTERM_HIT_TEST_AND_CURSOR_FLICKER.md`
 
 ### 切换 workspace 或重启应用后终端历史丢失
 
@@ -265,43 +239,19 @@ OPENCOVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev
 
 ### 终端“无颜色 / 全白”（必须做视觉调试）
 
-这个症状非常容易被“数据层/替换层”的验证掩盖：  
-你可能在 `pty:snapshot` 里看到了 ANSI 转义序列（例如 `\u001b[32m`），但**实际画面仍然全白**，或相反。
+只保留可复用规则：
 
-注意：`pnpm test:e2e` 默认运行在 `NODE_ENV=test`。在该模式下，为了保证 CI 可重复性，**Agent CLI 默认会被 test stub 替代**（不会启动真实 `codex/gemini/...` 进程）。因此 E2E 更适合做“协议/恢复/ANSI 序列是否仍被保留”的验证，但**不等价于真实 CLI 的视觉验证**。当问题是“真实 Codex TUI 看起来没颜色”时，必须用 `pnpm dev` / 真实应用环境做截图对照。
+- 这类问题必须做**视觉调试**；`pty:snapshot` 里有 ANSI，不等于画面真的有颜色。
+- 对真实 CLI 的颜色问题，不要只跑 `NODE_ENV=test` 的 E2E；test stub 不能替代真实 `codex/gemini/...` 的视觉验证。
+- 先区分两类问题：**ANSI 根本没产生**，还是 **ANSI 有了但渲染没显示出来**。
+- 先做一次最小视觉验证，再做数据验证定位：例如在终端节点里输出一段绿色文本，或直接启动真实 `codex` TUI 截图对照。
+- 排查 ANSI 缺失时，优先看 spawn env、`TERM`、`NO_COLOR` / `FORCE_COLOR` 等环境变量，以及 attach/hydration 时序。
+- 排查“ANSI 有但无色”时，优先看 xterm palette/theme、UI theme sync，以及 DOM/WebGL renderer 差异。
+- 恢复链路里的“历史已替换”不能代替颜色验收；最终仍要以真实交互和视觉结果为准。
 
-另外，某些测试运行器会注入 `FORCE_COLOR`（即使你的 shell 里没设置），这会强制部分 CLI 输出颜色，从而掩盖“自动探测失败导致 no-color”这类问题。做 no-color 排查时，务必确认是否存在 `FORCE_COLOR` 干扰。
+本次完整案例、实际验证顺序和判断方法见：
 
-先把问题分成两类再动手：
-
-1. **ANSI 根本没出现在 PTY 输出里（CLI 禁用了颜色）**  
-   证据：`pty:snapshot`/scrollback 里几乎找不到 `\u001b[` 的颜色序列，或只有极少与颜色无关的控制序列。  
-   典型诱因：
-   - 继承了 `NO_COLOR` / `NODE_DISABLE_COLORS` / 某些 test runner 的 color 禁用变量
-   - `TERM` 不正确（应优先是 `xterm-256color`）
-   - attach/hydration 期间延迟了终端 probe reply，导致 CLI 退回到 “no color / dumb terminal” 模式
-
-2. **ANSI 有了，但渲染出来还是“看起来没颜色”（palette/theme/renderer 问题）**  
-   证据：`pty:snapshot` 明确包含 `\u001b[3Xm`/`\u001b[38;...m`，但截图里对应位置仍是白/灰。
-
-最低成本的可复现验证（建议顺序）：
-
-1. **先确保没跑到旧构建**  
-   - 终端/恢复/Worker 相关行为异常时，先 `pnpm build` 再重启 App（见 `DEVELOPMENT.md`）。
-
-2. **做一次“视觉验证”而不是只看 snapshot**  
-   - 在 Terminal 节点里运行 `printf '\033[32mGREEN_TOKEN\033[0m\n'`（或你怀疑回归的 CLI，比如 `codex`），然后截图对照：绿色必须肉眼可见。
-   - 如果你要验证 “Codex 启动时的绿色指示符”，就必须真的在终端节点里启动 `codex` TUI，并截图对照“正常版本”。
-
-3. **再做“数据验证”定位是哪一层坏了**  
-   - `ANSI 缺失`：优先排查 spawn env（是否带入了禁用色彩变量）、`TERM`、以及 probe reply 时序。
-   - `ANSI 存在但画面无色`：优先排查 xterm theme/palette（CSS var 映射）、UI theme sync、以及 renderer（WebGL/Dom）行为差异。
-
-重要提醒：**不要用“替换历史/占位符看起来对了”来宣告修复**  
-恢复链路里可以短暂展示 placeholder，但最终必须满足：
-- placeholder 会被真实 session 输出替换（不是永远停在旧 scrollback）
-- 输入可交互（能敲命令得到回显）
-- 颜色可见（截图与正常版本一致），而不是“snapshot 里有 ANSI 就算通过”
+- `docs/CASE_STUDY_TERMINAL_NO_COLOR_VISUAL_DEBUG.md`
 
 ## 一句话原则
 
