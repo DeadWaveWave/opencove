@@ -36,6 +36,7 @@ export function usePersistedAppState({
   const persistNotice = useAppStore(state => state.persistNotice)
   const setPersistNotice = useAppStore(state => state.setPersistNotice)
   const persistFlushRequestedRef = useRef(false)
+  const initialHydrationWriteSkippedRef = useRef(false)
 
   const requestPersistFlush = useCallback(() => {
     persistFlushRequestedRef.current = true
@@ -102,9 +103,16 @@ export function usePersistedAppState({
 
   useEffect(() => {
     if (!isHydrated) {
+      initialHydrationWriteSkippedRef.current = false
       return
     }
 
+    if (!initialHydrationWriteSkippedRef.current && !persistFlushRequestedRef.current) {
+      initialHydrationWriteSkippedRef.current = true
+      return
+    }
+
+    initialHydrationWriteSkippedRef.current = true
     schedulePersistedStateWrite(producePersistedState, { onResult: handlePersistWriteResult })
 
     if (persistFlushRequestedRef.current) {

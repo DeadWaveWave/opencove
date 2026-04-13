@@ -135,6 +135,7 @@ export async function startRemoteWorker(options: {
   homeDir: string
   approveRoot: string
   agentSessionScenario?: string
+  env?: Record<string, string>
 }): Promise<RemoteWorkerHandle> {
   const electronBinary = await resolveElectronBinaryPath()
   const workerPath = path.resolve(__dirname, '../../out/main/worker.js')
@@ -163,6 +164,7 @@ export async function startRemoteWorker(options: {
     {
       env: {
         ...process.env,
+        ...(options.env ?? {}),
         NODE_ENV: 'test',
         ELECTRON_RUN_AS_NODE: '1',
         ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),

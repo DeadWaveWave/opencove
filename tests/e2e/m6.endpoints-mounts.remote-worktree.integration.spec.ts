@@ -72,6 +72,9 @@ test.describe('M6 - Remote mount worktree integration', () => {
       homeDir: remoteBaseDir,
       approveRoot: remoteBaseDir,
       agentSessionScenario: 'codex-standby-only',
+      env: {
+        OPENCOVE_TEST_GITHUB_INTEGRATION: '1',
+      },
     })
 
     const { electronApp, window } = await launchApp({
@@ -345,6 +348,12 @@ test.describe('M6 - Remote mount worktree integration', () => {
       )
       await expect(branchBadge).toBeVisible({ timeout: 15_000 })
       await expect(branchBadge).toContainText(branchName)
+
+      const prChip = window.locator(`[data-testid="workspace-space-pr-chip-${spaceMeta.spaceId}"]`)
+      await expect(prChip).toBeVisible({ timeout: 15_000 })
+      await expect(prChip).toHaveAttribute('href', 'https://example.com/pull/123')
+      await expect(prChip).toHaveAttribute('target', '_blank')
+      await expect(prChip).toHaveAttribute('title', `Test PR for ${branchName} (#123)`)
 
       await window.locator(`[data-testid="workspace-space-switch-${spaceMeta.spaceId}"]`).click()
       await window.locator(`[data-testid="workspace-space-menu-${spaceMeta.spaceId}"]`).click()

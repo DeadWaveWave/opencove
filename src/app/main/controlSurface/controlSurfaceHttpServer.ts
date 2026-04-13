@@ -4,24 +4,9 @@ import { createAppErrorDescriptor } from '../../../shared/errors/appError'
 import { createControlSurface } from './controlSurface'
 import { normalizeInvokeRequest } from './validate'
 import type { ControlSurfaceContext } from './types'
-import { registerSystemHandlers } from './handlers/systemHandlers'
-import { registerProjectHandlers } from './handlers/projectHandlers'
-import { registerSpaceHandlers } from './handlers/spaceHandlers'
-import { registerFilesystemHandlers } from './handlers/filesystemHandlers'
-import { registerFilesystemMountHandlers } from './handlers/filesystemMountHandlers'
-import { registerGitWorktreeHandlers } from './handlers/gitWorktreeHandlers'
-import { registerGitWorktreeMountHandlers } from './handlers/gitWorktreeMountHandlers'
-import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
-import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
-import { registerSessionHandlers } from './handlers/sessionHandlers'
-import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
-import { registerPtyMountHandlers } from './handlers/ptyMountHandlers'
-import { registerSyncHandlers } from './handlers/syncHandlers'
-import { registerTopologyHandlers } from './handlers/topologyHandlers'
 import { renderWorkerWebShellPage } from './workerWebShellPage'
 import { tryResolveWebUiResponse } from './webUiAssets'
 import { WebSessionManager } from './http/webSessionManager'
-import { registerAuthHandlers } from './handlers/authHandlers'
 import { readJsonBody, sendJson } from './http/httpJson'
 import { removeConnectionFile, writeConnectionFile } from './http/connectionFile'
 import { resolveRequestAuth } from './http/requestAuth'
@@ -36,6 +21,7 @@ import { createPtyStreamService, PTY_STREAM_PROTOCOL_VERSION } from './ptyStream
 import { createMultiEndpointPtyRuntime } from './ptyStream/multiEndpointPtyRuntime'
 import type { RegisterControlSurfaceHttpServerOptions } from './controlSurfaceHttpServerOptions'
 import { createWorkerTopologyStore } from './topology/topologyStore'
+import { registerControlSurfaceHandlers } from './registerControlSurfaceHandlers'
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
@@ -117,54 +103,15 @@ export function registerControlSurfaceHttpServer(
   const getPersistenceStore = persistence.getPersistenceStore
 
   const controlSurface = createControlSurface()
-  registerSystemHandlers(controlSurface)
-  registerAuthHandlers(controlSurface, { webSessions })
-  registerTopologyHandlers(controlSurface, {
-    topology,
-    approvedWorkspaces: options.approvedWorkspaces,
-  })
-  registerProjectHandlers(controlSurface, getPersistenceStore)
-  registerSpaceHandlers(controlSurface, getPersistenceStore)
-  registerWorkspaceHandlers(controlSurface, {
+  registerControlSurfaceHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
     userDataPath: options.userDataPath,
-  })
-  registerFilesystemHandlers(controlSurface, {
-    approvedWorkspaces: options.approvedWorkspaces,
-  })
-  registerFilesystemMountHandlers(controlSurface, {
-    approvedWorkspaces: options.approvedWorkspaces,
     topology,
-  })
-  registerGitWorktreeHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
-  registerGitWorktreeMountHandlers(controlSurface, {
-    approvedWorkspaces: options.approvedWorkspaces,
-    topology,
-  })
-  registerWorktreeHandlers(controlSurface, {
-    approvedWorkspaces: options.approvedWorkspaces,
-    getPersistenceStore,
-  })
-  registerSessionHandlers(controlSurface, {
-    approvedWorkspaces: options.approvedWorkspaces,
-    getPersistenceStore,
-    ptyRuntime,
-    ptyStreamHub: ptyStreamService.hub,
-    topology,
-  })
-  registerSessionStreamingHandlers(controlSurface, {
-    approvedWorkspaces: options.approvedWorkspaces,
+    webSessions,
     getPersistenceStore,
     ptyRuntime,
     ptyStreamHub: ptyStreamService.hub,
   })
-  registerPtyMountHandlers(controlSurface, {
-    approvedWorkspaces: options.approvedWorkspaces,
-    topology,
-    ptyRuntime,
-    ptyStreamHub: ptyStreamService.hub,
-  })
-  registerSyncHandlers(controlSurface, getPersistenceStore)
   let closed = false
   let disposePromise: Promise<void> | null = null
   let pendingConnectionWrite: Promise<void> | null = null

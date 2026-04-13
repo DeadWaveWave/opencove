@@ -2,7 +2,6 @@ import React from 'react'
 import { ViewportPortal, useReactFlow, useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
-import type { GitHubPullRequestSummary } from '@shared/contracts/dto'
 import { resolveGitWorktreeApiForMount } from '@contexts/worktree/presentation/renderer/windows/mountAwareGitWorktreeApi'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
@@ -35,9 +34,11 @@ import {
   resolveGitStatusRepoKey,
   useWorkspaceGitStatusSummary,
 } from './WorkspaceSpaceRegionsOverlay.gitStatus'
+import {
+  toPullRequestKey,
+  useWorkspaceSpacePullRequests,
+} from './WorkspaceSpaceRegionsOverlay.pullRequests'
 import { useWorkspaceWorktreeInfoByPath } from './WorkspaceSpaceRegionsOverlay.worktreePolling'
-
-const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -85,9 +86,6 @@ export function WorkspaceSpaceRegionsOverlay({
   const branchRenameInputRef = React.useRef<HTMLInputElement | null>(null)
   const [refreshNonce, setRefreshNonce] = React.useState(0)
   const [branchRename, setBranchRename] = React.useState<BranchRenameState | null>(null)
-  const [pullRequestsByBranch, setPullRequestsByBranch] = React.useState<
-    Record<string, GitHubPullRequestSummary | null>
-  >(() => ({}))
 
   const mountIds = React.useMemo(() => {
     const unique = new Set<string>()
@@ -146,95 +144,15 @@ export function WorkspaceSpaceRegionsOverlay({
     refreshNonce,
   })
 
-  const worktreeBranches = React.useMemo(() => {
-    const unique = new Set<string>()
-
-    spaceVisuals.forEach(space => {
-      const info = resolveClosestWorktree(worktrees, space.directoryPath)
-      if (!info) {
-        return
-      }
-
-      const normalizedWorktreePath = normalizeComparablePath(info.path)
-      if (
-        normalizedWorktreePath.length === 0 ||
-        (normalizedWorktreePath === normalizedWorkspacePath &&
-          !selectedSpaceIdSet.has(space.id) &&
-          openExplorerSpaceId !== space.id)
-      ) {
-        return
-      }
-
-      const branch = info?.branch?.trim() ?? ''
-      if (branch.length > 0) {
-        unique.add(branch)
-      }
-    })
-
-    return [...unique].sort((left, right) => left.localeCompare(right))
-  }, [normalizedWorkspacePath, openExplorerSpaceId, selectedSpaceIdSet, spaceVisuals, worktrees])
-
-  const worktreeBranchesKey = React.useMemo(() => worktreeBranches.join('|'), [worktreeBranches])
-
-  React.useEffect(() => {
-    if (worktreeBranches.length === 0) {
-      setPullRequestsByBranch({})
-      return
-    }
-
-    if (!githubPullRequestsEnabled) {
-      setPullRequestsByBranch({})
-      return
-    }
-
-    const resolvePullRequests = window.opencoveApi?.integration?.github?.resolvePullRequests
-    if (typeof resolvePullRequests !== 'function') {
-      setPullRequestsByBranch(Object.fromEntries(worktreeBranches.map(branch => [branch, null])))
-      return
-    }
-
-    let cancelled = false
-    let intervalId: number | null = null
-
-    const resolveAll = async (): Promise<void> => {
-      try {
-        const result = await resolvePullRequests({
-          repoPath: worktreeRepoRootPath,
-          branches: worktreeBranches,
-        })
-
-        if (cancelled) {
-          return
-        }
-
-        setPullRequestsByBranch(result.pullRequestsByBranch)
-      } catch {
-        if (cancelled) {
-          return
-        }
-
-        setPullRequestsByBranch(previous => {
-          const next: Record<string, GitHubPullRequestSummary | null> = {}
-          worktreeBranches.forEach(branch => {
-            next[branch] = previous[branch] ?? null
-          })
-          return next
-        })
-      }
-    }
-
-    void resolveAll()
-    intervalId = window.setInterval(() => {
-      void resolveAll()
-    }, PULL_REQUEST_REFRESH_INTERVAL_MS)
-
-    return () => {
-      cancelled = true
-      if (intervalId !== null) {
-        window.clearInterval(intervalId)
-      }
-    }
-  }, [githubPullRequestsEnabled, worktreeBranches, worktreeBranchesKey, worktreeRepoRootPath])
+  const pullRequestsByKey = useWorkspaceSpacePullRequests({
+    githubPullRequestsEnabled,
+    spaceVisuals,
+    worktrees,
+    normalizedWorkspacePath,
+    selectedSpaceIdSet,
+    openExplorerSpaceId,
+    worktreeRepoRootPath,
+  })
 
   React.useEffect(() => {
     if (!branchRename?.spaceId) {
@@ -396,10 +314,12 @@ export function WorkspaceSpaceRegionsOverlay({
           const branchKey = shouldShowRepoSummary
             ? (resolvedWorktreeInfo?.branch?.trim() ?? '')
             : ''
-          const resolvedPullRequestSummary =
+          const pullRequestKey =
             shouldShowRepoSummary && branchKey.length > 0
-              ? (pullRequestsByBranch[branchKey] ?? null)
-              : null
+              ? toPullRequestKey(space.targetMountId, branchKey)
+              : ''
+          const resolvedPullRequestSummary =
+            pullRequestKey.length > 0 ? (pullRequestsByKey[pullRequestKey] ?? null) : null
 
           const statusRepoKey = resolveGitStatusRepoKey({
             normalizedDirectoryPath,
