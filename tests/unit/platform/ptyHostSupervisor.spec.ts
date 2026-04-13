@@ -76,6 +76,60 @@ describe('PtyHostSupervisor', () => {
     supervisor.dispose()
   })
 
+  it('drops ELECTRON_RUN_AS_NODE from inherited env', async () => {
+    const previousValue = process.env.ELECTRON_RUN_AS_NODE
+    process.env.ELECTRON_RUN_AS_NODE = '1'
+
+    try {
+      const testProcess = new TestPtyHostProcess()
+      const supervisor = new PtyHostSupervisor({
+        baseDir: '/',
+        resolveEntryPath: () => '/fake/ptyHost.js',
+        createProcess: () => testProcess,
+      })
+
+      const spawnPromise = supervisor.spawn({
+        command: '/bin/zsh',
+        args: ['-lc', 'echo OK'],
+        cwd: '/',
+        cols: 80,
+        rows: 24,
+      })
+
+      testProcess.emit('message', { type: 'ready', protocolVersion: 1 })
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      const sentSpawn = findLastSentMessage<{ type: 'spawn'; requestId: string; env?: unknown }>(
+        testProcess,
+        'spawn',
+      )
+
+      const resolvedEnv =
+        sentSpawn && typeof sentSpawn.env === 'object' && sentSpawn.env !== null
+          ? (sentSpawn.env as Record<string, unknown>)
+          : null
+
+      expect(resolvedEnv?.['ELECTRON_RUN_AS_NODE']).toBeUndefined()
+
+      testProcess.emit('message', {
+        type: 'response',
+        requestId: sentSpawn?.requestId,
+        ok: true,
+        result: { sessionId: 's-env' },
+      })
+
+      await expect(spawnPromise).resolves.toEqual({ sessionId: 's-env' })
+
+      supervisor.dispose()
+    } finally {
+      if (previousValue === undefined) {
+        delete process.env.ELECTRON_RUN_AS_NODE
+      } else {
+        process.env.ELECTRON_RUN_AS_NODE = previousValue
+      }
+    }
+  })
+
   it('emits exit for active sessions when host exits', async () => {
     const testProcess = new TestPtyHostProcess()
     const supervisor = new PtyHostSupervisor({
