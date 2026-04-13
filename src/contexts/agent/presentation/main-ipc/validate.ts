@@ -99,6 +99,7 @@ export function resolveAgentTestStub(
   cwd: string,
   model: string | null,
   mode: LaunchAgentInput['mode'],
+  resumeSessionId?: string | null,
 ): {
   command: string
   args: string[]
@@ -126,6 +127,7 @@ export function resolveAgentTestStub(
         cwd,
         mode ?? 'new',
         model ?? 'default-model',
+        resumeSessionId ?? '',
         sessionScenario,
       ],
     }

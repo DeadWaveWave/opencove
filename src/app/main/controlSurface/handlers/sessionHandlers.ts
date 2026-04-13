@@ -273,6 +273,7 @@ export function registerSessionHandlers(
         cwd: workingDirectory,
         mode,
         model,
+        resumeSessionId,
       })
 
       const opencodeServer =

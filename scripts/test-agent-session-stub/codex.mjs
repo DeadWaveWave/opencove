@@ -2,6 +2,7 @@ import {
   appendCodexRecord,
   createCodexSessionFile,
   runJsonlStdinSubmitDelayedTurnScenario,
+  runJsonlStdinSubmitDrivenTurnScenario,
 } from '../test-agent-session-jsonl.mjs'
 import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
@@ -115,4 +116,4 @@ export async function runCodexClickRedrawAfterClickScenario(cwd) {
   await runRawClickRedrawAfterClickScenario()
 }
 
-export { runJsonlStdinSubmitDelayedTurnScenario }
+export { runJsonlStdinSubmitDelayedTurnScenario, runJsonlStdinSubmitDrivenTurnScenario }

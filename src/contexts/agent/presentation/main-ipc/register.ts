@@ -229,6 +229,7 @@ export function registerAgentIpcHandlers(
         normalized.cwd,
         launchCommand.effectiveModel,
         normalized.mode,
+        launchCommand.resumeSessionId,
       )
 
       const geminiDiscoveryCursor =

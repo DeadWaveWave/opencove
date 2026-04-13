@@ -8,6 +8,7 @@ import {
   runCodexStandbyNoNewlineScenario,
   runCodexStandbyOnlyScenario,
   runJsonlStdinSubmitDelayedTurnScenario,
+  runJsonlStdinSubmitDrivenTurnScenario,
 } from './test-agent-session-stub/codex.mjs'
 import { runStdinEchoScenario } from './test-agent-session-stub/stdinEcho.mjs'
 import {
@@ -30,6 +31,7 @@ async function main() {
     rawCwd = process.cwd(),
     mode = 'new',
     model = 'default-model',
+    resumeSessionId = '',
     scenario = '',
   ] = process.argv.slice(2)
   const cwd = resolve(rawCwd)
@@ -61,6 +63,19 @@ async function main() {
     scenario === 'jsonl-stdin-submit-delayed-turn'
   ) {
     await runJsonlStdinSubmitDelayedTurnScenario(provider, cwd)
+    return
+  }
+
+  if (
+    (provider === 'codex' || provider === 'claude-code') &&
+    scenario === 'jsonl-stdin-submit-driven-turn'
+  ) {
+    await runJsonlStdinSubmitDrivenTurnScenario(
+      provider,
+      cwd,
+      mode,
+      resumeSessionId.length > 0 ? resumeSessionId : null,
+    )
     return
   }
 

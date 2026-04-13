@@ -5,6 +5,7 @@ export function resolveWorkerAgentTestStub(options: {
   cwd: string
   mode: 'new' | 'resume'
   model: string | null
+  resumeSessionId?: string | null
 }): { command: string; args: string[] } | null {
   if (process.env.NODE_ENV !== 'test') {
     return null
@@ -32,6 +33,7 @@ export function resolveWorkerAgentTestStub(options: {
       options.cwd,
       options.mode,
       options.model ?? 'default-model',
+      options.resumeSessionId ?? '',
       sessionScenario,
     ],
   }
