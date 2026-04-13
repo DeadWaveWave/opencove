@@ -62,13 +62,17 @@ test.describe('Workspace Canvas - Terminal Copy (Windows)', () => {
       const xterm = terminal.locator('.xterm')
       await expect(xterm).toBeVisible()
       await xterm.click()
-      await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+      const terminalInput = terminal.locator('.xterm-helper-textarea')
+      await expect(terminalInput).toBeFocused()
 
-      await window.keyboard.type(
+      // Wait for the shell prompt to appear before sending the long node command.
+      await expect(terminal).toContainText(/PS .*?>/i, { timeout: 30_000 })
+
+      await terminalInput.type(
         `node -e "const ready=process.env.${READY_ENV_KEY};const sigint=process.env.${SIGINT_ENV_KEY};process.on('SIGINT',()=>{console.log(sigint);process.exit(130)});console.log(ready);setInterval(()=>{},1000)"`,
       )
-      await window.keyboard.press('Enter')
-      await expect(terminal).toContainText(readyToken)
+      await terminalInput.press('Enter')
+      await expect(terminal).toContainText(readyToken, { timeout: 60_000 })
 
       await expect
         .poll(async () => await selectTerminalOutput(window, 'node-copy-windows'))
