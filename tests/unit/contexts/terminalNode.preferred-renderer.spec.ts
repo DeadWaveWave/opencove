@@ -205,11 +205,13 @@ describe('activatePreferredTerminalRenderer', () => {
     try {
       const { activatePreferredTerminalRenderer } =
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const onRendererKindChange = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer(
         {
           loadAddon: vi.fn(),
         } as never,
         'opencode',
+        { onRendererKindChange },
       )
 
       expect(activeRenderer.kind).toBe('webgl')
@@ -218,6 +220,8 @@ describe('activatePreferredTerminalRenderer', () => {
       contextLossListener?.()
 
       expect(webglAddonDispose).toHaveBeenCalledTimes(1)
+      expect(onRendererKindChange).toHaveBeenCalledWith('dom')
+      expect(activeRenderer.kind).toBe('dom')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }

@@ -35,6 +35,9 @@ const INITIAL_E2E_PROCESS_ENV = (() => {
   // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
   // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
   delete env['__CFBundleIdentifier']
+  // Some dev shells export `ELECTRON_RUN_AS_NODE=1` for Electron tooling; Playwright needs to launch
+  // the real Electron runtime (Chromium flags such as `--remote-debugging-port` must be accepted).
+  delete env['ELECTRON_RUN_AS_NODE']
   return env
 })()
 

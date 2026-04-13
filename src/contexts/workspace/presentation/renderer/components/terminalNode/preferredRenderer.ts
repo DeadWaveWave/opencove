@@ -8,6 +8,10 @@ export type ActiveTerminalRenderer = {
   dispose: () => void
 }
 
+export interface PreferredTerminalRendererOptions {
+  onRendererKindChange?: (kind: ActiveTerminalRenderer['kind']) => void
+}
+
 function createDomRenderer(): ActiveTerminalRenderer {
   return {
     kind: 'dom',
@@ -61,6 +65,7 @@ function canUseWebglRenderer(): boolean {
 export function activatePreferredTerminalRenderer(
   terminal: Terminal,
   terminalProvider?: AgentProvider | null,
+  options: PreferredTerminalRendererOptions = {},
 ): ActiveTerminalRenderer {
   if (shouldPreferDomRendererOnCurrentPlatform(terminalProvider) || !canUseWebglRenderer()) {
     return createDomRenderer()
@@ -71,18 +76,23 @@ export function activatePreferredTerminalRenderer(
     terminal.loadAddon(webglAddon)
 
     let disposed = false
+    let kind: ActiveTerminalRenderer['kind'] = 'webgl'
     const contextLossDisposable = webglAddon.onContextLoss(() => {
       if (disposed) {
         return
       }
 
       disposed = true
+      kind = 'dom'
+      options.onRendererKindChange?.('dom')
       contextLossDisposable.dispose()
       webglAddon.dispose()
     })
 
     return {
-      kind: 'webgl',
+      get kind() {
+        return kind
+      },
       clearTextureAtlas: () => {
         if (!disposed) {
           webglAddon.clearTextureAtlas()

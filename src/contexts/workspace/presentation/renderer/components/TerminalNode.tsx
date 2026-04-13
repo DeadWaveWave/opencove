@@ -6,10 +6,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRollingTextBuffer } from '../utils/rollingTextBuffer'
-import {
-  createTerminalCommandInputState,
-  parseTerminalCommandInput,
-} from './terminalNode/commandInput'
+import { createTerminalCommandInputState } from './terminalNode/commandInput'
 import { bindTerminalCustomKeyHandler } from './terminalNode/customKeyHandler'
 import { createPtyWriteQueue } from './terminalNode/inputBridge'
 import { registerTerminalLayoutSync } from './terminalNode/layoutSync'
@@ -43,7 +40,9 @@ import { DEFAULT_TERMINAL_FONT_FAMILY, MAX_SCROLLBACK_CHARS } from './terminalNo
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { hydrateTerminalFromSnapshot } from './terminalNode/hydrateFromSnapshot'
-import { applyWebglPixelSnapping } from './terminalNode/webglPixelSnapping'
+import { bindTerminalInputHandlers } from './terminalNode/bindTerminalInputHandlers'
+import { registerWebglPixelSnappingMutationObserver } from './terminalNode/registerWebglPixelSnappingMutationObserver'
+import { useWebglPixelSnappingScheduler } from './terminalNode/useWebglPixelSnappingScheduler'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -87,9 +86,13 @@ export function TerminalNode({
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
-  const activeRendererKindRef = useRef<'webgl' | 'dom'>('dom')
-  const pixelSnapFrameRef = useRef<number | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const {
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+  } = useWebglPixelSnappingScheduler({ containerRef })
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
   const suppressPtyResizeRef = useRef(false)
@@ -138,24 +141,6 @@ export function TerminalNode({
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
-  const scheduleWebglPixelSnapping = useCallback(() => {
-    if (typeof window === 'undefined') {
-      return
-    }
-
-    if (pixelSnapFrameRef.current !== null) {
-      return
-    }
-
-    pixelSnapFrameRef.current = window.requestAnimationFrame(() => {
-      pixelSnapFrameRef.current = null
-      applyWebglPixelSnapping({
-        container: containerRef.current,
-        rendererKind: activeRendererKindRef.current,
-      })
-    })
-  }, [])
-
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
       terminalRef,
@@ -188,7 +173,6 @@ export function TerminalNode({
     scheduleScrollbackPublish,
     isPointerResizingRef,
   })
-  const sizeStyle = resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })
   useEffect(() => {
     if (sessionId.trim().length === 0) {
       return undefined
@@ -221,7 +205,11 @@ export function TerminalNode({
     const serializeAddon = new SerializeAddon()
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(serializeAddon)
-    let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider)
+    let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
+      onRendererKindChange: nextKind => {
+        setRendererKindAndApply(nextKind)
+      },
+    })
     activeRendererKindRef.current = activeRenderer.kind
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
@@ -253,36 +241,11 @@ export function TerminalNode({
         container: containerRef.current,
         ownerId: `${nodeId}:${sessionId}`,
       })
-      const reactFlowViewport =
-        containerRef.current.closest('.react-flow__viewport') instanceof HTMLElement
-          ? (containerRef.current.closest('.react-flow__viewport') as HTMLElement)
-          : null
-      const reactFlowNode =
-        containerRef.current.closest('.react-flow__node') instanceof HTMLElement
-          ? (containerRef.current.closest('.react-flow__node') as HTMLElement)
-          : null
-      if (typeof MutationObserver !== 'undefined' && (reactFlowViewport || reactFlowNode)) {
-        const observer = new MutationObserver(() => {
-          if (activeRendererKindRef.current !== 'webgl') {
-            return
-          }
-
-          scheduleWebglPixelSnapping()
-        })
-        if (reactFlowViewport) {
-          observer.observe(reactFlowViewport, {
-            attributes: true,
-            attributeFilter: ['style', 'class'],
-          })
-        }
-        if (reactFlowNode) {
-          observer.observe(reactFlowNode, {
-            attributes: true,
-            attributeFilter: ['style', 'class'],
-          })
-        }
-        disposePositionObserver = () => observer.disconnect()
-      }
+      disposePositionObserver = registerWebglPixelSnappingMutationObserver({
+        container: containerRef.current,
+        isWebglRenderer: () => activeRendererKindRef.current === 'webgl',
+        scheduleWebglPixelSnapping,
+      })
       if (isTestEnvironment) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
       }
@@ -309,36 +272,14 @@ export function TerminalNode({
     })
     let isDisposed = false,
       shouldForwardTerminalData = false
-    const dataDisposable = terminal.onData(data => {
-      if (!shouldForwardTerminalData) {
-        return
-      }
-      if (suppressPtyResizeRef.current) {
-        suppressPtyResizeRef.current = false
-        syncTerminalSize()
-      }
-      ptyWriteQueue.enqueue(data)
-      ptyWriteQueue.flush()
-      const commandRunHandler = onCommandRunRef.current
-      if (!commandRunHandler) {
-        return
-      }
-      const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
-      commandInputStateRef.current = parsed.nextState
-      parsed.commands.forEach(command => {
-        commandRunHandler(command)
-      })
-    })
-    const binaryDisposable = terminal.onBinary(data => {
-      if (!shouldForwardTerminalData) {
-        return
-      }
-      if (suppressPtyResizeRef.current) {
-        suppressPtyResizeRef.current = false
-        syncTerminalSize()
-      }
-      ptyWriteQueue.enqueue(data, 'binary')
-      ptyWriteQueue.flush()
+    const { dataDisposable, binaryDisposable } = bindTerminalInputHandlers({
+      terminal,
+      shouldForwardTerminalData: () => shouldForwardTerminalData,
+      suppressPtyResizeRef,
+      syncTerminalSize,
+      ptyWriteQueue,
+      onCommandRunRef,
+      commandInputStateRef,
     })
 
     let isHydrating = true
@@ -485,10 +426,7 @@ export function TerminalNode({
       terminalRef.current = null
       fitAddonRef.current = null
       activeRendererKindRef.current = 'dom'
-      if (pixelSnapFrameRef.current !== null) {
-        window.cancelAnimationFrame(pixelSnapFrameRef.current)
-        pixelSnapFrameRef.current = null
-      }
+      cancelWebglPixelSnapping()
     }
   }, [
     cancelScrollbackPublish,
@@ -502,6 +440,9 @@ export function TerminalNode({
     scrollbackBufferRef,
     scheduleTranscriptSync,
     scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+    activeRendererKindRef,
     sessionId,
     syncTerminalSize,
     terminalThemeMode,
@@ -517,7 +458,6 @@ export function TerminalNode({
     width,
     height,
   })
-  const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
     handlePointerDownCapture: handleTerminalBodyPointerDownCapture,
@@ -530,7 +470,7 @@ export function TerminalNode({
       kind={kind}
       labelColor={labelColor}
       terminalThemeMode={terminalThemeMode}
-      isSelected={hasSelectedDragSurface}
+      isSelected={isDragSurfaceSelectionMode && (isSelected || isDragging)}
       isDragging={isDragging}
       status={status}
       directoryMismatch={directoryMismatch}
@@ -538,7 +478,7 @@ export function TerminalNode({
       sessionId={sessionId}
       isTerminalHydrated={isTerminalHydrated}
       transcriptRef={transcriptRef}
-      sizeStyle={sizeStyle}
+      sizeStyle={resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })}
       containerRef={containerRef}
       handleTerminalBodyPointerDownCapture={handleTerminalBodyPointerDownCapture}
       handleTerminalBodyPointerMoveCapture={handleTerminalBodyPointerMoveCapture}

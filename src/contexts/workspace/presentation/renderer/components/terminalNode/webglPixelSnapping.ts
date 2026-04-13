@@ -3,6 +3,27 @@ export interface WebglPixelSnapOffset {
   y: number
 }
 
+function resolveCanvasInlineTranslate(transform: string): WebglPixelSnapOffset {
+  const normalized = transform.trim()
+  if (normalized.length === 0 || normalized === 'none') {
+    return { x: 0, y: 0 }
+  }
+
+  const translateMatch = normalized.match(
+    /translate\(\s*(-?\d+(?:\.\d+)?)px(?:\s*,\s*(-?\d+(?:\.\d+)?)px)?\s*\)/i,
+  )
+  if (translateMatch) {
+    const x = Number.parseFloat(translateMatch[1] ?? '0')
+    const y = Number.parseFloat(translateMatch[2] ?? '0')
+    return {
+      x: Number.isFinite(x) ? x : 0,
+      y: Number.isFinite(y) ? y : 0,
+    }
+  }
+
+  return { x: 0, y: 0 }
+}
+
 function roundSnapOffset(value: number): number {
   const rounded = Math.round(value * 1000) / 1000
   return Math.abs(rounded) <= 0.001 ? 0 : rounded
@@ -54,17 +75,28 @@ export function applyWebglPixelSnapping({
     return { x: 0, y: 0 }
   }
 
+  // `getBoundingClientRect()` includes CSS transforms; if we base snapping off a transformed rect,
+  // we can end up clearing the transform on the next measurement and "flip-flop" indefinitely.
+  // Use the pre-transform position by subtracting our current inline translate.
+  const currentTranslate = resolveCanvasInlineTranslate(canvas.style.transform)
   const rect = canvas.getBoundingClientRect()
   const devicePixelRatio = window.devicePixelRatio
   const offset = resolveWebglPixelSnapOffset({
-    x: rect.x,
-    y: rect.y,
+    x: rect.x - currentTranslate.x,
+    y: rect.y - currentTranslate.y,
     devicePixelRatio,
   })
 
   if (offset.x === 0 && offset.y === 0) {
-    canvas.style.transform = ''
-    canvas.style.transformOrigin = ''
+    if (currentTranslate.x !== 0 || currentTranslate.y !== 0) {
+      canvas.style.transform = ''
+      canvas.style.transformOrigin = ''
+    }
+    return offset
+  }
+
+  if (offset.x === currentTranslate.x && offset.y === currentTranslate.y) {
+    canvas.style.transformOrigin = 'top left'
     return offset
   }
 
