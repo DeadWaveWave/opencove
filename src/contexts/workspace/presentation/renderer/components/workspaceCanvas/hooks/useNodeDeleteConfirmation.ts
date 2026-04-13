@@ -115,11 +115,6 @@ export function useWorkspaceCanvasNodeDeleteConfirmation({
         return
       }
 
-      if (nextConfirmation.emptyingSpaces.length > 0) {
-        setNodeDeleteConfirmation(nextConfirmation)
-        return
-      }
-
       await closeNode(nodeId)
     },
     [closeNode, nodesRef, spacesRef],

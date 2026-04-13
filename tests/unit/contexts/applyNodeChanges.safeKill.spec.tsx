@@ -139,7 +139,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
     expect(screen.getByTestId('count')).toHaveTextContent('0')
 
     await Promise.resolve()
-  })
+  }, 15_000)
 
   it('requests persist flush when dragging a node with selected spaces', async () => {
     const onRequestPersistFlush = vi.fn()

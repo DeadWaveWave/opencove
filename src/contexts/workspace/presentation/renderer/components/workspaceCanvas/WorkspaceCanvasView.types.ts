@@ -134,6 +134,7 @@ export interface WorkspaceCanvasViewProps {
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean

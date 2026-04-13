@@ -142,4 +142,61 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
       await electronApp.close()
     }
   })
+
+  test('creates an empty space from the blank pane right-click menu', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await pane.click({
+        button: 'right',
+        position: { x: 260, y: 200 },
+      })
+
+      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+
+      await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+      await expect(window.locator('.terminal-node')).toHaveCount(0)
+      await expect(window.locator('.note-node')).toHaveCount(0)
+      await expect(window.locator('.task-node')).toHaveCount(0)
+      await expect(window.locator('.agent-node')).toHaveCount(0)
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return { spaceCount: 0, nodeCount: 0, firstSpaceNodeIdsCount: null }
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                nodes?: unknown[]
+                spaces?: Array<{ nodeIds?: string[] }>
+              }>
+            }
+
+            const workspace = parsed.workspaces?.[0]
+            const firstSpace = workspace?.spaces?.[0]
+
+            return {
+              spaceCount: workspace?.spaces?.length ?? 0,
+              nodeCount: workspace?.nodes?.length ?? 0,
+              firstSpaceNodeIdsCount: firstSpace?.nodeIds?.length ?? null,
+            }
+          })
+        })
+        .toEqual({
+          spaceCount: 1,
+          nodeCount: 0,
+          firstSpaceNodeIdsCount: 0,
+        })
+    } finally {
+      await electronApp.close()
+    }
+  })
 })

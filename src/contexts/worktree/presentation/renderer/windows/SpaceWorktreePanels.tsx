@@ -31,6 +31,8 @@ export function SpaceWorktreePanels({
   onCreate,
   onDeleteBranchOnArchiveChange,
   onForceArchiveConfirmedChange,
+  skipArchiveHistory,
+  onSkipArchiveHistoryChange,
   onArchive,
 }: {
   space: WorkspaceSpaceState
@@ -58,6 +60,8 @@ export function SpaceWorktreePanels({
   onCreate: () => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
   onForceArchiveConfirmedChange: (checked: boolean) => void
+  skipArchiveHistory: boolean
+  onSkipArchiveHistoryChange: (checked: boolean) => void
   onArchive: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -233,43 +237,62 @@ export function SpaceWorktreePanels({
                     {t('worktree.archiveUncommittedChangesWarning')}
                   </p>
                 ) : null}
-
-                <div className="workspace-space-worktree__option-list">
-                  {requiresForceArchiveConfirmation ? (
-                    <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                      <input
-                        type="checkbox"
-                        data-testid="space-worktree-archive-force-confirm"
-                        checked={forceArchiveConfirmed}
-                        disabled={isBusy}
-                        onChange={event => {
-                          onForceArchiveConfirmedChange(event.target.checked)
-                        }}
-                      />
-                      <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                        <strong>{t('worktree.forceArchiveConfirm')}</strong>
-                        <span>{t('worktree.forceArchiveConfirmHelp')}</span>
-                      </span>
-                    </label>
-                  ) : null}
-                  <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                    <input
-                      type="checkbox"
-                      data-testid="space-worktree-archive-delete-branch"
-                      checked={deleteBranchOnArchive}
-                      disabled={isBusy}
-                      onChange={event => {
-                        onDeleteBranchOnArchiveChange(event.target.checked)
-                      }}
-                    />
-                    <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                      <strong>{t('worktree.deleteBranch')}</strong>
-                      <span>{t('worktree.deleteBranchHelp')}</span>
-                    </span>
-                  </label>
-                </div>
               </div>
             )}
+
+            <div className="workspace-space-worktree__option-list">
+              {requiresForceArchiveConfirmation ? (
+                <label className="cove-window__checkbox workspace-space-worktree__option-row">
+                  <input
+                    type="checkbox"
+                    data-testid="space-worktree-archive-force-confirm"
+                    checked={forceArchiveConfirmed}
+                    disabled={isBusy}
+                    onChange={event => {
+                      onForceArchiveConfirmedChange(event.target.checked)
+                    }}
+                  />
+                  <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
+                    <strong>{t('worktree.forceArchiveConfirm')}</strong>
+                    <span>{t('worktree.forceArchiveConfirmHelp')}</span>
+                  </span>
+                </label>
+              ) : null}
+
+              {!isSpaceOnWorkspaceRoot ? (
+                <label className="cove-window__checkbox workspace-space-worktree__option-row">
+                  <input
+                    type="checkbox"
+                    data-testid="space-worktree-archive-delete-branch"
+                    checked={deleteBranchOnArchive}
+                    disabled={isBusy}
+                    onChange={event => {
+                      onDeleteBranchOnArchiveChange(event.target.checked)
+                    }}
+                  />
+                  <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
+                    <strong>{t('worktree.deleteBranch')}</strong>
+                    <span>{t('worktree.deleteBranchHelp')}</span>
+                  </span>
+                </label>
+              ) : null}
+
+              <label className="cove-window__checkbox workspace-space-worktree__option-row">
+                <input
+                  type="checkbox"
+                  data-testid="space-worktree-archive-skip-history"
+                  checked={skipArchiveHistory}
+                  disabled={isBusy}
+                  onChange={event => {
+                    onSkipArchiveHistoryChange(event.target.checked)
+                  }}
+                />
+                <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
+                  <strong>{t('worktree.skipArchiveHistory')}</strong>
+                  <span>{t('worktree.skipArchiveHistoryHelp')}</span>
+                </span>
+              </label>
+            </div>
 
             <div className="workspace-space-worktree__inline-actions workspace-space-worktree__inline-actions--footer">
               <button

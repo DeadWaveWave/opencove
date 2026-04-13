@@ -12,6 +12,7 @@ import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
 import {
   computeSpaceRectFromNodes,
   pushAwayLayout,
+  SPACE_MIN_SIZE,
   type LayoutItem,
 } from '../../../utils/spaceLayout'
 
@@ -48,8 +49,21 @@ export function useWorkspaceCanvasCreateSpace({
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
 } {
   const { t } = useTranslation()
+
+  const resolveDefaultSpaceName = useCallback((): string => {
+    const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
+    let nextNumber = spacesRef.current.length + 1
+    let normalizedName = t('space.defaultName', { count: nextNumber })
+    while (usedNames.has(normalizedName.toLowerCase())) {
+      nextNumber += 1
+      normalizedName = t('space.defaultName', { count: nextNumber })
+    }
+
+    return normalizedName
+  }, [spacesRef, t])
 
   const createSpace = useCallback(
     (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null }) => {
@@ -75,13 +89,7 @@ export function useWorkspaceCanvasCreateSpace({
         return
       }
 
-      const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
-      let nextNumber = spacesRef.current.length + 1
-      let normalizedName = t('space.defaultName', { count: nextNumber })
-      while (usedNames.has(normalizedName.toLowerCase())) {
-        nextNumber += 1
-        normalizedName = t('space.defaultName', { count: nextNumber })
-      }
+      const normalizedName = resolveDefaultSpaceName()
 
       const assignedNodeSet = new Set(normalizedNodeIds)
       const normalizedSpaces = sanitizeSpaces(
@@ -309,6 +317,7 @@ export function useWorkspaceCanvasCreateSpace({
       onRequestPersistFlush,
       onShowMessage,
       onSpacesChange,
+      resolveDefaultSpaceName,
       setContextMenu,
       setEmptySelectionPrompt,
       setNodes,
@@ -367,7 +376,47 @@ export function useWorkspaceCanvasCreateSpace({
     window.requestAnimationFrame(retryCommitSelectedNodes)
   }, [createSpace, reactFlow, selectedNodeIdsRef, setContextMenu])
 
+  const createEmptySpaceAtPoint = useCallback(
+    (point: { x: number; y: number }) => {
+      const nextSpaceId = crypto.randomUUID()
+      const normalizedName = resolveDefaultSpaceName()
+
+      const rect: WorkspaceSpaceRect = {
+        x: Math.round(point.x - SPACE_MIN_SIZE.width / 2),
+        y: Math.round(point.y - SPACE_MIN_SIZE.height / 2),
+        width: SPACE_MIN_SIZE.width,
+        height: SPACE_MIN_SIZE.height,
+      }
+
+      const nextSpace: WorkspaceSpaceState = {
+        id: nextSpaceId,
+        name: normalizedName,
+        directoryPath: workspacePath,
+        labelColor: null,
+        nodeIds: [],
+        rect,
+      }
+
+      onSpacesChange(sanitizeSpaces([...spacesRef.current, nextSpace]))
+      onRequestPersistFlush?.()
+      setContextMenu(null)
+      setEmptySelectionPrompt(null)
+      cancelSpaceRename()
+    },
+    [
+      cancelSpaceRename,
+      onRequestPersistFlush,
+      onSpacesChange,
+      resolveDefaultSpaceName,
+      setContextMenu,
+      setEmptySelectionPrompt,
+      spacesRef,
+      workspacePath,
+    ],
+  )
+
   return {
     createSpaceFromSelectedNodes,
+    createEmptySpaceAtPoint,
   }
 }

@@ -435,15 +435,9 @@ export function toSuggestedWorktreePath(workspacePath: string, provider: AgentPr
   return `${workspacePath}/.opencove/worktrees/${providerTitlePrefix(provider)}-${stamp}`
 }
 
-export function shouldKeepSpace(space: WorkspaceSpaceState): boolean {
-  return space.nodeIds.length > 0
-}
-
 export function sanitizeSpaces(nextSpaces: WorkspaceSpaceState[]): WorkspaceSpaceState[] {
-  return nextSpaces
-    .map(space => ({
-      ...space,
-      nodeIds: [...new Set(space.nodeIds)],
-    }))
-    .filter(shouldKeepSpace)
+  return nextSpaces.map(space => ({
+    ...space,
+    nodeIds: [...new Set(space.nodeIds)],
+  }))
 }
