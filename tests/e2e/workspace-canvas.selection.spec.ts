@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, dragMouse, launchApp, storageKey } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  dragMouse,
+  launchApp,
+  readLocatorClientRect,
+  storageKey,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Selection', () => {
   test('does not allow creating space from empty shift box selection', async () => {
@@ -9,11 +15,7 @@ test.describe('Workspace Canvas - Selection', () => {
       await clearAndSeedWorkspace(window, [])
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
-      await expect(pane).toBeVisible()
-      const paneBox = await pane.boundingBox()
-      if (!paneBox) {
-        throw new Error('workspace pane bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
 
       const startX = paneBox.x + 140
       const startY = paneBox.y + 120
@@ -85,12 +87,8 @@ test.describe('Workspace Canvas - Selection', () => {
       )
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
-      await expect(pane).toBeVisible()
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
-      const paneBox = await pane.boundingBox()
-      if (!paneBox) {
-        throw new Error('workspace pane bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
 
       await dragMouse(window, {
         start: { x: paneBox.x + 120, y: paneBox.y + 120 },
@@ -106,10 +104,7 @@ test.describe('Workspace Canvas - Selection', () => {
         .locator('.terminal-node')
         .filter({ hasText: 'terminal-trackpad-select-b' })
         .first()
-      const secondNodeBox = await secondNode.boundingBox()
-      if (!secondNodeBox) {
-        throw new Error('second node bounding box unavailable')
-      }
+      const secondNodeBox = await readLocatorClientRect(secondNode)
 
       const selectionStartX = Math.max(paneBox.x + 40, secondNodeBox.x - 24)
       const selectionStartY = Math.max(paneBox.y + 40, secondNodeBox.y - 24)
@@ -136,10 +131,7 @@ test.describe('Workspace Canvas - Selection', () => {
         .locator('.terminal-node')
         .filter({ hasText: 'terminal-trackpad-select-a' })
         .first()
-      const firstNodeBoxForReplace = await firstNode.boundingBox()
-      if (!firstNodeBoxForReplace) {
-        throw new Error('first node bounding box unavailable for replace drag')
-      }
+      const firstNodeBoxForReplace = await readLocatorClientRect(firstNode)
       const replaceStartX = Math.max(paneBox.x + 40, firstNodeBoxForReplace.x - 24)
       const replaceStartY = Math.max(paneBox.y + 40, firstNodeBoxForReplace.y - 24)
       const replaceEndX = Math.min(
@@ -204,10 +196,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      const paneBox = await pane.boundingBox()
-      if (!paneBox) {
-        throw new Error('workspace pane bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
 
       await dragMouse(window, {
         start: { x: paneBox.x + 120, y: paneBox.y + 120 },
@@ -270,10 +259,7 @@ test.describe('Workspace Canvas - Selection', () => {
       await expect(pane).toBeVisible()
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
-      const paneBox = await pane.boundingBox()
-      if (!paneBox) {
-        throw new Error('workspace pane bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
 
       await dragMouse(window, {
         start: { x: paneBox.x + 80, y: paneBox.y + 80 },
