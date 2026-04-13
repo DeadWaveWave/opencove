@@ -348,13 +348,23 @@ export function useWorkspaceCanvasCreateSpace({
       return
     }
 
-    window.requestAnimationFrame(() => {
+    let attemptsRemaining = 3
+
+    const retryCommitSelectedNodes = () => {
       if (commitSelectedNodes()) {
         return
       }
 
-      setContextMenu(null)
-    })
+      attemptsRemaining -= 1
+      if (attemptsRemaining <= 0) {
+        setContextMenu(null)
+        return
+      }
+
+      window.requestAnimationFrame(retryCommitSelectedNodes)
+    }
+
+    window.requestAnimationFrame(retryCommitSelectedNodes)
   }, [createSpace, reactFlow, selectedNodeIdsRef, setContextMenu])
 
   return {

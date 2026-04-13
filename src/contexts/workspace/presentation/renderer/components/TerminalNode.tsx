@@ -6,10 +6,7 @@ import { FitAddon } from '@xterm/addon-fit'
 import '@xterm/xterm/css/xterm.css'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRollingTextBuffer } from '../utils/rollingTextBuffer'
-import {
-  createTerminalCommandInputState,
-  parseTerminalCommandInput,
-} from './terminalNode/commandInput'
+import { createTerminalCommandInputState } from './terminalNode/commandInput'
 import { bindTerminalCustomKeyHandler } from './terminalNode/customKeyHandler'
 import { createPtyWriteQueue } from './terminalNode/inputBridge'
 import { registerTerminalLayoutSync } from './terminalNode/layoutSync'
@@ -43,6 +40,9 @@ import { DEFAULT_TERMINAL_FONT_FAMILY, MAX_SCROLLBACK_CHARS } from './terminalNo
 import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
 import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { hydrateTerminalFromSnapshot } from './terminalNode/hydrateFromSnapshot'
+import { bindTerminalInputHandlers } from './terminalNode/bindTerminalInputHandlers'
+import { registerWebglPixelSnappingMutationObserver } from './terminalNode/registerWebglPixelSnappingMutationObserver'
+import { useWebglPixelSnappingScheduler } from './terminalNode/useWebglPixelSnappingScheduler'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -81,11 +81,18 @@ export function TerminalNode({
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
   const isTestEnvironment = window.opencoveApi.meta.isTest
+  const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
   const outputSchedulerRef = useRef<ReturnType<typeof createTerminalOutputScheduler> | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const {
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+  } = useWebglPixelSnappingScheduler({ containerRef })
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
   const suppressPtyResizeRef = useRef(false)
@@ -144,14 +151,15 @@ export function TerminalNode({
       sessionId,
       shouldResizePty: !suppressPtyResizeRef.current,
     })
-  }, [sessionId])
+    scheduleWebglPixelSnapping()
+  }, [scheduleWebglPixelSnapping, sessionId])
   const applyTerminalTheme = useTerminalThemeApplier({
     terminalRef,
     containerRef,
     terminalThemeMode,
   })
   const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
-    enabled: isTestEnvironment,
+    enabled: isTestEnvironment || diagnosticsEnabled,
     resetKey: sessionId,
     terminalRef,
   })
@@ -165,7 +173,6 @@ export function TerminalNode({
     scheduleScrollbackPublish,
     isPointerResizingRef,
   })
-  const sizeStyle = resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })
   useEffect(() => {
     if (sessionId.trim().length === 0) {
       return undefined
@@ -182,7 +189,6 @@ export function TerminalNode({
     const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
     const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
-    const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
     const logTerminalDiagnostics =
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const terminal = new Terminal({
@@ -199,7 +205,12 @@ export function TerminalNode({
     const serializeAddon = new SerializeAddon()
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(serializeAddon)
-    let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider)
+    let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
+      onRendererKindChange: nextKind => {
+        setRendererKindAndApply(nextKind)
+      },
+    })
+    activeRendererKindRef.current = activeRenderer.kind
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
     const disposeTerminalFind = maybeBindTerminalSearchAddon({
@@ -221,6 +232,7 @@ export function TerminalNode({
     bindTerminalCustomKeyHandler({ terminal, ptyWriteQueue, onOpenFind: openTerminalFind })
     let cancelMouseServicePatch: () => void = () => undefined
     let disposeTerminalHitTargetCursorScope: () => void = () => undefined
+    let disposePositionObserver: () => void = () => undefined
     if (containerRef.current) {
       terminal.open(containerRef.current)
       containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
@@ -228,6 +240,11 @@ export function TerminalNode({
       disposeTerminalHitTargetCursorScope = registerTerminalHitTargetCursorScope({
         container: containerRef.current,
         ownerId: `${nodeId}:${sessionId}`,
+      })
+      disposePositionObserver = registerWebglPixelSnappingMutationObserver({
+        container: containerRef.current,
+        isWebglRenderer: () => activeRendererKindRef.current === 'webgl',
+        scheduleWebglPixelSnapping,
       })
       if (isTestEnvironment) {
         disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
@@ -255,36 +272,14 @@ export function TerminalNode({
     })
     let isDisposed = false,
       shouldForwardTerminalData = false
-    const dataDisposable = terminal.onData(data => {
-      if (!shouldForwardTerminalData) {
-        return
-      }
-      if (suppressPtyResizeRef.current) {
-        suppressPtyResizeRef.current = false
-        syncTerminalSize()
-      }
-      ptyWriteQueue.enqueue(data)
-      ptyWriteQueue.flush()
-      const commandRunHandler = onCommandRunRef.current
-      if (!commandRunHandler) {
-        return
-      }
-      const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
-      commandInputStateRef.current = parsed.nextState
-      parsed.commands.forEach(command => {
-        commandRunHandler(command)
-      })
-    })
-    const binaryDisposable = terminal.onBinary(data => {
-      if (!shouldForwardTerminalData) {
-        return
-      }
-      if (suppressPtyResizeRef.current) {
-        suppressPtyResizeRef.current = false
-        syncTerminalSize()
-      }
-      ptyWriteQueue.enqueue(data, 'binary')
-      ptyWriteQueue.flush()
+    const { dataDisposable, binaryDisposable } = bindTerminalInputHandlers({
+      terminal,
+      shouldForwardTerminalData: () => shouldForwardTerminalData,
+      suppressPtyResizeRef,
+      syncTerminalSize,
+      ptyWriteQueue,
+      onCommandRunRef,
+      commandInputStateRef,
     })
 
     let isHydrating = true
@@ -404,6 +399,7 @@ export function TerminalNode({
       })
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
+      disposePositionObserver()
       activeRenderer.dispose()
       isDisposed = true
       disposeLayoutSync()
@@ -429,6 +425,8 @@ export function TerminalNode({
       terminal.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
+      activeRendererKindRef.current = 'dom'
+      cancelWebglPixelSnapping()
     }
   }, [
     cancelScrollbackPublish,
@@ -436,10 +434,15 @@ export function TerminalNode({
     bindSearchAddonToFind,
     nodeId,
     disposeScrollbackPublish,
+    diagnosticsEnabled,
     markScrollbackDirty,
     openTerminalFind,
     scrollbackBufferRef,
     scheduleTranscriptSync,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+    activeRendererKindRef,
     sessionId,
     syncTerminalSize,
     terminalThemeMode,
@@ -455,7 +458,6 @@ export function TerminalNode({
     width,
     height,
   })
-  const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
     handlePointerDownCapture: handleTerminalBodyPointerDownCapture,
@@ -468,7 +470,7 @@ export function TerminalNode({
       kind={kind}
       labelColor={labelColor}
       terminalThemeMode={terminalThemeMode}
-      isSelected={hasSelectedDragSurface}
+      isSelected={isDragSurfaceSelectionMode && (isSelected || isDragging)}
       isDragging={isDragging}
       status={status}
       directoryMismatch={directoryMismatch}
@@ -476,7 +478,7 @@ export function TerminalNode({
       sessionId={sessionId}
       isTerminalHydrated={isTerminalHydrated}
       transcriptRef={transcriptRef}
-      sizeStyle={sizeStyle}
+      sizeStyle={resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })}
       containerRef={containerRef}
       handleTerminalBodyPointerDownCapture={handleTerminalBodyPointerDownCapture}
       handleTerminalBodyPointerMoveCapture={handleTerminalBodyPointerMoveCapture}

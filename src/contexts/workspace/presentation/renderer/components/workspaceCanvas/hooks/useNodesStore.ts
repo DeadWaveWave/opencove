@@ -20,6 +20,7 @@ import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
+import { resolveTerminalProviderHintFromCommand } from './useNodesStore.terminalProviderHint'
 
 export function useWorkspaceCanvasNodesStore({
   nodes,
@@ -281,6 +282,7 @@ export function useWorkspaceCanvasNodesStore({
       if (normalizedTitle.length === 0) {
         return
       }
+      const terminalProviderHint = resolveTerminalProviderHintFromCommand(normalizedTitle)
 
       setNodes(
         prevNodes => {
@@ -291,11 +293,14 @@ export function useWorkspaceCanvasNodesStore({
               return node
             }
 
-            if (node.data.titlePinnedByUser === true) {
-              return node
-            }
-
-            if (node.data.title === normalizedTitle) {
+            const nextTitle =
+              node.data.titlePinnedByUser === true ? node.data.title : normalizedTitle
+            const nextTerminalProviderHint =
+              terminalProviderHint ?? node.data.terminalProviderHint ?? null
+            if (
+              node.data.title === nextTitle &&
+              (node.data.terminalProviderHint ?? null) === nextTerminalProviderHint
+            ) {
               return node
             }
 
@@ -304,7 +309,8 @@ export function useWorkspaceCanvasNodesStore({
               ...node,
               data: {
                 ...node.data,
-                title: normalizedTitle,
+                title: nextTitle,
+                terminalProviderHint: nextTerminalProviderHint,
               },
             }
           })

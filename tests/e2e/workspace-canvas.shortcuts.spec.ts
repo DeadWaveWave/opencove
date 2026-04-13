@@ -78,6 +78,33 @@ async function readCanvasMetrics(window: Page): Promise<{
   })
 }
 
+async function focusWorkspaceCanvas(window: Page): Promise<void> {
+  await window.evaluate(() => {
+    const { activeElement } = document
+    if (activeElement instanceof HTMLElement) {
+      activeElement.blur()
+    }
+
+    const canvas = document.querySelector('.workspace-canvas')
+    if (canvas instanceof HTMLElement) {
+      canvas.focus({ preventScroll: true })
+    }
+  })
+
+  await expect
+    .poll(async () => {
+      return await window.evaluate(() => {
+        return (
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement.classList.contains('workspace-canvas')
+        )
+      })
+    })
+    .toBe(true)
+
+  await window.waitForTimeout(50)
+}
+
 test.describe('Workspace Canvas - Shortcuts', () => {
   test('creates a space from the selected nodes via shortcut', async () => {
     const { electronApp, window } = await launchApp()
@@ -98,27 +125,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         .first()
         .click({ position: { x: 40, y: 20 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
-      await window.evaluate(() => {
-        const { activeElement } = document
-        if (activeElement instanceof HTMLElement) {
-          activeElement.blur()
-        }
-
-        const canvas = document.querySelector('.workspace-canvas')
-        if (canvas instanceof HTMLElement) {
-          canvas.focus({ preventScroll: true })
-        }
-      })
-      await expect
-        .poll(async () => {
-          return await window.evaluate(() => {
-            return (
-              document.activeElement instanceof HTMLElement &&
-              document.activeElement.classList.contains('workspace-canvas')
-            )
-          })
-        })
-        .toBe(true)
+      await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+G`)
 
       await expect
@@ -248,6 +255,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         },
       )
 
+      await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+]`)
       await expect
         .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)

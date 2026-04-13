@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto'
 import {
   ensureGitRepo,
   normalizeOptionalText,
@@ -15,6 +14,7 @@ import {
 } from './GitWorktreeRemoveCleanup'
 import { ensureGitWorktreeRemovable } from './GitWorktreeRemovePreflight'
 import { ensureGitRepoHasCommits } from './GitWorktreeRepoGuards'
+import { buildCandidateWorktreeDirectoryName } from './GitWorktreeDirectoryName'
 
 export { getGitStatusSummary } from './GitWorktreeStatusSummary'
 
@@ -208,23 +208,6 @@ export interface RenameGitBranchInput {
   nextName: string
 }
 
-function toSafeWorktreeDirectorySeed(branchName: string): string {
-  const slug = branchName
-    .trim()
-    .toLowerCase()
-    .replace(/[\s._/\\]+/g, '-')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48)
-
-  return slug.length > 0 ? slug : 'worktree'
-}
-
-function buildCandidateWorktreeDirectoryName(branchName: string): string {
-  return `${toSafeWorktreeDirectorySeed(branchName)}--${randomBytes(4).toString('hex')}`
-}
-
 async function assertValidGitBranchName(
   repoPath: string,
   branchName: string,
@@ -321,6 +304,10 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
 
   const alreadyCheckedOut = worktreesSnapshot.worktrees.find(entry => entry.branch === branchName)
   if (alreadyCheckedOut) {
+    if (input.branchMode.kind === 'existing') {
+      return alreadyCheckedOut
+    }
+
     throw new Error(`Branch "${branchName}" is already checked out at ${alreadyCheckedOut.path}`)
   }
 

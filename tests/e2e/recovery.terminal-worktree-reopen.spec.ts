@@ -47,10 +47,6 @@ async function readTerminalBoundDirectory(window: Parameters<typeof clearAndSeed
   })
 }
 
-function escapeRegex(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 test.describe('Recovery - Terminal worktree reopen', () => {
   test('reopens a space terminal in its bound worktree directory after app restart', async () => {
     const userDataDir = await createTestUserDataDir()
@@ -118,6 +114,10 @@ test.describe('Recovery - Terminal worktree reopen', () => {
 
       try {
         const cwdToken = `OPENCOVE_RESTART_CWD_${Date.now()}:`
+        const normalizeTerminalText = (value: string | null): string =>
+          (value ?? '').replace(/\s+/g, '')
+        const normalizedToken = normalizeTerminalText(cwdToken)
+        const normalizedWorktreeName = normalizeTerminalText(worktreeName)
         const restartedTerminal = restartedWindow.locator('.terminal-node').first()
         await expect(restartedTerminal).toBeVisible()
         await expect(restartedTerminal.locator('.xterm')).toBeVisible()
@@ -134,8 +134,16 @@ test.describe('Recovery - Terminal worktree reopen', () => {
         await restartedWindow.keyboard.press('Enter')
 
         await expect
-          .poll(async () => await restartedTerminal.textContent(), { timeout: 30_000 })
-          .toMatch(new RegExp(`${escapeRegex(cwdToken)}[\\s\\S]*${escapeRegex(worktreeName)}`))
+          .poll(async () => {
+            const normalized = normalizeTerminalText(await restartedTerminal.textContent())
+            const tokenIndex = normalized.indexOf(normalizedToken)
+            if (tokenIndex < 0) {
+              return false
+            }
+
+            return normalized.slice(tokenIndex).includes(normalizedWorktreeName)
+          })
+          .toBe(true)
       } finally {
         await restartedApp.close()
       }

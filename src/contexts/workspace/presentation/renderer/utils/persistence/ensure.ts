@@ -333,6 +333,13 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     kind,
     profileId: normalizeOptionalString(record.profileId),
     runtimeKind,
+    terminalProviderHint:
+      record.terminalProviderHint === 'claude-code' ||
+      record.terminalProviderHint === 'codex' ||
+      record.terminalProviderHint === 'opencode' ||
+      record.terminalProviderHint === 'gemini'
+        ? record.terminalProviderHint
+        : null,
     labelColorOverride: normalizeNodeLabelColorOverride(record.labelColorOverride),
     status: normalizeAgentRuntimeStatus(record.status),
     startedAt: normalizeOptionalString(record.startedAt),

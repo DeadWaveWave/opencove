@@ -15,6 +15,7 @@ export function SpaceWorktreeWindowDialog({
   isMutating,
   isSuggesting,
   branches,
+  branchesWithWorktrees,
   currentBranch,
   changedFileCount,
   branchMode,
@@ -49,6 +50,7 @@ export function SpaceWorktreeWindowDialog({
   isMutating: boolean
   isSuggesting: boolean
   branches: string[]
+  branchesWithWorktrees: ReadonlySet<string>
   currentBranch: string | null
   changedFileCount: number
   branchMode: BranchMode
@@ -180,6 +182,7 @@ export function SpaceWorktreeWindowDialog({
           isSpaceOnWorkspaceRoot={isSpaceOnWorkspaceRoot}
           changedFileCount={changedFileCount}
           branches={branches}
+          branchesWithWorktrees={branchesWithWorktrees}
           currentBranch={currentBranch}
           branchMode={branchMode}
           newBranchName={newBranchName}
