@@ -47,7 +47,6 @@
 .workspace-space-region__label-group {
   position: absolute;
   top: -11px;
-  left: 10px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -55,6 +54,15 @@
   max-width: min(760px, calc((100% - 32px) / 2));
   overflow: hidden;
   pointer-events: auto;
+}
+
+.workspace-space-region__label-group--left {
+  left: 10px;
+}
+
+.workspace-space-region__label-group--right {
+  right: 10px;
+  justify-content: flex-end;
 }
 
 .workspace-space-region__label,
@@ -76,7 +84,7 @@
   background: var(--cove-window-surface);
   color: var(--cove-text);
   cursor: text;
-  flex: 0 1 auto;
+  flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -116,6 +124,7 @@
   padding: 1px 8px;
   cursor: pointer;
   white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 .workspace-space-region__menu:hover {
@@ -340,6 +349,7 @@
 .workspace-space-region__branch-badge {
   gap: 8px;
   max-width: 520px;
+  flex: 1 1 auto;
   border: 1px solid rgba(255, 196, 112, 0.52);
   background: rgba(55, 35, 12, 0.92);
   color: rgba(255, 228, 180, 0.96);
