@@ -21,6 +21,7 @@ export function useWorkspaceCanvasShortcutActions({
   spaces,
   agentSettings,
   workspacePath,
+  environmentVariables,
   canvasRef,
   setContextMenu,
   setEmptySelectionPrompt,
@@ -46,6 +47,7 @@ export function useWorkspaceCanvasShortcutActions({
     | 'standardWindowSizeBucket'
   >
   workspacePath: string
+  environmentVariables?: Record<string, string>
   canvasRef: React.RefObject<HTMLDivElement | null>
   setContextMenu: React.Dispatch<React.SetStateAction<import('../types').ContextMenuState | null>>
   setEmptySelectionPrompt: React.Dispatch<
@@ -116,6 +118,7 @@ export function useWorkspaceCanvasShortcutActions({
       defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
       standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
       workspacePath,
+      environmentVariables,
       spacesRef,
       nodesRef,
       setNodes,
@@ -128,6 +131,7 @@ export function useWorkspaceCanvasShortcutActions({
     cancelSpaceRename,
     canvasRef,
     createNodeForSession,
+    environmentVariables,
     nodesRef,
     onSpacesChange,
     reactFlow,

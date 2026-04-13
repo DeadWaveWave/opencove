@@ -40,6 +40,7 @@ export interface LaunchAgentInput {
   agentFullAccess?: boolean
   cols?: number
   rows?: number
+  env?: Record<string, string>
 }
 
 export interface LaunchAgentResult {

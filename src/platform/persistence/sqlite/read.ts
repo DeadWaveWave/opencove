@@ -16,6 +16,26 @@ import {
 } from './schema'
 import { safeJsonParse } from './utils'
 
+function normalizeEnvironmentVariables(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const result: Record<string, string> = {}
+  let count = 0
+
+  for (const [key, val] of Object.entries(value)) {
+    const trimmedKey = typeof key === 'string' ? key.trim() : ''
+    if (trimmedKey.length === 0) continue
+    if (typeof val !== 'string') continue
+    result[trimmedKey] = val
+    count += 1
+    if (count >= 100) break
+  }
+
+  return result
+}
+
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return []
@@ -141,6 +161,9 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         worktreesRoot: workspace.worktreesRoot,
         pullRequestBaseBranchOptions: normalizeStringArray(
           safeJsonParse(workspace.pullRequestBaseBranchOptionsJson),
+        ),
+        environmentVariables: normalizeEnvironmentVariables(
+          safeJsonParse(workspace.environmentVariablesJson),
         ),
         spaceArchiveRecords: (() => {
           const parsed = safeJsonParse(workspace.spaceArchiveRecordsJson)
