@@ -131,6 +131,9 @@ export const zhCNSettingsPanel = {
     },
     focusOnClickLabel: '点击自动定位',
     focusOnClickHelp: '点击节点时自动将画布居中到该节点。',
+    focusVisibleCenterLabel: '以可视画布居中',
+    focusVisibleCenterHelp:
+      '自动定位时以可视画布的中心为参照。打开左侧栏时，会在剩余右侧空间居中。',
     focusTargetZoomLabel: '定位缩放',
     focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
   },
@@ -292,6 +295,9 @@ export const zhCNSettingsPanel = {
     home: {
       title: 'Home Worker',
       help: '选择 Desktop 读写 durable state 的位置。Worker Web UI 当前需要 Local Worker。',
+      packagedHelp: 'OpenCove 会直接使用这台电脑上的 Worker。通常你只需要在下面启动或重启它。',
+      packagedModeLabel: '当前使用',
+      packagedModeValue: '本机 Worker',
       modeLabel: '模式',
       mode: {
         standalone: 'Standalone（无 Worker）',

@@ -89,6 +89,36 @@ describe('TerminalProfileResolver', () => {
     ])
   })
 
+  it('does not hang when WSL distro discovery stalls', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      commandDiscoveryTimeoutMs: 10,
+      locateWindowsCommands: async commands => {
+        if (commands.includes('powershell.exe')) {
+          return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+        }
+
+        return []
+      },
+      listWslDistros: async () => await new Promise<string[]>(() => undefined),
+    })
+
+    const result = await Promise.race<
+      Awaited<ReturnType<typeof resolver.listProfiles>> | 'timed-out'
+    >([
+      resolver.listProfiles(),
+      new Promise(resolve => {
+        setTimeout(() => resolve('timed-out'), 100)
+      }),
+    ])
+
+    expect(result).not.toBe('timed-out')
+    expect(result).toEqual({
+      profiles: [{ id: 'powershell', label: 'PowerShell', runtimeKind: 'windows' }],
+      defaultProfileId: 'powershell',
+    })
+  })
+
   it('resolves WSL sessions with linux cwd translation and Windows host cwd fallback', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',
@@ -142,6 +172,28 @@ describe('TerminalProfileResolver', () => {
     expect(result.runtimeKind).toBe('windows')
     expect(result.env.CHERE_INVOKING).toBe('1')
     expect(result.env.FOO).toBe('bar')
+  })
+
+  it('adds terminal capability env for Windows PowerShell sessions', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32' }),
+      locateWindowsCommands: async () => [
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ],
+      listWslDistros: async () => [],
+    })
+
+    const result = await resolver.resolveTerminalSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'powershell',
+      cols: 80,
+      rows: 24,
+    })
+
+    expect(result.env.TERM).toBe('xterm-256color')
+    expect(result.env.COLORTERM).toBe('truecolor')
+    expect(result.env.TERM_PROGRAM).toBe('OpenCove')
   })
 
   it('matches Windows profile ids case-insensitively during restore', async () => {

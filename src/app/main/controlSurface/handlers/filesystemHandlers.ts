@@ -1,5 +1,4 @@
 import { fileURLToPath } from 'node:url'
-import { shell } from 'electron'
 import type { ControlSurface } from '../controlSurface'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -7,6 +6,7 @@ import { createLocalFileSystemPort } from '../../../../contexts/filesystem/infra
 import {
   createDirectoryUseCase,
   copyEntryUseCase,
+  deleteEntryUseCase,
   readDirectoryUseCase,
   readFileTextUseCase,
   moveEntryUseCase,
@@ -177,9 +177,12 @@ export function registerFilesystemHandlers(
   controlSurface: ControlSurface,
   deps: {
     approvedWorkspaces: ApprovedWorkspaceStore
+    deleteEntry?: (uri: string) => Promise<void>
   },
 ): void {
   const port = createLocalFileSystemPort()
+  const deleteEntry =
+    deps.deleteEntry ?? (async (uri: string) => await deleteEntryUseCase(port, { uri }))
 
   const assertApprovedUri = async (uri: string, debugMessage: string): Promise<void> => {
     const path = fileURLToPath(uri)
@@ -278,7 +281,7 @@ export function registerFilesystemHandlers(
     validate: normalizeDeleteEntryPayload,
     handle: async (_ctx, payload): Promise<void> => {
       await assertApprovedUri(payload.uri, 'filesystem.deleteEntry uri is outside approved roots')
-      await shell.trashItem(fileURLToPath(payload.uri))
+      await deleteEntry(payload.uri)
     },
     defaultErrorCode: 'common.unexpected',
   })

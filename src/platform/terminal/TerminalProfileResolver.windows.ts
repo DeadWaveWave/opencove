@@ -8,6 +8,7 @@ export interface TerminalProfileResolverDeps {
   processCwd: () => string
   locateWindowsCommands: (commands: readonly string[]) => Promise<string[]>
   listWslDistros: () => Promise<string[]>
+  commandDiscoveryTimeoutMs: number
 }
 
 export interface ResolvedTerminalSpawn {
@@ -26,6 +27,27 @@ export interface InternalTerminalProfile extends TerminalProfile {
 export interface TerminalProfileSnapshot {
   profiles: InternalTerminalProfile[]
   defaultProfileId: string | null
+}
+
+async function withDiscoveryTimeout<T>(
+  operation: Promise<T>,
+  timeoutMs: number,
+  fallback: T,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null
+
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>(resolve => {
+        timer = setTimeout(() => resolve(fallback), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer !== null) {
+      clearTimeout(timer)
+    }
+  }
 }
 
 function isWindowsDrivePath(value: string): boolean {
@@ -179,7 +201,11 @@ export async function loadWindowsProfiles(
   const resolveHostCwd = (cwd: string): string =>
     resolveWindowsHostCwd(cwd, deps.homeDir().trim(), deps.processCwd())
 
-  const powershellCommands = await deps.locateWindowsCommands(['powershell.exe', 'powershell'])
+  const powershellCommands = await withDiscoveryTimeout(
+    deps.locateWindowsCommands(['powershell.exe', 'powershell']),
+    deps.commandDiscoveryTimeoutMs,
+    [],
+  )
   if (powershellCommands.length > 0) {
     const command = powershellCommands[0] ?? 'powershell.exe'
     profiles.push({
@@ -197,7 +223,11 @@ export async function loadWindowsProfiles(
     })
   }
 
-  const pwshCommands = await deps.locateWindowsCommands(['pwsh.exe', 'pwsh'])
+  const pwshCommands = await withDiscoveryTimeout(
+    deps.locateWindowsCommands(['pwsh.exe', 'pwsh']),
+    deps.commandDiscoveryTimeoutMs,
+    [],
+  )
   if (pwshCommands.length > 0) {
     const command = pwshCommands[0] ?? 'pwsh.exe'
     profiles.push({
@@ -215,9 +245,13 @@ export async function loadWindowsProfiles(
     })
   }
 
-  const bashCommands = (await deps.locateWindowsCommands(['bash.exe', 'bash'])).filter(
-    shouldIncludeWindowsBashProfile,
-  )
+  const bashCommands = (
+    await withDiscoveryTimeout(
+      deps.locateWindowsCommands(['bash.exe', 'bash']),
+      deps.commandDiscoveryTimeoutMs,
+      [],
+    )
+  ).filter(shouldIncludeWindowsBashProfile)
   const bashProfiles = bashCommands.map<InternalTerminalProfile>(command => ({
     id: `bash:${command.toLowerCase()}`,
     label: buildBashLabel(command),
@@ -236,7 +270,9 @@ export async function loadWindowsProfiles(
   }))
   profiles.push(...disambiguateProfileLabels(bashProfiles))
 
-  const distros = (await deps.listWslDistros()).filter(shouldIncludeWslDistro)
+  const distros = (
+    await withDiscoveryTimeout(deps.listWslDistros(), deps.commandDiscoveryTimeoutMs, [])
+  ).filter(shouldIncludeWslDistro)
   for (const distro of distros) {
     profiles.push({
       id: `wsl:${distro}`,

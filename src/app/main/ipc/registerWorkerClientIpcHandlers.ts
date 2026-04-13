@@ -8,6 +8,7 @@ import type {
 import type { IpcRegistrationDisposable } from './types'
 import { registerHandledIpc } from './handle'
 import {
+  ensureHomeWorkerConfig,
   readHomeWorkerConfig,
   setHomeWorkerConfig,
   setHomeWorkerWebUiSecurity,
@@ -15,30 +16,38 @@ import {
 } from '../worker/homeWorkerConfig'
 
 export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
+  const configOptions = {
+    allowStandaloneMode: app.isPackaged === false,
+    allowRemoteMode: app.isPackaged === false,
+  }
+
   registerHandledIpc(
     IPC_CHANNELS.workerClientGetConfig,
-    async () => await readHomeWorkerConfig(app.getPath('userData')),
+    async () =>
+      app.isPackaged
+        ? await ensureHomeWorkerConfig(app.getPath('userData'), configOptions)
+        : await readHomeWorkerConfig(app.getPath('userData'), configOptions),
     { defaultErrorCode: 'common.unexpected' },
   )
 
   registerHandledIpc(
     IPC_CHANNELS.workerClientSetConfig,
     async (_event, payload: SetHomeWorkerConfigInput) =>
-      await setHomeWorkerConfig(app.getPath('userData'), payload),
+      await setHomeWorkerConfig(app.getPath('userData'), payload, configOptions),
     { defaultErrorCode: 'common.unexpected' },
   )
 
   registerHandledIpc(
     IPC_CHANNELS.workerClientSetWebUiSettings,
     async (_event, payload: SetHomeWorkerWebUiSettingsInput) =>
-      await setHomeWorkerWebUiSettings(app.getPath('userData'), payload),
+      await setHomeWorkerWebUiSettings(app.getPath('userData'), payload, configOptions),
     { defaultErrorCode: 'common.unexpected' },
   )
 
   registerHandledIpc(
     IPC_CHANNELS.workerClientSetWebUiSecurity,
     async (_event, payload: SetHomeWorkerWebUiSecurityInput) =>
-      await setHomeWorkerWebUiSecurity(app.getPath('userData'), payload),
+      await setHomeWorkerWebUiSecurity(app.getPath('userData'), payload, configOptions),
     { defaultErrorCode: 'common.unexpected' },
   )
 

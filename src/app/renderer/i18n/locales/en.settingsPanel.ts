@@ -131,6 +131,9 @@ export const enSettingsPanel = {
     },
     focusOnClickLabel: 'Auto-focus on Click',
     focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
+    focusVisibleCenterLabel: 'Center Within Visible Canvas',
+    focusVisibleCenterHelp:
+      'When focusing, use the center of the visible canvas. If the left sidebar is open, focus within the remaining space.',
     focusTargetZoomLabel: 'Target Zoom',
     focusTargetZoomHelp:
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
@@ -302,6 +305,10 @@ export const enSettingsPanel = {
     home: {
       title: 'Home Worker',
       help: 'Choose where Desktop reads and writes durable state. Worker Web UI currently requires Local Worker.',
+      packagedHelp:
+        'OpenCove uses the worker on this device. Most of the time, you only need to start or restart it below.',
+      packagedModeLabel: 'In Use',
+      packagedModeValue: 'Worker on this device',
       modeLabel: 'Mode',
       mode: {
         standalone: 'Standalone (No Worker)',

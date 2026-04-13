@@ -110,6 +110,7 @@ export function registerControlSurfaceHttpServer(
     webSessions,
     getPersistenceStore,
     ptyRuntime,
+    deleteEntry: options.deleteEntry,
     ptyStreamHub: ptyStreamService.hub,
   })
   let closed = false

@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
+import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
@@ -20,6 +21,36 @@ import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
+
+function resolveTerminalProviderHintFromCommand(command: string): AgentProvider | null {
+  const normalizedCommand = command.trim()
+  if (normalizedCommand.length === 0) {
+    return null
+  }
+
+  const firstToken = normalizedCommand.split(/\s+/, 1)[0] ?? ''
+  const unquotedToken = firstToken.replace(/^['"]+|['"]+$/g, '')
+  const basename = unquotedToken.replace(/^.*[\\/]/, '')
+  const executableName = basename.replace(/\.(exe|cmd|bat|ps1|sh)$/i, '').toLowerCase()
+
+  if (executableName === 'claude' || executableName === 'claude-code') {
+    return 'claude-code'
+  }
+
+  if (executableName === 'codex') {
+    return 'codex'
+  }
+
+  if (executableName === 'opencode') {
+    return 'opencode'
+  }
+
+  if (executableName === 'gemini') {
+    return 'gemini'
+  }
+
+  return null
+}
 
 export function useWorkspaceCanvasNodesStore({
   nodes,
@@ -281,6 +312,7 @@ export function useWorkspaceCanvasNodesStore({
       if (normalizedTitle.length === 0) {
         return
       }
+      const terminalProviderHint = resolveTerminalProviderHintFromCommand(normalizedTitle)
 
       setNodes(
         prevNodes => {
@@ -291,11 +323,14 @@ export function useWorkspaceCanvasNodesStore({
               return node
             }
 
-            if (node.data.titlePinnedByUser === true) {
-              return node
-            }
-
-            if (node.data.title === normalizedTitle) {
+            const nextTitle =
+              node.data.titlePinnedByUser === true ? node.data.title : normalizedTitle
+            const nextTerminalProviderHint =
+              terminalProviderHint ?? node.data.terminalProviderHint ?? null
+            if (
+              node.data.title === nextTitle &&
+              (node.data.terminalProviderHint ?? null) === nextTerminalProviderHint
+            ) {
               return node
             }
 
@@ -304,7 +339,8 @@ export function useWorkspaceCanvasNodesStore({
               ...node,
               data: {
                 ...node.data,
-                title: normalizedTitle,
+                title: nextTitle,
+                terminalProviderHint: nextTerminalProviderHint,
               },
             }
           })

@@ -321,6 +321,10 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
 
   const alreadyCheckedOut = worktreesSnapshot.worktrees.find(entry => entry.branch === branchName)
   if (alreadyCheckedOut) {
+    if (input.branchMode.kind === 'existing') {
+      return alreadyCheckedOut
+    }
+
     throw new Error(`Branch "${branchName}" is already checked out at ${alreadyCheckedOut.path}`)
   }
 

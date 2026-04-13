@@ -33,6 +33,7 @@ export function registerControlSurfaceHandlers(
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyRuntime: MultiEndpointPtyRuntime
     ptyStreamHub: PtyStreamHub
+    deleteEntry?: (uri: string) => Promise<void>
   },
 ): void {
   registerSystemHandlers(controlSurface)
@@ -49,6 +50,7 @@ export function registerControlSurfaceHandlers(
   })
   registerFilesystemHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
+    deleteEntry: deps.deleteEntry,
   })
   registerFilesystemMountHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,

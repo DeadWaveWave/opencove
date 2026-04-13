@@ -61,6 +61,9 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         start: { x: startX, y: startY },
         initialTarget: { x: endX, y: endY },
         steps: 10,
+        settleAfterPressMs: 64,
+        settleBeforeReleaseMs: 96,
+        settleAfterReleaseMs: 64,
       })
       await drag.moveTo({ x: endX, y: endY }, { settleAfterMoveMs: 48 })
 
@@ -136,6 +139,9 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         start: { x: startX, y: startY },
         initialTarget: { x: endX, y: endY },
         steps: 10,
+        settleAfterPressMs: 64,
+        settleBeforeReleaseMs: 96,
+        settleAfterReleaseMs: 64,
       })
       await drag.moveTo({ x: endX, y: endY }, { settleAfterMoveMs: 48 })
 

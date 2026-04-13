@@ -138,6 +138,35 @@ export type HomeWorkerConfigFile = {
   updatedAt: string | null
 }
 
+export interface HomeWorkerConfigModeOptions {
+  allowStandaloneMode?: boolean
+  allowRemoteMode?: boolean
+}
+
+function isStandaloneModeAllowed(options?: HomeWorkerConfigModeOptions): boolean {
+  return options?.allowStandaloneMode ?? true
+}
+
+function isRemoteModeAllowed(options?: HomeWorkerConfigModeOptions): boolean {
+  return options?.allowRemoteMode ?? true
+}
+
+function resolveDefaultHomeWorkerMode(options?: HomeWorkerConfigModeOptions): HomeWorkerMode {
+  return isStandaloneModeAllowed(options) ? 'standalone' : 'local'
+}
+
+function isModeSupported(mode: HomeWorkerMode, options?: HomeWorkerConfigModeOptions): boolean {
+  if (mode === 'standalone') {
+    return isStandaloneModeAllowed(options)
+  }
+
+  if (mode === 'remote') {
+    return isRemoteModeAllowed(options)
+  }
+
+  return true
+}
+
 function toDto(config: HomeWorkerConfigFile): HomeWorkerConfigDto {
   return {
     version: 1,
@@ -153,18 +182,62 @@ function toDto(config: HomeWorkerConfigFile): HomeWorkerConfigDto {
   }
 }
 
-function createDefaultHomeWorkerConfigFile(): HomeWorkerConfigFile {
+function createDefaultHomeWorkerConfigFile(
+  options?: HomeWorkerConfigModeOptions,
+): HomeWorkerConfigFile {
   return {
     version: 1,
-    mode: 'standalone',
+    mode: resolveDefaultHomeWorkerMode(options),
     remote: null,
     webUi: { ...DEFAULT_WEB_UI_CONFIG },
     updatedAt: null,
   }
 }
 
-export function createDefaultHomeWorkerConfig(): HomeWorkerConfigDto {
-  return toDto(createDefaultHomeWorkerConfigFile())
+function normalizeConfigFile(
+  value: unknown,
+  options?: HomeWorkerConfigModeOptions,
+): { config: HomeWorkerConfigFile; repaired: boolean } {
+  if (!isRecord(value) || value.version !== 1) {
+    return { config: createDefaultHomeWorkerConfigFile(options), repaired: true }
+  }
+
+  const parsedMode = normalizeHomeWorkerMode(value.mode)
+  if (!parsedMode) {
+    return { config: createDefaultHomeWorkerConfigFile(options), repaired: true }
+  }
+
+  const parsedRemote = normalizeRemoteEndpoint(value.remote)
+  const mode =
+    parsedMode === 'remote' && parsedRemote === null
+      ? resolveDefaultHomeWorkerMode(options)
+      : isModeSupported(parsedMode, options)
+        ? parsedMode
+        : resolveDefaultHomeWorkerMode(options)
+  const remote = mode === 'remote' ? parsedRemote : null
+  const updatedAt = normalizeOptionalString(value.updatedAt)
+  const webUi = normalizeWebUiConfig(value.webUi)
+
+  return {
+    config: {
+      version: 1,
+      mode,
+      remote,
+      webUi,
+      updatedAt,
+    },
+    repaired:
+      mode !== parsedMode ||
+      remote !== parsedRemote ||
+      !isRecord(value.webUi) ||
+      updatedAt !== (typeof value.updatedAt === 'string' ? value.updatedAt.trim() || null : null),
+  }
+}
+
+export function createDefaultHomeWorkerConfig(
+  options?: HomeWorkerConfigModeOptions,
+): HomeWorkerConfigDto {
+  return toDto(createDefaultHomeWorkerConfigFile(options))
 }
 
 export function resolveHomeWorkerConfigPath(userDataPath: string): string {
@@ -173,39 +246,52 @@ export function resolveHomeWorkerConfigPath(userDataPath: string): string {
 
 export async function readHomeWorkerConfigFile(
   userDataPath: string,
+  options?: HomeWorkerConfigModeOptions,
 ): Promise<HomeWorkerConfigFile> {
   const filePath = resolveHomeWorkerConfigPath(userDataPath)
 
   try {
     const raw = await readFile(filePath, 'utf8')
     const parsed = JSON.parse(raw) as unknown
-    if (!isRecord(parsed) || parsed.version !== 1) {
-      return createDefaultHomeWorkerConfigFile()
-    }
-
-    const mode = normalizeHomeWorkerMode(parsed.mode)
-    if (!mode) {
-      return createDefaultHomeWorkerConfigFile()
-    }
-
-    const remote = normalizeRemoteEndpoint(parsed.remote)
-    const updatedAt = normalizeOptionalString(parsed.updatedAt)
-    const webUi = normalizeWebUiConfig(parsed.webUi)
-
-    return {
-      version: 1,
-      mode,
-      remote,
-      webUi,
-      updatedAt,
-    }
+    return normalizeConfigFile(parsed, options).config
   } catch {
-    return createDefaultHomeWorkerConfigFile()
+    return createDefaultHomeWorkerConfigFile(options)
   }
 }
 
-export async function readHomeWorkerConfig(userDataPath: string): Promise<HomeWorkerConfigDto> {
-  return toDto(await readHomeWorkerConfigFile(userDataPath))
+export async function ensureHomeWorkerConfigFile(
+  userDataPath: string,
+  options?: HomeWorkerConfigModeOptions,
+): Promise<HomeWorkerConfigFile> {
+  const filePath = resolveHomeWorkerConfigPath(userDataPath)
+
+  try {
+    const raw = await readFile(filePath, 'utf8')
+    const parsed = JSON.parse(raw) as unknown
+    const normalized = normalizeConfigFile(parsed, options)
+    if (normalized.repaired) {
+      await writeHomeWorkerConfigFile(userDataPath, normalized.config)
+    }
+    return normalized.config
+  } catch {
+    const config = createDefaultHomeWorkerConfigFile(options)
+    await writeHomeWorkerConfigFile(userDataPath, config)
+    return config
+  }
+}
+
+export async function readHomeWorkerConfig(
+  userDataPath: string,
+  options?: HomeWorkerConfigModeOptions,
+): Promise<HomeWorkerConfigDto> {
+  return toDto(await readHomeWorkerConfigFile(userDataPath, options))
+}
+
+export async function ensureHomeWorkerConfig(
+  userDataPath: string,
+  options?: HomeWorkerConfigModeOptions,
+): Promise<HomeWorkerConfigDto> {
+  return toDto(await ensureHomeWorkerConfigFile(userDataPath, options))
 }
 
 async function writeHomeWorkerConfigFile(
@@ -220,6 +306,7 @@ async function writeHomeWorkerConfigFile(
 export async function setHomeWorkerConfig(
   userDataPath: string,
   input: SetHomeWorkerConfigInput,
+  options?: HomeWorkerConfigModeOptions,
 ): Promise<HomeWorkerConfigDto> {
   if (!isRecord(input)) {
     throw createAppError('common.invalid_input', { debugMessage: 'Invalid home worker config.' })
@@ -228,6 +315,12 @@ export async function setHomeWorkerConfig(
   const mode = normalizeHomeWorkerMode(input.mode)
   if (!mode) {
     throw createAppError('common.invalid_input', { debugMessage: 'Invalid home worker mode.' })
+  }
+
+  if (!isModeSupported(mode, options)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: `Home worker mode "${mode}" is disabled in this build.`,
+    })
   }
 
   const remote = normalizeRemoteEndpoint(input.remote)
@@ -243,7 +336,7 @@ export async function setHomeWorkerConfig(
     })
   }
 
-  const previous = await readHomeWorkerConfigFile(userDataPath)
+  const previous = await readHomeWorkerConfigFile(userDataPath, options)
   const next: HomeWorkerConfigFile = {
     version: 1,
     mode,
@@ -259,6 +352,7 @@ export async function setHomeWorkerConfig(
 export async function setHomeWorkerWebUiSecurity(
   userDataPath: string,
   input: SetHomeWorkerWebUiSecurityInput,
+  options?: HomeWorkerConfigModeOptions,
 ): Promise<HomeWorkerConfigDto> {
   if (!isRecord(input)) {
     throw createAppError('common.invalid_input', {
@@ -272,7 +366,7 @@ export async function setHomeWorkerWebUiSecurity(
   }
 
   const password = normalizeOptionalString(input.password)
-  const previous = await readHomeWorkerConfigFile(userDataPath)
+  const previous = await readHomeWorkerConfigFile(userDataPath, options)
 
   const nextPasswordHash = password
     ? await hashWebUiPassword(password)
@@ -333,9 +427,10 @@ function normalizeWebUiSettingsInput(value: unknown): { enabled: boolean; port: 
 export async function setHomeWorkerWebUiSettings(
   userDataPath: string,
   input: SetHomeWorkerWebUiSettingsInput,
+  options?: HomeWorkerConfigModeOptions,
 ): Promise<HomeWorkerConfigDto> {
   const { enabled, port } = normalizeWebUiSettingsInput(input)
-  const previous = await readHomeWorkerConfigFile(userDataPath)
+  const previous = await readHomeWorkerConfigFile(userDataPath, options)
 
   const next: HomeWorkerConfigFile = {
     ...previous,

@@ -7,16 +7,6 @@ import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface
 import { registerFilesystemHandlers } from '../../../src/app/main/controlSurface/handlers/filesystemHandlers'
 import { toFileUri } from '../../../src/contexts/filesystem/domain/fileUri'
 
-const { shellMock } = vi.hoisted(() => ({
-  shellMock: {
-    trashItem: vi.fn(async () => undefined),
-  },
-}))
-
-vi.mock('electron', () => ({
-  shell: shellMock,
-}))
-
 const ctx: ControlSurfaceContext = {
   now: () => new Date('2026-03-27T00:00:00.000Z'),
 }
@@ -29,13 +19,17 @@ async function createFixture(): Promise<{ baseDir: string; filePath: string }> {
   return { baseDir, filePath }
 }
 
-function createSubject(isApproved: boolean) {
+function createSubject(
+  isApproved: boolean,
+  options?: { deleteEntry?: (uri: string) => Promise<void> },
+) {
   const controlSurface = createControlSurface()
   registerFilesystemHandlers(controlSurface, {
     approvedWorkspaces: {
       registerRoot: async () => undefined,
       isPathApproved: async () => isApproved,
     },
+    deleteEntry: options?.deleteEntry,
   })
   return controlSurface
 }
@@ -111,9 +105,10 @@ describe('control surface filesystem handlers', () => {
     }
   })
 
-  it('copies, moves, renames, and trashes entries when approved', async () => {
+  it('copies, moves, renames, and deletes entries when approved', async () => {
     const { filePath, baseDir } = await createFixture()
-    const controlSurface = createSubject(true)
+    const deleteEntry = vi.fn(async () => undefined)
+    const controlSurface = createSubject(true, { deleteEntry })
     const copiedPath = join(baseDir, 'hello-copy.txt')
     const movedPath = join(baseDir, 'hello-moved.txt')
     const renamedPath = join(baseDir, 'hello-renamed.txt')
@@ -158,7 +153,7 @@ describe('control surface filesystem handlers', () => {
       },
     })
     expect(result.ok).toBe(true)
-    expect(shellMock.trashItem).toHaveBeenCalledWith(renamedPath)
+    expect(deleteEntry).toHaveBeenCalledWith(toFileUri(renamedPath))
   })
 
   it.each([
