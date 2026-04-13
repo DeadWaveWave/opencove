@@ -21,6 +21,7 @@
 1) **确认连接的是同一个 Worker**
 
 - 看 Worker stderr 日志：`[opencove-worker] web ui: http://<host>:<port>/`
+- 若日志显示：`[opencove-worker] web ui: disabled`，说明 Web UI 未开启（Desktop 场景请在 Settings → Experimental → Worker Web UI 中开启）。
 - Desktop 的 Settings 面板里显示的端口，应与 Worker 日志一致。
 
 2) **确认鉴权模式**
@@ -172,4 +173,3 @@ Worker stderr 会打印：
 - 默认 worker 应保持 loopback-by-default（仅 `127.0.0.1`）。
 - 需要远端访问时优先使用 SSH tunnel（`ssh -L`），避免把 worker 端口暴露到公网。
 - LAN Access 必须显式开启，并设置 Web UI 密码；不要在 URL 里携带 token 给局域网设备分享。
-

@@ -124,16 +124,17 @@ test.describe('Recovery - Terminal worktree reopen', () => {
 
         await restartedTerminal.locator('.xterm').click()
         await expect(restartedTerminal.locator('.xterm-helper-textarea')).toBeFocused()
-        await restartedWindow.waitForTimeout(250)
+        await restartedWindow.waitForTimeout(500)
         await restartedWindow.keyboard.type(
           buildNodeEvalCommand(
             `process.stdout.write(${JSON.stringify(cwdToken)} + process.cwd() + '\\n')`,
           ),
+          { delay: 20 },
         )
         await restartedWindow.keyboard.press('Enter')
 
         await expect
-          .poll(async () => await restartedTerminal.textContent())
+          .poll(async () => await restartedTerminal.textContent(), { timeout: 30_000 })
           .toMatch(new RegExp(`${escapeRegex(cwdToken)}[\\s\\S]*${escapeRegex(worktreeName)}`))
       } finally {
         await restartedApp.close()

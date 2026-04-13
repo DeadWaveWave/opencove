@@ -182,6 +182,9 @@ export const enSettingsPanel = {
     },
     focusOnClickLabel: 'Auto-focus on Click',
     focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
+    focusVisibleCenterLabel: 'Center Within Visible Canvas',
+    focusVisibleCenterHelp:
+      'When focusing, use the center of the visible canvas. If the left sidebar is open, focus within the remaining space.',
     focusTargetZoomLabel: 'Target Zoom',
     focusTargetZoomHelp:
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
@@ -191,10 +194,19 @@ export const enSettingsPanel = {
     workerWebUi: {
       title: 'Worker Web UI',
       help: 'Open the experimental browser UI served by your worker. Requires Home Worker: Local Worker.',
+      enabledLabel: 'Enable Web UI',
+      enabledHelp:
+        'Turns on the Worker-hosted Web UI and debug shell. Changing this restarts the Local Worker.',
+      portLabel: 'Port',
+      portHelp:
+        'Leave empty (or 0) to use a random port. Changing the port restarts the Local Worker.',
+      portPlaceholder: 'Random',
+      portSave: 'Apply',
       statusLabel: 'Status',
       statusHelp: 'Start the Local Worker in Worker settings first.',
       status: {
         requiresLocal: 'Requires Home Worker: Local Worker',
+        disabled: 'Disabled',
         stopped: 'Stopped',
         running: 'Ready',
       },
@@ -213,6 +225,7 @@ export const enSettingsPanel = {
       passwordSave: 'Set Password',
       errors: {
         noUrl: 'Local worker did not return a Web UI URL.',
+        invalidPort: 'Port must be empty (random) or an integer between 1 and 65535.',
         passwordRequired: 'A password is required for LAN Web UI access.',
       },
     },
@@ -343,6 +356,10 @@ export const enSettingsPanel = {
     home: {
       title: 'Home Worker',
       help: 'Choose where Desktop reads and writes durable state. Worker Web UI currently requires Local Worker.',
+      packagedHelp:
+        'OpenCove uses the worker on this device. Most of the time, you only need to start or restart it below.',
+      packagedModeLabel: 'In Use',
+      packagedModeValue: 'Worker on this device',
       modeLabel: 'Mode',
       mode: {
         standalone: 'Standalone (No Worker)',

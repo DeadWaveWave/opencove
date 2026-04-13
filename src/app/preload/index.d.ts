@@ -93,6 +93,7 @@ import type {
   WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
@@ -103,6 +104,7 @@ type UnsubscribeFn = () => void
 export interface OpenCoveApi {
   meta: {
     isTest: boolean
+    isPackaged: boolean
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
     runtime: 'electron' | 'browser'
@@ -240,6 +242,7 @@ export interface OpenCoveApi {
   workerClient: {
     getConfig: () => Promise<HomeWorkerConfigDto>
     setConfig: (payload: SetHomeWorkerConfigInput) => Promise<HomeWorkerConfigDto>
+    setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput) => Promise<HomeWorkerConfigDto>
     setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput) => Promise<HomeWorkerConfigDto>
     relaunch: () => Promise<void>
   }

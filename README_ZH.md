@@ -104,7 +104,7 @@ pnpm dev
 
 OpenCove 提供一个**实验性的 Worker Web UI**，允许你用浏览器打开画布（包括在同一内网的其他设备，例如平板）。
 
-- 在 **Settings → Experimental → Worker Web UI** 中开启并启动 Worker。
+- 在 **Settings → Experimental → Worker Web UI** 中手动开启 **Enable Web UI**（可选：设置固定端口），再启动 Local Worker。
 - 默认只监听本机回环地址（`127.0.0.1`）。如需内网访问，开启 **LAN Access** 并设置 Web UI 密码。
 - 开发提示：LAN 访问会使用 `out/renderer` 的 build 产物（无 HMR）。修改 UI 后需要先跑 `pnpm build` 再刷新。
 

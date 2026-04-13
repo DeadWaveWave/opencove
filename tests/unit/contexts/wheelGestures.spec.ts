@@ -286,4 +286,26 @@ describe('canvas wheel gesture decisions', () => {
     expect(decision.canvasAction).toBe('zoom')
     expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
   })
+
+  it('zooms canvas on pinch-like wheel events even when the target is a node', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'trackpad',
+      inputModalityState: createCanvasInputModalityState('trackpad'),
+      trackpadGestureLock: null,
+      wheelTarget: 'node',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaY: -2.5, ctrlKey: true, timeStamp: 2400 }),
+      lockTimestamp: 2400,
+    })
+
+    expect(decision.canvasAction).toBe('zoom')
+    expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
+    expect(decision.nextTrackpadGestureLock).toMatchObject({
+      action: 'pinch',
+      target: 'canvas',
+    })
+  })
 })

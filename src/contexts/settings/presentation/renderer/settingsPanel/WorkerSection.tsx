@@ -6,8 +6,10 @@ import { formatToken, toBaseUrl, toErrorMessage } from './workerSectionUtils'
 
 export function WorkerSection(): React.JSX.Element {
   const { t } = useTranslation()
-  const [savedMode, setSavedMode] = useState<HomeWorkerMode>('standalone')
-  const [draftMode, setDraftMode] = useState<HomeWorkerMode>('standalone')
+  const supportsHomeWorkerModeSelection = !window.opencoveApi.meta.isPackaged
+  const defaultMode: HomeWorkerMode = supportsHomeWorkerModeSelection ? 'standalone' : 'local'
+  const [savedMode, setSavedMode] = useState<HomeWorkerMode>(defaultMode)
+  const [draftMode, setDraftMode] = useState<HomeWorkerMode>(defaultMode)
   const [remoteHostname, setRemoteHostname] = useState('')
   const [remotePort, setRemotePort] = useState('')
   const [remoteToken, setRemoteToken] = useState('')
@@ -18,6 +20,14 @@ export function WorkerSection(): React.JSX.Element {
   const [revealLocalToken, setRevealLocalToken] = useState(false)
   const [revealRemoteToken, setRevealRemoteToken] = useState(false)
   const localConnection = localStatus?.connection ?? null
+  const modeOptions = useMemo(
+    () => [
+      { value: 'standalone', label: t('settingsPanel.worker.home.mode.standalone') },
+      { value: 'local', label: t('settingsPanel.worker.home.mode.local') },
+      { value: 'remote', label: t('settingsPanel.worker.home.mode.remote') },
+    ],
+    [t],
+  )
 
   const canApplyRemote = useMemo(() => {
     if (draftMode !== 'remote') {
@@ -191,29 +201,39 @@ export function WorkerSection(): React.JSX.Element {
       <div className="settings-panel__subsection">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">{t('settingsPanel.worker.home.title')}</h4>
-          <span>{t('settingsPanel.worker.home.help')}</span>
+          <span>
+            {supportsHomeWorkerModeSelection
+              ? t('settingsPanel.worker.home.help')
+              : t('settingsPanel.worker.home.packagedHelp')}
+          </span>
         </div>
 
         <div className="settings-panel__row">
           <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.worker.home.modeLabel')}</strong>
+            <strong>
+              {supportsHomeWorkerModeSelection
+                ? t('settingsPanel.worker.home.modeLabel')
+                : t('settingsPanel.worker.home.packagedModeLabel')}
+            </strong>
           </div>
           <div className="settings-panel__control">
-            <CoveSelect
-              id="settings-worker-home-mode"
-              testId="settings-worker-home-mode"
-              value={draftMode}
-              options={[
-                { value: 'standalone', label: t('settingsPanel.worker.home.mode.standalone') },
-                { value: 'local', label: t('settingsPanel.worker.home.mode.local') },
-                { value: 'remote', label: t('settingsPanel.worker.home.mode.remote') },
-              ]}
-              onChange={nextValue => setDraftMode(nextValue as HomeWorkerMode)}
-            />
+            {supportsHomeWorkerModeSelection ? (
+              <CoveSelect
+                id="settings-worker-home-mode"
+                testId="settings-worker-home-mode"
+                value={draftMode}
+                options={modeOptions}
+                onChange={nextValue => setDraftMode(nextValue as HomeWorkerMode)}
+              />
+            ) : (
+              <span className="settings-panel__value" data-testid="settings-worker-home-mode-value">
+                {t('settingsPanel.worker.home.packagedModeValue')}
+              </span>
+            )}
           </div>
         </div>
 
-        {draftMode === 'remote' ? (
+        {supportsHomeWorkerModeSelection && draftMode === 'remote' ? (
           <>
             <div className="settings-panel__row">
               <div className="settings-panel__row-label">
@@ -277,23 +297,25 @@ export function WorkerSection(): React.JSX.Element {
           </>
         ) : null}
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.worker.home.applyLabel')}</strong>
-            <span>{t('settingsPanel.worker.home.applyHelp')}</span>
+        {supportsHomeWorkerModeSelection ? (
+          <div className="settings-panel__row">
+            <div className="settings-panel__row-label">
+              <strong>{t('settingsPanel.worker.home.applyLabel')}</strong>
+              <span>{t('settingsPanel.worker.home.applyHelp')}</span>
+            </div>
+            <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
+              <button
+                type="button"
+                className="primary"
+                data-testid="settings-worker-apply-restart"
+                disabled={isBusy || (draftMode === 'remote' && !canApplyRemote)}
+                onClick={applyAndRestart}
+              >
+                {t('settingsPanel.worker.home.applyRestart')}
+              </button>
+            </div>
           </div>
-          <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>
-            <button
-              type="button"
-              className="primary"
-              data-testid="settings-worker-apply-restart"
-              disabled={isBusy || (draftMode === 'remote' && !canApplyRemote)}
-              onClick={applyAndRestart}
-            >
-              {t('settingsPanel.worker.home.applyRestart')}
-            </button>
-          </div>
-        </div>
+        ) : null}
       </div>
 
       <div className="settings-panel__subsection">

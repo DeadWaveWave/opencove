@@ -85,6 +85,7 @@ export function installBrowserOpenCoveApi(): void {
   const api = {
     meta: {
       isTest: false,
+      isPackaged: false,
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
       runtime: 'browser',
@@ -338,6 +339,7 @@ export function installBrowserOpenCoveApi(): void {
     workerClient: {
       getConfig: async () => unsupportedWorkerConfig(),
       setConfig: async () => unsupportedWorkerConfig(),
+      setWebUiSettings: async () => unsupportedWorkerConfig(),
       setWebUiSecurity: async () => unsupportedWorkerConfig(),
       relaunch: async () => undefined,
     },

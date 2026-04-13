@@ -15,6 +15,49 @@
 4. 只重跑目标失败项，确认是否稳定复现。
 5. 若是 E2E，优先看 `screenshot`、`trace`、`console` 与持久化状态。
 
+## 测试层级选择（策略）
+
+目标：用 **最低成本** 的测试层级先定位问题；确认根因后再补足能防回归的覆盖。
+
+### Unit（最快）
+
+适用场景：
+
+- 纯函数/协议解析/颜色转换等“无 IO、无时序”的逻辑
+- 需要快速验证边界条件（例如 escape sequence/解析分片）
+
+运行：
+
+```bash
+pnpm test -- --run tests/unit/<target>.spec.ts
+```
+
+### Contract（边界正确性）
+
+适用场景：
+
+- IPC/DTO 校验、approved workspace guard、主进程 handler 的输入/输出契约
+- 需要验证“错误 code/debugMessage/guard 行为”是否符合约定
+
+运行：
+
+```bash
+pnpm test -- --run tests/contract/<target>.spec.ts
+```
+
+### E2E（用户可见/跨边界）
+
+适用场景：
+
+- 主题切换、拖拽/缩放、focus、持久化/恢复、外部 CLI（OpenCode/Codex）行为
+- 任何“只有把 Main/Renderer/PTY/外部进程串起来才会出现”的问题
+
+运行：
+
+```bash
+pnpm test:e2e tests/e2e/<target>.spec.ts --project electron --reporter=line
+```
+
 ## E2E 稳定运行原则
 
 ### 优先使用仓库脚本
@@ -77,6 +120,19 @@ pnpm exec playwright show-trace test-results/<failed-case>/trace.zip
 pnpm test:e2e
 ```
 
+## 真实 Agent / 外部 CLI 复现
+
+默认 `NODE_ENV=test` 下，OpenCove 会用测试 stub 避免真的启动外部 Agent CLI。调试 OpenCode 这类“真实 TUI 行为”（例如主题切换、alternate screen、颜色查询）时，需要禁用 stub：
+
+```bash
+OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencode-embedded-theme.spec.ts --project electron --reporter=line
+```
+
+补充：
+
+- 该开关会让测试直接 spawn 本机安装的 CLI（如 `opencode`），可能触发真实网络请求/账号权限；仅建议用于本地调试。
+- 产物在 `test-results/**`：优先看 `trace.zip`、失败截图与控制台日志。
+
 ## Playwright 交互排查重点
 
 ### 1) 复杂拖拽优先使用真实鼠标事件
@@ -105,7 +161,24 @@ pnpm test:e2e
 - space overlay / drag handle / label 区域是否抢占事件
 - 点击点是否过于贴边
 
-### 4) 缩放/transform 场景避免依赖 `locator.boundingBox()` 做像素命中与断言
+### 4) React Flow：元素“可见但不在 viewport”
+
+现象：
+
+- Playwright 日志提示 `element is outside of the viewport`
+- 但 `await expect(locator).toBeVisible()` 仍然通过
+
+原因：
+
+- React Flow 画布使用 `transform`（viewport 缩放/平移）。元素在 DOM 上“可见”，但实际绘制区域可能在屏幕外。
+- `scrollIntoViewIfNeeded()` 对 transform 场景不一定有效。
+
+处理：
+
+- 先把目标节点带回视口（最简单：点击 `Fit View` 控制按钮 `.react-flow__controls-fitview`），再执行 click/drag。
+- 对“节点创建后立即点击 close/resize”等操作，建议先做一次 `Fit View` 或 focus 到该节点，避免视口偏移造成误判。
+
+### 5) 缩放/transform 场景避免依赖 `locator.boundingBox()` 做像素命中与断言
 
 在 React Flow 缩放（viewport transform）场景下，尤其是 CI 里的 `inactive/offscreen` 窗口模式，`locator.boundingBox()` 偶发返回不稳定坐标，导致鼠标按下点不到目标元素，进而出现“mouse 走完了但 resize/drag 根本没发生”的假操作。
 
@@ -165,62 +238,38 @@ await page.mouse.move(x, y)
 - 拖拽/缩放是否仅更新位置与尺寸，而不是替换节点身份
 - 当前 E2E 是否使用了最新 `out/` 产物
 
-### OpenCode / xterm 鼠标样式闪烁、百叶窗残影、命中偶发穿透到底层画布
+### OpenCode 内嵌：主题切换不完整 / 不即时更新
 
-这类问题在 `Electron + xterm + React Flow + canvas transform` 组合下，**不要只看 DOM 几何和 CSS**。本次真实 case 里，xterm 的 canvas / screen / viewport 几何上都覆盖了命中点，但 `document.elementFromPoint(...)` 仍会偶发返回底下的 `.react-flow__pane`，最终表现为：
+适用场景：
 
-- 鼠标在输入区或终端 body 上在 `text/default` 之间跳变
-- OpenCode 终端出现“百叶窗 / 断层 / 残影”
-- 日志里看不到明显异常，但用户体感明显抖动
+- OpenCove UI theme 已切换（黑↔白），但只有 OpenCode TUI 没完全更新（残留深色块/不变/闪一下又回去）
 
 排查顺序：
 
-1. **先用真实用户数据复现**  
-   这类问题常依赖恢复后的多节点、多 Agent、真实输出负载。优先用共享 userData 跑：
+1. **先确保复现链路可重复**：优先用可复现资产跑真实 OpenCode（见下方“真实 Agent / 外部 CLI 复现”）。
+2. **确认主题真相来源**：OpenCode 侧 `theme: "system"` 通常依赖终端协议（OSC/CSI）而不是直接读 OS theme。
+3. **确认 embedded state 是否隔离**：若出现“被锁住”的主题行为，优先怀疑 durable state（例如 `theme_mode_lock`），并检查是否为 embedded 注入了独立的 `XDG_STATE_HOME`。
 
-```bash
-OPENCOVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev
-```
+参考案例：
 
-或用 Electron + Playwright 直接启动现有 app 数据，而不是只看 seed 出来的最小测试态。
+- `docs/cases/opencode-embedded-theme-sync.md`
 
-2. **确保跑的是最新构建，且窗口真的拿到系统焦点**  
-   单独做 Electron/Playwright 采样前先 `pnpm build`。  
-   若需要复现真实输入/hover 命中问题，优先用可见窗口并显式 `show()/focus()`；`inactive/offscreen` 适合回归，不一定适合抓这类 OS/Chromium 命中异常。
+### Terminal（xterm）：cursor 闪烁 / 命中穿透 / 残影观感
 
-3. **不要只采一次命中，要固定一个点持续采样**  
-   选择用户真正停留的点位（通常是 `.xterm-helper-textarea` 对应的输入光标附近），连续采 `200~500` 次：
+适用场景：
 
-- `document.elementFromPoint(x, y)`
-- `document.activeElement`
-- `.xterm` 的 class（尤其 `focus` / `enable-mouse-events` / `xterm-cursor-pointer`）
-- 终端 body / pane 的 computed `cursor`
+- 鼠标在终端输入区/正文上 `text/default` 闪烁切换
+- 偶发点击/滚轮像是“穿透”到底层画布
 
-如果命中在 `xterm-*` 和 `.react-flow__pane` 之间切换，就说明不是纯焦点问题，而是**合成层 / hit-test 层偶发漏命中**。
+方法要点：
 
-4. **命中异常时同步记录几何，证明“几何正确但命中错误”**  
-   在命中落到 `.react-flow__pane` 的那一帧，同时采：
+- 固定点连续采样 `document.elementFromPoint(x, y)`（200~500 次）来确认是否 hit-test 偶发漏命中
+- 在漏命中那一帧同步采集关键层的 `getBoundingClientRect()` 与 `pointer-events`，用证据证明“几何正确但命中错误”
+- 避免默认用 overlay 盖一层（容易引入 TUI 鼠标/选择/链接点击回归）
 
-- `.terminal-node__terminal`
-- `.xterm`
-- `.xterm-screen`
-- `.xterm-viewport`
-- `.xterm-screen canvas`
+参考案例：
 
-的 `getBoundingClientRect()`、`display`、`opacity`、`pointer-events`。  
-如果这些层几何上仍覆盖命中点，而 `elementFromPoint` 依旧落到 pane，说明是 Chromium/Electron hit-test 级别问题，不要再把时间耗在“是不是简单 z-index / pointer-events 写错了”上。
-
-5. **先区分两类根因，再决定修法**
-
-- **DOM renderer 残影 / 断层**：优先考虑切到 WebGL renderer 做主路径，尤其是 OpenCode/TUI 这类高频重绘终端。
-- **WebGL 下仍有鼠标态闪烁**：通常要接受“偶发漏命中无法彻底靠普通 CSS 消灭”，改为做**受控兜底**：
-  - 以“终端确实 focus 且鼠标仍在该终端矩形内”为条件
-  - 给底层画布命中层同步相同的 cursor / 交互语义
-  - 目标是先消除用户可见的 cursor 跳变，再继续观察是否还存在更深层的功能回归
-
-6. **不要把“overlay 盖一层”当默认方案**  
-   这很容易修掉闪烁，但会直接破坏 TUI 鼠标事件、文本选择、链接点击或 React Flow 自身交互。  
-   优先做“命中穿透时的语义同步”，最后才考虑真正改命中层。
+- `docs/cases/xterm-hit-test-cursor-flicker.md`
 
 ### 切换 workspace 或重启应用后终端历史丢失
 
@@ -239,6 +288,29 @@ OPENCOVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev
 - 是否错误使用了 `onWheelCapture + stopPropagation`
 - 是否应改为冒泡阶段的 `onWheel`
 - 是否阻断了 React Flow，同时保留了 xterm 默认滚动
+
+### 测试：Vitest 的 `electron` mock 导出缺失导致运行时报错
+
+适用场景：
+
+- 报错里出现 `No "app" export is defined on the "electron" mock`（或类似信息）
+- 代码侧看起来用了 optional chaining，但仍在访问 `electron.app` 时爆炸
+
+排查顺序：
+
+1. 优先看 `debugMessage`（或直接临时把 envelope error 打出来）
+2. 检查测试中 `vi.doMock('electron', ...)` 是否遗漏了 `app` 等导出
+3. 若确实需要在代码侧读取 `electron.app.getPath`，建议用 `try/catch` 护住（mock 可能在访问缺失导出时 throw）
+
+参考案例：
+
+- `docs/cases/vitest-electron-mock-missing-exports.md`
+
+## 案例库
+
+当你需要“同类问题的完整复盘 + 证据链 + 落地修法”，从这里开始：
+
+- `docs/cases/README.md`
 
 ## 一句话原则
 

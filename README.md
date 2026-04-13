@@ -103,7 +103,7 @@ pnpm dev
 
 OpenCove includes an **experimental Worker-hosted Web UI** so you can open the canvas from a browser (including other devices on your LAN).
 
-- Enable it in **Settings → Experimental → Worker Web UI**, then start the Worker.
+- In **Settings → Experimental → Worker Web UI**, turn on **Enable Web UI** (optionally set a fixed port), then start the Local Worker.
 - By default it is loopback-only (`127.0.0.1`). For LAN access, enable **LAN Access** and set a Web UI password.
 - Dev note: LAN access uses the built `out/renderer` bundle (no HMR). Run `pnpm build` after UI changes.
 

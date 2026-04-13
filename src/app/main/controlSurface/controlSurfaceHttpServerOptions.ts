@@ -14,6 +14,7 @@ export interface RegisterControlSurfaceHttpServerOptions {
   approvedWorkspaces: ApprovedWorkspaceStore
   ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
   ownsPtyRuntime?: boolean
+  deleteEntry?: (uri: string) => Promise<void>
   enableWebShell?: boolean
   webUiPasswordHash?: string | null
 }

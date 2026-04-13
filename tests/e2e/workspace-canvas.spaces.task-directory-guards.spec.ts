@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   dragLocatorTo,
@@ -7,6 +7,40 @@ import {
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+
+const CONTEXT_MENU_TRIGGER_TIMEOUT_MS = 10_000
+const CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS = 2_000
+const CONTEXT_MENU_ITEM_CLICK_TIMEOUT_MS = 10_000
+
+async function clickCreateSpaceFromSelectionContextMenu(
+  window: Page,
+  trigger: Locator,
+  triggerPosition: { x: number; y: number },
+  attempt = 0,
+): Promise<void> {
+  const createSpaceAction = window.locator('[data-testid="workspace-selection-create-space"]')
+
+  await trigger.click({
+    button: 'right',
+    position: triggerPosition,
+    timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+  })
+
+  try {
+    await createSpaceAction.waitFor({
+      state: 'visible',
+      timeout: CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS,
+    })
+    await createSpaceAction.click({ timeout: CONTEXT_MENU_ITEM_CLICK_TIMEOUT_MS })
+  } catch (error) {
+    if (attempt >= 2) {
+      throw error
+    }
+
+    await window.keyboard.press('Escape').catch(() => undefined)
+    await clickCreateSpaceFromSelectionContextMenu(window, trigger, triggerPosition, attempt + 1)
+  }
+}
 
 test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
   test('allows moving a task when its linked agent is inactive', async () => {
@@ -72,9 +106,12 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
       await expect(taskNode).toBeVisible()
 
       const header = taskNode.locator('.task-node__header')
-      await header.click({ position: { x: 80, y: 18 } })
-      await taskNode.click({ button: 'right', position: { x: 80, y: 18 } })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      const headerClickPosition = { x: 80, y: 18 }
+      await header.click({
+        position: headerClickPosition,
+        timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+      })
+      await clickCreateSpaceFromSelectionContextMenu(window, header, headerClickPosition)
 
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
 
@@ -180,9 +217,12 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
       await expect(taskNode).toBeVisible()
 
       const header = taskNode.locator('.task-node__header')
-      await header.click({ position: { x: 80, y: 18 } })
-      await taskNode.click({ button: 'right', position: { x: 80, y: 18 } })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      const headerClickPosition = { x: 80, y: 18 }
+      await header.click({
+        position: headerClickPosition,
+        timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+      })
+      await clickCreateSpaceFromSelectionContextMenu(window, header, headerClickPosition)
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Tasks with active agents cannot be moved between spaces.',

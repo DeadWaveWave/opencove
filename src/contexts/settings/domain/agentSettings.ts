@@ -17,13 +17,7 @@ import {
   type TaskTitleAgentProvider,
 } from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
-import {
-  DEFAULT_UI_LANGUAGE,
-  isValidUiLanguage,
-  isValidUiTheme,
-  type UiLanguage,
-  type UiTheme,
-} from './uiSettings'
+import { isValidUiLanguage, isValidUiTheme, type UiLanguage, type UiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
   isValidUpdatePolicy,
@@ -59,11 +53,9 @@ import { normalizeQuickCommands } from './quickCommands'
 import type { QuickPhrase } from './quickPhrases'
 import { normalizeQuickPhrases } from './quickPhrases'
 import type { AgentEnvByProvider } from './agentEnv'
-import { DEFAULT_AGENT_ENV_BY_PROVIDER, normalizeAgentEnvByProvider } from './agentEnv'
-import {
-  DEFAULT_WEBSITE_WINDOW_POLICY,
-  normalizeWebsiteWindowPolicy,
-} from './websiteWindowSettings'
+import { normalizeAgentEnvByProvider } from './agentEnv'
+import { normalizeWebsiteWindowPolicy } from './websiteWindowSettings'
+import { DEFAULT_AGENT_SETTINGS } from './agentSettings.defaults'
 
 export {
   FOCUS_NODE_TARGET_ZOOM_STEP,
@@ -154,6 +146,7 @@ export interface AgentSettings {
   agentEnvByProvider: AgentEnvByProvider
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
+  focusNodeUseVisibleCanvasCenter: boolean
   standbyBannerEnabled: boolean
   standbyBannerShowTask: boolean
   standbyBannerShowSpace: boolean
@@ -177,67 +170,7 @@ export interface AgentSettings {
   releaseNotesSeenVersion: string | null
   hideWorktreeMismatchDropWarning: boolean
 }
-
-export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
-  language: DEFAULT_UI_LANGUAGE,
-  uiTheme: 'dark',
-  isPrimarySidebarCollapsed: false,
-  workspaceSearchPanelWidth: 420,
-  defaultProvider: 'codex',
-  agentProviderOrder: [...AGENT_PROVIDERS],
-  agentFullAccess: true,
-  defaultTerminalProfileId: null,
-  customModelEnabledByProvider: {
-    'claude-code': false,
-    codex: false,
-    opencode: false,
-    gemini: false,
-  },
-  customModelByProvider: {
-    'claude-code': '',
-    codex: '',
-    opencode: '',
-    gemini: '',
-  },
-  customModelOptionsByProvider: {
-    'claude-code': [],
-    codex: [],
-    opencode: [],
-    gemini: [],
-  },
-  taskTitleProvider: 'default',
-  taskTitleModel: '',
-  taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
-  taskPromptTemplates: [],
-  taskPromptTemplatesByWorkspaceId: {},
-  quickCommands: [],
-  quickPhrases: [],
-  agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
-  focusNodeOnClick: true,
-  focusNodeTargetZoom: 1,
-  standbyBannerEnabled: true,
-  standbyBannerShowTask: true,
-  standbyBannerShowSpace: true,
-  standbyBannerShowBranch: true,
-  standbyBannerShowPullRequest: true,
-  disableAppShortcutsWhenTerminalFocused: true,
-  keybindings: {},
-  canvasInputMode: 'auto',
-  canvasWheelBehavior: 'zoom',
-  canvasWheelZoomModifier: 'primary',
-  standardWindowSizeBucket: 'regular',
-  websiteWindowPolicy: DEFAULT_WEBSITE_WINDOW_POLICY,
-  experimentalWebsiteWindowPasteEnabled: false,
-  defaultTerminalWindowScalePercent: 80,
-  terminalFontSize: 13,
-  terminalFontFamily: null,
-  uiFontSize: 18,
-  githubPullRequestsEnabled: true,
-  updatePolicy: 'prompt',
-  updateChannel: 'stable',
-  releaseNotesSeenVersion: null,
-  hideWorktreeMismatchDropWarning: false,
-}
+export { DEFAULT_AGENT_SETTINGS }
 
 function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
   return value === 'default' || isTaskTitleAgentProvider(value)
@@ -352,6 +285,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.focusNodeTargetZoom,
     DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
   )
+  const focusNodeUseVisibleCanvasCenter =
+    normalizeBoolean(value.focusNodeUseVisibleCanvasCenter) ??
+    DEFAULT_AGENT_SETTINGS.focusNodeUseVisibleCanvasCenter
   const standbyBannerEnabled =
     normalizeBoolean(value.standbyBannerEnabled) ?? DEFAULT_AGENT_SETTINGS.standbyBannerEnabled
   const standbyBannerShowTask =
@@ -460,6 +396,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     agentEnvByProvider,
     focusNodeOnClick,
     focusNodeTargetZoom,
+    focusNodeUseVisibleCanvasCenter,
     standbyBannerEnabled,
     standbyBannerShowTask,
     standbyBannerShowSpace,

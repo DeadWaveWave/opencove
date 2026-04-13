@@ -102,14 +102,32 @@ export function registerQuickPhrasesContextMenu({
           submenu: enabledPhrases.map(phrase => ({
             label: phrase.title,
             click: () => {
-              window.webContents.insertText(phrase.content)
+              if (window.isDestroyed()) {
+                return
+              }
+
+              try {
+                if (!window.webContents.isDestroyed()) {
+                  window.webContents.insertText(phrase.content)
+                }
+              } catch (error) {
+                void error
+              }
             },
           })),
         })
       }
 
-      const menu = Menu.buildFromTemplate(template)
-      menu.popup({ window })
+      if (window.isDestroyed()) {
+        return
+      }
+
+      try {
+        const menu = Menu.buildFromTemplate(template)
+        menu.popup({ window })
+      } catch (error) {
+        void error
+      }
     })()
   }
 
@@ -117,7 +135,13 @@ export function registerQuickPhrasesContextMenu({
 
   return {
     dispose: () => {
-      window.webContents.removeListener('context-menu', handler)
+      try {
+        if (!window.isDestroyed() && !window.webContents.isDestroyed()) {
+          window.webContents.removeListener('context-menu', handler)
+        }
+      } catch (error) {
+        void error
+      }
 
       void storePromise?.then(store => {
         store.dispose()

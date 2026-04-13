@@ -220,6 +220,10 @@ describe('WorkspaceCanvas task agent directory', () => {
       }),
     )
 
+    await waitFor(() => {
+      expect(latestNodes.some(node => node.data.kind === 'agent')).toBe(true)
+    })
+
     const createdAgentNode = latestNodes.find(node => node.data.kind === 'agent')
     const expectedSize = resolveDefaultAgentWindowSize('large')
     expect(createdAgentNode?.data.width).toBe(expectedSize.width)

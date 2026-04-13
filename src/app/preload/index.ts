@@ -95,6 +95,7 @@ import type {
   WebsiteWindowNodeIdInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
+  SetHomeWorkerWebUiSettingsInput,
   SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
@@ -125,6 +126,7 @@ function resolveWindowsPtyMeta(): { backend: 'conpty'; buildNumber: number } | n
 const opencoveApi = {
   meta: {
     isTest: process.env.NODE_ENV === 'test',
+    isPackaged: process.env.NODE_ENV !== 'test' && process.defaultApp !== true,
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
     runtime: 'electron',
@@ -407,6 +409,8 @@ const opencoveApi = {
     getConfig: (): Promise<HomeWorkerConfigDto> => invokeIpc(IPC_CHANNELS.workerClientGetConfig),
     setConfig: (payload: SetHomeWorkerConfigInput): Promise<HomeWorkerConfigDto> =>
       invokeIpc(IPC_CHANNELS.workerClientSetConfig, payload),
+    setWebUiSettings: (payload: SetHomeWorkerWebUiSettingsInput): Promise<HomeWorkerConfigDto> =>
+      invokeIpc(IPC_CHANNELS.workerClientSetWebUiSettings, payload),
     setWebUiSecurity: (payload: SetHomeWorkerWebUiSecurityInput): Promise<HomeWorkerConfigDto> =>
       invokeIpc(IPC_CHANNELS.workerClientSetWebUiSecurity, payload),
     relaunch: (): Promise<void> => invokeIpc(IPC_CHANNELS.workerClientRelaunch),

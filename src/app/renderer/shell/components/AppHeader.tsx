@@ -1,8 +1,10 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
   Download,
   LoaderCircle,
+  Maximize2,
+  Minimize2,
   PanelLeftClose,
   PanelLeftOpen,
   RotateCcw,
@@ -47,6 +49,8 @@ export function AppHeader({
   const { t } = useTranslation()
   const isMac = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'darwin'
   const isWindows = typeof window !== 'undefined' && window.opencoveApi?.meta?.platform === 'win32'
+  const isBrowserRuntime =
+    typeof window !== 'undefined' && window.opencoveApi?.meta?.runtime === 'browser'
   const ToggleIcon = useMemo(
     () => (isSidebarCollapsed ? PanelLeftOpen : PanelLeftClose),
     [isSidebarCollapsed],
@@ -96,6 +100,83 @@ export function AppHeader({
     return null
   }, [onCheckForUpdates, onDownloadUpdate, onInstallUpdate, t, updateState])
   const UpdateActionIcon = updateAction?.icon ?? Download
+
+  const resolveFullscreenElement = useCallback((): Element | null => {
+    if (typeof document === 'undefined') {
+      return null
+    }
+
+    return (
+      document.fullscreenElement ??
+      (document as unknown as { webkitFullscreenElement?: Element | null })
+        .webkitFullscreenElement ??
+      null
+    )
+  }, [])
+
+  const canToggleFullscreen = useMemo(() => {
+    if (!isBrowserRuntime || typeof document === 'undefined') {
+      return false
+    }
+
+    const element = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => void
+    }
+    return (
+      typeof element.requestFullscreen === 'function' ||
+      typeof element.webkitRequestFullscreen === 'function'
+    )
+  }, [isBrowserRuntime])
+
+  const [isFullscreen, setIsFullscreen] = useState(() => resolveFullscreenElement() !== null)
+
+  useEffect(() => {
+    if (!isBrowserRuntime) {
+      return
+    }
+
+    const handleFullscreenChange = () => {
+      setIsFullscreen(resolveFullscreenElement() !== null)
+    }
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange)
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange)
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange)
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange)
+    }
+  }, [isBrowserRuntime, resolveFullscreenElement])
+
+  const toggleFullscreen = useCallback(async (): Promise<void> => {
+    if (!canToggleFullscreen || typeof document === 'undefined') {
+      return
+    }
+
+    try {
+      if (resolveFullscreenElement() !== null) {
+        const documentWithWebkit = document as Document & { webkitExitFullscreen?: () => void }
+        if (typeof document.exitFullscreen === 'function') {
+          await document.exitFullscreen()
+        } else if (typeof documentWithWebkit.webkitExitFullscreen === 'function') {
+          documentWithWebkit.webkitExitFullscreen()
+        }
+
+        return
+      }
+
+      const element = document.documentElement as HTMLElement & {
+        webkitRequestFullscreen?: () => void
+      }
+      if (typeof element.requestFullscreen === 'function') {
+        await element.requestFullscreen()
+      } else if (typeof element.webkitRequestFullscreen === 'function') {
+        element.webkitRequestFullscreen()
+      }
+    } catch {
+      // ignore fullscreen request errors (e.g. denied without a user gesture)
+    }
+  }, [canToggleFullscreen, resolveFullscreenElement])
 
   return (
     <header
@@ -173,6 +254,28 @@ export function AppHeader({
               }
             />
             <span>{updateAction.label}</span>
+          </button>
+        ) : null}
+        {isBrowserRuntime ? (
+          <button
+            type="button"
+            className={`app-header__icon-button${isFullscreen ? ' app-header__icon-button--active' : ''}`}
+            data-testid="app-header-fullscreen"
+            aria-label={
+              isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')
+            }
+            aria-pressed={isFullscreen}
+            title={isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')}
+            onClick={() => {
+              void toggleFullscreen()
+            }}
+            disabled={!canToggleFullscreen}
+          >
+            {isFullscreen ? (
+              <Minimize2 aria-hidden="true" size={18} />
+            ) : (
+              <Maximize2 aria-hidden="true" size={18} />
+            )}
           </button>
         ) : null}
         <button

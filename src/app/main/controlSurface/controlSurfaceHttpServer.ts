@@ -133,6 +133,7 @@ export function registerControlSurfaceHttpServer(
   registerWorkspaceHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
   registerFilesystemHandlers(controlSurface, {
     approvedWorkspaces: options.approvedWorkspaces,
+    deleteEntry: options.deleteEntry,
   })
   registerGitWorktreeHandlers(controlSurface, { approvedWorkspaces: options.approvedWorkspaces })
   registerWorktreeHandlers(controlSurface, {
@@ -140,6 +141,7 @@ export function registerControlSurfaceHttpServer(
     getPersistenceStore,
   })
   registerSessionHandlers(controlSurface, {
+    userDataPath: options.userDataPath,
     approvedWorkspaces: options.approvedWorkspaces,
     getPersistenceStore,
     ptyRuntime: options.ptyRuntime,
