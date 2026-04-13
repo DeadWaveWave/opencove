@@ -177,21 +177,22 @@ export function useWorkspaceCanvasSpaces({
     setSpaceRenameDraft('')
   }, [])
 
-  const { createSpaceFromSelectedNodes, createEmptySpaceAtPoint } = useWorkspaceCanvasCreateSpace({
-    workspacePath,
-    reactFlow,
-    nodesRef,
-    setNodes,
-    spacesRef,
-    selectedNodeIdsRef,
-    onSpacesChange,
-    onRequestPersistFlush,
-    setContextMenu,
-    setEmptySelectionPrompt,
-    cancelSpaceRename,
-    onShowMessage,
-    standardWindowSizeBucket,
-  })
+  const { createSpaceFromSelectedNodes, createEmptySpaceAtPoint: createEmptySpaceAtPointInternal } =
+    useWorkspaceCanvasCreateSpace({
+      workspacePath,
+      reactFlow,
+      nodesRef,
+      setNodes,
+      spacesRef,
+      selectedNodeIdsRef,
+      onSpacesChange,
+      onRequestPersistFlush,
+      setContextMenu,
+      setEmptySelectionPrompt,
+      cancelSpaceRename,
+      onShowMessage,
+      standardWindowSizeBucket,
+    })
 
   const startSpaceRename = useCallback(
     (spaceId: string) => {
@@ -320,6 +321,25 @@ export function useWorkspaceCanvasSpaces({
       viewportMinZoom,
       viewportWidth,
     ],
+  )
+
+  const createEmptySpaceAtPoint = useCallback(
+    (point: { x: number; y: number }) => {
+      const createdSpaceId = createEmptySpaceAtPointInternal(point)
+      if (!createdSpaceId) {
+        return
+      }
+
+      const schedule =
+        typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
+          ? window.requestAnimationFrame.bind(window)
+          : (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0)
+
+      schedule(() => {
+        focusSpaceInViewport(createdSpaceId)
+      })
+    },
+    [createEmptySpaceAtPointInternal, focusSpaceInViewport],
   )
 
   const focusAllInViewport = useCallback((): void => {

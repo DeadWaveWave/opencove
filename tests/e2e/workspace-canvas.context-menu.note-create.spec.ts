@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  launchApp,
+  readLocatorClientRect,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
 import {
   clickPaneAtFlowPoint,
   openPaneContextMenuAtFlowPoint,
@@ -315,6 +320,56 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
           }
         })
         .toEqual({ overlap: false, meetsMin: true })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('centers the viewport on the newly created empty space', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'giant-blocker',
+          title: 'terminal-giant-blocker',
+          position: { x: 0, y: 0 },
+          width: 2600,
+          height: 1800,
+        },
+      ])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      const viewport = await window.evaluate(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }))
+
+      await openPaneContextMenuAtFlowPoint(window, pane, { x: 220, y: 200 })
+      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+
+      const spaceRegion = window.locator('.workspace-space-region').first()
+      await expect(spaceRegion).toHaveCount(1)
+
+      await expect
+        .poll(async () => {
+          const rect = await readLocatorClientRect(spaceRegion)
+          const centerX = rect.x + rect.width / 2
+          const centerY = rect.y + rect.height / 2
+          const dx = Math.abs(centerX - viewport.width / 2)
+          const dy = Math.abs(centerY - viewport.height / 2)
+          const isOnscreen =
+            centerX >= 0 && centerX <= viewport.width && centerY >= 0 && centerY <= viewport.height
+          const isNearCenter = dx < viewport.width * 0.35 && dy < viewport.height * 0.35
+
+          return {
+            isOnscreen,
+            isNearCenter,
+          }
+        })
+        .toEqual({ isOnscreen: true, isNearCenter: true })
     } finally {
       await electronApp.close()
     }

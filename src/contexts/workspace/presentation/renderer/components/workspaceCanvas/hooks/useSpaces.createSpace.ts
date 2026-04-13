@@ -55,7 +55,7 @@ export function useWorkspaceCanvasCreateSpace({
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   createSpaceFromSelectedNodes: () => void
-  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => string | null
 } {
   const { t } = useTranslation()
 
@@ -416,7 +416,7 @@ export function useWorkspaceCanvasCreateSpace({
         setContextMenu(null)
         setEmptySelectionPrompt(null)
         cancelSpaceRename()
-        return
+        return null
       }
 
       const rect: WorkspaceSpaceRect = {
@@ -435,11 +435,14 @@ export function useWorkspaceCanvasCreateSpace({
         rect,
       }
 
-      onSpacesChange(sanitizeSpaces([...spacesRef.current, nextSpace]))
+      const nextSpaces = sanitizeSpaces([...spacesRef.current, nextSpace])
+      spacesRef.current = nextSpaces
+      onSpacesChange(nextSpaces)
       onRequestPersistFlush?.()
       setContextMenu(null)
       setEmptySelectionPrompt(null)
       cancelSpaceRename()
+      return nextSpaceId
     },
     [
       cancelSpaceRename,
