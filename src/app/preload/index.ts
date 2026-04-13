@@ -103,6 +103,7 @@ import type {
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
+import { resolveMainProcessPid } from './mainProcessPid'
 
 type UnsubscribeFn = () => void
 
@@ -133,7 +134,7 @@ const opencoveApi = {
     enableTerminalInputDiagnostics: process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1',
     runtime: 'electron',
     platform: process.platform,
-    mainPid: typeof process.ppid === 'number' && process.ppid > 0 ? process.ppid : null,
+    mainPid: resolveMainProcessPid(),
     windowsPty: resolveWindowsPtyMeta(),
   },
   debug: {

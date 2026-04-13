@@ -54,6 +54,7 @@ export function useTerminalRuntimeSession({
   openTerminalFind,
   isTerminalHydratedRef,
   setIsTerminalHydrated,
+  shouldRestoreTerminalFocusRef,
 }: {
   nodeId: string
   sessionId: string
@@ -89,6 +90,7 @@ export function useTerminalRuntimeSession({
   openTerminalFind: () => void
   isTerminalHydratedRef: { current: boolean }
   setIsTerminalHydrated: (hydrated: boolean) => void
+  shouldRestoreTerminalFocusRef: { current: boolean }
 }): void {
   useEffect(() => {
     if (sessionId.trim().length === 0) {
@@ -132,6 +134,10 @@ export function useTerminalRuntimeSession({
     terminalRef.current = session.terminal
     fitAddonRef.current = session.fitAddon
     const terminal = session.terminal
+    if (shouldRestoreTerminalFocusRef.current) {
+      shouldRestoreTerminalFocusRef.current = false
+      terminal.focus()
+    }
     const serializeAddon = session.serializeAddon
     const terminalDiagnostics = session.diagnostics
 
@@ -420,5 +426,6 @@ export function useTerminalRuntimeSession({
     containerRef,
     isTerminalHydratedRef,
     setIsTerminalHydrated,
+    shouldRestoreTerminalFocusRef,
   ])
 }

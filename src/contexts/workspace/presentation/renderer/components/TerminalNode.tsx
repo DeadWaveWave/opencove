@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '@xyflow/react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
@@ -59,6 +59,7 @@ export function TerminalNode({
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const shouldRestoreTerminalFocusRef = useRef(false)
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
   const suppressPtyResizeRef = useRef(false)
@@ -111,6 +112,18 @@ export function TerminalNode({
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
+  useLayoutEffect(() => {
+    const terminalContainer = containerRef.current
+    return () => {
+      const activeElement =
+        typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null
+      shouldRestoreTerminalFocusRef.current = Boolean(
+        activeElement && terminalContainer?.contains(activeElement),
+      )
+    }
+  }, [sessionId])
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
       terminalRef,
@@ -161,6 +174,7 @@ export function TerminalNode({
     isTerminalHydratedRef,
     setIsTerminalHydrated,
     scheduleTranscriptSync,
+    shouldRestoreTerminalFocusRef,
   })
   useTerminalRuntimeSession({
     nodeId,
@@ -191,6 +205,7 @@ export function TerminalNode({
     openTerminalFind,
     isTerminalHydratedRef,
     setIsTerminalHydrated,
+    shouldRestoreTerminalFocusRef,
   })
   useTerminalAppearanceSync({
     terminalRef,

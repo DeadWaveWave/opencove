@@ -26,6 +26,7 @@ export function useTerminalPlaceholderSession({
   isTerminalHydratedRef,
   setIsTerminalHydrated,
   scheduleTranscriptSync,
+  shouldRestoreTerminalFocusRef,
 }: {
   nodeId: string
   sessionId: string
@@ -44,6 +45,7 @@ export function useTerminalPlaceholderSession({
   isTerminalHydratedRef: { current: boolean }
   setIsTerminalHydrated: (hydrated: boolean) => void
   scheduleTranscriptSync: () => void
+  shouldRestoreTerminalFocusRef: { current: boolean }
 }): void {
   useEffect(() => {
     const normalizedSessionId = sessionId.trim()
@@ -85,6 +87,10 @@ export function useTerminalPlaceholderSession({
     })
     terminalRef.current = session.terminal
     fitAddonRef.current = session.fitAddon
+    if (shouldRestoreTerminalFocusRef.current) {
+      shouldRestoreTerminalFocusRef.current = false
+      session.terminal.focus()
+    }
 
     let isDisposed = false
     void (async () => {
@@ -142,5 +148,6 @@ export function useTerminalPlaceholderSession({
     terminalRef,
     terminalThemeMode,
     containerRef,
+    shouldRestoreTerminalFocusRef,
   ])
 }

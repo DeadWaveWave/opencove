@@ -1,5 +1,4 @@
 import { expect, test, type Page } from '@playwright/test'
-import path from 'node:path'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,

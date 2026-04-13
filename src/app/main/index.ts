@@ -265,6 +265,7 @@ function createWindow(): void {
     ...(runtimeIconPath ? { icon: runtimeIconPath } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
+      additionalArguments: [`--opencove-main-process-pid=${process.pid}`],
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: !disableRendererSandboxForTests,
