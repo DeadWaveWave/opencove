@@ -53,6 +53,28 @@ test.describe('M6 - Legacy mount/space repair integration (remote)', () => {
     const projectName = `Legacy Remote Project (${Date.now()})`
 
     try {
+      const resetResult = await window.evaluate(async () => {
+        return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
+          raw: JSON.stringify({
+            formatVersion: 1,
+            activeWorkspaceId: null,
+            workspaces: [],
+            settings: {
+              experimentalRemoteWorkersEnabled: true,
+            },
+          }),
+        })
+      })
+      if (!resetResult.ok) {
+        throw new Error(
+          `Failed to reset workspace state: ${resetResult.reason}: ${resetResult.error.code}${
+            resetResult.error.debugMessage ? `: ${resetResult.error.debugMessage}` : ''
+          }`,
+        )
+      }
+
+      await window.reload({ waitUntil: 'domcontentloaded' })
+
       await openSettings(window)
       await switchSettingsPage(window, 'endpoints')
 
@@ -92,7 +114,6 @@ test.describe('M6 - Legacy mount/space repair integration (remote)', () => {
         projectName,
         remoteEndpointId,
         remoteRootPath: remoteRepoDir,
-        mountName: 'RemoteRepoMount',
       })
 
       const projectItem = window

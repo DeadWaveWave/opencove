@@ -72,6 +72,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
             workspaces: [],
             settings: {
               defaultProvider: 'codex',
+              experimentalRemoteWorkersEnabled: true,
               customModelEnabledByProvider: {
                 'claude-code': false,
                 codex: true,
@@ -142,7 +143,6 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
         projectName: remoteOnlyProjectName,
         remoteEndpointId,
         remoteRootPath: remoteOnlyDir,
-        mountName: 'RemoteOnlyMount',
       })
 
       const remoteOnlySidebarItem = window
@@ -157,7 +157,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
             (await remoteOnlySidebarItem.locator('.workspace-item__subtitle').textContent()) ?? ''
           )
         })
-        .toContain('RemoteOnlyMount')
+        .toContain(path.basename(remoteOnlyDir))
 
       await verifyRemoteOnlyProjectDefaultMount({
         window,
@@ -172,7 +172,6 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
         window,
         projectName: multiMountProjectName,
         localRootPath: path.resolve(__dirname, '../../'),
-        localMountName: 'LocalMount',
         remoteEndpointId,
         remoteRootPath: multiRemoteDir,
         remoteMountName: 'RemoteMount',

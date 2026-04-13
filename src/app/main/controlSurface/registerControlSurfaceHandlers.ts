@@ -73,6 +73,7 @@ export function registerControlSurfaceHandlers(
     getPersistenceStore: deps.getPersistenceStore,
   })
   registerSessionHandlers(controlSurface, {
+    userDataPath: deps.userDataPath,
     approvedWorkspaces: deps.approvedWorkspaces,
     getPersistenceStore: deps.getPersistenceStore,
     ptyRuntime: deps.ptyRuntime,

@@ -17,6 +17,10 @@ import {
   type LayoutItem,
 } from '../../../utils/spaceLayout'
 
+function isAbsolutePath(pathValue: string): boolean {
+  return /^([a-zA-Z]:[\\/]|\/)/.test(pathValue)
+}
+
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
@@ -375,11 +379,36 @@ export function useWorkspaceCanvasCreateSpace({
 
       void (async () => {
         try {
-          const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+          let mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
             kind: 'query',
             id: 'mount.list',
             payload: { projectId: workspaceId },
           })
+
+          if (mountResult.mounts.length === 0) {
+            const rootPath = workspacePath.trim()
+            if (workspaceId.trim().length > 0 && rootPath.length > 0 && isAbsolutePath(rootPath)) {
+              try {
+                await window.opencoveApi.controlSurface.invoke({
+                  kind: 'command',
+                  id: 'mount.create',
+                  payload: {
+                    projectId: workspaceId,
+                    endpointId: 'local',
+                    rootPath,
+                    name: null,
+                  },
+                })
+                mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+                  kind: 'query',
+                  id: 'mount.list',
+                  payload: { projectId: workspaceId },
+                })
+              } catch {
+                // ignore
+              }
+            }
+          }
 
           if (mountResult.mounts.length === 0) {
             onShowMessage?.(t('messages.projectHasNoMounts'), 'warning')

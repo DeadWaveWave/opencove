@@ -55,7 +55,7 @@ export function WorkerSection({
     return (
       hostname.length > 0 && token.length > 0 && Number.isFinite(port) && port > 0 && port <= 65_535
     )
-  }, [draftMode, remoteHostname, remotePort, remoteToken])
+  }, [draftMode, remoteHostname, remotePort, remoteToken, remoteWorkersEnabled, savedMode])
 
   const load = async (): Promise<void> => {
     const [config, status, cli] = await Promise.all([

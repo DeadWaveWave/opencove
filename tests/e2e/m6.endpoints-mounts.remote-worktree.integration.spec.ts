@@ -92,6 +92,7 @@ test.describe('M6 - Remote mount worktree integration', () => {
             workspaces: [],
             settings: {
               defaultProvider: 'codex',
+              experimentalRemoteWorkersEnabled: true,
               customModelEnabledByProvider: {
                 'claude-code': false,
                 codex: true,
@@ -164,7 +165,6 @@ test.describe('M6 - Remote mount worktree integration', () => {
         projectName: remoteProjectName,
         remoteEndpointId,
         remoteRootPath: remoteRepoDir,
-        mountName: 'RemoteRepoMount',
       })
 
       const projectItem = window

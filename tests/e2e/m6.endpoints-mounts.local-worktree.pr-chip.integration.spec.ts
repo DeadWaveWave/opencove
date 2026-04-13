@@ -91,7 +91,6 @@ test.describe('M6 - Local mount worktree PR chip integration', () => {
         window,
         projectName: localProjectName,
         localRootPath: repoDir,
-        mountName: 'LocalRepoMount',
       })
 
       const projectItem = window

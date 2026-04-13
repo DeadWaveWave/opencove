@@ -7,27 +7,18 @@ export async function createLocalOnlyProjectViaWizard({
   window,
   projectName,
   localRootPath,
-  mountName,
 }: {
   window: Page
   projectName: string
   localRootPath: string
-  mountName: string
 }): Promise<void> {
   await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
   await window.locator('[data-testid="workspace-project-create-name"]').fill(projectName)
 
   await window
-    .locator('[data-testid="workspace-project-create-default-location-local"]')
-    .click({ noWaitAfter: true })
-
-  await window
     .locator('[data-testid="workspace-project-create-default-local-root"]')
     .fill(localRootPath)
-  await window
-    .locator('[data-testid="workspace-project-create-default-local-name"]')
-    .fill(mountName)
 
   await window.locator('[data-testid="workspace-project-create-confirm"]').click()
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toHaveCount(0)
@@ -38,13 +29,11 @@ export async function createRemoteOnlyProjectViaWizard({
   projectName,
   remoteEndpointId,
   remoteRootPath,
-  mountName,
 }: {
   window: Page
   projectName: string
   remoteEndpointId: string
   remoteRootPath: string
-  mountName: string
 }): Promise<void> {
   await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
@@ -75,9 +64,6 @@ export async function createRemoteOnlyProjectViaWizard({
   await window.locator('[data-testid="remote-directory-picker-select"]').click()
   await expect(window.locator('[data-testid="remote-directory-picker-window"]')).toHaveCount(0)
 
-  await window
-    .locator('[data-testid="workspace-project-create-default-remote-name"]')
-    .fill(mountName)
   await window.locator('[data-testid="workspace-project-create-confirm"]').click()
   await expect(window.locator('[data-testid="workspace-project-create-window"]')).toHaveCount(0)
 }
@@ -86,7 +72,6 @@ export async function createMultiMountProjectViaWizard({
   window,
   projectName,
   localRootPath,
-  localMountName,
   remoteEndpointId,
   remoteRootPath,
   remoteMountName,
@@ -94,7 +79,6 @@ export async function createMultiMountProjectViaWizard({
   window: Page
   projectName: string
   localRootPath: string
-  localMountName: string
   remoteEndpointId: string
   remoteRootPath: string
   remoteMountName: string
@@ -106,9 +90,6 @@ export async function createMultiMountProjectViaWizard({
   await window
     .locator('[data-testid="workspace-project-create-default-local-root"]')
     .fill(localRootPath)
-  await window
-    .locator('[data-testid="workspace-project-create-default-local-name"]')
-    .fill(localMountName)
 
   await window.locator('[data-testid="workspace-project-create-advanced-toggle"]').click()
   await selectCoveOption(window, 'workspace-project-create-extra-remote-endpoint', remoteEndpointId)

@@ -149,7 +149,6 @@ test.describe('M6 - Dev profile happy path (manual)', () => {
         projectName,
         remoteEndpointId,
         remoteRootPath: remoteRepoDir,
-        mountName: 'RemoteRepoMount',
       })
 
       const projectItem = window
