@@ -44,4 +44,13 @@ describe('normalizeAgentSettings', () => {
       }).focusNodeUseVisibleCanvasCenter,
     ).toBe(false)
   })
+
+  it('defaults experimental remote workers to disabled', () => {
+    expect(DEFAULT_AGENT_SETTINGS.experimentalRemoteWorkersEnabled).toBe(false)
+    expect(normalizeAgentSettings({}).experimentalRemoteWorkersEnabled).toBe(false)
+    expect(
+      normalizeAgentSettings({ experimentalRemoteWorkersEnabled: true })
+        .experimentalRemoteWorkersEnabled,
+    ).toBe(true)
+  })
 })

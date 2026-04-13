@@ -3,6 +3,7 @@ import type { AgentProvider, AgentSettings } from '@contexts/settings/domain/age
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { AppUpdateState, ReleaseNotesCurrentResult } from '@shared/contracts/dto'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import { WhatsNewDialog } from './WhatsNewDialog'
 
 interface ProviderModelCatalogEntry {
@@ -42,7 +43,7 @@ export function AppShellModals({
   whatsNew,
 }: {
   isSettingsOpen: boolean
-  settingsInitialPageId: 'endpoints' | null
+  settingsInitialPageId: SettingsPageId | null
   settings: AgentSettings
   updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>

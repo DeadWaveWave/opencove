@@ -33,6 +33,7 @@ import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useAppStore } from './store/useAppStore'
 import { removeWorkspace } from './utils/removeWorkspace'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -93,7 +94,7 @@ export default function App(): React.JSX.Element {
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
   const [isAddProjectWizardOpen, setIsAddProjectWizardOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
-  const [settingsInitialPageId, setSettingsInitialPageId] = useState<'endpoints' | null>(null)
+  const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
 
   useWebsiteWindowOcclusionSync(
     isSettingsOpen ||
@@ -320,7 +321,7 @@ export default function App(): React.JSX.Element {
   )
 
   const handleOpenSettings = useCallback(
-    (initialPageId: 'endpoints' | null = null): void => {
+    (initialPageId: SettingsPageId | null = null): void => {
       setIsFocusNodeTargetZoomPreviewing(false)
       setSettingsInitialPageId(initialPageId)
       closeControlCenter()
@@ -429,9 +430,12 @@ export default function App(): React.JSX.Element {
         activeWorkspace={activeWorkspace}
         workspaces={workspaces}
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
+        remoteWorkersEnabled={agentSettings.experimentalRemoteWorkersEnabled}
         onCloseCommandCenter={closeCommandCenter}
         onOpenSettings={handleOpenSettings}
-        onRequestOpenEndpoints={() => handleOpenSettings('endpoints')}
+        onRequestOpenEndpoints={() => {
+          handleOpenSettings(agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'experimental')
+        }}
         onOpenSpaceArchives={openSpaceArchives}
         onTogglePrimarySidebar={() => {
           setAgentSettings(prev => ({

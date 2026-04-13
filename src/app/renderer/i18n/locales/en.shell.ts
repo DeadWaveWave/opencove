@@ -1,26 +1,29 @@
 export const enShell = {
   projectContextMenu: {
-    manageMounts: 'Manage mounts…',
+    manageMounts: 'Manage locations…',
     removeProject: 'Remove project',
   },
   projectMountManager: {
-    title: 'Manage Mounts · {{workspaceName}}',
+    title: 'Manage Locations · {{workspaceName}}',
     description:
-      'Add or remove local/remote mounts for this project. New terminals and agents default to the first mount.',
-    listLabel: 'Mounts',
-    empty: 'No mounts yet.',
+      'Add or remove local/remote locations for this project. New terminals and agents default to the first location.',
+    listLabel: 'Locations',
+    empty: 'No locations yet.',
     defaultMountBadge: 'Default',
     makeDefaultAction: 'Make default',
-    addLocalLabel: 'Local mount',
+    addLocalLabel: 'Local location',
     browseLocalAction: 'Browse…',
     localRootPlaceholder: '/path/to/project',
-    localNamePlaceholder: 'Mount name (optional)',
+    localNamePlaceholder: 'Location name (optional)',
     localPathMustBeAbsolute: 'Local path must be absolute.',
-    addRemoteLabel: 'Remote mount',
+    addRemoteLabel: 'Remote location',
     remoteRootPlaceholder: '/path/to/remote/project',
-    remoteNamePlaceholder: 'Mount name (optional)',
+    remoteNamePlaceholder: 'Location name (optional)',
     remotePathMustBeAbsolute: 'Remote path must be absolute.',
     openEndpointsAction: 'Add remote worker…',
+    remoteExperimentalTitle: 'Remote mounts are experimental',
+    remoteExperimentalHint: 'Enable Remote Workers in Settings → Experimental to manage them.',
+    openExperimentalAction: 'Open Experimental',
   },
   spaceTargetMountPicker: {
     title: 'Select target mount',
@@ -31,6 +34,8 @@ export const enShell = {
     title: 'Add project',
     description:
       'Choose a default location (local or remote). You can add more mounts in Advanced.',
+    descriptionLocalOnly:
+      'Choose a project folder. You can manage locations later from the project menu.',
     nameLabel: 'Project name',
     namePlaceholder: 'Leave empty to use the mount folder name',
     nameRequired: 'Please enter a project name or choose a folder.',

@@ -28,10 +28,12 @@ function resolveMountName(rootPath: string, nameInput: string): string | null {
 
 export function AddProjectWizardWindow({
   existingWorkspaces,
+  remoteWorkersEnabled,
   onClose,
   onRequestOpenEndpoints,
 }: {
   existingWorkspaces: WorkspaceState[]
+  remoteWorkersEnabled: boolean
   onClose: () => void
   onRequestOpenEndpoints: () => void
 }): React.JSX.Element {
@@ -146,8 +148,19 @@ export function AddProjectWizardWindow({
   }, [])
 
   useEffect(() => {
+    if (!remoteWorkersEnabled) {
+      setEndpoints([])
+      return
+    }
+
     reloadEndpointsWithUi()
-  }, [reloadEndpointsWithUi])
+  }, [reloadEndpointsWithUi, remoteWorkersEnabled])
+
+  useEffect(() => {
+    if (!remoteWorkersEnabled) {
+      setDefaultLocationKind('local')
+    }
+  }, [remoteWorkersEnabled])
 
   const derivedProjectName = useMemo(() => {
     const trimmed = projectName.trim()
@@ -166,6 +179,19 @@ export function AddProjectWizardWindow({
   }, [defaultLocalRootPath, defaultLocationKind, defaultRemoteRootPath, extraMounts, projectName])
 
   const defaultMountPreview = useMemo<PlannedMount | null>(() => {
+    if (!remoteWorkersEnabled) {
+      const rootPath = defaultLocalRootPath.trim()
+      if (rootPath.length === 0) {
+        return null
+      }
+
+      return {
+        endpointId: 'local',
+        rootPath,
+        name: resolveMountName(rootPath, defaultLocalMountName),
+      }
+    }
+
     if (defaultLocationKind === 'local') {
       const rootPath = defaultLocalRootPath.trim()
       if (rootPath.length === 0) {
@@ -197,6 +223,7 @@ export function AddProjectWizardWindow({
     defaultRemoteEndpointId,
     defaultRemoteMountName,
     defaultRemoteRootPath,
+    remoteWorkersEnabled,
   ])
 
   const addExtraMountDraft = useCallback((draft: Omit<DraftMount, 'id'>) => {
@@ -353,7 +380,11 @@ export function AddProjectWizardWindow({
           onClick={event => event.stopPropagation()}
         >
           <h3>{t('addProjectWizard.title')}</h3>
-          <p>{t('addProjectWizard.description')}</p>
+          <p>
+            {remoteWorkersEnabled
+              ? t('addProjectWizard.description')
+              : t('addProjectWizard.descriptionLocalOnly')}
+          </p>
 
           <div className="cove-window__fields">
             {error ? (
@@ -382,55 +413,65 @@ export function AddProjectWizardWindow({
               t={t}
               isBusy={isBusy}
               canBrowseLocal={canBrowseLocal}
+              showRemote={remoteWorkersEnabled}
               remoteEndpointsCount={remoteEndpoints.length}
               endpointOptions={endpointOptions}
               defaultLocationKind={defaultLocationKind}
               defaultLocalRootPath={defaultLocalRootPath}
-              defaultLocalMountName={defaultLocalMountName}
               defaultRemoteEndpointId={defaultRemoteEndpointId}
               defaultRemoteRootPath={defaultRemoteRootPath}
-              defaultRemoteMountName={defaultRemoteMountName}
               onChangeDefaultLocationKind={setDefaultLocationKind}
               onChangeDefaultLocalRootPath={setDefaultLocalRootPath}
-              onChangeDefaultLocalMountName={setDefaultLocalMountName}
               onBrowseDefaultLocalRootPath={() => void browseDefaultLocalMount()}
               onChangeDefaultRemoteEndpointId={setDefaultRemoteEndpointId}
               onChangeDefaultRemoteRootPath={setDefaultRemoteRootPath}
-              onChangeDefaultRemoteMountName={setDefaultRemoteMountName}
-              onBrowseDefaultRemoteRootPath={() => openRemotePicker('default')}
+              onBrowseDefaultRemoteRootPath={() => {
+                if (!remoteWorkersEnabled) {
+                  return
+                }
+
+                openRemotePicker('default')
+              }}
               onRequestOpenEndpoints={onRequestOpenEndpoints}
             />
 
-            <AddProjectWizardAdvancedSection
-              t={t}
-              isBusy={isBusy}
-              canBrowseLocal={canBrowseLocal}
-              isAdvancedOpen={isAdvancedOpen}
-              defaultMountPreview={defaultMountPreview}
-              extraMounts={extraMounts}
-              endpointLabelById={endpointLabelById}
-              remoteEndpointsCount={remoteEndpoints.length}
-              endpointOptions={endpointOptions}
-              extraLocalRootPath={extraLocalRootPath}
-              extraLocalMountName={extraLocalMountName}
-              extraRemoteEndpointId={extraRemoteEndpointId}
-              extraRemoteRootPath={extraRemoteRootPath}
-              extraRemoteMountName={extraRemoteMountName}
-              canCreateExtraRemote={canCreateExtraRemote}
-              onToggleAdvanced={() => setIsAdvancedOpen(open => !open)}
-              onChangeExtraLocalRootPath={setExtraLocalRootPath}
-              onChangeExtraLocalMountName={setExtraLocalMountName}
-              onBrowseExtraLocalRootPath={() => void browseExtraLocalMount()}
-              onAddExtraLocalMount={addExtraLocalMount}
-              onChangeExtraRemoteEndpointId={setExtraRemoteEndpointId}
-              onChangeExtraRemoteRootPath={setExtraRemoteRootPath}
-              onChangeExtraRemoteMountName={setExtraRemoteMountName}
-              onBrowseExtraRemoteRootPath={() => openRemotePicker('extra')}
-              onAddExtraRemoteMount={addExtraRemoteMount}
-              onRemoveExtraMount={removeExtraMountDraft}
-              onReloadEndpoints={reloadEndpointsWithUi}
-              onRequestOpenEndpoints={onRequestOpenEndpoints}
-            />
+            {remoteWorkersEnabled ? (
+              <AddProjectWizardAdvancedSection
+                t={t}
+                isBusy={isBusy}
+                canBrowseLocal={canBrowseLocal}
+                showRemote={remoteWorkersEnabled}
+                isAdvancedOpen={isAdvancedOpen}
+                defaultMountPreview={defaultMountPreview}
+                extraMounts={extraMounts}
+                endpointLabelById={endpointLabelById}
+                remoteEndpointsCount={remoteEndpoints.length}
+                endpointOptions={endpointOptions}
+                extraLocalRootPath={extraLocalRootPath}
+                extraLocalMountName={extraLocalMountName}
+                extraRemoteEndpointId={extraRemoteEndpointId}
+                extraRemoteRootPath={extraRemoteRootPath}
+                extraRemoteMountName={extraRemoteMountName}
+                canCreateExtraRemote={canCreateExtraRemote}
+                onToggleAdvanced={() => setIsAdvancedOpen(open => !open)}
+                onChangeExtraLocalRootPath={setExtraLocalRootPath}
+                onChangeExtraLocalMountName={setExtraLocalMountName}
+                onBrowseExtraLocalRootPath={() => void browseExtraLocalMount()}
+                onAddExtraLocalMount={addExtraLocalMount}
+                onChangeExtraRemoteEndpointId={setExtraRemoteEndpointId}
+                onChangeExtraRemoteRootPath={setExtraRemoteRootPath}
+                onChangeExtraRemoteMountName={setExtraRemoteMountName}
+                onBrowseExtraRemoteRootPath={() => {
+                  openRemotePicker('extra')
+                }}
+                onAddExtraRemoteMount={() => {
+                  addExtraRemoteMount()
+                }}
+                onRemoveExtraMount={removeExtraMountDraft}
+                onReloadEndpoints={reloadEndpointsWithUi}
+                onRequestOpenEndpoints={onRequestOpenEndpoints}
+              />
+            ) : null}
           </div>
 
           <div className="cove-window__actions">

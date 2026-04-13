@@ -4,7 +4,11 @@ import type { CliPathStatusResult, HomeWorkerMode, WorkerStatusResult } from '@s
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 import { formatToken, toBaseUrl, toErrorMessage } from './workerSectionUtils'
 
-export function WorkerSection(): React.JSX.Element {
+export function WorkerSection({
+  remoteWorkersEnabled,
+}: {
+  remoteWorkersEnabled: boolean
+}): React.JSX.Element {
   const { t } = useTranslation()
   const supportsHomeWorkerModeSelection = !window.opencoveApi.meta.isPackaged
   const defaultMode: HomeWorkerMode = supportsHomeWorkerModeSelection ? 'standalone' : 'local'
@@ -20,18 +24,28 @@ export function WorkerSection(): React.JSX.Element {
   const [revealLocalToken, setRevealLocalToken] = useState(false)
   const [revealRemoteToken, setRevealRemoteToken] = useState(false)
   const localConnection = localStatus?.connection ?? null
-  const modeOptions = useMemo(
-    () => [
+  const modeOptions = useMemo(() => {
+    const options = [
       { value: 'standalone', label: t('settingsPanel.worker.home.mode.standalone') },
       { value: 'local', label: t('settingsPanel.worker.home.mode.local') },
-      { value: 'remote', label: t('settingsPanel.worker.home.mode.remote') },
-    ],
-    [t],
-  )
+    ]
+
+    const allowRemoteOption =
+      remoteWorkersEnabled || savedMode === 'remote' || draftMode === 'remote'
+    if (allowRemoteOption) {
+      options.push({ value: 'remote', label: t('settingsPanel.worker.home.mode.remote') })
+    }
+
+    return options
+  }, [draftMode, remoteWorkersEnabled, savedMode, t])
 
   const canApplyRemote = useMemo(() => {
     if (draftMode !== 'remote') {
       return true
+    }
+
+    if (!remoteWorkersEnabled && savedMode !== 'remote') {
+      return false
     }
 
     const hostname = remoteHostname.trim()
@@ -71,7 +85,11 @@ export function WorkerSection(): React.JSX.Element {
 
   const applyAndRestart = async (): Promise<void> => {
     if (!canApplyRemote) {
-      setError(t('settingsPanel.worker.errors.remoteRequired'))
+      if (!remoteWorkersEnabled && savedMode !== 'remote') {
+        setError(t('settingsPanel.worker.errors.remoteExperimentalDisabled'))
+      } else {
+        setError(t('settingsPanel.worker.errors.remoteRequired'))
+      }
       return
     }
 

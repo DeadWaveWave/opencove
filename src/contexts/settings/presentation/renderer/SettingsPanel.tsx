@@ -110,6 +110,8 @@ export function SettingsPanel({
     onChange({ ...settings, websiteWindowPolicy: policy })
   const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
     onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
+  const updateExperimentalRemoteWorkersEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalRemoteWorkersEnabled: enabled })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
@@ -252,6 +254,18 @@ export function SettingsPanel({
     }
   }, [activePageId, onFocusNodeTargetZoomPreviewChange])
 
+  useEffect(() => {
+    if (activePageId !== 'endpoints') {
+      return
+    }
+
+    if (settings.experimentalRemoteWorkersEnabled) {
+      return
+    }
+
+    setActivePageId('experimental')
+  }, [activePageId, settings.experimentalRemoteWorkersEnabled])
+
   return (
     <div
       className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
@@ -277,12 +291,14 @@ export function SettingsPanel({
             testId="settings-section-nav-worker"
             onClick={() => setActivePageId('worker')}
           />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'endpoints'}
-            label={t('settingsPanel.nav.endpoints')}
-            testId="settings-section-nav-endpoints"
-            onClick={() => setActivePageId('endpoints')}
-          />
+          {settings.experimentalRemoteWorkersEnabled ? (
+            <SettingsPanelNavButton
+              isActive={activePageId === 'endpoints'}
+              label={t('settingsPanel.nav.endpoints')}
+              testId="settings-section-nav-endpoints"
+              onClick={() => setActivePageId('endpoints')}
+            />
+          ) : null}
           <SettingsPanelNavButton
             isActive={activePageId === 'agent'}
             label={t('settingsPanel.nav.agent')}
@@ -372,9 +388,13 @@ export function SettingsPanel({
               />
             ) : null}
 
-            {activePageId === 'worker' ? <WorkerSection /> : null}
+            {activePageId === 'worker' ? (
+              <WorkerSection remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled} />
+            ) : null}
 
-            {activePageId === 'endpoints' ? <EndpointsSection /> : null}
+            {activePageId === 'endpoints' && settings.experimentalRemoteWorkersEnabled ? (
+              <EndpointsSection />
+            ) : null}
 
             {activePageId === 'agent' ? (
               <>
@@ -450,8 +470,10 @@ export function SettingsPanel({
               <ExperimentalSection
                 websiteWindowPolicy={settings.websiteWindowPolicy}
                 websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
+                remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
                 onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
                 onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
+                onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
               />
             ) : null}
 

@@ -9,6 +9,7 @@ export function AddProjectWizardAdvancedSection({
   t,
   isBusy,
   canBrowseLocal,
+  showRemote,
   isAdvancedOpen,
   defaultMountPreview,
   extraMounts,
@@ -38,6 +39,7 @@ export function AddProjectWizardAdvancedSection({
   t: TranslateFn
   isBusy: boolean
   canBrowseLocal: boolean
+  showRemote: boolean
   isAdvancedOpen: boolean
   defaultMountPreview: PlannedMount | null
   extraMounts: DraftMount[]
@@ -138,84 +140,88 @@ export function AddProjectWizardAdvancedSection({
 
           <div className="cove-window__field-row">
             <label>{t('addProjectWizard.addExtraRemoteLabel')}</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-              {remoteEndpointsCount === 0 ? (
-                <button
-                  type="button"
-                  className="cove-window__action cove-window__action--ghost"
-                  disabled={isBusy}
-                  data-testid="workspace-project-create-advanced-open-endpoints"
-                  onClick={() => {
-                    onRequestOpenEndpoints()
-                  }}
-                >
-                  {t('addProjectWizard.openEndpointsAction')}
-                </button>
-              ) : (
-                <>
-                  <CoveSelect
-                    testId="workspace-project-create-extra-remote-endpoint"
-                    value={extraRemoteEndpointId}
-                    options={endpointOptions}
-                    disabled={isBusy || endpointOptions.length === 0}
-                    onChange={nextValue => onChangeExtraRemoteEndpointId(nextValue)}
-                  />
-                  <div style={{ display: 'flex', gap: 10 }}>
+            {showRemote ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                {remoteEndpointsCount === 0 ? (
+                  <button
+                    type="button"
+                    className="cove-window__action cove-window__action--ghost"
+                    disabled={isBusy}
+                    data-testid="workspace-project-create-advanced-open-endpoints"
+                    onClick={() => {
+                      onRequestOpenEndpoints()
+                    }}
+                  >
+                    {t('addProjectWizard.openEndpointsAction')}
+                  </button>
+                ) : (
+                  <>
+                    <CoveSelect
+                      testId="workspace-project-create-extra-remote-endpoint"
+                      value={extraRemoteEndpointId}
+                      options={endpointOptions}
+                      disabled={isBusy || endpointOptions.length === 0}
+                      onChange={nextValue => onChangeExtraRemoteEndpointId(nextValue)}
+                    />
+                    <div style={{ display: 'flex', gap: 10 }}>
+                      <input
+                        className="cove-field"
+                        type="text"
+                        value={extraRemoteRootPath}
+                        onChange={event => onChangeExtraRemoteRootPath(event.target.value)}
+                        disabled={isBusy || endpointOptions.length === 0}
+                        placeholder={t('addProjectWizard.remotePathPlaceholder')}
+                        data-testid="workspace-project-create-extra-remote-root"
+                      />
+                      <button
+                        type="button"
+                        className="cove-window__action cove-window__action--ghost"
+                        disabled={isBusy || extraRemoteEndpointId.trim().length === 0}
+                        data-testid="workspace-project-create-extra-remote-browse"
+                        onClick={() => {
+                          onBrowseExtraRemoteRootPath()
+                        }}
+                      >
+                        {t('addProjectWizard.browse')}
+                      </button>
+                    </div>
                     <input
                       className="cove-field"
                       type="text"
-                      value={extraRemoteRootPath}
-                      onChange={event => onChangeExtraRemoteRootPath(event.target.value)}
+                      value={extraRemoteMountName}
+                      onChange={event => onChangeExtraRemoteMountName(event.target.value)}
                       disabled={isBusy || endpointOptions.length === 0}
-                      placeholder={t('addProjectWizard.remotePathPlaceholder')}
-                      data-testid="workspace-project-create-extra-remote-root"
+                      placeholder={t('addProjectWizard.remoteNamePlaceholder')}
+                      data-testid="workspace-project-create-extra-remote-name"
                     />
                     <button
                       type="button"
-                      className="cove-window__action cove-window__action--ghost"
-                      disabled={isBusy || extraRemoteEndpointId.trim().length === 0}
-                      data-testid="workspace-project-create-extra-remote-browse"
-                      onClick={() => {
-                        onBrowseExtraRemoteRootPath()
-                      }}
+                      className="cove-window__action cove-window__action--primary"
+                      disabled={isBusy || !canCreateExtraRemote}
+                      onClick={() => onAddExtraRemoteMount()}
+                      data-testid="workspace-project-create-extra-remote-add"
                     >
-                      {t('addProjectWizard.browse')}
+                      {t('common.add')}
                     </button>
-                  </div>
-                  <input
-                    className="cove-field"
-                    type="text"
-                    value={extraRemoteMountName}
-                    onChange={event => onChangeExtraRemoteMountName(event.target.value)}
-                    disabled={isBusy || endpointOptions.length === 0}
-                    placeholder={t('addProjectWizard.remoteNamePlaceholder')}
-                    data-testid="workspace-project-create-extra-remote-name"
-                  />
-                  <button
-                    type="button"
-                    className="cove-window__action cove-window__action--primary"
-                    disabled={isBusy || !canCreateExtraRemote}
-                    onClick={() => onAddExtraRemoteMount()}
-                    data-testid="workspace-project-create-extra-remote-add"
-                  >
-                    {t('common.add')}
-                  </button>
-                </>
-              )}
-            </div>
+                  </>
+                )}
+              </div>
+            ) : null}
           </div>
 
-          <button
-            type="button"
-            className="cove-window__action cove-window__action--ghost"
-            disabled={isBusy}
-            data-testid="workspace-project-create-refresh-endpoints"
-            onClick={() => {
-              onReloadEndpoints()
-            }}
-          >
-            {t('common.refresh')}
-          </button>
+          {showRemote ? (
+            <button
+              type="button"
+              className="cove-window__action cove-window__action--ghost"
+              disabled={isBusy}
+              data-testid="workspace-project-create-refresh-endpoints"
+              onClick={() => {
+                onReloadEndpoints()
+              }}
+            >
+              {t('common.refresh')}
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

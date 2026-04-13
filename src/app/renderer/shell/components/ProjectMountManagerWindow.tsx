@@ -16,10 +16,12 @@ import { ProjectMountManagerRemoteSection } from './ProjectMountManagerRemoteSec
 
 export function ProjectMountManagerWindow({
   workspace,
+  remoteWorkersEnabled,
   onClose,
   onRequestOpenEndpoints,
 }: {
   workspace: WorkspaceState | null
+  remoteWorkersEnabled: boolean
   onClose: () => void
   onRequestOpenEndpoints: () => void
 }): React.JSX.Element | null {
@@ -57,11 +59,13 @@ export function ProjectMountManagerWindow({
     }
 
     const [endpointResult, mountResult] = await Promise.all([
-      window.opencoveApi.controlSurface.invoke<ListWorkerEndpointsResult>({
-        kind: 'query',
-        id: 'endpoint.list',
-        payload: null,
-      }),
+      remoteWorkersEnabled
+        ? window.opencoveApi.controlSurface.invoke<ListWorkerEndpointsResult>({
+            kind: 'query',
+            id: 'endpoint.list',
+            payload: null,
+          })
+        : Promise.resolve({ endpoints: [] }),
       window.opencoveApi.controlSurface.invoke<ListMountsResult>({
         kind: 'query',
         id: 'mount.list',
@@ -83,7 +87,7 @@ export function ProjectMountManagerWindow({
       const firstRemote = endpointResult.endpoints.find(endpoint => endpoint.endpointId !== 'local')
       return firstRemote?.endpointId ?? ''
     })
-  }, [workspaceId])
+  }, [remoteWorkersEnabled, workspaceId])
 
   useEffect(() => {
     void (async () => {
@@ -113,6 +117,8 @@ export function ProjectMountManagerWindow({
   if (!workspace) {
     return null
   }
+
+  const hasRemoteMounts = mounts.some(mount => mount.endpointId !== 'local')
 
   const canBrowseLocal =
     typeof window !== 'undefined' &&
@@ -301,6 +307,42 @@ export function ProjectMountManagerWindow({
               </p>
             ) : null}
 
+            {!remoteWorkersEnabled && hasRemoteMounts ? (
+              <div
+                style={{
+                  border: '1px solid var(--cove-border-subtle)',
+                  borderRadius: 12,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  padding: '10px 12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+                data-testid="workspace-project-mount-remote-experimental-hint"
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>
+                    {t('projectMountManager.remoteExperimentalTitle')}
+                  </div>
+                  <div style={{ color: 'var(--cove-text-muted)', fontSize: 12 }}>
+                    {t('projectMountManager.remoteExperimentalHint')}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="cove-window__action cove-window__action--primary"
+                  disabled={isBusy}
+                  data-testid="workspace-project-mount-open-experimental"
+                  onClick={() => {
+                    onRequestOpenEndpoints()
+                  }}
+                >
+                  {t('projectMountManager.openExperimentalAction')}
+                </button>
+              </div>
+            ) : null}
+
             <div className="cove-window__field-row">
               <label>{t('projectMountManager.listLabel')}</label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
@@ -316,6 +358,7 @@ export function ProjectMountManagerWindow({
                       endpointLabel={endpointLabelById.get(mount.endpointId) ?? mount.endpointId}
                       isDefault={index === 0}
                       isBusy={isBusy}
+                      actionsDisabled={!remoteWorkersEnabled && mount.endpointId !== 'local'}
                       onPromote={handlePromoteMount}
                       onRemove={handleRemoveMount}
                     />
@@ -372,36 +415,38 @@ export function ProjectMountManagerWindow({
               </div>
             </div>
 
-            <ProjectMountManagerRemoteSection
-              t={t}
-              isBusy={isBusy}
-              remoteEndpoints={remoteEndpoints}
-              endpointLabelById={endpointLabelById}
-              remoteEndpointId={remoteEndpointId}
-              remoteRootPath={remoteRootPath}
-              remoteMountName={remoteMountName}
-              canCreateRemote={canCreateRemote}
-              onChangeRemoteEndpointId={setRemoteEndpointId}
-              onChangeRemoteRootPath={setRemoteRootPath}
-              onChangeRemoteMountName={setRemoteMountName}
-              onCreateRemoteMount={() => {
-                void createRemoteMount()
-              }}
-              onRefresh={() => {
-                void (async () => {
-                  setError(null)
-                  setIsBusy(true)
-                  try {
-                    await reload()
-                  } catch (caughtError) {
-                    setError(toErrorMessage(caughtError))
-                  } finally {
-                    setIsBusy(false)
-                  }
-                })()
-              }}
-              onRequestOpenEndpoints={onRequestOpenEndpoints}
-            />
+            {remoteWorkersEnabled ? (
+              <ProjectMountManagerRemoteSection
+                t={t}
+                isBusy={isBusy}
+                remoteEndpoints={remoteEndpoints}
+                endpointLabelById={endpointLabelById}
+                remoteEndpointId={remoteEndpointId}
+                remoteRootPath={remoteRootPath}
+                remoteMountName={remoteMountName}
+                canCreateRemote={canCreateRemote}
+                onChangeRemoteEndpointId={setRemoteEndpointId}
+                onChangeRemoteRootPath={setRemoteRootPath}
+                onChangeRemoteMountName={setRemoteMountName}
+                onCreateRemoteMount={() => {
+                  void createRemoteMount()
+                }}
+                onRefresh={() => {
+                  void (async () => {
+                    setError(null)
+                    setIsBusy(true)
+                    try {
+                      await reload()
+                    } catch (caughtError) {
+                      setError(toErrorMessage(caughtError))
+                    } finally {
+                      setIsBusy(false)
+                    }
+                  })()
+                }}
+                onRequestOpenEndpoints={onRequestOpenEndpoints}
+              />
+            ) : null}
           </div>
 
           <div className="cove-window__actions">

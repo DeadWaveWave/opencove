@@ -145,6 +145,7 @@ export interface AgentSettings {
   standardWindowSizeBucket: StandardWindowSizeBucket
   websiteWindowPolicy: WebsiteWindowPolicy
   experimentalWebsiteWindowPasteEnabled: boolean
+  experimentalRemoteWorkersEnabled: boolean
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   terminalFontFamily: string | null
@@ -337,6 +338,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const experimentalWebsiteWindowPasteEnabled =
     normalizeBoolean(value.experimentalWebsiteWindowPasteEnabled) ??
     DEFAULT_AGENT_SETTINGS.experimentalWebsiteWindowPasteEnabled
+  const experimentalRemoteWorkersEnabled =
+    normalizeBoolean(value.experimentalRemoteWorkersEnabled) ??
+    DEFAULT_AGENT_SETTINGS.experimentalRemoteWorkersEnabled
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -421,6 +425,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     standardWindowSizeBucket,
     websiteWindowPolicy,
     experimentalWebsiteWindowPasteEnabled,
+    experimentalRemoteWorkersEnabled,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     terminalFontFamily,

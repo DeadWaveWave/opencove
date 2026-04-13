@@ -22,6 +22,7 @@ export function AppShellPopups({
   activeWorkspace,
   workspaces,
   isPrimarySidebarCollapsed,
+  remoteWorkersEnabled,
   onCloseCommandCenter,
   onOpenSettings,
   onRequestOpenEndpoints,
@@ -52,6 +53,7 @@ export function AppShellPopups({
   activeWorkspace: WorkspaceState | null
   workspaces: WorkspaceState[]
   isPrimarySidebarCollapsed: boolean
+  remoteWorkersEnabled: boolean
   onCloseCommandCenter: () => void
   onOpenSettings: () => void
   onRequestOpenEndpoints: () => void
@@ -123,6 +125,7 @@ export function AppShellPopups({
       {isAddProjectWizardOpen ? (
         <AddProjectWizardWindow
           existingWorkspaces={workspaces}
+          remoteWorkersEnabled={remoteWorkersEnabled}
           onClose={() => {
             onCloseAddProjectWizard()
           }}
@@ -149,6 +152,7 @@ export function AppShellPopups({
           workspace={
             workspaces.find(workspace => workspace.id === projectMountManager.workspaceId) ?? null
           }
+          remoteWorkersEnabled={remoteWorkersEnabled}
           onClose={onCloseProjectMountManager}
           onRequestOpenEndpoints={onRequestOpenEndpoints}
         />

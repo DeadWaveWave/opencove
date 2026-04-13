@@ -8,73 +8,71 @@ export function AddProjectWizardDefaultLocationSection({
   t,
   isBusy,
   canBrowseLocal,
+  showRemote,
   remoteEndpointsCount,
   endpointOptions,
   defaultLocationKind,
   defaultLocalRootPath,
-  defaultLocalMountName,
   defaultRemoteEndpointId,
   defaultRemoteRootPath,
-  defaultRemoteMountName,
   onChangeDefaultLocationKind,
   onChangeDefaultLocalRootPath,
-  onChangeDefaultLocalMountName,
   onBrowseDefaultLocalRootPath,
   onChangeDefaultRemoteEndpointId,
   onChangeDefaultRemoteRootPath,
-  onChangeDefaultRemoteMountName,
   onBrowseDefaultRemoteRootPath,
   onRequestOpenEndpoints,
 }: {
   t: TranslateFn
   isBusy: boolean
   canBrowseLocal: boolean
+  showRemote: boolean
   remoteEndpointsCount: number
   endpointOptions: Array<{ value: string; label: string }>
   defaultLocationKind: DefaultLocationKind
   defaultLocalRootPath: string
-  defaultLocalMountName: string
   defaultRemoteEndpointId: string
   defaultRemoteRootPath: string
-  defaultRemoteMountName: string
   onChangeDefaultLocationKind: (kind: DefaultLocationKind) => void
   onChangeDefaultLocalRootPath: (value: string) => void
-  onChangeDefaultLocalMountName: (value: string) => void
   onBrowseDefaultLocalRootPath: () => void
   onChangeDefaultRemoteEndpointId: (value: string) => void
   onChangeDefaultRemoteRootPath: (value: string) => void
-  onChangeDefaultRemoteMountName: (value: string) => void
   onBrowseDefaultRemoteRootPath: () => void
   onRequestOpenEndpoints: () => void
 }): React.JSX.Element {
+  const effectiveDefaultLocationKind: DefaultLocationKind = showRemote ? defaultLocationKind : 'local'
+
   return (
     <div className="cove-window__field-row">
       <label>{t('addProjectWizard.defaultLocationLabel')}</label>
-      <div
-        className="cove-window__segmented"
-        data-testid="workspace-project-create-default-location"
-      >
-        <button
-          type="button"
-          className={`cove-window__segment${defaultLocationKind === 'local' ? ' cove-window__segment--selected' : ''}`}
-          disabled={isBusy}
-          onClick={() => onChangeDefaultLocationKind('local')}
-          data-testid="workspace-project-create-default-location-local"
+      {showRemote ? (
+        <div
+          className="cove-window__segmented"
+          data-testid="workspace-project-create-default-location"
         >
-          {t('addProjectWizard.defaultLocationLocal')}
-        </button>
-        <button
-          type="button"
-          className={`cove-window__segment${defaultLocationKind === 'remote' ? ' cove-window__segment--selected' : ''}`}
-          disabled={isBusy}
-          onClick={() => onChangeDefaultLocationKind('remote')}
-          data-testid="workspace-project-create-default-location-remote"
-        >
-          {t('addProjectWizard.defaultLocationRemote')}
-        </button>
-      </div>
+          <button
+            type="button"
+            className={`cove-window__segment${defaultLocationKind === 'local' ? ' cove-window__segment--selected' : ''}`}
+            disabled={isBusy}
+            onClick={() => onChangeDefaultLocationKind('local')}
+            data-testid="workspace-project-create-default-location-local"
+          >
+            {t('addProjectWizard.defaultLocationLocal')}
+          </button>
+          <button
+            type="button"
+            className={`cove-window__segment${defaultLocationKind === 'remote' ? ' cove-window__segment--selected' : ''}`}
+            disabled={isBusy}
+            onClick={() => onChangeDefaultLocationKind('remote')}
+            data-testid="workspace-project-create-default-location-remote"
+          >
+            {t('addProjectWizard.defaultLocationRemote')}
+          </button>
+        </div>
+      ) : null}
 
-      {defaultLocationKind === 'local' ? (
+      {effectiveDefaultLocationKind === 'local' ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
           <div style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
             <input
@@ -96,15 +94,6 @@ export function AddProjectWizardDefaultLocationSection({
               {t('addProjectWizard.browse')}
             </button>
           </div>
-          <input
-            className="cove-field"
-            type="text"
-            value={defaultLocalMountName}
-            onChange={event => onChangeDefaultLocalMountName(event.target.value)}
-            disabled={isBusy}
-            placeholder={t('addProjectWizard.localNamePlaceholder')}
-            data-testid="workspace-project-create-default-local-name"
-          />
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
@@ -172,15 +161,6 @@ export function AddProjectWizardDefaultLocationSection({
                   {t('addProjectWizard.browse')}
                 </button>
               </div>
-              <input
-                className="cove-field"
-                type="text"
-                value={defaultRemoteMountName}
-                onChange={event => onChangeDefaultRemoteMountName(event.target.value)}
-                disabled={isBusy}
-                placeholder={t('addProjectWizard.remoteNamePlaceholder')}
-                data-testid="workspace-project-create-default-remote-name"
-              />
             </>
           )}
         </div>

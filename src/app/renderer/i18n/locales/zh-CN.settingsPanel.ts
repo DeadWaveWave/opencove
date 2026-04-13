@@ -139,6 +139,12 @@ export const zhCNSettingsPanel = {
   },
   experimental: {
     title: '实验性',
+    remoteWorkersTitle: '远程 Worker 与位置',
+    remoteWorkersHelp:
+      '远程 Worker 与远程项目位置（mount）的实验性支持。在工作流稳定前建议保持关闭。',
+    remoteWorkersEnabledLabel: '启用远程 Worker',
+    remoteWorkersEnabledHelp:
+      '开启后将显示远程 Worker 与远程位置相关的界面入口。关闭时默认保持本地工作流。',
     workerWebUi: {
       title: 'Worker Web UI',
       help: '通过 Worker 提供的浏览器 UI（实验性）。当前需要 Home Worker = Local Worker。',
@@ -289,6 +295,8 @@ export const zhCNSettingsPanel = {
     title: 'Worker',
     errors: {
       remoteRequired: '远程 Worker 需要填写主机、端口和 Token。',
+      remoteExperimentalDisabled:
+        '远程 Worker 为实验性功能。请先在「实验性」设置中启用远程 Worker 后再继续。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
       enableLocalRequiresRestart: '请先启用 Local Worker 并重启，然后再启动 Worker。',
     },

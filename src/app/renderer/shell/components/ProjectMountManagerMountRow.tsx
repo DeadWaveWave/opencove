@@ -7,6 +7,7 @@ export function ProjectMountManagerMountRow({
   endpointLabel,
   isDefault,
   isBusy,
+  actionsDisabled = false,
   onPromote,
   onRemove,
 }: {
@@ -14,10 +15,12 @@ export function ProjectMountManagerMountRow({
   endpointLabel: string
   isDefault: boolean
   isBusy: boolean
+  actionsDisabled?: boolean
   onPromote: (mountId: string) => void
   onRemove: (mountId: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const controlsDisabled = isBusy || actionsDisabled
 
   return (
     <div
@@ -63,7 +66,7 @@ export function ProjectMountManagerMountRow({
           <button
             type="button"
             className="cove-window__action cove-window__action--ghost"
-            disabled={isBusy}
+            disabled={controlsDisabled}
             data-testid={`workspace-project-mount-promote-${mount.mountId}`}
             onClick={() => onPromote(mount.mountId)}
           >
@@ -73,7 +76,7 @@ export function ProjectMountManagerMountRow({
         <button
           type="button"
           className="cove-window__action cove-window__action--danger"
-          disabled={isBusy}
+          disabled={controlsDisabled}
           data-testid={`workspace-project-mount-remove-${mount.mountId}`}
           onClick={() => onRemove(mount.mountId)}
         >
