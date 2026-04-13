@@ -143,11 +143,21 @@ export function registerQuickPhrasesContextMenu({
         void error
       }
 
-      void storePromise?.then(store => {
-        store.dispose()
-      })
+      const disposableStorePromise = storePromise
       storePromise = null
       cachedSettings = null
+
+      void disposableStorePromise
+        ?.then(store => {
+          try {
+            store.dispose()
+          } catch (error) {
+            void error
+          }
+        })
+        .catch(error => {
+          void error
+        })
     },
   }
 }
