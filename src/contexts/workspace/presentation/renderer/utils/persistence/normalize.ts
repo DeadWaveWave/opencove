@@ -230,11 +230,20 @@ export function normalizeEnvironmentVariables(value: unknown): Record<string, st
 
   for (const [key, val] of Object.entries(value as Record<string, unknown>)) {
     const trimmedKey = typeof key === 'string' ? key.trim() : ''
-    if (trimmedKey.length === 0) continue
-    if (typeof val !== 'string') continue
+    if (trimmedKey.length === 0) {
+      continue
+    }
+
+    if (typeof val !== 'string') {
+      continue
+    }
+
     result[trimmedKey] = val
     count += 1
-    if (count >= 100) break
+
+    if (count >= 100) {
+      break
+    }
   }
 
   return result

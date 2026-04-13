@@ -77,7 +77,9 @@ export function WorkspaceSection({
 
   const addEnvVar = (): void => {
     const key = envKeyInput.trim()
-    if (key.length === 0) return
+    if (key.length === 0) {
+      return
+    }
     onChangeEnvironmentVariables({ ...environmentVariables, [key]: envValueInput })
     setEnvKeyInput('')
     setEnvValueInput('')

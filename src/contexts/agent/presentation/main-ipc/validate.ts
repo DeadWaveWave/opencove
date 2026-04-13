@@ -5,7 +5,7 @@ import type {
   ReadAgentLastMessageInput,
   ResolveAgentResumeSessionInput,
 } from '../../../../shared/contracts/dto'
-import { normalizeProvider } from '../../../../app/main/ipc/normalize'
+import { normalizeEnvPayload, normalizeProvider } from '../../../../app/main/ipc/normalize'
 import { isAbsolute, win32 } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
 
@@ -151,27 +151,6 @@ export function resolveAgentTestStub(
     command: shell,
     args: ['-lc', `printf '%s\\n' "${message}"; sleep 120`],
   }
-}
-
-const MAX_ENV_ENTRIES = 100
-
-function normalizeEnvPayload(raw: unknown): Record<string, string> | undefined {
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-    return undefined
-  }
-
-  const result: Record<string, string> = {}
-  let count = 0
-
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
-    if (count >= MAX_ENV_ENTRIES) break
-    const trimmedKey = key.trim()
-    if (trimmedKey.length === 0 || typeof value !== 'string') continue
-    result[trimmedKey] = value
-    count++
-  }
-
-  return count > 0 ? result : undefined
 }
 
 export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput {
