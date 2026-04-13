@@ -376,7 +376,9 @@ export function CoveSelect({
                     }}
                   >
                     <span className="cove-select__option-label">{option.label}</span>
-                    {option.badge ? <span className="cove-select__pill">{option.badge}</span> : null}
+                    {option.badge ? (
+                      <span className="cove-select__pill">{option.badge}</span>
+                    ) : null}
                   </button>
                 )
               })}
