@@ -103,6 +103,7 @@ export interface SpaceVisual {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   rect: WorkspaceSpaceRect
   hasExplicitRect: boolean

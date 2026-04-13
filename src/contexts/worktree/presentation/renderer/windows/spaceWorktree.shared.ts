@@ -61,6 +61,20 @@ export function resolveWorktreeRepoRootPath(
     return match.path
   }
 
+  // Some callers provide a worktree snapshot without including the main workspace root (e.g. unit
+  // tests or partial snapshots). If the workspace path is a parent directory of a worktree, treat
+  // it as the repo root.
+  const hasWorktreeUnderWorkspace = worktrees.some(entry => {
+    const normalizedWorktreePath = normalizeComparablePath(entry.path)
+    return (
+      normalizedWorkspacePath.length > 0 &&
+      normalizedWorktreePath.startsWith(`${normalizedWorkspacePath}/`)
+    )
+  })
+  if (hasWorktreeUnderWorkspace) {
+    return workspacePath
+  }
+
   let shortest: { normalized: string; path: string } | null = null
   for (const entry of worktrees) {
     const normalized = normalizeComparablePath(entry.path)

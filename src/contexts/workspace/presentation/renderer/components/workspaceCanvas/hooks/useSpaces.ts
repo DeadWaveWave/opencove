@@ -288,6 +288,7 @@ export function useWorkspaceCanvasSpaces({
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          targetMountId: space.targetMountId,
           labelColor: space.labelColor,
           rect,
           hasExplicitRect: true,

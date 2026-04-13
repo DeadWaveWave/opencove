@@ -2,11 +2,16 @@ import React from 'react'
 import { ViewportPortal, useReactFlow, useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useAppStore } from '@app/renderer/shell/store/useAppStore'
-import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
+import type { GitHubPullRequestSummary } from '@shared/contracts/dto'
+import { resolveGitWorktreeApiForMount } from '@contexts/worktree/presentation/renderer/windows/mountAwareGitWorktreeApi'
 import type { WorkspaceSpaceRect } from '../../../types'
 import type { SpaceVisual } from '../types'
 import { toErrorMessage } from '../helpers'
-import { getBranchNameValidationError, getWorktreeApiMethod } from '../windows/spaceWorktree.shared'
+import {
+  getBranchNameValidationError,
+  getWorktreeApiMethod,
+  resolveWorktreeRepoRootPath,
+} from '../windows/spaceWorktree.shared'
 import {
   getSpaceFrameHandleCursor,
   resolveInteractiveSpaceFrameHandle,
@@ -30,10 +35,9 @@ import {
   resolveGitStatusRepoKey,
   useWorkspaceGitStatusSummary,
 } from './WorkspaceSpaceRegionsOverlay.gitStatus'
-import { isWorktreeInfoMapEqual } from './WorkspaceSpaceRegionsOverlay.worktrees'
+import { useWorkspaceWorktreeInfoByPath } from './WorkspaceSpaceRegionsOverlay.worktreePolling'
 
 const PULL_REQUEST_REFRESH_INTERVAL_MS = 60_000
-const WORKTREE_REFRESH_INTERVAL_MS = 10_000
 
 interface WorkspaceSpaceRegionsOverlayProps {
   workspacePath: string
@@ -85,24 +89,19 @@ export function WorkspaceSpaceRegionsOverlay({
     Record<string, GitHubPullRequestSummary | null>
   >(() => ({}))
 
-  const normalizedWorkspacePath = React.useMemo(
-    () => normalizeComparablePath(workspacePath),
-    [workspacePath],
-  )
+  const mountIds = React.useMemo(() => {
+    const unique = new Set<string>()
+    spaceVisuals.forEach(space => {
+      const mountId = space.targetMountId?.trim() ?? ''
+      if (mountId.length > 0) {
+        unique.add(mountId)
+      }
+    })
 
-  const githubPullRequestsEnabled = useAppStore(
-    state => state.agentSettings.githubPullRequestsEnabled,
-  )
+    return [...unique].sort((left, right) => left.localeCompare(right))
+  }, [spaceVisuals])
 
-  const [worktreeInfoByPath, setWorktreeInfoByPath] = React.useState<Map<string, GitWorktreeInfo>>(
-    () => new Map(),
-  )
-
-  React.useEffect(() => {
-    setWorktreeInfoByPath(new Map())
-  }, [normalizedWorkspacePath])
-
-  const worktrees = React.useMemo(() => [...worktreeInfoByPath.values()], [worktreeInfoByPath])
+  const mountIdsKey = React.useMemo(() => mountIds.join('|'), [mountIds])
 
   const worktreeDirectoriesKey = React.useMemo(() => {
     const unique = new Set<string>()
@@ -116,8 +115,31 @@ export function WorkspaceSpaceRegionsOverlay({
     return [...unique].sort((left, right) => left.localeCompare(right)).join('|')
   }, [spaceVisuals])
 
-  const changedFilesByRepoKey = useWorkspaceGitStatusSummary({
+  const githubPullRequestsEnabled = useAppStore(
+    state => state.agentSettings.githubPullRequestsEnabled,
+  )
+
+  const worktreeInfoByPath = useWorkspaceWorktreeInfoByPath({
     workspacePath,
+    mountIdsKey,
+    refreshNonce,
+    worktreeDirectoriesKey,
+  })
+
+  const worktrees = React.useMemo(() => [...worktreeInfoByPath.values()], [worktreeInfoByPath])
+
+  const worktreeRepoRootPath = React.useMemo(
+    () => resolveWorktreeRepoRootPath(workspacePath, worktrees),
+    [workspacePath, worktrees],
+  )
+
+  const normalizedWorkspacePath = React.useMemo(
+    () => normalizeComparablePath(worktreeRepoRootPath),
+    [worktreeRepoRootPath],
+  )
+
+  const changedFilesByRepoKey = useWorkspaceGitStatusSummary({
+    workspacePath: worktreeRepoRootPath,
     normalizedWorkspacePath,
     spaceVisuals,
     worktreeInfoByPath,
@@ -155,68 +177,6 @@ export function WorkspaceSpaceRegionsOverlay({
   const worktreeBranchesKey = React.useMemo(() => worktreeBranches.join('|'), [worktreeBranches])
 
   React.useEffect(() => {
-    if (workspacePath.trim().length === 0) {
-      setWorktreeInfoByPath(new Map())
-      return
-    }
-
-    const listWorktrees = window.opencoveApi?.worktree?.listWorktrees
-    if (typeof listWorktrees !== 'function') {
-      setWorktreeInfoByPath(new Map())
-      return
-    }
-
-    let cancelled = false
-    let refreshInFlight = false
-    let intervalId: number | null = null
-
-    const refreshWorktrees = async (): Promise<void> => {
-      if (refreshInFlight) {
-        return
-      }
-
-      if (typeof document !== 'undefined' && document.hidden) {
-        return
-      }
-
-      refreshInFlight = true
-
-      try {
-        const result = await listWorktrees({ repoPath: workspacePath })
-        if (cancelled) {
-          return
-        }
-
-        const nextMap = new Map<string, GitWorktreeInfo>()
-        result.worktrees.forEach(entry => {
-          nextMap.set(normalizeComparablePath(entry.path), entry)
-        })
-
-        setWorktreeInfoByPath(previous =>
-          isWorktreeInfoMapEqual(previous, nextMap) ? previous : nextMap,
-        )
-      } catch {
-        // Keep the last known worktree snapshot on transient failures.
-      } finally {
-        refreshInFlight = false
-      }
-    }
-
-    void refreshWorktrees()
-
-    intervalId = window.setInterval(() => {
-      void refreshWorktrees()
-    }, WORKTREE_REFRESH_INTERVAL_MS)
-
-    return () => {
-      cancelled = true
-      if (intervalId !== null) {
-        window.clearInterval(intervalId)
-      }
-    }
-  }, [refreshNonce, worktreeDirectoriesKey, workspacePath])
-
-  React.useEffect(() => {
     if (worktreeBranches.length === 0) {
       setPullRequestsByBranch({})
       return
@@ -239,7 +199,7 @@ export function WorkspaceSpaceRegionsOverlay({
     const resolveAll = async (): Promise<void> => {
       try {
         const result = await resolvePullRequests({
-          repoPath: workspacePath,
+          repoPath: worktreeRepoRootPath,
           branches: worktreeBranches,
         })
 
@@ -274,7 +234,7 @@ export function WorkspaceSpaceRegionsOverlay({
         window.clearInterval(intervalId)
       }
     }
-  }, [githubPullRequestsEnabled, worktreeBranches, worktreeBranchesKey, workspacePath])
+  }, [githubPullRequestsEnabled, worktreeBranches, worktreeBranchesKey, worktreeRepoRootPath])
 
   React.useEffect(() => {
     if (!branchRename?.spaceId) {
@@ -350,9 +310,13 @@ export function WorkspaceSpaceRegionsOverlay({
     )
 
     try {
-      const renameBranch = getWorktreeApiMethod(window.opencoveApi?.worktree, 'renameBranch', t)
+      const renameBranch = getWorktreeApiMethod(
+        resolveGitWorktreeApiForMount(branchRename.targetMountId),
+        'renameBranch',
+        t,
+      )
       await renameBranch({
-        repoPath: workspacePath,
+        repoPath: worktreeRepoRootPath,
         worktreePath: branchRename.worktreePath,
         currentName: branchRename.currentName,
         nextName,
@@ -371,7 +335,7 @@ export function WorkspaceSpaceRegionsOverlay({
           : previous,
       )
     }
-  }, [branchRename, t, workspacePath])
+  }, [branchRename, t, worktreeRepoRootPath])
 
   const updateHandleCursor = React.useCallback(
     (
@@ -475,6 +439,7 @@ export function WorkspaceSpaceRegionsOverlay({
                   spaceId,
                   spaceName,
                   worktreePath,
+                  targetMountId: space.targetMountId,
                   currentName: branchName,
                   nextName: branchName,
                   isSubmitting: false,

@@ -3,6 +3,36 @@ import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import { selectCoveOption } from './workspace-canvas.helpers'
 
+export async function createLocalOnlyProjectViaWizard({
+  window,
+  projectName,
+  localRootPath,
+  mountName,
+}: {
+  window: Page
+  projectName: string
+  localRootPath: string
+  mountName: string
+}): Promise<void> {
+  await window.locator('[data-testid="sidebar-add-project"]').click({ noWaitAfter: true })
+  await expect(window.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
+  await window.locator('[data-testid="workspace-project-create-name"]').fill(projectName)
+
+  await window
+    .locator('[data-testid="workspace-project-create-default-location-local"]')
+    .click({ noWaitAfter: true })
+
+  await window
+    .locator('[data-testid="workspace-project-create-default-local-root"]')
+    .fill(localRootPath)
+  await window
+    .locator('[data-testid="workspace-project-create-default-local-name"]')
+    .fill(mountName)
+
+  await window.locator('[data-testid="workspace-project-create-confirm"]').click()
+  await expect(window.locator('[data-testid="workspace-project-create-window"]')).toHaveCount(0)
+}
+
 export async function createRemoteOnlyProjectViaWizard({
   window,
   projectName,
