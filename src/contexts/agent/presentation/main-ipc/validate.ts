@@ -139,7 +139,7 @@ export function resolveAgentTestStub(
         '-NoLogo',
         '-NoProfile',
         '-Command',
-        `Write-Output "${message}"; Start-Sleep -Seconds 120`,
+        `Start-Sleep -Milliseconds 250; Write-Output "${message}"; Start-Sleep -Seconds 120`,
       ],
     }
   }
@@ -149,7 +149,8 @@ export function resolveAgentTestStub(
 
   return {
     command: shell,
-    args: ['-lc', `printf '%s\\n' "${message}"; sleep 120`],
+    // Give the PTY/terminal bridge a moment to attach before the first stdout burst.
+    args: ['-lc', `sleep 0.25; printf '%s\\n' "${message}"; sleep 120`],
   }
 }
 
