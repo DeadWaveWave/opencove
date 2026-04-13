@@ -46,8 +46,7 @@
 
 .workspace-space-region__label-group {
   position: absolute;
-  /* Keep pills outside the draggable top handle hitbox. */
-  top: -34px;
+  top: -11px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -136,7 +135,7 @@
 
 .workspace-space-region__label-input {
   position: absolute;
-  top: -34px;
+  top: -11px;
   left: 10px;
   min-width: 120px;
   max-width: calc(100% - 20px);
@@ -188,7 +187,7 @@
 }
 
 .workspace-space-region__drag-handle--top {
-  top: -8px;
+  top: -24px;
   left: -8px;
   right: -8px;
   height: 16px;
