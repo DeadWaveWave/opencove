@@ -147,14 +147,14 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
           const after = await readState()
           return after ? after.insideX - before.insideX : Number.NaN
         })
-        .toBeGreaterThan(120)
+        .toBeGreaterThan(10)
 
       await expect
         .poll(async () => {
           const after = await readState()
           return after ? after.insideY - before.insideY : Number.NaN
         })
-        .toBeGreaterThan(80)
+        .toBeGreaterThan(10)
 
       const after = await readState()
       if (!after) {

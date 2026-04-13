@@ -408,7 +408,9 @@ export function QuickCommandsSubsection({
 
             <div className="cove-window__field-row">
               <div className="cove-window__label-row">
-                <label htmlFor={enabledToggleId}>{t('settingsPanel.quickMenu.commands.enabled')}</label>
+                <label htmlFor={enabledToggleId}>
+                  {t('settingsPanel.quickMenu.commands.enabled')}
+                </label>
                 <label className="cove-toggle">
                   <input
                     id={enabledToggleId}
@@ -436,7 +438,9 @@ export function QuickCommandsSubsection({
 
             <div className="cove-window__field-row">
               <div className="cove-window__label-row">
-                <label htmlFor={pinnedToggleId}>{t('settingsPanel.quickMenu.commands.pinned')}</label>
+                <label htmlFor={pinnedToggleId}>
+                  {t('settingsPanel.quickMenu.commands.pinned')}
+                </label>
                 <label className="cove-toggle">
                   <input
                     id={pinnedToggleId}
