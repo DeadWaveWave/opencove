@@ -32,6 +32,7 @@ export function TerminalNode({
   labelColor,
   terminalProvider = null,
   agentLaunchMode = null,
+  agentResumeSessionIdVerified = false,
   terminalThemeMode = 'sync-with-ui',
   isSelected = false,
   isDragging = false,
@@ -75,6 +76,7 @@ export function TerminalNode({
   const onCommandRunRef = useRef(onCommandRun)
   const titleRef = useRef(title)
   const agentLaunchModeRef = useRef(agentLaunchMode)
+  const agentResumeSessionIdVerifiedRef = useRef(agentResumeSessionIdVerified)
   const statusRef = useRef(status)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
@@ -96,8 +98,9 @@ export function TerminalNode({
     onCommandRunRef.current = onCommandRun
     titleRef.current = title
     agentLaunchModeRef.current = agentLaunchMode
+    agentResumeSessionIdVerifiedRef.current = agentResumeSessionIdVerified
     statusRef.current = status
-  }, [agentLaunchMode, onCommandRun, status, title])
+  }, [agentLaunchMode, agentResumeSessionIdVerified, onCommandRun, status, title])
 
   useEffect(() => {
     isViewportInteractionActiveRef.current = isViewportInteractionActive
@@ -210,6 +213,7 @@ export function TerminalNode({
     kind,
     terminalProvider,
     agentLaunchModeRef,
+    agentResumeSessionIdVerifiedRef,
     statusRef,
     titleRef,
     terminalThemeMode,

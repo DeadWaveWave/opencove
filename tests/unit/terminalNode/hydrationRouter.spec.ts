@@ -36,7 +36,7 @@ describe('hydrationRouter', () => {
     const router = createTerminalHydrationRouter({
       terminal: terminal as never,
       outputScheduler,
-      shouldReplaceAgentPlaceholderAfterHydration: true,
+      shouldReplaceAgentPlaceholderAfterHydration: () => true,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState,
@@ -85,7 +85,7 @@ describe('hydrationRouter', () => {
     const router = createTerminalHydrationRouter({
       terminal: terminal as never,
       outputScheduler,
-      shouldReplaceAgentPlaceholderAfterHydration: true,
+      shouldReplaceAgentPlaceholderAfterHydration: () => true,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),

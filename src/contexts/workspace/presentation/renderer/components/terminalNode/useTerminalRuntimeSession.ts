@@ -34,6 +34,7 @@ export function useTerminalRuntimeSession({
   kind,
   terminalProvider,
   agentLaunchModeRef,
+  agentResumeSessionIdVerifiedRef,
   statusRef,
   titleRef,
   terminalThemeMode,
@@ -68,6 +69,7 @@ export function useTerminalRuntimeSession({
   kind: WorkspaceNodeKind
   terminalProvider: AgentProvider | null
   agentLaunchModeRef: { current: AgentLaunchMode | null }
+  agentResumeSessionIdVerifiedRef: { current: boolean }
   statusRef: { current: AgentRuntimeStatus | null }
   titleRef: { current: string }
   terminalThemeMode: TerminalThemeMode
@@ -113,9 +115,10 @@ export function useTerminalRuntimeSession({
     suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
+    const persistedSnapshot = scrollbackBuffer.snapshot()
     const committedScrollbackBuffer = createRollingTextBuffer({
       maxChars: MAX_SCROLLBACK_CHARS,
-      initial: scrollbackBuffer.snapshot(),
+      initial: persistedSnapshot,
     })
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
     const inputDiagnosticsEnabled = window.opencoveApi.meta?.enableTerminalInputDiagnostics === true
@@ -331,16 +334,15 @@ export function useTerminalRuntimeSession({
     })
     outputSchedulerRef.current = outputScheduler
     outputScheduler.onViewportInteractionActiveChange(isViewportInteractionActiveRef.current)
-    const shouldReplaceAgentPlaceholderAfterHydration =
-      kind === 'agent' &&
-      agentLaunchModeRef.current === 'resume' &&
-      (statusRef.current === 'running' ||
-        statusRef.current === 'standby' ||
-        statusRef.current === 'restoring')
     const hydrationRouter = createTerminalHydrationRouter({
       terminal,
       outputScheduler,
-      shouldReplaceAgentPlaceholderAfterHydration,
+      shouldReplaceAgentPlaceholderAfterHydration: () =>
+        kind === 'agent' &&
+        cachedScreenState === null &&
+        (agentResumeSessionIdVerifiedRef.current === true ||
+          agentLaunchModeRef.current === 'resume' ||
+          persistedSnapshot.trim().length > 0),
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: nextRawSnapshot => {
