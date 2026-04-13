@@ -130,7 +130,7 @@ export async function seedWorkspaceState(
   }
 
   const trySeed = async (attempt: number): Promise<boolean> => {
-    if (attempt >= 4) {
+    if (attempt >= 6) {
       return false
     }
 
@@ -235,7 +235,7 @@ export async function seedWorkspaceState(
     let workspaceCount = 0
     try {
       workspaceCount = await (async () => {
-        const deadline = Date.now() + 3_000
+        const deadline = Date.now() + 6_000
         let count = 0
 
         while (Date.now() < deadline) {
