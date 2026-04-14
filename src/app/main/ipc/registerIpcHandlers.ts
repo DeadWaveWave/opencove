@@ -50,6 +50,29 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
     void approvedWorkspaces.registerRoot(resolve(process.env.OPENCOVE_TEST_WORKSPACE))
   }
 
+  // Auto-approve all previously persisted workspace paths on startup.
+  // Without this, workspaces restored from persistence may fail terminal/agent
+  // operations with "The selected path is outside approved workspaces" if the
+  // approved-workspaces.json file was cleared or the workspace was added through
+  // a code path that did not call registerRoot (e.g. hydration from DB).
+  void (async () => {
+    try {
+      const store = await getPersistenceStore()
+      const appState = await store.readAppState()
+      if (appState && typeof appState === 'object' && 'workspaces' in appState) {
+        const workspaceList = (appState as { workspaces: Array<{ path?: string }> }).workspaces
+        for (const workspace of workspaceList) {
+          if (typeof workspace.path === 'string' && workspace.path.trim().length > 0) {
+            void approvedWorkspaces.registerRoot(workspace.path)
+          }
+        }
+      }
+    } catch {
+      // Persistence may not be ready yet; approved roots will be registered
+      // later when the user interacts with selectDirectory.
+    }
+  })()
+
   const disposables: IpcRegistrationDisposable[] = [
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),
