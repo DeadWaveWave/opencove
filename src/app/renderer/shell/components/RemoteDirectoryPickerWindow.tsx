@@ -225,6 +225,7 @@ export function RemoteDirectoryPickerWindow({
                 className="cove-window__action cove-window__action--ghost"
                 disabled={isBusy || !parentPath}
                 data-testid="remote-directory-picker-up"
+                style={{ whiteSpace: 'nowrap' }}
                 onClick={() => {
                   if (!parentPath) {
                     return
@@ -240,6 +241,7 @@ export function RemoteDirectoryPickerWindow({
                 className="cove-window__action cove-window__action--ghost"
                 disabled={isBusy || refreshCandidate.trim().length === 0}
                 data-testid="remote-directory-picker-refresh"
+                style={{ whiteSpace: 'nowrap' }}
                 onClick={() => {
                   const typed = pathInputElementRef.current?.value ?? ''
                   const target = typed.trim().length > 0 ? typed : currentPath
