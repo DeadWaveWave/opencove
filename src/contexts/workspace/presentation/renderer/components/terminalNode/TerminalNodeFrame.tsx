@@ -24,7 +24,7 @@ interface TerminalNodeFrameProps {
   lastError: string | null
   sessionId: string
   isTerminalHydrated: boolean
-  transcriptRef: React.RefObject<HTMLDivElement | null>
+  transcriptRef: React.Ref<HTMLDivElement>
   sizeStyle: React.CSSProperties
   containerRef: React.RefObject<HTMLDivElement | null>
   handleTerminalBodyPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void

@@ -6,9 +6,13 @@ import type { WorkspaceNodeKind } from '../../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalThemeMode } from './theme'
 import { writeTerminalAsync } from './writeTerminal'
-import { createMountedXtermSession } from './xtermSession'
+import { createMountedXtermSession, type XtermSession } from './xtermSession'
 import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
 import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
+import {
+  hasRecentTerminalUserInteraction,
+  registerTerminalUserInteractionWindow,
+} from './userInteractionWindow'
 
 export function useTerminalPlaceholderSession({
   nodeId,
@@ -29,6 +33,10 @@ export function useTerminalPlaceholderSession({
   setIsTerminalHydrated,
   scheduleTranscriptSync,
   shouldRestoreTerminalFocusRef,
+  latestSessionIdRef,
+  preservedXtermSessionRef,
+  recentUserInteractionAtRef,
+  pendingUserInputBufferRef,
   activeRendererKindRef,
   scheduleWebglPixelSnapping,
   cancelWebglPixelSnapping,
@@ -52,6 +60,12 @@ export function useTerminalPlaceholderSession({
   setIsTerminalHydrated: (hydrated: boolean) => void
   scheduleTranscriptSync: () => void
   shouldRestoreTerminalFocusRef: { current: boolean }
+  latestSessionIdRef: { current: string }
+  preservedXtermSessionRef: { current: XtermSession | null }
+  recentUserInteractionAtRef: { current: number }
+  pendingUserInputBufferRef: {
+    current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
+  }
   activeRendererKindRef: { current: TerminalRendererKind }
   scheduleWebglPixelSnapping: () => void
   cancelWebglPixelSnapping: () => void
@@ -67,6 +81,7 @@ export function useTerminalPlaceholderSession({
     if (normalizedScrollback.length === 0) {
       return undefined
     }
+    const shouldHandoffToRuntime = (): boolean => latestSessionIdRef.current.trim().length > 0
 
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
     const diagnosticsEnabled =
@@ -89,7 +104,7 @@ export function useTerminalPlaceholderSession({
       initialDimensions: null,
       windowsPty,
       cursorBlink: false,
-      disableStdin: true,
+      disableStdin: false,
       bindSearchAddonToFind,
       syncTerminalSize,
       diagnosticsEnabled,
@@ -103,10 +118,35 @@ export function useTerminalPlaceholderSession({
       isWebglRenderer: () => activeRendererKindRef.current === 'webgl',
       scheduleWebglPixelSnapping,
     })
+    const disposeInteractionWindow = registerTerminalUserInteractionWindow({
+      container: containerRef.current,
+      interactionAtRef: recentUserInteractionAtRef,
+    })
     if (shouldRestoreTerminalFocusRef.current) {
       shouldRestoreTerminalFocusRef.current = false
       session.terminal.focus()
     }
+
+    const capturePlaceholderInput = (data: string, encoding: 'utf8' | 'binary'): void => {
+      if (data.length === 0) {
+        return
+      }
+
+      if (
+        data.startsWith('\u001b') &&
+        !hasRecentTerminalUserInteraction(recentUserInteractionAtRef)
+      ) {
+        return
+      }
+
+      pendingUserInputBufferRef.current.push({ data, encoding })
+    }
+    const dataDisposable = session.terminal.onData(data => {
+      capturePlaceholderInput(data, 'utf8')
+    })
+    const binaryDisposable = session.terminal.onBinary(data => {
+      capturePlaceholderInput(data, 'binary')
+    })
 
     let isDisposed = false
     void (async () => {
@@ -141,8 +181,16 @@ export function useTerminalPlaceholderSession({
 
     return () => {
       isDisposed = true
+      dataDisposable.dispose()
+      binaryDisposable.dispose()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
+      disposeInteractionWindow()
       disposePositionObserver()
+      if (shouldHandoffToRuntime()) {
+        preservedXtermSessionRef.current = session
+        return
+      }
+
       session.dispose()
       terminalRef.current = null
       fitAddonRef.current = null
@@ -151,6 +199,7 @@ export function useTerminalPlaceholderSession({
     }
   }, [
     applyTerminalTheme,
+    latestSessionIdRef,
     activeRendererKindRef,
     bindSearchAddonToFind,
     cancelWebglPixelSnapping,
@@ -159,12 +208,15 @@ export function useTerminalPlaceholderSession({
     isTestEnvironment,
     kind,
     nodeId,
+    recentUserInteractionAtRef,
     scheduleTranscriptSync,
     scrollback,
     sessionId,
     setIsTerminalHydrated,
     suppressPtyResizeRef,
     syncTerminalSize,
+    preservedXtermSessionRef,
+    pendingUserInputBufferRef,
     scheduleWebglPixelSnapping,
     setRendererKindAndApply,
     terminalProvider,

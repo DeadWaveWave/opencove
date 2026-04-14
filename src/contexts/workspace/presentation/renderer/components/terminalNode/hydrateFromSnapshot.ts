@@ -29,6 +29,7 @@ export async function hydrateTerminalFromSnapshot({
   sessionId,
   terminal,
   kind,
+  skipInitialPlaceholderWrite = false,
   cachedScreenState,
   persistedSnapshot,
   takePtySnapshot,
@@ -40,6 +41,7 @@ export async function hydrateTerminalFromSnapshot({
   sessionId: string
   terminal: Terminal
   kind: 'terminal' | 'agent'
+  skipInitialPlaceholderWrite?: boolean
   cachedScreenState: CachedTerminalScreenState | null
   persistedSnapshot: string
   takePtySnapshot: (payload: { sessionId: string }) => Promise<{ data: string }>
@@ -56,7 +58,7 @@ export async function hydrateTerminalFromSnapshot({
     cachedSerializedScreen.length > 0 ? cachedSerializedScreen : persistedSnapshot
   let rawSnapshot = baseRawSnapshot
 
-  if (placeholderPayload.length > 0) {
+  if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
     await writeTerminalAsync(terminal, placeholderPayload)
     onHydratedWriteCommitted(rawSnapshot)
   }

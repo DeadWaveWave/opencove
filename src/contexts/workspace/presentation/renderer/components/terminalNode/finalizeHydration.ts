@@ -1,4 +1,5 @@
 import { revealHydratedTerminal } from './revealHydratedTerminal'
+import { resolveSuffixPrefixOverlap } from './overlap'
 import { replayBufferedHydrationOutput } from './replayBufferedHydrationOutput'
 
 export function finalizeTerminalHydration({
@@ -48,8 +49,11 @@ export function finalizeTerminalHydration({
   const bufferedData = bufferedDataChunks.join('')
   bufferedDataChunks.length = 0
 
+  const bufferedOverlap = resolveSuffixPrefixOverlap(rawSnapshot, bufferedData)
+  const bufferedRemainder = bufferedData.slice(bufferedOverlap)
   const shouldReplaceBaseline =
-    replaceHydrationSnapshotWithBufferedOutput && bufferedData.length > 0
+    replaceHydrationSnapshotWithBufferedOutput &&
+    (bufferedRemainder.length > 0 || bufferedExitCode !== null)
   const baselineSnapshot = shouldReplaceBaseline ? '' : rawSnapshot
 
   if (shouldReplaceBaseline) {

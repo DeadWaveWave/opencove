@@ -1,10 +1,12 @@
 import type { Terminal } from '@xterm/xterm'
 import { finalizeTerminalHydration } from './finalizeHydration'
 import {
+  containsDestructiveTerminalDisplayControlSequence,
   containsMeaningfulTerminalDisplayContent,
   shouldDeferHydratedTerminalRedrawChunk,
   shouldReplacePlaceholderWithBufferedOutput,
 } from './hydrationReplacement'
+import { resolveSuffixPrefixOverlap } from './overlap'
 
 export interface TerminalHydrationRouter {
   handleDataChunk: (data: string) => void
@@ -58,6 +60,7 @@ export function createTerminalHydrationRouter({
   const hydrationBuffer = { dataChunks: [] as string[], exitCode: null as number | null }
   const deferredPlaceholderBuffer = { dataChunks: [] as string[], exitCode: null as number | null }
   let shouldReplaceAgentPlaceholderOnNextVisibleChunk = false
+  let shouldReplaceAgentPlaceholderOnNextDestructiveChunk = false
   const deferredHydratedRedrawBuffer = {
     dataChunks: [] as string[],
     exitCode: null as number | null,
@@ -167,6 +170,29 @@ export function createTerminalHydrationRouter({
         return
       }
 
+      if (shouldReplaceAgentPlaceholderOnNextDestructiveChunk) {
+        if (!containsDestructiveTerminalDisplayControlSequence(data)) {
+          outputScheduler.handleChunk(data)
+          return
+        }
+
+        shouldReplaceAgentPlaceholderOnNextDestructiveChunk = false
+        shouldReplaceAgentPlaceholderOnNextVisibleChunk = true
+        deferredPlaceholderBuffer.dataChunks.push(data)
+        if (
+          !shouldReplacePlaceholderWithBufferedOutput({
+            data,
+            exitCode: null,
+          })
+        ) {
+          return
+        }
+
+        shouldReplaceAgentPlaceholderOnNextVisibleChunk = false
+        flushDeferredPlaceholderReplacement()
+        return
+      }
+
       if (deferredHydratedRedrawBuffer.dataChunks.length > 0) {
         deferredHydratedRedrawBuffer.dataChunks.push(data)
         if (
@@ -229,6 +255,11 @@ export function createTerminalHydrationRouter({
         })
       const shouldDeferBufferedReplay =
         shouldReplacePlaceholder && !shouldReplaceBufferedPlaceholder
+      const bufferedOutputAlreadyMatchesPlaceholder =
+        shouldReplaceBufferedPlaceholder &&
+        hydrationBuffer.exitCode === null &&
+        bufferedData.length > 0 &&
+        resolveSuffixPrefixOverlap(rawSnapshot, bufferedData) === bufferedData.length
       const bufferedDataChunksForFinalize = shouldDeferBufferedReplay
         ? []
         : hydrationBuffer.dataChunks
@@ -254,9 +285,13 @@ export function createTerminalHydrationRouter({
       })
 
       if (shouldReplacePlaceholder && !didReplaceBaseline) {
-        deferredPlaceholderBuffer.dataChunks.push(...hydrationBuffer.dataChunks)
-        deferredPlaceholderBuffer.exitCode = hydrationBuffer.exitCode
-        shouldReplaceAgentPlaceholderOnNextVisibleChunk = true
+        if (bufferedOutputAlreadyMatchesPlaceholder) {
+          shouldReplaceAgentPlaceholderOnNextDestructiveChunk = true
+        } else {
+          deferredPlaceholderBuffer.dataChunks.push(...hydrationBuffer.dataChunks)
+          deferredPlaceholderBuffer.exitCode = hydrationBuffer.exitCode
+          shouldReplaceAgentPlaceholderOnNextVisibleChunk = true
+        }
       }
 
       hydrationBuffer.dataChunks.length = 0

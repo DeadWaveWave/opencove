@@ -16,6 +16,7 @@ import type { TerminalOutputScheduler } from './terminalNode/outputScheduler'
 import { useTerminalRuntimeSession } from './terminalNode/useTerminalRuntimeSession'
 import { useTerminalPlaceholderSession } from './terminalNode/useTerminalPlaceholderSession'
 import { useWebglPixelSnappingScheduler } from './terminalNode/useWebglPixelSnappingScheduler'
+import type { XtermSession } from './terminalNode/xtermSession'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -63,6 +64,10 @@ export function TerminalNode({
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
   const shouldRestoreTerminalFocusRef = useRef(false)
+  const latestSessionIdRef = useRef(sessionId)
+  const preservedXtermSessionRef = useRef<XtermSession | null>(null)
+  const recentUserInteractionAtRef = useRef(0)
+  const pendingUserInputBufferRef = useRef<Array<{ data: string; encoding: 'utf8' | 'binary' }>>([])
   const {
     activeRendererKindRef,
     scheduleWebglPixelSnapping,
@@ -100,7 +105,8 @@ export function TerminalNode({
     agentLaunchModeRef.current = agentLaunchMode
     agentResumeSessionIdVerifiedRef.current = agentResumeSessionIdVerified
     statusRef.current = status
-  }, [agentLaunchMode, agentResumeSessionIdVerified, onCommandRun, status, title])
+    latestSessionIdRef.current = sessionId
+  }, [agentLaunchMode, agentResumeSessionIdVerified, onCommandRun, sessionId, status, title])
 
   useEffect(() => {
     isViewportInteractionActiveRef.current = isViewportInteractionActive
@@ -142,7 +148,17 @@ export function TerminalNode({
   }, [sessionId])
 
   useEffect(() => {
+    const disposePreservedSession = (): void => {
+      preservedXtermSessionRef.current?.dispose()
+      preservedXtermSessionRef.current = null
+    }
+    const clearPendingUserInputBuffer = (): void => {
+      pendingUserInputBufferRef.current.length = 0
+    }
+
     return () => {
+      disposePreservedSession()
+      clearPendingUserInputBuffer()
       cancelWebglPixelSnapping()
     }
   }, [cancelWebglPixelSnapping])
@@ -167,6 +183,7 @@ export function TerminalNode({
   })
   const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
     enabled: isTestEnvironment || diagnosticsEnabled,
+    nodeId,
     resetKey: sessionId,
     terminalRef,
   })
@@ -201,6 +218,10 @@ export function TerminalNode({
     setIsTerminalHydrated,
     scheduleTranscriptSync,
     shouldRestoreTerminalFocusRef,
+    latestSessionIdRef,
+    preservedXtermSessionRef,
+    recentUserInteractionAtRef,
+    pendingUserInputBufferRef,
     activeRendererKindRef,
     scheduleWebglPixelSnapping,
     cancelWebglPixelSnapping,
@@ -238,6 +259,9 @@ export function TerminalNode({
     isTerminalHydratedRef,
     setIsTerminalHydrated,
     shouldRestoreTerminalFocusRef,
+    preservedXtermSessionRef,
+    recentUserInteractionAtRef,
+    pendingUserInputBufferRef,
     activeRendererKindRef,
     scheduleWebglPixelSnapping,
     cancelWebglPixelSnapping,

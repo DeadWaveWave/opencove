@@ -6,8 +6,8 @@ import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { AgentLaunchMode, AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { createRollingTextBuffer } from '../../utils/rollingTextBuffer'
-import { parseTerminalCommandInput, type TerminalCommandInputState } from './commandInput'
-import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './inputBridge'
+import type { TerminalCommandInputState } from './commandInput'
+import { createRuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
 import { registerTerminalLayoutSync } from './layoutSync'
 import {
   clearCachedTerminalScreenStateInvalidation,
@@ -27,6 +27,11 @@ import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
 import { createMountedXtermSession } from './xtermSession'
 import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
 import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
+import { registerTerminalDiagnostics } from './registerDiagnostics'
+import type { XtermSession } from './xtermSession'
+import { registerTerminalUserInteractionWindow } from './userInteractionWindow'
+
+const RESTORED_AGENT_INPUT_GATE_DELAY_MS = 1_000
 
 export function useTerminalRuntimeSession({
   nodeId,
@@ -59,6 +64,9 @@ export function useTerminalRuntimeSession({
   isTerminalHydratedRef,
   setIsTerminalHydrated,
   shouldRestoreTerminalFocusRef,
+  preservedXtermSessionRef,
+  recentUserInteractionAtRef,
+  pendingUserInputBufferRef,
   activeRendererKindRef,
   scheduleWebglPixelSnapping,
   cancelWebglPixelSnapping,
@@ -100,6 +108,11 @@ export function useTerminalRuntimeSession({
   isTerminalHydratedRef: { current: boolean }
   setIsTerminalHydrated: (hydrated: boolean) => void
   shouldRestoreTerminalFocusRef: { current: boolean }
+  preservedXtermSessionRef: { current: XtermSession | null }
+  recentUserInteractionAtRef: { current: number }
+  pendingUserInputBufferRef: {
+    current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
+  }
   activeRendererKindRef: { current: TerminalRendererKind }
   scheduleWebglPixelSnapping: () => void
   cancelWebglPixelSnapping: () => void
@@ -116,6 +129,8 @@ export function useTerminalRuntimeSession({
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
     const persistedSnapshot = scrollbackBuffer.snapshot()
+    const shouldGateInitialUserInput =
+      kind === 'agent' && cachedScreenState === null && persistedSnapshot.trim().length > 0
     const committedScrollbackBuffer = createRollingTextBuffer({
       maxChars: MAX_SCROLLBACK_CHARS,
       initial: persistedSnapshot,
@@ -126,25 +141,50 @@ export function useTerminalRuntimeSession({
       window.opencoveApi.meta?.enableTerminalDiagnostics === true || inputDiagnosticsEnabled
     const logTerminalDiagnostics =
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
-    const session = createMountedXtermSession({
-      nodeId,
-      ownerId: `${nodeId}:${sessionId}`,
-      sessionIdForDiagnostics: sessionId,
-      nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
-      titleForDiagnostics: titleRef.current,
-      terminalProvider,
-      terminalThemeMode,
-      isTestEnvironment,
-      container: containerRef.current,
-      initialDimensions,
-      windowsPty,
-      cursorBlink: true,
-      disableStdin: false,
-      bindSearchAddonToFind,
-      syncTerminalSize,
-      diagnosticsEnabled,
-      logTerminalDiagnostics,
-    })
+    const preservedSession = preservedXtermSessionRef.current
+    preservedXtermSessionRef.current = null
+    const session =
+      preservedSession ??
+      createMountedXtermSession({
+        nodeId,
+        ownerId: `${nodeId}:${sessionId}`,
+        sessionIdForDiagnostics: sessionId,
+        nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
+        titleForDiagnostics: titleRef.current,
+        terminalProvider,
+        terminalThemeMode,
+        isTestEnvironment,
+        container: containerRef.current,
+        initialDimensions,
+        windowsPty,
+        cursorBlink: true,
+        disableStdin: false,
+        bindSearchAddonToFind,
+        syncTerminalSize,
+        diagnosticsEnabled,
+        logTerminalDiagnostics,
+      })
+    if (preservedSession) {
+      session.terminal.options.disableStdin = false
+      session.terminal.options.cursorBlink = true
+      session.diagnostics.dispose()
+      session.diagnostics = registerTerminalDiagnostics({
+        enabled: diagnosticsEnabled,
+        emit: logTerminalDiagnostics,
+        nodeId,
+        sessionId,
+        nodeKind: kind === 'agent' ? 'agent' : 'terminal',
+        title: titleRef.current,
+        terminal: session.terminal,
+        container: containerRef.current,
+        rendererKind: session.renderer.kind,
+        terminalThemeMode,
+        windowsPty,
+      })
+      session.renderer.clearTextureAtlas()
+      syncTerminalSize()
+      scheduleTranscriptSync()
+    }
     terminalRef.current = session.terminal
     fitAddonRef.current = session.fitAddon
     const terminal = session.terminal
@@ -153,6 +193,10 @@ export function useTerminalRuntimeSession({
       container: containerRef.current,
       isWebglRenderer: () => activeRendererKindRef.current === 'webgl',
       scheduleWebglPixelSnapping,
+    })
+    const disposeInteractionWindow = registerTerminalUserInteractionWindow({
+      container: containerRef.current,
+      interactionAtRef: recentUserInteractionAtRef,
     })
     if (shouldRestoreTerminalFocusRef.current) {
       shouldRestoreTerminalFocusRef.current = false
@@ -181,141 +225,26 @@ export function useTerminalRuntimeSession({
         scheduleTranscriptSync()
       })
     }
-    const formatInputHeadHex = (value: string, limit = 12): string => {
-      const chars = Array.from(value).slice(0, limit)
-      return chars
-        .map(char => {
-          const codePoint = char.codePointAt(0)
-          if (codePoint === undefined) {
-            return ''
-          }
-          return codePoint.toString(16).padStart(2, '0')
-        })
-        .filter(Boolean)
-        .join(' ')
-    }
-    const ptyWriteQueue = createPtyWriteQueue(async ({ data, encoding }) => {
-      if (inputDiagnosticsEnabled) {
-        terminalDiagnostics.log('pty-write', {
-          encoding,
-          dataLength: data.length,
-          dataStartsWithEsc: data.startsWith('\u001b'),
-          dataHeadHex: formatInputHeadHex(data),
-        })
-      }
-
-      try {
-        await window.opencoveApi.pty.write({
-          sessionId,
-          data,
-          ...(encoding === 'binary' ? { encoding } : {}),
-        })
-      } catch (error) {
-        if (inputDiagnosticsEnabled) {
-          terminalDiagnostics.log('pty-write-error', {
-            encoding,
-            dataLength: data.length,
-            message: error instanceof Error ? error.message : String(error),
-          })
-        }
-        throw error
-      }
+    const runtimeInputBridge = createRuntimeTerminalInputBridge({
+      terminal,
+      sessionId,
+      openTerminalFind,
+      onCommandRunRef,
+      commandInputStateRef,
+      suppressPtyResizeRef,
+      syncTerminalSize,
+      shouldGateInitialUserInput,
+      pendingUserInputBufferRef,
+      recentUserInteractionAtRef,
+      inputDiagnosticsEnabled,
+      terminalDiagnostics,
     })
+    const { ptyWriteQueue } = runtimeInputBridge
     const openCodeThemeBridge =
       terminalProvider === 'opencode'
         ? createOpenCodeTuiThemeBridge({ terminal, ptyWriteQueue, terminalThemeMode })
         : null
-    terminal.attachCustomKeyEventHandler(event =>
-      handleTerminalCustomKeyEvent({
-        event,
-        ptyWriteQueue,
-        terminal,
-        onOpenFind: openTerminalFind,
-      }),
-    )
-    let isDisposed = false,
-      shouldForwardTerminalData = false
-    const dataDisposable = terminal.onData(data => {
-      if (suppressPtyResizeRef.current) {
-        suppressPtyResizeRef.current = false
-        syncTerminalSize()
-      }
-
-      if (inputDiagnosticsEnabled) {
-        terminalDiagnostics.log('xterm-onData', {
-          dataLength: data.length,
-          dataStartsWithEsc: data.startsWith('\u001b'),
-          dataHeadHex: formatInputHeadHex(data),
-          shouldForwardTerminalData,
-        })
-      }
-
-      // During hydration, drop xterm-generated ESC reply sequences but still forward normal typing.
-      if (!shouldForwardTerminalData) {
-        if (data.startsWith('\u001b')) {
-          if (inputDiagnosticsEnabled) {
-            terminalDiagnostics.log('xterm-onData-dropped', {
-              reason: 'esc-during-hydration',
-              dataLength: data.length,
-              dataHeadHex: formatInputHeadHex(data),
-            })
-          }
-          return
-        }
-
-        ptyWriteQueue.enqueue(data)
-        // Forward user typing immediately even while hydrating.
-        ptyWriteQueue.flush()
-        return
-      }
-
-      ptyWriteQueue.enqueue(data)
-      ptyWriteQueue.flush()
-      const commandRunHandler = onCommandRunRef.current
-      if (!commandRunHandler) {
-        return
-      }
-      const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
-      commandInputStateRef.current = parsed.nextState
-      parsed.commands.forEach(command => {
-        commandRunHandler(command)
-      })
-    })
-    const binaryDisposable = terminal.onBinary(data => {
-      if (suppressPtyResizeRef.current) {
-        suppressPtyResizeRef.current = false
-        syncTerminalSize()
-      }
-
-      if (inputDiagnosticsEnabled) {
-        terminalDiagnostics.log('xterm-onBinary', {
-          dataLength: data.length,
-          dataStartsWithEsc: data.startsWith('\u001b'),
-          dataHeadHex: formatInputHeadHex(data),
-          shouldForwardTerminalData,
-        })
-      }
-
-      if (!shouldForwardTerminalData) {
-        if (data.startsWith('\u001b')) {
-          if (inputDiagnosticsEnabled) {
-            terminalDiagnostics.log('xterm-onBinary-dropped', {
-              reason: 'esc-during-hydration',
-              dataLength: data.length,
-              dataHeadHex: formatInputHeadHex(data),
-            })
-          }
-          return
-        }
-
-        ptyWriteQueue.enqueue(data, 'binary')
-        ptyWriteQueue.flush()
-        return
-      }
-
-      ptyWriteQueue.enqueue(data, 'binary')
-      ptyWriteQueue.flush()
-    })
+    let isDisposed = false
     const ptyEventHub = getPtyEventHub()
     const committedScreenStateRecorder = createCommittedScreenStateRecorder({
       serializeAddon,
@@ -379,6 +308,7 @@ export function useTerminalRuntimeSession({
       sessionId,
       terminal,
       kind: kind === 'agent' ? 'agent' : 'terminal',
+      skipInitialPlaceholderWrite: preservedSession !== null,
       cachedScreenState,
       persistedSnapshot: scrollbackBuffer.snapshot(),
       takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
@@ -389,8 +319,19 @@ export function useTerminalRuntimeSession({
         scheduleTranscriptSync()
       },
       finalizeHydration: rawSnapshot => {
-        shouldForwardTerminalData = true
+        runtimeInputBridge.enableTerminalDataForwarding()
         hydrationRouter.finalizeHydration(rawSnapshot)
+        if (shouldGateInitialUserInput) {
+          window.setTimeout(() => {
+            if (isDisposed) {
+              return
+            }
+            runtimeInputBridge.releaseBufferedUserInput()
+          }, RESTORED_AGENT_INPUT_GATE_DELAY_MS)
+          return
+        }
+
+        runtimeInputBridge.releaseBufferedUserInput()
       },
     })
     const resizeObserver = new ResizeObserver(syncTerminalSize)
@@ -408,6 +349,9 @@ export function useTerminalRuntimeSession({
       openCodeThemeBridge?.reportThemeMode()
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
+    const clearPendingUserInputBuffer = (): void => {
+      pendingUserInputBufferRef.current.length = 0
+    }
     return () => {
       if (testEnvironmentAutoFocusFrame !== null) {
         window.cancelAnimationFrame(testEnvironmentAutoFocusFrame)
@@ -426,13 +370,13 @@ export function useTerminalRuntimeSession({
       disposeLayoutSync()
       window.removeEventListener('opencove-theme-changed', handleThemeChange)
       resizeObserver.disconnect()
-      dataDisposable.dispose()
-      binaryDisposable.dispose()
+      disposeInteractionWindow()
       unsubscribeData()
       unsubscribeExit()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
-      ptyWriteQueue.dispose()
+      runtimeInputBridge.dispose()
+      clearPendingUserInputBuffer()
       openCodeThemeBridge?.dispose()
       if (isInvalidated) {
         cancelScrollbackPublish()
@@ -482,5 +426,8 @@ export function useTerminalRuntimeSession({
     isTerminalHydratedRef,
     setIsTerminalHydrated,
     shouldRestoreTerminalFocusRef,
+    preservedXtermSessionRef,
+    recentUserInteractionAtRef,
+    pendingUserInputBufferRef,
   ])
 }
