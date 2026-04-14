@@ -5,7 +5,10 @@ import { createPtyRuntime } from '../../../contexts/terminal/presentation/main-i
 import { registerTaskIpcHandlers } from '../../../contexts/task/presentation/main-ipc/register'
 import { registerClipboardIpcHandlers } from '../../../contexts/clipboard/presentation/main-ipc/register'
 import { registerWorkspaceIpcHandlers } from '../../../contexts/workspace/presentation/main-ipc/register'
-import { createApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
+import {
+  createApprovedWorkspaceStore,
+  type ApprovedWorkspaceStore,
+} from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { resolve } from 'node:path'
 import { registerWorktreeIpcHandlers } from '../../../contexts/worktree/presentation/main-ipc/register'
 import { registerIntegrationIpcHandlers } from '../../../contexts/integration/presentation/main-ipc/register'
@@ -55,37 +58,57 @@ export function registerIpcHandlers(): IpcRegistrationDisposable {
   // operations with "The selected path is outside approved workspaces" if the
   // approved-workspaces.json file was cleared or the workspace was added through
   // a code path that did not call registerRoot (e.g. hydration from DB).
-  void (async () => {
+  const workspaceApprovalReady: Promise<void> = (async () => {
     try {
       const store = await getPersistenceStore()
       const appState = await store.readAppState()
       if (appState && typeof appState === 'object' && 'workspaces' in appState) {
-        const workspaceList = (appState as { workspaces: Array<{ path?: string }> }).workspaces
-        for (const workspace of workspaceList) {
-          if (typeof workspace.path === 'string' && workspace.path.trim().length > 0) {
-            void approvedWorkspaces.registerRoot(workspace.path)
-          }
+        const raw = (appState as Record<string, unknown>).workspaces
+        if (Array.isArray(raw)) {
+          await Promise.all(
+            raw
+              .filter(
+                (w): w is { path: string } =>
+                  w !== null &&
+                  typeof w === 'object' &&
+                  'path' in w &&
+                  typeof (w as Record<string, unknown>).path === 'string' &&
+                  ((w as Record<string, unknown>).path as string).trim().length > 0,
+              )
+              .map(w => approvedWorkspaces.registerRoot(w.path)),
+          )
         }
       }
-    } catch {
-      // Persistence may not be ready yet; approved roots will be registered
-      // later when the user interacts with selectDirectory.
+    } catch (err) {
+      // Non-fatal: on-demand approval via selectDirectory is the fallback.
+      console.error('[opencove] failed to auto-approve persisted workspaces:', err)
     }
   })()
+
+  // Wrap approvedWorkspaces so that isPathApproved waits for the startup
+  // auto-approval to complete before checking, preventing race conditions
+  // where terminal/agent spawn IPCs arrive before approval finishes.
+  const guardedApprovedWorkspaces: ApprovedWorkspaceStore = {
+    registerRoot: p => approvedWorkspaces.registerRoot(p),
+    isPathApproved: async p => {
+      await workspaceApprovalReady
+      return approvedWorkspaces.isPathApproved(p)
+    },
+  }
 
   const disposables: IpcRegistrationDisposable[] = [
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),
     registerReleaseNotesIpcHandlers(releaseNotesService),
-    registerWorkspaceIpcHandlers(approvedWorkspaces),
+    registerWorkspaceIpcHandlers(guardedApprovedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
-    registerWorktreeIpcHandlers(approvedWorkspaces),
-    registerIntegrationIpcHandlers(approvedWorkspaces),
+    registerWorktreeIpcHandlers(guardedApprovedWorkspaces),
+    registerIntegrationIpcHandlers(guardedApprovedWorkspaces),
     registerWindowChromeIpcHandlers(),
     registerWindowMetricsIpcHandlers(),
-    registerPtyIpcHandlers(ptyRuntime, approvedWorkspaces),
-    registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
-    registerTaskIpcHandlers(approvedWorkspaces),
+    registerPtyIpcHandlers(ptyRuntime, guardedApprovedWorkspaces),
+    registerAgentIpcHandlers(ptyRuntime, guardedApprovedWorkspaces),
+    registerTaskIpcHandlers(guardedApprovedWorkspaces),
   ]
 
   return {
