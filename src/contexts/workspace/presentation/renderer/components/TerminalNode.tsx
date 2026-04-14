@@ -194,6 +194,7 @@ export function TerminalNode({
     const terminal = new Terminal({
       cursorBlink: true,
       fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
+      fontSize: terminalFontSize,
       theme: initialTerminalTheme,
       allowProposedApi: true,
       convertEol: true,
