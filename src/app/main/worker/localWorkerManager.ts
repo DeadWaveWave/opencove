@@ -5,6 +5,7 @@ import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../shared/contracts/dto'
+import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
@@ -96,21 +97,46 @@ function childHasExited(child: WorkerChildProcess): boolean {
 
 async function isConnectionAlive(connection: WorkerConnectionInfoDto): Promise<boolean> {
   try {
-    const { httpStatus, result } = await invokeControlSurface(
-      {
-        hostname: connection.hostname,
-        port: connection.port,
-        token: connection.token,
-      },
-      {
-        kind: 'query',
-        id: 'system.ping',
-        payload: null,
-      },
+    const endpoint = {
+      hostname: connection.hostname,
+      port: connection.port,
+      token: connection.token,
+    }
+
+    const pingResponse = await invokeControlSurface(
+      endpoint,
+      { kind: 'query', id: 'system.ping', payload: null },
+      { timeoutMs: 750 },
+    )
+    if (pingResponse.httpStatus !== 200 || pingResponse.result?.ok !== true) {
+      return false
+    }
+
+    const capabilitiesResponse = await invokeControlSurface(
+      endpoint,
+      { kind: 'query', id: 'system.capabilities', payload: null },
+      { timeoutMs: 750 },
+    )
+    if (capabilitiesResponse.httpStatus !== 200 || capabilitiesResponse.result?.ok !== true) {
+      return false
+    }
+
+    const capabilities = capabilitiesResponse.result.value
+    const protocolVersion =
+      capabilities && typeof capabilities === 'object' && !Array.isArray(capabilities)
+        ? (capabilities as Record<string, unknown>).protocolVersion
+        : null
+    if (protocolVersion !== CONTROL_SURFACE_PROTOCOL_VERSION) {
+      return false
+    }
+
+    const endpointsResponse = await invokeControlSurface(
+      endpoint,
+      { kind: 'query', id: 'endpoint.list', payload: null },
       { timeoutMs: 750 },
     )
 
-    return httpStatus === 200 && result?.ok === true
+    return endpointsResponse.httpStatus === 200 && endpointsResponse.result?.ok === true
   } catch {
     return false
   }

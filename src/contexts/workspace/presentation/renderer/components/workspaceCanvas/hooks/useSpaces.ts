@@ -10,6 +10,7 @@ import type {
   EmptySelectionPromptState,
   ShowWorkspaceCanvasMessage,
   SpaceVisual,
+  SpaceTargetMountPickerState,
 } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
@@ -75,6 +76,12 @@ export function useWorkspaceCanvasSpaces({
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
+  spaceTargetMountPicker: SpaceTargetMountPickerState | null
+  setSpaceTargetMountPicker: React.Dispatch<
+    React.SetStateAction<SpaceTargetMountPickerState | null>
+  >
+  confirmSpaceTargetMountPicker: () => void
+  cancelSpaceTargetMountPicker: () => void
   spaceVisuals: SpaceVisual[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
@@ -84,6 +91,8 @@ export function useWorkspaceCanvasSpaces({
   const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
   const [spaceRenameDraft, setSpaceRenameDraft] = useState('')
   const spaceRenameInputRef = useRef<HTMLInputElement>(null)
+  const [spaceTargetMountPicker, setSpaceTargetMountPicker] =
+    useState<SpaceTargetMountPickerState | null>(null)
   const lastAppliedWorkspaceIdRef = useRef<string | null>(null)
   const lastAppliedActiveSpaceIdRef = useRef<string | null | undefined>(undefined)
   const viewportWidth = useStore(state => state.width)
@@ -102,6 +111,7 @@ export function useWorkspaceCanvasSpaces({
   useEffect(() => {
     setEditingSpaceId(null)
     setSpaceRenameDraft('')
+    setSpaceTargetMountPicker(null)
   }, [workspaceId])
 
   useEffect(() => {
@@ -177,22 +187,27 @@ export function useWorkspaceCanvasSpaces({
     setSpaceRenameDraft('')
   }, [])
 
-  const { createSpaceFromSelectedNodes, createEmptySpaceAtPoint: createEmptySpaceAtPointInternal } =
-    useWorkspaceCanvasCreateSpace({
-      workspacePath,
-      reactFlow,
-      nodesRef,
-      setNodes,
-      spacesRef,
-      selectedNodeIdsRef,
-      onSpacesChange,
-      onRequestPersistFlush,
-      setContextMenu,
-      setEmptySelectionPrompt,
-      cancelSpaceRename,
-      onShowMessage,
-      standardWindowSizeBucket,
-    })
+  const {
+    createSpaceFromSelectedNodes,
+    createSpaceWithTargetMount,
+    createEmptySpaceAtPoint: createEmptySpaceAtPointInternal,
+  } = useWorkspaceCanvasCreateSpace({
+    workspaceId,
+    workspacePath,
+    standardWindowSizeBucket,
+    reactFlow,
+    nodesRef,
+    setNodes,
+    spacesRef,
+    selectedNodeIdsRef,
+    onSpacesChange,
+    onRequestPersistFlush,
+    setContextMenu,
+    setEmptySelectionPrompt,
+    setSpaceTargetMountPicker,
+    cancelSpaceRename,
+    onShowMessage,
+  })
 
   const startSpaceRename = useCallback(
     (spaceId: string) => {
@@ -249,6 +264,28 @@ export function useWorkspaceCanvasSpaces({
     [onRequestPersistFlush, onSpacesChange, spacesRef],
   )
 
+  const cancelSpaceTargetMountPicker = useCallback(() => {
+    setSpaceTargetMountPicker(null)
+  }, [])
+
+  const confirmSpaceTargetMountPicker = useCallback(() => {
+    const picker = spaceTargetMountPicker
+    if (!picker) {
+      return
+    }
+
+    const selectedMount =
+      picker.mounts.find(mount => mount.mountId === picker.selectedMountId) ?? null
+
+    createSpaceWithTargetMount({
+      nodeIds: picker.nodeIds,
+      rect: picker.rect,
+      targetMountId: picker.selectedMountId,
+      directoryPath: selectedMount?.rootPath ?? '',
+    })
+    setSpaceTargetMountPicker(null)
+  }, [createSpaceWithTargetMount, spaceTargetMountPicker])
+
   const spaceVisuals = useMemo<SpaceVisual[]>(() => {
     return spaces
       .map(space => {
@@ -261,6 +298,7 @@ export function useWorkspaceCanvasSpaces({
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          targetMountId: space.targetMountId,
           labelColor: space.labelColor,
           rect,
           hasExplicitRect: true,
@@ -416,6 +454,10 @@ export function useWorkspaceCanvasSpaces({
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
     createEmptySpaceAtPoint,
+    spaceTargetMountPicker,
+    setSpaceTargetMountPicker,
+    confirmSpaceTargetMountPicker,
+    cancelSpaceTargetMountPicker,
     spaceVisuals,
     activateSpace,
     activateAllSpaces,

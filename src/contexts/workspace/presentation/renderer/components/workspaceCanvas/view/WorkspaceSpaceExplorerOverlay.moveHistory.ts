@@ -12,6 +12,7 @@ import {
   type SpaceExplorerClipboardItem,
   type SpaceExplorerMoveHistoryEntry,
 } from './WorkspaceSpaceExplorerOverlay.operations'
+import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 const MAX_MOVE_HISTORY = 100
 
@@ -24,6 +25,7 @@ function pushMoveHistoryEntry(
 
 export function useSpaceExplorerOverlayMoveHistory({
   t,
+  mountId,
   explorerClipboard,
   setExplorerClipboard,
   onShowMessage,
@@ -34,6 +36,7 @@ export function useSpaceExplorerOverlayMoveHistory({
   setDropTargetDirectoryUri,
 }: {
   t: TranslateFn
+  mountId: string | null
   explorerClipboard: SpaceExplorerClipboardItem | null
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
   onShowMessage?: ShowWorkspaceCanvasMessage
@@ -64,7 +67,7 @@ export function useSpaceExplorerOverlayMoveHistory({
       entryKind: FileSystemEntry['kind']
       fallbackName: string
     }): Promise<boolean> => {
-      const api = window.opencoveApi?.filesystem
+      const api = resolveFilesystemApiForMount(mountId)
       if (!api) {
         onShowMessage?.(t('documentNode.filesystemUnavailable'), 'error')
         return false
@@ -89,7 +92,7 @@ export function useSpaceExplorerOverlayMoveHistory({
         return false
       }
     },
-    [explorerClipboard, onShowMessage, refresh, selectMovedEntry, setExplorerClipboard, t],
+    [explorerClipboard, mountId, onShowMessage, refresh, selectMovedEntry, setExplorerClipboard, t],
   )
 
   const executeMove = React.useCallback(
@@ -136,7 +139,7 @@ export function useSpaceExplorerOverlayMoveHistory({
 
   const pasteIntoDirectory = React.useCallback(
     async (targetDirectoryUri: string): Promise<void> => {
-      const api = window.opencoveApi?.filesystem
+      const api = resolveFilesystemApiForMount(mountId)
       if (!explorerClipboard || !api) {
         return
       }
@@ -177,6 +180,7 @@ export function useSpaceExplorerOverlayMoveHistory({
       ensureEntryMutable,
       executeMove,
       explorerClipboard,
+      mountId,
       onShowMessage,
       readSiblingEntries,
       refresh,

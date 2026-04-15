@@ -12,6 +12,7 @@
 .cove-window,
 .workspace-task-creator {
   width: min(680px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
   border: 1px solid var(--cove-border-subtle);
   border-radius: 16px;
   background: var(--cove-window-surface);
@@ -20,6 +21,16 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
+  overflow: hidden;
+}
+
+.cove-window__fields {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 14px;
+  min-height: 0;
+  overflow: auto;
 }
 
 .cove-window h3,
@@ -180,11 +191,15 @@
 
 .cove-window__action,
 .workspace-task-creator__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
   padding: 7px 12px;
   cursor: pointer;
   font-size: calc(12px * var(--cove-ui-font-scale));
   font-weight: 600;
+  white-space: nowrap;
   transition:
     background 0.16s ease,
     border-color 0.16s ease,

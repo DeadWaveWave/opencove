@@ -106,34 +106,16 @@ test.describe('Workspace Canvas - Spaces (Drop Ownership)', () => {
         })
         .toBe(true)
 
-      const dropOutsideSpaceCandidateClientPoint = {
-        x: spaceBox.x - 100,
-        y: spaceBox.y - 100,
-      }
-      const dropOutsideSpaceCandidate = {
-        x: clamp(dropOutsideSpaceCandidateClientPoint.x - paneBox.x, 40, paneBox.width - 40),
-        y: clamp(dropOutsideSpaceCandidateClientPoint.y - paneBox.y, 40, paneBox.height - 40),
-      }
-      const dropOutsideSpaceCandidateClientPointClamped = {
-        x: paneBox.x + dropOutsideSpaceCandidate.x,
-        y: paneBox.y + dropOutsideSpaceCandidate.y,
-      }
-      const dropOutsideSpaceClientPoint =
-        dropOutsideSpaceCandidateClientPointClamped.x >= spaceBox.x &&
-        dropOutsideSpaceCandidateClientPointClamped.x <= spaceBox.x + spaceBox.width &&
-        dropOutsideSpaceCandidateClientPointClamped.y >= spaceBox.y &&
-        dropOutsideSpaceCandidateClientPointClamped.y <= spaceBox.y + spaceBox.height
-          ? {
-              x: spaceBox.x + spaceBox.width / 2,
-              y: spaceBox.y + spaceBox.height + 180,
-            }
-          : dropOutsideSpaceCandidateClientPointClamped
+      await expect(spaceRegion).toBeVisible()
+      const refreshedSpaceBox = await readLocatorClientRect(spaceRegion)
+      const spaceBottom = refreshedSpaceBox.y + refreshedSpaceBox.height
+      const safeDropY = Math.min(paneBox.y + paneBox.height - 24, spaceBottom + 120)
 
       await dragLocatorTo(window, rootNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
-          x: clamp(dropOutsideSpaceClientPoint.x - paneBox.x, 40, paneBox.width - 40),
-          y: clamp(dropOutsideSpaceClientPoint.y - paneBox.y, 40, paneBox.height - 40),
+          x: clamp(80, 40, paneBox.width - 40),
+          y: clamp(safeDropY - paneBox.y, 40, paneBox.height - 40),
         },
       })
 

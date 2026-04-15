@@ -149,4 +149,13 @@ describe('normalizeAgentSettings', () => {
     ])
     expect(settings.agentEnvByProvider.gemini).toEqual([])
   })
+
+  it('defaults experimental remote workers to disabled', () => {
+    expect(DEFAULT_AGENT_SETTINGS.experimentalRemoteWorkersEnabled).toBe(false)
+    expect(normalizeAgentSettings({}).experimentalRemoteWorkersEnabled).toBe(false)
+    expect(
+      normalizeAgentSettings({ experimentalRemoteWorkersEnabled: true })
+        .experimentalRemoteWorkersEnabled,
+    ).toBe(true)
+  })
 })

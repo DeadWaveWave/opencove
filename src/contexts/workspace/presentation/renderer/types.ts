@@ -165,6 +165,7 @@ export interface WorkspaceSpaceState {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: WorkspaceSpaceRect | null

@@ -7,6 +7,7 @@ import type { WorkspaceCanvasQuickPreviewState } from '../types'
 import { resolveCanvasImageMimeType } from '../hooks/useSpaceExplorer.helpers'
 import { toErrorMessage } from '../helpers'
 import { selectViewportTransform } from './WorkspaceSpaceExplorerOverlay.helpers'
+import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 type QuickPreviewContentState =
   | { kind: 'loading' }
@@ -50,8 +51,8 @@ export function WorkspaceSpaceQuickPreview({
       return
     }
 
-    const api = window.opencoveApi?.filesystem
-    if (!api) {
+    const filesystemApi = resolveFilesystemApiForMount(preview.mountId)
+    if (!filesystemApi) {
       setContentState({
         kind: 'error',
         message: t('documentNode.filesystemUnavailable'),
@@ -67,18 +68,23 @@ export function WorkspaceSpaceQuickPreview({
     void (async () => {
       try {
         const mimeType = resolveCanvasImageMimeType(preview.uri)
-        if (preview.kind === 'image' && mimeType && api.readFileBytes) {
-          const { bytes } = await api.readFileBytes({ uri: preview.uri })
+        if (preview.kind === 'image' && mimeType && filesystemApi.readFileBytes) {
+          const { bytes } = await filesystemApi.readFileBytes({ uri: preview.uri })
           if (cancelled) {
             return
           }
 
-          objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }))
+          const blobBytes = new Uint8Array(bytes)
+          objectUrl = URL.createObjectURL(new Blob([blobBytes], { type: mimeType }))
           setContentState({ kind: 'image', url: objectUrl })
           return
         }
 
-        const result = await loadDocumentNodeContent(api, preview.uri, t('documentNode.notAFile'))
+        const result = await loadDocumentNodeContent(
+          filesystemApi,
+          preview.uri,
+          t('documentNode.notAFile'),
+        )
         if (cancelled) {
           return
         }

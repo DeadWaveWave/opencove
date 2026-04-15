@@ -3,9 +3,11 @@ import { resolve } from 'node:path'
 import type { ControlSurface } from '../controlSurface'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../../shared/contracts/controlSurface'
 import type {
+  ControlSurfaceHomeDirectoryResult,
   ControlSurfaceCapabilitiesResult,
   ControlSurfacePingResult,
 } from '../../../../shared/contracts/dto'
+import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 
 function readAppVersion(): string | null {
   try {
@@ -33,6 +35,20 @@ export function registerSystemHandlers(controlSurface: ControlSurface): void {
         now: ctx.now().toISOString(),
         pid: process.pid,
       }) satisfies ControlSurfacePingResult,
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('system.homeDirectory', {
+    kind: 'query',
+    validate: payload => payload ?? null,
+    handle: ctx =>
+      ({
+        ok: true,
+        now: ctx.now().toISOString(),
+        pid: process.pid,
+        platform: process.platform,
+        homeDirectory: resolveHomeDirectory(),
+      }) satisfies ControlSurfaceHomeDirectoryResult,
     defaultErrorCode: 'common.unexpected',
   })
 

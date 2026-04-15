@@ -55,6 +55,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   standardWindowSizeBucket: 'regular',
   websiteWindowPolicy: DEFAULT_WEBSITE_WINDOW_POLICY,
   experimentalWebsiteWindowPasteEnabled: false,
+  experimentalRemoteWorkersEnabled: false,
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,
