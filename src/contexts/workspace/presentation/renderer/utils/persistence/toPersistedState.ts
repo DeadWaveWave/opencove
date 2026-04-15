@@ -39,6 +39,7 @@ export function toPersistedState(
           normalizeOptionalString(space.directoryPath) ??
           normalizeOptionalString(workspace.path) ??
           workspace.path,
+        targetMountId: normalizeOptionalString(space.targetMountId),
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
         rect: normalizeWorkspaceSpaceRect(space.rect),

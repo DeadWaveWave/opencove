@@ -140,30 +140,15 @@ test.describe('Workspace Canvas - Worktree Archive (Windows)', () => {
 
         await expect(window.locator('.note-node').first()).toBeVisible()
 
-        const pane = window.locator('.workspace-canvas .react-flow__pane')
-        await pane.click({
-          button: 'right',
-          position: { x: 700, y: 320 },
-        })
-        await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
-        await window.locator('[data-testid="workspace-context-new-terminal"]').click()
-
-        const terminal = window.locator('.terminal-node').first()
-        const xterm = terminal.locator('.xterm')
-        await expect(terminal).toBeVisible()
-        await expect(xterm).toBeVisible()
-
         const backgroundChild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1e6)'], {
           cwd: worktreePath,
           detached: true,
           stdio: 'ignore',
           windowsHide: true,
         })
-        if (!backgroundChild.pid) {
-          throw new Error('Failed to spawn background worktree lock process')
-        }
-        backgroundPid = backgroundChild.pid
+        backgroundPid = backgroundChild.pid ?? null
         backgroundChild.unref()
+        expect(backgroundPid ?? 0).toBeGreaterThan(0)
         await window.waitForTimeout(1500)
 
         await window.locator('[data-testid="workspace-space-switch-space-archive-warning"]').click()

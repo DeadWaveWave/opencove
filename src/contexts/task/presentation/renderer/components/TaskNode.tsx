@@ -143,7 +143,11 @@ export function TaskNode({
 
   const startTitleEditing = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (isTitleEditing || !(event.target instanceof Element) || event.target.closest('.nodrag')) {
+      if (isTitleEditing) {
+        return
+      }
+
+      if (event.target instanceof Element && event.target.closest('.nodrag')) {
         return
       }
 

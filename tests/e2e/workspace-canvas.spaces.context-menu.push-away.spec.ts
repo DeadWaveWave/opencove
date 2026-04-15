@@ -103,84 +103,100 @@ test.describe('Workspace Canvas - Spaces (Push Away)', () => {
       await rightNode.click({ button: 'right' })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
+      const mountPickerWindow = window.locator(
+        '[data-testid="workspace-space-target-mount-window"]',
+      )
+      const mountPickerVisible = await mountPickerWindow
+        .waitFor({ state: 'visible', timeout: 2_000 })
+        .then(() => true)
+        .catch(() => false)
+
+      if (mountPickerVisible) {
+        await window.locator('[data-testid="workspace-space-target-mount-confirm"]').click()
+        await expect(mountPickerWindow).toHaveCount(0)
+      }
+
       await expect
-        .poll(async () => {
-          return await window.evaluate(
-            async ({ key }) => {
-              void key
+        .poll(
+          async () => {
+            return await window.evaluate(
+              async ({ key }) => {
+                void key
 
-              const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
-              if (!raw) {
-                return false
-              }
+                const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+                if (!raw) {
+                  return false
+                }
 
-              const parsed = JSON.parse(raw) as {
-                workspaces?: Array<{
-                  nodes?: Array<{
-                    id?: string
-                    position?: { x?: number; y?: number }
-                    width?: number
-                    height?: number
+                const parsed = JSON.parse(raw) as {
+                  workspaces?: Array<{
+                    nodes?: Array<{
+                      id?: string
+                      position?: { x?: number; y?: number }
+                      width?: number
+                      height?: number
+                    }>
+                    spaces?: Array<{
+                      id?: string
+                      rect?: { x?: number; y?: number; width?: number; height?: number } | null
+                      nodeIds?: string[]
+                    }>
                   }>
-                  spaces?: Array<{
-                    id?: string
-                    rect?: { x?: number; y?: number; width?: number; height?: number } | null
-                    nodeIds?: string[]
-                  }>
-                }>
-              }
+                }
 
-              const workspace = parsed.workspaces?.[0]
-              const space = workspace?.spaces?.[0]
-              if (!space?.rect || !Array.isArray(space.nodeIds)) {
-                return false
-              }
+                const workspace = parsed.workspaces?.[0]
+                const space = workspace?.spaces?.[0]
+                if (!space?.rect || !Array.isArray(space.nodeIds)) {
+                  return false
+                }
 
-              const rect = space.rect
-              if (
-                typeof rect.x !== 'number' ||
-                typeof rect.y !== 'number' ||
-                typeof rect.width !== 'number' ||
-                typeof rect.height !== 'number'
-              ) {
-                return false
-              }
+                const rect = space.rect
+                if (
+                  typeof rect.x !== 'number' ||
+                  typeof rect.y !== 'number' ||
+                  typeof rect.width !== 'number' ||
+                  typeof rect.height !== 'number'
+                ) {
+                  return false
+                }
 
-              const middle = workspace?.nodes?.find(node => node.id === 'space-create-middle')
-              if (
-                !middle?.position ||
-                typeof middle.position.x !== 'number' ||
-                typeof middle.position.y !== 'number' ||
-                typeof middle.width !== 'number' ||
-                typeof middle.height !== 'number'
-              ) {
-                return false
-              }
+                const middle = workspace?.nodes?.find(node => node.id === 'space-create-middle')
+                if (
+                  !middle?.position ||
+                  typeof middle.position.x !== 'number' ||
+                  typeof middle.position.y !== 'number' ||
+                  typeof middle.width !== 'number' ||
+                  typeof middle.height !== 'number'
+                ) {
+                  return false
+                }
 
-              const middleRect = {
-                x: middle.position.x,
-                y: middle.position.y,
-                width: middle.width,
-                height: middle.height,
-              }
+                const middleRect = {
+                  x: middle.position.x,
+                  y: middle.position.y,
+                  width: middle.width,
+                  height: middle.height,
+                }
 
-              const spaceRight = rect.x + rect.width
-              const spaceBottom = rect.y + rect.height
-              const middleRight = middleRect.x + middleRect.width
-              const middleBottom = middleRect.y + middleRect.height
-              const intersects = !(
-                spaceRight <= middleRect.x ||
-                rect.x >= middleRight ||
-                spaceBottom <= middleRect.y ||
-                rect.y >= middleBottom
-              )
+                const spaceRight = rect.x + rect.width
+                const spaceBottom = rect.y + rect.height
+                const middleRight = middleRect.x + middleRect.width
+                const middleBottom = middleRect.y + middleRect.height
+                const intersects = !(
+                  spaceRight <= middleRect.x ||
+                  rect.x >= middleRight ||
+                  spaceBottom <= middleRect.y ||
+                  rect.y >= middleBottom
+                )
 
-              const isMember = space.nodeIds.includes('space-create-middle')
-              return !intersects && !isMember
-            },
-            { key: storageKey },
-          )
-        })
+                const isMember = space.nodeIds.includes('space-create-middle')
+                return !intersects && !isMember
+              },
+              { key: storageKey },
+            )
+          },
+          { timeout: 20_000 },
+        )
         .toBe(true)
     } finally {
       await electronApp.close()

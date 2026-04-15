@@ -43,6 +43,7 @@ export function useWorkspaceCanvasInteractions({
   selectedNodeIdsRef,
   selectedSpaceIdsRef,
   contextMenu,
+  workspaceId,
   workspacePath,
   defaultTerminalProfileId,
   spacesRef,
@@ -373,6 +374,7 @@ export function useWorkspaceCanvasInteractions({
   const createTerminalNode = useWorkspaceCanvasTerminalCreation({
     contextMenu,
     setContextMenu,
+    workspaceId,
     spacesRef,
     workspacePath,
     nodesRef,
@@ -381,6 +383,7 @@ export function useWorkspaceCanvasInteractions({
     createNodeForSession,
     setNodes,
     onSpacesChange,
+    onShowMessage,
   })
   const createNoteNodeFromContextMenu = useCallback(() => {
     createNoteNodeFromPaneContextMenu({
@@ -433,6 +436,7 @@ export function useWorkspaceCanvasInteractions({
   const { runQuickCommand, insertQuickPhrase } = useWorkspaceCanvasQuickMenuActions({
     contextMenu,
     setContextMenu,
+    workspaceId,
     websiteWindowsEnabled,
     standardWindowSizeBucket,
     createWebsiteNode,
@@ -444,6 +448,7 @@ export function useWorkspaceCanvasInteractions({
     defaultTerminalProfileId,
     workspacePath,
     createNodeForSession,
+    onShowMessage,
   })
   const pasteHandlers = useWorkspaceCanvasPasteHandlers({
     canvasRef,

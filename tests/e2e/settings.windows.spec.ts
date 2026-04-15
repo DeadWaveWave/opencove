@@ -67,8 +67,14 @@ test.describe('Settings Terminal Profiles (Windows)', () => {
       await resetWorkspaceState(window)
       await window.reload({ waitUntil: 'domcontentloaded' })
 
+      await expect
+        .poll(async () => {
+          const result = await readAvailableTerminalProfiles(window)
+          return result.profiles.length
+        })
+        .toBeGreaterThan(0)
+
       const profileResult = await readAvailableTerminalProfiles(window)
-      expect(profileResult.profiles.length).toBeGreaterThan(0)
 
       const selectedProfile =
         profileResult.profiles.find(profile => profile.id !== profileResult.defaultProfileId) ??

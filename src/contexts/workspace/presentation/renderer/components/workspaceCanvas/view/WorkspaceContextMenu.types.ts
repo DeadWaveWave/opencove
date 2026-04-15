@@ -41,6 +41,7 @@ export interface WorkspaceContextMenuProps {
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean

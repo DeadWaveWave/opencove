@@ -201,6 +201,7 @@ export function WorkspaceSpaceRegion({
                   spaceId: space.id,
                   spaceName: space.name,
                   worktreePath,
+                  targetMountId: space.targetMountId,
                   currentName: branchName,
                   nextName: branchName,
                   isSubmitting: false,

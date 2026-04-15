@@ -1,6 +1,7 @@
 import type { ListSystemFontsResult, WorkspaceDirectory } from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
+import type { ControlSurfaceInvokeRequest } from '@shared/contracts/controlSurface'
 import {
   createUnsupportedUpdateState,
   resolveBrowserPlatform,
@@ -94,6 +95,10 @@ export function installBrowserOpenCoveApi(): void {
     },
     debug: {
       logTerminalDiagnostics: () => undefined,
+    },
+    controlSurface: {
+      invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
+        await invokeBrowserControlSurface<TValue>(request),
     },
     windowChrome: {
       setTheme: async () => undefined,

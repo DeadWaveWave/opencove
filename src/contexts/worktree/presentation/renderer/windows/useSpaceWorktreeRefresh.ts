@@ -2,9 +2,10 @@ import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitWorktreeInfo } from '@shared/contracts/dto'
 import { toErrorMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
-import { getWorktreeApiMethod } from './spaceWorktree.shared'
+import { getWorktreeApiMethod, type WorktreeApiClient } from './spaceWorktree.shared'
 
 export function useSpaceWorktreeRefresh({
+  worktreeApi,
   workspacePath,
   statusPath,
   setIsLoading,
@@ -16,6 +17,7 @@ export function useSpaceWorktreeRefresh({
   setExistingBranchName,
   setStartPoint,
 }: {
+  worktreeApi: WorktreeApiClient | null
   workspacePath: string
   statusPath: string
   setIsLoading: React.Dispatch<React.SetStateAction<boolean>>
@@ -34,9 +36,9 @@ export function useSpaceWorktreeRefresh({
     setError(null)
 
     try {
-      const listBranches = getWorktreeApiMethod('listBranches', t)
-      const listWorktrees = getWorktreeApiMethod('listWorktrees', t)
-      const statusSummary = getWorktreeApiMethod('statusSummary', t)
+      const listBranches = getWorktreeApiMethod(worktreeApi, 'listBranches', t)
+      const listWorktrees = getWorktreeApiMethod(worktreeApi, 'listWorktrees', t)
+      const statusSummary = getWorktreeApiMethod(worktreeApi, 'statusSummary', t)
       const [branchesResult, worktreesResult, statusSummaryResult] = await Promise.all([
         listBranches({ repoPath: workspacePath }),
         listWorktrees({ repoPath: workspacePath }),
@@ -77,6 +79,7 @@ export function useSpaceWorktreeRefresh({
     t,
     setWorktrees,
     statusPath,
+    worktreeApi,
     workspacePath,
   ])
 }

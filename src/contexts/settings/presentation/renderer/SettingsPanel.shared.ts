@@ -11,6 +11,7 @@ export interface ProviderModelCatalogEntry {
 }
 
 export interface SettingsPanelProps {
+  initialPageId?: SettingsPageId | null
   settings: AgentSettings
   openPageId?: SettingsPageId | null
   updateState: AppUpdateState | null
@@ -29,6 +30,7 @@ export interface SettingsPanelProps {
 type CorePageId =
   | 'general'
   | 'worker'
+  | 'endpoints'
   | 'agent'
   | 'quick-menu'
   | 'notifications'

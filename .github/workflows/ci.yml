@@ -10,6 +10,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
 jobs:
   ci-ubuntu:
     runs-on: ubuntu-latest
@@ -116,7 +119,6 @@ jobs:
           name: playwright-artifacts-ubuntu-shard-${{ matrix.shard }}
           path: |
             test-results/
-            playwright-report/
           retention-days: 7
 
       - name: Cleanup E2E temp dirs
@@ -164,7 +166,6 @@ jobs:
           name: playwright-artifacts-macos
           path: |
             test-results/
-            playwright-report/
           retention-days: 7
 
       - name: Cleanup E2E temp dirs

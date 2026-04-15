@@ -300,6 +300,12 @@ function mergeSpaces(options: {
         snapshotSpace?.directoryPath,
         (left, right) => left === right,
       ),
+      targetMountId: mergeSnapshotField(
+        baseSpace.targetMountId,
+        localSpace.targetMountId,
+        snapshotSpace?.targetMountId,
+        (left, right) => left === right,
+      ),
       labelColor: mergeSnapshotField(
         baseSpace.labelColor,
         localSpace.labelColor,

@@ -1,6 +1,7 @@
 import type { TranslationDictionary } from './schema'
 
 import { zhCNMessages } from './zh-CN.messages'
+import { zhCNShell } from './zh-CN.shell'
 import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
 import { zhCNSettingsPanel } from './zh-CN.settingsPanel'
 import { zhCNWorktree } from './zh-CN.worktree'
@@ -19,6 +20,7 @@ export const zhCN = {
     generating: '生成中...',
     info: '提示',
     loading: '加载中...',
+    refresh: '刷新',
     remove: '移除',
     removing: '移除中...',
     resetToDefault: '恢复默认',
@@ -124,7 +126,7 @@ export const zhCN = {
       hidePrimarySidebar: '隐藏侧边栏',
       togglePrimarySidebarHint: '切换主侧边栏',
       addProject: '添加项目',
-      addProjectHint: '添加一个项目文件夹',
+      addProjectHint: '创建项目并配置 mounts',
     },
   },
   spaceArchivesWindow: {
@@ -214,9 +216,7 @@ export const zhCN = {
     recoveryCorruptDb: '持久化数据库已损坏，现已重置。',
     recoveryMigrationFailed: '持久化迁移失败，现已重置。',
   },
-  projectContextMenu: {
-    removeProject: '移除项目',
-  },
+  ...zhCNShell,
   addProjectDialog: {
     title: '添加项目',
     description: '请输入 Worker 机器上的绝对路径。',
@@ -313,8 +313,8 @@ export const zhCN = {
     multipleDescription: '这会永久删除所选的 {{count}} 个节点。',
     taskDescriptionPrefix: '这会永久删除',
     nodeDescriptionPrefix: '这会永久删除这个 {{kind}}：',
-    emptySpaceWarningSingle: '删除最后这个节点会使该 Space 变为空，并随后自动关闭。',
-    emptySpaceWarningMultiple: '删除最后这几个节点会使该 Space 变为空，并随后自动关闭。',
+    emptySpaceWarningSingle: '删除最后这个节点会使该 Space 变为空。',
+    emptySpaceWarningMultiple: '删除最后这几个节点会使该 Space 变为空。',
   },
   workspaceContextMenu: {
     newTerminal: '新建终端',
@@ -322,6 +322,7 @@ export const zhCN = {
     newWebsite: '新建网页窗口',
     newTask: '新建任务',
     runAgent: '运行 Agent',
+    createEmptySpace: '创建空 Space',
     arrange: '整理',
     arrangeBy: '整理方式',
     createSpaceWithSelected: '用所选节点创建 Space',

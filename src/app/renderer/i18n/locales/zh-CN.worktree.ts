@@ -15,6 +15,8 @@ export const zhCNWorktree = {
     removeWorktreeContents: '移除 {{name}}、其 worktree 以及其中的所有内容。',
     deleteBranch: '删除分支',
     deleteBranchHelp: '同时删除当前 git 分支。',
+    skipArchiveHistory: '不保存该 Space 历史',
+    skipArchiveHistoryHelp: '不为该 Space 生成归档记录。',
     workspaceRoot: '工作区根目录',
     detachedHead: '游离 HEAD',
     archiveSpace: '归档 Space',

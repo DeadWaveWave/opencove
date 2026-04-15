@@ -17,6 +17,7 @@ type SetNodes = (
 
 export function useWorkspaceCanvasShortcutActions({
   enabled,
+  workspaceId,
   activeSpaceId,
   spaces,
   agentSettings,
@@ -34,8 +35,10 @@ export function useWorkspaceCanvasShortcutActions({
   createNoteNode,
   createSpaceFromSelectedNodes,
   activateSpace,
+  onShowMessage,
 }: {
   enabled: boolean
+  workspaceId: string
   activeSpaceId: string | null
   spaces: WorkspaceSpaceState[]
   agentSettings: Pick<
@@ -61,6 +64,7 @@ export function useWorkspaceCanvasShortcutActions({
   createNoteNode: (anchor: { x: number; y: number }) => Node<TerminalNodeData> | null
   createSpaceFromSelectedNodes: () => void
   activateSpace: (spaceId: string) => void
+  onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
 }): void {
   const createNoteAtViewportCenter = useCallback((): void => {
     const canvas = canvasRef.current
@@ -113,6 +117,7 @@ export function useWorkspaceCanvasShortcutActions({
 
     await createTerminalNodeAtFlowPosition({
       anchor,
+      workspaceId,
       defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
       standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
       workspacePath,
@@ -121,6 +126,7 @@ export function useWorkspaceCanvasShortcutActions({
       setNodes,
       onSpacesChange,
       createNodeForSession,
+      onShowMessage,
     })
   }, [
     agentSettings.defaultTerminalProfileId,
@@ -136,6 +142,8 @@ export function useWorkspaceCanvasShortcutActions({
     setNodes,
     spacesRef,
     workspacePath,
+    workspaceId,
+    onShowMessage,
   ])
 
   useWorkspaceCanvasShortcuts({

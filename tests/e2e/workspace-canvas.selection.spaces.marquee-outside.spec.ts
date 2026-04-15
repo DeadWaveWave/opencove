@@ -3,6 +3,7 @@ import {
   beginDragMouse,
   clearAndSeedWorkspace,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -46,11 +47,8 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible()
 
-      const paneBox = await pane.boundingBox()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!paneBox || !spaceBox) {
-        throw new Error('workspace pane/space bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const startX = paneBox.x + 40
       const startY = paneBox.y + 40
@@ -124,11 +122,8 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible()
 
-      const paneBox = await pane.boundingBox()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!paneBox || !spaceBox) {
-        throw new Error('workspace pane/space bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const startX = paneBox.x + 40
       const startY = paneBox.y + 40
@@ -208,12 +203,9 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible()
 
-      const paneBox = await pane.boundingBox()
-      const outsideBox = await outsideNode.boundingBox()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!paneBox || !outsideBox || !spaceBox) {
-        throw new Error('workspace pane/outside node/space bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const outsideBox = await readLocatorClientRect(outsideNode)
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const startX = Math.max(paneBox.x + 20, outsideBox.x - 30)
       const startY = Math.max(paneBox.y + 20, outsideBox.y - 30)
@@ -323,10 +315,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         throw new Error('failed to read node positions after marquee selection')
       }
 
-      const finalOutsideBox = await outsideNode.boundingBox()
-      if (!finalOutsideBox) {
-        throw new Error('outside node bounding box unavailable for drag')
-      }
+      const finalOutsideBox = await readLocatorClientRect(outsideNode)
 
       const dragStartX = finalOutsideBox.x + 20
       const dragStartY = finalOutsideBox.y + 20

@@ -7,7 +7,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
 import { toErrorMessage } from '@contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
-import { getWorktreeApiMethod } from './spaceWorktree.shared'
+import { getWorktreeApiMethod, type WorktreeApiClient } from './spaceWorktree.shared'
 import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 
 export function useSpaceWorktreeSuggestNames({
@@ -16,6 +16,7 @@ export function useSpaceWorktreeSuggestNames({
   spaceTasks,
   agentSettings,
   workspacePath,
+  worktreeApi,
   setIsSuggesting,
   setError,
   setNewBranchName,
@@ -25,6 +26,7 @@ export function useSpaceWorktreeSuggestNames({
   spaceTasks: Array<{ title: string; requirement: string }>
   agentSettings: AgentSettings
   workspacePath: string
+  worktreeApi: WorktreeApiClient | null
   setIsSuggesting: React.Dispatch<React.SetStateAction<boolean>>
   setError: React.Dispatch<React.SetStateAction<string | null>>
   setNewBranchName: React.Dispatch<React.SetStateAction<string>>
@@ -42,7 +44,7 @@ export function useSpaceWorktreeSuggestNames({
     try {
       const provider = resolveWorktreeNameSuggestionProvider(agentSettings.defaultProvider)
       const model = resolveAgentModel(agentSettings, provider)
-      const suggestWorktreeNames = getWorktreeApiMethod('suggestNames', t)
+      const suggestWorktreeNames = getWorktreeApiMethod(worktreeApi, 'suggestNames', t)
 
       const suggested = await suggestWorktreeNames({
         provider,
@@ -68,6 +70,7 @@ export function useSpaceWorktreeSuggestNames({
     spaceNotes,
     spaceTasks,
     t,
+    worktreeApi,
     workspacePath,
   ])
 }

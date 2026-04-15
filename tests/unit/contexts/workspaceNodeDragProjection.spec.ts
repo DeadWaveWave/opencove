@@ -133,6 +133,7 @@ describe('projectWorkspaceNodeDragLayout', () => {
       id: 'space-1',
       name: 'Space',
       directoryPath: '/tmp',
+      targetMountId: null,
       nodeIds: [],
       rect: spaceRect,
     }
@@ -175,6 +176,7 @@ describe('projectWorkspaceNodeDragLayout', () => {
       id: 'space-1',
       name: 'Space',
       directoryPath: '/tmp',
+      targetMountId: null,
       nodeIds: ['owned'],
       rect: spaceRect,
     }
@@ -246,6 +248,7 @@ describe('projectWorkspaceNodeDragLayout', () => {
       id: 'space-1',
       name: 'Space',
       directoryPath: '/tmp',
+      targetMountId: null,
       nodeIds: ['drag', 'a', 'b', 'c', 'd', 'e'],
       rect: spaceRect,
     }

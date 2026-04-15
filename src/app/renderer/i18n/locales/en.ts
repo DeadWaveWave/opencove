@@ -1,4 +1,5 @@
 import { enMessages } from './en.messages'
+import { enShell } from './en.shell'
 import { enSpaceExplorer } from './en.spaceExplorer'
 import { enSettingsPanel } from './en.settingsPanel'
 import { enWorktree } from './en.worktree'
@@ -17,6 +18,7 @@ export const en = {
     generating: 'Generating...',
     info: 'Info',
     loading: 'Loading...',
+    refresh: 'Refresh',
     remove: 'Remove',
     removing: 'Removing...',
     resetToDefault: 'Reset to Default',
@@ -122,7 +124,7 @@ export const en = {
       hidePrimarySidebar: 'Hide Sidebar',
       togglePrimarySidebarHint: 'Toggle Primary Sidebar',
       addProject: 'Add Project',
-      addProjectHint: 'Add a project folder',
+      addProjectHint: 'Create a project and mounts',
     },
   },
   spaceArchivesWindow: {
@@ -212,9 +214,7 @@ export const en = {
     recoveryCorruptDb: 'Persistence database was corrupted and has been reset.',
     recoveryMigrationFailed: 'Persistence migration failed and has been reset.',
   },
-  projectContextMenu: {
-    removeProject: 'Remove Project',
-  },
+  ...enShell,
   addProjectDialog: {
     title: 'Add project',
     description: 'Enter an absolute path on the worker machine.',
@@ -315,10 +315,8 @@ export const en = {
     multipleDescription: 'This will permanently remove {{count}} selected nodes.',
     taskDescriptionPrefix: 'This will permanently remove',
     nodeDescriptionPrefix: 'This will permanently remove this {{kind}}:',
-    emptySpaceWarningSingle:
-      'Deleting this last node will leave the space empty, and it will close automatically.',
-    emptySpaceWarningMultiple:
-      'Deleting these last nodes will leave the space empty, and it will close automatically.',
+    emptySpaceWarningSingle: 'Deleting this last node will leave the space empty.',
+    emptySpaceWarningMultiple: 'Deleting these last nodes will leave the space empty.',
   },
   workspaceContextMenu: {
     newTerminal: 'New Terminal',
@@ -326,6 +324,7 @@ export const en = {
     newWebsite: 'New Website',
     newTask: 'New Task',
     runAgent: 'Run Agent',
+    createEmptySpace: 'Create Empty Space',
     arrange: 'Arrange',
     arrangeBy: 'Arrange By',
     createSpaceWithSelected: 'Create Space with Selected',

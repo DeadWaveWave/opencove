@@ -9,6 +9,7 @@ import type {
   Point,
   TaskPriority,
   TerminalNodeData,
+  WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
@@ -38,6 +39,10 @@ import { resolveDocumentTitleFromUri } from './useNodesStore.documentTitle'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { useWorkspaceCanvasWebsiteNodeCreation } from './useNodesStore.createWebsiteNode'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
+
+function resolveSpaceRects(spaces: WorkspaceSpaceState[]): WorkspaceSpaceRect[] {
+  return spaces.map(space => space.rect).filter((rect): rect is WorkspaceSpaceRect => rect !== null)
+}
 interface UseWorkspaceCanvasNodeCreationParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -88,13 +93,7 @@ export function useWorkspaceCanvasNodeCreation({
         anchor,
         size: defaultSize,
         getNodes: () => nodesRef.current,
-        getSpaceRects: () =>
-          spacesRef.current
-            .map(space => space.rect)
-            .filter(
-              (rect): rect is { x: number; y: number; width: number; height: number } =>
-                rect !== null,
-            ),
+        getSpaceRects: () => resolveSpaceRects(spacesRef.current),
         targetSpaceRect: placement?.targetSpaceRect ?? null,
         preferredDirection: placement?.preferredDirection,
         avoidRects: placement?.avoidRects,
@@ -172,22 +171,17 @@ export function useWorkspaceCanvasNodeCreation({
   const createNoteNode = useCallback(
     (anchor: Point, options: CreateNoteNodeOptions = {}): Node<TerminalNodeData> | null => {
       const noteSize = resolveDefaultNoteWindowSize(standardWindowSizeBucket)
-      const spaceObstacles: Rect[] = spacesRef.current
-        .map(space => space.rect)
-        .filter((rect): rect is { x: number; y: number; width: number; height: number } =>
-          Boolean(rect),
-        )
-        .map(rect =>
-          inflateRect(
-            {
-              left: rect.x,
-              top: rect.y,
-              right: rect.x + rect.width,
-              bottom: rect.y + rect.height,
-            },
-            SPACE_NODE_PADDING,
-          ),
-        )
+      const spaceObstacles: Rect[] = resolveSpaceRects(spacesRef.current).map(rect =>
+        inflateRect(
+          {
+            left: rect.x,
+            top: rect.y,
+            right: rect.x + rect.width,
+            bottom: rect.y + rect.height,
+          },
+          SPACE_NODE_PADDING,
+        ),
+      )
 
       const resolvedPlacement =
         options.placementStrategy === 'right-no-push'
@@ -208,13 +202,7 @@ export function useWorkspaceCanvasNodeCreation({
               anchor,
               size: noteSize,
               getNodes: () => nodesRef.current,
-              getSpaceRects: () =>
-                spacesRef.current
-                  .map(space => space.rect)
-                  .filter(
-                    (rect): rect is { x: number; y: number; width: number; height: number } =>
-                      rect !== null,
-                  ),
+              getSpaceRects: () => resolveSpaceRects(spacesRef.current),
               targetSpaceRect: options.placement?.targetSpaceRect ?? null,
               preferredDirection: options.placement?.preferredDirection,
               avoidRects: options.placement?.avoidRects,
@@ -292,13 +280,7 @@ export function useWorkspaceCanvasNodeCreation({
         anchor,
         size: defaultTaskSize,
         getNodes: () => nodesRef.current,
-        getSpaceRects: () =>
-          spacesRef.current
-            .map(space => space.rect)
-            .filter(
-              (rect): rect is { x: number; y: number; width: number; height: number } =>
-                rect !== null,
-            ),
+        getSpaceRects: () => resolveSpaceRects(spacesRef.current),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -376,13 +358,7 @@ export function useWorkspaceCanvasNodeCreation({
         anchor,
         size: desiredSize,
         getNodes: () => nodesRef.current,
-        getSpaceRects: () =>
-          spacesRef.current
-            .map(space => space.rect)
-            .filter(
-              (rect): rect is { x: number; y: number; width: number; height: number } =>
-                rect !== null,
-            ),
+        getSpaceRects: () => resolveSpaceRects(spacesRef.current),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,
@@ -437,13 +413,7 @@ export function useWorkspaceCanvasNodeCreation({
         anchor,
         size: defaultSize,
         getNodes: () => nodesRef.current,
-        getSpaceRects: () =>
-          spacesRef.current
-            .map(space => space.rect)
-            .filter(
-              (rect): rect is { x: number; y: number; width: number; height: number } =>
-                rect !== null,
-            ),
+        getSpaceRects: () => resolveSpaceRects(spacesRef.current),
         targetSpaceRect: placementOptions?.targetSpaceRect ?? null,
         preferredDirection: placementOptions?.preferredDirection,
         avoidRects: placementOptions?.avoidRects,

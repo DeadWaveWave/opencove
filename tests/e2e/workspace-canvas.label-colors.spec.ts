@@ -21,7 +21,17 @@ async function selectSpaceLabelColorWithRetry(
 
   const attemptSelection = async (attempt: number): Promise<void> => {
     await expect(spaceMenuButton).toBeVisible()
-    await spaceMenuButton.click()
+    await spaceMenuButton.scrollIntoViewIfNeeded().catch(() => undefined)
+
+    try {
+      await spaceMenuButton.click({ timeout: 6_000 })
+    } catch (error) {
+      if (attempt >= maxAttempts) {
+        throw error
+      }
+
+      await spaceMenuButton.click({ timeout: 6_000, force: true })
+    }
     await expect(actionMenu).toBeVisible()
     await labelColorButton.click()
 

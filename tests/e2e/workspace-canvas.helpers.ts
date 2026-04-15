@@ -4,6 +4,7 @@ import type {
   TaskAgentSessionRecord,
   WebsiteNodeData,
 } from '../../src/contexts/workspace/presentation/renderer/types'
+import type { CreateMountResult, ListMountsResult } from '../../src/shared/contracts/dto'
 import { createTestUserDataDir, launchApp } from './workspace-canvas.app'
 import {
   buildEchoSequenceCommand,
@@ -112,6 +113,122 @@ function isRetryableNavigationError(error: unknown): boolean {
     message.includes('Navigation failed') ||
     message.includes('Navigation timeout')
   )
+}
+
+async function ensureWorkspaceMounts(window: Page, workspaces: SeedWorkspace[]): Promise<void> {
+  const mountSeeds = workspaces
+    .map(workspace => ({
+      projectId: workspace.id,
+      rootPath: workspace.path,
+      name: workspace.name,
+    }))
+    .filter(item => item.rootPath.trim().length > 0)
+
+  if (mountSeeds.length === 0) {
+    return
+  }
+
+  await expect
+    .poll(
+      async () => {
+        return await window.evaluate(async () => {
+          try {
+            await window.opencoveApi.controlSurface.invoke({
+              kind: 'query',
+              id: 'system.ping',
+              payload: null,
+            })
+            return true
+          } catch {
+            return false
+          }
+        })
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true)
+
+  await window.evaluate(async seeds => {
+    const sleep = async (ms: number): Promise<void> => {
+      await new Promise(resolve => setTimeout(resolve, ms))
+    }
+
+    await Promise.all(
+      seeds.map(async seed => {
+        const listMounts = async () => {
+          return await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+            kind: 'query',
+            id: 'mount.list',
+            payload: { projectId: seed.projectId },
+          })
+        }
+
+        const removeMount = async (mountId: string) => {
+          await window.opencoveApi.controlSurface.invoke({
+            kind: 'command',
+            id: 'mount.remove',
+            payload: { mountId },
+          })
+        }
+
+        const createMount = async () => {
+          await window.opencoveApi.controlSurface.invoke<CreateMountResult>({
+            kind: 'command',
+            id: 'mount.create',
+            payload: {
+              projectId: seed.projectId,
+              endpointId: 'local',
+              rootPath: seed.rootPath,
+              name: seed.name,
+            },
+          })
+        }
+
+        // Ensure exactly one local mount for this workspace, so space creation tests don't get blocked
+        // by the target-mount picker window due to transient duplicate mounts.
+        const ensureSingleMount = async (attempt: number): Promise<void> => {
+          if (attempt >= 5) {
+            return
+          }
+
+          const mountResult = await listMounts()
+          const preferred =
+            mountResult.mounts.find(
+              mount => mount.endpointId === 'local' && mount.rootPath === seed.rootPath,
+            ) ?? null
+
+          if (!preferred) {
+            await createMount().catch(() => undefined)
+            await sleep(60)
+            await ensureSingleMount(attempt + 1)
+            return
+          }
+
+          const keepMountId = preferred.mountId
+
+          await Promise.all(
+            mountResult.mounts
+              .filter(mount => mount.mountId !== keepMountId)
+              .map(mount => removeMount(mount.mountId).catch(() => undefined)),
+          )
+
+          await sleep(80)
+
+          const verified = await listMounts()
+          const remaining = verified.mounts.filter(mount => mount.mountId !== keepMountId)
+          if (remaining.length === 0) {
+            return
+          }
+
+          await ensureSingleMount(attempt + 1)
+        }
+
+        await ensureSingleMount(0)
+      }),
+    )
+
+    window.dispatchEvent(new Event('opencove:topology-changed'))
+  }, mountSeeds)
 }
 
 export async function seedWorkspaceState(
@@ -227,6 +344,7 @@ export async function seedWorkspaceState(
       throw error
     }
     if (seededReady && workspaceCount >= payload.workspaces.length) {
+      await ensureWorkspaceMounts(window, payload.workspaces)
       return true
     }
 

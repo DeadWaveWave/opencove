@@ -15,6 +15,8 @@ export const enWorktree = {
     removeWorktreeContents: 'Remove {{name}}, its worktree, and everything inside it.',
     deleteBranch: 'Delete branch',
     deleteBranchHelp: 'Also remove the current git branch.',
+    skipArchiveHistory: "Don't save Space history",
+    skipArchiveHistoryHelp: "Don't add an archive record for this Space.",
     workspaceRoot: 'Workspace root',
     detachedHead: 'Detached HEAD',
     archiveSpace: 'Archive Space',
