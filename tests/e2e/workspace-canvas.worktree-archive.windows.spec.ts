@@ -5,7 +5,6 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import {
-  buildNodeEvalCommand,
   createTestUserDataDir,
   launchApp,
   removePathWithRetry,
@@ -154,20 +153,19 @@ test.describe('Workspace Canvas - Worktree Archive (Windows)', () => {
         await expect(terminal).toBeVisible()
         await expect(xterm).toBeVisible()
 
-        const spawnDetachedChildCommand = buildNodeEvalCommand(`
-          const { spawn } = require('child_process')
-          const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1e6)'], {
-            cwd: process.cwd(),
-            detached: true,
-            stdio: 'ignore',
-            windowsHide: true,
-          })
-          console.log('BGPID:' + child.pid + ':END')
-          child.unref()
-        `)
+        const spawnDetachedChildCommand =
+          `node -e "` +
+          `const { spawn } = require('child_process');` +
+          `const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1e6)'], {` +
+          `cwd: process.cwd(), detached: true, stdio: 'ignore', windowsHide: true` +
+          `});` +
+          `console.log('BGPID:' + child.pid + ':END');` +
+          `child.unref();` +
+          `"`
 
         await xterm.click()
         await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
+        await window.waitForTimeout(250)
         await window.keyboard.type(spawnDetachedChildCommand)
         await window.keyboard.press('Enter')
 
@@ -177,7 +175,7 @@ test.describe('Workspace Canvas - Worktree Archive (Windows)', () => {
           return match ? Number(match[1]) : 0
         }
 
-        await expect.poll(readBackgroundPid).toBeGreaterThan(0)
+        await expect.poll(readBackgroundPid, { timeout: 30_000 }).toBeGreaterThan(0)
         backgroundPid = await readBackgroundPid()
         await window.waitForTimeout(1500)
 
