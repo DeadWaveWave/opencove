@@ -107,6 +107,7 @@ test.describe('M6 - Dev profile happy path (manual)', () => {
     try {
       await openSettings(window)
       await switchSettingsPage(window, 'endpoints')
+      await window.locator('[data-testid="settings-endpoints-open-register"]').click()
 
       await window
         .locator('[data-testid="settings-endpoints-register-displayName"]')

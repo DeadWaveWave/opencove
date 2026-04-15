@@ -365,6 +365,7 @@ export const zhCNSettingsPanel = {
       lastPing: '最近一次 ping：pid {{pid}} · {{now}}',
     },
     actions: {
+      add: '添加端点',
       ping: 'Ping',
       pinging: 'Ping 中…',
     },

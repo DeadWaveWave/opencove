@@ -376,6 +376,7 @@ export const enSettingsPanel = {
       lastPing: 'Last ping: pid {{pid}} · {{now}}',
     },
     actions: {
+      add: 'Add endpoint',
       ping: 'Ping',
       pinging: 'Pinging…',
     },

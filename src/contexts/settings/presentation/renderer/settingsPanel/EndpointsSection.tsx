@@ -17,6 +17,7 @@ export function EndpointsSection(): React.JSX.Element {
   const [endpoints, setEndpoints] = useState<WorkerEndpointDto[]>([])
   const [isBusy, setIsBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isRegisterOpen, setIsRegisterOpen] = useState(false)
   const [registerHostname, setRegisterHostname] = useState('')
   const [registerPort, setRegisterPort] = useState('')
   const [registerDisplayName, setRegisterDisplayName] = useState('')
@@ -48,6 +49,29 @@ export function EndpointsSection(): React.JSX.Element {
     })()
   }, [])
 
+  const resetRegisterForm = (): void => {
+    setRegisterHostname('')
+    setRegisterPort('')
+    setRegisterDisplayName('')
+    if (registerTokenRef.current) {
+      registerTokenRef.current.value = ''
+    }
+  }
+
+  const openRegisterWindow = (): void => {
+    setError(null)
+    resetRegisterForm()
+    setIsRegisterOpen(true)
+  }
+
+  const closeRegisterWindow = (): void => {
+    if (isBusy) {
+      return
+    }
+    setIsRegisterOpen(false)
+    resetRegisterForm()
+  }
+
   const handleRegister = async (): Promise<void> => {
     if (!canRegister) {
       return
@@ -74,13 +98,8 @@ export function EndpointsSection(): React.JSX.Element {
         },
       })
 
-      if (registerTokenRef.current) {
-        registerTokenRef.current.value = ''
-      }
-
-      setRegisterHostname('')
-      setRegisterPort('')
-      setRegisterDisplayName('')
+      resetRegisterForm()
+      setIsRegisterOpen(false)
       await load()
       notifyTopologyChanged()
     } catch (caughtError) {
@@ -187,6 +206,21 @@ export function EndpointsSection(): React.JSX.Element {
           </div>
         </div>
 
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label"></div>
+          <div className="settings-panel__control">
+            <button
+              type="button"
+              className="primary"
+              data-testid="settings-endpoints-open-register"
+              disabled={isBusy}
+              onClick={openRegisterWindow}
+            >
+              {t('settingsPanel.endpoints.actions.add')}
+            </button>
+          </div>
+        </div>
+
         {endpoints.map(endpoint => {
           const pingState = pingByEndpointId[endpoint.endpointId] ?? {
             status: 'idle' as const,
@@ -245,100 +279,116 @@ export function EndpointsSection(): React.JSX.Element {
         })}
       </div>
 
-      <div className="settings-panel__subsection">
-        <div className="settings-panel__subsection-header">
-          <h4 className="settings-panel__section-title">
-            {t('settingsPanel.endpoints.register.title')}
-          </h4>
-          <span>{t('settingsPanel.endpoints.register.help')}</span>
-        </div>
+      {isRegisterOpen ? (
+        <div
+          className="cove-window-backdrop"
+          data-testid="settings-endpoints-register-backdrop"
+          onClick={closeRegisterWindow}
+        >
+          <section
+            className="cove-window"
+            data-testid="settings-endpoints-register-window"
+            onClick={event => event.stopPropagation()}
+          >
+            <h3>{t('settingsPanel.endpoints.register.title')}</h3>
+            <p>{t('settingsPanel.endpoints.register.help')}</p>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.endpoints.register.displayNameLabel')}</strong>
-          </div>
-          <div className="settings-panel__control">
-            <input
-              className="cove-field"
-              style={{ width: '100%' }}
-              type="text"
-              value={registerDisplayName}
-              onChange={event => setRegisterDisplayName(event.target.value)}
-              data-testid="settings-endpoints-register-displayName"
-              disabled={isBusy}
-            />
-          </div>
-        </div>
+            <div className="cove-window__fields">
+              {error ? (
+                <p className="cove-window__error" data-testid="settings-endpoints-register-error">
+                  {error}
+                </p>
+              ) : null}
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.endpoints.register.hostnameLabel')}</strong>
-          </div>
-          <div className="settings-panel__control">
-            <input
-              className="cove-field"
-              style={{ width: '100%' }}
-              type="text"
-              value={registerHostname}
-              onChange={event => setRegisterHostname(event.target.value)}
-              data-testid="settings-endpoints-register-hostname"
-              disabled={isBusy}
-            />
-          </div>
-        </div>
+              <div className="cove-window__field-row">
+                <label htmlFor="settings-endpoints-register-displayName">
+                  {t('settingsPanel.endpoints.register.displayNameLabel')}
+                </label>
+                <input
+                  id="settings-endpoints-register-displayName"
+                  className="cove-field"
+                  type="text"
+                  value={registerDisplayName}
+                  onChange={event => setRegisterDisplayName(event.target.value)}
+                  data-testid="settings-endpoints-register-displayName"
+                  disabled={isBusy}
+                />
+              </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.endpoints.register.portLabel')}</strong>
-          </div>
-          <div className="settings-panel__control">
-            <input
-              className="cove-field"
-              style={{ width: '100%' }}
-              type="text"
-              inputMode="numeric"
-              value={registerPort}
-              onChange={event => setRegisterPort(event.target.value)}
-              data-testid="settings-endpoints-register-port"
-              disabled={isBusy}
-            />
-          </div>
-        </div>
+              <div className="cove-window__field-row">
+                <label htmlFor="settings-endpoints-register-hostname">
+                  {t('settingsPanel.endpoints.register.hostnameLabel')}
+                </label>
+                <input
+                  id="settings-endpoints-register-hostname"
+                  className="cove-field"
+                  type="text"
+                  value={registerHostname}
+                  onChange={event => setRegisterHostname(event.target.value)}
+                  data-testid="settings-endpoints-register-hostname"
+                  disabled={isBusy}
+                />
+              </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.endpoints.register.tokenLabel')}</strong>
-            <span>{t('settingsPanel.endpoints.register.tokenHelp')}</span>
-          </div>
-          <div className="settings-panel__control">
-            <input
-              ref={registerTokenRef}
-              className="cove-field"
-              style={{ width: '100%' }}
-              type="password"
-              data-testid="settings-endpoints-register-token"
-              disabled={isBusy}
-            />
-          </div>
-        </div>
+              <div className="cove-window__field-row">
+                <label htmlFor="settings-endpoints-register-port">
+                  {t('settingsPanel.endpoints.register.portLabel')}
+                </label>
+                <input
+                  id="settings-endpoints-register-port"
+                  className="cove-field"
+                  type="text"
+                  inputMode="numeric"
+                  value={registerPort}
+                  onChange={event => setRegisterPort(event.target.value)}
+                  data-testid="settings-endpoints-register-port"
+                  disabled={isBusy}
+                />
+              </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label"></div>
-          <div className="settings-panel__control">
-            <button
-              type="button"
-              className="primary"
-              data-testid="settings-endpoints-register-submit"
-              disabled={isBusy || !canRegister}
-              onClick={() => {
-                void handleRegister()
-              }}
-            >
-              {isBusy ? t('common.saving') : t('common.add')}
-            </button>
-          </div>
+              <div className="cove-window__field-row">
+                <div className="cove-window__label-row">
+                  <label htmlFor="settings-endpoints-register-token">
+                    {t('settingsPanel.endpoints.register.tokenLabel')}
+                  </label>
+                  <span>{t('settingsPanel.endpoints.register.tokenHelp')}</span>
+                </div>
+                <input
+                  id="settings-endpoints-register-token"
+                  ref={registerTokenRef}
+                  className="cove-field"
+                  type="password"
+                  data-testid="settings-endpoints-register-token"
+                  disabled={isBusy}
+                />
+              </div>
+            </div>
+
+            <div className="cove-window__actions">
+              <button
+                type="button"
+                className="cove-window__action cove-window__action--ghost"
+                data-testid="settings-endpoints-register-cancel"
+                disabled={isBusy}
+                onClick={closeRegisterWindow}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="cove-window__action cove-window__action--primary"
+                data-testid="settings-endpoints-register-submit"
+                disabled={isBusy || !canRegister}
+                onClick={() => {
+                  void handleRegister()
+                }}
+              >
+                {isBusy ? t('common.saving') : t('settingsPanel.endpoints.actions.add')}
+              </button>
+            </div>
+          </section>
         </div>
-      </div>
+      ) : null}
     </div>
   )
 }
