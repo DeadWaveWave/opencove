@@ -24,6 +24,7 @@ import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotificatio
 import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
+import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
 import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
@@ -31,7 +32,6 @@ import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useAppStore } from './store/useAppStore'
-import { removeWorkspace } from './utils/removeWorkspace'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 
@@ -279,65 +279,19 @@ export default function App(): React.JSX.Element {
     handleAnyWorkspaceWorktreesRootChange,
   } = useWorkspaceStateHandlers({ requestPersistFlush })
 
-  const handleRemoveWorkspace = useCallback(async (workspaceId: string): Promise<void> => {
-    await removeWorkspace(workspaceId)
-  }, [])
+  const {
+    handleRemoveWorkspace,
+    handleSelectWorkspace,
+    handleSelectAgentNode,
+    handleRequestRemoveProject,
+    handleRequestManageProjectMounts,
+    handleReorderWorkspaces,
+  } = useAppShellWorkspaceActions({ requestPersistFlush })
 
   useProjectContextMenuDismiss({
     projectContextMenu,
     setProjectContextMenu,
   })
-  const handleSelectWorkspace = useCallback((workspaceId: string): void => {
-    const store = useAppStore.getState()
-    store.setActiveWorkspaceId(workspaceId)
-    store.setFocusRequest(null)
-  }, [])
-
-  const handleSelectAgentNode = useCallback((workspaceId: string, nodeId: string): void => {
-    const store = useAppStore.getState()
-    store.setActiveWorkspaceId(workspaceId)
-    store.setFocusRequest(prev => ({
-      workspaceId,
-      nodeId,
-      sequence: (prev?.sequence ?? 0) + 1,
-    }))
-  }, [])
-
-  const handleRequestRemoveProject = useCallback((workspaceId: string): void => {
-    const store = useAppStore.getState()
-    const targetWorkspace = store.workspaces.find(workspace => workspace.id === workspaceId)
-    if (!targetWorkspace) {
-      store.setProjectContextMenu(null)
-      return
-    }
-
-    store.setProjectDeleteConfirmation({
-      workspaceId: targetWorkspace.id,
-      workspaceName: targetWorkspace.name,
-    })
-    store.setProjectContextMenu(null)
-  }, [])
-
-  const handleRequestManageProjectMounts = useCallback((workspaceId: string): void => {
-    const store = useAppStore.getState()
-    const targetWorkspace = store.workspaces.find(workspace => workspace.id === workspaceId)
-    if (!targetWorkspace) {
-      store.setProjectContextMenu(null)
-      return
-    }
-
-    store.setProjectMountManager({ workspaceId: targetWorkspace.id })
-    store.setProjectContextMenu(null)
-  }, [])
-
-  const handleReorderWorkspaces = useCallback(
-    (activeId: string, overId: string): void => {
-      const store = useAppStore.getState()
-      store.reorderWorkspaces(activeId, overId)
-      requestPersistFlush()
-    },
-    [requestPersistFlush],
-  )
 
   const handleOpenSettings = useCallback(
     (initialPageId: SettingsPageId | null = null): void => {
@@ -454,7 +408,9 @@ export default function App(): React.JSX.Element {
         onCloseCommandCenter={closeCommandCenter}
         onOpenSettings={handleOpenSettings}
         onRequestOpenEndpoints={() => {
-          handleOpenSettings(agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'experimental')
+          handleOpenSettings(
+            agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'experimental',
+          )
         }}
         onOpenSpaceArchives={openSpaceArchives}
         onTogglePrimarySidebar={() => {

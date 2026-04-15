@@ -41,7 +41,9 @@ export function AddProjectWizardDefaultLocationSection({
   onBrowseDefaultRemoteRootPath: () => void
   onRequestOpenEndpoints: () => void
 }): React.JSX.Element {
-  const effectiveDefaultLocationKind: DefaultLocationKind = showRemote ? defaultLocationKind : 'local'
+  const effectiveDefaultLocationKind: DefaultLocationKind = showRemote
+    ? defaultLocationKind
+    : 'local'
 
   return (
     <div className="cove-window__field-row">

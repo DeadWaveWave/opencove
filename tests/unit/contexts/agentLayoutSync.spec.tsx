@@ -4,9 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
-import type {
-  WorkspaceSpaceState,
-} from '../../../src/contexts/workspace/presentation/renderer/types'
+import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 
