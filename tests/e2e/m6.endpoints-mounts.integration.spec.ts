@@ -5,7 +5,12 @@ import path from 'node:path'
 import { expect, test } from '@playwright/test'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import type { GetSessionResult } from '../../src/shared/contracts/dto'
-import { buildNodeEvalCommand, launchApp, removePathWithRetry } from './workspace-canvas.helpers'
+import {
+  buildNodeEvalCommand,
+  launchApp,
+  readLocatorClientRect,
+  removePathWithRetry,
+} from './workspace-canvas.helpers'
 import {
   createMultiMountProjectViaWizard,
   createRemoteOnlyProjectViaWizard,
@@ -384,21 +389,31 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
       const spaceRegion = window.locator('.workspace-space-region', { has: spaceFilesPill })
       await expect(spaceRegion).toBeVisible()
 
-      const paneBox = await pane.boundingBox()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!paneBox || !spaceBox) {
-        throw new Error('[e2e] Missing bounding box for pane/space region')
+      const clamp = (value: number, min: number, max: number): number =>
+        Math.max(min, Math.min(max, value))
+
+      const openPaneContextMenuInsideSpace = async (): Promise<void> => {
+        const paneBox = await readLocatorClientRect(pane)
+        const spaceBox = await readLocatorClientRect(spaceRegion)
+
+        const clickX = clamp(
+          spaceBox.x + spaceBox.width - 24,
+          paneBox.x + 8,
+          paneBox.x + paneBox.width - 8,
+        )
+        const clickY = clamp(
+          spaceBox.y + spaceBox.height - 24,
+          paneBox.y + 8,
+          paneBox.y + paneBox.height - 8,
+        )
+
+        await pane.click({
+          button: 'right',
+          position: { x: clickX - paneBox.x, y: clickY - paneBox.y },
+        })
       }
 
-      const clickPoint = {
-        x: Math.max(8, Math.min(spaceBox.x + spaceBox.width - 24, paneBox.x + paneBox.width - 8)),
-        y: Math.max(8, Math.min(spaceBox.y + spaceBox.height - 24, paneBox.y + paneBox.height - 8)),
-      }
-
-      await pane.click({
-        button: 'right',
-        position: { x: clickPoint.x - paneBox.x, y: clickPoint.y - paneBox.y },
-      })
+      await openPaneContextMenuInsideSpace()
       await window.locator('[data-testid="workspace-context-new-terminal"]').click()
 
       await expect(window.locator('.terminal-node')).toHaveCount(terminalCountBefore + 1)
@@ -427,10 +442,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
         )
         .toBe(true)
 
-      await pane.click({
-        button: 'right',
-        position: { x: clickPoint.x - paneBox.x, y: clickPoint.y - paneBox.y },
-      })
+      await openPaneContextMenuInsideSpace()
       const terminalCountBeforeAgent = await window.locator('.terminal-node').count()
       await window.locator('[data-testid="workspace-context-run-default-agent"]').click()
       await expect(window.locator('.terminal-node')).toHaveCount(terminalCountBeforeAgent + 1)
