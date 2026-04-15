@@ -93,7 +93,7 @@ function Harness({
 }
 
 describe('workspace canvas node delete confirmation', () => {
-  it('warns before closing the last node in a space', async () => {
+  it('closes the last node in a space without prompting', async () => {
     const closeNode = vi.fn(async () => undefined)
 
     render(
@@ -116,16 +116,10 @@ describe('workspace canvas node delete confirmation', () => {
 
     fireEvent.click(screen.getByTestId('request-close'))
 
-    expect(closeNode).not.toHaveBeenCalled()
-    await waitFor(() => {
-      expect(screen.getByTestId('confirmation-state').textContent).toContain('"Solo Space"')
-    })
-
-    fireEvent.click(screen.getByTestId('confirm-delete'))
-
     await waitFor(() => {
       expect(closeNode).toHaveBeenCalledWith('note-1')
     })
+    expect(screen.getByTestId('confirmation-state').textContent).toBe('null')
   })
 
   it('keeps direct close immediate when the space still has other nodes', async () => {

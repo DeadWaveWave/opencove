@@ -139,6 +139,7 @@ export interface WorkspaceCanvasViewProps {
   insertQuickPhrase: (phrase: QuickPhrase) => void
   openQuickMenuSettings: () => void
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
   spaceTargetMountPicker: SpaceTargetMountPickerState | null
   setSpaceTargetMountPicker: React.Dispatch<
     React.SetStateAction<SpaceTargetMountPickerState | null>

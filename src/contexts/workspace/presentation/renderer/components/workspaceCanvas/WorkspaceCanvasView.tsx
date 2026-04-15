@@ -115,6 +115,7 @@ export function WorkspaceCanvasView({
   insertQuickPhrase,
   openQuickMenuSettings,
   createSpaceFromSelectedNodes,
+  createEmptySpaceAtPoint,
   spaceTargetMountPicker,
   setSpaceTargetMountPicker,
   confirmSpaceTargetMountPicker,
@@ -410,6 +411,7 @@ export function WorkspaceCanvasView({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+        createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}
         canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
         isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}

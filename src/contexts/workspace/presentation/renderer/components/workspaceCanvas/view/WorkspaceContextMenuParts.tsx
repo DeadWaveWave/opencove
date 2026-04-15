@@ -41,6 +41,8 @@ export function WorkspaceContextPaneMenuContent({
   websiteWindowsEnabled,
   openTaskCreator,
   openAgentLauncher,
+  createEmptySpaceFromContextMenu,
+  canCreateEmptySpace,
   openAgentProviderSubmenu,
   agentProviderToggleRef,
   isLoadingInstalledProviders,
@@ -68,6 +70,8 @@ export function WorkspaceContextPaneMenuContent({
   websiteWindowsEnabled: boolean
   openTaskCreator: () => void
   openAgentLauncher: () => void
+  createEmptySpaceFromContextMenu: () => void
+  canCreateEmptySpace: boolean
   openAgentProviderSubmenu: () => void
   agentProviderToggleRef: React.RefObject<HTMLButtonElement | null>
   isLoadingInstalledProviders: boolean
@@ -177,6 +181,18 @@ export function WorkspaceContextPaneMenuContent({
           )}
         </button>
       </div>
+      {canCreateEmptySpace ? (
+        <button
+          type="button"
+          data-testid="workspace-context-create-empty-space"
+          onClick={createEmptySpaceFromContextMenu}
+        >
+          <Group className="workspace-context-menu__icon" aria-hidden="true" />
+          <span className="workspace-context-menu__label">
+            {t('workspaceContextMenu.createEmptySpace')}
+          </span>
+        </button>
+      ) : null}
       <WorkspaceContextQuickMenuItems
         pinnedQuickCommands={pinnedQuickCommands}
         runQuickCommand={runQuickCommand}

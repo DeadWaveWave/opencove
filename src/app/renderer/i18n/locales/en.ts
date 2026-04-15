@@ -313,10 +313,8 @@ export const en = {
     multipleDescription: 'This will permanently remove {{count}} selected nodes.',
     taskDescriptionPrefix: 'This will permanently remove',
     nodeDescriptionPrefix: 'This will permanently remove this {{kind}}:',
-    emptySpaceWarningSingle:
-      'Deleting this last node will leave the space empty, and it will close automatically.',
-    emptySpaceWarningMultiple:
-      'Deleting these last nodes will leave the space empty, and it will close automatically.',
+    emptySpaceWarningSingle: 'Deleting this last node will leave the space empty.',
+    emptySpaceWarningMultiple: 'Deleting these last nodes will leave the space empty.',
   },
   workspaceContextMenu: {
     newTerminal: 'New Terminal',
@@ -324,6 +322,7 @@ export const en = {
     newWebsite: 'New Website',
     newTask: 'New Task',
     runAgent: 'Run Agent',
+    createEmptySpace: 'Create Empty Space',
     arrange: 'Arrange',
     arrangeBy: 'Arrange By',
     createSpaceWithSelected: 'Create Space with Selected',

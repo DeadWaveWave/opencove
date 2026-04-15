@@ -46,6 +46,10 @@ type SortableWorkspaceItemProps = {
 }
 
 function resolveSidebarAgentStatus(runtimeStatus: TerminalNodeData['status']): SidebarAgentStatus {
+  if (runtimeStatus === null) {
+    return 'working'
+  }
+
   if (runtimeStatus === 'running' || runtimeStatus === 'restoring') {
     return 'working'
   }

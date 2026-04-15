@@ -1,8 +1,16 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  launchApp,
+  readLocatorClientRect,
+  testWorkspacePath,
+} from './workspace-canvas.helpers'
 import {
   clickPaneAtFlowPoint,
   openPaneContextMenuAtFlowPoint,
+  openPaneContextMenuInSpace,
+  rectsOverlap,
+  resolveCanonicalNodeSizes,
 } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Context Menu Note Create', () => {
@@ -140,6 +148,230 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
           })
         })
         .toBe(1)
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('creates an empty space from the blank pane right-click menu', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await pane.click({
+        button: 'right',
+        position: { x: 260, y: 200 },
+      })
+
+      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+
+      await expect(window.locator('.workspace-space-region')).toHaveCount(1)
+      await expect(window.locator('.terminal-node')).toHaveCount(0)
+      await expect(window.locator('.note-node')).toHaveCount(0)
+      await expect(window.locator('.task-node')).toHaveCount(0)
+      await expect(window.locator('.agent-node')).toHaveCount(0)
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return { spaceCount: 0, nodeCount: 0, firstSpaceNodeIdsCount: null }
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                nodes?: unknown[]
+                spaces?: Array<{ nodeIds?: string[] }>
+              }>
+            }
+
+            const workspace = parsed.workspaces?.[0]
+            const firstSpace = workspace?.spaces?.[0]
+
+            return {
+              spaceCount: workspace?.spaces?.length ?? 0,
+              nodeCount: workspace?.nodes?.length ?? 0,
+              firstSpaceNodeIdsCount: firstSpace?.nodeIds?.length ?? null,
+            }
+          })
+        })
+        .toEqual({
+          spaceCount: 1,
+          nodeCount: 0,
+          firstSpaceNodeIdsCount: 0,
+        })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('does not offer empty space creation from the pane menu when right-clicking inside a space', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [], {
+        spaces: [
+          {
+            id: 'context-space-guard',
+            name: 'Context Scope',
+            directoryPath: testWorkspacePath,
+            nodeIds: [],
+            rect: { x: 120, y: 120, width: 780, height: 540 },
+          },
+        ],
+        activeSpaceId: null,
+      })
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await openPaneContextMenuInSpace(window, pane, 'context-space-guard')
+
+      await expect(
+        window.locator('[data-testid="workspace-context-create-empty-space"]'),
+      ).toHaveCount(0)
+      await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('places created empty spaces in available canvas room (does not overlap existing windows)', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'occupied-window',
+          title: 'terminal-occupied',
+          position: { x: 220, y: 180 },
+          width: 460,
+          height: 300,
+        },
+      ])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      await openPaneContextMenuAtFlowPoint(window, pane, { x: 210, y: 170 })
+      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+
+      const canonicalSizes = await resolveCanonicalNodeSizes(window)
+
+      await expect
+        .poll(async () => {
+          const layout = await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                nodes?: Array<{
+                  id?: string
+                  position?: { x?: number; y?: number }
+                  width?: number
+                  height?: number
+                }>
+                spaces?: Array<{
+                  rect?: { x?: number; y?: number; width?: number; height?: number } | null
+                }>
+              }>
+            }
+
+            const workspace = parsed.workspaces?.[0]
+            const node = workspace?.nodes?.find(candidate => candidate.id === 'occupied-window')
+            const spaces = workspace?.spaces ?? []
+            const spaceRect = spaces.length > 0 ? (spaces[spaces.length - 1]?.rect ?? null) : null
+
+            if (!node?.position || !spaceRect) {
+              return null
+            }
+
+            return {
+              node: {
+                x: node.position.x ?? 0,
+                y: node.position.y ?? 0,
+                width: node.width ?? 0,
+                height: node.height ?? 0,
+              },
+              space: {
+                x: spaceRect.x ?? 0,
+                y: spaceRect.y ?? 0,
+                width: spaceRect.width ?? 0,
+                height: spaceRect.height ?? 0,
+              },
+            }
+          })
+
+          if (!layout) {
+            return null
+          }
+
+          return {
+            overlap: rectsOverlap(layout.node, layout.space),
+            meetsMin:
+              layout.space.width >= canonicalSizes.agent.width &&
+              layout.space.height >= canonicalSizes.agent.height,
+          }
+        })
+        .toEqual({ overlap: false, meetsMin: true })
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('centers the viewport on the newly created empty space', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'giant-blocker',
+          title: 'terminal-giant-blocker',
+          position: { x: 0, y: 0 },
+          width: 2600,
+          height: 1800,
+        },
+      ])
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      const viewport = await window.evaluate(() => ({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }))
+
+      await openPaneContextMenuAtFlowPoint(window, pane, { x: 220, y: 200 })
+      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+
+      const spaceRegion = window.locator('.workspace-space-region').first()
+      await expect(spaceRegion).toHaveCount(1)
+
+      await expect
+        .poll(async () => {
+          const rect = await readLocatorClientRect(spaceRegion)
+          const centerX = rect.x + rect.width / 2
+          const centerY = rect.y + rect.height / 2
+          const dx = Math.abs(centerX - viewport.width / 2)
+          const dy = Math.abs(centerY - viewport.height / 2)
+          const isOnscreen =
+            centerX >= 0 && centerX <= viewport.width && centerY >= 0 && centerY <= viewport.height
+          const isNearCenter = dx < viewport.width * 0.35 && dy < viewport.height * 0.35
+
+          return {
+            isOnscreen,
+            isNearCenter,
+          }
+        })
+        .toEqual({ isOnscreen: true, isNearCenter: true })
     } finally {
       await electronApp.close()
     }

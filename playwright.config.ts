@@ -75,7 +75,9 @@ export default defineConfig({
   workers: 1, // Electron 测试建议串行运行
 
   // 报告器
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  reporter: isCi
+    ? [['list']]
+    : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
 
   // 输出目录（截图、视频等）
   outputDir: './test-results',

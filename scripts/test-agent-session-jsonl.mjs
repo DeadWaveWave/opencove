@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
-const INTERACTIVE_SCENARIO_LIFETIME_MS = 60_000
+const INTERACTIVE_SCENARIO_LIFETIME_MS = 180_000
 
 function sleep(ms) {
   return new Promise(resolveSleep => {

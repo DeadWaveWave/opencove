@@ -1,8 +1,8 @@
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
-import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
+import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
   workspaceId,
@@ -56,22 +56,15 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
   })
-  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
-    workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
-      workspacePath,
-      spacesRef: canvasState.spacesRef,
-      nodesRef: nodeStore.nodesRef,
-      setNodes: nodeStore.setNodes,
-      onSpacesChange,
-      onRequestPersistFlush,
-      closeNode: nodeStore.closeNode,
-    })
+  // prettier-ignore
+  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, spacesRef: canvasState.spacesRef, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onSpacesChange, onRequestPersistFlush, closeNode: nodeStore.closeNode })
   const spacesApi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     activeSpaceId,
     onActiveSpaceChange,
     workspacePath,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     reactFlow,
     nodes: canvasState.flowNodes,
     nodesRef: nodeStore.nodesRef,
@@ -455,12 +448,9 @@ export function WorkspaceCanvasInner({
       openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
       runQuickCommand={runQuickCommand}
       insertQuickPhrase={insertQuickPhrase}
-      openQuickMenuSettings={() => {
-        const store = useAppStore.getState()
-        store.setSettingsOpenPageId('quick-menu')
-        store.setIsSettingsOpen(true)
-      }}
+      openQuickMenuSettings={openQuickMenuSettings}
       createSpaceFromSelectedNodes={spacesApi.createSpaceFromSelectedNodes}
+      createEmptySpaceAtPoint={spacesApi.createEmptySpaceAtPoint}
       spaceTargetMountPicker={spacesApi.spaceTargetMountPicker}
       setSpaceTargetMountPicker={spacesApi.setSpaceTargetMountPicker}
       confirmSpaceTargetMountPicker={spacesApi.confirmSpaceTargetMountPicker}

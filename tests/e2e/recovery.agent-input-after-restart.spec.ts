@@ -54,6 +54,7 @@ async function launchAgentsFromTasks(window: Page, count: number): Promise<void>
       element.click()
     })
     await expect(window.locator('.terminal-node')).toHaveCount(index + 1)
+    await expect(window.locator('.terminal-node__status').nth(index)).toHaveText('Standby')
     await launchNextAgent(index + 1)
   }
 

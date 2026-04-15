@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getViewportForBounds, useStore, type Node, type ReactFlowInstance } from '@xyflow/react'
-import type { FocusNodeTargetZoom } from '@contexts/settings/domain/agentSettings'
+import type {
+  FocusNodeTargetZoom,
+  StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type {
   ContextMenuState,
@@ -23,6 +26,7 @@ interface UseWorkspaceCanvasSpacesParams {
   onActiveSpaceChange: (spaceId: string | null) => void
   workspacePath: string
   focusNodeTargetZoom: FocusNodeTargetZoom
+  standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodes: Node<TerminalNodeData>[]
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
@@ -47,6 +51,7 @@ export function useWorkspaceCanvasSpaces({
   onActiveSpaceChange,
   workspacePath,
   focusNodeTargetZoom,
+  standardWindowSizeBucket,
   reactFlow,
   nodes,
   nodesRef,
@@ -70,6 +75,7 @@ export function useWorkspaceCanvasSpaces({
   commitSpaceRename: (spaceId: string) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
   spaceTargetMountPicker: SpaceTargetMountPickerState | null
   setSpaceTargetMountPicker: React.Dispatch<
     React.SetStateAction<SpaceTargetMountPickerState | null>
@@ -181,23 +187,27 @@ export function useWorkspaceCanvasSpaces({
     setSpaceRenameDraft('')
   }, [])
 
-  const { createSpaceFromSelectedNodes, createSpaceWithTargetMount } =
-    useWorkspaceCanvasCreateSpace({
-      workspaceId,
-      workspacePath,
-      reactFlow,
-      nodesRef,
-      setNodes,
-      spacesRef,
-      selectedNodeIdsRef,
-      onSpacesChange,
-      onRequestPersistFlush,
-      setContextMenu,
-      setEmptySelectionPrompt,
-      setSpaceTargetMountPicker,
-      cancelSpaceRename,
-      onShowMessage,
-    })
+  const {
+    createSpaceFromSelectedNodes,
+    createSpaceWithTargetMount,
+    createEmptySpaceAtPoint: createEmptySpaceAtPointInternal,
+  } = useWorkspaceCanvasCreateSpace({
+    workspaceId,
+    workspacePath,
+    standardWindowSizeBucket,
+    reactFlow,
+    nodesRef,
+    setNodes,
+    spacesRef,
+    selectedNodeIdsRef,
+    onSpacesChange,
+    onRequestPersistFlush,
+    setContextMenu,
+    setEmptySelectionPrompt,
+    setSpaceTargetMountPicker,
+    cancelSpaceRename,
+    onShowMessage,
+  })
 
   const startSpaceRename = useCallback(
     (spaceId: string) => {
@@ -353,6 +363,25 @@ export function useWorkspaceCanvasSpaces({
     ],
   )
 
+  const createEmptySpaceAtPoint = useCallback(
+    (point: { x: number; y: number }) => {
+      const createdSpaceId = createEmptySpaceAtPointInternal(point)
+      if (!createdSpaceId) {
+        return
+      }
+
+      const schedule =
+        typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function'
+          ? window.requestAnimationFrame.bind(window)
+          : (callback: FrameRequestCallback) => setTimeout(() => callback(0), 0)
+
+      schedule(() => {
+        focusSpaceInViewport(createdSpaceId)
+      })
+    },
+    [createEmptySpaceAtPointInternal, focusSpaceInViewport],
+  )
+
   const focusAllInViewport = useCallback((): void => {
     if (nodesRef.current.length === 0) {
       return
@@ -426,6 +455,7 @@ export function useWorkspaceCanvasSpaces({
     commitSpaceRename,
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
+    createEmptySpaceAtPoint,
     spaceTargetMountPicker,
     setSpaceTargetMountPicker,
     confirmSpaceTargetMountPicker,

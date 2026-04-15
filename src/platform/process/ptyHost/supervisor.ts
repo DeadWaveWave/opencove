@@ -42,7 +42,6 @@ function resolveBackoffDelay(attempt: number): number {
   if (attempt <= 0) {
     return RESTART_BACKOFF_BASE_DELAY_MS
   }
-
   const delay = RESTART_BACKOFF_BASE_DELAY_MS * 2 ** attempt
   return Math.min(delay, RESTART_BACKOFF_MAX_DELAY_MS)
 }
@@ -55,7 +54,6 @@ function sleep(delayMs: number): Promise<void> {
   if (delayMs <= 0) {
     return Promise.resolve()
   }
-
   return new Promise(resolve => {
     setTimeout(resolve, delayMs)
   })

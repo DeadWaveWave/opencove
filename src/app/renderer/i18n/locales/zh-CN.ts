@@ -311,8 +311,8 @@ export const zhCN = {
     multipleDescription: '这会永久删除所选的 {{count}} 个节点。',
     taskDescriptionPrefix: '这会永久删除',
     nodeDescriptionPrefix: '这会永久删除这个 {{kind}}：',
-    emptySpaceWarningSingle: '删除最后这个节点会使该 Space 变为空，并随后自动关闭。',
-    emptySpaceWarningMultiple: '删除最后这几个节点会使该 Space 变为空，并随后自动关闭。',
+    emptySpaceWarningSingle: '删除最后这个节点会使该 Space 变为空。',
+    emptySpaceWarningMultiple: '删除最后这几个节点会使该 Space 变为空。',
   },
   workspaceContextMenu: {
     newTerminal: '新建终端',
@@ -320,6 +320,7 @@ export const zhCN = {
     newWebsite: '新建网页窗口',
     newTask: '新建任务',
     runAgent: '运行 Agent',
+    createEmptySpace: '创建空 Space',
     arrange: '整理',
     arrangeBy: '整理方式',
     createSpaceWithSelected: '用所选节点创建 Space',

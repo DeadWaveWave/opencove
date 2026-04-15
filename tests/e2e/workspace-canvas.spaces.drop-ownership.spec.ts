@@ -48,12 +48,30 @@ test.describe('Workspace Canvas - Spaces (Drop Ownership)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
+      const clamp = (value: number, min: number, max: number): number =>
+        Math.max(min, Math.min(max, value))
+
+      const paneBox = await readLocatorClientRect(pane)
+      const spaceRegion = window
+        .locator('.workspace-space-region')
+        .filter({ hasText: 'Ownership Scope' })
+        .first()
+      const spaceBox = await readLocatorClientRect(spaceRegion)
+
       const rootNode = window.locator('.terminal-node').filter({ hasText: 'terminal-root' }).first()
       await expect(rootNode).toBeVisible()
 
+      const dropInsideSpaceClientPoint = {
+        x: spaceBox.x + spaceBox.width / 2,
+        y: spaceBox.y + Math.min(spaceBox.height - 80, Math.max(140, spaceBox.height / 2)),
+      }
+
       await dragLocatorTo(window, rootNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
-        targetPosition: { x: 520, y: 320 },
+        targetPosition: {
+          x: clamp(dropInsideSpaceClientPoint.x - paneBox.x, 40, paneBox.width - 40),
+          y: clamp(dropInsideSpaceClientPoint.y - paneBox.y, 40, paneBox.height - 40),
+        },
       })
 
       await expect
@@ -88,19 +106,17 @@ test.describe('Workspace Canvas - Spaces (Drop Ownership)', () => {
         })
         .toBe(true)
 
-      const spaceRegion = window
-        .locator('.workspace-space-region')
-        .filter({ hasText: 'Ownership Scope' })
-        .first()
       await expect(spaceRegion).toBeVisible()
-      const paneBox = await readLocatorClientRect(pane)
-      const spaceBox = await readLocatorClientRect(spaceRegion)
-      const spaceBottom = spaceBox.y + spaceBox.height
+      const refreshedSpaceBox = await readLocatorClientRect(spaceRegion)
+      const spaceBottom = refreshedSpaceBox.y + refreshedSpaceBox.height
       const safeDropY = Math.min(paneBox.y + paneBox.height - 24, spaceBottom + 120)
 
       await dragLocatorTo(window, rootNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
-        targetPosition: { x: 80, y: Math.max(0, safeDropY - paneBox.y) },
+        targetPosition: {
+          x: clamp(80, 40, paneBox.width - 40),
+          y: clamp(safeDropY - paneBox.y, 40, paneBox.height - 40),
+        },
       })
 
       await expect
