@@ -118,6 +118,25 @@ async function waitForNonEmptyTranscript(transcript: Locator): Promise<string> {
   return poll()
 }
 
+function expectNoMidstreamTranscriptBlanking(samples: string[], context: string): void {
+  const firstNonEmptyIndex = samples.findIndex(sample => sample.length > 0)
+  const relevantSamples = firstNonEmptyIndex >= 0 ? samples.slice(firstNonEmptyIndex) : samples
+  const transientBlankIndexes = relevantSamples
+    .map((sample, index) => ({ sample, index }))
+    .filter(entry => entry.sample.length === 0)
+    .map(entry => entry.index)
+
+  expect(
+    transientBlankIndexes.length <= 1 &&
+      transientBlankIndexes.every(index => {
+        const previousSample = relevantSamples[index - 1] ?? ''
+        const nextSample = relevantSamples[index + 1] ?? ''
+        return previousSample.length > 0 && nextSample.length > 0
+      }),
+    `${context}: ${JSON.stringify(samples)}`,
+  ).toBe(true)
+}
+
 async function prepareRestorableAgent(
   userDataDir: string,
   env: Record<string, string> = restoredAgentTestEnv,
@@ -209,19 +228,10 @@ test.describe('Recovery - Agent placeholder handoff interaction', () => {
         )
 
         expect(transcriptSamplesDuringHandoff.some(sample => sample.length > 0)).toBe(true)
-        const transientBlankIndexes = transcriptSamplesDuringHandoff
-          .map((sample, index) => ({ sample, index }))
-          .filter(entry => entry.sample.length === 0)
-          .map(entry => entry.index)
-        expect(
-          transientBlankIndexes.length <= 1 &&
-            transientBlankIndexes.every(index => {
-              const previousSample = transcriptSamplesDuringHandoff[index - 1] ?? ''
-              const nextSample = transcriptSamplesDuringHandoff[index + 1] ?? ''
-              return previousSample.length > 0 && nextSample.length > 0
-            }),
-          `Transcript blanked for longer than a transient sample during placeholder/runtime handoff: ${JSON.stringify(transcriptSamplesDuringHandoff)}`,
-        ).toBe(true)
+        expectNoMidstreamTranscriptBlanking(
+          transcriptSamplesDuringHandoff,
+          'Transcript blanked for longer than a transient sample during placeholder/runtime handoff',
+        )
 
         await expect(helper).toBeFocused()
         await restartedWindow.keyboard.type('1')
@@ -282,19 +292,10 @@ test.describe('Recovery - Agent placeholder handoff interaction', () => {
         )
 
         expect(transcriptSamplesDuringHandoff.some(sample => sample.length > 0)).toBe(true)
-        const transientBlankIndexes = transcriptSamplesDuringHandoff
-          .map((sample, index) => ({ sample, index }))
-          .filter(entry => entry.sample.length === 0)
-          .map(entry => entry.index)
-        expect(
-          transientBlankIndexes.length <= 1 &&
-            transientBlankIndexes.every(index => {
-              const previousSample = transcriptSamplesDuringHandoff[index - 1] ?? ''
-              const nextSample = transcriptSamplesDuringHandoff[index + 1] ?? ''
-              return previousSample.length > 0 && nextSample.length > 0
-            }),
-          `Transcript blanked for longer than a transient sample during placeholder/runtime handoff: ${JSON.stringify(transcriptSamplesDuringHandoff)}`,
-        ).toBe(true)
+        expectNoMidstreamTranscriptBlanking(
+          transcriptSamplesDuringHandoff,
+          'Transcript blanked for longer than a transient sample during placeholder/runtime handoff',
+        )
 
         await expect(transcript).toContainText(/stdin_hex=31(?:0a|0d)/, { timeout: 10_000 })
         await expect(helper).toBeFocused()

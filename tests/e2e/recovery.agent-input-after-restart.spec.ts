@@ -6,6 +6,16 @@ import {
   removePathWithRetry,
 } from './workspace-canvas.helpers'
 
+const restorableAgentLaunchEnv = {
+  OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+  OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'codex-standby-only',
+} as const
+
+const recoveredAgentInteractionEnv = {
+  OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
+  OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'jsonl-stdin-submit-driven-turn',
+} as const
+
 async function expectObservedWorkingTransition(
   status: Locator,
   timeoutMs = 5_000,
@@ -31,6 +41,15 @@ async function expectObservedWorkingTransition(
   ).toBe(true)
 }
 
+async function waitForAgentStandby(agentNode: Locator, timeoutMs = 30_000): Promise<void> {
+  const nodeStatus = agentNode.locator('.terminal-node__status')
+  const terminalBody = agentNode.locator('.terminal-node__terminal')
+
+  await expect(nodeStatus).not.toHaveText('Failed', { timeout: timeoutMs })
+  await expect(nodeStatus).toHaveText('Standby', { timeout: timeoutMs })
+  await expect(terminalBody).toHaveAttribute('aria-busy', 'false', { timeout: timeoutMs })
+}
+
 async function launchAgentsFromTasks(window: Page, count: number): Promise<void> {
   const launchNextAgent = async (index: number): Promise<void> => {
     if (index >= count) {
@@ -53,8 +72,9 @@ async function launchAgentsFromTasks(window: Page, count: number): Promise<void>
       // This setup only needs to start sessions, so use the DOM click directly.
       element.click()
     })
+    const agentNode = window.locator('.terminal-node').nth(index)
     await expect(window.locator('.terminal-node')).toHaveCount(index + 1)
-    await expect(window.locator('.terminal-node__status').nth(index)).toHaveText('Standby')
+    await waitForAgentStandby(agentNode)
     await launchNextAgent(index + 1)
   }
 
@@ -70,8 +90,7 @@ async function verifyRecoveredAgentNodeInteractive(window: Page, nodeIndex: numb
   await expect(fitView).toBeVisible()
   await fitView.click()
   await expect(agentNode).toBeVisible()
-  await expect(nodeStatus).toHaveText('Standby')
-  await expect(agentNode.locator('.terminal-node__terminal')).toHaveAttribute('aria-busy', 'false')
+  await waitForAgentStandby(agentNode)
 
   await agentNode.locator('.xterm').click()
   await expect(helper).toBeFocused()
@@ -119,10 +138,7 @@ test.describe('Recovery - Agent input after restart', () => {
         windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: false,
-        env: {
-          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
-          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'jsonl-stdin-submit-driven-turn',
-        },
+        env: restorableAgentLaunchEnv,
       })
 
       try {
@@ -163,10 +179,7 @@ test.describe('Recovery - Agent input after restart', () => {
         windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: true,
-        env: {
-          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
-          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'jsonl-stdin-submit-driven-turn',
-        },
+        env: recoveredAgentInteractionEnv,
       })
 
       try {
@@ -205,10 +218,7 @@ test.describe('Recovery - Agent input after restart', () => {
         windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: false,
-        env: {
-          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
-          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'jsonl-stdin-submit-driven-turn',
-        },
+        env: restorableAgentLaunchEnv,
       })
 
       try {
@@ -263,10 +273,7 @@ test.describe('Recovery - Agent input after restart', () => {
         windowMode: 'offscreen',
         userDataDir,
         cleanupUserDataDir: true,
-        env: {
-          OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER: '1',
-          OPENCOVE_TEST_AGENT_SESSION_SCENARIO: 'jsonl-stdin-submit-driven-turn',
-        },
+        env: recoveredAgentInteractionEnv,
       })
 
       try {

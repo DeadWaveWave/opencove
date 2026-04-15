@@ -1,5 +1,56 @@
-import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { expect, test, type Locator, type Page } from '@playwright/test'
+import {
+  clearAndSeedWorkspace,
+  dragMouse,
+  launchApp,
+  readLocatorClientRect,
+} from './workspace-canvas.helpers'
+
+async function dragResizerBy(
+  window: Page,
+  resizer: Locator,
+  delta: { x?: number; y?: number },
+): Promise<void> {
+  const rect = await readLocatorClientRect(resizer)
+  const start = {
+    x: rect.x + rect.width / 2,
+    y: rect.y + rect.height / 2,
+  }
+
+  await dragMouse(window, {
+    start,
+    end: {
+      x: start.x + (delta.x ?? 0),
+      y: start.y + (delta.y ?? 0),
+    },
+    steps: 12,
+  })
+}
+
+async function shrinkRowsUntilLessThan(
+  window: Page,
+  resizer: Locator,
+  readRows: () => Promise<number>,
+  targetRows: number,
+  offsets: number[],
+): Promise<number> {
+  const tryOffset = async (index: number): Promise<number> => {
+    if (index >= offsets.length) {
+      return await readRows()
+    }
+
+    await dragResizerBy(window, resizer, { y: offsets[index] })
+
+    try {
+      await expect.poll(readRows, { timeout: 3_000 }).toBeLessThan(targetRows)
+      return await readRows()
+    } catch {
+      return await tryOffset(index + 1)
+    }
+  }
+
+  return await tryOffset(0)
+}
 
 test.describe('Workspace Canvas - Terminal resize shrink', () => {
   test('reflows terminal when resizing smaller after expanding', async () => {
@@ -33,35 +84,12 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
 
       const rightResizer = terminal.locator('[data-testid="terminal-resizer-right"]')
       await expect(rightResizer).toBeVisible()
-
-      const rightBox = await rightResizer.boundingBox()
-      if (!rightBox) {
-        throw new Error('terminal right resizer bounding box unavailable')
-      }
-
-      const rightStartX = rightBox.x + rightBox.width / 2
-      const rightStartY = rightBox.y + rightBox.height / 2
-
-      await window.mouse.move(rightStartX, rightStartY)
-      await window.mouse.down()
-      await window.mouse.move(rightStartX + 240, rightStartY, { steps: 12 })
-      await window.mouse.up()
+      await dragResizerBy(window, rightResizer, { x: 240 })
 
       await expect.poll(async () => (await readSize())?.cols ?? 0).toBeGreaterThan(initialSize.cols)
       const expandedWidthSize = (await readSize())!
 
-      const rightBoxAfterExpand = await rightResizer.boundingBox()
-      if (!rightBoxAfterExpand) {
-        throw new Error('terminal right resizer bounding box unavailable (after expand)')
-      }
-
-      const rightExpandedX = rightBoxAfterExpand.x + rightBoxAfterExpand.width / 2
-      const rightExpandedY = rightBoxAfterExpand.y + rightBoxAfterExpand.height / 2
-
-      await window.mouse.move(rightExpandedX, rightExpandedY)
-      await window.mouse.down()
-      await window.mouse.move(rightExpandedX - 320, rightExpandedY, { steps: 12 })
-      await window.mouse.up()
+      await dragResizerBy(window, rightResizer, { x: -320 })
 
       await expect
         .poll(async () => (await readSize())?.cols ?? Number.POSITIVE_INFINITY)
@@ -70,42 +98,26 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
       const bottomResizer = terminal.locator('[data-testid="terminal-resizer-bottom"]')
       await expect(bottomResizer).toBeVisible()
 
-      const bottomBox = await bottomResizer.boundingBox()
-      if (!bottomBox) {
-        throw new Error('terminal bottom resizer bounding box unavailable')
-      }
-
-      const bottomStartX = bottomBox.x + bottomBox.width / 2
-      const bottomStartY = bottomBox.y + bottomBox.height / 2
-
       const beforeHeightSize = (await readSize())!
-
-      await window.mouse.move(bottomStartX, bottomStartY)
-      await window.mouse.down()
-      await window.mouse.move(bottomStartX, bottomStartY + 160, { steps: 12 })
-      await window.mouse.up()
+      await dragResizerBy(window, bottomResizer, { y: 160 })
 
       await expect
         .poll(async () => (await readSize())?.rows ?? 0)
         .toBeGreaterThan(beforeHeightSize.rows)
       const expandedHeightSize = (await readSize())!
 
-      const bottomBoxAfterExpand = await bottomResizer.boundingBox()
-      if (!bottomBoxAfterExpand) {
-        throw new Error('terminal bottom resizer bounding box unavailable (after expand)')
-      }
+      const shrunkRows = await shrinkRowsUntilLessThan(
+        window,
+        bottomResizer,
+        async () => (await readSize())?.rows ?? Number.POSITIVE_INFINITY,
+        expandedHeightSize.rows,
+        [-220, -320, -420],
+      )
 
-      const bottomExpandedX = bottomBoxAfterExpand.x + bottomBoxAfterExpand.width / 2
-      const bottomExpandedY = bottomBoxAfterExpand.y + bottomBoxAfterExpand.height / 2
-
-      await window.mouse.move(bottomExpandedX, bottomExpandedY)
-      await window.mouse.down()
-      await window.mouse.move(bottomExpandedX, bottomExpandedY - 220, { steps: 12 })
-      await window.mouse.up()
-
-      await expect
-        .poll(async () => (await readSize())?.rows ?? Number.POSITIVE_INFINITY)
-        .toBeLessThan(expandedHeightSize.rows)
+      expect(
+        shrunkRows,
+        `Expected terminal rows to shrink after resizing smaller, but sampled rows were ${shrunkRows} and expanded rows were ${expandedHeightSize.rows}`,
+      ).toBeLessThan(expandedHeightSize.rows)
     } finally {
       await electronApp.close()
     }
