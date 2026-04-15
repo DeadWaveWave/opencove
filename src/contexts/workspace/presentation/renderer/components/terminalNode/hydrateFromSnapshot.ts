@@ -29,6 +29,7 @@ export async function hydrateTerminalFromSnapshot({
   sessionId,
   terminal,
   kind,
+  useLivePtySnapshotDuringHydration = kind !== 'agent',
   skipInitialPlaceholderWrite = false,
   cachedScreenState,
   persistedSnapshot,
@@ -41,6 +42,7 @@ export async function hydrateTerminalFromSnapshot({
   sessionId: string
   terminal: Terminal
   kind: 'terminal' | 'agent'
+  useLivePtySnapshotDuringHydration?: boolean
   skipInitialPlaceholderWrite?: boolean
   cachedScreenState: CachedTerminalScreenState | null
   persistedSnapshot: string
@@ -63,8 +65,29 @@ export async function hydrateTerminalFromSnapshot({
     onHydratedWriteCommitted(rawSnapshot)
   }
 
+  const restoreFromLivePtySnapshot = async (): Promise<string> => {
+    await attachPromise.catch(() => undefined)
+    const snapshot = await takePtySnapshot({ sessionId })
+
+    if (cachedSerializedScreen.length > 0) {
+      const delta = resolveScrollbackDelta(baseRawSnapshot, snapshot.data)
+      const mergedSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
+
+      if (!shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)) {
+        await writeTerminalAsync(terminal, delta)
+      }
+
+      return mergedSnapshot
+    }
+
+    const mergedSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
+    const delta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
+    await writeTerminalAsync(terminal, delta)
+    return mergedSnapshot
+  }
+
   try {
-    if (kind === 'agent') {
+    if (!useLivePtySnapshotDuringHydration) {
       // Agent CLIs restore their own history after attach. Do not block hydration on snapshot
       // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
       // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
@@ -74,20 +97,7 @@ export async function hydrateTerminalFromSnapshot({
       // CLIs to disable color.
       void attachPromise.catch(() => undefined)
     } else {
-      await attachPromise.catch(() => undefined)
-      const snapshot = await takePtySnapshot({ sessionId })
-      if (cachedSerializedScreen.length > 0) {
-        const delta = resolveScrollbackDelta(baseRawSnapshot, snapshot.data)
-        rawSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
-
-        if (!shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)) {
-          await writeTerminalAsync(terminal, delta)
-        }
-      } else {
-        rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
-        const delta = resolveScrollbackDelta(persistedSnapshot, rawSnapshot)
-        await writeTerminalAsync(terminal, delta)
-      }
+      rawSnapshot = await restoreFromLivePtySnapshot()
     }
   } catch {
     rawSnapshot = baseRawSnapshot

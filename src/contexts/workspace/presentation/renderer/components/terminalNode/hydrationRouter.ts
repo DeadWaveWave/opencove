@@ -19,6 +19,7 @@ export function createTerminalHydrationRouter({
   outputScheduler,
   shouldReplaceAgentPlaceholderAfterHydration,
   shouldDeferHydratedRedrawChunks,
+  hasRecentUserInteraction,
   scrollbackBuffer,
   committedScrollbackBuffer,
   recordCommittedScreenState,
@@ -36,6 +37,7 @@ export function createTerminalHydrationRouter({
   }
   shouldReplaceAgentPlaceholderAfterHydration: () => boolean
   shouldDeferHydratedRedrawChunks: () => boolean
+  hasRecentUserInteraction: () => boolean
   scrollbackBuffer: {
     set: (snapshot: string) => void
     append: (data: string) => void
@@ -196,12 +198,15 @@ export function createTerminalHydrationRouter({
       if (deferredHydratedRedrawBuffer.dataChunks.length > 0) {
         deferredHydratedRedrawBuffer.dataChunks.push(data)
         if (
+          hasRecentUserInteraction() ||
           !shouldReplacePlaceholderWithBufferedOutput({
             data,
             exitCode: null,
           })
         ) {
-          return
+          if (!hasRecentUserInteraction()) {
+            return
+          }
         }
 
         flushDeferredHydratedRedraw()
@@ -210,6 +215,7 @@ export function createTerminalHydrationRouter({
 
       if (
         shouldDeferHydratedRedrawChunks() &&
+        !hasRecentUserInteraction() &&
         (shouldDeferHydratedTerminalRedrawChunk(data) ||
           (data.includes('\u001b') && !containsMeaningfulTerminalDisplayContent(data)))
       ) {

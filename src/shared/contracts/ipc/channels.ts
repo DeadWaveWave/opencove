@@ -78,6 +78,7 @@ export const IPC_CHANNELS = {
   ptyDetach: 'pty:detach',
   ptySyncSessionBindings: 'pty:sync-session-bindings',
   ptySyncAgentPlaceholderBindings: 'pty:sync-agent-placeholder-bindings',
+  ptyFlushScrollbackMirrors: 'pty:flush-scrollback-mirrors',
   ptySnapshot: 'pty:snapshot',
   ptyDebugCrashHost: 'pty:debug-crash-host',
   ptyData: 'pty:data',

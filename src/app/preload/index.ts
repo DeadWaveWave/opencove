@@ -375,6 +375,7 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptySyncSessionBindings, payload),
     syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptySyncAgentPlaceholderBindings, payload),
+    flushScrollbackMirrors: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyFlushScrollbackMirrors),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
     debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),

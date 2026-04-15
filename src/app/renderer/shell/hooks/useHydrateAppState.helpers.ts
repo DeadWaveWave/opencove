@@ -6,6 +6,7 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
+import { mergeScrollbackSnapshots } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
 
 export function toShellWorkspaceState(
@@ -97,6 +98,7 @@ export function mergeHydratedNode(
       kind: hydratedNode.data.kind,
       title: hydratedNode.data.kind === 'agent' ? hydratedNode.data.title : currentNode.data.title,
       sessionId: hydratedNode.data.sessionId,
+      isLiveSessionReattach: hydratedNode.data.isLiveSessionReattach === true,
       profileId: hydratedNode.data.profileId ?? currentNode.data.profileId ?? null,
       runtimeKind: hydratedNode.data.runtimeKind ?? currentNode.data.runtimeKind,
       status: hydratedNode.data.status,
@@ -150,20 +152,36 @@ export async function hydrateRuntimeNode({
     typeof node.data.sessionId === 'string' ? node.data.sessionId.trim() : ''
   if (existingSessionId.length > 0) {
     try {
-      await window.opencoveApi.pty.snapshot({ sessionId: existingSessionId })
-      return node
+      const snapshot = await window.opencoveApi.pty.snapshot({ sessionId: existingSessionId })
+      const liveScrollback = typeof snapshot?.data === 'string' ? snapshot.data : ''
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          isLiveSessionReattach: true,
+          scrollback: mergeScrollbackSnapshots(node.data.scrollback ?? '', liveScrollback),
+        },
+      }
     } catch {
       // fall through to runtime recovery
     }
   }
 
   if (node.data.kind === 'agent' && node.data.agent) {
-    return hydrateAgentNode({
+    const hydratedAgentNode = await hydrateAgentNode({
       node,
       workspacePath,
       agentFullAccess,
       defaultTerminalProfileId,
     })
+
+    return {
+      ...hydratedAgentNode,
+      data: {
+        ...hydratedAgentNode.data,
+        isLiveSessionReattach: false,
+      },
+    }
   }
 
   if (node.data.kind !== 'terminal') {
@@ -183,6 +201,7 @@ export async function hydrateRuntimeNode({
       data: {
         ...node.data,
         sessionId: spawned.sessionId,
+        isLiveSessionReattach: false,
         profileId: spawned.profileId,
         runtimeKind: spawned.runtimeKind,
         kind: 'terminal' as const,
@@ -197,6 +216,12 @@ export async function hydrateRuntimeNode({
       },
     }
   } catch {
-    return node
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        isLiveSessionReattach: false,
+      },
+    }
   }
 }

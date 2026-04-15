@@ -228,6 +228,7 @@ export interface OpenCoveApi {
     detach: (payload: DetachTerminalInput) => Promise<void>
     syncSessionBindings: (payload: SyncPtySessionBindingsInput) => Promise<void>
     syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput) => Promise<void>
+    flushScrollbackMirrors: () => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
     debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn

@@ -68,6 +68,7 @@ function TerminalNodeType({
         data.kind === 'agent' ? data.agent?.resumeSessionIdVerified === true : false
       }
       terminalProvider={resolvedTerminalProvider}
+      isLiveSessionReattach={data.isLiveSessionReattach === true}
       terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}

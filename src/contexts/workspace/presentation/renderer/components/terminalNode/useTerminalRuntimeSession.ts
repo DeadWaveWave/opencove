@@ -29,7 +29,10 @@ import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixel
 import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import type { XtermSession } from './xtermSession'
-import { registerTerminalUserInteractionWindow } from './userInteractionWindow'
+import {
+  hasRecentTerminalUserInteraction,
+  registerTerminalUserInteractionWindow,
+} from './userInteractionWindow'
 
 const RESTORED_AGENT_INPUT_GATE_DELAY_MS = 1_000
 
@@ -67,6 +70,7 @@ export function useTerminalRuntimeSession({
   preservedXtermSessionRef,
   recentUserInteractionAtRef,
   pendingUserInputBufferRef,
+  isLiveSessionReattach,
   activeRendererKindRef,
   scheduleWebglPixelSnapping,
   cancelWebglPixelSnapping,
@@ -113,6 +117,7 @@ export function useTerminalRuntimeSession({
   pendingUserInputBufferRef: {
     current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
   }
+  isLiveSessionReattach: boolean
   activeRendererKindRef: { current: TerminalRendererKind }
   scheduleWebglPixelSnapping: () => void
   cancelWebglPixelSnapping: () => void
@@ -130,7 +135,10 @@ export function useTerminalRuntimeSession({
     const scrollbackBuffer = scrollbackBufferRef.current
     const persistedSnapshot = scrollbackBuffer.snapshot()
     const shouldGateInitialUserInput =
-      kind === 'agent' && cachedScreenState === null && persistedSnapshot.trim().length > 0
+      kind === 'agent' &&
+      !isLiveSessionReattach &&
+      cachedScreenState === null &&
+      persistedSnapshot.trim().length > 0
     const committedScrollbackBuffer = createRollingTextBuffer({
       maxChars: MAX_SCROLLBACK_CHARS,
       initial: persistedSnapshot,
@@ -268,11 +276,14 @@ export function useTerminalRuntimeSession({
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () =>
         kind === 'agent' &&
+        !isLiveSessionReattach &&
         cachedScreenState === null &&
         (agentResumeSessionIdVerifiedRef.current === true ||
           agentLaunchModeRef.current === 'resume' ||
           scrollbackBuffer.snapshot().trim().length > 0),
       shouldDeferHydratedRedrawChunks: () => kind === 'agent',
+      hasRecentUserInteraction: () =>
+        hasRecentTerminalUserInteraction(recentUserInteractionAtRef),
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: nextRawSnapshot => {
@@ -308,6 +319,7 @@ export function useTerminalRuntimeSession({
       sessionId,
       terminal,
       kind: kind === 'agent' ? 'agent' : 'terminal',
+      useLivePtySnapshotDuringHydration: kind !== 'agent' || isLiveSessionReattach,
       skipInitialPlaceholderWrite: preservedSession !== null,
       cachedScreenState,
       persistedSnapshot: scrollbackBuffer.snapshot(),
@@ -429,5 +441,6 @@ export function useTerminalRuntimeSession({
     preservedXtermSessionRef,
     recentUserInteractionAtRef,
     pendingUserInputBufferRef,
+    isLiveSessionReattach,
   ])
 }

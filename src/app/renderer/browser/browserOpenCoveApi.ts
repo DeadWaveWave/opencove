@@ -313,6 +313,7 @@ export function installBrowserOpenCoveApi(): void {
       kill: payload => ptyClient.kill(payload),
       attach: payload => ptyClient.attach(payload),
       detach: payload => ptyClient.detach(payload),
+      flushScrollbackMirrors: async () => undefined,
       snapshot: payload => ptyClient.snapshot(payload),
       debugCrashHost: () => ptyClient.debugCrashHost(),
       onData: listener => ptyClient.onData(listener),

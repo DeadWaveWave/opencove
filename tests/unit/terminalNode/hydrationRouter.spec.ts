@@ -38,6 +38,7 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => true,
       shouldDeferHydratedRedrawChunks: () => true,
+      hasRecentUserInteraction: () => false,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState,
@@ -88,6 +89,7 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => true,
       shouldDeferHydratedRedrawChunks: () => true,
+      hasRecentUserInteraction: () => false,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),
@@ -116,5 +118,54 @@ describe('hydrationRouter', () => {
     expect(terminal.reset).toHaveBeenCalledTimes(1)
     expect(outputScheduler.handleChunk).toHaveBeenCalledTimes(1)
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
+  })
+
+  it('flushes deferred redraw control chunks immediately after real user interaction', () => {
+    const terminal = {
+      reset: vi.fn(),
+      write: vi.fn(),
+    }
+    const outputScheduler = {
+      handleChunk: vi.fn(),
+    }
+    const scrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+    }
+    const committedScrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+      snapshot: vi.fn(() => ''),
+    }
+    let hasRecentUserInteraction = false
+
+    const router = createTerminalHydrationRouter({
+      terminal: terminal as never,
+      outputScheduler,
+      shouldReplaceAgentPlaceholderAfterHydration: () => false,
+      shouldDeferHydratedRedrawChunks: () => true,
+      hasRecentUserInteraction: () => hasRecentUserInteraction,
+      scrollbackBuffer,
+      committedScrollbackBuffer,
+      recordCommittedScreenState: vi.fn(),
+      scheduleTranscriptSync: vi.fn(),
+      ptyWriteQueue: { flush: vi.fn() },
+      markScrollbackDirty: vi.fn(),
+      logHydrated: vi.fn(),
+      syncTerminalSize: vi.fn(),
+      onRevealed: vi.fn(),
+      isDisposed: () => false,
+    })
+
+    router.finalizeHydration('[restored history]')
+    router.handleDataChunk('\u001b[D')
+
+    expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
+
+    hasRecentUserInteraction = true
+    router.handleDataChunk('\u001b[P')
+
+    expect(outputScheduler.handleChunk).toHaveBeenCalledTimes(1)
+    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[D\u001b[P')
   })
 })

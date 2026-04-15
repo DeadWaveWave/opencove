@@ -110,6 +110,8 @@ export function registerIpcHandlers(deps?: {
     getPersistenceStore,
   })
 
+  let mirrorDisposePromise: Promise<void> | null = null
+
   registerHandledIpc(
     IPC_CHANNELS.ptySyncSessionBindings,
     async (_event, payload: unknown): Promise<void> => {
@@ -138,6 +140,14 @@ export function registerIpcHandlers(deps?: {
           : normalized.bindings
 
       agentPlaceholderMirror.setBindings(limitedBindings)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.ptyFlushScrollbackMirrors,
+    async (): Promise<void> => {
+      await Promise.allSettled([scrollbackMirror.flush(), agentPlaceholderMirror.flush()])
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -174,8 +184,11 @@ export function registerIpcHandlers(deps?: {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.ptySyncSessionBindings)
       ipcMain.removeHandler(IPC_CHANNELS.ptySyncAgentPlaceholderBindings)
-      scrollbackMirror.dispose()
-      agentPlaceholderMirror.dispose()
+      ipcMain.removeHandler(IPC_CHANNELS.ptyFlushScrollbackMirrors)
+      mirrorDisposePromise ??= Promise.allSettled([
+        scrollbackMirror.dispose(),
+        agentPlaceholderMirror.dispose(),
+      ]).then(() => undefined)
     },
   })
 
@@ -187,9 +200,11 @@ export function registerIpcHandlers(deps?: {
 
       const storePromise = persistenceStorePromise
       persistenceStorePromise = null
-      storePromise
-        ?.then(store => {
-          store.dispose()
+      const pendingMirrorDispose = mirrorDisposePromise ?? Promise.resolve()
+      void pendingMirrorDispose
+        .then(() => storePromise)
+        .then(store => {
+          store?.dispose()
         })
         .catch(() => {
           // ignore

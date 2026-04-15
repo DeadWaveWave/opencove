@@ -1,12 +1,20 @@
 #!/usr/bin/env node
+/* eslint-disable no-await-in-loop -- debug repro intentionally uses bounded polling and sequential restart steps */
 
 import { _electron as electron } from '@playwright/test'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import Database from 'better-sqlite3'
 
 const repoPath = path.resolve(new URL('..', import.meta.url).pathname)
+const screenshotRoot = path.join(repoPath, 'artifacts', 'debug-restored-agent-input')
+const provider = process.env.OPENCOVE_REPRO_PROVIDER === 'opencode' ? 'opencode' : 'codex'
+const iterationCount = Math.max(
+  1,
+  Number.parseInt(process.env.OPENCOVE_REPRO_ITERATIONS ?? '1', 10),
+)
+const closeMode = process.env.OPENCOVE_REPRO_CLOSE_MODE === 'cmd-w' ? 'cmd-w' : 'cold-restart'
 
 function delay(ms) {
   return new Promise(resolve => {
@@ -14,8 +22,199 @@ function delay(ms) {
   })
 }
 
+function resolveLastNonEmptyLine(value) {
+  return (
+    value
+      .split('\n')
+      .map(line => line.trimEnd())
+      .reverse()
+      .find(line => line.trim().length > 0) ?? ''
+  )
+}
+
+function resolveLastMatchingLine(value, pattern) {
+  return (
+    value
+      .split('\n')
+      .map(line => line.trimEnd())
+      .reverse()
+      .find(line => pattern.test(line)) ?? ''
+  )
+}
+
+function resolveVisibleTerminalLine(snapshot) {
+  const candidates = [
+    resolveLastNonEmptyLine(snapshot.debugTranscriptText),
+    resolveLastNonEmptyLine(snapshot.transcriptText),
+  ]
+
+  return candidates.find(line => line.length > 0) ?? ''
+}
+
+function resolveCodexPromptLine(snapshot) {
+  const candidates = [
+    resolveLastMatchingLine(snapshot.debugTranscriptText, /^\s*›/u),
+    resolveLastMatchingLine(snapshot.transcriptText, /^\s*›/u),
+  ]
+
+  return candidates.find(line => line.length > 0) ?? ''
+}
+
 async function createUserDataDir() {
   return await mkdtemp(path.join(tmpdir(), 'opencove-real-repro-'))
+}
+
+async function ensureDir(dirPath) {
+  await mkdir(dirPath, { recursive: true })
+}
+
+async function captureWindowScreenshot(window, dirPath, label) {
+  await ensureDir(dirPath)
+  const screenshotPath = path.join(dirPath, `${label}.png`)
+  await window.screenshot({ path: screenshotPath })
+  process.stdout.write(`[repro] screenshot saved: ${screenshotPath}\n`)
+  return screenshotPath
+}
+
+async function resolveSingleAgentBinding(window) {
+  const raw = await window.evaluate(async () => {
+    return await window.opencoveApi.persistence.readWorkspaceStateRaw()
+  })
+
+  if (!raw) {
+    return { nodeId: null, sessionId: null }
+  }
+
+  const parsed = JSON.parse(raw)
+  const agent = parsed?.workspaces?.[0]?.nodes?.find(node => node?.kind === 'agent')
+
+  return {
+    nodeId: typeof agent?.id === 'string' && agent.id.length > 0 ? agent.id : null,
+    sessionId:
+      typeof agent?.sessionId === 'string' && agent.sessionId.trim().length > 0
+        ? agent.sessionId
+        : null,
+  }
+}
+
+async function readAgentSnapshot(agentNode, helper, nodeId) {
+  const snapshot = await agentNode.evaluate(node => {
+    const transcript = node.querySelector('.terminal-node__transcript')
+    const xterm = node.querySelector('.xterm')
+    return {
+      textContent: node.textContent ?? '',
+      transcriptText: transcript?.textContent ?? '',
+      xtermClassName: xterm?.className ?? '',
+    }
+  })
+  const helperFocused = await helper.evaluate(node => node === document.activeElement)
+  const debugTranscriptText = await agentNode.page().evaluate(currentNodeId => {
+    const reader = window.__OPENCOVE_TEST_READ_TERMINAL_TRANSCRIPT__
+    if (
+      typeof reader !== 'function' ||
+      typeof currentNodeId !== 'string' ||
+      currentNodeId.length === 0
+    ) {
+      return ''
+    }
+
+    return reader(currentNodeId)
+  }, nodeId)
+  return {
+    ...snapshot,
+    helperFocused,
+    debugTranscriptText,
+    lastTranscriptLine: resolveLastNonEmptyLine(snapshot.transcriptText),
+    lastDebugTranscriptLine: resolveLastNonEmptyLine(debugTranscriptText),
+    lastVisibleLine: resolveVisibleTerminalLine({
+      transcriptText: snapshot.transcriptText,
+      debugTranscriptText,
+    }),
+    lastCodexPromptLine: resolveCodexPromptLine({
+      transcriptText: snapshot.transcriptText,
+      debugTranscriptText,
+    }),
+  }
+}
+
+async function assertAgentStep({
+  agentNode,
+  helper,
+  nodeId,
+  dirPath,
+  label,
+  requireFocus = false,
+  requiredText = null,
+  forbiddenText = null,
+  requiredVisibleLineText = null,
+  forbiddenVisibleLineText = null,
+  requiredPromptLineText = null,
+  forbiddenPromptLineText = null,
+}) {
+  const snapshot = await readAgentSnapshot(agentNode, helper, nodeId)
+  await writeFile(
+    path.join(dirPath, `${label}.json`),
+    `${JSON.stringify(snapshot, null, 2)}\n`,
+    'utf8',
+  )
+
+  if (snapshot.textContent.trim().length === 0) {
+    throw new Error(`[repro] ${label}: agent node text became blank`)
+  }
+
+  if (snapshot.transcriptText.length > 0 && snapshot.transcriptText.trim().length === 0) {
+    throw new Error(`[repro] ${label}: transcript mirror became blank-only text`)
+  }
+
+  if (snapshot.debugTranscriptText.length > 0 && snapshot.debugTranscriptText.trim().length === 0) {
+    throw new Error(`[repro] ${label}: debug transcript mirror became blank-only text`)
+  }
+
+  if (requireFocus && !snapshot.helperFocused) {
+    throw new Error(`[repro] ${label}: helper textarea lost focus`)
+  }
+
+  if (
+    requiredText &&
+    !snapshot.textContent.includes(requiredText) &&
+    !snapshot.transcriptText.includes(requiredText) &&
+    !snapshot.debugTranscriptText.includes(requiredText)
+  ) {
+    throw new Error(`[repro] ${label}: expected text not found: ${requiredText}`)
+  }
+
+  if (requiredVisibleLineText && !snapshot.lastVisibleLine.includes(requiredVisibleLineText)) {
+    throw new Error(
+      `[repro] ${label}: expected visible line text not found: ${requiredVisibleLineText}; line=${snapshot.lastVisibleLine}`,
+    )
+  }
+
+  if (
+    forbiddenText &&
+    (snapshot.textContent.includes(forbiddenText) ||
+      snapshot.transcriptText.includes(forbiddenText) ||
+      snapshot.debugTranscriptText.includes(forbiddenText))
+  ) {
+    throw new Error(`[repro] ${label}: unexpected text remained visible: ${forbiddenText}`)
+  }
+
+  if (forbiddenVisibleLineText && snapshot.lastVisibleLine.includes(forbiddenVisibleLineText)) {
+    throw new Error(
+      `[repro] ${label}: unexpected visible line text remained: ${forbiddenVisibleLineText}; line=${snapshot.lastVisibleLine}`,
+    )
+  }
+
+  if (requiredPromptLineText && !snapshot.lastCodexPromptLine.includes(requiredPromptLineText)) {
+    throw new Error(
+      `[repro] ${label}: expected prompt line text not found: ${requiredPromptLineText}; line=${snapshot.lastCodexPromptLine}`,
+    )
+  }
+
+  if (forbiddenPromptLineText && snapshot.lastCodexPromptLine.includes(forbiddenPromptLineText)) {
+    throw new Error(
+      `[repro] ${label}: unexpected prompt line text remained: ${forbiddenPromptLineText}; line=${snapshot.lastCodexPromptLine}`,
+    )
+  }
 }
 
 async function attachElectronLogs(electronApp, sink) {
@@ -43,6 +242,7 @@ async function launchApp({ userDataDir, logSink }) {
       ...env,
       NODE_ENV: 'development',
       OPENCOVE_DEV_USER_DATA_DIR: userDataDir,
+      OPENCOVE_TERMINAL_DIAGNOSTICS: '1',
       OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS: '1',
     },
   })
@@ -51,6 +251,149 @@ async function launchApp({ userDataDir, logSink }) {
   const window = await electronApp.firstWindow()
   await window.waitForLoadState('domcontentloaded')
   return { electronApp, window }
+}
+
+async function waitForBrowserWindowCount(electronApp, expectedCount, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    const count = await electronApp.evaluate(({ BrowserWindow }) => {
+      return BrowserWindow.getAllWindows().filter(window => !window.isDestroyed()).length
+    })
+
+    if (count === expectedCount) {
+      return
+    }
+
+    await delay(100)
+  }
+
+  throw new Error(
+    `[repro] Timed out waiting for BrowserWindow count ${expectedCount} during ${closeMode}`,
+  )
+}
+
+async function waitForBrowserWindowCountOrFalse(electronApp, expectedCount, timeoutMs) {
+  try {
+    await waitForBrowserWindowCount(electronApp, expectedCount, timeoutMs)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function waitForNewWindow(electronApp, previousWindows, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs
+
+  while (Date.now() < deadline) {
+    const nextWindow =
+      electronApp
+        .windows()
+        .find(window => !window.isClosed() && !previousWindows.includes(window)) ?? null
+
+    if (nextWindow) {
+      await nextWindow.waitForLoadState('domcontentloaded')
+      return nextWindow
+    }
+
+    await delay(100)
+  }
+
+  throw new Error(`[repro] Timed out waiting for a reopened window during ${closeMode}`)
+}
+
+async function closeWindowAndReopenApp({ electronApp, window: mainWindowPage }) {
+  const previousWindows = electronApp.windows().filter(page => !page.isClosed())
+  const closeShortcut = process.platform === 'darwin' ? 'Meta+W' : 'Control+W'
+  const closeShortcutPayload =
+    process.platform === 'darwin'
+      ? { keyCode: 'W', modifiers: ['meta'] }
+      : { keyCode: 'W', modifiers: ['control'] }
+
+  await mainWindowPage.bringToFront().catch(() => undefined)
+  await mainWindowPage
+    .locator('body')
+    .click({ position: { x: 40, y: 40 } })
+    .catch(() => undefined)
+  await mainWindowPage.keyboard.press(closeShortcut).catch(() => undefined)
+
+  let didCloseWindow = await waitForBrowserWindowCountOrFalse(electronApp, 0, 1_500)
+  if (!didCloseWindow) {
+    const dispatchedCloseAction =
+      process.platform === 'darwin'
+        ? await electronApp
+            .evaluate(({ BrowserWindow, Menu }) => {
+              const browserWindow = BrowserWindow.getAllWindows().find(
+                candidate => !candidate.isDestroyed(),
+              )
+              if (!browserWindow || typeof Menu.sendActionToFirstResponder !== 'function') {
+                return false
+              }
+
+              browserWindow.focus()
+              browserWindow.webContents.focus()
+              Menu.sendActionToFirstResponder('performClose:')
+              return true
+            })
+            .catch(() => false)
+        : false
+
+    if (dispatchedCloseAction) {
+      didCloseWindow = await waitForBrowserWindowCountOrFalse(electronApp, 0, 1_500)
+    }
+  }
+
+  if (!didCloseWindow) {
+    const dispatchedShortcut = await electronApp
+      .evaluate(({ BrowserWindow }, payload) => {
+        const browserWindow = BrowserWindow.getAllWindows().find(
+          candidate => !candidate.isDestroyed(),
+        )
+        if (!browserWindow) {
+          return false
+        }
+
+        browserWindow.focus()
+        browserWindow.webContents.focus()
+        browserWindow.webContents.sendInputEvent({
+          type: 'keyDown',
+          keyCode: payload.keyCode,
+          modifiers: payload.modifiers,
+        })
+        browserWindow.webContents.sendInputEvent({
+          type: 'keyUp',
+          keyCode: payload.keyCode,
+          modifiers: payload.modifiers,
+        })
+        return true
+      }, closeShortcutPayload)
+      .catch(() => false)
+
+    if (dispatchedShortcut) {
+      didCloseWindow = await waitForBrowserWindowCountOrFalse(electronApp, 0, 1_500)
+    }
+  }
+
+  if (!didCloseWindow) {
+    process.stdout.write(
+      '[repro] close shortcut did not close the window; falling back to BrowserWindow.close().\n',
+    )
+    await electronApp.evaluate(({ BrowserWindow }) => {
+      const browserWindow = BrowserWindow.getAllWindows().find(
+        candidate => !candidate.isDestroyed(),
+      )
+      browserWindow?.close()
+      return Boolean(browserWindow)
+    })
+    await waitForBrowserWindowCount(electronApp, 0)
+  }
+
+  await electronApp.evaluate(({ app }) => {
+    app.emit('activate')
+  })
+
+  await waitForBrowserWindowCount(electronApp, 1)
+  return await waitForNewWindow(electronApp, previousWindows)
 }
 
 async function seedWorkspaceStateOnDisk(userDataDir) {
@@ -62,25 +405,25 @@ async function seedWorkspaceStateOnDisk(userDataDir) {
     uiTheme: 'dark',
     isPrimarySidebarCollapsed: false,
     workspaceSearchPanelWidth: 420,
-    defaultProvider: 'codex',
+    defaultProvider: provider,
     agentProviderOrder: ['claude-code', 'codex', 'opencode', 'gemini'],
     agentFullAccess: true,
     defaultTerminalProfileId: null,
     customModelEnabledByProvider: {
       'claude-code': false,
-      codex: true,
+      codex: provider === 'codex',
       opencode: false,
       gemini: false,
     },
     customModelByProvider: {
       'claude-code': '',
-      codex: 'gpt-5.4',
+      codex: provider === 'codex' ? 'gpt-5.4' : '',
       opencode: '',
       gemini: '',
     },
     customModelOptionsByProvider: {
       'claude-code': [],
-      codex: ['gpt-5.4'],
+      codex: provider === 'codex' ? ['gpt-5.4'] : [],
       opencode: [],
       gemini: [],
     },
@@ -295,28 +638,65 @@ async function createAgent(window) {
   return agentNode
 }
 
-async function inspectRestoredAgent(window) {
+async function inspectRestoredAgent(window, dirPath) {
   const agentNode = window.locator('.terminal-node').first()
   await agentNode.waitFor({ state: 'visible', timeout: 60_000 })
   await agentNode.locator('.xterm').waitFor({ state: 'visible', timeout: 30_000 })
   const helper = agentNode.locator('.xterm-helper-textarea')
+  const binding = await resolveSingleAgentBinding(window)
+  const nodeId = binding.nodeId
 
   const initialMainPid = await window.evaluate(() => window.opencoveApi.meta.mainPid)
   process.stdout.write(`[repro] preload mainPid: ${String(initialMainPid)}\n`)
+  await captureWindowScreenshot(window, dirPath, 'restored-before-first-click')
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-before-first-click',
+  })
 
   await agentNode.locator('.xterm').click()
   await helper.waitFor({ state: 'attached', timeout: 10_000 })
   await delay(300)
+  await captureWindowScreenshot(window, dirPath, 'restored-after-first-click')
 
   const focusImmediately = await helper.evaluate(node => node === document.activeElement)
   process.stdout.write(`[repro] helper focused immediately: ${String(focusImmediately)}\n`)
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-after-first-click',
+    requireFocus: true,
+  })
 
   await delay(2_000)
   const focusAfterDelay = await helper.evaluate(node => node === document.activeElement)
   process.stdout.write(`[repro] helper focused after 2s: ${String(focusAfterDelay)}\n`)
+  await captureWindowScreenshot(window, dirPath, 'restored-after-2s')
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-after-2s',
+    requireFocus: true,
+  })
 
   process.stdout.write('[repro] waiting for restored session to replace placeholder...\n')
   await delay(3_500)
+  await captureWindowScreenshot(window, dirPath, 'restored-after-handoff-wait')
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-after-handoff-wait',
+    requireFocus: true,
+  })
 
   await agentNode.locator('.xterm').click()
   await delay(300)
@@ -324,54 +704,120 @@ async function inspectRestoredAgent(window) {
   process.stdout.write(
     `[repro] helper focused after restored-session click: ${String(focusAfterRestoreClick)}\n`,
   )
+  await captureWindowScreenshot(window, dirPath, 'restored-after-second-click')
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-after-second-click',
+    requireFocus: true,
+  })
 
-  await window.keyboard.type('1')
+  await window.keyboard.type('12')
+  await delay(250)
+  await captureWindowScreenshot(window, dirPath, 'restored-after-type-12')
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-after-type-12',
+    requireFocus: true,
+    requiredPromptLineText: provider === 'codex' ? '12' : null,
+  })
+
+  await window.keyboard.press('Backspace')
   await delay(500)
+  await captureWindowScreenshot(window, dirPath, 'restored-after-backspace')
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-after-backspace',
+    requireFocus: true,
+    requiredPromptLineText: provider === 'codex' ? '1' : null,
+    forbiddenPromptLineText: provider === 'codex' ? '12' : null,
+  })
+
   await window.keyboard.press('Enter')
   await delay(2_000)
+  await captureWindowScreenshot(window, dirPath, 'restored-after-type-and-enter')
 
   const focusAfterTyping = await helper.evaluate(node => node === document.activeElement)
   process.stdout.write(`[repro] helper focused after typing: ${String(focusAfterTyping)}\n`)
+  await assertAgentStep({
+    agentNode,
+    helper,
+    nodeId,
+    dirPath,
+    label: 'restored-after-type-and-enter',
+    requireFocus: true,
+    requiredText: provider === 'codex' ? '1' : null,
+  })
 
   const terminalText = await agentNode.textContent()
   process.stdout.write(`[repro] agent node text snapshot:\n${terminalText ?? ''}\n`)
+  await writeFile(path.join(dirPath, 'terminal-text.txt'), `${terminalText ?? ''}\n`, 'utf8')
 }
 
 async function main() {
-  const userDataDir = await createUserDataDir()
-  const logs = []
+  await ensureDir(screenshotRoot)
 
-  process.stdout.write(`[repro] userDataDir=${userDataDir}\n`)
+  for (let iteration = 1; iteration <= iterationCount; iteration += 1) {
+    const userDataDir = await createUserDataDir()
+    const logs = []
+    const iterationDir = path.join(
+      screenshotRoot,
+      `${provider}-run-${String(iteration).padStart(2, '0')}`,
+    )
 
-  try {
-    await seedWorkspaceStateOnDisk(userDataDir)
+    process.stdout.write(
+      `[repro] iteration=${iteration}/${iterationCount} provider=${provider} closeMode=${closeMode} userDataDir=${userDataDir}\n`,
+    )
 
-    const second = await launchApp({ userDataDir, logSink: logs })
     try {
-      await createAgent(second.window)
-      await delay(8_000)
-    } finally {
-      await second.electronApp.close()
-    }
+      await seedWorkspaceStateOnDisk(userDataDir)
 
-    await delay(1_000)
+      const first = await launchApp({ userDataDir, logSink: logs })
+      try {
+        await createAgent(first.window)
+        await delay(8_000)
 
-    const third = await launchApp({ userDataDir, logSink: logs })
-    try {
-      await inspectRestoredAgent(third.window)
+        if (closeMode === 'cmd-w') {
+          const reopenedWindow = await closeWindowAndReopenApp(first)
+          await inspectRestoredAgent(reopenedWindow, iterationDir)
+        } else {
+          await first.electronApp.close()
+          await delay(1_000)
+
+          const restarted = await launchApp({ userDataDir, logSink: logs })
+          try {
+            await inspectRestoredAgent(restarted.window, iterationDir)
+          } finally {
+            await restarted.electronApp.close()
+          }
+
+          continue
+        }
+      } finally {
+        await first.electronApp.close().catch(() => undefined)
+      }
     } finally {
-      await third.electronApp.close()
-    }
-  } finally {
-    const diagnosticTail = logs
-      .filter(
-        line =>
-          line.includes('opencove-terminal-diagnostics') || line.includes('opencove-pty-write'),
+      const diagnosticTail = logs
+        .filter(
+          line =>
+            line.includes('opencove-terminal-diagnostics') || line.includes('opencove-pty-write'),
+        )
+        .slice(-120)
+        .join('\n')
+      await writeFile(path.join(iterationDir, 'diagnostic-tail.log'), `${diagnosticTail}\n`, 'utf8')
+      process.stdout.write(
+        `\n[repro] diagnostic tail saved: ${path.join(iterationDir, 'diagnostic-tail.log')}\n`,
       )
-      .slice(-80)
-      .join('\n')
-    process.stdout.write(`\n[repro] diagnostic tail:\n${diagnosticTail}\n`)
-    await rm(userDataDir, { recursive: true, force: true })
+      await rm(userDataDir, { recursive: true, force: true })
+    }
   }
 }
 

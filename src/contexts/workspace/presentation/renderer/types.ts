@@ -101,6 +101,7 @@ export interface WebsiteNodeData {
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
+  isLiveSessionReattach?: boolean
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalProviderHint?: AgentProvider | null

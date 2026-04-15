@@ -26,7 +26,11 @@ export function useAppQuitPersistenceFlush({ enabled }: { enabled: boolean }): v
     return register(async () => {
       schedulePersistedStateWrite(producePersistedState, { delayMs: 0 })
       flushScheduledNodeScrollbackWrites()
-      await flushScheduledPersistedStateWriteAsync()
+      const flushScrollbackMirrors = window.opencoveApi?.pty?.flushScrollbackMirrors
+      await Promise.allSettled([
+        flushScheduledPersistedStateWriteAsync(),
+        typeof flushScrollbackMirrors === 'function' ? flushScrollbackMirrors() : Promise.resolve(),
+      ])
     })
   }, [enabled])
 }

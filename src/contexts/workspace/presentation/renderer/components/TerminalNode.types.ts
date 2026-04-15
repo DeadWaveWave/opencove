@@ -24,6 +24,7 @@ export interface TerminalNodeProps {
   terminalProvider?: AgentProvider | null
   agentLaunchMode?: AgentLaunchMode | null
   agentResumeSessionIdVerified?: boolean
+  isLiveSessionReattach?: boolean
   terminalThemeMode?: TerminalThemeMode
   isSelected?: boolean
   isDragging?: boolean
