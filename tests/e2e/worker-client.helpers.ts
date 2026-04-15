@@ -133,4 +133,3 @@ export async function stopWorker(child: ChildProcessWithoutNullStreams | null): 
 export function resolveTestAgentStubScriptPath(): string {
   return path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 }
-

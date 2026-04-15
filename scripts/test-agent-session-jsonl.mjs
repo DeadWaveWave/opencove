@@ -185,13 +185,12 @@ export async function runJsonlStdinSubmitDelayedTurnScenario(provider, cwd) {
   await sleep(20_000)
 }
 
-async function resolveScenarioSessionFile({
-  provider,
-  cwd,
-  mode,
-  resumeSessionId,
-}) {
-  if (mode === 'resume' && typeof resumeSessionId === 'string' && resumeSessionId.trim().length > 0) {
+async function resolveScenarioSessionFile({ provider, cwd, mode, resumeSessionId }) {
+  if (
+    mode === 'resume' &&
+    typeof resumeSessionId === 'string' &&
+    resumeSessionId.trim().length > 0
+  ) {
     if (provider === 'claude-code') {
       const existingClaudeSession = await findClaudeSessionFile(cwd, resumeSessionId)
       if (existingClaudeSession) {

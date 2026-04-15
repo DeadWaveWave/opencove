@@ -23,4 +23,3 @@ export async function runStdinEchoScenario() {
   // Keep alive long enough for E2E to send a few keystrokes.
   await sleep(20_000)
 }
-

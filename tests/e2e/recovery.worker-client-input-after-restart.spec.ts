@@ -95,11 +95,17 @@ test.describe('Recovery - Worker client input after restart', () => {
 
         await expect(agentNode).toBeVisible()
         await expect(agentNode.locator('.xterm')).toBeVisible()
-        await expect(agentNode.locator('.terminal-node__terminal')).toHaveAttribute('aria-busy', 'false')
+        await expect(agentNode.locator('.terminal-node__terminal')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        )
 
         await expect(terminalNode).toBeVisible()
         await expect(terminalNode.locator('.xterm')).toBeVisible()
-        await expect(terminalNode.locator('.terminal-node__terminal')).toHaveAttribute('aria-busy', 'false')
+        await expect(terminalNode.locator('.terminal-node__terminal')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        )
 
         const terminalToken = `OPENCOVE_WORKER_TERMINAL_INPUT_${Date.now()}`
         await terminalNode.locator('.xterm').click()

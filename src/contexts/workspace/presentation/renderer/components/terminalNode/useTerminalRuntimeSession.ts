@@ -282,8 +282,7 @@ export function useTerminalRuntimeSession({
           agentLaunchModeRef.current === 'resume' ||
           scrollbackBuffer.snapshot().trim().length > 0),
       shouldDeferHydratedRedrawChunks: () => kind === 'agent',
-      hasRecentUserInteraction: () =>
-        hasRecentTerminalUserInteraction(recentUserInteractionAtRef),
+      hasRecentUserInteraction: () => hasRecentTerminalUserInteraction(recentUserInteractionAtRef),
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: nextRawSnapshot => {
