@@ -35,6 +35,7 @@ import {
   createInitialInputState,
   getFolderName,
   getWorkspacePageId,
+  isWorkspacePageId,
   type SettingsPanelProps,
 } from './SettingsPanel.shared'
 import { useSettingsPanelPageState } from './useSettingsPanelPageState'
