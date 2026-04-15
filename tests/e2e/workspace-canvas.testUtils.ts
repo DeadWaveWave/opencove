@@ -1,9 +1,32 @@
+import { existsSync } from 'node:fs'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'path'
 
 const E2E_PATH_DELETE_RETRY_MS = 500
 const E2E_PATH_DELETE_MAX_ATTEMPTS = 40
+
+function isTruthyEnv(rawValue: string | undefined): boolean {
+  if (!rawValue) {
+    return false
+  }
+
+  return rawValue === '1' || rawValue.toLowerCase() === 'true'
+}
+
+export function resolveE2ETmpDir(): string {
+  const configuredTmpDir = process.env['OPENCOVE_E2E_TMPDIR']?.trim()
+  if (configuredTmpDir) {
+    return configuredTmpDir
+  }
+
+  if (process.platform === 'linux' && isTruthyEnv(process.env['CI']) && existsSync('/mnt')) {
+    return '/mnt'
+  }
+
+  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
+  return runnerTempDir || tmpdir()
+}
 
 export async function delay(ms: number): Promise<void> {
   await new Promise(resolve => {
@@ -17,9 +40,7 @@ function isRetryablePathCleanupError(error: unknown): boolean {
 }
 
 export async function createTestUserDataDir(): Promise<string> {
-  const configuredTmpDir = process.env['OPENCOVE_E2E_TMPDIR']?.trim()
-  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
-  const baseTmpDir = configuredTmpDir || runnerTempDir || tmpdir()
+  const baseTmpDir = resolveE2ETmpDir()
 
   const parentDir = path.join(baseTmpDir, 'opencove-e2e')
   await mkdir(parentDir, { recursive: true })

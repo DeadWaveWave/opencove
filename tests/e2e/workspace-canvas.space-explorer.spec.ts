@@ -1,7 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
-import { tmpdir } from 'node:os'
 import path from 'path'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
@@ -12,6 +11,7 @@ import {
   removePathWithRetry,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
 
 test.describe('Workspace Canvas - Space Explorer', () => {
   test('opens a file from Explorer as a document node and saves edits to disk', async ({
@@ -489,7 +489,11 @@ test.describe('Workspace Canvas - Space Explorer', () => {
   test('shows an error when the space directory is outside approved roots', async ({
     browserName,
   }, testInfo) => {
-    const fixtureDir = path.join(tmpdir(), 'opencove-e2e-unapproved-space-explorer', randomUUID())
+    const fixtureDir = path.join(
+      resolveE2ETmpDir(),
+      'opencove-e2e-unapproved-space-explorer',
+      randomUUID(),
+    )
 
     await mkdir(fixtureDir, { recursive: true })
     await writeFile(path.join(fixtureDir, 'hello.md'), 'hello', 'utf8')
