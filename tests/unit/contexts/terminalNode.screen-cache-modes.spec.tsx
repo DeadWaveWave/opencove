@@ -29,6 +29,10 @@ vi.mock('@xterm/xterm', () => {
     public dispose(): void {}
     public attachCustomKeyEventHandler(): void {}
 
+    public registerLinkProvider(): { dispose: () => void } {
+      return { dispose: () => undefined }
+    }
+
     public onData() {
       return { dispose: () => undefined }
     }

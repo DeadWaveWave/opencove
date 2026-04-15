@@ -1,10 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { execFile } from 'node:child_process'
 import { mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { launchApp, removePathWithRetry, seedWorkspaceState } from './workspace-canvas.helpers'
+import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
 
 const execFileAsync = promisify(execFile)
 
@@ -26,7 +26,9 @@ async function createTempRepoWithDirtyWorktree(): Promise<{
   repoPath: string
   worktreePath: string
 }> {
-  const repoDir = await mkdtemp(path.join(tmpdir(), 'OpenCove Worktree Archive Dirty E2E '))
+  const repoDir = await mkdtemp(
+    path.join(resolveE2ETmpDir(), 'OpenCove Worktree Archive Dirty E2E '),
+  )
 
   await runGit(['init'], repoDir)
   await runGit(['config', 'user.email', 'test@example.com'], repoDir)

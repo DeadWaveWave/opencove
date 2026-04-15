@@ -1,8 +1,8 @@
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { once } from 'node:events'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'path'
+import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
 
 const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
@@ -156,9 +156,7 @@ async function cleanupUserDataDirWithRetry(userDataDir: string, attempt = 1): Pr
 }
 
 export async function createTestUserDataDir(): Promise<string> {
-  const configuredTmpDir = process.env['OPENCOVE_E2E_TMPDIR']?.trim()
-  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
-  const baseTmpDir = configuredTmpDir || runnerTempDir || tmpdir()
+  const baseTmpDir = resolveE2ETmpDir()
 
   const parentDir = path.join(baseTmpDir, 'opencove-e2e')
   await mkdir(parentDir, { recursive: true })

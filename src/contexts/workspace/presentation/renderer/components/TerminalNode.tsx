@@ -3,6 +3,8 @@ import { useStore } from '@xyflow/react'
 import { SerializeAddon } from '@xterm/addon-serialize'
 import { Terminal } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
+import { Unicode11Addon } from '@xterm/addon-unicode11'
+import { LigaturesAddon } from '@xterm/addon-ligatures'
 import '@xterm/xterm/css/xterm.css'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import { createRollingTextBuffer } from '../utils/rollingTextBuffer'
@@ -24,7 +26,12 @@ import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
 import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
 import { finalizeTerminalHydration } from './terminalNode/finalizeHydration'
 import { registerTerminalDiagnostics } from './terminalNode/registerDiagnostics'
-import { activatePreferredTerminalRenderer } from './terminalNode/preferredRenderer'
+import {
+  activatePreferredTerminalRenderer,
+  type ActiveTerminalRenderer,
+} from './terminalNode/preferredRenderer'
+import { UrlLinkProvider } from './terminalNode/linkProviders/url-link-provider'
+import { FilePathLinkProvider } from './terminalNode/linkProviders/file-path-link-provider'
 import { registerTerminalHitTargetCursorScope } from './terminalNode/hitTargetCursorScope'
 import { useTerminalAppearanceSync } from './terminalNode/useTerminalAppearanceSync'
 import { useTerminalTestTranscriptMirror } from './terminalNode/useTerminalTestTranscriptMirror'
@@ -108,6 +115,8 @@ export function TerminalNode({
     setQuery: setFindQuery,
     findNext: findNextMatch,
     findPrevious: findPreviousMatch,
+    toggleCaseSensitive: toggleFindCaseSensitive,
+    toggleUseRegex: toggleFindUseRegex,
     bindSearchAddon: bindSearchAddonToFind,
   } = useTerminalFind({
     sessionId,
@@ -203,14 +212,16 @@ export function TerminalNode({
     })
     const fitAddon = new FitAddon()
     const serializeAddon = new SerializeAddon()
+    const unicode11Addon = new Unicode11Addon()
     terminal.loadAddon(fitAddon)
     terminal.loadAddon(serializeAddon)
-    let activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
-      onRendererKindChange: nextKind => {
-        setRendererKindAndApply(nextKind)
-      },
-    })
-    activeRendererKindRef.current = activeRenderer.kind
+    try {
+      terminal.loadAddon(unicode11Addon)
+      unicode11Addon.activate(terminal)
+    } catch {
+      // Degrade gracefully in environments without unicode11 support (e.g., test mocks)
+    }
+    let activeRenderer: ActiveTerminalRenderer | null = null
     terminalRef.current = terminal
     fitAddonRef.current = fitAddon
     const disposeTerminalFind = maybeBindTerminalSearchAddon({
@@ -235,6 +246,22 @@ export function TerminalNode({
     let disposePositionObserver: () => void = () => undefined
     if (containerRef.current) {
       terminal.open(containerRef.current)
+      activeRenderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
+        onRendererKindChange: nextKind => {
+          setRendererKindAndApply(nextKind)
+        },
+      })
+      activeRendererKindRef.current = activeRenderer.kind
+      try {
+        const ligaturesAddon = new LigaturesAddon()
+        terminal.loadAddon(ligaturesAddon)
+      } catch {
+        // Degrade gracefully in environments without ligatures support (e.g., test mocks)
+      }
+      terminal.registerLinkProvider(new UrlLinkProvider(terminal, (_, uri) => window.open(uri)))
+      terminal.registerLinkProvider(
+        new FilePathLinkProvider(terminal, (_, path) => window.open(path)),
+      )
       containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
       cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
       disposeTerminalHitTargetCursorScope = registerTerminalHitTargetCursorScope({
@@ -266,7 +293,7 @@ export function TerminalNode({
       title: titleRef.current,
       terminal,
       container: containerRef.current,
-      rendererKind: activeRenderer.kind,
+      rendererKind: activeRenderer?.kind ?? 'dom',
       terminalThemeMode,
       windowsPty,
     })
@@ -381,7 +408,7 @@ export function TerminalNode({
         return
       }
       applyTerminalTheme()
-      activeRenderer.clearTextureAtlas()
+      activeRenderer?.clearTextureAtlas()
       syncTerminalSize()
       openCodeThemeBridge?.reportThemeMode()
     }
@@ -400,7 +427,7 @@ export function TerminalNode({
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
       disposePositionObserver()
-      activeRenderer.dispose()
+      activeRenderer?.dispose()
       isDisposed = true
       disposeLayoutSync()
       terminalDiagnostics.dispose()
@@ -493,6 +520,8 @@ export function TerminalNode({
       onFindNext={findNextMatch}
       onFindPrevious={findPreviousMatch}
       onFindClose={closeTerminalFind}
+      onFindToggleCaseSensitive={toggleFindCaseSensitive}
+      onFindToggleUseRegex={toggleFindUseRegex}
       handleResizePointerDown={handleResizePointerDown}
     />
   )
