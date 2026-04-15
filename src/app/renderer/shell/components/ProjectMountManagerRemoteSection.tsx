@@ -80,12 +80,14 @@ export function ProjectMountManagerRemoteSection({
                   disabled={isBusy}
                   placeholder={t('projectMountManager.remoteRootPlaceholder')}
                   data-testid="workspace-project-mount-remote-root"
+                  style={{ flex: 1 }}
                 />
                 <button
                   type="button"
                   className="cove-window__action cove-window__action--ghost"
                   disabled={isBusy || remoteEndpointId.trim().length === 0}
                   data-testid="workspace-project-mount-remote-browse"
+                  style={{ flexShrink: 0 }}
                   onClick={() => {
                     const endpointId = remoteEndpointId.trim()
                     if (endpointId.length === 0) {

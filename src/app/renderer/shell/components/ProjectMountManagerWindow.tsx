@@ -386,6 +386,7 @@ export function ProjectMountManagerWindow({
                     className="cove-window__action cove-window__action--ghost"
                     disabled={isBusy || !canBrowseLocal}
                     data-testid="workspace-project-mount-browse-local"
+                    style={{ flexShrink: 0 }}
                     onClick={() => {
                       void browseLocalMount()
                     }}

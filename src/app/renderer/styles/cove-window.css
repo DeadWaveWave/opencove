@@ -183,11 +183,15 @@
 
 .cove-window__action,
 .workspace-task-creator__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border-radius: 10px;
   padding: 7px 12px;
   cursor: pointer;
   font-size: calc(12px * var(--cove-ui-font-scale));
   font-weight: 600;
+  white-space: nowrap;
   transition:
     background 0.16s ease,
     border-color 0.16s ease,

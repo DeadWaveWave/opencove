@@ -104,6 +104,7 @@ export function AddProjectWizardAdvancedSection({
                   disabled={isBusy}
                   placeholder={t('addProjectWizard.localPathPlaceholder')}
                   data-testid="workspace-project-create-extra-local-root"
+                  style={{ flex: 1 }}
                 />
                 <button
                   type="button"
@@ -113,6 +114,7 @@ export function AddProjectWizardAdvancedSection({
                     onBrowseExtraLocalRootPath()
                   }}
                   data-testid="workspace-project-create-extra-local-browse"
+                  style={{ flexShrink: 0 }}
                 >
                   {t('addProjectWizard.browse')}
                 </button>
@@ -172,12 +174,14 @@ export function AddProjectWizardAdvancedSection({
                         disabled={isBusy || endpointOptions.length === 0}
                         placeholder={t('addProjectWizard.remotePathPlaceholder')}
                         data-testid="workspace-project-create-extra-remote-root"
+                        style={{ flex: 1 }}
                       />
                       <button
                         type="button"
                         className="cove-window__action cove-window__action--ghost"
                         disabled={isBusy || extraRemoteEndpointId.trim().length === 0}
                         data-testid="workspace-project-create-extra-remote-browse"
+                        style={{ flexShrink: 0 }}
                         onClick={() => {
                           onBrowseExtraRemoteRootPath()
                         }}

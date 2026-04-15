@@ -210,6 +210,7 @@ export function RemoteDirectoryPickerWindow({
                 disabled={isBusy}
                 placeholder={t('remoteDirectoryPicker.pathPlaceholder')}
                 data-testid="remote-directory-picker-path"
+                style={{ flex: 1 }}
                 onChange={event => setPathInput(event.target.value)}
                 onKeyDown={event => {
                   if (event.key !== 'Enter' || event.nativeEvent.isComposing) {
@@ -225,7 +226,7 @@ export function RemoteDirectoryPickerWindow({
                 className="cove-window__action cove-window__action--ghost"
                 disabled={isBusy || !parentPath}
                 data-testid="remote-directory-picker-up"
-                style={{ whiteSpace: 'nowrap' }}
+                style={{ flexShrink: 0 }}
                 onClick={() => {
                   if (!parentPath) {
                     return
@@ -241,7 +242,7 @@ export function RemoteDirectoryPickerWindow({
                 className="cove-window__action cove-window__action--ghost"
                 disabled={isBusy || refreshCandidate.trim().length === 0}
                 data-testid="remote-directory-picker-refresh"
-                style={{ whiteSpace: 'nowrap' }}
+                style={{ flexShrink: 0 }}
                 onClick={() => {
                   const typed = pathInputElementRef.current?.value ?? ''
                   const target = typed.trim().length > 0 ? typed : currentPath

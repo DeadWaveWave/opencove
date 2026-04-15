@@ -83,6 +83,7 @@ export function AddProjectWizardDefaultLocationSection({
               disabled={isBusy}
               placeholder={t('addProjectWizard.localPathPlaceholder')}
               data-testid="workspace-project-create-default-local-root"
+              style={{ flex: 1 }}
             />
             <button
               type="button"
@@ -90,6 +91,7 @@ export function AddProjectWizardDefaultLocationSection({
               disabled={isBusy || !canBrowseLocal}
               onClick={() => onBrowseDefaultLocalRootPath()}
               data-testid="workspace-project-create-default-local-browse"
+              style={{ flexShrink: 0 }}
             >
               {t('addProjectWizard.browse')}
             </button>
@@ -148,12 +150,14 @@ export function AddProjectWizardDefaultLocationSection({
                   disabled={isBusy}
                   placeholder={t('addProjectWizard.remotePathPlaceholder')}
                   data-testid="workspace-project-create-default-remote-root"
+                  style={{ flex: 1 }}
                 />
                 <button
                   type="button"
                   className="cove-window__action cove-window__action--ghost"
                   disabled={isBusy || defaultRemoteEndpointId.trim().length === 0}
                   data-testid="workspace-project-create-default-remote-browse"
+                  style={{ flexShrink: 0 }}
                   onClick={() => {
                     onBrowseDefaultRemoteRootPath()
                   }}
