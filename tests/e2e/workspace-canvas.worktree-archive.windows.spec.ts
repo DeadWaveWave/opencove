@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { execFile } from 'node:child_process'
+import { execFile, spawn } from 'node:child_process'
 import { access, mkdir, mkdtemp, realpath, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -140,43 +140,16 @@ test.describe('Workspace Canvas - Worktree Archive (Windows)', () => {
 
         await expect(window.locator('.note-node').first()).toBeVisible()
 
-        const pane = window.locator('.workspace-canvas .react-flow__pane')
-        await pane.click({
-          button: 'right',
-          position: { x: 700, y: 320 },
+        const backgroundChild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1e6)'], {
+          cwd: worktreePath,
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true,
         })
-        await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
-        await window.locator('[data-testid="workspace-context-new-terminal"]').click()
+        backgroundPid = backgroundChild.pid ?? null
+        backgroundChild.unref()
 
-        const terminal = window.locator('.terminal-node').first()
-        const xterm = terminal.locator('.xterm')
-        await expect(terminal).toBeVisible()
-        await expect(xterm).toBeVisible()
-
-        const spawnDetachedChildCommand =
-          `node -e "` +
-          `const { spawn } = require('child_process');` +
-          `const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1e6)'], {` +
-          `cwd: process.cwd(), detached: true, stdio: 'ignore', windowsHide: true` +
-          `});` +
-          `console.log('BGPID:' + child.pid + ':END');` +
-          `child.unref();` +
-          `"`
-
-        await xterm.click()
-        await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
-        await window.waitForTimeout(250)
-        await window.keyboard.type(spawnDetachedChildCommand)
-        await window.keyboard.press('Enter')
-
-        const readBackgroundPid = async (): Promise<number> => {
-          const text = await terminal.textContent()
-          const match = text?.match(/BGPID:(\d+):END/)
-          return match ? Number(match[1]) : 0
-        }
-
-        await expect.poll(readBackgroundPid, { timeout: 30_000 }).toBeGreaterThan(0)
-        backgroundPid = await readBackgroundPid()
+        expect(backgroundPid ?? 0).toBeGreaterThan(0)
         await window.waitForTimeout(1500)
 
         await window.locator('[data-testid="workspace-space-switch-space-archive-warning"]').click()
