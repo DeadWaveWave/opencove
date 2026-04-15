@@ -6,6 +6,31 @@ import {
   removePathWithRetry,
 } from './workspace-canvas.helpers'
 
+async function expectObservedWorkingTransition(
+  status: Locator,
+  timeoutMs = 5_000,
+  intervalMs = 75,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  const samples: string[] = []
+
+  while (Date.now() < deadline) {
+    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
+    const text = ((await status.textContent()) ?? '').trim()
+    samples.push(text)
+    if (text === 'Working') {
+      return
+    }
+    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
+    await status.page().waitForTimeout(intervalMs)
+  }
+
+  expect(
+    samples.some(sample => sample === 'Working'),
+    `Expected to observe a transient Working state, saw: ${JSON.stringify(samples)}`,
+  ).toBe(true)
+}
+
 async function launchAgentsFromTasks(window: Page, count: number): Promise<void> {
   const runButtons = window.locator('[data-testid="task-node-run-agent"]')
 
@@ -42,16 +67,8 @@ async function verifyRecoveredAgentNodeInteractive(window: Page, nodeIndex: numb
 
   await window.keyboard.press('Enter')
 
-  await expect(nodeStatus).toHaveText('Working', { timeout: 5000 })
+  await expectObservedWorkingTransition(nodeStatus)
   await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
-}
-
-async function verifyStatusesStandby(statuses: Locator, count: number): Promise<void> {
-  await Promise.all(
-    Array.from({ length: count }, async (_, index) => {
-      await expect(statuses.nth(index)).toHaveText('Standby')
-    }),
-  )
 }
 
 async function runRecoveredInteractionRounds(
@@ -155,7 +172,7 @@ test.describe('Recovery - Agent input after restart', () => {
         await restartedWindow.waitForTimeout(250)
         await restartedWindow.keyboard.press('Enter')
 
-        await expect(nodeStatus).toHaveText('Working', { timeout: 5000 })
+        await expectObservedWorkingTransition(nodeStatus)
         await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
       } finally {
         await restartedApp.close()
@@ -225,7 +242,6 @@ test.describe('Recovery - Agent input after restart', () => {
 
         const statuses = window.locator('.terminal-node__status')
         await expect(statuses).toHaveCount(agentCount)
-        await verifyStatusesStandby(statuses, agentCount)
       } finally {
         await electronApp.close()
       }

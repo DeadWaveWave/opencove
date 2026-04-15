@@ -1,10 +1,35 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   createTestUserDataDir,
   launchApp,
   removePathWithRetry,
 } from './workspace-canvas.helpers'
+
+async function expectObservedWorkingTransition(
+  status: Locator,
+  timeoutMs = 5_000,
+  intervalMs = 75,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs
+  const samples: string[] = []
+
+  while (Date.now() < deadline) {
+    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
+    const text = ((await status.textContent()) ?? '').trim()
+    samples.push(text)
+    if (text === 'Working') {
+      return
+    }
+    // eslint-disable-next-line no-await-in-loop -- bounded UI polling
+    await status.page().waitForTimeout(intervalMs)
+  }
+
+  expect(
+    samples.some(sample => sample === 'Working'),
+    `Expected to observe a transient Working state, saw: ${JSON.stringify(samples)}`,
+  ).toBe(true)
+}
 
 test.describe('Recovery - Agent focus after restart', () => {
   test('keeps restored agent terminal focused long enough to type after restart', async () => {
@@ -84,7 +109,7 @@ test.describe('Recovery - Agent focus after restart', () => {
 
         await restartedWindow.keyboard.press('Enter')
 
-        await expect(nodeStatus).toHaveText('Working', { timeout: 5000 })
+        await expectObservedWorkingTransition(nodeStatus)
         await expect(nodeStatus).toHaveText('Standby', { timeout: 15_000 })
       } finally {
         await restartedApp.close()
