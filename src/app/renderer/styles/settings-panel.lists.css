@@ -93,3 +93,19 @@
   width: 14px;
   height: 14px;
 }
+
+.settings-quick-menu__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.settings-quick-menu__toggle-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--cove-text-faint);
+}
+
+.settings-quick-menu__toggle[data-active='true'] .settings-quick-menu__toggle-icon {
+  color: var(--cove-text);
+}

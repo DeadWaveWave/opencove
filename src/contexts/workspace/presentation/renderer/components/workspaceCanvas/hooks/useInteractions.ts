@@ -9,6 +9,7 @@ import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
 import { useWorkspaceCanvasTerminalCreation } from './useInteractions.terminalCreation'
 import { handleSelectionRectNodeToggle } from './useInteractions.selectionRectToggle'
 import { useWorkspaceCanvasPasteHandlers } from './useInteractions.pasteHandlers'
+import { useWorkspaceCanvasQuickMenuActions } from './useInteractions.quickMenuActions'
 import {
   isCanvasDoubleClickCreateTarget,
   isPanePointerDragStartTarget,
@@ -369,7 +370,6 @@ export function useWorkspaceCanvasInteractions({
     },
     [cancelSpaceRename, clearNodeSelection, setEmptySelectionPrompt],
   )
-
   const createTerminalNode = useWorkspaceCanvasTerminalCreation({
     contextMenu,
     setContextMenu,
@@ -382,7 +382,6 @@ export function useWorkspaceCanvasInteractions({
     setNodes,
     onSpacesChange,
   })
-
   const createNoteNodeFromContextMenu = useCallback(() => {
     createNoteNodeFromPaneContextMenu({
       contextMenu,
@@ -404,7 +403,6 @@ export function useWorkspaceCanvasInteractions({
     spacesRef,
     standardWindowSizeBucket,
   ])
-
   const createWebsiteNodeFromContextMenu = useCallback(() => {
     if (!websiteWindowsEnabled) {
       return
@@ -432,7 +430,21 @@ export function useWorkspaceCanvasInteractions({
     standardWindowSizeBucket,
     websiteWindowsEnabled,
   ])
-
+  const { runQuickCommand, insertQuickPhrase } = useWorkspaceCanvasQuickMenuActions({
+    contextMenu,
+    setContextMenu,
+    websiteWindowsEnabled,
+    standardWindowSizeBucket,
+    createWebsiteNode,
+    createNoteNode,
+    spacesRef,
+    nodesRef,
+    setNodes,
+    onSpacesChange,
+    defaultTerminalProfileId,
+    workspacePath,
+    createNodeForSession,
+  })
   const pasteHandlers = useWorkspaceCanvasPasteHandlers({
     canvasRef,
     reactFlow,
@@ -475,6 +487,8 @@ export function useWorkspaceCanvasInteractions({
     createTerminalNode,
     createNoteNodeFromContextMenu,
     createWebsiteNodeFromContextMenu,
+    runQuickCommand,
+    insertQuickPhrase,
     handleCanvasPaste: pasteHandlers.handleCanvasPaste,
     handleCanvasDragOver: pasteHandlers.handleCanvasDragOver,
     handleCanvasDrop: pasteHandlers.handleCanvasDrop,

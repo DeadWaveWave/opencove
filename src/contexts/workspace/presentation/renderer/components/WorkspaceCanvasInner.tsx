@@ -1,5 +1,6 @@
 import React from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
@@ -66,7 +67,7 @@ export function WorkspaceCanvasInner({
       onRequestPersistFlush,
       closeNode: nodeStore.closeNode,
     })
-  const spacesUi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
+  const spacesApi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     activeSpaceId,
     onActiveSpaceChange,
@@ -103,7 +104,7 @@ export function WorkspaceCanvasInner({
       setSnapGuides: canvasState.setSnapGuides,
       onRequestPersistFlush,
       setContextMenu: canvasState.setContextMenu,
-      cancelSpaceRename: spacesUi.cancelSpaceRename,
+      cancelSpaceRename: spacesApi.cancelSpaceRename,
       setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     })
   const {
@@ -133,12 +134,7 @@ export function WorkspaceCanvasInner({
     nodeDragPointerAnchorRef: nodeDragSession.nodeDragPointerAnchorRef,
     nodeSpaceFramePreviewRef: nodeDragSession.nodeSpaceFramePreviewRef,
   })
-  const {
-    buildAgentNodeTitle,
-    launchAgentInNode,
-    openAgentLauncher,
-    openAgentLauncherForProvider,
-  } = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
+  const agentSupport = workspaceCanvasHooks.useWorkspaceCanvasAgentSupport({
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
@@ -181,8 +177,8 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
     createNodeForSession: nodeStore.createNodeForSession,
-    buildAgentNodeTitle,
-    launchAgentInNode,
+    buildAgentNodeTitle: agentSupport.buildAgentNodeTitle,
+    launchAgentInNode: agentSupport.launchAgentInNode,
     agentSettings,
     workspacePath,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
@@ -190,12 +186,7 @@ export function WorkspaceCanvasInner({
     closeNode: nodeStore.closeNode,
     actionRefs,
   })
-  const {
-    resolvedCanvasInputMode,
-    isTrackpadCanvasMode,
-    useManualCanvasWheelGestures,
-    handleCanvasWheelCapture,
-  } = workspaceCanvasHooks.useWorkspaceCanvasInputMode({
+  const inputMode = workspaceCanvasHooks.useWorkspaceCanvasInputMode({
     canvasInputModeSetting: agentSettings.canvasInputMode,
     canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior,
     canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier,
@@ -212,7 +203,7 @@ export function WorkspaceCanvasInner({
     workspaceId,
     persistedMinimapVisible,
     canvasState,
-    cancelSpaceRename: spacesUi.cancelSpaceRename,
+    cancelSpaceRename: spacesApi.cancelSpaceRename,
     reactFlow,
     viewport,
     agentSettings,
@@ -248,12 +239,14 @@ export function WorkspaceCanvasInner({
     createTerminalNode,
     createNoteNodeFromContextMenu,
     createWebsiteNodeFromContextMenu,
+    runQuickCommand,
+    insertQuickPhrase,
     handleCanvasPaste,
     handleCanvasDragOver,
     handleCanvasDrop,
   } = workspaceCanvasHooks.useWorkspaceCanvasInteractions({
     canvasRef: canvasState.canvasRef,
-    isTrackpadCanvasMode,
+    isTrackpadCanvasMode: inputMode.isTrackpadCanvasMode,
     focusNodeOnClick: agentSettings.focusNodeOnClick,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     websiteWindowsEnabled: agentSettings.websiteWindowPolicy.enabled,
@@ -267,7 +260,7 @@ export function WorkspaceCanvasInner({
     setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
     setContextMenu: canvasState.setContextMenu,
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
-    cancelSpaceRename: spacesUi.cancelSpaceRename,
+    cancelSpaceRename: spacesApi.cancelSpaceRename,
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     contextMenu: canvasState.contextMenu,
@@ -292,7 +285,7 @@ export function WorkspaceCanvasInner({
     canvasRef: canvasState.canvasRef,
     setContextMenu: canvasState.setContextMenu,
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
-    cancelSpaceRename: spacesUi.cancelSpaceRename,
+    cancelSpaceRename: spacesApi.cancelSpaceRename,
     reactFlow,
     spacesRef: canvasState.spacesRef,
     nodesRef: nodeStore.nodesRef,
@@ -300,8 +293,8 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     createNodeForSession: nodeStore.createNodeForSession,
     createNoteNode: nodeStore.createNoteNode,
-    createSpaceFromSelectedNodes: spacesUi.createSpaceFromSelectedNodes,
-    activateSpace: spacesUi.activateSpace,
+    createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,
+    activateSpace: spacesApi.activateSpace,
   })
   const {
     canConvertSelectedNoteToTask,
@@ -371,7 +364,7 @@ export function WorkspaceCanvasInner({
     contextMenu: canvasState.contextMenu,
     setContextMenu: canvasState.setContextMenu,
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
-    cancelSpaceRename: spacesUi.cancelSpaceRename,
+    cancelSpaceRename: spacesApi.cancelSpaceRename,
     workspacePath,
     spacesRef: canvasState.spacesRef,
     handlePaneClick,
@@ -397,14 +390,14 @@ export function WorkspaceCanvasInner({
   return (
     <WorkspaceCanvasView
       canvasRef={canvasState.canvasRef}
-      resolvedCanvasInputMode={resolvedCanvasInputMode}
+      resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}
       {...spaceUi}
       {...spaceExplorer}
       handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}
       handleCanvasPointerMoveCapture={handleCanvasPointerMoveCapture}
       handleCanvasPointerUpCapture={handleCanvasPointerUpCapture}
       handleCanvasDoubleClickCapture={handleCanvasDoubleClickCapture}
-      handleCanvasWheelCapture={handleCanvasWheelCapture}
+      handleCanvasWheelCapture={inputMode.handleCanvasWheelCapture}
       handleCanvasPaste={handleCanvasPaste}
       handleCanvasDragOver={handleCanvasDragOver}
       handleCanvasDrop={handleCanvasDrop}
@@ -420,31 +413,31 @@ export function WorkspaceCanvasInner({
       onSelectionDragStop={handleSelectionDragStop}
       onMoveEnd={handleViewportMoveEnd}
       viewport={viewport}
-      isTrackpadCanvasMode={isTrackpadCanvasMode}
-      useManualCanvasWheelGestures={useManualCanvasWheelGestures}
+      isTrackpadCanvasMode={inputMode.isTrackpadCanvasMode}
+      useManualCanvasWheelGestures={inputMode.useManualCanvasWheelGestures}
       isShiftPressed={canvasState.isShiftPressed}
       selectionDraft={canvasState.selectionDraftUi}
       snapGuides={canvasState.snapGuides}
-      spaceVisuals={spacesUi.spaceVisuals}
+      spaceVisuals={spacesApi.spaceVisuals}
       spaceFramePreview={spaceFramePreview ?? nodeDragSession.nodeSpaceFramePreview}
       selectedSpaceIds={canvasState.selectedSpaceIds}
       handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
-      editingSpaceId={spacesUi.editingSpaceId}
-      spaceRenameInputRef={spacesUi.spaceRenameInputRef}
-      spaceRenameDraft={spacesUi.spaceRenameDraft}
-      setSpaceRenameDraft={spacesUi.setSpaceRenameDraft}
-      commitSpaceRename={spacesUi.commitSpaceRename}
-      cancelSpaceRename={spacesUi.cancelSpaceRename}
-      startSpaceRename={spacesUi.startSpaceRename}
-      setSpaceLabelColor={spacesUi.setSpaceLabelColor}
+      editingSpaceId={spacesApi.editingSpaceId}
+      spaceRenameInputRef={spacesApi.spaceRenameInputRef}
+      spaceRenameDraft={spacesApi.spaceRenameDraft}
+      setSpaceRenameDraft={spacesApi.setSpaceRenameDraft}
+      commitSpaceRename={spacesApi.commitSpaceRename}
+      cancelSpaceRename={spacesApi.cancelSpaceRename}
+      startSpaceRename={spacesApi.startSpaceRename}
+      setSpaceLabelColor={spacesApi.setSpaceLabelColor}
       selectedNodeCount={canvasState.selectedNodeIds.length}
       isMinimapVisible={canvasState.isMinimapVisible}
       minimapNodeColor={minimapNodeColor}
       setIsMinimapVisible={canvasState.setIsMinimapVisible}
       onMinimapVisibilityChange={onMinimapVisibilityChange}
       spaces={spaces}
-      activateSpace={spacesUi.activateSpace}
-      activateAllSpaces={spacesUi.activateAllSpaces}
+      activateSpace={spacesApi.activateSpace}
+      activateAllSpaces={spacesApi.activateAllSpaces}
       contextMenu={canvasState.contextMenu}
       magneticSnappingEnabled={canvasState.magneticSnappingEnabled}
       onToggleMagneticSnapping={() => canvasState.setMagneticSnappingEnabled(enabled => !enabled)}
@@ -455,10 +448,17 @@ export function WorkspaceCanvasInner({
       arrangeCanvas={arrangeCanvas}
       arrangeInSpace={arrangeInSpace}
       openTaskCreator={openTaskCreator}
-      openAgentLauncher={openAgentLauncher}
-      openAgentLauncherForProvider={openAgentLauncherForProvider}
-      createSpaceFromSelectedNodes={spacesUi.createSpaceFromSelectedNodes}
-      createEmptySpaceAtPoint={spacesUi.createEmptySpaceAtPoint}
+      openAgentLauncher={agentSupport.openAgentLauncher}
+      openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
+      runQuickCommand={runQuickCommand}
+      insertQuickPhrase={insertQuickPhrase}
+      openQuickMenuSettings={() => {
+        const store = useAppStore.getState()
+        store.setSettingsOpenPageId('quick-menu')
+        store.setIsSettingsOpen(true)
+      }}
+      createSpaceFromSelectedNodes={spacesApi.createSpaceFromSelectedNodes}
+      createEmptySpaceAtPoint={spacesApi.createEmptySpaceAtPoint}
       clearNodeSelection={clearNodeSelection}
       canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}

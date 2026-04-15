@@ -220,6 +220,7 @@ export function registerRemoteAgentIpcHandlers(options: {
           mode,
           model,
           resumeSessionId,
+          env: payload?.env ?? null,
           agentFullAccess: payload?.agentFullAccess ?? null,
         },
       })

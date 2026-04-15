@@ -44,6 +44,7 @@ export default function App(): React.JSX.Element {
     isRemovingProject,
     agentSettings,
     isSettingsOpen,
+    settingsOpenPageId,
     focusRequest,
     setWorkspaces,
     setActiveWorkspaceId,
@@ -51,6 +52,7 @@ export default function App(): React.JSX.Element {
     setProjectDeleteConfirmation,
     setAgentSettings,
     setIsSettingsOpen,
+    setSettingsOpenPageId,
   } = useAppStore()
 
   const { isPersistReady } = useHydrateAppState({
@@ -171,6 +173,7 @@ export default function App(): React.JSX.Element {
       closeWorkspaceSearch()
       closeControlCenter()
       closeSpaceArchives()
+      setSettingsOpenPageId(null)
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
@@ -311,8 +314,9 @@ export default function App(): React.JSX.Element {
   const handleOpenSettings = useCallback((): void => {
     setIsFocusNodeTargetZoomPreviewing(false)
     closeControlCenter()
+    setSettingsOpenPageId(null)
     setIsSettingsOpen(true)
-  }, [closeControlCenter, setIsSettingsOpen])
+  }, [closeControlCenter, setIsSettingsOpen, setSettingsOpenPageId])
 
   return (
     <>
@@ -451,6 +455,7 @@ export default function App(): React.JSX.Element {
 
       <AppShellModals
         isSettingsOpen={isSettingsOpen}
+        openSettingsPageId={settingsOpenPageId}
         settings={agentSettings}
         updateState={updateState}
         modelCatalogByProvider={providerModelCatalog}
@@ -465,6 +470,7 @@ export default function App(): React.JSX.Element {
         onCloseSettings={() => {
           flushPersistNow()
           setIsFocusNodeTargetZoomPreviewing(false)
+          setSettingsOpenPageId(null)
           setIsSettingsOpen(false)
         }}
         whatsNew={whatsNew}

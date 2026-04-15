@@ -79,30 +79,70 @@ async function readCanvasMetrics(window: Page): Promise<{
 }
 
 async function focusWorkspaceCanvas(window: Page): Promise<void> {
-  await window.evaluate(() => {
-    const { activeElement } = document
-    if (activeElement instanceof HTMLElement) {
-      activeElement.blur()
+  const wasAlreadyFocused = await window.evaluate(() => {
+    const canvas = document.querySelector('.workspace-canvas')
+    if (!(canvas instanceof HTMLElement)) {
+      return false
     }
 
-    const canvas = document.querySelector('.workspace-canvas')
-    if (canvas instanceof HTMLElement) {
-      canvas.focus({ preventScroll: true })
+    const activeElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (!activeElement || !canvas.contains(activeElement)) {
+      return false
     }
+
+    if (activeElement.closest('[data-cove-focus-scope="terminal"]')) {
+      return false
+    }
+
+    const editableDomSelector = 'input, textarea, select, [contenteditable="true"]'
+    const isEditableTarget =
+      activeElement.isContentEditable || Boolean(activeElement.closest(editableDomSelector))
+
+    return !isEditableTarget
   })
+
+  if (!wasAlreadyFocused) {
+    await window.evaluate(() => {
+      const activeElement =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null
+      activeElement?.blur()
+
+      const canvas = document.querySelector('.workspace-canvas')
+      if (canvas instanceof HTMLElement) {
+        canvas.focus({ preventScroll: true })
+      }
+    })
+  }
 
   await expect
     .poll(async () => {
       return await window.evaluate(() => {
-        return (
-          document.activeElement instanceof HTMLElement &&
-          document.activeElement.classList.contains('workspace-canvas')
-        )
+        const canvas = document.querySelector('.workspace-canvas')
+        if (!(canvas instanceof HTMLElement)) {
+          return false
+        }
+
+        const activeElement =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null
+        if (!activeElement || !canvas.contains(activeElement)) {
+          return false
+        }
+
+        if (activeElement.closest('[data-cove-focus-scope="terminal"]')) {
+          return false
+        }
+
+        const editableDomSelector = 'input, textarea, select, [contenteditable="true"]'
+        const isEditableTarget =
+          activeElement.isContentEditable || Boolean(activeElement.closest(editableDomSelector))
+
+        return !isEditableTarget
       })
     })
     .toBe(true)
 
-  await window.waitForTimeout(50)
+  await window.waitForTimeout(25)
 }
 
 test.describe('Workspace Canvas - Shortcuts', () => {

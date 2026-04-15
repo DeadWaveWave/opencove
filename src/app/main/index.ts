@@ -1,6 +1,5 @@
 import { app, shell, BrowserWindow, nativeImage } from 'electron'
-import { isAbsolute, join, relative, resolve, sep } from 'path'
-import { fileURLToPath } from 'url'
+import { join, resolve } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
 import { registerIpcHandlers } from './ipc/registerIpcHandlers'
@@ -15,10 +14,19 @@ import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
 import { createHomeWorkerEndpointResolver } from './worker/homeWorkerEndpointResolver'
 import { hasOwnedLocalWorkerProcess, stopOwnedLocalWorker } from './worker/localWorkerManager'
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
+import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
+import {
+  isAllowedNavigationTarget,
+  resolveDevRendererOrigin,
+  shouldOpenUrlExternally,
+} from './navigationGuards'
 
 let ipcDisposable: ReturnType<typeof registerIpcHandlers> | null = null
 let controlSurfaceDisposable: ReturnType<typeof registerControlSurfaceServer> | null = null
 let isCleaningUpOwnedLocalWorkerOnQuit = false
+let workerEndpointResolverForContextMenu: ReturnType<
+  typeof createHomeWorkerEndpointResolver
+> | null = null
 const APP_USER_DATA_DIRECTORY_NAME = 'opencove'
 const OPENCOVE_APP_USER_MODEL_ID = 'dev.deadwave.opencove'
 
@@ -88,95 +96,10 @@ if (process.env.NODE_ENV === 'test' && process.env['OPENCOVE_TEST_USER_DATA_DIR'
   }
 }
 
-const EXTERNAL_PROTOCOL_ALLOWLIST = new Set(['http:', 'https:', 'mailto:'])
 const E2E_OFFSCREEN_COORDINATE = -50_000
 type E2EWindowMode = 'normal' | 'inactive' | 'hidden' | 'offscreen'
 const mainWindowRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-window')
 const mainAppRuntimeLogger = createMainRuntimeDiagnosticsLogger('main-app')
-
-function parseUrl(rawUrl: string): URL | null {
-  try {
-    return new URL(rawUrl.trim())
-  } catch {
-    return null
-  }
-}
-
-function shouldOpenUrlExternally(rawUrl: string): boolean {
-  const parsed = parseUrl(rawUrl)
-  if (!parsed) {
-    return false
-  }
-
-  return EXTERNAL_PROTOCOL_ALLOWLIST.has(parsed.protocol)
-}
-
-function resolveDevRendererOrigin(): string | null {
-  const raw = process.env['ELECTRON_RENDERER_URL']
-  if (!raw) {
-    return null
-  }
-
-  const parsed = parseUrl(raw)
-  return parsed ? parsed.origin : null
-}
-
-function isPathWithinRoot(rootPath: string, targetPath: string): boolean {
-  const relativePath = relative(rootPath, targetPath)
-
-  if (relativePath === '') {
-    return true
-  }
-
-  if (relativePath === '..') {
-    return false
-  }
-
-  if (relativePath.startsWith(`..${sep}`)) {
-    return false
-  }
-
-  if (isAbsolute(relativePath)) {
-    return false
-  }
-
-  return true
-}
-
-function isAllowedFileNavigation(parsed: URL, rendererRootDir: string): boolean {
-  let filePath: string
-
-  try {
-    filePath = fileURLToPath(parsed)
-  } catch {
-    return false
-  }
-
-  const normalizedRoot = resolve(rendererRootDir)
-  const normalizedTarget = resolve(filePath)
-  return isPathWithinRoot(normalizedRoot, normalizedTarget)
-}
-
-function isAllowedNavigationTarget(
-  rawUrl: string,
-  devOrigin: string | null,
-  rendererRootDir: string,
-): boolean {
-  const parsed = parseUrl(rawUrl)
-  if (!parsed) {
-    return false
-  }
-
-  if (devOrigin && parsed.origin === devOrigin) {
-    return true
-  }
-
-  if (!devOrigin && parsed.protocol === 'file:') {
-    return isAllowedFileNavigation(parsed, rendererRootDir)
-  }
-
-  return false
-}
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -270,6 +193,15 @@ function createWindow(): void {
       sandbox: !disableRendererSandboxForTests,
       ...(keepRendererActiveInBackground ? { backgroundThrottling: false } : {}),
     },
+  })
+
+  const quickPhrasesContextMenuDisposable = registerQuickPhrasesContextMenu({
+    window: mainWindow,
+    userDataPath: app.getPath('userData'),
+    workerEndpointResolver: workerEndpointResolverForContextMenu,
+  })
+  mainWindow.on('closed', () => {
+    quickPhrasesContextMenuDisposable.dispose()
   })
 
   const showWindow = (): void => {
@@ -438,6 +370,7 @@ app.whenReady().then(async () => {
           effectiveMode: homeWorker.effectiveMode,
         })
       : null
+  workerEndpointResolverForContextMenu = workerEndpointResolver
 
   ipcDisposable = registerIpcHandlers({
     approvedWorkspaces,

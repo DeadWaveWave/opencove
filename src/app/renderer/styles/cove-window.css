@@ -44,6 +44,14 @@
   gap: 6px;
 }
 
+.cove-window__hint {
+  display: block;
+  margin-top: -2px;
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: var(--cove-text-faint);
+  line-height: 1.4;
+}
+
 .cove-window__label-row {
   display: flex;
   align-items: center;

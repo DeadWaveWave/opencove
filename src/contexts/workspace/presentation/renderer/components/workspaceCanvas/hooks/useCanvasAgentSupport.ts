@@ -54,6 +54,7 @@ export function useWorkspaceCanvasAgentSupport({
       isAgentLaunchTokenCurrent,
       agentFullAccess: agentSettings.agentFullAccess,
       defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
+      agentEnvByProvider: agentSettings.agentEnvByProvider,
     })
 
   const { openAgentLauncher, openAgentLauncherForProvider } = useWorkspaceCanvasAgentLauncher({

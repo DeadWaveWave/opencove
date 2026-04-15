@@ -426,21 +426,6 @@ export const zhCN = {
     templateContent: '模板内容',
     templateContentPlaceholder: '输入要插入的提示词内容...',
   },
-  worktree: zhCNWorktree,
-  worktreeGuard: {
-    activeWindowsBound: 'Space {{name}} 仍有活动窗口绑定在当前目录上。',
-    closeFirstOrMark: '请先关闭这些窗口，或继续并把这些窗口标记为目录不匹配。',
-    closeFirstOnly: '请先关闭这些窗口。此操作会修改该 Space 的 worktree 绑定和元数据。',
-    markMismatchAndContinue: '标记不匹配并继续',
-    closeAllAndContinue: '全部关闭并继续',
-    closeFirstRequired: '这个操作要求先关闭所有窗口。',
-    closeFailed: '部分窗口无法关闭。请手动关闭后再试。',
-  },
-  spaceDropGuard: {
-    title: '移动到“{{name}}”？',
-    description: '窗口仍在原目录运行，并会标记 {{badge}}。',
-    dontShowAgain: '不再提示',
-    move: '移动',
-  },
+  ...zhCNWorktree,
   messages: zhCNMessages,
 } as const satisfies TranslationDictionary

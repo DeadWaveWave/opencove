@@ -18,8 +18,13 @@ import {
   X,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  AGENT_PROVIDER_LABEL,
+  type AgentProvider,
+  type QuickCommand,
+} from '@contexts/settings/domain/agentSettings'
 import { LABEL_COLORS, type NodeLabelColorOverride } from '@shared/types/labelColor'
+import { WorkspaceContextQuickMenuItems } from './WorkspaceContextMenuQuickMenuParts'
 
 function renderMark(checked: boolean): React.JSX.Element {
   return checked ? (
@@ -42,6 +47,15 @@ export function WorkspaceContextPaneMenuContent({
   agentProviderToggleRef,
   isLoadingInstalledProviders,
   isAgentProviderSubmenuOpen,
+  pinnedQuickCommands,
+  runQuickCommand,
+  quickCommandsButtonRef,
+  openQuickCommandsSubmenu,
+  isQuickCommandsSubmenuOpen,
+  quickPhrasesButtonRef,
+  openQuickPhrasesSubmenu,
+  isQuickPhrasesSubmenuOpen,
+  openQuickMenuSettings,
   canArrangeCurrentScope,
   commitArrangeAndClose,
   arrangeByButtonRef,
@@ -62,6 +76,15 @@ export function WorkspaceContextPaneMenuContent({
   agentProviderToggleRef: React.RefObject<HTMLButtonElement | null>
   isLoadingInstalledProviders: boolean
   isAgentProviderSubmenuOpen: boolean
+  pinnedQuickCommands: QuickCommand[]
+  runQuickCommand: (command: QuickCommand) => Promise<void>
+  quickCommandsButtonRef: React.RefObject<HTMLButtonElement | null>
+  openQuickCommandsSubmenu: () => void
+  isQuickCommandsSubmenuOpen: boolean
+  quickPhrasesButtonRef: React.RefObject<HTMLButtonElement | null>
+  openQuickPhrasesSubmenu: () => void
+  isQuickPhrasesSubmenuOpen: boolean
+  openQuickMenuSettings: () => void
   canArrangeCurrentScope: boolean
   commitArrangeAndClose: () => void
   arrangeByButtonRef: React.RefObject<HTMLButtonElement | null>
@@ -158,7 +181,6 @@ export function WorkspaceContextPaneMenuContent({
           )}
         </button>
       </div>
-
       {canCreateEmptySpace ? (
         <button
           type="button"
@@ -171,8 +193,17 @@ export function WorkspaceContextPaneMenuContent({
           </span>
         </button>
       ) : null}
-
-      <div className="workspace-context-menu__separator" />
+      <WorkspaceContextQuickMenuItems
+        pinnedQuickCommands={pinnedQuickCommands}
+        runQuickCommand={runQuickCommand}
+        quickCommandsButtonRef={quickCommandsButtonRef}
+        openQuickCommandsSubmenu={openQuickCommandsSubmenu}
+        isQuickCommandsSubmenuOpen={isQuickCommandsSubmenuOpen}
+        quickPhrasesButtonRef={quickPhrasesButtonRef}
+        openQuickPhrasesSubmenu={openQuickPhrasesSubmenu}
+        isQuickPhrasesSubmenuOpen={isQuickPhrasesSubmenuOpen}
+        openQuickMenuSettings={openQuickMenuSettings}
+      />
 
       <button
         type="button"

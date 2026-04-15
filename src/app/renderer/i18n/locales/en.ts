@@ -428,22 +428,6 @@ export const en = {
     templateContent: 'Template content',
     templateContentPlaceholder: 'Write the prompt content to insert...',
   },
-  worktree: enWorktree,
-  worktreeGuard: {
-    activeWindowsBound: 'Space {{name}} still has active windows bound to its current directory.',
-    closeFirstOrMark: 'Close them first, or continue by marking those windows as DIR MISMATCH.',
-    closeFirstOnly:
-      'Close those windows first. This action changes worktree binding and metadata for the space.',
-    markMismatchAndContinue: 'Mark Mismatch & Continue',
-    closeAllAndContinue: 'Close All & Continue',
-    closeFirstRequired: 'This action requires closing all windows first.',
-    closeFailed: 'Some windows could not be closed. Close them manually and try again.',
-  },
-  spaceDropGuard: {
-    title: 'Move to “{{name}}”?',
-    description: 'Windows keep their current directory and will be labeled {{badge}}.',
-    dontShowAgain: "Don't warn again",
-    move: 'Move',
-  },
+  ...enWorktree,
   messages: enMessages,
 } as const

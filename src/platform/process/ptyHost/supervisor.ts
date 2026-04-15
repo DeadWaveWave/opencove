@@ -41,7 +41,6 @@ function resolveBackoffDelay(attempt: number): number {
   if (attempt <= 0) {
     return RESTART_BACKOFF_BASE_DELAY_MS
   }
-
   const delay = RESTART_BACKOFF_BASE_DELAY_MS * 2 ** attempt
   return Math.min(delay, RESTART_BACKOFF_MAX_DELAY_MS)
 }
@@ -54,7 +53,6 @@ function sleep(delayMs: number): Promise<void> {
   if (delayMs <= 0) {
     return Promise.resolve()
   }
-
   return new Promise(resolve => {
     setTimeout(resolve, delayMs)
   })
@@ -358,6 +356,10 @@ export class PtyHostSupervisor {
 
   public async spawn(options: PtyHostSpawnOptions): Promise<{ sessionId: string }> {
     const env = options.env ? { ...options.env } : { ...process.env }
+    // The app uses ELECTRON_RUN_AS_NODE to run bundled CLI/worker entrypoints via Electron.
+    // Leaking it into interactive shells breaks launching Electron-based tooling (including
+    // OpenCove dev via electron-vite).
+    delete env.ELECTRON_RUN_AS_NODE
     let attemptedChild: PtyHostProcess | null = null
     const spawnOnce = async (): Promise<{ sessionId: string }> => {
       await this.ensureReady()

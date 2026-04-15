@@ -145,13 +145,11 @@ async function inferInitialStandardWindowSizeBucket(): Promise<StandardWindowSiz
 export async function hydrateRuntimeNode({
   node,
   workspacePath,
-  agentFullAccess,
-  defaultTerminalProfileId,
+  agentSettings,
 }: {
   node: Node<TerminalNodeData>
   workspacePath: string
-  agentFullAccess: boolean
-  defaultTerminalProfileId?: string | null
+  agentSettings: AgentSettings
 }): Promise<Node<TerminalNodeData>> {
   const existingSessionId =
     typeof node.data.sessionId === 'string' ? node.data.sessionId.trim() : ''
@@ -168,8 +166,7 @@ export async function hydrateRuntimeNode({
     return hydrateAgentNode({
       node,
       workspacePath,
-      agentFullAccess,
-      defaultTerminalProfileId,
+      agentSettings,
     })
   }
 
@@ -180,7 +177,7 @@ export async function hydrateRuntimeNode({
   try {
     const spawned = await window.opencoveApi.pty.spawn({
       cwd: resolveTerminalHydrationCwd(node, workspacePath),
-      profileId: node.data.profileId ?? defaultTerminalProfileId ?? undefined,
+      profileId: node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? undefined,
       cols: 80,
       rows: 24,
     })
@@ -362,12 +359,11 @@ export function useHydrateAppState({
 
       const hydrationPromise = Promise.allSettled(
         runtimeNodes.map(async node => {
-          const { agentFullAccess, defaultTerminalProfileId } = useAppStore.getState().agentSettings
+          const { agentSettings } = useAppStore.getState()
           const hydratedNode = await hydrateRuntimeNode({
             node,
             workspacePath: persistedWorkspace.path,
-            agentFullAccess,
-            defaultTerminalProfileId,
+            agentSettings,
           })
 
           applyHydratedNode(workspaceId, hydratedNode)
