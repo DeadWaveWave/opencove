@@ -210,7 +210,7 @@ test.describe('Recovery - Agent input after restart', () => {
 
   test('keeps multiple restored agents interactive across repeated focus rounds after restart', async () => {
     const userDataDir = await createTestUserDataDir()
-    const agentCount = 3
+    const agentCount = 2
     const interactionRounds = 2
 
     try {

@@ -7,6 +7,8 @@ import {
 import { runRawClickRedrawAfterClickScenario } from './raw.mjs'
 import { sleep } from './sleep.mjs'
 
+const IDLE_SCENARIO_LIFETIME_MS = 180_000
+
 export async function runCodexStandbyNoNewlineScenario(cwd) {
   const sessionFilePath = await createCodexSessionFile(cwd)
 
@@ -35,7 +37,7 @@ export async function runCodexStandbyNoNewlineScenario(cwd) {
     { newline: false },
   )
 
-  await sleep(20_000)
+  await sleep(IDLE_SCENARIO_LIFETIME_MS)
 }
 
 export async function runCodexStandbyOnlyScenario(cwd) {
@@ -55,7 +57,7 @@ export async function runCodexStandbyOnlyScenario(cwd) {
     { newline: false },
   )
 
-  await sleep(20_000)
+  await sleep(IDLE_SCENARIO_LIFETIME_MS)
 }
 
 export async function runCodexCommentaryThenFinalScenario(cwd) {
@@ -108,7 +110,7 @@ export async function runCodexCommentaryThenFinalScenario(cwd) {
     { newline: false },
   )
 
-  await sleep(20_000)
+  await sleep(IDLE_SCENARIO_LIFETIME_MS)
 }
 
 export async function runCodexClickRedrawAfterClickScenario(cwd) {
