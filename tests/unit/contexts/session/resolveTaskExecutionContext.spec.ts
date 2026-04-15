@@ -17,7 +17,7 @@ describe('resolveTaskExecutionContext', () => {
       rootPath: '/tmp/repo/.opencove/worktrees/demo',
       rootUri: 'file:///tmp/repo/.opencove/worktrees/demo',
     })
-    expect(result.endpoint).toEqual({ id: 'local', kind: 'local' })
+    expect(result.endpoint).toEqual({ endpointId: 'local', kind: 'local' })
   })
 
   it('falls back to workspacePath when the space directory is empty', () => {

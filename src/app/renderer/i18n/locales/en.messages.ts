@@ -41,6 +41,8 @@ export const enMessages = {
     'Terminal windows cannot enter or leave a space with a different directory.',
   taskSpaceMoveBlocked: 'Tasks with active agents cannot be moved between spaces.',
   spaceRequiresNode: 'Space must include at least one task or agent.',
+  projectHasNoMounts: 'Project has no mounts yet. Add a mount first.',
+  mountListFailed: 'Failed to load mounts: {{message}}',
   canvasImageUnsupportedType: 'Unsupported image type. Use PNG, JPEG, WebP, GIF, or AVIF.',
   canvasImageTooLarge: 'Image is too large (max {{maxMb}} MB).',
   canvasImageImportFailed: 'Failed to import image: {{message}}',

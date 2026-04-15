@@ -109,6 +109,18 @@ describe('Workspace canvas node creation timestamps', () => {
     expect(Number.isFinite(Date.parse(created?.data.startedAt ?? ''))).toBe(true)
   })
 
+  it('seeds note text from initialText option', () => {
+    const api = renderHarness()
+
+    let created: Node<TerminalNodeData> | null = null
+    act(() => {
+      created = api.createNoteNode({ x: 0, y: 0 }, { initialText: 'hello world' })
+    })
+
+    expect(created?.data.kind).toBe('note')
+    expect(created?.data.note?.text).toBe('hello world')
+  })
+
   it('assigns startedAt for terminal nodes', async () => {
     const api = renderHarness()
 

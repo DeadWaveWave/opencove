@@ -98,6 +98,7 @@ import type {
   WorkerStatusResult,
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
+import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
 
 type UnsubscribeFn = () => void
 
@@ -114,6 +115,9 @@ export interface OpenCoveApi {
   debug?: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
+  }
+  controlSurface: {
+    invoke: <TValue = unknown>(request: ControlSurfaceInvokeRequest) => Promise<TValue>
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>

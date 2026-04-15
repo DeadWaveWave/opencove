@@ -45,6 +45,8 @@ const worktreeSpace: WorkspaceSpaceState = {
   id: 'space-worktree',
   name: 'Worktree',
   directoryPath: worktreePath,
+  targetMountId: null,
+  labelColor: null,
   nodeIds: [],
   rect: null,
 }

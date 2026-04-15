@@ -13,6 +13,7 @@ type SetNodes = (
 export function useWorkspaceCanvasTerminalCreation({
   contextMenu,
   setContextMenu,
+  workspaceId,
   spacesRef,
   workspacePath,
   environmentVariables,
@@ -22,9 +23,11 @@ export function useWorkspaceCanvasTerminalCreation({
   createNodeForSession,
   setNodes,
   onSpacesChange,
+  onShowMessage,
 }: {
   contextMenu: ContextMenuState | null
   setContextMenu: (next: ContextMenuState | null) => void
+  workspaceId: string
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
   environmentVariables?: Record<string, string>
@@ -34,6 +37,7 @@ export function useWorkspaceCanvasTerminalCreation({
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
 }): () => Promise<void> {
   return useCallback(async () => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
@@ -46,6 +50,7 @@ export function useWorkspaceCanvasTerminalCreation({
         x: contextMenu.flowX,
         y: contextMenu.flowY,
       },
+      workspaceId,
       defaultTerminalProfileId,
       standardWindowSizeBucket,
       workspacePath,
@@ -55,6 +60,7 @@ export function useWorkspaceCanvasTerminalCreation({
       setNodes,
       onSpacesChange,
       createNodeForSession,
+      onShowMessage,
     })
   }, [
     contextMenu,
@@ -68,5 +74,7 @@ export function useWorkspaceCanvasTerminalCreation({
     defaultTerminalProfileId,
     standardWindowSizeBucket,
     workspacePath,
+    workspaceId,
+    onShowMessage,
   ])
 }

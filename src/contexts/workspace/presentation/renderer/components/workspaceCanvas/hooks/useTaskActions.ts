@@ -36,6 +36,7 @@ interface UseTaskActionsParams {
   ) => string
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
   agentSettings: AgentSettings
+  workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
   taskTagOptions: string[]
@@ -59,6 +60,7 @@ export function useWorkspaceCanvasTaskActions({
   buildAgentNodeTitle,
   launchAgentInNode,
   agentSettings,
+  workspaceId,
   workspacePath,
   environmentVariables,
   taskTagOptions,
@@ -87,6 +89,7 @@ export function useWorkspaceCanvasTaskActions({
         buildAgentNodeTitle,
         launchAgentInNode,
         agentSettings,
+        workspaceId,
         workspacePath,
         environmentVariables,
         t,
@@ -105,6 +108,7 @@ export function useWorkspaceCanvasTaskActions({
       setNodes,
       spacesRef,
       t,
+      workspaceId,
       workspacePath,
     ],
   )
@@ -150,6 +154,7 @@ export function useWorkspaceCanvasTaskActions({
         createNodeForSession,
         buildAgentNodeTitle,
         agentSettings,
+        workspaceId,
         workspacePath,
         environmentVariables,
         t,
@@ -167,6 +172,7 @@ export function useWorkspaceCanvasTaskActions({
       setNodes,
       spacesRef,
       t,
+      workspaceId,
       workspacePath,
     ],
   )

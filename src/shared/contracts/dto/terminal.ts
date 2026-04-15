@@ -29,6 +29,15 @@ export interface SpawnTerminalInput {
   env?: Record<string, string>
 }
 
+export interface SpawnTerminalInMountInput {
+  mountId: string
+  cwdUri?: string | null
+  profileId?: string | null
+  shell?: string | null
+  cols?: number | null
+  rows?: number | null
+}
+
 export interface SpawnTerminalResult extends PseudoTerminalSession {
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind

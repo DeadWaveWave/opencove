@@ -25,9 +25,11 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
         height: window.innerHeight,
       }))
 
+      // Keep this point far enough from all edges so the menu does not need to shift.
+      // The menu can grow as new root-level items are added (e.g. quick menu entries).
       const roomyPoint = {
-        x: Math.floor(Math.max(120, Math.min(220, paneBox.width - 320))),
-        y: Math.floor(Math.max(220, Math.min(360, paneBox.height - 340))),
+        x: Math.floor(Math.max(80, Math.min(180, paneBox.width - 420))),
+        y: Math.floor(Math.max(80, Math.min(180, paneBox.height - 520))),
       }
 
       await openPaneContextMenuAtFlowPoint(window, pane, roomyPoint)

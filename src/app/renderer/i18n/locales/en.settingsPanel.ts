@@ -3,11 +3,13 @@ export const enSettingsPanel = {
   nav: {
     general: 'General',
     worker: 'Worker',
+    endpoints: 'Endpoints',
     agent: 'Agent',
     notifications: 'Notifications',
     canvas: 'Canvas',
     experimental: 'Experimental',
     shortcuts: 'Shortcuts',
+    quickMenu: 'Quick Menu',
     tasks: 'Tasks',
     models: 'Models',
     integrations: 'Integrations',
@@ -80,6 +82,57 @@ export const enSettingsPanel = {
     fullAccessLabel: 'Full Access Mode',
     fullAccessHelp: 'Disable sandbox and manual approvals for agents.',
   },
+  agentEnv: {
+    title: 'Agent Environment Variables',
+    help: 'Add or override environment variables when starting an agent.',
+    add: 'Add Variable',
+    enabled: 'Enabled',
+    keyPlaceholder: 'KEY',
+    valuePlaceholder: 'value',
+  },
+  quickMenu: {
+    title: 'Quick Commands & Phrases',
+    customize: 'Customize…',
+    edit: 'Edit',
+    invalidForm: 'Please fill out all required fields.',
+    commands: {
+      title: 'Quick Commands',
+      help: 'Add custom terminal commands or URLs to the workspace context menu. Pinned commands show directly in the root menu.',
+      add: 'Add Quick Command',
+      createTitle: 'Create Quick Command',
+      editTitle: 'Edit Quick Command',
+      editorHelp: 'Commands run in a new terminal node. URLs open in a new website node.',
+      titleLabel: 'Title',
+      titlePlaceholder: 'Name your command…',
+      kindLabel: 'Type',
+      kind: {
+        terminal: 'Terminal Command',
+        url: 'Open URL',
+      },
+      commandLabel: 'Command',
+      commandPlaceholder: 'e.g. pnpm test',
+      urlLabel: 'URL',
+      urlPlaceholder: 'https://example.com',
+      enabled: 'Enabled',
+      enabledHelp: 'Controls whether this command appears in the workspace context menu.',
+      pinned: 'Pinned',
+      pinnedHelp:
+        'Pinned commands show directly in the root context menu (above the Quick Commands submenu).',
+    },
+    phrases: {
+      title: 'Quick Phrases',
+      help: 'Insert common phrases into the currently focused input field from context menus.',
+      add: 'Add Quick Phrase',
+      createTitle: 'Create Quick Phrase',
+      editTitle: 'Edit Quick Phrase',
+      editorHelp: 'Phrases are inserted at the cursor and replace the current selection.',
+      titleLabel: 'Title',
+      titlePlaceholder: 'Name your phrase…',
+      contentLabel: 'Content',
+      contentPlaceholder: 'Type your phrase…',
+      enabled: 'Enabled',
+    },
+  },
   notifications: {
     title: 'Notifications',
     agentStandbyBanner: {
@@ -139,6 +192,12 @@ export const enSettingsPanel = {
   },
   experimental: {
     title: 'Experimental',
+    remoteWorkersTitle: 'Remote Workers & Locations',
+    remoteWorkersHelp:
+      'Opt-in support for remote workers and remote project locations. Keep this off until the workflow is stable.',
+    remoteWorkersEnabledLabel: 'Enable Remote Workers',
+    remoteWorkersEnabledHelp:
+      'Shows remote worker and remote location UI. When disabled, OpenCove keeps the local-only workflow by default.',
     workerWebUi: {
       title: 'Worker Web UI',
       help: 'Open the experimental browser UI served by your worker. Requires Home Worker: Local Worker.',
@@ -298,6 +357,8 @@ export const enSettingsPanel = {
     title: 'Worker',
     errors: {
       remoteRequired: 'Remote worker hostname, port, and token are required.',
+      remoteExperimentalDisabled:
+        'Remote workers are experimental. Enable Remote Workers in Experimental settings to continue.',
       stopLocalWorkerFirst: 'Stop the local worker before switching to Standalone.',
       enableLocalRequiresRestart: 'Enable Local Worker and restart before starting it.',
     },
@@ -354,6 +415,32 @@ export const enSettingsPanel = {
       revealToken: 'Reveal',
       hideToken: 'Hide',
       copyToken: 'Copy',
+    },
+  },
+  endpoints: {
+    title: 'Endpoints',
+    list: {
+      title: 'Registered endpoints',
+      help: 'Desktop only connects to the Home Worker. The Home Worker routes operations to endpoints.',
+      countLabel: 'Count',
+      localSubtitle: 'local',
+      localRemoveHelp: 'The local endpoint cannot be removed.',
+      lastPing: 'Last ping: pid {{pid}} · {{now}}',
+    },
+    actions: {
+      add: 'Add endpoint',
+      ping: 'Ping',
+      pinging: 'Pinging…',
+    },
+    register: {
+      title: 'Register endpoint',
+      help: 'Register a remote worker endpoint by hostname, port, and token. Token is never stored in renderer state.',
+      displayNameLabel: 'Display name (optional)',
+      hostnameLabel: 'Hostname',
+      portLabel: 'Port',
+      tokenLabel: 'Token',
+      tokenHelp: 'This token is submitted once and cleared after registration.',
+      tokenRequired: 'Token is required.',
     },
   },
   workspace: {

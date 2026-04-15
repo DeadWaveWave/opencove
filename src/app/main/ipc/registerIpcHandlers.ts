@@ -22,9 +22,10 @@ import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandle
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
-import type {
-  ControlSurfaceRemoteEndpoint,
-  ControlSurfaceRemoteEndpointResolver,
+import {
+  invokeControlSurface,
+  type ControlSurfaceRemoteEndpoint,
+  type ControlSurfaceRemoteEndpointResolver,
 } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
 import { createRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
@@ -34,6 +35,7 @@ import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandle
 import { registerCliIpcHandlers } from './registerCliIpcHandlers'
 import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers'
 import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
+import { registerControlSurfaceIpcHandlers } from './registerControlSurfaceIpcHandlers'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { registerHandledIpc } from './handle'
 import {
@@ -118,14 +120,37 @@ export function registerIpcHandlers(deps?: {
     { defaultErrorCode: 'common.unexpected' },
   )
 
+  const workspaceApprovedWorkspaces = workerEndpointResolver
+    ? {
+        ...approvedWorkspaces,
+        registerRoot: async (rootPath: string): Promise<void> => {
+          await approvedWorkspaces.registerRoot(rootPath)
+          try {
+            const endpoint = await workerEndpointResolver()
+            if (endpoint) {
+              await invokeControlSurface(endpoint, {
+                kind: 'command',
+                id: 'workspace.approveRoot',
+                payload: { path: rootPath },
+              })
+            }
+          } catch {
+            // Worker may not be ready yet — the local store persists to the
+            // shared JSON file, so the worker picks it up on next cold load.
+          }
+        },
+      }
+    : approvedWorkspaces
+
   const disposables: IpcRegistrationDisposable[] = [
     registerLocalWorkerIpcHandlers(),
     registerWorkerClientIpcHandlers(),
+    registerControlSurfaceIpcHandlers({ endpointResolver: workerEndpointResolver }),
     registerCliIpcHandlers(),
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),
     registerReleaseNotesIpcHandlers(releaseNotesService),
-    registerWorkspaceIpcHandlers(approvedWorkspaces),
+    registerWorkspaceIpcHandlers(workspaceApprovedWorkspaces),
     registerFilesystemIpcHandlers(approvedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
     registerWorktreeIpcHandlers(approvedWorkspaces),

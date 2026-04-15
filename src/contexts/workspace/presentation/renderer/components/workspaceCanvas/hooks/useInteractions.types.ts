@@ -45,6 +45,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
   contextMenu: ContextMenuState | null
+  workspaceId: string
   workspacePath: string
   environmentVariables?: Record<string, string>
   defaultTerminalProfileId: string | null
@@ -57,6 +58,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
     anchor: Point,
     options?: {
       placementStrategy?: 'default' | 'right-no-push'
+      initialText?: string
       placement?: {
         targetSpaceRect?: WorkspaceSpaceState['rect']
       }

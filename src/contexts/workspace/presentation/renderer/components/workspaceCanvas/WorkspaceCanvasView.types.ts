@@ -2,6 +2,7 @@ import type * as React from 'react'
 import type { Edge, Node, NodeTypes, OnNodesChange, Viewport } from '@xyflow/react'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import type {
   AgentNodeData,
   TerminalNodeData,
@@ -18,6 +19,7 @@ import type {
   SpaceActionMenuState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
+  SpaceTargetMountPickerState,
   SpaceWorktreeDialogState,
   TaskCreatorState,
   TaskEditorState,
@@ -133,7 +135,16 @@ export interface WorkspaceCanvasViewProps {
   openTaskCreator: () => void
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
+  runQuickCommand: (command: QuickCommand) => Promise<void>
+  insertQuickPhrase: (phrase: QuickPhrase) => void
+  openQuickMenuSettings: () => void
   createSpaceFromSelectedNodes: () => void
+  spaceTargetMountPicker: SpaceTargetMountPickerState | null
+  setSpaceTargetMountPicker: React.Dispatch<
+    React.SetStateAction<SpaceTargetMountPickerState | null>
+  >
+  confirmSpaceTargetMountPicker: () => void
+  cancelSpaceTargetMountPicker: () => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean

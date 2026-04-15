@@ -18,6 +18,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
+import { EndpointsSection } from './settingsPanel/EndpointsSection'
 import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
@@ -26,6 +27,8 @@ import { NotificationsSection } from './settingsPanel/NotificationsSection'
 import { SettingsPanelNavButton } from './settingsPanel/SettingsPanelNavButton'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
+import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
+import { AgentEnvSection } from './settingsPanel/AgentEnvSection'
 import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import {
@@ -33,12 +36,14 @@ import {
   getFolderName,
   getWorkspacePageId,
   isWorkspacePageId,
-  type SettingsPageId,
   type SettingsPanelProps,
 } from './SettingsPanel.shared'
+import { useSettingsPanelPageState } from './useSettingsPanelPageState'
 
 export function SettingsPanel({
+  initialPageId,
   settings,
+  openPageId,
   updateState,
   modelCatalogByProvider,
   workspaces,
@@ -58,8 +63,19 @@ export function SettingsPanel({
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
   >(() => createInitialInputState(AGENT_PROVIDERS))
-  const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
+  const { activePageId, setActivePageId, activeWorkspace } = useSettingsPanelPageState({
+    openPageId,
+    workspaces,
+    contentRef,
+    onFocusNodeTargetZoomPreviewChange,
+  })
+
+  useEffect(() => {
+    if (initialPageId) {
+      setActivePageId(initialPageId)
+    }
+  }, [initialPageId, setActivePageId])
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
@@ -103,6 +119,8 @@ export function SettingsPanel({
     onChange({ ...settings, websiteWindowPolicy: policy })
   const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
     onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
+  const updateExperimentalRemoteWorkersEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalRemoteWorkersEnabled: enabled })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
@@ -121,6 +139,13 @@ export function SettingsPanel({
   }
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
+  const updateQuickCommands = (quickCommands: AgentSettings['quickCommands']): void =>
+    onChange({ ...settings, quickCommands })
+  const updateQuickPhrases = (quickPhrases: AgentSettings['quickPhrases']): void =>
+    onChange({ ...settings, quickPhrases })
+  const updateAgentEnvByProvider = (
+    agentEnvByProvider: AgentSettings['agentEnvByProvider'],
+  ): void => onChange({ ...settings, agentEnvByProvider })
   const updateDisableAppShortcutsWhenTerminalFocused = (enabled: boolean): void =>
     onChange({ ...settings, disableAppShortcutsWhenTerminalFocused: enabled })
   const updateKeybindings = (keybindings: AgentSettings['keybindings']): void =>
@@ -216,34 +241,17 @@ export function SettingsPanel({
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
 
-  const activeWorkspace = useMemo(() => {
-    if (!isWorkspacePageId(activePageId)) {
-      return null
-    }
-
-    const workspaceId = activePageId.slice('workspace:'.length)
-    return workspaces.find(workspace => workspace.id === workspaceId) ?? null
-  }, [activePageId, workspaces])
-
   useEffect(() => {
-    if (isWorkspacePageId(activePageId) && !activeWorkspace) {
-      setActivePageId('general')
-    }
-  }, [activePageId, activeWorkspace])
-
-  useEffect(() => {
-    if (!contentRef.current) {
+    if (activePageId !== 'endpoints') {
       return
     }
 
-    contentRef.current.scrollTop = 0
-  }, [activePageId])
-
-  useEffect(() => {
-    if (activePageId !== 'canvas') {
-      onFocusNodeTargetZoomPreviewChange(false)
+    if (settings.experimentalRemoteWorkersEnabled) {
+      return
     }
-  }, [activePageId, onFocusNodeTargetZoomPreviewChange])
+
+    setActivePageId('experimental')
+  }, [activePageId, setActivePageId, settings.experimentalRemoteWorkersEnabled])
 
   return (
     <div
@@ -270,6 +278,14 @@ export function SettingsPanel({
             testId="settings-section-nav-worker"
             onClick={() => setActivePageId('worker')}
           />
+          {settings.experimentalRemoteWorkersEnabled ? (
+            <SettingsPanelNavButton
+              isActive={activePageId === 'endpoints'}
+              label={t('settingsPanel.nav.endpoints')}
+              testId="settings-section-nav-endpoints"
+              onClick={() => setActivePageId('endpoints')}
+            />
+          ) : null}
           <SettingsPanelNavButton
             isActive={activePageId === 'agent'}
             label={t('settingsPanel.nav.agent')}
@@ -293,6 +309,12 @@ export function SettingsPanel({
             label={t('settingsPanel.nav.shortcuts')}
             testId="settings-section-nav-shortcuts"
             onClick={() => setActivePageId('shortcuts')}
+          />
+          <SettingsPanelNavButton
+            isActive={activePageId === 'quick-menu'}
+            label={t('settingsPanel.nav.quickMenu')}
+            testId="settings-section-nav-quick-menu"
+            onClick={() => setActivePageId('quick-menu')}
           />
           <SettingsPanelNavButton
             isActive={activePageId === 'task-configuration'}
@@ -359,7 +381,13 @@ export function SettingsPanel({
               />
             ) : null}
 
-            {activePageId === 'worker' ? <WorkerSection /> : null}
+            {activePageId === 'worker' ? (
+              <WorkerSection remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled} />
+            ) : null}
+
+            {activePageId === 'endpoints' && settings.experimentalRemoteWorkersEnabled ? (
+              <EndpointsSection />
+            ) : null}
 
             {activePageId === 'agent' ? (
               <>
@@ -380,6 +408,11 @@ export function SettingsPanel({
                   onRemoveCustomModelOption={removeCustomModelOption}
                   onChangeAddModelInput={updateAddModelInput}
                   onAddCustomModelOption={addCustomModelOption}
+                />
+                <AgentEnvSection
+                  agentProviderOrder={settings.agentProviderOrder}
+                  agentEnvByProvider={settings.agentEnvByProvider}
+                  onChangeAgentEnvByProvider={updateAgentEnvByProvider}
                 />
               </>
             ) : null}
@@ -435,8 +468,10 @@ export function SettingsPanel({
               <ExperimentalSection
                 websiteWindowPolicy={settings.websiteWindowPolicy}
                 websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
+                remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
                 onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
                 onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
+                onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
               />
             ) : null}
 
@@ -450,6 +485,15 @@ export function SettingsPanel({
                   updateDisableAppShortcutsWhenTerminalFocused
                 }
                 onChangeKeybindings={updateKeybindings}
+              />
+            ) : null}
+
+            {activePageId === 'quick-menu' ? (
+              <QuickMenuSection
+                quickCommands={settings.quickCommands}
+                quickPhrases={settings.quickPhrases}
+                onChangeQuickCommands={updateQuickCommands}
+                onChangeQuickPhrases={updateQuickPhrases}
               />
             ) : null}
 

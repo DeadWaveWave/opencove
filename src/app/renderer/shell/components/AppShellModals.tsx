@@ -3,6 +3,7 @@ import type { AgentProvider, AgentSettings } from '@contexts/settings/domain/age
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { AppUpdateState, ReleaseNotesCurrentResult } from '@shared/contracts/dto'
 import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import { WhatsNewDialog } from './WhatsNewDialog'
 
 interface ProviderModelCatalogEntry {
@@ -26,6 +27,8 @@ export interface WhatsNewDialogState {
 
 export function AppShellModals({
   isSettingsOpen,
+  settingsInitialPageId,
+  openSettingsPageId,
   settings,
   updateState,
   modelCatalogByProvider,
@@ -42,6 +45,8 @@ export function AppShellModals({
   whatsNew,
 }: {
   isSettingsOpen: boolean
+  settingsInitialPageId: SettingsPageId | null
+  openSettingsPageId: SettingsPageId | null
   settings: AgentSettings
   updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
@@ -64,7 +69,9 @@ export function AppShellModals({
     <>
       {isSettingsOpen ? (
         <SettingsPanel
+          initialPageId={settingsInitialPageId}
           settings={settings}
+          openPageId={openSettingsPageId}
           updateState={updateState}
           modelCatalogByProvider={modelCatalogByProvider}
           workspaces={workspaces}

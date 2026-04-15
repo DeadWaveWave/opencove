@@ -8,6 +8,7 @@ export async function resolveSpaceWorkingDirectoryFromStore(options: {
   spaceId: string
   getPersistenceStore: () => Promise<PersistenceStore>
 }): Promise<{
+  projectId: string
   workspacePath: string
   workingDirectory: string
   agentSettings: ReturnType<typeof normalizeAgentSettings>
@@ -23,6 +24,7 @@ export async function resolveSpaceWorkingDirectoryFromStore(options: {
     }
 
     return {
+      projectId: workspace.id,
       workspacePath: workspace.path,
       workingDirectory: resolveSpaceWorkingDirectory(space, workspace.path),
       agentSettings: normalizeAgentSettings(normalized?.settings),

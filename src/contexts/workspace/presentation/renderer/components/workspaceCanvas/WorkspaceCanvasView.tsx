@@ -111,7 +111,14 @@ export function WorkspaceCanvasView({
   openTaskCreator,
   openAgentLauncher,
   openAgentLauncherForProvider,
+  runQuickCommand,
+  insertQuickPhrase,
+  openQuickMenuSettings,
   createSpaceFromSelectedNodes,
+  spaceTargetMountPicker,
+  setSpaceTargetMountPicker,
+  confirmSpaceTargetMountPicker,
+  cancelSpaceTargetMountPicker,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
@@ -331,6 +338,7 @@ export function WorkspaceCanvasView({
           canvasRef={canvasRef}
           spaceId={activeExplorerSpace.id}
           spaceName={activeExplorerSpace.name}
+          targetMountId={activeExplorerSpace.targetMountId ?? null}
           directoryPath={
             activeExplorerSpace.directoryPath.trim().length > 0
               ? activeExplorerSpace.directoryPath
@@ -388,6 +396,11 @@ export function WorkspaceCanvasView({
         openAgentLauncher={openAgentLauncher}
         agentProviderOrder={agentSettings.agentProviderOrder}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
+        quickCommands={agentSettings.quickCommands}
+        quickPhrases={agentSettings.quickPhrases}
+        runQuickCommand={runQuickCommand}
+        insertQuickPhrase={insertQuickPhrase}
+        openQuickMenuSettings={openQuickMenuSettings}
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
         onToggleMagneticSnapping={onToggleMagneticSnapping}
@@ -449,6 +462,10 @@ export function WorkspaceCanvasView({
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
+        spaceTargetMountPicker={spaceTargetMountPicker}
+        setSpaceTargetMountPicker={setSpaceTargetMountPicker}
+        confirmSpaceTargetMountPicker={confirmSpaceTargetMountPicker}
+        cancelSpaceTargetMountPicker={cancelSpaceTargetMountPicker}
         nodeDeleteConfirmation={nodeDeleteConfirmation}
         setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}

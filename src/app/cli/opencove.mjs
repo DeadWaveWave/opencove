@@ -10,6 +10,7 @@ import { resolveConnectionInfo } from './connection.mjs'
 import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
+import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -101,9 +102,38 @@ async function main() {
       workerArgs.push('--approve-root', root)
     }
 
-    const child = spawn(process.execPath, [workerPath, ...workerArgs], {
+    let electronBinary = null
+
+    try {
+      const electronImport = await import('electron')
+      const candidate = electronImport?.default ?? electronImport?.['module.exports']
+      if (typeof candidate === 'string' && candidate.trim().length > 0) {
+        electronBinary = candidate
+      }
+    } catch {
+      electronBinary = null
+    }
+
+    if (!electronBinary) {
+      process.stderr.write(
+        '[opencove] unable to resolve Electron runtime for starting the worker. Ensure dependencies are installed.\n',
+      )
+      process.exit(2)
+    }
+
+    const shouldDisableSandbox =
+      process.platform === 'linux' &&
+      (process.env.CI === '1' ||
+        process.env.CI?.toLowerCase() === 'true' ||
+        (typeof process.getuid === 'function' && process.getuid() === 0))
+
+    const child = spawn(electronBinary, [workerPath, ...workerArgs], {
       stdio: 'inherit',
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      env: {
+        ...process.env,
+        ELECTRON_RUN_AS_NODE: '1',
+        ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
+      },
       windowsHide: true,
     })
     child.on('exit', code => {
@@ -176,6 +206,18 @@ async function main() {
       { pretty, timeoutMs },
     )
 
+    return
+  }
+
+  if (
+    await tryHandleMultiEndpointCommands({
+      command,
+      args,
+      connection,
+      pretty,
+      timeoutMs,
+    })
+  ) {
     return
   }
 

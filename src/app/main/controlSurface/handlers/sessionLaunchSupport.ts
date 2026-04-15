@@ -8,9 +8,22 @@ import {
   normalizeAgentSettings,
   type AgentProvider,
 } from '../../../../contexts/settings/domain/agentSettings'
-import type { ExecutionContextDto } from '../../../../shared/contracts/dto'
+import type { ExecutionContextDto, WorkerEndpointKindDto } from '../../../../shared/contracts/dto'
 
 const terminalProfileResolver = new TerminalProfileResolver()
+
+function normalizeOptionalString(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
 
 export async function reserveLoopbackPort(hostname: string): Promise<number> {
   return await new Promise((resolve, reject) => {
@@ -37,23 +50,46 @@ export async function reserveLoopbackPort(hostname: string): Promise<number> {
   })
 }
 
-export function resolveExecutionContextDto(workingDirectory: string): ExecutionContextDto {
+export function resolveExecutionContextDto(
+  workingDirectory: string,
+  options: {
+    projectId?: string | null
+    spaceId?: string | null
+    mountId?: string | null
+    targetId?: string | null
+    endpointId?: string | null
+    endpointKind?: WorkerEndpointKindDto | null
+    targetRootPath?: string | null
+    targetRootUri?: string | null
+    scopeRootPath?: string | null
+    scopeRootUri?: string | null
+  } = {},
+): ExecutionContextDto {
   const endpoint = resolveLocalWorkerEndpointRef()
-  const rootUri = toFileUri(workingDirectory)
+  const endpointId = normalizeOptionalString(options.endpointId) ?? endpoint.endpointId
+  const endpointKind = options.endpointKind ?? endpoint.kind
+  const targetRootPath = normalizeOptionalString(options.targetRootPath) ?? workingDirectory
+  const targetRootUri = normalizeOptionalString(options.targetRootUri) ?? toFileUri(targetRootPath)
+  const scopeRootPath = normalizeOptionalString(options.scopeRootPath) ?? workingDirectory
+  const scopeRootUri = normalizeOptionalString(options.scopeRootUri) ?? toFileUri(scopeRootPath)
 
   return {
+    projectId: normalizeOptionalString(options.projectId) ?? null,
+    spaceId: normalizeOptionalString(options.spaceId) ?? null,
+    mountId: normalizeOptionalString(options.mountId) ?? null,
+    targetId: normalizeOptionalString(options.targetId) ?? null,
     endpoint: {
-      id: endpoint.id,
-      kind: endpoint.kind,
+      endpointId,
+      kind: endpointKind satisfies WorkerEndpointKindDto,
     },
     target: {
       scheme: 'file',
-      rootPath: workingDirectory,
-      rootUri,
+      rootPath: targetRootPath,
+      rootUri: targetRootUri,
     },
     scope: {
-      rootPath: workingDirectory,
-      rootUri,
+      rootPath: scopeRootPath,
+      rootUri: scopeRootUri,
     },
     workingDirectory,
   }

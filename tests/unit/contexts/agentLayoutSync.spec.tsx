@@ -3,6 +3,8 @@ import { render, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
+import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
 import { useWorkspaceCanvasPtyTaskCompletion } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 
@@ -62,6 +64,7 @@ describe('agent terminal layout sync', () => {
     const nodesRef = {
       current: [createAgentNode()],
     } as React.MutableRefObject<Node<TerminalNodeData>[]>
+    const spacesRef = { current: [] } as React.MutableRefObject<WorkspaceSpaceState[]>
 
     const setNodes = vi.fn(
       (
@@ -100,11 +103,13 @@ describe('agent terminal layout sync', () => {
     function Harness(): null {
       const { launchAgentInNode } = useWorkspaceCanvasAgentNodeLifecycle({
         nodesRef,
+        spacesRef,
         setNodes,
         bumpAgentLaunchToken: () => 1,
         isAgentLaunchTokenCurrent: () => true,
         agentFullAccess: true,
         defaultTerminalProfileId: 'wsl:Ubuntu',
+        agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
       })
 
       useEffect(() => {

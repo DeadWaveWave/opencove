@@ -37,10 +37,10 @@ export interface LaunchAgentInput {
   mode?: AgentLaunchMode
   model?: string | null
   resumeSessionId?: string | null
+  env?: Record<string, string> | null
   agentFullAccess?: boolean
   cols?: number
   rows?: number
-  env?: Record<string, string>
 }
 
 export interface LaunchAgentResult {

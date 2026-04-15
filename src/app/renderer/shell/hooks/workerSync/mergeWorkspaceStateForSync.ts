@@ -473,10 +473,7 @@ export function toShellWorkspaceStateForSync(
     if (
       existing &&
       next &&
-      shallowEqualRecord(
-        existing as unknown as UnknownRecord,
-        next as unknown as UnknownRecord,
-      )
+      shallowEqualRecord(existing as unknown as UnknownRecord, next as unknown as UnknownRecord)
     ) {
       return existing
     }

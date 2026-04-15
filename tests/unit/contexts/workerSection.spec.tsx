@@ -60,7 +60,7 @@ describe('WorkerSection', () => {
   it('shows a restart error instead of silently disabling start', async () => {
     const { workerStart } = installWorkerApi('standalone')
 
-    render(<WorkerSection />)
+    render(<WorkerSection remoteWorkersEnabled={false} />)
 
     const startButton = await screen.findByTestId('settings-worker-local-start')
     expect(startButton).toBeEnabled()
@@ -76,7 +76,7 @@ describe('WorkerSection', () => {
   it('shows local home worker as fixed in packaged builds', async () => {
     installWorkerApi('local', { isPackaged: true })
 
-    render(<WorkerSection />)
+    render(<WorkerSection remoteWorkersEnabled={false} />)
 
     expect(await screen.findByText('In Use')).toBeVisible()
     expect(await screen.findByTestId('settings-worker-home-mode-value')).toHaveTextContent(
