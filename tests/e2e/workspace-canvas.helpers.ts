@@ -153,68 +153,79 @@ async function ensureWorkspaceMounts(window: Page, workspaces: SeedWorkspace[]):
       await new Promise(resolve => setTimeout(resolve, ms))
     }
 
-    for (const seed of seeds) {
-      const listMounts = async () => {
-        return await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-          kind: 'query',
-          id: 'mount.list',
-          payload: { projectId: seed.projectId },
-        })
-      }
-
-      const removeMount = async (mountId: string) => {
-        await window.opencoveApi.controlSurface.invoke({
-          kind: 'command',
-          id: 'mount.remove',
-          payload: { mountId },
-        })
-      }
-
-      const createMount = async () => {
-        await window.opencoveApi.controlSurface.invoke<CreateMountResult>({
-          kind: 'command',
-          id: 'mount.create',
-          payload: {
-            projectId: seed.projectId,
-            endpointId: 'local',
-            rootPath: seed.rootPath,
-            name: seed.name,
-          },
-        })
-      }
-
-      // Ensure exactly one local mount for this workspace, so space creation tests don't get blocked
-      // by the target-mount picker window due to transient duplicate mounts.
-      for (let attempt = 0; attempt < 5; attempt += 1) {
-        const mountResult = await listMounts()
-        const preferred =
-          mountResult.mounts.find(
-            mount => mount.endpointId === 'local' && mount.rootPath === seed.rootPath,
-          ) ?? null
-
-        if (!preferred) {
-          await createMount().catch(() => undefined)
-          await sleep(60)
-          continue
+    await Promise.all(
+      seeds.map(async seed => {
+        const listMounts = async () => {
+          return await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+            kind: 'query',
+            id: 'mount.list',
+            payload: { projectId: seed.projectId },
+          })
         }
 
-        const keepMountId = preferred.mountId
-
-        await Promise.all(
-          mountResult.mounts
-            .filter(mount => mount.mountId !== keepMountId)
-            .map(mount => removeMount(mount.mountId).catch(() => undefined)),
-        )
-
-        await sleep(80)
-
-        const verified = await listMounts()
-        const remaining = verified.mounts.filter(mount => mount.mountId !== keepMountId)
-        if (remaining.length === 0) {
-          break
+        const removeMount = async (mountId: string) => {
+          await window.opencoveApi.controlSurface.invoke({
+            kind: 'command',
+            id: 'mount.remove',
+            payload: { mountId },
+          })
         }
-      }
-    }
+
+        const createMount = async () => {
+          await window.opencoveApi.controlSurface.invoke<CreateMountResult>({
+            kind: 'command',
+            id: 'mount.create',
+            payload: {
+              projectId: seed.projectId,
+              endpointId: 'local',
+              rootPath: seed.rootPath,
+              name: seed.name,
+            },
+          })
+        }
+
+        // Ensure exactly one local mount for this workspace, so space creation tests don't get blocked
+        // by the target-mount picker window due to transient duplicate mounts.
+        const ensureSingleMount = async (attempt: number): Promise<void> => {
+          if (attempt >= 5) {
+            return
+          }
+
+          const mountResult = await listMounts()
+          const preferred =
+            mountResult.mounts.find(
+              mount => mount.endpointId === 'local' && mount.rootPath === seed.rootPath,
+            ) ?? null
+
+          if (!preferred) {
+            await createMount().catch(() => undefined)
+            await sleep(60)
+            await ensureSingleMount(attempt + 1)
+            return
+          }
+
+          const keepMountId = preferred.mountId
+
+          await Promise.all(
+            mountResult.mounts
+              .filter(mount => mount.mountId !== keepMountId)
+              .map(mount => removeMount(mount.mountId).catch(() => undefined)),
+          )
+
+          await sleep(80)
+
+          const verified = await listMounts()
+          const remaining = verified.mounts.filter(mount => mount.mountId !== keepMountId)
+          if (remaining.length === 0) {
+            return
+          }
+
+          await ensureSingleMount(attempt + 1)
+        }
+
+        await ensureSingleMount(0)
+      }),
+    )
 
     window.dispatchEvent(new Event('opencove:topology-changed'))
   }, mountSeeds)
