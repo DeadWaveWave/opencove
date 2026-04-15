@@ -1,5 +1,3 @@
-import type { Terminal } from '@xterm/xterm'
-
 type PtyWriteEncoding = 'utf8' | 'binary'
 
 type PtyWritePayload = {
