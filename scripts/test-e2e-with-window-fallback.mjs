@@ -77,6 +77,10 @@ function resolveFallbackWindowMode(windowMode) {
     return 'inactive'
   }
 
+  if (windowMode === 'inactive') {
+    return 'inactive'
+  }
+
   return null
 }
 
@@ -160,8 +164,12 @@ async function main() {
       return firstRun.code
     }
 
+    const rerunDescription =
+      fallbackWindowMode === currentWindowMode
+        ? `Rerunning last failed tests once more in ${fallbackWindowMode} mode to recover a transient crash-like failure.`
+        : `Rerunning last failed tests with OPENCOVE_E2E_WINDOW_MODE=${fallbackWindowMode}.`
     writeStderr(
-      `[e2e-fallback] Detected crash-like failure in ${currentWindowMode} mode. Rerunning last failed tests with OPENCOVE_E2E_WINDOW_MODE=${fallbackWindowMode}...`,
+      `[e2e-fallback] Detected crash-like failure in ${currentWindowMode} mode. ${rerunDescription}`,
     )
 
     const fallbackRun = await runCommand(['exec', 'playwright', 'test', '--last-failed'], {
@@ -171,7 +179,9 @@ async function main() {
 
     if (fallbackRun.code === 0) {
       writeStderr(
-        `[e2e-fallback] Recovered by running failed tests in ${fallbackWindowMode} mode. Investigate ${currentWindowMode}-mode compatibility for long-term fix.`,
+        fallbackWindowMode === currentWindowMode
+          ? `[e2e-fallback] Recovered by rerunning failed tests in ${fallbackWindowMode} mode after a transient crash-like failure.`
+          : `[e2e-fallback] Recovered by running failed tests in ${fallbackWindowMode} mode. Investigate ${currentWindowMode}-mode compatibility for long-term fix.`,
       )
       return 0
     }

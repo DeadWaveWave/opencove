@@ -26,6 +26,41 @@ async function dragResizerBy(
   await window.waitForTimeout(40)
 }
 
+async function readPersistedNodeFrame(
+  window: Page,
+  nodeId: string,
+): Promise<{ width: number; height: number } | null> {
+  return await window.evaluate(async id => {
+    const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+    if (!raw) {
+      return null
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as {
+        workspaces?: Array<{
+          nodes?: Array<{
+            id?: string
+            width?: number
+            height?: number
+          }>
+        }>
+      }
+      const node = parsed.workspaces?.[0]?.nodes?.find(item => item.id === id)
+      if (typeof node?.width !== 'number' || typeof node.height !== 'number') {
+        return null
+      }
+
+      return {
+        width: node.width,
+        height: node.height,
+      }
+    } catch {
+      return null
+    }
+  }, nodeId)
+}
+
 async function shrinkRowsUntilLessThan(
   window: Page,
   resizer: Locator,
@@ -94,7 +129,7 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
           return window.__opencoveTerminalSelectionTestApi?.getSize?.(id) ?? null
         }, nodeId)
       }
-      const readNodeHeight = async () => (await readLocatorClientRect(terminal)).height
+      const readNodeHeight = async () => (await readPersistedNodeFrame(window, nodeId))?.height ?? 0
 
       await expect.poll(readSize).toBeTruthy()
       const initialSize = (await readSize())!
@@ -116,7 +151,14 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
       await expect(bottomResizer).toBeVisible()
 
       const beforeHeightSize = (await readSize())!
-      await dragResizerBy(window, bottomResizer, { y: 160 })
+      const viewportHeight = await window.evaluate(() => window.innerHeight)
+      const bottomResizerRect = await readLocatorClientRect(bottomResizer)
+      const maxVisibleExpandDelta = Math.floor(viewportHeight - bottomResizerRect.y - 24)
+      expect(
+        maxVisibleExpandDelta,
+        `Expected terminal bottom resizer to have visible room before vertical expansion, but only ${maxVisibleExpandDelta}px remained`,
+      ).toBeGreaterThan(48)
+      await dragResizerBy(window, bottomResizer, { y: Math.min(160, maxVisibleExpandDelta) })
 
       await expect
         .poll(async () => (await readSize())?.rows ?? 0)
