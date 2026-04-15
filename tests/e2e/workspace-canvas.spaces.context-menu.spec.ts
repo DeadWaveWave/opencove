@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  clickCreateSpaceFromSelectionContextMenu,
   dragLocatorTo,
   launchApp,
   readCanvasViewport,
@@ -62,8 +63,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       await expect(terminalNode).toBeVisible()
 
       await header.click({ position: { x: 40, y: 20 } })
-      await terminalNode.click({ button: 'right' })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      await clickCreateSpaceFromSelectionContextMenu(window, terminalNode)
 
       await terminalNode.click({ button: 'right' })
       await expect(window.locator('[data-testid="workspace-selection-create-space"]')).toBeVisible()
@@ -97,8 +97,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       await expect(terminalNode).toBeVisible()
 
       await header.click({ position: { x: 40, y: 20 } })
-      await terminalNode.click({ button: 'right' })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      await clickCreateSpaceFromSelectionContextMenu(window, terminalNode)
 
       await expect(window.locator('.workspace-space-switcher')).toHaveCount(1)
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
@@ -164,8 +163,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       await expect(terminalNode).toBeVisible()
 
       await header.click({ position: { x: 40, y: 20 } })
-      await terminalNode.click({ button: 'right' })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      await clickCreateSpaceFromSelectionContextMenu(window, terminalNode)
 
       const labelButton = window.locator('.workspace-space-region__label').first()
       await expect(labelButton).toBeVisible()

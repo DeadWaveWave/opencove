@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import path from 'path'
 import type {
   TaskAgentSessionRecord,
@@ -375,6 +375,46 @@ export async function clearAndSeedWorkspace(
             standardWindowSizeBucket: 'regular',
           },
   })
+}
+
+export async function clickCreateSpaceFromSelectionContextMenu(
+  window: Page,
+  trigger: Locator,
+  options?: {
+    triggerPosition?: { x: number; y: number }
+    targetMountId?: string
+    visibleTimeoutMs?: number
+  },
+): Promise<void> {
+  const createSpaceAction = window.locator('[data-testid="workspace-selection-create-space"]')
+  const pickerWindow = window.locator('[data-testid="workspace-space-target-mount-window"]')
+  const pickerConfirm = window.locator('[data-testid="workspace-space-target-mount-confirm"]')
+
+  await trigger.click({
+    button: 'right',
+    ...(options?.triggerPosition ? { position: options.triggerPosition } : {}),
+  })
+  await expect(createSpaceAction).toBeVisible({ timeout: options?.visibleTimeoutMs ?? 10_000 })
+  await createSpaceAction.click()
+
+  const pickerVisible = await pickerWindow
+    .waitFor({ state: 'visible', timeout: 1_000 })
+    .then(() => true)
+    .catch(() => false)
+
+  if (!pickerVisible) {
+    return
+  }
+
+  if (options?.targetMountId) {
+    await window
+      .locator(`[data-testid="workspace-space-target-mount-${options.targetMountId}"]`)
+      .check()
+  }
+
+  await expect(pickerConfirm).toBeEnabled()
+  await pickerConfirm.click()
+  await expect(pickerWindow).toHaveCount(0)
 }
 
 export async function readCanvasViewport(

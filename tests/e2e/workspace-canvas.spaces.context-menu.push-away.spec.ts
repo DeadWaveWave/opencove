@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, dragMouse, launchApp, storageKey } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  clickCreateSpaceFromSelectionContextMenu,
+  dragMouse,
+  launchApp,
+  storageKey,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Push Away)', () => {
   test('pushes away unselected windows when creating a space would overlap them', async () => {
@@ -100,8 +106,7 @@ test.describe('Workspace Canvas - Spaces (Push Away)', () => {
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
 
-      await rightNode.click({ button: 'right' })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      await clickCreateSpaceFromSelectionContextMenu(window, rightNode)
 
       await expect
         .poll(async () => {
