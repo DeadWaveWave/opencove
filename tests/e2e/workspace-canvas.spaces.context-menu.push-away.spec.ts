@@ -103,7 +103,9 @@ test.describe('Workspace Canvas - Spaces (Push Away)', () => {
       await rightNode.click({ button: 'right' })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
-      const mountPickerWindow = window.locator('[data-testid="workspace-space-target-mount-window"]')
+      const mountPickerWindow = window.locator(
+        '[data-testid="workspace-space-target-mount-window"]',
+      )
       const mountPickerVisible = await mountPickerWindow
         .waitFor({ state: 'visible', timeout: 2_000 })
         .then(() => true)
