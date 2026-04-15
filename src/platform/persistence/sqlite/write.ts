@@ -59,10 +59,10 @@ export function writeNormalizedAppState(
   const insertSpace = db.prepare(
     `
       INSERT INTO workspace_spaces (
-        id, workspace_id, name, directory_path, label_color,
+        id, workspace_id, name, directory_path, target_mount_id, label_color,
         rect_x, rect_y, rect_width, rect_height
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -145,6 +145,7 @@ export function writeNormalizedAppState(
           workspace.id,
           space.name,
           space.directoryPath,
+          space.targetMountId,
           space.labelColor,
           space.rect?.x ?? null,
           space.rect?.y ?? null,

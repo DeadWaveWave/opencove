@@ -1,10 +1,19 @@
 import type { AgentProviderId } from './agent'
+import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
 
 export interface ControlSurfacePingResult {
   ok: true
   now: string
   pid: number
+}
+
+export interface ControlSurfaceHomeDirectoryResult {
+  ok: true
+  now: string
+  pid: number
+  platform: string
+  homeDirectory: string
 }
 
 export interface ControlSurfaceCapabilitiesResult {
@@ -45,8 +54,8 @@ export interface CanvasNodeSummary {
 }
 
 export interface WorkerEndpointRefDto {
-  id: 'local'
-  kind: 'local'
+  endpointId: string
+  kind: WorkerEndpointKindDto
 }
 
 export interface MountTargetDto {
@@ -61,6 +70,10 @@ export interface ExecutionScopeDto {
 }
 
 export interface ExecutionContextDto {
+  projectId: string | null
+  spaceId: string | null
+  mountId: string | null
+  targetId: string | null
   endpoint: WorkerEndpointRefDto
   target: MountTargetDto
   scope: ExecutionScopeDto
@@ -152,6 +165,18 @@ export interface ArchiveWorktreeResult {
 export interface LaunchAgentSessionInput {
   spaceId?: string | null
   cwd?: string | null
+  prompt: string
+  provider?: AgentProviderId | null
+  mode?: 'new' | 'resume' | null
+  model?: string | null
+  resumeSessionId?: string | null
+  env?: Record<string, string> | null
+  agentFullAccess?: boolean | null
+}
+
+export interface LaunchAgentSessionInMountInput {
+  mountId: string
+  cwdUri?: string | null
   prompt: string
   provider?: AgentProviderId | null
   mode?: 'new' | 'resume' | null

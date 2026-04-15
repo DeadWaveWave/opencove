@@ -131,7 +131,7 @@
         -   **Feasibility Check**：针对新技术/高性能/核心重构，必须先调研并跑通 PoC。
         -   **Plan**：制定详细执行计划，等待确认。
         -   **验证**：用户可感知变化必须跑 E2E；UI 变更需提供截图/录屏；重大功能需跑通 `pnpm test:e2e`。
-        -   **兼容与迁移**：改动 IPC 接口或数据结构时，必须考虑对现有功能的影响。
+        -   **兼容与迁移（必须可回归）**：改动 IPC 接口、持久化数据结构、拓扑/配置文件时，必须提供迁移或启动期修复（repair）策略，并补回归测试覆盖“已有用户数据”（缺字段/空记录/旧格式）。不要只验证“新建流程”的 happy path。
         -   **跨平台兼容**：开发默认应考虑 `macOS / Windows / Linux` 三平台；如本次只支持部分平台，必须在方案与交付说明中明确标注差异、限制与后续补齐计划。凡修复平台特有 bug，必须补对应平台的 E2E，并在 CI 的该平台 runner 上执行验证；Windows / macOS / Linux 专属用例优先使用 `*.windows.spec.ts` / `*.mac.spec.ts` / `*.linux.spec.ts` 命名收口。
 -   **禁止手改**：
     -   lock 文件 (`pnpm-lock.yaml`) 必须由命令生成/更新。
@@ -165,6 +165,7 @@
 -   **使用 Worker/Web UI（dev）**：先执行 `pnpm build`
     - Worker 进程运行 `out/main/worker.js`，不会随 `pnpm dev` 的 HMR 自动更新
     - 若遇到“恢复/同步/持久化看起来没生效，但代码明明已改”的情况，先 `pnpm build` 再重启 App
+    - 旧数据说明（M6 mounts / locations）：若你的 profile 早于 M6，引入 mounts 后首次启动会尝试自动修复旧项目数据（为缺失 mounts 的本地项目创建一个默认本地位置，并修复 Space 的 target mount 绑定）。若项目是 remote-only 且缺失位置数据，无法凭空推断远程路径，需要在项目菜单中手动添加位置后才能正常运行相关能力。
 -   **运行单元测试**：`pnpm test -- --run`
 -   **运行 E2E 测试**：`pnpm test:e2e`
     -   说明：`pnpm test:e2e` 已包含构建步骤，默认使用 `offscreen` 后台窗口模式；检测到 Electron 崩溃特征时，会按窗口模式链路自动降级并重跑失败用例（例如 `hidden -> offscreen`、`offscreen -> inactive`）。

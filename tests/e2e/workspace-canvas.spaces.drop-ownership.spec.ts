@@ -88,9 +88,19 @@ test.describe('Workspace Canvas - Spaces (Drop Ownership)', () => {
         })
         .toBe(true)
 
+      const spaceRegion = window
+        .locator('.workspace-space-region')
+        .filter({ hasText: 'Ownership Scope' })
+        .first()
+      await expect(spaceRegion).toBeVisible()
+      const paneBox = await readLocatorClientRect(pane)
+      const spaceBox = await readLocatorClientRect(spaceRegion)
+      const spaceBottom = spaceBox.y + spaceBox.height
+      const safeDropY = Math.min(paneBox.y + paneBox.height - 24, spaceBottom + 120)
+
       await dragLocatorTo(window, rootNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
-        targetPosition: { x: 80, y: 760 },
+        targetPosition: { x: 80, y: Math.max(0, safeDropY - paneBox.y) },
       })
 
       await expect

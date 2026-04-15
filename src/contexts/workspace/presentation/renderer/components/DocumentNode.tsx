@@ -12,10 +12,12 @@ import {
   loadDocumentNodeContent,
   type DocumentNodeProps,
 } from './DocumentNode.helpers'
+import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
 
 export function DocumentNode({
   title,
   uri,
+  mountId,
   labelColor,
   position,
   width,
@@ -81,8 +83,8 @@ export function DocumentNode({
     setSaveError(null)
     setClosePromptOpen(false)
 
-    const api = window.opencoveApi?.filesystem
-    if (!api) {
+    const filesystemApi = resolveFilesystemApiForMount(mountId)
+    if (!filesystemApi) {
       setIsLoading(false)
       setLoadError(t('documentNode.filesystemUnavailable'))
       return
@@ -91,7 +93,7 @@ export function DocumentNode({
     let cancelled = false
     void (async () => {
       try {
-        const result = await loadDocumentNodeContent(api, uri, t('documentNode.notAFile'))
+        const result = await loadDocumentNodeContent(filesystemApi, uri, t('documentNode.notAFile'))
         if (cancelled) {
           return
         }
@@ -120,15 +122,15 @@ export function DocumentNode({
     return () => {
       cancelled = true
     }
-  }, [reloadNonce, t, uri])
+  }, [mountId, reloadNonce, t, uri])
 
   const save = useCallback(async (): Promise<boolean> => {
     if (unsupportedKind) {
       return false
     }
 
-    const api = window.opencoveApi?.filesystem
-    if (!api) {
+    const filesystemApi = resolveFilesystemApiForMount(mountId)
+    if (!filesystemApi) {
       setSaveError(t('documentNode.filesystemUnavailable'))
       return false
     }
@@ -137,7 +139,7 @@ export function DocumentNode({
     setSaveError(null)
 
     try {
-      await api.writeFileText({ uri, content })
+      await filesystemApi.writeFileText({ uri, content })
       setSavedContent(content)
       setIsSaving(false)
       return true
@@ -146,7 +148,7 @@ export function DocumentNode({
       setSaveError(toErrorMessage(error))
       return false
     }
-  }, [content, t, unsupportedKind, uri])
+  }, [content, mountId, t, unsupportedKind, uri])
 
   const discardChanges = (): void => {
     setContent(savedContent)

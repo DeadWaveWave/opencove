@@ -15,6 +15,7 @@ import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
 import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
 import type { PersistNotice, ProjectContextMenuState } from '../types'
 import { toRelativeTime } from '../utils/format'
+import { useWorkspaceMountSummaries } from '../hooks/useWorkspaceMountSummaries'
 import type {
   TerminalNodeData,
   WorkspaceState,
@@ -38,6 +39,7 @@ type SidebarProps = {
 type SortableWorkspaceItemProps = {
   workspace: WorkspaceState
   isActive: boolean
+  subtitle: string
   onSelectWorkspace: (workspaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
@@ -102,15 +104,17 @@ function resolveLinkedTaskTitle(workspace: WorkspaceState, nodeId: string, taskI
 
 function WorkspaceItemContent({
   workspace,
+  subtitle,
   metaText,
 }: {
   workspace: WorkspaceState
+  subtitle: string
   metaText: string
 }): React.JSX.Element {
   return (
     <>
       <span className="workspace-item__name">{workspace.name}</span>
-      <span className="workspace-item__path">{workspace.path}</span>
+      <span className="workspace-item__subtitle">{subtitle}</span>
       <span className="workspace-item__meta">{metaText}</span>
     </>
   )
@@ -188,6 +192,7 @@ function WorkspaceAgentItems({
 function SortableWorkspaceItem({
   workspace,
   isActive,
+  subtitle,
   onSelectWorkspace,
   onOpenProjectContextMenu,
   onSelectAgentNode,
@@ -208,6 +213,7 @@ function SortableWorkspaceItem({
       <button
         type="button"
         className={`workspace-item ${isActive ? 'workspace-item--active' : ''}`}
+        data-testid={`workspace-item-${workspace.id}`}
         onClick={() => {
           onSelectWorkspace(workspace.id)
         }}
@@ -219,10 +225,10 @@ function SortableWorkspaceItem({
             y: event.clientY,
           })
         }}
-        title={workspace.path}
+        title={workspace.name}
         {...listeners}
       >
-        <WorkspaceItemContent workspace={workspace} metaText={metaText} />
+        <WorkspaceItemContent workspace={workspace} subtitle={subtitle} metaText={metaText} />
       </button>
 
       <WorkspaceAgentItems workspace={workspace} onSelectAgentNode={onSelectAgentNode} />
@@ -230,7 +236,13 @@ function SortableWorkspaceItem({
   )
 }
 
-function WorkspaceItemOverlay({ workspace }: { workspace: WorkspaceState }): React.JSX.Element {
+function WorkspaceItemOverlay({
+  workspace,
+  subtitle,
+}: {
+  workspace: WorkspaceState
+  subtitle: string
+}): React.JSX.Element {
   const { t } = useTranslation()
 
   return (
@@ -239,7 +251,11 @@ function WorkspaceItemOverlay({ workspace }: { workspace: WorkspaceState }): Rea
       data-testid="workspace-item-overlay"
     >
       <div className="workspace-item workspace-item--drag-overlay">
-        <WorkspaceItemContent workspace={workspace} metaText={getWorkspaceMetaText(workspace, t)} />
+        <WorkspaceItemContent
+          workspace={workspace}
+          subtitle={subtitle}
+          metaText={getWorkspaceMetaText(workspace, t)}
+        />
       </div>
     </div>
   )
@@ -258,6 +274,7 @@ export function Sidebar({
   onReorderWorkspaces,
 }: SidebarProps): React.JSX.Element {
   const { t } = useTranslation()
+  const mountSummaryByWorkspaceId = useWorkspaceMountSummaries({ workspaces })
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -349,6 +366,7 @@ export function Sidebar({
                   key={workspace.id}
                   workspace={workspace}
                   isActive={workspace.id === activeWorkspaceId}
+                  subtitle={mountSummaryByWorkspaceId[workspace.id] ?? '—'}
                   onSelectWorkspace={onSelectWorkspace}
                   onOpenProjectContextMenu={onOpenProjectContextMenu}
                   onSelectAgentNode={onSelectAgentNode}
@@ -357,7 +375,12 @@ export function Sidebar({
             </SortableContext>
 
             <DragOverlay>
-              {activeWorkspace ? <WorkspaceItemOverlay workspace={activeWorkspace} /> : null}
+              {activeWorkspace ? (
+                <WorkspaceItemOverlay
+                  workspace={activeWorkspace}
+                  subtitle={mountSummaryByWorkspaceId[activeWorkspace.id] ?? '—'}
+                />
+              ) : null}
             </DragOverlay>
           </DndContext>
         )}

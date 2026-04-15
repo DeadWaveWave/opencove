@@ -322,11 +322,14 @@ export function useWorkspaceCanvasNodeTypes({
 
     const DocumentNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
       const nodePosition = useNodePosition(id)
+      const targetMountId =
+        spacesRef.current.find(candidate => candidate.nodeIds.includes(id))?.targetMountId ?? null
       return (
         <WorkspaceCanvasDocumentNodeType
           data={data}
           id={id}
           nodePosition={nodePosition}
+          mountId={targetMountId}
           selectNode={selectNode}
           clearNodeSelectionRef={clearNodeSelectionRef}
           closeNodeRef={closeNodeRef}

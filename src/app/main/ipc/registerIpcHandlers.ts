@@ -34,6 +34,7 @@ import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandle
 import { registerCliIpcHandlers } from './registerCliIpcHandlers'
 import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers'
 import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
+import { registerControlSurfaceIpcHandlers } from './registerControlSurfaceIpcHandlers'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { registerHandledIpc } from './handle'
 import {
@@ -155,6 +156,7 @@ export function registerIpcHandlers(deps?: {
   const disposables: IpcRegistrationDisposable[] = [
     registerLocalWorkerIpcHandlers(),
     registerWorkerClientIpcHandlers(),
+    registerControlSurfaceIpcHandlers({ endpointResolver: workerEndpointResolver }),
     registerCliIpcHandlers(),
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),

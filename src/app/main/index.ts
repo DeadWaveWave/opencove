@@ -19,6 +19,7 @@ import { resolveHomeWorkerEndpoint } from './worker/resolveHomeWorkerEndpoint'
 import { createHomeWorkerEndpointResolver } from './worker/homeWorkerEndpointResolver'
 import { hasOwnedLocalWorkerProcess, stopOwnedLocalWorker } from './worker/localWorkerManager'
 import { createMainRuntimeDiagnosticsLogger } from './runtimeDiagnostics'
+import { createStandaloneMountAwarePtyRuntime } from './controlSurface/standaloneMountAwarePtyRuntime'
 import { registerQuickPhrasesContextMenu } from './contextMenu/registerQuickPhrasesContextMenu'
 import { registerQuitCoordinator } from './quitCoordinator'
 import {
@@ -205,8 +206,7 @@ function createWindow(): void {
     void mainWindow.webContents.setVisualZoomLevelLimits(1, 1).catch(() => undefined)
   }
 
-  // HMR for renderer based on electron-vite cli.
-  // Load the remote URL for development or the local html file for production.
+  // Load renderer URL (dev server in dev, local HTML in prod).
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
@@ -214,8 +214,7 @@ function createWindow(): void {
   }
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
+// Electron ready: create browser windows & IPC.
 app.whenReady().then(async () => {
   hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
 
@@ -273,7 +272,6 @@ app.whenReady().then(async () => {
   }
 
   const approvedWorkspaces = createApprovedWorkspaceStore()
-  const ptyRuntime = createPtyRuntime()
 
   const homeWorker = await resolveHomeWorkerEndpoint({
     allowConfig: process.env.NODE_ENV !== 'test',
@@ -294,33 +292,44 @@ app.whenReady().then(async () => {
       : null
   workerEndpointResolverForContextMenu = workerEndpointResolver
 
-  ipcDisposable = registerIpcHandlers({
-    approvedWorkspaces,
-    ptyRuntime,
-    ...(workerEndpointResolver
-      ? {
-          workerEndpointResolver,
-        }
-      : {}),
-  })
+  if (!workerEndpointResolver) {
+    const localPtyRuntime = createPtyRuntime()
 
-  if (process.env.NODE_ENV !== 'test' && !workerEndpointResolver) {
-    controlSurfaceDisposable = registerControlSurfaceServer({ approvedWorkspaces, ptyRuntime })
+    controlSurfaceDisposable = registerControlSurfaceServer({
+      approvedWorkspaces,
+      ptyRuntime: localPtyRuntime,
+    })
+    const connection = await controlSurfaceDisposable.ready
+
+    ipcDisposable = registerIpcHandlers({
+      approvedWorkspaces,
+      ptyRuntime: createStandaloneMountAwarePtyRuntime({
+        localRuntime: localPtyRuntime,
+        endpointResolver: async () => ({
+          hostname: connection.hostname,
+          port: connection.port,
+          token: connection.token,
+        }),
+      }),
+    })
+  } else {
+    ipcDisposable = registerIpcHandlers({
+      approvedWorkspaces,
+      workerEndpointResolver,
+    })
   }
 
   createWindow()
 
   app.on('activate', function () {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
+    // macOS: re-create a window when the dock icon is clicked and no windows are open.
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     }
   })
 })
 
-// Quit when all windows are closed.
-// Tests must fully exit on macOS as well, otherwise Playwright can leave Electron running.
+// Quit when all windows are closed (tests must exit on macOS, otherwise Playwright can leave Electron running).
 app.on('window-all-closed', () => {
   const shouldKeepTestAppAliveAfterWindowClose =
     process.env.NODE_ENV === 'test' &&

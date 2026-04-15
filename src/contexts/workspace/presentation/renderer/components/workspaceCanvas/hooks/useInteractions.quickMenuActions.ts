@@ -12,6 +12,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     UseWorkspaceCanvasInteractionsParams,
     | 'contextMenu'
     | 'setContextMenu'
+    | 'workspaceId'
     | 'websiteWindowsEnabled'
     | 'standardWindowSizeBucket'
     | 'createWebsiteNode'
@@ -23,6 +24,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     | 'defaultTerminalProfileId'
     | 'workspacePath'
     | 'createNodeForSession'
+    | 'onShowMessage'
   >,
 ): {
   runQuickCommand: (command: QuickCommand) => Promise<void>
@@ -31,6 +33,7 @@ export function useWorkspaceCanvasQuickMenuActions(
   const {
     contextMenu,
     setContextMenu,
+    workspaceId,
     websiteWindowsEnabled,
     standardWindowSizeBucket,
     createWebsiteNode,
@@ -42,6 +45,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     defaultTerminalProfileId,
     workspacePath,
     createNodeForSession,
+    onShowMessage,
   } = options
 
   const runQuickCommand = useCallback(
@@ -75,6 +79,7 @@ export function useWorkspaceCanvasQuickMenuActions(
 
       const created = await createTerminalNodeAtFlowPosition({
         anchor,
+        workspaceId,
         defaultTerminalProfileId,
         standardWindowSizeBucket,
         workspacePath,
@@ -83,6 +88,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         setNodes,
         onSpacesChange,
         createNodeForSession,
+        onShowMessage,
         title: command.title,
       })
 
@@ -103,12 +109,14 @@ export function useWorkspaceCanvasQuickMenuActions(
       defaultTerminalProfileId,
       nodesRef,
       onSpacesChange,
+      onShowMessage,
       setContextMenu,
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
       websiteWindowsEnabled,
       workspacePath,
+      workspaceId,
     ],
   )
 

@@ -12,7 +12,7 @@ import type {
   WorkspaceViewport,
 } from '../../types'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type { TerminalRuntimeKind } from '@shared/contracts/dto'
+import type { MountDto, TerminalRuntimeKind } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
@@ -92,10 +92,18 @@ export interface EmptySelectionPromptState {
   rect: WorkspaceSpaceRect
 }
 
+export interface SpaceTargetMountPickerState {
+  nodeIds: string[]
+  rect: WorkspaceSpaceRect | null
+  mounts: MountDto[]
+  selectedMountId: string
+}
+
 export interface SpaceVisual {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   rect: WorkspaceSpaceRect
   hasExplicitRect: boolean
@@ -200,6 +208,7 @@ export interface NodeCreationPlacementOptions extends NodePlacementOptions {
 
 export interface WorkspaceCanvasQuickPreviewState {
   spaceId: string
+  mountId: string | null
   uri: string
   title: string
   kind: 'document' | 'image'

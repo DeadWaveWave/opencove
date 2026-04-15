@@ -71,6 +71,8 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         id: 'space-1',
         name: 'Space',
         directoryPath: '/tmp',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: [taskNode.id],
         rect: initialRect,
       },

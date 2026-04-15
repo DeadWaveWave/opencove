@@ -2,6 +2,7 @@ import React from 'react'
 import type { WorkspaceCanvasViewProps } from '../WorkspaceCanvasView.types'
 import { NodeDeleteConfirmationWindow } from '../windows/NodeDeleteConfirmationWindow'
 import { SpaceWorktreeMismatchDropWarningWindow } from '../windows/SpaceWorktreeMismatchDropWarningWindow'
+import { SpaceTargetMountPickerWindow } from '../windows/SpaceTargetMountPickerWindow'
 import { SpaceWorktreeWindow } from '../windows/SpaceWorktreeWindow'
 import { TaskCreatorWindow } from '../windows/TaskCreatorWindow'
 import { TaskEditorWindow } from '../windows/TaskEditorWindow'
@@ -20,6 +21,10 @@ export function WorkspaceCanvasWindows({
   closeTaskEditor,
   generateTaskEditorTitle,
   saveTaskEdits,
+  spaceTargetMountPicker,
+  setSpaceTargetMountPicker,
+  confirmSpaceTargetMountPicker,
+  cancelSpaceTargetMountPicker,
   nodeDeleteConfirmation,
   setNodeDeleteConfirmation,
   confirmNodeDelete,
@@ -53,6 +58,10 @@ export function WorkspaceCanvasWindows({
   | 'closeTaskEditor'
   | 'generateTaskEditorTitle'
   | 'saveTaskEdits'
+  | 'spaceTargetMountPicker'
+  | 'setSpaceTargetMountPicker'
+  | 'confirmSpaceTargetMountPicker'
+  | 'cancelSpaceTargetMountPicker'
   | 'nodeDeleteConfirmation'
   | 'setNodeDeleteConfirmation'
   | 'confirmNodeDelete'
@@ -94,6 +103,13 @@ export function WorkspaceCanvasWindows({
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
+      />
+
+      <SpaceTargetMountPickerWindow
+        picker={spaceTargetMountPicker}
+        setPicker={setSpaceTargetMountPicker}
+        onCancel={cancelSpaceTargetMountPicker}
+        onConfirm={confirmSpaceTargetMountPicker}
       />
 
       <NodeDeleteConfirmationWindow

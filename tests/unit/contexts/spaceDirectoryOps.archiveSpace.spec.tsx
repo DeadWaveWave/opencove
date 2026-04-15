@@ -89,6 +89,8 @@ describe('useWorkspaceCanvasSpaceDirectoryOps archiveSpace', () => {
         id: 'space-1',
         name: 'Space 1',
         directoryPath: '/repo/.opencove/worktrees/space-1',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['task-1', 'note-1'],
         rect: null,
       },

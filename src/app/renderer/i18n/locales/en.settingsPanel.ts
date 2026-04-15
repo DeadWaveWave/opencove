@@ -3,6 +3,7 @@ export const enSettingsPanel = {
   nav: {
     general: 'General',
     worker: 'Worker',
+    endpoints: 'Endpoints',
     agent: 'Agent',
     notifications: 'Notifications',
     canvas: 'Canvas',
@@ -191,6 +192,12 @@ export const enSettingsPanel = {
   },
   experimental: {
     title: 'Experimental',
+    remoteWorkersTitle: 'Remote Workers & Locations',
+    remoteWorkersHelp:
+      'Opt-in support for remote workers and remote project locations. Keep this off until the workflow is stable.',
+    remoteWorkersEnabledLabel: 'Enable Remote Workers',
+    remoteWorkersEnabledHelp:
+      'Shows remote worker and remote location UI. When disabled, OpenCove keeps the local-only workflow by default.',
     workerWebUi: {
       title: 'Worker Web UI',
       help: 'Open the experimental browser UI served by your worker. Requires Home Worker: Local Worker.',
@@ -350,6 +357,8 @@ export const enSettingsPanel = {
     title: 'Worker',
     errors: {
       remoteRequired: 'Remote worker hostname, port, and token are required.',
+      remoteExperimentalDisabled:
+        'Remote workers are experimental. Enable Remote Workers in Experimental settings to continue.',
       stopLocalWorkerFirst: 'Stop the local worker before switching to Standalone.',
       enableLocalRequiresRestart: 'Enable Local Worker and restart before starting it.',
     },
@@ -406,6 +415,32 @@ export const enSettingsPanel = {
       revealToken: 'Reveal',
       hideToken: 'Hide',
       copyToken: 'Copy',
+    },
+  },
+  endpoints: {
+    title: 'Endpoints',
+    list: {
+      title: 'Registered endpoints',
+      help: 'Desktop only connects to the Home Worker. The Home Worker routes operations to endpoints.',
+      countLabel: 'Count',
+      localSubtitle: 'local',
+      localRemoveHelp: 'The local endpoint cannot be removed.',
+      lastPing: 'Last ping: pid {{pid}} · {{now}}',
+    },
+    actions: {
+      add: 'Add endpoint',
+      ping: 'Ping',
+      pinging: 'Pinging…',
+    },
+    register: {
+      title: 'Register endpoint',
+      help: 'Register a remote worker endpoint by hostname, port, and token. Token is never stored in renderer state.',
+      displayNameLabel: 'Display name (optional)',
+      hostnameLabel: 'Hostname',
+      portLabel: 'Port',
+      tokenLabel: 'Token',
+      tokenHelp: 'This token is submitted once and cleared after registration.',
+      tokenRequired: 'Token is required.',
     },
   },
   workspace: {

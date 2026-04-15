@@ -22,19 +22,20 @@ import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
-import { useAddWorkspaceAction } from './hooks/useAddWorkspaceAction'
 import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotifications'
 import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
+import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
+import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
 import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
 import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
 import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useAppStore } from './store/useAppStore'
-import { removeWorkspace } from './utils/removeWorkspace'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -42,6 +43,7 @@ export default function App(): React.JSX.Element {
     workspaces,
     activeWorkspaceId,
     projectContextMenu,
+    projectMountManager,
     projectDeleteConfirmation,
     isRemovingProject,
     agentSettings,
@@ -51,6 +53,7 @@ export default function App(): React.JSX.Element {
     setWorkspaces,
     setActiveWorkspaceId,
     setProjectContextMenu,
+    setProjectMountManager,
     setProjectDeleteConfirmation,
     setAgentSettings,
     setIsSettingsOpen,
@@ -94,6 +97,7 @@ export default function App(): React.JSX.Element {
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
   useAppQuitPersistenceFlush({ enabled: isPersistReady })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
+  useWorkspaceMountRepair({ enabled: isPersistReady, workspaces, requestPersistFlush })
   useWebsiteWindowEvents()
   useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
 
@@ -110,7 +114,9 @@ export default function App(): React.JSX.Element {
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false)
   const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
+  const [isAddProjectWizardOpen, setIsAddProjectWizardOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
+  const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
 
   useWebsiteWindowOcclusionSync(
     isSettingsOpen ||
@@ -118,6 +124,8 @@ export default function App(): React.JSX.Element {
       isControlCenterOpen ||
       isWorkspaceSearchOpen ||
       isSpaceArchivesOpen ||
+      isAddProjectWizardOpen ||
+      projectMountManager !== null ||
       projectDeleteConfirmation !== null,
   )
 
@@ -177,6 +185,7 @@ export default function App(): React.JSX.Element {
       closeWorkspaceSearch()
       closeControlCenter()
       closeSpaceArchives()
+      setSettingsInitialPageId(null)
       setSettingsOpenPageId(null)
       setIsSettingsOpen(true)
     },
@@ -254,7 +263,14 @@ export default function App(): React.JSX.Element {
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
     resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
-  const handleAddWorkspace = useAddWorkspaceAction()
+  const handleAddWorkspace = useCallback((): void => {
+    setIsFocusNodeTargetZoomPreviewing(false)
+    closeCommandCenter()
+    closeControlCenter()
+    setIsWorkspaceSearchOpen(false)
+    setIsSpaceArchivesOpen(false)
+    setIsAddProjectWizardOpen(true)
+  }, [closeCommandCenter, closeControlCenter])
 
   const {
     handleWorkspaceNodesChange,
@@ -267,60 +283,30 @@ export default function App(): React.JSX.Element {
     handleAnyWorkspaceWorktreesRootChange,
   } = useWorkspaceStateHandlers({ requestPersistFlush })
 
-  const handleRemoveWorkspace = useCallback(async (workspaceId: string): Promise<void> => {
-    await removeWorkspace(workspaceId)
-  }, [])
+  const {
+    handleRemoveWorkspace,
+    handleSelectWorkspace,
+    handleSelectAgentNode,
+    handleRequestRemoveProject,
+    handleRequestManageProjectMounts,
+    handleReorderWorkspaces,
+  } = useAppShellWorkspaceActions({ requestPersistFlush })
 
   useProjectContextMenuDismiss({
     projectContextMenu,
     setProjectContextMenu,
   })
-  const handleSelectWorkspace = useCallback((workspaceId: string): void => {
-    const store = useAppStore.getState()
-    store.setActiveWorkspaceId(workspaceId)
-    store.setFocusRequest(null)
-  }, [])
 
-  const handleSelectAgentNode = useCallback((workspaceId: string, nodeId: string): void => {
-    const store = useAppStore.getState()
-    store.setActiveWorkspaceId(workspaceId)
-    store.setFocusRequest(prev => ({
-      workspaceId,
-      nodeId,
-      sequence: (prev?.sequence ?? 0) + 1,
-    }))
-  }, [])
-
-  const handleRequestRemoveProject = useCallback((workspaceId: string): void => {
-    const store = useAppStore.getState()
-    const targetWorkspace = store.workspaces.find(workspace => workspace.id === workspaceId)
-    if (!targetWorkspace) {
-      store.setProjectContextMenu(null)
-      return
-    }
-
-    store.setProjectDeleteConfirmation({
-      workspaceId: targetWorkspace.id,
-      workspaceName: targetWorkspace.name,
-    })
-    store.setProjectContextMenu(null)
-  }, [])
-
-  const handleReorderWorkspaces = useCallback(
-    (activeId: string, overId: string): void => {
-      const store = useAppStore.getState()
-      store.reorderWorkspaces(activeId, overId)
-      requestPersistFlush()
+  const handleOpenSettings = useCallback(
+    (initialPageId: SettingsPageId | null = null): void => {
+      setIsFocusNodeTargetZoomPreviewing(false)
+      setSettingsInitialPageId(initialPageId)
+      closeControlCenter()
+      setSettingsOpenPageId(null)
+      setIsSettingsOpen(true)
     },
-    [requestPersistFlush],
+    [closeControlCenter, setIsSettingsOpen, setSettingsOpenPageId],
   )
-
-  const handleOpenSettings = useCallback((): void => {
-    setIsFocusNodeTargetZoomPreviewing(false)
-    closeControlCenter()
-    setSettingsOpenPageId(null)
-    setIsSettingsOpen(true)
-  }, [closeControlCenter, setIsSettingsOpen, setSettingsOpenPageId])
 
   return (
     <>
@@ -329,7 +315,7 @@ export default function App(): React.JSX.Element {
       >
         <AppHeader
           activeWorkspaceName={activeWorkspace?.name ?? null}
-          activeWorkspacePath={activeWorkspace?.path ?? null}
+          activeWorkspacePath={null}
           isSidebarCollapsed={isPrimarySidebarCollapsed}
           isControlCenterOpen={isControlCenterOpen}
           isCommandCenterOpen={isCommandCenterOpen}
@@ -417,14 +403,19 @@ export default function App(): React.JSX.Element {
         onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
         onOpenSettings={handleOpenSettings}
       />
-
       <AppShellPopups
         isCommandCenterOpen={isCommandCenterOpen}
         activeWorkspace={activeWorkspace}
         workspaces={workspaces}
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
+        remoteWorkersEnabled={agentSettings.experimentalRemoteWorkersEnabled}
         onCloseCommandCenter={closeCommandCenter}
         onOpenSettings={handleOpenSettings}
+        onRequestOpenEndpoints={() => {
+          handleOpenSettings(
+            agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'experimental',
+          )
+        }}
         onOpenSpaceArchives={openSpaceArchives}
         onTogglePrimarySidebar={() => {
           setAgentSettings(prev => ({
@@ -441,7 +432,16 @@ export default function App(): React.JSX.Element {
         canvasWheelZoomModifierSetting={agentSettings.canvasWheelZoomModifier}
         onDeleteSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordRemove}
         onCloseSpaceArchives={closeSpaceArchives}
+        isAddProjectWizardOpen={isAddProjectWizardOpen}
+        onCloseAddProjectWizard={() => {
+          setIsAddProjectWizardOpen(false)
+        }}
         projectContextMenu={projectContextMenu}
+        projectMountManager={projectMountManager}
+        onCloseProjectMountManager={() => {
+          setProjectMountManager(null)
+        }}
+        onRequestManageProjectMounts={handleRequestManageProjectMounts}
         onRequestRemoveProject={handleRequestRemoveProject}
         projectDeleteConfirmation={projectDeleteConfirmation}
         isRemovingProject={isRemovingProject}
@@ -456,9 +456,9 @@ export default function App(): React.JSX.Element {
           void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
         }}
       />
-
       <AppShellModals
         isSettingsOpen={isSettingsOpen}
+        settingsInitialPageId={settingsInitialPageId}
         openSettingsPageId={settingsOpenPageId}
         settings={agentSettings}
         updateState={updateState}
@@ -474,12 +474,12 @@ export default function App(): React.JSX.Element {
         onCloseSettings={() => {
           flushPersistNow()
           setIsFocusNodeTargetZoomPreviewing(false)
+          setSettingsInitialPageId(null)
           setSettingsOpenPageId(null)
           setIsSettingsOpen(false)
         }}
         whatsNew={whatsNew}
       />
-
       <WorkspaceDirectoryPickerBridge />
     </>
   )

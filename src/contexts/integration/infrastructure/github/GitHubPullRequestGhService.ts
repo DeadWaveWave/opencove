@@ -134,6 +134,16 @@ export async function resolveGitHubPullRequests(
     }
   }
 
+  if (process.env.NODE_ENV === 'test') {
+    return {
+      availability: toUnavailable(
+        'unknown',
+        'GitHub integration is disabled in tests unless OPENCOVE_TEST_GITHUB_INTEGRATION is enabled.',
+      ),
+      pullRequestsByBranch: Object.fromEntries(input.branches.map(branch => [branch, null])),
+    }
+  }
+
   const ghAvailable = await isGhAvailable(input.repoPath)
   if (!ghAvailable) {
     return {

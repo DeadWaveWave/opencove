@@ -55,6 +55,7 @@ export const spaces = sqliteTable('workspace_spaces', {
   workspaceId: text('workspace_id').notNull(),
   name: text('name').notNull(),
   directoryPath: text('directory_path').notNull(),
+  targetMountId: text('target_mount_id'),
   labelColor: text('label_color'),
   rectX: real('rect_x'),
   rectY: real('rect_y'),

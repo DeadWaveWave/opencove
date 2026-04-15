@@ -57,6 +57,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'workspace_id',
     'name',
     'directory_path',
+    'target_mount_id',
     'label_color',
     'rect_x',
     'rect_y',
@@ -373,6 +374,7 @@ describe('PersistenceStore (migrations)', () => {
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('nodes')).toContain('session_id')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
+      expect(migratedState?.tables.get('workspace_spaces')).toContain('target_mount_id')
       expect(migratedState?.tables.get('workspaces')).toContain(
         'pull_request_base_branch_options_json',
       )
@@ -408,6 +410,7 @@ describe('PersistenceStore (migrations)', () => {
       const repairedState = mockDbByPath.get(dbPath)
       expect(repairedState?.tables.get('nodes')).toContain('label_color_override')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('label_color')
+      expect(repairedState?.tables.get('workspace_spaces')).toContain('target_mount_id')
       expect(repairedState?.tables.get('workspaces')).toContain(
         'pull_request_base_branch_options_json',
       )

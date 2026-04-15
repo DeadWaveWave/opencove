@@ -111,6 +111,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          targetMountId: typeof space.targetMountId === 'string' ? space.targetMountId : null,
           labelColor: normalizeLabelColor(space.labelColor),
           nodeIds: links.map(link => link.nodeId),
           rect:
