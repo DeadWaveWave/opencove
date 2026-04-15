@@ -38,6 +38,7 @@ interface UseTaskActionsParams {
   agentSettings: AgentSettings
   workspaceId: string
   workspacePath: string
+  environmentVariables?: Record<string, string>
   taskTagOptions: string[]
   onRequestPersistFlush?: () => void
   runTaskAgentRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -61,6 +62,7 @@ export function useWorkspaceCanvasTaskActions({
   agentSettings,
   workspaceId,
   workspacePath,
+  environmentVariables,
   taskTagOptions,
   onRequestPersistFlush,
   runTaskAgentRef,
@@ -89,6 +91,7 @@ export function useWorkspaceCanvasTaskActions({
         agentSettings,
         workspaceId,
         workspacePath,
+        environmentVariables,
         t,
         onRequestPersistFlush,
       })
@@ -97,6 +100,7 @@ export function useWorkspaceCanvasTaskActions({
       agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
+      environmentVariables,
       launchAgentInNode,
       nodesRef,
       onSpacesChange,
@@ -152,6 +156,7 @@ export function useWorkspaceCanvasTaskActions({
         agentSettings,
         workspaceId,
         workspacePath,
+        environmentVariables,
         t,
         onRequestPersistFlush,
       })
@@ -160,6 +165,7 @@ export function useWorkspaceCanvasTaskActions({
       agentSettings,
       buildAgentNodeTitle,
       createNodeForSession,
+      environmentVariables,
       nodesRef,
       onRequestPersistFlush,
       onSpacesChange,

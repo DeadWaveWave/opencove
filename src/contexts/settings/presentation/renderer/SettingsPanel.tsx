@@ -48,6 +48,7 @@ export function SettingsPanel({
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  onWorkspaceEnvironmentVariablesChange,
   isFocusNodeTargetZoomPreviewing,
   onFocusNodeTargetZoomPreviewChange,
   onChange,
@@ -521,6 +522,10 @@ export function SettingsPanel({
                 worktreesRoot={activeWorkspace.worktreesRoot}
                 onChangeWorktreesRoot={root =>
                   onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+                }
+                environmentVariables={activeWorkspace.environmentVariables ?? {}}
+                onChangeEnvironmentVariables={envVars =>
+                  onWorkspaceEnvironmentVariablesChange(activeWorkspace.id, envVars)
                 }
               />
             ) : null}

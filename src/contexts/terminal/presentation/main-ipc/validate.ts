@@ -10,6 +10,7 @@ import type {
 } from '../../../../shared/contracts/dto'
 import { isAbsolute } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
+import { normalizeEnvPayload } from '../../../../app/main/ipc/normalize'
 
 export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalInput {
   if (!payload || typeof payload !== 'object') {
@@ -44,12 +45,15 @@ export function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalIn
     })
   }
 
+  const env = normalizeEnvPayload(record.env)
+
   return {
     cwd,
     profileId: profileId.length > 0 ? profileId : undefined,
     shell: shell.length > 0 ? shell : undefined,
     cols,
     rows,
+    ...(env ? { env } : {}),
   }
 }
 

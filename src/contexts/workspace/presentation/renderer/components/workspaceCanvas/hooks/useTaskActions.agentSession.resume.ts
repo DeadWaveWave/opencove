@@ -92,6 +92,10 @@ export async function resumeTaskAgentSessionAction(
   }
 
   const env = resolveAgentLaunchEnv(context.agentSettings, record.provider)
+  const mergedEnv =
+    context.environmentVariables && Object.keys(context.environmentVariables).length > 0
+      ? { ...env, ...context.environmentVariables }
+      : env
 
   try {
     let launchedSessionId = ''
@@ -116,7 +120,7 @@ export async function resumeTaskAgentSessionAction(
           mode: 'resume',
           model: record.model,
           resumeSessionId: record.resumeSessionId,
-          ...(Object.keys(env).length > 0 ? { env } : {}),
+          ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
           agentFullAccess: context.agentSettings.agentFullAccess,
         },
       })
@@ -135,7 +139,7 @@ export async function resumeTaskAgentSessionAction(
         mode: 'resume',
         model: record.model,
         resumeSessionId: record.resumeSessionId,
-        ...(Object.keys(env).length > 0 ? { env } : {}),
+        ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
         cols: 80,
         rows: 24,

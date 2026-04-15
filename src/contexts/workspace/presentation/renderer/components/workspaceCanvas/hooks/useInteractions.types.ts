@@ -47,6 +47,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   contextMenu: ContextMenuState | null
   workspaceId: string
   workspacePath: string
+  environmentVariables?: Record<string, string>
   defaultTerminalProfileId: string | null
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void

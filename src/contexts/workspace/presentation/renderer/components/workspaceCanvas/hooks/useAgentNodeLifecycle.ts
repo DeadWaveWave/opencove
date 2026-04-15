@@ -27,6 +27,7 @@ interface UseAgentNodeLifecycleParams {
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
   agentEnvByProvider: AgentEnvByProvider
+  environmentVariables?: Record<string, string>
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
@@ -39,6 +40,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   agentFullAccess,
   defaultTerminalProfileId,
   agentEnvByProvider,
+  environmentVariables,
 }: UseAgentNodeLifecycleParams): {
   buildAgentNodeTitle: (
     provider: AgentNodeData['provider'],
@@ -64,6 +66,10 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
 
       const launchData = node.data.agent
       const env = resolveEnabledEnvForAgent({ rows: agentEnvByProvider[launchData.provider] ?? [] })
+      const mergedEnv =
+        environmentVariables && Object.keys(environmentVariables).length > 0
+          ? { ...env, ...environmentVariables }
+          : env
       const owningSpace = spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
       let mountId = owningSpace?.targetMountId ?? null
 
@@ -226,7 +232,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 mode,
                 model: launchData.model,
                 resumeSessionId: mode === 'resume' ? launchData.resumeSessionId : null,
-                ...(Object.keys(env).length > 0 ? { env } : {}),
+                ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
                 agentFullAccess,
               },
             },
@@ -246,7 +252,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
             mode,
             model: launchData.model,
             resumeSessionId: mode === 'resume' ? launchData.resumeSessionId : null,
-            ...(Object.keys(env).length > 0 ? { env } : {}),
+            ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
             agentFullAccess,
             cols: 80,
             rows: 24,
@@ -349,6 +355,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       buildAgentNodeTitle,
       bumpAgentLaunchToken,
       defaultTerminalProfileId,
+      environmentVariables,
       isAgentLaunchTokenCurrent,
       nodesRef,
       spacesRef,

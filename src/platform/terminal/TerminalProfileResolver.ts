@@ -168,7 +168,10 @@ export class TerminalProfileResolver {
   }
 
   public async resolveTerminalSpawn(input: SpawnTerminalInput): Promise<ResolvedTerminalSpawn> {
-    const env = withTerminalCapabilityEnv({ ...this.deps.env() }, this.deps.platform)
+    const env = withTerminalCapabilityEnv(
+      { ...this.deps.env(), ...(input.env ?? {}) },
+      this.deps.platform,
+    )
 
     if (this.deps.platform !== 'win32') {
       const shell = input.shell ?? resolvePosixShell(this.deps.env().SHELL)

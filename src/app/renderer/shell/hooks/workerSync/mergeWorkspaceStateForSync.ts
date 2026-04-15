@@ -463,12 +463,31 @@ export function toShellWorkspaceStateForSync(
       ? existingWorkspace.spaceArchiveRecords
       : nextSpaceArchiveRecords
 
+  const environmentVariables = (() => {
+    const existing = existingWorkspace?.environmentVariables ?? undefined
+    const next = workspace.environmentVariables ?? undefined
+    if (!existing && !next) {
+      return undefined
+    }
+
+    if (
+      existing &&
+      next &&
+      shallowEqualRecord(existing as unknown as UnknownRecord, next as unknown as UnknownRecord)
+    ) {
+      return existing
+    }
+
+    return next
+  })()
+
   const nextWorkspace: WorkspaceState = {
     id: workspace.id,
     name: workspace.name,
     path: workspace.path,
     worktreesRoot: workspace.worktreesRoot,
     pullRequestBaseBranchOptions,
+    environmentVariables,
     nodes: resolvedNodes,
     viewport,
     isMinimapVisible: existingWorkspace?.isMinimapVisible ?? workspace.isMinimapVisible,
@@ -486,6 +505,7 @@ export function toShellWorkspaceStateForSync(
       existingWorkspace.pullRequestBaseBranchOptions ?? [],
       nextWorkspace.pullRequestBaseBranchOptions ?? [],
     ) &&
+    existingWorkspace.environmentVariables === nextWorkspace.environmentVariables &&
     existingWorkspace.nodes === nextWorkspace.nodes &&
     existingWorkspace.viewport === nextWorkspace.viewport &&
     existingWorkspace.isMinimapVisible === nextWorkspace.isMinimapVisible &&

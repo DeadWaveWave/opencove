@@ -29,6 +29,7 @@ export interface TaskActionContext {
   agentSettings: AgentSettings
   workspaceId: string
   workspacePath: string
+  environmentVariables?: Record<string, string>
   t: TranslateFn
   onRequestPersistFlush?: () => void
 }

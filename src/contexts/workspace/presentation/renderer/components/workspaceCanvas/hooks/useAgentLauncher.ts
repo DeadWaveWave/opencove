@@ -24,6 +24,7 @@ interface UseAgentLauncherParams {
   agentSettings: AgentSettings
   workspaceId: string
   workspacePath: string
+  environmentVariables?: Record<string, string>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -47,6 +48,7 @@ export function useWorkspaceCanvasAgentLauncher({
   agentSettings,
   workspaceId,
   workspacePath,
+  environmentVariables,
   nodesRef,
   setNodes,
   spacesRef,
@@ -85,6 +87,10 @@ export function useWorkspaceCanvasAgentLauncher({
           const model = resolveAgentModel(agentSettings, provider)
           const env = resolveAgentLaunchEnv(agentSettings, provider)
           const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+          const mergedEnv =
+            environmentVariables && Object.keys(environmentVariables).length > 0
+              ? { ...env, ...environmentVariables }
+              : env
           let mountId = anchorSpace?.targetMountId ?? null
 
           if (!mountId && !anchorSpace && workspaceId.trim().length > 0) {
@@ -138,7 +144,7 @@ export function useWorkspaceCanvasAgentLauncher({
                   provider,
                   mode: 'new',
                   model,
-                  ...(Object.keys(env).length > 0 ? { env } : {}),
+                  ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
                   agentFullAccess: agentSettings.agentFullAccess,
                 },
               })
@@ -155,7 +161,7 @@ export function useWorkspaceCanvasAgentLauncher({
               prompt: '',
               mode: 'new',
               model,
-              ...(Object.keys(env).length > 0 ? { env } : {}),
+              ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
               agentFullAccess: agentSettings.agentFullAccess,
               cols: 80,
               rows: 24,
@@ -226,6 +232,7 @@ export function useWorkspaceCanvasAgentLauncher({
       buildAgentNodeTitle,
       contextMenu,
       createNodeForSession,
+      environmentVariables,
       nodesRef,
       onRequestPersistFlush,
       onShowMessage,

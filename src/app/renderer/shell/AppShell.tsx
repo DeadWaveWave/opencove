@@ -277,6 +277,7 @@ export default function App(): React.JSX.Element {
     handleWorkspaceSpaceArchiveRecordAppend,
     handleWorkspaceSpaceArchiveRecordRemove,
     handleAnyWorkspaceWorktreesRootChange,
+    handleAnyWorkspaceEnvironmentVariablesChange,
   } = useWorkspaceStateHandlers({ requestPersistFlush })
 
   const {
@@ -461,6 +462,7 @@ export default function App(): React.JSX.Element {
         modelCatalogByProvider={providerModelCatalog}
         workspaces={workspaces}
         onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
+        onWorkspaceEnvironmentVariablesChange={handleAnyWorkspaceEnvironmentVariablesChange}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
         onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
         onChangeSettings={setAgentSettings}

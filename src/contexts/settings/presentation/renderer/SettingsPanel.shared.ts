@@ -18,6 +18,10 @@ export interface SettingsPanelProps {
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  onWorkspaceEnvironmentVariablesChange: (
+    workspaceId: string,
+    environmentVariables: Record<string, string>,
+  ) => void
   isFocusNodeTargetZoomPreviewing: boolean
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChange: (settings: AgentSettings) => void

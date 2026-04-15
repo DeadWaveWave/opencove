@@ -13,6 +13,7 @@ export function useWorkspaceCanvasTaskUi({
   agentSettings,
   workspaceId,
   workspacePath,
+  environmentVariables,
   onRequestPersistFlush,
   actionRefs,
   contextMenu,
@@ -32,6 +33,7 @@ export function useWorkspaceCanvasTaskUi({
   agentSettings: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['agentSettings']
   workspaceId: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['workspaceId']
   workspacePath: Parameters<typeof useWorkspaceCanvasTaskSupport>[0]['workspacePath']
+  environmentVariables?: Record<string, string>
   onRequestPersistFlush?: Parameters<
     typeof useWorkspaceCanvasTaskSupport
   >[0]['onRequestPersistFlush']
@@ -58,6 +60,7 @@ export function useWorkspaceCanvasTaskUi({
     agentSettings,
     workspaceId,
     workspacePath,
+    environmentVariables,
     onRequestPersistFlush,
     actionRefs,
   })
