@@ -219,6 +219,12 @@ export default function App(): React.JSX.Element {
     document.title = activeWorkspaceName ? `${activeWorkspaceName} — OpenCove` : 'OpenCove'
   }, [activeWorkspaceName])
 
+  useEffect(() => {
+    if (platform) {
+      document.documentElement.dataset.covePlatform = platform
+    }
+  }, [platform])
+
   const platform =
     typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
       ? window.opencoveApi.meta.platform

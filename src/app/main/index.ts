@@ -30,6 +30,8 @@ let workerEndpointResolverForContextMenu: ReturnType<
 const APP_USER_DATA_DIRECTORY_NAME = 'opencove'
 const OPENCOVE_APP_USER_MODEL_ID = 'dev.deadwave.opencove'
 
+app.commandLine.appendSwitch('force-color-profile', 'srgb')
+
 if (process.env['NODE_ENV'] === 'test') {
   // GitHub Actions macOS runners often treat the Electron window as occluded/backgrounded even in
   // "normal" mode, which can pause rAF/timers and break pointer-driven E2E interactions.
