@@ -2,8 +2,10 @@ import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import { resolveEnabledEnvForAgent } from '@contexts/settings/domain/agentEnv'
+import type { AgentEnvByProvider } from '@contexts/settings/domain/agentSettings'
 import type { LaunchAgentSessionResult, ListMountsResult } from '@shared/contracts/dto'
+import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
@@ -24,6 +26,7 @@ interface UseAgentNodeLifecycleParams {
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
+  agentEnvByProvider: AgentEnvByProvider
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
@@ -35,6 +38,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   isAgentLaunchTokenCurrent,
   agentFullAccess,
   defaultTerminalProfileId,
+  agentEnvByProvider,
 }: UseAgentNodeLifecycleParams): {
   buildAgentNodeTitle: (
     provider: AgentNodeData['provider'],
@@ -59,6 +63,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       }
 
       const launchData = node.data.agent
+      const env = resolveEnabledEnvForAgent({ rows: agentEnvByProvider[launchData.provider] ?? [] })
       const owningSpace = spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
       let mountId = owningSpace?.targetMountId ?? null
 
@@ -221,6 +226,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 mode,
                 model: launchData.model,
                 resumeSessionId: mode === 'resume' ? launchData.resumeSessionId : null,
+                ...(Object.keys(env).length > 0 ? { env } : {}),
                 agentFullAccess,
               },
             },
@@ -240,6 +246,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
             mode,
             model: launchData.model,
             resumeSessionId: mode === 'resume' ? launchData.resumeSessionId : null,
+            ...(Object.keys(env).length > 0 ? { env } : {}),
             agentFullAccess,
             cols: 80,
             rows: 24,
@@ -337,6 +344,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       }
     },
     [
+      agentEnvByProvider,
       agentFullAccess,
       buildAgentNodeTitle,
       bumpAgentLaunchToken,

@@ -280,13 +280,18 @@ export function registerAgentIpcHandlers(
             ...(sessionEnv ? { env: sessionEnv } : {}),
           })
 
+      const mergedEnv =
+        normalized.env && Object.keys(normalized.env).length > 0
+          ? { ...(resolvedSpawn.env ?? process.env), ...normalized.env }
+          : resolvedSpawn.env
+
       const { sessionId } = await ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
         cols: normalized.cols ?? 80,
         rows: normalized.rows ?? 24,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
-        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+        ...(mergedEnv ? { env: mergedEnv } : {}),
       })
 
       const resumeSessionId = launchCommand.resumeSessionId

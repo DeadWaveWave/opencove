@@ -37,8 +37,26 @@ import type { SettingsPageId } from '@contexts/settings/presentation/renderer/Se
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
-  // prettier-ignore
-  const { workspaces, activeWorkspaceId, projectContextMenu, projectMountManager, projectDeleteConfirmation, isRemovingProject, agentSettings, isSettingsOpen, focusRequest, setWorkspaces, setActiveWorkspaceId, setProjectContextMenu, setProjectMountManager, setProjectDeleteConfirmation, setAgentSettings, setIsSettingsOpen } = useAppStore()
+  const {
+    workspaces,
+    activeWorkspaceId,
+    projectContextMenu,
+    projectMountManager,
+    projectDeleteConfirmation,
+    isRemovingProject,
+    agentSettings,
+    isSettingsOpen,
+    settingsOpenPageId,
+    focusRequest,
+    setWorkspaces,
+    setActiveWorkspaceId,
+    setProjectContextMenu,
+    setProjectMountManager,
+    setProjectDeleteConfirmation,
+    setAgentSettings,
+    setIsSettingsOpen,
+    setSettingsOpenPageId,
+  } = useAppStore()
 
   const { isPersistReady } = useHydrateAppState({
     activeWorkspaceId,
@@ -164,6 +182,7 @@ export default function App(): React.JSX.Element {
       closeControlCenter()
       closeSpaceArchives()
       setSettingsInitialPageId(null)
+      setSettingsOpenPageId(null)
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
@@ -325,9 +344,10 @@ export default function App(): React.JSX.Element {
       setIsFocusNodeTargetZoomPreviewing(false)
       setSettingsInitialPageId(initialPageId)
       closeControlCenter()
+      setSettingsOpenPageId(null)
       setIsSettingsOpen(true)
     },
-    [closeControlCenter, setIsSettingsOpen],
+    [closeControlCenter, setIsSettingsOpen, setSettingsOpenPageId],
   )
 
   return (
@@ -479,6 +499,7 @@ export default function App(): React.JSX.Element {
       <AppShellModals
         isSettingsOpen={isSettingsOpen}
         settingsInitialPageId={settingsInitialPageId}
+        openSettingsPageId={settingsOpenPageId}
         settings={agentSettings}
         updateState={updateState}
         modelCatalogByProvider={providerModelCatalog}
@@ -494,6 +515,7 @@ export default function App(): React.JSX.Element {
           flushPersistNow()
           setIsFocusNodeTargetZoomPreviewing(false)
           setSettingsInitialPageId(null)
+          setSettingsOpenPageId(null)
           setIsSettingsOpen(false)
         }}
         whatsNew={whatsNew}

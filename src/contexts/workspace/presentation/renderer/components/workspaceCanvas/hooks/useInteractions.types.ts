@@ -57,6 +57,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
     anchor: Point,
     options?: {
       placementStrategy?: 'default' | 'right-no-push'
+      initialText?: string
       placement?: {
         targetSpaceRect?: WorkspaceSpaceState['rect']
       }

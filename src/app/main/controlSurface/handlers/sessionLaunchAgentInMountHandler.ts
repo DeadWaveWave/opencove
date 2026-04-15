@@ -23,6 +23,7 @@ import {
   resolveProviderFromSettings,
   resolveSessionLaunchSpawn,
 } from './sessionLaunchSupport'
+import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
@@ -177,6 +178,8 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
     })
   }
 
+  const env = normalizeLaunchAgentEnv(payload.env)
+
   return {
     mountId,
     cwdUri:
@@ -189,6 +192,7 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
     model: modelRaw === null ? null : normalizeOptionalString(modelRaw),
     resumeSessionId:
       resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw),
+    env,
     agentFullAccess: agentFullAccess ?? null,
   }
 }
@@ -269,6 +273,7 @@ export function registerSessionLaunchAgentInMountHandler(
               mode,
               model: payload.model ?? null,
               resumeSessionId: payload.resumeSessionId ?? null,
+              env: payload.env ?? null,
               agentFullAccess: payload.agentFullAccess ?? null,
             } satisfies LaunchAgentSessionInput,
           })
@@ -408,12 +413,17 @@ export function registerSessionLaunchAgentInMountHandler(
             }
           : undefined
 
+      const mergedEnv =
+        payload.env && Object.keys(payload.env).length > 0
+          ? { ...(sessionEnv ?? {}), ...payload.env }
+          : sessionEnv
+
       const resolvedSpawn = await resolveSessionLaunchSpawn({
         workingDirectory: cwd,
         defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
         command: launchCommand.command,
         args: launchCommand.args,
-        ...(sessionEnv ? { env: sessionEnv } : {}),
+        ...(mergedEnv ? { env: mergedEnv } : {}),
       })
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({

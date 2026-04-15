@@ -1,5 +1,6 @@
 import { AGENT_PROVIDERS } from './agentSettings.providers'
 import type { AgentSettings } from './agentSettings'
+import { DEFAULT_AGENT_ENV_BY_PROVIDER } from './agentEnv'
 import { DEFAULT_UI_LANGUAGE } from './uiSettings'
 import { DEFAULT_WEBSITE_WINDOW_POLICY } from './websiteWindowSettings'
 
@@ -35,6 +36,9 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
   taskPromptTemplates: [],
   taskPromptTemplatesByWorkspaceId: {},
+  quickCommands: [],
+  quickPhrases: [],
+  agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
   focusNodeUseVisibleCanvasCenter: true,

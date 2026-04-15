@@ -2,8 +2,9 @@ import React, { useEffect } from 'react'
 import { render, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
+import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { DEFAULT_AGENT_ENV_BY_PROVIDER } from '../../../src/contexts/settings/domain/agentEnv'
 import type {
-  TerminalNodeData,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { useWorkspaceCanvasAgentNodeLifecycle } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useAgentNodeLifecycle'
@@ -110,6 +111,7 @@ describe('agent terminal layout sync', () => {
         isAgentLaunchTokenCurrent: () => true,
         agentFullAccess: true,
         defaultTerminalProfileId: 'wsl:Ubuntu',
+        agentEnvByProvider: DEFAULT_AGENT_ENV_BY_PROVIDER,
       })
 
       useEffect(() => {

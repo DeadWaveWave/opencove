@@ -270,6 +270,7 @@
   display: inline-block;
   width: 32px;
   height: 18px;
+  flex: 0 0 auto;
 }
 
 .cove-toggle input {

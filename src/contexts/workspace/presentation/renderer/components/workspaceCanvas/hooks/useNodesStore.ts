@@ -1,6 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
@@ -21,36 +20,7 @@ import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
-
-function resolveTerminalProviderHintFromCommand(command: string): AgentProvider | null {
-  const normalizedCommand = command.trim()
-  if (normalizedCommand.length === 0) {
-    return null
-  }
-
-  const firstToken = normalizedCommand.split(/\s+/, 1)[0] ?? ''
-  const unquotedToken = firstToken.replace(/^['"]+|['"]+$/g, '')
-  const basename = unquotedToken.replace(/^.*[\\/]/, '')
-  const executableName = basename.replace(/\.(exe|cmd|bat|ps1|sh)$/i, '').toLowerCase()
-
-  if (executableName === 'claude' || executableName === 'claude-code') {
-    return 'claude-code'
-  }
-
-  if (executableName === 'codex') {
-    return 'codex'
-  }
-
-  if (executableName === 'opencode') {
-    return 'opencode'
-  }
-
-  if (executableName === 'gemini') {
-    return 'gemini'
-  }
-
-  return null
-}
+import { resolveTerminalProviderHintFromCommand } from './useNodesStore.terminalProviderHint'
 
 export function useWorkspaceCanvasNodesStore({
   nodes,

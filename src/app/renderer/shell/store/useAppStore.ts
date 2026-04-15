@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { arrayMove } from '@dnd-kit/sortable'
 import { DEFAULT_AGENT_SETTINGS, type AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import type {
   FocusRequest,
@@ -26,6 +27,7 @@ export interface AppStoreState {
   agentSettings: AgentSettings
   isSettingsOpen: boolean
   isProjectCreatorOpen: boolean
+  settingsOpenPageId: SettingsPageId | null
   focusRequest: FocusRequest | null
   persistNotice: PersistNotice | null
 
@@ -40,6 +42,7 @@ export interface AppStoreState {
   setAgentSettings: (action: SetStateAction<AgentSettings>) => void
   setIsSettingsOpen: (action: SetStateAction<boolean>) => void
   setIsProjectCreatorOpen: (action: SetStateAction<boolean>) => void
+  setSettingsOpenPageId: (action: SetStateAction<SettingsPageId | null>) => void
   setFocusRequest: (action: SetStateAction<FocusRequest | null>) => void
   setPersistNotice: (action: SetStateAction<PersistNotice | null>) => void
   reorderWorkspaces: (activeId: string, overId: string) => void
@@ -55,6 +58,7 @@ export const useAppStore = create<AppStoreState>(set => ({
   agentSettings: DEFAULT_AGENT_SETTINGS,
   isSettingsOpen: false,
   isProjectCreatorOpen: false,
+  settingsOpenPageId: null,
   focusRequest: null,
   persistNotice: null,
 
@@ -79,6 +83,10 @@ export const useAppStore = create<AppStoreState>(set => ({
   setIsProjectCreatorOpen: action =>
     set(state => ({
       isProjectCreatorOpen: applySetStateAction(state.isProjectCreatorOpen, action),
+    })),
+  setSettingsOpenPageId: action =>
+    set(state => ({
+      settingsOpenPageId: applySetStateAction(state.settingsOpenPageId, action),
     })),
   setFocusRequest: action =>
     set(state => ({ focusRequest: applySetStateAction(state.focusRequest, action) })),

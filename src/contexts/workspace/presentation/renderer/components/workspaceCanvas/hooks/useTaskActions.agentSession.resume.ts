@@ -1,4 +1,5 @@
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
+import { resolveAgentLaunchEnv } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import type {
@@ -90,6 +91,8 @@ export async function resumeTaskAgentSessionAction(
     }
   }
 
+  const env = resolveAgentLaunchEnv(context.agentSettings, record.provider)
+
   try {
     let launchedSessionId = ''
     let launchedProfileId: string | null = null
@@ -113,6 +116,7 @@ export async function resumeTaskAgentSessionAction(
           mode: 'resume',
           model: record.model,
           resumeSessionId: record.resumeSessionId,
+          ...(Object.keys(env).length > 0 ? { env } : {}),
           agentFullAccess: context.agentSettings.agentFullAccess,
         },
       })
@@ -131,6 +135,7 @@ export async function resumeTaskAgentSessionAction(
         mode: 'resume',
         model: record.model,
         resumeSessionId: record.resumeSessionId,
+        ...(Object.keys(env).length > 0 ? { env } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
         cols: 80,
         rows: 24,

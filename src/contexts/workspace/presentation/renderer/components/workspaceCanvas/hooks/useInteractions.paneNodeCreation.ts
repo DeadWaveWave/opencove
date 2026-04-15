@@ -36,6 +36,7 @@ export async function createTerminalNodeAtFlowPosition({
   onSpacesChange,
   createNodeForSession,
   onShowMessage,
+  title,
 }: {
   anchor: Point
   workspaceId: string
@@ -48,7 +49,8 @@ export async function createTerminalNodeAtFlowPosition({
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
-}): Promise<void> {
+  title?: string | null
+}): Promise<{ sessionId: string; nodeId: string } | null> {
   const cursorAnchor = {
     x: anchor.x,
     y: anchor.y,
@@ -128,14 +130,19 @@ export async function createTerminalNodeAtFlowPosition({
       translate('messages.terminalLaunchFailed', { message: toErrorMessage(error) }),
       'error',
     )
-    return
+    return null
   }
+
+  const resolvedTitle =
+    typeof title === 'string' && title.trim().length > 0
+      ? title.trim()
+      : `terminal-${nodesRef.current.length + 1}`
 
   const created = await createNodeForSession({
     sessionId: spawned.sessionId,
     profileId: spawned.profileId,
     runtimeKind: spawned.runtimeKind,
-    title: `terminal-${nodesRef.current.length + 1}`,
+    title: resolvedTitle,
     anchor: nodeAnchor,
     kind: 'terminal',
     executionDirectory: nodeWorkingDirectory,
@@ -145,18 +152,22 @@ export async function createTerminalNodeAtFlowPosition({
     },
   })
 
-  if (!created || !targetSpace) {
-    return
+  if (!created) {
+    return null
   }
 
-  assignNodeToSpaceAndExpand({
-    createdNodeId: created.id,
-    targetSpaceId: targetSpace.id,
-    spacesRef,
-    nodesRef,
-    setNodes,
-    onSpacesChange,
-  })
+  if (targetSpace) {
+    assignNodeToSpaceAndExpand({
+      createdNodeId: created.id,
+      targetSpaceId: targetSpace.id,
+      spacesRef,
+      nodesRef,
+      setNodes,
+      onSpacesChange,
+    })
+  }
+
+  return { sessionId: spawned.sessionId, nodeId: created.id }
 }
 
 export function createNoteNodeAtFlowPosition({
@@ -170,7 +181,14 @@ export function createNoteNodeAtFlowPosition({
 }: {
   anchor: Point
   standardWindowSizeBucket: StandardWindowSizeBucket
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  createNoteNode: (
+    anchor: Point,
+    options?: {
+      placement?: {
+        targetSpaceRect?: WorkspaceSpaceState['rect']
+      }
+    },
+  ) => Node<TerminalNodeData> | null
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
