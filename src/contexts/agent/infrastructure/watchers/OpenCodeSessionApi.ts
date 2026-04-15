@@ -1,6 +1,8 @@
 const OPENCODE_API_TIMEOUT_MS = 1_500
 const OPENCODE_DISCOVERY_LIMIT = 20
-const OPENCODE_DISCOVERY_WINDOW_MS = 20_000
+// Keep the API-side discovery window aligned with the sqlite fallback so restart/load spikes do
+// not permanently miss the just-created OpenCode session.
+const OPENCODE_DISCOVERY_WINDOW_MS = 60_000
 
 type OpenCodeSessionStatus = 'busy' | 'retry' | 'idle'
 

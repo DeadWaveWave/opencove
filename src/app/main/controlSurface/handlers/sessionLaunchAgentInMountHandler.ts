@@ -2,7 +2,6 @@ import { app } from 'electron'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
-import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { createAppError } from '../../../../shared/errors/appError'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
@@ -12,7 +11,6 @@ import {
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type {
-  AgentProviderId,
   LaunchAgentSessionInMountInput,
   LaunchAgentSessionInput,
   LaunchAgentSessionResult,
@@ -31,6 +29,13 @@ import { assertFileUriWithinRootUri } from '../topology/fileUriScope'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { SessionRecord } from './sessionRecords'
+import {
+  isRecord,
+  normalizeAgentProviderId,
+  normalizeFileSystemUri,
+  normalizeOptionalString,
+  resolvePathFromFileSystemUriOrThrow,
+} from './sessionLaunchPayloadSupport'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
@@ -41,75 +46,6 @@ function resolveOpenCodeEmbeddedXdgStateHome(): string {
 
   const fallback = process.env['OPENCOVE_TEST_USER_DATA_DIR']?.trim()
   return fallback && fallback.length > 0 ? fallback : process.cwd()
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeAgentProviderId(value: unknown): AgentProviderId | null {
-  const provider = normalizeOptionalString(value)
-  if (!provider) {
-    return null
-  }
-
-  if (
-    provider === 'claude-code' ||
-    provider === 'codex' ||
-    provider === 'opencode' ||
-    provider === 'gemini'
-  ) {
-    return provider
-  }
-
-  throw createAppError('common.invalid_input', {
-    debugMessage: `Invalid payload for session.launchAgentInMount provider: ${provider}`,
-  })
-}
-
-function normalizeFileSystemUri(uri: unknown, operationId: string): string {
-  if (typeof uri !== 'string') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} uri.`,
-    })
-  }
-
-  const normalized = uri.trim()
-  if (normalized.length === 0) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Missing payload for ${operationId} uri.`,
-    })
-  }
-
-  let parsed: URL
-  try {
-    parsed = new URL(normalized)
-  } catch {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId} uri.`,
-    })
-  }
-
-  if (parsed.protocol !== 'file:') {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Unsupported uri scheme for ${operationId}: ${parsed.protocol}`,
-    })
-  }
-
-  return normalized
 }
 
 function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessionInMountInput {
@@ -140,7 +76,7 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
     })
   }
 
-  const provider = normalizeAgentProviderId(payload.provider)
+  const provider = normalizeAgentProviderId(payload.provider, 'session.launchAgentInMount provider')
 
   const modelRaw = payload.model
   if (modelRaw !== undefined && modelRaw !== null && typeof modelRaw !== 'string') {
@@ -197,17 +133,6 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
   }
 }
 
-function resolvePathFromUriOrThrow(uri: string, operationId: string): string {
-  const resolved = fromFileUri(uri)
-  if (!resolved) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `Invalid payload for ${operationId}.`,
-    })
-  }
-
-  return resolved
-}
-
 export function registerSessionLaunchAgentInMountHandler(
   controlSurface: ControlSurface,
   deps: {
@@ -237,7 +162,7 @@ export function registerSessionLaunchAgentInMountHandler(
         debugMessage: 'session.launchAgentInMount cwdUri is outside mount root',
       })
 
-      const cwd = resolvePathFromUriOrThrow(cwdUri, 'session.launchAgentInMount cwdUri')
+      const cwd = resolvePathFromFileSystemUriOrThrow(cwdUri, 'session.launchAgentInMount cwdUri')
       const mode = payload.mode ?? 'new'
 
       if (target.endpointId !== 'local') {
@@ -413,10 +338,13 @@ export function registerSessionLaunchAgentInMountHandler(
             }
           : undefined
 
+      const launchEnv =
+        testStub?.env || sessionEnv ? { ...(testStub?.env ?? {}), ...(sessionEnv ?? {}) } : null
+
       const mergedEnv =
         payload.env && Object.keys(payload.env).length > 0
-          ? { ...(sessionEnv ?? {}), ...payload.env }
-          : sessionEnv
+          ? { ...(launchEnv ?? {}), ...payload.env }
+          : (launchEnv ?? undefined)
 
       const resolvedSpawn = await resolveSessionLaunchSpawn({
         workingDirectory: cwd,

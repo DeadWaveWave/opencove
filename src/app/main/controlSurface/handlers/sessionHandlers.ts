@@ -10,7 +10,6 @@ import {
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 import type {
-  AgentProviderId,
   GetSessionInput,
   GetSessionResult,
   LaunchAgentSessionInput,
@@ -28,6 +27,11 @@ import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
+import {
+  isRecord,
+  normalizeAgentProviderId,
+  normalizeOptionalString,
+} from './sessionLaunchPayloadSupport'
 import type { SessionRecord } from './sessionRecords'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
@@ -36,43 +40,6 @@ const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
 function resolveOpenCodeEmbeddedXdgStateHome(userDataPath: string): string {
   return userDataPath.trim() || process.cwd()
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeAgentProviderId(value: unknown): AgentProviderId | null {
-  const provider = normalizeOptionalString(value)
-  if (!provider) {
-    return null
-  }
-
-  if (
-    provider === 'claude-code' ||
-    provider === 'codex' ||
-    provider === 'opencode' ||
-    provider === 'gemini'
-  ) {
-    return provider
-  }
-
-  throw createAppError('common.invalid_input', {
-    debugMessage: `Invalid payload for session.launchAgent provider: ${provider}`,
-  })
 }
 
 function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput {
@@ -116,7 +83,7 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     })
   }
 
-  const provider = normalizeAgentProviderId(providerRaw)
+  const provider = normalizeAgentProviderId(providerRaw, 'session.launchAgent provider')
 
   const modelRaw = payload.model
   if (modelRaw !== undefined && modelRaw !== null && typeof modelRaw !== 'string') {
@@ -308,10 +275,13 @@ export function registerSessionHandlers(
             }
           : undefined
 
+      const launchEnv =
+        testStub?.env || sessionEnv ? { ...(testStub?.env ?? {}), ...(sessionEnv ?? {}) } : null
+
       const mergedEnv =
         payload.env && Object.keys(payload.env).length > 0
-          ? { ...(sessionEnv ?? {}), ...payload.env }
-          : sessionEnv
+          ? { ...(launchEnv ?? {}), ...payload.env }
+          : (launchEnv ?? undefined)
 
       const resolvedSpawn = await resolveSessionLaunchSpawn({
         workingDirectory,

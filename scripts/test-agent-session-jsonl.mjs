@@ -2,6 +2,8 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
+const INTERACTIVE_SCENARIO_LIFETIME_MS = 60_000
+
 function sleep(ms) {
   return new Promise(resolveSleep => {
     setTimeout(resolveSleep, ms)
@@ -157,7 +159,7 @@ export async function runJsonlStdinSubmitDelayedTurnScenario(provider, cwd) {
       },
       { newline: false },
     )
-    await sleep(20_000)
+    await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
     return
   }
 
@@ -182,7 +184,7 @@ export async function runJsonlStdinSubmitDelayedTurnScenario(provider, cwd) {
     { newline: false },
   )
 
-  await sleep(20_000)
+  await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
 }
 
 async function resolveScenarioSessionFile({ provider, cwd, mode, resumeSessionId }) {
@@ -274,7 +276,7 @@ export async function runJsonlStdinSubmitDrivenTurnScenario(
       })
     })
 
-    await sleep(20_000)
+    await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
     return
   }
 
@@ -317,5 +319,5 @@ export async function runJsonlStdinSubmitDrivenTurnScenario(
     })
   })
 
-  await sleep(20_000)
+  await sleep(INTERACTIVE_SCENARIO_LIFETIME_MS)
 }

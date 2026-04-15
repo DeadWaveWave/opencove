@@ -1,6 +1,7 @@
 import { createWriteStream, existsSync, mkdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { PTY_HOST_PROTOCOL_VERSION, isPtyHostMessage } from './protocol'
+import { resolvePtyHostSpawnEnv } from './spawnEnv'
 import type {
   PtyHostMessage,
   PtyHostRequest,
@@ -357,17 +358,7 @@ export class PtyHostSupervisor {
   }
 
   public async spawn(options: PtyHostSpawnOptions): Promise<{ sessionId: string }> {
-    const env = options.env ? { ...options.env } : { ...process.env }
-
-    // In PTY-backed UIs we generally want a "real terminal" default. Some Node-based CLIs will
-    // disable ANSI colors when `NO_COLOR`/`NODE_DISABLE_COLORS` are inherited from a parent tool
-    // (test runners, build tools, etc.). Strip them so agent/terminal sessions can keep color.
-    delete env.NO_COLOR
-    delete env.NODE_DISABLE_COLORS
-    // The app uses ELECTRON_RUN_AS_NODE to run bundled CLI/worker entrypoints via Electron.
-    // Leaking it into interactive shells breaks launching Electron-based tooling (including
-    // OpenCove dev via electron-vite).
-    delete env.ELECTRON_RUN_AS_NODE
+    const env = resolvePtyHostSpawnEnv(options.env)
     let attemptedChild: PtyHostProcess | null = null
     const spawnOnce = async (): Promise<{ sessionId: string }> => {
       await this.ensureReady()

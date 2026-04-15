@@ -8,6 +8,10 @@ import type {
 import { normalizeProvider } from '../../../../app/main/ipc/normalize'
 import { isAbsolute, win32 } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
+import {
+  resolveNodeScriptLaunch,
+  type NodeScriptLaunchCommand,
+} from '../../../../shared/utils/nodeScriptCommand'
 
 function isAbsoluteWorkspacePath(path: string): boolean {
   return isAbsolute(path) || win32.isAbsolute(path)
@@ -156,10 +160,7 @@ export function resolveAgentTestStub(
   model: string | null,
   mode: LaunchAgentInput['mode'],
   resumeSessionId?: string | null,
-): {
-  command: string
-  args: string[]
-} | null {
+): NodeScriptLaunchCommand | null {
   if (process.env.NODE_ENV !== 'test') {
     return null
   }
@@ -175,18 +176,14 @@ export function resolveAgentTestStub(
   const stubScriptPath = process.env['OPENCOVE_TEST_AGENT_STUB_SCRIPT']?.trim() ?? ''
 
   if (sessionScenario.length > 0 && stubScriptPath.length > 0) {
-    return {
-      command: process.execPath,
-      args: [
-        stubScriptPath,
-        provider,
-        cwd,
-        mode ?? 'new',
-        model ?? 'default-model',
-        resumeSessionId ?? '',
-        sessionScenario,
-      ],
-    }
+    return resolveNodeScriptLaunch(stubScriptPath, [
+      provider,
+      cwd,
+      mode ?? 'new',
+      model ?? 'default-model',
+      resumeSessionId ?? '',
+      sessionScenario,
+    ])
   }
 
   if (process.platform === 'win32') {
