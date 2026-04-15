@@ -69,12 +69,11 @@ export function TerminalNodeHeader({
 
   const startTitleEditing = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
-      if (
-        !isTitleEditable ||
-        isTitleEditing ||
-        !(event.target instanceof Element) ||
-        event.target.closest('.nodrag')
-      ) {
+      if (!isTitleEditable || isTitleEditing) {
+        return
+      }
+
+      if (event.target instanceof Element && event.target.closest('.nodrag')) {
         return
       }
 
