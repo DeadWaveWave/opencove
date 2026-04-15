@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
   resolveAgentModel,
+  resolveAgentLaunchEnv,
   type AgentSettings,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
@@ -78,6 +79,7 @@ export function useWorkspaceCanvasAgentLauncher({
             resolveDefaultAgentWindowSize(standardWindowSizeBucket),
           )
           const model = resolveAgentModel(agentSettings, provider)
+          const env = resolveAgentLaunchEnv(agentSettings, provider)
           const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
           const executionDirectory = resolveSpaceWorkingDirectory(anchorSpace, workspacePath)
           const launched = await window.opencoveApi.agent.launch({
@@ -87,6 +89,7 @@ export function useWorkspaceCanvasAgentLauncher({
             prompt: '',
             mode: 'new',
             model,
+            ...(Object.keys(env).length > 0 ? { env } : {}),
             agentFullAccess: agentSettings.agentFullAccess,
             cols: 80,
             rows: 24,

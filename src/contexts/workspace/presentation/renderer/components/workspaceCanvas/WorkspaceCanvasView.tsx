@@ -111,6 +111,9 @@ export function WorkspaceCanvasView({
   openTaskCreator,
   openAgentLauncher,
   openAgentLauncherForProvider,
+  runQuickCommand,
+  insertQuickPhrase,
+  openQuickMenuSettings,
   createSpaceFromSelectedNodes,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
@@ -388,6 +391,11 @@ export function WorkspaceCanvasView({
         openAgentLauncher={openAgentLauncher}
         agentProviderOrder={agentSettings.agentProviderOrder}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
+        quickCommands={agentSettings.quickCommands}
+        quickPhrases={agentSettings.quickPhrases}
+        runQuickCommand={runQuickCommand}
+        insertQuickPhrase={insertQuickPhrase}
+        openQuickMenuSettings={openQuickMenuSettings}
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
         onToggleMagneticSnapping={onToggleMagneticSnapping}

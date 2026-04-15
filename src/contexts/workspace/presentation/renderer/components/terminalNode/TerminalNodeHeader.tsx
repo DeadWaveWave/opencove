@@ -67,10 +67,9 @@ export function TerminalNodeHeader({
     setTitleDraft(title)
   }, [title])
 
-  const handleHeaderClick = useCallback(
+  const startTitleEditing = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if (
-        event.detail !== 2 ||
         !isTitleEditable ||
         isTitleEditing ||
         !(event.target instanceof Element) ||
@@ -83,6 +82,17 @@ export function TerminalNodeHeader({
       setIsTitleEditing(true)
     },
     [isTitleEditable, isTitleEditing],
+  )
+
+  const handleHeaderClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.detail !== 2) {
+        return
+      }
+
+      startTitleEditing(event)
+    },
+    [startTitleEditing],
   )
 
   const statusLabel = (() => {
@@ -104,7 +114,12 @@ export function TerminalNodeHeader({
   })()
 
   return (
-    <div className="terminal-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
+    <div
+      className="terminal-node__header"
+      data-node-drag-handle="true"
+      onClick={handleHeaderClick}
+      onDoubleClick={startTitleEditing}
+    >
       {labelColor ? (
         <span
           className="cove-label-dot cove-label-dot--solid"

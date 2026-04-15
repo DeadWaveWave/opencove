@@ -4,6 +4,7 @@ import {
   hydrateRuntimeNode,
   resolveTerminalHydrationCwd,
 } from '../../../src/app/renderer/shell/hooks/useHydrateAppState'
+import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import type {
   PersistedWorkspaceState,
   TerminalNodeData,
@@ -103,14 +104,19 @@ describe('workspace hydration directories', () => {
     const hydrated = await hydrateRuntimeNode({
       node,
       workspacePath: '/repo',
-      agentFullAccess: false,
+      agentSettings: {
+        ...DEFAULT_AGENT_SETTINGS,
+        agentFullAccess: false,
+      },
     })
 
-    expect(spawn).toHaveBeenCalledWith({
-      cwd: '/repo/.opencove/worktrees/space-1',
-      cols: 80,
-      rows: 24,
-    })
+    expect(spawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: '/repo/.opencove/worktrees/space-1',
+        cols: 80,
+        rows: 24,
+      }),
+    )
     expect(hydrated.data.sessionId).toBe('restored-session-1')
   })
 

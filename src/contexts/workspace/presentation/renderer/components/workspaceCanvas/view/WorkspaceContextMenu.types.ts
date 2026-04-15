@@ -1,10 +1,20 @@
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type {
+  AgentProvider,
+  QuickCommand,
+  QuickPhrase,
+} from '@contexts/settings/domain/agentSettings'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { WorkspaceSpaceState } from '../../../types'
 import type { ContextMenuState } from '../types'
 import type { WorkspaceArrangeStyle } from '../../../utils/workspaceArrange'
 
-export type OpenSubmenu = 'arrangeBy' | 'agent-providers' | 'label-color' | null
+export type OpenSubmenu =
+  | 'arrangeBy'
+  | 'agent-providers'
+  | 'label-color'
+  | 'quick-commands'
+  | 'quick-phrases'
+  | null
 
 export interface WorkspaceContextMenuProps {
   contextMenu: ContextMenuState | null
@@ -17,6 +27,11 @@ export interface WorkspaceContextMenuProps {
   openAgentLauncher: () => void
   agentProviderOrder: AgentProvider[]
   openAgentLauncherForProvider: (provider: AgentProvider) => void
+  quickCommands: QuickCommand[]
+  quickPhrases: QuickPhrase[]
+  runQuickCommand: (command: QuickCommand) => Promise<void>
+  insertQuickPhrase: (phrase: QuickPhrase) => void
+  openQuickMenuSettings: () => void
   spaces: WorkspaceSpaceState[]
   magneticSnappingEnabled: boolean
   onToggleMagneticSnapping: () => void

@@ -430,11 +430,5 @@ export const en = {
     templateContentPlaceholder: 'Write the prompt content to insert...',
   },
   ...enWorktree,
-  spaceDropGuard: {
-    title: 'Move to “{{name}}”?',
-    description: 'Windows keep their current directory and will be labeled {{badge}}.',
-    dontShowAgain: "Don't warn again",
-    move: 'Move',
-  },
   messages: enMessages,
 } as const

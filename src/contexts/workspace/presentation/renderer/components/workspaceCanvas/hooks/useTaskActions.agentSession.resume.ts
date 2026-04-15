@@ -1,4 +1,5 @@
 import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
+import { resolveAgentLaunchEnv } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import {
@@ -52,6 +53,7 @@ export async function resumeTaskAgentSessionAction(
   })
   const taskDirectory = taskExecutionContext.workingDirectory
   const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
+  const env = resolveAgentLaunchEnv(context.agentSettings, record.provider)
 
   try {
     const launched = await window.opencoveApi.agent.launch({
@@ -62,6 +64,7 @@ export async function resumeTaskAgentSessionAction(
       mode: 'resume',
       model: record.model,
       resumeSessionId: record.resumeSessionId,
+      ...(Object.keys(env).length > 0 ? { env } : {}),
       agentFullAccess: context.agentSettings.agentFullAccess,
       cols: 80,
       rows: 24,

@@ -4,6 +4,7 @@ import type {
   TerminalNodeData,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/renderer/utils/workspaceSpaces'
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { mergeScrollbackSnapshots } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
@@ -140,13 +141,11 @@ export function resolveTerminalHydrationCwd(
 export async function hydrateRuntimeNode({
   node,
   workspacePath,
-  agentFullAccess,
-  defaultTerminalProfileId,
+  agentSettings,
 }: {
   node: Node<TerminalNodeData>
   workspacePath: string
-  agentFullAccess: boolean
-  defaultTerminalProfileId?: string | null
+  agentSettings: AgentSettings
 }): Promise<Node<TerminalNodeData>> {
   const existingSessionId =
     typeof node.data.sessionId === 'string' ? node.data.sessionId.trim() : ''
@@ -171,8 +170,7 @@ export async function hydrateRuntimeNode({
     const hydratedAgentNode = await hydrateAgentNode({
       node,
       workspacePath,
-      agentFullAccess,
-      defaultTerminalProfileId,
+      agentSettings,
     })
 
     return {
@@ -191,7 +189,7 @@ export async function hydrateRuntimeNode({
   try {
     const spawned = await window.opencoveApi.pty.spawn({
       cwd: resolveTerminalHydrationCwd(node, workspacePath),
-      profileId: node.data.profileId ?? defaultTerminalProfileId ?? undefined,
+      profileId: node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? undefined,
       cols: 80,
       rows: 24,
     })

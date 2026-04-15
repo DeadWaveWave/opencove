@@ -66,4 +66,10 @@ export const zhCNWorktree = {
     closeFirstRequired: '这个操作要求先关闭所有窗口。',
     closeFailed: '部分窗口无法关闭。请手动关闭后再试。',
   },
+  spaceDropGuard: {
+    title: '移动到“{{name}}”？',
+    description: '窗口仍在原目录运行，并会标记 {{badge}}。',
+    dontShowAgain: '不再提示',
+    move: '移动',
+  },
 } as const

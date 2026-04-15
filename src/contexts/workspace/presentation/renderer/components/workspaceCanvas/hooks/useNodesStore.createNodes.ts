@@ -251,7 +251,7 @@ export function useWorkspaceCanvasNodeCreation({
           scrollback: null,
           ...EMPTY_NODE_KIND_DATA,
           note: {
-            text: '',
+            text: options.initialText ?? '',
           },
         },
         draggable: true,

@@ -12,6 +12,7 @@ export interface ProviderModelCatalogEntry {
 
 export interface SettingsPanelProps {
   settings: AgentSettings
+  openPageId?: SettingsPageId | null
   updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
@@ -29,6 +30,7 @@ type CorePageId =
   | 'general'
   | 'worker'
   | 'agent'
+  | 'quick-menu'
   | 'notifications'
   | 'canvas'
   | 'experimental'

@@ -67,4 +67,10 @@ export const enWorktree = {
     closeFirstRequired: 'This action requires closing all windows first.',
     closeFailed: 'Some windows could not be closed. Close them manually and try again.',
   },
+  spaceDropGuard: {
+    title: 'Move to “{{name}}”?',
+    description: 'Windows keep their current directory and will be labeled {{badge}}.',
+    dontShowAgain: "Don't warn again",
+    move: 'Move',
+  },
 } as const

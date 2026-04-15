@@ -157,6 +157,7 @@ export interface LaunchAgentSessionInput {
   mode?: 'new' | 'resume' | null
   model?: string | null
   resumeSessionId?: string | null
+  env?: Record<string, string> | null
   agentFullAccess?: boolean | null
 }
 

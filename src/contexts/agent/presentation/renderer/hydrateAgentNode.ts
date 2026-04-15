@@ -10,12 +10,12 @@ import {
   isResumeSessionBindingVerified,
 } from '@contexts/agent/domain/agentResumeBinding'
 import { resolveInitialAgentRuntimeStatus } from '@contexts/agent/domain/agentRuntimeStatus'
+import { resolveAgentLaunchEnv, type AgentSettings } from '@contexts/settings/domain/agentSettings'
 
 interface HydrateAgentNodeInput {
   node: Node<TerminalNodeData>
   workspacePath: string
-  agentFullAccess: boolean
-  defaultTerminalProfileId?: string | null
+  agentSettings: AgentSettings
 }
 
 interface FailedAgentFallbackInput {
@@ -108,8 +108,7 @@ async function resolvePendingResumeSessionId(node: Node<TerminalNodeData>): Prom
 export async function hydrateAgentNode({
   node,
   workspacePath: _workspacePath,
-  agentFullAccess,
-  defaultTerminalProfileId,
+  agentSettings,
 }: HydrateAgentNodeInput): Promise<Node<TerminalNodeData>> {
   if (node.data.kind !== 'agent' || !node.data.agent) {
     return node
@@ -144,7 +143,9 @@ export async function hydrateAgentNode({
     hasActiveAgentStatus &&
     !isResumeSessionBindingVerified(sanitizedAgent) &&
     sanitizedAgent.prompt.trim().length === 0
-  const terminalProfileId = node.data.profileId ?? defaultTerminalProfileId ?? null
+  const terminalProfileId = node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? null
+  const agentFullAccess = agentSettings.agentFullAccess
+  const env = resolveAgentLaunchEnv(agentSettings, sanitizedAgent.provider)
 
   if (shouldAutoResumeAgent) {
     try {
@@ -156,6 +157,7 @@ export async function hydrateAgentNode({
         mode: 'resume',
         model: sanitizedAgent.model,
         resumeSessionId: sanitizedAgent.resumeSessionId,
+        ...(Object.keys(env).length > 0 ? { env } : {}),
         agentFullAccess,
         cols: 80,
         rows: 24,
@@ -207,6 +209,7 @@ export async function hydrateAgentNode({
         prompt: sanitizedAgent.prompt,
         mode: 'new',
         model: sanitizedAgent.model,
+        ...(Object.keys(env).length > 0 ? { env } : {}),
         agentFullAccess,
         cols: 80,
         rows: 24,
@@ -258,7 +261,7 @@ export async function hydrateAgentNode({
       data: {
         ...node.data,
         sessionId: spawned.sessionId,
-        profileId: spawned.profileId ?? node.data.profileId ?? defaultTerminalProfileId ?? null,
+        profileId: spawned.profileId ?? terminalProfileId,
         runtimeKind: spawned.runtimeKind ?? node.data.runtimeKind,
         status: hasActiveAgentStatus ? ('stopped' as const) : node.data.status,
         endedAt: hasActiveAgentStatus

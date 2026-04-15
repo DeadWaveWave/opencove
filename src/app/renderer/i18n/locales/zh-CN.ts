@@ -426,11 +426,5 @@ export const zhCN = {
     templateContentPlaceholder: '输入要插入的提示词内容...',
   },
   ...zhCNWorktree,
-  spaceDropGuard: {
-    title: '移动到“{{name}}”？',
-    description: '窗口仍在原目录运行，并会标记 {{badge}}。',
-    dontShowAgain: '不再提示',
-    move: '移动',
-  },
   messages: zhCNMessages,
 } as const satisfies TranslationDictionary

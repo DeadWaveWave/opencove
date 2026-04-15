@@ -1,4 +1,4 @@
-import { resolveAgentModel } from '@contexts/settings/domain/agentSettings'
+import { resolveAgentLaunchEnv, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { resolveTaskExecutionContext } from '@contexts/session/application/resolveTaskExecutionContext'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
@@ -139,6 +139,7 @@ export async function runTaskAgentAction(
 
   const provider = context.agentSettings.defaultProvider
   const model = resolveAgentModel(context.agentSettings, provider)
+  const env = resolveAgentLaunchEnv(context.agentSettings, provider)
   const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
 
   try {
@@ -149,6 +150,7 @@ export async function runTaskAgentAction(
       prompt: requirement,
       mode: 'new',
       model,
+      ...(Object.keys(env).length > 0 ? { env } : {}),
       agentFullAccess: context.agentSettings.agentFullAccess,
       cols: 80,
       rows: 24,

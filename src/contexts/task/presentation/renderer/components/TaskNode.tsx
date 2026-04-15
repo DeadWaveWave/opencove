@@ -141,18 +141,28 @@ export function TaskNode({
     setTitleDraft(title)
   }, [title])
 
-  const handleHeaderClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (
-      event.detail !== 2 ||
-      !(event.target instanceof Element) ||
-      event.target.closest('.nodrag')
-    ) {
-      return
-    }
+  const startTitleEditing = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (isTitleEditing || !(event.target instanceof Element) || event.target.closest('.nodrag')) {
+        return
+      }
 
-    event.stopPropagation()
-    setIsTitleEditing(true)
-  }, [])
+      event.stopPropagation()
+      setIsTitleEditing(true)
+    },
+    [isTitleEditing],
+  )
+
+  const handleHeaderClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.detail !== 2) {
+        return
+      }
+
+      startTitleEditing(event)
+    },
+    [startTitleEditing],
+  )
 
   const commitRequirementDraft = useCallback(() => {
     const normalized = requirementDraft.trim()
@@ -246,7 +256,12 @@ export function TaskNode({
         />
       ) : null}
 
-      <div className="task-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
+      <div
+        className="task-node__header"
+        data-node-drag-handle="true"
+        onClick={handleHeaderClick}
+        onDoubleClick={startTitleEditing}
+      >
         <div className="task-node__header-main">
           <div className="task-node__title-row">
             {labelColor ? (

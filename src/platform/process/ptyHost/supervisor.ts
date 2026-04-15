@@ -364,6 +364,10 @@ export class PtyHostSupervisor {
     // (test runners, build tools, etc.). Strip them so agent/terminal sessions can keep color.
     delete env.NO_COLOR
     delete env.NODE_DISABLE_COLORS
+    // The app uses ELECTRON_RUN_AS_NODE to run bundled CLI/worker entrypoints via Electron.
+    // Leaking it into interactive shells breaks launching Electron-based tooling (including
+    // OpenCove dev via electron-vite).
+    delete env.ELECTRON_RUN_AS_NODE
     let attemptedChild: PtyHostProcess | null = null
     const spawnOnce = async (): Promise<{ sessionId: string }> => {
       await this.ensureReady()
