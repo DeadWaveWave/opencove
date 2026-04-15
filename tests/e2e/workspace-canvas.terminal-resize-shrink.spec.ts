@@ -1,10 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test'
-import {
-  clearAndSeedWorkspace,
-  dragMouse,
-  launchApp,
-  readLocatorClientRect,
-} from './workspace-canvas.helpers'
+import { clearAndSeedWorkspace, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
 
 async function dragResizerBy(
   window: Page,
@@ -16,15 +11,19 @@ async function dragResizerBy(
     x: rect.x + rect.width / 2,
     y: rect.y + rect.height / 2,
   }
+  const end = {
+    x: start.x + (delta.x ?? 0),
+    y: start.y + (delta.y ?? 0),
+  }
 
-  await dragMouse(window, {
-    start,
-    end: {
-      x: start.x + (delta.x ?? 0),
-      y: start.y + (delta.y ?? 0),
-    },
-    steps: 12,
-  })
+  await window.mouse.move(start.x, start.y)
+  await window.mouse.down()
+  await window.waitForTimeout(40)
+  await window.mouse.move(end.x, end.y, { steps: 16 })
+  await window.mouse.move(end.x, end.y)
+  await window.waitForTimeout(60)
+  await window.mouse.up()
+  await window.waitForTimeout(40)
 }
 
 async function shrinkRowsUntilLessThan(
