@@ -139,6 +139,13 @@ export function useTerminalRuntimeSession({
       !isLiveSessionReattach &&
       cachedScreenState === null &&
       persistedSnapshot.trim().length > 0
+    const shouldProtectRestoredAgentHistory = (): boolean =>
+      kind === 'agent' &&
+      !isLiveSessionReattach &&
+      cachedScreenState === null &&
+      (agentResumeSessionIdVerifiedRef.current === true ||
+        agentLaunchModeRef.current === 'resume' ||
+        scrollbackBuffer.snapshot().trim().length > 0)
     const committedScrollbackBuffer = createRollingTextBuffer({
       maxChars: MAX_SCROLLBACK_CHARS,
       initial: persistedSnapshot,
@@ -274,14 +281,8 @@ export function useTerminalRuntimeSession({
     const hydrationRouter = createTerminalHydrationRouter({
       terminal,
       outputScheduler,
-      shouldReplaceAgentPlaceholderAfterHydration: () =>
-        kind === 'agent' &&
-        !isLiveSessionReattach &&
-        cachedScreenState === null &&
-        (agentResumeSessionIdVerifiedRef.current === true ||
-          agentLaunchModeRef.current === 'resume' ||
-          scrollbackBuffer.snapshot().trim().length > 0),
-      shouldDeferHydratedRedrawChunks: () => kind === 'agent',
+      shouldReplaceAgentPlaceholderAfterHydration: shouldProtectRestoredAgentHistory,
+      shouldDeferHydratedRedrawChunks: shouldProtectRestoredAgentHistory,
       hasRecentUserInteraction: () => hasRecentTerminalUserInteraction(recentUserInteractionAtRef),
       scrollbackBuffer,
       committedScrollbackBuffer,

@@ -1,5 +1,6 @@
 import type { Terminal } from '@xterm/xterm'
 import { finalizeTerminalHydration } from './finalizeHydration'
+import { isAutomaticTerminalQuery } from './inputClassification'
 import {
   containsDestructiveTerminalDisplayControlSequence,
   containsMeaningfulTerminalDisplayContent,
@@ -153,6 +154,11 @@ export function createTerminalHydrationRouter({
     handleDataChunk: data => {
       if (isHydrating) {
         hydrationBuffer.dataChunks.push(data)
+        return
+      }
+
+      if (isAutomaticTerminalQuery(data)) {
+        outputScheduler.handleChunk(data)
         return
       }
 

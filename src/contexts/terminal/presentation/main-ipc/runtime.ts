@@ -15,6 +15,7 @@ import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShe
 import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
 import { PtyHostSupervisor } from '../../../../platform/process/ptyHost/supervisor'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
+import { stripAutomaticTerminalQueriesFromOutput } from '../../../../shared/terminal/automaticTerminalSequences'
 import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
@@ -195,16 +196,25 @@ export function createPtyRuntime(): PtyRuntime {
   const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
 
   ptyHost.onData(({ sessionId, data }) => {
+    const { visibleData, replies } = stripAutomaticTerminalQueriesFromOutput(data)
+    replies.forEach(reply => {
+      ptyHost.write(sessionId, reply)
+    })
+
     if (!manager.hasPtyDataSubscribers(sessionId)) {
-      const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${data}`
+      const probeBuffer = `${terminalProbeBufferBySession.get(sessionId) ?? ''}${visibleData}`
       resolveTerminalProbeReplies(sessionId, probeBuffer)
       terminalProbeBufferBySession.set(sessionId, probeBuffer.slice(-32))
     }
 
-    manager.handleData(sessionId, data)
+    if (visibleData.length === 0) {
+      return
+    }
+
+    manager.handleData(sessionId, visibleData)
 
     externalDataListeners.forEach(listener => {
-      listener({ sessionId, data })
+      listener({ sessionId, data: visibleData })
     })
   })
 

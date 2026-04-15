@@ -32,15 +32,27 @@ async function expectObservedWorkingTransition(
 }
 
 async function launchAgentsFromTasks(window: Page, count: number): Promise<void> {
-  const runButtons = window.locator('[data-testid="task-node-run-agent"]')
-
   const launchNextAgent = async (index: number): Promise<void> => {
     if (index >= count) {
       return
     }
 
-    await expect(runButtons.nth(index)).toBeVisible()
-    await runButtons.nth(index).click()
+    const taskNode = window.locator('.task-node').filter({
+      hasText: `Recovery task ${index + 1}`,
+    })
+    const runButton = taskNode.locator('[data-testid="task-node-run-agent"]')
+
+    await expect(taskNode).toHaveCount(1)
+    await expect(runButton).toBeVisible()
+    await runButton.evaluate(element => {
+      if (!(element instanceof HTMLElement)) {
+        throw new Error('task run button unavailable')
+      }
+
+      // React Flow transforms can make offscreen CI viewport coordinates unstable.
+      // This setup only needs to start sessions, so use the DOM click directly.
+      element.click()
+    })
     await expect(window.locator('.terminal-node')).toHaveCount(index + 1)
     await launchNextAgent(index + 1)
   }

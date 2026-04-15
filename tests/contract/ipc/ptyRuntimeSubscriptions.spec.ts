@@ -222,7 +222,17 @@ describe('Pty runtime subscriptions', () => {
     runtime.resize(sessionId, 120, 40)
 
     onDataHandler?.({ sessionId, data: '\u001b[6n\u001b[c\u001b[?u' })
-    expect(write).toHaveBeenCalledTimes(0)
+    expect(write.mock.calls).toEqual([
+      [sessionId, '\u001b[1;1R'],
+      [sessionId, '\u001b[?1;2c'],
+      [sessionId, '\u001b[?0u'],
+    ])
+    expect(content.send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual(
+      [],
+    )
+
+    write.mockClear()
+    content.send.mockClear()
 
     runtime.detach(1, sessionId)
 
@@ -296,7 +306,14 @@ describe('Pty runtime subscriptions', () => {
     runtime.attach(1, sessionId)
 
     onDataHandler?.({ sessionId, data: '\u001b[>c' })
-    expect(write).toHaveBeenCalledTimes(0)
+    expect(write).toHaveBeenCalledTimes(1)
+    expect(write).toHaveBeenCalledWith(sessionId, '\u001b[>0;115;0c')
+    expect(content.send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual(
+      [],
+    )
+
+    write.mockClear()
+    content.send.mockClear()
 
     destroyedHandlers[0]?.()
 

@@ -7,6 +7,7 @@ import {
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { confirmSpaceTargetMountIfPrompted } from './workspace-canvas.space-target-mount.helpers'
 
 const CONTEXT_MENU_TRIGGER_TIMEOUT_MS = 10_000
 const CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS = 2_000
@@ -32,6 +33,7 @@ async function clickCreateSpaceFromSelectionContextMenu(
       timeout: CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS,
     })
     await createSpaceAction.click({ timeout: CONTEXT_MENU_ITEM_CLICK_TIMEOUT_MS })
+    await confirmSpaceTargetMountIfPrompted(window)
   } catch (error) {
     if (attempt >= 2) {
       throw error
