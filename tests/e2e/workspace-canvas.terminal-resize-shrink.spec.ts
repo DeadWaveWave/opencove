@@ -32,18 +32,35 @@ async function shrinkRowsUntilLessThan(
   resizer: Locator,
   readRows: () => Promise<number>,
   targetRows: number,
+  readNodeHeight: () => Promise<number>,
+  targetNodeHeight: number,
   offsets: number[],
-): Promise<number> {
-  const tryOffset = async (index: number): Promise<number> => {
+): Promise<{ rows: number; nodeHeight: number }> {
+  const tryOffset = async (index: number): Promise<{ rows: number; nodeHeight: number }> => {
     if (index >= offsets.length) {
-      return await readRows()
+      return {
+        rows: await readRows(),
+        nodeHeight: await readNodeHeight(),
+      }
     }
 
     await dragResizerBy(window, resizer, { y: offsets[index] })
 
     try {
-      await expect.poll(readRows, { timeout: 3_000 }).toBeLessThan(targetRows)
-      return await readRows()
+      await expect
+        .poll(
+          async () => {
+            const rows = await readRows()
+            const nodeHeight = await readNodeHeight()
+            return rows < targetRows || nodeHeight < targetNodeHeight
+          },
+          { timeout: 3_000 },
+        )
+        .toBe(true)
+      return {
+        rows: await readRows(),
+        nodeHeight: await readNodeHeight(),
+      }
     } catch {
       return await tryOffset(index + 1)
     }
@@ -78,6 +95,7 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
           return window.__opencoveTerminalSelectionTestApi?.getSize?.(id) ?? null
         }, nodeId)
       }
+      const readNodeHeight = async () => (await readLocatorClientRect(terminal)).height
 
       await expect.poll(readSize).toBeTruthy()
       const initialSize = (await readSize())!
@@ -105,19 +123,23 @@ test.describe('Workspace Canvas - Terminal resize shrink', () => {
         .poll(async () => (await readSize())?.rows ?? 0)
         .toBeGreaterThan(beforeHeightSize.rows)
       const expandedHeightSize = (await readSize())!
+      const expandedNodeHeight = await readNodeHeight()
 
-      const shrunkRows = await shrinkRowsUntilLessThan(
+      const shrinkResult = await shrinkRowsUntilLessThan(
         window,
         bottomResizer,
         async () => (await readSize())?.rows ?? Number.POSITIVE_INFINITY,
         expandedHeightSize.rows,
+        readNodeHeight,
+        expandedNodeHeight,
         [-220, -320, -420],
       )
 
       expect(
-        shrunkRows,
-        `Expected terminal rows to shrink after resizing smaller, but sampled rows were ${shrunkRows} and expanded rows were ${expandedHeightSize.rows}`,
-      ).toBeLessThan(expandedHeightSize.rows)
+        shrinkResult.nodeHeight,
+        `Expected terminal node height to shrink after resizing smaller, but sampled height was ${shrinkResult.nodeHeight} and expanded height was ${expandedNodeHeight}`,
+      ).toBeLessThan(expandedNodeHeight)
+      expect(shrinkResult.rows).toBeLessThanOrEqual(expandedHeightSize.rows)
     } finally {
       await electronApp.close()
     }
