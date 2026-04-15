@@ -25,16 +25,39 @@ import {
   runRawFocusRedrawAfterFocusScenario,
 } from './test-agent-session-stub/raw.mjs'
 
+function isLikelyScenarioArg(value) {
+  if (typeof value !== 'string' || value.length === 0) {
+    return false
+  }
+
+  return (
+    value === 'stdin-echo' ||
+    value.startsWith('raw-') ||
+    value.startsWith('jsonl-stdin-submit-') ||
+    value.startsWith('codex-') ||
+    value.startsWith('gemini-') ||
+    value.startsWith('opencode-')
+  )
+}
+
 async function main() {
   const [
     provider = 'codex',
     rawCwd = process.cwd(),
     mode = 'new',
     model = 'default-model',
-    resumeSessionId = '',
-    scenario = '',
+    rawResumeSessionId = '',
+    rawScenario = '',
   ] = process.argv.slice(2)
   const cwd = resolve(rawCwd)
+  const scenario =
+    rawScenario.length > 0
+      ? rawScenario
+      : isLikelyScenarioArg(rawResumeSessionId)
+        ? rawResumeSessionId
+        : ''
+  const resumeSessionId =
+    rawScenario.length > 0 || !isLikelyScenarioArg(rawResumeSessionId) ? rawResumeSessionId : ''
 
   process.stdout.write(`[opencove-test-agent] ${provider} ${mode} ${model}\n`)
 
