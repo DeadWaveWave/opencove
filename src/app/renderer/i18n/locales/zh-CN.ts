@@ -296,6 +296,8 @@ export const zhCN = {
     previous: '上一个匹配',
     next: '下一个匹配',
     close: '关闭',
+    caseSensitive: '区分大小写',
+    useRegex: '使用正则表达式',
   },
   terminalNodeHeader: {
     directoryMismatch: '目录不匹配',

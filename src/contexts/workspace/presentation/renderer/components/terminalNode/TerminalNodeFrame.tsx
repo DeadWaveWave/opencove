@@ -40,11 +40,15 @@ interface TerminalNodeFrameProps {
     query: string
     resultIndex: number
     resultCount: number
+    caseSensitive: boolean
+    useRegex: boolean
   }
   onFindQueryChange: (query: string) => void
   onFindNext: () => void
   onFindPrevious: () => void
   onFindClose: () => void
+  onFindToggleCaseSensitive: () => void
+  onFindToggleUseRegex: () => void
   handleResizePointerDown: (edges: ResizeEdges) => (event: React.PointerEvent<HTMLElement>) => void
 }
 
@@ -76,6 +80,8 @@ export function TerminalNodeFrame({
   onFindNext,
   onFindPrevious,
   onFindClose,
+  onFindToggleCaseSensitive,
+  onFindToggleUseRegex,
   handleResizePointerDown,
 }: TerminalNodeFrameProps): JSX.Element {
   const isAgentNode = kind === 'agent'
@@ -160,10 +166,14 @@ export function TerminalNodeFrame({
         query={find.query}
         resultIndex={find.resultIndex}
         resultCount={find.resultCount}
+        caseSensitive={find.caseSensitive}
+        useRegex={find.useRegex}
         onQueryChange={onFindQueryChange}
         onFindNext={onFindNext}
         onFindPrevious={onFindPrevious}
         onClose={onFindClose}
+        onToggleCaseSensitive={onFindToggleCaseSensitive}
+        onToggleUseRegex={onFindToggleUseRegex}
       />
 
       <div

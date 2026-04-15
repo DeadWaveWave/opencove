@@ -113,6 +113,50 @@ export function isLinuxTerminalPasteShortcut(
   )
 }
 
+type MacKeyboardRemapEvent = Pick<
+  KeyboardEvent,
+  'altKey' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'
+>
+
+export function getMacKeyboardRemap(
+  event: MacKeyboardRemapEvent,
+  platformInfo: PlatformInfo | undefined = navigator,
+): string | null {
+  if (!isMacPlatform(platformInfo) || event.ctrlKey) {
+    return null
+  }
+
+  if (event.metaKey && !event.altKey && !event.shiftKey) {
+    if (event.key === 'Backspace') {
+      return '\x15'
+    }
+
+    if (event.key === 'ArrowLeft') {
+      return '\x01'
+    }
+
+    if (event.key === 'ArrowRight') {
+      return '\x05'
+    }
+  }
+
+  if (event.altKey && !event.metaKey && !event.shiftKey) {
+    if (event.key === 'ArrowLeft') {
+      return '\x1bb'
+    }
+
+    if (event.key === 'ArrowRight') {
+      return '\x1bf'
+    }
+
+    if (event.key === 'Backspace') {
+      return '\x17'
+    }
+  }
+
+  return null
+}
+
 function isTerminalFindShortcut(
   event: Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'key' | 'metaKey'>,
 ): boolean {
@@ -240,6 +284,15 @@ export function handleTerminalCustomKeyEvent({
     }
 
     return false
+  }
+
+  if (event.type === 'keydown') {
+    const macRemap = getMacKeyboardRemap(event, platformInfo)
+    if (macRemap !== null) {
+      ptyWriteQueue.enqueue(macRemap)
+      ptyWriteQueue.flush()
+      return false
+    }
   }
 
   if (event.type === 'keydown' && isTerminalFindShortcut(event)) {

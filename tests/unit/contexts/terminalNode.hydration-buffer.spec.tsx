@@ -65,6 +65,10 @@ vi.mock('@xterm/xterm', () => {
 
     public attachCustomKeyEventHandler(): void {}
 
+    public registerLinkProvider(): { dispose: () => void } {
+      return { dispose: () => undefined }
+    }
+
     public onData(listener: (data: string) => void) {
       this.dataListener = listener
       return {

@@ -1,6 +1,9 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process'
+import { rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import path from 'node:path'
 
 // Package managers may preserve the `--` separator in argv when forwarding script arguments.
 // Playwright treats a bare `--` as a positional filter and reports "No tests found", so
@@ -30,6 +33,24 @@ function isTruthyEnv(rawValue) {
 
 function hasCrashSignature(output) {
   return CRASH_SIGNATURE_PATTERNS.some(pattern => pattern.test(output))
+}
+
+async function cleanupE2ETempDirs() {
+  const configuredTmpDir = process.env['OPENCOVE_E2E_TMPDIR']?.trim()
+  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
+  const candidates = new Set(
+    [configuredTmpDir, runnerTempDir, tmpdir()].filter(
+      value => typeof value === 'string' && value.trim().length > 0,
+    ),
+  )
+
+  await Promise.all(
+    [...candidates].map(baseDir =>
+      rm(path.join(baseDir, 'opencove-e2e'), { recursive: true, force: true }).catch(
+        () => undefined,
+      ),
+    ),
+  )
 }
 
 function resolveWindowMode(rawValue) {
@@ -106,57 +127,68 @@ function runCommand(args, env = process.env) {
 }
 
 async function main() {
+  const isCi = isTruthyEnv(process.env.CI)
   const currentWindowMode = resolveWindowMode(process.env['OPENCOVE_E2E_WINDOW_MODE'])
   const fallbackWindowMode = resolveFallbackWindowMode(currentWindowMode)
 
-  if (!isTruthyEnv(process.env['OPENCOVE_E2E_SKIP_BUILD'])) {
-    const buildResult = await runCommand(['build'])
-    if (buildResult.code !== 0) {
-      process.exit(buildResult.code)
+  try {
+    if (!isTruthyEnv(process.env['OPENCOVE_E2E_SKIP_BUILD'])) {
+      const buildResult = await runCommand(['build'])
+      if (buildResult.code !== 0) {
+        return buildResult.code
+      }
+    }
+
+    const firstRunArgs = ['exec', 'playwright', 'test', ...forwardedArgs]
+    const firstRun = await runCommand(firstRunArgs, {
+      ...process.env,
+      OPENCOVE_E2E_WINDOW_MODE: currentWindowMode,
+    })
+    if (firstRun.code === 0) {
+      return 0
+    }
+
+    if (isTruthyEnv(process.env['OPENCOVE_E2E_DISABLE_CRASH_FALLBACK'])) {
+      return firstRun.code
+    }
+
+    if (!hasCrashSignature(firstRun.output)) {
+      return firstRun.code
+    }
+
+    if (!fallbackWindowMode) {
+      return firstRun.code
+    }
+
+    writeStderr(
+      `[e2e-fallback] Detected crash-like failure in ${currentWindowMode} mode. Rerunning last failed tests with OPENCOVE_E2E_WINDOW_MODE=${fallbackWindowMode}...`,
+    )
+
+    const fallbackRun = await runCommand(['exec', 'playwright', 'test', '--last-failed'], {
+      ...process.env,
+      OPENCOVE_E2E_WINDOW_MODE: fallbackWindowMode,
+    })
+
+    if (fallbackRun.code === 0) {
+      writeStderr(
+        `[e2e-fallback] Recovered by running failed tests in ${fallbackWindowMode} mode. Investigate ${currentWindowMode}-mode compatibility for long-term fix.`,
+      )
+      return 0
+    }
+
+    return fallbackRun.code
+  } finally {
+    if (isCi) {
+      await cleanupE2ETempDirs()
     }
   }
-
-  const firstRunArgs = ['exec', 'playwright', 'test', ...forwardedArgs]
-  const firstRun = await runCommand(firstRunArgs, {
-    ...process.env,
-    OPENCOVE_E2E_WINDOW_MODE: currentWindowMode,
-  })
-  if (firstRun.code === 0) {
-    process.exit(0)
-  }
-
-  if (isTruthyEnv(process.env['OPENCOVE_E2E_DISABLE_CRASH_FALLBACK'])) {
-    process.exit(firstRun.code)
-  }
-
-  if (!hasCrashSignature(firstRun.output)) {
-    process.exit(firstRun.code)
-  }
-
-  if (!fallbackWindowMode) {
-    process.exit(firstRun.code)
-  }
-
-  writeStderr(
-    `[e2e-fallback] Detected crash-like failure in ${currentWindowMode} mode. Rerunning last failed tests with OPENCOVE_E2E_WINDOW_MODE=${fallbackWindowMode}...`,
-  )
-
-  const fallbackRun = await runCommand(['exec', 'playwright', 'test', '--last-failed'], {
-    ...process.env,
-    OPENCOVE_E2E_WINDOW_MODE: fallbackWindowMode,
-  })
-
-  if (fallbackRun.code === 0) {
-    writeStderr(
-      `[e2e-fallback] Recovered by running failed tests in ${fallbackWindowMode} mode. Investigate ${currentWindowMode}-mode compatibility for long-term fix.`,
-    )
-    process.exit(0)
-  }
-
-  process.exit(fallbackRun.code)
 }
 
-void main().catch(error => {
-  writeError(error)
-  process.exit(1)
-})
+void main()
+  .then(code => {
+    process.exit(code)
+  })
+  .catch(error => {
+    writeError(error)
+    process.exit(1)
+  })

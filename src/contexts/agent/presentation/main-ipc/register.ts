@@ -249,7 +249,7 @@ export function registerAgentIpcHandlers(
             (await ensureOpenCodeEmbeddedTuiConfigPath()))
           : null
 
-      const sessionEnv =
+      const internalSessionEnv =
         opencodeServer && normalized.provider === 'opencode'
           ? {
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
@@ -257,6 +257,11 @@ export function registerAgentIpcHandlers(
               XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
+          : undefined
+
+      const sessionEnv =
+        normalized.env || internalSessionEnv
+          ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
 
       const resolvedInvocation = await resolveAgentCliInvocation({

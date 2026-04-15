@@ -297,6 +297,8 @@ export const en = {
     previous: 'Previous match',
     next: 'Next match',
     close: 'Close',
+    caseSensitive: 'Match case',
+    useRegex: 'Use regular expression',
   },
   terminalNodeHeader: {
     directoryMismatch: 'DIR MISMATCH',

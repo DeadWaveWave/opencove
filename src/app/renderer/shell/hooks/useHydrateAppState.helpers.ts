@@ -47,6 +47,7 @@ export function toShellWorkspaceState(
     path: workspace.path,
     worktreesRoot: workspace.worktreesRoot,
     pullRequestBaseBranchOptions: workspace.pullRequestBaseBranchOptions ?? [],
+    environmentVariables: workspace.environmentVariables ?? {},
     nodes,
     viewport: {
       x: workspace.viewport.x,

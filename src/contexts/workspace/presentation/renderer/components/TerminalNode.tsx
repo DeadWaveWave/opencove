@@ -93,6 +93,8 @@ export function TerminalNode({
     setQuery: setFindQuery,
     findNext: findNextMatch,
     findPrevious: findPreviousMatch,
+    toggleCaseSensitive: toggleFindCaseSensitive,
+    toggleUseRegex: toggleFindUseRegex,
     bindSearchAddon: bindSearchAddonToFind,
   } = useTerminalFind({
     sessionId,
@@ -316,6 +318,8 @@ export function TerminalNode({
       onFindNext={findNextMatch}
       onFindPrevious={findPreviousMatch}
       onFindClose={closeTerminalFind}
+      onFindToggleCaseSensitive={toggleFindCaseSensitive}
+      onFindToggleUseRegex={toggleFindUseRegex}
       handleResizePointerDown={handleResizePointerDown}
     />
   )

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, type JSX } from 'react'
-import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { CaseSensitive, ChevronDown, ChevronUp, Regex, Search, X } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 
 function isFindShortcut(event: React.KeyboardEvent<HTMLInputElement>): boolean {
@@ -31,19 +31,27 @@ export function TerminalNodeFindBar({
   query,
   resultIndex,
   resultCount,
+  caseSensitive,
+  useRegex,
   onQueryChange,
   onFindNext,
   onFindPrevious,
   onClose,
+  onToggleCaseSensitive,
+  onToggleUseRegex,
 }: {
   isOpen: boolean
   query: string
   resultIndex: number
   resultCount: number
+  caseSensitive: boolean
+  useRegex: boolean
   onQueryChange: (query: string) => void
   onFindNext: () => void
   onFindPrevious: () => void
   onClose: () => void
+  onToggleCaseSensitive: () => void
+  onToggleUseRegex: () => void
 }): JSX.Element | null {
   const { t } = useTranslation()
   const inputRef = useRef<HTMLInputElement | null>(null)
@@ -110,6 +118,39 @@ export function TerminalNodeFindBar({
           }
         }}
       />
+
+      <div className="terminal-node__find-toggles">
+        <button
+          type="button"
+          className={`terminal-node__find-toggle${caseSensitive ? ' terminal-node__find-toggle--active' : ''}`}
+          data-testid="terminal-find-case-sensitive"
+          aria-label={t('terminalFind.caseSensitive')}
+          title={t('terminalFind.caseSensitive')}
+          aria-pressed={caseSensitive}
+          onClick={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            onToggleCaseSensitive()
+          }}
+        >
+          <CaseSensitive size={14} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={`terminal-node__find-toggle${useRegex ? ' terminal-node__find-toggle--active' : ''}`}
+          data-testid="terminal-find-use-regex"
+          aria-label={t('terminalFind.useRegex')}
+          title={t('terminalFind.useRegex')}
+          aria-pressed={useRegex}
+          onClick={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            onToggleUseRegex()
+          }}
+        >
+          <Regex size={14} aria-hidden="true" />
+        </button>
+      </div>
 
       <span className="terminal-node__find-count" aria-hidden="true">
         {matchCountLabel}

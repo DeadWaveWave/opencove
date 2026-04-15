@@ -24,7 +24,7 @@ import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
-import { SettingsPanelNavButton } from './settingsPanel/SettingsPanelNavButton'
+import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
@@ -33,8 +33,6 @@ import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import {
   createInitialInputState,
-  getFolderName,
-  getWorkspacePageId,
   isWorkspacePageId,
   type SettingsPanelProps,
 } from './SettingsPanel.shared'
@@ -48,6 +46,7 @@ export function SettingsPanel({
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  onWorkspaceEnvironmentVariablesChange,
   isFocusNodeTargetZoomPreviewing,
   onFocusNodeTargetZoomPreviewChange,
   onChange,
@@ -261,93 +260,12 @@ export function SettingsPanel({
         className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
         onClick={e => e.stopPropagation()}
       >
-        <aside
-          className="settings-panel__sidebar"
-          aria-label={t('settingsPanel.nav.sectionsLabel')}
-        >
-          <SettingsPanelNavButton
-            isActive={activePageId === 'general'}
-            label={t('settingsPanel.nav.general')}
-            testId="settings-section-nav-general"
-            onClick={() => setActivePageId('general')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'worker'}
-            label={t('settingsPanel.nav.worker')}
-            testId="settings-section-nav-worker"
-            onClick={() => setActivePageId('worker')}
-          />
-          {settings.experimentalRemoteWorkersEnabled ? (
-            <SettingsPanelNavButton
-              isActive={activePageId === 'endpoints'}
-              label={t('settingsPanel.nav.endpoints')}
-              testId="settings-section-nav-endpoints"
-              onClick={() => setActivePageId('endpoints')}
-            />
-          ) : null}
-          <SettingsPanelNavButton
-            isActive={activePageId === 'agent'}
-            label={t('settingsPanel.nav.agent')}
-            testId="settings-section-nav-agent"
-            onClick={() => setActivePageId('agent')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'notifications'}
-            label={t('settingsPanel.nav.notifications')}
-            testId="settings-section-nav-notifications"
-            onClick={() => setActivePageId('notifications')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'canvas'}
-            label={t('settingsPanel.nav.canvas')}
-            testId="settings-section-nav-canvas"
-            onClick={() => setActivePageId('canvas')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'shortcuts'}
-            label={t('settingsPanel.nav.shortcuts')}
-            testId="settings-section-nav-shortcuts"
-            onClick={() => setActivePageId('shortcuts')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'quick-menu'}
-            label={t('settingsPanel.nav.quickMenu')}
-            testId="settings-section-nav-quick-menu"
-            onClick={() => setActivePageId('quick-menu')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'task-configuration'}
-            label={t('settingsPanel.nav.tasks')}
-            testId="settings-section-nav-task-configuration"
-            onClick={() => setActivePageId('task-configuration')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'integrations'}
-            label={t('settingsPanel.nav.integrations')}
-            testId="settings-section-nav-integrations"
-            onClick={() => setActivePageId('integrations')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'experimental'}
-            label={t('settingsPanel.nav.experimental')}
-            testId="settings-section-nav-experimental"
-            onClick={() => setActivePageId('experimental')}
-          />
-
-          <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
-          <div className="settings-panel__nav-group">
-            {workspaces.map(workspace => (
-              <SettingsPanelNavButton
-                key={workspace.id}
-                isActive={activePageId === getWorkspacePageId(workspace.id)}
-                label={
-                  workspace.name.trim().length > 0 ? workspace.name : getFolderName(workspace.path)
-                }
-                onClick={() => setActivePageId(getWorkspacePageId(workspace.id))}
-              />
-            ))}
-          </div>
-        </aside>
+        <SettingsPanelSidebar
+          activePageId={activePageId}
+          workspaces={workspaces}
+          endpointsEnabled={settings.experimentalRemoteWorkersEnabled}
+          onSelectPage={setActivePageId}
+        />
 
         <div className="settings-panel__content-wrapper">
           <div className="settings-panel__header">
@@ -521,6 +439,10 @@ export function SettingsPanel({
                 worktreesRoot={activeWorkspace.worktreesRoot}
                 onChangeWorktreesRoot={root =>
                   onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+                }
+                environmentVariables={activeWorkspace.environmentVariables ?? {}}
+                onChangeEnvironmentVariables={envVars =>
+                  onWorkspaceEnvironmentVariablesChange(activeWorkspace.id, envVars)
                 }
               />
             ) : null}

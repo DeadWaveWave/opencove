@@ -22,6 +22,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'path',
     'worktrees_root',
     'pull_request_base_branch_options_json',
+    'environment_variables_json',
     'space_archive_records_json',
     'viewport_x',
     'viewport_y',

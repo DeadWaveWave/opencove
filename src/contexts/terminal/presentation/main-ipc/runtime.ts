@@ -254,12 +254,13 @@ export function createPtyRuntime(): PtyRuntime {
     spawnSession: async options => {
       const command = options.command ?? options.shell ?? resolveDefaultShell()
       const args = options.command ? (options.args ?? []) : []
+      const env = options.env ? { ...process.env, ...options.env } : undefined
 
       const { sessionId } = await ptyHost.spawn({
         cwd: options.cwd,
         command,
         args,
-        env: options.env,
+        env,
         cols: options.cols,
         rows: options.rows,
       })
