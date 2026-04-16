@@ -1,6 +1,7 @@
 import type { ListSystemFontsResult, WorkspaceDirectory } from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
+import type { ControlSurfaceInvokeRequest } from '@shared/contracts/controlSurface'
 import {
   createUnsupportedUpdateState,
   resolveBrowserPlatform,
@@ -88,12 +89,18 @@ export function installBrowserOpenCoveApi(): void {
       isPackaged: false,
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
+      enableTerminalInputDiagnostics: false,
       runtime: 'browser',
       platform: resolveBrowserPlatform(),
+      mainPid: null,
       windowsPty: null,
     },
     debug: {
       logTerminalDiagnostics: () => undefined,
+    },
+    controlSurface: {
+      invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
+        await invokeBrowserControlSurface<TValue>(request),
     },
     windowChrome: {
       setTheme: async () => undefined,
@@ -187,6 +194,9 @@ export function installBrowserOpenCoveApi(): void {
     },
     persistence: {
       ...createBrowserPersistenceApi(),
+    },
+    lifecycle: {
+      onRequestPersistFlush: () => () => undefined,
     },
     sync: {
       onStateUpdated: listener => {
@@ -308,6 +318,7 @@ export function installBrowserOpenCoveApi(): void {
       kill: payload => ptyClient.kill(payload),
       attach: payload => ptyClient.attach(payload),
       detach: payload => ptyClient.detach(payload),
+      flushScrollbackMirrors: async () => undefined,
       snapshot: payload => ptyClient.snapshot(payload),
       debugCrashHost: () => ptyClient.debugCrashHost(),
       onData: listener => ptyClient.onData(listener),

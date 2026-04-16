@@ -41,7 +41,7 @@ export interface SessionStateWatcherStartInput {
 }
 
 type SendToAllWindows = <Payload>(channel: string, payload: Payload) => void
-type DisposableSessionWatcher = { dispose: () => void; noteInteraction?: () => void }
+type DisposableSessionWatcher = { dispose: () => void; noteInteraction?: (data?: string) => void }
 
 export function createSessionStateWatcherController({
   sendToAllWindows,
@@ -428,7 +428,7 @@ export function createSessionStateWatcherController({
 
     const watcher = stateWatcherBySession.get(sessionId)
     if (watcher?.noteInteraction) {
-      watcher.noteInteraction()
+      watcher.noteInteraction(data)
       return
     }
 

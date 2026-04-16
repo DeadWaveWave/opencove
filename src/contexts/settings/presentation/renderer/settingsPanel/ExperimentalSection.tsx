@@ -6,13 +6,17 @@ import { ExperimentalWorkerWebUiSection } from './ExperimentalWorkerWebUiSection
 export function ExperimentalSection({
   websiteWindowPolicy,
   websiteWindowPasteEnabled,
+  remoteWorkersEnabled,
   onChangeWebsiteWindowPolicy,
   onChangeWebsiteWindowPasteEnabled,
+  onChangeRemoteWorkersEnabled,
 }: {
   websiteWindowPolicy: WebsiteWindowPolicy
   websiteWindowPasteEnabled: boolean
+  remoteWorkersEnabled: boolean
   onChangeWebsiteWindowPolicy: (policy: WebsiteWindowPolicy) => void
   onChangeWebsiteWindowPasteEnabled: (enabled: boolean) => void
+  onChangeRemoteWorkersEnabled: (enabled: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const [keepAliveHostDraft, setKeepAliveHostDraft] = useState('')
@@ -58,6 +62,33 @@ export function ExperimentalSection({
       <h3 className="settings-panel__section-title">{t('settingsPanel.experimental.title')}</h3>
 
       <ExperimentalWorkerWebUiSection />
+
+      <div className="settings-panel__subsection">
+        <div className="settings-panel__subsection-header">
+          <h4 className="settings-panel__section-title">
+            {t('settingsPanel.experimental.remoteWorkersTitle')}
+          </h4>
+          <span>{t('settingsPanel.experimental.remoteWorkersHelp')}</span>
+        </div>
+
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.experimental.remoteWorkersEnabledLabel')}</strong>
+            <span>{t('settingsPanel.experimental.remoteWorkersEnabledHelp')}</span>
+          </div>
+          <div className="settings-panel__control">
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                data-testid="settings-experimental-remote-workers-enabled"
+                checked={remoteWorkersEnabled}
+                onChange={event => onChangeRemoteWorkersEnabled(event.target.checked)}
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
 
       <div className="settings-panel__subsection">
         <div className="settings-panel__subsection-header">

@@ -27,12 +27,14 @@ export interface WhatsNewDialogState {
 
 export function AppShellModals({
   isSettingsOpen,
+  settingsInitialPageId,
   openSettingsPageId,
   settings,
   updateState,
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  onWorkspaceEnvironmentVariablesChange,
   isFocusNodeTargetZoomPreviewing,
   onFocusNodeTargetZoomPreviewChange,
   onChangeSettings,
@@ -43,12 +45,17 @@ export function AppShellModals({
   whatsNew,
 }: {
   isSettingsOpen: boolean
+  settingsInitialPageId: SettingsPageId | null
   openSettingsPageId: SettingsPageId | null
   settings: AgentSettings
   updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  onWorkspaceEnvironmentVariablesChange: (
+    workspaceId: string,
+    environmentVariables: Record<string, string>,
+  ) => void
   isFocusNodeTargetZoomPreviewing: boolean
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChangeSettings: (settings: AgentSettings) => void
@@ -62,12 +69,14 @@ export function AppShellModals({
     <>
       {isSettingsOpen ? (
         <SettingsPanel
+          initialPageId={settingsInitialPageId}
           settings={settings}
           openPageId={openSettingsPageId}
           updateState={updateState}
           modelCatalogByProvider={modelCatalogByProvider}
           workspaces={workspaces}
           onWorkspaceWorktreesRootChange={onWorkspaceWorktreesRootChange}
+          onWorkspaceEnvironmentVariablesChange={onWorkspaceEnvironmentVariablesChange}
           isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
           onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
           onChange={onChangeSettings}

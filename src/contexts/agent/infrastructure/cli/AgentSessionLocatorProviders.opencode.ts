@@ -20,7 +20,9 @@ interface OpenCodeSessionMeta {
   createdAtMs: number | null
 }
 
-const OPENCODE_CANDIDATE_WINDOW_MS = 20_000
+// OpenCode session discovery can lag noticeably behind the PTY launch timestamp because the
+// embedded server and sqlite metadata are initialized by the CLI after process startup.
+const OPENCODE_CANDIDATE_WINDOW_MS = 60_000
 
 function parseOpenCodeSessionList(rawOutput: string): OpenCodeSessionMeta[] {
   try {

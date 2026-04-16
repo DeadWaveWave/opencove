@@ -1,4 +1,6 @@
 export const IPC_CHANNELS = {
+  appRequestPersistFlush: 'app:request-persist-flush',
+  appPersistFlushComplete: 'app:persist-flush-complete',
   cliGetStatus: 'cli:get-status',
   cliInstall: 'cli:install',
   cliUninstall: 'cli:uninstall',
@@ -28,6 +30,10 @@ export const IPC_CHANNELS = {
   persistenceWriteAppState: 'persistence:write-app-state',
   persistenceReadNodeScrollback: 'persistence:read-node-scrollback',
   persistenceWriteNodeScrollback: 'persistence:write-node-scrollback',
+  persistenceReadAgentNodePlaceholderScrollback:
+    'persistence:read-agent-node-placeholder-scrollback',
+  persistenceWriteAgentNodePlaceholderScrollback:
+    'persistence:write-agent-node-placeholder-scrollback',
   syncStateUpdated: 'sync:state-updated',
   appUpdateGetState: 'app-update:get-state',
   appUpdateConfigure: 'app-update:configure',
@@ -71,6 +77,8 @@ export const IPC_CHANNELS = {
   ptyAttach: 'pty:attach',
   ptyDetach: 'pty:detach',
   ptySyncSessionBindings: 'pty:sync-session-bindings',
+  ptySyncAgentPlaceholderBindings: 'pty:sync-agent-placeholder-bindings',
+  ptyFlushScrollbackMirrors: 'pty:flush-scrollback-mirrors',
   ptySnapshot: 'pty:snapshot',
   ptyDebugCrashHost: 'pty:debug-crash-host',
   ptyData: 'pty:data',
@@ -93,6 +101,7 @@ export const IPC_CHANNELS = {
   workerClientSetWebUiSettings: 'worker-client:set-web-ui-settings',
   workerClientSetWebUiSecurity: 'worker-client:set-web-ui-security',
   workerClientRelaunch: 'worker-client:relaunch',
+  controlSurfaceInvoke: 'control-surface:invoke',
 } as const
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]

@@ -7,12 +7,14 @@ import {
   type AgentSettings,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
+import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { resolveDefaultAgentWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
+import type { LaunchAgentSessionResult, ListMountsResult } from '@shared/contracts/dto'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
@@ -20,7 +22,9 @@ import {
 
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
+  workspaceId: string
   workspacePath: string
+  environmentVariables?: Record<string, string>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -42,7 +46,9 @@ interface UseAgentLauncherParams {
 
 export function useWorkspaceCanvasAgentLauncher({
   agentSettings,
+  workspaceId,
   workspacePath,
+  environmentVariables,
   nodesRef,
   setNodes,
   spacesRef,
@@ -81,25 +87,98 @@ export function useWorkspaceCanvasAgentLauncher({
           const model = resolveAgentModel(agentSettings, provider)
           const env = resolveAgentLaunchEnv(agentSettings, provider)
           const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-          const executionDirectory = resolveSpaceWorkingDirectory(anchorSpace, workspacePath)
-          const launched = await window.opencoveApi.agent.launch({
-            provider,
-            cwd: executionDirectory,
-            profileId: agentSettings.defaultTerminalProfileId,
-            prompt: '',
-            mode: 'new',
-            model,
-            ...(Object.keys(env).length > 0 ? { env } : {}),
-            agentFullAccess: agentSettings.agentFullAccess,
-            cols: 80,
-            rows: 24,
-          })
+          const mergedEnv =
+            environmentVariables && Object.keys(environmentVariables).length > 0
+              ? { ...env, ...environmentVariables }
+              : env
+          let mountId = anchorSpace?.targetMountId ?? null
 
-          const modelLabel = launched.effectiveModel ?? model
+          if (!mountId && !anchorSpace && workspaceId.trim().length > 0) {
+            const controlSurfaceInvoke = (
+              window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
+            ).opencoveApi?.controlSurface?.invoke
+
+            if (typeof controlSurfaceInvoke === 'function') {
+              try {
+                const mountResult =
+                  await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+                    kind: 'query',
+                    id: 'mount.list',
+                    payload: { projectId: workspaceId },
+                  })
+                mountId = mountResult.mounts[0]?.mountId ?? null
+              } catch (error) {
+                onShowMessage?.(
+                  t('messages.mountListFailed', { message: toErrorMessage(error) }),
+                  'error',
+                )
+                return
+              }
+            }
+          }
+          const fallbackExecutionDirectory = resolveSpaceWorkingDirectory(
+            anchorSpace,
+            workspacePath,
+          )
+
+          let launchedSessionId = ''
+          let launchedProfileId: string | null = null
+          let launchedRuntimeKind: CreateNodeInput['runtimeKind'] = undefined
+          let launchedEffectiveModel: string | null = null
+          let executionDirectory = fallbackExecutionDirectory
+
+          if (mountId) {
+            const spawnCwdUri =
+              anchorSpace?.targetMountId && anchorSpace.directoryPath.trim().length > 0
+                ? toFileUri(anchorSpace.directoryPath.trim())
+                : null
+
+            const launched =
+              await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>({
+                kind: 'command',
+                id: 'session.launchAgentInMount',
+                payload: {
+                  mountId,
+                  cwdUri: spawnCwdUri,
+                  prompt: '',
+                  provider,
+                  mode: 'new',
+                  model,
+                  ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
+                  agentFullAccess: agentSettings.agentFullAccess,
+                },
+              })
+
+            launchedSessionId = launched.sessionId
+            launchedProfileId = agentSettings.defaultTerminalProfileId
+            launchedEffectiveModel = launched.effectiveModel
+            executionDirectory = launched.executionContext.workingDirectory
+          } else {
+            const launched = await window.opencoveApi.agent.launch({
+              provider,
+              cwd: fallbackExecutionDirectory,
+              profileId: agentSettings.defaultTerminalProfileId,
+              prompt: '',
+              mode: 'new',
+              model,
+              ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
+              agentFullAccess: agentSettings.agentFullAccess,
+              cols: 80,
+              rows: 24,
+            })
+
+            launchedSessionId = launched.sessionId
+            launchedProfileId = launched.profileId ?? null
+            launchedRuntimeKind = launched.runtimeKind
+            launchedEffectiveModel = launched.effectiveModel
+          }
+
+          const modelLabel = launchedEffectiveModel ?? model
+
           const created = await createNodeForSession({
-            sessionId: launched.sessionId,
-            profileId: launched.profileId,
-            runtimeKind: launched.runtimeKind,
+            sessionId: launchedSessionId,
+            profileId: launchedProfileId,
+            runtimeKind: launchedRuntimeKind,
             title: buildAgentNodeTitle(provider, modelLabel),
             anchor,
             kind: 'agent',
@@ -110,8 +189,8 @@ export function useWorkspaceCanvasAgentLauncher({
               provider,
               prompt: '',
               model,
-              effectiveModel: launched.effectiveModel,
-              launchMode: launched.launchMode,
+              effectiveModel: launchedEffectiveModel,
+              launchMode: 'new',
               ...clearResumeSessionBinding(),
               executionDirectory,
               expectedDirectory: executionDirectory,
@@ -153,6 +232,7 @@ export function useWorkspaceCanvasAgentLauncher({
       buildAgentNodeTitle,
       contextMenu,
       createNodeForSession,
+      environmentVariables,
       nodesRef,
       onRequestPersistFlush,
       onShowMessage,
@@ -162,6 +242,7 @@ export function useWorkspaceCanvasAgentLauncher({
       spacesRef,
       standardWindowSizeBucket,
       t,
+      workspaceId,
       workspacePath,
     ],
   )

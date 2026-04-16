@@ -64,11 +64,11 @@
 
 .terminal-node__terminal {
   flex: 1;
+  min-width: 0;
   min-height: 0;
   padding: 0;
   background: var(--cove-terminal-background);
   opacity: 1;
-  transition: opacity 0.12s ease;
   cursor: text;
 }
 
@@ -82,7 +82,7 @@
 }
 
 .terminal-node__terminal--hydrating {
-  opacity: 0;
+  opacity: 1;
 }
 
 .terminal-node__transcript {

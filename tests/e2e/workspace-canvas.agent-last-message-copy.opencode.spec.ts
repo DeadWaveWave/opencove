@@ -6,6 +6,8 @@ import {
   resolveFirstAgentSessionId,
 } from './workspace-canvas.agent-status-watcher.helpers'
 
+const OPENCODE_DISCOVERY_TIMEOUT_MS = 45_000
+
 async function seedOpenCodeTask(window: Awaited<ReturnType<typeof launchApp>>['window']) {
   await clearAndSeedWorkspace(
     window,
@@ -92,7 +94,7 @@ test.describe('Workspace Canvas - Agent Last Message Copy (OpenCode)', () => {
 
       await expect
         .poll(async () => await readObservedResumeSessionId(window, ptySessionId), {
-          timeout: 30_000,
+          timeout: OPENCODE_DISCOVERY_TIMEOUT_MS,
         })
         .toBeTruthy()
 

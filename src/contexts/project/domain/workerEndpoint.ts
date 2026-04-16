@@ -1,14 +1,14 @@
-export type WorkerEndpointKind = 'local'
+export type WorkerEndpointKind = 'local' | 'remote_worker'
 
-// Landing: only implicit local exists. Remote endpoints arrive later.
-export type WorkerEndpointId = 'local'
+// Durable registry ids (M6): `local` or an opaque id.
+export type WorkerEndpointId = string
 
 export interface WorkerEndpointRef {
-  id: WorkerEndpointId
+  endpointId: WorkerEndpointId
   kind: WorkerEndpointKind
 }
 
 export const LOCAL_WORKER_ENDPOINT: WorkerEndpointRef = {
-  id: 'local',
+  endpointId: 'local',
   kind: 'local',
 }

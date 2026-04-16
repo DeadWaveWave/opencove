@@ -26,6 +26,16 @@ export interface SpawnTerminalInput {
   shell?: string
   cols: number
   rows: number
+  env?: Record<string, string>
+}
+
+export interface SpawnTerminalInMountInput {
+  mountId: string
+  cwdUri?: string | null
+  profileId?: string | null
+  shell?: string | null
+  cols?: number | null
+  rows?: number | null
 }
 
 export interface SpawnTerminalResult extends PseudoTerminalSession {
@@ -65,6 +75,10 @@ export interface PtySessionNodeBinding {
 }
 
 export interface SyncPtySessionBindingsInput {
+  bindings: PtySessionNodeBinding[]
+}
+
+export interface SyncPtyAgentPlaceholderBindingsInput {
   bindings: PtySessionNodeBinding[]
 }
 

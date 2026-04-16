@@ -101,6 +101,7 @@ export interface WebsiteNodeData {
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
+  isLiveSessionReattach?: boolean
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
   terminalProviderHint?: AgentProvider | null
@@ -132,6 +133,7 @@ export interface WorkspaceState {
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions?: string[]
+  environmentVariables?: Record<string, string>
   nodes: Node<TerminalNodeData>[]
   viewport: WorkspaceViewport
   isMinimapVisible: boolean
@@ -146,6 +148,7 @@ export interface PersistedWorkspaceState {
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions?: string[]
+  environmentVariables?: Record<string, string>
   nodes: PersistedTerminalNode[]
   viewport: WorkspaceViewport
   isMinimapVisible: boolean
@@ -165,6 +168,7 @@ export interface WorkspaceSpaceState {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: WorkspaceSpaceRect | null

@@ -108,6 +108,8 @@ describe('applySelectionDraft', () => {
         id: 'space-a',
         name: 'A',
         directoryPath: '',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: [],
         rect: {
           x: 40,
@@ -155,6 +157,8 @@ describe('applySelectionDraft', () => {
         id: 'space-a',
         name: 'Space A',
         directoryPath: '',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['node-in'],
         rect: {
           x: 0,
@@ -202,6 +206,8 @@ describe('applySelectionDraft', () => {
         id: 'space-a',
         name: 'Space A',
         directoryPath: '',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['node-in'],
         rect: {
           x: 0,

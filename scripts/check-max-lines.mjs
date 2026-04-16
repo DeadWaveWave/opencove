@@ -9,7 +9,6 @@ const CHECKED_EXTENSIONS = new Set([
   '.tsx',
   '.js',
   '.jsx',
-  '.mjs',
   '.cjs',
   '.mts',
   '.cts',

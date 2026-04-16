@@ -11,6 +11,7 @@ import {
   seededWorkspaceId,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { confirmSpaceTargetMountIfPrompted } from './workspace-canvas.space-target-mount.helpers'
 
 const commandModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
 
@@ -167,6 +168,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+G`)
+      await confirmSpaceTargetMountIfPrompted(window)
 
       await expect
         .poll(

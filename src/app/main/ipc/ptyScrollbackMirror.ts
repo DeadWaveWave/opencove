@@ -7,13 +7,19 @@ export type PtySessionNodeBinding = {
 
 export type PtyScrollbackMirrorPersistence = Pick<PersistenceStore, 'writeNodeScrollback'>
 
+export type PtyAgentPlaceholderMirrorPersistence = Pick<
+  PersistenceStore,
+  'writeAgentNodePlaceholderScrollback'
+>
+
 export type PtyScrollbackMirrorSnapshotSource = {
   snapshot: (sessionId: string) => Promise<string>
 }
 
 export type PtyScrollbackMirror = {
   setBindings: (bindings: PtySessionNodeBinding[]) => void
-  dispose: () => void
+  flush: () => Promise<void>
+  dispose: () => Promise<void>
 }
 
 const DEFAULT_FLUSH_INTERVAL_MS = 5_000
@@ -74,38 +80,93 @@ export function normalizePtySessionNodeBindingsPayload(payload: unknown): {
   return { bindings }
 }
 
-export function createPtyScrollbackMirror({
+function buildBindingsMap(bindings: PtySessionNodeBinding[]): Map<string, Set<string>> {
+  const nodeIdsBySessionId = new Map<string, Set<string>>()
+
+  for (const binding of bindings) {
+    const nodeIds = nodeIdsBySessionId.get(binding.sessionId) ?? new Set<string>()
+    nodeIds.add(binding.nodeId)
+    nodeIdsBySessionId.set(binding.sessionId, nodeIds)
+  }
+
+  return nodeIdsBySessionId
+}
+
+function cloneBindingsMap(bindingsMap: Map<string, Set<string>>): Map<string, Set<string>> {
+  return new Map(
+    [...bindingsMap.entries()].map(([sessionId, nodeIds]) => [sessionId, new Set(nodeIds)]),
+  )
+}
+
+function areBindingsMapsEqual(
+  left: Map<string, Set<string>>,
+  right: Map<string, Set<string>>,
+): boolean {
+  if (left.size !== right.size) {
+    return false
+  }
+
+  for (const [sessionId, leftNodeIds] of left.entries()) {
+    const rightNodeIds = right.get(sessionId)
+    if (!rightNodeIds || leftNodeIds.size !== rightNodeIds.size) {
+      return false
+    }
+
+    for (const nodeId of leftNodeIds) {
+      if (!rightNodeIds.has(nodeId)) {
+        return false
+      }
+    }
+  }
+
+  return true
+}
+
+function createPtySnapshotMirror<TStore>({
   source,
   getPersistenceStore,
+  persistSnapshot,
   flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
 }: {
   source: PtyScrollbackMirrorSnapshotSource
-  getPersistenceStore: () => Promise<PtyScrollbackMirrorPersistence>
+  getPersistenceStore: () => Promise<TStore>
+  persistSnapshot: (store: TStore, nodeId: string, snapshot: string) => Promise<unknown>
   flushIntervalMs?: number
 }): PtyScrollbackMirror {
   let disposed = false
+  let disposing = false
   let flushTimer: NodeJS.Timeout | null = null
-  let flushInFlight = false
+  let operationChain: Promise<void> = Promise.resolve()
 
   const nodeIdsBySessionId = new Map<string, Set<string>>()
   const lastFingerprintBySessionId = new Map<string, SnapshotFingerprint>()
 
-  const flush = async (): Promise<void> => {
-    if (disposed || flushInFlight) {
+  const runExclusive = (operation: () => Promise<void>): Promise<void> => {
+    const nextOperation = operationChain.then(operation, operation)
+    operationChain = nextOperation.catch(() => undefined)
+    return nextOperation
+  }
+
+  const stopTimer = (): void => {
+    if (flushTimer) {
+      clearInterval(flushTimer)
+      flushTimer = null
+    }
+  }
+
+  const flushBindings = async (
+    bindingsMap: Map<string, Set<string>>,
+    fingerprints: Map<string, SnapshotFingerprint>,
+  ): Promise<void> => {
+    if (bindingsMap.size === 0) {
       return
     }
-
-    if (nodeIdsBySessionId.size === 0) {
-      return
-    }
-
-    flushInFlight = true
 
     try {
       const store = await getPersistenceStore()
       const writes: Promise<unknown>[] = []
 
-      const entries = [...nodeIdsBySessionId.entries()].filter(([, nodeIds]) => nodeIds.size > 0)
+      const entries = [...bindingsMap.entries()].filter(([, nodeIds]) => nodeIds.size > 0)
 
       const snapshots = await Promise.allSettled(
         entries.map(async ([sessionId, nodeIds]) => {
@@ -125,15 +186,15 @@ export function createPtyScrollbackMirror({
         }
 
         const fingerprint = fingerprintSnapshot(snapshot)
-        const previous = lastFingerprintBySessionId.get(sessionId)
+        const previous = fingerprints.get(sessionId)
         if (previous && areFingerprintsEqual(previous, fingerprint)) {
           continue
         }
 
-        lastFingerprintBySessionId.set(sessionId, fingerprint)
+        fingerprints.set(sessionId, fingerprint)
 
         for (const nodeId of nodeIds) {
-          writes.push(store.writeNodeScrollback(nodeId, snapshot))
+          writes.push(persistSnapshot(store, nodeId, snapshot))
         }
       }
 
@@ -142,53 +203,138 @@ export function createPtyScrollbackMirror({
       }
     } catch {
       // ignore
-    } finally {
-      flushInFlight = false
     }
   }
 
   const startTimerIfNeeded = (): void => {
-    if (flushTimer || disposed) {
+    if (flushTimer || disposed || disposing) {
       return
     }
 
     flushTimer = setInterval(() => {
-      void flush()
+      void runExclusive(async () => {
+        if (disposed || disposing || nodeIdsBySessionId.size === 0) {
+          return
+        }
+
+        await flushBindings(nodeIdsBySessionId, lastFingerprintBySessionId)
+      })
     }, flushIntervalMs)
   }
 
   return {
     setBindings: bindings => {
-      if (disposed) {
+      if (disposed || disposing) {
         return
       }
 
-      nodeIdsBySessionId.clear()
-      lastFingerprintBySessionId.clear()
+      const nextBindingsMap = buildBindingsMap(bindings)
 
-      for (const binding of bindings) {
-        const nodeIds = nodeIdsBySessionId.get(binding.sessionId) ?? new Set<string>()
-        nodeIds.add(binding.nodeId)
-        nodeIdsBySessionId.set(binding.sessionId, nodeIds)
-      }
+      void runExclusive(async () => {
+        if (disposed || disposing) {
+          return
+        }
 
-      if (nodeIdsBySessionId.size === 0) {
-        return
-      }
+        if (areBindingsMapsEqual(nodeIdsBySessionId, nextBindingsMap)) {
+          return
+        }
 
-      startTimerIfNeeded()
-      void flush()
+        if (nodeIdsBySessionId.size > 0) {
+          await flushBindings(nodeIdsBySessionId, lastFingerprintBySessionId)
+        }
+
+        stopTimer()
+        nodeIdsBySessionId.clear()
+        lastFingerprintBySessionId.clear()
+
+        for (const [sessionId, nodeIds] of cloneBindingsMap(nextBindingsMap).entries()) {
+          nodeIdsBySessionId.set(sessionId, nodeIds)
+        }
+
+        if (nodeIdsBySessionId.size === 0) {
+          return
+        }
+
+        startTimerIfNeeded()
+        await flushBindings(nodeIdsBySessionId, lastFingerprintBySessionId)
+      })
     },
-    dispose: () => {
-      disposed = true
-
-      if (flushTimer) {
-        clearInterval(flushTimer)
-        flushTimer = null
+    flush: async () => {
+      if (disposed || disposing) {
+        await operationChain
+        return
       }
 
-      nodeIdsBySessionId.clear()
-      lastFingerprintBySessionId.clear()
+      await runExclusive(async () => {
+        if (disposed || disposing || nodeIdsBySessionId.size === 0) {
+          return
+        }
+
+        await flushBindings(nodeIdsBySessionId, lastFingerprintBySessionId)
+      })
+    },
+    dispose: async () => {
+      if (disposed) {
+        await operationChain
+        return
+      }
+
+      if (disposing) {
+        await operationChain
+        return
+      }
+
+      disposing = true
+      stopTimer()
+
+      await runExclusive(async () => {
+        if (disposed) {
+          return
+        }
+
+        if (nodeIdsBySessionId.size > 0) {
+          await flushBindings(nodeIdsBySessionId, lastFingerprintBySessionId)
+        }
+
+        nodeIdsBySessionId.clear()
+        lastFingerprintBySessionId.clear()
+        disposed = true
+      })
     },
   }
+}
+
+export function createPtyScrollbackMirror({
+  source,
+  getPersistenceStore,
+  flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
+}: {
+  source: PtyScrollbackMirrorSnapshotSource
+  getPersistenceStore: () => Promise<PtyScrollbackMirrorPersistence>
+  flushIntervalMs?: number
+}): PtyScrollbackMirror {
+  return createPtySnapshotMirror({
+    source,
+    getPersistenceStore,
+    persistSnapshot: (store, nodeId, snapshot) => store.writeNodeScrollback(nodeId, snapshot),
+    flushIntervalMs,
+  })
+}
+
+export function createPtyAgentPlaceholderMirror({
+  source,
+  getPersistenceStore,
+  flushIntervalMs = DEFAULT_FLUSH_INTERVAL_MS,
+}: {
+  source: PtyScrollbackMirrorSnapshotSource
+  getPersistenceStore: () => Promise<PtyAgentPlaceholderMirrorPersistence>
+  flushIntervalMs?: number
+}): PtyScrollbackMirror {
+  return createPtySnapshotMirror({
+    source,
+    getPersistenceStore,
+    persistSnapshot: (store, nodeId, snapshot) =>
+      store.writeAgentNodePlaceholderScrollback(nodeId, snapshot),
+    flushIntervalMs,
+  })
 }

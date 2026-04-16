@@ -8,7 +8,10 @@ import type { IpcRegistrationDisposable } from './types'
 import { createMainRuntimeDiagnosticsLogger } from '../runtimeDiagnostics'
 
 function isTerminalDiagnosticsEnabled(): boolean {
-  return process.env['OPENCOVE_TERMINAL_DIAGNOSTICS'] === '1'
+  return (
+    process.env['OPENCOVE_TERMINAL_DIAGNOSTICS'] === '1' ||
+    process.env['OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS'] === '1'
+  )
 }
 
 function writeTerminalDiagnosticsLine(payload: TerminalDiagnosticsLogInput): void {

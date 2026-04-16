@@ -1,5 +1,5 @@
 import React from 'react'
-import { FolderX } from 'lucide-react'
+import { FolderX, HardDrive } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 
@@ -7,11 +7,13 @@ export function ProjectContextMenu({
   workspaceId,
   x,
   y,
+  onRequestManageMounts,
   onRequestRemove,
 }: {
   workspaceId: string
   x: number
   y: number
+  onRequestManageMounts: (workspaceId: string) => void
   onRequestRemove: (workspaceId: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -25,10 +27,22 @@ export function ProjectContextMenu({
         point: { x, y },
         estimatedSize: {
           width: 188,
-          height: 56,
+          height: 96,
         },
       }}
     >
+      <button
+        type="button"
+        data-testid={`workspace-project-manage-mounts-${workspaceId}`}
+        onClick={() => {
+          onRequestManageMounts(workspaceId)
+        }}
+      >
+        <HardDrive className="workspace-context-menu__icon" aria-hidden="true" />
+        <span className="workspace-context-menu__label">
+          {t('projectContextMenu.manageMounts')}
+        </span>
+      </button>
       <button
         type="button"
         data-testid={`workspace-project-remove-${workspaceId}`}

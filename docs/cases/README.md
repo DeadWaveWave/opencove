@@ -29,9 +29,10 @@
 
 ## 目录索引
 
+- `docs/cases/agent-input-after-restart-recovery.md`
 - `docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
 - `docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
 - `docs/cases/opencode-embedded-theme-sync.md`
+- `docs/cases/terminal-no-color-visual-debug.md`
 - `docs/cases/vitest-electron-mock-missing-exports.md`
 - `docs/cases/xterm-hit-test-cursor-flicker.md`
-

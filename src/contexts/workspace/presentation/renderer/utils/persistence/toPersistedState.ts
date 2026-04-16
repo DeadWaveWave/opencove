@@ -3,6 +3,7 @@ import type { PersistedAppState, WorkspaceState } from '../../types'
 import { DEFAULT_WORKSPACE_MINIMAP_VISIBLE } from '../../types'
 import { PERSISTED_APP_STATE_FORMAT_VERSION } from './constants'
 import {
+  normalizeEnvironmentVariables,
   normalizeOptionalString,
   normalizePullRequestBaseBranchOptions,
   normalizeWorkspaceSpaceNodeIds,
@@ -27,6 +28,7 @@ export function toPersistedState(
       pullRequestBaseBranchOptions: normalizePullRequestBaseBranchOptions(
         workspace.pullRequestBaseBranchOptions,
       ),
+      environmentVariables: normalizeEnvironmentVariables(workspace.environmentVariables),
       viewport: normalizeWorkspaceViewport(workspace.viewport),
       isMinimapVisible:
         typeof workspace.isMinimapVisible === 'boolean'
@@ -39,6 +41,7 @@ export function toPersistedState(
           normalizeOptionalString(space.directoryPath) ??
           normalizeOptionalString(workspace.path) ??
           workspace.path,
+        targetMountId: normalizeOptionalString(space.targetMountId),
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
         rect: normalizeWorkspaceSpaceRect(space.rect),

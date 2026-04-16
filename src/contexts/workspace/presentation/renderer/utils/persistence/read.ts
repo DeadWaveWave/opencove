@@ -130,7 +130,12 @@ export async function readPersistedStateWithMeta(): Promise<{
   await Promise.allSettled(
     legacyParsed.workspaces.flatMap(workspace =>
       workspace.nodes
-        .filter(node => typeof node.scrollback === 'string' && node.scrollback.length > 0)
+        .filter(
+          node =>
+            node.kind === 'terminal' &&
+            typeof node.scrollback === 'string' &&
+            node.scrollback.length > 0,
+        )
         .map(node => port.writeNodeScrollback(node.id, node.scrollback)),
     ),
   )

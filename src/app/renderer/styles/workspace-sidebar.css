@@ -209,7 +209,7 @@
   font-weight: 500;
 }
 
-.workspace-item__path {
+.workspace-item__subtitle {
   font-size: calc(11px * var(--cove-ui-font-scale));
   color: var(--cove-text-faint);
   white-space: nowrap;

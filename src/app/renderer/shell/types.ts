@@ -28,6 +28,10 @@ export interface ProjectContextMenuState {
   y: number
 }
 
+export interface ProjectMountManagerState {
+  workspaceId: string
+}
+
 export interface ProjectDeleteConfirmationState {
   workspaceId: string
   workspaceName: string

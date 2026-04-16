@@ -1,14 +1,14 @@
-import React from 'react'
 import { useReactFlow, type Edge, type Node } from '@xyflow/react'
-import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import type { TerminalNodeData } from '../types'
 import * as workspaceCanvasHooks from './workspaceCanvas/hooks'
 import { WorkspaceCanvasView } from './workspaceCanvas/WorkspaceCanvasView'
+import { openQuickMenuSettings } from './workspaceCanvas/openQuickMenuSettings'
 import type { WorkspaceCanvasProps } from './workspaceCanvas/types'
 export function WorkspaceCanvasInner({
   workspaceId,
   onShowMessage,
   workspacePath,
+  environmentVariables,
   worktreesRoot,
   nodes,
   onNodesChange,
@@ -27,7 +27,7 @@ export function WorkspaceCanvasInner({
   isFocusNodeTargetZoomPreviewing = false,
   focusNodeId,
   focusSequence,
-}: WorkspaceCanvasProps): React.JSX.Element {
+}: WorkspaceCanvasProps) {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   const canvasState = workspaceCanvasHooks.useWorkspaceCanvasState({
     nodes,
@@ -57,22 +57,15 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     onRequestPersistFlush,
   })
-  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } =
-    workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({
-      workspacePath,
-      spacesRef: canvasState.spacesRef,
-      nodesRef: nodeStore.nodesRef,
-      setNodes: nodeStore.setNodes,
-      onSpacesChange,
-      onRequestPersistFlush,
-      closeNode: nodeStore.closeNode,
-    })
+  // prettier-ignore
+  const { updateSpaceDirectory, getSpaceBlockingNodes, closeNodesById } = workspaceCanvasHooks.useWorkspaceCanvasSpaceDirectoryOps({ workspacePath, spacesRef: canvasState.spacesRef, nodesRef: nodeStore.nodesRef, setNodes: nodeStore.setNodes, onSpacesChange, onRequestPersistFlush, closeNode: nodeStore.closeNode })
   const spacesApi = workspaceCanvasHooks.useWorkspaceCanvasSpaces({
     workspaceId,
     activeSpaceId,
     onActiveSpaceChange,
     workspacePath,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
+    standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     reactFlow,
     nodes: canvasState.flowNodes,
     nodesRef: nodeStore.nodesRef,
@@ -139,7 +132,9 @@ export function WorkspaceCanvasInner({
     bumpAgentLaunchToken: nodeStore.bumpAgentLaunchToken,
     isAgentLaunchTokenCurrent: nodeStore.isAgentLaunchTokenCurrent,
     agentSettings,
+    workspaceId,
     workspacePath,
+    environmentVariables,
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     onRequestPersistFlush,
@@ -179,7 +174,9 @@ export function WorkspaceCanvasInner({
     buildAgentNodeTitle: agentSupport.buildAgentNodeTitle,
     launchAgentInNode: agentSupport.launchAgentInNode,
     agentSettings,
+    workspaceId,
     workspacePath,
+    environmentVariables,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
     createTaskNode: nodeStore.createTaskNode,
     closeNode: nodeStore.closeNode,
@@ -263,7 +260,9 @@ export function WorkspaceCanvasInner({
     selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     contextMenu: canvasState.contextMenu,
+    workspaceId,
     workspacePath,
+    environmentVariables,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
@@ -277,10 +276,12 @@ export function WorkspaceCanvasInner({
   })
   workspaceCanvasHooks.useWorkspaceCanvasShortcutActions({
     enabled: shortcutsEnabled,
+    workspaceId,
     activeSpaceId,
     spaces,
     agentSettings,
     workspacePath,
+    environmentVariables,
     canvasRef: canvasState.canvasRef,
     setContextMenu: canvasState.setContextMenu,
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
@@ -294,6 +295,7 @@ export function WorkspaceCanvasInner({
     createNoteNode: nodeStore.createNoteNode,
     createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,
     activateSpace: spacesApi.activateSpace,
+    onShowMessage,
   })
   const {
     canConvertSelectedNoteToTask,
@@ -451,18 +453,19 @@ export function WorkspaceCanvasInner({
       openAgentLauncherForProvider={agentSupport.openAgentLauncherForProvider}
       runQuickCommand={runQuickCommand}
       insertQuickPhrase={insertQuickPhrase}
-      openQuickMenuSettings={() => {
-        const store = useAppStore.getState()
-        store.setSettingsOpenPageId('quick-menu')
-        store.setIsSettingsOpen(true)
-      }}
+      openQuickMenuSettings={openQuickMenuSettings}
       createSpaceFromSelectedNodes={spacesApi.createSpaceFromSelectedNodes}
+      createEmptySpaceAtPoint={spacesApi.createEmptySpaceAtPoint}
+      spaceTargetMountPicker={spacesApi.spaceTargetMountPicker}
+      setSpaceTargetMountPicker={spacesApi.setSpaceTargetMountPicker}
+      confirmSpaceTargetMountPicker={spacesApi.confirmSpaceTargetMountPicker}
+      cancelSpaceTargetMountPicker={spacesApi.cancelSpaceTargetMountPicker}
       clearNodeSelection={clearNodeSelection}
       canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
       isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
       convertSelectedNoteToTask={convertSelectedNoteToTask}
       setSelectedNodeLabelColorOverride={override =>
-        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIdsRef.current, override)
+        nodeStore.setNodeLabelColorOverride(canvasState.selectedNodeIds, override)
       }
       taskCreator={taskCreator}
       taskTitleProviderLabel={taskTitleProviderLabel}

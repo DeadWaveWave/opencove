@@ -3,23 +3,13 @@ import type { PersistenceStore } from '../../../../platform/persistence/sqlite/P
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
-import { locateAgentResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocator'
-import {
-  readLastAssistantMessageFromOpenCodeSession,
-  readLastAssistantMessageFromSessionFile,
-} from '../../../../contexts/agent/infrastructure/watchers/SessionLastAssistantMessage'
-import { resolveSessionFilePath } from '../../../../contexts/agent/infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
 import {
   normalizeAgentSettings,
   resolveAgentModel,
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
-import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import type {
-  AgentProviderId,
-  GetSessionFinalMessageInput,
-  GetSessionFinalMessageResult,
   GetSessionInput,
   GetSessionResult,
   LaunchAgentSessionInput,
@@ -34,51 +24,22 @@ import {
 import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
+import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
+import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
+import {
+  isRecord,
+  normalizeAgentProviderId,
+  normalizeOptionalString,
+} from './sessionLaunchPayloadSupport'
+import type { SessionRecord } from './sessionRecords'
+import type { WorkerTopologyStore } from '../topology/topologyStore'
+import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
-const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
-const SESSION_FILE_RESOLVE_TIMEOUT_MS = 1_500
 
 function resolveOpenCodeEmbeddedXdgStateHome(userDataPath: string): string {
   return userDataPath.trim() || process.cwd()
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object'
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeAgentProviderId(value: unknown): AgentProviderId | null {
-  const provider = normalizeOptionalString(value)
-  if (!provider) {
-    return null
-  }
-
-  if (
-    provider === 'claude-code' ||
-    provider === 'codex' ||
-    provider === 'opencode' ||
-    provider === 'gemini'
-  ) {
-    return provider
-  }
-
-  throw createAppError('common.invalid_input', {
-    debugMessage: `Invalid payload for session.launchAgent provider: ${provider}`,
-  })
 }
 
 function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput {
@@ -122,7 +83,7 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     })
   }
 
-  const provider = normalizeAgentProviderId(providerRaw)
+  const provider = normalizeAgentProviderId(providerRaw, 'session.launchAgent provider')
 
   const modelRaw = payload.model
   if (modelRaw !== undefined && modelRaw !== null && typeof modelRaw !== 'string') {
@@ -188,10 +149,7 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
   }
 }
 
-function normalizeSessionIdPayload(
-  payload: unknown,
-  operationId: string,
-): GetSessionInput | GetSessionFinalMessageInput {
+function normalizeSessionIdPayload(payload: unknown, operationId: string): GetSessionInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
       debugMessage: `Invalid payload for ${operationId}.`,
@@ -215,18 +173,15 @@ function normalizeSessionIdPayload(
   return { sessionId }
 }
 
-type SessionRecord = GetSessionResult & {
-  startedAtMs: number
-}
-
 export function registerSessionHandlers(
   controlSurface: ControlSurface,
   deps: {
     userDataPath: string
     approvedWorkspaces: ApprovedWorkspaceStore
     getPersistenceStore: () => Promise<PersistenceStore>
-    ptyRuntime: ControlSurfacePtyRuntime
+    ptyRuntime: MultiEndpointPtyRuntime
     ptyStreamHub: PtyStreamHub
+    topology: WorkerTopologyStore
   },
 ): void {
   const sessions = new Map<string, SessionRecord>()
@@ -240,11 +195,15 @@ export function registerSessionHandlers(
       const mode = payload.mode === 'resume' ? 'resume' : 'new'
       const resumeSessionId = normalizeOptionalString(payload.resumeSessionId)
 
-      const { workingDirectory, agentSettings } = resolvedSpaceId
+      const resolvedSpace = resolvedSpaceId
         ? await resolveSpaceWorkingDirectoryFromStore({
             spaceId: resolvedSpaceId,
             getPersistenceStore: deps.getPersistenceStore,
           })
+        : null
+
+      const { workingDirectory, agentSettings } = resolvedSpace
+        ? resolvedSpace
         : await (async () => {
             if (resolvedCwd.length === 0) {
               throw createAppError('common.invalid_input', {
@@ -277,10 +236,11 @@ export function registerSessionHandlers(
         cwd: workingDirectory,
         mode,
         model,
+        resumeSessionId,
       })
 
       const opencodeServer =
-        provider === 'opencode' && !testStub
+        provider === 'opencode'
           ? {
               hostname: OPENCODE_SERVER_HOSTNAME,
               port: await reserveLoopbackPort(OPENCODE_SERVER_HOSTNAME),
@@ -315,10 +275,13 @@ export function registerSessionHandlers(
             }
           : undefined
 
+      const launchEnv =
+        testStub?.env || sessionEnv ? { ...(testStub?.env ?? {}), ...(sessionEnv ?? {}) } : null
+
       const mergedEnv =
         payload.env && Object.keys(payload.env).length > 0
-          ? { ...(sessionEnv ?? {}), ...payload.env }
-          : sessionEnv
+          ? { ...(launchEnv ?? {}), ...payload.env }
+          : (launchEnv ?? undefined)
 
       const resolvedSpawn = await resolveSessionLaunchSpawn({
         workingDirectory,
@@ -337,7 +300,10 @@ export function registerSessionHandlers(
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
-      const executionContext = resolveExecutionContextDto(workingDirectory)
+      const executionContext = resolveExecutionContextDto(workingDirectory, {
+        projectId: resolvedSpace?.projectId ?? null,
+        spaceId: resolvedSpaceId.length > 0 ? resolvedSpaceId : null,
+      })
 
       const record: SessionRecord = {
         sessionId,
@@ -352,6 +318,7 @@ export function registerSessionHandlers(
         startedAtMs,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        route: { kind: 'local' },
       }
 
       sessions.set(sessionId, record)
@@ -378,6 +345,8 @@ export function registerSessionHandlers(
     defaultErrorCode: 'agent.launch_failed',
   })
 
+  registerSessionLaunchAgentInMountHandler(controlSurface, { ...deps, sessions })
+
   controlSurface.register('session.get', {
     kind: 'query',
     validate: payload => normalizeSessionIdPayload(payload, 'session.get'),
@@ -389,97 +358,13 @@ export function registerSessionHandlers(
         })
       }
 
-      const { startedAtMs: _startedAtMs, ...publicRecord } = record
+      const { startedAtMs: _startedAtMs, route: _route, ...publicRecord } = record
       return publicRecord
     },
     defaultErrorCode: 'common.unexpected',
   })
 
-  controlSurface.register('session.finalMessage', {
-    kind: 'query',
-    validate: payload => normalizeSessionIdPayload(payload, 'session.finalMessage'),
-    handle: async (_ctx, payload): Promise<GetSessionFinalMessageResult> => {
-      const record = sessions.get(payload.sessionId)
-      if (!record) {
-        throw createAppError('session.not_found', {
-          debugMessage: `session.finalMessage: unknown session id: ${payload.sessionId}`,
-        })
-      }
-
-      const startedAtMs = record.startedAtMs
-      const resumeSessionId =
-        record.resumeSessionId ??
-        (await locateAgentResumeSessionId({
-          provider: record.provider,
-          cwd: record.cwd,
-          startedAtMs,
-          timeoutMs: RESUME_SESSION_LOCATE_TIMEOUT_MS,
-        }))
-
-      if (resumeSessionId) {
-        record.resumeSessionId = resumeSessionId
-      }
-
-      if (!resumeSessionId) {
-        return {
-          sessionId: record.sessionId,
-          provider: record.provider,
-          startedAt: record.startedAt,
-          cwd: record.cwd,
-          resumeSessionId: null,
-          message: null,
-        }
-      }
-
-      if (record.provider === 'opencode') {
-        const message = await readLastAssistantMessageFromOpenCodeSession(
-          resumeSessionId,
-          record.cwd,
-        )
-        return {
-          sessionId: record.sessionId,
-          provider: record.provider,
-          startedAt: record.startedAt,
-          cwd: record.cwd,
-          resumeSessionId,
-          message,
-        }
-      }
-
-      const sessionFilePath = await resolveSessionFilePath({
-        provider: record.provider,
-        cwd: record.cwd,
-        sessionId: resumeSessionId,
-        startedAtMs,
-        timeoutMs: SESSION_FILE_RESOLVE_TIMEOUT_MS,
-      })
-
-      if (!sessionFilePath) {
-        return {
-          sessionId: record.sessionId,
-          provider: record.provider,
-          startedAt: record.startedAt,
-          cwd: record.cwd,
-          resumeSessionId,
-          message: null,
-        }
-      }
-
-      const message = await readLastAssistantMessageFromSessionFile(
-        record.provider,
-        sessionFilePath,
-      )
-      return {
-        sessionId: record.sessionId,
-        provider: record.provider,
-        startedAt: record.startedAt,
-        cwd: record.cwd,
-        resumeSessionId,
-        message,
-      }
-    },
-    defaultErrorCode: 'agent.read_last_message_failed',
-  })
+  registerSessionFinalMessageHandler(controlSurface, { sessions, topology: deps.topology })
 
   controlSurface.register('session.kill', {
     kind: 'command',

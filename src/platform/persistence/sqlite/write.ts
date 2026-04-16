@@ -35,11 +35,12 @@ export function writeNormalizedAppState(
   const insertWorkspace = db.prepare(
     `
       INSERT INTO workspaces (
-        id, name, path, worktrees_root, pull_request_base_branch_options_json, space_archive_records_json,
+        id, name, path, worktrees_root, pull_request_base_branch_options_json, environment_variables_json,
+        space_archive_records_json,
         viewport_x, viewport_y, viewport_zoom,
         is_minimap_visible, active_space_id, sort_order
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -59,10 +60,10 @@ export function writeNormalizedAppState(
   const insertSpace = db.prepare(
     `
       INSERT INTO workspace_spaces (
-        id, workspace_id, name, directory_path, label_color,
+        id, workspace_id, name, directory_path, target_mount_id, label_color,
         rect_x, rect_y, rect_width, rect_height
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -105,6 +106,7 @@ export function writeNormalizedAppState(
         workspace.path,
         workspace.worktreesRoot,
         safeJsonStringify(workspace.pullRequestBaseBranchOptions),
+        safeJsonStringify(workspace.environmentVariables),
         safeJsonStringify(workspace.spaceArchiveRecords),
         workspace.viewport.x,
         workspace.viewport.y,
@@ -145,6 +147,7 @@ export function writeNormalizedAppState(
           workspace.id,
           space.name,
           space.directoryPath,
+          space.targetMountId,
           space.labelColor,
           space.rect?.x ?? null,
           space.rect?.y ?? null,
@@ -158,8 +161,17 @@ export function writeNormalizedAppState(
       }
     }
 
-    // Keep scrollback only for still-present nodes.
-    db.exec('DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT id FROM nodes)')
+    // Durable scrollback belongs only to plain terminal nodes. Agent history must be restored by
+    // the external CLI's own resume semantics instead of OpenCove persistence.
+    db.exec(
+      "DELETE FROM node_scrollback WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'terminal')",
+    )
+
+    // Agent placeholder scrollback is a UI cache only. Clear placeholders for nodes that no longer
+    // exist (or aren't agents) so we don't accumulate unreferenced cache entries over time.
+    db.exec(
+      "DELETE FROM agent_node_placeholder_scrollback WHERE node_id NOT IN (SELECT id FROM nodes WHERE kind = 'agent')",
+    )
 
     return nextRevision
   })
@@ -188,6 +200,10 @@ export function writeNormalizedScrollbacks(
 
     for (const workspace of state.workspaces) {
       for (const node of workspace.nodes) {
+        if (node.kind !== 'terminal') {
+          continue
+        }
+
         const scrollback = normalizeScrollback(node.scrollback)
         if (!scrollback) {
           continue

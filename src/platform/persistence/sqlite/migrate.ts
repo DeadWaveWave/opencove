@@ -34,6 +34,7 @@ function createTables(db: Database.Database): void {
       path TEXT NOT NULL,
       worktrees_root TEXT NOT NULL,
       pull_request_base_branch_options_json TEXT NOT NULL DEFAULT '[]',
+      environment_variables_json TEXT NOT NULL DEFAULT '{}',
       space_archive_records_json TEXT NOT NULL DEFAULT '[]',
       viewport_x REAL NOT NULL,
       viewport_y REAL NOT NULL,
@@ -71,6 +72,7 @@ function createTables(db: Database.Database): void {
       workspace_id TEXT NOT NULL,
       name TEXT NOT NULL,
       directory_path TEXT NOT NULL,
+      target_mount_id TEXT,
       label_color TEXT,
       rect_x REAL,
       rect_y REAL,
@@ -86,6 +88,12 @@ function createTables(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS node_scrollback (
+      node_id TEXT PRIMARY KEY,
+      scrollback TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_node_placeholder_scrollback (
       node_id TEXT PRIMARY KEY,
       scrollback TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -178,6 +186,12 @@ function ensureCurrentSchema(db: Database.Database): void {
 
   ensureTableColumn(db, {
     tableName: 'workspaces',
+    columnName: 'environment_variables_json',
+    definitionSql: `TEXT NOT NULL DEFAULT '{}'`,
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspaces',
     columnName: 'space_archive_records_json',
     definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
   })
@@ -207,6 +221,12 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'workspace_spaces',
     columnName: 'label_color',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'target_mount_id',
     definitionSql: 'TEXT',
   })
 }

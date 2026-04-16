@@ -2,7 +2,9 @@ import { Buffer } from 'node:buffer'
 import type {
   AppErrorDescriptor,
   PersistWriteResult,
+  ReadAgentNodePlaceholderScrollbackInput,
   WriteAppStateInput,
+  WriteAgentNodePlaceholderScrollbackInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
 } from '../../../../shared/contracts/dto'
@@ -305,6 +307,31 @@ export function createRemotePersistenceStore(
       const payload: WriteNodeScrollbackInput = { nodeId, scrollback }
       try {
         return await invokePersistResult(endpointResolver, 'sync.writeNodeScrollback', payload)
+      } catch (error) {
+        return resolveIoFailure(error)
+      }
+    },
+    readAgentNodePlaceholderScrollback: async nodeId => {
+      const payload: ReadAgentNodePlaceholderScrollbackInput = { nodeId }
+      try {
+        return await invokeValue<string | null>(
+          endpointResolver,
+          'query',
+          'sync.readAgentNodePlaceholderScrollback',
+          payload,
+        )
+      } catch {
+        return null
+      }
+    },
+    writeAgentNodePlaceholderScrollback: async (nodeId, scrollback) => {
+      const payload: WriteAgentNodePlaceholderScrollbackInput = { nodeId, scrollback }
+      try {
+        return await invokePersistResult(
+          endpointResolver,
+          'sync.writeAgentNodePlaceholderScrollback',
+          payload,
+        )
       } catch (error) {
         return resolveIoFailure(error)
       }

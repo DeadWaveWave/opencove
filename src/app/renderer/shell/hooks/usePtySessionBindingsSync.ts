@@ -37,7 +37,9 @@ function resolveBindings(workspaces: WorkspaceState[]): SyncPtySessionBindingsIn
 
   for (const workspace of workspaces) {
     for (const node of workspace.nodes) {
-      if (node.data.kind !== 'terminal' && node.data.kind !== 'agent') {
+      // Durable PTY scrollback belongs only to plain terminal nodes. Agent history must be
+      // restored by the external CLI's own resume semantics instead of OpenCove persistence.
+      if (node.data.kind !== 'terminal') {
         continue
       }
 

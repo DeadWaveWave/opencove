@@ -36,6 +36,10 @@ function isLikelyJsonRecord(line: string): boolean {
   return false
 }
 
+function isExplicitSubmitInteraction(data: string | undefined): boolean {
+  return data === '\r' || data === '\n' || data === '\r\n'
+}
+
 export class SessionTurnStateWatcher {
   private readonly provider: AgentProviderId
   private readonly sessionId: string
@@ -91,6 +95,17 @@ export class SessionTurnStateWatcher {
       this.watcher.close()
       this.watcher = null
     }
+  }
+
+  public noteInteraction(data?: string): void {
+    if (!isExplicitSubmitInteraction(data)) {
+      return
+    }
+
+    // Renderer may optimistically broadcast `working` on explicit submit before the
+    // durable session file appends the next turn's final state. Reset the watcher-side
+    // state so a subsequent durable `standby` record is not suppressed as a duplicate.
+    this.lastState = 'working'
   }
 
   private scheduleRead(): void {

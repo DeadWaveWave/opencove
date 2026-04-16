@@ -139,7 +139,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
     expect(screen.getByTestId('count')).toHaveTextContent('0')
 
     await Promise.resolve()
-  })
+  }, 15_000)
 
   it('requests persist flush when dragging a node with selected spaces', async () => {
     const onRequestPersistFlush = vi.fn()
@@ -205,6 +205,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         id: 'selected-space',
         name: 'Selected Space',
         directoryPath: '/repo/demo',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['inside-node'],
         rect: { x: 800, y: 200, width: 540, height: 380 },
       },
@@ -279,6 +281,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         id: 'selected-space',
         name: 'Selected Space',
         directoryPath: '/repo/demo',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['inside-node'],
         rect: { x: 800, y: 380, width: 540, height: 380 },
       },

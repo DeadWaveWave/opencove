@@ -121,6 +121,10 @@ test.describe('Recovery - Terminal worktree reopen', () => {
         const restartedTerminal = restartedWindow.locator('.terminal-node').first()
         await expect(restartedTerminal).toBeVisible()
         await expect(restartedTerminal.locator('.xterm')).toBeVisible()
+        await expect(restartedTerminal.locator('.terminal-node__terminal')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        )
 
         await restartedTerminal.locator('.xterm').click()
         await expect(restartedTerminal.locator('.xterm-helper-textarea')).toBeFocused()

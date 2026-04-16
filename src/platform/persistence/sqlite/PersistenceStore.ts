@@ -9,7 +9,7 @@ import { DB_SCHEMA_VERSION, DEFAULT_MAX_WORKSPACE_STATE_RAW_BYTES } from './cons
 import { migrate } from './migrate'
 import { normalizePersistedAppState, normalizeScrollback } from './normalize'
 import { readAppStateFromDb, readWorkspaceStateRawFromDb } from './read'
-import { nodeScrollback } from './schema'
+import { agentNodePlaceholderScrollback, nodeScrollback } from './schema'
 import { safeJsonParse, safeJsonStringify, toErrorMessage, utf8ByteLength } from './utils'
 import { writeNormalizedAppState, writeNormalizedScrollbacks } from './write'
 import { createAppErrorDescriptor } from '../../../shared/errors/appError'
@@ -27,6 +27,12 @@ export interface PersistenceStore {
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
 
+  readAgentNodePlaceholderScrollback: (nodeId: string) => Promise<string | null>
+  writeAgentNodePlaceholderScrollback: (
+    nodeId: string,
+    scrollback: string | null,
+  ) => Promise<PersistWriteResult>
+
   consumeRecovery: () => PersistenceRecoveryReason | null
   dispose: () => void
 }
@@ -36,6 +42,18 @@ function readNodeScrollbackFromDb(db: BetterSQLite3Database, nodeId: string): st
     .select({ scrollback: nodeScrollback.scrollback })
     .from(nodeScrollback)
     .where(eq(nodeScrollback.nodeId, nodeId))
+    .get()
+  return typeof row?.scrollback === 'string' ? row.scrollback : null
+}
+
+function readAgentNodePlaceholderScrollbackFromDb(
+  db: BetterSQLite3Database,
+  nodeId: string,
+): string | null {
+  const row = db
+    .select({ scrollback: agentNodePlaceholderScrollback.scrollback })
+    .from(agentNodePlaceholderScrollback)
+    .where(eq(agentNodePlaceholderScrollback.nodeId, nodeId))
     .get()
   return typeof row?.scrollback === 'string' ? row.scrollback : null
 }
@@ -205,6 +223,19 @@ export async function createPersistenceStore(options: {
     }
   }
 
+  const readAgentNodePlaceholderScrollback = async (nodeId: string): Promise<string | null> => {
+    const normalized = nodeId.trim()
+    if (normalized.length === 0) {
+      return null
+    }
+
+    try {
+      return readAgentNodePlaceholderScrollbackFromDb(db, normalized)
+    } catch {
+      return null
+    }
+  }
+
   const writeNodeScrollback = async (
     nodeId: string,
     scrollback: string | null,
@@ -257,6 +288,64 @@ export async function createPersistenceStore(options: {
     }
   }
 
+  const writeAgentNodePlaceholderScrollback = async (
+    nodeId: string,
+    scrollback: string | null,
+  ): Promise<PersistWriteResult> => {
+    const normalizedNodeId = nodeId.trim()
+    if (normalizedNodeId.length === 0) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: createAppErrorDescriptor('persistence.invalid_node_id', {
+          debugMessage: 'Missing node id.',
+        }),
+      }
+    }
+
+    const normalizedScrollback = normalizeScrollback(scrollback)
+    if (!normalizedScrollback) {
+      try {
+        db.delete(agentNodePlaceholderScrollback)
+          .where(eq(agentNodePlaceholderScrollback.nodeId, normalizedNodeId))
+          .run()
+        return { ok: true, level: 'full', bytes: 0 }
+      } catch (error) {
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toErrorMessage(error),
+          }),
+        }
+      }
+    }
+
+    try {
+      const nowIso = new Date().toISOString()
+      db.insert(agentNodePlaceholderScrollback)
+        .values({
+          nodeId: normalizedNodeId,
+          scrollback: normalizedScrollback,
+          updatedAt: nowIso,
+        })
+        .onConflictDoUpdate({
+          target: agentNodePlaceholderScrollback.nodeId,
+          set: { scrollback: normalizedScrollback, updatedAt: nowIso },
+        })
+        .run()
+      return { ok: true, level: 'full', bytes: utf8ByteLength(normalizedScrollback) }
+    } catch (error) {
+      return {
+        ok: false,
+        reason: 'io',
+        error: createAppErrorDescriptor('persistence.io_failed', {
+          debugMessage: toErrorMessage(error),
+        }),
+      }
+    }
+  }
+
   return {
     readWorkspaceStateRaw,
     writeWorkspaceStateRaw,
@@ -265,6 +354,8 @@ export async function createPersistenceStore(options: {
     writeAppState,
     readNodeScrollback,
     writeNodeScrollback,
+    readAgentNodePlaceholderScrollback,
+    writeAgentNodePlaceholderScrollback,
     consumeRecovery: () => {
       const current = recovery
       recovery = null

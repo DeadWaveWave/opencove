@@ -21,6 +21,10 @@ export function useWorkspaceStateHandlers({
   handleWorkspaceSpaceArchiveRecordAppend: (record: SpaceArchiveRecord) => void
   handleWorkspaceSpaceArchiveRecordRemove: (recordId: string) => void
   handleAnyWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  handleAnyWorkspaceEnvironmentVariablesChange: (
+    workspaceId: string,
+    environmentVariables: Record<string, string>,
+  ) => void
 } {
   const handleWorkspaceNodesChange = useCallback((nodes: WorkspaceState['nodes']): void => {
     const { activeWorkspaceId: currentActiveWorkspaceId, setWorkspaces: updateWorkspaces } =
@@ -37,12 +41,10 @@ export function useWorkspaceStateHandlers({
 
         const nodeIds = new Set(nodes.map(node => node.id))
         const nextSpaces = sanitizeWorkspaceSpaces(
-          workspace.spaces
-            .map(space => ({
-              ...space,
-              nodeIds: space.nodeIds.filter(nodeId => nodeIds.has(nodeId)),
-            }))
-            .filter(space => space.nodeIds.length > 0),
+          workspace.spaces.map(space => ({
+            ...space,
+            nodeIds: space.nodeIds.filter(nodeId => nodeIds.has(nodeId)),
+          })),
         )
         const hasActiveSpace =
           workspace.activeSpaceId !== null &&
@@ -254,6 +256,22 @@ export function useWorkspaceStateHandlers({
     [requestPersistFlush],
   )
 
+  const handleAnyWorkspaceEnvironmentVariablesChange = useCallback(
+    (workspaceId: string, environmentVariables: Record<string, string>): void => {
+      const { setWorkspaces: updateWorkspaces } = useAppStore.getState()
+      updateWorkspaces(previous =>
+        previous.map(workspace => {
+          if (workspace.id !== workspaceId) {
+            return workspace
+          }
+          return { ...workspace, environmentVariables }
+        }),
+      )
+      requestPersistFlush()
+    },
+    [requestPersistFlush],
+  )
+
   return {
     handleWorkspaceNodesChange,
     handleWorkspaceViewportChange,
@@ -263,5 +281,6 @@ export function useWorkspaceStateHandlers({
     handleWorkspaceSpaceArchiveRecordAppend,
     handleWorkspaceSpaceArchiveRecordRemove,
     handleAnyWorkspaceWorktreesRootChange,
+    handleAnyWorkspaceEnvironmentVariablesChange,
   }
 }

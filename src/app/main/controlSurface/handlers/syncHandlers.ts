@@ -6,7 +6,9 @@ import type {
   CreateNoteResult,
   GetSyncStateResult,
   PersistWriteResult,
+  ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
+  WriteAgentNodePlaceholderScrollbackInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteSyncStateInput,
@@ -139,6 +141,65 @@ function normalizeWriteNodeScrollbackPayload(payload: unknown): WriteNodeScrollb
   return { nodeId, scrollback: scrollback ?? null }
 }
 
+function normalizeReadAgentNodePlaceholderScrollbackPayload(
+  payload: unknown,
+): ReadAgentNodePlaceholderScrollbackInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for sync.readAgentNodePlaceholderScrollback.',
+    })
+  }
+
+  const nodeIdRaw = payload.nodeId
+  if (typeof nodeIdRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for sync.readAgentNodePlaceholderScrollback nodeId.',
+    })
+  }
+
+  const nodeId = nodeIdRaw.trim()
+  if (nodeId.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Missing payload for sync.readAgentNodePlaceholderScrollback nodeId.',
+    })
+  }
+
+  return { nodeId }
+}
+
+function normalizeWriteAgentNodePlaceholderScrollbackPayload(
+  payload: unknown,
+): WriteAgentNodePlaceholderScrollbackInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for sync.writeAgentNodePlaceholderScrollback.',
+    })
+  }
+
+  const nodeIdRaw = payload.nodeId
+  if (typeof nodeIdRaw !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for sync.writeAgentNodePlaceholderScrollback nodeId.',
+    })
+  }
+
+  const nodeId = nodeIdRaw.trim()
+  if (nodeId.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Missing payload for sync.writeAgentNodePlaceholderScrollback nodeId.',
+    })
+  }
+
+  const scrollback = payload.scrollback
+  if (scrollback !== null && scrollback !== undefined && typeof scrollback !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for sync.writeAgentNodePlaceholderScrollback scrollback.',
+    })
+  }
+
+  return { nodeId, scrollback: scrollback ?? null }
+}
+
 function normalizeWriteSyncStatePayload(payload: unknown): WriteSyncStateInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -245,6 +306,26 @@ export function registerSyncHandlers(
     handle: async (_ctx, payload): Promise<PersistWriteResult> => {
       const store = await getPersistenceStore()
       return await store.writeNodeScrollback(payload.nodeId, payload.scrollback)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('sync.readAgentNodePlaceholderScrollback', {
+    kind: 'query',
+    validate: normalizeReadAgentNodePlaceholderScrollbackPayload,
+    handle: async (_ctx, payload): Promise<string | null> => {
+      const store = await getPersistenceStore()
+      return await store.readAgentNodePlaceholderScrollback(payload.nodeId)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('sync.writeAgentNodePlaceholderScrollback', {
+    kind: 'command',
+    validate: normalizeWriteAgentNodePlaceholderScrollbackPayload,
+    handle: async (_ctx, payload): Promise<PersistWriteResult> => {
+      const store = await getPersistenceStore()
+      return await store.writeAgentNodePlaceholderScrollback(payload.nodeId, payload.scrollback)
     },
     defaultErrorCode: 'common.unexpected',
   })

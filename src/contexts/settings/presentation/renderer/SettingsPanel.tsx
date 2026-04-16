@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { useTerminalProfiles } from '@app/renderer/shell/hooks/useTerminalProfiles'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
@@ -18,12 +18,13 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
+import { EndpointsSection } from './settingsPanel/EndpointsSection'
 import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
-import { SettingsPanelNavButton } from './settingsPanel/SettingsPanelNavButton'
+import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
@@ -32,20 +33,20 @@ import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import {
   createInitialInputState,
-  getFolderName,
-  getWorkspacePageId,
   isWorkspacePageId,
   type SettingsPanelProps,
 } from './SettingsPanel.shared'
 import { useSettingsPanelPageState } from './useSettingsPanelPageState'
 
 export function SettingsPanel({
+  initialPageId,
   settings,
   openPageId,
   updateState,
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  onWorkspaceEnvironmentVariablesChange,
   isFocusNodeTargetZoomPreviewing,
   onFocusNodeTargetZoomPreviewChange,
   onChange,
@@ -67,6 +68,12 @@ export function SettingsPanel({
     contentRef,
     onFocusNodeTargetZoomPreviewChange,
   })
+
+  useEffect(() => {
+    if (initialPageId) {
+      setActivePageId(initialPageId)
+    }
+  }, [initialPageId, setActivePageId])
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
@@ -110,6 +117,8 @@ export function SettingsPanel({
     onChange({ ...settings, websiteWindowPolicy: policy })
   const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
     onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
+  const updateExperimentalRemoteWorkersEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalRemoteWorkersEnabled: enabled })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
@@ -230,6 +239,18 @@ export function SettingsPanel({
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
 
+  useEffect(() => {
+    if (activePageId !== 'endpoints') {
+      return
+    }
+
+    if (settings.experimentalRemoteWorkersEnabled) {
+      return
+    }
+
+    setActivePageId('experimental')
+  }, [activePageId, setActivePageId, settings.experimentalRemoteWorkersEnabled])
+
   return (
     <div
       className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
@@ -239,85 +260,12 @@ export function SettingsPanel({
         className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
         onClick={e => e.stopPropagation()}
       >
-        <aside
-          className="settings-panel__sidebar"
-          aria-label={t('settingsPanel.nav.sectionsLabel')}
-        >
-          <SettingsPanelNavButton
-            isActive={activePageId === 'general'}
-            label={t('settingsPanel.nav.general')}
-            testId="settings-section-nav-general"
-            onClick={() => setActivePageId('general')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'worker'}
-            label={t('settingsPanel.nav.worker')}
-            testId="settings-section-nav-worker"
-            onClick={() => setActivePageId('worker')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'agent'}
-            label={t('settingsPanel.nav.agent')}
-            testId="settings-section-nav-agent"
-            onClick={() => setActivePageId('agent')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'notifications'}
-            label={t('settingsPanel.nav.notifications')}
-            testId="settings-section-nav-notifications"
-            onClick={() => setActivePageId('notifications')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'canvas'}
-            label={t('settingsPanel.nav.canvas')}
-            testId="settings-section-nav-canvas"
-            onClick={() => setActivePageId('canvas')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'shortcuts'}
-            label={t('settingsPanel.nav.shortcuts')}
-            testId="settings-section-nav-shortcuts"
-            onClick={() => setActivePageId('shortcuts')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'quick-menu'}
-            label={t('settingsPanel.nav.quickMenu')}
-            testId="settings-section-nav-quick-menu"
-            onClick={() => setActivePageId('quick-menu')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'task-configuration'}
-            label={t('settingsPanel.nav.tasks')}
-            testId="settings-section-nav-task-configuration"
-            onClick={() => setActivePageId('task-configuration')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'integrations'}
-            label={t('settingsPanel.nav.integrations')}
-            testId="settings-section-nav-integrations"
-            onClick={() => setActivePageId('integrations')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'experimental'}
-            label={t('settingsPanel.nav.experimental')}
-            testId="settings-section-nav-experimental"
-            onClick={() => setActivePageId('experimental')}
-          />
-
-          <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
-          <div className="settings-panel__nav-group">
-            {workspaces.map(workspace => (
-              <SettingsPanelNavButton
-                key={workspace.id}
-                isActive={activePageId === getWorkspacePageId(workspace.id)}
-                label={
-                  workspace.name.trim().length > 0 ? workspace.name : getFolderName(workspace.path)
-                }
-                onClick={() => setActivePageId(getWorkspacePageId(workspace.id))}
-              />
-            ))}
-          </div>
-        </aside>
+        <SettingsPanelSidebar
+          activePageId={activePageId}
+          workspaces={workspaces}
+          endpointsEnabled={settings.experimentalRemoteWorkersEnabled}
+          onSelectPage={setActivePageId}
+        />
 
         <div className="settings-panel__content-wrapper">
           <div className="settings-panel__header">
@@ -350,7 +298,13 @@ export function SettingsPanel({
               />
             ) : null}
 
-            {activePageId === 'worker' ? <WorkerSection /> : null}
+            {activePageId === 'worker' ? (
+              <WorkerSection remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled} />
+            ) : null}
+
+            {activePageId === 'endpoints' && settings.experimentalRemoteWorkersEnabled ? (
+              <EndpointsSection />
+            ) : null}
 
             {activePageId === 'agent' ? (
               <>
@@ -431,8 +385,10 @@ export function SettingsPanel({
               <ExperimentalSection
                 websiteWindowPolicy={settings.websiteWindowPolicy}
                 websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
+                remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
                 onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
                 onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
+                onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
               />
             ) : null}
 
@@ -483,6 +439,10 @@ export function SettingsPanel({
                 worktreesRoot={activeWorkspace.worktreesRoot}
                 onChangeWorktreesRoot={root =>
                   onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+                }
+                environmentVariables={activeWorkspace.environmentVariables ?? {}}
+                onChangeEnvironmentVariables={envVars =>
+                  onWorkspaceEnvironmentVariablesChange(activeWorkspace.id, envVars)
                 }
               />
             ) : null}

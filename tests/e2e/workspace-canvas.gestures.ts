@@ -152,7 +152,7 @@ export async function beginDragMouse(
     // Playwright documents that some drag targets need a second move to
     // reliably receive dragover before release.
     if (repeatAtTarget) {
-      await moveMouseWithSteps(window, cursorPoint, target, Math.max(2, Math.min(moveSteps, 4)))
+      await window.mouse.move(target.x, target.y)
     }
 
     if ((moveOptions.settleAfterMoveMs ?? 0) > 0) {

@@ -8,6 +8,10 @@ import type {
 import { normalizeProvider } from '../../../../app/main/ipc/normalize'
 import { isAbsolute, win32 } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
+import {
+  resolveNodeScriptLaunch,
+  type NodeScriptLaunchCommand,
+} from '../../../../shared/utils/nodeScriptCommand'
 
 function isAbsoluteWorkspacePath(path: string): boolean {
   return isAbsolute(path) || win32.isAbsolute(path)
@@ -155,10 +159,8 @@ export function resolveAgentTestStub(
   cwd: string,
   model: string | null,
   mode: LaunchAgentInput['mode'],
-): {
-  command: string
-  args: string[]
-} | null {
+  resumeSessionId?: string | null,
+): NodeScriptLaunchCommand | null {
   if (process.env.NODE_ENV !== 'test') {
     return null
   }
@@ -174,17 +176,14 @@ export function resolveAgentTestStub(
   const stubScriptPath = process.env['OPENCOVE_TEST_AGENT_STUB_SCRIPT']?.trim() ?? ''
 
   if (sessionScenario.length > 0 && stubScriptPath.length > 0) {
-    return {
-      command: process.execPath,
-      args: [
-        stubScriptPath,
-        provider,
-        cwd,
-        mode ?? 'new',
-        model ?? 'default-model',
-        sessionScenario,
-      ],
-    }
+    return resolveNodeScriptLaunch(stubScriptPath, [
+      provider,
+      cwd,
+      mode ?? 'new',
+      model ?? 'default-model',
+      resumeSessionId ?? '',
+      sessionScenario,
+    ])
   }
 
   if (process.platform === 'win32') {
@@ -195,7 +194,7 @@ export function resolveAgentTestStub(
         '-NoLogo',
         '-NoProfile',
         '-Command',
-        `Write-Output "${message}"; Start-Sleep -Seconds 120`,
+        `Start-Sleep -Milliseconds 250; Write-Output "${message}"; Start-Sleep -Seconds 120`,
       ],
     }
   }
@@ -205,7 +204,8 @@ export function resolveAgentTestStub(
 
   return {
     command: shell,
-    args: ['-lc', `printf '%s\\n' "${message}"; sleep 120`],
+    // Give the PTY/terminal bridge a moment to attach before the first stdout burst.
+    args: ['-lc', `sleep 0.25; printf '%s\\n' "${message}"; sleep 120`],
   }
 }
 

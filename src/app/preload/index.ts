@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import { IPC_CHANNELS } from '../../shared/contracts/ipc'
+import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
 import type {
   AttachTerminalInput,
   CopyWorkspacePathInput,
@@ -40,6 +41,7 @@ import type {
   ReadCanvasImageInput,
   ReadCanvasImageResult,
   WindowDisplayInfo,
+  ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -49,6 +51,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtyAgentPlaceholderBindingsInput,
   SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
@@ -62,6 +65,7 @@ import type {
   WorkspaceDirectory,
   WriteCanvasImageInput,
   WriteAppStateInput,
+  WriteAgentNodePlaceholderScrollbackInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
@@ -101,6 +105,7 @@ import type {
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
+import { resolveMainProcessPid } from './mainProcessPid'
 
 type UnsubscribeFn = () => void
 
@@ -129,8 +134,10 @@ const opencoveApi = {
     isPackaged: process.env.NODE_ENV !== 'test' && process.defaultApp !== true,
     allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
     enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
+    enableTerminalInputDiagnostics: process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1',
     runtime: 'electron',
     platform: process.platform,
+    mainPid: resolveMainProcessPid(),
     windowsPty: resolveWindowsPtyMeta(),
   },
   debug: {
@@ -140,6 +147,10 @@ const opencoveApi = {
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput): void => {
       ipcRenderer.send(IPC_CHANNELS.runtimeDiagnosticsLog, payload)
     },
+  },
+  controlSurface: {
+    invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
+      invokeIpc(IPC_CHANNELS.controlSurfaceInvoke, request),
   },
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput): Promise<void> =>
@@ -189,6 +200,46 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.persistenceReadNodeScrollback, payload),
     writeNodeScrollback: (payload: WriteNodeScrollbackInput): Promise<PersistWriteResult> =>
       invokeIpc(IPC_CHANNELS.persistenceWriteNodeScrollback, payload),
+    readAgentNodePlaceholderScrollback: (
+      payload: ReadAgentNodePlaceholderScrollbackInput,
+    ): Promise<string | null> =>
+      invokeIpc(IPC_CHANNELS.persistenceReadAgentNodePlaceholderScrollback, payload),
+    writeAgentNodePlaceholderScrollback: (
+      payload: WriteAgentNodePlaceholderScrollbackInput,
+    ): Promise<PersistWriteResult> =>
+      invokeIpc(IPC_CHANNELS.persistenceWriteAgentNodePlaceholderScrollback, payload),
+  },
+  lifecycle: {
+    onRequestPersistFlush: (
+      listener: (payload: { requestId: string }) => void | Promise<void>,
+    ): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+        const requestIdRaw =
+          payload && typeof payload === 'object'
+            ? (payload as { requestId?: unknown }).requestId
+            : null
+        const requestId =
+          typeof requestIdRaw === 'string' && requestIdRaw.trim().length > 0
+            ? requestIdRaw.trim()
+            : null
+        if (!requestId) {
+          return
+        }
+
+        void Promise.resolve()
+          .then(() => listener({ requestId }))
+          .catch(() => undefined)
+          .finally(() => {
+            ipcRenderer.send(IPC_CHANNELS.appPersistFlushComplete, { requestId })
+          })
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.appRequestPersistFlush, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.appRequestPersistFlush, handler)
+      }
+    },
   },
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void): UnsubscribeFn => {
@@ -327,6 +378,9 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
     syncSessionBindings: (payload: SyncPtySessionBindingsInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptySyncSessionBindings, payload),
+    syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput): Promise<void> =>
+      invokeIpc(IPC_CHANNELS.ptySyncAgentPlaceholderBindings, payload),
+    flushScrollbackMirrors: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyFlushScrollbackMirrors),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
     debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),

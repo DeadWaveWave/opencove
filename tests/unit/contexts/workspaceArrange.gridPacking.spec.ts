@@ -160,6 +160,8 @@ describe('workspace arrange - dense grid packing', () => {
         id: 'space-1',
         name: 'Space 1',
         directoryPath: '/tmp',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['a', 'b', 'c'],
         rect: spaceRect,
       },

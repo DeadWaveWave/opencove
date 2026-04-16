@@ -24,6 +24,7 @@ export function SpaceWorktreeWindowDialog({
   existingBranchName,
   deleteBranchOnArchive,
   forceArchiveConfirmed,
+  skipArchiveHistory,
   archiveAgentCount,
   archiveTerminalCount,
   archiveTaskCount,
@@ -40,6 +41,7 @@ export function SpaceWorktreeWindowDialog({
   onCreate,
   onDeleteBranchOnArchiveChange,
   onForceArchiveConfirmedChange,
+  onSkipArchiveHistoryChange,
   onArchive,
 }: {
   space: WorkspaceSpaceState
@@ -59,6 +61,7 @@ export function SpaceWorktreeWindowDialog({
   existingBranchName: string
   deleteBranchOnArchive: boolean
   forceArchiveConfirmed: boolean
+  skipArchiveHistory: boolean
   archiveAgentCount: number
   archiveTerminalCount: number
   archiveTaskCount: number
@@ -75,6 +78,7 @@ export function SpaceWorktreeWindowDialog({
   onCreate: () => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
   onForceArchiveConfirmedChange: (checked: boolean) => void
+  onSkipArchiveHistoryChange: (checked: boolean) => void
   onArchive: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -190,6 +194,7 @@ export function SpaceWorktreeWindowDialog({
           existingBranchName={existingBranchName}
           deleteBranchOnArchive={deleteBranchOnArchive}
           forceArchiveConfirmed={forceArchiveConfirmed}
+          skipArchiveHistory={skipArchiveHistory}
           onClose={onClose}
           onBranchModeChange={onBranchModeChange}
           onNewBranchNameChange={onNewBranchNameChange}
@@ -199,6 +204,7 @@ export function SpaceWorktreeWindowDialog({
           onCreate={onCreate}
           onDeleteBranchOnArchiveChange={onDeleteBranchOnArchiveChange}
           onForceArchiveConfirmedChange={onForceArchiveConfirmedChange}
+          onSkipArchiveHistoryChange={onSkipArchiveHistoryChange}
           onArchive={onArchive}
         />
 

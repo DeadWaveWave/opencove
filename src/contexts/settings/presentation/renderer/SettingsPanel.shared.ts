@@ -11,12 +11,17 @@ export interface ProviderModelCatalogEntry {
 }
 
 export interface SettingsPanelProps {
+  initialPageId?: SettingsPageId | null
   settings: AgentSettings
   openPageId?: SettingsPageId | null
   updateState: AppUpdateState | null
   modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
   workspaces: WorkspaceState[]
   onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
+  onWorkspaceEnvironmentVariablesChange: (
+    workspaceId: string,
+    environmentVariables: Record<string, string>,
+  ) => void
   isFocusNodeTargetZoomPreviewing: boolean
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
   onChange: (settings: AgentSettings) => void
@@ -29,6 +34,7 @@ export interface SettingsPanelProps {
 type CorePageId =
   | 'general'
   | 'worker'
+  | 'endpoints'
   | 'agent'
   | 'quick-menu'
   | 'notifications'

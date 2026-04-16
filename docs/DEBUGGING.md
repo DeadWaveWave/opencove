@@ -238,6 +238,41 @@ await page.mouse.move(x, y)
 - 拖拽/缩放是否仅更新位置与尺寸，而不是替换节点身份
 - 当前 E2E 是否使用了最新 `out/` 产物
 
+### 终端 / Agent 恢复后无法输入（确认输入是否被拦截）
+
+开启输入链路追踪（会打印较多日志）：
+
+```bash
+OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS=1 pnpm dev
+```
+
+在日志中你会看到两类关键输出：
+
+- `[opencove-terminal-diagnostics]`（来自 renderer 的 xterm 侧）
+  - `event=xterm-onData` 表示 xterm 确实捕获到了输入
+  - `event=xterm-onData-dropped` 表示输入被丢弃（通常是 hydration 阶段的 `ESC...` 序列）
+  - `event=pty-write` 表示 renderer 正在把输入写入指定 `sessionId`
+- `[opencove-pty-write]`（来自 main 的 PTY runtime）
+  - `event=write-to-inactive-session` 表示输入写到了一个 `unknown/terminated` 的 session 上
+    - 这通常意味着恢复后节点仍在用旧 `sessionId`，但 PTY 进程已经不存在，表现就是“怎么点都打不进去”
+
+排查 focus 问题时，重点看 `details` 里的：
+
+- `xtermHelperTextareaFocused` 是否为 `true`
+- `activeElement` / `activeElementInsideTerminal` 是否符合预期
+
+### 重启恢复后的 Agent 无法输入：本次有效调试法
+
+- 先区分 **完整重启恢复** 和 **运行时 workspace/project 切换**；两者不能互相代替复现。
+- 对 `recovery / worker / persistence` 问题，先 `pnpm build`，不要拿旧 `out/` 产物做判断。
+- 先查 **session ownership**，再查 focus。恢复后若仍写入旧 `sessionId`，界面看着聚焦也会打到死 PTY。
+- 固定看三层证据：`xterm-onData`、`pty-write`、目标 `sessionId` 是否仍有效。
+- placeholder -> restored session 的焦点交接要单独验证；“placeholder 能输入”不等于“恢复后的真实 session 能输入”。
+
+完整案例见：
+
+- `docs/cases/agent-input-after-restart-recovery.md`
+
 ### OpenCode 内嵌：主题切换不完整 / 不即时更新
 
 适用场景：
@@ -265,6 +300,8 @@ await page.mouse.move(x, y)
 
 - 固定点连续采样 `document.elementFromPoint(x, y)`（200~500 次）来确认是否 hit-test 偶发漏命中
 - 在漏命中那一帧同步采集关键层的 `getBoundingClientRect()` 与 `pointer-events`，用证据证明“几何正确但命中错误”
+- 优先用真实用户数据、最新构建、可见且已聚焦的窗口复现；`offscreen/inactive` 更适合回归，不一定适合抓命中异常
+- 先区分 **DOM renderer 重绘问题** 和 **WebGL 下的 hit-test 漏命中**，两者修法不同
 - 避免默认用 overlay 盖一层（容易引入 TUI 鼠标/选择/链接点击回归）
 
 参考案例：
@@ -288,6 +325,18 @@ await page.mouse.move(x, y)
 - 是否错误使用了 `onWheelCapture + stopPropagation`
 - 是否应改为冒泡阶段的 `onWheel`
 - 是否阻断了 React Flow，同时保留了 xterm 默认滚动
+
+### 终端“无颜色 / 全白”（必须做视觉调试）
+
+- 这类问题必须做**视觉调试**；`pty:snapshot` 里有 ANSI，不等于屏幕上真的有颜色。
+- 对真实 CLI 的颜色问题，不要只跑 `NODE_ENV=test` 的 E2E；test stub 不能代替真实 `codex/gemini/...` 的视觉结果。
+- 先区分两类问题：**ANSI 没产生**，还是 **ANSI 有了但没渲染出来**。
+- 先做最小视觉验证，再做数据验证定位：例如输出一段绿色文本，或直接启动真实 `codex` TUI 截图对照。
+- 排查顺序优先看 spawn env、`TERM`、`NO_COLOR` / `FORCE_COLOR`、attach/hydration 时序，以及 xterm palette/theme / renderer 差异。
+
+完整案例见：
+
+- `docs/cases/terminal-no-color-visual-debug.md`
 
 ### 测试：Vitest 的 `electron` mock 导出缺失导致运行时报错
 

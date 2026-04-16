@@ -229,6 +229,7 @@ export function registerAgentIpcHandlers(
         normalized.cwd,
         launchCommand.effectiveModel,
         normalized.mode,
+        launchCommand.resumeSessionId,
       )
 
       const geminiDiscoveryCursor =
@@ -248,7 +249,7 @@ export function registerAgentIpcHandlers(
             (await ensureOpenCodeEmbeddedTuiConfigPath()))
           : null
 
-      const sessionEnv =
+      const internalSessionEnv =
         opencodeServer && normalized.provider === 'opencode'
           ? {
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
@@ -256,6 +257,11 @@ export function registerAgentIpcHandlers(
               XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
+          : undefined
+
+      const sessionEnv =
+        normalized.env || internalSessionEnv
+          ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
 
       const resolvedInvocation = await resolveAgentCliInvocation({
@@ -268,7 +274,10 @@ export function registerAgentIpcHandlers(
             command: resolvedInvocation.command,
             args: resolvedInvocation.args,
             cwd: normalized.cwd,
-            env: sessionEnv ? { ...process.env, ...sessionEnv } : undefined,
+            env:
+              sessionEnv || testStub.env
+                ? { ...process.env, ...(testStub.env ?? {}), ...(sessionEnv ?? {}) }
+                : undefined,
             profileId: normalized.profileId ?? null,
             runtimeKind: process.platform === 'win32' ? ('windows' as const) : ('posix' as const),
           }

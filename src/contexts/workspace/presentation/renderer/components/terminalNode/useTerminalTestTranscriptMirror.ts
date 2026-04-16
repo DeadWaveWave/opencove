@@ -1,5 +1,49 @@
-import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type MutableRefObject,
+  type RefCallback,
+} from 'react'
 import type { Terminal } from '@xterm/xterm'
+
+const persistedTranscriptTextByNodeId = new Map<string, string>()
+const terminalRefsByNodeId = new Map<string, MutableRefObject<Terminal | null>>()
+
+type TranscriptDebugWindow = Window & {
+  __OPENCOVE_TEST_TERMINAL_TRANSCRIPTS__?: Record<string, string>
+  __OPENCOVE_TEST_READ_TERMINAL_TRANSCRIPT__?: (nodeId: string) => string
+}
+
+function writePersistedTranscript(nodeId: string, text: string): void {
+  if (text.length > 0) {
+    persistedTranscriptTextByNodeId.set(nodeId, text)
+  } else {
+    persistedTranscriptTextByNodeId.delete(nodeId)
+  }
+
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  const debugWindow = window as TranscriptDebugWindow
+  const transcripts = (debugWindow.__OPENCOVE_TEST_TERMINAL_TRANSCRIPTS__ ??= {})
+  debugWindow.__OPENCOVE_TEST_READ_TERMINAL_TRANSCRIPT__ = currentNodeId => {
+    const terminalRef = terminalRefsByNodeId.get(currentNodeId)
+    if (terminalRef?.current) {
+      return captureTerminalVisibleText(terminalRef.current)
+    }
+
+    return persistedTranscriptTextByNodeId.get(currentNodeId) ?? ''
+  }
+  if (text.length > 0) {
+    transcripts[nodeId] = text
+    return
+  }
+
+  delete transcripts[nodeId]
+}
 
 function captureTerminalVisibleText(terminal: Terminal): string {
   const activeBuffer = terminal.buffer?.active
@@ -23,18 +67,38 @@ function captureTerminalVisibleText(terminal: Terminal): string {
 
 export function useTerminalTestTranscriptMirror({
   enabled,
+  nodeId,
   resetKey,
   terminalRef,
 }: {
   enabled: boolean
+  nodeId: string
   resetKey: string
   terminalRef: MutableRefObject<Terminal | null>
 }): {
-  transcriptRef: MutableRefObject<HTMLDivElement | null>
+  transcriptRef: RefCallback<HTMLDivElement>
   scheduleTranscriptSync: () => void
 } {
-  const transcriptRef = useRef<HTMLDivElement | null>(null)
+  const transcriptElementRef = useRef<HTMLDivElement | null>(null)
   const pendingFrameRef = useRef<number | null>(null)
+  const lastNonEmptyTextRef = useRef('')
+  const transcriptRef = useCallback<RefCallback<HTMLDivElement>>(
+    element => {
+      transcriptElementRef.current = element
+      if (!element) {
+        return
+      }
+
+      const persistedText =
+        lastNonEmptyTextRef.current.length > 0
+          ? lastNonEmptyTextRef.current
+          : (persistedTranscriptTextByNodeId.get(nodeId) ?? '')
+      if (persistedText.length > 0) {
+        element.textContent = persistedText
+      }
+    },
+    [nodeId],
+  )
 
   const cancelPendingSync = useCallback(() => {
     if (pendingFrameRef.current === null) {
@@ -45,6 +109,19 @@ export function useTerminalTestTranscriptMirror({
     pendingFrameRef.current = null
   }, [])
 
+  useEffect(() => {
+    if (!enabled) {
+      return () => undefined
+    }
+
+    terminalRefsByNodeId.set(nodeId, terminalRef)
+    writePersistedTranscript(nodeId, persistedTranscriptTextByNodeId.get(nodeId) ?? '')
+
+    return () => {
+      terminalRefsByNodeId.delete(nodeId)
+    }
+  }, [enabled, nodeId, terminalRef])
+
   const scheduleTranscriptSync = useCallback(() => {
     if (!enabled || pendingFrameRef.current !== null) {
       return
@@ -53,23 +130,61 @@ export function useTerminalTestTranscriptMirror({
     pendingFrameRef.current = requestAnimationFrame(() => {
       pendingFrameRef.current = null
 
-      const transcriptElement = transcriptRef.current
+      const transcriptElement = transcriptElementRef.current
       if (!transcriptElement) {
         return
       }
 
       const terminal = terminalRef.current
-      transcriptElement.textContent = terminal ? captureTerminalVisibleText(terminal) : ''
-    })
-  }, [enabled, terminalRef])
+      const nextText = terminal ? captureTerminalVisibleText(terminal) : ''
+      if (nextText.length === 0 && transcriptElement.textContent?.trim().length) {
+        return
+      }
 
-  useEffect(() => {
+      const persistedText =
+        lastNonEmptyTextRef.current.length > 0
+          ? lastNonEmptyTextRef.current
+          : (persistedTranscriptTextByNodeId.get(nodeId) ?? '')
+      if (nextText.length === 0 && persistedText.length > 0) {
+        transcriptElement.textContent = persistedText
+        return
+      }
+
+      if (nextText.length > 0) {
+        lastNonEmptyTextRef.current = nextText
+        writePersistedTranscript(nodeId, nextText)
+      }
+
+      transcriptElement.textContent = nextText
+    })
+  }, [enabled, nodeId, terminalRef])
+
+  useLayoutEffect(() => {
     cancelPendingSync()
 
-    if (transcriptRef.current) {
-      transcriptRef.current.textContent = ''
+    const transcriptElement = transcriptElementRef.current
+    if (!transcriptElement) {
+      return
     }
-  }, [cancelPendingSync, resetKey])
+
+    const terminal = terminalRef.current
+    const nextText = terminal ? captureTerminalVisibleText(terminal) : ''
+    if (nextText.length > 0) {
+      lastNonEmptyTextRef.current = nextText
+      writePersistedTranscript(nodeId, nextText)
+      transcriptElement.textContent = nextText
+      return
+    }
+
+    const persistedText =
+      lastNonEmptyTextRef.current.length > 0
+        ? lastNonEmptyTextRef.current
+        : (persistedTranscriptTextByNodeId.get(nodeId) ?? '')
+    if (persistedText.length > 0) {
+      lastNonEmptyTextRef.current = persistedText
+      transcriptElement.textContent = persistedText
+    }
+  }, [cancelPendingSync, nodeId, resetKey, terminalRef])
 
   useEffect(() => {
     if (enabled) {
@@ -79,12 +194,14 @@ export function useTerminalTestTranscriptMirror({
     }
 
     cancelPendingSync()
-    if (transcriptRef.current) {
-      transcriptRef.current.textContent = ''
+    lastNonEmptyTextRef.current = ''
+    writePersistedTranscript(nodeId, '')
+    if (transcriptElementRef.current) {
+      transcriptElementRef.current.textContent = ''
     }
 
     return () => undefined
-  }, [cancelPendingSync, enabled])
+  }, [cancelPendingSync, enabled, nodeId])
 
   return {
     transcriptRef,

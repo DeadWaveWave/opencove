@@ -1,6 +1,25 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { PersistWriteResult } from '../../../src/shared/contracts/dto'
 
+async function waitForMockCalls(
+  mockFn: { mock: { calls: unknown[] } },
+  expectedCalls: number,
+  remainingChecks = 50,
+): Promise<void> {
+  if (mockFn.mock.calls.length >= expectedCalls) {
+    return
+  }
+
+  if (remainingChecks <= 0) {
+    throw new Error(
+      `Timed out waiting for ${expectedCalls} calls (got ${mockFn.mock.calls.length}).`,
+    )
+  }
+
+  await Promise.resolve()
+  await waitForMockCalls(mockFn, expectedCalls, remainingChecks - 1)
+}
+
 function createPersistenceStoreStub() {
   const writeResult: PersistWriteResult = { ok: true, level: 'full', bytes: 0 }
 
@@ -101,7 +120,7 @@ describe('registerIpcHandlers', () => {
     expect(createPersistenceStore).toHaveBeenCalledTimes(2)
 
     disposable.dispose()
-    await Promise.resolve()
+    await waitForMockCalls(store.dispose, 1)
     expect(store.dispose).toHaveBeenCalledTimes(1)
   })
 })

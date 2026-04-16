@@ -45,3 +45,12 @@ export interface WriteNodeScrollbackInput {
   nodeId: string
   scrollback: string | null
 }
+
+export interface ReadAgentNodePlaceholderScrollbackInput {
+  nodeId: string
+}
+
+export interface WriteAgentNodePlaceholderScrollbackInput {
+  nodeId: string
+  scrollback: string | null
+}

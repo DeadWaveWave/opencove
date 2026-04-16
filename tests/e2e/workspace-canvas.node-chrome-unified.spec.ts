@@ -101,6 +101,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(sidebarToggle).toBeVisible()
       await sidebarToggle.click()
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
+      await window.waitForTimeout(200)
 
       const terminalNode = window.locator('.terminal-node').first()
       const taskNode = window.locator('.task-node').first()
@@ -112,12 +113,15 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       )
       const taskTitleInput = taskNode.locator('[data-testid="task-node-inline-title-input"]')
 
+      await expect(terminalHeader).toBeVisible()
+      await expect(taskHeader).toBeVisible()
+
       await terminalHeader.click({ position: { x: 72, y: 16 } })
       await taskHeader.click({ position: { x: 72, y: 16 } })
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(taskTitleInput).toHaveCount(0)
 
-      await terminalHeader.dblclick({ position: { x: 72, y: 16 } })
+      await terminalHeader.click({ position: { x: 72, y: 16 }, clickCount: 2 })
       await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill('terminal renamed')
       await terminalTitleInput.focus()
@@ -125,7 +129,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(terminalHeader).toContainText('terminal renamed')
 
-      await taskHeader.dblclick({ position: { x: 72, y: 16 } })
+      await taskHeader.click({ position: { x: 72, y: 16 }, clickCount: 2 })
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill('task renamed')
       await taskTitleInput.focus()

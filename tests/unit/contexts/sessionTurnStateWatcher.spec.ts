@@ -272,4 +272,70 @@ describe('SessionTurnStateWatcher', () => {
       expect(states).toEqual(['working', 'standby'])
     })
   })
+
+  it('re-emits standby after an explicit submit resets optimistic working state', async () => {
+    const tempDir = await fs.mkdtemp(join(tmpdir(), 'cove-session-watcher-'))
+    const filePath = join(tempDir, 'session.jsonl')
+
+    await fs.writeFile(
+      filePath,
+      JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          phase: 'final_answer',
+          content: [
+            {
+              type: 'output_text',
+              text: 'Ready.',
+            },
+          ],
+        },
+      }),
+      'utf8',
+    )
+
+    const states: string[] = []
+    const watcher = new SessionTurnStateWatcher({
+      provider: 'codex',
+      sessionId: 'session-5',
+      filePath,
+      onState: (_sessionId, state) => {
+        states.push(state)
+      },
+    })
+
+    disposers.push(() => watcher.dispose())
+    watcher.start()
+
+    await waitForCondition(() => {
+      expect(states).toEqual(['standby'])
+    })
+
+    watcher.noteInteraction('\r')
+
+    await fs.appendFile(
+      filePath,
+      `\n${JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          phase: 'final_answer',
+          content: [
+            {
+              type: 'output_text',
+              text: 'Done 1.',
+            },
+          ],
+        },
+      })}`,
+      'utf8',
+    )
+
+    await waitForCondition(() => {
+      expect(states).toEqual(['standby', 'standby'])
+    })
+  })
 })

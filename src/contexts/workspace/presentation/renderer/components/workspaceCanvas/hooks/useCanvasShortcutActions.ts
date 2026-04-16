@@ -17,10 +17,12 @@ type SetNodes = (
 
 export function useWorkspaceCanvasShortcutActions({
   enabled,
+  workspaceId,
   activeSpaceId,
   spaces,
   agentSettings,
   workspacePath,
+  environmentVariables,
   canvasRef,
   setContextMenu,
   setEmptySelectionPrompt,
@@ -34,8 +36,10 @@ export function useWorkspaceCanvasShortcutActions({
   createNoteNode,
   createSpaceFromSelectedNodes,
   activateSpace,
+  onShowMessage,
 }: {
   enabled: boolean
+  workspaceId: string
   activeSpaceId: string | null
   spaces: WorkspaceSpaceState[]
   agentSettings: Pick<
@@ -46,6 +50,7 @@ export function useWorkspaceCanvasShortcutActions({
     | 'standardWindowSizeBucket'
   >
   workspacePath: string
+  environmentVariables?: Record<string, string>
   canvasRef: React.RefObject<HTMLDivElement | null>
   setContextMenu: React.Dispatch<React.SetStateAction<import('../types').ContextMenuState | null>>
   setEmptySelectionPrompt: React.Dispatch<
@@ -61,6 +66,7 @@ export function useWorkspaceCanvasShortcutActions({
   createNoteNode: (anchor: { x: number; y: number }) => Node<TerminalNodeData> | null
   createSpaceFromSelectedNodes: () => void
   activateSpace: (spaceId: string) => void
+  onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
 }): void {
   const createNoteAtViewportCenter = useCallback((): void => {
     const canvas = canvasRef.current
@@ -113,14 +119,17 @@ export function useWorkspaceCanvasShortcutActions({
 
     await createTerminalNodeAtFlowPosition({
       anchor,
+      workspaceId,
       defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
       standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
       workspacePath,
+      environmentVariables,
       spacesRef,
       nodesRef,
       setNodes,
       onSpacesChange,
       createNodeForSession,
+      onShowMessage,
     })
   }, [
     agentSettings.defaultTerminalProfileId,
@@ -128,6 +137,7 @@ export function useWorkspaceCanvasShortcutActions({
     cancelSpaceRename,
     canvasRef,
     createNodeForSession,
+    environmentVariables,
     nodesRef,
     onSpacesChange,
     reactFlow,
@@ -136,6 +146,8 @@ export function useWorkspaceCanvasShortcutActions({
     setNodes,
     spacesRef,
     workspacePath,
+    workspaceId,
+    onShowMessage,
   ])
 
   useWorkspaceCanvasShortcuts({

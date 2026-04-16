@@ -22,9 +22,10 @@ import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandle
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
-import type {
-  ControlSurfaceRemoteEndpoint,
-  ControlSurfaceRemoteEndpointResolver,
+import {
+  invokeControlSurface,
+  type ControlSurfaceRemoteEndpoint,
+  type ControlSurfaceRemoteEndpointResolver,
 } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { createRemotePersistenceStore } from '../controlSurface/remote/remotePersistenceStore'
 import { createRemotePtyRuntime } from '../controlSurface/remote/remotePtyRuntime'
@@ -34,9 +35,11 @@ import { registerWorkerClientIpcHandlers } from './registerWorkerClientIpcHandle
 import { registerCliIpcHandlers } from './registerCliIpcHandlers'
 import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers'
 import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
+import { registerControlSurfaceIpcHandlers } from './registerControlSurfaceIpcHandlers'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { registerHandledIpc } from './handle'
 import {
+  createPtyAgentPlaceholderMirror,
   createPtyScrollbackMirror,
   normalizePtySessionNodeBindingsPayload,
 } from './ptyScrollbackMirror'
@@ -102,6 +105,15 @@ export function registerIpcHandlers(deps?: {
     getPersistenceStore,
   })
 
+  const agentPlaceholderMirror = createPtyAgentPlaceholderMirror({
+    source: {
+      snapshot: sessionId => ptyRuntime.snapshot(sessionId),
+    },
+    getPersistenceStore,
+  })
+
+  let mirrorDisposePromise: Promise<void> | null = null
+
   registerHandledIpc(
     IPC_CHANNELS.ptySyncSessionBindings,
     async (_event, payload: unknown): Promise<void> => {
@@ -118,14 +130,61 @@ export function registerIpcHandlers(deps?: {
     { defaultErrorCode: 'common.unexpected' },
   )
 
+  registerHandledIpc(
+    IPC_CHANNELS.ptySyncAgentPlaceholderBindings,
+    async (_event, payload: unknown): Promise<void> => {
+      const normalized = normalizePtySessionNodeBindingsPayload(payload)
+
+      const MAX_BINDINGS = 15_000
+      const limitedBindings =
+        normalized.bindings.length > MAX_BINDINGS
+          ? normalized.bindings.slice(0, MAX_BINDINGS)
+          : normalized.bindings
+
+      agentPlaceholderMirror.setBindings(limitedBindings)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.ptyFlushScrollbackMirrors,
+    async (): Promise<void> => {
+      await Promise.allSettled([scrollbackMirror.flush(), agentPlaceholderMirror.flush()])
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  const workspaceApprovedWorkspaces = workerEndpointResolver
+    ? {
+        ...approvedWorkspaces,
+        registerRoot: async (rootPath: string): Promise<void> => {
+          await approvedWorkspaces.registerRoot(rootPath)
+          try {
+            const endpoint = await workerEndpointResolver()
+            if (endpoint) {
+              await invokeControlSurface(endpoint, {
+                kind: 'command',
+                id: 'workspace.approveRoot',
+                payload: { path: rootPath },
+              })
+            }
+          } catch {
+            // Worker may not be ready yet — the local store persists to the
+            // shared JSON file, so the worker picks it up on next cold load.
+          }
+        },
+      }
+    : approvedWorkspaces
+
   const disposables: IpcRegistrationDisposable[] = [
     registerLocalWorkerIpcHandlers(),
     registerWorkerClientIpcHandlers(),
+    registerControlSurfaceIpcHandlers({ endpointResolver: workerEndpointResolver }),
     registerCliIpcHandlers(),
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),
     registerReleaseNotesIpcHandlers(releaseNotesService),
-    registerWorkspaceIpcHandlers(approvedWorkspaces),
+    registerWorkspaceIpcHandlers(workspaceApprovedWorkspaces),
     registerFilesystemIpcHandlers(approvedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
     registerWorktreeIpcHandlers(approvedWorkspaces),
@@ -149,7 +208,12 @@ export function registerIpcHandlers(deps?: {
   disposables.push({
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.ptySyncSessionBindings)
-      scrollbackMirror.dispose()
+      ipcMain.removeHandler(IPC_CHANNELS.ptySyncAgentPlaceholderBindings)
+      ipcMain.removeHandler(IPC_CHANNELS.ptyFlushScrollbackMirrors)
+      mirrorDisposePromise ??= Promise.allSettled([
+        scrollbackMirror.dispose(),
+        agentPlaceholderMirror.dispose(),
+      ]).then(() => undefined)
     },
   })
 
@@ -161,9 +225,11 @@ export function registerIpcHandlers(deps?: {
 
       const storePromise = persistenceStorePromise
       persistenceStorePromise = null
-      storePromise
-        ?.then(store => {
-          store.dispose()
+      const pendingMirrorDispose = mirrorDisposePromise ?? Promise.resolve()
+      void pendingMirrorDispose
+        .then(() => storePromise)
+        .then(store => {
+          store?.dispose()
         })
         .catch(() => {
           // ignore

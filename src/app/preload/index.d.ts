@@ -38,6 +38,7 @@ import type {
   ReadCanvasImageInput,
   ReadCanvasImageResult,
   WindowDisplayInfo,
+  ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
   RemoveGitWorktreeInput,
@@ -47,6 +48,7 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  SyncPtyAgentPlaceholderBindingsInput,
   SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
@@ -60,6 +62,7 @@ import type {
   WorkspaceDirectory,
   WriteCanvasImageInput,
   WriteAppStateInput,
+  WriteAgentNodePlaceholderScrollbackInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
   WriteTerminalInput,
@@ -98,6 +101,7 @@ import type {
   WorkerStatusResult,
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
+import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
 
 type UnsubscribeFn = () => void
 
@@ -107,13 +111,18 @@ export interface OpenCoveApi {
     isPackaged: boolean
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
+    enableTerminalInputDiagnostics?: boolean
     runtime: 'electron' | 'browser'
     platform: string
+    mainPid: number | null
     windowsPty: import('../../shared/contracts/dto').TerminalWindowsPty | null
   }
   debug?: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
+  }
+  controlSurface: {
+    invoke: <TValue = unknown>(request: ControlSurfaceInvokeRequest) => Promise<TValue>
   }
   windowChrome: {
     setTheme: (payload: SetWindowChromeThemeInput) => Promise<void>
@@ -144,6 +153,17 @@ export interface OpenCoveApi {
     writeAppState: (payload: WriteAppStateInput) => Promise<PersistWriteResult>
     readNodeScrollback: (payload: ReadNodeScrollbackInput) => Promise<string | null>
     writeNodeScrollback: (payload: WriteNodeScrollbackInput) => Promise<PersistWriteResult>
+    readAgentNodePlaceholderScrollback: (
+      payload: ReadAgentNodePlaceholderScrollbackInput,
+    ) => Promise<string | null>
+    writeAgentNodePlaceholderScrollback: (
+      payload: WriteAgentNodePlaceholderScrollbackInput,
+    ) => Promise<PersistWriteResult>
+  }
+  lifecycle: {
+    onRequestPersistFlush: (
+      listener: (payload: { requestId: string }) => void | Promise<void>,
+    ) => UnsubscribeFn
   }
   sync: {
     onStateUpdated: (listener: (event: SyncEventPayload) => void) => UnsubscribeFn
@@ -211,6 +231,8 @@ export interface OpenCoveApi {
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>
     syncSessionBindings: (payload: SyncPtySessionBindingsInput) => Promise<void>
+    syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput) => Promise<void>
+    flushScrollbackMirrors: () => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
     debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn

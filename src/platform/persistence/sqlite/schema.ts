@@ -18,6 +18,7 @@ export const workspaces = sqliteTable('workspaces', {
   path: text('path').notNull(),
   worktreesRoot: text('worktrees_root').notNull(),
   pullRequestBaseBranchOptionsJson: text('pull_request_base_branch_options_json').notNull(),
+  environmentVariablesJson: text('environment_variables_json').notNull(),
   spaceArchiveRecordsJson: text('space_archive_records_json').notNull(),
   viewportX: real('viewport_x').notNull(),
   viewportY: real('viewport_y').notNull(),
@@ -55,6 +56,7 @@ export const spaces = sqliteTable('workspace_spaces', {
   workspaceId: text('workspace_id').notNull(),
   name: text('name').notNull(),
   directoryPath: text('directory_path').notNull(),
+  targetMountId: text('target_mount_id'),
   labelColor: text('label_color'),
   rectX: real('rect_x'),
   rectY: real('rect_y'),
@@ -75,6 +77,12 @@ export const spaceNodes = sqliteTable(
 )
 
 export const nodeScrollback = sqliteTable('node_scrollback', {
+  nodeId: text('node_id').primaryKey(),
+  scrollback: text('scrollback').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const agentNodePlaceholderScrollback = sqliteTable('agent_node_placeholder_scrollback', {
   nodeId: text('node_id').primaryKey(),
   scrollback: text('scrollback').notNull(),
   updatedAt: text('updated_at').notNull(),

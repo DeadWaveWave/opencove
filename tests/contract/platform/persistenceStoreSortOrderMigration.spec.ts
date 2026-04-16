@@ -22,6 +22,7 @@ const CURRENT_SCHEMA_COLUMNS = {
     'path',
     'worktrees_root',
     'pull_request_base_branch_options_json',
+    'environment_variables_json',
     'space_archive_records_json',
     'viewport_x',
     'viewport_y',
@@ -351,7 +352,7 @@ describe('PersistenceStore sort order migration', () => {
         [
           dbPath,
           createMockDbState({
-            userVersion: 6,
+            userVersion: 7,
             version2Schema: true,
             workspaceRows: [
               { id: 'ws-2', sortOrder: 0 },
@@ -390,7 +391,7 @@ describe('PersistenceStore sort order migration', () => {
         [
           dbPath,
           createMockDbState({
-            userVersion: 6,
+            userVersion: 7,
             workspaceRows: [
               { id: 'ws-2', sortOrder: 0 },
               { id: 'ws-4', sortOrder: 0 },
@@ -487,7 +488,7 @@ describe('PersistenceStore sort order migration', () => {
       expect(store.consumeRecovery()).toBeNull()
       store.dispose()
 
-      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(6)
+      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(7)
       expect(mockDbByPath.get(dbPath)?.workspaceRows).toEqual([
         { id: 'ws-2', sortOrder: 0 },
         { id: 'ws-4', sortOrder: 1 },

@@ -1,6 +1,7 @@
 import type { Terminal } from '@xterm/xterm'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
+import { writeTerminalAsync } from './writeTerminal'
 
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
 const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
@@ -27,6 +28,9 @@ export async function hydrateTerminalFromSnapshot({
   attachPromise,
   sessionId,
   terminal,
+  kind,
+  useLivePtySnapshotDuringHydration = kind !== 'agent',
+  skipInitialPlaceholderWrite = false,
   cachedScreenState,
   persistedSnapshot,
   takePtySnapshot,
@@ -37,6 +41,9 @@ export async function hydrateTerminalFromSnapshot({
   attachPromise: Promise<void | undefined>
   sessionId: string
   terminal: Terminal
+  kind: 'terminal' | 'agent'
+  useLivePtySnapshotDuringHydration?: boolean
+  skipInitialPlaceholderWrite?: boolean
   cachedScreenState: CachedTerminalScreenState | null
   persistedSnapshot: string
   takePtySnapshot: (payload: { sessionId: string }) => Promise<{ data: string }>
@@ -44,28 +51,53 @@ export async function hydrateTerminalFromSnapshot({
   onHydratedWriteCommitted: (rawSnapshot: string) => void
   finalizeHydration: (rawSnapshot: string) => void
 }): Promise<void> {
-  await attachPromise.catch(() => undefined)
-
   const cachedSerializedScreen = cachedScreenState?.serialized ?? ''
   const baseRawSnapshot =
     cachedScreenState && cachedScreenState.rawSnapshot.length > 0
       ? cachedScreenState.rawSnapshot
       : persistedSnapshot
-  let restoredPayload =
+  const placeholderPayload =
     cachedSerializedScreen.length > 0 ? cachedSerializedScreen : persistedSnapshot
   let rawSnapshot = baseRawSnapshot
 
-  try {
+  if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
+    await writeTerminalAsync(terminal, placeholderPayload)
+    onHydratedWriteCommitted(rawSnapshot)
+  }
+
+  const restoreFromLivePtySnapshot = async (): Promise<string> => {
+    await attachPromise.catch(() => undefined)
     const snapshot = await takePtySnapshot({ sessionId })
+
     if (cachedSerializedScreen.length > 0) {
       const delta = resolveScrollbackDelta(baseRawSnapshot, snapshot.data)
-      restoredPayload = shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)
-        ? cachedSerializedScreen
-        : `${cachedSerializedScreen}${delta}`
-      rawSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
+      const mergedSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
+
+      if (!shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)) {
+        await writeTerminalAsync(terminal, delta)
+      }
+
+      return mergedSnapshot
+    }
+
+    const mergedSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
+    const delta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
+    await writeTerminalAsync(terminal, delta)
+    return mergedSnapshot
+  }
+
+  try {
+    if (!useLivePtySnapshotDuringHydration) {
+      // Agent CLIs restore their own history after attach. Do not block hydration on snapshot
+      // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
+      // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
+      // arrive after the CLI has exited raw/noecho mode.
+      // Do not await attach here: the PTY may start emitting terminal feature probes immediately,
+      // and buffering output while waiting for `attach()` can delay xterm replies enough for some
+      // CLIs to disable color.
+      void attachPromise.catch(() => undefined)
     } else {
-      rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
-      restoredPayload = rawSnapshot
+      rawSnapshot = await restoreFromLivePtySnapshot()
     }
   } catch {
     rawSnapshot = baseRawSnapshot
@@ -75,13 +107,6 @@ export async function hydrateTerminalFromSnapshot({
     return
   }
 
-  if (restoredPayload.length > 0) {
-    terminal.write(restoredPayload, () => {
-      onHydratedWriteCommitted(rawSnapshot)
-      finalizeHydration(rawSnapshot)
-    })
-    return
-  }
-
+  onHydratedWriteCommitted(rawSnapshot)
   finalizeHydration(rawSnapshot)
 }

@@ -23,6 +23,7 @@ import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
 import {
   normalizeAgentRuntimeStatus,
   normalizeDirectoryMode,
+  normalizeEnvironmentVariables,
   normalizeLaunchMode,
   normalizeNodeKind,
   normalizeOptionalString,
@@ -113,6 +114,7 @@ function ensurePersistedWorkspaceSpace(
     id,
     name,
     directoryPath: normalizedDirectoryPath,
+    targetMountId: normalizeOptionalString(record.targetMountId),
     labelColor: normalizeLabelColor(record.labelColor),
     nodeIds: normalizeWorkspaceSpaceNodeIds(record.nodeIds),
     rect: normalizeWorkspaceSpaceRect(record.rect),
@@ -382,6 +384,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   const pullRequestBaseBranchOptions = normalizePullRequestBaseBranchOptions(
     record.pullRequestBaseBranchOptions,
   )
+  const environmentVariables = normalizeEnvironmentVariables(record.environmentVariables)
   const nodes = record.nodes
   const spaces = record.spaces
   const activeSpaceId = record.activeSpaceId
@@ -429,6 +432,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
     path,
     worktreesRoot,
     pullRequestBaseBranchOptions,
+    environmentVariables,
     nodes: normalizedNodes,
     viewport: normalizeWorkspaceViewport(record.viewport),
     isMinimapVisible: normalizeWorkspaceMinimapVisible(record.isMinimapVisible),

@@ -3,6 +3,7 @@ export const zhCNSettingsPanel = {
   nav: {
     general: '通用',
     worker: 'Worker',
+    endpoints: '远程 Worker',
     agent: 'Agent',
     notifications: '通知',
     canvas: '画布',
@@ -189,6 +190,12 @@ export const zhCNSettingsPanel = {
   },
   experimental: {
     title: '实验性',
+    remoteWorkersTitle: '远程 Worker 与位置',
+    remoteWorkersHelp:
+      '远程 Worker 与远程项目位置（mount）的实验性支持。在工作流稳定前建议保持关闭。',
+    remoteWorkersEnabledLabel: '启用远程 Worker',
+    remoteWorkersEnabledHelp:
+      '开启后将显示远程 Worker 与远程位置相关的界面入口。关闭时默认保持本地工作流。',
     workerWebUi: {
       title: 'Worker Web UI',
       help: '通过 Worker 提供的浏览器 UI（实验性）。当前需要 Home Worker = Local Worker。',
@@ -339,6 +346,8 @@ export const zhCNSettingsPanel = {
     title: 'Worker',
     errors: {
       remoteRequired: '远程 Worker 需要填写主机、端口和 Token。',
+      remoteExperimentalDisabled:
+        '远程 Worker 为实验性功能。请先在「实验性」设置中启用远程 Worker 后再继续。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
       enableLocalRequiresRestart: '请先启用 Local Worker 并重启，然后再启动 Worker。',
     },
@@ -396,6 +405,32 @@ export const zhCNSettingsPanel = {
       copyToken: '复制',
     },
   },
+  endpoints: {
+    title: 'Endpoints',
+    list: {
+      title: '已注册端点',
+      help: 'Desktop 只连接 Home Worker；Home Worker 负责将操作路由到各个 endpoint。',
+      countLabel: '数量',
+      localSubtitle: '本机',
+      localRemoveHelp: '本机 endpoint 不可移除。',
+      lastPing: '最近一次 ping：pid {{pid}} · {{now}}',
+    },
+    actions: {
+      add: '添加端点',
+      ping: 'Ping',
+      pinging: 'Ping 中…',
+    },
+    register: {
+      title: '注册端点',
+      help: '通过 hostname、port、token 注册一个远程 worker endpoint。Token 不会被写入 renderer state。',
+      displayNameLabel: '显示名称（可选）',
+      hostnameLabel: '主机',
+      portLabel: '端口',
+      tokenLabel: 'Token',
+      tokenHelp: 'Token 仅提交一次，注册后会自动清空。',
+      tokenRequired: 'Token 不能为空。',
+    },
+  },
   workspace: {
     title: '工作区 Worktree',
     selectProjectFirst: '请先选择一个项目',
@@ -411,5 +446,10 @@ export const zhCNSettingsPanel = {
     pullRequestBaseBranchesHelp: '用于画布创建 PR 时的目标分支建议。默认分支会自动出现。',
     pullRequestBaseBranchesEmpty: '暂无候选分支。',
     pullRequestBaseBranchesPlaceholder: '例如 develop',
+    environmentVariablesTitle: '环境变量',
+    environmentVariablesHelp: '自定义环境变量将注入到该工作区下启动的所有终端和 Agent 中。',
+    environmentVariablesEmpty: '暂无环境变量。',
+    environmentVariablesKeyPlaceholder: '例如 NODE_ENV',
+    environmentVariablesValuePlaceholder: '例如 development',
   },
 }

@@ -32,6 +32,7 @@ export function registerTerminalDiagnostics({
   terminalThemeMode: TerminalThemeMode
   windowsPty: TerminalWindowsPty | null
 }): {
+  log: (event: string, details?: TerminalDiagnosticsLogInput['details']) => void
   logHydrated: (details: { rawSnapshotLength: number; bufferedExitCode: number | null }) => void
   dispose: () => void
 } {
@@ -258,6 +259,12 @@ export function registerTerminalDiagnostics({
     logInteractionEvent('pointer-enter', lastPointerPoint)
   }
 
+  const handlePointerDown = (event: PointerEvent): void => {
+    updatePointerPoint(event)
+    lastPointerSignature = null
+    logInteractionEvent('pointer-down', lastPointerPoint)
+  }
+
   const handlePointerMove = (event: PointerEvent): void => {
     updatePointerPoint(event)
   }
@@ -268,13 +275,30 @@ export function registerTerminalDiagnostics({
     lastPointerSignature = null
   }
 
+  const handleFocusIn = (): void => {
+    logInteractionEvent('focus-in')
+  }
+
+  const handleFocusOut = (): void => {
+    logInteractionEvent('focus-out')
+  }
+
   viewportElement?.addEventListener('wheel', handleViewportWheel, { passive: true })
   viewportElement?.addEventListener('scroll', handleViewportScroll, { passive: true })
+  container?.addEventListener('pointerdown', handlePointerDown, { passive: true })
   container?.addEventListener('pointerenter', handlePointerEnter, { passive: true })
   container?.addEventListener('pointermove', handlePointerMove, { passive: true })
   container?.addEventListener('pointerleave', handlePointerLeave, { passive: true })
+  container?.addEventListener('focusin', handleFocusIn)
+  container?.addEventListener('focusout', handleFocusOut)
 
   return {
+    log: (event, details) => {
+      diagnostics.log(event, captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
+        ...collectInteractionDetails(),
+        ...(details ? details : {}),
+      })
+    },
     logHydrated: ({ rawSnapshotLength, bufferedExitCode }) => {
       diagnostics.log('hydrated', captureTerminalDiagnosticsSnapshot(terminal, viewportElement), {
         rawSnapshotLength,
@@ -292,9 +316,12 @@ export function registerTerminalDiagnostics({
       }
       viewportElement?.removeEventListener('wheel', handleViewportWheel)
       viewportElement?.removeEventListener('scroll', handleViewportScroll)
+      container?.removeEventListener('pointerdown', handlePointerDown)
       container?.removeEventListener('pointerenter', handlePointerEnter)
       container?.removeEventListener('pointermove', handlePointerMove)
       container?.removeEventListener('pointerleave', handlePointerLeave)
+      container?.removeEventListener('focusin', handleFocusIn)
+      container?.removeEventListener('focusout', handleFocusOut)
     },
   }
 }

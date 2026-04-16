@@ -83,6 +83,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
       initialHeight: node.height,
       data: {
         sessionId: typeof node.sessionId === 'string' ? node.sessionId : '',
+        isLiveSessionReattach: false,
         profileId: node.profileId,
         runtimeKind: node.runtimeKind,
         terminalProviderHint: node.terminalProviderHint ?? null,

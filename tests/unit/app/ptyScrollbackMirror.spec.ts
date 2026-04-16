@@ -70,7 +70,7 @@ describe('ptyScrollbackMirror', () => {
     expect(writeNodeScrollback).toHaveBeenCalledTimes(1)
     expect(writeNodeScrollback).toHaveBeenCalledWith('node-1', 'hello')
 
-    mirror.dispose()
+    await mirror.dispose()
   })
 
   it('dedupes unchanged snapshots between flushes', async () => {
@@ -99,7 +99,61 @@ describe('ptyScrollbackMirror', () => {
 
     expect(writeNodeScrollback).toHaveBeenCalledTimes(1)
 
-    mirror.dispose()
+    await mirror.dispose()
     vi.useRealTimers()
+  })
+
+  it('flushes the latest snapshot before bindings are cleared', async () => {
+    const writeNodeScrollback = vi.fn(
+      async (): Promise<PersistWriteResult> => ({ ok: true, level: 'full', bytes: 0 }),
+    )
+    const getPersistenceStore = vi.fn(async () => ({ writeNodeScrollback }))
+    const snapshot = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValueOnce('hello')
+      .mockResolvedValueOnce('goodbye')
+
+    const mirror = createPtyScrollbackMirror({
+      source: { snapshot },
+      getPersistenceStore,
+      flushIntervalMs: 999_999,
+    })
+
+    mirror.setBindings([{ sessionId: 'session-1', nodeId: 'node-1' }])
+    await waitForMockCalls(writeNodeScrollback, 1)
+
+    mirror.setBindings([])
+    await waitForMockCalls(writeNodeScrollback, 2)
+
+    expect(writeNodeScrollback).toHaveBeenNthCalledWith(1, 'node-1', 'hello')
+    expect(writeNodeScrollback).toHaveBeenNthCalledWith(2, 'node-1', 'goodbye')
+
+    await mirror.dispose()
+  })
+
+  it('flushes the latest snapshot before dispose', async () => {
+    const writeNodeScrollback = vi.fn(
+      async (): Promise<PersistWriteResult> => ({ ok: true, level: 'full', bytes: 0 }),
+    )
+    const getPersistenceStore = vi.fn(async () => ({ writeNodeScrollback }))
+    const snapshot = vi
+      .fn<() => Promise<string>>()
+      .mockResolvedValueOnce('hello')
+      .mockResolvedValueOnce('goodbye')
+
+    const mirror = createPtyScrollbackMirror({
+      source: { snapshot },
+      getPersistenceStore,
+      flushIntervalMs: 999_999,
+    })
+
+    mirror.setBindings([{ sessionId: 'session-1', nodeId: 'node-1' }])
+    await waitForMockCalls(writeNodeScrollback, 1)
+
+    await mirror.dispose()
+    await waitForMockCalls(writeNodeScrollback, 2)
+
+    expect(writeNodeScrollback).toHaveBeenNthCalledWith(1, 'node-1', 'hello')
+    expect(writeNodeScrollback).toHaveBeenNthCalledWith(2, 'node-1', 'goodbye')
   })
 })

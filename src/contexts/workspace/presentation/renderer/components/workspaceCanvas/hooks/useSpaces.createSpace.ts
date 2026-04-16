@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
@@ -7,11 +8,17 @@ import type {
   ContextMenuState,
   EmptySelectionPromptState,
   ShowWorkspaceCanvasMessage,
+  SpaceTargetMountPickerState,
 } from '../types'
 import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
+import { resolveDefaultAgentWindowSize } from '../constants'
+import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
+import { createSpaceFromSelectedNodesWithMounts } from './useSpaces.createSpaceSelection'
 import {
   computeSpaceRectFromNodes,
   pushAwayLayout,
+  SPACE_NODE_PADDING,
+  SPACE_MIN_SIZE,
   type LayoutItem,
 } from '../../../utils/spaceLayout'
 
@@ -21,7 +28,9 @@ type SetNodes = (
 ) => void
 
 export function useWorkspaceCanvasCreateSpace({
+  workspaceId,
   workspacePath,
+  standardWindowSizeBucket,
   reactFlow,
   nodesRef,
   setNodes,
@@ -31,10 +40,13 @@ export function useWorkspaceCanvasCreateSpace({
   onRequestPersistFlush,
   setContextMenu,
   setEmptySelectionPrompt,
+  setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
 }: {
+  workspaceId: string
   workspacePath: string
+  standardWindowSizeBucket: StandardWindowSizeBucket
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
@@ -44,15 +56,42 @@ export function useWorkspaceCanvasCreateSpace({
   onRequestPersistFlush?: () => void
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
   setEmptySelectionPrompt: React.Dispatch<React.SetStateAction<EmptySelectionPromptState | null>>
+  setSpaceTargetMountPicker: React.Dispatch<
+    React.SetStateAction<SpaceTargetMountPickerState | null>
+  >
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
 }): {
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => string | null
+  createSpaceWithTargetMount: (payload: {
+    nodeIds: string[]
+    rect: WorkspaceSpaceRect | null
+    targetMountId: string
+    directoryPath: string
+  }) => void
 } {
   const { t } = useTranslation()
 
+  const resolveDefaultSpaceName = useCallback((): string => {
+    const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
+    let nextNumber = spacesRef.current.length + 1
+    let normalizedName = t('space.defaultName', { count: nextNumber })
+    while (usedNames.has(normalizedName.toLowerCase())) {
+      nextNumber += 1
+      normalizedName = t('space.defaultName', { count: nextNumber })
+    }
+
+    return normalizedName
+  }, [spacesRef, t])
+
   const createSpace = useCallback(
-    (payload: { nodeIds: string[]; rect: WorkspaceSpaceRect | null }) => {
+    (payload: {
+      nodeIds: string[]
+      rect: WorkspaceSpaceRect | null
+      targetMountId: string
+      directoryPath: string
+    }) => {
       const normalizedNodeIds = payload.nodeIds.filter(nodeId =>
         nodesRef.current.some(node => node.id === nodeId),
       )
@@ -75,13 +114,7 @@ export function useWorkspaceCanvasCreateSpace({
         return
       }
 
-      const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
-      let nextNumber = spacesRef.current.length + 1
-      let normalizedName = t('space.defaultName', { count: nextNumber })
-      while (usedNames.has(normalizedName.toLowerCase())) {
-        nextNumber += 1
-        normalizedName = t('space.defaultName', { count: nextNumber })
-      }
+      const normalizedName = resolveDefaultSpaceName()
 
       const assignedNodeSet = new Set(normalizedNodeIds)
       const normalizedSpaces = sanitizeSpaces(
@@ -106,10 +139,13 @@ export function useWorkspaceCanvasCreateSpace({
         )
 
       const nextSpaceId = crypto.randomUUID()
+      const directoryPath =
+        payload.directoryPath.trim().length > 0 ? payload.directoryPath.trim() : workspacePath
       const nextSpace: WorkspaceSpaceState = {
         id: nextSpaceId,
         name: normalizedName,
-        directoryPath: workspacePath,
+        directoryPath,
+        targetMountId: payload.targetMountId,
         labelColor: null,
         nodeIds: normalizedNodeIds,
         rect,
@@ -301,6 +337,7 @@ export function useWorkspaceCanvasCreateSpace({
       onRequestPersistFlush?.()
       setContextMenu(null)
       setEmptySelectionPrompt(null)
+      setSpaceTargetMountPicker(null)
       cancelSpaceRename()
     },
     [
@@ -309,65 +346,141 @@ export function useWorkspaceCanvasCreateSpace({
       onRequestPersistFlush,
       onShowMessage,
       onSpacesChange,
+      resolveDefaultSpaceName,
       setContextMenu,
       setEmptySelectionPrompt,
       setNodes,
+      setSpaceTargetMountPicker,
       spacesRef,
       workspacePath,
       t,
     ],
   )
 
+  const createSpaceWithTargetMount = useCallback(
+    (payload: {
+      nodeIds: string[]
+      rect: WorkspaceSpaceRect | null
+      targetMountId: string
+      directoryPath: string
+    }) => {
+      createSpace(payload)
+    },
+    [createSpace],
+  )
+
   const createSpaceFromSelectedNodes = useCallback(() => {
-    const resolveSelectedIds = (): string[] => {
-      const selectedIdsRefValue = selectedNodeIdsRef.current
-      if (selectedIdsRefValue.length > 0) {
-        return selectedIdsRefValue
+    createSpaceFromSelectedNodesWithMounts({
+      selectedNodeIdsRef,
+      reactFlow,
+      workspaceId,
+      workspacePath,
+      createSpace,
+      setContextMenu,
+      setEmptySelectionPrompt,
+      setSpaceTargetMountPicker,
+      cancelSpaceRename,
+      onShowMessage,
+      t,
+    })
+  }, [
+    cancelSpaceRename,
+    createSpace,
+    onShowMessage,
+    reactFlow,
+    selectedNodeIdsRef,
+    setContextMenu,
+    setEmptySelectionPrompt,
+    setSpaceTargetMountPicker,
+    t,
+    workspaceId,
+    workspacePath,
+  ])
+
+  const createEmptySpaceAtPoint = useCallback(
+    (point: { x: number; y: number }) => {
+      const nextSpaceId = crypto.randomUUID()
+      const normalizedName = resolveDefaultSpaceName()
+
+      const agentSize = resolveDefaultAgentWindowSize(standardWindowSizeBucket)
+      const size = {
+        width: Math.max(SPACE_MIN_SIZE.width, agentSize.width + SPACE_NODE_PADDING * 2),
+        height: Math.max(SPACE_MIN_SIZE.height, agentSize.height + SPACE_NODE_PADDING * 2),
       }
 
-      return reactFlow
-        .getNodes()
-        .filter(node => node.selected)
-        .map(node => node.id)
-    }
-
-    const commitSelectedNodes = (): boolean => {
-      const selectedIds = resolveSelectedIds()
-      if (selectedIds.length === 0) {
-        return false
+      const desiredAnchor = {
+        x: Math.round(point.x - size.width / 2),
+        y: Math.round(point.y - size.height / 2),
       }
 
-      createSpace({
-        nodeIds: selectedIds,
-        rect: null,
+      const resolved = resolveNodesPlacement({
+        anchor: desiredAnchor,
+        size,
+        getNodes: () => nodesRef.current,
+        getSpaceRects: () =>
+          spacesRef.current
+            .map(space => space.rect)
+            .filter(
+              (rect): rect is { x: number; y: number; width: number; height: number } =>
+                rect !== null,
+            ),
       })
-      return true
-    }
 
-    if (commitSelectedNodes()) {
-      return
-    }
-
-    let attemptsRemaining = 3
-
-    const retryCommitSelectedNodes = () => {
-      if (commitSelectedNodes()) {
-        return
-      }
-
-      attemptsRemaining -= 1
-      if (attemptsRemaining <= 0) {
+      if (resolved.canPlace !== true) {
+        onShowMessage?.(t('messages.noWindowSlotNearby'), 'warning')
         setContextMenu(null)
-        return
+        setEmptySelectionPrompt(null)
+        cancelSpaceRename()
+        return null
       }
 
-      window.requestAnimationFrame(retryCommitSelectedNodes)
-    }
+      const rect: WorkspaceSpaceRect = {
+        x: Math.round(resolved.placement.x),
+        y: Math.round(resolved.placement.y),
+        width: size.width,
+        height: size.height,
+      }
 
-    window.requestAnimationFrame(retryCommitSelectedNodes)
-  }, [createSpace, reactFlow, selectedNodeIdsRef, setContextMenu])
+      const nextSpace: WorkspaceSpaceState = {
+        id: nextSpaceId,
+        name: normalizedName,
+        directoryPath: workspacePath,
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect,
+      }
+
+      const nextSpaces = sanitizeSpaces([...spacesRef.current, nextSpace])
+      spacesRef.current = nextSpaces
+      onSpacesChange(nextSpaces)
+      onRequestPersistFlush?.()
+      setContextMenu(null)
+      setEmptySelectionPrompt(null)
+      setSpaceTargetMountPicker(null)
+      cancelSpaceRename()
+      return nextSpaceId
+    },
+    [
+      cancelSpaceRename,
+      nodesRef,
+      onRequestPersistFlush,
+      onShowMessage,
+      onSpacesChange,
+      resolveDefaultSpaceName,
+      setContextMenu,
+      setEmptySelectionPrompt,
+      setSpaceTargetMountPicker,
+      spacesRef,
+      standardWindowSizeBucket,
+      workspacePath,
+      t,
+    ],
+  )
 
   return {
     createSpaceFromSelectedNodes,
+    createEmptySpaceAtPoint,
+    createSpaceWithTargetMount,
   }
 }

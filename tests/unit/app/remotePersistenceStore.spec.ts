@@ -60,4 +60,60 @@ describe('remote persistence store', () => {
       }),
     )
   })
+
+  it('passes agent placeholder scrollback requests through to the worker', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        text: async () =>
+          JSON.stringify({
+            __opencoveControlEnvelope: true,
+            ok: true,
+            value: 'PLACEHOLDER_SCROLLBACK',
+          }),
+        status: 200,
+      })
+      .mockResolvedValueOnce({
+        text: async () =>
+          JSON.stringify({
+            __opencoveControlEnvelope: true,
+            ok: true,
+            value: { ok: true, level: 'full', bytes: 19 },
+          }),
+        status: 200,
+      })
+
+    vi.stubGlobal('fetch', fetchMock)
+
+    const store = createRemotePersistenceStore(async () => ({
+      hostname: '127.0.0.1',
+      port: 4310,
+      token: 'token-1',
+    }))
+
+    await expect(store.readAgentNodePlaceholderScrollback('node-1')).resolves.toEqual(
+      'PLACEHOLDER_SCROLLBACK',
+    )
+    await expect(
+      store.writeAgentNodePlaceholderScrollback('node-1', 'PLACEHOLDER_SCROLLBACK'),
+    ).resolves.toEqual({ ok: true, level: 'full', bytes: 19 })
+
+    const firstRequest = JSON.parse(
+      String((fetchMock.mock.calls[0]?.[1] as { body?: unknown } | undefined)?.body ?? ''),
+    ) as { kind?: unknown; id?: unknown; payload?: unknown }
+    expect(firstRequest).toEqual({
+      kind: 'query',
+      id: 'sync.readAgentNodePlaceholderScrollback',
+      payload: { nodeId: 'node-1' },
+    })
+
+    const secondRequest = JSON.parse(
+      String((fetchMock.mock.calls[1]?.[1] as { body?: unknown } | undefined)?.body ?? ''),
+    ) as { kind?: unknown; id?: unknown; payload?: unknown }
+    expect(secondRequest).toEqual({
+      kind: 'command',
+      id: 'sync.writeAgentNodePlaceholderScrollback',
+      payload: { nodeId: 'node-1', scrollback: 'PLACEHOLDER_SCROLLBACK' },
+    })
+  })
 })
