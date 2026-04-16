@@ -10,6 +10,9 @@ export type CanvasWheelZoomModifier = (typeof CANVAS_WHEEL_ZOOM_MODIFIERS)[numbe
 export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const
 export type StandardWindowSizeBucket = (typeof STANDARD_WINDOW_SIZE_BUCKETS)[number]
 
+export const CANVAS_HOVER_PRIORITIES = ['auto', 'traverse', 'interact'] as const
+export type CanvasHoverPriority = (typeof CANVAS_HOVER_PRIORITIES)[number]
+
 export function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
   return typeof value === 'string' && CANVAS_INPUT_MODES.includes(value as CanvasInputMode)
 }
@@ -30,4 +33,8 @@ export function isValidStandardWindowSizeBucket(value: unknown): value is Standa
     typeof value === 'string' &&
     STANDARD_WINDOW_SIZE_BUCKETS.includes(value as StandardWindowSizeBucket)
   )
+}
+
+export function isValidCanvasHoverPriority(value: unknown): value is CanvasHoverPriority {
+  return typeof value === 'string' && CANVAS_HOVER_PRIORITIES.includes(value as CanvasHoverPriority)
 }

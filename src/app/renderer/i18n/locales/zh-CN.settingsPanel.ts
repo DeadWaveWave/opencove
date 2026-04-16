@@ -180,6 +180,13 @@ export const zhCNSettingsPanel = {
       regular: '标准',
       large: '大',
     },
+    hoverPriorityLabel: '悬停优先级',
+    hoverPriorityHelp: '鼠标悬停在卡片上时，滚动是平移画布还是与卡片交互？',
+    hoverPriority: {
+      auto: '自动（跟随输入模式）',
+      traverse: '平移画布',
+      interact: '与卡片交互',
+    },
     focusOnClickLabel: '点击自动定位',
     focusOnClickHelp: '点击节点时自动将画布居中到该节点。',
     focusVisibleCenterLabel: '以可视画布居中',

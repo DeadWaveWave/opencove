@@ -36,6 +36,7 @@ const WHEEL_BLOCK_SELECTOR =
 export function WorkspaceCanvasView({
   canvasRef,
   resolvedCanvasInputMode,
+  canvasHoverPriority,
   onCanvasClick,
   handleCanvasPointerDownCapture,
   handleCanvasPointerMoveCapture,
@@ -229,6 +230,7 @@ export function WorkspaceCanvasView({
       ref={canvasRef}
       className="workspace-canvas"
       data-canvas-input-mode={resolvedCanvasInputMode}
+      data-canvas-hover-priority={canvasHoverPriority}
       data-selected-node-count={selectedNodeCount}
       data-cove-drag-surface-selection-mode={isDragSurfaceSelectionMode ? 'true' : 'false'}
       tabIndex={-1}

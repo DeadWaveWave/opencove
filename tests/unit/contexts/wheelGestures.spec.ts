@@ -287,6 +287,44 @@ describe('canvas wheel gesture decisions', () => {
     expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
   })
 
+  it('pans canvas in traverse mode when target card is not focused', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      canvasHoverPriority: 'traverse',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'trackpad',
+      inputModalityState: createCanvasInputModalityState('trackpad'),
+      trackpadGestureLock: null,
+      wheelTarget: 'node',
+      isTargetWithinCanvas: true,
+      isTargetCardFocused: false,
+      sample: sample({ deltaX: 4, deltaY: 5, timeStamp: 200 }),
+      lockTimestamp: 200,
+    })
+
+    expect(decision.canvasAction).toBe('pan')
+  })
+
+  it('lets card scroll in traverse mode when target card is focused', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'auto',
+      canvasWheelBehaviorSetting: 'zoom',
+      canvasHoverPriority: 'traverse',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'trackpad',
+      inputModalityState: createCanvasInputModalityState('trackpad'),
+      trackpadGestureLock: null,
+      wheelTarget: 'node',
+      isTargetWithinCanvas: true,
+      isTargetCardFocused: true,
+      sample: sample({ deltaX: 4, deltaY: 5, timeStamp: 200 }),
+      lockTimestamp: 200,
+    })
+
+    expect(decision.canvasAction).toBeNull()
+  })
+
   it('zooms canvas on pinch-like wheel events even when the target is a node', () => {
     const decision = resolveCanvasWheelGesture({
       canvasInputModeSetting: 'auto',

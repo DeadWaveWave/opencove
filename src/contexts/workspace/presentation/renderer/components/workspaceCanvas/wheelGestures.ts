@@ -12,10 +12,12 @@ import type {
   TrackpadGestureLockState,
   TrackpadGestureTarget,
 } from './types'
+import type { CanvasHoverPriority } from '@contexts/settings/domain/canvasSettings'
 
 export interface ResolveCanvasWheelGestureParams {
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
   canvasWheelBehaviorSetting: 'zoom' | 'pan'
+  canvasHoverPriority: CanvasHoverPriority
   resolvedCanvasInputMode: DetectedCanvasInputMode
   inputModalityState: CanvasInputModalityState
   trackpadGestureLock: TrackpadGestureLockState | null
@@ -24,6 +26,7 @@ export interface ResolveCanvasWheelGestureParams {
   wheelZoomModifierKey: 'ctrl' | 'meta' | 'alt'
   sample: WheelInputSample
   lockTimestamp: number
+  isTargetCardFocused?: boolean
 }
 
 export interface CanvasWheelGestureDecision {
@@ -64,6 +67,7 @@ function resolveFixedModeDecision(
 export function resolveCanvasWheelGesture({
   canvasInputModeSetting,
   canvasWheelBehaviorSetting,
+  canvasHoverPriority,
   resolvedCanvasInputMode,
   inputModalityState,
   trackpadGestureLock,
@@ -72,6 +76,7 @@ export function resolveCanvasWheelGesture({
   wheelZoomModifierKey,
   sample,
   lockTimestamp,
+  isTargetCardFocused,
 }: ResolveCanvasWheelGestureParams): CanvasWheelGestureDecision {
   const activeLock = resolveActiveGestureLock(trackpadGestureLock, lockTimestamp)
   const isPinchZoom = isPinchLikeZoomWheelSample(sample)
@@ -82,7 +87,11 @@ export function resolveCanvasWheelGesture({
         ? sample.metaKey
         : sample.altKey
   const isCanvasSurfaceEvent =
-    isTargetWithinCanvas && (wheelTarget === 'canvas' || isPinchZoom || isZoomModifierPressed)
+    isTargetWithinCanvas &&
+    ((canvasHoverPriority === 'traverse' && !isTargetCardFocused) ||
+      wheelTarget === 'canvas' ||
+      isPinchZoom ||
+      isZoomModifierPressed)
 
   if (canvasInputModeSetting === 'mouse') {
     const fixedModeDecision = resolveFixedModeDecision(canvasInputModeSetting, inputModalityState)

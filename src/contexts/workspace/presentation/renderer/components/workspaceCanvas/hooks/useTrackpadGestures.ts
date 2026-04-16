@@ -4,6 +4,7 @@ import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
 } from '@contexts/settings/domain/agentSettings'
+import type { CanvasHoverPriority } from '@contexts/settings/domain/canvasSettings'
 import {
   isPinchLikeZoomWheelSample,
   type CanvasInputModalityState,
@@ -20,6 +21,7 @@ interface UseTrackpadGesturesParams {
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
   canvasWheelBehaviorSetting: CanvasWheelBehavior
   canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
+  canvasHoverPriority: CanvasHoverPriority
   resolvedCanvasInputMode: DetectedCanvasInputMode
   inputModalityStateRef: MutableRefObject<CanvasInputModalityState>
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
@@ -80,6 +82,7 @@ export function useWorkspaceCanvasTrackpadGestures({
   canvasInputModeSetting,
   canvasWheelBehaviorSetting,
   canvasWheelZoomModifierSetting,
+  canvasHoverPriority,
   resolvedCanvasInputMode,
   inputModalityStateRef,
   setDetectedCanvasInputMode,
@@ -136,14 +139,23 @@ export function useWorkspaceCanvasTrackpadGestures({
           ? event.timeStamp
           : performance.now()
 
+      const targetNode =
+        event.target instanceof Element ? event.target.closest('.react-flow__node') : null
+      const isTargetCardFocused =
+        targetNode instanceof HTMLElement &&
+        document.activeElement instanceof HTMLElement &&
+        targetNode.contains(document.activeElement)
+
       const decision = resolveCanvasWheelGesture({
         canvasInputModeSetting,
         canvasWheelBehaviorSetting,
+        canvasHoverPriority,
         resolvedCanvasInputMode,
         inputModalityState: inputModalityStateRef.current,
         trackpadGestureLock: trackpadGestureLockRef.current,
         wheelTarget,
         isTargetWithinCanvas,
+        isTargetCardFocused,
         wheelZoomModifierKey: effectiveWheelZoomModifierKey,
         sample: {
           deltaX: event.deltaX,
@@ -250,6 +262,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       canvasInputModeSetting,
       canvasWheelBehaviorSetting,
       canvasWheelZoomModifierSetting,
+      canvasHoverPriority,
       canvasRef,
       inputModalityStateRef,
       markViewportInteractionActive,

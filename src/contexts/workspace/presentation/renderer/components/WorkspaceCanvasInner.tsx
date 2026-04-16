@@ -186,6 +186,7 @@ export function WorkspaceCanvasInner({
     canvasInputModeSetting: agentSettings.canvasInputMode,
     canvasWheelBehaviorSetting: agentSettings.canvasWheelBehavior,
     canvasWheelZoomModifierSetting: agentSettings.canvasWheelZoomModifier,
+    canvasHoverPriority: agentSettings.canvasHoverPriority,
     detectedCanvasInputMode: canvasState.detectedCanvasInputMode,
     inputModalityStateRef: canvasState.inputModalityStateRef,
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
@@ -392,6 +393,7 @@ export function WorkspaceCanvasInner({
     <WorkspaceCanvasView
       canvasRef={canvasState.canvasRef}
       resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}
+      canvasHoverPriority={agentSettings.canvasHoverPriority}
       {...spaceUi}
       {...spaceExplorer}
       handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}

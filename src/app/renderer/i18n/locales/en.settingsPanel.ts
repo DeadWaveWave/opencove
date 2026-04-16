@@ -181,6 +181,14 @@ export const enSettingsPanel = {
       regular: 'Regular',
       large: 'Large',
     },
+    hoverPriorityLabel: 'Card Hover Priority',
+    hoverPriorityHelp:
+      'When the mouse is over a card, should scrolling traverse the canvas or interact with the card?',
+    hoverPriority: {
+      auto: 'Auto (follows Input Mode)',
+      traverse: 'Traverse Canvas',
+      interact: 'Interact with Card',
+    },
     focusOnClickLabel: 'Auto-focus on Click',
     focusOnClickHelp: 'Center the canvas on a node when it is clicked.',
     focusVisibleCenterLabel: 'Center Within Visible Canvas',

@@ -4,6 +4,7 @@ import type {
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
 } from '@contexts/settings/domain/agentSettings'
+import type { CanvasHoverPriority } from '@contexts/settings/domain/canvasSettings'
 import type {
   CanvasInputModalityState,
   DetectedCanvasInputMode,
@@ -16,6 +17,7 @@ interface UseWorkspaceCanvasInputModeParams {
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
   canvasWheelBehaviorSetting: CanvasWheelBehavior
   canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
+  canvasHoverPriority: CanvasHoverPriority
   detectedCanvasInputMode: DetectedCanvasInputMode
   inputModalityStateRef: MutableRefObject<CanvasInputModalityState>
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
@@ -30,6 +32,7 @@ export function useWorkspaceCanvasInputMode({
   canvasInputModeSetting,
   canvasWheelBehaviorSetting,
   canvasWheelZoomModifierSetting,
+  canvasHoverPriority,
   detectedCanvasInputMode,
   inputModalityStateRef,
   setDetectedCanvasInputMode,
@@ -54,6 +57,7 @@ export function useWorkspaceCanvasInputMode({
     canvasInputModeSetting,
     canvasWheelBehaviorSetting,
     canvasWheelZoomModifierSetting,
+    canvasHoverPriority,
     resolvedCanvasInputMode,
     inputModalityStateRef,
     setDetectedCanvasInputMode,

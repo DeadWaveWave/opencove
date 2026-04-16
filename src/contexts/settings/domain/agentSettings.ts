@@ -26,10 +26,12 @@ import {
 import type { KeybindingOverrides } from './keybindings'
 import { normalizeKeybindingOverrides } from './keybindings'
 import {
+  isValidCanvasHoverPriority,
   isValidCanvasInputMode,
   isValidCanvasWheelBehavior,
   isValidCanvasWheelZoomModifier,
   isValidStandardWindowSizeBucket,
+  type CanvasHoverPriority,
   type CanvasInputMode,
   type CanvasWheelBehavior,
   type CanvasWheelZoomModifier,
@@ -78,12 +80,14 @@ export type {
 } from './agentSettings.providers'
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
 export {
+  CANVAS_HOVER_PRIORITIES,
   CANVAS_INPUT_MODES,
   CANVAS_WHEEL_BEHAVIORS,
   CANVAS_WHEEL_ZOOM_MODIFIERS,
   STANDARD_WINDOW_SIZE_BUCKETS,
 } from './canvasSettings'
 export type {
+  CanvasHoverPriority,
   CanvasInputMode,
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -157,6 +161,7 @@ export interface AgentSettings {
   canvasInputMode: CanvasInputMode
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
+  canvasHoverPriority: CanvasHoverPriority
   standardWindowSizeBucket: StandardWindowSizeBucket
   websiteWindowPolicy: WebsiteWindowPolicy
   experimentalWebsiteWindowPasteEnabled: boolean
@@ -314,6 +319,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const canvasWheelZoomModifier = isValidCanvasWheelZoomModifier(value.canvasWheelZoomModifier)
     ? value.canvasWheelZoomModifier
     : DEFAULT_AGENT_SETTINGS.canvasWheelZoomModifier
+  const canvasHoverPriority = isValidCanvasHoverPriority(value.canvasHoverPriority)
+    ? value.canvasHoverPriority
+    : DEFAULT_AGENT_SETTINGS.canvasHoverPriority
   const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
     ? value.standardWindowSizeBucket
     : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
@@ -411,6 +419,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     canvasInputMode,
     canvasWheelBehavior,
     canvasWheelZoomModifier,
+    canvasHoverPriority,
     standardWindowSizeBucket,
     websiteWindowPolicy,
     experimentalWebsiteWindowPasteEnabled,

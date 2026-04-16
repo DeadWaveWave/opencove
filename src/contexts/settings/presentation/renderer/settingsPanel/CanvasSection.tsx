@@ -1,12 +1,14 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
+  CANVAS_HOVER_PRIORITIES,
   CANVAS_INPUT_MODES,
   CANVAS_WHEEL_BEHAVIORS,
   CANVAS_WHEEL_ZOOM_MODIFIERS,
   FOCUS_NODE_TARGET_ZOOM_STEP,
   MAX_FOCUS_NODE_TARGET_ZOOM,
   MIN_FOCUS_NODE_TARGET_ZOOM,
+  type CanvasHoverPriority,
   type CanvasInputMode,
   type CanvasWheelBehavior,
   type CanvasWheelZoomModifier,
@@ -15,6 +17,7 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import {
+  getCanvasHoverPriorityLabel,
   getCanvasInputModeLabel,
   getCanvasWheelBehaviorLabel,
   getCanvasWheelZoomModifierLabel,
@@ -27,6 +30,7 @@ export function CanvasSection(props: {
   canvasInputMode: CanvasInputMode
   canvasWheelBehavior: CanvasWheelBehavior
   canvasWheelZoomModifier: CanvasWheelZoomModifier
+  canvasHoverPriority: CanvasHoverPriority
   standardWindowSizeBucket: StandardWindowSizeBucket
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
@@ -37,6 +41,7 @@ export function CanvasSection(props: {
   onChangeCanvasInputMode: (mode: CanvasInputMode) => void
   onChangeCanvasWheelBehavior: (behavior: CanvasWheelBehavior) => void
   onChangeCanvasWheelZoomModifier: (modifier: CanvasWheelZoomModifier) => void
+  onChangeCanvasHoverPriority: (priority: CanvasHoverPriority) => void
   onChangeStandardWindowSizeBucket: (bucket: StandardWindowSizeBucket) => void
   onChangeDefaultTerminalProfileId: (profileId: string | null) => void
   onChangeFocusNodeOnClick: (enabled: boolean) => void
@@ -49,6 +54,7 @@ export function CanvasSection(props: {
     canvasInputMode,
     canvasWheelBehavior,
     canvasWheelZoomModifier,
+    canvasHoverPriority,
     standardWindowSizeBucket,
     focusNodeOnClick,
     focusNodeTargetZoom,
@@ -59,6 +65,7 @@ export function CanvasSection(props: {
     onChangeCanvasInputMode,
     onChangeCanvasWheelBehavior,
     onChangeCanvasWheelZoomModifier,
+    onChangeCanvasHoverPriority,
     onChangeStandardWindowSizeBucket,
     onChangeDefaultTerminalProfileId,
     onChangeFocusNodeOnClick,
@@ -166,6 +173,25 @@ export function CanvasSection(props: {
           </div>
         </div>
       ) : null}
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.canvas.hoverPriorityLabel')}</strong>
+          <span>{t('settingsPanel.canvas.hoverPriorityHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <CoveSelect
+            id="settings-canvas-hover-priority"
+            testId="settings-canvas-hover-priority"
+            value={canvasHoverPriority}
+            options={CANVAS_HOVER_PRIORITIES.map(priority => ({
+              value: priority,
+              label: getCanvasHoverPriorityLabel(t, priority),
+            }))}
+            onChange={nextValue => onChangeCanvasHoverPriority(nextValue as CanvasHoverPriority)}
+          />
+        </div>
+      </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">

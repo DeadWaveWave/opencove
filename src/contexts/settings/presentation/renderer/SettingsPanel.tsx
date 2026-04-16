@@ -7,6 +7,7 @@ import {
   resolveTaskTitleProvider,
   type AgentProvider,
   type AgentSettings,
+  type CanvasHoverPriority,
   type CanvasInputMode,
   type CanvasWheelBehavior,
   type CanvasWheelZoomModifier,
@@ -111,6 +112,8 @@ export function SettingsPanel({
     onChange({ ...settings, canvasWheelBehavior: behavior })
   const updateCanvasWheelZoomModifier = (modifier: CanvasWheelZoomModifier): void =>
     onChange({ ...settings, canvasWheelZoomModifier: modifier })
+  const updateCanvasHoverPriority = (priority: CanvasHoverPriority): void =>
+    onChange({ ...settings, canvasHoverPriority: priority })
   const updateStandardWindowSizeBucket = (bucket: StandardWindowSizeBucket): void =>
     onChange({ ...settings, standardWindowSizeBucket: bucket })
   const updateWebsiteWindowPolicy = (policy: AgentSettings['websiteWindowPolicy']): void =>
@@ -362,6 +365,7 @@ export function SettingsPanel({
                 canvasInputMode={settings.canvasInputMode}
                 canvasWheelBehavior={settings.canvasWheelBehavior}
                 canvasWheelZoomModifier={settings.canvasWheelZoomModifier}
+                canvasHoverPriority={settings.canvasHoverPriority}
                 standardWindowSizeBucket={settings.standardWindowSizeBucket}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
@@ -372,6 +376,7 @@ export function SettingsPanel({
                 onChangeCanvasInputMode={updateCanvasInputMode}
                 onChangeCanvasWheelBehavior={updateCanvasWheelBehavior}
                 onChangeCanvasWheelZoomModifier={updateCanvasWheelZoomModifier}
+                onChangeCanvasHoverPriority={updateCanvasHoverPriority}
                 onChangeStandardWindowSizeBucket={updateStandardWindowSizeBucket}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}

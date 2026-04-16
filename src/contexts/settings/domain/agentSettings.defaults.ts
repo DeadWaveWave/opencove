@@ -52,6 +52,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   canvasInputMode: 'auto',
   canvasWheelBehavior: 'zoom',
   canvasWheelZoomModifier: 'primary',
+  canvasHoverPriority: 'auto',
   standardWindowSizeBucket: 'regular',
   websiteWindowPolicy: DEFAULT_WEBSITE_WINDOW_POLICY,
   experimentalWebsiteWindowPasteEnabled: false,

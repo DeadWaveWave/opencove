@@ -1,4 +1,5 @@
 import type {
+  CanvasHoverPriority,
   CanvasInputMode,
   CanvasWheelBehavior,
   CanvasWheelZoomModifier,
@@ -64,6 +65,18 @@ export function getStandardWindowSizeBucketLabel(
   }
 
   return t('settingsPanel.canvas.standardWindowSize.regular')
+}
+
+export function getCanvasHoverPriorityLabel(t: TranslateFn, priority: CanvasHoverPriority): string {
+  if (priority === 'traverse') {
+    return t('settingsPanel.canvas.hoverPriority.traverse')
+  }
+
+  if (priority === 'interact') {
+    return t('settingsPanel.canvas.hoverPriority.interact')
+  }
+
+  return t('settingsPanel.canvas.hoverPriority.auto')
 }
 
 export function getUiThemeLabel(t: TranslateFn, theme: UiTheme): string {
