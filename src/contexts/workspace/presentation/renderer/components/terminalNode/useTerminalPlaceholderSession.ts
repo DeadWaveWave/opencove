@@ -41,6 +41,7 @@ export function useTerminalPlaceholderSession({
   scheduleWebglPixelSnapping,
   cancelWebglPixelSnapping,
   setRendererKindAndApply,
+  terminalFontSize,
 }: {
   nodeId: string
   sessionId: string
@@ -70,6 +71,7 @@ export function useTerminalPlaceholderSession({
   scheduleWebglPixelSnapping: () => void
   cancelWebglPixelSnapping: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
+  terminalFontSize: number
 }): void {
   useEffect(() => {
     const normalizedSessionId = sessionId.trim()
@@ -105,6 +107,7 @@ export function useTerminalPlaceholderSession({
       windowsPty,
       cursorBlink: false,
       disableStdin: false,
+      fontSize: terminalFontSize,
       bindSearchAddonToFind,
       syncTerminalSize,
       diagnosticsEnabled,

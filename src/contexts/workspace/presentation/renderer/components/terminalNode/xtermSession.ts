@@ -43,6 +43,7 @@ export function createMountedXtermSession({
   windowsPty,
   cursorBlink,
   disableStdin,
+  fontSize,
   bindSearchAddonToFind,
   syncTerminalSize,
   diagnosticsEnabled,
@@ -63,6 +64,7 @@ export function createMountedXtermSession({
   windowsPty: TerminalWindowsPty | null
   cursorBlink: boolean
   disableStdin: boolean
+  fontSize: number
   bindSearchAddonToFind: (addon: SearchAddon) => () => void
   syncTerminalSize: () => void
   diagnosticsEnabled: boolean
@@ -77,6 +79,7 @@ export function createMountedXtermSession({
     cursorBlink,
     ...(disableStdin ? { disableStdin: true } : {}),
     fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
+    fontSize,
     theme: initialTerminalTheme,
     allowProposedApi: true,
     convertEol: true,

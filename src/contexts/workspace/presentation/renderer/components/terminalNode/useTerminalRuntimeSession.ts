@@ -75,6 +75,7 @@ export function useTerminalRuntimeSession({
   scheduleWebglPixelSnapping,
   cancelWebglPixelSnapping,
   setRendererKindAndApply,
+  terminalFontSize,
 }: {
   nodeId: string
   sessionId: string
@@ -122,6 +123,7 @@ export function useTerminalRuntimeSession({
   scheduleWebglPixelSnapping: () => void
   cancelWebglPixelSnapping: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
+  terminalFontSize: number
 }): void {
   useEffect(() => {
     if (sessionId.trim().length === 0) {
@@ -174,6 +176,7 @@ export function useTerminalRuntimeSession({
         windowsPty,
         cursorBlink: true,
         disableStdin: false,
+        fontSize: terminalFontSize,
         bindSearchAddonToFind,
         syncTerminalSize,
         diagnosticsEnabled,

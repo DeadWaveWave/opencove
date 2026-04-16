@@ -229,6 +229,7 @@ export function TerminalNode({
     scheduleWebglPixelSnapping,
     cancelWebglPixelSnapping,
     setRendererKindAndApply,
+    terminalFontSize,
   })
 
   useTerminalRuntimeSession({
@@ -270,6 +271,7 @@ export function TerminalNode({
     scheduleWebglPixelSnapping,
     cancelWebglPixelSnapping,
     setRendererKindAndApply,
+    terminalFontSize,
   })
 
   useTerminalAppearanceSync({
