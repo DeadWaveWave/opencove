@@ -42,8 +42,7 @@
     rgba(40, 22, 22, 0.96),
     rgba(28, 18, 18, 0.96)
   );
-  --cove-overlay-danger-shadow:
-    0 24px 56px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(184, 94, 90, 0.16);
+  --cove-overlay-danger-shadow: 0 24px 56px rgba(0, 0, 0, 0.62), 0 0 0 1px rgba(184, 94, 90, 0.16);
   --cove-overlay-danger-title: #f0d8c8;
   --cove-overlay-danger-summary: #c8a098;
   --cove-overlay-danger-status-border: rgba(184, 94, 90, 0.4);
@@ -73,8 +72,7 @@
   --cove-node-header-border: rgba(201, 124, 58, 0.3);
   --cove-node-shadow-color: rgba(0, 0, 0, 0.5);
   --cove-node-selection-border: rgba(201, 124, 58, 0.78);
-  --cove-node-selection-shadow:
-    0 0 0 1px rgba(201, 124, 58, 0.36), 0 18px 40px rgba(0, 0, 0, 0.55);
+  --cove-node-selection-shadow: 0 0 0 1px rgba(201, 124, 58, 0.36), 0 18px 40px rgba(0, 0, 0, 0.55);
 
   --cove-terminal-node-surface: rgba(20, 16, 14, 0.94);
   --cove-terminal-node-header-surface: rgba(32, 26, 22, 0.96);
@@ -130,8 +128,7 @@
   --cove-node-header-border: rgba(201, 124, 58, 0.3);
   --cove-node-shadow-color: rgba(0, 0, 0, 0.5);
   --cove-node-selection-border: rgba(201, 124, 58, 0.78);
-  --cove-node-selection-shadow:
-    0 0 0 1px rgba(201, 124, 58, 0.36), 0 18px 40px rgba(0, 0, 0, 0.55);
+  --cove-node-selection-shadow: 0 0 0 1px rgba(201, 124, 58, 0.36), 0 18px 40px rgba(0, 0, 0, 0.55);
   --cove-terminal-node-surface: rgba(20, 16, 14, 0.94);
   --cove-terminal-node-header-surface: rgba(32, 26, 22, 0.96);
   --cove-terminal-background: #15110e;
