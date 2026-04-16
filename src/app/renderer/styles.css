@@ -29,3 +29,8 @@
 @import './styles/app-notifications.css';
 @import './styles/whats-new.css';
 @import './styles/space-archives-window.css';
+
+/* Named themes — extension point for `data-cove-theme-id`.
+   Currently ships only built-in themes; user-provided themes follow
+   the same `:root[data-cove-theme-id='<id>']` pattern. */
+@import './styles/themes/ember.css';

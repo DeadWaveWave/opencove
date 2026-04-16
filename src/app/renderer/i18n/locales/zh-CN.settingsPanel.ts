@@ -26,6 +26,7 @@ export const zhCNSettingsPanel = {
       system: '跟随系统（自动）',
       light: '浅色',
       dark: '深色',
+      ember: '余烬',
     },
     interfaceFontSize: '界面字体大小',
     terminalFontSize: '终端字体大小',

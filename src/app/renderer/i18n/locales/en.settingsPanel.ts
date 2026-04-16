@@ -26,6 +26,7 @@ export const enSettingsPanel = {
       system: 'System (Auto)',
       light: 'Light',
       dark: 'Dark',
+      ember: 'Ember',
     },
     interfaceFontSize: 'Interface Font Size',
     terminalFontSize: 'Terminal Font Size',

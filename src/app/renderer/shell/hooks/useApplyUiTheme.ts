@@ -1,36 +1,52 @@
 import { useEffect } from 'react'
-import type { UiTheme } from '@contexts/settings/domain/agentSettings'
+import { UI_THEME_DESCRIPTORS, type UiTheme } from '@contexts/settings/domain/agentSettings'
 import type { ResolvedUiTheme } from '@shared/contracts/dto'
+
 const SYSTEM_THEME_FALLBACK: ResolvedUiTheme = 'dark'
 
 export function useApplyUiTheme(uiTheme: UiTheme): void {
   useEffect(() => {
     const root = document.documentElement
+    const descriptor = UI_THEME_DESCRIPTORS[uiTheme]
 
-    const applyResolvedTheme = (theme: ResolvedUiTheme): void => {
-      if (root.dataset.coveTheme === theme) {
+    const applyResolved = (baseScheme: ResolvedUiTheme): void => {
+      const themeChanged = root.dataset.coveTheme !== baseScheme
+      const themeIdChanged = root.dataset.coveThemeId !== uiTheme
+
+      if (!themeChanged && !themeIdChanged) {
         return
       }
 
-      root.dataset.coveTheme = theme
-      root.style.colorScheme = theme
-      void window.opencoveApi?.windowChrome?.setTheme?.({ theme }).catch(() => undefined)
-      window.dispatchEvent(new CustomEvent('opencove-theme-changed', { detail: { theme } }))
+      root.dataset.coveTheme = baseScheme
+      root.dataset.coveThemeId = uiTheme
+      root.style.colorScheme = baseScheme
+
+      if (themeChanged) {
+        void window.opencoveApi?.windowChrome
+          ?.setTheme?.({ theme: baseScheme })
+          .catch(() => undefined)
+      }
+
+      window.dispatchEvent(
+        new CustomEvent('opencove-theme-changed', {
+          detail: { theme: baseScheme, themeId: uiTheme },
+        }),
+      )
     }
 
-    if (uiTheme === 'light' || uiTheme === 'dark') {
-      applyResolvedTheme(uiTheme)
+    if (descriptor.baseScheme !== 'system') {
+      applyResolved(descriptor.baseScheme)
       return undefined
     }
 
     if (typeof window.matchMedia !== 'function') {
-      applyResolvedTheme(SYSTEM_THEME_FALLBACK)
+      applyResolved(SYSTEM_THEME_FALLBACK)
       return undefined
     }
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const applyFromSystem = (): void => {
-      applyResolvedTheme(mediaQuery.matches ? 'dark' : 'light')
+      applyResolved(mediaQuery.matches ? 'dark' : 'light')
     }
 
     applyFromSystem()

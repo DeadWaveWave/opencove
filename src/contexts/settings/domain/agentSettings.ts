@@ -89,8 +89,14 @@ export type {
   CanvasWheelZoomModifier,
   StandardWindowSizeBucket,
 } from './canvasSettings'
-export { DEFAULT_UI_LANGUAGE, UI_LANGUAGES, UI_THEMES } from './uiSettings'
-export type { UiLanguage, UiTheme } from './uiSettings'
+export {
+  DEFAULT_UI_LANGUAGE,
+  UI_LANGUAGES,
+  UI_THEME_DESCRIPTORS,
+  UI_THEMES,
+  resolveUiThemeBaseScheme,
+} from './uiSettings'
+export type { UiLanguage, UiTheme, UiThemeBaseScheme, UiThemeDescriptor } from './uiSettings'
 
 export type TerminalProfileId = string | null
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
