@@ -17,6 +17,15 @@ function normalizeString(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
 }
 
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null
+  }
+
+  const trimmed = value.trim()
+  return trimmed.length > 0 ? trimmed : null
+}
+
 function normalizeNullableString(value: unknown): string | null {
   return value === null ? null : typeof value === 'string' ? value : null
 }
@@ -43,6 +52,7 @@ export function normalizeScrollback(value: unknown): string | null {
 
 export type NormalizedPersistedNode = {
   id: string
+  sessionId: string | null
   title: string
   titlePinnedByUser?: boolean
   position: { x: number; y: number }
@@ -66,6 +76,7 @@ export type NormalizedPersistedSpace = {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: { x: number; y: number; width: number; height: number } | null
@@ -77,6 +88,7 @@ export type NormalizedPersistedWorkspace = {
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions: string[]
+  environmentVariables: Record<string, string>
   spaceArchiveRecords: unknown[]
   viewport: { x: number; y: number; zoom: number }
   isMinimapVisible: boolean
@@ -151,6 +163,35 @@ function normalizeStringArray(value: unknown): string[] {
   return [...new Set(normalized)].slice(0, 50)
 }
 
+function normalizeEnvironmentVariables(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const result: Record<string, string> = {}
+  let count = 0
+
+  for (const [key, val] of Object.entries(value)) {
+    const trimmedKey = typeof key === 'string' ? key.trim() : ''
+    if (trimmedKey.length === 0) {
+      continue
+    }
+
+    if (typeof val !== 'string') {
+      continue
+    }
+
+    result[trimmedKey] = val
+    count += 1
+
+    if (count >= 100) {
+      break
+    }
+  }
+
+  return result
+}
+
 function normalizeSpaceArchiveRecords(value: unknown): unknown[] {
   if (!Array.isArray(value)) {
     return []
@@ -218,8 +259,12 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
           }
         : { x: 0, y: 0 }
 
+      const sessionIdRaw = typeof node.sessionId === 'string' ? node.sessionId.trim() : ''
+      const sessionId = sessionIdRaw.length > 0 ? sessionIdRaw : null
+
       normalizedNodes.push({
         id: nodeId,
+        sessionId,
         title: normalizeString(node.title),
         titlePinnedByUser: node.titlePinnedByUser === true,
         position,
@@ -262,6 +307,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         id: spaceId,
         name: normalizeString(space.name),
         directoryPath: normalizeString(space.directoryPath),
+        targetMountId: normalizeOptionalString(space.targetMountId),
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeNodeIds(space.nodeIds),
         rect: normalizeRect(space.rect),
@@ -274,6 +320,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
       path: normalizeString(workspace.path),
       worktreesRoot: normalizeString(workspace.worktreesRoot),
       pullRequestBaseBranchOptions: normalizeStringArray(workspace.pullRequestBaseBranchOptions),
+      environmentVariables: normalizeEnvironmentVariables(workspace.environmentVariables),
       spaceArchiveRecords: normalizeSpaceArchiveRecords(workspace.spaceArchiveRecords),
       viewport: normalizeViewport(workspace.viewport),
       isMinimapVisible: normalizeBoolean(workspace.isMinimapVisible, true),

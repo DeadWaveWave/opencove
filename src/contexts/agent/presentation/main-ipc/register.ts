@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron'
+import * as electron from 'electron'
 import { createServer } from 'node:net'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
@@ -28,6 +28,7 @@ import {
 } from '../../infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../infrastructure/opencode/OpenCodeTuiConfig'
+import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import {
@@ -43,6 +44,20 @@ const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
 const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
 const READ_LAST_MESSAGE_FILE_TIMEOUT_MS = 1_500
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
+const terminalProfileResolver = new TerminalProfileResolver()
+
+function resolveOpenCodeEmbeddedXdgStateHome(): string {
+  try {
+    if (typeof electron.app?.getPath === 'function') {
+      return electron.app.getPath('userData')
+    }
+  } catch {
+    // Vitest electron mocks may throw when accessing undefined exports.
+  }
+
+  const fallback = process.env['OPENCOVE_TEST_USER_DATA_DIR']?.trim()
+  return fallback && fallback.length > 0 ? fallback : process.cwd()
+}
 
 function normalizeOptionalEnvValue(value: string | undefined): string | null {
   const normalized = value?.trim()
@@ -214,6 +229,7 @@ export function registerAgentIpcHandlers(
         normalized.cwd,
         launchCommand.effectiveModel,
         normalized.mode,
+        launchCommand.resumeSessionId,
       )
 
       const geminiDiscoveryCursor =
@@ -224,10 +240,8 @@ export function registerAgentIpcHandlers(
           : undefined
 
       const launchStartedAtMs = Date.now()
-      const resolvedInvocation = await resolveAgentCliInvocation({
-        command: testStub?.command ?? launchCommand.command,
-        args: testStub?.args ?? launchCommand.args,
-      })
+      const command = testStub?.command ?? launchCommand.command
+      const args = testStub?.args ?? launchCommand.args
 
       const opencodeTuiConfigPath =
         normalized.provider === 'opencode'
@@ -235,23 +249,58 @@ export function registerAgentIpcHandlers(
             (await ensureOpenCodeEmbeddedTuiConfigPath()))
           : null
 
-      const sessionEnv =
+      const internalSessionEnv =
         opencodeServer && normalized.provider === 'opencode'
           ? {
-              ...process.env,
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
               OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
+              XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
           : undefined
 
+      const sessionEnv =
+        normalized.env || internalSessionEnv
+          ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
+          : undefined
+
+      const resolvedInvocation = await resolveAgentCliInvocation({
+        command,
+        args,
+      })
+
+      const resolvedSpawn = testStub
+        ? {
+            command: resolvedInvocation.command,
+            args: resolvedInvocation.args,
+            cwd: normalized.cwd,
+            env:
+              sessionEnv || testStub.env
+                ? { ...process.env, ...(testStub.env ?? {}), ...(sessionEnv ?? {}) }
+                : undefined,
+            profileId: normalized.profileId ?? null,
+            runtimeKind: process.platform === 'win32' ? ('windows' as const) : ('posix' as const),
+          }
+        : await terminalProfileResolver.resolveCommandSpawn({
+            cwd: normalized.cwd,
+            profileId: normalized.profileId,
+            command: resolvedInvocation.command,
+            args: resolvedInvocation.args,
+            ...(sessionEnv ? { env: sessionEnv } : {}),
+          })
+
+      const mergedEnv =
+        normalized.env && Object.keys(normalized.env).length > 0
+          ? { ...(resolvedSpawn.env ?? process.env), ...normalized.env }
+          : resolvedSpawn.env
+
       const { sessionId } = await ptyRuntime.spawnSession({
-        cwd: normalized.cwd,
+        cwd: resolvedSpawn.cwd,
         cols: normalized.cols ?? 80,
         rows: normalized.rows ?? 24,
-        command: resolvedInvocation.command,
-        args: resolvedInvocation.args,
-        ...(sessionEnv ? { env: sessionEnv } : {}),
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
+        ...(mergedEnv ? { env: mergedEnv } : {}),
       })
 
       const resumeSessionId = launchCommand.resumeSessionId
@@ -278,8 +327,10 @@ export function registerAgentIpcHandlers(
       const result: LaunchAgentResult = {
         sessionId,
         provider: normalized.provider,
-        command: resolvedInvocation.command,
-        args: resolvedInvocation.args,
+        profileId: resolvedSpawn.profileId,
+        runtimeKind: resolvedSpawn.runtimeKind,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
         launchMode: launchCommand.launchMode,
         effectiveModel: launchCommand.effectiveModel,
         resumeSessionId,
@@ -292,11 +343,11 @@ export function registerAgentIpcHandlers(
 
   return {
     dispose: () => {
-      ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
-      ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
-      ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
-      ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
-      ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
       disposeAgentModelService()
     },
   }

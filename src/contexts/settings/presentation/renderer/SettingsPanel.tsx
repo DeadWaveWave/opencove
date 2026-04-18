@@ -8,88 +8,45 @@ import {
   type AgentProvider,
   type AgentSettings,
   type CanvasInputMode,
+  type CanvasWheelBehavior,
+  type CanvasWheelZoomModifier,
   type FocusNodeTargetZoom,
   type StandardWindowSizeBucket,
   type TaskTitleProvider,
   type UiLanguage,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
-import type { AppUpdateState } from '@shared/contracts/dto'
 import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
+import { EndpointsSection } from './settingsPanel/EndpointsSection'
+import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
-import { SettingsPanelNavButton } from './settingsPanel/SettingsPanelNavButton'
+import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
+import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
+import { AgentEnvSection } from './settingsPanel/AgentEnvSection'
+import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
-import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-
-interface ProviderModelCatalogEntry {
-  models: string[]
-  source: string | null
-  fetchedAt: string | null
-  isLoading: boolean
-  error: string | null
-}
-
-interface SettingsPanelProps {
-  settings: AgentSettings
-  updateState: AppUpdateState | null
-  modelCatalogByProvider: Record<AgentProvider, ProviderModelCatalogEntry>
-  workspaces: WorkspaceState[]
-  onWorkspaceWorktreesRootChange: (workspaceId: string, worktreesRoot: string) => void
-  isFocusNodeTargetZoomPreviewing: boolean
-  onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
-  onChange: (settings: AgentSettings) => void
-  onCheckForUpdates: () => void
-  onDownloadUpdate: () => void
-  onInstallUpdate: () => void
-  onClose: () => void
-}
-
-type CorePageId =
-  | 'general'
-  | 'agent'
-  | 'notifications'
-  | 'canvas'
-  | 'shortcuts'
-  | 'task-configuration'
-  | 'integrations'
-type WorkspacePageId = `workspace:${string}`
-type SettingsPageId = CorePageId | WorkspacePageId
-
-function getWorkspacePageId(workspaceId: string): WorkspacePageId {
-  return `workspace:${workspaceId}`
-}
-
-function isWorkspacePageId(pageId: SettingsPageId): pageId is WorkspacePageId {
-  return pageId.startsWith('workspace:')
-}
-
-function createInitialInputState(): Record<AgentProvider, string> {
-  return AGENT_PROVIDERS.reduce<Record<AgentProvider, string>>(
-    (acc, provider) => {
-      acc[provider] = ''
-      return acc
-    },
-    {} as Record<AgentProvider, string>,
-  )
-}
-
-function getFolderName(path: string): string {
-  const parts = path.split(/[/]/).filter(Boolean)
-  return parts[parts.length - 1] || path
-}
+import {
+  createInitialInputState,
+  isWorkspacePageId,
+  type SettingsPanelProps,
+} from './SettingsPanel.shared'
+import { useSettingsPanelPageState } from './useSettingsPanelPageState'
 
 export function SettingsPanel({
+  initialPageId,
   settings,
+  openPageId,
   updateState,
   modelCatalogByProvider,
   workspaces,
   onWorkspaceWorktreesRootChange,
+  onWorkspaceEnvironmentVariablesChange,
   isFocusNodeTargetZoomPreviewing,
   onFocusNodeTargetZoomPreviewChange,
   onChange,
@@ -103,9 +60,20 @@ export function SettingsPanel({
   const contentRef = useRef<HTMLDivElement | null>(null)
   const [addModelInputByProvider, setAddModelInputByProvider] = useState<
     Record<AgentProvider, string>
-  >(() => createInitialInputState())
-  const [activePageId, setActivePageId] = useState<SettingsPageId>('general')
+  >(() => createInitialInputState(AGENT_PROVIDERS))
   const [addTaskTagInput, setAddTaskTagInput] = useState('')
+  const { activePageId, setActivePageId, activeWorkspace } = useSettingsPanelPageState({
+    openPageId,
+    workspaces,
+    contentRef,
+    onFocusNodeTargetZoomPreviewChange,
+  })
+
+  useEffect(() => {
+    if (initialPageId) {
+      setActivePageId(initialPageId)
+    }
+  }, [initialPageId, setActivePageId])
 
   const updateDefaultProvider = (provider: AgentProvider): void =>
     onChange({ ...settings, defaultProvider: provider })
@@ -125,6 +93,8 @@ export function SettingsPanel({
     onChange({ ...settings, focusNodeOnClick: enabled })
   const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
     onChange({ ...settings, focusNodeTargetZoom: zoom })
+  const updateFocusNodeUseVisibleCanvasCenter = (enabled: boolean): void =>
+    onChange({ ...settings, focusNodeUseVisibleCanvasCenter: enabled })
   const updateStandbyBannerEnabled = (enabled: boolean): void =>
     onChange({ ...settings, standbyBannerEnabled: enabled })
   const updateStandbyBannerShowTask = (enabled: boolean): void =>
@@ -137,10 +107,22 @@ export function SettingsPanel({
     onChange({ ...settings, standbyBannerShowPullRequest: enabled })
   const updateCanvasInputMode = (mode: CanvasInputMode): void =>
     onChange({ ...settings, canvasInputMode: mode })
+  const updateCanvasWheelBehavior = (behavior: CanvasWheelBehavior): void =>
+    onChange({ ...settings, canvasWheelBehavior: behavior })
+  const updateCanvasWheelZoomModifier = (modifier: CanvasWheelZoomModifier): void =>
+    onChange({ ...settings, canvasWheelZoomModifier: modifier })
   const updateStandardWindowSizeBucket = (bucket: StandardWindowSizeBucket): void =>
     onChange({ ...settings, standardWindowSizeBucket: bucket })
+  const updateWebsiteWindowPolicy = (policy: AgentSettings['websiteWindowPolicy']): void =>
+    onChange({ ...settings, websiteWindowPolicy: policy })
+  const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
+  const updateExperimentalRemoteWorkersEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, experimentalRemoteWorkersEnabled: enabled })
   const updateTerminalFontSize = (fontSize: number): void =>
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
+  const updateTerminalFontFamily = (family: string | null): void =>
+    onChange({ ...settings, terminalFontFamily: family })
   const updateUiFontSize = (fontSize: number): void =>
     onChange({ ...settings, uiFontSize: fontSize })
   const updateUpdatePolicy = (policy: AgentSettings['updatePolicy']): void => {
@@ -155,6 +137,13 @@ export function SettingsPanel({
   }
   const updateTaskTagOptions = (nextTags: string[]): void =>
     onChange({ ...settings, taskTagOptions: nextTags })
+  const updateQuickCommands = (quickCommands: AgentSettings['quickCommands']): void =>
+    onChange({ ...settings, quickCommands })
+  const updateQuickPhrases = (quickPhrases: AgentSettings['quickPhrases']): void =>
+    onChange({ ...settings, quickPhrases })
+  const updateAgentEnvByProvider = (
+    agentEnvByProvider: AgentSettings['agentEnvByProvider'],
+  ): void => onChange({ ...settings, agentEnvByProvider })
   const updateDisableAppShortcutsWhenTerminalFocused = (enabled: boolean): void =>
     onChange({ ...settings, disableAppShortcutsWhenTerminalFocused: enabled })
   const updateKeybindings = (keybindings: AgentSettings['keybindings']): void =>
@@ -250,34 +239,17 @@ export function SettingsPanel({
 
   const effectiveTaskTitleProvider = useMemo(() => resolveTaskTitleProvider(settings), [settings])
 
-  const activeWorkspace = useMemo(() => {
-    if (!isWorkspacePageId(activePageId)) {
-      return null
-    }
-
-    const workspaceId = activePageId.slice('workspace:'.length)
-    return workspaces.find(workspace => workspace.id === workspaceId) ?? null
-  }, [activePageId, workspaces])
-
   useEffect(() => {
-    if (isWorkspacePageId(activePageId) && !activeWorkspace) {
-      setActivePageId('general')
-    }
-  }, [activePageId, activeWorkspace])
-
-  useEffect(() => {
-    if (!contentRef.current) {
+    if (activePageId !== 'endpoints') {
       return
     }
 
-    contentRef.current.scrollTop = 0
-  }, [activePageId])
-
-  useEffect(() => {
-    if (activePageId !== 'canvas') {
-      onFocusNodeTargetZoomPreviewChange(false)
+    if (settings.experimentalRemoteWorkersEnabled) {
+      return
     }
-  }, [activePageId, onFocusNodeTargetZoomPreviewChange])
+
+    setActivePageId('experimental')
+  }, [activePageId, setActivePageId, settings.experimentalRemoteWorkersEnabled])
 
   return (
     <div
@@ -288,67 +260,12 @@ export function SettingsPanel({
         className={`settings-panel${isFocusNodeTargetZoomPreviewing ? ' settings-panel--preview' : ''}`}
         onClick={e => e.stopPropagation()}
       >
-        <aside
-          className="settings-panel__sidebar"
-          aria-label={t('settingsPanel.nav.sectionsLabel')}
-        >
-          <SettingsPanelNavButton
-            isActive={activePageId === 'general'}
-            label={t('settingsPanel.nav.general')}
-            testId="settings-section-nav-general"
-            onClick={() => setActivePageId('general')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'agent'}
-            label={t('settingsPanel.nav.agent')}
-            testId="settings-section-nav-agent"
-            onClick={() => setActivePageId('agent')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'notifications'}
-            label={t('settingsPanel.nav.notifications')}
-            testId="settings-section-nav-notifications"
-            onClick={() => setActivePageId('notifications')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'canvas'}
-            label={t('settingsPanel.nav.canvas')}
-            testId="settings-section-nav-canvas"
-            onClick={() => setActivePageId('canvas')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'shortcuts'}
-            label={t('settingsPanel.nav.shortcuts')}
-            testId="settings-section-nav-shortcuts"
-            onClick={() => setActivePageId('shortcuts')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'task-configuration'}
-            label={t('settingsPanel.nav.tasks')}
-            testId="settings-section-nav-task-configuration"
-            onClick={() => setActivePageId('task-configuration')}
-          />
-          <SettingsPanelNavButton
-            isActive={activePageId === 'integrations'}
-            label={t('settingsPanel.nav.integrations')}
-            testId="settings-section-nav-integrations"
-            onClick={() => setActivePageId('integrations')}
-          />
-
-          <div className="settings-panel__nav-group-label">{t('settingsPanel.nav.projects')}</div>
-          <div className="settings-panel__nav-group">
-            {workspaces.map(workspace => (
-              <SettingsPanelNavButton
-                key={workspace.id}
-                isActive={activePageId === getWorkspacePageId(workspace.id)}
-                label={
-                  workspace.name.trim().length > 0 ? workspace.name : getFolderName(workspace.path)
-                }
-                onClick={() => setActivePageId(getWorkspacePageId(workspace.id))}
-              />
-            ))}
-          </div>
-        </aside>
+        <SettingsPanelSidebar
+          activePageId={activePageId}
+          workspaces={workspaces}
+          endpointsEnabled={settings.experimentalRemoteWorkersEnabled}
+          onSelectPage={setActivePageId}
+        />
 
         <div className="settings-panel__content-wrapper">
           <div className="settings-panel__header">
@@ -364,6 +281,7 @@ export function SettingsPanel({
                 uiTheme={settings.uiTheme}
                 uiFontSize={settings.uiFontSize}
                 terminalFontSize={settings.terminalFontSize}
+                terminalFontFamily={settings.terminalFontFamily}
                 updatePolicy={settings.updatePolicy}
                 updateChannel={settings.updateChannel}
                 updateState={updateState}
@@ -371,12 +289,21 @@ export function SettingsPanel({
                 onChangeUiTheme={updateUiTheme}
                 onChangeUiFontSize={updateUiFontSize}
                 onChangeTerminalFontSize={updateTerminalFontSize}
+                onChangeTerminalFontFamily={updateTerminalFontFamily}
                 onChangeUpdatePolicy={updateUpdatePolicy}
                 onChangeUpdateChannel={updateUpdateChannel}
                 onCheckForUpdates={onCheckForUpdates}
                 onDownloadUpdate={onDownloadUpdate}
                 onInstallUpdate={onInstallUpdate}
               />
+            ) : null}
+
+            {activePageId === 'worker' ? (
+              <WorkerSection remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled} />
+            ) : null}
+
+            {activePageId === 'endpoints' && settings.experimentalRemoteWorkersEnabled ? (
+              <EndpointsSection />
             ) : null}
 
             {activePageId === 'agent' ? (
@@ -398,6 +325,11 @@ export function SettingsPanel({
                   onRemoveCustomModelOption={removeCustomModelOption}
                   onChangeAddModelInput={updateAddModelInput}
                   onAddCustomModelOption={addCustomModelOption}
+                />
+                <AgentEnvSection
+                  agentProviderOrder={settings.agentProviderOrder}
+                  agentEnvByProvider={settings.agentEnvByProvider}
+                  onChangeAgentEnvByProvider={updateAgentEnvByProvider}
                 />
               </>
             ) : null}
@@ -428,18 +360,35 @@ export function SettingsPanel({
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}
+                canvasWheelBehavior={settings.canvasWheelBehavior}
+                canvasWheelZoomModifier={settings.canvasWheelZoomModifier}
                 standardWindowSizeBucket={settings.standardWindowSizeBucket}
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
+                focusNodeUseVisibleCanvasCenter={settings.focusNodeUseVisibleCanvasCenter}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
                 onChangeCanvasInputMode={updateCanvasInputMode}
+                onChangeCanvasWheelBehavior={updateCanvasWheelBehavior}
+                onChangeCanvasWheelZoomModifier={updateCanvasWheelZoomModifier}
                 onChangeStandardWindowSizeBucket={updateStandardWindowSizeBucket}
                 onChangeDefaultTerminalProfileId={updateDefaultTerminalProfileId}
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
+                onChangeFocusNodeUseVisibleCanvasCenter={updateFocusNodeUseVisibleCanvasCenter}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
+              />
+            ) : null}
+
+            {activePageId === 'experimental' ? (
+              <ExperimentalSection
+                websiteWindowPolicy={settings.websiteWindowPolicy}
+                websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
+                remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
+                onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
+                onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
+                onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
               />
             ) : null}
 
@@ -453,6 +402,15 @@ export function SettingsPanel({
                   updateDisableAppShortcutsWhenTerminalFocused
                 }
                 onChangeKeybindings={updateKeybindings}
+              />
+            ) : null}
+
+            {activePageId === 'quick-menu' ? (
+              <QuickMenuSection
+                quickCommands={settings.quickCommands}
+                quickPhrases={settings.quickPhrases}
+                onChangeQuickCommands={updateQuickCommands}
+                onChangeQuickPhrases={updateQuickPhrases}
               />
             ) : null}
 
@@ -481,6 +439,10 @@ export function SettingsPanel({
                 worktreesRoot={activeWorkspace.worktreesRoot}
                 onChangeWorktreesRoot={root =>
                   onWorkspaceWorktreesRootChange(activeWorkspace.id, root)
+                }
+                environmentVariables={activeWorkspace.environmentVariables ?? {}}
+                onChangeEnvironmentVariables={envVars =>
+                  onWorkspaceEnvironmentVariablesChange(activeWorkspace.id, envVars)
                 }
               />
             ) : null}

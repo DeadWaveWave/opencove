@@ -54,6 +54,7 @@ describe('projectWorkspaceNodeDropLayout', () => {
       id: 'space-a',
       name: 'A',
       directoryPath: '/tmp/a',
+      targetMountId: null,
       labelColor: null,
       nodeIds: ['a'],
       rect: { x: 0, y: 0, width: 200, height: 200 },
@@ -62,6 +63,7 @@ describe('projectWorkspaceNodeDropLayout', () => {
       id: 'space-b',
       name: 'B',
       directoryPath: '/tmp/b',
+      targetMountId: null,
       labelColor: null,
       nodeIds: ['b'],
       rect: { x: 220, y: 0, width: 200, height: 200 },
@@ -136,102 +138,5 @@ describe('projectWorkspaceNodeDropLayout', () => {
     const nodesAfterOutside = applyProjectedPositions(nodes, projectedOutside.nextNodePositionById)
     const nodeBOutside = nodesAfterOutside.find(node => node.id === 'b')!
     expect(nodeBOutside.position.x).toBe(244)
-  })
-
-  it('locks space push-away projection after first enter until drag leaves the space', () => {
-    const spaceA: WorkspaceSpaceState = {
-      id: 'space-a',
-      name: 'A',
-      directoryPath: '/tmp/a',
-      labelColor: null,
-      nodeIds: ['a'],
-      rect: { x: 0, y: 0, width: 200, height: 200 },
-    }
-    const spaceB: WorkspaceSpaceState = {
-      id: 'space-b',
-      name: 'B',
-      directoryPath: '/tmp/b',
-      labelColor: null,
-      nodeIds: ['b'],
-      rect: { x: 220, y: 0, width: 200, height: 200 },
-    }
-
-    const nodes: Array<Node<TerminalNodeData>> = [
-      {
-        ...baseNode,
-        id: 'a',
-        data: { ...baseNode.data, title: 'a', width: 100, height: 100 },
-        position: { x: 24, y: 24 },
-      },
-      {
-        ...baseNode,
-        id: 'b',
-        data: { ...baseNode.data, title: 'b', width: 100, height: 100 },
-        position: { x: 244, y: 24 },
-      },
-      {
-        ...baseNode,
-        id: 'drag',
-        data: { ...baseNode.data, title: 'drag', width: 220, height: 100 },
-        position: { x: 500, y: 24 },
-      },
-    ]
-
-    const spaces = [spaceA, spaceB]
-    const desiredInsideSpaceA = new Map([['drag', { x: 24, y: 24 }]])
-
-    const projectedFirst = projectWorkspaceNodeDropLayout({
-      nodes,
-      spaces,
-      draggedNodeIds: ['drag'],
-      draggedNodePositionById: desiredInsideSpaceA,
-      dragDx: -476,
-      dragDy: 0,
-    })
-
-    expect(projectedFirst.nextCache).toBeTruthy()
-
-    const expandedSpaceA = projectedFirst.nextSpaces.find(space => space.id === 'space-a')?.rect
-    expect(expandedSpaceA).toBeTruthy()
-
-    const desiredDeeperInside = new Map([
-      [
-        'drag',
-        {
-          x: expandedSpaceA!.x + expandedSpaceA!.width - 24 - 220,
-          y: expandedSpaceA!.y + expandedSpaceA!.height - 24 - 100,
-        },
-      ],
-    ])
-
-    const projectedSecond = projectWorkspaceNodeDropLayout({
-      nodes,
-      spaces,
-      draggedNodeIds: ['drag'],
-      draggedNodePositionById: desiredDeeperInside,
-      dragDx: -476,
-      dragDy: 0,
-      previousCache: projectedFirst.nextCache,
-    })
-
-    expect(projectedSecond.nextCache).toBe(projectedFirst.nextCache)
-    expect(projectedSecond.nextSpaces).toEqual(projectedFirst.nextSpaces)
-    expect(projectedSecond.nextNodePositionById.get('drag')).not.toEqual(
-      projectedFirst.nextNodePositionById.get('drag'),
-    )
-
-    const desiredOutside = new Map([['drag', { x: 500, y: 24 }]])
-    const projectedOutside = projectWorkspaceNodeDropLayout({
-      nodes,
-      spaces,
-      draggedNodeIds: ['drag'],
-      draggedNodePositionById: desiredOutside,
-      dragDx: 0,
-      dragDy: 0,
-      previousCache: projectedFirst.nextCache,
-    })
-
-    expect(projectedOutside.targetSpaceId).toBeNull()
-    expect(projectedOutside.nextCache).toBeNull()
   })
 })

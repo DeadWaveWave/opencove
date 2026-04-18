@@ -31,7 +31,7 @@ export function useWorkspaceCanvasTaskAgentEdges(nodes: Node<TerminalNodeData>[]
             id: `task-link-${taskNode.id}-${linkedAgentNode.id}`,
             source: taskNode.id,
             target: linkedAgentNode.id,
-            type: 'bezier',
+            type: 'default',
             animated: isActive,
             className: edgeClassName,
             selectable: false,

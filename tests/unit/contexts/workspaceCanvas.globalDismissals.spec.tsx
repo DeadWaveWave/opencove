@@ -310,4 +310,28 @@ describe('WorkspaceCanvasView global pointer/click handlers', () => {
 
     expect(clearNodeSelection).toHaveBeenCalledTimes(1)
   })
+
+  it('registers a non-passive wheel capture listener when manual canvas wheel gestures are enabled', async () => {
+    const addEventListenerSpy = vi.spyOn(HTMLDivElement.prototype, 'addEventListener')
+
+    render(
+      <WorkspaceCanvasView
+        {...createBaseProps({
+          useManualCanvasWheelGestures: true,
+          handleCanvasWheelCapture: vi.fn(),
+          spaces: [switcherSpace],
+        })}
+      />,
+    )
+
+    await act(async () => {})
+
+    expect(addEventListenerSpy).toHaveBeenCalledWith(
+      'wheel',
+      expect.any(Function),
+      expect.objectContaining({ passive: false, capture: true }),
+    )
+
+    addEventListenerSpy.mockRestore()
+  })
 })

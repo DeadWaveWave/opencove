@@ -16,6 +16,8 @@
 
 `Project -> Space -> (Endpoint/Target) -> Task -> Session -> Files`
 
+> 文件与编辑能力的约束见：`docs/FILESYSTEM.md` 与 `docs/DOCUMENT_NODE.md`。
+
 ## 2. 当前代码的事实约束（Landing 必须兼容）
 
 当前主链已经客观存在：
@@ -146,6 +148,7 @@ src/contexts/terminal/application/     # 同上
 
 - URI + provider 模型（Landing 可先只支持 `file:`）
 - read/write/list/stat contracts（为后续 editor/remote 打底）
+- 画布内文件编辑（Doc Node）必须复用 filesystem contracts 与 guardrails（approved roots / scope）
 
 ## 6. Landing 的强制落点规则（避免继续堆 patch）
 

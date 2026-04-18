@@ -13,6 +13,7 @@ import {
 import {
   buildDraggedNodesForTarget,
   reassignNodesAcrossSpaces,
+  resolveSpaceAtPoint as resolveSpaceAtPointFromHelpers,
 } from './useSpaceOwnership.drop.helpers'
 import { projectWorkspaceNodeDropLayout } from './useSpaceOwnership.projectDropLayout'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
@@ -123,7 +124,9 @@ export function useWorkspaceCanvasApplyOwnershipForDrop({
               y: draggedDropRect.y + draggedDropRect.height / 2,
             }
           : dropFlowPoint
-      const targetSpace = resolveSpaceAtPoint(dropTargetPoint)
+      const targetSpace = hasSpaceRectOverride
+        ? resolveSpaceAtPointFromHelpers(spacesWithRectOverride, dropTargetPoint)
+        : resolveSpaceAtPoint(dropTargetPoint)
       const targetSpaceId = targetSpace?.id ?? null
       const anchorNodeId = nodeIds[0] ?? null
       const dragStart = anchorNodeId ? (dragStartNodePositionById.get(anchorNodeId) ?? null) : null

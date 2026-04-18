@@ -1,7 +1,8 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
 import type { Node } from '@xyflow/react'
-import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
+import type { TerminalNodeData, WorkspaceSpaceRect } from '../../../types'
 import { areWorkspaceSnapGuidesEqual, type WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
+import type { WorkspaceCanvasNodeDragSession } from './useNodeDragSession'
 
 export interface UseApplyNodeChangesParams {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
@@ -14,19 +15,9 @@ export interface UseApplyNodeChangesParams {
   ) => { x: number; y: number }
   applyPendingScrollbacks: (targetNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[]
   isNodeDraggingRef: MutableRefObject<boolean>
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  selectedSpaceIdsRef: MutableRefObject<string[]>
   dragSelectedSpaceIdsRef?: MutableRefObject<string[] | null>
-  magneticSnappingEnabledRef: MutableRefObject<boolean>
-  setSnapGuides: Dispatch<SetStateAction<WorkspaceSnapGuide[] | null>>
   exclusiveNodeDragAnchorIdRef?: MutableRefObject<string | null>
-  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
-  onRequestPersistFlush?: () => void
-  setSpaceFramePreview?: Dispatch<SetStateAction<ReadonlyMap<string, WorkspaceSpaceRect> | null>>
-  nodeDragPointerAnchorRef?: MutableRefObject<{
-    nodeId: string
-    offset: { x: number; y: number }
-  } | null>
+  nodeDragSession: WorkspaceCanvasNodeDragSession
 }
 
 export function setResolvedSnapGuides(

@@ -1,4 +1,11 @@
-import type { AgentRuntimeStatus, NodeFrame, Point, WorkspaceNodeKind } from '../types'
+import type {
+  AgentLaunchMode,
+  AgentRuntimeStatus,
+  NodeFrame,
+  Point,
+  WorkspaceNodeKind,
+} from '../types'
+import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { TerminalThemeMode } from './terminalNode/theme'
 
@@ -14,6 +21,10 @@ export interface TerminalNodeProps {
   title: string
   kind: WorkspaceNodeKind
   labelColor?: LabelColor | null
+  terminalProvider?: AgentProvider | null
+  agentLaunchMode?: AgentLaunchMode | null
+  agentResumeSessionIdVerified?: boolean
+  isLiveSessionReattach?: boolean
   terminalThemeMode?: TerminalThemeMode
   isSelected?: boolean
   isDragging?: boolean
@@ -24,6 +35,7 @@ export interface TerminalNodeProps {
   width: number
   height: number
   terminalFontSize: number
+  terminalFontFamily: string | null
   scrollback: string | null
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>

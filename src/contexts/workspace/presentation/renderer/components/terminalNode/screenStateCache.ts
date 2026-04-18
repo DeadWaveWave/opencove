@@ -42,6 +42,15 @@ export function getCachedTerminalScreenState(
   return cached
 }
 
+export function peekCachedTerminalScreenState(nodeId: string): CachedTerminalScreenState | null {
+  const normalizedNodeId = normalizeId(nodeId)
+  if (normalizedNodeId.length === 0) {
+    return null
+  }
+
+  return screenStateByNodeId.get(normalizedNodeId) ?? null
+}
+
 export function setCachedTerminalScreenState(
   nodeId: string,
   state: CachedTerminalScreenState,
@@ -70,6 +79,24 @@ export function setCachedTerminalScreenState(
     cols: normalizeDimension(state.cols, 80),
     rows: normalizeDimension(state.rows, 24),
   })
+}
+
+export function removeCachedTerminalScreenState(nodeId: string, sessionId: string): void {
+  const normalizedNodeId = normalizeId(nodeId)
+  const normalizedSessionId = normalizeId(sessionId)
+
+  if (normalizedNodeId.length === 0 || normalizedSessionId.length === 0) {
+    return
+  }
+
+  const cached = screenStateByNodeId.get(normalizedNodeId)
+  if (cached?.sessionId === normalizedSessionId) {
+    screenStateByNodeId.delete(normalizedNodeId)
+  }
+
+  if (invalidatedSessionIdByNodeId.get(normalizedNodeId) === normalizedSessionId) {
+    invalidatedSessionIdByNodeId.delete(normalizedNodeId)
+  }
 }
 
 export function invalidateCachedTerminalScreenState(nodeId: string, sessionId: string): void {

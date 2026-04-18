@@ -1,5 +1,6 @@
 import type {
   AgentNodeData,
+  DocumentNodeData,
   ImageNodeData,
   NoteNodeData,
   PersistedTerminalNode,
@@ -7,9 +8,14 @@ import type {
   SpaceArchiveRecord,
   TaskAgentSessionRecord,
   TaskNodeData,
+  WebsiteNodeData,
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
-import type { CanvasImageMimeType, TerminalRuntimeKind } from '@shared/contracts/dto'
+import type {
+  CanvasImageMimeType,
+  TerminalRuntimeKind,
+  WebsiteWindowSessionMode,
+} from '@shared/contracts/dto'
 import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
 import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
@@ -17,6 +23,7 @@ import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
 import {
   normalizeAgentRuntimeStatus,
   normalizeDirectoryMode,
+  normalizeEnvironmentVariables,
   normalizeLaunchMode,
   normalizeNodeKind,
   normalizeOptionalString,
@@ -107,6 +114,7 @@ function ensurePersistedWorkspaceSpace(
     id,
     name,
     directoryPath: normalizedDirectoryPath,
+    targetMountId: normalizeOptionalString(record.targetMountId),
     labelColor: normalizeLabelColor(record.labelColor),
     nodeIds: normalizeWorkspaceSpaceNodeIds(record.nodeIds),
     rect: normalizeWorkspaceSpaceRect(record.rect),
@@ -224,6 +232,57 @@ function ensurePersistedImageData(value: unknown): ImageNodeData | null {
   }
 }
 
+function ensurePersistedDocumentData(value: unknown): DocumentNodeData | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const uri = typeof record.uri === 'string' ? record.uri.trim() : ''
+  if (uri.length === 0) {
+    return null
+  }
+
+  try {
+    const parsed = new URL(uri)
+    if (parsed.protocol !== 'file:') {
+      return null
+    }
+  } catch {
+    return null
+  }
+
+  return { uri }
+}
+
+function ensurePersistedWebsiteData(value: unknown): WebsiteNodeData | null {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const url = typeof record.url === 'string' ? record.url.trim() : ''
+  const pinned = typeof record.pinned === 'boolean' ? record.pinned : false
+  const normalizedProfileId = normalizeOptionalString(record.profileId)
+  const sessionModeInput = typeof record.sessionMode === 'string' ? record.sessionMode.trim() : ''
+  const sessionMode: WebsiteWindowSessionMode =
+    sessionModeInput === 'incognito' ||
+    sessionModeInput === 'profile' ||
+    sessionModeInput === 'shared'
+      ? (sessionModeInput as WebsiteWindowSessionMode)
+      : 'shared'
+
+  const effectiveSessionMode =
+    sessionMode === 'profile' && !normalizedProfileId ? 'shared' : sessionMode
+
+  return {
+    url,
+    pinned,
+    sessionMode: effectiveSessionMode,
+    profileId: effectiveSessionMode === 'profile' ? normalizedProfileId : null,
+  }
+}
+
 function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   if (!node || typeof node !== 'object') {
     return null
@@ -253,10 +312,13 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
   }
 
   const kind = normalizeNodeKind(record.kind)
+  const sessionId = normalizeOptionalString(record.sessionId)
   const agent = ensurePersistedAgentData(record.agent)
   const task = ensurePersistedTaskData(record.task)
   const note = ensurePersistedNoteData(record.task)
   const image = ensurePersistedImageData(record.task)
+  const document = ensurePersistedDocumentData(record.task)
+  const website = ensurePersistedWebsiteData(record.task)
   const runtimeKindInput = record.runtimeKind
   const runtimeKind: TerminalRuntimeKind | undefined =
     runtimeKindInput === 'windows' || runtimeKindInput === 'wsl' || runtimeKindInput === 'posix'
@@ -265,6 +327,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
 
   return {
     id,
+    ...(sessionId ? { sessionId } : {}),
     title,
     titlePinnedByUser: record.titlePinnedByUser === true,
     width,
@@ -272,6 +335,13 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     kind,
     profileId: normalizeOptionalString(record.profileId),
     runtimeKind,
+    terminalProviderHint:
+      record.terminalProviderHint === 'claude-code' ||
+      record.terminalProviderHint === 'codex' ||
+      record.terminalProviderHint === 'opencode' ||
+      record.terminalProviderHint === 'gemini'
+        ? record.terminalProviderHint
+        : null,
     labelColorOverride: normalizeNodeLabelColorOverride(record.labelColorOverride),
     status: normalizeAgentRuntimeStatus(record.status),
     startedAt: normalizeOptionalString(record.startedAt),
@@ -282,7 +352,18 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     executionDirectory: normalizeOptionalString(record.executionDirectory),
     expectedDirectory: normalizeOptionalString(record.expectedDirectory),
     agent: kind === 'agent' ? agent : null,
-    task: kind === 'task' ? task : kind === 'note' ? note : kind === 'image' ? image : null,
+    task:
+      kind === 'task'
+        ? task
+        : kind === 'note'
+          ? note
+          : kind === 'image'
+            ? image
+            : kind === 'document'
+              ? document
+              : kind === 'website'
+                ? (website ?? { url: '', pinned: false, sessionMode: 'shared', profileId: null })
+                : null,
     position: {
       x: positionRecord.x,
       y: positionRecord.y,
@@ -303,6 +384,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   const pullRequestBaseBranchOptions = normalizePullRequestBaseBranchOptions(
     record.pullRequestBaseBranchOptions,
   )
+  const environmentVariables = normalizeEnvironmentVariables(record.environmentVariables)
   const nodes = record.nodes
   const spaces = record.spaces
   const activeSpaceId = record.activeSpaceId
@@ -350,6 +432,7 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
     path,
     worktreesRoot,
     pullRequestBaseBranchOptions,
+    environmentVariables,
     nodes: normalizedNodes,
     viewport: normalizeWorkspaceViewport(record.viewport),
     isMinimapVisible: normalizeWorkspaceMinimapVisible(record.isMinimapVisible),

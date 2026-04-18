@@ -1,4 +1,5 @@
 import React from 'react'
+import { Folder } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceSpaceRect } from '../../../types'
@@ -15,6 +16,7 @@ export function WorkspaceSpaceRegionItem({
   space,
   resolvedRect,
   isSelected,
+  isExplorerOpen,
   isDragSurfaceSelectionMode,
   githubPullRequestsEnabled,
   editingSpaceId,
@@ -27,14 +29,18 @@ export function WorkspaceSpaceRegionItem({
   handleSpaceDragHandlePointerDown,
   updateHandleCursor,
   resolvedWorktreeInfo,
+  allowBranchRename,
+  resolvedChangedFileCount,
   resolvedBranchBadge,
   resolvedPullRequestSummary,
   onStartBranchRename,
+  onToggleExplorer,
   onOpenSpaceMenu,
 }: {
   space: SpaceVisual
   resolvedRect: WorkspaceSpaceRect
   isSelected: boolean
+  isExplorerOpen: boolean
   isDragSurfaceSelectionMode: boolean
   githubPullRequestsEnabled: boolean
   editingSpaceId: string | null
@@ -55,6 +61,8 @@ export function WorkspaceSpaceRegionItem({
     mode: SpaceFrameHandleMode,
   ) => void
   resolvedWorktreeInfo: GitWorktreeInfo | null
+  allowBranchRename: boolean
+  resolvedChangedFileCount: number | null
   resolvedBranchBadge: WorkspaceSpaceBranchBadge | null
   resolvedPullRequestSummary: GitHubPullRequestSummary | null
   onStartBranchRename: (payload: {
@@ -63,12 +71,12 @@ export function WorkspaceSpaceRegionItem({
     worktreePath: string
     branchName: string
   }) => void
+  onToggleExplorer?: (spaceId: string) => void
   onOpenSpaceMenu?: (spaceId: string, anchor: { x: number; y: number }) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const branchName = resolvedWorktreeInfo?.branch ?? null
   const worktreePath = resolvedWorktreeInfo?.path ?? null
-  const shouldShowSpaceLabel = resolvedBranchBadge === null
   const pullRequestUrl = resolvedPullRequestSummary?.ref.url ?? null
   const shouldShowPullRequestChip =
     githubPullRequestsEnabled &&
@@ -76,6 +84,20 @@ export function WorkspaceSpaceRegionItem({
     Boolean(worktreePath) &&
     Boolean(pullRequestUrl) &&
     resolvedPullRequestSummary !== null
+
+  const filesPillCount =
+    typeof resolvedChangedFileCount === 'number' && Number.isFinite(resolvedChangedFileCount)
+      ? Math.max(0, Math.floor(resolvedChangedFileCount))
+      : null
+  const filesPillCountLabel =
+    filesPillCount !== null
+      ? filesPillCount === 0
+        ? t('worktree.clean')
+        : t('worktree.changedFiles', { count: filesPillCount })
+      : null
+  const filesPillTitle = filesPillCountLabel
+    ? `${t('spaceActions.openExplorer')} · ${filesPillCountLabel}`
+    : t('spaceActions.openExplorer')
   return (
     <div
       className={
@@ -159,16 +181,16 @@ export function WorkspaceSpaceRegionItem({
           }}
         />
       ) : (
-        <div
-          className="workspace-space-region__label-group nodrag nowheel"
-          onPointerDown={event => {
-            event.stopPropagation()
-          }}
-          onClick={event => {
-            event.stopPropagation()
-          }}
-        >
-          {shouldShowSpaceLabel ? (
+        <>
+          <div
+            className="workspace-space-region__label-group workspace-space-region__label-group--left nodrag nowheel"
+            onPointerDown={event => {
+              event.stopPropagation()
+            }}
+            onClick={event => {
+              event.stopPropagation()
+            }}
+          >
             <button
               type="button"
               className="workspace-space-region__label"
@@ -187,86 +209,126 @@ export function WorkspaceSpaceRegionItem({
               ) : null}
               {space.name}
             </button>
-          ) : null}
 
-          {branchName && resolvedBranchBadge && worktreePath ? (
             <button
               type="button"
-              className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
-              data-testid={`workspace-space-worktree-branch-${space.id}`}
-              title={resolvedBranchBadge.title}
+              className={
+                isExplorerOpen
+                  ? 'workspace-space-region__files-pill workspace-space-region__files-pill--active'
+                  : 'workspace-space-region__files-pill'
+              }
+              data-testid={`workspace-space-files-${space.id}`}
+              aria-pressed={isExplorerOpen}
+              aria-label={t('spaceActions.openExplorer')}
+              title={filesPillTitle}
               onClick={event => {
                 event.stopPropagation()
-                onStartBranchRename({
-                  spaceId: space.id,
-                  spaceName: space.name,
-                  worktreePath,
-                  branchName,
+                onToggleExplorer?.(space.id)
+              }}
+            >
+              <Folder className="workspace-space-region__files-pill-icon" aria-hidden="true" />
+              <span className="workspace-space-region__files-pill-label">
+                {t('spaceActions.files')}
+              </span>
+              {filesPillCount !== null && filesPillCount > 0 ? (
+                <span className="workspace-space-region__files-pill-count" aria-hidden="true">
+                  {filesPillCount > 99 ? '99+' : filesPillCount}
+                </span>
+              ) : null}
+            </button>
+
+            <button
+              type="button"
+              className="workspace-space-region__menu"
+              data-testid={`workspace-space-menu-${space.id}`}
+              aria-label={t('spaceActions.openSpaceActions', { name: space.name })}
+              title={t('spaceActions.title')}
+              onClick={event => {
+                event.stopPropagation()
+                const rect = event.currentTarget.getBoundingClientRect()
+                onOpenSpaceMenu?.(space.id, {
+                  x: Math.round(rect.left),
+                  y: Math.round(rect.bottom + 8),
                 })
               }}
             >
-              <span className="workspace-space-region__branch-badge-kind">
-                {resolvedBranchBadge.kind}
-              </span>
-              <span className="workspace-space-region__branch-badge-value">
-                {resolvedBranchBadge.value}
-              </span>
+              ...
             </button>
-          ) : resolvedBranchBadge ? (
-            <span
-              className="workspace-space-region__branch-badge"
-              data-testid={`workspace-space-worktree-branch-${space.id}`}
-              title={resolvedBranchBadge.title}
-            >
-              <span className="workspace-space-region__branch-badge-kind">
-                {resolvedBranchBadge.kind}
-              </span>
-              <span className="workspace-space-region__branch-badge-value">
-                {resolvedBranchBadge.value}
-              </span>
-            </span>
-          ) : null}
+          </div>
 
-          {branchName && worktreePath && shouldShowPullRequestChip && resolvedPullRequestSummary ? (
-            <a
-              className="workspace-space-region__pr-chip"
-              data-testid={`workspace-space-pr-chip-${space.id}`}
-              href={pullRequestUrl ?? undefined}
-              target="_blank"
-              rel="noreferrer"
-              title={`${resolvedPullRequestSummary.title} (#${resolvedPullRequestSummary.number})`}
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-              }}
-            >
-              <span className="workspace-space-region__pr-chip-kind">PR</span>
-              <span className="workspace-space-region__pr-chip-value">
-                {`#${resolvedPullRequestSummary.number}`}
-              </span>
-            </a>
-          ) : null}
-
-          <button
-            type="button"
-            className="workspace-space-region__menu"
-            data-testid={`workspace-space-menu-${space.id}`}
-            aria-label={t('spaceActions.openSpaceActions', { name: space.name })}
-            title={t('spaceActions.title')}
+          <div
+            className="workspace-space-region__label-group workspace-space-region__label-group--right nodrag nowheel"
+            onPointerDown={event => {
+              event.stopPropagation()
+            }}
             onClick={event => {
               event.stopPropagation()
-              const rect = event.currentTarget.getBoundingClientRect()
-              onOpenSpaceMenu?.(space.id, {
-                x: Math.round(rect.left),
-                y: Math.round(rect.bottom + 8),
-              })
             }}
           >
-            ...
-          </button>
-        </div>
+            {branchName && resolvedBranchBadge && worktreePath && allowBranchRename ? (
+              <button
+                type="button"
+                className="workspace-space-region__branch-badge workspace-space-region__branch-badge--button"
+                data-testid={`workspace-space-worktree-branch-${space.id}`}
+                title={resolvedBranchBadge.title}
+                onClick={event => {
+                  event.stopPropagation()
+                  onStartBranchRename({
+                    spaceId: space.id,
+                    spaceName: space.name,
+                    worktreePath,
+                    branchName,
+                  })
+                }}
+              >
+                <span className="workspace-space-region__branch-badge-kind">
+                  {resolvedBranchBadge.kind}
+                </span>
+                <span className="workspace-space-region__branch-badge-value">
+                  {resolvedBranchBadge.value}
+                </span>
+              </button>
+            ) : resolvedBranchBadge ? (
+              <span
+                className="workspace-space-region__branch-badge"
+                data-testid={`workspace-space-worktree-branch-${space.id}`}
+                title={resolvedBranchBadge.title}
+              >
+                <span className="workspace-space-region__branch-badge-kind">
+                  {resolvedBranchBadge.kind}
+                </span>
+                <span className="workspace-space-region__branch-badge-value">
+                  {resolvedBranchBadge.value}
+                </span>
+              </span>
+            ) : null}
+
+            {branchName &&
+            worktreePath &&
+            shouldShowPullRequestChip &&
+            resolvedPullRequestSummary ? (
+              <a
+                className="workspace-space-region__pr-chip"
+                data-testid={`workspace-space-pr-chip-${space.id}`}
+                href={pullRequestUrl ?? undefined}
+                target="_blank"
+                rel="noreferrer"
+                title={`${resolvedPullRequestSummary.title} (#${resolvedPullRequestSummary.number})`}
+                onPointerDown={event => {
+                  event.stopPropagation()
+                }}
+                onClick={event => {
+                  event.stopPropagation()
+                }}
+              >
+                <span className="workspace-space-region__pr-chip-kind">PR</span>
+                <span className="workspace-space-region__pr-chip-value">
+                  {`#${resolvedPullRequestSummary.number}`}
+                </span>
+              </a>
+            ) : null}
+          </div>
+        </>
       )}
     </div>
   )

@@ -19,8 +19,11 @@ export function useTerminalThemeApplier({
     }
 
     const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
-    terminal.options.theme = { ...resolveTerminalTheme(terminalThemeMode) }
-    containerRef.current?.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
+    const container = containerRef.current
+    const terminalNode = container?.closest('.terminal-node') ?? null
+    container?.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
+    terminalNode?.setAttribute('data-cove-terminal-node-theme', resolvedTerminalUiTheme)
+    terminal.options.theme = { ...resolveTerminalTheme(terminalThemeMode, terminalNode) }
     terminal.refresh(0, Math.max(0, terminal.rows - 1))
   }, [containerRef, terminalRef, terminalThemeMode])
 }

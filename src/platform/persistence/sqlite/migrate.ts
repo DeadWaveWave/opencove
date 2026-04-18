@@ -34,17 +34,20 @@ function createTables(db: Database.Database): void {
       path TEXT NOT NULL,
       worktrees_root TEXT NOT NULL,
       pull_request_base_branch_options_json TEXT NOT NULL DEFAULT '[]',
+      environment_variables_json TEXT NOT NULL DEFAULT '{}',
       space_archive_records_json TEXT NOT NULL DEFAULT '[]',
       viewport_x REAL NOT NULL,
       viewport_y REAL NOT NULL,
       viewport_zoom REAL NOT NULL,
       is_minimap_visible INTEGER NOT NULL,
-      active_space_id TEXT
+      active_space_id TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0
     );
 
     CREATE TABLE IF NOT EXISTS nodes (
       id TEXT PRIMARY KEY,
       workspace_id TEXT NOT NULL,
+      session_id TEXT,
       title TEXT NOT NULL,
       title_pinned_by_user INTEGER NOT NULL,
       position_x REAL NOT NULL,
@@ -69,6 +72,7 @@ function createTables(db: Database.Database): void {
       workspace_id TEXT NOT NULL,
       name TEXT NOT NULL,
       directory_path TEXT NOT NULL,
+      target_mount_id TEXT,
       label_color TEXT,
       rect_x REAL,
       rect_y REAL,
@@ -84,6 +88,12 @@ function createTables(db: Database.Database): void {
     );
 
     CREATE TABLE IF NOT EXISTS node_scrollback (
+      node_id TEXT PRIMARY KEY,
+      scrollback TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS agent_node_placeholder_scrollback (
       node_id TEXT PRIMARY KEY,
       scrollback TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -134,9 +144,9 @@ function hasTableColumn(db: Database.Database, tableName: string, columnName: st
 function ensureTableColumn(
   db: Database.Database,
   options: { tableName: string; columnName: string; definitionSql: string },
-): void {
+): boolean {
   if (hasTableColumn(db, options.tableName, options.columnName)) {
-    return
+    return false
   }
 
   db.exec(
@@ -144,6 +154,25 @@ function ensureTableColumn(
       options.columnName,
     )} ${options.definitionSql}`,
   )
+
+  return true
+}
+
+function backfillWorkspaceSortOrder(db: Database.Database): void {
+  const allZero = db
+    .prepare('SELECT COUNT(*) as cnt FROM workspaces WHERE sort_order != 0')
+    .get() as {
+    cnt: number
+  }
+  if (allZero.cnt > 0) {
+    return
+  }
+
+  const rows = db.prepare('SELECT id FROM workspaces ORDER BY rowid').all() as { id: string }[]
+  const update = db.prepare('UPDATE workspaces SET sort_order = ? WHERE id = ?')
+  rows.forEach((row, index) => {
+    update.run(index, row.id)
+  })
 }
 
 function ensureCurrentSchema(db: Database.Database): void {
@@ -157,9 +186,25 @@ function ensureCurrentSchema(db: Database.Database): void {
 
   ensureTableColumn(db, {
     tableName: 'workspaces',
+    columnName: 'environment_variables_json',
+    definitionSql: `TEXT NOT NULL DEFAULT '{}'`,
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspaces',
     columnName: 'space_archive_records_json',
     definitionSql: `TEXT NOT NULL DEFAULT '[]'`,
   })
+
+  const addedWorkspaceSortOrder = ensureTableColumn(db, {
+    tableName: 'workspaces',
+    columnName: 'sort_order',
+    definitionSql: 'INTEGER NOT NULL DEFAULT 0',
+  })
+
+  if (addedWorkspaceSortOrder) {
+    backfillWorkspaceSortOrder(db)
+  }
 
   ensureTableColumn(db, {
     tableName: 'nodes',
@@ -168,8 +213,20 @@ function ensureCurrentSchema(db: Database.Database): void {
   })
 
   ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'session_id',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
     tableName: 'workspace_spaces',
     columnName: 'label_color',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'target_mount_id',
     definitionSql: 'TEXT',
   })
 }
@@ -192,6 +249,7 @@ export function migrate(db: Database.Database): void {
       const normalized = normalizePersistedAppState(parsed)
       if (normalized) {
         writeNormalizedAppState(db, normalized)
+        backfillWorkspaceSortOrder(db)
         writeNormalizedScrollbacks(db, normalized)
       }
     }

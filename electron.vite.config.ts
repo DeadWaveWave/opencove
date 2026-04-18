@@ -55,11 +55,20 @@ function opencoveCspPlugin(): Plugin {
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@app': resolve(__dirname, 'src/app'),
+        '@contexts': resolve(__dirname, 'src/contexts'),
+        '@platform': resolve(__dirname, 'src/platform'),
+        '@shared': resolve(__dirname, 'src/shared'),
+      },
+    },
     build: {
       outDir: 'out/main',
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/app/main/index.ts'),
+          worker: resolve(__dirname, 'src/app/worker/index.ts'),
           ptyHost: resolve(__dirname, 'src/platform/process/ptyHost/entry.ts'),
         },
       },
@@ -67,6 +76,14 @@ export default defineConfig({
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
+    resolve: {
+      alias: {
+        '@app': resolve(__dirname, 'src/app'),
+        '@contexts': resolve(__dirname, 'src/contexts'),
+        '@platform': resolve(__dirname, 'src/platform'),
+        '@shared': resolve(__dirname, 'src/shared'),
+      },
+    },
     build: {
       outDir: 'out/preload',
       rollupOptions: {
@@ -83,6 +100,7 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/app/renderer/index.html'),
+          web: resolve(__dirname, 'src/app/renderer/web.html'),
         },
       },
     },

@@ -238,6 +238,7 @@ export function useNodeFrameResize({
   const draftFrameRef = useRef<NodeFrame | null>(null)
   const pendingCommitFrameRef = useRef<NodeFrame | null>(null)
   const baseFrameAtResizeEndRef = useRef<NodeFrame | null>(null)
+  const activeResizeCleanupRef = useRef<(() => void) | null>(null)
   const [isResizing, setIsResizing] = useState(false)
   const [draftFrame, setDraftFrame] = useState<NodeFrame | null>(null)
   const zoom = useStore(storeState => {
@@ -249,10 +250,37 @@ export function useNodeFrameResize({
 
     return currentZoom
   })
+  const zoomRef = useRef(zoom)
+
+  useEffect(() => {
+    zoomRef.current = zoom
+  }, [zoom])
+
+  const minSizeRef = useRef(minSize)
+  useEffect(() => {
+    minSizeRef.current = minSize
+  }, [minSize])
+
+  const onResizeRef = useRef(onResize)
+  useEffect(() => {
+    onResizeRef.current = onResize
+  }, [onResize])
+
+  const onResizeEndRef = useRef(onResizeEnd)
+  useEffect(() => {
+    onResizeEndRef.current = onResizeEnd
+  }, [onResizeEnd])
 
   useEffect(() => {
     draftFrameRef.current = draftFrame
   }, [draftFrame])
+
+  useEffect(() => {
+    return () => {
+      activeResizeCleanupRef.current?.()
+      activeResizeCleanupRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!draftFrame || isResizing) {
@@ -302,6 +330,9 @@ export function useNodeFrameResize({
       event.stopPropagation()
       event.currentTarget.setPointerCapture(event.pointerId)
 
+      activeResizeCleanupRef.current?.()
+      activeResizeCleanupRef.current = null
+
       const frame: NodeFrame = {
         position: { ...position },
         size: { width, height },
@@ -322,73 +353,74 @@ export function useNodeFrameResize({
             : null,
       }
 
+      draftFrameRef.current = frame
       onResizeStart?.()
       setDraftFrame(frame)
       setIsResizing(true)
+
+      const handlePointerMove = (pointerEvent: PointerEvent) => {
+        const start = resizeStartRef.current
+        if (!start) {
+          return
+        }
+
+        const nextFrame = resolveResizedNodeFrame({
+          initialFrame: start.frame,
+          edges: start.edges,
+          delta: normalizeResizePointerDelta(
+            {
+              x: pointerEvent.clientX - start.client.x,
+              y: pointerEvent.clientY - start.client.y,
+            },
+            zoomRef.current,
+          ),
+          minSize: minSizeRef.current,
+          aspectRatio: start.aspectRatio,
+        })
+
+        draftFrameRef.current = nextFrame
+        setDraftFrame(nextFrame)
+      }
+
+      let didFinalize = false
+      const finalizeResize = () => {
+        if (didFinalize) {
+          return
+        }
+
+        didFinalize = true
+        activeResizeCleanupRef.current?.()
+
+        setIsResizing(false)
+
+        const finalFrame = draftFrameRef.current ?? frame
+
+        pendingCommitFrameRef.current = finalFrame
+        baseFrameAtResizeEndRef.current = {
+          position: { x: position.x, y: position.y },
+          size: { width, height },
+        }
+
+        onResizeRef.current(finalFrame)
+        resizeStartRef.current = null
+        onResizeEndRef.current?.()
+      }
+
+      const cleanup = () => {
+        window.removeEventListener('pointermove', handlePointerMove)
+        window.removeEventListener('pointerup', finalizeResize)
+        window.removeEventListener('pointercancel', finalizeResize)
+        activeResizeCleanupRef.current = null
+      }
+
+      activeResizeCleanupRef.current = cleanup
+
+      window.addEventListener('pointermove', handlePointerMove)
+      window.addEventListener('pointerup', finalizeResize, { once: true })
+      window.addEventListener('pointercancel', finalizeResize, { once: true })
     },
     [aspectRatio, height, onResizeStart, position, width],
   )
-
-  useEffect(() => {
-    if (!isResizing) {
-      return
-    }
-
-    const handlePointerMove = (event: PointerEvent) => {
-      const start = resizeStartRef.current
-      if (!start) {
-        return
-      }
-
-      const nextFrame = resolveResizedNodeFrame({
-        initialFrame: start.frame,
-        edges: start.edges,
-        delta: normalizeResizePointerDelta(
-          {
-            x: event.clientX - start.client.x,
-            y: event.clientY - start.client.y,
-          },
-          zoom,
-        ),
-        minSize,
-        aspectRatio: start.aspectRatio,
-      })
-
-      draftFrameRef.current = nextFrame
-      setDraftFrame(nextFrame)
-    }
-
-    const finalizeResize = () => {
-      setIsResizing(false)
-
-      const finalFrame =
-        draftFrameRef.current ??
-        ({
-          position: { ...position },
-          size: { width, height },
-        } satisfies NodeFrame)
-
-      pendingCommitFrameRef.current = finalFrame
-      baseFrameAtResizeEndRef.current = {
-        position: { x: position.x, y: position.y },
-        size: { width, height },
-      }
-
-      onResize(finalFrame)
-      resizeStartRef.current = null
-      onResizeEnd?.()
-    }
-
-    window.addEventListener('pointermove', handlePointerMove)
-    window.addEventListener('pointerup', finalizeResize, { once: true })
-    window.addEventListener('pointercancel', finalizeResize, { once: true })
-
-    return () => {
-      window.removeEventListener('pointermove', handlePointerMove)
-      window.removeEventListener('pointerup', finalizeResize)
-      window.removeEventListener('pointercancel', finalizeResize)
-    }
-  }, [height, isResizing, minSize, onResize, onResizeEnd, position, width, zoom])
 
   return {
     draftFrame,

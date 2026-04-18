@@ -8,6 +8,8 @@ export type TerminalFindState = {
   query: string
   resultIndex: number
   resultCount: number
+  caseSensitive: boolean
+  useRegex: boolean
 }
 
 function resolveDecorations(terminalThemeMode: TerminalThemeMode) {
@@ -46,6 +48,8 @@ export function useTerminalFind({
   setQuery: (query: string) => void
   findNext: () => void
   findPrevious: () => void
+  toggleCaseSensitive: () => void
+  toggleUseRegex: () => void
   bindSearchAddon: (addon: SearchAddon) => () => void
 } {
   const addonRef = useRef<SearchAddon | null>(null)
@@ -54,15 +58,19 @@ export function useTerminalFind({
     query: '',
     resultIndex: 0,
     resultCount: 0,
+    caseSensitive: false,
+    useRegex: false,
   })
 
   useEffect(() => {
-    setState({
+    setState(prev => ({
       isOpen: false,
       query: '',
       resultIndex: 0,
       resultCount: 0,
-    })
+      caseSensitive: prev.caseSensitive,
+      useRegex: prev.useRegex,
+    }))
   }, [sessionId])
 
   useEffect(() => {
@@ -88,6 +96,8 @@ export function useTerminalFind({
 
     const ok = addon.findNext(term, {
       incremental: true,
+      caseSensitive: state.caseSensitive,
+      regex: state.useRegex,
       decorations: resolveDecorations(terminalThemeMode),
     })
 
@@ -98,7 +108,7 @@ export function useTerminalFind({
         resultCount: 0,
       }))
     }
-  }, [state.isOpen, state.query, terminalThemeMode])
+  }, [state.isOpen, state.query, state.caseSensitive, state.useRegex, terminalThemeMode])
 
   const bindSearchAddon = useCallback((addon: SearchAddon) => {
     addonRef.current = addon
@@ -156,9 +166,11 @@ export function useTerminalFind({
     }
 
     addon.findNext(term, {
+      caseSensitive: state.caseSensitive,
+      regex: state.useRegex,
       decorations: resolveDecorations(terminalThemeMode),
     })
-  }, [state.query, terminalThemeMode])
+  }, [state.query, state.caseSensitive, state.useRegex, terminalThemeMode])
 
   const findPrevious = useCallback(() => {
     const addon = addonRef.current
@@ -168,9 +180,19 @@ export function useTerminalFind({
     }
 
     addon.findPrevious(term, {
+      caseSensitive: state.caseSensitive,
+      regex: state.useRegex,
       decorations: resolveDecorations(terminalThemeMode),
     })
-  }, [state.query, terminalThemeMode])
+  }, [state.query, state.caseSensitive, state.useRegex, terminalThemeMode])
+
+  const toggleCaseSensitive = useCallback(() => {
+    setState(prev => ({ ...prev, caseSensitive: !prev.caseSensitive }))
+  }, [])
+
+  const toggleUseRegex = useCallback(() => {
+    setState(prev => ({ ...prev, useRegex: !prev.useRegex }))
+  }, [])
 
   return {
     state,
@@ -179,6 +201,8 @@ export function useTerminalFind({
     setQuery,
     findNext,
     findPrevious,
+    toggleCaseSensitive,
+    toggleUseRegex,
     bindSearchAddon,
   }
 }

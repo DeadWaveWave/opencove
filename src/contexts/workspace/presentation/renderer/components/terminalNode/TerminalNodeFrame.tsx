@@ -24,6 +24,7 @@ interface TerminalNodeFrameProps {
   lastError: string | null
   sessionId: string
   isTerminalHydrated: boolean
+  transcriptRef: React.Ref<HTMLDivElement>
   sizeStyle: React.CSSProperties
   containerRef: React.RefObject<HTMLDivElement | null>
   handleTerminalBodyPointerDownCapture: (event: React.PointerEvent<HTMLDivElement>) => void
@@ -39,11 +40,15 @@ interface TerminalNodeFrameProps {
     query: string
     resultIndex: number
     resultCount: number
+    caseSensitive: boolean
+    useRegex: boolean
   }
   onFindQueryChange: (query: string) => void
   onFindNext: () => void
   onFindPrevious: () => void
   onFindClose: () => void
+  onFindToggleCaseSensitive: () => void
+  onFindToggleUseRegex: () => void
   handleResizePointerDown: (edges: ResizeEdges) => (event: React.PointerEvent<HTMLElement>) => void
 }
 
@@ -59,6 +64,7 @@ export function TerminalNodeFrame({
   lastError,
   sessionId,
   isTerminalHydrated,
+  transcriptRef,
   sizeStyle,
   containerRef,
   handleTerminalBodyPointerDownCapture,
@@ -74,6 +80,8 @@ export function TerminalNodeFrame({
   onFindNext,
   onFindPrevious,
   onFindClose,
+  onFindToggleCaseSensitive,
+  onFindToggleUseRegex,
   handleResizePointerDown,
 }: TerminalNodeFrameProps): JSX.Element {
   const isAgentNode = kind === 'agent'
@@ -91,6 +99,18 @@ export function TerminalNodeFrame({
       onClickCapture={event => {
         if (event.button !== 0) {
           return
+        }
+
+        if (
+          event.target instanceof Element &&
+          !event.target.closest('.terminal-node__terminal') &&
+          document.activeElement instanceof HTMLElement &&
+          document.activeElement.closest('[data-cove-focus-scope=terminal]')
+        ) {
+          // Clicking terminal chrome (header/badges/close) should release terminal focus so that
+          // workspace-level shortcuts work deterministically (especially in E2E where terminals
+          // auto-focus on mount).
+          document.activeElement.blur()
         }
 
         if (
@@ -146,10 +166,14 @@ export function TerminalNodeFrame({
         query={find.query}
         resultIndex={find.resultIndex}
         resultCount={find.resultCount}
+        caseSensitive={find.caseSensitive}
+        useRegex={find.useRegex}
         onQueryChange={onFindQueryChange}
         onFindNext={onFindNext}
         onFindPrevious={onFindPrevious}
         onClose={onFindClose}
+        onToggleCaseSensitive={onFindToggleCaseSensitive}
+        onToggleUseRegex={onFindToggleUseRegex}
       />
 
       <div
@@ -158,6 +182,7 @@ export function TerminalNodeFrame({
         data-cove-focus-scope="terminal"
         aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
       />
+      <div ref={transcriptRef} className="terminal-node__transcript" aria-hidden="true" />
 
       <NodeResizeHandles
         classNamePrefix="terminal-node"

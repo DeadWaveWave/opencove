@@ -1,11 +1,48 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { confirmSpaceTargetMountIfPrompted } from './workspace-canvas.space-target-mount.helpers'
+
+const CONTEXT_MENU_TRIGGER_TIMEOUT_MS = 10_000
+const CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS = 2_000
+const CONTEXT_MENU_ITEM_CLICK_TIMEOUT_MS = 10_000
+
+async function clickCreateSpaceFromSelectionContextMenu(
+  window: Page,
+  trigger: Locator,
+  triggerPosition: { x: number; y: number },
+  attempt = 0,
+): Promise<void> {
+  const createSpaceAction = window.locator('[data-testid="workspace-selection-create-space"]')
+
+  await trigger.click({
+    button: 'right',
+    position: triggerPosition,
+    timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+  })
+
+  try {
+    await createSpaceAction.waitFor({
+      state: 'visible',
+      timeout: CONTEXT_MENU_ITEM_VISIBLE_TIMEOUT_MS,
+    })
+    await createSpaceAction.click({ timeout: CONTEXT_MENU_ITEM_CLICK_TIMEOUT_MS })
+    await confirmSpaceTargetMountIfPrompted(window)
+  } catch (error) {
+    if (attempt >= 2) {
+      throw error
+    }
+
+    await window.keyboard.press('Escape').catch(() => undefined)
+    await clickCreateSpaceFromSelectionContextMenu(window, trigger, triggerPosition, attempt + 1)
+  }
+}
 
 test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
   test('allows moving a task when its linked agent is inactive', async () => {
@@ -71,9 +108,12 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
       await expect(taskNode).toBeVisible()
 
       const header = taskNode.locator('.task-node__header')
-      await header.click({ position: { x: 80, y: 18 } })
-      await taskNode.click({ button: 'right', position: { x: 80, y: 18 } })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      const headerClickPosition = { x: 80, y: 18 }
+      await header.click({
+        position: headerClickPosition,
+        timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+      })
+      await clickCreateSpaceFromSelectionContextMenu(window, header, headerClickPosition)
 
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
 
@@ -179,9 +219,12 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
       await expect(taskNode).toBeVisible()
 
       const header = taskNode.locator('.task-node__header')
-      await header.click({ position: { x: 80, y: 18 } })
-      await taskNode.click({ button: 'right', position: { x: 80, y: 18 } })
-      await window.locator('[data-testid="workspace-selection-create-space"]').click()
+      const headerClickPosition = { x: 80, y: 18 }
+      await header.click({
+        position: headerClickPosition,
+        timeout: CONTEXT_MENU_TRIGGER_TIMEOUT_MS,
+      })
+      await clickCreateSpaceFromSelectionContextMenu(window, header, headerClickPosition)
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Tasks with active agents cannot be moved between spaces.',
@@ -296,10 +339,7 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
 
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!spaceBox) {
-        throw new Error('space bounding box unavailable')
-      }
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const taskNode = window.locator('.task-node').filter({ hasText: 'space-task' }).first()
       await expect(taskNode).toBeVisible()
@@ -310,7 +350,7 @@ test.describe('Workspace Canvas - Spaces (Task Directory Guards)', () => {
           x: Math.min(Math.max(420, Math.round(spaceBox.width * 0.72)), spaceBox.width - 80),
           y: Math.min(Math.max(260, Math.round(spaceBox.height * 0.62)), spaceBox.height - 60),
         },
-        steps: 18,
+        steps: 12,
       })
 
       await expect(window.locator('[data-testid="app-message"]')).toHaveCount(0)

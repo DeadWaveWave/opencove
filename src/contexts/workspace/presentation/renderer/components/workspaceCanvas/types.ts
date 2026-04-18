@@ -12,7 +12,7 @@ import type {
   WorkspaceViewport,
 } from '../../types'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type { TerminalRuntimeKind } from '@shared/contracts/dto'
+import type { MountDto, TerminalRuntimeKind } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
@@ -26,6 +26,7 @@ export interface WorkspaceCanvasProps {
   workspaceId: string
   onShowMessage?: ShowWorkspaceCanvasMessage
   workspacePath: string
+  environmentVariables?: Record<string, string>
   worktreesRoot: string
   nodes: Node<TerminalNodeData>[]
   onNodesChange: (nodes: Node<TerminalNodeData>[]) => void
@@ -92,10 +93,18 @@ export interface EmptySelectionPromptState {
   rect: WorkspaceSpaceRect
 }
 
+export interface SpaceTargetMountPickerState {
+  nodeIds: string[]
+  rect: WorkspaceSpaceRect | null
+  mounts: MountDto[]
+  selectedMountId: string
+}
+
 export interface SpaceVisual {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   rect: WorkspaceSpaceRect
   hasExplicitRect: boolean
@@ -190,6 +199,25 @@ export type NodePlacementDirection = 'right' | 'down' | 'left' | 'up'
 export interface NodePlacementOptions {
   targetSpaceRect?: WorkspaceSpaceRect | null
   preferredDirection?: NodePlacementDirection
+  // Flow-space rectangles that new nodes should avoid overlapping (e.g. in-space overlays).
+  avoidRects?: WorkspaceSpaceRect[]
+}
+
+export interface NodeCreationPlacementOptions extends NodePlacementOptions {
+  focusViewportOnCreate?: boolean
+}
+
+export interface WorkspaceCanvasQuickPreviewState {
+  spaceId: string
+  mountId: string | null
+  uri: string
+  title: string
+  kind: 'document' | 'image'
+  rect: WorkspaceSpaceRect
+  createAnchor: Point
+  createPlacement?: NodeCreationPlacementOptions
+  naturalWidth?: number | null
+  naturalHeight?: number | null
 }
 
 export type QuickUpdateTaskTitle = (nodeId: string, title: string) => void

@@ -1,17 +1,45 @@
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
+import { once } from 'node:events'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import path from 'path'
+import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
 
 const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
 const testWorkspacePath = path.resolve(__dirname, '../../')
 type E2EWindowMode = 'inactive' | 'offscreen' | 'hidden'
+const E2E_APP_LAUNCH_TIMEOUT_MS = 45_000
 const E2E_APP_CLOSE_TIMEOUT_MS = 5_000
-const E2E_APP_FORCE_KILL_TIMEOUT_MS = 2_000
+const E2E_APP_FORCE_KILL_TIMEOUT_MS = 10_000
 const E2E_APP_FORCE_KILL_POLL_MS = 50
 const E2E_USER_DATA_DIR_CLEANUP_RETRY_DELAY_MS = 100
 const E2E_USER_DATA_DIR_CLEANUP_MAX_ATTEMPTS = 6
+
+function copyDefinedEnv(
+  source: Record<string, string | undefined> | NodeJS.ProcessEnv,
+): Record<string, string> {
+  const next: Record<string, string> = {}
+
+  for (const [key, value] of Object.entries(source)) {
+    if (typeof value === 'string') {
+      next[key] = value
+    }
+  }
+
+  return next
+}
+
+const INITIAL_E2E_PROCESS_ENV = (() => {
+  const env = copyDefinedEnv(process.env)
+  // When running Playwright from inside Electron/GUI environments, macOS can inherit a
+  // `__CFBundleIdentifier` override that breaks launching the Electron binary (SIGABRT in
+  // `_RegisterApplication`). Ensure the child Electron uses its own bundle id.
+  delete env['__CFBundleIdentifier']
+  // Some dev shells export `ELECTRON_RUN_AS_NODE=1` for Electron tooling; Playwright needs to launch
+  // the real Electron runtime (Chromium flags such as `--remote-debugging-port` must be accepted).
+  delete env['ELECTRON_RUN_AS_NODE']
+  return env
+})()
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -21,11 +49,16 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
   return rawValue === '1' || rawValue.toLowerCase() === 'true'
 }
 
+function shouldPipeElectronLogs(): boolean {
+  return isTruthyEnv(process.env['OPENCOVE_E2E_PIPE_ELECTRON_LOGS'])
+}
+
 function isRetryableLaunchError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error)
   return (
     message.includes('Process failed to launch') ||
     message.includes('electronApplication.firstWindow') ||
+    message.toLowerCase().includes('timeout') ||
     message.includes('SIGABRT') ||
     message.includes('SIGSEGV') ||
     message.includes('Target page, context or browser has been closed')
@@ -123,7 +156,11 @@ async function cleanupUserDataDirWithRetry(userDataDir: string, attempt = 1): Pr
 }
 
 export async function createTestUserDataDir(): Promise<string> {
-  return await mkdtemp(path.join(tmpdir(), 'cove-e2e-user-data-'))
+  const baseTmpDir = resolveE2ETmpDir()
+
+  const parentDir = path.join(baseTmpDir, 'opencove-e2e')
+  await mkdir(parentDir, { recursive: true })
+  return await mkdtemp(path.join(parentDir, 'cove-e2e-user-data-'))
 }
 
 function isProcessAlive(pid: number): boolean {
@@ -145,6 +182,21 @@ async function waitForProcessExit(pid: number, timeoutMs: number): Promise<void>
   await waitForProcessExit(pid, timeoutMs - nextDelayMs)
 }
 
+async function waitForChildProcessExit(
+  appProcess: ReturnType<ElectronApplication['process']>,
+  timeoutMs: number,
+): Promise<void> {
+  if (!appProcess || appProcess.exitCode !== null || timeoutMs <= 0) {
+    return
+  }
+
+  await Promise.race([
+    once(appProcess, 'exit').then(() => undefined),
+    once(appProcess, 'close').then(() => undefined),
+    delay(timeoutMs),
+  ]).catch(() => undefined)
+}
+
 async function closeElectronAppAndCleanup(
   electronApp: ElectronApplication,
   originalClose: () => Promise<void>,
@@ -153,29 +205,43 @@ async function closeElectronAppAndCleanup(
 ): Promise<void> {
   const appProcess = electronApp.process()
   const appPid = typeof appProcess.pid === 'number' && appProcess.pid > 0 ? appProcess.pid : null
+  const closeEventPromise = electronApp
+    .waitForEvent('close', { timeout: E2E_APP_CLOSE_TIMEOUT_MS })
+    .then(() => undefined)
+    .catch(() => undefined)
+  const closeAttemptPromise = originalClose()
+    .then(() => undefined)
+    .catch(() => undefined)
 
   try {
     await Promise.race([
-      (async () => {
-        const closeEventPromise = electronApp
-          .waitForEvent('close', { timeout: E2E_APP_CLOSE_TIMEOUT_MS })
-          .catch(() => undefined)
-
-        await originalClose().catch(() => undefined)
-        await closeEventPromise
-      })(),
+      Promise.all([closeAttemptPromise, closeEventPromise]),
       delay(E2E_APP_CLOSE_TIMEOUT_MS),
     ])
   } finally {
     if (appPid !== null && isProcessAlive(appPid)) {
       try {
-        process.kill(appPid, 'SIGKILL')
+        appProcess.kill('SIGKILL')
       } catch {
         // ignore force-kill failures
       }
 
-      await waitForProcessExit(appPid, E2E_APP_FORCE_KILL_TIMEOUT_MS).catch(() => undefined)
+      await waitForChildProcessExit(appProcess, E2E_APP_FORCE_KILL_TIMEOUT_MS)
+
+      if (isProcessAlive(appPid)) {
+        try {
+          process.kill(appPid, 'SIGKILL')
+        } catch {
+          // ignore force-kill failures
+        }
+
+        await waitForProcessExit(appPid, E2E_APP_FORCE_KILL_TIMEOUT_MS).catch(() => undefined)
+      }
     }
+
+    // Give Playwright a moment to tear down the transport, but never hang close.
+    await Promise.race([closeAttemptPromise, delay(500)]).catch(() => undefined)
+    await Promise.race([closeEventPromise, delay(500)]).catch(() => undefined)
 
     if (cleanupUserDataDir) {
       await cleanupUserDataDirWithRetry(userDataDir)
@@ -205,10 +271,13 @@ async function launchAppInMode(
   let electronApp: ElectronApplication | null = null
 
   try {
+    const envOverrides = copyDefinedEnv(options.env ?? {})
+
     electronApp = await electron.launch({
+      timeout: E2E_APP_LAUNCH_TIMEOUT_MS,
       args: resolveElectronLaunchArgs(),
       env: {
-        ...process.env,
+        ...INITIAL_E2E_PROCESS_ENV,
         NODE_ENV: 'test',
         HOME: testHomeDir,
         USERPROFILE: testHomeDir,
@@ -220,9 +289,19 @@ async function launchAppInMode(
         OPENCOVE_TEST_AGENT_STUB_SCRIPT: testAgentStubScriptPath,
         OPENCOVE_E2E_WINDOW_MODE: launchMode,
         ...(shouldDisableElectronSandboxForLinuxCi() ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
-        ...options.env,
+        ...envOverrides,
       },
     })
+
+    if (shouldPipeElectronLogs()) {
+      const appProcess = electronApp.process()
+      appProcess?.stdout?.on('data', chunk => {
+        process.stdout.write(chunk)
+      })
+      appProcess?.stderr?.on('data', chunk => {
+        process.stderr.write(chunk)
+      })
+    }
 
     const originalClose = electronApp.close.bind(electronApp)
     let closePromise: Promise<void> | null = null

@@ -1,17 +1,5 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import { AGENT_PROVIDERS, type AgentProvider } from '@contexts/settings/domain/agentSettings'
-import type { NodeLabelColorOverride } from '@shared/types/labelColor'
-import type { WorkspaceSpaceState } from '../../../types'
-import type { ContextMenuState } from '../types'
-import type {
-  WorkspaceArrangeOrder,
-  WorkspaceArrangeSpaceFit,
-  WorkspaceArrangeStyle,
-} from '../../../utils/workspaceArrange'
-import {
-  WorkspaceContextArrangeBySubmenu,
-  type ArrangeScope,
-} from './WorkspaceContextArrangeBySubmenu'
+import { WorkspaceContextArrangeBySubmenu } from './WorkspaceContextArrangeBySubmenu'
 import {
   WorkspaceContextAgentProviderSubmenu,
   WorkspaceContextLabelColorSubmenu,
@@ -19,53 +7,39 @@ import {
   WorkspaceContextSelectionMenuContent,
 } from './WorkspaceContextMenuParts'
 import {
+  WorkspaceContextQuickCommandsSubmenu,
+  WorkspaceContextQuickPhrasesSubmenu,
+} from './WorkspaceContextMenuQuickMenuParts'
+import {
   MENU_WIDTH,
   SUBMENU_CLOSE_DELAY_MS,
   SUBMENU_GAP,
   SUBMENU_MAX_HEIGHT,
   SUBMENU_WIDTH,
   VIEWPORT_PADDING,
-  isPointWithinRect,
   placeContextMenuAtPoint,
   placeSubmenuAtItem,
 } from './WorkspaceContextMenu.helpers'
-
-type OpenSubmenu = 'arrangeBy' | 'agent-providers' | 'label-color' | null
-
-interface WorkspaceContextMenuProps {
-  contextMenu: ContextMenuState | null
-  closeContextMenu: () => void
-  createTerminalNode: () => Promise<void>
-  createNoteNodeFromContextMenu: () => void
-  openTaskCreator: () => void
-  openAgentLauncher: () => void
-  agentProviderOrder: AgentProvider[]
-  openAgentLauncherForProvider: (provider: AgentProvider) => void
-  spaces: WorkspaceSpaceState[]
-  magneticSnappingEnabled: boolean
-  onToggleMagneticSnapping: () => void
-  canArrangeAll: boolean
-  canArrangeCanvas: boolean
-  arrangeAll: (style?: WorkspaceArrangeStyle) => void
-  arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
-  arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
-  createSpaceFromSelectedNodes: () => void
-  clearNodeSelection: () => void
-  canConvertSelectedNoteToTask: boolean
-  isConvertSelectedNoteToTaskDisabled: boolean
-  convertSelectedNoteToTask: () => void
-  setSelectedNodeLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
-}
+import type { OpenSubmenu, WorkspaceContextMenuProps } from './WorkspaceContextMenu.types'
+import { useWorkspaceContextArrangeMenuState } from './useWorkspaceContextArrangeMenuState'
+import { useWorkspaceContextInstalledProviders } from './useWorkspaceContextInstalledProviders'
 
 export function WorkspaceContextMenu({
   contextMenu,
   closeContextMenu,
   createTerminalNode,
   createNoteNodeFromContextMenu,
+  createWebsiteNodeFromContextMenu,
+  websiteWindowsEnabled,
   openTaskCreator,
   openAgentLauncher,
   agentProviderOrder,
   openAgentLauncherForProvider,
+  quickCommands,
+  quickPhrases,
+  runQuickCommand,
+  insertQuickPhrase,
+  openQuickMenuSettings,
   spaces,
   magneticSnappingEnabled,
   onToggleMagneticSnapping,
@@ -75,6 +49,7 @@ export function WorkspaceContextMenu({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
+  createEmptySpaceAtPoint,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
@@ -83,17 +58,23 @@ export function WorkspaceContextMenu({
 }: WorkspaceContextMenuProps): React.JSX.Element | null {
   const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [installedProviders, setInstalledProviders] = useState<AgentProvider[] | null>(null)
-  const [isLoadingInstalledProviders, setIsLoadingInstalledProviders] = useState(false)
+  const { sortedInstalledProviders, isLoadingInstalledProviders, ensureInstalledProvidersLoaded } =
+    useWorkspaceContextInstalledProviders({ agentProviderOrder })
 
-  const sortedInstalledProviders = useMemo(() => {
-    if (!installedProviders) {
-      return []
-    }
+  const enabledQuickCommands = useMemo(
+    () =>
+      quickCommands.filter(
+        command => command.enabled && (command.kind !== 'url' || websiteWindowsEnabled),
+      ),
+    [quickCommands, websiteWindowsEnabled],
+  )
 
-    const effectiveOrder = agentProviderOrder.length > 0 ? agentProviderOrder : AGENT_PROVIDERS
-    return effectiveOrder.filter(provider => installedProviders.includes(provider))
-  }, [agentProviderOrder, installedProviders])
+  const pinnedQuickCommands = useMemo(
+    () => enabledQuickCommands.filter(command => command.pinned).slice(0, 4),
+    [enabledQuickCommands],
+  )
+
+  const enabledQuickPhrases = quickPhrases.filter(phrase => phrase.enabled)
 
   const cancelScheduledSubmenuClose = useCallback(() => {
     if (closeSubmenuTimeoutRef.current === null) {
@@ -112,40 +93,26 @@ export function WorkspaceContextMenu({
     }, SUBMENU_CLOSE_DELAY_MS)
   }, [cancelScheduledSubmenuClose])
 
-  const loadInstalledProviders = useCallback(async () => {
-    if (installedProviders !== null || isLoadingInstalledProviders) {
-      return
-    }
-
-    setIsLoadingInstalledProviders(true)
-
-    try {
-      const result = await window.opencoveApi.agent.listInstalledProviders()
-      setInstalledProviders(result.providers)
-    } catch {
-      setInstalledProviders([])
-    } finally {
-      setIsLoadingInstalledProviders(false)
-    }
-  }, [installedProviders, isLoadingInstalledProviders])
-
   const openAgentProviderSubmenu = useCallback(() => {
     cancelScheduledSubmenuClose()
     setOpenSubmenu('agent-providers')
 
-    if (installedProviders === null && !isLoadingInstalledProviders) {
-      void loadInstalledProviders()
-    }
-  }, [
-    cancelScheduledSubmenuClose,
-    installedProviders,
-    isLoadingInstalledProviders,
-    loadInstalledProviders,
-  ])
+    ensureInstalledProvidersLoaded()
+  }, [cancelScheduledSubmenuClose, ensureInstalledProvidersLoaded])
 
   const openArrangeSubmenu = useCallback(() => {
     cancelScheduledSubmenuClose()
     setOpenSubmenu('arrangeBy')
+  }, [cancelScheduledSubmenuClose])
+
+  const openQuickCommandsSubmenu = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('quick-commands')
+  }, [cancelScheduledSubmenuClose])
+
+  const openQuickPhrasesSubmenu = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('quick-phrases')
   }, [cancelScheduledSubmenuClose])
 
   const openLabelColorSubmenu = useCallback(() => {
@@ -164,18 +131,27 @@ export function WorkspaceContextMenu({
     }
   }, [cancelScheduledSubmenuClose])
 
-  const [contextHitSpaceId, setContextHitSpaceId] = useState<string | null>(null)
-  const contextHitSpaceIdRef = React.useRef<string | null>(null)
-  const contextMenuSignatureRef = React.useRef<string | null>(null)
-  const [arrangeScope, setArrangeScope] = useState<ArrangeScope>('canvas')
-  const arrangeScopeRef = React.useRef<ArrangeScope>('canvas')
-  const [arrangeOrder, setArrangeOrder] = useState<WorkspaceArrangeOrder>('position')
-  const arrangeOrderRef = React.useRef<WorkspaceArrangeOrder>('position')
-  const [arrangeSpaceFit, setArrangeSpaceFit] = useState<WorkspaceArrangeSpaceFit>('tight')
-  const arrangeSpaceFitRef = React.useRef<WorkspaceArrangeSpaceFit>('tight')
+  const {
+    contextHitSpace,
+    arrangeScope,
+    arrangeOrder,
+    arrangeSpaceFit,
+    applyArrange,
+    handleArrangeScopeSelect,
+    handleArrangeOrderSelect,
+    handleArrangeSpaceFitSelect,
+  } = useWorkspaceContextArrangeMenuState({
+    contextMenu,
+    spaces,
+    arrangeAll,
+    arrangeCanvas,
+    arrangeInSpace,
+  })
   const menuRef = React.useRef<HTMLDivElement | null>(null)
   const submenuRef = React.useRef<HTMLDivElement | null>(null)
   const agentProviderToggleRef = React.useRef<HTMLButtonElement | null>(null)
+  const quickCommandsButtonRef = React.useRef<HTMLButtonElement | null>(null)
+  const quickPhrasesButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const arrangeByButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const labelColorButtonRef = React.useRef<HTMLButtonElement | null>(null)
   const [measuredMenuSize, setMeasuredMenuSize] = useState<{
@@ -186,125 +162,45 @@ export function WorkspaceContextMenu({
     width: number
     height: number
   } | null>(null)
-
-  useEffect(() => {
-    const signature = contextMenu
-      ? `${contextMenu.kind}:${contextMenu.x}:${contextMenu.y}:${'flowX' in contextMenu ? contextMenu.flowX : 0}:${
-          'flowY' in contextMenu ? contextMenu.flowY : 0
-        }`
-      : 'null'
-
-    if (signature === contextMenuSignatureRef.current) {
-      return
-    }
-
-    contextMenuSignatureRef.current = signature
+  const commitArrangeAndClose = useCallback(() => {
+    closeContextMenu()
     setOpenSubmenu(null)
+    applyArrange()
+  }, [applyArrange, closeContextMenu])
 
+  const createEmptySpaceFromContextMenu = useCallback(() => {
     if (!contextMenu || contextMenu.kind !== 'pane') {
-      contextHitSpaceIdRef.current = null
-      setContextHitSpaceId(null)
-      arrangeScopeRef.current = 'canvas'
-      setArrangeScope('canvas')
       return
     }
 
-    const anchor = { x: contextMenu.flowX, y: contextMenu.flowY }
-    const hitSpace =
-      spaces.find(space => space.rect && isPointWithinRect(anchor, space.rect)) ?? null
-    const nextHitSpaceId = hitSpace?.id ?? null
-
-    contextHitSpaceIdRef.current = nextHitSpaceId
-    setContextHitSpaceId(nextHitSpaceId)
-
-    const nextScope: ArrangeScope = nextHitSpaceId ? 'space' : 'canvas'
-    arrangeScopeRef.current = nextScope
-    setArrangeScope(nextScope)
-  }, [contextMenu, spaces])
-
-  const contextHitSpace = useMemo(() => {
-    if (!contextHitSpaceId) {
-      return null
+    if (contextHitSpace) {
+      return
     }
 
-    return spaces.find(space => space.id === contextHitSpaceId) ?? null
-  }, [contextHitSpaceId, spaces])
-
-  const resolveCurrentArrangeStyle = useCallback((): WorkspaceArrangeStyle => {
-    return {
-      order: arrangeOrderRef.current,
-      spaceFit: arrangeSpaceFitRef.current,
-    }
-  }, [])
-
-  const applyArrange = useCallback(
-    (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
-      const scope = options?.scope ?? arrangeScopeRef.current
-      const style = options?.style ?? resolveCurrentArrangeStyle()
-
-      if (scope === 'all') {
-        arrangeAll(style)
-        return
-      }
-
-      if (scope === 'canvas') {
-        arrangeCanvas(style)
-        return
-      }
-
-      const spaceId = contextHitSpaceIdRef.current
-      if (spaceId) {
-        arrangeInSpace(spaceId, style)
-      }
-    },
-    [arrangeAll, arrangeCanvas, arrangeInSpace, resolveCurrentArrangeStyle],
-  )
-
-  const commitArrangeAndClose = useCallback(
-    (options?: { scope?: ArrangeScope; style?: WorkspaceArrangeStyle }) => {
-      closeContextMenu()
-      setOpenSubmenu(null)
-      applyArrange(options)
-    },
-    [applyArrange, closeContextMenu],
-  )
+    closeContextMenu()
+    setOpenSubmenu(null)
+    createEmptySpaceAtPoint({ x: contextMenu.flowX, y: contextMenu.flowY })
+  }, [closeContextMenu, contextHitSpace, contextMenu, createEmptySpaceAtPoint])
 
   const keepAgentProviderSubmenuOpen = useCallback(() => {
     cancelScheduledSubmenuClose()
     setOpenSubmenu('agent-providers')
   }, [cancelScheduledSubmenuClose])
 
+  const keepQuickCommandsSubmenuOpen = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('quick-commands')
+  }, [cancelScheduledSubmenuClose])
+
+  const keepQuickPhrasesSubmenuOpen = useCallback(() => {
+    cancelScheduledSubmenuClose()
+    setOpenSubmenu('quick-phrases')
+  }, [cancelScheduledSubmenuClose])
+
   const keepLabelColorSubmenuOpen = useCallback(() => {
     cancelScheduledSubmenuClose()
     setOpenSubmenu('label-color')
   }, [cancelScheduledSubmenuClose])
-
-  const handleArrangeScopeSelect = useCallback(
-    (scope: ArrangeScope) => {
-      arrangeScopeRef.current = scope
-      setArrangeScope(scope)
-      applyArrange({ scope })
-    },
-    [applyArrange],
-  )
-
-  const handleArrangeOrderSelect = useCallback(
-    (order: WorkspaceArrangeOrder) => {
-      arrangeOrderRef.current = order
-      setArrangeOrder(order)
-      applyArrange()
-    },
-    [applyArrange],
-  )
-
-  const handleArrangeSpaceFitSelect = useCallback(
-    (spaceFit: WorkspaceArrangeSpaceFit) => {
-      arrangeSpaceFitRef.current = spaceFit
-      setArrangeSpaceFit(spaceFit)
-      applyArrange()
-    },
-    [applyArrange],
-  )
 
   useLayoutEffect(() => {
     if (!contextMenu) {
@@ -348,7 +244,13 @@ export function WorkspaceContextMenu({
         ? previous
         : { width: nextRect.width, height: nextRect.height },
     )
-  }, [openSubmenu, contextMenu, sortedInstalledProviders.length])
+  }, [
+    openSubmenu,
+    contextMenu,
+    enabledQuickCommands.length,
+    enabledQuickPhrases.length,
+    sortedInstalledProviders.length,
+  ])
 
   if (!contextMenu) {
     return null
@@ -376,9 +278,13 @@ export function WorkspaceContextMenu({
       ? arrangeByButtonRef.current
       : openSubmenu === 'agent-providers'
         ? agentProviderToggleRef.current
-        : openSubmenu === 'label-color'
-          ? labelColorButtonRef.current
-          : null
+        : openSubmenu === 'quick-commands'
+          ? quickCommandsButtonRef.current
+          : openSubmenu === 'quick-phrases'
+            ? quickPhrasesButtonRef.current
+            : openSubmenu === 'label-color'
+              ? labelColorButtonRef.current
+              : null
   const measuredSubmenuAnchorRect = activeSubmenuAnchor?.getBoundingClientRect() ?? null
   const submenuMaxHeight = Math.min(SUBMENU_MAX_HEIGHT, viewportHeight - VIEWPORT_PADDING * 2)
   const submenuVisibleHeight =
@@ -419,6 +325,10 @@ export function WorkspaceContextMenu({
     contextMenu.kind === 'pane' &&
     openSubmenu === 'agent-providers' &&
     sortedInstalledProviders.length > 0
+  const shouldShowQuickCommandsSubmenu =
+    contextMenu.kind === 'pane' && openSubmenu === 'quick-commands'
+  const shouldShowQuickPhrasesSubmenu =
+    contextMenu.kind === 'pane' && openSubmenu === 'quick-phrases'
   const shouldShowLabelColorSubmenu =
     contextMenu.kind === 'selection' && openSubmenu === 'label-color'
   const sharedSubmenuStyle = {
@@ -446,12 +356,29 @@ export function WorkspaceContextMenu({
           <WorkspaceContextPaneMenuContent
             createTerminalNode={createTerminalNode}
             createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+            createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+            websiteWindowsEnabled={websiteWindowsEnabled}
             openTaskCreator={openTaskCreator}
             openAgentLauncher={openAgentLauncher}
+            createEmptySpaceFromContextMenu={createEmptySpaceFromContextMenu}
+            canCreateEmptySpace={contextHitSpace === null}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
             agentProviderToggleRef={agentProviderToggleRef}
             isLoadingInstalledProviders={isLoadingInstalledProviders}
             isAgentProviderSubmenuOpen={openSubmenu === 'agent-providers'}
+            pinnedQuickCommands={pinnedQuickCommands}
+            runQuickCommand={runQuickCommand}
+            quickCommandsButtonRef={quickCommandsButtonRef}
+            openQuickCommandsSubmenu={openQuickCommandsSubmenu}
+            isQuickCommandsSubmenuOpen={openSubmenu === 'quick-commands'}
+            quickPhrasesButtonRef={quickPhrasesButtonRef}
+            openQuickPhrasesSubmenu={openQuickPhrasesSubmenu}
+            isQuickPhrasesSubmenuOpen={openSubmenu === 'quick-phrases'}
+            openQuickMenuSettings={() => {
+              closeContextMenu()
+              setOpenSubmenu(null)
+              openQuickMenuSettings()
+            }}
             canArrangeCurrentScope={canArrangeCurrentScope}
             commitArrangeAndClose={() => {
               commitArrangeAndClose()
@@ -505,6 +432,38 @@ export function WorkspaceContextMenu({
           keepSubmenuOpen={keepAgentProviderSubmenuOpen}
           scheduleSubmenuClose={scheduleSubmenuClose}
           openAgentLauncherForProvider={openAgentLauncherForProvider}
+        />
+      ) : null}
+
+      {shouldShowQuickCommandsSubmenu ? (
+        <WorkspaceContextQuickCommandsSubmenu
+          commands={enabledQuickCommands}
+          submenuRef={submenuRef}
+          style={sharedSubmenuStyle}
+          keepSubmenuOpen={keepQuickCommandsSubmenuOpen}
+          scheduleSubmenuClose={scheduleSubmenuClose}
+          runQuickCommand={runQuickCommand}
+          openQuickMenuSettings={() => {
+            closeContextMenu()
+            setOpenSubmenu(null)
+            openQuickMenuSettings()
+          }}
+        />
+      ) : null}
+
+      {shouldShowQuickPhrasesSubmenu ? (
+        <WorkspaceContextQuickPhrasesSubmenu
+          phrases={enabledQuickPhrases}
+          submenuRef={submenuRef}
+          style={sharedSubmenuStyle}
+          keepSubmenuOpen={keepQuickPhrasesSubmenuOpen}
+          scheduleSubmenuClose={scheduleSubmenuClose}
+          insertQuickPhrase={insertQuickPhrase}
+          openQuickMenuSettings={() => {
+            closeContextMenu()
+            setOpenSubmenu(null)
+            openQuickMenuSettings()
+          }}
         />
       ) : null}
 

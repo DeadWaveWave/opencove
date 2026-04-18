@@ -7,9 +7,11 @@ import {
   clearAndSeedWorkspace,
   launchApp,
   readCanvasViewport,
+  readWorkspaceViewState,
   seededWorkspaceId,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { confirmSpaceTargetMountIfPrompted } from './workspace-canvas.space-target-mount.helpers'
 
 const commandModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
 
@@ -77,6 +79,73 @@ async function readCanvasMetrics(window: Page): Promise<{
   })
 }
 
+async function focusWorkspaceCanvas(window: Page): Promise<void> {
+  const wasAlreadyFocused = await window.evaluate(() => {
+    const canvas = document.querySelector('.workspace-canvas')
+    if (!(canvas instanceof HTMLElement)) {
+      return false
+    }
+
+    const activeElement =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    if (!activeElement || !canvas.contains(activeElement)) {
+      return false
+    }
+
+    if (activeElement.closest('[data-cove-focus-scope="terminal"]')) {
+      return false
+    }
+
+    const editableDomSelector = 'input, textarea, select, [contenteditable="true"]'
+    const isEditableTarget =
+      activeElement.isContentEditable || Boolean(activeElement.closest(editableDomSelector))
+
+    return !isEditableTarget
+  })
+
+  if (!wasAlreadyFocused) {
+    await window.evaluate(() => {
+      const activeElement =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null
+      activeElement?.blur()
+
+      const canvas = document.querySelector('.workspace-canvas')
+      if (canvas instanceof HTMLElement) {
+        canvas.focus({ preventScroll: true })
+      }
+    })
+  }
+
+  await expect
+    .poll(async () => {
+      return await window.evaluate(() => {
+        const canvas = document.querySelector('.workspace-canvas')
+        if (!(canvas instanceof HTMLElement)) {
+          return false
+        }
+
+        const activeElement =
+          document.activeElement instanceof HTMLElement ? document.activeElement : null
+        if (!activeElement || !canvas.contains(activeElement)) {
+          return false
+        }
+
+        if (activeElement.closest('[data-cove-focus-scope="terminal"]')) {
+          return false
+        }
+
+        const editableDomSelector = 'input, textarea, select, [contenteditable="true"]'
+        const isEditableTarget =
+          activeElement.isContentEditable || Boolean(activeElement.closest(editableDomSelector))
+
+        return !isEditableTarget
+      })
+    })
+    .toBe(true)
+
+  await window.waitForTimeout(25)
+}
+
 test.describe('Workspace Canvas - Shortcuts', () => {
   test('creates a space from the selected nodes via shortcut', async () => {
     const { electronApp, window } = await launchApp()
@@ -97,13 +166,9 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         .first()
         .click({ position: { x: 40, y: 20 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
-      await window.evaluate(() => {
-        const { activeElement } = document
-        if (activeElement instanceof HTMLElement) {
-          activeElement.blur()
-        }
-      })
+      await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+G`)
+      await confirmSpaceTargetMountIfPrompted(window)
 
       await expect
         .poll(
@@ -232,19 +297,20 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         },
       )
 
+      await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+]`)
       await expect
-        .poll(async () => (await readPersistedWorkspace(window))?.activeSpaceId ?? null)
+        .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-1')
 
       await window.keyboard.press(`${commandModifier}+]`)
       await expect
-        .poll(async () => (await readPersistedWorkspace(window))?.activeSpaceId ?? null)
+        .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-2')
 
       await window.keyboard.press(`${commandModifier}+[`)
       await expect
-        .poll(async () => (await readPersistedWorkspace(window))?.activeSpaceId ?? null)
+        .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-1')
     } finally {
       await electronApp.close()

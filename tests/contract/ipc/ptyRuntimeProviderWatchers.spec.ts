@@ -43,6 +43,10 @@ describe('Pty runtime provider watchers', () => {
       .mockResolvedValueOnce(
         new Response(JSON.stringify({ ses_opencode_1: { type: 'busy' } }), { status: 200 }),
       )
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ ses_opencode_1: { type: 'busy' } }), { status: 200 }),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
       .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 200 }))
 
     vi.stubGlobal('fetch', fetchMock)
@@ -85,6 +89,8 @@ describe('Pty runtime provider watchers', () => {
 
     await vi.advanceTimersByTimeAsync(0)
     await vi.advanceTimersByTimeAsync(0)
+    await vi.advanceTimersByTimeAsync(500)
+    await vi.advanceTimersByTimeAsync(500)
     await vi.advanceTimersByTimeAsync(500)
     await vi.advanceTimersByTimeAsync(0)
 

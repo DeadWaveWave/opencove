@@ -3,20 +3,24 @@ import { useReactFlow, type Edge, type Node } from '@xyflow/react'
 import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, Point, Size, TerminalNodeData } from '../../../types'
 import { useScrollbackStore } from '../../../store/useScrollbackStore'
+import { useWebsiteWindowStore } from '../../../store/useWebsiteWindowStore'
 import { findNearestFreePosition } from '../../../utils/collision'
 import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
-import { scheduleNodeScrollbackWrite } from '../../../utils/persistence/scrollbackSchedule'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
 import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
+import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDimensions'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
+import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
+import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
+import { resolveTerminalProviderHintFromCommand } from './useNodesStore.terminalProviderHint'
 
 export function useWorkspaceCanvasNodesStore({
   nodes,
@@ -100,7 +104,7 @@ export function useWorkspaceCanvasNodesStore({
       options: { syncLayout?: boolean } = {},
     ) => {
       const previousNodes = nodesRef.current
-      const nextNodes = updater(previousNodes)
+      const nextNodes = ensureNodesHaveInitialDimensions(updater(previousNodes))
       if (nextNodes === previousNodes) {
         return
       }
@@ -142,7 +146,9 @@ export function useWorkspaceCanvasNodesStore({
       const target = nodesRef.current.find(node => node.id === nodeId)
       if (target && target.data.sessionId.length > 0) {
         cleanupNodeRuntimeArtifacts(nodeId, target.data.sessionId)
-        await window.opencoveApi.pty.kill({ sessionId: target.data.sessionId })
+        void window.opencoveApi.pty
+          .kill({ sessionId: target.data.sessionId })
+          .catch(() => undefined)
       }
 
       if (target?.data.kind === 'image' && target.data.image) {
@@ -150,6 +156,15 @@ export function useWorkspaceCanvasNodesStore({
         if (typeof deleteCanvasImage === 'function') {
           await deleteCanvasImage({ assetId: target.data.image.assetId }).catch(() => undefined)
         }
+      }
+
+      if (target?.data.kind === 'website') {
+        const closeWebsiteWindow = window.opencoveApi?.websiteWindow?.close
+        if (typeof closeWebsiteWindow === 'function') {
+          await closeWebsiteWindow({ nodeId }).catch(() => undefined)
+        }
+
+        useWebsiteWindowStore.getState().clearNode(nodeId)
       }
 
       setNodes(prevNodes => {
@@ -161,8 +176,10 @@ export function useWorkspaceCanvasNodesStore({
           now,
         })
       })
+
+      onRequestPersistFlush?.()
     },
-    [clearAgentLaunchToken, setNodes],
+    [clearAgentLaunchToken, onRequestPersistFlush, setNodes],
   )
 
   const normalizePosition = useCallback((nodeId: string, desired: Point, size: Size): Point => {
@@ -234,7 +251,6 @@ export function useWorkspaceCanvasNodesStore({
         }
 
         setNodeScrollback(nodeId, pending)
-        scheduleNodeScrollbackWrite(nodeId, pending)
       }
 
       pendingScrollbacks.clear()
@@ -256,7 +272,6 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       setNodeScrollback(nodeId, scrollback)
-      scheduleNodeScrollbackWrite(nodeId, scrollback)
     },
     [setNodeScrollback],
   )
@@ -267,6 +282,7 @@ export function useWorkspaceCanvasNodesStore({
       if (normalizedTitle.length === 0) {
         return
       }
+      const terminalProviderHint = resolveTerminalProviderHintFromCommand(normalizedTitle)
 
       setNodes(
         prevNodes => {
@@ -277,11 +293,14 @@ export function useWorkspaceCanvasNodesStore({
               return node
             }
 
-            if (node.data.titlePinnedByUser === true) {
-              return node
-            }
-
-            if (node.data.title === normalizedTitle) {
+            const nextTitle =
+              node.data.titlePinnedByUser === true ? node.data.title : normalizedTitle
+            const nextTerminalProviderHint =
+              terminalProviderHint ?? node.data.terminalProviderHint ?? null
+            if (
+              node.data.title === nextTitle &&
+              (node.data.terminalProviderHint ?? null) === nextTerminalProviderHint
+            ) {
               return node
             }
 
@@ -290,7 +309,8 @@ export function useWorkspaceCanvasNodesStore({
               ...node,
               data: {
                 ...node.data,
-                title: normalizedTitle,
+                title: nextTitle,
+                terminalProviderHint: nextTerminalProviderHint,
               },
             }
           })
@@ -347,6 +367,7 @@ export function useWorkspaceCanvasNodesStore({
 
   const updateNoteText = useCallback(
     (nodeId: string, text: string) => {
+      guardNodeFromSyncOverwrite(nodeId)
       setNodes(
         prevNodes => {
           let hasChanged = false
@@ -380,6 +401,8 @@ export function useWorkspaceCanvasNodesStore({
     },
     [setNodes],
   )
+  const { updateWebsiteUrl, setWebsitePinned, setWebsiteSession } =
+    useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
 
   const setNodeLabelColorOverride = useCallback(
     (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => {
@@ -422,16 +445,22 @@ export function useWorkspaceCanvasNodesStore({
     },
     [onRequestPersistFlush, setNodes],
   )
-  const { createNodeForSession, createNoteNode, createTaskNode, createImageNode } =
-    useWorkspaceCanvasNodeCreation({
-      nodesRef,
-      spacesRef,
-      onRequestPersistFlush,
-      onShowMessage,
-      onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
-      setNodes,
-      standardWindowSizeBucket,
-    })
+  const {
+    createNodeForSession,
+    createNoteNode,
+    createTaskNode,
+    createImageNode,
+    createDocumentNode,
+    createWebsiteNode,
+  } = useWorkspaceCanvasNodeCreation({
+    nodesRef,
+    spacesRef,
+    onRequestPersistFlush,
+    onShowMessage,
+    onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
+    setNodes,
+    standardWindowSizeBucket,
+  })
 
   return {
     nodesRef,
@@ -451,9 +480,14 @@ export function useWorkspaceCanvasNodesStore({
     renameTerminalTitle,
     setNodeLabelColorOverride,
     updateNoteText,
+    updateWebsiteUrl,
+    setWebsitePinned,
+    setWebsiteSession,
     createNodeForSession,
     createNoteNode,
     createTaskNode,
     createImageNode,
+    createDocumentNode,
+    createWebsiteNode,
   }
 }

@@ -65,7 +65,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyWrite,
     async (_event, payload: WriteTerminalInput) => {
       const normalized = normalizeWriteTerminalPayload(payload)
-      runtime.write(normalized.sessionId, normalized.data, normalized.encoding)
+      await runtime.write(normalized.sessionId, normalized.data, normalized.encoding)
     },
     { defaultErrorCode: 'terminal.write_failed' },
   )
@@ -74,7 +74,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyResize,
     async (_event, payload: ResizeTerminalInput) => {
       const normalized = normalizeResizeTerminalPayload(payload)
-      runtime.resize(normalized.sessionId, normalized.cols, normalized.rows)
+      await runtime.resize(normalized.sessionId, normalized.cols, normalized.rows)
     },
     { defaultErrorCode: 'terminal.resize_failed' },
   )
@@ -83,7 +83,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyKill,
     async (_event, payload: KillTerminalInput) => {
       const normalized = normalizeKillTerminalPayload(payload)
-      runtime.kill(normalized.sessionId)
+      await runtime.kill(normalized.sessionId)
     },
     { defaultErrorCode: 'terminal.kill_failed' },
   )
@@ -92,7 +92,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyAttach,
     async (event, payload: AttachTerminalInput) => {
       const normalized = normalizeAttachTerminalPayload(payload)
-      runtime.attach(event.sender.id, normalized.sessionId)
+      await runtime.attach(event.sender.id, normalized.sessionId)
     },
     { defaultErrorCode: 'terminal.attach_failed' },
   )
@@ -101,7 +101,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyDetach,
     async (event, payload: DetachTerminalInput) => {
       const normalized = normalizeDetachTerminalPayload(payload)
-      runtime.detach(event.sender.id, normalized.sessionId)
+      await runtime.detach(event.sender.id, normalized.sessionId)
     },
     { defaultErrorCode: 'terminal.detach_failed' },
   )
@@ -110,7 +110,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptySnapshot,
     async (_event, payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> => {
       const normalized = normalizeSnapshotPayload(payload)
-      return { data: runtime.snapshot(normalized.sessionId) }
+      return { data: await runtime.snapshot(normalized.sessionId) }
     },
     { defaultErrorCode: 'terminal.snapshot_failed' },
   )

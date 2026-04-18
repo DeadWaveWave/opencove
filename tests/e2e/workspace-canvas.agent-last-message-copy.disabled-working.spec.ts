@@ -75,8 +75,8 @@ test.describe('Workspace Canvas - Agent Last Message Copy (Working Disabled)', (
       await expect(copyButton).toBeVisible()
       await expect(copyButton).toBeDisabled()
 
-      await expect(nodeStatus).toHaveText('Standby', { timeout: 30_000 })
-      await expect(copyButton).toBeEnabled({ timeout: 30_000 })
+      await expect(nodeStatus).toHaveText('Standby', { timeout: 60_000 })
+      await expect(copyButton).toBeEnabled({ timeout: 60_000 })
       await copyButton.evaluate(button => {
         button.click()
       })

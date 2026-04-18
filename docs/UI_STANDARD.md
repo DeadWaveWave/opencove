@@ -34,8 +34,11 @@
 
 ### 2.1 单一真相
 
-- 持久化设置：`settings.uiTheme: 'system' | 'light' | 'dark'`
-- Renderer 主题入口：`<html data-cove-theme="light|dark">`（`system` 会跟随 `prefers-color-scheme` 计算出 light/dark）
+- 持久化设置：`settings.uiTheme: UiTheme`，取值见 `src/contexts/settings/domain/uiSettings.ts`（当前为 `'system' | 'light' | 'dark' | 'ember'`）。
+- Renderer 主题入口（**两个互补的 hook**，共同构成命名主题扩展点）：
+  - `<html data-cove-theme="light|dark">` —— 解析后的基础配色，所有 `--cove-*` token 默认基于此切换；`system` 会跟随 `prefers-color-scheme` 计算出 light/dark。
+  - `<html data-cove-theme-id="<UiTheme>">` —— 当前选中的命名主题 id。这是为命名主题预留的扩展点：任何主题（当前内置 `ember`，未来可扩展到用户提供的主题包）都通过 `:root[data-cove-theme-id='<id>']` 选择器覆盖 `--cove-*` token，与基础配色解耦。当前 PR 只 ship 内置 Ember 作为示例；真正的"用户主题加载/注册"机制（loader、安全沙箱、UI 入口）属于后续工作。
+- 添加一个新主题的步骤（内置或后续用户主题都遵循同一形态）：① 在 `UI_THEMES` 中登记 id；② 在 `UI_THEME_DESCRIPTORS` 声明 `baseScheme`（决定该主题坐落于 light 还是 dark base）与 `i18nKey`；③ 提供 `styles/themes/<id>.css`，以 `:root[data-cove-theme-id='<id>']` 选择器覆盖需要的 `--cove-*` token。
 - 必须设置 `color-scheme`，让原生控件在主题下正确渲染。
 
 ### 2.2 Token 优先（禁止硬编码颜色）

@@ -49,6 +49,10 @@ export function scheduleNodeScrollbackWrite(
   }
 
   const delayMs = options.delayMs ?? 0
+  if (delayMs <= 0) {
+    flushNodeScrollbackWrite(normalizedNodeId)
+    return
+  }
   pending.timer = window.setTimeout(() => {
     pending.timer = null
     flushNodeScrollbackWrite(normalizedNodeId)

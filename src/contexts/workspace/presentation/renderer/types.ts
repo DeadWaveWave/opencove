@@ -6,11 +6,19 @@ import type {
   CanvasImageMimeType,
   GitHubPullRequestSummary,
   TerminalRuntimeKind,
+  WebsiteWindowSessionMode,
 } from '@shared/contracts/dto'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 
-export type WorkspaceNodeKind = 'terminal' | 'agent' | 'task' | 'note' | 'image'
+export type WorkspaceNodeKind =
+  | 'terminal'
+  | 'agent'
+  | 'task'
+  | 'note'
+  | 'image'
+  | 'document'
+  | 'website'
 
 export type TaskRuntimeStatus = 'todo' | 'doing' | 'ai_done' | 'done'
 
@@ -79,11 +87,24 @@ export interface ImageNodeData {
   naturalHeight: number | null
 }
 
+export interface DocumentNodeData {
+  uri: string
+}
+
+export interface WebsiteNodeData {
+  url: string
+  pinned: boolean
+  sessionMode: WebsiteWindowSessionMode
+  profileId: string | null
+}
+
 export interface TerminalNodeData {
   [key: string]: unknown
   sessionId: string
+  isLiveSessionReattach?: boolean
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
   title: string
   titlePinnedByUser?: boolean
@@ -102,6 +123,8 @@ export interface TerminalNodeData {
   task: TaskNodeData | null
   note: NoteNodeData | null
   image: ImageNodeData | null
+  document: DocumentNodeData | null
+  website: WebsiteNodeData | null
 }
 
 export interface WorkspaceState {
@@ -110,6 +133,7 @@ export interface WorkspaceState {
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions?: string[]
+  environmentVariables?: Record<string, string>
   nodes: Node<TerminalNodeData>[]
   viewport: WorkspaceViewport
   isMinimapVisible: boolean
@@ -124,6 +148,7 @@ export interface PersistedWorkspaceState {
   path: string
   worktreesRoot: string
   pullRequestBaseBranchOptions?: string[]
+  environmentVariables?: Record<string, string>
   nodes: PersistedTerminalNode[]
   viewport: WorkspaceViewport
   isMinimapVisible: boolean
@@ -143,6 +168,7 @@ export interface WorkspaceSpaceState {
   id: string
   name: string
   directoryPath: string
+  targetMountId: string | null
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: WorkspaceSpaceRect | null
@@ -244,6 +270,7 @@ export interface SpaceArchiveNoteSnapshot {
 
 export interface PersistedTerminalNode {
   id: string
+  sessionId?: string | null
   title: string
   titlePinnedByUser?: boolean
   position: Point
@@ -252,6 +279,7 @@ export interface PersistedTerminalNode {
   kind: WorkspaceNodeKind
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
   status: AgentRuntimeStatus | null
   startedAt: string | null
@@ -262,7 +290,7 @@ export interface PersistedTerminalNode {
   executionDirectory?: string | null
   expectedDirectory?: string | null
   agent: AgentNodeData | null
-  task: TaskNodeData | NoteNodeData | ImageNodeData | null
+  task: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | WebsiteNodeData | null
 }
 
 export interface PersistedAppState {

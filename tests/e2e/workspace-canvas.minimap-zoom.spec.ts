@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   dragLocatorTo,
@@ -7,6 +7,20 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Minimap & Zoom', () => {
+  const readClientRect = async (
+    locator: Locator,
+  ): Promise<{ x: number; y: number; width: number; height: number }> => {
+    return await locator.evaluate(element => {
+      const rect = element.getBoundingClientRect()
+      return {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      }
+    })
+  }
+
   test('renders subdued canvas controls and collapsible minimap', async ({
     browserName,
   }, testInfo) => {
@@ -180,7 +194,10 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
         {
           id: 'node-header-zoom',
           title: 'terminal-header-zoom',
-          position: { x: 120, y: 120 },
+          // Keep the zoomed terminal away from the top window chrome. In
+          // inactive Linux CI, header drags too close to the top edge can
+          // stall inside Electron's native mouse move path.
+          position: { x: 640, y: 420 },
           width: 460,
           height: 300,
         },
@@ -201,10 +218,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       const header = terminal.locator('.terminal-node__header')
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-
       await dragLocatorTo(window, header, pane, {
-        sourcePosition: { x: 120, y: 16 },
-        targetPosition: { x: 680, y: 420 },
+        sourcePosition: { x: 120, y: 18 },
+        targetPosition: { x: 240, y: 220 },
       })
 
       await expect
@@ -219,9 +235,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
       const terminalBody = terminal.locator('.terminal-node__terminal')
-      const terminalBox = await terminalBody.boundingBox()
-      if (!terminalBox) {
-        throw new Error('terminal bounding box unavailable for normalization click')
+      const terminalBox = await readClientRect(terminalBody)
+      if (terminalBox.width <= 0 || terminalBox.height <= 0) {
+        throw new Error('terminal client rect unavailable for normalization click')
       }
 
       // Click near the center of the terminal to avoid occluded edges after drag while zoomed-in.

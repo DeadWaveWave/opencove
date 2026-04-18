@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import { peekCachedTerminalScreenState } from './screenStateCache'
 
 type TerminalSelectionHandle = Pick<
   Terminal,
@@ -8,6 +9,16 @@ type TerminalSelectionHandle = Pick<
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
+  getFontOptions: (nodeId: string) => { fontSize: number | null; fontFamily: string | null } | null
+  getSize: (nodeId: string) => { cols: number; rows: number } | null
+  getViewportY: (nodeId: string) => number | null
+  getCachedScreenStateSummary: (nodeId: string) => {
+    sessionId: string
+    serializedLength: number
+    rawSnapshotLength: number
+    serializedHasFrameToken: boolean
+    rawSnapshotHasFrameToken: boolean
+  } | null
   emitBinaryInput: (nodeId: string, data: string) => boolean
   getSelection: (nodeId: string) => string | null
   hasSelection: (nodeId: string) => boolean
@@ -93,6 +104,55 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return {
           x: rect.left + (leftPadding + (clampedCol - 0.5) * cellWidth) * scaleX,
           y: rect.top + (topPadding + (clampedRow - 0.5) * cellHeight) * scaleY,
+        }
+      },
+      getFontOptions: nodeId => {
+        const terminal = terminalHandles.get(nodeId) as unknown as {
+          options?: { fontSize?: unknown; fontFamily?: unknown }
+        }
+        const options = terminal?.options
+        if (!options) {
+          return null
+        }
+
+        return {
+          fontSize:
+            typeof options.fontSize === 'number' && Number.isFinite(options.fontSize)
+              ? options.fontSize
+              : null,
+          fontFamily: typeof options.fontFamily === 'string' ? options.fontFamily : null,
+        }
+      },
+      getSize: nodeId => {
+        const terminal = terminalHandles.get(nodeId)
+        if (!terminal) {
+          return null
+        }
+
+        return {
+          cols: terminal.cols,
+          rows: terminal.rows,
+        }
+      },
+      getViewportY: nodeId => {
+        const terminal = terminalHandles.get(nodeId) as unknown as {
+          buffer?: { active?: { viewportY?: unknown } }
+        }
+        const viewportY = terminal?.buffer?.active?.viewportY
+        return typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null
+      },
+      getCachedScreenStateSummary: nodeId => {
+        const cached = peekCachedTerminalScreenState(nodeId)
+        if (!cached) {
+          return null
+        }
+
+        return {
+          sessionId: cached.sessionId,
+          serializedLength: cached.serialized.length,
+          rawSnapshotLength: cached.rawSnapshot.length,
+          serializedHasFrameToken: cached.serialized.includes('FRAME_29999_TOKEN'),
+          rawSnapshotHasFrameToken: cached.rawSnapshot.includes('FRAME_29999_TOKEN'),
         }
       },
       emitBinaryInput: (nodeId, data) => {

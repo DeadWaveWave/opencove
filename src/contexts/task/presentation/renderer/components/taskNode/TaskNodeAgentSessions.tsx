@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState, type JSX } from 'react'
+import { useMemo, useState, type JSX } from 'react'
 import { RotateCcw, Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '@contexts/agent/domain/agentResumeBinding'
 import type {
@@ -38,34 +39,6 @@ export function TaskNodeAgentSessions({
     y: number
   } | null>(null)
   const [resumeConfirmRecordId, setResumeConfirmRecordId] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!agentSessionMenu) {
-      return
-    }
-
-    const closeMenu = (event: MouseEvent): void => {
-      if (event.target instanceof Element && event.target.closest('.task-agent-session-menu')) {
-        return
-      }
-
-      setAgentSessionMenu(null)
-    }
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        setAgentSessionMenu(null)
-      }
-    }
-
-    window.addEventListener('mousedown', closeMenu)
-    window.addEventListener('keydown', handleEscape)
-
-    return () => {
-      window.removeEventListener('mousedown', closeMenu)
-      window.removeEventListener('keydown', handleEscape)
-    }
-  }, [agentSessionMenu])
 
   const sortedAgentSessions = useMemo(() => {
     return [...agentSessions].sort((left, right) => {
@@ -192,16 +165,26 @@ export function TaskNodeAgentSessions({
       </div>
 
       {agentSessionMenu ? (
-        <div
+        <ViewportMenuSurface
+          open={true}
           className="workspace-context-menu task-agent-session-menu"
           data-testid="task-node-agent-session-menu"
-          style={{ top: agentSessionMenu.y, left: agentSessionMenu.x }}
-          onMouseDown={event => {
-            event.stopPropagation()
+          placement={{
+            type: 'point',
+            point: {
+              x: agentSessionMenu.x,
+              y: agentSessionMenu.y,
+            },
+            estimatedSize: {
+              width: 188,
+              height: 96,
+            },
           }}
-          onClick={event => {
-            event.stopPropagation()
+          onDismiss={() => {
+            setAgentSessionMenu(null)
           }}
+          dismissOnPointerDownOutside={true}
+          dismissOnEscape={true}
         >
           {agentSessionMenuRecord && isResumeSessionBindingVerified(agentSessionMenuRecord) ? (
             <button
@@ -227,7 +210,7 @@ export function TaskNodeAgentSessions({
             <Trash2 className="workspace-context-menu__icon" aria-hidden="true" />
             <span className="workspace-context-menu__label">{t('taskNode.removeRecord')}</span>
           </button>
-        </div>
+        </ViewportMenuSurface>
       ) : null}
 
       {resumeConfirmRecord ? (

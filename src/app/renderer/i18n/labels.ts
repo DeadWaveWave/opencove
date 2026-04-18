@@ -1,10 +1,15 @@
 import type {
   CanvasInputMode,
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
   StandardWindowSizeBucket,
   UiLanguage,
   UiTheme,
 } from '@contexts/settings/domain/agentSettings'
-import { UI_LANGUAGE_NATIVE_LABEL } from '@contexts/settings/domain/agentSettings'
+import {
+  UI_LANGUAGE_NATIVE_LABEL,
+  UI_THEME_DESCRIPTORS,
+} from '@contexts/settings/domain/agentSettings'
 import type { AppUpdateChannel, AppUpdatePolicy } from '@shared/contracts/dto'
 import type {
   TaskPriority,
@@ -24,6 +29,31 @@ export function getCanvasInputModeLabel(t: TranslateFn, mode: CanvasInputMode): 
   return t('settingsPanel.canvas.inputMode.mouse')
 }
 
+export function getCanvasWheelBehaviorLabel(t: TranslateFn, behavior: CanvasWheelBehavior): string {
+  if (behavior === 'pan') {
+    return t('settingsPanel.canvas.wheelBehavior.pan')
+  }
+
+  return t('settingsPanel.canvas.wheelBehavior.zoom')
+}
+
+export function getCanvasWheelZoomModifierLabel(
+  t: TranslateFn,
+  modifier: CanvasWheelZoomModifier,
+  platform: string | undefined,
+): string {
+  switch (modifier) {
+    case 'primary':
+      return t('settingsPanel.canvas.wheelZoomModifier.primary', {
+        primaryKey: platform === 'darwin' ? 'Cmd' : 'Ctrl',
+      })
+    case 'ctrl':
+      return t('settingsPanel.canvas.wheelZoomModifier.ctrl')
+    case 'alt':
+      return t('settingsPanel.canvas.wheelZoomModifier.alt')
+  }
+}
+
 export function getStandardWindowSizeBucketLabel(
   t: TranslateFn,
   bucket: StandardWindowSizeBucket,
@@ -40,15 +70,8 @@ export function getStandardWindowSizeBucketLabel(
 }
 
 export function getUiThemeLabel(t: TranslateFn, theme: UiTheme): string {
-  if (theme === 'system') {
-    return t('settingsPanel.general.uiTheme.system')
-  }
-
-  if (theme === 'light') {
-    return t('settingsPanel.general.uiTheme.light')
-  }
-
-  return t('settingsPanel.general.uiTheme.dark')
+  const i18nKey = UI_THEME_DESCRIPTORS[theme].i18nKey
+  return t(`settingsPanel.general.uiTheme.${i18nKey}`)
 }
 
 export function getAppUpdatePolicyLabel(t: TranslateFn, policy: AppUpdatePolicy): string {

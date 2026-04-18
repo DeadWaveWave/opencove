@@ -1,5 +1,23 @@
-import type { AppUpdateChannel, AppUpdatePolicy } from '../../../shared/contracts/dto'
+import type {
+  AppUpdateChannel,
+  AppUpdatePolicy,
+  WebsiteWindowPolicy,
+} from '../../../shared/contracts/dto'
+import type {
+  AgentCustomModelByProvider,
+  AgentCustomModelEnabledByProvider,
+  AgentCustomModelOptionsByProvider,
+} from './agentSettings.customModels'
+import {
+  AGENT_PROVIDERS,
+  isTaskTitleAgentProvider,
+  isValidProvider,
+  normalizeAgentProviderOrder,
+  type AgentProvider,
+  type TaskTitleAgentProvider,
+} from './agentSettings.providers'
 import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
+import { isValidUiLanguage, isValidUiTheme, type UiLanguage, type UiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
   isValidUpdatePolicy,
@@ -7,6 +25,16 @@ import {
 } from './updateSettings'
 import type { KeybindingOverrides } from './keybindings'
 import { normalizeKeybindingOverrides } from './keybindings'
+import {
+  isValidCanvasInputMode,
+  isValidCanvasWheelBehavior,
+  isValidCanvasWheelZoomModifier,
+  isValidStandardWindowSizeBucket,
+  type CanvasInputMode,
+  type CanvasWheelBehavior,
+  type CanvasWheelZoomModifier,
+  type StandardWindowSizeBucket,
+} from './canvasSettings'
 import {
   isRecord,
   normalizeBoolean,
@@ -20,6 +48,14 @@ import {
   normalizeTaskPromptTemplates,
   normalizeTaskPromptTemplatesByWorkspaceId,
 } from './taskPromptTemplates'
+import type { QuickCommand } from './quickCommands'
+import { normalizeQuickCommands } from './quickCommands'
+import type { QuickPhrase } from './quickPhrases'
+import { normalizeQuickPhrases } from './quickPhrases'
+import type { AgentEnvByProvider } from './agentEnv'
+import { normalizeAgentEnvByProvider } from './agentEnv'
+import { normalizeWebsiteWindowPolicy } from './websiteWindowSettings'
+import { DEFAULT_AGENT_SETTINGS } from './agentSettings.defaults'
 
 export {
   FOCUS_NODE_TARGET_ZOOM_STEP,
@@ -27,28 +63,40 @@ export {
   MIN_FOCUS_NODE_TARGET_ZOOM,
 } from './focusNodeTargetZoom'
 export type { FocusNodeTargetZoom } from './focusNodeTargetZoom'
-
-export const AGENT_PROVIDERS = ['claude-code', 'codex', 'opencode', 'gemini'] as const
-export const TASK_TITLE_PROVIDERS = ['claude-code', 'codex'] as const
-export const WORKTREE_NAME_SUGGESTION_PROVIDERS = ['claude-code', 'codex'] as const
-export const EXPERIMENTAL_AGENT_PROVIDERS = [] as const
-export type AgentProvider = (typeof AGENT_PROVIDERS)[number]
-export type TaskTitleAgentProvider = (typeof TASK_TITLE_PROVIDERS)[number]
-export type WorktreeNameSuggestionAgentProvider =
-  (typeof WORKTREE_NAME_SUGGESTION_PROVIDERS)[number]
-
+export {
+  AGENT_PROVIDERS,
+  EXPERIMENTAL_AGENT_PROVIDERS,
+  TASK_TITLE_PROVIDERS,
+  WORKTREE_NAME_SUGGESTION_PROVIDERS,
+  isTaskTitleAgentProvider,
+  isWorktreeNameSuggestionProvider,
+} from './agentSettings.providers'
+export type {
+  AgentProvider,
+  TaskTitleAgentProvider,
+  WorktreeNameSuggestionAgentProvider,
+} from './agentSettings.providers'
 export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
-
-export const CANVAS_INPUT_MODES = ['auto', 'mouse', 'trackpad'] as const
-export type CanvasInputMode = (typeof CANVAS_INPUT_MODES)[number]
-export const STANDARD_WINDOW_SIZE_BUCKETS = ['compact', 'regular', 'large'] as const
-export type StandardWindowSizeBucket = (typeof STANDARD_WINDOW_SIZE_BUCKETS)[number]
-
-export const UI_LANGUAGES = ['en', 'zh-CN'] as const
-export type UiLanguage = (typeof UI_LANGUAGES)[number]
-
-export const UI_THEMES = ['system', 'light', 'dark'] as const
-export type UiTheme = (typeof UI_THEMES)[number]
+export {
+  CANVAS_INPUT_MODES,
+  CANVAS_WHEEL_BEHAVIORS,
+  CANVAS_WHEEL_ZOOM_MODIFIERS,
+  STANDARD_WINDOW_SIZE_BUCKETS,
+} from './canvasSettings'
+export type {
+  CanvasInputMode,
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+  StandardWindowSizeBucket,
+} from './canvasSettings'
+export {
+  DEFAULT_UI_LANGUAGE,
+  UI_LANGUAGES,
+  UI_THEME_DESCRIPTORS,
+  UI_THEMES,
+  resolveUiThemeBaseScheme,
+} from './uiSettings'
+export type { UiLanguage, UiTheme, UiThemeBaseScheme, UiThemeDescriptor } from './uiSettings'
 
 export type TerminalProfileId = string | null
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
@@ -57,7 +105,6 @@ export const MIN_TERMINAL_FONT_SIZE = 10
 export const MAX_TERMINAL_FONT_SIZE = 22
 export const MIN_UI_FONT_SIZE = 14
 export const MAX_UI_FONT_SIZE = 24
-export const DEFAULT_UI_LANGUAGE: UiLanguage = 'en'
 export const MIN_WORKSPACE_SEARCH_PANEL_WIDTH = 320
 export const MAX_WORKSPACE_SEARCH_PANEL_WIDTH = 720
 
@@ -69,26 +116,19 @@ export {
   AGENT_PROVIDER_LABEL,
   type AgentProviderCapabilities,
 } from './agentSettings.providerMeta'
-
-const DEFAULT_TASK_TITLE_PROVIDER: TaskTitleAgentProvider = 'codex'
-
-export const UI_LANGUAGE_NATIVE_LABEL: Record<UiLanguage, string> = {
-  en: 'English',
-  'zh-CN': '简体中文',
-}
-export type AgentCustomModelEnabledByProvider = {
-  [provider in AgentProvider]: boolean
-}
-
-export type AgentCustomModelByProvider = {
-  [provider in AgentProvider]: string
-}
-
-export type AgentCustomModelOptionsByProvider = {
-  [provider in AgentProvider]: string[]
-}
+export { UI_LANGUAGE_NATIVE_LABEL } from './agentSettings.uiLanguage'
 
 export type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
+export type { QuickCommand } from './quickCommands'
+export type { QuickPhrase } from './quickPhrases'
+export type { AgentEnvByProvider, AgentEnvRow } from './agentEnv'
+export {
+  resolveAgentLaunchEnv,
+  resolveAgentModel,
+  resolveTaskTitleModel,
+  resolveTaskTitleProvider,
+  resolveWorktreeNameSuggestionProvider,
+} from './agentSettings.resolvers'
 
 export interface AgentSettings {
   language: UiLanguage
@@ -99,16 +139,20 @@ export interface AgentSettings {
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
   defaultTerminalProfileId: TerminalProfileId
-  customModelEnabledByProvider: AgentCustomModelEnabledByProvider
-  customModelByProvider: AgentCustomModelByProvider
-  customModelOptionsByProvider: AgentCustomModelOptionsByProvider
+  customModelEnabledByProvider: AgentCustomModelEnabledByProvider<AgentProvider>
+  customModelByProvider: AgentCustomModelByProvider<AgentProvider>
+  customModelOptionsByProvider: AgentCustomModelOptionsByProvider<AgentProvider>
   taskTitleProvider: TaskTitleProvider
   taskTitleModel: string
   taskTagOptions: string[]
   taskPromptTemplates: TaskPromptTemplate[]
   taskPromptTemplatesByWorkspaceId: TaskPromptTemplatesByWorkspaceId
+  quickCommands: QuickCommand[]
+  quickPhrases: QuickPhrase[]
+  agentEnvByProvider: AgentEnvByProvider
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
+  focusNodeUseVisibleCanvasCenter: boolean
   standbyBannerEnabled: boolean
   standbyBannerShowTask: boolean
   standbyBannerShowSpace: boolean
@@ -117,9 +161,15 @@ export interface AgentSettings {
   disableAppShortcutsWhenTerminalFocused: boolean
   keybindings: KeybindingOverrides
   canvasInputMode: CanvasInputMode
+  canvasWheelBehavior: CanvasWheelBehavior
+  canvasWheelZoomModifier: CanvasWheelZoomModifier
   standardWindowSizeBucket: StandardWindowSizeBucket
+  websiteWindowPolicy: WebsiteWindowPolicy
+  experimentalWebsiteWindowPasteEnabled: boolean
+  experimentalRemoteWorkersEnabled: boolean
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
+  terminalFontFamily: string | null
   uiFontSize: number
   githubPullRequestsEnabled: boolean
   updatePolicy: AppUpdatePolicy
@@ -127,163 +177,10 @@ export interface AgentSettings {
   releaseNotesSeenVersion: string | null
   hideWorktreeMismatchDropWarning: boolean
 }
-
-export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
-  language: DEFAULT_UI_LANGUAGE,
-  uiTheme: 'dark',
-  isPrimarySidebarCollapsed: false,
-  workspaceSearchPanelWidth: 420,
-  defaultProvider: 'codex',
-  agentProviderOrder: [...AGENT_PROVIDERS],
-  agentFullAccess: true,
-  defaultTerminalProfileId: null,
-  customModelEnabledByProvider: {
-    'claude-code': false,
-    codex: false,
-    opencode: false,
-    gemini: false,
-  },
-  customModelByProvider: {
-    'claude-code': '',
-    codex: '',
-    opencode: '',
-    gemini: '',
-  },
-  customModelOptionsByProvider: {
-    'claude-code': [],
-    codex: [],
-    opencode: [],
-    gemini: [],
-  },
-  taskTitleProvider: 'default',
-  taskTitleModel: '',
-  taskTagOptions: ['feature', 'bug', 'refactor', 'docs', 'test'],
-  taskPromptTemplates: [],
-  taskPromptTemplatesByWorkspaceId: {},
-  focusNodeOnClick: true,
-  focusNodeTargetZoom: 1,
-  standbyBannerEnabled: true,
-  standbyBannerShowTask: true,
-  standbyBannerShowSpace: true,
-  standbyBannerShowBranch: true,
-  standbyBannerShowPullRequest: true,
-  disableAppShortcutsWhenTerminalFocused: true,
-  keybindings: {},
-  canvasInputMode: 'auto',
-  standardWindowSizeBucket: 'regular',
-  defaultTerminalWindowScalePercent: 80,
-  terminalFontSize: 13,
-  uiFontSize: 18,
-  githubPullRequestsEnabled: true,
-  updatePolicy: 'prompt',
-  updateChannel: 'stable',
-  releaseNotesSeenVersion: null,
-  hideWorktreeMismatchDropWarning: false,
-}
-
-function isValidProvider(value: unknown): value is AgentProvider {
-  return typeof value === 'string' && AGENT_PROVIDERS.includes(value as AgentProvider)
-}
-
-export function isTaskTitleAgentProvider(value: unknown): value is TaskTitleAgentProvider {
-  return typeof value === 'string' && TASK_TITLE_PROVIDERS.includes(value as TaskTitleAgentProvider)
-}
-
-export function isWorktreeNameSuggestionProvider(
-  value: unknown,
-): value is WorktreeNameSuggestionAgentProvider {
-  return (
-    typeof value === 'string' &&
-    WORKTREE_NAME_SUGGESTION_PROVIDERS.includes(value as WorktreeNameSuggestionAgentProvider)
-  )
-}
+export { DEFAULT_AGENT_SETTINGS }
 
 function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
   return value === 'default' || isTaskTitleAgentProvider(value)
-}
-
-function isValidCanvasInputMode(value: unknown): value is CanvasInputMode {
-  return typeof value === 'string' && CANVAS_INPUT_MODES.includes(value as CanvasInputMode)
-}
-
-function isValidStandardWindowSizeBucket(value: unknown): value is StandardWindowSizeBucket {
-  return (
-    typeof value === 'string' &&
-    STANDARD_WINDOW_SIZE_BUCKETS.includes(value as StandardWindowSizeBucket)
-  )
-}
-
-function isValidUiLanguage(value: unknown): value is UiLanguage {
-  return typeof value === 'string' && UI_LANGUAGES.includes(value as UiLanguage)
-}
-
-function isValidUiTheme(value: unknown): value is UiTheme {
-  return typeof value === 'string' && UI_THEMES.includes(value as UiTheme)
-}
-
-function normalizeAgentProviderOrder(value: unknown): AgentProvider[] {
-  if (!Array.isArray(value)) {
-    return [...AGENT_PROVIDERS]
-  }
-
-  const normalized: AgentProvider[] = []
-  const seen = new Set<AgentProvider>()
-
-  for (const item of value) {
-    if (!isValidProvider(item)) {
-      continue
-    }
-
-    if (seen.has(item)) {
-      continue
-    }
-
-    seen.add(item)
-    normalized.push(item)
-  }
-
-  for (const provider of AGENT_PROVIDERS) {
-    if (seen.has(provider)) {
-      continue
-    }
-
-    seen.add(provider)
-    normalized.push(provider)
-  }
-
-  return normalized
-}
-
-export function resolveAgentModel(settings: AgentSettings, provider: AgentProvider): string | null {
-  if (!settings.customModelEnabledByProvider[provider]) {
-    return null
-  }
-
-  const model = settings.customModelByProvider[provider].trim()
-  return model.length > 0 ? model : null
-}
-
-export function resolveTaskTitleProvider(settings: AgentSettings): TaskTitleAgentProvider {
-  if (settings.taskTitleProvider !== 'default') {
-    return settings.taskTitleProvider
-  }
-
-  return isTaskTitleAgentProvider(settings.defaultProvider)
-    ? settings.defaultProvider
-    : DEFAULT_TASK_TITLE_PROVIDER
-}
-
-export function resolveWorktreeNameSuggestionProvider(
-  defaultProvider: AgentProvider,
-): WorktreeNameSuggestionAgentProvider {
-  return isWorktreeNameSuggestionProvider(defaultProvider)
-    ? defaultProvider
-    : DEFAULT_TASK_TITLE_PROVIDER
-}
-
-export function resolveTaskTitleModel(settings: AgentSettings): string | null {
-  const normalized = settings.taskTitleModel.trim()
-  return normalized.length > 0 ? normalized : null
 }
 
 export function normalizeAgentSettings(value: unknown): AgentSettings {
@@ -321,7 +218,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
 
   const legacyModelInput = isRecord(value.modelByProvider) ? value.modelByProvider : {}
 
-  const customModelEnabledByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelEnabledByProvider>(
+  const customModelEnabledByProvider = AGENT_PROVIDERS.reduce<
+    AgentCustomModelEnabledByProvider<AgentProvider>
+  >(
     (acc, provider) => {
       const normalizedEnabled = normalizeBoolean(enabledInput[provider])
       const legacyModel = normalizeTextValue(legacyModelInput[provider])
@@ -333,7 +232,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     { ...DEFAULT_AGENT_SETTINGS.customModelEnabledByProvider },
   )
 
-  const customModelByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelByProvider>(
+  const customModelByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelByProvider<AgentProvider>>(
     (acc, provider) => {
       const current = customModelInput[provider] ?? legacyModelInput[provider]
       acc[provider] = normalizeTextValue(current)
@@ -346,7 +245,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     ? value.customModelOptionsByProvider
     : {}
 
-  const customModelOptionsByProvider = AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
+  const customModelOptionsByProvider = AGENT_PROVIDERS.reduce<
+    AgentCustomModelOptionsByProvider<AgentProvider>
+  >(
     (acc, provider) => {
       const options = normalizeUniqueStringArray(optionsInput[provider])
       const selectedModel = customModelByProvider[provider]
@@ -358,7 +259,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
       acc[provider] = options
       return acc
     },
-    AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider>(
+    AGENT_PROVIDERS.reduce<AgentCustomModelOptionsByProvider<AgentProvider>>(
       (acc, provider) => {
         acc[provider] = [...DEFAULT_AGENT_SETTINGS.customModelOptionsByProvider[provider]]
         return acc
@@ -380,6 +281,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const taskPromptTemplatesByWorkspaceId = normalizeTaskPromptTemplatesByWorkspaceId(
     value.taskPromptTemplatesByWorkspaceId,
   )
+  const quickCommands = normalizeQuickCommands(value.quickCommands)
+  const quickPhrases = normalizeQuickPhrases(value.quickPhrases)
+  const agentEnvByProvider = normalizeAgentEnvByProvider(value.agentEnvByProvider)
   const focusNodeOnClick =
     normalizeBoolean(value.focusNodeOnClick) ??
     normalizeBoolean(value.normalizeZoomOnTerminalClick) ??
@@ -388,6 +292,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.focusNodeTargetZoom,
     DEFAULT_AGENT_SETTINGS.focusNodeTargetZoom,
   )
+  const focusNodeUseVisibleCanvasCenter =
+    normalizeBoolean(value.focusNodeUseVisibleCanvasCenter) ??
+    DEFAULT_AGENT_SETTINGS.focusNodeUseVisibleCanvasCenter
   const standbyBannerEnabled =
     normalizeBoolean(value.standbyBannerEnabled) ?? DEFAULT_AGENT_SETTINGS.standbyBannerEnabled
   const standbyBannerShowTask =
@@ -407,9 +314,25 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const canvasInputMode = isValidCanvasInputMode(value.canvasInputMode)
     ? value.canvasInputMode
     : DEFAULT_AGENT_SETTINGS.canvasInputMode
+  const canvasWheelBehavior = isValidCanvasWheelBehavior(value.canvasWheelBehavior)
+    ? value.canvasWheelBehavior
+    : DEFAULT_AGENT_SETTINGS.canvasWheelBehavior
+  const canvasWheelZoomModifier = isValidCanvasWheelZoomModifier(value.canvasWheelZoomModifier)
+    ? value.canvasWheelZoomModifier
+    : DEFAULT_AGENT_SETTINGS.canvasWheelZoomModifier
   const standardWindowSizeBucket = isValidStandardWindowSizeBucket(value.standardWindowSizeBucket)
     ? value.standardWindowSizeBucket
     : DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket
+  const websiteWindowPolicy = normalizeWebsiteWindowPolicy(
+    value.websiteWindowPolicy,
+    DEFAULT_AGENT_SETTINGS.websiteWindowPolicy,
+  )
+  const experimentalWebsiteWindowPasteEnabled =
+    normalizeBoolean(value.experimentalWebsiteWindowPasteEnabled) ??
+    DEFAULT_AGENT_SETTINGS.experimentalWebsiteWindowPasteEnabled
+  const experimentalRemoteWorkersEnabled =
+    normalizeBoolean(value.experimentalRemoteWorkersEnabled) ??
+    DEFAULT_AGENT_SETTINGS.experimentalRemoteWorkersEnabled
   const defaultTerminalWindowScalePercent = normalizeIntegerInRange(
     value.defaultTerminalWindowScalePercent,
     DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent,
@@ -422,6 +345,10 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     MIN_TERMINAL_FONT_SIZE,
     MAX_TERMINAL_FONT_SIZE,
   )
+  const terminalFontFamily =
+    typeof value.terminalFontFamily === 'string' && value.terminalFontFamily.trim().length > 0
+      ? value.terminalFontFamily.trim()
+      : DEFAULT_AGENT_SETTINGS.terminalFontFamily
   const legacyUiFontScalePercent = normalizeIntegerInRange(
     value.uiFontScalePercent,
     Math.round((DEFAULT_AGENT_SETTINGS.uiFontSize / 16) * 100),
@@ -474,8 +401,12 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     taskTagOptions,
     taskPromptTemplates,
     taskPromptTemplatesByWorkspaceId,
+    quickCommands,
+    quickPhrases,
+    agentEnvByProvider,
     focusNodeOnClick,
     focusNodeTargetZoom,
+    focusNodeUseVisibleCanvasCenter,
     standbyBannerEnabled,
     standbyBannerShowTask,
     standbyBannerShowSpace,
@@ -484,9 +415,15 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     disableAppShortcutsWhenTerminalFocused,
     keybindings,
     canvasInputMode,
+    canvasWheelBehavior,
+    canvasWheelZoomModifier,
     standardWindowSizeBucket,
+    websiteWindowPolicy,
+    experimentalWebsiteWindowPasteEnabled,
+    experimentalRemoteWorkersEnabled,
     defaultTerminalWindowScalePercent,
     terminalFontSize,
+    terminalFontFamily,
     uiFontSize,
     githubPullRequestsEnabled,
     updatePolicy,

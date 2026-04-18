@@ -179,6 +179,40 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('toggles visible-canvas centering from canvas settings', () => {
+    const onChange = vi.fn()
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={onChange}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-canvas'))
+    fireEvent.click(screen.getByTestId('settings-focus-node-visible-center'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      focusNodeUseVisibleCanvasCenter: false,
+    })
+  })
+
   it('updates release channel settings and exposes update actions', () => {
     const onChange = vi.fn()
     const onCheckForUpdates = vi.fn()
@@ -230,5 +264,85 @@ describe('SettingsPanel', () => {
 
     fireEvent.click(screen.getByTestId('settings-update-download'))
     expect(onDownloadUpdate).toHaveBeenCalledTimes(1)
+  })
+
+  it('toggles experimental remote workers from experimental settings', () => {
+    const onChange = vi.fn()
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={onChange}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-experimental'))
+    fireEvent.click(screen.getByTestId('settings-experimental-remote-workers-enabled'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      experimentalRemoteWorkersEnabled: true,
+    })
+  })
+
+  it('hides endpoints settings until remote workers are enabled', () => {
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    const { rerender } = render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={() => undefined}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    expect(screen.queryByTestId('settings-section-nav-endpoints')).not.toBeInTheDocument()
+
+    rerender(
+      <SettingsPanel
+        settings={{ ...DEFAULT_AGENT_SETTINGS, experimentalRemoteWorkersEnabled: true }}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={() => undefined}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    expect(screen.getByTestId('settings-section-nav-endpoints')).toBeVisible()
   })
 })

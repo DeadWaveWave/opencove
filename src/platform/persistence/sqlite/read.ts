@@ -16,6 +16,35 @@ import {
 } from './schema'
 import { safeJsonParse } from './utils'
 
+function normalizeEnvironmentVariables(value: unknown): Record<string, string> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {}
+  }
+
+  const result: Record<string, string> = {}
+  let count = 0
+
+  for (const [key, val] of Object.entries(value)) {
+    const trimmedKey = typeof key === 'string' ? key.trim() : ''
+    if (trimmedKey.length === 0) {
+      continue
+    }
+
+    if (typeof val !== 'string') {
+      continue
+    }
+
+    result[trimmedKey] = val
+    count += 1
+
+    if (count >= 100) {
+      break
+    }
+  }
+
+  return result
+}
+
 function normalizeStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) {
     return []
@@ -47,7 +76,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
   const settingsValue =
     typeof settingsRow?.value === 'string' ? safeJsonParse(settingsRow.value) : {}
 
-  const workspaceRows = db.select().from(workspaces).all()
+  const workspaceRows = db.select().from(workspaces).orderBy(workspaces.sortOrder).all()
   const nodeRows = db.select().from(nodes).all()
   const spaceRows = db.select().from(spaces).all()
   const spaceNodeRows = db.select().from(spaceNodes).all()
@@ -79,6 +108,10 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
     workspaces: workspaceRows.map(workspace => {
       const workspaceNodes = (nodesByWorkspaceId.get(workspace.id) ?? []).map(node => ({
         id: node.id,
+        sessionId:
+          typeof node.sessionId === 'string' && node.sessionId.trim().length > 0
+            ? node.sessionId
+            : null,
         title: node.title,
         titlePinnedByUser: node.titlePinnedByUser === 1,
         position: { x: node.positionX, y: node.positionY },
@@ -107,6 +140,7 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
           id: space.id,
           name: space.name,
           directoryPath: space.directoryPath,
+          targetMountId: typeof space.targetMountId === 'string' ? space.targetMountId : null,
           labelColor: normalizeLabelColor(space.labelColor),
           nodeIds: links.map(link => link.nodeId),
           rect:
@@ -138,6 +172,9 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         pullRequestBaseBranchOptions: normalizeStringArray(
           safeJsonParse(workspace.pullRequestBaseBranchOptionsJson),
         ),
+        environmentVariables: normalizeEnvironmentVariables(
+          safeJsonParse(workspace.environmentVariablesJson),
+        ),
         spaceArchiveRecords: (() => {
           const parsed = safeJsonParse(workspace.spaceArchiveRecordsJson)
           return Array.isArray(parsed) ? parsed.slice(0, 50) : []
@@ -161,7 +198,9 @@ export function readWorkspaceStateRawFromDb(
     return null
   }
 
-  const nodeIds = appState.workspaces.flatMap(workspace => workspace.nodes.map(node => node.id))
+  const nodeIds = appState.workspaces.flatMap(workspace =>
+    workspace.nodes.filter(node => node.kind === 'terminal').map(node => node.id),
+  )
   const scrollbacks =
     nodeIds.length > 0
       ? db

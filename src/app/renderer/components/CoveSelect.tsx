@@ -6,6 +6,7 @@ export interface CoveSelectOption {
   value: string
   label: string
   disabled?: boolean
+  badge?: string
 }
 
 interface MenuPosition {
@@ -181,11 +182,14 @@ export function CoveSelect({
       return
     }
 
-    const currentSelectedIndex = resolveInitialIndex()
-    if (currentSelectedIndex !== highlightedIndex) {
-      setHighlightedIndex(currentSelectedIndex)
+    const highlightedOption = options[highlightedIndex]
+    const highlightedIsValid =
+      highlightedIndex >= 0 && highlightedIndex < options.length && !highlightedOption?.disabled
+
+    if (!highlightedIsValid) {
+      setHighlightedIndex(resolveInitialIndex())
     }
-  }, [highlightedIndex, isOpen, resolveInitialIndex])
+  }, [highlightedIndex, isOpen, options, resolveInitialIndex])
 
   const selectOption = (nextValue: string): void => {
     onChange(nextValue)
@@ -316,7 +320,12 @@ export function CoveSelect({
         }}
         onKeyDown={handleTriggerKeyDown}
       >
-        <span className="cove-select__label">{selectedOption?.label ?? ''}</span>
+        <span className="cove-select__label">
+          <span className="cove-select__label-text">{selectedOption?.label ?? ''}</span>
+          {selectedOption?.badge ? (
+            <span className="cove-select__pill">{selectedOption.badge}</span>
+          ) : null}
+        </span>
         <ChevronDown
           aria-hidden="true"
           size={16}
@@ -366,7 +375,10 @@ export function CoveSelect({
                       setHighlightedIndex(index)
                     }}
                   >
-                    {option.label}
+                    <span className="cove-select__option-label">{option.label}</span>
+                    {option.badge ? (
+                      <span className="cove-select__pill">{option.badge}</span>
+                    ) : null}
                   </button>
                 )
               })}

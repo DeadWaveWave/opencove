@@ -63,10 +63,13 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
     }
   })
 
-  test('keeps opencode agent terminal frozen to dark after switching ui theme', async () => {
+  test('keeps opencode agent terminal theme synchronized after switching ui theme', async ({
+    browserName,
+  }, testInfo) => {
     const { electronApp, window } = await launchApp()
 
     try {
+      void browserName
       await clearAndSeedWorkspace(
         window,
         [
@@ -125,9 +128,18 @@ test.describe('Workspace Canvas - Terminal Theme', () => {
         )
         .toBe('light')
 
-      await expect(terminalNode).toHaveAttribute('data-cove-terminal-node-theme', 'dark')
-      await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'dark')
-      await expect(terminalHeader).toHaveCSS('background-color', 'rgba(18, 28, 50, 0.96)')
+      await expect(terminalNode).toHaveAttribute('data-cove-terminal-node-theme', 'light')
+      await expect(terminalBody).toHaveAttribute('data-cove-terminal-theme', 'light')
+      await expect(terminalHeader).toHaveCSS('background-color', 'rgba(246, 249, 255, 0.96)')
+
+      await window.locator('.settings-panel__close').click()
+
+      const screenshotPath = testInfo.outputPath('terminal-opencode-theme-light.png')
+      await window.screenshot({ path: screenshotPath })
+      await testInfo.attach('terminal-opencode-theme-light', {
+        path: screenshotPath,
+        contentType: 'image/png',
+      })
     } finally {
       await electronApp.close()
     }

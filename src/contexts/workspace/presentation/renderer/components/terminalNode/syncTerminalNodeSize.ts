@@ -34,6 +34,7 @@ export function syncTerminalNodeSize({
   isPointerResizingRef,
   lastSyncedPtySizeRef,
   sessionId,
+  shouldResizePty = true,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   fitAddonRef: MutableRefObject<FitAddon | null>
@@ -41,6 +42,7 @@ export function syncTerminalNodeSize({
   isPointerResizingRef: MutableRefObject<boolean>
   lastSyncedPtySizeRef: MutableRefObject<{ cols: number; rows: number } | null>
   sessionId: string
+  shouldResizePty?: boolean
 }): void {
   const terminal = terminalRef.current
   const fitAddon = fitAddonRef.current
@@ -75,6 +77,10 @@ export function syncTerminalNodeSize({
   })
 
   if (!nextPtySize) {
+    return
+  }
+
+  if (!shouldResizePty) {
     return
   }
 

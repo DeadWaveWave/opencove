@@ -6,8 +6,72 @@ import type {
   ResolveAgentResumeSessionInput,
 } from '../../../../shared/contracts/dto'
 import { normalizeProvider } from '../../../../app/main/ipc/normalize'
-import { isAbsolute } from 'node:path'
+import { isAbsolute, win32 } from 'node:path'
 import { createAppError } from '../../../../shared/errors/appError'
+import {
+  resolveNodeScriptLaunch,
+  type NodeScriptLaunchCommand,
+} from '../../../../shared/utils/nodeScriptCommand'
+
+function isAbsoluteWorkspacePath(path: string): boolean {
+  return isAbsolute(path) || win32.isAbsolute(path)
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return !!value && typeof value === 'object' && !Array.isArray(value)
+}
+
+const MAX_AGENT_LAUNCH_ENV_ENTRIES = 200
+const MAX_AGENT_LAUNCH_ENV_KEY_LENGTH = 120
+const MAX_AGENT_LAUNCH_ENV_VALUE_LENGTH = 10_000
+const AGENT_LAUNCH_ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/
+const AGENT_LAUNCH_ENV_RESERVED_PREFIX = 'OPENCOVE_'
+
+function normalizeAgentLaunchEnv(value: unknown): Record<string, string> | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (!isPlainRecord(value)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid env for agent:launch',
+    })
+  }
+
+  const resolved: Record<string, string> = {}
+  let entryCount = 0
+
+  for (const [rawKey, rawValue] of Object.entries(value)) {
+    if (entryCount >= MAX_AGENT_LAUNCH_ENV_ENTRIES) {
+      break
+    }
+
+    const key = rawKey.trim().slice(0, MAX_AGENT_LAUNCH_ENV_KEY_LENGTH)
+    if (key.length === 0) {
+      continue
+    }
+
+    if (
+      AGENT_LAUNCH_ENV_RESERVED_PREFIX.length > 0 &&
+      key.startsWith(AGENT_LAUNCH_ENV_RESERVED_PREFIX)
+    ) {
+      continue
+    }
+
+    if (!AGENT_LAUNCH_ENV_KEY_PATTERN.test(key)) {
+      continue
+    }
+
+    if (typeof rawValue !== 'string') {
+      continue
+    }
+
+    resolved[key] = rawValue.slice(0, MAX_AGENT_LAUNCH_ENV_VALUE_LENGTH)
+    entryCount += 1
+  }
+
+  return Object.keys(resolved).length > 0 ? resolved : null
+}
 
 export function normalizeListModelsPayload(payload: unknown): ListAgentModelsInput {
   if (!payload || typeof payload !== 'object') {
@@ -43,7 +107,7 @@ export function normalizeResolveResumeSessionPayload(
     })
   }
 
-  if (!isAbsolute(cwd)) {
+  if (!isAbsoluteWorkspacePath(cwd)) {
     throw createAppError('common.invalid_input', {
       debugMessage: 'agent:resolve-resume-session requires an absolute cwd',
     })
@@ -74,7 +138,7 @@ export function normalizeReadLastMessagePayload(payload: unknown): ReadAgentLast
     throw new Error('Invalid cwd for agent:read-last-message')
   }
 
-  if (!isAbsolute(cwd)) {
+  if (!isAbsoluteWorkspacePath(cwd)) {
     throw new Error('agent:read-last-message requires an absolute cwd')
   }
 
@@ -95,11 +159,16 @@ export function resolveAgentTestStub(
   cwd: string,
   model: string | null,
   mode: LaunchAgentInput['mode'],
-): {
-  command: string
-  args: string[]
-} | null {
+  resumeSessionId?: string | null,
+): NodeScriptLaunchCommand | null {
   if (process.env.NODE_ENV !== 'test') {
+    return null
+  }
+
+  const wantsRealAgents =
+    process.env['OPENCOVE_TEST_USE_REAL_AGENTS'] === '1' ||
+    process.env['OPENCOVE_TEST_USE_REAL_AGENTS']?.toLowerCase() === 'true'
+  if (wantsRealAgents) {
     return null
   }
 
@@ -107,17 +176,14 @@ export function resolveAgentTestStub(
   const stubScriptPath = process.env['OPENCOVE_TEST_AGENT_STUB_SCRIPT']?.trim() ?? ''
 
   if (sessionScenario.length > 0 && stubScriptPath.length > 0) {
-    return {
-      command: process.execPath,
-      args: [
-        stubScriptPath,
-        provider,
-        cwd,
-        mode ?? 'new',
-        model ?? 'default-model',
-        sessionScenario,
-      ],
-    }
+    return resolveNodeScriptLaunch(stubScriptPath, [
+      provider,
+      cwd,
+      mode ?? 'new',
+      model ?? 'default-model',
+      resumeSessionId ?? '',
+      sessionScenario,
+    ])
   }
 
   if (process.platform === 'win32') {
@@ -128,7 +194,7 @@ export function resolveAgentTestStub(
         '-NoLogo',
         '-NoProfile',
         '-Command',
-        `Write-Output "${message}"; Start-Sleep -Seconds 120`,
+        `Start-Sleep -Milliseconds 250; Write-Output "${message}"; Start-Sleep -Seconds 120`,
       ],
     }
   }
@@ -138,7 +204,8 @@ export function resolveAgentTestStub(
 
   return {
     command: shell,
-    args: ['-lc', `printf '%s\\n' "${message}"; sleep 120`],
+    // Give the PTY/terminal bridge a moment to attach before the first stdout burst.
+    args: ['-lc', `sleep 0.25; printf '%s\\n' "${message}"; sleep 120`],
   }
 }
 
@@ -152,12 +219,15 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   const record = payload as Record<string, unknown>
   const provider = normalizeProvider(record.provider)
   const cwd = typeof record.cwd === 'string' ? record.cwd.trim() : ''
+  const profileId = typeof record.profileId === 'string' ? record.profileId.trim() : ''
   const prompt = typeof record.prompt === 'string' ? record.prompt.trim() : ''
   const mode = record.mode === 'resume' ? 'resume' : 'new'
 
   const model = typeof record.model === 'string' ? record.model.trim() : ''
   const resumeSessionId =
     typeof record.resumeSessionId === 'string' ? record.resumeSessionId.trim() : ''
+
+  const env = normalizeAgentLaunchEnv(record.env)
 
   const agentFullAccess =
     typeof record.agentFullAccess === 'boolean' ? record.agentFullAccess : true
@@ -177,7 +247,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
     })
   }
 
-  if (!isAbsolute(cwd)) {
+  if (!isAbsoluteWorkspacePath(cwd)) {
     throw createAppError('common.invalid_input', {
       debugMessage: 'agent:launch requires an absolute cwd',
     })
@@ -186,10 +256,12 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
   return {
     provider,
     cwd,
+    profileId: profileId.length > 0 ? profileId : null,
     prompt,
     mode,
     model: model.length > 0 ? model : null,
     resumeSessionId: resumeSessionId.length > 0 ? resumeSessionId : null,
+    env,
     agentFullAccess,
     cols,
     rows,

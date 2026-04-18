@@ -11,12 +11,41 @@ export interface PersistencePort {
   writeAppState: (state: unknown) => Promise<PersistWriteResult>
   readNodeScrollback: (nodeId: string) => Promise<string | null>
   writeNodeScrollback: (nodeId: string, scrollback: string | null) => Promise<PersistWriteResult>
+  readAgentNodePlaceholderScrollback: (nodeId: string) => Promise<string | null>
+  writeAgentNodePlaceholderScrollback: (
+    nodeId: string,
+    scrollback: string | null,
+  ) => Promise<PersistWriteResult>
   readWorkspaceStateRaw: () => Promise<string | null>
   writeWorkspaceStateRaw: (raw: string) => Promise<PersistWriteResult>
 }
 
 const NODE_SCROLLBACK_KEY_PREFIX = 'opencove:m0:node-scrollback:'
 const LEGACY_NODE_SCROLLBACK_KEY_PREFIX = 'cove:m0:node-scrollback:'
+const AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'opencove:m0:agent-placeholder-scrollback:'
+const LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX = 'cove:m0:agent-placeholder-scrollback:' // legacy
+const LOCAL_SYNC_WRITE_EVENT_NAME = 'opencove.localSyncWrite'
+
+function publishLocalSyncWriteRevision(revision: unknown): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  if (typeof revision !== 'number' || !Number.isFinite(revision) || revision < 0) {
+    return
+  }
+
+  try {
+    window.dispatchEvent(
+      new CustomEvent(LOCAL_SYNC_WRITE_EVENT_NAME, {
+        detail: { revision: Math.floor(revision) },
+      }),
+    )
+  } catch {
+    // ignore event failures
+  }
+}
+
 function createIpcPort(): PersistencePort | null {
   if (typeof window === 'undefined') {
     return null
@@ -38,7 +67,11 @@ function createIpcPort(): PersistencePort | null {
     },
     writeAppState: async state => {
       try {
-        return await persistenceApi.writeAppState({ state })
+        const result = await persistenceApi.writeAppState({ state })
+        if (result.ok) {
+          publishLocalSyncWriteRevision(result.revision)
+        }
+        return result
       } catch (error) {
         return {
           ok: false,
@@ -59,6 +92,26 @@ function createIpcPort(): PersistencePort | null {
     writeNodeScrollback: async (nodeId, scrollback) => {
       try {
         return await persistenceApi.writeNodeScrollback({ nodeId, scrollback })
+      } catch (error) {
+        return {
+          ok: false,
+          reason: 'io',
+          error: createAppErrorDescriptor('persistence.io_failed', {
+            debugMessage: toAppErrorDescriptor(error).debugMessage,
+          }),
+        }
+      }
+    },
+    readAgentNodePlaceholderScrollback: async nodeId => {
+      try {
+        return await persistenceApi.readAgentNodePlaceholderScrollback({ nodeId })
+      } catch {
+        return null
+      }
+    },
+    writeAgentNodePlaceholderScrollback: async (nodeId, scrollback) => {
+      try {
+        return await persistenceApi.writeAgentNodePlaceholderScrollback({ nodeId, scrollback })
       } catch (error) {
         return {
           ok: false,
@@ -150,6 +203,40 @@ function createLocalStoragePort(): PersistencePort | null {
     writeNodeScrollback: async (nodeId, scrollback) => {
       const key = `${NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`
       const legacyKey = `${LEGACY_NODE_SCROLLBACK_KEY_PREFIX}${nodeId}`
+
+      try {
+        if (!scrollback || scrollback.length === 0) {
+          storage.removeItem(key)
+          storage.removeItem(legacyKey)
+          return { ok: true, level: 'full', bytes: 0 }
+        }
+
+        storage.setItem(key, scrollback)
+        storage.removeItem(legacyKey)
+        return { ok: true, level: 'full', bytes: scrollback.length }
+      } catch (error) {
+        return {
+          ok: false,
+          reason: isQuotaExceededError(error) ? 'quota' : 'unknown',
+          error: createAppErrorDescriptor(
+            isQuotaExceededError(error)
+              ? 'persistence.quota_exceeded'
+              : 'persistence.invalid_state',
+            {
+              debugMessage: toAppErrorDescriptor(error).debugMessage,
+            },
+          ),
+        }
+      }
+    },
+    readAgentNodePlaceholderScrollback: async nodeId =>
+      readWithLegacyFallback(
+        `${AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`,
+        `${LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`,
+      ),
+    writeAgentNodePlaceholderScrollback: async (nodeId, scrollback) => {
+      const key = `${AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`
+      const legacyKey = `${LEGACY_AGENT_PLACEHOLDER_SCROLLBACK_KEY_PREFIX}${nodeId}`
 
       try {
         if (!scrollback || scrollback.length === 0) {

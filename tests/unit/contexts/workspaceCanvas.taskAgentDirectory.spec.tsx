@@ -171,6 +171,8 @@ describe('WorkspaceCanvas task agent directory', () => {
         id: 'space-1',
         name: 'Worktree Space',
         directoryPath: worktreeDirectory,
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['task-1'],
         rect: null,
       },
@@ -219,6 +221,10 @@ describe('WorkspaceCanvas task agent directory', () => {
         cwd: worktreeDirectory,
       }),
     )
+
+    await waitFor(() => {
+      expect(latestNodes.some(node => node.data.kind === 'agent')).toBe(true)
+    })
 
     const createdAgentNode = latestNodes.find(node => node.data.kind === 'agent')
     const expectedSize = resolveDefaultAgentWindowSize('large')

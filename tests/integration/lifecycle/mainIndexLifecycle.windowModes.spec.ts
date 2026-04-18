@@ -6,8 +6,10 @@ function createMockApp() {
   const listeners = new Map<string, Listener[]>()
 
   return {
+    isPackaged: false,
     whenReady: vi.fn(() => Promise.resolve()),
     getPath: vi.fn((_name: string) => '/tmp/opencove-test-userdata'),
+    setPath: vi.fn(),
     commandLine: {
       appendSwitch: vi.fn(),
     },
@@ -123,6 +125,24 @@ function mockMainIndexDependencies(params: {
 
   vi.doMock('../../../src/app/main/ipc/registerIpcHandlers', () => ({
     registerIpcHandlers: () => ({ dispose: params.dispose }),
+  }))
+
+  vi.doMock('../../../src/contexts/terminal/presentation/main-ipc/runtime', () => ({
+    createPtyRuntime: () => ({
+      dispose: vi.fn(),
+    }),
+  }))
+
+  vi.doMock('../../../src/app/main/controlSurface/registerControlSurfaceServer', () => ({
+    registerControlSurfaceServer: () => ({
+      dispose: vi.fn(),
+    }),
+  }))
+
+  vi.doMock('../../../src/app/main/worker/localWorkerManager', () => ({
+    hasOwnedLocalWorkerProcess: () => false,
+    startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
+    stopOwnedLocalWorker: vi.fn(async () => true),
   }))
 }
 

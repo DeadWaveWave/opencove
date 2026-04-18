@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
+  readLocatorClientRect,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 
@@ -134,11 +135,8 @@ test.describe('Workspace Canvas - Selection (Node Scope)', () => {
       await insideHeader.click({ position: { x: 40, y: 20 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
-      const paneBox = await pane.boundingBox()
-      const outsideBox = await outsideNode.boundingBox()
-      if (!paneBox || !outsideBox) {
-        throw new Error('workspace pane/node bounding box unavailable for marquee selection')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const outsideBox = await readLocatorClientRect(outsideNode)
 
       const startX = Math.max(paneBox.x + 40, outsideBox.x - 24)
       const startY = Math.max(paneBox.y + 40, outsideBox.y - 24)

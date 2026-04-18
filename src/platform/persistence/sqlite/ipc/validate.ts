@@ -1,6 +1,8 @@
 import type {
+  ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   WriteAppStateInput,
+  WriteAgentNodePlaceholderScrollbackInput,
   WriteNodeScrollbackInput,
   WriteWorkspaceStateRawInput,
 } from '../../../../shared/contracts/dto'
@@ -112,6 +114,54 @@ export function normalizeWriteNodeScrollbackPayload(payload: unknown): WriteNode
   if (nodeId.length === 0) {
     throw createAppError('common.invalid_input', {
       debugMessage: 'Invalid nodeId payload for persistence:write-node-scrollback',
+    })
+  }
+
+  const scrollback =
+    record.scrollback === null
+      ? null
+      : typeof record.scrollback === 'string'
+        ? record.scrollback
+        : null
+
+  return { nodeId, scrollback }
+}
+
+export function normalizeReadAgentNodePlaceholderScrollbackPayload(
+  payload: unknown,
+): ReadAgentNodePlaceholderScrollbackInput {
+  if (!payload || typeof payload !== 'object') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for persistence:read-agent-node-placeholder-scrollback',
+    })
+  }
+
+  const record = payload as Record<string, unknown>
+  const nodeId = typeof record.nodeId === 'string' ? record.nodeId.trim() : ''
+  if (nodeId.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid nodeId payload for persistence:read-agent-node-placeholder-scrollback',
+    })
+  }
+
+  return { nodeId }
+}
+
+export function normalizeWriteAgentNodePlaceholderScrollbackPayload(
+  payload: unknown,
+): WriteAgentNodePlaceholderScrollbackInput {
+  if (!payload || typeof payload !== 'object') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for persistence:write-agent-node-placeholder-scrollback',
+    })
+  }
+
+  const record = payload as Record<string, unknown>
+  const nodeId = typeof record.nodeId === 'string' ? record.nodeId.trim() : ''
+  if (nodeId.length === 0) {
+    throw createAppError('common.invalid_input', {
+      debugMessage:
+        'Invalid nodeId payload for persistence:write-agent-node-placeholder-scrollback',
     })
   }
 

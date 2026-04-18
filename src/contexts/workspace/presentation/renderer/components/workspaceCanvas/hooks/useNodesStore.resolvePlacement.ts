@@ -69,6 +69,7 @@ export function resolveNodesPlacement({
   getSpaceRects,
   targetSpaceRect,
   preferredDirection,
+  avoidRects,
 }: {
   anchor: Point
   size: Size
@@ -76,11 +77,13 @@ export function resolveNodesPlacement({
   getSpaceRects?: () => Array<{ x: number; y: number; width: number; height: number }>
   targetSpaceRect?: { x: number; y: number; width: number; height: number } | null
   preferredDirection?: NodePlacementDirection
+  avoidRects?: Array<{ x: number; y: number; width: number; height: number }>
 }): { placement: Point; canPlace: boolean } {
   const currentNodes = getNodes()
   const spaceObstacles = (getSpaceRects?.() ?? []).map(rect =>
     inflateRect(toRectBounds(rect), SPACE_NODE_PADDING),
   )
+  const avoidObstacles = (avoidRects ?? []).map(rect => toRectBounds(rect))
   const targetObstacle = targetSpaceRect
     ? inflateRect(toRectBounds(targetSpaceRect), SPACE_NODE_PADDING)
     : null
@@ -90,8 +93,23 @@ export function resolveNodesPlacement({
     ? spaceObstacles.filter(obstacle => !obstacleEquals(obstacle, targetObstacle))
     : spaceObstacles
 
+  const combinedSpaceObstacles = avoidObstacles.length
+    ? [...spaceObstacles, ...avoidObstacles]
+    : spaceObstacles
+  const combinedObstaclesExceptTarget = avoidObstacles.length
+    ? [...obstaclesExceptTarget, ...avoidObstacles]
+    : obstaclesExceptTarget
+
+  if (targetSpaceRect) {
+    // Prefer keeping the caller-chosen anchor when possible (even if it overflows the space),
+    // as spaces can auto-expand after creation and we want in-space overlays to stay unobstructed.
+    if (isPositionAvailable(anchor, size, currentNodes, undefined, combinedObstaclesExceptTarget)) {
+      return { placement: anchor, canPlace: true }
+    }
+  }
+
   if (!targetSpaceRect) {
-    if (isPositionAvailable(anchor, size, currentNodes, undefined, spaceObstacles)) {
+    if (isPositionAvailable(anchor, size, currentNodes, undefined, combinedSpaceObstacles)) {
       return { placement: anchor, canPlace: true }
     }
   }
@@ -108,7 +126,7 @@ export function resolveNodesPlacement({
       },
       currentNodes,
       undefined,
-      obstaclesExceptTarget,
+      combinedObstaclesExceptTarget,
     )
 
     if (boundedPlacement) {
@@ -127,7 +145,7 @@ export function resolveNodesPlacement({
         preferredDirection,
       }),
       gap: SPACE_NODE_PADDING,
-      obstacles: spaceObstacles,
+      obstacles: combinedSpaceObstacles,
     })
 
     if (aroundSpacePlacement) {
@@ -140,9 +158,9 @@ export function resolveNodesPlacement({
     size,
     currentNodes,
     undefined,
-    spaceObstacles,
+    combinedSpaceObstacles,
   )
-  if (isPositionAvailable(nearbyPlacement, size, currentNodes, undefined, spaceObstacles)) {
+  if (isPositionAvailable(nearbyPlacement, size, currentNodes, undefined, combinedSpaceObstacles)) {
     return { placement: nearbyPlacement, canPlace: true }
   }
 
@@ -151,12 +169,12 @@ export function resolveNodesPlacement({
     size,
     currentNodes,
     undefined,
-    spaceObstacles,
+    combinedSpaceObstacles,
   )
   return {
     placement: overflowPlacement ?? anchor,
     canPlace:
       overflowPlacement !== null &&
-      isPositionAvailable(overflowPlacement, size, currentNodes, undefined, spaceObstacles),
+      isPositionAvailable(overflowPlacement, size, currentNodes, undefined, combinedSpaceObstacles),
   }
 }

@@ -55,6 +55,7 @@ describe('computeHydratedLocaleEnv', () => {
   it('keeps locale unchanged when app is not packaged', () => {
     expect(
       computeHydratedLocaleEnv({
+        isPackaged: false,
         platform: 'darwin',
         currentEnv: { LANG: 'en_US.UTF-8' },
         loginShellEnv: {
@@ -67,6 +68,7 @@ describe('computeHydratedLocaleEnv', () => {
   it('hydrates packaged macOS locale from a UTF-8 login shell', () => {
     expect(
       computeHydratedLocaleEnv({
+        isPackaged: true,
         platform: 'darwin',
         currentEnv: {
           LANG: 'C',
@@ -87,6 +89,7 @@ describe('computeHydratedLocaleEnv', () => {
   it('keeps a packaged UTF-8 locale unchanged', () => {
     expect(
       computeHydratedLocaleEnv({
+        isPackaged: true,
         platform: 'darwin',
         currentEnv: {
           LANG: 'en_US.UTF-8',
@@ -101,6 +104,7 @@ describe('computeHydratedLocaleEnv', () => {
   it('falls back to a Linux UTF-8 locale when the login shell does not expose one', () => {
     expect(
       computeHydratedLocaleEnv({
+        isPackaged: true,
         platform: 'linux',
         currentEnv: {
           LANG: 'C',
@@ -116,6 +120,7 @@ describe('computeHydratedLocaleEnv', () => {
   it('keeps Windows locale handling unchanged', () => {
     expect(
       computeHydratedLocaleEnv({
+        isPackaged: true,
         platform: 'win32',
         currentEnv: {
           LANG: 'C',

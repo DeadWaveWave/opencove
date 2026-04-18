@@ -96,6 +96,7 @@ export function TaskNode({
     x: number
     y: number
   } | null>(null)
+  const promptTemplatesTriggerRef = React.useRef<HTMLButtonElement | null>(null)
 
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
@@ -140,18 +141,32 @@ export function TaskNode({
     setTitleDraft(title)
   }, [title])
 
-  const handleHeaderClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (
-      event.detail !== 2 ||
-      !(event.target instanceof Element) ||
-      event.target.closest('.nodrag')
-    ) {
-      return
-    }
+  const startTitleEditing = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (isTitleEditing) {
+        return
+      }
 
-    event.stopPropagation()
-    setIsTitleEditing(true)
-  }, [])
+      if (event.target instanceof Element && event.target.closest('.nodrag')) {
+        return
+      }
+
+      event.stopPropagation()
+      setIsTitleEditing(true)
+    },
+    [isTitleEditing],
+  )
+
+  const handleHeaderClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.detail !== 2) {
+        return
+      }
+
+      startTitleEditing(event)
+    },
+    [startTitleEditing],
+  )
 
   const commitRequirementDraft = useCallback(() => {
     const normalized = requirementDraft.trim()
@@ -245,7 +260,12 @@ export function TaskNode({
         />
       ) : null}
 
-      <div className="task-node__header" data-node-drag-handle="true" onClick={handleHeaderClick}>
+      <div
+        className="task-node__header"
+        data-node-drag-handle="true"
+        onClick={handleHeaderClick}
+        onDoubleClick={startTitleEditing}
+      >
         <div className="task-node__header-main">
           <div className="task-node__title-row">
             {labelColor ? (
@@ -305,6 +325,7 @@ export function TaskNode({
 
         <div className="task-node__header-actions nodrag">
           <button
+            ref={promptTemplatesTriggerRef}
             type="button"
             className="task-node__icon-button task-node__icon-button--templates nodrag"
             data-testid="task-node-open-prompt-templates"
@@ -365,6 +386,7 @@ export function TaskNode({
         closeMenu={() => {
           setPromptTemplatesMenuAnchor(null)
         }}
+        triggerRef={promptTemplatesTriggerRef}
         currentRequirement={requirementDraft}
         onChangeRequirement={nextRequirement => {
           setRequirementDraft(nextRequirement)

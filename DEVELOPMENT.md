@@ -45,6 +45,13 @@
     - 同一次改动同时触及 `lifecycle / persistence / hydration / resume / watcher` 中两项及以上。
 3.  **高风险路径先写不变量**：启动、恢复、关闭、重试、fallback、异步乱序相关改动，先写 `1-3` 条 invariant，再决定实现位置与测试层级。
 4.  **结构性风险先升级判断**：以下信号任中其一，就必须按 Large Change 处理，而不是直接以最小改动修补：`多个 mutable state owner`、`边界或 authority 难以解释`、`同一入口/输入/观测承载多套竞争语义或状态迁移`、`局部 patch 可能制造新的矛盾状态或隐藏状态`、`同一真相被 runtime observation 与 durable state 同时改写`。是否“已经复发”只作为额外证据，不作为触发前提。
+5.  **当“补丁在增加复杂度”而不是“降低复杂度”时，必须优先重构**：下面任一命中，默认暂停继续堆条件/缓存/协调代码，先做结构收敛（拆 owner、收口写入口、隔离副作用）：
+    - **改动开始非局部扩散**：一个小需求/修复需要同时修改多个模块、边界或层才能生效。
+    - **真相分裂或覆盖规则不清**：同一事实出现多份镜像状态/缓存/派生值，且无法明确“谁能覆盖谁”。
+    - **特殊情况快速增长**：修复主要靠追加分支、开关、临时状态、时序约束，而不是删除分支或合并抽象。
+    - **可测试性下降**：无法写出稳定回归测试或不变量，必须依赖真实时序/IO/全局环境才能复现。
+    - **同类问题短期内反复出现**：同一类故障在一个迭代内出现多次，说明边界/owner/不变量未收敛。
+    - 需要具体案例时，参考：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`。
 
 ### 高风险问题预防策略（只列最容易漏的）
 
@@ -124,7 +131,7 @@
         -   **Feasibility Check**：针对新技术/高性能/核心重构，必须先调研并跑通 PoC。
         -   **Plan**：制定详细执行计划，等待确认。
         -   **验证**：用户可感知变化必须跑 E2E；UI 变更需提供截图/录屏；重大功能需跑通 `pnpm test:e2e`。
-        -   **兼容与迁移**：改动 IPC 接口或数据结构时，必须考虑对现有功能的影响。
+        -   **兼容与迁移（必须可回归）**：改动 IPC 接口、持久化数据结构、拓扑/配置文件时，必须提供迁移或启动期修复（repair）策略，并补回归测试覆盖“已有用户数据”（缺字段/空记录/旧格式）。不要只验证“新建流程”的 happy path。
         -   **跨平台兼容**：开发默认应考虑 `macOS / Windows / Linux` 三平台；如本次只支持部分平台，必须在方案与交付说明中明确标注差异、限制与后续补齐计划。凡修复平台特有 bug，必须补对应平台的 E2E，并在 CI 的该平台 runner 上执行验证；Windows / macOS / Linux 专属用例优先使用 `*.windows.spec.ts` / `*.mac.spec.ts` / `*.linux.spec.ts` 命名收口。
 -   **禁止手改**：
     -   lock 文件 (`pnpm-lock.yaml`) 必须由命令生成/更新。
@@ -135,10 +142,13 @@
     -   `pnpm pre-commit` 会执行 `pnpm naming-check:staged`：禁止在新代码里重新引入 `cove:*`（对外/协议/持久化），仅允许显式 legacy 迁移用途；UI 设计系统前缀仍保留 `cove`（见上文命名约定）。
     -   若本次改动包含用户可感知变化（新增功能、UX 改动、修复 bug、默认行为变化），应先提交代码并创建 PR；拿到 PR 链接/编号后，再更新 `CHANGELOG.md` 的 `## [Unreleased]` 并单独提交（每个变化一条，尽量附 `#PR` 编号）。`nightly` tag 不要求更新 changelog；发 `stable` 时再把 `Unreleased` 结算进新版本段。
     -   创建/更新 PR 时：若本次改动包含用户可感知变化，必须跑 Playwright E2E（通常 `pnpm test:e2e`，或统一跑 `pnpm pre-commit`）。
+    -   创建/更新 PR 时：必须按 `.github/pull_request_template.md` 的结构完整填写；若使用 `gh pr create` / `gh pr edit`，也要显式按模板组织 title/body，不得跳过必填段落。
+    -   PR 中的截图 / 录屏应通过 GitHub PR 描述或评论框直接上传，不要把这类评审素材作为 repo 资产提交；只有明确作为视觉回归基线的 snapshot / golden 文件，才应进入仓库并纳入测试。
     -   若本次改动涉及 **Renderer 用户可见文案**，必须做好 i18n：禁止新增硬编码用户文案，新增/修改文案时同步更新 `src/app/renderer/i18n/locales/en.ts` 与 `src/app/renderer/i18n/locales/zh-CN.ts`，并在提交前做一次对应语言的最小 smoke/测试验证。
     -   通过上述检查后，再执行 `pnpm pre-commit` （type, lint, format, test）。
 -   **测试失败排查前置**：
     -   凡遇到 `pnpm pre-commit`、`pnpm test -- --run`、`pnpm test:e2e` 或单独 `Playwright` 用例失败，继续排查前**必须先阅读** `docs/DEBUGGING.md`。
+    -   需要复现/定位 bug 时：先阅读 `docs/DEBUGGING.md` 选择合适的调试方法与测试层级；若没有覆盖到的合适方法，则自行探索新方法；当用户反馈“确实解决了困难问题”后，应补充对应案例到 `docs/cases/`，并按需更新 `docs/DEBUGGING.md`（方法+适用场景）及其它必要信息。
 -   **安全（Electron Security）**：
     -   始终开启 Context Isolation。
     -   Renderer 进程禁止开启 Node Integration。
@@ -152,6 +162,10 @@
     - 默认使用独立的 `userData` 目录（避免污染已安装版本的数据）
     - 如需临时复用已安装包的数据：`OPENCOVE_DEV_USE_SHARED_USER_DATA=1 pnpm dev` 或 `pnpm dev -- --shared-user-data`
     - 如需自定义 dev 的数据目录：`OPENCOVE_DEV_USER_DATA_DIR=/path/to/userData pnpm dev`
+-   **使用 Worker/Web UI（dev）**：先执行 `pnpm build`
+    - Worker 进程运行 `out/main/worker.js`，不会随 `pnpm dev` 的 HMR 自动更新
+    - 若遇到“恢复/同步/持久化看起来没生效，但代码明明已改”的情况，先 `pnpm build` 再重启 App
+    - 旧数据说明（M6 mounts / locations）：若你的 profile 早于 M6，引入 mounts 后首次启动会尝试自动修复旧项目数据（为缺失 mounts 的本地项目创建一个默认本地位置，并修复 Space 的 target mount 绑定）。若项目是 remote-only 且缺失位置数据，无法凭空推断远程路径，需要在项目菜单中手动添加位置后才能正常运行相关能力。
 -   **运行单元测试**：`pnpm test -- --run`
 -   **运行 E2E 测试**：`pnpm test:e2e`
     -   说明：`pnpm test:e2e` 已包含构建步骤，默认使用 `offscreen` 后台窗口模式；检测到 Electron 崩溃特征时，会按窗口模式链路自动降级并重跑失败用例（例如 `hidden -> offscreen`、`offscreen -> inactive`）。
@@ -159,11 +173,21 @@
     -   如需关闭自动降级，可设置 `OPENCOVE_E2E_DISABLE_CRASH_FALLBACK=1`。
     -   若需单独执行 Playwright（如 `pnpm exec playwright test tests/e2e/xxx.spec.ts`），必须先执行 `pnpm build`，否则可能仍会使用旧的 `out/` 产物，导致结果与当前源码不一致。
 
+## 常见问题（FAQ）
+
+-   **为什么我用 `pnpm dev` 启动后，Worker/Web UI 相关功能表现很奇怪（恢复/同步/持久化不生效）？**
+    -   先检查是否启用了 Home Worker（userData 目录下的 `home-worker.json` 中 `mode=local`，或环境变量 `OPENCOVE_WORKER_CLIENT=1`）。
+    -   然后执行一次 `pnpm build` 并重启 App，确保 `out/main/worker.js` 与当前源码一致。
+
 ## 文档地图（按问题找入口）
 
 -   **Agent 关键指令与决策门槛**：`AGENTS.md`
 -   **架构标准（DDD + Clean）**：`docs/ARCHITECTURE.md`
 -   **Landing 重构落地规范**：`docs/LANDING_ARCHITECTURE.md`
+-   **统一控制面（command/query/event）**：`docs/CONTROL_SURFACE.md`
+-   **CLI 规范**：`docs/CLI.md`
+-   **Filesystem（URI + providers + guardrails）**：`docs/FILESYSTEM.md`
+-   **画布内文件编辑（Document Node）**：`docs/DOCUMENT_NODE.md`
 -   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/PERSISTENCE.md`
 -   **UI 开发标准**：
@@ -172,6 +196,9 @@
     -   任务 UI 标准：`docs/TASK_UI_STANDARD.md`
     -   视口导航标准：`docs/VIEWPORT_NAVIGATION_STANDARD.md`
 -   **终端渲染基准**：`docs/TERMINAL_TUI_RENDERING_BASELINE.md`
+-   **诊断与复盘案例**：
+    -   Win10 Codex Scroll：`docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
+    -   画布抖动与终端持久化：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
 -   **参考优秀项目与方案调研法**：`docs/REFERENCE_RESEARCH_METHOD.md`
 -   **调试指南**：`docs/DEBUGGING.md`
 -   **贡献代码指南**：`CONTRIBUTING.md`

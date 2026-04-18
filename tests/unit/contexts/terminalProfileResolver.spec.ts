@@ -89,6 +89,36 @@ describe('TerminalProfileResolver', () => {
     ])
   })
 
+  it('does not hang when WSL distro discovery stalls', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      commandDiscoveryTimeoutMs: 10,
+      locateWindowsCommands: async commands => {
+        if (commands.includes('powershell.exe')) {
+          return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+        }
+
+        return []
+      },
+      listWslDistros: async () => await new Promise<string[]>(() => undefined),
+    })
+
+    const result = await Promise.race<
+      Awaited<ReturnType<typeof resolver.listProfiles>> | 'timed-out'
+    >([
+      resolver.listProfiles(),
+      new Promise(resolve => {
+        setTimeout(() => resolve('timed-out'), 100)
+      }),
+    ])
+
+    expect(result).not.toBe('timed-out')
+    expect(result).toEqual({
+      profiles: [{ id: 'powershell', label: 'PowerShell', runtimeKind: 'windows' }],
+      defaultProfileId: 'powershell',
+    })
+  })
+
   it('resolves WSL sessions with linux cwd translation and Windows host cwd fallback', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',
@@ -144,6 +174,28 @@ describe('TerminalProfileResolver', () => {
     expect(result.env.FOO).toBe('bar')
   })
 
+  it('adds terminal capability env for Windows PowerShell sessions', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32' }),
+      locateWindowsCommands: async () => [
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ],
+      listWslDistros: async () => [],
+    })
+
+    const result = await resolver.resolveTerminalSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'powershell',
+      cols: 80,
+      rows: 24,
+    })
+
+    expect(result.env.TERM).toBe('xterm-256color')
+    expect(result.env.COLORTERM).toBe('truecolor')
+    expect(result.env.TERM_PROGRAM).toBe('OpenCove')
+  })
+
   it('matches Windows profile ids case-insensitively during restore', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',
@@ -170,5 +222,77 @@ describe('TerminalProfileResolver', () => {
       profileId: 'wsl:Ubuntu',
       runtimeKind: 'wsl',
     })
+  })
+
+  it('resolves agent commands through the selected WSL profile', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32' }),
+      homeDir: () => 'C:\\Users\\tester',
+      locateWindowsCommands: async () => [
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ],
+      listWslDistros: async () => ['Ubuntu'],
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'wsl:Ubuntu',
+      command: 'codex',
+      args: ['resume', 'session-1'],
+      env: {
+        OPENCOVE_OPENCODE_SERVER_PORT: '5173',
+      },
+    })
+
+    expect(result).toMatchObject({
+      command: 'wsl.exe',
+      args: [
+        '--distribution',
+        'Ubuntu',
+        '--cd',
+        '/mnt/c/repo',
+        'env',
+        'OPENCOVE_OPENCODE_SERVER_PORT=5173',
+        'codex',
+        'resume',
+        'session-1',
+      ],
+      cwd: 'C:\\repo',
+      profileId: 'wsl:Ubuntu',
+      runtimeKind: 'wsl',
+    })
+  })
+
+  it('resolves agent commands through Git Bash with login shell exec semantics', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32', FOO: 'bar' }),
+      locateWindowsCommands: async commands => {
+        if (commands.includes('bash.exe')) {
+          return ['D:\\Git\\bin\\bash.exe']
+        }
+
+        return ['C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe']
+      },
+      listWslDistros: async () => [],
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: 'D:\\repo',
+      profileId: 'bash:d:\\git\\bin\\bash.exe',
+      command: 'codex',
+      args: ['resume', 'session-1'],
+    })
+
+    expect(result).toMatchObject({
+      command: 'D:\\Git\\bin\\bash.exe',
+      args: ['--login', '-c', 'exec "$@"', 'bash', 'codex', 'resume', 'session-1'],
+      cwd: 'D:\\repo',
+      profileId: 'bash:d:\\git\\bin\\bash.exe',
+      runtimeKind: 'windows',
+    })
+    expect(result.env.CHERE_INVOKING).toBe('1')
+    expect(result.env.FOO).toBe('bar')
   })
 })

@@ -1,13 +1,24 @@
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
-import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type {
+  ImageNodeData,
+  Point,
+  TerminalNodeData,
+  WebsiteNodeData,
+  WorkspaceSpaceState,
+} from '../../../types'
 import type {
   ContextMenuState,
   CreateNodeInput,
   EmptySelectionPromptState,
   SelectionDraftState,
+  ShowWorkspaceCanvasMessage,
 } from '../types'
-import type { SetNodes } from './useSpaceOwnership.helpers'
+
+export type SetNodes = (
+  updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
+  options?: { syncLayout?: boolean },
+) => void
 
 export type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -15,8 +26,12 @@ export type SelectionDraftUiState = Pick<
 >
 
 export interface UseWorkspaceCanvasInteractionsParams {
+  canvasRef: React.RefObject<HTMLDivElement | null>
   isTrackpadCanvasMode: boolean
-  normalizeZoomOnNodeClick: boolean
+  focusNodeOnClick: boolean
+  focusNodeTargetZoom: number
+  websiteWindowsEnabled: boolean
+  websiteWindowPasteEnabled: boolean
   isShiftPressedRef: React.MutableRefObject<boolean>
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
@@ -30,12 +45,34 @@ export interface UseWorkspaceCanvasInteractionsParams {
   selectedNodeIdsRef: React.MutableRefObject<string[]>
   selectedSpaceIdsRef: React.MutableRefObject<string[]>
   contextMenu: ContextMenuState | null
+  workspaceId: string
   workspacePath: string
+  environmentVariables?: Record<string, string>
   defaultTerminalProfileId: string | null
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  createNoteNode: (anchor: Point) => Node<TerminalNodeData> | null
+  createNoteNode: (
+    anchor: Point,
+    options?: {
+      placementStrategy?: 'default' | 'right-no-push'
+      initialText?: string
+      placement?: {
+        targetSpaceRect?: WorkspaceSpaceState['rect']
+      }
+    },
+  ) => Node<TerminalNodeData> | null
+  onShowMessage?: ShowWorkspaceCanvasMessage
+  createImageNode: (
+    anchor: Point,
+    image: ImageNodeData,
+    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
+  ) => Node<TerminalNodeData> | null
+  createWebsiteNode: (
+    anchor: Point,
+    website: WebsiteNodeData,
+    placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
+  ) => Node<TerminalNodeData> | null
 }

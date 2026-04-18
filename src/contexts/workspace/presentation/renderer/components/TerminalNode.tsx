@@ -1,38 +1,22 @@
-import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type JSX } from 'react'
 import { useStore } from '@xyflow/react'
-import { SerializeAddon } from '@xterm/addon-serialize'
-import { SearchAddon } from '@xterm/addon-search'
-import { Terminal } from '@xterm/xterm'
-import { FitAddon } from '@xterm/addon-fit'
-import '@xterm/xterm/css/xterm.css'
-import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
-import {
-  createTerminalCommandInputState,
-  parseTerminalCommandInput,
-} from './terminalNode/commandInput'
-import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './terminalNode/inputBridge'
-import { registerTerminalLayoutSync } from './terminalNode/layoutSync'
-import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './terminalNode/scrollback'
-import {
-  clearCachedTerminalScreenStateInvalidation,
-  getCachedTerminalScreenState,
-  isCachedTerminalScreenStateInvalidated,
-  setCachedTerminalScreenState,
-} from './terminalNode/screenStateCache'
+import type { FitAddon } from '@xterm/addon-fit'
+import type { Terminal } from '@xterm/xterm'
+import { createTerminalCommandInputState } from './terminalNode/commandInput'
 import { syncTerminalNodeSize } from './terminalNode/syncTerminalNodeSize'
-import { resolveSuffixPrefixOverlap } from './terminalNode/overlap'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
-import { resolveTerminalTheme, resolveTerminalUiTheme } from './terminalNode/theme'
-import { registerTerminalSelectionTestHandle } from './terminalNode/testHarness'
-import { patchXtermMouseServiceWithRetry } from './terminalNode/patchXtermMouseService'
+import { useTerminalAppearanceSync } from './terminalNode/useTerminalAppearanceSync'
+import { useTerminalTestTranscriptMirror } from './terminalNode/useTerminalTestTranscriptMirror'
 import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
 import { useTerminalFind } from './terminalNode/useTerminalFind'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
-import { resolveInitialTerminalDimensions } from './terminalNode/initialDimensions'
-import { revealHydratedTerminal } from './terminalNode/revealHydratedTerminal'
-import { createTerminalOutputScheduler } from './terminalNode/outputScheduler'
+import type { TerminalOutputScheduler } from './terminalNode/outputScheduler'
+import { useTerminalRuntimeSession } from './terminalNode/useTerminalRuntimeSession'
+import { useTerminalPlaceholderSession } from './terminalNode/useTerminalPlaceholderSession'
+import { useWebglPixelSnappingScheduler } from './terminalNode/useWebglPixelSnappingScheduler'
+import type { XtermSession } from './terminalNode/xtermSession'
 import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
@@ -47,6 +31,10 @@ export function TerminalNode({
   title,
   kind,
   labelColor,
+  terminalProvider = null,
+  agentLaunchMode = null,
+  agentResumeSessionIdVerified = false,
+  isLiveSessionReattach = false,
   terminalThemeMode = 'sync-with-ui',
   isSelected = false,
   isDragging = false,
@@ -57,6 +45,7 @@ export function TerminalNode({
   width,
   height,
   terminalFontSize,
+  terminalFontFamily,
   scrollback,
   onClose,
   onCopyLastMessage,
@@ -68,15 +57,33 @@ export function TerminalNode({
 }: TerminalNodeProps): JSX.Element {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
-  const outputSchedulerRef = useRef<ReturnType<typeof createTerminalOutputScheduler> | null>(null)
+  const isTestEnvironment = window.opencoveApi.meta.isTest
+  const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
+  const outputSchedulerRef = useRef<TerminalOutputScheduler | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const shouldRestoreTerminalFocusRef = useRef(false)
+  const latestSessionIdRef = useRef(sessionId)
+  const preservedXtermSessionRef = useRef<XtermSession | null>(null)
+  const recentUserInteractionAtRef = useRef(0)
+  const pendingUserInputBufferRef = useRef<Array<{ data: string; encoding: 'utf8' | 'binary' }>>([])
+  const {
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+  } = useWebglPixelSnappingScheduler({ containerRef })
   const isPointerResizingRef = useRef(false)
   const lastSyncedPtySizeRef = useRef<{ cols: number; rows: number } | null>(null)
+  const suppressPtyResizeRef = useRef(false)
   const commandInputStateRef = useRef(createTerminalCommandInputState())
   const onCommandRunRef = useRef(onCommandRun)
+  const titleRef = useRef(title)
+  const agentLaunchModeRef = useRef(agentLaunchMode)
+  const agentResumeSessionIdVerifiedRef = useRef(agentResumeSessionIdVerified)
+  const statusRef = useRef(status)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
   const {
@@ -86,19 +93,29 @@ export function TerminalNode({
     setQuery: setFindQuery,
     findNext: findNextMatch,
     findPrevious: findPreviousMatch,
+    toggleCaseSensitive: toggleFindCaseSensitive,
+    toggleUseRegex: toggleFindUseRegex,
     bindSearchAddon: bindSearchAddonToFind,
   } = useTerminalFind({
     sessionId,
     terminalRef,
     terminalThemeMode,
   })
+
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
-  }, [onCommandRun])
+    titleRef.current = title
+    agentLaunchModeRef.current = agentLaunchMode
+    agentResumeSessionIdVerifiedRef.current = agentResumeSessionIdVerified
+    statusRef.current = status
+    latestSessionIdRef.current = sessionId
+  }, [agentLaunchMode, agentResumeSessionIdVerified, onCommandRun, sessionId, status, title])
+
   useEffect(() => {
     isViewportInteractionActiveRef.current = isViewportInteractionActive
     outputSchedulerRef.current?.onViewportInteractionActiveChange(isViewportInteractionActive)
   }, [isViewportInteractionActive])
+
   const {
     scrollbackBufferRef,
     markScrollbackDirty,
@@ -111,12 +128,43 @@ export function TerminalNode({
     onScrollbackChange,
     isPointerResizingRef,
   })
+
   useEffect(() => {
     lastSyncedPtySizeRef.current = null
+    suppressPtyResizeRef.current = false
     commandInputStateRef.current = createTerminalCommandInputState()
     isTerminalHydratedRef.current = false
     setIsTerminalHydrated(false)
   }, [sessionId])
+
+  useLayoutEffect(() => {
+    const terminalContainer = containerRef.current
+    return () => {
+      const activeElement =
+        typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null
+      shouldRestoreTerminalFocusRef.current = Boolean(
+        activeElement && terminalContainer?.contains(activeElement),
+      )
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    const disposePreservedSession = (): void => {
+      preservedXtermSessionRef.current?.dispose()
+      preservedXtermSessionRef.current = null
+    }
+    const clearPendingUserInputBuffer = (): void => {
+      pendingUserInputBufferRef.current.length = 0
+    }
+
+    return () => {
+      disposePreservedSession()
+      clearPendingUserInputBuffer()
+      cancelWebglPixelSnapping()
+    }
+  }, [cancelWebglPixelSnapping])
 
   const syncTerminalSize = useCallback(() => {
     syncTerminalNodeSize({
@@ -126,12 +174,21 @@ export function TerminalNode({
       isPointerResizingRef,
       lastSyncedPtySizeRef,
       sessionId,
+      shouldResizePty: !suppressPtyResizeRef.current,
     })
-  }, [sessionId])
+    scheduleWebglPixelSnapping()
+  }, [scheduleWebglPixelSnapping, sessionId])
+
   const applyTerminalTheme = useTerminalThemeApplier({
     terminalRef,
     containerRef,
     terminalThemeMode,
+  })
+  const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
+    enabled: isTestEnvironment || diagnosticsEnabled,
+    nodeId,
+    resetKey: sessionId,
+    terminalRef,
   })
   const { draftFrame, handleResizePointerDown } = useTerminalResize({
     position,
@@ -144,314 +201,130 @@ export function TerminalNode({
     isPointerResizingRef,
   })
   const sizeStyle = resolveTerminalNodeFrameStyle({ draftFrame, position, width, height })
+
+  useTerminalPlaceholderSession({
+    nodeId,
+    sessionId,
+    kind,
+    scrollback,
+    terminalProvider,
+    terminalThemeMode,
+    isTestEnvironment,
+    containerRef,
+    terminalRef,
+    fitAddonRef,
+    suppressPtyResizeRef,
+    syncTerminalSize,
+    applyTerminalTheme,
+    bindSearchAddonToFind,
+    isTerminalHydratedRef,
+    setIsTerminalHydrated,
+    scheduleTranscriptSync,
+    shouldRestoreTerminalFocusRef,
+    latestSessionIdRef,
+    preservedXtermSessionRef,
+    recentUserInteractionAtRef,
+    pendingUserInputBufferRef,
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+    terminalFontSize,
+  })
+
+  useTerminalRuntimeSession({
+    nodeId,
+    sessionId,
+    kind,
+    terminalProvider,
+    agentLaunchModeRef,
+    agentResumeSessionIdVerifiedRef,
+    statusRef,
+    titleRef,
+    terminalThemeMode,
+    isTestEnvironment,
+    containerRef,
+    terminalRef,
+    fitAddonRef,
+    outputSchedulerRef,
+    isViewportInteractionActiveRef,
+    suppressPtyResizeRef,
+    commandInputStateRef,
+    onCommandRunRef,
+    scrollbackBufferRef,
+    markScrollbackDirty,
+    scheduleTranscriptSync,
+    cancelScrollbackPublish,
+    disposeScrollbackPublish,
+    syncTerminalSize,
+    applyTerminalTheme,
+    bindSearchAddonToFind,
+    openTerminalFind,
+    isTerminalHydratedRef,
+    setIsTerminalHydrated,
+    shouldRestoreTerminalFocusRef,
+    preservedXtermSessionRef,
+    recentUserInteractionAtRef,
+    pendingUserInputBufferRef,
+    isLiveSessionReattach,
+    activeRendererKindRef,
+    scheduleWebglPixelSnapping,
+    cancelWebglPixelSnapping,
+    setRendererKindAndApply,
+    terminalFontSize,
+  })
+
+  useTerminalAppearanceSync({
+    terminalRef,
+    syncTerminalSize,
+    terminalFontSize,
+    terminalFontFamily,
+    width,
+    height,
+  })
+
   useEffect(() => {
-    if (sessionId.trim().length === 0) {
+    const container = containerRef.current
+    if (!container) {
       return undefined
     }
 
-    const ptyWithOptionalAttach = window.opencoveApi.pty as typeof window.opencoveApi.pty & {
-      attach?: (payload: { sessionId: string }) => Promise<void>
-      detach?: (payload: { sessionId: string }) => Promise<void>
-    }
-    const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
-    const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
-    const scrollbackBuffer = scrollbackBufferRef.current
-    const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
-    const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
-    const terminal = new Terminal({
-      cursorBlink: true,
-      fontFamily:
-        'JetBrains Mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      theme: initialTerminalTheme,
-      allowProposedApi: true,
-      convertEol: true,
-      scrollback: 5000,
-      ...(initialDimensions ?? {}),
-    })
-    const fitAddon = new FitAddon()
-    const serializeAddon = new SerializeAddon()
-    terminal.loadAddon(fitAddon)
-    terminal.loadAddon(serializeAddon)
-
-    terminalRef.current = terminal
-    fitAddonRef.current = fitAddon
-    const terminalSupportsSearch =
-      typeof (terminal as unknown as { onWriteParsed?: unknown }).onWriteParsed === 'function'
-    const disposeTerminalFind = terminalSupportsSearch
-      ? (() => {
-          const searchAddon = new SearchAddon()
-          terminal.loadAddon(searchAddon)
-          return bindSearchAddonToFind(searchAddon)
-        })()
-      : () => undefined
-    let disposeTerminalSelectionTestHandle: () => void = () => undefined
-    const ptyWriteQueue = createPtyWriteQueue(({ data, encoding }) =>
-      window.opencoveApi.pty.write({
-        sessionId,
-        data,
-        ...(encoding === 'binary' ? { encoding } : {}),
-      }),
-    )
-    terminal.attachCustomKeyEventHandler(event =>
-      handleTerminalCustomKeyEvent({
-        event,
-        ptyWriteQueue,
-        terminal,
-        onOpenFind: openTerminalFind,
-      }),
-    )
-    let cancelMouseServicePatch: () => void = () => undefined
-    if (containerRef.current) {
-      terminal.open(containerRef.current)
-      containerRef.current.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
-      cancelMouseServicePatch = patchXtermMouseServiceWithRetry(terminal)
-      if (window.opencoveApi.meta.isTest) {
-        disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
-      }
-      requestAnimationFrame(syncTerminalSize)
-      if (window.opencoveApi.meta.isTest) {
-        terminal.focus()
+    const handleDragOver = (e: DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (e.dataTransfer) {
+        e.dataTransfer.dropEffect = 'copy'
       }
     }
 
-    let isDisposed = false
-    let shouldForwardTerminalData = false
-    const dataDisposable = terminal.onData(data => {
-      if (!shouldForwardTerminalData) {
+    const handleDrop = (e: DragEvent): void => {
+      e.preventDefault()
+      e.stopPropagation()
+
+      const files = e.dataTransfer?.files
+      if (!files || files.length === 0) {
         return
       }
 
-      ptyWriteQueue.enqueue(data)
-      ptyWriteQueue.flush()
+      const paths = Array.from(files)
+        .map(f => window.opencoveApi.filesystem.getPathForFile(f))
+        .filter(p => p.length > 0)
+        .map(p => (/^[a-zA-Z0-9_./-]+$/.test(p) ? p : "'" + p.replace(/'/g, "'\\''") + "'"))
+        .join(' ')
 
-      const commandRunHandler = onCommandRunRef.current
-      if (!commandRunHandler) {
-        return
-      }
-
-      const parsed = parseTerminalCommandInput(data, commandInputStateRef.current)
-      commandInputStateRef.current = parsed.nextState
-      parsed.commands.forEach(command => {
-        commandRunHandler(command)
-      })
-    })
-    const binaryDisposable = terminal.onBinary(data => {
-      if (!shouldForwardTerminalData) {
-        return
-      }
-
-      ptyWriteQueue.enqueue(data, 'binary')
-      ptyWriteQueue.flush()
-    })
-
-    let isHydrating = true
-    const bufferedDataChunks: string[] = []
-    let bufferedExitCode: number | null = null
-    const ptyEventHub = getPtyEventHub()
-
-    const outputScheduler = createTerminalOutputScheduler({
-      terminal,
-      scrollbackBuffer,
-      markScrollbackDirty,
-    })
-    outputSchedulerRef.current = outputScheduler
-    outputScheduler.onViewportInteractionActiveChange(isViewportInteractionActiveRef.current)
-
-    const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
-      if (isHydrating) {
-        bufferedDataChunks.push(event.data)
-        return
-      }
-
-      outputScheduler.handleChunk(event.data)
-    })
-
-    const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
-      if (isHydrating) {
-        bufferedExitCode = event.exitCode
-        return
-      }
-
-      const exitMessage = `\r\n[process exited with code ${event.exitCode}]\r\n`
-      outputScheduler.handleChunk(exitMessage, { immediateScrollbackPublish: true })
-    })
-
-    const attachPromise = Promise.resolve(ptyWithOptionalAttach.attach?.({ sessionId }))
-
-    const finalizeHydration = (rawSnapshot: string): void => {
-      if (isDisposed) {
-        return
-      }
-
-      scrollbackBuffer.set(rawSnapshot)
-      isHydrating = false
-      ptyWriteQueue.flush()
-
-      const bufferedData = bufferedDataChunks.join('')
-      bufferedDataChunks.length = 0
-
-      if (bufferedData.length > 0) {
-        const overlap = resolveSuffixPrefixOverlap(rawSnapshot, bufferedData)
-        const remainder = bufferedData.slice(overlap)
-
-        if (remainder.length > 0) {
-          terminal.write(remainder)
-          scrollbackBuffer.append(remainder)
-        }
-      }
-
-      if (bufferedExitCode !== null) {
-        const exitMessage = `\r\n[process exited with code ${bufferedExitCode}]\r\n`
-        bufferedExitCode = null
-        terminal.write(exitMessage)
-        scrollbackBuffer.append(exitMessage)
-      }
-
-      markScrollbackDirty(true)
-      revealHydratedTerminal(syncTerminalSize, () => {
-        if (!isDisposed) {
-          isTerminalHydratedRef.current = true
-          setIsTerminalHydrated(true)
-        }
-      })
-    }
-
-    const hydrateFromSnapshot = async () => {
-      await attachPromise.catch(() => undefined)
-
-      const persistedSnapshot = scrollbackBuffer.snapshot()
-      const cachedSerializedScreen = cachedScreenState?.serialized ?? ''
-      const baseRawSnapshot =
-        cachedScreenState && cachedScreenState.rawSnapshot.length > 0
-          ? cachedScreenState.rawSnapshot
-          : persistedSnapshot
-      let restoredPayload =
-        cachedSerializedScreen.length > 0 ? cachedSerializedScreen : persistedSnapshot
-      let rawSnapshot = baseRawSnapshot
-
-      try {
-        const snapshot = await window.opencoveApi.pty.snapshot({ sessionId })
-        if (cachedSerializedScreen.length > 0) {
-          restoredPayload = `${cachedSerializedScreen}${resolveScrollbackDelta(baseRawSnapshot, snapshot.data)}`
-          rawSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
-        } else {
-          rawSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
-          restoredPayload = rawSnapshot
-        }
-      } catch {
-        rawSnapshot = baseRawSnapshot
-      }
-
-      if (isDisposed) {
-        return
-      }
-
-      if (restoredPayload.length > 0) {
-        terminal.write(restoredPayload, () => {
-          shouldForwardTerminalData = true
-          finalizeHydration(rawSnapshot)
-        })
-      } else {
-        shouldForwardTerminalData = true
-        finalizeHydration(rawSnapshot)
+      if (paths.length > 0) {
+        terminalRef.current?.paste(paths)
       }
     }
 
-    void hydrateFromSnapshot()
-
-    const resizeObserver = new ResizeObserver(() => {
-      syncTerminalSize()
-    })
-
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current)
-    }
-    const disposeLayoutSync = registerTerminalLayoutSync(syncTerminalSize)
-
-    const handleThemeChange = () => {
-      if (terminalThemeMode !== 'sync-with-ui') {
-        return
-      }
-      applyTerminalTheme()
-      syncTerminalSize()
-    }
-    window.addEventListener('opencove-theme-changed', handleThemeChange)
+    container.addEventListener('dragover', handleDragOver)
+    container.addEventListener('drop', handleDrop)
 
     return () => {
-      const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
-
-      const hasPendingWrites = outputScheduler.hasPendingWrites()
-
-      if (!isInvalidated && isTerminalHydratedRef.current && !hasPendingWrites) {
-        // Live PTY output owns terminal modes; the renderer cache should only restore pixels.
-        const serializedScreen = serializeAddon.serialize({ excludeModes: true })
-        if (serializedScreen.length > 0) {
-          setCachedTerminalScreenState(nodeId, {
-            sessionId,
-            serialized: serializedScreen,
-            rawSnapshot: scrollbackBuffer.snapshot(),
-            cols: terminal.cols,
-            rows: terminal.rows,
-          })
-        }
-      }
-
-      cancelMouseServicePatch()
-      isDisposed = true
-      const detachPromise = ptyWithOptionalAttach.detach?.({ sessionId })
-      void detachPromise?.catch(() => undefined)
-      disposeLayoutSync()
-      window.removeEventListener('opencove-theme-changed', handleThemeChange)
-      resizeObserver.disconnect()
-      dataDisposable.dispose()
-      binaryDisposable.dispose()
-      unsubscribeData()
-      unsubscribeExit()
-      disposeTerminalSelectionTestHandle()
-      disposeTerminalFind()
-      outputScheduler.dispose()
-      outputSchedulerRef.current = null
-      ptyWriteQueue.dispose()
-      if (isInvalidated) {
-        cancelScrollbackPublish()
-        clearCachedTerminalScreenStateInvalidation(nodeId, sessionId)
-      } else {
-        disposeScrollbackPublish()
-      }
-      terminal.dispose()
-      terminalRef.current = null
-      fitAddonRef.current = null
+      container.removeEventListener('dragover', handleDragOver)
+      container.removeEventListener('drop', handleDrop)
     }
-  }, [
-    cancelScrollbackPublish,
-    applyTerminalTheme,
-    bindSearchAddonToFind,
-    nodeId,
-    disposeScrollbackPublish,
-    markScrollbackDirty,
-    openTerminalFind,
-    scrollbackBufferRef,
-    sessionId,
-    syncTerminalSize,
-    terminalThemeMode,
-  ])
-
-  useEffect(() => {
-    const terminal = terminalRef.current
-    if (!terminal) {
-      return
-    }
-
-    terminal.options.fontSize = terminalFontSize
-    syncTerminalSize()
-  }, [syncTerminalSize, terminalFontSize])
-
-  useEffect(() => {
-    const frame = requestAnimationFrame(syncTerminalSize)
-    return () => {
-      cancelAnimationFrame(frame)
-    }
-  }, [height, syncTerminalSize, width])
+  }, [])
 
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const {
@@ -474,6 +347,7 @@ export function TerminalNode({
       lastError={lastError}
       sessionId={sessionId}
       isTerminalHydrated={isTerminalHydrated}
+      transcriptRef={transcriptRef}
       sizeStyle={sizeStyle}
       containerRef={containerRef}
       handleTerminalBodyPointerDownCapture={handleTerminalBodyPointerDownCapture}
@@ -489,6 +363,8 @@ export function TerminalNode({
       onFindNext={findNextMatch}
       onFindPrevious={findPreviousMatch}
       onFindClose={closeTerminalFind}
+      onFindToggleCaseSensitive={toggleFindCaseSensitive}
+      onFindToggleUseRegex={toggleFindUseRegex}
       handleResizePointerDown={handleResizePointerDown}
     />
   )

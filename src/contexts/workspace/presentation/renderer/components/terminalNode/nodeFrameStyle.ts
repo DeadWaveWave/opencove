@@ -20,12 +20,15 @@ export function resolveTerminalNodeFrameStyle({
     size: { width, height },
   }
 
+  const translateX = Math.round(renderedFrame.position.x - position.x)
+  const translateY = Math.round(renderedFrame.position.y - position.y)
+
   return {
-    width: renderedFrame.size.width,
-    height: renderedFrame.size.height,
+    width: Math.round(renderedFrame.size.width),
+    height: Math.round(renderedFrame.size.height),
     transform:
-      renderedFrame.position.x !== position.x || renderedFrame.position.y !== position.y
-        ? `translate(${renderedFrame.position.x - position.x}px, ${renderedFrame.position.y - position.y}px)`
+      translateX !== 0 || translateY !== 0
+        ? `translate(${translateX}px, ${translateY}px)`
         : undefined,
   }
 }

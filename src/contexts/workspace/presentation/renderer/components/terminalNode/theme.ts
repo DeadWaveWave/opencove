@@ -33,23 +33,23 @@ export function resolveTerminalUiTheme(mode: TerminalThemeMode): ResolvedUiTheme
   return mode === 'dark' ? 'dark' : resolveActiveUiTheme()
 }
 
-export function resolveTerminalTheme(mode: TerminalThemeMode = 'sync-with-ui') {
+export function resolveTerminalTheme(
+  mode: TerminalThemeMode = 'sync-with-ui',
+  scope: Element | null = null,
+) {
   const resolvedTheme = resolveTerminalUiTheme(mode)
   const defaults = TERMINAL_THEME_DEFAULTS[resolvedTheme]
+  const readScope: Element = scope ?? document.documentElement
 
-  if (mode === 'dark') {
-    return { ...defaults }
-  }
-
-  const readRootCssVar = (name: string, fallback: string): string => {
-    const value = window.getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+  const readCssVar = (name: string, fallback: string): string => {
+    const value = window.getComputedStyle(readScope).getPropertyValue(name).trim()
     return value.length > 0 ? value : fallback
   }
 
   return {
-    background: readRootCssVar('--cove-terminal-background', defaults.background),
-    foreground: readRootCssVar('--cove-terminal-foreground', defaults.foreground),
-    cursor: readRootCssVar('--cove-terminal-cursor', defaults.cursor),
-    selectionBackground: readRootCssVar('--cove-terminal-selection', defaults.selectionBackground),
+    background: readCssVar('--cove-terminal-background', defaults.background),
+    foreground: readCssVar('--cove-terminal-foreground', defaults.foreground),
+    cursor: readCssVar('--cove-terminal-cursor', defaults.cursor),
+    selectionBackground: readCssVar('--cove-terminal-selection', defaults.selectionBackground),
   }
 }

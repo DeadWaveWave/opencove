@@ -30,6 +30,21 @@ describe('workspace context menu placement', () => {
       top: 728,
     })
   })
+
+  it('auto-aligns to the opposite corner when the preferred side would overflow', () => {
+    expect(
+      placeContextMenuAtPoint({
+        point: { x: 1416, y: 932 },
+        menuSize: { width: 188, height: 220 },
+        viewport: { width: 1440, height: 960 },
+        alignX: 'auto',
+        alignY: 'auto',
+      }),
+    ).toEqual({
+      left: 1228,
+      top: 712,
+    })
+  })
 })
 
 describe('workspace context submenu placement', () => {

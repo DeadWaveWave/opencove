@@ -65,6 +65,10 @@ vi.mock('@xterm/xterm', () => {
 
     public attachCustomKeyEventHandler(): void {}
 
+    public registerLinkProvider(): { dispose: () => void } {
+      return { dispose: () => undefined }
+    }
+
     public onData(listener: (data: string) => void) {
       this.dataListener = listener
       return {
@@ -314,7 +318,7 @@ describe('TerminalNode hydration buffering', () => {
 
     const { __getLastTerminal } = await import('@xterm/xterm')
     await waitFor(() => {
-      expect(__getLastTerminal()?.written).toEqual(['SERIALIZED_SCREEN!!'])
+      expect(__getLastTerminal()?.written).toEqual(['SERIALIZED_SCREEN', '!!'])
     })
     expect(__getLastTerminal()?.cols).toBe(92)
     expect(__getLastTerminal()?.rows).toBe(28)

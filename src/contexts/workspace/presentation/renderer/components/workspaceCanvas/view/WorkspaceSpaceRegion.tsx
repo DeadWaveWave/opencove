@@ -181,6 +181,10 @@ export function WorkspaceSpaceRegion({
             type="button"
             className="workspace-space-region__label"
             data-testid={`workspace-space-label-${space.id}`}
+            onPointerDown={event => {
+              event.stopPropagation()
+              startSpaceRename(space.id)
+            }}
             onClick={event => {
               event.stopPropagation()
               startSpaceRename(space.id)
@@ -201,6 +205,7 @@ export function WorkspaceSpaceRegion({
                   spaceId: space.id,
                   spaceName: space.name,
                   worktreePath,
+                  targetMountId: space.targetMountId,
                   currentName: branchName,
                   nextName: branchName,
                   isSubmitting: false,

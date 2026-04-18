@@ -1,4 +1,3 @@
-import { randomBytes } from 'node:crypto'
 import {
   ensureGitRepo,
   normalizeOptionalText,
@@ -8,12 +7,14 @@ import {
 } from './GitWorktreeService.shared'
 import { mkdir, readdir, stat } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'
-import { createAppErrorDescriptor } from '../../../../shared/errors/appError'
+import { createAppError, createAppErrorDescriptor } from '../../../../shared/errors/appError'
 import {
   cleanupResidualWorktreeDirectory,
   runGitWorktreeRemoveWithRetry,
 } from './GitWorktreeRemoveCleanup'
 import { ensureGitWorktreeRemovable } from './GitWorktreeRemovePreflight'
+import { ensureGitRepoHasCommits } from './GitWorktreeRepoGuards'
+import { buildCandidateWorktreeDirectoryName } from './GitWorktreeDirectoryName'
 
 export { getGitStatusSummary } from './GitWorktreeStatusSummary'
 
@@ -39,12 +40,22 @@ export async function listGitBranches({
 
   await ensureGitRepo(normalizedRepoPath)
 
-  const currentResult = await runGit(['branch', '--show-current'], normalizedRepoPath)
+  const currentResult = await runGit(
+    ['symbolic-ref', '--quiet', '--short', 'HEAD'],
+    normalizedRepoPath,
+  )
   const current = currentResult.exitCode === 0 ? normalizeOptionalText(currentResult.stdout) : null
 
-  const result = await runGit(['branch', '--format=%(refname:short)'], normalizedRepoPath)
+  const result = await runGit(
+    ['for-each-ref', '--format=%(refname:short)', 'refs/heads'],
+    normalizedRepoPath,
+  )
   if (result.exitCode !== 0) {
-    throw new Error(normalizeOptionalText(result.stderr) ?? 'git branch list failed')
+    const stderr = normalizeOptionalText(result.stderr) ?? 'git branch list failed'
+    if (/xcrun: error: invalid active developer path/i.test(stderr)) {
+      throw createAppError('worktree.git_unavailable', { debugMessage: stderr })
+    }
+    throw new Error(stderr)
   }
 
   const branches = result.stdout
@@ -197,23 +208,6 @@ export interface RenameGitBranchInput {
   nextName: string
 }
 
-function toSafeWorktreeDirectorySeed(branchName: string): string {
-  const slug = branchName
-    .trim()
-    .toLowerCase()
-    .replace(/[\s._/\\]+/g, '-')
-    .replace(/[^a-z0-9-]/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48)
-
-  return slug.length > 0 ? slug : 'worktree'
-}
-
-function buildCandidateWorktreeDirectoryName(branchName: string): string {
-  return `${toSafeWorktreeDirectorySeed(branchName)}--${randomBytes(4).toString('hex')}`
-}
-
 async function assertValidGitBranchName(
   repoPath: string,
   branchName: string,
@@ -287,6 +281,7 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
   }
 
   await ensureGitRepo(normalizedRepoPath)
+  await ensureGitRepoHasCommits(normalizedRepoPath)
 
   const worktreesSnapshot = await listGitWorktrees({ repoPath: normalizedRepoPath })
 
@@ -309,6 +304,10 @@ export async function createGitWorktree(input: CreateGitWorktreeInput): Promise<
 
   const alreadyCheckedOut = worktreesSnapshot.worktrees.find(entry => entry.branch === branchName)
   if (alreadyCheckedOut) {
+    if (input.branchMode.kind === 'existing') {
+      return alreadyCheckedOut
+    }
+
     throw new Error(`Branch "${branchName}" is already checked out at ${alreadyCheckedOut.path}`)
   }
 

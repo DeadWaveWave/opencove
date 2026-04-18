@@ -1,28 +1,42 @@
 import type { Node } from '@xyflow/react'
 import type {
+  DocumentNodeData,
   ImageNodeData,
   NoteNodeData,
   PersistedWorkspaceState,
   TaskNodeData,
   TerminalNodeData,
+  WebsiteNodeData,
 } from '../types'
 
 function isTaskNodeData(
-  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | WebsiteNodeData | null,
 ): value is TaskNodeData {
   return value !== null && typeof value === 'object' && 'requirement' in value
 }
 
 function isNoteNodeData(
-  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | WebsiteNodeData | null,
 ): value is NoteNodeData {
   return value !== null && typeof value === 'object' && 'text' in value
 }
 
 function isImageNodeData(
-  value: TaskNodeData | NoteNodeData | ImageNodeData | null,
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | WebsiteNodeData | null,
 ): value is ImageNodeData {
   return value !== null && typeof value === 'object' && 'assetId' in value && 'mimeType' in value
+}
+
+function isDocumentNodeData(
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | WebsiteNodeData | null,
+): value is DocumentNodeData {
+  return value !== null && typeof value === 'object' && 'uri' in value
+}
+
+function isWebsiteNodeData(
+  value: TaskNodeData | NoteNodeData | ImageNodeData | DocumentNodeData | WebsiteNodeData | null,
+): value is WebsiteNodeData {
+  return value !== null && typeof value === 'object' && 'url' in value && 'sessionMode' in value
 }
 
 export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<TerminalNodeData>[] {
@@ -45,6 +59,10 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
       node.kind === 'note' ? (isNoteNodeData(node.task) ? node.task : { text: '' }) : null
     const image: ImageNodeData | null =
       node.kind === 'image' ? (isImageNodeData(node.task) ? node.task : null) : null
+    const document: DocumentNodeData | null =
+      node.kind === 'document' ? (isDocumentNodeData(node.task) ? node.task : null) : null
+    const website: WebsiteNodeData | null =
+      node.kind === 'website' ? (isWebsiteNodeData(node.task) ? node.task : null) : null
 
     const runtimeNode: Node<TerminalNodeData> = {
       id: node.id,
@@ -55,12 +73,20 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
             ? 'noteNode'
             : node.kind === 'image'
               ? 'imageNode'
-              : 'terminalNode',
+              : node.kind === 'document'
+                ? 'documentNode'
+                : node.kind === 'website'
+                  ? 'websiteNode'
+                  : 'terminalNode',
       position: node.position,
+      initialWidth: node.width,
+      initialHeight: node.height,
       data: {
-        sessionId: '',
+        sessionId: typeof node.sessionId === 'string' ? node.sessionId : '',
+        isLiveSessionReattach: false,
         profileId: node.profileId,
         runtimeKind: node.runtimeKind,
+        terminalProviderHint: node.terminalProviderHint ?? null,
         labelColorOverride: node.labelColorOverride ?? null,
         title: node.title,
         titlePinnedByUser: node.titlePinnedByUser === true,
@@ -79,9 +105,11 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         task,
         note,
         image,
+        document,
+        website,
       },
       draggable: true,
-      selectable: node.kind !== 'note',
+      selectable: node.kind !== 'note' && node.kind !== 'document',
     }
 
     return runtimeNode

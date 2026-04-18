@@ -29,10 +29,64 @@ interface DragMouseSession {
   release(): Promise<void>
 }
 
+export interface LocatorClientRect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
 async function releaseHeldModifier(window: Page, holdsShift: boolean): Promise<void> {
   if (holdsShift) {
     await window.keyboard.up('Shift').catch(() => undefined)
   }
+}
+
+async function moveMouseWithSteps(
+  window: Page,
+  from: DragMousePoint,
+  to: DragMousePoint,
+  steps: number,
+): Promise<void> {
+  // Avoid Playwright's built-in `steps` interpolation, which can hang on CI runners.
+  // We still want intermediate mousemove events for drag interactions like snap guides.
+  const clampedSteps = Math.max(1, Math.min(Math.floor(steps), 64))
+
+  const step = async (index: number): Promise<void> => {
+    const ratio = index / clampedSteps
+    const x = from.x + (to.x - from.x) * ratio
+    const y = from.y + (to.y - from.y) * ratio
+
+    await window.mouse.move(x, y)
+
+    if (index >= clampedSteps) {
+      return
+    }
+
+    await step(index + 1)
+  }
+
+  await step(1)
+}
+
+export async function readLocatorClientRect(locator: Locator): Promise<LocatorClientRect> {
+  await expect(locator).toBeVisible()
+
+  const rect = await locator.evaluate(element => {
+    const box = element.getBoundingClientRect()
+    return {
+      x: box.x,
+      y: box.y,
+      width: box.width,
+      height: box.height,
+    }
+  })
+
+  if (rect.width <= 0 || rect.height <= 0) {
+    throw new Error('locator client rect unavailable')
+  }
+
+  return rect
 }
 
 export async function beginDragMouse(
@@ -56,6 +110,7 @@ export async function beginDragMouse(
     y: options.start.y + deltaY * triggerRatio,
   }
   const holdsShift = (options.modifiers ?? []).includes('Shift')
+  let cursorPoint = { x: options.start.x, y: options.start.y }
   let released = false
 
   if (holdsShift) {
@@ -67,9 +122,8 @@ export async function beginDragMouse(
     await window.mouse.down()
 
     if (triggerRatio > 0) {
-      await window.mouse.move(triggerPoint.x, triggerPoint.y, {
-        steps: Math.max(2, Math.min(steps, 4)),
-      })
+      await moveMouseWithSteps(window, cursorPoint, triggerPoint, Math.max(2, Math.min(steps, 4)))
+      cursorPoint = triggerPoint
     }
 
     if (options.draft) {
@@ -92,14 +146,13 @@ export async function beginDragMouse(
     const moveSteps = moveOptions.steps ?? steps
     const repeatAtTarget = moveOptions.repeatAtTarget ?? true
 
-    await window.mouse.move(target.x, target.y, { steps: moveSteps })
+    await moveMouseWithSteps(window, cursorPoint, target, moveSteps)
+    cursorPoint = target
 
     // Playwright documents that some drag targets need a second move to
     // reliably receive dragover before release.
     if (repeatAtTarget) {
-      await window.mouse.move(target.x, target.y, {
-        steps: Math.max(2, Math.min(moveSteps, 4)),
-      })
+      await window.mouse.move(target.x, target.y)
     }
 
     if ((moveOptions.settleAfterMoveMs ?? 0) > 0) {
@@ -154,15 +207,8 @@ export async function dragLocatorTo(
     steps?: number
   } = {},
 ): Promise<void> {
-  const sourceBox = await source.boundingBox()
-  if (!sourceBox) {
-    throw new Error('source locator bounding box unavailable')
-  }
-
-  const targetBox = await target.boundingBox()
-  if (!targetBox) {
-    throw new Error('target locator bounding box unavailable')
-  }
+  const sourceBox = await readLocatorClientRect(source)
+  const targetBox = await readLocatorClientRect(target)
 
   const startX = sourceBox.x + (options.sourcePosition?.x ?? sourceBox.width / 2)
   const startY = sourceBox.y + (options.sourcePosition?.y ?? sourceBox.height / 2)

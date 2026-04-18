@@ -76,6 +76,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
           position: { x: 360, y: 120 },
           width: 460,
           height: 300,
+          kind: 'terminal',
         },
         {
           id: 'task-rename',
@@ -96,6 +97,12 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
         },
       ])
 
+      const sidebarToggle = window.locator('[data-testid="app-header-toggle-primary-sidebar"]')
+      await expect(sidebarToggle).toBeVisible()
+      await sidebarToggle.click()
+      await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
+      await window.waitForTimeout(200)
+
       const terminalNode = window.locator('.terminal-node').first()
       const taskNode = window.locator('.task-node').first()
 
@@ -106,30 +113,27 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       )
       const taskTitleInput = taskNode.locator('[data-testid="task-node-inline-title-input"]')
 
+      await expect(terminalHeader).toBeVisible()
+      await expect(taskHeader).toBeVisible()
+
       await terminalHeader.click({ position: { x: 72, y: 16 } })
       await taskHeader.click({ position: { x: 72, y: 16 } })
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(taskTitleInput).toHaveCount(0)
 
-      await terminalHeader.dispatchEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        detail: 2,
-      })
-      await expect(terminalTitleInput).toBeVisible()
+      await terminalHeader.click({ position: { x: 72, y: 16 }, clickCount: 2 })
+      await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill('terminal renamed')
-      await terminalTitleInput.press('Enter')
+      await terminalTitleInput.focus()
+      await window.keyboard.press('Enter')
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(terminalHeader).toContainText('terminal renamed')
 
-      await taskHeader.dispatchEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        detail: 2,
-      })
-      await expect(taskTitleInput).toBeVisible()
+      await taskHeader.click({ position: { x: 72, y: 16 }, clickCount: 2 })
+      await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill('task renamed')
-      await taskTitleInput.press('Enter')
+      await taskTitleInput.focus()
+      await window.keyboard.press('Enter')
       await expect(taskTitleInput).toHaveCount(0)
       await expect(taskHeader).toContainText('task renamed')
     } finally {

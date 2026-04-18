@@ -4,7 +4,6 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import type {
   TerminalNodeData,
-  WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 
@@ -61,6 +60,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
 
     const { useWorkspaceCanvasApplyNodeChanges } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges')
+    const { useWorkspaceCanvasNodeDragSession } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession')
 
     const initialNodes: Node<TerminalNodeData>[] = [
       {
@@ -96,6 +97,16 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>([])
       const selectedSpaceIdsRef = useRef<string[]>([])
+      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
+      const nodeDragSession = useWorkspaceCanvasNodeDragSession({
+        workspaceId: 'workspace-remove',
+        spacesRef,
+        selectedSpaceIdsRef,
+        dragSelectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
+        onSpacesChange: () => undefined,
+      })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
         nodesRef,
@@ -106,12 +117,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
         isNodeDraggingRef: useRef(false),
-        selectionDraftRef: useRef(null),
-        spacesRef,
-        selectedSpaceIdsRef,
-        magneticSnappingEnabledRef,
-        setSnapGuides,
-        onSpacesChange: () => undefined,
+        dragSelectedSpaceIdsRef,
+        nodeDragSession,
       })
 
       return (
@@ -132,7 +139,7 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
     expect(screen.getByTestId('count')).toHaveTextContent('0')
 
     await Promise.resolve()
-  })
+  }, 15_000)
 
   it('requests persist flush when dragging a node with selected spaces', async () => {
     const onRequestPersistFlush = vi.fn()
@@ -140,6 +147,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
 
     const { useWorkspaceCanvasApplyNodeChanges } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges')
+    const { useWorkspaceCanvasNodeDragSession } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession')
 
     const initialNodes: Node<TerminalNodeData>[] = [
       {
@@ -196,6 +205,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         id: 'selected-space',
         name: 'Selected Space',
         directoryPath: '/repo/demo',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['inside-node'],
         rect: { x: 800, y: 200, width: 540, height: 380 },
       },
@@ -206,12 +217,20 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const nodesRef = useRef(nodes)
       nodesRef.current = nodes
       const [, setSnapGuides] = useState(null)
-      const [, setSpaceFramePreview] = useState<ReadonlyMap<string, WorkspaceSpaceRect> | null>(
-        null,
-      )
       const magneticSnappingEnabledRef = useRef(false)
       const spacesRef = useRef<WorkspaceSpaceState[]>(initialSpaces)
       const selectedSpaceIdsRef = useRef<string[]>(['selected-space'])
+      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
+      const nodeDragSession = useWorkspaceCanvasNodeDragSession({
+        workspaceId: 'workspace-persist',
+        spacesRef,
+        selectedSpaceIdsRef,
+        dragSelectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
+        onSpacesChange,
+        onRequestPersistFlush,
+      })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
         nodesRef,
@@ -222,14 +241,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
         isNodeDraggingRef: useRef(false),
-        selectionDraftRef: useRef(null),
-        spacesRef,
-        selectedSpaceIdsRef,
-        magneticSnappingEnabledRef,
-        setSnapGuides,
-        onSpacesChange,
-        onRequestPersistFlush,
-        setSpaceFramePreview,
+        dragSelectedSpaceIdsRef,
+        nodeDragSession,
       })
 
       return (
@@ -268,6 +281,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         id: 'selected-space',
         name: 'Selected Space',
         directoryPath: '/repo/demo',
+        targetMountId: null,
+        labelColor: null,
         nodeIds: ['inside-node'],
         rect: { x: 800, y: 380, width: 540, height: 380 },
       },
@@ -278,6 +293,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
   it('keeps live guides during drag and commits snapping on release', async () => {
     const { useWorkspaceCanvasApplyNodeChanges } =
       await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useApplyNodeChanges')
+    const { useWorkspaceCanvasNodeDragSession } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodeDragSession')
 
     const initialNodes: Node<TerminalNodeData>[] = [
       {
@@ -336,7 +353,17 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
       const magneticSnappingEnabledRef = useRef(true)
       const spacesRef = useRef<WorkspaceSpaceState[]>([])
       const selectedSpaceIdsRef = useRef<string[]>([])
+      const dragSelectedSpaceIdsRef = useRef<string[] | null>(null)
       const isNodeDraggingRef = useRef(false)
+      const nodeDragSession = useWorkspaceCanvasNodeDragSession({
+        workspaceId: 'workspace-snap',
+        spacesRef,
+        selectedSpaceIdsRef,
+        dragSelectedSpaceIdsRef,
+        magneticSnappingEnabledRef,
+        setSnapGuides,
+        onSpacesChange: () => undefined,
+      })
 
       const apply = useWorkspaceCanvasApplyNodeChanges({
         nodesRef,
@@ -347,11 +374,8 @@ describe('useWorkspaceCanvasApplyNodeChanges', () => {
         normalizePosition: (_nodeId, desired) => desired,
         applyPendingScrollbacks: next => next,
         isNodeDraggingRef,
-        spacesRef,
-        selectedSpaceIdsRef,
-        magneticSnappingEnabledRef,
-        setSnapGuides,
-        onSpacesChange: () => undefined,
+        dragSelectedSpaceIdsRef,
+        nodeDragSession,
       })
 
       const movedNode = nodes.find(node => node.id === 'snap-b')

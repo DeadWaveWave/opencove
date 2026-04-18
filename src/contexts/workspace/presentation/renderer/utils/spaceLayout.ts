@@ -2,7 +2,8 @@ import type { WorkspaceSpaceRect } from '../types'
 export { pushAwayLayout, type LayoutDirection, type LayoutItem } from './spaceLayout.pushAway'
 
 export const SPACE_NODE_PADDING = 24
-export const SPACE_MIN_SIZE = { width: 120, height: 100 }
+// Must be larger than a default note window so that space label/badges render comfortably.
+export const SPACE_MIN_SIZE = { width: 560, height: 260 }
 export const SPACE_CORNER_HITBOX_PX = 18
 export const SPACE_EDGE_HITBOX_PX = 8
 

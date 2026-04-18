@@ -1,10 +1,15 @@
 import React from 'react'
 import { Trash2 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import type {
   SpaceArchiveRecord,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import type {
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+} from '@contexts/settings/domain/agentSettings'
 import { toLocalDateTime, toRelativeTime } from '../utils/format'
 import { SpaceArchiveReplayCanvas } from './SpaceArchiveReplayCanvas'
 
@@ -37,12 +42,16 @@ export function SpaceArchiveRecordsWindow({
   isOpen,
   workspace,
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
+  canvasWheelZoomModifierSetting,
   onDeleteRecord,
   onClose,
 }: {
   isOpen: boolean
   workspace: WorkspaceState | null
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: CanvasWheelBehavior
+  canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
   onDeleteRecord: (recordId: string) => void
   onClose: () => void
 }): React.JSX.Element | null {
@@ -71,37 +80,6 @@ export function SpaceArchiveRecordsWindow({
       setRecordContextMenu(null)
     }
   }, [isOpen])
-
-  React.useEffect(() => {
-    if (!recordContextMenu) {
-      return
-    }
-
-    const closeMenu = (event: MouseEvent): void => {
-      if (
-        event.target instanceof Element &&
-        event.target.closest('.space-archives-window__record-context-menu')
-      ) {
-        return
-      }
-
-      setRecordContextMenu(null)
-    }
-
-    const handleEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
-        setRecordContextMenu(null)
-      }
-    }
-
-    window.addEventListener('mousedown', closeMenu)
-    window.addEventListener('keydown', handleEscape)
-
-    return () => {
-      window.removeEventListener('mousedown', closeMenu)
-      window.removeEventListener('keydown', handleEscape)
-    }
-  }, [recordContextMenu])
 
   const selectedRecord = selectedRecordId
     ? (records.find(record => record.id === selectedRecordId) ?? null)
@@ -249,6 +227,8 @@ export function SpaceArchiveRecordsWindow({
                   <SpaceArchiveReplayCanvas
                     record={selectedRecord}
                     canvasInputModeSetting={canvasInputModeSetting}
+                    canvasWheelBehaviorSetting={canvasWheelBehaviorSetting}
+                    canvasWheelZoomModifierSetting={canvasWheelZoomModifierSetting}
                   />
                 </div>
               ) : null}
@@ -257,18 +237,28 @@ export function SpaceArchiveRecordsWindow({
         )}
 
         {recordContextMenu ? (
-          <div
+          <ViewportMenuSurface
+            open={true}
             className="workspace-context-menu space-archives-window__record-context-menu"
-            style={{
-              top: recordContextMenu.y,
-              left: recordContextMenu.x,
+            placement={{
+              type: 'point',
+              point: {
+                x: recordContextMenu.x,
+                y: recordContextMenu.y,
+              },
+              estimatedSize: {
+                width: 188,
+                height: 56,
+              },
             }}
             data-testid="space-archives-window-record-context-menu"
-            onMouseDown={event => {
-              event.stopPropagation()
+            onDismiss={() => {
+              setRecordContextMenu(null)
             }}
-            onClick={event => {
-              event.stopPropagation()
+            dismissOnPointerDownOutside={true}
+            dismissOnEscape={true}
+            style={{
+              zIndex: 25,
             }}
           >
             <button
@@ -284,7 +274,7 @@ export function SpaceArchiveRecordsWindow({
                 {t('spaceArchivesWindow.contextMenu.delete')}
               </span>
             </button>
-          </div>
+          </ViewportMenuSurface>
         ) : null}
       </section>
     </div>

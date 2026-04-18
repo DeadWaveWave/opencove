@@ -22,7 +22,27 @@ function resolveE2EWindowMode(rawValue: string | undefined): E2EWindowMode {
 process.env['OPENCOVE_E2E_WINDOW_MODE'] = resolveE2EWindowMode(
   process.env['OPENCOVE_E2E_WINDOW_MODE'],
 )
-const configuredTestMatch = process.env['OPENCOVE_E2E_TEST_MATCH']?.trim()
+
+function resolveConfiguredTestMatch(): string | string[] | undefined {
+  const rawValue = process.env['OPENCOVE_E2E_TEST_MATCH']?.trim()
+  if (!rawValue) {
+    return undefined
+  }
+
+  const patterns = rawValue
+    .split(/[\n,]+/g)
+    .map(pattern => pattern.trim())
+    .filter(pattern => pattern.length > 0)
+
+  if (patterns.length <= 1) {
+    return patterns[0]
+  }
+
+  return patterns
+}
+
+const configuredTestMatch = resolveConfiguredTestMatch()
+const isCi = process.env.CI === '1' || process.env.CI === 'true'
 
 /**
  * Playwright 配置 - Electron E2E 测试
@@ -36,7 +56,9 @@ export default defineConfig({
 
   // 测试文件匹配模式
   testMatch:
-    configuredTestMatch && configuredTestMatch.length > 0 ? configuredTestMatch : '**/*.spec.ts',
+    configuredTestMatch && (Array.isArray(configuredTestMatch) || configuredTestMatch.length > 0)
+      ? configuredTestMatch
+      : '**/*.spec.ts',
 
   // 全局超时：每个测试 120 秒 (考虑 Electron 启动时间)
   timeout: 120_000,
@@ -53,7 +75,9 @@ export default defineConfig({
   workers: 1, // Electron 测试建议串行运行
 
   // 报告器
-  reporter: [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
+  reporter: isCi
+    ? [['list']]
+    : [['list'], ['html', { open: 'never', outputFolder: 'playwright-report' }]],
 
   // 输出目录（截图、视频等）
   outputDir: './test-results',
@@ -69,10 +93,9 @@ export default defineConfig({
       use: {
         // 截图配置
         screenshot: 'only-on-failure',
-        // 视频录制
-        video: 'retain-on-failure',
-        // Trace 配置
-        trace: 'retain-on-failure',
+        // CI 只保留重试 trace，避免全量失败视频把 runner 磁盘打满。
+        video: isCi ? 'off' : 'retain-on-failure',
+        trace: isCi ? 'on-first-retry' : 'retain-on-failure',
       },
     },
   ],

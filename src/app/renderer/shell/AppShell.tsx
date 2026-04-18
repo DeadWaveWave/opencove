@@ -1,37 +1,41 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { SettingsPanel } from '@contexts/settings/presentation/renderer/SettingsPanel'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { AppHeader } from './components/AppHeader'
 import { AppShellOverlays } from './components/AppShellOverlays'
-import { CommandCenter } from './components/CommandCenter'
-import { DeleteProjectDialog } from './components/DeleteProjectDialog'
-import { ProjectContextMenu } from './components/ProjectContextMenu'
+import { AppShellModals } from './components/AppShellModals'
+import { AppShellPopups } from './components/AppShellPopups'
 import { Sidebar } from './components/Sidebar'
-import { SpaceArchiveRecordsWindow } from './components/SpaceArchiveRecordsWindow'
+import { WorkspaceDirectoryPickerBridge } from './components/WorkspaceDirectoryPickerBridge'
 import { WorkspaceMain } from './components/WorkspaceMain'
 import { WorkspaceSearchOverlay } from './components/WorkspaceSearchOverlay'
 import { useHydrateAppState } from './hooks/useHydrateAppState'
 import { useApplyUiFontScale } from './hooks/useApplyUiFontScale'
 import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
+import { useAppQuitPersistenceFlush } from './hooks/useAppQuitPersistenceFlush'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
+import { usePtySessionBindingsSync } from './hooks/usePtySessionBindingsSync'
+import { usePtyAgentPlaceholderBindingsSync } from './hooks/usePtyAgentPlaceholderBindingsSync'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
 import { useAppKeybindings } from './hooks/useAppKeybindings'
-import { useAddWorkspaceAction } from './hooks/useAddWorkspaceAction'
 import { useAgentStandbyNotifications } from './hooks/useAgentStandbyNotifications'
 import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
+import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions'
 import { useWhatsNew } from './hooks/useWhatsNew'
-import type { ProjectContextMenuState } from './types'
+import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
+import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
+import { useWebsiteWindowEvents } from './hooks/useWebsiteWindowEvents'
+import { useWebsiteWindowOcclusionSync } from './hooks/useWebsiteWindowOcclusionSync'
+import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useAppStore } from './store/useAppStore'
-import { removeWorkspace } from './utils/removeWorkspace'
-import { WhatsNewDialog } from './components/WhatsNewDialog'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
+import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -39,17 +43,21 @@ export default function App(): React.JSX.Element {
     workspaces,
     activeWorkspaceId,
     projectContextMenu,
+    projectMountManager,
     projectDeleteConfirmation,
     isRemovingProject,
     agentSettings,
     isSettingsOpen,
+    settingsOpenPageId,
     focusRequest,
     setWorkspaces,
     setActiveWorkspaceId,
     setProjectContextMenu,
+    setProjectMountManager,
     setProjectDeleteConfirmation,
     setAgentSettings,
     setIsSettingsOpen,
+    setSettingsOpenPageId,
   } = useAppStore()
 
   const { isPersistReady } = useHydrateAppState({
@@ -84,7 +92,14 @@ export default function App(): React.JSX.Element {
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()
 
+  usePtySessionBindingsSync()
+  usePtyAgentPlaceholderBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
+  useAppQuitPersistenceFlush({ enabled: isPersistReady })
+  useWorkerSyncStateUpdates({ enabled: isPersistReady })
+  useWorkspaceMountRepair({ enabled: isPersistReady, workspaces, requestPersistFlush })
+  useWebsiteWindowEvents()
+  useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,
@@ -99,7 +114,20 @@ export default function App(): React.JSX.Element {
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false)
   const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
+  const [isAddProjectWizardOpen, setIsAddProjectWizardOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
+  const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
+
+  useWebsiteWindowOcclusionSync(
+    isSettingsOpen ||
+      isCommandCenterOpen ||
+      isControlCenterOpen ||
+      isWorkspaceSearchOpen ||
+      isSpaceArchivesOpen ||
+      isAddProjectWizardOpen ||
+      projectMountManager !== null ||
+      projectDeleteConfirmation !== null,
+  )
 
   const toggleCommandCenter = useCallback((): void => {
     setIsWorkspaceSearchOpen(false)
@@ -157,6 +185,8 @@ export default function App(): React.JSX.Element {
       closeWorkspaceSearch()
       closeControlCenter()
       closeSpaceArchives()
+      setSettingsInitialPageId(null)
+      setSettingsOpenPageId(null)
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
@@ -206,6 +236,12 @@ export default function App(): React.JSX.Element {
     typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
       ? window.opencoveApi.meta.platform
       : undefined
+
+  useEffect(() => {
+    if (platform) {
+      document.documentElement.dataset.covePlatform = platform
+    }
+  }, [platform])
   const commandCenterBindings = useMemo(
     () =>
       resolveCommandKeybinding({
@@ -233,7 +269,14 @@ export default function App(): React.JSX.Element {
   const activeProviderLabel = AGENT_PROVIDER_LABEL[agentSettings.defaultProvider]
   const activeProviderModel =
     resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
-  const handleAddWorkspace = useAddWorkspaceAction()
+  const handleAddWorkspace = useCallback((): void => {
+    setIsFocusNodeTargetZoomPreviewing(false)
+    closeCommandCenter()
+    closeControlCenter()
+    setIsWorkspaceSearchOpen(false)
+    setIsSpaceArchivesOpen(false)
+    setIsAddProjectWizardOpen(true)
+  }, [closeCommandCenter, closeControlCenter])
 
   const {
     handleWorkspaceNodesChange,
@@ -244,46 +287,33 @@ export default function App(): React.JSX.Element {
     handleWorkspaceSpaceArchiveRecordAppend,
     handleWorkspaceSpaceArchiveRecordRemove,
     handleAnyWorkspaceWorktreesRootChange,
+    handleAnyWorkspaceEnvironmentVariablesChange,
   } = useWorkspaceStateHandlers({ requestPersistFlush })
 
-  const handleRemoveWorkspace = useCallback(async (workspaceId: string): Promise<void> => {
-    await removeWorkspace(workspaceId)
-  }, [])
+  const {
+    handleRemoveWorkspace,
+    handleSelectWorkspace,
+    handleSelectAgentNode,
+    handleRequestRemoveProject,
+    handleRequestManageProjectMounts,
+    handleReorderWorkspaces,
+  } = useAppShellWorkspaceActions({ requestPersistFlush })
 
   useProjectContextMenuDismiss({
     projectContextMenu,
     setProjectContextMenu,
   })
-  const handleSelectWorkspace = useCallback((workspaceId: string): void => {
-    const store = useAppStore.getState()
-    store.setActiveWorkspaceId(workspaceId)
-    store.setFocusRequest(null)
-  }, [])
 
-  const handleSelectAgentNode = useCallback((workspaceId: string, nodeId: string): void => {
-    const store = useAppStore.getState()
-    store.setActiveWorkspaceId(workspaceId)
-    store.setFocusRequest(prev => ({
-      workspaceId,
-      nodeId,
-      sequence: (prev?.sequence ?? 0) + 1,
-    }))
-  }, [])
-
-  const handleRequestRemoveProject = useCallback((workspaceId: string): void => {
-    const store = useAppStore.getState()
-    const targetWorkspace = store.workspaces.find(workspace => workspace.id === workspaceId)
-    if (!targetWorkspace) {
-      store.setProjectContextMenu(null)
-      return
-    }
-
-    store.setProjectDeleteConfirmation({
-      workspaceId: targetWorkspace.id,
-      workspaceName: targetWorkspace.name,
-    })
-    store.setProjectContextMenu(null)
-  }, [])
+  const handleOpenSettings = useCallback(
+    (initialPageId: SettingsPageId | null = null): void => {
+      setIsFocusNodeTargetZoomPreviewing(false)
+      setSettingsInitialPageId(initialPageId)
+      closeControlCenter()
+      setSettingsOpenPageId(null)
+      setIsSettingsOpen(true)
+    },
+    [closeControlCenter, setIsSettingsOpen, setSettingsOpenPageId],
+  )
 
   return (
     <>
@@ -292,7 +322,7 @@ export default function App(): React.JSX.Element {
       >
         <AppHeader
           activeWorkspaceName={activeWorkspace?.name ?? null}
-          activeWorkspacePath={activeWorkspace?.path ?? null}
+          activeWorkspacePath={null}
           isSidebarCollapsed={isPrimarySidebarCollapsed}
           isControlCenterOpen={isControlCenterOpen}
           isCommandCenterOpen={isCommandCenterOpen}
@@ -304,26 +334,12 @@ export default function App(): React.JSX.Element {
               isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
             }))
           }}
-          onToggleControlCenter={() => {
-            toggleControlCenter()
-          }}
-          onToggleCommandCenter={() => {
-            toggleCommandCenter()
-          }}
-          onOpenSettings={() => {
-            setIsFocusNodeTargetZoomPreviewing(false)
-            closeControlCenter()
-            setIsSettingsOpen(true)
-          }}
-          onCheckForUpdates={() => {
-            void checkForUpdates()
-          }}
-          onDownloadUpdate={() => {
-            void downloadUpdate()
-          }}
-          onInstallUpdate={() => {
-            void installUpdate()
-          }}
+          onToggleControlCenter={toggleControlCenter}
+          onToggleCommandCenter={toggleCommandCenter}
+          onOpenSettings={handleOpenSettings}
+          onCheckForUpdates={checkForUpdates}
+          onDownloadUpdate={downloadUpdate}
+          onInstallUpdate={installUpdate}
         />
 
         {isPrimarySidebarCollapsed ? null : (
@@ -333,18 +349,11 @@ export default function App(): React.JSX.Element {
             activeProviderLabel={activeProviderLabel}
             activeProviderModel={activeProviderModel}
             persistNotice={persistNotice}
-            onAddWorkspace={() => {
-              void handleAddWorkspace()
-            }}
-            onSelectWorkspace={workspaceId => {
-              handleSelectWorkspace(workspaceId)
-            }}
-            onOpenProjectContextMenu={(state: ProjectContextMenuState) => {
-              setProjectContextMenu(state)
-            }}
-            onSelectAgentNode={(workspaceId, nodeId) => {
-              handleSelectAgentNode(workspaceId, nodeId)
-            }}
+            onAddWorkspace={handleAddWorkspace}
+            onSelectWorkspace={handleSelectWorkspace}
+            onOpenProjectContextMenu={setProjectContextMenu}
+            onSelectAgentNode={handleSelectAgentNode}
+            onReorderWorkspaces={handleReorderWorkspaces}
           />
         )}
 
@@ -361,9 +370,7 @@ export default function App(): React.JSX.Element {
             !isSpaceArchivesOpen &&
             projectDeleteConfirmation === null
           }
-          onAddWorkspace={() => {
-            void handleAddWorkspace()
-          }}
+          onAddWorkspace={handleAddWorkspace}
           onShowMessage={handleShowMessage}
           onRequestPersistFlush={requestPersistFlush}
           onAppendSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordAppend}
@@ -378,9 +385,7 @@ export default function App(): React.JSX.Element {
           isOpen={isWorkspaceSearchOpen}
           activeWorkspace={activeWorkspace}
           onClose={closeWorkspaceSearch}
-          onSelectSpace={spaceId => {
-            handleWorkspaceActiveSpaceChange(spaceId)
-          }}
+          onSelectSpace={handleWorkspaceActiveSpaceChange}
           panelWidth={agentSettings.workspaceSearchPanelWidth}
           onPanelWidthChange={nextWidth => {
             setAgentSettings(prev => ({
@@ -403,119 +408,87 @@ export default function App(): React.JSX.Element {
         isControlCenterOpen={isControlCenterOpen}
         onCloseControlCenter={closeControlCenter}
         onMinimapVisibilityChange={handleWorkspaceMinimapVisibilityChange}
-        onOpenSettings={() => {
-          setIsFocusNodeTargetZoomPreviewing(false)
-          closeControlCenter()
-          setIsSettingsOpen(true)
-        }}
+        onOpenSettings={handleOpenSettings}
       />
-
-      <CommandCenter
-        isOpen={isCommandCenterOpen}
+      <AppShellPopups
+        isCommandCenterOpen={isCommandCenterOpen}
         activeWorkspace={activeWorkspace}
         workspaces={workspaces}
         isPrimarySidebarCollapsed={isPrimarySidebarCollapsed}
-        onClose={() => {
-          closeCommandCenter()
+        remoteWorkersEnabled={agentSettings.experimentalRemoteWorkersEnabled}
+        onCloseCommandCenter={closeCommandCenter}
+        onOpenSettings={handleOpenSettings}
+        onRequestOpenEndpoints={() => {
+          handleOpenSettings(
+            agentSettings.experimentalRemoteWorkersEnabled ? 'endpoints' : 'experimental',
+          )
         }}
-        onOpenSettings={() => {
-          setIsFocusNodeTargetZoomPreviewing(false)
-          setIsSettingsOpen(true)
-        }}
-        onOpenSpaceArchives={() => {
-          openSpaceArchives()
-        }}
+        onOpenSpaceArchives={openSpaceArchives}
         onTogglePrimarySidebar={() => {
           setAgentSettings(prev => ({
             ...prev,
             isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
           }))
         }}
-        onAddWorkspace={() => {
-          void handleAddWorkspace()
-        }}
-        onSelectWorkspace={workspaceId => {
-          handleSelectWorkspace(workspaceId)
-        }}
-        onSelectSpace={spaceId => {
-          handleWorkspaceActiveSpaceChange(spaceId)
-        }}
-      />
-
-      <SpaceArchiveRecordsWindow
-        isOpen={isSpaceArchivesOpen}
-        workspace={activeWorkspace}
+        onAddWorkspace={handleAddWorkspace}
+        onSelectWorkspace={handleSelectWorkspace}
+        onSelectSpace={handleWorkspaceActiveSpaceChange}
+        isSpaceArchivesOpen={isSpaceArchivesOpen}
         canvasInputModeSetting={agentSettings.canvasInputMode}
-        onDeleteRecord={handleWorkspaceSpaceArchiveRecordRemove}
-        onClose={closeSpaceArchives}
-      />
+        canvasWheelBehaviorSetting={agentSettings.canvasWheelBehavior}
+        canvasWheelZoomModifierSetting={agentSettings.canvasWheelZoomModifier}
+        onDeleteSpaceArchiveRecord={handleWorkspaceSpaceArchiveRecordRemove}
+        onCloseSpaceArchives={closeSpaceArchives}
+        isAddProjectWizardOpen={isAddProjectWizardOpen}
+        onCloseAddProjectWizard={() => {
+          setIsAddProjectWizardOpen(false)
+        }}
+        projectContextMenu={projectContextMenu}
+        projectMountManager={projectMountManager}
+        onCloseProjectMountManager={() => {
+          setProjectMountManager(null)
+        }}
+        onRequestManageProjectMounts={handleRequestManageProjectMounts}
+        onRequestRemoveProject={handleRequestRemoveProject}
+        projectDeleteConfirmation={projectDeleteConfirmation}
+        isRemovingProject={isRemovingProject}
+        onCancelProjectDelete={() => {
+          setProjectDeleteConfirmation(null)
+        }}
+        onConfirmProjectDelete={() => {
+          if (!projectDeleteConfirmation) {
+            return
+          }
 
-      {projectContextMenu ? (
-        <ProjectContextMenu
-          workspaceId={projectContextMenu.workspaceId}
-          x={projectContextMenu.x}
-          y={projectContextMenu.y}
-          onRequestRemove={workspaceId => {
-            handleRequestRemoveProject(workspaceId)
-          }}
-        />
-      ) : null}
-
-      {projectDeleteConfirmation ? (
-        <DeleteProjectDialog
-          workspaceName={projectDeleteConfirmation.workspaceName}
-          isRemoving={isRemovingProject}
-          onCancel={() => {
-            setProjectDeleteConfirmation(null)
-          }}
-          onConfirm={() => {
-            void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
-          }}
-        />
-      ) : null}
-
-      {isSettingsOpen ? (
-        <SettingsPanel
-          settings={agentSettings}
-          updateState={updateState}
-          modelCatalogByProvider={providerModelCatalog}
-          workspaces={workspaces}
-          onWorkspaceWorktreesRootChange={(id, root) => {
-            handleAnyWorkspaceWorktreesRootChange(id, root)
-          }}
-          isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
-          onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
-          onChange={next => {
-            setAgentSettings(next)
-          }}
-          onCheckForUpdates={() => {
-            void checkForUpdates()
-          }}
-          onDownloadUpdate={() => {
-            void downloadUpdate()
-          }}
-          onInstallUpdate={() => {
-            void installUpdate()
-          }}
-          onClose={() => {
-            flushPersistNow()
-            setIsFocusNodeTargetZoomPreviewing(false)
-            setIsSettingsOpen(false)
-          }}
-        />
-      ) : null}
-      <WhatsNewDialog
-        isOpen={whatsNew.isOpen}
-        fromVersion={whatsNew.fromVersion}
-        toVersion={whatsNew.toVersion}
-        notes={whatsNew.notes}
-        isLoading={whatsNew.isLoading}
-        error={whatsNew.error}
-        compareUrl={whatsNew.compareUrl}
-        onClose={() => {
-          whatsNew.close()
+          void handleRemoveWorkspace(projectDeleteConfirmation.workspaceId)
         }}
       />
+      <AppShellModals
+        isSettingsOpen={isSettingsOpen}
+        settingsInitialPageId={settingsInitialPageId}
+        openSettingsPageId={settingsOpenPageId}
+        settings={agentSettings}
+        updateState={updateState}
+        modelCatalogByProvider={providerModelCatalog}
+        workspaces={workspaces}
+        onWorkspaceWorktreesRootChange={handleAnyWorkspaceWorktreesRootChange}
+        onWorkspaceEnvironmentVariablesChange={handleAnyWorkspaceEnvironmentVariablesChange}
+        isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
+        onFocusNodeTargetZoomPreviewChange={setIsFocusNodeTargetZoomPreviewing}
+        onChangeSettings={setAgentSettings}
+        onCheckForUpdates={checkForUpdates}
+        onDownloadUpdate={downloadUpdate}
+        onInstallUpdate={installUpdate}
+        onCloseSettings={() => {
+          flushPersistNow()
+          setIsFocusNodeTargetZoomPreviewing(false)
+          setSettingsInitialPageId(null)
+          setSettingsOpenPageId(null)
+          setIsSettingsOpen(false)
+        }}
+        whatsNew={whatsNew}
+      />
+      <WorkspaceDirectoryPickerBridge />
     </>
   )
 }

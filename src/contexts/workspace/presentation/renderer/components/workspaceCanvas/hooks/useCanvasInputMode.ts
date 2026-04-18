@@ -1,6 +1,10 @@
 import type { MutableRefObject } from 'react'
 import type { Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type {
+  CanvasWheelBehavior,
+  CanvasWheelZoomModifier,
+} from '@contexts/settings/domain/agentSettings'
+import type {
   CanvasInputModalityState,
   DetectedCanvasInputMode,
 } from '../../../utils/inputModality'
@@ -10,6 +14,8 @@ import { useWorkspaceCanvasTrackpadGestures } from './useTrackpadGestures'
 
 interface UseWorkspaceCanvasInputModeParams {
   canvasInputModeSetting: 'mouse' | 'trackpad' | 'auto'
+  canvasWheelBehaviorSetting: CanvasWheelBehavior
+  canvasWheelZoomModifierSetting: CanvasWheelZoomModifier
   detectedCanvasInputMode: DetectedCanvasInputMode
   inputModalityStateRef: MutableRefObject<CanvasInputModalityState>
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
@@ -22,6 +28,8 @@ interface UseWorkspaceCanvasInputModeParams {
 
 export function useWorkspaceCanvasInputMode({
   canvasInputModeSetting,
+  canvasWheelBehaviorSetting,
+  canvasWheelZoomModifierSetting,
   detectedCanvasInputMode,
   inputModalityStateRef,
   setDetectedCanvasInputMode,
@@ -39,10 +47,13 @@ export function useWorkspaceCanvasInputMode({
   const resolvedCanvasInputMode =
     canvasInputModeSetting === 'auto' ? detectedCanvasInputMode : canvasInputModeSetting
   const isTrackpadCanvasMode = resolvedCanvasInputMode === 'trackpad'
-  const useManualCanvasWheelGestures = canvasInputModeSetting !== 'mouse'
+  const useManualCanvasWheelGestures =
+    canvasInputModeSetting !== 'mouse' || canvasWheelBehaviorSetting === 'pan'
 
   const { handleCanvasWheelCapture } = useWorkspaceCanvasTrackpadGestures({
     canvasInputModeSetting,
+    canvasWheelBehaviorSetting,
+    canvasWheelZoomModifierSetting,
     resolvedCanvasInputMode,
     inputModalityStateRef,
     setDetectedCanvasInputMode,

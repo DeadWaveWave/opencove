@@ -14,6 +14,7 @@ export type PersistWriteResult =
       ok: true
       level: PersistWriteLevel
       bytes: number
+      revision?: number
     }
   | {
       ok: false
@@ -41,6 +42,15 @@ export interface ReadNodeScrollbackInput {
 }
 
 export interface WriteNodeScrollbackInput {
+  nodeId: string
+  scrollback: string | null
+}
+
+export interface ReadAgentNodePlaceholderScrollbackInput {
+  nodeId: string
+}
+
+export interface WriteAgentNodePlaceholderScrollbackInput {
   nodeId: string
   scrollback: string | null
 }

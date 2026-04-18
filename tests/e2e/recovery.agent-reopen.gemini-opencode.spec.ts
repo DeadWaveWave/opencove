@@ -8,6 +8,8 @@ import {
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 
+const OPENCODE_DISCOVERY_TIMEOUT_MS = 45_000
+
 async function readWorkspaceStateRaw(window: Page): Promise<unknown | null> {
   const raw = await window.evaluate(async () => {
     return await window.opencoveApi.persistence.readWorkspaceStateRaw()
@@ -136,16 +138,19 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
         await expect(window.locator('.terminal-node')).toHaveCount(1)
 
         await expect
-          .poll(async () => {
-            const binding = await readTaskLinkedAgentBinding(window)
-            return (
-              typeof binding.linkedAgentNodeId === 'string' &&
-              binding.linkedAgentNodeId.length > 0 &&
-              binding.resumeSessionIdVerified === true &&
-              typeof binding.resumeSessionId === 'string' &&
-              binding.resumeSessionId.length > 0
-            )
-          })
+          .poll(
+            async () => {
+              const binding = await readTaskLinkedAgentBinding(window)
+              return (
+                typeof binding.linkedAgentNodeId === 'string' &&
+                binding.linkedAgentNodeId.length > 0 &&
+                binding.resumeSessionIdVerified === true &&
+                typeof binding.resumeSessionId === 'string' &&
+                binding.resumeSessionId.length > 0
+              )
+            },
+            { timeout: OPENCODE_DISCOVERY_TIMEOUT_MS },
+          )
           .toBe(true)
 
         initialBinding = await readTaskLinkedAgentBinding(window)

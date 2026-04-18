@@ -6,6 +6,7 @@ export interface BranchRenameState {
   spaceId: string
   spaceName: string
   worktreePath: string
+  targetMountId: string | null
   currentName: string
   nextName: string
   isSubmitting: boolean

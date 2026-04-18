@@ -67,9 +67,33 @@
 .cove-select__label {
   min-width: 0;
   flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cove-select__label-text {
+  min-width: 0;
+  flex: 1 1 auto;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.cove-select__pill {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--cove-border-subtle);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--cove-text-muted);
+  font-size: calc(10px * var(--cove-ui-font-scale));
+  line-height: 1.2;
+  user-select: none;
+  white-space: nowrap;
 }
 
 .cove-select__chevron {
@@ -105,6 +129,18 @@
   text-align: left;
   cursor: pointer;
   font-size: calc(13px * var(--cove-ui-font-scale));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cove-select__option-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .cove-select__option:hover:not(:disabled),

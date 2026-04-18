@@ -58,31 +58,59 @@ export function useWorkspaceCanvasGlobalDismissals({
       const editableDomSelector = 'input, textarea, select, [contenteditable="true"]'
       const focusTarget = event.target.closest(editableDomSelector) as HTMLElement | null
 
-      const isEditableTarget = event.target.closest('.terminal-node__terminal') || focusTarget
+      const terminalBody = event.target.closest('.terminal-node__terminal') as HTMLElement | null
+
+      const isEditableTarget = terminalBody || focusTarget
 
       if (!isEditableTarget) {
         return
       }
 
+      const focusRingSurface = event.target.closest(
+        '.terminal-node, .task-node, .note-node, .image-node, .website-node',
+      ) as HTMLElement | null
       const activeElementAtClick =
         typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
           ? document.activeElement
           : null
 
+      const resolveFocusTarget = (): HTMLElement | null => {
+        if (focusTarget && focusTarget.isConnected) {
+          return focusTarget
+        }
+
+        if (terminalBody && terminalBody.isConnected) {
+          const terminalTextarea = terminalBody.querySelector('.xterm-helper-textarea')
+          return terminalTextarea instanceof HTMLElement ? terminalTextarea : null
+        }
+
+        return null
+      }
+
       const shouldRestoreFocus =
-        focusTarget !== null &&
-        activeElementAtClick !== null &&
-        activeElementAtClick === focusTarget
+        terminalBody !== null ||
+        (focusTarget !== null &&
+          activeElementAtClick !== null &&
+          activeElementAtClick === focusTarget)
 
       window.setTimeout(() => {
+        if (focusRingSurface && focusRingSurface.isConnected) {
+          focusRingSurface.setAttribute('data-cove-focus-transition', 'true')
+          window.setTimeout(() => {
+            if (focusRingSurface.isConnected) {
+              focusRingSurface.removeAttribute('data-cove-focus-transition')
+            }
+          }, 120)
+        }
+
         clearNodeSelection()
 
         if (!shouldRestoreFocus) {
           return
         }
 
-        window.setTimeout(() => {
-          const resolvedFocusTarget = focusTarget
+        const restoreFocusIfNeeded = () => {
+          const resolvedFocusTarget = resolveFocusTarget()
           if (!resolvedFocusTarget || !resolvedFocusTarget.isConnected) {
             return
           }
@@ -102,6 +130,11 @@ export function useWorkspaceCanvasGlobalDismissals({
           }
 
           resolvedFocusTarget.focus({ preventScroll: true })
+        }
+
+        restoreFocusIfNeeded()
+        window.setTimeout(() => {
+          restoreFocusIfNeeded()
         }, 0)
       }, 0)
     }

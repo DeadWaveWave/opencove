@@ -11,7 +11,9 @@ export function useWorkspaceCanvasTaskSupport({
   buildAgentNodeTitle,
   launchAgentInNode,
   agentSettings,
+  workspaceId,
   workspacePath,
+  environmentVariables,
   onRequestPersistFlush,
   actionRefs,
 }: {
@@ -24,7 +26,9 @@ export function useWorkspaceCanvasTaskSupport({
   buildAgentNodeTitle: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['buildAgentNodeTitle']
   launchAgentInNode: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['launchAgentInNode']
   agentSettings: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['agentSettings']
+  workspaceId: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['workspaceId']
   workspacePath: Parameters<typeof useWorkspaceCanvasTaskActions>[0]['workspacePath']
+  environmentVariables?: Record<string, string>
   onRequestPersistFlush?: Parameters<
     typeof useWorkspaceCanvasTaskActions
   >[0]['onRequestPersistFlush']
@@ -58,7 +62,9 @@ export function useWorkspaceCanvasTaskSupport({
     buildAgentNodeTitle,
     launchAgentInNode,
     agentSettings,
+    workspaceId,
     workspacePath,
+    environmentVariables,
     taskTagOptions,
     onRequestPersistFlush,
     runTaskAgentRef: actionRefs.runTaskAgentRef,

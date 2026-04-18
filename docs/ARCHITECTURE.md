@@ -141,6 +141,20 @@ domain <- application <- presentation
 - IPC contract 必须统一、可序列化、可判定。
 - 当引入 `host process` 承载高风险子系统时，必须显式建模：`unavailable`（不可用）与 `recovery`（自恢复/重试）语义；不得让调用方靠“超时/偶然报错”猜测子系统状态。
 
+### 9.1 Control Surface（统一控制面）
+
+OpenCove 将把所有可被外部驱动的能力收敛为一套 **Control Surface**（`command / query / event`），作为 `Desktop(IPC)` / `CLI` / `Web UI` / `Remote Worker` 的共同入口。
+
+强制要求：
+
+- 外部 client 禁止直读写持久化、直改 renderer state、或通过“解析 TUI 输出”推断真相；必须通过 Control Surface 调用 `application/usecases`。
+- IPC handler 只能做：`runtime validate -> mapping -> invoke usecase/control-surface -> map result`；不得承载长流程业务编排。
+- `Query` 必须无副作用；`Command` 的副作用必须可解释、可恢复（满足恢复模型与 owner 表要求）。
+- 所有输入必须 **runtime validate**，输出必须走统一的结构化错误语义（例如 `AppErrorDescriptor`），避免把异常形态泄漏给调用方。
+
+详细约束见 `docs/CONTROL_SURFACE.md`。
+Web UI / Remote Worker 等浏览器或远端入口，都是同一套 Control Surface 在不同 transport（HTTP/WS/IPC）上的适配与复用；常见 Web UI 问题与调试见 `docs/WEB_UI_TROUBLESHOOTING.md`。
+
 ## 10. 测试映射规则
 
 - `domain`：unit tests 验证 invariant 与状态迁移。

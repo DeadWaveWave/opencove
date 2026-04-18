@@ -215,6 +215,7 @@ describe('workspace arrange semantic grouping', () => {
         id: 'space-1',
         name: 'Space 1',
         directoryPath: '/tmp',
+        targetMountId: null,
         nodeIds: ['task', 'agent'],
         rect: { x: 0, y: 0, width: 700, height: 400 },
       },

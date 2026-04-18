@@ -50,3 +50,28 @@ export function toFileUri(path: string): string {
   const pathname = normalized.startsWith('/') ? normalized : `/${normalized}`
   return `file://${encodePathname(pathname)}`
 }
+
+export function fromFileUri(uri: string): string | null {
+  let parsed: URL
+  try {
+    parsed = new URL(uri)
+  } catch {
+    return null
+  }
+
+  if (parsed.protocol !== 'file:') {
+    return null
+  }
+
+  const pathname = decodeURIComponent(parsed.pathname ?? '')
+  if ((parsed.host ?? '').length > 0) {
+    const sharePath = pathname.startsWith('/') ? pathname.slice(1) : pathname
+    return `\\\\${parsed.host}${sharePath.length > 0 ? `\\${sharePath.replace(/\//g, '\\')}` : ''}`
+  }
+
+  if (/^\/[a-zA-Z]:/.test(pathname)) {
+    return pathname.slice(1).replace(/\//g, '\\')
+  }
+
+  return pathname
+}

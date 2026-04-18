@@ -1,6 +1,6 @@
 import { integer, real, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core'
 
-export type DbAppMetaKey = 'format_version' | 'active_workspace_id'
+export type DbAppMetaKey = 'format_version' | 'active_workspace_id' | 'app_state_revision'
 
 export const appMeta = sqliteTable('app_meta', {
   key: text('key').$type<DbAppMetaKey>().primaryKey(),
@@ -18,17 +18,20 @@ export const workspaces = sqliteTable('workspaces', {
   path: text('path').notNull(),
   worktreesRoot: text('worktrees_root').notNull(),
   pullRequestBaseBranchOptionsJson: text('pull_request_base_branch_options_json').notNull(),
+  environmentVariablesJson: text('environment_variables_json').notNull(),
   spaceArchiveRecordsJson: text('space_archive_records_json').notNull(),
   viewportX: real('viewport_x').notNull(),
   viewportY: real('viewport_y').notNull(),
   viewportZoom: real('viewport_zoom').notNull(),
   isMinimapVisible: integer('is_minimap_visible', { mode: 'boolean' }).notNull(),
   activeSpaceId: text('active_space_id'),
+  sortOrder: integer('sort_order').notNull().default(0),
 })
 
 export const nodes = sqliteTable('nodes', {
   id: text('id').primaryKey(),
   workspaceId: text('workspace_id').notNull(),
+  sessionId: text('session_id'),
   title: text('title').notNull(),
   titlePinnedByUser: integer('title_pinned_by_user', { mode: 'number' }).notNull(),
   positionX: real('position_x').notNull(),
@@ -53,6 +56,7 @@ export const spaces = sqliteTable('workspace_spaces', {
   workspaceId: text('workspace_id').notNull(),
   name: text('name').notNull(),
   directoryPath: text('directory_path').notNull(),
+  targetMountId: text('target_mount_id'),
   labelColor: text('label_color'),
   rectX: real('rect_x'),
   rectY: real('rect_y'),
@@ -73,6 +77,12 @@ export const spaceNodes = sqliteTable(
 )
 
 export const nodeScrollback = sqliteTable('node_scrollback', {
+  nodeId: text('node_id').primaryKey(),
+  scrollback: text('scrollback').notNull(),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const agentNodePlaceholderScrollback = sqliteTable('agent_node_placeholder_scrollback', {
   nodeId: text('node_id').primaryKey(),
   scrollback: text('scrollback').notNull(),
   updatedAt: text('updated_at').notNull(),

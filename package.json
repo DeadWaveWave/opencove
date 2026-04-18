@@ -53,6 +53,9 @@
       "category": "public.app-category.developer-tools"
     }
   },
+  "bin": {
+    "opencove": "src/app/cli/opencove.mjs"
+  },
   "engines": {
     "node": ">=22",
     "pnpm": ">=9"
@@ -72,8 +75,11 @@
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "node scripts/test-e2e-with-window-fallback.mjs",
+    "test:e2e:web-canvas": "node scripts/test-e2e-web-canvas.mjs",
+    "test:e2e:web-shell": "node scripts/test-e2e-web-shell.mjs",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
+    "opencove": "node src/app/cli/opencove.mjs",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "format-check:staged": "node scripts/check-format-staged.mjs",
@@ -99,9 +105,12 @@
     "@radix-ui/react-slot": "^1.2.4",
     "@tailwindcss/vite": "^4.2.1",
     "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-ligatures": "^0.10.0",
     "@xterm/addon-search": "^0.16.0",
     "@xterm/addon-serialize": "^0.14.0",
+    "@xterm/addon-unicode11": "^0.9.0",
     "@xterm/addon-web-links": "^0.12.0",
+    "@xterm/addon-webgl": "^0.19.0",
     "@xterm/xterm": "^6.0.0",
     "@xyflow/react": "^12.10.1",
     "better-sqlite3": "^12.8.0",
@@ -109,6 +118,7 @@
     "clsx": "^2.1.1",
     "drizzle-orm": "^0.45.1",
     "electron-updater": "^6.8.3",
+    "font-list": "^2.0.2",
     "lucide-react": "^0.577.0",
     "node-pty": "^1.1.0",
     "react": "^19.0.0",
@@ -117,6 +127,7 @@
     "react-router-dom": "^7.13.1",
     "tailwind-merge": "^3.5.0",
     "tailwindcss": "^4.2.1",
+    "ws": "^8.20.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
@@ -129,6 +140,7 @@
     "@types/node": "^22.19.15",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.0.0",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "^4.1.0",
     "dmg-builder": "^26.8.1",

@@ -2,12 +2,103 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createPtyWriteQueue,
   handleTerminalCustomKeyEvent,
+  isLinuxTerminalCopyShortcut,
+  isLinuxTerminalPasteShortcut,
+  isMacTerminalPasteShortcut,
   pasteTextFromClipboard,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/inputBridge'
+
+describe('isLinuxTerminalCopyShortcut', () => {
+  it('returns true for Ctrl+Shift+C on Linux', () => {
+    expect(
+      isLinuxTerminalCopyShortcut(
+        { key: 'c', metaKey: false, ctrlKey: true, altKey: false, shiftKey: true },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(true)
+  })
+
+  it('returns false for Ctrl+C on Linux', () => {
+    expect(
+      isLinuxTerminalCopyShortcut(
+        { key: 'c', metaKey: false, ctrlKey: true, altKey: false, shiftKey: false },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('isLinuxTerminalPasteShortcut', () => {
+  it('returns true for Ctrl+Shift+V on Linux', () => {
+    expect(
+      isLinuxTerminalPasteShortcut(
+        { key: 'v', metaKey: false, ctrlKey: true, altKey: false, shiftKey: true },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(true)
+  })
+
+  it('returns false for Ctrl+V on Linux', () => {
+    expect(
+      isLinuxTerminalPasteShortcut(
+        { key: 'v', metaKey: false, ctrlKey: true, altKey: false, shiftKey: false },
+        { platform: 'Linux x86_64' },
+      ),
+    ).toBe(false)
+  })
+})
+
+describe('isMacTerminalPasteShortcut', () => {
+  it('returns true for Cmd+V on macOS', () => {
+    expect(
+      isMacTerminalPasteShortcut(
+        { key: 'v', metaKey: true, ctrlKey: false, altKey: false, shiftKey: false },
+        { platform: 'MacIntel' },
+      ),
+    ).toBe(true)
+  })
+
+  it('returns false for Cmd+V on Windows', () => {
+    expect(
+      isMacTerminalPasteShortcut(
+        { key: 'v', metaKey: true, ctrlKey: false, altKey: false, shiftKey: false },
+        { platform: 'Win32' },
+      ),
+    ).toBe(false)
+  })
+
+  it('returns false for Ctrl+V on macOS', () => {
+    expect(
+      isMacTerminalPasteShortcut(
+        { key: 'v', metaKey: false, ctrlKey: true, altKey: false, shiftKey: false },
+        { platform: 'MacIntel' },
+      ),
+    ).toBe(false)
+  })
+
+  it('returns false for Cmd+Shift+V', () => {
+    expect(
+      isMacTerminalPasteShortcut(
+        { key: 'v', metaKey: true, ctrlKey: false, altKey: false, shiftKey: true },
+        { platform: 'MacIntel' },
+      ),
+    ).toBe(false)
+  })
+})
 
 describe('handleTerminalCustomKeyEvent', () => {
   it('copies the selected terminal text on Windows Ctrl+C', async () => {
     const copySelectedText = vi.fn(async () => undefined)
+    const event = {
+      type: 'keydown',
+      key: 'c',
+      ctrlKey: true,
+      shiftKey: false,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
     const ptyWriteQueue = {
       enqueue: vi.fn(),
       flush: vi.fn(),
@@ -15,7 +106,7 @@ describe('handleTerminalCustomKeyEvent', () => {
 
     const result = handleTerminalCustomKeyEvent({
       copySelectedText,
-      event: new KeyboardEvent('keydown', { key: 'c', ctrlKey: true }),
+      event,
       platformInfo: { platform: 'Win32' },
       ptyWriteQueue,
       terminal: {
@@ -27,6 +118,8 @@ describe('handleTerminalCustomKeyEvent', () => {
 
     expect(result).toBe(false)
     expect(copySelectedText).toHaveBeenCalledWith('selected output')
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
     expect(ptyWriteQueue.enqueue).not.toHaveBeenCalled()
   })
 
@@ -74,6 +167,62 @@ describe('handleTerminalCustomKeyEvent', () => {
     expect(copySelectedText).not.toHaveBeenCalled()
   })
 
+  it('copies the selected terminal text on Linux Ctrl+Shift+C', async () => {
+    const copySelectedText = vi.fn(async () => undefined)
+    const event = {
+      type: 'keydown',
+      key: 'C',
+      ctrlKey: true,
+      shiftKey: true,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
+
+    const result = handleTerminalCustomKeyEvent({
+      copySelectedText,
+      event,
+      platformInfo: { platform: 'Linux x86_64' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal: {
+        hasSelection: () => true,
+        getSelection: () => 'selected output',
+        paste: vi.fn(),
+      },
+    })
+
+    expect(result).toBe(false)
+    expect(copySelectedText).toHaveBeenCalledWith('selected output')
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps Linux Ctrl+C as terminal interrupt even when there is a selection', () => {
+    const copySelectedText = vi.fn(async () => undefined)
+
+    const result = handleTerminalCustomKeyEvent({
+      copySelectedText,
+      event: new KeyboardEvent('keydown', { key: 'c', ctrlKey: true }),
+      platformInfo: { platform: 'Linux x86_64' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal: {
+        hasSelection: () => true,
+        getSelection: () => 'selected output',
+        paste: vi.fn(),
+      },
+    })
+
+    expect(result).toBe(true)
+    expect(copySelectedText).not.toHaveBeenCalled()
+  })
+
   it('pastes clipboard text on Windows Ctrl+V', () => {
     const pasteClipboardText = vi.fn()
     const event = {
@@ -96,6 +245,41 @@ describe('handleTerminalCustomKeyEvent', () => {
       event,
       pasteClipboardText,
       platformInfo: { platform: 'Win32' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal,
+    })
+
+    expect(result).toBe(false)
+    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+  })
+
+  it('pastes clipboard text on Linux Ctrl+Shift+V', () => {
+    const pasteClipboardText = vi.fn()
+    const event = {
+      type: 'keydown',
+      key: 'V',
+      ctrlKey: true,
+      shiftKey: true,
+      altKey: false,
+      metaKey: false,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
+    const terminal = {
+      hasSelection: () => false,
+      getSelection: () => '',
+      paste: vi.fn(),
+    }
+
+    const result = handleTerminalCustomKeyEvent({
+      event,
+      pasteClipboardText,
+      platformInfo: { platform: 'Linux x86_64' },
       ptyWriteQueue: {
         enqueue: vi.fn(),
         flush: vi.fn(),
@@ -178,6 +362,98 @@ describe('handleTerminalCustomKeyEvent', () => {
 
     expect(readClipboardText).toHaveBeenCalledTimes(1)
     expect(terminal.paste).toHaveBeenCalledWith('clipboard payload')
+  })
+
+  it('pastes clipboard text on macOS Cmd+V', () => {
+    const pasteClipboardText = vi.fn()
+    const event = {
+      type: 'keydown',
+      key: 'v',
+      ctrlKey: false,
+      shiftKey: false,
+      altKey: false,
+      metaKey: true,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
+    const terminal = {
+      hasSelection: () => false,
+      getSelection: () => '',
+      paste: vi.fn(),
+    }
+
+    const result = handleTerminalCustomKeyEvent({
+      event,
+      pasteClipboardText,
+      platformInfo: { platform: 'MacIntel' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal,
+    })
+
+    expect(result).toBe(false)
+    expect(pasteClipboardText).toHaveBeenCalledWith({ terminal })
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not intercept macOS Cmd+C (lets xterm.js handle copy)', () => {
+    const pasteClipboardText = vi.fn()
+    const copySelectedText = vi.fn(async () => undefined)
+
+    const result = handleTerminalCustomKeyEvent({
+      copySelectedText,
+      event: new KeyboardEvent('keydown', { key: 'c', metaKey: true }),
+      pasteClipboardText,
+      platformInfo: { platform: 'MacIntel' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal: {
+        hasSelection: () => true,
+        getSelection: () => 'selected output',
+        paste: vi.fn(),
+      },
+    })
+
+    expect(result).toBe(true)
+    expect(pasteClipboardText).not.toHaveBeenCalled()
+    expect(copySelectedText).not.toHaveBeenCalled()
+  })
+
+  it('does not intercept macOS Cmd+Shift+V', () => {
+    const pasteClipboardText = vi.fn()
+    const event = {
+      type: 'keydown',
+      key: 'v',
+      ctrlKey: false,
+      shiftKey: true,
+      altKey: false,
+      metaKey: true,
+      preventDefault: vi.fn(),
+      stopPropagation: vi.fn(),
+    } as unknown as KeyboardEvent
+
+    const result = handleTerminalCustomKeyEvent({
+      event,
+      pasteClipboardText,
+      platformInfo: { platform: 'MacIntel' },
+      ptyWriteQueue: {
+        enqueue: vi.fn(),
+        flush: vi.fn(),
+      },
+      terminal: {
+        hasSelection: () => false,
+        getSelection: () => '',
+        paste: vi.fn(),
+      },
+    })
+
+    expect(result).toBe(true)
+    expect(pasteClipboardText).not.toHaveBeenCalled()
   })
 
   it('preserves binary writes as a separate PTY payload', async () => {

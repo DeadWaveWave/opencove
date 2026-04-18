@@ -5,6 +5,7 @@
 - 凡遇到 `pnpm pre-commit`、`pnpm test -- --run`、`pnpm test:e2e` 或单独 `Playwright` 用例失败，**继续排查前先读本文件**。
 - 先缩小复现范围，再改代码；不要一上来跑全量。
 - 若 UI 表现与代码不一致，先怀疑是否跑到了旧构建产物。
+- Web UI（Worker Web Canvas / Debug Shell）常见问题速查见：`docs/WEB_UI_TROUBLESHOOTING.md`。
 
 ## 失败后的首轮动作
 
@@ -13,6 +14,49 @@
 3. 若是单独跑 `Playwright`，先执行 `pnpm build`。
 4. 只重跑目标失败项，确认是否稳定复现。
 5. 若是 E2E，优先看 `screenshot`、`trace`、`console` 与持久化状态。
+
+## 测试层级选择（策略）
+
+目标：用 **最低成本** 的测试层级先定位问题；确认根因后再补足能防回归的覆盖。
+
+### Unit（最快）
+
+适用场景：
+
+- 纯函数/协议解析/颜色转换等“无 IO、无时序”的逻辑
+- 需要快速验证边界条件（例如 escape sequence/解析分片）
+
+运行：
+
+```bash
+pnpm test -- --run tests/unit/<target>.spec.ts
+```
+
+### Contract（边界正确性）
+
+适用场景：
+
+- IPC/DTO 校验、approved workspace guard、主进程 handler 的输入/输出契约
+- 需要验证“错误 code/debugMessage/guard 行为”是否符合约定
+
+运行：
+
+```bash
+pnpm test -- --run tests/contract/<target>.spec.ts
+```
+
+### E2E（用户可见/跨边界）
+
+适用场景：
+
+- 主题切换、拖拽/缩放、focus、持久化/恢复、外部 CLI（OpenCode/Codex）行为
+- 任何“只有把 Main/Renderer/PTY/外部进程串起来才会出现”的问题
+
+运行：
+
+```bash
+pnpm test:e2e tests/e2e/<target>.spec.ts --project electron --reporter=line
+```
 
 ## E2E 稳定运行原则
 
@@ -76,6 +120,19 @@ pnpm exec playwright show-trace test-results/<failed-case>/trace.zip
 pnpm test:e2e
 ```
 
+## 真实 Agent / 外部 CLI 复现
+
+默认 `NODE_ENV=test` 下，OpenCove 会用测试 stub 避免真的启动外部 Agent CLI。调试 OpenCode 这类“真实 TUI 行为”（例如主题切换、alternate screen、颜色查询）时，需要禁用 stub：
+
+```bash
+OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencode-embedded-theme.spec.ts --project electron --reporter=line
+```
+
+补充：
+
+- 该开关会让测试直接 spawn 本机安装的 CLI（如 `opencode`），可能触发真实网络请求/账号权限；仅建议用于本地调试。
+- 产物在 `test-results/**`：优先看 `trace.zip`、失败截图与控制台日志。
+
 ## Playwright 交互排查重点
 
 ### 1) 复杂拖拽优先使用真实鼠标事件
@@ -103,6 +160,42 @@ pnpm test:e2e
 - minimap 是否覆盖了目标区域
 - space overlay / drag handle / label 区域是否抢占事件
 - 点击点是否过于贴边
+
+### 4) React Flow：元素“可见但不在 viewport”
+
+现象：
+
+- Playwright 日志提示 `element is outside of the viewport`
+- 但 `await expect(locator).toBeVisible()` 仍然通过
+
+原因：
+
+- React Flow 画布使用 `transform`（viewport 缩放/平移）。元素在 DOM 上“可见”，但实际绘制区域可能在屏幕外。
+- `scrollIntoViewIfNeeded()` 对 transform 场景不一定有效。
+
+处理：
+
+- 先把目标节点带回视口（最简单：点击 `Fit View` 控制按钮 `.react-flow__controls-fitview`），再执行 click/drag。
+- 对“节点创建后立即点击 close/resize”等操作，建议先做一次 `Fit View` 或 focus 到该节点，避免视口偏移造成误判。
+
+### 5) 缩放/transform 场景避免依赖 `locator.boundingBox()` 做像素命中与断言
+
+在 React Flow 缩放（viewport transform）场景下，尤其是 CI 里的 `inactive/offscreen` 窗口模式，`locator.boundingBox()` 偶发返回不稳定坐标，导致鼠标按下点不到目标元素，进而出现“mouse 走完了但 resize/drag 根本没发生”的假操作。
+
+建议：
+
+- 计算鼠标命中点时，优先用 `locator.evaluate(el => el.getBoundingClientRect())` 获取可视坐标，再用其中心点进行 `mouse.move/down/up`。
+- 对像素级对齐断言留出容差（例如降低 `toBeCloseTo` precision，或用自定义 tolerance），避免被平台舍入差/动画 settle 影响。
+- 断言 resize/drag 结果时，优先读持久化状态确认是否真的提交，而不是只看 UI 像素位置。
+
+示例（命中点计算）：
+
+```ts
+const rect = await locator.evaluate(el => el.getBoundingClientRect())
+const x = rect.x + rect.width / 2
+const y = rect.y + rect.height / 2
+await page.mouse.move(x, y)
+```
 
 ## 持久化与状态污染排查
 
@@ -145,6 +238,76 @@ pnpm test:e2e
 - 拖拽/缩放是否仅更新位置与尺寸，而不是替换节点身份
 - 当前 E2E 是否使用了最新 `out/` 产物
 
+### 终端 / Agent 恢复后无法输入（确认输入是否被拦截）
+
+开启输入链路追踪（会打印较多日志）：
+
+```bash
+OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS=1 pnpm dev
+```
+
+在日志中你会看到两类关键输出：
+
+- `[opencove-terminal-diagnostics]`（来自 renderer 的 xterm 侧）
+  - `event=xterm-onData` 表示 xterm 确实捕获到了输入
+  - `event=xterm-onData-dropped` 表示输入被丢弃（通常是 hydration 阶段的 `ESC...` 序列）
+  - `event=pty-write` 表示 renderer 正在把输入写入指定 `sessionId`
+- `[opencove-pty-write]`（来自 main 的 PTY runtime）
+  - `event=write-to-inactive-session` 表示输入写到了一个 `unknown/terminated` 的 session 上
+    - 这通常意味着恢复后节点仍在用旧 `sessionId`，但 PTY 进程已经不存在，表现就是“怎么点都打不进去”
+
+排查 focus 问题时，重点看 `details` 里的：
+
+- `xtermHelperTextareaFocused` 是否为 `true`
+- `activeElement` / `activeElementInsideTerminal` 是否符合预期
+
+### 重启恢复后的 Agent 无法输入：本次有效调试法
+
+- 先区分 **完整重启恢复** 和 **运行时 workspace/project 切换**；两者不能互相代替复现。
+- 对 `recovery / worker / persistence` 问题，先 `pnpm build`，不要拿旧 `out/` 产物做判断。
+- 先查 **session ownership**，再查 focus。恢复后若仍写入旧 `sessionId`，界面看着聚焦也会打到死 PTY。
+- 固定看三层证据：`xterm-onData`、`pty-write`、目标 `sessionId` 是否仍有效。
+- placeholder -> restored session 的焦点交接要单独验证；“placeholder 能输入”不等于“恢复后的真实 session 能输入”。
+
+完整案例见：
+
+- `docs/cases/agent-input-after-restart-recovery.md`
+
+### OpenCode 内嵌：主题切换不完整 / 不即时更新
+
+适用场景：
+
+- OpenCove UI theme 已切换（黑↔白），但只有 OpenCode TUI 没完全更新（残留深色块/不变/闪一下又回去）
+
+排查顺序：
+
+1. **先确保复现链路可重复**：优先用可复现资产跑真实 OpenCode（见下方“真实 Agent / 外部 CLI 复现”）。
+2. **确认主题真相来源**：OpenCode 侧 `theme: "system"` 通常依赖终端协议（OSC/CSI）而不是直接读 OS theme。
+3. **确认 embedded state 是否隔离**：若出现“被锁住”的主题行为，优先怀疑 durable state（例如 `theme_mode_lock`），并检查是否为 embedded 注入了独立的 `XDG_STATE_HOME`。
+
+参考案例：
+
+- `docs/cases/opencode-embedded-theme-sync.md`
+
+### Terminal（xterm）：cursor 闪烁 / 命中穿透 / 残影观感
+
+适用场景：
+
+- 鼠标在终端输入区/正文上 `text/default` 闪烁切换
+- 偶发点击/滚轮像是“穿透”到底层画布
+
+方法要点：
+
+- 固定点连续采样 `document.elementFromPoint(x, y)`（200~500 次）来确认是否 hit-test 偶发漏命中
+- 在漏命中那一帧同步采集关键层的 `getBoundingClientRect()` 与 `pointer-events`，用证据证明“几何正确但命中错误”
+- 优先用真实用户数据、最新构建、可见且已聚焦的窗口复现；`offscreen/inactive` 更适合回归，不一定适合抓命中异常
+- 先区分 **DOM renderer 重绘问题** 和 **WebGL 下的 hit-test 漏命中**，两者修法不同
+- 避免默认用 overlay 盖一层（容易引入 TUI 鼠标/选择/链接点击回归）
+
+参考案例：
+
+- `docs/cases/xterm-hit-test-cursor-flicker.md`
+
 ### 切换 workspace 或重启应用后终端历史丢失
 
 优先检查：
@@ -162,6 +325,41 @@ pnpm test:e2e
 - 是否错误使用了 `onWheelCapture + stopPropagation`
 - 是否应改为冒泡阶段的 `onWheel`
 - 是否阻断了 React Flow，同时保留了 xterm 默认滚动
+
+### 终端“无颜色 / 全白”（必须做视觉调试）
+
+- 这类问题必须做**视觉调试**；`pty:snapshot` 里有 ANSI，不等于屏幕上真的有颜色。
+- 对真实 CLI 的颜色问题，不要只跑 `NODE_ENV=test` 的 E2E；test stub 不能代替真实 `codex/gemini/...` 的视觉结果。
+- 先区分两类问题：**ANSI 没产生**，还是 **ANSI 有了但没渲染出来**。
+- 先做最小视觉验证，再做数据验证定位：例如输出一段绿色文本，或直接启动真实 `codex` TUI 截图对照。
+- 排查顺序优先看 spawn env、`TERM`、`NO_COLOR` / `FORCE_COLOR`、attach/hydration 时序，以及 xterm palette/theme / renderer 差异。
+
+完整案例见：
+
+- `docs/cases/terminal-no-color-visual-debug.md`
+
+### 测试：Vitest 的 `electron` mock 导出缺失导致运行时报错
+
+适用场景：
+
+- 报错里出现 `No "app" export is defined on the "electron" mock`（或类似信息）
+- 代码侧看起来用了 optional chaining，但仍在访问 `electron.app` 时爆炸
+
+排查顺序：
+
+1. 优先看 `debugMessage`（或直接临时把 envelope error 打出来）
+2. 检查测试中 `vi.doMock('electron', ...)` 是否遗漏了 `app` 等导出
+3. 若确实需要在代码侧读取 `electron.app.getPath`，建议用 `try/catch` 护住（mock 可能在访问缺失导出时 throw）
+
+参考案例：
+
+- `docs/cases/vitest-electron-mock-missing-exports.md`
+
+## 案例库
+
+当你需要“同类问题的完整复盘 + 证据链 + 落地修法”，从这里开始：
+
+- `docs/cases/README.md`
 
 ## 一句话原则
 

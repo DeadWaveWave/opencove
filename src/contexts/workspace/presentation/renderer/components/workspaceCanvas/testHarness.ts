@@ -5,12 +5,16 @@ type WorkspaceCanvasAgentSessionState = {
   nodeId: string
   sessionId: string
   resumeSessionId: string | null
+  status: string | null
 }
 
 type WorkspaceCanvasTestApi = {
   getAgentSessions: () => WorkspaceCanvasAgentSessionState[]
   getFirstAgentSessionId: () => string | null
   getResumeSessionIdByPtySessionId: (ptySessionId: string) => string | null
+  getAgentStatusByPtySessionId: (ptySessionId: string) => string | null
+  getSyncCount: () => number
+  resetSyncCount: () => void
 }
 
 declare global {
@@ -20,6 +24,7 @@ declare global {
 }
 
 let agentSessions: WorkspaceCanvasAgentSessionState[] = []
+let syncCount = 0
 
 function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
   if (typeof window === 'undefined') {
@@ -41,6 +46,20 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
             ?.resumeSessionId ?? null
         )
       },
+      getAgentStatusByPtySessionId: ptySessionId => {
+        const normalizedSessionId = ptySessionId.trim()
+        if (normalizedSessionId.length === 0) {
+          return null
+        }
+
+        return (
+          agentSessions.find(session => session.sessionId === normalizedSessionId)?.status ?? null
+        )
+      },
+      getSyncCount: () => syncCount,
+      resetSyncCount: () => {
+        syncCount = 0
+      },
     }
   }
 
@@ -53,6 +72,7 @@ export function syncWorkspaceCanvasTestState(nodes: Node<TerminalNodeData>[]): v
   }
 
   getWorkspaceCanvasTestApi()
+  syncCount += 1
   agentSessions = nodes.flatMap(node => {
     if (node.data.kind !== 'agent') {
       return []
@@ -74,6 +94,7 @@ export function syncWorkspaceCanvasTestState(nodes: Node<TerminalNodeData>[]): v
         nodeId: node.id,
         sessionId,
         resumeSessionId,
+        status: node.data.status,
       },
     ]
   })

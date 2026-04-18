@@ -10,14 +10,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-jobs:
-  ci:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, ubuntu-latest]
+env:
+  PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
 
-    runs-on: ${{ matrix.os }}
+jobs:
+  ci-ubuntu:
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -49,28 +47,19 @@ jobs:
       - name: Typecheck
         run: pnpm check
 
-      - name: Unit tests with coverage
+      - name: Unit tests (PR)
+        if: github.event_name == 'pull_request'
+        run: pnpm test -- --run
+
+      - name: Unit tests with coverage (main)
+        if: github.event_name == 'push'
         run: pnpm test:coverage
 
       - name: Build
         run: pnpm build
 
-      - name: E2E tests
-        if: matrix.os == 'macos-latest'
-        env:
-          OPENCOVE_E2E_SKIP_BUILD: '1'
-          OPENCOVE_E2E_WINDOW_MODE: inactive
-        run: pnpm test:e2e
-
-      - name: E2E tests
-        if: matrix.os == 'ubuntu-latest'
-        env:
-          OPENCOVE_E2E_SKIP_BUILD: '1'
-          OPENCOVE_E2E_WINDOW_MODE: inactive
-        run: xvfb-run -a pnpm test:e2e
-
       - name: Upload coverage artifact
-        if: matrix.os == 'macos-latest' && always()
+        if: github.event_name == 'push' && always()
         continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
@@ -78,13 +67,113 @@ jobs:
           path: coverage/
           retention-days: 7
 
-      - name: Upload Playwright report
+  e2e-ubuntu:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Free disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/local/lib/android || true
+          sudo rm -rf /usr/share/dotnet || true
+          sudo rm -rf /opt/ghc || true
+          sudo rm -rf /usr/share/swift || true
+          df -h
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: E2E tests (shard)
+        timeout-minutes: 30
+        env:
+          OPENCOVE_E2E_SKIP_BUILD: '1'
+          OPENCOVE_E2E_WINDOW_MODE: inactive
+        run: xvfb-run -a pnpm test:e2e -- --shard=${{ matrix.shard }}/3 --max-failures=2
+
+      - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-report-${{ matrix.os }}
-          path: test-results/
+          name: playwright-artifacts-ubuntu-shard-${{ matrix.shard }}
+          path: |
+            test-results/
           retention-days: 7
+
+      - name: Cleanup E2E temp dirs
+        if: always()
+        run: |
+          if [ -n "${RUNNER_TEMP:-}" ]; then rm -rf "${RUNNER_TEMP}/opencove-e2e" || true; fi
+          rm -rf "/tmp/opencove-e2e" || true
+          rm -rf "/tmp/cove-e2e-user-data-"* || true
+
+  ci-macos:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: E2E tests
+        timeout-minutes: 30
+        env:
+          OPENCOVE_E2E_SKIP_BUILD: '1'
+          OPENCOVE_E2E_WINDOW_MODE: inactive
+        run: pnpm test:e2e -- --max-failures=2
+
+      - name: Upload Playwright artifacts
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-artifacts-macos
+          path: |
+            test-results/
+          retention-days: 7
+
+      - name: Cleanup E2E temp dirs
+        if: always()
+        run: |
+          if [ -n "${RUNNER_TEMP:-}" ]; then rm -rf "${RUNNER_TEMP}/opencove-e2e" || true; fi
+          rm -rf "/tmp/opencove-e2e" || true
+          rm -rf "/tmp/cove-e2e-user-data-"* || true
 
   platform-e2e-windows:
     runs-on: windows-latest

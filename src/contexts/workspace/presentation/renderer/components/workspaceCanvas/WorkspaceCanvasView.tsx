@@ -11,12 +11,12 @@ import {
   type Edge,
   type Node,
 } from '@xyflow/react'
-import { LABEL_COLORS, type LabelColor } from '@shared/types/labelColor'
 import type { TerminalNodeData } from '../../types'
 import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM } from './constants'
 import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
 import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
 import { useWorkspaceCanvasSpaceMenuState } from './hooks/useCanvasSpaceMenuState'
+import { useWorkspaceCanvasLabelColorFilter } from './hooks/useLabelColorFilter'
 import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceContextMenu } from './view/WorkspaceContextMenu'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
@@ -24,15 +24,14 @@ import { WorkspaceSelectionDraftOverlay } from './view/WorkspaceSelectionDraftOv
 import { WorkspaceSnapGuidesOverlay } from './view/WorkspaceSnapGuidesOverlay'
 import { WorkspaceCanvasTopOverlays } from './view/WorkspaceCanvasTopOverlays'
 import { WorkspaceSpaceActionMenu } from './view/WorkspaceSpaceActionMenu'
+import { WorkspaceSpaceExplorerOverlay } from './view/WorkspaceSpaceExplorerOverlay'
+import { WorkspaceSpaceQuickPreview } from './view/WorkspaceSpaceQuickPreview'
 import { WorkspaceSpaceRegionsOverlay } from './view/WorkspaceSpaceRegionsOverlay'
 import { isEditableDomTarget } from './domTargets'
 import { selectDragSurfaceSelectionMode } from '../terminalNode/reactFlowState'
 
-const WHEEL_BLOCK_SELECTOR = '.cove-window, .cove-window-backdrop, .workspace-context-menu'
-
-type NodeWithEffectiveLabelColor = Node<TerminalNodeData> & {
-  data: TerminalNodeData & { effectiveLabelColor?: LabelColor | null }
-}
+const WHEEL_BLOCK_SELECTOR =
+  '.cove-window, .cove-window-backdrop, .workspace-context-menu, .workspace-space-explorer, .workspace-space-quick-preview'
 
 export function WorkspaceCanvasView({
   canvasRef,
@@ -70,6 +69,18 @@ export function WorkspaceCanvasView({
   spaceVisuals,
   spaceFramePreview,
   selectedSpaceIds,
+  openExplorerSpaceId,
+  explorerClipboard,
+  quickPreview,
+  toggleSpaceExplorer,
+  closeSpaceExplorer,
+  setExplorerClipboard,
+  findBlockingOpenDocument,
+  previewFileInSpace,
+  openFileInSpace,
+  dismissQuickPreview,
+  materializeQuickPreview,
+  beginQuickPreviewDrag,
   handleSpaceDragHandlePointerDown,
   editingSpaceId,
   spaceRenameInputRef,
@@ -93,13 +104,22 @@ export function WorkspaceCanvasView({
   onToggleMagneticSnapping,
   createTerminalNode,
   createNoteNodeFromContextMenu,
+  createWebsiteNodeFromContextMenu,
   arrangeAll,
   arrangeCanvas,
   arrangeInSpace,
   openTaskCreator,
   openAgentLauncher,
   openAgentLauncherForProvider,
+  runQuickCommand,
+  insertQuickPhrase,
+  openQuickMenuSettings,
   createSpaceFromSelectedNodes,
+  createEmptySpaceAtPoint,
+  spaceTargetMountPicker,
+  setSpaceTargetMountPicker,
+  confirmSpaceTargetMountPicker,
+  cancelSpaceTargetMountPicker,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
   isConvertSelectedNoteToTaskDisabled,
@@ -145,7 +165,8 @@ export function WorkspaceCanvasView({
 }: WorkspaceCanvasViewProps): React.JSX.Element {
   const reactFlowStore = useStoreApi()
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
-  const [labelColorFilter, setLabelColorFilter] = React.useState<LabelColor | null>(null)
+  const { labelColorFilter, setLabelColorFilter, usedLabelColors, filteredNodes, filteredEdges } =
+    useWorkspaceCanvasLabelColorFilter({ nodes, edges, spaces })
 
   useWorkspaceCanvasGlobalDismissals({
     contextMenu,
@@ -155,110 +176,6 @@ export function WorkspaceCanvasView({
     selectedNodeCount,
     clearNodeSelection,
   })
-
-  const inheritedLabelColorByNodeId = React.useMemo(() => {
-    const map = new Map<string, LabelColor>()
-
-    for (const space of spaces) {
-      if (!space.labelColor) {
-        continue
-      }
-
-      for (const nodeId of space.nodeIds) {
-        if (!map.has(nodeId)) {
-          map.set(nodeId, space.labelColor)
-        }
-      }
-    }
-
-    return map
-  }, [spaces])
-
-  const nodesWithEffectiveLabelColor = React.useMemo<NodeWithEffectiveLabelColor[]>(() => {
-    return nodes.map(node => {
-      const override = node.data.labelColorOverride ?? null
-      const effectiveLabelColor: LabelColor | null =
-        override === 'none'
-          ? null
-          : override
-            ? override
-            : (inheritedLabelColorByNodeId.get(node.id) ?? null)
-
-      return {
-        ...node,
-        data: {
-          ...node.data,
-          effectiveLabelColor,
-        },
-      }
-    })
-  }, [inheritedLabelColorByNodeId, nodes])
-
-  const usedLabelColors = React.useMemo(() => {
-    const seen = new Set<LabelColor>()
-    for (const node of nodesWithEffectiveLabelColor) {
-      const color = node.data.effectiveLabelColor ?? null
-      if (color) {
-        seen.add(color)
-      }
-    }
-
-    return LABEL_COLORS.filter(color => seen.has(color))
-  }, [nodesWithEffectiveLabelColor])
-
-  React.useEffect(() => {
-    if (!labelColorFilter) {
-      return
-    }
-
-    if (!usedLabelColors.includes(labelColorFilter)) {
-      setLabelColorFilter(null)
-    }
-  }, [labelColorFilter, usedLabelColors])
-
-  const filteredNodes = React.useMemo(() => {
-    if (!labelColorFilter) {
-      return nodesWithEffectiveLabelColor
-    }
-
-    return nodesWithEffectiveLabelColor.map(node => {
-      const effectiveLabelColor = node.data.effectiveLabelColor ?? null
-      if (effectiveLabelColor === labelColorFilter) {
-        return node
-      }
-
-      const className =
-        typeof node.className === 'string' && node.className.trim().length > 0
-          ? `${node.className} cove-node--filtered-out`
-          : 'cove-node--filtered-out'
-
-      return {
-        ...node,
-        className,
-        style: {
-          ...node.style,
-          pointerEvents: 'none' as const,
-        },
-        draggable: false,
-        selectable: false,
-        focusable: false,
-      }
-    })
-  }, [labelColorFilter, nodesWithEffectiveLabelColor])
-
-  const filteredEdges = React.useMemo(() => {
-    if (!labelColorFilter) {
-      return edges
-    }
-
-    const allowedNodeIds = new Set(
-      nodesWithEffectiveLabelColor
-        .filter(node => (node.data.effectiveLabelColor ?? null) === labelColorFilter)
-        .map(node => node.id),
-    )
-
-    return edges.filter(edge => allowedNodeIds.has(edge.source) && allowedNodeIds.has(edge.target))
-  }, [edges, labelColorFilter, nodesWithEffectiveLabelColor])
 
   const {
     activeMenuSpace,
@@ -272,6 +189,40 @@ export function WorkspaceCanvasView({
     workspacePath,
     nodes,
   })
+
+  const activeExplorerSpace = React.useMemo(() => {
+    if (!openExplorerSpaceId) {
+      return null
+    }
+
+    return spaces.find(space => space.id === openExplorerSpaceId) ?? null
+  }, [openExplorerSpaceId, spaces])
+
+  React.useEffect(() => {
+    if (!useManualCanvasWheelGestures) {
+      return
+    }
+
+    const canvasElement = canvasRef.current
+    if (!canvasElement) {
+      return
+    }
+
+    const handleWheel = (event: WheelEvent): void => {
+      if (event.target instanceof Element && event.target.closest(WHEEL_BLOCK_SELECTOR)) {
+        return
+      }
+
+      handleCanvasWheelCapture(event)
+    }
+
+    const wheelListenerOptions = { passive: false, capture: true } as const
+    canvasElement.addEventListener('wheel', handleWheel, wheelListenerOptions)
+
+    return () => {
+      canvasElement.removeEventListener('wheel', handleWheel, true)
+    }
+  }, [canvasRef, handleCanvasWheelCapture, useManualCanvasWheelGestures])
 
   return (
     <div
@@ -304,12 +255,6 @@ export function WorkspaceCanvasView({
       }}
       onPointerMoveCapture={handleCanvasPointerMoveCapture}
       onPointerUpCapture={handleCanvasPointerUpCapture}
-      onWheelCapture={event => {
-        if (event.target instanceof Element && event.target.closest(WHEEL_BLOCK_SELECTOR)) {
-          return
-        }
-        handleCanvasWheelCapture(event.nativeEvent)
-      }}
     >
       <ReactFlow<Node<TerminalNodeData>, Edge>
         nodes={filteredNodes}
@@ -366,6 +311,8 @@ export function WorkspaceCanvasView({
           spaceVisuals={spaceVisuals}
           spaceFramePreview={spaceFramePreview}
           selectedSpaceIds={selectedSpaceIds}
+          openExplorerSpaceId={openExplorerSpaceId}
+          toggleExplorer={toggleSpaceExplorer}
           handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
           editingSpaceId={editingSpaceId}
           spaceRenameInputRef={spaceRenameInputRef}
@@ -386,6 +333,39 @@ export function WorkspaceCanvasView({
 
         <Controls className="workspace-canvas__controls" showInteractive={false} />
       </ReactFlow>
+
+      {activeExplorerSpace && activeExplorerSpace.rect ? (
+        <WorkspaceSpaceExplorerOverlay
+          canvasRef={canvasRef}
+          spaceId={activeExplorerSpace.id}
+          spaceName={activeExplorerSpace.name}
+          targetMountId={activeExplorerSpace.targetMountId ?? null}
+          directoryPath={
+            activeExplorerSpace.directoryPath.trim().length > 0
+              ? activeExplorerSpace.directoryPath
+              : workspacePath
+          }
+          rect={activeExplorerSpace.rect}
+          explorerClipboard={explorerClipboard}
+          setExplorerClipboard={setExplorerClipboard}
+          findBlockingOpenDocument={findBlockingOpenDocument}
+          onShowMessage={onShowMessage}
+          onClose={closeSpaceExplorer}
+          onPreviewFile={(uri, options) => {
+            previewFileInSpace(activeExplorerSpace.id, uri, options)
+          }}
+          onOpenFile={(uri, options) => {
+            openFileInSpace(activeExplorerSpace.id, uri, options)
+          }}
+          onDismissQuickPreview={dismissQuickPreview}
+        />
+      ) : null}
+
+      <WorkspaceSpaceQuickPreview
+        preview={quickPreview}
+        onOpen={materializeQuickPreview}
+        onDragStart={beginQuickPreviewDrag}
+      />
 
       <WorkspaceSnapGuidesOverlay guides={snapGuides} />
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
@@ -411,10 +391,17 @@ export function WorkspaceCanvasView({
         closeContextMenu={closeContextMenu}
         createTerminalNode={createTerminalNode}
         createNoteNodeFromContextMenu={createNoteNodeFromContextMenu}
+        createWebsiteNodeFromContextMenu={createWebsiteNodeFromContextMenu}
+        websiteWindowsEnabled={agentSettings.websiteWindowPolicy.enabled}
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
         agentProviderOrder={agentSettings.agentProviderOrder}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
+        quickCommands={agentSettings.quickCommands}
+        quickPhrases={agentSettings.quickPhrases}
+        runQuickCommand={runQuickCommand}
+        insertQuickPhrase={insertQuickPhrase}
+        openQuickMenuSettings={openQuickMenuSettings}
         spaces={spaces}
         magneticSnappingEnabled={magneticSnappingEnabled}
         onToggleMagneticSnapping={onToggleMagneticSnapping}
@@ -424,6 +411,7 @@ export function WorkspaceCanvasView({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+        createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}
         canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
         isConvertSelectedNoteToTaskDisabled={isConvertSelectedNoteToTaskDisabled}
@@ -476,6 +464,10 @@ export function WorkspaceCanvasView({
         closeTaskEditor={closeTaskEditor}
         generateTaskEditorTitle={generateTaskEditorTitle}
         saveTaskEdits={saveTaskEdits}
+        spaceTargetMountPicker={spaceTargetMountPicker}
+        setSpaceTargetMountPicker={setSpaceTargetMountPicker}
+        confirmSpaceTargetMountPicker={confirmSpaceTargetMountPicker}
+        cancelSpaceTargetMountPicker={cancelSpaceTargetMountPicker}
         nodeDeleteConfirmation={nodeDeleteConfirmation}
         setNodeDeleteConfirmation={setNodeDeleteConfirmation}
         confirmNodeDelete={confirmNodeDelete}

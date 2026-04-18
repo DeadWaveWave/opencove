@@ -15,6 +15,7 @@ import { resolveSessionFilePath } from '../../../agent/infrastructure/watchers/S
 import { SessionTurnStateWatcher } from '../../../agent/infrastructure/watchers/SessionTurnStateWatcher'
 import { resolveDiscoveredSessionId } from './sessionStateWatcherDiscovery'
 import { shouldBroadcastOptimisticWorkingFromInteraction } from './sessionStateWatcherInteraction'
+import { isJsonlProvider, logSessionStateWatcherDiagnostics } from './sessionStateWatcherShared'
 
 const SESSION_STATE_WATCHER_LOCATE_TIMEOUT_MS = 1_500
 const SESSION_STATE_WATCHER_FILE_TIMEOUT_MS = 1_500
@@ -40,11 +41,7 @@ export interface SessionStateWatcherStartInput {
 }
 
 type SendToAllWindows = <Payload>(channel: string, payload: Payload) => void
-type DisposableSessionWatcher = { dispose: () => void; noteInteraction?: () => void }
-
-function isJsonlProvider(provider: AgentProviderId): boolean {
-  return provider === 'claude-code' || provider === 'codex'
-}
+type DisposableSessionWatcher = { dispose: () => void; noteInteraction?: (data?: string) => void }
 
 export function createSessionStateWatcherController({
   sendToAllWindows,
@@ -101,6 +98,10 @@ export function createSessionStateWatcherController({
       sessionId,
       resumeSessionId,
     }
+    logSessionStateWatcherDiagnostics('broadcast-metadata', {
+      sessionId,
+      resumeSessionId,
+    })
     sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, eventPayload)
   }
 
@@ -172,6 +173,10 @@ export function createSessionStateWatcherController({
       sessionId,
       state,
     }
+    logSessionStateWatcherDiagnostics('broadcast-state', {
+      sessionId,
+      state,
+    })
     sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
   }
 
@@ -423,7 +428,7 @@ export function createSessionStateWatcherController({
 
     const watcher = stateWatcherBySession.get(sessionId)
     if (watcher?.noteInteraction) {
-      watcher.noteInteraction()
+      watcher.noteInteraction(data)
       return
     }
 

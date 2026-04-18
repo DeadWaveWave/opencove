@@ -2,6 +2,11 @@ export interface PseudoTerminalSession {
   sessionId: string
 }
 
+export interface TerminalWindowsPty {
+  backend: 'conpty'
+  buildNumber: number
+}
+
 export type TerminalRuntimeKind = 'windows' | 'wsl' | 'posix'
 
 export interface TerminalProfile {
@@ -21,6 +26,16 @@ export interface SpawnTerminalInput {
   shell?: string
   cols: number
   rows: number
+  env?: Record<string, string>
+}
+
+export interface SpawnTerminalInMountInput {
+  mountId: string
+  cwdUri?: string | null
+  profileId?: string | null
+  shell?: string | null
+  cols?: number | null
+  rows?: number | null
 }
 
 export interface SpawnTerminalResult extends PseudoTerminalSession {
@@ -52,6 +67,19 @@ export interface AttachTerminalInput {
 
 export interface DetachTerminalInput {
   sessionId: string
+}
+
+export interface PtySessionNodeBinding {
+  sessionId: string
+  nodeId: string
+}
+
+export interface SyncPtySessionBindingsInput {
+  bindings: PtySessionNodeBinding[]
+}
+
+export interface SyncPtyAgentPlaceholderBindingsInput {
+  bindings: PtySessionNodeBinding[]
 }
 
 export interface SnapshotTerminalInput {

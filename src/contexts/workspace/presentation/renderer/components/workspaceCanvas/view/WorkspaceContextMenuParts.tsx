@@ -1,9 +1,11 @@
 import React from 'react'
+import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 import {
   ArrowRight,
   Check,
   ChevronRight,
   FileText,
+  Globe,
   Group,
   LayoutGrid,
   ListTodo,
@@ -16,8 +18,13 @@ import {
   X,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import { AGENT_PROVIDER_LABEL, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  AGENT_PROVIDER_LABEL,
+  type AgentProvider,
+  type QuickCommand,
+} from '@contexts/settings/domain/agentSettings'
 import { LABEL_COLORS, type NodeLabelColorOverride } from '@shared/types/labelColor'
+import { WorkspaceContextQuickMenuItems } from './WorkspaceContextMenuQuickMenuParts'
 
 function renderMark(checked: boolean): React.JSX.Element {
   return checked ? (
@@ -30,12 +37,25 @@ function renderMark(checked: boolean): React.JSX.Element {
 export function WorkspaceContextPaneMenuContent({
   createTerminalNode,
   createNoteNodeFromContextMenu,
+  createWebsiteNodeFromContextMenu,
+  websiteWindowsEnabled,
   openTaskCreator,
   openAgentLauncher,
+  createEmptySpaceFromContextMenu,
+  canCreateEmptySpace,
   openAgentProviderSubmenu,
   agentProviderToggleRef,
   isLoadingInstalledProviders,
   isAgentProviderSubmenuOpen,
+  pinnedQuickCommands,
+  runQuickCommand,
+  quickCommandsButtonRef,
+  openQuickCommandsSubmenu,
+  isQuickCommandsSubmenuOpen,
+  quickPhrasesButtonRef,
+  openQuickPhrasesSubmenu,
+  isQuickPhrasesSubmenuOpen,
+  openQuickMenuSettings,
   canArrangeCurrentScope,
   commitArrangeAndClose,
   arrangeByButtonRef,
@@ -46,12 +66,25 @@ export function WorkspaceContextPaneMenuContent({
 }: {
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
+  createWebsiteNodeFromContextMenu: () => void
+  websiteWindowsEnabled: boolean
   openTaskCreator: () => void
   openAgentLauncher: () => void
+  createEmptySpaceFromContextMenu: () => void
+  canCreateEmptySpace: boolean
   openAgentProviderSubmenu: () => void
   agentProviderToggleRef: React.RefObject<HTMLButtonElement | null>
   isLoadingInstalledProviders: boolean
   isAgentProviderSubmenuOpen: boolean
+  pinnedQuickCommands: QuickCommand[]
+  runQuickCommand: (command: QuickCommand) => Promise<void>
+  quickCommandsButtonRef: React.RefObject<HTMLButtonElement | null>
+  openQuickCommandsSubmenu: () => void
+  isQuickCommandsSubmenuOpen: boolean
+  quickPhrasesButtonRef: React.RefObject<HTMLButtonElement | null>
+  openQuickPhrasesSubmenu: () => void
+  isQuickPhrasesSubmenuOpen: boolean
+  openQuickMenuSettings: () => void
   canArrangeCurrentScope: boolean
   commitArrangeAndClose: () => void
   arrangeByButtonRef: React.RefObject<HTMLButtonElement | null>
@@ -86,6 +119,20 @@ export function WorkspaceContextPaneMenuContent({
         <FileText className="workspace-context-menu__icon" aria-hidden="true" />
         <span className="workspace-context-menu__label">{t('workspaceContextMenu.newNote')}</span>
       </button>
+      {websiteWindowsEnabled ? (
+        <button
+          type="button"
+          data-testid="workspace-context-new-website"
+          onClick={() => {
+            createWebsiteNodeFromContextMenu()
+          }}
+        >
+          <Globe className="workspace-context-menu__icon" aria-hidden="true" />
+          <span className="workspace-context-menu__label">
+            {t('workspaceContextMenu.newWebsite')}
+          </span>
+        </button>
+      ) : null}
       <button
         type="button"
         data-testid="workspace-context-new-task"
@@ -134,8 +181,29 @@ export function WorkspaceContextPaneMenuContent({
           )}
         </button>
       </div>
-
-      <div className="workspace-context-menu__separator" />
+      {canCreateEmptySpace ? (
+        <button
+          type="button"
+          data-testid="workspace-context-create-empty-space"
+          onClick={createEmptySpaceFromContextMenu}
+        >
+          <Group className="workspace-context-menu__icon" aria-hidden="true" />
+          <span className="workspace-context-menu__label">
+            {t('workspaceContextMenu.createEmptySpace')}
+          </span>
+        </button>
+      ) : null}
+      <WorkspaceContextQuickMenuItems
+        pinnedQuickCommands={pinnedQuickCommands}
+        runQuickCommand={runQuickCommand}
+        quickCommandsButtonRef={quickCommandsButtonRef}
+        openQuickCommandsSubmenu={openQuickCommandsSubmenu}
+        isQuickCommandsSubmenuOpen={isQuickCommandsSubmenuOpen}
+        quickPhrasesButtonRef={quickPhrasesButtonRef}
+        openQuickPhrasesSubmenu={openQuickPhrasesSubmenu}
+        isQuickPhrasesSubmenuOpen={isQuickPhrasesSubmenuOpen}
+        openQuickMenuSettings={openQuickMenuSettings}
+      />
 
       <button
         type="button"
@@ -276,16 +344,18 @@ export function WorkspaceContextAgentProviderSubmenu({
   openAgentLauncherForProvider: (provider: AgentProvider) => void
 }): React.JSX.Element {
   return (
-    <div
+    <ViewportMenuSurface
+      open={true}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-context-run-agent-provider-menu"
-      style={style}
-      onMouseDown={event => {
-        event.stopPropagation()
+      placement={{
+        type: 'absolute',
+        top: style.top as number,
+        left: style.left as number,
       }}
-      onClick={event => {
-        event.stopPropagation()
+      style={{
+        maxHeight: style.maxHeight,
       }}
       onMouseEnter={keepSubmenuOpen}
       onMouseLeave={scheduleSubmenuClose}
@@ -303,7 +373,7 @@ export function WorkspaceContextAgentProviderSubmenu({
           <span className="workspace-context-menu__label">{AGENT_PROVIDER_LABEL[provider]}</span>
         </button>
       ))}
-    </div>
+    </ViewportMenuSurface>
   )
 }
 
@@ -325,16 +395,18 @@ export function WorkspaceContextLabelColorSubmenu({
   const { t } = useTranslation()
 
   return (
-    <div
+    <ViewportMenuSurface
+      open={true}
       ref={submenuRef}
       className="workspace-context-menu workspace-canvas-context-menu workspace-canvas-context-menu--submenu"
       data-testid="workspace-selection-label-color-menu"
-      style={style}
-      onMouseDown={event => {
-        event.stopPropagation()
+      placement={{
+        type: 'absolute',
+        top: style.top as number,
+        left: style.left as number,
       }}
-      onClick={event => {
-        event.stopPropagation()
+      style={{
+        maxHeight: style.maxHeight,
       }}
       onMouseEnter={keepSubmenuOpen}
       onMouseLeave={scheduleSubmenuClose}
@@ -387,6 +459,6 @@ export function WorkspaceContextLabelColorSubmenu({
           <span className="workspace-context-menu__label">{t(`labelColors.${color}`)}</span>
         </button>
       ))}
-    </div>
+    </ViewportMenuSurface>
   )
 }

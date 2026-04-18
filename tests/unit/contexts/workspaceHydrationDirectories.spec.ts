@@ -4,6 +4,7 @@ import {
   hydrateRuntimeNode,
   resolveTerminalHydrationCwd,
 } from '../../../src/app/renderer/shell/hooks/useHydrateAppState'
+import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 import type {
   PersistedWorkspaceState,
   TerminalNodeData,
@@ -103,15 +104,68 @@ describe('workspace hydration directories', () => {
     const hydrated = await hydrateRuntimeNode({
       node,
       workspacePath: '/repo',
+      agentSettings: {
+        ...DEFAULT_AGENT_SETTINGS,
+        agentFullAccess: false,
+      },
+    })
+
+    expect(spawn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cwd: '/repo/.opencove/worktrees/space-1',
+        cols: 80,
+        rows: 24,
+      }),
+    )
+    expect(hydrated.data.sessionId).toBe('restored-session-1')
+  })
+
+  it('marks verified in-process sessions as live reattachments', async () => {
+    const snapshot = vi.fn(async () => ({ data: 'existing output' }))
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        pty: {
+          snapshot,
+        },
+      },
+    })
+
+    const node = createTerminalNode({
+      sessionId: 'existing-session-1',
+      scrollback: 'persisted history',
+      kind: 'agent',
+      status: 'standby',
+      startedAt: '2026-04-13T00:00:00.000Z',
+      agent: {
+        provider: 'codex',
+        prompt: '',
+        model: 'gpt-5.4',
+        effectiveModel: 'gpt-5.4',
+        launchMode: 'new',
+        resumeSessionId: null,
+        resumeSessionIdVerified: false,
+        executionDirectory: '/repo',
+        expectedDirectory: '/repo',
+        directoryMode: 'workspace',
+        customDirectory: null,
+        shouldCreateDirectory: false,
+        taskId: null,
+      },
+    })
+
+    const hydrated = await hydrateRuntimeNode({
+      node,
+      workspacePath: '/repo',
       agentFullAccess: false,
     })
 
-    expect(spawn).toHaveBeenCalledWith({
-      cwd: '/repo/.opencove/worktrees/space-1',
-      cols: 80,
-      rows: 24,
-    })
-    expect(hydrated.data.sessionId).toBe('restored-session-1')
+    expect(snapshot).toHaveBeenCalledWith({ sessionId: 'existing-session-1' })
+    expect(hydrated.data.sessionId).toBe('existing-session-1')
+    expect(hydrated.data.isLiveSessionReattach).toBe(true)
+    expect(hydrated.data.scrollback).toBe('persisted historyexisting output')
   })
 
   it('falls back to workspace path only when terminal has no bound directory', () => {

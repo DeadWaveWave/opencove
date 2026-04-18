@@ -91,6 +91,10 @@ export default defineConfig({
     alias: {
       react: reactPath,
       'react-dom': reactDomPath,
+      '@xterm/addon-ligatures': resolve(
+        __dirname,
+        'node_modules/@xterm/addon-ligatures/lib/addon-ligatures.mjs',
+      ),
       '@': '/src',
       '@app': '/src/app',
       '@contexts': '/src/contexts',

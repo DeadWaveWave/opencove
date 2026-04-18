@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
 import path from 'path'
 import {
+  buildNodeEvalCommand,
   clearAndSeedWorkspace,
   createTestUserDataDir,
   launchApp,
@@ -112,16 +113,41 @@ test.describe('Recovery - Terminal worktree reopen', () => {
       })
 
       try {
+        const cwdToken = `OPENCOVE_RESTART_CWD_${Date.now()}:`
+        const normalizeTerminalText = (value: string | null): string =>
+          (value ?? '').replace(/\s+/g, '')
+        const normalizedToken = normalizeTerminalText(cwdToken)
+        const normalizedWorktreeName = normalizeTerminalText(worktreeName)
         const restartedTerminal = restartedWindow.locator('.terminal-node').first()
         await expect(restartedTerminal).toBeVisible()
         await expect(restartedTerminal.locator('.xterm')).toBeVisible()
+        await expect(restartedTerminal.locator('.terminal-node__terminal')).toHaveAttribute(
+          'aria-busy',
+          'false',
+        )
 
         await restartedTerminal.locator('.xterm').click()
         await expect(restartedTerminal.locator('.xterm-helper-textarea')).toBeFocused()
-        await restartedWindow.keyboard.type('node -p "require(\'path\').basename(process.cwd())"')
+        await restartedWindow.waitForTimeout(500)
+        await restartedWindow.keyboard.type(
+          buildNodeEvalCommand(
+            `process.stdout.write(${JSON.stringify(cwdToken)} + process.cwd() + '\\n')`,
+          ),
+          { delay: 20 },
+        )
         await restartedWindow.keyboard.press('Enter')
 
-        await expect(restartedTerminal).toContainText(worktreeName)
+        await expect
+          .poll(async () => {
+            const normalized = normalizeTerminalText(await restartedTerminal.textContent())
+            const tokenIndex = normalized.indexOf(normalizedToken)
+            if (tokenIndex < 0) {
+              return false
+            }
+
+            return normalized.slice(tokenIndex).includes(normalizedWorktreeName)
+          })
+          .toBe(true)
       } finally {
         await restartedApp.close()
       }

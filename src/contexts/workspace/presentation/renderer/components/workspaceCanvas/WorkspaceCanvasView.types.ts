@@ -2,6 +2,7 @@ import type * as React from 'react'
 import type { Edge, Node, NodeTypes, OnNodesChange, Viewport } from '@xyflow/react'
 import type { WorkspacePathOpener, WorkspacePathOpenerId } from '@shared/contracts/dto'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import type { QuickCommand, QuickPhrase } from '@contexts/settings/domain/agentSettings'
 import type {
   AgentNodeData,
   TerminalNodeData,
@@ -10,6 +11,7 @@ import type {
 } from '../../types'
 import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 import type { WorkspaceSnapGuide } from '../../utils/workspaceSnap'
+import type { SpaceExplorerOpenDocumentBlock } from './hooks/useSpaceExplorer.guards'
 import type {
   ContextMenuState,
   NodeDeleteConfirmationState,
@@ -17,11 +19,14 @@ import type {
   SpaceActionMenuState,
   SpaceVisual,
   SpaceWorktreeMismatchDropWarningState,
+  SpaceTargetMountPickerState,
   SpaceWorktreeDialogState,
   TaskCreatorState,
   TaskEditorState,
+  WorkspaceCanvasQuickPreviewState,
   WorkspaceCanvasProps,
 } from './types'
+import type { SpaceExplorerClipboardItem } from './view/WorkspaceSpaceExplorerOverlay.operations'
 
 export type SelectionDraftUiState = Pick<
   SelectionDraftState,
@@ -72,6 +77,30 @@ export interface WorkspaceCanvasViewProps {
   spaceVisuals: SpaceVisual[]
   spaceFramePreview: ReadonlyMap<string, WorkspaceSpaceRect> | null
   selectedSpaceIds: string[]
+  openExplorerSpaceId: string | null
+  explorerClipboard: SpaceExplorerClipboardItem | null
+  quickPreview: WorkspaceCanvasQuickPreviewState | null
+  toggleSpaceExplorer: (spaceId: string) => void
+  closeSpaceExplorer: () => void
+  setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
+  findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
+  previewFileInSpace: (
+    spaceId: string,
+    uri: string,
+    options?: {
+      explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+    },
+  ) => void
+  openFileInSpace: (
+    spaceId: string,
+    uri: string,
+    options?: {
+      explorerPlacementPx?: { left: number; top: number; width: number; height: number }
+    },
+  ) => void
+  dismissQuickPreview: () => void
+  materializeQuickPreview: () => void
+  beginQuickPreviewDrag: (event: React.MouseEvent<HTMLElement>) => void
   handleSpaceDragHandlePointerDown: (
     event: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>,
     spaceId: string,
@@ -99,13 +128,24 @@ export interface WorkspaceCanvasViewProps {
   onToggleMagneticSnapping: () => void
   createTerminalNode: () => Promise<void>
   createNoteNodeFromContextMenu: () => void
+  createWebsiteNodeFromContextMenu: () => void
   arrangeAll: (style?: WorkspaceArrangeStyle) => void
   arrangeCanvas: (style?: WorkspaceArrangeStyle) => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => void
   openTaskCreator: () => void
   openAgentLauncher: () => void
   openAgentLauncherForProvider: (provider: AgentNodeData['provider']) => void
+  runQuickCommand: (command: QuickCommand) => Promise<void>
+  insertQuickPhrase: (phrase: QuickPhrase) => void
+  openQuickMenuSettings: () => void
   createSpaceFromSelectedNodes: () => void
+  createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
+  spaceTargetMountPicker: SpaceTargetMountPickerState | null
+  setSpaceTargetMountPicker: React.Dispatch<
+    React.SetStateAction<SpaceTargetMountPickerState | null>
+  >
+  confirmSpaceTargetMountPicker: () => void
+  cancelSpaceTargetMountPicker: () => void
   clearNodeSelection: () => void
   canConvertSelectedNoteToTask: boolean
   isConvertSelectedNoteToTaskDisabled: boolean

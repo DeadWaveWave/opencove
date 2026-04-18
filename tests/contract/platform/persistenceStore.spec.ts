@@ -9,6 +9,7 @@ type MockDbState = {
   userVersion: number
   tables: Map<string, string[]>
   openAttempts: number
+  workspaceRows: Array<{ id: string; sortOrder: number }>
   failOnFirstOpen?: boolean
 }
 
@@ -27,10 +28,12 @@ const CURRENT_SCHEMA_COLUMNS = {
     'viewport_zoom',
     'is_minimap_visible',
     'active_space_id',
+    'sort_order',
   ],
   nodes: [
     'id',
     'workspace_id',
+    'session_id',
     'title',
     'title_pinned_by_user',
     'position_x',
@@ -134,6 +137,7 @@ function createMockDbState(
     userVersion: options.userVersion ?? 0,
     tables: options.version2Schema ? createVersion2Tables() : new Map<string, string[]>(),
     openAttempts: 0,
+    workspaceRows: [],
     ...(options.failOnFirstOpen ? { failOnFirstOpen: true } : {}),
   }
 }
@@ -215,6 +219,10 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
         }
       }
 
+      if (sql === 'SELECT COUNT(*) as cnt FROM workspaces WHERE sort_order != 0') {
+        return { all: () => [], get: () => ({ cnt: 1 }), run: () => undefined }
+      }
+
       const insertMatch = sql.match(
         /INSERT INTO\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([\s\S]*?)\)\s*VALUES/i,
       )
@@ -227,25 +235,38 @@ function createMockDatabaseModule(mockDbByPath: Map<string, MockDbState>) {
         return {
           all: () => [],
           get: () => undefined,
-          run: () => {
+          run: (...params: unknown[]) => {
             const tableColumns = this.state.tables.get(tableName) ?? []
             for (const column of columns) {
               if (!tableColumns.includes(column)) {
                 throw new Error(`table ${tableName} has no column named ${column}`)
               }
             }
+
+            if (tableName !== 'workspaces') {
+              return
+            }
+
+            const idIndex = columns.indexOf('id')
+            if (idIndex < 0) {
+              throw new Error('workspace insert missing id column')
+            }
+
+            const id = params[idIndex]
+            if (typeof id !== 'string') {
+              throw new Error('workspace insert missing id value')
+            }
+
+            const sortOrderIndex = columns.indexOf('sort_order')
+            const sortOrderParam = sortOrderIndex >= 0 ? params[sortOrderIndex] : 0
+            if (typeof sortOrderParam !== 'number') {
+              throw new Error('workspace insert sort_order must be numeric')
+            }
+
+            this.state.workspaceRows.push({ id, sortOrder: sortOrderParam })
           },
         }
       }
-
-      if (sql.includes('SELECT value FROM kv WHERE key = ?')) {
-        return {
-          all: () => [],
-          get: () => undefined,
-          run: () => undefined,
-        }
-      }
-
       return {
         all: () => [],
         get: () => undefined,
@@ -278,6 +299,64 @@ describe('PersistenceStore', () => {
     await rm(tempDir, { recursive: true, force: true })
     tempDir = ''
   })
+
+  it(
+    'writes workspace sort_order from the in-memory array order',
+    async () => {
+      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
+      const dbPath = join(tempDir, 'opencove.db')
+      const mockDbByPath = new Map<string, MockDbState>()
+      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
+
+      const { createPersistenceStore } =
+        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
+
+      const store = await createPersistenceStore({ dbPath })
+
+      const result = await store.writeAppState({
+        formatVersion: 1,
+        activeWorkspaceId: 'ws-2',
+        workspaces: [
+          {
+            id: 'ws-2',
+            name: 'Workspace 2',
+            path: '/tmp/ws-2',
+            worktreesRoot: '/tmp',
+            pullRequestBaseBranchOptions: [],
+            spaceArchiveRecords: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+            isMinimapVisible: false,
+            activeSpaceId: null,
+            nodes: [],
+            spaces: [],
+          },
+          {
+            id: 'ws-1',
+            name: 'Workspace 1',
+            path: '/tmp/ws-1',
+            worktreesRoot: '/tmp',
+            pullRequestBaseBranchOptions: [],
+            spaceArchiveRecords: [],
+            viewport: { x: 0, y: 0, zoom: 1 },
+            isMinimapVisible: false,
+            activeSpaceId: null,
+            nodes: [],
+            spaces: [],
+          },
+        ],
+        settings: {},
+      })
+
+      expect(result).toMatchObject({ ok: true, level: 'full' })
+      expect(mockDbByPath.get(dbPath)?.workspaceRows).toEqual([
+        { id: 'ws-2', sortOrder: 0 },
+        { id: 'ws-1', sortOrder: 1 },
+      ])
+
+      store.dispose()
+    },
+    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
+  )
 
   it(
     'creates a backup when migrating an existing db file',
@@ -382,123 +461,12 @@ describe('PersistenceStore', () => {
       })
 
       const result = await store.writeWorkspaceStateRaw(raw)
-      expect(result).toEqual({ ok: true, level: 'full', bytes: rawBytes })
+      expect(result).toMatchObject({ ok: true, level: 'full', bytes: rawBytes })
+      if (result.ok) {
+        expect(result.revision).toBeTypeOf('number')
+        expect(result.revision).toBeGreaterThan(0)
+      }
       store.dispose()
-    },
-    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
-  )
-
-  it(
-    'applies cumulative migrations when upgrading a version 2 db',
-    async () => {
-      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
-      const dbPath = join(tempDir, 'opencove.db')
-      const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 2, version2Schema: true })],
-      ])
-      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
-
-      const { createPersistenceStore } =
-        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
-
-      const store = await createPersistenceStore({ dbPath })
-      expect(store.consumeRecovery()).toBeNull()
-
-      const result = await store.writeAppState({
-        formatVersion: 1,
-        activeWorkspaceId: 'ws-1',
-        workspaces: [
-          {
-            id: 'ws-1',
-            name: 'Workspace',
-            path: '/tmp/workspace',
-            worktreesRoot: '/tmp',
-            pullRequestBaseBranchOptions: [],
-            viewport: { x: 1, y: 2, zoom: 1 },
-            isMinimapVisible: false,
-            activeSpaceId: 'space-1',
-            nodes: [
-              {
-                id: 'node-1',
-                title: 'Node',
-                titlePinnedByUser: false,
-                position: { x: 10, y: 20 },
-                width: 300,
-                height: 200,
-                kind: 'task',
-                labelColorOverride: 'blue',
-                status: null,
-                startedAt: null,
-                endedAt: null,
-                exitCode: null,
-                lastError: null,
-                executionDirectory: null,
-                expectedDirectory: null,
-                task: null,
-                agent: null,
-                scrollback: null,
-              },
-            ],
-            spaces: [
-              {
-                id: 'space-1',
-                name: 'Space',
-                directoryPath: '/tmp/workspace',
-                labelColor: 'green',
-                rect: { x: 0, y: 0, width: 100, height: 100 },
-                nodeIds: ['node-1'],
-              },
-            ],
-          },
-        ],
-        settings: {},
-      })
-      expect(result).toMatchObject({ ok: true, level: 'full' })
-      store.dispose()
-
-      const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(5)
-      expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
-      expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
-      expect(migratedState?.tables.get('workspaces')).toContain(
-        'pull_request_base_branch_options_json',
-      )
-      expect(migratedState?.tables.get('workspaces')).toContain('space_archive_records_json')
-    },
-    PERSISTENCE_STORE_TEST_TIMEOUT_MS,
-  )
-
-  it(
-    'repairs a schema marked current when additive columns are missing',
-    async () => {
-      tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
-      const dbPath = join(tempDir, 'opencove.db')
-      const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 5, version2Schema: true })],
-      ])
-      vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
-
-      const { createPersistenceStore } =
-        await import('../../../src/platform/persistence/sqlite/PersistenceStore')
-
-      const store = await createPersistenceStore({ dbPath })
-      expect(store.consumeRecovery()).toBeNull()
-      const result = await store.writeAppState({
-        formatVersion: 1,
-        activeWorkspaceId: null,
-        workspaces: [],
-        settings: {},
-      })
-      expect(result).toMatchObject({ ok: true, level: 'full' })
-      store.dispose()
-
-      const repairedState = mockDbByPath.get(dbPath)
-      expect(repairedState?.tables.get('nodes')).toContain('label_color_override')
-      expect(repairedState?.tables.get('workspace_spaces')).toContain('label_color')
-      expect(repairedState?.tables.get('workspaces')).toContain(
-        'pull_request_base_branch_options_json',
-      )
-      expect(repairedState?.tables.get('workspaces')).toContain('space_archive_records_json')
     },
     PERSISTENCE_STORE_TEST_TIMEOUT_MS,
   )

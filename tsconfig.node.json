@@ -9,6 +9,7 @@
     "src/contexts/**/application/**/*",
     "src/contexts/**/infrastructure/**/*",
     "src/contexts/**/presentation/main-ipc/**/*",
+    "src/contexts/workspace/presentation/renderer/types.ts",
     "src/platform/**/*"
   ],
   "compilerOptions": {

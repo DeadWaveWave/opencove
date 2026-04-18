@@ -1,4 +1,4 @@
-import type { CreateGitWorktreeBranchMode } from '@shared/contracts/dto'
+import type { CreateGitWorktreeBranchMode, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { TranslateFn } from '@app/renderer/i18n'
 
 export type BranchMode = 'new' | 'existing'
@@ -31,18 +31,13 @@ export type PendingOperation =
 
 const DISALLOWED_BRANCH_CHARACTERS = [' ', '~', '^', ':', '?', '*', '[', '\\']
 
-type WorktreeApiClient = Window['opencoveApi']['worktree']
+export type WorktreeApiClient = Window['opencoveApi']['worktree']
 
 export function getWorktreeApiMethod<K extends keyof WorktreeApiClient>(
+  worktreeApi: Partial<WorktreeApiClient> | null | undefined,
   method: K,
   t: TranslateFn,
 ): WorktreeApiClient[K] {
-  const worktreeApi = (
-    window as Window & {
-      opencoveApi?: { worktree?: Partial<WorktreeApiClient> }
-    }
-  ).opencoveApi?.worktree
-
   const candidate = worktreeApi?.[method]
   if (typeof candidate !== 'function') {
     throw new Error(t('worktree.apiUnavailable'))
@@ -53,6 +48,45 @@ export function getWorktreeApiMethod<K extends keyof WorktreeApiClient>(
 
 export function normalizeComparablePath(pathValue: string): string {
   return pathValue.trim().replace(/[\\/]+$/, '')
+}
+
+export function resolveWorktreeRepoRootPath(
+  workspacePath: string,
+  worktrees: GitWorktreeInfo[],
+): string {
+  const normalizedWorkspacePath = normalizeComparablePath(workspacePath)
+  const match =
+    worktrees.find(entry => normalizeComparablePath(entry.path) === normalizedWorkspacePath) ?? null
+  if (match) {
+    return match.path
+  }
+
+  // Some callers provide a worktree snapshot without including the main workspace root (e.g. unit
+  // tests or partial snapshots). If the workspace path is a parent directory of a worktree, treat
+  // it as the repo root.
+  const hasWorktreeUnderWorkspace = worktrees.some(entry => {
+    const normalizedWorktreePath = normalizeComparablePath(entry.path)
+    return (
+      normalizedWorkspacePath.length > 0 &&
+      normalizedWorktreePath.startsWith(`${normalizedWorkspacePath}/`)
+    )
+  })
+  if (hasWorktreeUnderWorkspace) {
+    return workspacePath
+  }
+
+  let shortest: { normalized: string; path: string } | null = null
+  for (const entry of worktrees) {
+    const normalized = normalizeComparablePath(entry.path)
+    if (normalized.length === 0) {
+      continue
+    }
+    if (!shortest || normalized.length < shortest.normalized.length) {
+      shortest = { normalized, path: entry.path }
+    }
+  }
+
+  return shortest?.path ?? workspacePath
 }
 
 export function resolveWorktreesRoot(workspacePath: string, worktreesRoot: string): string {
