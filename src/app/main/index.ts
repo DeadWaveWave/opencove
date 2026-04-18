@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, nativeImage } from 'electron'
+import { app, shell, BrowserWindow, nativeImage, Menu } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
@@ -213,6 +213,11 @@ function createWindow(): void {
     }
   })
 
+  // Prevent pinch-to-zoom from applying page zoom on the main window.
+  // Page zoom changes webContents.zoomFactor, which breaks native WebContentsView
+  // positioning: getBoundingClientRect() returns layout-viewport CSS px (unaffected
+  // by page zoom), but Electron's setBounds() uses window logical px. When zoom ≠ 1
+  // these coordinate spaces diverge, causing website nodes to render at wrong positions.
   if (typeof mainWindow.webContents.setVisualZoomLevelLimits === 'function') {
     void mainWindow.webContents.setVisualZoomLevelLimits(1, 1).catch(() => undefined)
   }
@@ -232,10 +237,36 @@ app.whenReady().then(async () => {
   // Set app user model id for windows
   electronApp.setAppUserModelId(OPENCOVE_APP_USER_MODEL_ID)
 
+  // Custom macOS menu: zoom roles (resetZoom/zoomIn/zoomOut) are intentionally omitted.
+  // Those roles call webContents.setZoomLevel() on the main window, which changes the
+  // page zoom factor. Page zoom breaks native WebContentsView positioning (same coordinate
+  // mismatch as visual zoom — see setVisualZoomLevelLimits comment above). Canvas zoom
+  // is handled by the renderer's trackpad/wheel gesture handlers instead.
+  if (process.platform === 'darwin') {
+    Menu.setApplicationMenu(
+      Menu.buildFromTemplate([
+        { role: 'appMenu' },
+        { role: 'fileMenu' },
+        { role: 'editMenu' },
+        {
+          label: 'View',
+          submenu: [
+            { role: 'reload' },
+            { role: 'forceReload' },
+            { role: 'toggleDevTools' },
+            { type: 'separator' },
+            { role: 'togglefullscreen' },
+          ],
+        },
+        { role: 'windowMenu' },
+      ]),
+    )
+  }
+
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
   app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
+    optimizer.watchWindowShortcuts(window, { zoom: true, escToCloseWindow: false })
   })
 
   // Log GPU and child process crashes (these can cause white screens)
