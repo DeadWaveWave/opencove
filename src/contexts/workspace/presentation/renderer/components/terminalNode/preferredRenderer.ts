@@ -20,35 +20,6 @@ function createDomRenderer(): ActiveTerminalRenderer {
   }
 }
 
-function resolveDevicePixelRatio(): number {
-  if (typeof window === 'undefined') {
-    return 1
-  }
-
-  const { devicePixelRatio } = window
-  return Number.isFinite(devicePixelRatio) && devicePixelRatio > 0 ? devicePixelRatio : 1
-}
-
-function usesFractionalDisplayScaling(): boolean {
-  const devicePixelRatio = resolveDevicePixelRatio()
-  return Math.abs(devicePixelRatio - Math.round(devicePixelRatio)) > 0.001
-}
-
-function shouldPreferDomRendererOnCurrentPlatform(
-  terminalProvider?: AgentProvider | null,
-): boolean {
-  if (typeof window === 'undefined') {
-    return false
-  }
-
-  if (terminalProvider === 'opencode') {
-    return false
-  }
-
-  const platform = window.opencoveApi?.meta?.platform
-  return platform === 'win32' && usesFractionalDisplayScaling()
-}
-
 function canUseWebglRenderer(): boolean {
   if (typeof document === 'undefined') {
     return false
@@ -64,15 +35,15 @@ function canUseWebglRenderer(): boolean {
 
 export function activatePreferredTerminalRenderer(
   terminal: Terminal,
-  terminalProvider?: AgentProvider | null,
+  _terminalProvider?: AgentProvider | null,
   options: PreferredTerminalRendererOptions = {},
 ): ActiveTerminalRenderer {
-  if (shouldPreferDomRendererOnCurrentPlatform(terminalProvider) || !canUseWebglRenderer()) {
+  if (!canUseWebglRenderer()) {
     return createDomRenderer()
   }
 
   try {
-    const webglAddon = new WebglAddon()
+    const webglAddon = new WebglAddon({ customGlyphs: true })
     terminal.loadAddon(webglAddon)
 
     let disposed = false

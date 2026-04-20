@@ -60,7 +60,7 @@ describe('activatePreferredTerminalRenderer', () => {
     })
   })
 
-  it('keeps the DOM renderer on Windows when devicePixelRatio is fractional', async () => {
+  it('uses the WebGL renderer on Windows even when devicePixelRatio is fractional', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
       return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
@@ -85,14 +85,14 @@ describe('activatePreferredTerminalRenderer', () => {
       const loadAddon = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, 'codex')
 
-      expect(loadAddon).not.toHaveBeenCalled()
-      expect(activeRenderer.kind).toBe('dom')
+      expect(loadAddon).toHaveBeenCalledTimes(1)
+      expect(activeRenderer.kind).toBe('webgl')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
   })
 
-  it('keeps the WebGL renderer for OpenCode on Windows fractional DPI', async () => {
+  it('loads the WebGL renderer for OpenCode on Windows fractional DPI', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
       return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null

@@ -17,6 +17,7 @@ import type { WorkspaceCanvasViewProps } from './WorkspaceCanvasView.types'
 import { useWorkspaceCanvasGlobalDismissals } from './hooks/useGlobalDismissals'
 import { useWorkspaceCanvasSpaceMenuState } from './hooks/useCanvasSpaceMenuState'
 import { useWorkspaceCanvasLabelColorFilter } from './hooks/useLabelColorFilter'
+import { useViewportDprSnapping } from './hooks/useViewportDprSnapping'
 import { WorkspaceCanvasWindows } from './view/WorkspaceCanvasWindows'
 import { WorkspaceContextMenu } from './view/WorkspaceContextMenu'
 import { WorkspaceMinimapDock } from './view/WorkspaceMinimapDock'
@@ -177,6 +178,8 @@ export function WorkspaceCanvasView({
     clearNodeSelection,
   })
 
+  const { snapViewport } = useViewportDprSnapping(canvasRef)
+
   const {
     activeMenuSpace,
     isActiveMenuSpaceOnWorkspaceRoot,
@@ -261,6 +264,14 @@ export function WorkspaceCanvasView({
         edges={filteredEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
+        onError={(code) => {
+          // Suppress error015: "drag a node that is not initialized"
+          // This fires harmlessly when a node is dragged before its dimensions
+          // have been measured by React Flow's internal ResizeObserver.
+          if (code === '015') return
+          // biome-ignore lint/suspicious/noConsole: surface other React Flow errors
+          console.warn(`[React Flow] error ${code}`)
+        }}
         onPaneClick={onPaneClick}
         onPaneContextMenu={onPaneContextMenu}
         onNodeClick={onNodeClick}
@@ -280,6 +291,7 @@ export function WorkspaceCanvasView({
           reactFlowStore.setState({
             coveViewportInteractionActive: false,
           } as unknown as Parameters<typeof reactFlowStore.setState>[0])
+          snapViewport()
           onMoveEnd(event, nextViewport)
         }}
         selectionMode={SelectionMode.Partial}

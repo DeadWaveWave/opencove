@@ -130,6 +130,11 @@ export function useTerminalRuntimeSession({
       return undefined
     }
 
+    // Wait until the inner terminal div ref is attached
+    if (!containerRef.current) {
+      return undefined
+    }
+
     const ptyWithOptionalAttach = resolveAttachablePtyApi()
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
     suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))

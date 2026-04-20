@@ -83,6 +83,11 @@ export function useTerminalPlaceholderSession({
     if (normalizedScrollback.length === 0) {
       return undefined
     }
+
+    // Wait until the inner terminal div ref is attached
+    if (!containerRef.current) {
+      return undefined
+    }
     const shouldHandoffToRuntime = (): boolean => latestSessionIdRef.current.trim().length > 0
 
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
