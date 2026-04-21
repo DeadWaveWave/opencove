@@ -34,3 +34,4 @@
    Currently ships only built-in themes; user-provided themes follow
    the same `:root[data-cove-theme-id='<id>']` pattern. */
 @import './styles/themes/ember.css';
+@import './styles/themes/ember-light.css';

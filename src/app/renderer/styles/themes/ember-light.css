@@ -1,0 +1,148 @@
+/*
+ * Ember Light — light-base counterpart to the Ember dark theme. Shares the
+ * same warm amber accent (#c97c3a) but inverts the luminosity hierarchy:
+ * dark text on warm cream surfaces. Terminal nodes stay dark (warm ember
+ * dark palette) — their text tokens are overridden in the block below to
+ * ensure readable contrast on the near-black header surface.
+ *
+ * Scoped to [data-cove-theme-id='ember-light'].
+ */
+
+:root[data-cove-theme-id='ember-light'] {
+  --cove-accent: #c97c3a;
+
+  --cove-label-gray: #8a7060;
+  --cove-label-red: #b04040;
+  --cove-label-orange: #c97c3a;
+  --cove-label-yellow: #9a7810;
+  --cove-label-green: #5a7840;
+  --cove-label-blue: #405870;
+  --cove-label-purple: #6a4a6a;
+
+  --cove-app-background: #f5ede0;
+  --cove-surface: rgba(240, 228, 212, 0.78);
+  --cove-surface-strong: rgba(232, 218, 196, 0.94);
+  --cove-window-surface: rgb(240, 228, 212);
+  --cove-surface-hover: rgba(201, 124, 58, 0.08);
+  --cove-field: rgba(80, 52, 28, 0.04);
+  --cove-border: rgba(80, 52, 28, 0.16);
+  --cove-border-subtle: rgba(80, 52, 28, 0.08);
+  --cove-text: #2c1f14;
+  --cove-text-muted: #6b4e36;
+  --cove-text-faint: #9c7d68;
+  --cove-backdrop: rgba(40, 24, 8, 0.5);
+  --cove-shadow-color-elevated: rgba(80, 40, 10, 0.18);
+  --cove-shadow-color-panel: rgba(80, 40, 10, 0.28);
+
+  --cove-overlay-danger-backdrop: rgba(40, 10, 10, 0.4);
+  --cove-overlay-danger-border: rgba(176, 64, 64, 0.3);
+  --cove-overlay-danger-surface: linear-gradient(
+    180deg,
+    rgba(250, 235, 225, 0.98),
+    rgba(240, 224, 212, 0.98)
+  );
+  --cove-overlay-danger-shadow:
+    0 24px 56px rgba(80, 40, 10, 0.22), 0 0 0 1px rgba(176, 64, 64, 0.16);
+  --cove-overlay-danger-title: #2c1010;
+  --cove-overlay-danger-summary: #6b3030;
+  --cove-overlay-danger-status-border: rgba(176, 64, 64, 0.36);
+  --cove-overlay-danger-status-surface: rgba(250, 220, 212, 0.66);
+  --cove-overlay-danger-status-text: #4c1818;
+  --cove-overlay-danger-divider: rgba(176, 64, 64, 0.2);
+  --cove-overlay-danger-lead: #2c1010;
+  --cove-overlay-danger-supporting: #7c4040;
+  --cove-overlay-danger-option-strong: #2c1010;
+  --cove-overlay-danger-option-text: #6b3030;
+  --cove-overlay-danger-path: #4c1818;
+
+  --cove-overlay-warning-backdrop: rgba(40, 24, 8, 0.4);
+  --cove-overlay-warning-border: rgba(201, 124, 58, 0.32);
+  --cove-overlay-warning-surface: linear-gradient(
+    180deg,
+    rgba(248, 235, 218, 0.98),
+    rgba(240, 226, 206, 0.98)
+  );
+  --cove-overlay-warning-shadow:
+    0 24px 56px rgba(80, 40, 10, 0.2), 0 0 0 1px rgba(201, 124, 58, 0.14);
+  --cove-overlay-warning-pill-border: rgba(201, 124, 58, 0.36);
+  --cove-overlay-warning-pill-surface: rgba(201, 124, 58, 0.1);
+
+  --cove-node-border: rgba(201, 124, 58, 0.35);
+  --cove-node-surface: rgba(240, 228, 212, 0.94);
+  --cove-node-header-surface: rgba(232, 218, 196, 0.96);
+  --cove-node-header-border: rgba(201, 124, 58, 0.25);
+  --cove-node-shadow-color: rgba(80, 40, 10, 0.18);
+  --cove-node-selection-border: rgba(201, 124, 58, 0.72);
+  --cove-node-selection-shadow:
+    0 0 0 1px rgba(201, 124, 58, 0.3), 0 18px 40px rgba(80, 40, 10, 0.22);
+
+  --cove-terminal-node-surface: rgba(20, 16, 14, 0.94);
+  --cove-terminal-node-header-surface: rgba(32, 26, 22, 0.96);
+  --cove-terminal-background: #15110e;
+  --cove-terminal-foreground: #d4c4ae;
+  --cove-terminal-selection: rgba(201, 124, 58, 0.28);
+  --cove-terminal-cursor: #c97c3a;
+
+  --cove-canvas-control-surface: rgba(240, 228, 212, 0.82);
+  --cove-canvas-control-surface-hover: rgba(232, 218, 196, 0.94);
+  --cove-canvas-control-border: rgba(201, 124, 58, 0.24);
+  --cove-canvas-control-border-hover: rgba(201, 124, 58, 0.6);
+  --cove-canvas-control-text: rgba(80, 60, 40, 0.78);
+  --cove-canvas-control-text-hover: rgba(44, 31, 20, 0.96);
+  --cove-canvas-dot: rgba(201, 124, 58, 0.12);
+
+  --cove-space-region-border: rgba(201, 124, 58, 0.55);
+  --cove-space-region-surface: rgba(201, 124, 58, 0.06);
+  --cove-space-region-shadow: inset 0 0 0 1px rgba(201, 124, 58, 0.1);
+  --cove-space-region-border-active: rgba(201, 124, 58, 0.78);
+  --cove-space-region-surface-active: rgba(201, 124, 58, 0.1);
+  --cove-space-region-shadow-active:
+    inset 0 0 0 1px rgba(201, 124, 58, 0.22), 0 0 0 1px rgba(201, 124, 58, 0.32);
+  --cove-space-region-border-selected: rgba(160, 100, 40, 0.94);
+  --cove-space-region-surface-selected: rgba(201, 124, 58, 0.14);
+  --cove-space-region-shadow-selected:
+    inset 0 0 0 1px rgba(160, 100, 40, 0.28), 0 0 0 1px rgba(201, 124, 58, 0.36),
+    0 0 22px rgba(201, 124, 58, 0.2);
+
+  --cove-canvas-minimap-surface: rgba(235, 222, 204, 0.85);
+  --cove-canvas-minimap-border: rgba(201, 124, 58, 0.24);
+  --cove-canvas-minimap-mask: rgba(160, 100, 40, 0.74);
+  --cove-canvas-minimap-mask-surface: rgba(201, 124, 58, 0.16);
+  --cove-canvas-minimap-opacity-idle: 0.52;
+  --cove-canvas-minimap-opacity-hover: 0.96;
+  --cove-canvas-minimap-node-agent: rgba(160, 100, 40, 0.8);
+  --cove-canvas-minimap-node-task: rgba(106, 74, 106, 0.74);
+  --cove-canvas-minimap-node-default: rgba(80, 60, 40, 0.62);
+  --cove-canvas-minimap-node-stroke: rgba(255, 255, 255, 0.22);
+
+  --cove-settings-panel-background: #ede0ce;
+  --cove-settings-sidebar-background: rgba(230, 215, 195, 0.96);
+}
+
+/*
+ * Terminal-node text override: all terminal nodes in ember-light are dark.
+ * The main block sets dark surfaces; this block corrects --cove-text so the
+ * header title reads as warm light against the near-black header surface.
+ * --cove-text is set slightly brighter than the ember dark value (#e8d9c4)
+ * to improve header contrast.
+ */
+:root[data-cove-theme-id='ember-light'] .terminal-node {
+  --cove-node-border: rgba(201, 124, 58, 0.4);
+  --cove-node-header-border: rgba(201, 124, 58, 0.3);
+  --cove-node-shadow-color: rgba(0, 0, 0, 0.5);
+  --cove-node-selection-border: rgba(201, 124, 58, 0.78);
+  --cove-node-selection-shadow: 0 0 0 1px rgba(201, 124, 58, 0.36), 0 18px 40px rgba(0, 0, 0, 0.55);
+  --cove-terminal-node-surface: rgba(20, 16, 14, 0.94);
+  --cove-terminal-node-header-surface: rgba(32, 26, 22, 0.96);
+  --cove-terminal-background: #15110e;
+  --cove-terminal-foreground: #d4c4ae;
+  --cove-terminal-selection: rgba(201, 124, 58, 0.28);
+  --cove-terminal-cursor: #c97c3a;
+  --cove-text: #f2e6d0;
+  --cove-text-muted: #c8b49a;
+  --cove-text-faint: #7a6a58;
+  --cove-border: rgba(232, 217, 196, 0.14);
+  --cove-border-subtle: rgba(232, 217, 196, 0.08);
+  --cove-field: rgba(232, 217, 196, 0.04);
+  --cove-surface-hover: rgba(201, 124, 58, 0.08);
+}

@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render } from '@testing-library/react'
+import type { UiTheme } from '@contexts/settings/domain/agentSettings'
 import { useApplyUiTheme } from './useApplyUiTheme'
 
-function HookHost({ uiTheme }: { uiTheme: 'system' | 'light' | 'dark' | 'ember' }): null {
+function HookHost({ uiTheme }: { uiTheme: UiTheme }): null {
   useApplyUiTheme(uiTheme)
   return null
 }
