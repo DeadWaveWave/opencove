@@ -1,302 +1,307 @@
-# Terminal Zoom Clarity Design
+# Terminal Zoom Clarity 设计说明
 
-Date: 2026-04-22
-Status: Approved for spec review
-Scope: Renderer-only redesign for terminal zoom clarity without changing product zoom semantics
+日期：2026-04-22
+状态：待评审（Spec Review）
+范围：在不改变产品既有 zoom 语义的前提下，重做 terminal zoom 后的清晰度方案；本次只讨论 renderer 级设计，不进入实现细节。
 
-## 1. Problem Class
+## 1. 问题类别
 
-This is not primarily a CSS styling problem. It is a renderer re-rasterization problem in a transformed canvas environment.
+这不是一个以 CSS 样式为主的问题，而是一个发生在变换中的画布（transformed canvas）里的 renderer 重栅格化（re-rasterization）问题。
 
-OpenCove's existing product behavior is:
+OpenCove 当前的产品行为是：
 
-- Terminal and agent nodes follow canvas zoom visually.
-- After zoom-in, the terminal window and glyphs look larger on screen.
-- That zoom behavior is existing product logic and must not change.
+- terminal / agent 节点在视觉上会跟随 canvas zoom；
+- 画布放大后，terminal 窗口和字形在屏幕上看起来会更大；
+- 这是既有产品语义，不是 bug，不能被本次优化改变。
 
-The bug class is narrower:
+真正的问题更窄：
 
-- After canvas zoom, terminal rendering can become blurry because the screen-space presentation grows while the xterm backing raster does not get a matching clarity refresh.
-- Previous attempts improved clarity but coupled the refresh path to scroll state, bottom-of-buffer heuristics, DOM changes, or layout paths that destabilized scroll/focus behavior.
+- 当 canvas zoom 之后，terminal 的 screen-space 呈现变大了，但 xterm 的 backing raster 没有在合适时机做匹配的清晰度刷新（clarity refresh），所以终端会变糊；
+- 之前几轮尝试虽然提升了清晰度，但把刷新路径错误地和 scroll 状态、是否在底部、DOM 拓扑或布局路径绑在了一起，最终破坏了 scroll / focus 稳定性。
 
-The design goal is therefore:
+因此，本设计的目标是：
 
-- Preserve existing zoom semantics.
-- Restore sharp terminal rendering after zoom.
-- Do not break scroll, focus, selection, click, IME, or session ownership semantics.
+- 保持既有 zoom 语义不变；
+- 在 zoom 之后恢复 terminal 的清晰呈现；
+- 不能破坏 scroll、focus、selection、click、IME 或 session ownership 语义。
 
-## 2. Reference Summary
+## 2. 参考与已有证据
 
-### 2.1 Industry / Upstream Signal
+### 2.1 行业 / Upstream 信号
 
-This problem class has clear prior art in canvas/WebGL terminal renderers:
+这个问题在 canvas / WebGL terminal renderer 中有清晰的先例：
 
-- xterm's DPR handling is renderer-driven, not a normal `fit/resize` concern.
-- xterm's renderer updates in response to browser DPR changes through renderer measurement and redraw paths.
-- That means OpenCove should treat zoom clarity as a renderer refresh problem, not as a layout ownership or terminal lifecycle problem.
+- xterm 的 DPR 处理属于 renderer 路径，不是普通的 `fit/resize` 问题；
+- xterm 会在浏览器 DPR 变化时，通过 renderer 的 measurement 和 redraw 路径来更新呈现；
+- 这意味着 OpenCove 应把 terminal zoom 清晰度视为 renderer refresh 问题，而不是布局 owner、terminal lifecycle 或 scroll ownership 问题。
 
-Observed from local dependency sources:
+本地依赖源码中的直接证据：
 
 - `node_modules/@xterm/xterm/src/browser/services/CoreBrowserService.ts`
-  - `dpr` is sourced from the browser window's device pixel ratio.
+  - `dpr` 来自浏览器 window 的 device pixel ratio。
 - `node_modules/@xterm/xterm/src/browser/services/RenderService.ts`
-  - DPR changes route through `handleDevicePixelRatioChange()`.
+  - DPR 变化通过 `handleDevicePixelRatioChange()` 进入 renderer 链路。
 - `node_modules/@xterm/addon-webgl/src/WebglRenderer.ts`
-  - WebGL DPR updates lead to renderer resize/rebuild behavior and atlas refresh.
+  - WebGL DPR 更新会触发 renderer 尺寸更新、atlas 刷新与重绘。
 
-### 2.2 OpenCove Prior Attempts
+### 2.2 OpenCove 既有尝试
 
-Recent local evidence:
+近期仓库内的直接证据：
 
 - `task.md`
-  - `T-035` already proved that `effectiveDpr = window.devicePixelRatio × viewportZoom` can improve clarity.
-  - `T-037` and `T-038` documented that the first integration caused scroll regressions.
-  - `T-040` documented a "safe" follow-up that deferred clarity updates until the terminal returned to the bottom, which protected behavior but created the wrong product outcome.
+  - `T-035` 已证明 `effectiveDpr = window.devicePixelRatio × viewportZoom` 这一方向在清晰度上是有效的；
+  - `T-037`、`T-038` 记录了首轮接法触发了 scroll 状态回归；
+  - `T-040` 记录了后续“安全版”把清晰度刷新延迟到 terminal 回到底部后才做，这保护了行为稳定性，但产生了错误的产品结果。
 - `docs/TERMINAL_TUI_RENDERING_BASELINE.md`
-  - Earlier overlay/portal and DOM-layer experiments caused hit-testing, focus, or drag regressions.
+  - 更早的 overlay / portal / DOM 层方案引入了 hit-test、focus 或拖拽回归。
 
-## 3. Why This Is Hard
+## 3. 为什么这个问题会这么难
 
-This feature looks simple from the outside but is structurally tricky because four concerns overlap:
+从用户角度看，它像是“放大后变糊了，再变清楚就行”。  
+但结构上它困难，是因为四件事叠在一起：
 
-- Canvas zoom changes screen-space presentation.
-- xterm owns its own renderer and backing raster.
-- Terminal nodes are live interactive surfaces, not static images.
-- Scroll and focus are stateful, not purely visual.
+- canvas zoom 会改变 screen-space presentation；
+- xterm 自己拥有 renderer 和 backing raster；
+- terminal 节点是活的交互面，不是静态图片；
+- scroll 和 focus 都是有状态的，不只是视觉效果。
 
-That combination means a "clarity refresh" can accidentally become:
+因此，一次“为了变清晰而做的刷新”，很容易意外变成：
 
-- a layout refresh,
-- a session refresh,
-- a scroll reset,
-- or a focus reset.
+- 一次布局刷新；
+- 一次 session 刷新；
+- 一次 scroll reset；
+- 或一次 focus reset。
 
-The root difficulty is not "how to make things sharper". The root difficulty is:
+所以真正的难点不是“怎么让它更清楚”，而是：
 
-`how to trigger a sharper renderer pass without touching state owners that do not belong to clarity.`
+`如何在不碰错 state owner 的前提下，触发一次更清晰的 renderer pass。`
 
-## 4. Correct Problem Framing
+## 4. 正确的问题表述
 
-The correct framing is:
+正确的问题表述应是：
 
-`After viewport zoom settles, the renderer may increase backing density to match the final screen-space presentation, but this must not change terminal layout semantics, world-space semantics, or interaction semantics.`
+`当 viewport zoom 已经稳定（settled）后，renderer 可以按最终的 screen-space presentation 提升 backing density，以恢复清晰度；但这个过程不能改变 terminal 的布局语义、world-space 语义，也不能改变交互语义。`
 
-Important translation:
+这里需要明确区分：
 
-- Raising backing density is allowed.
-- Changing product zoom behavior is not allowed.
-- Using screen-space zoom as an input to renderer oversampling is acceptable.
-- Requiring the user to return to the bottom before the terminal can become sharp is not acceptable.
+- 允许提升 backing density；
+- 不允许改变产品的 zoom 语义；
+- 允许把 screen-space zoom 当作 renderer oversampling 的输入；
+- 不允许要求用户“先回到底部，terminal 才有资格变清晰”。
 
-## 5. Product Constraints
+## 5. 产品约束
 
-These constraints are explicit and non-negotiable:
+以下约束已经和用户明确对齐，属于非协商项：
 
-- Terminal and agent nodes must continue to follow the canvas visually.
-- After zoom-in, they may continue to look larger on screen.
-- This redesign must not make terminal windows or glyphs switch to a different size model.
-- The optimization must not introduce a new click-to-reset-size behavior.
-- The optimization must not alter the product's viewport zoom semantics.
+- terminal / agent 节点必须继续在视觉上跟随 canvas；
+- zoom in 后，terminal 在屏幕上看起来继续可以更大；
+- 这次重做不能把 terminal 窗口或字形切换到另一套大小模型；
+- 不能引入“点击一下 terminal 才恢复默认大小”这类新行为；
+- 不能修改现有 viewport zoom 语义。
 
-## 6. State Owners
+## 6. State Owner
 
 - `viewport zoom`
-  - Owner: canvas / React Flow
-  - Rule: unchanged
-- Terminal node `world-space position / size`
-  - Owner: existing node model
-  - Rule: unchanged
+  - Owner：canvas / React Flow
+  - 规则：不变
+- terminal 节点的 `world-space position / size`
+  - Owner：现有 node model
+  - 规则：不变
 - `clarity refresh`
-  - Owner: new renderer-level controller
-  - Rule: only controls timing and renderer refresh behavior
+  - Owner：新增的 renderer-level controller
+  - 规则：只负责清晰度刷新时机与 renderer 刷新行为
 - `scroll state`
-  - Owner: xterm buffer / viewport
-  - Rule: must be preserved across clarity refresh
+  - Owner：xterm buffer / viewport
+  - 规则：clarity refresh 前后必须保持
 - `focus state`
-  - Owner: live xterm instance + helper textarea
-  - Rule: must be preserved across clarity refresh
+  - Owner：live xterm instance + helper textarea
+  - 规则：clarity refresh 前后必须保持
 
-## 7. Invariants
+## 7. 不变量（Invariants）
 
-1. Canvas zoom semantics must remain unchanged.
-2. The live terminal instance must not remount because of clarity refresh.
-3. The terminal DOM ownership and layer topology must not change because of clarity refresh.
-4. Clarity refresh must not depend on "terminal is at bottom".
-5. Clarity refresh must not route through `fitAddon.fit()` or PTY resize.
-6. User-scrolled state must survive the refresh.
-7. Focus, selection, click, wheel, and IME behavior must survive the refresh.
+1. canvas zoom 语义必须保持不变。
+2. clarity refresh 不能导致 live terminal instance remount。
+3. clarity refresh 不能改变 terminal DOM 的所属层或真实渲染拓扑。
+4. clarity refresh 不能再依赖“terminal 当前在底部”。
+5. clarity refresh 不能通过 `fitAddon.fit()` 或 PTY resize 实现。
+6. user-scrolled 状态必须在 refresh 前后保持。
+7. focus、selection、click、wheel、IME 行为必须在 refresh 前后保持。
 
-## 8. Approach Options
+## 8. 方案选项
 
-### Option A: Commit-Only Clarity Refresh
+### 方案 A：Commit-Only Clarity Refresh
 
-Behavior:
+行为：
 
-- During an active zoom gesture, allow transient blur.
-- After zoom settles, trigger exactly one renderer-level clarity refresh against the final transform.
+- 用户正在连续 zoom 时，允许出现短暂的过渡性模糊；
+- 当 zoom settled 后，只触发一次 renderer-level clarity refresh。
 
-Pros:
+优点：
 
-- Lowest risk to scroll/focus behavior.
-- Matches the agreed requirement: `B required, A stretch`.
-- Keeps the fix in the renderer boundary where it belongs.
+- 对 scroll / focus 的风险最低；
+- 与已确认需求一致：`B 是必须达成，A 是后续增强目标`；
+- 修复边界正确，问题被收在 renderer 层。
 
-Cons:
+缺点：
 
-- Not continuously sharp during gesture.
+- 手势进行中不是连续锐利。
 
-### Option B: Throttled Progressive Refresh
+### 方案 B：Throttled Progressive Refresh
 
-Behavior:
+行为：
 
-- Refresh at a bounded cadence during zoom, then do a final settled refresh.
+- zoom 过程中按节流频率做有限次数刷新，结束后再补一次 final settle refresh。
 
-Pros:
+优点：
 
-- Closer to ideal continuous sharpness.
+- 更接近理想目标 A，即缩放过程中也尽量保持清晰。
 
-Cons:
+缺点：
 
-- Higher risk of flicker, atlas churn, and scroll/focus regressions.
-- Not appropriate as the first delivery target.
+- 更容易引入 flicker、atlas churn、scroll / focus 回归；
+- 不适合作为第一版交付目标。
 
-### Option C: Gesture Snapshot / Overlay Surrogate
+### 方案 C：Gesture Snapshot / Overlay Surrogate
 
-Behavior:
+行为：
 
-- Freeze or mirror visual output during gesture, then swap back to live terminal afterward.
+- zoom 手势期间先冻结或镜像当前 visual surface，结束后再切回 live terminal。
 
-Pros:
+优点：
 
-- Can visually mask mid-gesture instability.
+- 可能压住手势中的视觉抖动。
 
-Cons:
+缺点：
 
-- Wrong abstraction boundary.
-- Risks double-truth behavior for focus, caret, selection, and hit-testing.
+- 抽象边界错误；
+- 容易制造双真相（double truth），影响 focus、caret、selection、hit-testing。
 
-## 9. Recommended Design
+## 9. 推荐方案
 
-Choose Option A for the required delivery.
+本次 Required 交付选择方案 A：`Commit-Only Clarity Refresh`。
 
-Reasoning:
+原因：
 
-- It addresses the correct problem boundary: renderer re-rasterization after the final screen-space state is known.
-- It preserves product semantics.
-- It avoids bottom-gated refresh semantics.
-- It keeps the first delivery focused on correctness and behavioral stability.
+- 它解决的是正确的边界问题：在最终 screen-space 状态已确定之后，做 renderer 重栅格化；
+- 它不会改变产品语义；
+- 它天然避免“只有到底部才刷新”这种错误 gating；
+- 它让第一版交付专注于正确性和行为稳定性，而不是追求手势过程中每一帧都锐利。
 
-Stretch target:
+Stretch 目标：
 
-- Option B may be explored later only after Option A is stable and well-covered by regression tests.
+- 方案 B 可以在方案 A 稳定且回归覆盖充分之后再评估；
+- 但不能把方案 B 和首个稳定交付绑在一起。
 
-## 10. Design Mechanics
+## 10. 设计机制
 
-### 10.1 Zoom Lifecycle
+### 10.1 Zoom 生命周期拆分
 
-Split zoom handling into two phases:
+把 zoom 处理拆成两段：
 
 - `gesture active`
-  - Do not perform heavy clarity refresh work.
-  - Do not remount xterm.
-  - Do not trigger `fitAddon.fit()`.
-  - Do not trigger PTY resize.
+  - 不做重型 clarity refresh；
+  - 不 remount xterm；
+  - 不调用 `fitAddon.fit()`；
+  - 不触发 PTY resize；
 - `gesture settled`
-  - Wait for viewport transform to stabilize.
-  - Use `requestAnimationFrame` sequencing to avoid refreshing against an intermediate layout.
-  - Trigger one renderer-level clarity refresh commit.
+  - 等待 viewport transform 稳定；
+  - 通过 `requestAnimationFrame` 链路避开中间态布局；
+  - 只做一次 renderer-level clarity refresh commit。
 
-### 10.2 Refresh Boundary
+### 10.2 Refresh 边界
 
-The clarity refresh must stay inside renderer concerns:
+这次 clarity refresh 必须严格收在 renderer concern 内：
 
-- update renderer oversampling / backing density for the final screen-space result,
-- rebuild or redraw only what the renderer requires,
-- avoid terminal lifecycle churn.
+- 针对最终的 screen-space 呈现结果，更新 oversampling / backing density；
+- 只重建或重绘 renderer 真正需要的部分；
+- 不能引起 terminal lifecycle churn。
 
-This refresh is allowed to use viewport zoom as an input to effective backing density.
+明确允许：
 
-This refresh is not allowed to:
+- 把 viewport zoom 作为 effective backing density 的输入。
 
-- redefine node size semantics,
-- redefine glyph size semantics,
-- replace the live terminal instance,
-- move terminal rendering into a different DOM truth.
+明确禁止：
+
+- 重定义 node size 语义；
+- 重定义 glyph size 语义；
+- 替换 live terminal instance；
+- 把 terminal 渲染移到另一份 DOM 真相里。
 
 ### 10.3 Scroll / Focus Guard
 
-Before clarity refresh:
+在 clarity refresh 前：
 
-- capture `viewportY`
-- capture `isUserScrolling`
-- capture focus state if needed for validation
+- 记录 `viewportY`
+- 记录 `isUserScrolling`
+- 如有需要，记录 focus 状态用于事后验证
 
-After clarity refresh:
+在 clarity refresh 后：
 
-- validate the same terminal instance is still active
-- restore or re-assert scroll state only if the renderer refresh disturbed it
-- validate focus semantics are unchanged
+- 验证仍是同一个 terminal instance；
+- 只有在 renderer refresh 意外扰动 scroll 时，才恢复或重申 scroll 状态；
+- 验证 focus 语义不变。
 
-This guard is defensive, not product behavior. It must not create a new rule like "only refresh when at bottom".
+这是一层防御式 guard，不是新的产品规则。  
+它不能再演变成“只有 terminal 在底部才刷新”。
 
-## 11. Rejected Framings and Rejected Approaches
+## 11. 明确否决的问题 framing 与方案
 
-Reject:
+以下 framing / approach 明确否决：
 
-- "This is a CSS transform tuning problem."
-  - It is not sufficient; CSS-only adjustments cannot create new backing pixels.
-- "This is a scroll-ownership problem."
-  - Scroll protection is required, but it is not the root fix.
-- "Users in history should stay blurry until they return to bottom."
-  - Wrong product semantics.
-- "Portal / overlay / mirror rendering should solve this."
-  - Wrong ownership boundary; too much interaction risk.
-- "We can safely piggyback on fit/resize."
-  - This mixes clarity with layout and PTY concerns.
+- “这只是一个 CSS transform 微调问题。”
+  - 否。CSS-only 无法凭空增加 backing pixels。
+- “这主要是一个 scroll ownership 问题。”
+  - 否。scroll 保护是需要的，但不是根因。
+- “用户在历史里上滚时应该继续模糊，直到回到底部。”
+  - 否。错误的产品语义。
+- “portal / overlay / mirror rendering 才是正确方向。”
+  - 否。owner 边界不对，交互风险过高。
+- “可以安全复用 fit/resize 主路径解决。”
+  - 否。这样会把清晰度问题错误地下沉到布局和 PTY concern。
 
-## 12. Acceptance Criteria
+## 12. 验收标准
 
-- Terminal and agent nodes still follow existing zoom behavior visually.
-- After zoom settles, terminals become sharp again.
-- User-scrolled terminals also become sharp after zoom settles.
-- No terminal remount occurs as part of the clarity refresh.
-- No new click/focus behavior is introduced.
-- Wheel scroll, selection, IME, and click behaviors remain unchanged.
-- The implementation no longer depends on bottom-of-buffer heuristics for clarity eligibility.
+- terminal / agent 节点继续按既有产品逻辑跟随 zoom；
+- zoom settled 后 terminal 会恢复清晰；
+- 用户处于上滚历史状态时，zoom settled 后 terminal 也会恢复清晰；
+- clarity refresh 不会导致 terminal remount；
+- 不会引入新的 click / focus 行为；
+- wheel scroll、selection、IME、click 行为不回归；
+- 实现不再依赖 bottom-of-buffer heuristics 来决定“是否有资格变清晰”。
 
-## 13. Verification Plan
+## 13. 验证计划
 
 ### Unit
 
-- zoom-settled detection
-- controller only commits after settled state
-- user-scrolled terminals remain eligible for refresh
+- `zoom settled` 判定
+- controller 只在 settled 后触发 commit
+- user-scrolled terminal 依然有资格刷新
 
 ### Integration
 
-- refresh preserves `viewportY`
-- refresh preserves `isUserScrolling`
-- refresh preserves terminal instance identity
+- refresh 前后保持 `viewportY`
+- refresh 前后保持 `isUserScrolling`
+- refresh 前后保持 terminal instance identity
 
 ### E2E
 
-- zoom-in followed by settled refresh produces sharp render metrics
-- user-scrolled terminal also sharpens after settle
-- focus/click/selection behavior stays intact
-- regression test proving "only bottom becomes sharp" is gone
+- zoom in 之后，settled refresh 能带来更清晰的 render metrics
+- user-scrolled terminal 在 settle 后也会变清晰
+- focus / click / selection 行为保持正常
+- 有专项回归证明“只有到底部才清晰”已经被移除
 
-## 14. Risks and Trade-offs
+## 14. 风险与取舍
 
-- Option A intentionally trades perfect mid-gesture sharpness for behavioral stability.
-- The design still depends on xterm renderer internals, so upstream version changes may require refresh-path adjustments.
-- The design should avoid scope creep into zoom semantics, layout semantics, or node topology changes.
+- 方案 A 明确用“手势中的短暂过渡”换取“行为稳定性”；
+- 方案仍依赖 xterm renderer 内部路径，未来升级 xterm 版本时需要重新验证；
+- 设计必须持续防 scope creep，不能滑向 zoom 语义、布局语义或 node topology 重构。
 
-## 15. Spec Conclusion
+## 15. 结论
 
-The safe redesign is:
+安全的重做方向是：
 
-- keep existing zoom behavior,
-- treat clarity as a renderer-only re-rasterization concern,
-- trigger a single clarity refresh after zoom settles,
-- preserve scroll/focus state across that refresh,
-- and explicitly reject bottom-gated or overlay-based fixes as the primary path.
+- 保持既有 zoom 语义不变；
+- 把清晰度问题明确收口为 renderer-only re-rasterization 问题；
+- 在 zoom settled 后做一次 clarity refresh；
+- 在 refresh 前后保持 scroll / focus 状态；
+- 并明确否决 bottom-gated、overlay-based、fit/resize-based 作为主路径。
