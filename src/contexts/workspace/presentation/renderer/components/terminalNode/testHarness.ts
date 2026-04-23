@@ -3,13 +3,65 @@ import { peekCachedTerminalScreenState } from './screenStateCache'
 
 type TerminalSelectionHandle = Pick<
   Terminal,
-  'clearSelection' | 'getSelection' | 'hasSelection' | 'selectAll' | 'cols' | 'rows' | 'element'
+  | 'clearSelection'
+  | 'getSelection'
+  | 'hasSelection'
+  | 'selectAll'
+  | 'cols'
+  | 'rows'
+  | 'element'
+  | 'scrollToBottom'
 >
+
+type TerminalRendererIntrospection = {
+  _core?: {
+    _renderService?: {
+      dimensions?: {
+        device?: {
+          canvas?: { width?: number; height?: number }
+        }
+        css?: {
+          canvas?: { width?: number; height?: number }
+          cell?: { width?: number; height?: number }
+        }
+      }
+    }
+    _coreBrowserService?: {
+      dpr?: unknown
+    }
+  }
+  options?: { fontSize?: unknown; fontFamily?: unknown }
+  __opencoveDprDebug?: {
+    lastInputZoom?: unknown
+    lastDecision?: unknown
+    appliedDpr?: unknown
+    hookLastZoom?: unknown
+    hookAtBottom?: unknown
+    hookViewportY?: unknown
+    hookBaseY?: unknown
+  }
+  __opencoveXtermSessionInstanceId?: number
+}
 
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
   getFontOptions: (nodeId: string) => { fontSize: number | null; fontFamily: string | null } | null
+  getRenderMetrics: (nodeId: string) => {
+    effectiveDpr: number | null
+    deviceCanvasWidth: number | null
+    deviceCanvasHeight: number | null
+    cssCanvasWidth: number | null
+    cssCanvasHeight: number | null
+    baseY: number | null
+    viewportY: number | null
+    isUserScrolling: boolean | null
+    dprDecision: string | null
+    hookAtBottom: boolean | null
+    hookViewportY: number | null
+    hookBaseY: number | null
+    instanceId: number | null
+  } | null
   getSize: (nodeId: string) => { cols: number; rows: number } | null
   getViewportY: (nodeId: string) => number | null
   getCachedScreenStateSummary: (nodeId: string) => {
@@ -22,6 +74,7 @@ type TerminalSelectionTestApi = {
   emitBinaryInput: (nodeId: string, data: string) => boolean
   getSelection: (nodeId: string) => string | null
   hasSelection: (nodeId: string) => boolean
+  scrollToBottom: (nodeId: string) => boolean
   selectAll: (nodeId: string) => boolean
 }
 
@@ -107,9 +160,7 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
       },
       getFontOptions: nodeId => {
-        const terminal = terminalHandles.get(nodeId) as unknown as {
-          options?: { fontSize?: unknown; fontFamily?: unknown }
-        }
+        const terminal = terminalHandles.get(nodeId) as unknown as TerminalRendererIntrospection
         const options = terminal?.options
         if (!options) {
           return null
@@ -121,6 +172,64 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
               ? options.fontSize
               : null,
           fontFamily: typeof options.fontFamily === 'string' ? options.fontFamily : null,
+        }
+      },
+      getRenderMetrics: nodeId => {
+        const terminal = terminalHandles.get(nodeId) as unknown as TerminalRendererIntrospection
+        const dimensions = terminal?._core?._renderService?.dimensions
+        if (!dimensions) {
+          return null
+        }
+
+        const effectiveDpr = terminal?._core?._coreBrowserService?.dpr
+        const deviceCanvas = dimensions.device?.canvas
+        const cssCanvas = dimensions.css?.canvas
+        const baseY = (terminal as unknown as { buffer?: { active?: { baseY?: unknown } } })?.buffer
+          ?.active?.baseY
+        const viewportY = (terminal as unknown as { buffer?: { active?: { viewportY?: unknown } } })
+          ?.buffer?.active?.viewportY
+        const isUserScrolling = (
+          terminal as unknown as { _core?: { _bufferService?: { isUserScrolling?: unknown } } }
+        )?._core?._bufferService?.isUserScrolling
+        const dprDebug = terminal?.__opencoveDprDebug
+
+        return {
+          effectiveDpr:
+            typeof effectiveDpr === 'number' && Number.isFinite(effectiveDpr) ? effectiveDpr : null,
+          deviceCanvasWidth:
+            typeof deviceCanvas?.width === 'number' && Number.isFinite(deviceCanvas.width)
+              ? deviceCanvas.width
+              : null,
+          deviceCanvasHeight:
+            typeof deviceCanvas?.height === 'number' && Number.isFinite(deviceCanvas.height)
+              ? deviceCanvas.height
+              : null,
+          cssCanvasWidth:
+            typeof cssCanvas?.width === 'number' && Number.isFinite(cssCanvas.width)
+              ? cssCanvas.width
+              : null,
+          cssCanvasHeight:
+            typeof cssCanvas?.height === 'number' && Number.isFinite(cssCanvas.height)
+              ? cssCanvas.height
+              : null,
+          baseY: typeof baseY === 'number' && Number.isFinite(baseY) ? baseY : null,
+          viewportY: typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null,
+          isUserScrolling: typeof isUserScrolling === 'boolean' ? isUserScrolling : null,
+          dprDecision: typeof dprDebug?.lastDecision === 'string' ? dprDebug.lastDecision : null,
+          hookAtBottom: typeof dprDebug?.hookAtBottom === 'boolean' ? dprDebug.hookAtBottom : null,
+          hookViewportY:
+            typeof dprDebug?.hookViewportY === 'number' && Number.isFinite(dprDebug.hookViewportY)
+              ? dprDebug.hookViewportY
+              : null,
+          hookBaseY:
+            typeof dprDebug?.hookBaseY === 'number' && Number.isFinite(dprDebug.hookBaseY)
+              ? dprDebug.hookBaseY
+              : null,
+          instanceId:
+            typeof terminal?.__opencoveXtermSessionInstanceId === 'number' &&
+            Number.isFinite(terminal.__opencoveXtermSessionInstanceId)
+              ? terminal.__opencoveXtermSessionInstanceId
+              : null,
         }
       },
       getSize: nodeId => {
@@ -169,6 +278,15 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
       },
       getSelection: nodeId => terminalHandles.get(nodeId)?.getSelection() ?? null,
       hasSelection: nodeId => terminalHandles.get(nodeId)?.hasSelection() ?? false,
+      scrollToBottom: nodeId => {
+        const terminal = terminalHandles.get(nodeId)
+        if (!terminal) {
+          return false
+        }
+
+        terminal.scrollToBottom()
+        return true
+      },
       selectAll: nodeId => {
         const terminal = terminalHandles.get(nodeId)
         if (!terminal) {
