@@ -76,6 +76,7 @@ export function useTerminalRuntimeSession({
   cancelWebglPixelSnapping,
   setRendererKindAndApply,
   terminalFontSize,
+  viewportZoomRef,
 }: {
   nodeId: string
   sessionId: string
@@ -124,6 +125,7 @@ export function useTerminalRuntimeSession({
   cancelWebglPixelSnapping: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
+  viewportZoomRef: { current: number }
 }): void {
   useEffect(() => {
     if (sessionId.trim().length === 0) {
@@ -186,6 +188,7 @@ export function useTerminalRuntimeSession({
         syncTerminalSize,
         diagnosticsEnabled,
         logTerminalDiagnostics,
+        initialViewportZoom: viewportZoomRef.current,
       })
     if (preservedSession) {
       session.terminal.options.disableStdin = false

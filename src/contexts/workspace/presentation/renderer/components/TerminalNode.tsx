@@ -57,6 +57,11 @@ export function TerminalNode({
 }: TerminalNodeProps): JSX.Element {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
+  const viewportZoom = useStore(storeState => {
+    const state = storeState as unknown as { transform?: [number, number, number] }
+    const zoom = state.transform?.[2] ?? 1
+    return Number.isFinite(zoom) && zoom > 0 ? zoom : 1
+  })
   const isTestEnvironment = window.opencoveApi.meta.isTest
   const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
   const outputSchedulerRef = useRef<TerminalOutputScheduler | null>(null)
@@ -69,6 +74,7 @@ export function TerminalNode({
   const preservedXtermSessionRef = useRef<XtermSession | null>(null)
   const recentUserInteractionAtRef = useRef(0)
   const pendingUserInputBufferRef = useRef<Array<{ data: string; encoding: 'utf8' | 'binary' }>>([])
+  const viewportZoomRef = useRef(viewportZoom)
   const {
     activeRendererKindRef,
     scheduleWebglPixelSnapping,
@@ -109,7 +115,16 @@ export function TerminalNode({
     agentResumeSessionIdVerifiedRef.current = agentResumeSessionIdVerified
     statusRef.current = status
     latestSessionIdRef.current = sessionId
-  }, [agentLaunchMode, agentResumeSessionIdVerified, onCommandRun, sessionId, status, title])
+    viewportZoomRef.current = viewportZoom
+  }, [
+    agentLaunchMode,
+    agentResumeSessionIdVerified,
+    onCommandRun,
+    sessionId,
+    status,
+    title,
+    viewportZoom,
+  ])
 
   useEffect(() => {
     isViewportInteractionActiveRef.current = isViewportInteractionActive
@@ -230,6 +245,7 @@ export function TerminalNode({
     cancelWebglPixelSnapping,
     setRendererKindAndApply,
     terminalFontSize,
+    viewportZoomRef,
   })
 
   useTerminalRuntimeSession({
@@ -272,6 +288,7 @@ export function TerminalNode({
     cancelWebglPixelSnapping,
     setRendererKindAndApply,
     terminalFontSize,
+    viewportZoomRef,
   })
 
   useTerminalAppearanceSync({
@@ -281,6 +298,8 @@ export function TerminalNode({
     terminalFontFamily,
     width,
     height,
+    viewportZoom,
+    isViewportInteractionActive,
   })
 
   useEffect(() => {
