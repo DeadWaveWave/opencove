@@ -29,7 +29,7 @@ export function useViewportDprSnapping(containerRef: RefObject<HTMLElement | nul
     }
 
     const nodes = container.querySelectorAll('.react-flow__node')
-    nodes.forEach((node) => {
+    nodes.forEach(node => {
       if (node instanceof HTMLElement) {
         snapTranslate(node, step)
       }
@@ -66,9 +66,7 @@ function snapTranslate(element: HTMLElement, step: number): void {
     return
   }
 
-  const translateMatch = transform.match(
-    /translate(?:3d)?\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px/,
-  )
+  const translateMatch = transform.match(/translate(?:3d)?\(\s*(-?[\d.]+)px\s*,\s*(-?[\d.]+)px/)
   if (translateMatch) {
     const tx = parseFloat(translateMatch[1])
     const ty = parseFloat(translateMatch[2])

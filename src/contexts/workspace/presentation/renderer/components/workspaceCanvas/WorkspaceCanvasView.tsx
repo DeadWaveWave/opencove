@@ -264,12 +264,14 @@ export function WorkspaceCanvasView({
         edges={filteredEdges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
-        onError={(code) => {
+        onError={code => {
           // Suppress error015: "drag a node that is not initialized"
           // This fires harmlessly when a node is dragged before its dimensions
           // have been measured by React Flow's internal ResizeObserver.
-          if (code === '015') return
-          // biome-ignore lint/suspicious/noConsole: surface other React Flow errors
+          if (code === '015') {
+            return
+          }
+          // eslint-disable-next-line no-console
           console.warn(`[React Flow] error ${code}`)
         }}
         onPaneClick={onPaneClick}

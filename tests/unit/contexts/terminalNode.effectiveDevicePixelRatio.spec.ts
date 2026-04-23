@@ -74,7 +74,7 @@ function createTerminalHarness(input?: {
       _renderService: renderService,
       _viewport: {
         queueSync: (ydisp?: number) => {
-          if (typeof ydisp === "number") {
+          if (typeof ydisp === 'number') {
             ;(
               terminal as unknown as {
                 buffer: { active: { viewportY: number } }

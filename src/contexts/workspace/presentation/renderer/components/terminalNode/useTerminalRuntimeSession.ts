@@ -453,5 +453,7 @@ export function useTerminalRuntimeSession({
     recentUserInteractionAtRef,
     pendingUserInputBufferRef,
     isLiveSessionReattach,
+    terminalFontSize,
+    viewportZoomRef,
   ])
 }

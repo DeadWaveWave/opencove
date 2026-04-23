@@ -42,6 +42,7 @@ export function useTerminalPlaceholderSession({
   cancelWebglPixelSnapping,
   setRendererKindAndApply,
   terminalFontSize,
+  viewportZoomRef,
 }: {
   nodeId: string
   sessionId: string
@@ -72,6 +73,7 @@ export function useTerminalPlaceholderSession({
   cancelWebglPixelSnapping: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
+  viewportZoomRef: { current: number }
 }): void {
   useEffect(() => {
     const normalizedSessionId = sessionId.trim()
@@ -117,6 +119,7 @@ export function useTerminalPlaceholderSession({
       syncTerminalSize,
       diagnosticsEnabled,
       logTerminalDiagnostics,
+      initialViewportZoom: viewportZoomRef.current,
     })
     terminalRef.current = session.terminal
     fitAddonRef.current = session.fitAddon
@@ -232,5 +235,7 @@ export function useTerminalPlaceholderSession({
     terminalThemeMode,
     containerRef,
     shouldRestoreTerminalFocusRef,
+    terminalFontSize,
+    viewportZoomRef,
   ])
 }
