@@ -1,0 +1,198 @@
+# Terminal Migration Plan
+
+> Status: Active public migration plan
+> Scope: move latest `origin/main` to worker-owned multi-client terminal architecture
+> Last updated: 2026-04-24
+
+Canonical references:
+
+- `MULTI_CLIENT_ARCHITECTURE.md`
+- `CURRENT_MAIN_AUDIT.md`
+- `VERIFICATION_AND_RECORDS_PLAN.md`
+
+## Goal
+
+Move OpenCove from:
+
+- shared raw PTY stream
+- renderer-owned restore logic
+- cache-assisted correctness
+- partially split runtime ownership
+
+to:
+
+- worker-owned runtime truth
+- worker-owned presentation truth
+- worker-owned canonical geometry
+- unified revive semantics for Desktop and Web
+
+## Non-Goals
+
+- no bitmap streaming
+- no custom terminal renderer
+- no deepening renderer placeholder/cache correctness
+
+## Phase 0: Rebaseline
+
+Status: complete
+
+Output:
+
+- target architecture frozen
+- current-main audit written down
+- execution order reset against latest main
+
+Public docs:
+
+- `MULTI_CLIENT_ARCHITECTURE.md`
+- `CURRENT_MAIN_AUDIT.md`
+- `VERIFICATION_AND_RECORDS_PLAN.md`
+
+## Phase 1: Worker Presentation Contract
+
+### Objective
+
+Create the canonical session baseline that latest main still lacks.
+
+### Deliver
+
+- worker-owned terminal presentation state
+- `session.presentationSnapshot`
+- `session.attach(afterSeq)`
+- overflow => resync contract
+
+### Acceptance
+
+- worker can produce `serializedScreen`, `appliedSeq`, `cols`, `rows`, `bufferKind`, cursor, and title
+- Desktop/Web can converge from the same worker snapshot
+
+### Minimum Verification
+
+- unit tests for worker presentation state
+- contract tests for snapshot and attach
+- integration proving `snapshot -> attach(afterSeq)` convergence
+
+## Phase 2: Renderer Adoption And Correctness Exit
+
+### Objective
+
+Make renderer consume worker presentation truth and stop treating placeholder/cache as correctness state.
+
+### Deliver
+
+- renderer hydration based on worker `presentationSnapshot`
+- explicit “worker snapshot accepted” baseline
+- no placeholder reset/replacement after acceptance
+
+### Acceptance
+
+- restored content no longer disappears after first input
+- renderer cache is no longer required for restore correctness
+
+### Minimum Verification
+
+- unit tests around accepted-baseline rules
+- integration test for restore + first input
+- real repro for restart/reopen old Agent restore
+
+## Phase 3: Geometry Authority Cleanup
+
+### Objective
+
+Move from “controller can resize” to “worker owns canonical geometry; clients submit explicit commits”.
+
+### Deliver
+
+- geometry candidate / commit semantics
+- viewer ignore-size default
+- explicit frame/appearance commits as the only PTY size writers
+
+### Acceptance
+
+- attach/focus/typing do not change PTY size
+- opening Web UI does not perturb Desktop geometry
+
+### Minimum Verification
+
+- unit tests for resize rejection rules
+- contract tests for geometry authority
+- dual-client E2E for shared node resize behavior
+
+## Phase 4: Revive Unification And Worker Prewarm
+
+### Objective
+
+Give restart restore and `cmd+w` reopen the same worker-owned prepare/revive path.
+
+### Deliver
+
+- worker prepare/revive state machine
+- worker prewarm for default visible sessions
+- renderer no longer chooses resume/new/fallback as correctness behavior
+
+### Acceptance
+
+- old Agent recovery is worker-owned
+- failure states are visible and recoverable, not fake-restored
+
+### Minimum Verification
+
+- revive state-machine tests
+- integration for restart vs reopen parity
+- E2E for old Agent restore and continued interaction
+
+## Phase 5: Renderer Health And Resync
+
+### Objective
+
+Handle WebGL/canvas/backend failure as a local renderer health issue that resyncs from worker truth.
+
+### Deliver
+
+- session-local health policy
+- rebuild + resync flow
+- rate-limited health recovery diagnostics
+
+### Acceptance
+
+- renderer blank/corrupt states recover without killing the session
+- backend fallback does not mutate PTY truth or geometry truth
+
+### Minimum Verification
+
+- unit tests for health transitions
+- integration for context loss / blank canvas recovery
+- real repro for dual-client and long-output cases
+
+## Phase 6: Old Owner Cleanup
+
+### Objective
+
+Delete the production paths that no longer fit the final architecture.
+
+### Deliver
+
+- remove standalone production runtime ownership
+- remove renderer correctness caches
+- downgrade raw scrollback snapshot to diagnostics/migration only
+
+### Acceptance
+
+- worker is the only production runtime/presentation owner
+- remaining cache is explicitly UX-only
+
+### Minimum Verification
+
+- cleanup regression coverage
+- dual-client E2E after cleanup
+- real repro for restart + first input + Web attach
+
+## Stop Conditions
+
+Pause and re-evaluate if any of these happen:
+
+- renderer cache has to be reintroduced as correctness
+- Desktop and Web need different restore semantics
+- geometry still changes on attach/focus/typing
+- reopen and restart drift back onto different restore paths
+- the solution starts depending on a custom bitmap renderer

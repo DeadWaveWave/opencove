@@ -1,5 +1,9 @@
 # RECOVERY MODEL
 
+Related terminal architecture:
+
+- `docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+
 本文档是本轮完全重构的 `Phase 0` 产物。
 
 它只回答四件事：
@@ -7,6 +11,16 @@
 - 每类状态的 owner 是谁。
 - 哪些状态是 durable fact，哪些只是 runtime observation 或 UI projection。
 - 启动、关闭、恢复时什么可以写，什么不可以写。
+
+补充边界：
+
+- 本文档主要定义 durable recovery owner 与业务恢复语义。
+- terminal presentation、multi-client attach、renderer resync、canonical geometry 由 `docs/terminal/MULTI_CLIENT_ARCHITECTURE.md` 统一定义。
+
+Current main note (`2026-04-23`):
+
+- latest `origin/main` still restores and relaunches part of the agent/session flow from renderer hydration code such as `src/app/renderer/shell/hooks/useHydrateAppState.helpers.ts` and `src/contexts/agent/presentation/renderer/hydrateAgentNode.ts`.
+- treat those paths as migration debt, not as the desired long-term owner model.
 
 ## 1. 问题背景
 
@@ -274,4 +288,3 @@ TaskAgentLink {
 3. 不再让 hydration 同时承担“恢复判定 + 运行时探测失败后的业务降级决定”。
 4. 不再用 task session history 反推当前 active agent window 的真实 binding。
 5. 不再把“session 文件已出现”当作“launch intent 已存在”的前提。
-
