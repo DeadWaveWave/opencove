@@ -12,7 +12,13 @@
 
 ## 稳定渲染主路径（必须保持）
 
-关键文件：`src/renderer/src/features/workspace/components/TerminalNode.tsx`
+关键文件：
+
+- `src/contexts/workspace/presentation/renderer/components/TerminalNode.tsx`
+- `src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalAppearanceSync.ts`
+- `src/contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio.ts`
+- `src/contexts/workspace/presentation/renderer/components/terminalNode/xtermSession.ts`
+- `src/app/renderer/styles/terminal-node.css`
 
 1. `syncTerminalSize()` 采用直接链路：
    - `fitAddon.fit()`
@@ -31,6 +37,13 @@
    - 右侧把手只改宽度（`terminal-resizer-right`）
    - 底部把手只改高度（`terminal-resizer-bottom`）
 2. scrollback 持久化继续保留，但 resize 期间不立刻发布；放手后再 flush。
+3. 画布 zoom 清晰度：
+   - `useViewportDprSnapping` 只负责 viewport / node 的 CSS translate 对齐；
+   - 当前正确语义：zoom 手势中允许短暂过渡；zoom settled 后统一做一次 renderer-level clarity refresh；
+   - effective backing density 仍可按最终 `window.devicePixelRatio × viewportZoom` 提升，但这只影响清晰度，不改变既有 zoom 语义；
+   - user-scrolled 状态只需要被保持，不再作为“是否有资格变清晰”的 gating 条件；
+   - zoom 清晰度更新必须走 xterm renderer/browser-service 的 DPR change 路径，禁止通过 remount terminal、替换 DOM、`fitAddon.fit()` 或 PTY resize 来“顺带刷新”；
+   - 仅靠 CSS scale 放大 WebGL canvas 会模糊，因为 backing canvas 像素数没有增加。
 
 ## 禁止项（高风险改法）
 
@@ -39,21 +52,29 @@
 1. 在 resize 过程中频繁触发多重调度（`fit/refresh/resize` 的多层去抖、合流、强制触发）。
 2. 在拖动/resize 高频期同步写入大量节点状态（尤其会触发画布级布局重算的更新）。
 3. 将 `syncTerminalSize` 拆成复杂分支并在多个 effect 内交叉调用。
+4. 重新把 zoom 清晰度做成 `remount terminal`、`替换 screen/canvas DOM`、或 `fit + resize` 联动；这些路径会重新引入 scroll/focus 回归。
+5. 试图仅靠 CSS `image-rendering`、`transform` 微调或重新启用高频 MutationObserver 来解决 zoom 模糊；这些方案不能从根本上提升 terminal backing resolution，且容易重新引入 DevTools 打开时拖动卡顿。
 
 ## 回归时快速恢复步骤
 
 ### 1) 对照基线
 
 ```bash
-git diff 364cf19 -- src/renderer/src/features/workspace/components/TerminalNode.tsx
-git diff 364cf19 -- src/renderer/src/styles.css
+git diff 364cf19 -- src/contexts/workspace/presentation/renderer/components/TerminalNode.tsx
+git diff 364cf19 -- src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalAppearanceSync.ts
+git diff 364cf19 -- src/contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio.ts
+git diff 364cf19 -- src/contexts/workspace/presentation/renderer/components/terminalNode/xtermSession.ts
+git diff 364cf19 -- src/app/renderer/styles/terminal-node.css
 ```
 
 ### 2) 一键恢复关键文件
 
 ```bash
-git checkout 364cf19 -- src/renderer/src/features/workspace/components/TerminalNode.tsx
-git checkout 364cf19 -- src/renderer/src/styles.css
+git checkout 364cf19 -- src/contexts/workspace/presentation/renderer/components/TerminalNode.tsx
+git checkout 364cf19 -- src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalAppearanceSync.ts
+git checkout 364cf19 -- src/contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio.ts
+git checkout 364cf19 -- src/contexts/workspace/presentation/renderer/components/terminalNode/xtermSession.ts
+git checkout 364cf19 -- src/app/renderer/styles/terminal-node.css
 ```
 
 ### 3) 回归验证
@@ -68,8 +89,13 @@ pnpm test:e2e
 
 ## 必跑的 E2E 用例（终端稳定性）
 
-文件：`tests/e2e/workspace-canvas.spec.ts`
+文件：
 
+- `tests/e2e/workspace-canvas.terminal-device-pixel-ratio.spec.ts`
+- `tests/e2e/workspace-canvas.spec.ts`
+
+- `raises terminal backing resolution on zoom without remounting or losing focus`
+- `sharpens a user-scrolled terminal after zoom settles without returning to bottom`
 - `keeps terminal visible after drag, resize, and node interactions`
 - `keeps agent tui visible while dragging window`
 - `wheel over terminal scrolls terminal viewport`
@@ -79,5 +105,6 @@ pnpm test:e2e
 推荐快速执行：
 
 ```bash
+pnpm test:e2e -- tests/e2e/workspace-canvas.terminal-device-pixel-ratio.spec.ts
 pnpm test:e2e -- tests/e2e/workspace-canvas.spec.ts -g "keeps terminal visible after drag, resize, and node interactions|keeps agent tui visible while dragging window|wheel over terminal scrolls terminal viewport|wheel over a hydrated agent node scrolls the viewport instead of the canvas|preserves terminal history after app reload"
 ```
