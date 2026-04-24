@@ -70,6 +70,20 @@ export function shouldTreatHydratedAgentBaselineAsPlaceholder(options: {
   )
 }
 
+export function shouldProtectHydratedAgentHistory(options: {
+  kind: WorkspaceNodeKind
+  agentResumeSessionIdVerified: boolean
+  agentLaunchMode: AgentLaunchMode | null
+  persistedSnapshot: string
+}): boolean {
+  return shouldProtectRestoredAgentHistory({
+    kind: options.kind,
+    agentResumeSessionIdVerified: options.agentResumeSessionIdVerified,
+    agentLaunchMode: options.agentLaunchMode,
+    persistedSnapshot: options.persistedSnapshot,
+  })
+}
+
 export function shouldReusePreservedXtermSession(options: {
   preservedSession: XtermSession | null
   terminalClientResetVersion: number

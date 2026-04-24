@@ -13,6 +13,7 @@ import {
   normalizePersistedAgent,
   normalizeWorkspaceIdPayload,
   resolveNodeProfileId,
+  resolvePreparedScrollback,
   resolveNodeRuntimeKind,
   resolveOwningSpace,
   toPreparedNodeResult,
@@ -56,6 +57,10 @@ export function registerSessionPrepareOrReviveHandler(
 
           const existingSessionId = normalizeOptionalString(node.sessionId)
           if (existingSessionId && deps.ptyStreamHub.hasSession(existingSessionId)) {
+            const scrollback = await resolvePreparedScrollback({
+              store,
+              node,
+            })
             return [
               ...preparedNodes,
               toPreparedNodeResult(node, {
@@ -69,6 +74,7 @@ export function registerSessionPrepareOrReviveHandler(
                 endedAt: node.endedAt,
                 exitCode: node.exitCode,
                 lastError: node.lastError,
+                scrollback,
                 executionDirectory: normalizeOptionalString(node.executionDirectory),
                 expectedDirectory: normalizeOptionalString(node.expectedDirectory),
                 agent: normalizePersistedAgent(node.agent),
@@ -89,6 +95,7 @@ export function registerSessionPrepareOrReviveHandler(
               await prepareAgentNode({
                 controlSurface,
                 ctx,
+                store,
                 workspace,
                 node,
                 space,
@@ -103,6 +110,7 @@ export function registerSessionPrepareOrReviveHandler(
             await prepareTerminalNode({
               controlSurface,
               ctx,
+              store,
               workspace,
               node,
               space,

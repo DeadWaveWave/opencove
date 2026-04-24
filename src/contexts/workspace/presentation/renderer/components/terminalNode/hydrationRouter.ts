@@ -68,7 +68,25 @@ export function createTerminalHydrationRouter({
     dataChunks: [] as string[],
     exitCode: null as number | null,
   }
+  let shouldProtectHydratedRedraw = false
   let deferredHydratedRedrawTimeout: ReturnType<typeof setTimeout> | null = null
+
+  const hasDeferredDestructiveHydratedRedraw = (): boolean =>
+    deferredHydratedRedrawBuffer.dataChunks.some(chunk =>
+      containsDestructiveTerminalDisplayControlSequence(chunk),
+    )
+
+  const settleHydratedRedrawProtectionFromData = (data: string): void => {
+    if (!shouldProtectHydratedRedraw) {
+      return
+    }
+
+    if (!containsMeaningfulTerminalDisplayContent(data)) {
+      return
+    }
+
+    shouldProtectHydratedRedraw = false
+  }
 
   const resetAgentPlaceholder = (): void => {
     terminal.reset()
@@ -203,27 +221,28 @@ export function createTerminalHydrationRouter({
 
       if (deferredHydratedRedrawBuffer.dataChunks.length > 0) {
         deferredHydratedRedrawBuffer.dataChunks.push(data)
-        if (
-          hasRecentUserInteraction() ||
-          !shouldReplacePlaceholderWithBufferedOutput({
-            data,
-            exitCode: null,
-          })
-        ) {
-          if (!hasRecentUserInteraction()) {
+        const shouldFlushForVisibleOutput = shouldReplacePlaceholderWithBufferedOutput({
+          data,
+          exitCode: null,
+        })
+        if (!shouldFlushForVisibleOutput) {
+          if (hasDeferredDestructiveHydratedRedraw() || !hasRecentUserInteraction()) {
             return
           }
         }
 
         flushDeferredHydratedRedraw()
+        settleHydratedRedrawProtectionFromData(data)
         return
       }
 
+      const isDestructiveControlOnlyRedraw = shouldDeferHydratedTerminalRedrawChunk(data)
       if (
-        shouldDeferHydratedRedrawChunks() &&
-        !hasRecentUserInteraction() &&
-        (shouldDeferHydratedTerminalRedrawChunk(data) ||
-          (data.includes('\u001b') && !containsMeaningfulTerminalDisplayContent(data)))
+        shouldProtectHydratedRedraw &&
+        (isDestructiveControlOnlyRedraw ||
+          (!hasRecentUserInteraction() &&
+            data.includes('\u001b') &&
+            !containsMeaningfulTerminalDisplayContent(data)))
       ) {
         deferredHydratedRedrawBuffer.dataChunks.push(data)
         scheduleDeferredHydratedRedrawFlush()
@@ -231,6 +250,7 @@ export function createTerminalHydrationRouter({
       }
 
       outputScheduler.handleChunk(data)
+      settleHydratedRedrawProtectionFromData(data)
     },
     handleExit: exitCode => {
       if (isHydrating) {
@@ -257,6 +277,7 @@ export function createTerminalHydrationRouter({
     },
     finalizeHydration: rawSnapshot => {
       isHydrating = false
+      shouldProtectHydratedRedraw = shouldDeferHydratedRedrawChunks()
       const bufferedData = hydrationBuffer.dataChunks.join('')
       const shouldReplacePlaceholder = shouldReplaceAgentPlaceholderAfterHydration()
       const shouldReplaceBufferedPlaceholder =

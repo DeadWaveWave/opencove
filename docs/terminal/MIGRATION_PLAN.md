@@ -90,6 +90,8 @@ Current landing:
 - renderer hydration now treats worker `presentationSnapshot` and live PTY snapshot as authoritative baselines
 - accepted worker baselines are no longer replaced by placeholder-reset heuristics
 - restart first-input recovery is covered and no longer depends on cache correctness
+- worker `session.prepareOrRevive` now returns durable agent placeholder scrollback as the cold-start restore baseline
+- cold-start and `cmd+w` restore now keep post-restore backspace/control redraw interactive without waiting for a later visible chunk
 
 Remaining:
 

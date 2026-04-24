@@ -305,4 +305,83 @@ describe('Control Surface HTTP server (session.prepareOrRevive)', () => {
       })
     }
   })
+
+  it('returns durable agent placeholder scrollback as the prepared restore baseline', async () => {
+    const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-'))
+    const workspacePath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-workspace-'))
+    const connectionFileName = 'control-surface.pty.prepare-or-revive.agent-scrollback.json'
+    const connectionFilePath = resolve(userDataPath, connectionFileName)
+
+    const approvedWorkspaces = createApprovedWorkspaceStoreForPath(
+      resolve(userDataPath, 'approved-workspaces.json'),
+    )
+    await approvedWorkspaces.registerRoot(workspacePath)
+
+    const persistenceStore = createInMemoryPersistenceStore()
+
+    const ptyRuntime: ControlSurfacePtyRuntime = {
+      spawnSession: async () => ({ sessionId: 'agent-session-1' }),
+      write: () => undefined,
+      resize: () => undefined,
+      kill: () => undefined,
+      onData: () => () => undefined,
+      onExit: () => () => undefined,
+    }
+
+    const server = registerControlSurfaceHttpServer({
+      userDataPath,
+      hostname: '127.0.0.1',
+      port: 0,
+      token: 'test-token',
+      connectionFileName,
+      approvedWorkspaces,
+      createPersistenceStore: async () => persistenceStore,
+      ptyRuntime,
+    })
+
+    try {
+      const info = await server.ready
+      const baseUrl = `http://${info.hostname}:${info.port}`
+      const workspaceId = randomUUID()
+      const spaceId = randomUUID()
+
+      await persistenceStore.writeAgentNodePlaceholderScrollback(
+        'agent-node-1',
+        'durable placeholder history from worker store',
+      )
+
+      const writeState = await invoke(baseUrl, 'test-token', {
+        kind: 'command',
+        id: 'sync.writeState',
+        payload: { state: createAgentNodeState({ workspacePath, workspaceId, spaceId }) },
+      })
+      expect(writeState.status, JSON.stringify(writeState.data)).toBe(200)
+
+      const prepared = await invoke(baseUrl, 'test-token', {
+        kind: 'command',
+        id: 'session.prepareOrRevive',
+        payload: { workspaceId },
+      })
+      expect(prepared.status, JSON.stringify(prepared.data)).toBe(200)
+
+      const preparedNode = (
+        prepared.data as {
+          value?: {
+            nodes?: Array<{
+              scrollback?: string | null
+            }>
+          }
+        }
+      )?.value?.nodes?.[0]
+
+      expect(preparedNode?.scrollback).toBe('durable placeholder history from worker store')
+    } finally {
+      await disposeAndCleanup({
+        server,
+        userDataPath,
+        connectionFilePath,
+        baseUrl: `http://127.0.0.1:${(await server.ready).port}`,
+      })
+    }
+  })
 })

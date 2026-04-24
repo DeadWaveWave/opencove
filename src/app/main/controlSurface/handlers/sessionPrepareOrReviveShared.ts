@@ -6,6 +6,7 @@ import type {
 import { createAppError, getAppErrorDebugMessage } from '../../../../shared/errors/appError'
 import type { ControlSurface } from '../controlSurface'
 import type { ControlSurfaceContext } from '../types'
+import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import {
   normalizePersistedAppState,
   type NormalizedPersistedNode,
@@ -137,15 +138,29 @@ export function resolveOwningSpace(
   return workspace.spaces.find(space => space.nodeIds.includes(nodeId)) ?? null
 }
 
+export async function resolvePreparedScrollback(options: {
+  store: PersistenceStore
+  node: NormalizedPersistedNode
+}): Promise<string | null> {
+  const durableScrollback =
+    options.node.kind === 'agent'
+      ? await options.store.readAgentNodePlaceholderScrollback(options.node.id)
+      : await options.store.readNodeScrollback(options.node.id)
+
+  return durableScrollback ?? options.node.scrollback
+}
+
 export function toPreparedNodeResult(
   node: NormalizedPersistedNode,
-  options: Omit<PreparedRuntimeNodeResult, 'nodeId' | 'kind' | 'title' | 'scrollback'>,
+  options: Omit<PreparedRuntimeNodeResult, 'nodeId' | 'kind' | 'title' | 'scrollback'> & {
+    scrollback?: string | null
+  },
 ): PreparedRuntimeNodeResult {
   return {
     nodeId: node.id,
     kind: node.kind === 'agent' ? 'agent' : 'terminal',
     title: node.title,
-    scrollback: node.scrollback,
+    scrollback: options.scrollback ?? node.scrollback,
     ...options,
   }
 }

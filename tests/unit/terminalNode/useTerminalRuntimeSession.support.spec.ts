@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   isAuthoritativeHydrationBaselineSource,
+  shouldProtectHydratedAgentHistory,
   shouldReusePreservedXtermSession,
   shouldTreatHydratedAgentBaselineAsPlaceholder,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalRuntimeSession.support'
@@ -31,6 +32,17 @@ describe('useTerminalRuntimeSession support', () => {
         agentLaunchMode: 'resume',
         persistedSnapshot: '[restored history]',
         baselineSource: 'placeholder_snapshot',
+      }),
+    ).toBe(true)
+  })
+
+  it('only defers post-hydration redraw protection for non-authoritative baselines', () => {
+    expect(
+      shouldProtectHydratedAgentHistory({
+        kind: 'agent',
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+        persistedSnapshot: '[restored history]',
       }),
     ).toBe(true)
   })

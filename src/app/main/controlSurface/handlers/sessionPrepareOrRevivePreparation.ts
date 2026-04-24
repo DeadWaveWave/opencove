@@ -9,6 +9,7 @@ import {
   normalizeAgentSettings,
   resolveAgentLaunchEnv,
 } from '../../../../contexts/settings/domain/agentSettings'
+import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type {
   LaunchAgentSessionResult,
   PreparedRuntimeNodeResult,
@@ -22,6 +23,7 @@ import {
   invokeCommand,
   isActiveAgentStatus,
   resolveNodeProfileId,
+  resolvePreparedScrollback,
   resolveNodeRuntimeKind,
   resolveTerminalRecoveryCwd,
   toPreparedNodeResult,
@@ -93,11 +95,16 @@ async function spawnFallbackTerminal(options: {
 export async function prepareTerminalNode(options: {
   controlSurface: ControlSurface
   ctx: ControlSurfaceContext
+  store: PersistenceStore
   workspace: NormalizedPersistedWorkspace
   node: NormalizedPersistedNode
   space: NormalizedPersistedSpace | null
 }): Promise<PreparedRuntimeNodeResult> {
   const cwd = resolveTerminalRecoveryCwd(options.node, options.workspace.path)
+  const scrollback = await resolvePreparedScrollback({
+    store: options.store,
+    node: options.node,
+  })
   try {
     const spawned = await spawnFallbackTerminal({
       controlSurface: options.controlSurface,
@@ -120,6 +127,7 @@ export async function prepareTerminalNode(options: {
       endedAt: null,
       exitCode: null,
       lastError: null,
+      scrollback,
       executionDirectory: normalizeOptionalString(options.node.executionDirectory),
       expectedDirectory: normalizeOptionalString(options.node.expectedDirectory),
       agent: null,
@@ -136,6 +144,7 @@ export async function prepareTerminalNode(options: {
       endedAt: null,
       exitCode: null,
       lastError: formatRecoverableError('Terminal launch failed', error),
+      scrollback,
       executionDirectory: normalizeOptionalString(options.node.executionDirectory),
       expectedDirectory: normalizeOptionalString(options.node.expectedDirectory),
       agent: null,
@@ -146,6 +155,7 @@ export async function prepareTerminalNode(options: {
 export async function prepareAgentNode(options: {
   controlSurface: ControlSurface
   ctx: ControlSurfaceContext
+  store: PersistenceStore
   workspace: NormalizedPersistedWorkspace
   node: NormalizedPersistedNode
   space: NormalizedPersistedSpace | null
@@ -153,6 +163,10 @@ export async function prepareAgentNode(options: {
   settings: ReturnType<typeof normalizeAgentSettings>
 }): Promise<PreparedRuntimeNodeResult> {
   const { controlSurface, ctx, workspace, node, space, settings } = options
+  const scrollback = await resolvePreparedScrollback({
+    store: options.store,
+    node,
+  })
   const terminalProfileId = resolveNodeProfileId(node) ?? settings.defaultTerminalProfileId ?? null
   const workspaceEnv = workspace.environmentVariables
   const agentEnv = resolveAgentLaunchEnv(settings, options.agent.provider)
@@ -228,6 +242,7 @@ export async function prepareAgentNode(options: {
         endedAt: null,
         exitCode: null,
         lastError: null,
+        scrollback,
         executionDirectory: sanitizedAgent.executionDirectory,
         expectedDirectory: sanitizedAgent.expectedDirectory,
         agent: {
@@ -260,6 +275,7 @@ export async function prepareAgentNode(options: {
           endedAt: node.endedAt ?? ctx.now().toISOString(),
           exitCode: node.exitCode,
           lastError: formatRecoverableError('Agent resume failed', error),
+          scrollback,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -276,6 +292,7 @@ export async function prepareAgentNode(options: {
           endedAt: ctx.now().toISOString(),
           exitCode: node.exitCode,
           lastError: formatRecoverableError('Agent resume failed', fallbackError),
+          scrollback,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -298,6 +315,7 @@ export async function prepareAgentNode(options: {
         endedAt: null,
         exitCode: null,
         lastError: null,
+        scrollback,
         executionDirectory: sanitizedAgent.executionDirectory,
         expectedDirectory: sanitizedAgent.expectedDirectory,
         agent: {
@@ -329,6 +347,7 @@ export async function prepareAgentNode(options: {
           endedAt: ctx.now().toISOString(),
           exitCode: null,
           lastError: formatRecoverableError('Agent launch failed', error),
+          scrollback,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -345,6 +364,7 @@ export async function prepareAgentNode(options: {
           endedAt: ctx.now().toISOString(),
           exitCode: null,
           lastError: formatRecoverableError('Agent launch failed', fallbackError),
+          scrollback,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -374,6 +394,7 @@ export async function prepareAgentNode(options: {
       endedAt: hasActiveStatus ? (node.endedAt ?? ctx.now().toISOString()) : node.endedAt,
       exitCode: node.exitCode,
       lastError: null,
+      scrollback,
       executionDirectory: sanitizedAgent.executionDirectory,
       expectedDirectory: sanitizedAgent.expectedDirectory,
       agent: sanitizedAgent,
@@ -390,6 +411,7 @@ export async function prepareAgentNode(options: {
       endedAt: ctx.now().toISOString(),
       exitCode: null,
       lastError: formatRecoverableError('Terminal launch failed', error),
+      scrollback,
       executionDirectory: sanitizedAgent.executionDirectory,
       expectedDirectory: sanitizedAgent.expectedDirectory,
       agent: sanitizedAgent,

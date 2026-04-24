@@ -248,6 +248,20 @@ Current high-value script bundle:
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.spec.ts --grep "reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients"`
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.agent-resume.spec.ts tests/e2e-web-canvas/workerWebCanvas.view-state.spec.ts`
 
+Latest verified on `2026-04-24` for the current restore/hydration slice:
+
+- cold restart real repro passed
+- `cmd+w` reopen real repro passed
+- recovery Playwright suite passed:
+  - `tests/e2e/recovery.agent-input-after-restart.spec.ts`
+  - `tests/e2e/recovery.agent-focus-after-restart.spec.ts`
+  - `tests/e2e/recovery.agent-terminal-replies.spec.ts`
+  - `tests/e2e/recovery.agent-placeholder-handoff-interaction.spec.ts`
+  - `tests/e2e/recovery.agent-input-after-window-reopen.spec.ts`
+  - `tests/e2e/recovery.agent-placeholder-click-preserves-history.spec.ts`
+- worker web-canvas shared-session checks passed:
+  - `tests/e2e-web-canvas/workerWebCanvas.spec.ts` (`reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients`)
+
 ## Update Record Policy
 
 Every terminal architecture change should update records at three layers.

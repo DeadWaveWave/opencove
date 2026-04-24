@@ -206,6 +206,7 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
   let state: unknown | null = null
   let revision = 0
   const nodeScrollbacks = new Map<string, string>()
+  const agentPlaceholderScrollbacks = new Map<string, string>()
 
   return {
     readWorkspaceStateRaw: async () => null,
@@ -223,6 +224,16 @@ export function createInMemoryPersistenceStore(): PersistenceStore {
         nodeScrollbacks.set(nodeId, scrollback)
       } else {
         nodeScrollbacks.delete(nodeId)
+      }
+      return { ok: true, level: 'full', bytes: scrollback?.length ?? 0 }
+    },
+    readAgentNodePlaceholderScrollback: async nodeId =>
+      agentPlaceholderScrollbacks.get(nodeId) ?? null,
+    writeAgentNodePlaceholderScrollback: async (nodeId, scrollback) => {
+      if (scrollback) {
+        agentPlaceholderScrollbacks.set(nodeId, scrollback)
+      } else {
+        agentPlaceholderScrollbacks.delete(nodeId)
       }
       return { ok: true, level: 'full', bytes: scrollback?.length ?? 0 }
     },

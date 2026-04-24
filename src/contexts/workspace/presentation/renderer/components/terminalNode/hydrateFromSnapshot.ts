@@ -4,6 +4,7 @@ import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 import { writeTerminalAsync } from './writeTerminal'
+import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
 
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
 const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
@@ -20,6 +21,31 @@ function shouldSkipRawDeltaForSerializedScreen(serialized: string, delta: string
   // If the process exited the alternate buffer while detached, we must replay the delta so that
   // application cursor/raw-mode exits (and the shell prompt) restore correctly.
   if (delta.includes(ALT_BUFFER_EXIT_MARKER)) {
+    return false
+  }
+
+  return true
+}
+
+function shouldUsePresentationSnapshotAsVisibleBaseline(options: {
+  kind: 'terminal' | 'agent'
+  persistedSnapshot: string
+  presentationSnapshot: PresentationSnapshotTerminalResult | null
+}): options is {
+  kind: 'terminal' | 'agent'
+  persistedSnapshot: string
+  presentationSnapshot: PresentationSnapshotTerminalResult
+} {
+  const serializedScreen = options.presentationSnapshot?.serializedScreen ?? ''
+  if (serializedScreen.length === 0) {
+    return false
+  }
+
+  if (
+    options.kind === 'agent' &&
+    options.persistedSnapshot.trim().length > 0 &&
+    !containsMeaningfulTerminalDisplayContent(serializedScreen)
+  ) {
     return false
   }
 
@@ -77,7 +103,13 @@ export async function hydrateTerminalFromSnapshot({
   let hydrationBaselineSource: TerminalHydrationBaselineSource =
     placeholderPayload.length > 0 ? 'placeholder_snapshot' : 'empty'
 
-  if (presentationSnapshot?.serializedScreen.length) {
+  if (
+    shouldUsePresentationSnapshotAsVisibleBaseline({
+      kind,
+      persistedSnapshot,
+      presentationSnapshot,
+    })
+  ) {
     const nextCols = Math.max(1, presentationSnapshot.cols)
     const nextRows = Math.max(1, presentationSnapshot.rows)
     if (terminal.cols !== nextCols || terminal.rows !== nextRows) {

@@ -201,4 +201,56 @@ describe('hydrateFromSnapshot', () => {
     expect(onHydratedWriteCommitted).toHaveBeenCalledWith('live agent output')
     expect(finalizeHydration).toHaveBeenCalledWith('live agent output')
   })
+
+  it('keeps a non-empty persisted agent baseline when the presentation snapshot is blank-only', async () => {
+    const terminal = {
+      cols: 80,
+      rows: 24,
+      resize: vi.fn(),
+      write: vi.fn((data: string, callback?: () => void) => {
+        callback?.()
+        return data
+      }),
+    }
+    const onHydratedWriteCommitted = vi.fn()
+    const finalizeHydration = vi.fn()
+    const onHydrationBaselineResolved = vi.fn()
+    const onPresentationSnapshotAccepted = vi.fn()
+    const takePtySnapshot = vi.fn(async () => ({ data: 'live fallback output' }))
+
+    await hydrateTerminalFromSnapshot({
+      attachPromise: Promise.resolve(),
+      sessionId: 'agent-session-blank-presentation',
+      terminal: terminal as never,
+      kind: 'agent',
+      cachedScreenState: null,
+      persistedSnapshot: 'persisted restored history',
+      presentationSnapshotPromise: Promise.resolve({
+        sessionId: 'agent-session-blank-presentation',
+        epoch: 1,
+        appliedSeq: 2,
+        presentationRevision: 3,
+        cols: 96,
+        rows: 30,
+        bufferKind: 'normal',
+        cursor: { x: 0, y: 0 },
+        title: 'codex',
+        serializedScreen: '\u001b[2J\u001b[H   \n',
+      }),
+      takePtySnapshot,
+      isDisposed: () => false,
+      onHydratedWriteCommitted,
+      onHydrationBaselineResolved,
+      onPresentationSnapshotAccepted,
+      finalizeHydration,
+    })
+
+    expect(terminal.resize).not.toHaveBeenCalled()
+    expect(terminal.write).toHaveBeenCalledWith('persisted restored history', expect.any(Function))
+    expect(onPresentationSnapshotAccepted).not.toHaveBeenCalled()
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('placeholder_snapshot')
+    expect(onHydratedWriteCommitted).toHaveBeenLastCalledWith('persisted restored history')
+    expect(finalizeHydration).toHaveBeenCalledWith('persisted restored history')
+    expect(takePtySnapshot).not.toHaveBeenCalled()
+  })
 })
