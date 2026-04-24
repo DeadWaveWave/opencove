@@ -172,7 +172,7 @@ Current migration landing:
 - the shared cold-start runtime contract is `session.prepareOrRevive`
 - active workspace hydration should consume that worker result before runtime nodes first mount
 - Desktop no longer falls back to a main-owned standalone PTY/runtime host at startup
-- renderer-local revive logic remains fallback-only until the last cache/mirror cleanup lands
+- renderer-local revive logic is non-production fallback only; production correctness no longer depends on renderer cache or mirror paths
 
 ## Renderer Cache And Placeholder
 

@@ -50,6 +50,15 @@ Public docs:
 
 ## Phase 1: Worker Presentation Contract
 
+Status: complete
+
+Current landing:
+
+- worker-owned `session.presentationSnapshot` is on the production path
+- `session.attach(afterSeq)` is the canonical catch-up contract
+- replay overflow now fails closed to snapshot recovery
+- controller/viewer attach semantics are covered at the control-surface streaming boundary
+
 ### Objective
 
 Create the canonical session baseline that latest main still lacks.
@@ -74,6 +83,18 @@ Create the canonical session baseline that latest main still lacks.
 
 ## Phase 2: Renderer Adoption And Correctness Exit
 
+Status: in progress
+
+Current landing:
+
+- renderer hydration now treats worker `presentationSnapshot` and live PTY snapshot as authoritative baselines
+- accepted worker baselines are no longer replaced by placeholder-reset heuristics
+- restart first-input recovery is covered and no longer depends on cache correctness
+
+Remaining:
+
+- finish the remaining restored click/input liveness issues without reintroducing renderer correctness cache
+
 ### Objective
 
 Make renderer consume worker presentation truth and stop treating placeholder/cache as correctness state.
@@ -97,6 +118,18 @@ Make renderer consume worker presentation truth and stop treating placeholder/ca
 
 ## Phase 3: Geometry Authority Cleanup
 
+Status: in progress
+
+Current landing:
+
+- controller/viewer roles and resize rejection are enforced at the streaming contract boundary
+- resize broadcasts now flow through the shared session streaming contract
+
+Remaining:
+
+- move the whole product path to worker-owned canonical geometry commits
+- prove attach/focus/typing can never perturb PTY size across Desktop and Web
+
 ### Objective
 
 Move from “controller can resize” to “worker owns canonical geometry; clients submit explicit commits”.
@@ -119,6 +152,18 @@ Move from “controller can resize” to “worker owns canonical geometry; clie
 - dual-client E2E for shared node resize behavior
 
 ## Phase 4: Revive Unification And Worker Prewarm
+
+Status: in progress
+
+Current landing:
+
+- Desktop startup no longer falls back to the old standalone production runtime path
+- live remote session attach survives window reopen without dropping the worker-owned session
+
+Remaining:
+
+- finish worker prewarm / `session.prepareOrRevive` as the single cold-start restore path
+- make restart first restore fully identical to `cmd+w` reopen semantics
 
 ### Objective
 
@@ -177,7 +222,7 @@ Handle WebGL/canvas/backend failure as a local renderer health issue that resync
 
 ## Phase 6: Old Owner Cleanup
 
-Status: in progress
+Status: complete
 
 Current landing:
 
@@ -187,10 +232,6 @@ Current landing:
 - main-side raw PTY snapshot mirrors are removed from the production path
 - terminal and agent placeholder scrollback now persist from renderer-side publish as UX-only cache
 - renderer screen cache now carries serialized screen + geometry only; cached raw snapshot is no longer part of restore correctness
-
-Remaining:
-
-- trim renderer cache APIs down to explicitly UX-only use
 
 ### Objective
 

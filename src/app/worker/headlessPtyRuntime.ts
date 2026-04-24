@@ -9,6 +9,7 @@ import {
   createSessionStateWatcherController,
   type SessionStateWatcherStartInput,
 } from '../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
+import { isDebugCrashHostEnabled } from '../../contexts/terminal/presentation/main-ipc/debugCrashHost'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -29,12 +30,14 @@ export interface HeadlessPtyRuntime {
   onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   startSessionStateWatcher: (input: SessionStateWatcherStartInput) => void
+  debugCrashHost?: () => void
   dispose: () => void
 }
 
 export function createHeadlessPtyRuntime(options: { userDataPath: string }): HeadlessPtyRuntime {
   const logsDir = resolve(options.userDataPath, 'logs')
   const logFilePath = resolve(logsDir, 'pty-host.log')
+  const debugCrashHostEnabled = isDebugCrashHostEnabled()
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
@@ -133,6 +136,13 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     startSessionStateWatcher: input => {
       sessionStateWatcher.start(input)
     },
+    ...(debugCrashHostEnabled
+      ? {
+          debugCrashHost: () => {
+            supervisor.crash()
+          },
+        }
+      : {}),
     dispose: () => {
       disposeDataListener()
       disposeExitListener()

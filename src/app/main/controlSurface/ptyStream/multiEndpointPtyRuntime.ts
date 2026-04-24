@@ -184,6 +184,11 @@ export function createMultiEndpointPtyRuntime(options: {
     startSessionStateWatcher: input => {
       options.localRuntime.startSessionStateWatcher?.(input)
     },
+    ...(options.localRuntime.debugCrashHost
+      ? {
+          debugCrashHost: () => options.localRuntime.debugCrashHost?.(),
+        }
+      : {}),
     dispose: () => {
       disposeLocalDataListener()
       disposeLocalExitListener()

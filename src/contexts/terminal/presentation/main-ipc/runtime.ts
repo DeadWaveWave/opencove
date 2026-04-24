@@ -24,6 +24,7 @@ import { stripAutomaticTerminalQueriesFromOutput } from '../../../../shared/term
 import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
+import { isDebugCrashHostEnabled } from './debugCrashHost'
 
 export interface StartSessionStateWatcherInput {
   sessionId: string
@@ -57,7 +58,7 @@ export interface PtyRuntime {
   snapshot: (sessionId: string) => Promise<string>
   presentationSnapshot: (sessionId: string) => Promise<PresentationSnapshotTerminalResult>
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
-  debugCrashHost?: () => void
+  debugCrashHost?: () => void | Promise<void>
   dispose: () => void
 }
 
@@ -71,6 +72,7 @@ function reportStateWatcherIssue(message: string): void {
 
 export function createPtyRuntime(): PtyRuntime {
   const profileResolver = new TerminalProfileResolver()
+  const debugCrashHostEnabled = isDebugCrashHostEnabled()
   const writeDiagnosticsEnabled =
     process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1' ||
     process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1'
@@ -384,7 +386,7 @@ export function createPtyRuntime(): PtyRuntime {
         opencodeBaseUrl,
       })
     },
-    ...(process.env.NODE_ENV === 'test'
+    ...(debugCrashHostEnabled
       ? {
           debugCrashHost: () => {
             ptyHost.crash()

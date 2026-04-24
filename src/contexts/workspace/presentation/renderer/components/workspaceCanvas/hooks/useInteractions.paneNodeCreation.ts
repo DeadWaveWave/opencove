@@ -3,7 +3,6 @@ import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
-import type { PersistedAppState } from '../../../types'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import type { SpawnTerminalResult } from '@shared/contracts/dto'
 import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'
@@ -18,113 +17,16 @@ import {
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
+import {
+  resolveDefaultMountFallback,
+  resolveTerminalLaunchWorkspaceContext,
+} from './useInteractions.paneNodeCreation.terminalLaunch'
 import { translate } from '@app/renderer/i18n'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
 ) => void
-
-function resolvePersistedWorkspaceForTerminalLaunch(
-  state: unknown,
-  workspaceId: string,
-): PersistedAppState['workspaces'][number] | null {
-  if (
-    !state ||
-    typeof state !== 'object' ||
-    !Array.isArray((state as PersistedAppState).workspaces)
-  ) {
-    return null
-  }
-
-  const persistedState = state as PersistedAppState
-  const normalizedWorkspaceId = workspaceId.trim()
-  if (normalizedWorkspaceId.length > 0) {
-    const matchingWorkspace =
-      persistedState.workspaces.find(workspace => workspace.id === normalizedWorkspaceId) ?? null
-    if (matchingWorkspace) {
-      return matchingWorkspace
-    }
-  }
-
-  const activeWorkspaceId =
-    typeof persistedState.activeWorkspaceId === 'string'
-      ? persistedState.activeWorkspaceId.trim()
-      : ''
-  if (activeWorkspaceId.length > 0) {
-    const activeWorkspace =
-      persistedState.workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null
-    if (activeWorkspace) {
-      return activeWorkspace
-    }
-  }
-
-  return persistedState.workspaces[0] ?? null
-}
-
-function resolveFallbackTargetSpace(
-  workspace: PersistedAppState['workspaces'][number],
-  anchor: Point,
-): WorkspaceSpaceState | null {
-  return (
-    findContainingSpaceByAnchor(workspace.spaces, anchor) ??
-    workspace.spaces.find(space => space.id === workspace.activeSpaceId) ??
-    workspace.spaces[0] ??
-    null
-  )
-}
-
-async function resolveTerminalLaunchWorkspaceContext({
-  anchor,
-  workspaceId,
-  workspacePath,
-  targetSpace,
-}: {
-  anchor: Point
-  workspaceId: string
-  workspacePath: string
-  targetSpace: WorkspaceSpaceState | null
-}): Promise<{
-  workspacePath: string
-  targetSpace: WorkspaceSpaceState | null
-}> {
-  const normalizedWorkspacePath = workspacePath.trim()
-  if (resolveSpaceWorkingDirectory(targetSpace, normalizedWorkspacePath).trim().length > 0) {
-    return {
-      workspacePath: normalizedWorkspacePath,
-      targetSpace,
-    }
-  }
-
-  const readAppState = window.opencoveApi.persistence?.readAppState
-  if (typeof readAppState !== 'function') {
-    return {
-      workspacePath: normalizedWorkspacePath,
-      targetSpace,
-    }
-  }
-
-  try {
-    const appState = await readAppState()
-    const workspace = resolvePersistedWorkspaceForTerminalLaunch(appState.state, workspaceId)
-    if (!workspace) {
-      return {
-        workspacePath: normalizedWorkspacePath,
-        targetSpace,
-      }
-    }
-
-    return {
-      workspacePath: workspace.path,
-      targetSpace: targetSpace ?? resolveFallbackTargetSpace(workspace, anchor),
-    }
-  } catch {
-    return {
-      workspacePath: normalizedWorkspacePath,
-      targetSpace,
-    }
-  }
-}
 
 export async function createTerminalNodeAtFlowPosition({
   anchor,
@@ -173,9 +75,27 @@ export async function createTerminalNodeAtFlowPosition({
   })
   targetSpace = launchWorkspaceContext.targetSpace
   const resolvedWorkspacePath = launchWorkspaceContext.workspacePath
-  const resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, resolvedWorkspacePath)
+  let resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, resolvedWorkspacePath)
+  let mountId = targetSpace?.targetMountId ?? null
 
-  const mountId = targetSpace?.targetMountId ?? null
+  if (!mountId && !targetSpace) {
+    try {
+      const defaultMountFallback = await resolveDefaultMountFallback({
+        workspaceId,
+        workspacePath: resolvedWorkspacePath,
+      })
+      if (defaultMountFallback) {
+        mountId = defaultMountFallback.mountId
+        resolvedCwd = defaultMountFallback.rootPath
+      }
+    } catch (error) {
+      onShowMessage?.(
+        translate('messages.mountListFailed', { message: toErrorMessage(error) }),
+        'error',
+      )
+      return null
+    }
+  }
 
   const spawnCwdUri =
     mountId && targetSpace?.targetMountId && targetSpace.directoryPath.trim().length > 0

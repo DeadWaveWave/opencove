@@ -72,6 +72,7 @@ export function createRemotePtyStreamMessageHandler(options: {
   externalMetadataListeners: Set<(event: TerminalSessionMetadataEvent) => void>
   cancelMetadataWatcher: (sessionId: string) => void
   onSessionExit: (sessionId: string) => void
+  onSessionAttached: (sessionId: string) => void
   snapshot: (sessionId: string) => Promise<string>
   handshake: {
     onHelloAck: () => void
@@ -121,6 +122,7 @@ export function createRemotePtyStreamMessageHandler(options: {
       } else {
         options.attachedSessions.set(sessionId, { lastSeq: seq })
       }
+      options.onSessionAttached(sessionId)
       return
     }
 

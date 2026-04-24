@@ -21,4 +21,5 @@ export interface ControlSurfacePtyRuntime {
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   startSessionStateWatcher?: (input: SessionStateWatcherStartInput) => void
+  debugCrashHost?: () => void | Promise<void>
 }

@@ -1,4 +1,3 @@
-import { webContents } from 'electron'
 import WebSocket from 'ws'
 import type {
   ListTerminalProfilesResult,
@@ -18,10 +17,7 @@ import {
   PTY_STREAM_WS_SUBPROTOCOL,
 } from '../ptyStream/ptyStreamService'
 import type { ControlSurfaceRemoteEndpointResolver } from './controlSurfaceHttpClient'
-import {
-  createRemotePtyStreamMessageHandler,
-  type AttachedSessionState,
-} from './remotePtyStreamMessageHandler'
+import { createRemotePtyStreamMessageHandler } from './remotePtyStreamMessageHandler'
 import { createRemotePtyRuntimeAgentMetadataWatcher } from './remotePtyRuntime.agentMetadataWatcher'
 import {
   sendToWebContentsAllWindows,
@@ -34,6 +30,7 @@ import {
   parseSpawnTerminalResult,
   resolveRemotePtyWsUrl,
 } from './remotePtyRuntime.support'
+import { createRemotePtySessionCoordinator } from './remotePtyRuntime.sessionCoordinator'
 export type RemotePtyRuntime = PtyRuntime & {
   noteSessionRolePreference: (sessionId: string, role: 'viewer' | 'controller') => void
 }
@@ -49,11 +46,6 @@ export function createRemotePtyRuntime(options: {
   const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const externalStateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const externalMetadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
-  const subscribersBySessionId = new Map<string, Set<number>>()
-  const sessionsByContentsId = new Map<number, Set<string>>()
-  const attachedSessions = new Map<string, AttachedSessionState>()
-  const trackedSessionIds = new Set<string>()
-  const rolePreferenceBySessionId = new Map<string, 'viewer' | 'controller'>()
   let socket: WebSocket | null = null
   let socketReadyPromise: Promise<void> | null = null
   let socketHandshakePromise: Promise<void> | null = null
@@ -62,7 +54,12 @@ export function createRemotePtyRuntime(options: {
   let reconnectTimer: NodeJS.Timeout | null = null
   let disposed = false
   const sendToSessionSubscribers = (sessionId: string, channel: string, payload: unknown): void => {
-    sendToWebContentsSessionSubscribers(subscribersBySessionId, sessionId, channel, payload)
+    sendToWebContentsSessionSubscribers(
+      sessionCoordinator.subscribersBySessionId,
+      sessionId,
+      channel,
+      payload,
+    )
   }
   const sendToAllWindows = (channel: string, payload: unknown): void => {
     sendToWebContentsAllWindows(channel, payload)
@@ -73,71 +70,26 @@ export function createRemotePtyRuntime(options: {
     sendToAllWindows,
   })
 
-  const shouldKeepSocketAlive = (): boolean =>
-    subscribersBySessionId.size > 0 || trackedSessionIds.size > 0
-
-  const trackSession = (sessionId: string): void => {
-    const normalizedSessionId = sessionId.trim()
-    if (normalizedSessionId.length === 0) {
-      return
-    }
-
-    trackedSessionIds.add(normalizedSessionId)
-  }
-
-  const untrackSession = (sessionId: string): void => {
-    const normalizedSessionId = sessionId.trim()
-    if (normalizedSessionId.length === 0) {
-      return
-    }
-
-    trackedSessionIds.delete(normalizedSessionId)
-    agentMetadataWatcher.cancel(normalizedSessionId)
-
-    if (!shouldKeepSocketAlive()) {
+  const sessionCoordinator = createRemotePtySessionCoordinator({
+    connectTimeoutMs,
+    cancelMetadataWatcher: sessionId => {
+      agentMetadataWatcher.cancel(sessionId)
+    },
+    shouldKeepSocketAlive: () =>
+      sessionCoordinator.subscribersBySessionId.size > 0 || sessionCoordinator.hasTrackedSessions(),
+    closeSocket: () => {
       closeSocket()
-    }
-  }
-
-  const cleanupContents = (contentsId: number): void => {
-    const sessions = sessionsByContentsId.get(contentsId)
-    if (!sessions) {
-      return
-    }
-
-    for (const sessionId of sessions) {
-      const subscribers = subscribersBySessionId.get(sessionId)
-      subscribers?.delete(contentsId)
-      if (subscribers && subscribers.size === 0) {
-        subscribersBySessionId.delete(sessionId)
-        void sendSocketMessage({ type: 'detach', sessionId }).catch(() => undefined)
-      }
-    }
-
-    sessionsByContentsId.delete(contentsId)
-
-    if (!shouldKeepSocketAlive()) {
-      closeSocket()
-    }
-  }
-
-  const trackWebContentsDestroyed = (contentsId: number): void => {
-    if (sessionsByContentsId.has(contentsId)) {
-      return
-    }
-
-    const content = webContents.fromId(contentsId)
-    if (!content || content.isDestroyed() || content.getType() !== 'window') {
-      return
-    }
-
-    content.once('destroyed', () => cleanupContents(contentsId))
-  }
+    },
+    sendDetachMessage: async sessionId => {
+      await sendSocketMessage({ type: 'detach', sessionId })
+    },
+  })
 
   const closeSocket = (): void => {
     const current = socket
     socket = null
     socketReadyPromise = null
+    sessionCoordinator.onSocketClosed()
 
     if (socketHandshakeReject) {
       socketHandshakeReject(new Error('PTY stream connection closed'))
@@ -158,7 +110,7 @@ export function createRemotePtyRuntime(options: {
   }
 
   const handleMessage = createRemotePtyStreamMessageHandler({
-    attachedSessions,
+    attachedSessions: sessionCoordinator.attachedSessions,
     sendToSessionSubscribers,
     sendToAllWindows,
     externalDataListeners,
@@ -168,8 +120,11 @@ export function createRemotePtyRuntime(options: {
     cancelMetadataWatcher: sessionId => {
       agentMetadataWatcher.cancel(sessionId)
     },
+    onSessionAttached: sessionId => {
+      sessionCoordinator.onSessionAttached(sessionId)
+    },
     onSessionExit: sessionId => {
-      untrackSession(sessionId)
+      sessionCoordinator.untrackSession(sessionId)
     },
     snapshot: async sessionId => await runtime.snapshot(sessionId),
     handshake: {
@@ -189,6 +144,20 @@ export function createRemotePtyRuntime(options: {
       },
     },
   })
+
+  const ensureSessionAttached = async (sessionId: string): Promise<void> => {
+    if (!sessionCoordinator.hasTrackedSession(sessionId)) {
+      return
+    }
+
+    await ensureSocket()
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      return
+    }
+
+    sessionCoordinator.sendAttachForSession(socket, sessionId)
+    await sessionCoordinator.waitForSessionAttached(sessionId)
+  }
 
   const connectSocket = async (): Promise<void> => {
     const endpoint = await options.endpointResolver()
@@ -220,7 +189,11 @@ export function createRemotePtyRuntime(options: {
         clearTimeout(reconnectTimer)
       }
 
-      if (disposed || !shouldKeepSocketAlive()) {
+      if (
+        disposed ||
+        (sessionCoordinator.subscribersBySessionId.size === 0 &&
+          !sessionCoordinator.hasTrackedSessions())
+      ) {
         reconnectTimer = null
         return
       }
@@ -275,20 +248,9 @@ export function createRemotePtyRuntime(options: {
       socketHandshakePromise = null
     }
 
-    for (const sessionId of subscribersBySessionId.keys()) {
-      const state = attachedSessions.get(sessionId) ?? { lastSeq: 0 }
-      attachedSessions.set(sessionId, state)
-      const role = rolePreferenceBySessionId.get(sessionId) ?? 'controller'
-
-      ws.send(
-        JSON.stringify({
-          type: 'attach',
-          sessionId,
-          ...(state.lastSeq > 0 ? { afterSeq: state.lastSeq } : {}),
-          role,
-        }),
-      )
-    }
+    sessionCoordinator.forEachTrackedSession(sessionId => {
+      sessionCoordinator.sendAttachForSession(ws, sessionId)
+    })
   }
 
   const ensureSocket = async (): Promise<void> => {
@@ -326,11 +288,8 @@ export function createRemotePtyRuntime(options: {
   }
 
   const noteSessionRolePreference = (sessionId: string, role: 'viewer' | 'controller'): void => {
-    rolePreferenceBySessionId.set(sessionId, role)
-    if (!attachedSessions.has(sessionId)) {
-      attachedSessions.set(sessionId, { lastSeq: 0 })
-    }
-    trackSession(sessionId)
+    sessionCoordinator.noteSessionRolePreference(sessionId, role)
+    void ensureSessionAttached(sessionId)
   }
 
   const spawnTerminalSession = async (input: SpawnTerminalInput): Promise<SpawnTerminalResult> => {
@@ -343,6 +302,7 @@ export function createRemotePtyRuntime(options: {
     })
     const { sessionId, profileId, runtimeKind } = parseSpawnTerminalResult(value)
     noteSessionRolePreference(sessionId, 'controller')
+    await ensureSessionAttached(sessionId)
 
     return { sessionId, profileId, runtimeKind }
   }
@@ -387,7 +347,7 @@ export function createRemotePtyRuntime(options: {
       })
     },
     kill: async (sessionId: string) => {
-      untrackSession(sessionId)
+      sessionCoordinator.untrackSession(sessionId)
       await invokeRemoteControlSurfaceValue<void>({
         endpointResolver: options.endpointResolver,
         kind: 'command',
@@ -421,47 +381,16 @@ export function createRemotePtyRuntime(options: {
       }
     },
     attach: async (contentsId: number, sessionId: string) => {
-      trackWebContentsDestroyed(contentsId)
-      trackSession(sessionId)
+      sessionCoordinator.trackWebContentsDestroyed(contentsId)
+      sessionCoordinator.trackSession(sessionId)
+      sessionCoordinator.addSubscriber(contentsId, sessionId)
 
-      const sessionSubscribers = subscribersBySessionId.get(sessionId) ?? new Set<number>()
-      sessionSubscribers.add(contentsId)
-      subscribersBySessionId.set(sessionId, sessionSubscribers)
-
-      const sessions = sessionsByContentsId.get(contentsId) ?? new Set<string>()
-      sessions.add(sessionId)
-      sessionsByContentsId.set(contentsId, sessions)
-
-      if (sessionSubscribers.size === 1) {
-        const state = attachedSessions.get(sessionId) ?? { lastSeq: 0 }
-        attachedSessions.set(sessionId, state)
-        await sendSocketMessage({
-          type: 'attach',
-          sessionId,
-          ...(state.lastSeq > 0 ? { afterSeq: state.lastSeq } : {}),
-          role: rolePreferenceBySessionId.get(sessionId) ?? 'controller',
-        })
-      }
+      await ensureSessionAttached(sessionId)
 
       agentMetadataWatcher.ensure(sessionId)
     },
     detach: async (contentsId: number, sessionId: string) => {
-      const sessions = sessionsByContentsId.get(contentsId)
-      sessions?.delete(sessionId)
-      if (sessions && sessions.size === 0) {
-        sessionsByContentsId.delete(contentsId)
-      }
-
-      const sessionSubscribers = subscribersBySessionId.get(sessionId)
-      sessionSubscribers?.delete(contentsId)
-      if (sessionSubscribers && sessionSubscribers.size === 0) {
-        subscribersBySessionId.delete(sessionId)
-        await sendSocketMessage({ type: 'detach', sessionId })
-      }
-
-      if (!shouldKeepSocketAlive()) {
-        closeSocket()
-      }
+      await sessionCoordinator.removeSubscriber(contentsId, sessionId)
     },
     snapshot: async (sessionId: string) => {
       const value = await invokeRemoteControlSurfaceValue<unknown>({
@@ -472,9 +401,8 @@ export function createRemotePtyRuntime(options: {
         errorMessage: 'Failed to fetch remote session snapshot',
       })
       const { scrollback, toSeq } = parseSnapshotScrollback(value)
-      const state = attachedSessions.get(sessionId)
-      if (state && typeof toSeq === 'number') {
-        state.lastSeq = Math.max(state.lastSeq, toSeq)
+      if (typeof toSeq === 'number') {
+        sessionCoordinator.updateAttachedSeq(sessionId, toSeq)
       }
 
       return scrollback
@@ -491,12 +419,18 @@ export function createRemotePtyRuntime(options: {
       })
       const snapshot = parsePresentationSnapshot(sessionId, value)
 
-      const state = attachedSessions.get(sessionId)
-      if (state) {
-        state.lastSeq = Math.max(state.lastSeq, snapshot.appliedSeq)
-      }
+      sessionCoordinator.updateAttachedSeq(sessionId, snapshot.appliedSeq)
 
       return snapshot
+    },
+    debugCrashHost: async () => {
+      await invokeRemoteControlSurfaceValue<void>({
+        endpointResolver: options.endpointResolver,
+        kind: 'command',
+        id: 'pty.debugCrashHost',
+        payload: null,
+        errorMessage: 'Failed to crash remote PTY host',
+      })
     },
     startSessionStateWatcher: () => undefined,
     noteSessionRolePreference,
@@ -514,11 +448,7 @@ export function createRemotePtyRuntime(options: {
       externalStateListeners.clear()
       externalMetadataListeners.clear()
       agentMetadataWatcher.dispose()
-      subscribersBySessionId.clear()
-      sessionsByContentsId.clear()
-      attachedSessions.clear()
-      trackedSessionIds.clear()
-      rolePreferenceBySessionId.clear()
+      sessionCoordinator.clear()
     },
   }
 

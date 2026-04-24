@@ -10,17 +10,25 @@ import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
 import {
   sendPtyAttached,
-  sendPtyControlChanged,
   sendPtyData,
   sendPtyError,
   sendPtyExit,
-  sendPtyGeometry,
   sendPtyOverflow,
   sendPtySessionMetadata,
   sendPtyState,
   toControllerDto,
 } from './ptyStreamWire'
 import type { SessionMetadata, SessionState, ClientState } from './ptyStreamState'
+import {
+  broadcastControlChanged,
+  broadcastData,
+  broadcastExit,
+  broadcastGeometry,
+  broadcastSessionMetadata,
+  broadcastState,
+  buildSessionList,
+  setSessionController,
+} from './ptyStreamHub.broadcast'
 import {
   createSessionState,
   flushBufferedSessionData,
@@ -58,21 +66,12 @@ export class PtyStreamHub {
   }
 
   private setSessionController(session: SessionState, controllerClientId: string | null): void {
-    session.controllerClientId = controllerClientId
-
-    for (const subscriberId of session.subscribers) {
-      const client = this.clients.get(subscriberId)
-      if (!client) {
-        continue
-      }
-
-      client.rolesBySessionId.set(
-        session.sessionId,
-        subscriberId === controllerClientId ? 'controller' : 'viewer',
-      )
-    }
-
-    this.broadcastControlChanged(session.sessionId)
+    setSessionController({
+      session,
+      controllerClientId,
+      clients: this.clients,
+      broadcastControlChanged: sessionId => this.broadcastControlChanged(sessionId),
+    })
   }
 
   public registerClient(options: {
@@ -190,6 +189,10 @@ export class PtyStreamHub {
 
   public handlePtyExit(sessionId: string, exitCode: number): void {
     const session = this.ensureSession(sessionId)
+    if (session.status === 'exited') {
+      return
+    }
+
     this.flushSession(session)
     session.status = 'exited'
     session.exitCode = exitCode
@@ -197,34 +200,10 @@ export class PtyStreamHub {
   }
 
   public listSessions(): ListSessionsResult {
-    const sessions: ListSessionsResult['sessions'] = []
-
-    for (const session of this.sessions.values()) {
-      const metadata = session.metadata
-      if (!metadata) {
-        continue
-      }
-
-      const controllerClient = session.controllerClientId
-        ? (this.clients.get(session.controllerClientId) ?? null)
-        : null
-
-      sessions.push({
-        sessionId: session.sessionId,
-        kind: metadata.kind,
-        startedAt: metadata.startedAt,
-        cwd: metadata.cwd,
-        command: metadata.command,
-        args: metadata.args,
-        status: session.status,
-        exitCode: session.exitCode,
-        seq: session.seq,
-        earliestSeq: session.chunks[0]?.seq ?? session.seq,
-        controller: toControllerDto(controllerClient),
-      })
-    }
-
-    return { sessions }
+    return buildSessionList({
+      sessions: this.sessions.values(),
+      clients: this.clients,
+    })
   }
 
   public snapshotSession(sessionId: string): GetSessionSnapshotResult {
@@ -250,29 +229,23 @@ export class PtyStreamHub {
   }
 
   private broadcastData(sessionId: string, seq: number, data: string): void {
-    const session = this.sessions.get(sessionId)
-    if (!session || session.subscribers.size === 0) {
-      return
-    }
-
-    for (const clientId of session.subscribers) {
-      const client = this.clients.get(clientId)
-      if (!client) {
-        continue
-      }
-
-      sendPtyData(client.ws, sessionId, seq, data)
-    }
+    broadcastData({
+      sessions: this.sessions,
+      clients: this.clients,
+      sessionId,
+      seq,
+      data,
+    })
   }
 
   private broadcastExit(sessionId: string, seq: number, exitCode: number): void {
-    if (!this.sessions.has(sessionId) || this.clients.size === 0) {
-      return
-    }
-
-    for (const client of this.clients.values()) {
-      sendPtyExit(client.ws, sessionId, seq, exitCode)
-    }
+    broadcastExit({
+      sessions: this.sessions,
+      clients: this.clients,
+      sessionId,
+      seq,
+      exitCode,
+    })
   }
 
   private broadcastGeometry(
@@ -281,56 +254,39 @@ export class PtyStreamHub {
     rows: number,
     reason: 'frame_commit' | 'appearance_commit',
   ): void {
-    if (!this.sessions.has(sessionId) || this.clients.size === 0) {
-      return
-    }
-
-    for (const client of this.clients.values()) {
-      sendPtyGeometry(client.ws, sessionId, cols, rows, reason)
-    }
+    broadcastGeometry({
+      sessions: this.sessions,
+      clients: this.clients,
+      sessionId,
+      cols,
+      rows,
+      reason,
+    })
   }
 
   private broadcastControlChanged(sessionId: string): void {
-    const session = this.sessions.get(sessionId)
-    if (!session) {
-      return
-    }
-
-    const controllerClient = session.controllerClientId
-      ? (this.clients.get(session.controllerClientId) ?? null)
-      : null
-    const controllerDto = toControllerDto(controllerClient)
-
-    for (const clientId of session.subscribers) {
-      const client = this.clients.get(clientId)
-      if (!client) {
-        continue
-      }
-
-      const role = client.rolesBySessionId.get(sessionId) ?? 'viewer'
-
-      sendPtyControlChanged(client.ws, sessionId, controllerDto, role)
-    }
+    broadcastControlChanged({
+      sessions: this.sessions,
+      clients: this.clients,
+      sessionId,
+    })
   }
 
   private broadcastState(sessionId: string, state: TerminalSessionState): void {
-    if (!this.sessions.has(sessionId) || this.clients.size === 0) {
-      return
-    }
-
-    for (const client of this.clients.values()) {
-      sendPtyState(client.ws, sessionId, state)
-    }
+    broadcastState({
+      sessions: this.sessions,
+      clients: this.clients,
+      sessionId,
+      state,
+    })
   }
 
   private broadcastSessionMetadata(metadata: TerminalSessionMetadataEvent): void {
-    if (!this.sessions.has(metadata.sessionId) || this.clients.size === 0) {
-      return
-    }
-
-    for (const client of this.clients.values()) {
-      sendPtySessionMetadata(client.ws, metadata)
-    }
+    broadcastSessionMetadata({
+      sessions: this.sessions,
+      clients: this.clients,
+      metadata,
+    })
   }
 
   public attach(options: {

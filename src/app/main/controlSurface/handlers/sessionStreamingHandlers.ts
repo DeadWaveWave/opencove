@@ -333,4 +333,27 @@ export function registerSessionStreamingHandlers(
     },
     defaultErrorCode: 'terminal.spawn_failed',
   })
+
+  if (deps.ptyRuntime.debugCrashHost) {
+    controlSurface.register('pty.debugCrashHost', {
+      kind: 'command',
+      validate: payload => payload ?? null,
+      handle: async () => {
+        const sessionIds = deps.ptyStreamHub
+          .listSessions()
+          .sessions.map(session => session.sessionId)
+        await deps.ptyRuntime.debugCrashHost?.()
+        await Promise.allSettled(
+          sessionIds.map(async sessionId => {
+            await Promise.resolve(deps.ptyRuntime.kill(sessionId))
+          }),
+        )
+        sessionIds.forEach(sessionId => {
+          deps.ptyStreamHub.handlePtyExit(sessionId, 1)
+        })
+        return null
+      },
+      defaultErrorCode: 'common.unexpected',
+    })
+  }
 }

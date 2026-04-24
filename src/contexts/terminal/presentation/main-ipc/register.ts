@@ -28,6 +28,7 @@ import {
   normalizeWriteTerminalPayload,
 } from './validate'
 import { createAppError } from '../../../../shared/errors/appError'
+import { isDebugCrashHostEnabled } from './debugCrashHost'
 
 export function registerPtyIpcHandlers(
   runtime: PtyRuntime,
@@ -134,12 +135,10 @@ export function registerPtyIpcHandlers(
     { defaultErrorCode: 'terminal.snapshot_failed' },
   )
 
-  if (process.env.NODE_ENV === 'test' && runtime.debugCrashHost) {
+  if (isDebugCrashHostEnabled() && runtime.debugCrashHost) {
     registerHandledIpc(
       IPC_CHANNELS.ptyDebugCrashHost,
-      async () => {
-        runtime.debugCrashHost?.()
-      },
+      async () => await runtime.debugCrashHost?.(),
       { defaultErrorCode: 'common.unexpected' },
     )
   }

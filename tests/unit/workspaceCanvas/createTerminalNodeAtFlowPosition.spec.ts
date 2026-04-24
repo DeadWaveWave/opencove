@@ -144,4 +144,94 @@ describe('createTerminalNodeAtFlowPosition', () => {
       profileId: undefined,
     })
   })
+
+  it('uses the default mount instead of the placeholder project path for remote-only projects', async () => {
+    const ptySpawn = vi.fn()
+    const controlSurfaceInvoke = vi
+      .fn()
+      .mockResolvedValueOnce({
+        mounts: [
+          {
+            mountId: 'mount-remote',
+            endpointId: 'endpoint-1',
+            rootPath: '/remote/root',
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        sessionId: 'session-remote',
+        profileId: null,
+        runtimeKind: 'posix' as const,
+      })
+    const createNodeForSession = vi.fn(async () => ({ id: 'node-remote' }) as never)
+
+    vi.stubGlobal('window', {
+      opencoveApi: {
+        pty: {
+          spawn: ptySpawn,
+        },
+        persistence: {
+          readAppState: vi.fn(async () => ({
+            state: {
+              activeWorkspaceId: 'workspace-remote',
+              workspaces: [
+                {
+                  id: 'workspace-remote',
+                  path: '/tmp/opencove/projects/workspace-remote',
+                  activeSpaceId: null,
+                  spaces: [],
+                },
+              ],
+            },
+            recovery: null,
+          })),
+        },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
+        },
+      },
+    })
+
+    const result = await createTerminalNodeAtFlowPosition({
+      anchor: { x: 320, y: 180 },
+      workspaceId: 'workspace-remote',
+      defaultTerminalProfileId: null,
+      standardWindowSizeBucket: 'regular',
+      workspacePath: '',
+      spacesRef: { current: [] },
+      nodesRef: { current: [] },
+      setNodes: vi.fn(),
+      onSpacesChange: vi.fn(),
+      createNodeForSession,
+    })
+
+    expect(controlSurfaceInvoke).toHaveBeenNthCalledWith(1, {
+      kind: 'query',
+      id: 'mount.list',
+      payload: { projectId: 'workspace-remote' },
+    })
+    expect(controlSurfaceInvoke).toHaveBeenNthCalledWith(2, {
+      kind: 'command',
+      id: 'pty.spawnInMount',
+      payload: {
+        mountId: 'mount-remote',
+        cwdUri: null,
+        profileId: null,
+        cols: 80,
+        rows: 24,
+      },
+    })
+    expect(ptySpawn).not.toHaveBeenCalled()
+    expect(createNodeForSession).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'session-remote',
+        executionDirectory: '/remote/root',
+        expectedDirectory: '/remote/root',
+      }),
+    )
+    expect(result).toEqual({
+      sessionId: 'session-remote',
+      nodeId: 'node-remote',
+    })
+  })
 })
