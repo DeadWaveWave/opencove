@@ -58,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Terminal: preserve magnifier-like zoom geometry while restoring settled post-zoom clarity, so DPR refresh no longer doubles the visible terminal scale or clips content. (#187)
 - Terminal: restore post-zoom clarity after viewport settle without requiring a return to bottom, while preserving live scroll/focus semantics. (#186)
 - Windows terminal rendering: keep 125% DPI embedded terminals crisp, preserve OpenCode WebGL in manual PowerShell terminals, and snap the retained WebGL path onto the device-pixel grid. (#148)
 - Recovery: restored agent windows now keep durable restart history visible, reattach to fresh runtime sessions after full app restart, remain interactive for stdin, and preserve OpenCode embedded theme sync in the restored runtime path. (#172)

@@ -116,6 +116,8 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
       expect(zoomedMetrics?.deviceCanvasHeight ?? 0).toBeGreaterThan(
         baselineMetrics?.deviceCanvasHeight ?? 0,
       )
+      expect(zoomedMetrics?.cssCanvasWidth).toBeCloseTo(baselineMetrics?.cssCanvasWidth ?? 0, 1)
+      expect(zoomedMetrics?.cssCanvasHeight).toBeCloseTo(baselineMetrics?.cssCanvasHeight ?? 0, 1)
       expect(zoomedMetrics?.instanceId).toBe(baselineInstanceId)
       await xterm.click()
       await expect(terminal.locator('.xterm-helper-textarea')).toBeFocused()
@@ -234,6 +236,8 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
       expect((afterMetrics?.baseY ?? 0) - (afterMetrics?.viewportY ?? 0)).toBeGreaterThanOrEqual(
         (beforeMetrics?.baseY ?? 0) - (beforeMetrics?.viewportY ?? 0),
       )
+      expect(afterMetrics?.cssCanvasWidth).toBeCloseTo(beforeMetrics?.cssCanvasWidth ?? 0, 1)
+      expect(afterMetrics?.cssCanvasHeight).toBeCloseTo(beforeMetrics?.cssCanvasHeight ?? 0, 1)
       expect(afterMetrics?.effectiveDpr).toBeCloseTo(baselineWindowDpr * zoomedViewport.zoom, 2)
       expect(afterMetrics?.instanceId).toBe(beforeMetrics?.instanceId ?? null)
     } finally {
