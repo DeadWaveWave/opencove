@@ -22,6 +22,7 @@ import {
   resolveSessionLaunchSpawn,
 } from './sessionLaunchSupport'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
+import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
@@ -365,23 +366,18 @@ export function registerSessionLaunchAgentInMountHandler(
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
-      const shouldStartStateWatcher =
-        process.env.NODE_ENV !== 'test' ||
-        process.env['OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER'] === '1'
-
-      if (shouldStartStateWatcher) {
-        deps.ptyRuntime.startSessionStateWatcher?.({
-          sessionId,
-          provider,
-          cwd,
-          launchMode: mode,
-          resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
-          startedAtMs,
-          opencodeBaseUrl: opencodeServer
-            ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
-            : null,
-        })
-      }
+      startAgentSessionStateWatcherIfEnabled({
+        ptyRuntime: deps.ptyRuntime,
+        sessionId,
+        provider,
+        cwd,
+        launchMode: mode,
+        resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
+        startedAtMs,
+        opencodeBaseUrl: opencodeServer
+          ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
+          : null,
+      })
 
       const executionContext = resolveExecutionContextDto(cwd, {
         projectId: null,

@@ -24,21 +24,15 @@ function updateWorkspacesWithAgentNodes(
   workspaces: WorkspaceState[],
   {
     sessionId,
-    excludeWorkspaceId,
     updateNode,
   }: {
     sessionId: string
-    excludeWorkspaceId: string | null
     updateNode: (node: Node<TerminalNodeData>) => Node<TerminalNodeData> | null
   },
 ): { nextWorkspaces: WorkspaceState[]; didChange: boolean } {
   let didChange = false
 
   const nextWorkspaces = workspaces.map(workspace => {
-    if (excludeWorkspaceId && workspace.id === excludeWorkspaceId) {
-      return workspace
-    }
-
     let workspaceDidChange = false
 
     const nextNodes = workspace.nodes.map(node => {
@@ -69,23 +63,17 @@ function updateWorkspacesWithAgentNodes(
 export function updateWorkspacesWithAgentExit({
   workspaces,
   sessionId,
-  excludeWorkspaceId,
   exitCode,
   now,
 }: {
   workspaces: WorkspaceState[]
   sessionId: string
-  excludeWorkspaceId: string | null
   exitCode: number
   now: string
 }): { nextWorkspaces: WorkspaceState[]; didChange: boolean } {
   let didChange = false
 
   const nextWorkspaces = workspaces.map(workspace => {
-    if (excludeWorkspaceId && workspace.id === excludeWorkspaceId) {
-      return workspace
-    }
-
     let workspaceDidChange = false
 
     const nextNodes = workspace.nodes.map(node => {
@@ -132,13 +120,11 @@ export function usePtyWorkspaceRuntimeSync({
     const ptyEventHub = getPtyEventHub()
 
     const unsubscribeState = ptyEventHub.onState(event => {
-      const excludeWorkspaceId = useAppStore.getState().activeWorkspaceId
       let didChange = false
 
       setWorkspaces(previous => {
         const result = updateWorkspacesWithAgentNodes(previous, {
           sessionId: event.sessionId,
-          excludeWorkspaceId,
           updateNode: node => {
             if (shouldIgnoreAgentStatusUpdate(node.data.status)) {
               return null
@@ -168,13 +154,11 @@ export function usePtyWorkspaceRuntimeSync({
         return
       }
 
-      const excludeWorkspaceId = useAppStore.getState().activeWorkspaceId
       let didChange = false
 
       setWorkspaces(previous => {
         const result = updateWorkspacesWithAgentNodes(previous, {
           sessionId: event.sessionId,
-          excludeWorkspaceId,
           updateNode: node => {
             if (!node.data.agent) {
               return null
@@ -214,13 +198,11 @@ export function usePtyWorkspaceRuntimeSync({
     const unsubscribeExit = ptyEventHub.onExit(event => {
       let didChange = false
       const now = new Date().toISOString()
-      const excludeWorkspaceId = useAppStore.getState().activeWorkspaceId
 
       setWorkspaces(previous => {
         const result = updateWorkspacesWithAgentExit({
           workspaces: previous,
           sessionId: event.sessionId,
-          excludeWorkspaceId,
           exitCode: event.exitCode,
           now,
         })

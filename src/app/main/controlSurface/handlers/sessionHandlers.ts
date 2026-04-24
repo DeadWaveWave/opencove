@@ -28,6 +28,7 @@ import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
 import { registerSessionPrepareOrReviveHandler } from './sessionPrepareOrReviveHandler'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
+import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import {
   isRecord,
   normalizeAgentProviderId,
@@ -299,6 +300,19 @@ export function registerSessionHandlers(
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
+      })
+
+      startAgentSessionStateWatcherIfEnabled({
+        ptyRuntime: deps.ptyRuntime,
+        sessionId,
+        provider,
+        cwd: workingDirectory,
+        launchMode: mode,
+        resumeSessionId,
+        startedAtMs,
+        opencodeBaseUrl: opencodeServer
+          ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
+          : null,
       })
 
       const executionContext = resolveExecutionContextDto(workingDirectory, {

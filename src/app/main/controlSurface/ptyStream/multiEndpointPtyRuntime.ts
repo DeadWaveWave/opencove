@@ -1,4 +1,8 @@
 import { randomUUID } from 'node:crypto'
+import type {
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
@@ -27,6 +31,8 @@ export function createMultiEndpointPtyRuntime(options: {
 }): MultiEndpointPtyRuntime {
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
+  const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
 
   const routes = new Map<string, SessionRoute>()
   const homeSessionIdByRemote = new Map<string, string>()
@@ -64,6 +70,27 @@ export function createMultiEndpointPtyRuntime(options: {
 
         exitListeners.forEach(listener => listener({ sessionId: homeSessionId, exitCode }))
       },
+      emitState: (remoteSessionId, state) => {
+        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
+        if (!homeSessionId) {
+          return
+        }
+
+        stateListeners.forEach(listener => listener({ sessionId: homeSessionId, state }))
+      },
+      emitMetadata: (remoteSessionId, metadata) => {
+        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
+        if (!homeSessionId) {
+          return
+        }
+
+        metadataListeners.forEach(listener =>
+          listener({
+            ...metadata,
+            sessionId: homeSessionId,
+          }),
+        )
+      },
     })
 
     proxiesByEndpointId.set(endpointId, created)
@@ -76,6 +103,14 @@ export function createMultiEndpointPtyRuntime(options: {
 
   const disposeLocalExitListener = options.localRuntime.onExit(event => {
     exitListeners.forEach(listener => listener(event))
+  })
+
+  const disposeLocalStateListener = options.localRuntime.onState?.(event => {
+    stateListeners.forEach(listener => listener(event))
+  })
+
+  const disposeLocalMetadataListener = options.localRuntime.onMetadata?.(event => {
+    metadataListeners.forEach(listener => listener(event))
   })
 
   return {
@@ -134,12 +169,26 @@ export function createMultiEndpointPtyRuntime(options: {
         exitListeners.delete(listener)
       }
     },
+    onState: listener => {
+      stateListeners.add(listener)
+      return () => {
+        stateListeners.delete(listener)
+      }
+    },
+    onMetadata: listener => {
+      metadataListeners.add(listener)
+      return () => {
+        metadataListeners.delete(listener)
+      }
+    },
     startSessionStateWatcher: input => {
       options.localRuntime.startSessionStateWatcher?.(input)
     },
     dispose: () => {
       disposeLocalDataListener()
       disposeLocalExitListener()
+      disposeLocalStateListener?.()
+      disposeLocalMetadataListener?.()
 
       for (const proxy of proxiesByEndpointId.values()) {
         proxy.dispose()

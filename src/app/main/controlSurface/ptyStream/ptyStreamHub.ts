@@ -3,6 +3,8 @@ import type {
   GetSessionPresentationSnapshotResult,
   GetSessionSnapshotResult,
   ListSessionsResult,
+  TerminalSessionMetadataEvent,
+  TerminalSessionState,
 } from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
@@ -14,6 +16,8 @@ import {
   sendPtyExit,
   sendPtyGeometry,
   sendPtyOverflow,
+  sendPtySessionMetadata,
+  sendPtyState,
   toControllerDto,
 } from './ptyStreamWire'
 import type { SessionMetadata, SessionState, ClientState } from './ptyStreamState'
@@ -101,6 +105,35 @@ export class PtyStreamHub {
     const session = this.ensureSession(metadata.sessionId)
     session.metadata = metadata
     session.presentationSession.resize(metadata.cols, metadata.rows)
+  }
+
+  public registerSessionAgentState(options: {
+    sessionId: string
+    state: TerminalSessionState
+  }): void {
+    const session = this.ensureSession(options.sessionId)
+    if (session.agentState === options.state) {
+      return
+    }
+
+    session.agentState = options.state
+    this.broadcastState(options.sessionId, options.state)
+  }
+
+  public registerSessionAgentMetadata(metadata: TerminalSessionMetadataEvent): void {
+    const session = this.ensureSession(metadata.sessionId)
+    const previous = session.agentMetadata
+    const unchanged =
+      previous?.resumeSessionId === metadata.resumeSessionId &&
+      previous?.profileId === metadata.profileId &&
+      previous?.runtimeKind === metadata.runtimeKind
+
+    if (unchanged) {
+      return
+    }
+
+    session.agentMetadata = metadata
+    this.broadcastSessionMetadata(metadata)
   }
 
   public hasSession(sessionId: string): boolean {
@@ -233,17 +266,11 @@ export class PtyStreamHub {
   }
 
   private broadcastExit(sessionId: string, seq: number, exitCode: number): void {
-    const session = this.sessions.get(sessionId)
-    if (!session || session.subscribers.size === 0) {
+    if (!this.sessions.has(sessionId) || this.clients.size === 0) {
       return
     }
 
-    for (const clientId of session.subscribers) {
-      const client = this.clients.get(clientId)
-      if (!client) {
-        continue
-      }
-
+    for (const client of this.clients.values()) {
       sendPtyExit(client.ws, sessionId, seq, exitCode)
     }
   }
@@ -254,17 +281,11 @@ export class PtyStreamHub {
     rows: number,
     reason: 'frame_commit' | 'appearance_commit',
   ): void {
-    const session = this.sessions.get(sessionId)
-    if (!session || session.subscribers.size === 0) {
+    if (!this.sessions.has(sessionId) || this.clients.size === 0) {
       return
     }
 
-    for (const clientId of session.subscribers) {
-      const client = this.clients.get(clientId)
-      if (!client) {
-        continue
-      }
-
+    for (const client of this.clients.values()) {
       sendPtyGeometry(client.ws, sessionId, cols, rows, reason)
     }
   }
@@ -289,6 +310,26 @@ export class PtyStreamHub {
       const role = client.rolesBySessionId.get(sessionId) ?? 'viewer'
 
       sendPtyControlChanged(client.ws, sessionId, controllerDto, role)
+    }
+  }
+
+  private broadcastState(sessionId: string, state: TerminalSessionState): void {
+    if (!this.sessions.has(sessionId) || this.clients.size === 0) {
+      return
+    }
+
+    for (const client of this.clients.values()) {
+      sendPtyState(client.ws, sessionId, state)
+    }
+  }
+
+  private broadcastSessionMetadata(metadata: TerminalSessionMetadataEvent): void {
+    if (!this.sessions.has(metadata.sessionId) || this.clients.size === 0) {
+      return
+    }
+
+    for (const client of this.clients.values()) {
+      sendPtySessionMetadata(client.ws, metadata)
     }
   }
 
@@ -336,6 +377,14 @@ export class PtyStreamHub {
       earliestSeq,
       toControllerDto(controllerClient),
     )
+
+    if (session.agentMetadata) {
+      sendPtySessionMetadata(client.ws, session.agentMetadata)
+    }
+
+    if (session.agentState) {
+      sendPtyState(client.ws, options.sessionId, session.agentState)
+    }
 
     const afterSeq =
       typeof options.afterSeq === 'number' && Number.isFinite(options.afterSeq)

@@ -120,3 +120,33 @@ export function sendPtyControlChanged(
     role,
   })
 }
+
+export function sendPtyState(
+  ws: WebSocket,
+  sessionId: string,
+  state: 'working' | 'standby',
+): void {
+  sendJson(ws, {
+    type: 'state',
+    sessionId,
+    state,
+  })
+}
+
+export function sendPtySessionMetadata(
+  ws: WebSocket,
+  payload: {
+    sessionId: string
+    resumeSessionId: string | null
+    profileId?: string | null
+    runtimeKind?: 'windows' | 'wsl' | 'posix'
+  },
+): void {
+  sendJson(ws, {
+    type: 'metadata',
+    sessionId: payload.sessionId,
+    resumeSessionId: payload.resumeSessionId,
+    ...(payload.profileId !== undefined ? { profileId: payload.profileId } : {}),
+    ...(payload.runtimeKind !== undefined ? { runtimeKind: payload.runtimeKind } : {}),
+  })
+}

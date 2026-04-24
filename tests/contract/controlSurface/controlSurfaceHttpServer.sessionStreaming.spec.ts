@@ -191,6 +191,17 @@ describe('Control Surface HTTP server (session streaming)', () => {
 
     const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
     const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+    const stateListeners = new Set<(
+      event: { sessionId: string; state: 'working' | 'standby' },
+    ) => void>()
+    const metadataListeners = new Set<(
+      event: {
+        sessionId: string
+        resumeSessionId: string | null
+        profileId?: string | null
+        runtimeKind?: 'windows' | 'wsl' | 'posix'
+      },
+    ) => void>()
 
     const writes: Array<{ sessionId: string; data: string }> = []
     const resizes: Array<{ sessionId: string; cols: number; rows: number }> = []
@@ -200,6 +211,13 @@ describe('Control Surface HTTP server (session streaming)', () => {
 
     type TestPtyRuntime = ControlSurfacePtyRuntime & {
       emitData: (sessionId: string, data: string) => void
+      emitState: (sessionId: string, state: 'working' | 'standby') => void
+      emitMetadata: (event: {
+        sessionId: string
+        resumeSessionId: string | null
+        profileId?: string | null
+        runtimeKind?: 'windows' | 'wsl' | 'posix'
+      }) => void
     }
 
     const ptyRuntime: TestPtyRuntime = {
@@ -223,8 +241,31 @@ describe('Control Surface HTTP server (session streaming)', () => {
           exitListeners.delete(listener)
         }
       },
+      onState: (listener: (event: { sessionId: string; state: 'working' | 'standby' }) => void) => {
+        stateListeners.add(listener)
+        return () => {
+          stateListeners.delete(listener)
+        }
+      },
+      onMetadata: (listener: (event: {
+        sessionId: string
+        resumeSessionId: string | null
+        profileId?: string | null
+        runtimeKind?: 'windows' | 'wsl' | 'posix'
+      }) => void) => {
+        metadataListeners.add(listener)
+        return () => {
+          metadataListeners.delete(listener)
+        }
+      },
       emitData: (sessionId: string, data: string) => {
         dataListeners.forEach(listener => listener({ sessionId, data }))
+      },
+      emitState: (sessionId: string, state: 'working' | 'standby') => {
+        stateListeners.forEach(listener => listener({ sessionId, state }))
+      },
+      emitMetadata: event => {
+        metadataListeners.forEach(listener => listener(event))
       },
     }
 
@@ -411,6 +452,59 @@ describe('Control Surface HTTP server (session streaming)', () => {
       expect(presentationSnapshot.data.value?.rows).toBe(32)
       expect(presentationSnapshot.data.value?.serializedScreen).toContain('presentation-ready')
 
+      const controllerStatePromise = waitForMessage<{ type: string; state: string }>(
+        controller,
+        message =>
+          message &&
+          message.type === 'state' &&
+          message.sessionId === sessionId &&
+          message.state === 'working',
+      )
+      const viewerStatePromise = waitForMessage<{ type: string; state: string }>(
+        viewer,
+        message =>
+          message &&
+          message.type === 'state' &&
+          message.sessionId === sessionId &&
+          message.state === 'working',
+      )
+      const controllerMetadataPromise = waitForMessage<{ type: string; resumeSessionId: string }>(
+        controller,
+        message =>
+          message &&
+          message.type === 'metadata' &&
+          message.sessionId === sessionId &&
+          message.resumeSessionId === 'resume-session-1',
+      )
+      const viewerMetadataPromise = waitForMessage<{ type: string; resumeSessionId: string }>(
+        viewer,
+        message =>
+          message &&
+          message.type === 'metadata' &&
+          message.sessionId === sessionId &&
+          message.resumeSessionId === 'resume-session-1',
+      )
+
+      ptyRuntime.emitState(sessionId, 'working')
+      ptyRuntime.emitMetadata({
+        sessionId,
+        resumeSessionId: 'resume-session-1',
+        profileId: 'profile-1',
+        runtimeKind: 'posix',
+      })
+
+      const [controllerState, viewerState, controllerMetadata, viewerMetadata] =
+        await Promise.all([
+          controllerStatePromise,
+          viewerStatePromise,
+          controllerMetadataPromise,
+          viewerMetadataPromise,
+        ])
+      expect(controllerState.state).toBe('working')
+      expect(viewerState.state).toBe('working')
+      expect(controllerMetadata.resumeSessionId).toBe('resume-session-1')
+      expect(viewerMetadata.resumeSessionId).toBe('resume-session-1')
+
       ptyRuntime.emitData(sessionId, 'attach-delta\r\n')
       const catchupViewer = new WebSocket(wsUrl, 'opencove-pty.v1')
       await new Promise<void>((resolvePromise, rejectPromise) => {
@@ -443,6 +537,35 @@ describe('Control Surface HTTP server (session streaming)', () => {
       const catchupChunk = await catchupChunkPromise
       expect(catchupChunk.data).toContain('attach-delta')
       catchupViewer.close()
+
+      const lateJoiner = new WebSocket(wsUrl, 'opencove-pty.v1')
+      await new Promise<void>((resolvePromise, rejectPromise) => {
+        lateJoiner.once('open', resolvePromise)
+        lateJoiner.once('error', rejectPromise)
+      })
+
+      sendJson(lateJoiner, { type: 'hello', protocolVersion: 1, client: { kind: 'cli' } })
+      await waitForMessage(lateJoiner, message => message && message.type === 'hello_ack')
+      const lateMetadataPromise = waitForMessage<{ type: string; resumeSessionId: string }>(
+        lateJoiner,
+        message =>
+          message &&
+          message.type === 'metadata' &&
+          message.sessionId === sessionId &&
+          message.resumeSessionId === 'resume-session-1',
+      )
+      const lateStatePromise = waitForMessage<{ type: string; state: string }>(
+        lateJoiner,
+        message =>
+          message &&
+          message.type === 'state' &&
+          message.sessionId === sessionId &&
+          message.state === 'working',
+      )
+      sendJson(lateJoiner, { type: 'attach', sessionId, role: 'viewer' })
+      await waitForMessage(lateJoiner, message => message && message.type === 'attached')
+      await Promise.all([lateMetadataPromise, lateStatePromise])
+      lateJoiner.close()
 
       controller.close()
       viewer.close()

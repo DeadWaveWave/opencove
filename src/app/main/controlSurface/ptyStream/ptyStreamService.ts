@@ -140,6 +140,14 @@ export function createPtyStreamService(options: {
     hub.handlePtyExit(sessionId, exitCode)
   })
 
+  const disposeStateListener = options.ptyRuntime.onState?.(({ sessionId, state }) => {
+    hub.registerSessionAgentState({ sessionId, state })
+  })
+
+  const disposeMetadataListener = options.ptyRuntime.onMetadata?.(metadata => {
+    hub.registerSessionAgentMetadata(metadata)
+  })
+
   const instanceId = randomBytes(18).toString('base64url')
   const clients = new Set<WebSocket>()
   const stateBySocket = new WeakMap<WebSocket, PtyStreamClientState>()
@@ -423,6 +431,8 @@ export function createPtyStreamService(options: {
 
       disposeDataListener()
       disposeExitListener()
+      disposeStateListener?.()
+      disposeMetadataListener?.()
     },
   }
 }

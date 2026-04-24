@@ -113,6 +113,9 @@ import { resolveWindowsPtyMeta } from './windowsPtyMeta'
 
 type UnsubscribeFn = () => void
 
+const latestPtyStateBySessionId = new Map<string, TerminalSessionStateEvent>()
+const latestPtyMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
+
 // Custom APIs for renderer
 const opencoveApi = {
   meta: {
@@ -410,10 +413,14 @@ const opencoveApi = {
     },
     onState: (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {
       const handler = (_event: Electron.IpcRendererEvent, payload: TerminalSessionStateEvent) => {
+        latestPtyStateBySessionId.set(payload.sessionId, payload)
         listener(payload)
       }
 
       ipcRenderer.on(IPC_CHANNELS.ptyState, handler)
+      latestPtyStateBySessionId.forEach(payload => {
+        listener(payload)
+      })
 
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ptyState, handler)
@@ -424,10 +431,14 @@ const opencoveApi = {
         _event: Electron.IpcRendererEvent,
         payload: TerminalSessionMetadataEvent,
       ) => {
+        latestPtyMetadataBySessionId.set(payload.sessionId, payload)
         listener(payload)
       }
 
       ipcRenderer.on(IPC_CHANNELS.ptySessionMetadata, handler)
+      latestPtyMetadataBySessionId.forEach(payload => {
+        listener(payload)
+      })
 
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ptySessionMetadata, handler)

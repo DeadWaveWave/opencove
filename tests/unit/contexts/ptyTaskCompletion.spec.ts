@@ -277,7 +277,6 @@ describe('PTY task completion side effects', () => {
     const result = updateWorkspacesWithAgentExit({
       workspaces,
       sessionId: 'session-1',
-      excludeWorkspaceId: null,
       exitCode: 0,
       now: '2026-03-15T08:00:00.000Z',
     })

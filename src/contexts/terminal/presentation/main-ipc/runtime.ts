@@ -12,6 +12,8 @@ import type {
   TerminalDataEvent,
   TerminalGeometryCommitReason,
   TerminalGeometryEvent,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
   TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
@@ -48,6 +50,8 @@ export interface PtyRuntime {
   kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
+  onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
+  onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
   attach: (contentsId: number, sessionId: string) => Promise<void>
   detach: (contentsId: number, sessionId: string) => Promise<void>
   snapshot: (sessionId: string) => Promise<string>
@@ -71,6 +75,8 @@ export function createPtyRuntime(): PtyRuntime {
     process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1' ||
     process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1'
   const warnedWriteSessions = new Map<string, string>()
+  const externalStateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
+  const externalMetadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
 
   const formatInputHeadHex = (value: string, limit = 12): string => {
     const chars = Array.from(value).slice(0, limit)
@@ -113,6 +119,12 @@ export function createPtyRuntime(): PtyRuntime {
   const sessionStateWatcher = createSessionStateWatcherController({
     sendToAllWindows,
     reportIssue: reportStateWatcherIssue,
+    onState: event => {
+      externalStateListeners.forEach(listener => listener(event))
+    },
+    onMetadata: event => {
+      externalMetadataListeners.forEach(listener => listener(event))
+    },
   })
 
   const sendPtyDataToSubscriber = (contentsId: number, eventPayload: TerminalDataEvent): void => {
@@ -329,6 +341,18 @@ export function createPtyRuntime(): PtyRuntime {
         externalExitListeners.delete(listener)
       }
     },
+    onState: listener => {
+      externalStateListeners.add(listener)
+      return () => {
+        externalStateListeners.delete(listener)
+      }
+    },
+    onMetadata: listener => {
+      externalMetadataListeners.add(listener)
+      return () => {
+        externalMetadataListeners.delete(listener)
+      }
+    },
     attach: async (contentsId, sessionId) => {
       manager.attach(contentsId, sessionId)
     },
@@ -372,6 +396,8 @@ export function createPtyRuntime(): PtyRuntime {
       terminalProbeBufferBySession.clear()
       externalDataListeners.clear()
       externalExitListeners.clear()
+      externalStateListeners.clear()
+      externalMetadataListeners.clear()
       warnedWriteSessions.clear()
       ptyHost.dispose()
     },

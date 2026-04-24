@@ -32,6 +32,14 @@ function emitToListeners<TEvent>(listeners: PtyListenerMap<TEvent>, event: TEven
   })
 }
 
+function normalizeTerminalSessionState(value: unknown): 'working' | 'standby' | null {
+  if (value === 'working' || value === 'standby') {
+    return value
+  }
+
+  return null
+}
+
 function resolvePtyWebSocketUrl(): string {
   const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const token = getBrowserQueryToken()
@@ -56,6 +64,8 @@ export class BrowserPtyClient {
   private readonly geometryListeners = new Set<(event: TerminalGeometryEvent) => void>()
   private readonly stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   private readonly metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
+  private readonly latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
+  private readonly latestMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
 
   private cancelMetadataWatcher(sessionId: string): void {
     const watcher = this.metadataWatchers.get(sessionId)
@@ -292,6 +302,46 @@ export class BrowserPtyClient {
       return
     }
 
+    if (type === 'state') {
+      const state = normalizeTerminalSessionState(record.state)
+      if (!state) {
+        return
+      }
+
+      const eventPayload: TerminalSessionStateEvent = { sessionId, state }
+      this.latestStateBySessionId.set(sessionId, eventPayload)
+      emitToListeners(this.stateListeners, eventPayload)
+      return
+    }
+
+    if (type === 'metadata') {
+      const resumeSessionId =
+        typeof record.resumeSessionId === 'string' && record.resumeSessionId.trim().length > 0
+          ? record.resumeSessionId.trim()
+          : null
+      const profileId =
+        typeof record.profileId === 'string' && record.profileId.trim().length > 0
+          ? record.profileId.trim()
+          : null
+      const runtimeKind =
+        record.runtimeKind === 'windows' ||
+        record.runtimeKind === 'wsl' ||
+        record.runtimeKind === 'posix'
+          ? record.runtimeKind
+          : null
+
+      const eventPayload: TerminalSessionMetadataEvent = {
+        sessionId,
+        resumeSessionId,
+        ...(profileId ? { profileId } : {}),
+        ...(runtimeKind ? { runtimeKind } : {}),
+      }
+      this.latestMetadataBySessionId.set(sessionId, eventPayload)
+      emitToListeners(this.metadataListeners, eventPayload)
+      this.cancelMetadataWatcher(sessionId)
+      return
+    }
+
     if (type === 'overflow') {
       try {
         const snapshot = await this.snapshot({ sessionId })
@@ -472,6 +522,9 @@ export class BrowserPtyClient {
 
   public onState(listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn {
     this.stateListeners.add(listener)
+    this.latestStateBySessionId.forEach(event => {
+      listener(event)
+    })
     return () => {
       this.stateListeners.delete(listener)
     }
@@ -479,6 +532,9 @@ export class BrowserPtyClient {
 
   public onMetadata(listener: (event: TerminalSessionMetadataEvent) => void): UnsubscribeFn {
     this.metadataListeners.add(listener)
+    this.latestMetadataBySessionId.forEach(event => {
+      listener(event)
+    })
     return () => {
       this.metadataListeners.delete(listener)
     }

@@ -93,4 +93,43 @@ describe('createPtyEventHub', () => {
     expect(unsubscribeStateSource).toHaveBeenCalledTimes(1)
     expect(unsubscribeMetadataSource).toHaveBeenCalledTimes(1)
   })
+
+  it('replays cached state and metadata to later listeners', () => {
+    let stateListener: ((event: TerminalSessionStateEvent) => void) | undefined
+    let metadataListener: ((event: TerminalSessionMetadataEvent) => void) | undefined
+
+    const hub = createPtyEventHub({
+      onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
+      onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => () => undefined),
+      onState: vi.fn((listener: (event: TerminalSessionStateEvent) => void) => {
+        stateListener = listener
+        return () => undefined
+      }),
+      onMetadata: vi.fn((listener: (event: TerminalSessionMetadataEvent) => void) => {
+        metadataListener = listener
+        return () => undefined
+      }),
+    })
+
+    hub.onState(() => undefined)
+    hub.onMetadata(() => undefined)
+
+    stateListener?.({ sessionId: 'session-1', state: 'standby' })
+    metadataListener?.({ sessionId: 'session-1', resumeSessionId: 'resume-1' })
+
+    const lateStateListener = vi.fn()
+    const lateMetadataListener = vi.fn()
+
+    hub.onSessionState('session-1', lateStateListener)
+    hub.onSessionMetadata('session-1', lateMetadataListener)
+
+    expect(lateStateListener).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      state: 'standby',
+    })
+    expect(lateMetadataListener).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      resumeSessionId: 'resume-1',
+    })
+  })
 })
