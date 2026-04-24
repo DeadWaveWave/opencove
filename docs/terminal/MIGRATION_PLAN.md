@@ -186,6 +186,7 @@ Current landing:
 - cached raw screen state no longer overrides a worker `presentationSnapshot`
 - main-side raw PTY snapshot mirrors are removed from the production path
 - terminal and agent placeholder scrollback now persist from renderer-side publish as UX-only cache
+- renderer screen cache now carries serialized screen + geometry only; cached raw snapshot is no longer part of restore correctness
 
 Remaining:
 

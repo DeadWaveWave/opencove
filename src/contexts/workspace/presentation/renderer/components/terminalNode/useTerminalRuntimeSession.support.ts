@@ -8,7 +8,6 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { AgentLaunchMode, WorkspaceNodeKind } from '../../types'
 import type { AttachablePtyApi } from './attachablePty'
 import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
-import type { CachedTerminalScreenState } from './screenStateCache'
 import type { TerminalThemeMode } from './theme'
 import { registerRuntimeTerminalRendererHealth } from './runtimeRendererHealth'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
@@ -18,13 +17,11 @@ import type { XtermSession } from './xtermSession'
 export function shouldGateRestoredAgentInput(options: {
   kind: WorkspaceNodeKind
   isLiveSessionReattach: boolean
-  cachedScreenState: CachedTerminalScreenState | null
   persistedSnapshot: string
 }): boolean {
   return (
     options.kind === 'agent' &&
     !options.isLiveSessionReattach &&
-    options.cachedScreenState === null &&
     options.persistedSnapshot.trim().length > 0
   )
 }
@@ -32,7 +29,6 @@ export function shouldGateRestoredAgentInput(options: {
 export function shouldProtectRestoredAgentHistory(options: {
   kind: WorkspaceNodeKind
   isLiveSessionReattach: boolean
-  cachedScreenState: CachedTerminalScreenState | null
   agentResumeSessionIdVerified: boolean
   agentLaunchMode: AgentLaunchMode | null
   persistedSnapshot: string
@@ -40,7 +36,6 @@ export function shouldProtectRestoredAgentHistory(options: {
   return (
     options.kind === 'agent' &&
     !options.isLiveSessionReattach &&
-    options.cachedScreenState === null &&
     (options.agentResumeSessionIdVerified ||
       options.agentLaunchMode === 'resume' ||
       options.persistedSnapshot.trim().length > 0)

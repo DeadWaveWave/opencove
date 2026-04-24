@@ -67,9 +67,7 @@ type TerminalSelectionTestApi = {
   getCachedScreenStateSummary: (nodeId: string) => {
     sessionId: string
     serializedLength: number
-    rawSnapshotLength: number
     serializedHasFrameToken: boolean
-    rawSnapshotHasFrameToken: boolean
   } | null
   emitBinaryInput: (nodeId: string, data: string) => boolean
   getSelection: (nodeId: string) => string | null
@@ -259,9 +257,7 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return {
           sessionId: cached.sessionId,
           serializedLength: cached.serialized.length,
-          rawSnapshotLength: cached.rawSnapshot.length,
           serializedHasFrameToken: cached.serialized.includes('FRAME_29999_TOKEN'),
-          rawSnapshotHasFrameToken: cached.rawSnapshot.includes('FRAME_29999_TOKEN'),
         }
       },
       emitBinaryInput: (nodeId, data) => {

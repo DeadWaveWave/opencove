@@ -161,14 +161,12 @@ export function useTerminalRuntimeSession({
     const shouldGateInitialUserInput = shouldGateRestoredAgentInput({
       kind,
       isLiveSessionReattach,
-      cachedScreenState,
       persistedSnapshot,
     })
     const shouldProtectRestoredHistory = (): boolean =>
       shouldProtectRestoredAgentHistory({
         kind,
         isLiveSessionReattach,
-        cachedScreenState,
         agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
         agentLaunchMode: agentLaunchModeRef.current,
         persistedSnapshot: scrollbackBuffer.snapshot(),

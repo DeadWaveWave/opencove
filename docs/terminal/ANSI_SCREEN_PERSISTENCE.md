@@ -45,11 +45,11 @@ caches an xterm SerializeAddon-based "committed screen state" on unmount.
 ## Restore Pipeline (Current)
 
 1. On unmount:
-   - cache `{ serializedScreen, rawSnapshotBase, cols, rows }` per `nodeId/sessionId`
+   - cache `{ serializedScreen, cols, rows }` per `nodeId/sessionId`
 2. On mount:
    - write cached `serializedScreen`
-   - fetch `pty.snapshot` and compute a delta (suffix/prefix overlap)
-   - for normal-buffer restores: append the delta to catch up
+   - fetch `pty.snapshot` and reconcile from persisted scrollback truth
+   - for normal-buffer restores: replace the placeholder with the merged live snapshot
    - for alternate-buffer restores: only append the delta when it contains an explicit alt-buffer exit (`ESC[?1049l`)
      otherwise, skip the delta to avoid clobbering the committed full-screen snapshot with prompt/redraw output
 

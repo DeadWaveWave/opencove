@@ -69,10 +69,7 @@ export async function hydrateTerminalFromSnapshot({
     }
   }
 
-  const baseRawSnapshot =
-    presentationSnapshot === null && cachedScreenState && cachedScreenState.rawSnapshot.length > 0
-      ? cachedScreenState.rawSnapshot
-      : persistedSnapshot
+  const baseRawSnapshot = persistedSnapshot
   let rawSnapshot = baseRawSnapshot
 
   if (presentationSnapshot?.serializedScreen.length) {
@@ -93,19 +90,20 @@ export async function hydrateTerminalFromSnapshot({
   const restoreFromLivePtySnapshot = async (): Promise<string> => {
     await attachPromise.catch(() => undefined)
     const snapshot = await takePtySnapshot({ sessionId })
+    const mergedSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
 
     if (cachedSerializedScreen.length > 0) {
-      const delta = resolveScrollbackDelta(baseRawSnapshot, snapshot.data)
-      const mergedSnapshot = mergeScrollbackSnapshots(baseRawSnapshot, snapshot.data)
+      const delta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
 
-      if (!shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)) {
-        await writeTerminalAsync(terminal, delta)
+      if (shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)) {
+        return mergedSnapshot
       }
 
+      terminal.reset()
+      await writeTerminalAsync(terminal, mergedSnapshot)
       return mergedSnapshot
     }
 
-    const mergedSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
     const delta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
     await writeTerminalAsync(terminal, delta)
     return mergedSnapshot

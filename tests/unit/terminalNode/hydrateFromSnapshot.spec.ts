@@ -78,7 +78,6 @@ describe('hydrateFromSnapshot', () => {
       cachedScreenState: {
         sessionId: 'agent-session-presentation',
         serialized: 'cached serialized screen',
-        rawSnapshot: 'cached raw snapshot',
         cols: 90,
         rows: 28,
       },
@@ -108,6 +107,53 @@ describe('hydrateFromSnapshot', () => {
       'cached serialized screen',
       expect.any(Function),
     )
+  })
+
+  it('uses cached screen only as a visual placeholder before replacing with live snapshot fallback', async () => {
+    const terminal = {
+      cols: 80,
+      rows: 24,
+      resize: vi.fn(),
+      reset: vi.fn(),
+      write: vi.fn((data: string, callback?: () => void) => {
+        callback?.()
+        return data
+      }),
+    }
+    const onHydratedWriteCommitted = vi.fn()
+    const finalizeHydration = vi.fn()
+
+    await hydrateTerminalFromSnapshot({
+      attachPromise: Promise.resolve(),
+      sessionId: 'terminal-session-cached',
+      terminal: terminal as never,
+      kind: 'terminal',
+      cachedScreenState: {
+        sessionId: 'terminal-session-cached',
+        serialized: 'cached serialized screen',
+        cols: 90,
+        rows: 28,
+      },
+      persistedSnapshot: '',
+      takePtySnapshot: vi.fn(async () => ({ data: 'live fallback output' })),
+      isDisposed: () => false,
+      onHydratedWriteCommitted,
+      finalizeHydration,
+    })
+
+    expect(terminal.write).toHaveBeenNthCalledWith(
+      1,
+      'cached serialized screen',
+      expect.any(Function),
+    )
+    expect(terminal.reset).toHaveBeenCalledTimes(1)
+    expect(terminal.write).toHaveBeenNthCalledWith(
+      2,
+      'live fallback output',
+      expect.any(Function),
+    )
+    expect(onHydratedWriteCommitted).toHaveBeenLastCalledWith('live fallback output')
+    expect(finalizeHydration).toHaveBeenCalledWith('live fallback output')
   })
 
   it('uses the live PTY snapshot for agent live reattach hydration', async () => {

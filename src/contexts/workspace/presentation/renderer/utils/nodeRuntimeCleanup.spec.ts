@@ -33,7 +33,6 @@ describe('cleanupNodeRuntimeArtifacts', () => {
     setCachedTerminalScreenState('node-1', {
       sessionId: 'session-1',
       serialized: 'SERIALIZED',
-      rawSnapshot: 'snapshot',
       cols: 80,
       rows: 24,
     })
