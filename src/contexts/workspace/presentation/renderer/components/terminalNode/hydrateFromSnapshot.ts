@@ -81,6 +81,7 @@ export async function hydrateTerminalFromSnapshot({
 
     await writeTerminalAsync(terminal, presentationSnapshot.serializedScreen)
     onPresentationSnapshotAccepted?.(presentationSnapshot)
+    rawSnapshot = presentationSnapshot.serializedScreen
     onHydratedWriteCommitted(rawSnapshot)
   } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
     await writeTerminalAsync(terminal, placeholderPayload)

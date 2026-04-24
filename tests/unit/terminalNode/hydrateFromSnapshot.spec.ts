@@ -49,8 +49,8 @@ describe('hydrateFromSnapshot', () => {
     expect(terminal.resize).toHaveBeenCalledWith(96, 30)
     expect(terminal.write).toHaveBeenCalledWith('\u001b[?1049hLIVE_SCREEN', expect.any(Function))
     expect(onPresentationSnapshotAccepted).toHaveBeenCalled()
-    expect(onHydratedWriteCommitted).toHaveBeenCalledWith('persisted placeholder')
-    expect(finalizeHydration).toHaveBeenCalledWith('persisted placeholder')
+    expect(onHydratedWriteCommitted).toHaveBeenCalledWith('\u001b[?1049hLIVE_SCREEN')
+    expect(finalizeHydration).toHaveBeenCalledWith('\u001b[?1049hLIVE_SCREEN')
     expect(takePtySnapshot).not.toHaveBeenCalled()
   })
 
@@ -100,8 +100,8 @@ describe('hydrateFromSnapshot', () => {
       finalizeHydration,
     })
 
-    expect(onHydratedWriteCommitted).toHaveBeenCalledWith('persisted placeholder')
-    expect(finalizeHydration).toHaveBeenCalledWith('persisted placeholder')
+    expect(onHydratedWriteCommitted).toHaveBeenCalledWith('worker serialized screen')
+    expect(finalizeHydration).toHaveBeenCalledWith('worker serialized screen')
     expect(terminal.write).toHaveBeenCalledWith('worker serialized screen', expect.any(Function))
     expect(terminal.write).not.toHaveBeenCalledWith(
       'cached serialized screen',

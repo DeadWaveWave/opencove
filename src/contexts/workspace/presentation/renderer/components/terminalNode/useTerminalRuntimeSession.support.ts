@@ -19,11 +19,12 @@ export function shouldGateRestoredAgentInput(options: {
   isLiveSessionReattach: boolean
   persistedSnapshot: string
 }): boolean {
-  return (
-    options.kind === 'agent' &&
-    !options.isLiveSessionReattach &&
-    options.persistedSnapshot.trim().length > 0
-  )
+  void options
+
+  // Live runtime sessions should never gate user input behind renderer-side restore heuristics.
+  // If the user types before the runtime session mounts, the placeholder session already buffers
+  // that input for handoff. Once a real sessionId exists, correctness belongs to the runtime.
+  return false
 }
 
 export function shouldProtectRestoredAgentHistory(options: {
@@ -33,9 +34,10 @@ export function shouldProtectRestoredAgentHistory(options: {
   agentLaunchMode: AgentLaunchMode | null
   persistedSnapshot: string
 }): boolean {
+  void options.isLiveSessionReattach
+
   return (
     options.kind === 'agent' &&
-    !options.isLiveSessionReattach &&
     (options.agentResumeSessionIdVerified ||
       options.agentLaunchMode === 'resume' ||
       options.persistedSnapshot.trim().length > 0)
