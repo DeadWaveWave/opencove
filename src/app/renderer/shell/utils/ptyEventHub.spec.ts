@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type {
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalGeometryEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '@shared/contracts/dto'
@@ -59,12 +60,16 @@ describe('createPtyEventHub', () => {
   it('tears down every low-level subscription on dispose', () => {
     const unsubscribeDataSource = vi.fn()
     const unsubscribeExitSource = vi.fn()
+    const unsubscribeGeometrySource = vi.fn()
     const unsubscribeStateSource = vi.fn()
     const unsubscribeMetadataSource = vi.fn()
 
     const source = {
       onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => unsubscribeDataSource),
       onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => unsubscribeExitSource),
+      onGeometry: vi.fn(
+        (_listener: (event: TerminalGeometryEvent) => void) => unsubscribeGeometrySource,
+      ),
       onState: vi.fn(
         (_listener: (event: TerminalSessionStateEvent) => void) => unsubscribeStateSource,
       ),
@@ -76,6 +81,7 @@ describe('createPtyEventHub', () => {
     const hub = createPtyEventHub(source)
     hub.onData(() => undefined)
     hub.onExit(() => undefined)
+    hub.onGeometry(() => undefined)
     hub.onState(() => undefined)
     hub.onMetadata(() => undefined)
 
@@ -83,6 +89,7 @@ describe('createPtyEventHub', () => {
 
     expect(unsubscribeDataSource).toHaveBeenCalledTimes(1)
     expect(unsubscribeExitSource).toHaveBeenCalledTimes(1)
+    expect(unsubscribeGeometrySource).toHaveBeenCalledTimes(1)
     expect(unsubscribeStateSource).toHaveBeenCalledTimes(1)
     expect(unsubscribeMetadataSource).toHaveBeenCalledTimes(1)
   })

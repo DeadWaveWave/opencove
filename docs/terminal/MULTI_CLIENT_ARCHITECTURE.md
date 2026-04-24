@@ -2,7 +2,7 @@
 
 > Status: Canonical technical direction
 > Scope: terminal and agent nodes rendered across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-23
+> Last updated: 2026-04-24
 
 Verification workflow:
 
@@ -167,6 +167,13 @@ worker startup -> read durable records -> prewarm default visible sessions
 
 Renderer code must not spawn, resume, fallback, or guess a restored agent session as a correctness path.
 
+Current migration landing:
+
+- the shared cold-start runtime contract is `session.prepareOrRevive`
+- active workspace hydration should consume that worker result before runtime nodes first mount
+- Desktop no longer falls back to a main-owned standalone PTY/runtime host at startup
+- renderer-local revive logic remains fallback-only until the last cache/mirror cleanup lands
+
 ## Renderer Cache And Placeholder
 
 Allowed:
@@ -174,6 +181,7 @@ Allowed:
 - skeleton or recovering UI before worker state is available
 - selection, local scroll position, zoom, and viewport preference
 - performance optimizations that can be dropped at any time
+- cached serialized screen or dimensions as a temporary placeholder while worker truth is still pending
 
 Forbidden:
 
@@ -181,6 +189,7 @@ Forbidden:
 - placeholder replacing a worker snapshot later
 - destructive output heuristics resetting an accepted baseline
 - renderer cache writing back canonical presentation state
+- cached raw snapshot overriding an accepted worker `presentationSnapshot`
 
 ## Renderer Health
 

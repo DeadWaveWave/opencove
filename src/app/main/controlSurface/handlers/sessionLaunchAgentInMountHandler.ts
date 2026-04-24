@@ -233,6 +233,8 @@ export function registerSessionLaunchAgentInMountHandler(
           cwd: remoteResult.executionContext.workingDirectory,
           command: remoteResult.command,
           args: remoteResult.args,
+          cols: 80,
+          rows: 24,
         })
 
         const executionContext = resolveExecutionContextDto(
@@ -418,6 +420,8 @@ export function registerSessionLaunchAgentInMountHandler(
         cwd,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        cols: 80,
+        rows: 24,
       })
 
       return {

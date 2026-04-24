@@ -26,6 +26,7 @@ import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
+import { registerSessionPrepareOrReviveHandler } from './sessionPrepareOrReviveHandler'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
 import {
   isRecord,
@@ -329,6 +330,8 @@ export function registerSessionHandlers(
         cwd: workingDirectory,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        cols: 80,
+        rows: 24,
       })
 
       return {
@@ -346,6 +349,10 @@ export function registerSessionHandlers(
   })
 
   registerSessionLaunchAgentInMountHandler(controlSurface, { ...deps, sessions })
+  registerSessionPrepareOrReviveHandler(controlSurface, {
+    getPersistenceStore: deps.getPersistenceStore,
+    ptyStreamHub: deps.ptyStreamHub,
+  })
 
   controlSurface.register('session.get', {
     kind: 'query',

@@ -2,8 +2,10 @@ import { webContents } from 'electron'
 import WebSocket from 'ws'
 import type {
   ListTerminalProfilesResult,
+  PresentationSnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  TerminalGeometryCommitReason,
   TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
@@ -11,21 +13,22 @@ import type { SpawnPtyOptions } from '../../../../platform/process/pty/types'
 import type { PtyRuntime } from '../../../../contexts/terminal/presentation/main-ipc/runtime'
 import {
   PTY_STREAM_PROTOCOL_VERSION,
-  PTY_STREAM_WS_PATH,
   PTY_STREAM_WS_SUBPROTOCOL,
 } from '../ptyStream/ptyStreamService'
 import type { ControlSurfaceRemoteEndpointResolver } from './controlSurfaceHttpClient'
-import { invokeControlSurface } from './controlSurfaceHttpClient'
 import {
   createRemotePtyStreamMessageHandler,
   type AttachedSessionState,
 } from './remotePtyStreamMessageHandler'
 import { createRemotePtyRuntimeAgentMetadataWatcher } from './remotePtyRuntime.agentMetadataWatcher'
 import { sendToWebContentsSessionSubscribers } from './remotePtyRuntime.webContents'
-
-function resolveWsUrl(endpoint: { hostname: string; port: number }): string {
-  return `ws://${endpoint.hostname}:${endpoint.port}${PTY_STREAM_WS_PATH}`
-}
+import {
+  invokeRemoteControlSurfaceValue,
+  parsePresentationSnapshot,
+  parseSnapshotScrollback,
+  parseSpawnTerminalResult,
+  resolveRemotePtyWsUrl,
+} from './remotePtyRuntime.support'
 export type RemotePtyRuntime = PtyRuntime & {
   noteSessionRolePreference: (sessionId: string, role: 'viewer' | 'controller') => void
 }
@@ -144,7 +147,7 @@ export function createRemotePtyRuntime(options: {
       throw createAppError('worker.unavailable')
     }
 
-    const url = resolveWsUrl(endpoint)
+    const url = resolveRemotePtyWsUrl(endpoint)
     const ws = new WebSocket(url, PTY_STREAM_WS_SUBPROTOCOL, {
       headers: {
         authorization: `Bearer ${endpoint.token}`,
@@ -281,41 +284,15 @@ export function createRemotePtyRuntime(options: {
   }
 
   const spawnTerminalSession = async (input: SpawnTerminalInput): Promise<SpawnTerminalResult> => {
-    const endpoint = await options.endpointResolver()
-    if (!endpoint) {
-      throw createAppError('worker.unavailable')
-    }
-
-    const { httpStatus, result } = await invokeControlSurface(endpoint, {
+    const value = await invokeRemoteControlSurfaceValue<unknown>({
+      endpointResolver: options.endpointResolver,
       kind: 'command',
       id: 'pty.spawn',
       payload: input,
+      errorMessage: 'Failed to spawn remote terminal session',
     })
-
-    if (httpStatus !== 200 || !result || result.ok !== true) {
-      throw new Error('Failed to spawn remote terminal session')
-    }
-
-    const value = result.value
-    if (!value || typeof value !== 'object' || Array.isArray(value)) {
-      throw new Error('Invalid pty.spawn response payload')
-    }
-
-    const record = value as Record<string, unknown>
-    const sessionIdRaw = record.sessionId
-    if (typeof sessionIdRaw !== 'string') {
-      throw new Error('Invalid pty.spawn response payload')
-    }
-
-    const sessionId = sessionIdRaw.trim()
+    const { sessionId, profileId, runtimeKind } = parseSpawnTerminalResult(value)
     noteSessionRolePreference(sessionId, 'controller')
-
-    const profileId = typeof record.profileId === 'string' ? record.profileId : null
-    const runtimeKindRaw = record.runtimeKind
-    const runtimeKind =
-      runtimeKindRaw === 'windows' || runtimeKindRaw === 'wsl' || runtimeKindRaw === 'posix'
-        ? (runtimeKindRaw as SpawnTerminalResult['runtimeKind'])
-        : undefined
 
     return { sessionId, profileId, runtimeKind }
   }
@@ -345,24 +322,28 @@ export function createRemotePtyRuntime(options: {
     write: async (sessionId: string, data: string, _encoding: TerminalWriteEncoding = 'utf8') => {
       await sendSocketMessage({ type: 'write', sessionId, data })
     },
-    resize: async (sessionId: string, cols: number, rows: number) => {
-      await sendSocketMessage({ type: 'resize', sessionId, cols, rows })
+    resize: async (
+      sessionId: string,
+      cols: number,
+      rows: number,
+      reason?: TerminalGeometryCommitReason,
+    ) => {
+      await sendSocketMessage({
+        type: 'resize',
+        sessionId,
+        cols,
+        rows,
+        ...(reason ? { reason } : {}),
+      })
     },
     kill: async (sessionId: string) => {
-      const endpoint = await options.endpointResolver()
-      if (!endpoint) {
-        throw createAppError('worker.unavailable')
-      }
-
-      const { httpStatus, result } = await invokeControlSurface(endpoint, {
+      await invokeRemoteControlSurfaceValue<void>({
+        endpointResolver: options.endpointResolver,
         kind: 'command',
         id: 'session.kill',
         payload: { sessionId },
+        errorMessage: 'Failed to kill remote session',
       })
-
-      if (httpStatus !== 200 || !result || result.ok !== true) {
-        throw new Error('Failed to kill remote session')
-      }
     },
     onData: listener => {
       externalDataListeners.add(listener)
@@ -420,37 +401,39 @@ export function createRemotePtyRuntime(options: {
       }
     },
     snapshot: async (sessionId: string) => {
-      const endpoint = await options.endpointResolver()
-      if (!endpoint) {
-        throw createAppError('worker.unavailable')
-      }
-
-      const { httpStatus, result } = await invokeControlSurface(endpoint, {
+      const value = await invokeRemoteControlSurfaceValue<unknown>({
+        endpointResolver: options.endpointResolver,
         kind: 'query',
         id: 'session.snapshot',
         payload: { sessionId },
+        errorMessage: 'Failed to fetch remote session snapshot',
       })
-
-      if (httpStatus !== 200 || !result || result.ok !== true) {
-        throw new Error('Failed to fetch remote session snapshot')
-      }
-
-      const value = result.value
-      if (!value || typeof value !== 'object' || Array.isArray(value)) {
-        throw new Error('Invalid session.snapshot response payload')
-      }
-
-      const record = value as Record<string, unknown>
-      const scrollback = typeof record.scrollback === 'string' ? record.scrollback : ''
-      const toSeqRaw = record.toSeq
-      const toSeq =
-        typeof toSeqRaw === 'number' && Number.isFinite(toSeqRaw) ? Math.floor(toSeqRaw) : null
+      const { scrollback, toSeq } = parseSnapshotScrollback(value)
       const state = attachedSessions.get(sessionId)
       if (state && typeof toSeq === 'number') {
         state.lastSeq = Math.max(state.lastSeq, toSeq)
       }
 
       return scrollback
+    },
+    presentationSnapshot: async (
+      sessionId: string,
+    ): Promise<PresentationSnapshotTerminalResult> => {
+      const value = await invokeRemoteControlSurfaceValue<unknown>({
+        endpointResolver: options.endpointResolver,
+        kind: 'query',
+        id: 'session.presentationSnapshot',
+        payload: { sessionId },
+        errorMessage: 'Failed to fetch remote session presentation snapshot',
+      })
+      const snapshot = parsePresentationSnapshot(sessionId, value)
+
+      const state = attachedSessions.get(sessionId)
+      if (state) {
+        state.lastSeq = Math.max(state.lastSeq, snapshot.appliedSeq)
+      }
+
+      return snapshot
     },
     startSessionStateWatcher: () => undefined,
     noteSessionRolePreference,

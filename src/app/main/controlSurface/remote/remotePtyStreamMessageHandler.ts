@@ -1,5 +1,9 @@
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
-import type { TerminalDataEvent, TerminalExitEvent } from '../../../../shared/contracts/dto'
+import type {
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalGeometryEvent,
+} from '../../../../shared/contracts/dto'
 
 export type AttachedSessionState = {
   lastSeq: number
@@ -10,6 +14,7 @@ type PtyStreamMessage =
   | { type: 'attached'; sessionId: string; seq?: number }
   | { type: 'data'; sessionId: string; seq?: number; data?: string }
   | { type: 'exit'; sessionId: string; seq?: number; exitCode?: number }
+  | { type: 'geometry'; sessionId: string; cols?: number; rows?: number; reason?: string }
   | { type: 'overflow'; sessionId: string; seq?: number }
   | { type: 'control_changed'; sessionId: string }
   | { type: 'error'; code?: string; message?: string; sessionId?: string }
@@ -127,6 +132,27 @@ export function createRemotePtyStreamMessageHandler(options: {
         exitCode,
       } satisfies TerminalExitEvent)
       options.externalExitListeners.forEach(listener => listener({ sessionId, exitCode }))
+      return
+    }
+
+    if (message.type === 'geometry') {
+      const cols = normalizeOptionalFiniteInt(message.cols) ?? 0
+      const rows = normalizeOptionalFiniteInt(message.rows) ?? 0
+      const reason =
+        message.reason === 'frame_commit' || message.reason === 'appearance_commit'
+          ? message.reason
+          : null
+
+      if (cols <= 0 || rows <= 0 || !reason) {
+        return
+      }
+
+      options.sendToSessionSubscribers(sessionId, IPC_CHANNELS.ptyGeometry, {
+        sessionId,
+        cols,
+        rows,
+        reason,
+      } satisfies TerminalGeometryEvent)
       return
     }
 

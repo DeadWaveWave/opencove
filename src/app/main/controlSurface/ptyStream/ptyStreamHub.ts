@@ -1,5 +1,9 @@
 import type { WebSocket } from 'ws'
-import type { GetSessionSnapshotResult, ListSessionsResult } from '../../../../shared/contracts/dto'
+import type {
+  GetSessionPresentationSnapshotResult,
+  GetSessionSnapshotResult,
+  ListSessionsResult,
+} from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { PtyStreamClientKind, PtyStreamRole } from './ptyStreamTypes'
 import {
@@ -8,13 +12,19 @@ import {
   sendPtyData,
   sendPtyError,
   sendPtyExit,
+  sendPtyGeometry,
   sendPtyOverflow,
   toControllerDto,
 } from './ptyStreamWire'
 import type { SessionMetadata, SessionState, ClientState } from './ptyStreamState'
-
-const PTY_DATA_FLUSH_DELAY_MS = 32
-const PTY_DATA_MAX_BATCH_CHARS = 256_000
+import {
+  createSessionState,
+  flushBufferedSessionData,
+  queueBufferedSessionData,
+  scheduleSessionFlush,
+  snapshotSessionPresentation,
+  snapshotSessionScrollback,
+} from './ptyStreamHub.support'
 
 export class PtyStreamHub {
   private readonly ptyRuntime: ControlSurfacePtyRuntime
@@ -37,21 +47,7 @@ export class PtyStreamHub {
       return existing
     }
 
-    const created: SessionState = {
-      sessionId,
-      metadata: null,
-      status: 'running',
-      exitCode: null,
-      seq: 0,
-      chunks: [],
-      totalBytes: 0,
-      truncated: false,
-      pendingChunks: [],
-      pendingChars: 0,
-      flushTimer: null,
-      subscribers: new Set(),
-      controllerClientId: null,
-    }
+    const created = createSessionState(sessionId)
 
     this.sessions.set(sessionId, created)
     return created
@@ -104,6 +100,7 @@ export class PtyStreamHub {
   public registerSessionMetadata(metadata: SessionMetadata): void {
     const session = this.ensureSession(metadata.sessionId)
     session.metadata = metadata
+    session.presentationSession.resize(metadata.cols, metadata.rows)
   }
 
   public hasSession(sessionId: string): boolean {
@@ -126,76 +123,32 @@ export class PtyStreamHub {
       client?.rolesBySessionId.delete(sessionId)
     }
 
+    session.presentationSession.dispose()
     this.sessions.delete(sessionId)
   }
 
   private flushSession(session: SessionState): void {
-    if (session.flushTimer) {
-      clearTimeout(session.flushTimer)
-      session.flushTimer = null
-    }
-
-    const chunks = session.pendingChunks
-    if (chunks.length === 0) {
-      session.pendingChars = 0
-      return
-    }
-
-    session.pendingChunks = []
-    session.pendingChars = 0
-
-    const data = chunks.length === 1 ? (chunks[0] ?? '') : chunks.join('')
-    if (data.length === 0) {
-      return
-    }
-
-    session.seq += 1
-    const seq = session.seq
-
-    if (data.length >= this.replayWindowMaxBytes) {
-      session.chunks = [{ seq, data: data.slice(-this.replayWindowMaxBytes) }]
-      session.totalBytes = this.replayWindowMaxBytes
-      session.truncated = true
-      this.broadcastData(session.sessionId, seq, session.chunks[0]?.data ?? '')
-      return
-    }
-
-    session.chunks.push({ seq, data })
-    session.totalBytes += data.length
-
-    while (session.totalBytes > this.replayWindowMaxBytes && session.chunks.length > 0) {
-      const head = session.chunks.shift()
-      if (!head) {
-        break
-      }
-      session.totalBytes -= head.data.length
-      session.truncated = true
-    }
-
-    this.broadcastData(session.sessionId, seq, data)
+    flushBufferedSessionData({
+      session,
+      replayWindowMaxBytes: this.replayWindowMaxBytes,
+      onChunk: (seq, data) => {
+        void session.presentationSession.applyOutput(seq, data)
+        this.broadcastData(session.sessionId, seq, data)
+      },
+    })
   }
 
   private queueSessionData(sessionId: string, data: string): void {
-    if (data.length === 0) {
-      return
-    }
-
     const session = this.ensureSession(sessionId)
-    session.pendingChunks.push(data)
-    session.pendingChars += data.length
-
-    if (session.pendingChars >= PTY_DATA_MAX_BATCH_CHARS) {
+    const shouldFlush = queueBufferedSessionData(session, data)
+    if (shouldFlush) {
       this.flushSession(session)
       return
     }
 
-    if (session.flushTimer) {
-      return
-    }
-
-    session.flushTimer = setTimeout(() => {
+    scheduleSessionFlush(session, () => {
       this.flushSession(session)
-    }, PTY_DATA_FLUSH_DELAY_MS)
+    })
   }
 
   public handlePtyData(sessionId: string, data: string): void {
@@ -248,18 +201,19 @@ export class PtyStreamHub {
     }
 
     this.flushSession(session)
+    return snapshotSessionScrollback(session)
+  }
 
-    const fromSeq = session.chunks[0]?.seq ?? session.seq
-    const scrollback =
-      session.chunks.length === 0 ? '' : session.chunks.map(chunk => chunk.data).join('')
-
-    return {
-      sessionId,
-      fromSeq,
-      toSeq: session.seq,
-      scrollback,
-      truncated: session.truncated,
+  public async presentationSnapshotSession(
+    sessionId: string,
+  ): Promise<GetSessionPresentationSnapshotResult> {
+    const session = this.sessions.get(sessionId)
+    if (!session) {
+      throw new Error('Unknown session')
     }
+
+    this.flushSession(session)
+    return await snapshotSessionPresentation(session)
   }
 
   private broadcastData(sessionId: string, seq: number, data: string): void {
@@ -291,6 +245,27 @@ export class PtyStreamHub {
       }
 
       sendPtyExit(client.ws, sessionId, seq, exitCode)
+    }
+  }
+
+  private broadcastGeometry(
+    sessionId: string,
+    cols: number,
+    rows: number,
+    reason: 'frame_commit' | 'appearance_commit',
+  ): void {
+    const session = this.sessions.get(sessionId)
+    if (!session || session.subscribers.size === 0) {
+      return
+    }
+
+    for (const clientId of session.subscribers) {
+      const client = this.clients.get(clientId)
+      if (!client) {
+        continue
+      }
+
+      sendPtyGeometry(client.ws, sessionId, cols, rows, reason)
     }
   }
 
@@ -453,6 +428,7 @@ export class PtyStreamHub {
     sessionId: string
     cols: number
     rows: number
+    reason?: 'frame_commit' | 'appearance_commit' | null
   }): void {
     const session = this.sessions.get(options.sessionId)
     const client = this.clients.get(options.clientId)
@@ -468,6 +444,23 @@ export class PtyStreamHub {
         'Only controller can resize.',
       )
       return
+    }
+
+    const geometry = session.presentationSession.resize(options.cols, options.rows)
+    if (geometry.changed) {
+      if (session.metadata) {
+        session.metadata = {
+          ...session.metadata,
+          cols: geometry.cols,
+          rows: geometry.rows,
+        }
+      }
+      this.broadcastGeometry(
+        options.sessionId,
+        geometry.cols,
+        geometry.rows,
+        options.reason ?? 'frame_commit',
+      )
     }
 
     this.ptyRuntime.resize(options.sessionId, options.cols, options.rows)

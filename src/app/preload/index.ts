@@ -44,6 +44,8 @@ import type {
   ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
+  PresentationSnapshotTerminalInput,
+  PresentationSnapshotTerminalResult,
   RemoveGitWorktreeInput,
   RemoveGitWorktreeResult,
   RenameGitBranchInput,
@@ -60,6 +62,7 @@ import type {
   SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalGeometryEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
@@ -106,26 +109,9 @@ import type {
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 import { resolveMainProcessPid } from './mainProcessPid'
+import { resolveWindowsPtyMeta } from './windowsPtyMeta'
 
 type UnsubscribeFn = () => void
-
-function resolveWindowsPtyMeta(): { backend: 'conpty'; buildNumber: number } | null {
-  if (process.platform !== 'win32') {
-    return null
-  }
-
-  const systemVersion =
-    typeof process.getSystemVersion === 'function' ? process.getSystemVersion() : ''
-  const build = Number.parseInt(systemVersion.split('.')[2] ?? '', 10)
-  if (!Number.isFinite(build) || build <= 0) {
-    return null
-  }
-
-  return {
-    backend: 'conpty',
-    buildNumber: build,
-  }
-}
 
 // Custom APIs for renderer
 const opencoveApi = {
@@ -384,6 +370,10 @@ const opencoveApi = {
     flushScrollbackMirrors: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyFlushScrollbackMirrors),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
+    presentationSnapshot: (
+      payload: PresentationSnapshotTerminalInput,
+    ): Promise<PresentationSnapshotTerminalResult> =>
+      invokeIpc(IPC_CHANNELS.ptyPresentationSnapshot, payload),
     debugCrashHost: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyDebugCrashHost),
     onData: (listener: (event: TerminalDataEvent) => void): UnsubscribeFn => {
       const handler = (_event: Electron.IpcRendererEvent, payload: TerminalDataEvent) => {
@@ -405,6 +395,17 @@ const opencoveApi = {
 
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ptyExit, handler)
+      }
+    },
+    onGeometry: (listener: (event: TerminalGeometryEvent) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalGeometryEvent) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.ptyGeometry, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.ptyGeometry, handler)
       }
     },
     onState: (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {

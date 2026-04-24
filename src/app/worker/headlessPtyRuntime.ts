@@ -1,6 +1,14 @@
 import { fork } from 'node:child_process'
 import { resolve } from 'node:path'
 import { PtyHostSupervisor } from '../../platform/process/ptyHost/supervisor'
+import type {
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '../../shared/contracts/dto'
+import {
+  createSessionStateWatcherController,
+  type SessionStateWatcherStartInput,
+} from '../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -18,12 +26,32 @@ export interface HeadlessPtyRuntime {
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
+  onState: (listener: (event: TerminalSessionStateEvent) => void) => () => void
+  onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
+  startSessionStateWatcher: (input: SessionStateWatcherStartInput) => void
   dispose: () => void
 }
 
 export function createHeadlessPtyRuntime(options: { userDataPath: string }): HeadlessPtyRuntime {
   const logsDir = resolve(options.userDataPath, 'logs')
   const logFilePath = resolve(logsDir, 'pty-host.log')
+  const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+  const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
+  const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
+
+  const sessionStateWatcher = createSessionStateWatcherController({
+    sendToAllWindows: () => undefined,
+    reportIssue: message => {
+      process.stderr.write(`${message}\n`)
+    },
+    onState: event => {
+      stateListeners.forEach(listener => listener(event))
+    },
+    onMetadata: event => {
+      metadataListeners.forEach(listener => listener(event))
+    },
+  })
 
   const supervisor = new PtyHostSupervisor({
     baseDir: __dirname,
@@ -56,20 +84,63 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
     },
   })
 
+  const disposeDataListener = supervisor.onData(event => {
+    dataListeners.forEach(listener => listener(event))
+  })
+
+  const disposeExitListener = supervisor.onExit(event => {
+    sessionStateWatcher.disposeSession(event.sessionId)
+    exitListeners.forEach(listener => listener(event))
+  })
+
   return {
     spawnSession: async input => await supervisor.spawn(input),
     write: (sessionId, data) => {
       supervisor.write(sessionId, data)
+      sessionStateWatcher.noteInteraction(sessionId, data)
     },
     resize: (sessionId, cols, rows) => {
       supervisor.resize(sessionId, cols, rows)
     },
     kill: sessionId => {
+      sessionStateWatcher.disposeSession(sessionId)
       supervisor.kill(sessionId)
     },
-    onData: listener => supervisor.onData(listener),
-    onExit: listener => supervisor.onExit(listener),
+    onData: listener => {
+      dataListeners.add(listener)
+      return () => {
+        dataListeners.delete(listener)
+      }
+    },
+    onExit: listener => {
+      exitListeners.add(listener)
+      return () => {
+        exitListeners.delete(listener)
+      }
+    },
+    onState: listener => {
+      stateListeners.add(listener)
+      return () => {
+        stateListeners.delete(listener)
+      }
+    },
+    onMetadata: listener => {
+      metadataListeners.add(listener)
+      return () => {
+        metadataListeners.delete(listener)
+      }
+    },
+    startSessionStateWatcher: input => {
+      sessionStateWatcher.start(input)
+    },
     dispose: () => {
+      disposeDataListener()
+      disposeExitListener()
+      dataListeners.clear()
+      exitListeners.clear()
+      stateListeners.clear()
+      metadataListeners.clear()
+      sessionStateWatcher.dispose()
       supervisor.dispose()
     },
   }

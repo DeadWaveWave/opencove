@@ -41,6 +41,8 @@ import type {
   ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
+  PresentationSnapshotTerminalInput,
+  PresentationSnapshotTerminalResult,
   RemoveGitWorktreeInput,
   RemoveGitWorktreeResult,
   RenameGitBranchInput,
@@ -57,6 +59,7 @@ import type {
   SetWindowChromeThemeInput,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalGeometryEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
@@ -235,9 +238,13 @@ export interface OpenCoveApi {
     syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput) => Promise<void>
     flushScrollbackMirrors: () => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
+    presentationSnapshot: (
+      payload: PresentationSnapshotTerminalInput,
+    ) => Promise<PresentationSnapshotTerminalResult>
     debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
     onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
+    onGeometry: (listener: (event: TerminalGeometryEvent) => void) => UnsubscribeFn
     onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
     onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => UnsubscribeFn
   }

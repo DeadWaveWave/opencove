@@ -5,6 +5,8 @@ import type {
   DetachTerminalInput,
   KillTerminalInput,
   ListTerminalProfilesResult,
+  PresentationSnapshotTerminalInput,
+  PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
   SnapshotTerminalInput,
   SnapshotTerminalResult,
@@ -74,7 +76,12 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyResize,
     async (_event, payload: ResizeTerminalInput) => {
       const normalized = normalizeResizeTerminalPayload(payload)
-      await runtime.resize(normalized.sessionId, normalized.cols, normalized.rows)
+      await runtime.resize(
+        normalized.sessionId,
+        normalized.cols,
+        normalized.rows,
+        normalized.reason,
+      )
     },
     { defaultErrorCode: 'terminal.resize_failed' },
   )
@@ -115,6 +122,18 @@ export function registerPtyIpcHandlers(
     { defaultErrorCode: 'terminal.snapshot_failed' },
   )
 
+  registerHandledIpc(
+    IPC_CHANNELS.ptyPresentationSnapshot,
+    async (
+      _event,
+      payload: PresentationSnapshotTerminalInput,
+    ): Promise<PresentationSnapshotTerminalResult> => {
+      const normalized = normalizeSnapshotPayload(payload)
+      return await runtime.presentationSnapshot(normalized.sessionId)
+    },
+    { defaultErrorCode: 'terminal.snapshot_failed' },
+  )
+
   if (process.env.NODE_ENV === 'test' && runtime.debugCrashHost) {
     registerHandledIpc(
       IPC_CHANNELS.ptyDebugCrashHost,
@@ -135,6 +154,7 @@ export function registerPtyIpcHandlers(
       ipcMain.removeHandler(IPC_CHANNELS.ptyAttach)
       ipcMain.removeHandler(IPC_CHANNELS.ptyDetach)
       ipcMain.removeHandler(IPC_CHANNELS.ptySnapshot)
+      ipcMain.removeHandler(IPC_CHANNELS.ptyPresentationSnapshot)
       ipcMain.removeHandler(IPC_CHANNELS.ptyDebugCrashHost)
 
       runtime.dispose()

@@ -14,7 +14,11 @@ import { registerTerminalSelectionTestHandle } from './testHarness'
 import { patchXtermMouseServiceWithRetry } from './patchXtermMouseService'
 import { registerTerminalHitTargetCursorScope } from './hitTargetCursorScope'
 import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
-import { activatePreferredTerminalRenderer, type ActiveTerminalRenderer } from './preferredRenderer'
+import {
+  activatePreferredTerminalRenderer,
+  type ActiveTerminalRenderer,
+  type PreferredTerminalRendererMode,
+} from './preferredRenderer'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { installTerminalEffectiveDevicePixelRatioController } from './effectiveDevicePixelRatio'
 import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
@@ -53,6 +57,8 @@ export function createMountedXtermSession({
   diagnosticsEnabled,
   logTerminalDiagnostics,
   onRendererKindResolved,
+  onRendererIssue,
+  preferredRendererMode = 'auto',
   scheduleWebglPixelSnapping,
   initialViewportZoom = 1,
 }: {
@@ -75,6 +81,8 @@ export function createMountedXtermSession({
   diagnosticsEnabled: boolean
   logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
   onRendererKindResolved?: (kind: ActiveTerminalRenderer['kind']) => void
+  onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
+  preferredRendererMode?: PreferredTerminalRendererMode
   scheduleWebglPixelSnapping?: () => void
   initialViewportZoom?: number
 }): XtermSession {
@@ -148,10 +156,12 @@ export function createMountedXtermSession({
       },
     })
     renderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
+      preferredMode: preferredRendererMode,
       onRendererKindChange: kind => {
         onRendererKindResolved?.(kind)
         scheduleWebglPixelSnapping?.()
       },
+      onRendererIssue,
     })
     onRendererKindResolved?.(renderer.kind)
     try {

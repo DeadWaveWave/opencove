@@ -129,11 +129,14 @@ Give restart restore and `cmd+w` reopen the same worker-owned prepare/revive pat
 - worker prepare/revive state machine
 - worker prewarm for default visible sessions
 - renderer no longer chooses resume/new/fallback as correctness behavior
+- `session.prepareOrRevive` becomes the shared Desktop/Web worker contract for cold restore
+- initial active workspace hydration accepts worker-prepared runtime nodes before first mount
 
 ### Acceptance
 
 - old Agent recovery is worker-owned
 - failure states are visible and recoverable, not fake-restored
+- app restart first restore no longer depends on `mainPid`-based sessionId dropping
 
 ### Minimum Verification
 
@@ -142,6 +145,14 @@ Give restart restore and `cmd+w` reopen the same worker-owned prepare/revive pat
 - E2E for old Agent restore and continued interaction
 
 ## Phase 5: Renderer Health And Resync
+
+Status: complete
+
+Current landing:
+
+- session-local renderer health policy is in place
+- blank/corrupt WebGL sessions rebuild locally and can force DOM fallback
+- real `scripts/` validation covers restart restore, reopen restore, and shared Web UI session flows
 
 ### Objective
 
@@ -165,6 +176,19 @@ Handle WebGL/canvas/backend failure as a local renderer health issue that resync
 - real repro for dual-client and long-output cases
 
 ## Phase 6: Old Owner Cleanup
+
+Status: in progress
+
+Current landing:
+
+- Desktop startup no longer boots a main-owned standalone PTY/runtime path
+- Home Worker is now the required Desktop runtime host
+- cached raw screen state no longer overrides a worker `presentationSnapshot`
+
+Remaining:
+
+- trim renderer cache APIs down to explicitly UX-only use
+- remove remaining main-side raw snapshot mirror duties that are still persistence-oriented
 
 ### Objective
 

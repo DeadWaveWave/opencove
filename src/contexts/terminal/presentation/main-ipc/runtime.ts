@@ -6,9 +6,12 @@ import type {
   AgentLaunchMode,
   AgentProviderId,
   ListTerminalProfilesResult,
+  PresentationSnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
+  TerminalGeometryCommitReason,
+  TerminalGeometryEvent,
   TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
@@ -36,13 +39,19 @@ export interface PtyRuntime {
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => Promise<void>
-  resize: (sessionId: string, cols: number, rows: number) => Promise<void>
+  resize: (
+    sessionId: string,
+    cols: number,
+    rows: number,
+    reason?: TerminalGeometryCommitReason,
+  ) => Promise<void>
   kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
   attach: (contentsId: number, sessionId: string) => Promise<void>
   detach: (contentsId: number, sessionId: string) => Promise<void>
   snapshot: (sessionId: string) => Promise<string>
+  presentationSnapshot: (sessionId: string) => Promise<PresentationSnapshotTerminalResult>
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
   debugCrashHost?: () => void
   dispose: () => void
@@ -243,6 +252,7 @@ export function createPtyRuntime(): PtyRuntime {
       })
 
       manager.registerSession(sessionId)
+      manager.resize(sessionId, input.cols, input.rows)
       registerSessionProbeState(sessionId)
 
       return {
@@ -266,6 +276,7 @@ export function createPtyRuntime(): PtyRuntime {
       })
 
       manager.registerSession(sessionId)
+      manager.resize(sessionId, options.cols, options.rows)
       registerSessionProbeState(sessionId)
       return { sessionId }
     },
@@ -289,8 +300,17 @@ export function createPtyRuntime(): PtyRuntime {
       ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: async (sessionId, cols, rows) => {
+    resize: async (sessionId, cols, rows, reason) => {
+      const geometry = manager.resize(sessionId, cols, rows, reason)
       ptyHost.resize(sessionId, cols, rows)
+      if (geometry.changed && reason) {
+        sendToAllWindows(IPC_CHANNELS.ptyGeometry, {
+          sessionId,
+          cols: geometry.cols,
+          rows: geometry.rows,
+          reason,
+        } satisfies TerminalGeometryEvent)
+      }
     },
     kill: async sessionId => {
       manager.kill(sessionId)
@@ -317,6 +337,9 @@ export function createPtyRuntime(): PtyRuntime {
     },
     snapshot: async sessionId => {
       return manager.snapshot(sessionId)
+    },
+    presentationSnapshot: async sessionId => {
+      return await manager.presentationSnapshot(sessionId)
     },
     startSessionStateWatcher: ({
       sessionId,

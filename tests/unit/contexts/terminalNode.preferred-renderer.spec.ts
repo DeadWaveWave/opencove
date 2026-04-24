@@ -176,6 +176,31 @@ describe('activatePreferredTerminalRenderer', () => {
     }
   })
 
+  it('keeps the DOM renderer when recovery forces dom mode', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const loadAddon = vi.fn()
+      const activeRenderer = activatePreferredTerminalRenderer(
+        {
+          loadAddon,
+        } as never,
+        'opencode',
+        { preferredMode: 'dom' },
+      )
+
+      expect(loadAddon).not.toHaveBeenCalled()
+      expect(activeRenderer.kind).toBe('dom')
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
   it('loads the WebGL renderer for Codex terminals when webgl is available', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
@@ -206,12 +231,13 @@ describe('activatePreferredTerminalRenderer', () => {
       const { activatePreferredTerminalRenderer } =
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const onRendererKindChange = vi.fn()
+      const onRendererIssue = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer(
         {
           loadAddon: vi.fn(),
         } as never,
         'opencode',
-        { onRendererKindChange },
+        { onRendererKindChange, onRendererIssue },
       )
 
       expect(activeRenderer.kind).toBe('webgl')
@@ -221,6 +247,10 @@ describe('activatePreferredTerminalRenderer', () => {
 
       expect(webglAddonDispose).toHaveBeenCalledTimes(1)
       expect(onRendererKindChange).toHaveBeenCalledWith('dom')
+      expect(onRendererIssue).toHaveBeenCalledWith({
+        reason: 'context_loss',
+        forceDom: true,
+      })
       expect(activeRenderer.kind).toBe('dom')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext

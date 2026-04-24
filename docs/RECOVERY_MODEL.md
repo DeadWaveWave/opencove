@@ -22,6 +22,12 @@ Current main note (`2026-04-23`):
 - latest `origin/main` still restores and relaunches part of the agent/session flow from renderer hydration code such as `src/app/renderer/shell/hooks/useHydrateAppState.helpers.ts` and `src/contexts/agent/presentation/renderer/hydrateAgentNode.ts`.
 - treat those paths as migration debt, not as the desired long-term owner model.
 
+Migration update (`2026-04-24`):
+
+- active workspace cold-start hydration now prefers the worker `session.prepareOrRevive` contract before runtime nodes mount.
+- renderer-local `hydrateRuntimeNode` remains only as fallback when the worker contract is unavailable; it is no longer the preferred production recovery path.
+- Desktop startup no longer falls back to a main-owned standalone PTY/runtime host; recovery assumes a worker endpoint is available.
+
 ## 1. 问题背景
 
 当前恢复链路的核心风险，不是某个 if 写错，而是**真相分散**：

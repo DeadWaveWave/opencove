@@ -51,10 +51,13 @@ export interface WriteTerminalInput {
   encoding?: TerminalWriteEncoding
 }
 
+export type TerminalGeometryCommitReason = 'frame_commit' | 'appearance_commit'
+
 export interface ResizeTerminalInput {
   sessionId: string
   cols: number
   rows: number
+  reason: TerminalGeometryCommitReason
 }
 
 export interface KillTerminalInput {
@@ -90,6 +93,30 @@ export interface SnapshotTerminalResult {
   data: string
 }
 
+export type TerminalBufferKind = 'normal' | 'alternate' | 'unknown'
+
+export interface TerminalCursorPosition {
+  x: number
+  y: number
+}
+
+export interface PresentationSnapshotTerminalInput {
+  sessionId: string
+}
+
+export interface PresentationSnapshotTerminalResult {
+  sessionId: string
+  epoch: number
+  appliedSeq: number
+  presentationRevision: number
+  cols: number
+  rows: number
+  bufferKind: TerminalBufferKind
+  cursor: TerminalCursorPosition
+  title: string | null
+  serializedScreen: string
+}
+
 export interface TerminalDataEvent {
   sessionId: string
   data: string
@@ -98,6 +125,13 @@ export interface TerminalDataEvent {
 export interface TerminalExitEvent {
   sessionId: string
   exitCode: number
+}
+
+export interface TerminalGeometryEvent {
+  sessionId: string
+  cols: number
+  rows: number
+  reason: TerminalGeometryCommitReason
 }
 
 export type TerminalSessionState = 'working' | 'standby'

@@ -8,8 +8,12 @@ export type ActiveTerminalRenderer = {
   dispose: () => void
 }
 
+export type PreferredTerminalRendererMode = 'auto' | 'dom'
+
 export interface PreferredTerminalRendererOptions {
+  preferredMode?: PreferredTerminalRendererMode
   onRendererKindChange?: (kind: ActiveTerminalRenderer['kind']) => void
+  onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
 }
 
 function createDomRenderer(): ActiveTerminalRenderer {
@@ -38,6 +42,10 @@ export function activatePreferredTerminalRenderer(
   _terminalProvider?: AgentProvider | null,
   options: PreferredTerminalRendererOptions = {},
 ): ActiveTerminalRenderer {
+  if (options.preferredMode === 'dom') {
+    return createDomRenderer()
+  }
+
   if (!canUseWebglRenderer()) {
     return createDomRenderer()
   }
@@ -59,6 +67,10 @@ export function activatePreferredTerminalRenderer(
       disposed = true
       kind = 'dom'
       options.onRendererKindChange?.('dom')
+      options.onRendererIssue?.({
+        reason: 'context_loss',
+        forceDom: true,
+      })
       contextLossDisposable.dispose()
       webglAddon.dispose()
     })

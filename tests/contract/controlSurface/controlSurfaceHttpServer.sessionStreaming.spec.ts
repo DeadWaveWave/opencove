@@ -178,7 +178,7 @@ describe('Control Surface HTTP server (session streaming)', () => {
     }
   })
 
-  it('supports attach roles, controller enforcement, and overflow snapshot recovery', async () => {
+  it('supports presentation snapshots, attach catch-up, controller enforcement, and overflow recovery', async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-'))
     const workspacePath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-workspace-'))
     const connectionFileName = 'control-surface.pty.streaming.test.json'
@@ -193,6 +193,7 @@ describe('Control Surface HTTP server (session streaming)', () => {
     const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
 
     const writes: Array<{ sessionId: string; data: string }> = []
+    const resizes: Array<{ sessionId: string; cols: number; rows: number }> = []
 
     let sessionCounter = 0
     const spawnSessionId = (): string => `test-session-${sessionCounter++}`
@@ -206,7 +207,9 @@ describe('Control Surface HTTP server (session streaming)', () => {
       write: (sessionId: string, data: string) => {
         writes.push({ sessionId, data })
       },
-      resize: () => undefined,
+      resize: (sessionId: string, cols: number, rows: number) => {
+        resizes.push({ sessionId, cols, rows })
+      },
       kill: () => undefined,
       onData: (listener: (event: { sessionId: string; data: string }) => void) => {
         dataListeners.add(listener)
@@ -267,6 +270,18 @@ describe('Control Surface HTTP server (session streaming)', () => {
         controller.once('open', resolvePromise)
         controller.once('error', rejectPromise)
       })
+      const controllerMessages: Array<Record<string, unknown>> = []
+      controller.on('message', raw => {
+        try {
+          const text = Buffer.isBuffer(raw) ? raw.toString('utf8') : String(raw)
+          const parsed = JSON.parse(text)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            controllerMessages.push(parsed as Record<string, unknown>)
+          }
+        } catch {
+          // ignore
+        }
+      })
 
       sendJson(controller, { type: 'hello', protocolVersion: 1, client: { kind: 'cli' } })
       await waitForMessage(controller, message => message && message.type === 'hello_ack')
@@ -281,6 +296,18 @@ describe('Control Surface HTTP server (session streaming)', () => {
       await new Promise<void>((resolvePromise, rejectPromise) => {
         viewer.once('open', resolvePromise)
         viewer.once('error', rejectPromise)
+      })
+      const viewerMessages: Array<Record<string, unknown>> = []
+      viewer.on('message', raw => {
+        try {
+          const text = Buffer.isBuffer(raw) ? raw.toString('utf8') : String(raw)
+          const parsed = JSON.parse(text)
+          if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            viewerMessages.push(parsed as Record<string, unknown>)
+          }
+        } catch {
+          // ignore
+        }
       })
 
       sendJson(viewer, { type: 'hello', protocolVersion: 1, client: { kind: 'cli' } })
@@ -326,6 +353,96 @@ describe('Control Surface HTTP server (session streaming)', () => {
       expect(
         writes.some(write => write.sessionId === sessionId && write.data === writePayload),
       ).toBe(true)
+
+      sendJson(controller, {
+        type: 'resize',
+        sessionId,
+        cols: 100,
+        rows: 32,
+        reason: 'frame_commit',
+      })
+      await waitForCondition(async () =>
+        controllerMessages.some(
+          message =>
+            message.type === 'error' &&
+            message.sessionId === sessionId &&
+            message.code === 'session.not_controller',
+        ),
+      )
+
+      sendJson(viewer, {
+        type: 'resize',
+        sessionId,
+        cols: 100,
+        rows: 32,
+        reason: 'frame_commit',
+      })
+      await waitForCondition(async () => {
+        const controllerGeometryReceived = controllerMessages.some(
+          message =>
+            message.type === 'geometry' &&
+            message.sessionId === sessionId &&
+            message.cols === 100 &&
+            message.rows === 32 &&
+            message.reason === 'frame_commit',
+        )
+        const viewerGeometryReceived = viewerMessages.some(
+          message =>
+            message.type === 'geometry' &&
+            message.sessionId === sessionId &&
+            message.cols === 100 &&
+            message.rows === 32 &&
+            message.reason === 'frame_commit',
+        )
+        return controllerGeometryReceived && viewerGeometryReceived
+      })
+      expect(resizes).toContainEqual({ sessionId, cols: 100, rows: 32 })
+
+      ptyRuntime.emitData(sessionId, 'presentation-ready\r\n')
+      const presentationSnapshot = await invoke(baseUrl, 'test-token', {
+        kind: 'query',
+        id: 'session.presentationSnapshot',
+        payload: { sessionId },
+      })
+      expect(presentationSnapshot.status).toBe(200)
+      expect(presentationSnapshot.data.ok).toBe(true)
+      expect(presentationSnapshot.data.value?.sessionId).toBe(sessionId)
+      expect(presentationSnapshot.data.value?.cols).toBe(100)
+      expect(presentationSnapshot.data.value?.rows).toBe(32)
+      expect(presentationSnapshot.data.value?.serializedScreen).toContain('presentation-ready')
+
+      ptyRuntime.emitData(sessionId, 'attach-delta\r\n')
+      const catchupViewer = new WebSocket(wsUrl, 'opencove-pty.v1')
+      await new Promise<void>((resolvePromise, rejectPromise) => {
+        catchupViewer.once('open', resolvePromise)
+        catchupViewer.once('error', rejectPromise)
+      })
+
+      sendJson(catchupViewer, { type: 'hello', protocolVersion: 1, client: { kind: 'cli' } })
+      await waitForMessage(catchupViewer, message => message && message.type === 'hello_ack')
+      const catchupChunkPromise = waitForMessage<{ type: string; data: string }>(
+        catchupViewer,
+        message =>
+          message &&
+          message.type === 'data' &&
+          message.sessionId === sessionId &&
+          typeof message.data === 'string' &&
+          message.data.includes('attach-delta'),
+      )
+      sendJson(catchupViewer, {
+        type: 'attach',
+        sessionId,
+        role: 'viewer',
+        afterSeq: presentationSnapshot.data.value?.appliedSeq,
+      })
+
+      await waitForMessage(
+        catchupViewer,
+        message => message && message.type === 'attached' && message.sessionId === sessionId,
+      )
+      const catchupChunk = await catchupChunkPromise
+      expect(catchupChunk.data).toContain('attach-delta')
+      catchupViewer.close()
 
       controller.close()
       viewer.close()

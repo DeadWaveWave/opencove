@@ -2,8 +2,119 @@ import { describe, expect, it, vi } from 'vitest'
 import { hydrateTerminalFromSnapshot } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/hydrateFromSnapshot'
 
 describe('hydrateFromSnapshot', () => {
+  it('prefers the presentation snapshot baseline when available', async () => {
+    const terminal = {
+      cols: 80,
+      rows: 24,
+      resize: vi.fn((cols: number, rows: number) => {
+        terminal.cols = cols
+        terminal.rows = rows
+      }),
+      write: vi.fn((data: string, callback?: () => void) => {
+        callback?.()
+        return data
+      }),
+    }
+    const onHydratedWriteCommitted = vi.fn()
+    const finalizeHydration = vi.fn()
+    const onPresentationSnapshotAccepted = vi.fn()
+    const takePtySnapshot = vi.fn(async () => ({ data: 'live fallback output' }))
+
+    await hydrateTerminalFromSnapshot({
+      attachPromise: Promise.resolve(),
+      sessionId: 'agent-session-presentation',
+      terminal: terminal as never,
+      kind: 'agent',
+      cachedScreenState: null,
+      persistedSnapshot: 'persisted placeholder',
+      presentationSnapshotPromise: Promise.resolve({
+        sessionId: 'agent-session-presentation',
+        epoch: 1,
+        appliedSeq: 4,
+        presentationRevision: 9,
+        cols: 96,
+        rows: 30,
+        bufferKind: 'alternate',
+        cursor: { x: 5, y: 10 },
+        title: 'codex',
+        serializedScreen: '\u001b[?1049hLIVE_SCREEN',
+      }),
+      takePtySnapshot,
+      isDisposed: () => false,
+      onHydratedWriteCommitted,
+      onPresentationSnapshotAccepted,
+      finalizeHydration,
+    })
+
+    expect(terminal.resize).toHaveBeenCalledWith(96, 30)
+    expect(terminal.write).toHaveBeenCalledWith('\u001b[?1049hLIVE_SCREEN', expect.any(Function))
+    expect(onPresentationSnapshotAccepted).toHaveBeenCalled()
+    expect(onHydratedWriteCommitted).toHaveBeenCalledWith('persisted placeholder')
+    expect(finalizeHydration).toHaveBeenCalledWith('persisted placeholder')
+    expect(takePtySnapshot).not.toHaveBeenCalled()
+  })
+
+  it('does not treat cached raw snapshot as correctness truth once worker presentation exists', async () => {
+    const terminal = {
+      cols: 80,
+      rows: 24,
+      resize: vi.fn((cols: number, rows: number) => {
+        terminal.cols = cols
+        terminal.rows = rows
+      }),
+      write: vi.fn((data: string, callback?: () => void) => {
+        callback?.()
+        return data
+      }),
+    }
+    const onHydratedWriteCommitted = vi.fn()
+    const finalizeHydration = vi.fn()
+
+    await hydrateTerminalFromSnapshot({
+      attachPromise: Promise.resolve(),
+      sessionId: 'agent-session-presentation',
+      terminal: terminal as never,
+      kind: 'agent',
+      cachedScreenState: {
+        sessionId: 'agent-session-presentation',
+        serialized: 'cached serialized screen',
+        rawSnapshot: 'cached raw snapshot',
+        cols: 90,
+        rows: 28,
+      },
+      persistedSnapshot: 'persisted placeholder',
+      presentationSnapshotPromise: Promise.resolve({
+        sessionId: 'agent-session-presentation',
+        epoch: 2,
+        appliedSeq: 8,
+        presentationRevision: 12,
+        cols: 96,
+        rows: 30,
+        bufferKind: 'normal',
+        cursor: { x: 2, y: 3 },
+        title: 'codex',
+        serializedScreen: 'worker serialized screen',
+      }),
+      takePtySnapshot: vi.fn(async () => ({ data: 'live fallback output' })),
+      isDisposed: () => false,
+      onHydratedWriteCommitted,
+      finalizeHydration,
+    })
+
+    expect(onHydratedWriteCommitted).toHaveBeenCalledWith('persisted placeholder')
+    expect(finalizeHydration).toHaveBeenCalledWith('persisted placeholder')
+    expect(terminal.write).toHaveBeenCalledWith('worker serialized screen', expect.any(Function))
+    expect(terminal.write).not.toHaveBeenCalledWith(
+      'cached serialized screen',
+      expect.any(Function),
+    )
+  })
+
   it('uses the live PTY snapshot for agent live reattach hydration', async () => {
     const terminal = {
+      cols: 80,
+      rows: 24,
+      resize: vi.fn(),
       write: vi.fn((data: string, callback?: () => void) => {
         callback?.()
         return data

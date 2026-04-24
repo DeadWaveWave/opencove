@@ -9,7 +9,7 @@ export function useTerminalResize({
   height,
   minSize,
   onResize,
-  syncTerminalSize,
+  commitTerminalGeometry,
   scheduleScrollbackPublish,
   isPointerResizingRef,
 }: {
@@ -18,7 +18,7 @@ export function useTerminalResize({
   height: number
   minSize?: Size
   onResize: (frame: NodeFrame) => void
-  syncTerminalSize: () => void
+  commitTerminalGeometry: () => void
   scheduleScrollbackPublish: (force?: boolean) => void
   isPointerResizingRef: MutableRefObject<boolean>
 }): {
@@ -40,7 +40,7 @@ export function useTerminalResize({
     onResizeEnd: () => {
       isPointerResizingRef.current = false
       requestAnimationFrame(() => {
-        syncTerminalSize()
+        commitTerminalGeometry()
         scheduleScrollbackPublish(true)
       })
     },

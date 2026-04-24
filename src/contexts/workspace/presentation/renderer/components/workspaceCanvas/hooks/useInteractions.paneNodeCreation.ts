@@ -3,8 +3,9 @@ import type { Node } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
+import type { PersistedAppState } from '../../../types'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ListMountsResult, SpawnTerminalResult } from '@shared/contracts/dto'
+import type { SpawnTerminalResult } from '@shared/contracts/dto'
 import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'
 import {
   resolveDefaultNoteWindowSize,
@@ -23,6 +24,107 @@ type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
 ) => void
+
+function resolvePersistedWorkspaceForTerminalLaunch(
+  state: unknown,
+  workspaceId: string,
+): PersistedAppState['workspaces'][number] | null {
+  if (
+    !state ||
+    typeof state !== 'object' ||
+    !Array.isArray((state as PersistedAppState).workspaces)
+  ) {
+    return null
+  }
+
+  const persistedState = state as PersistedAppState
+  const normalizedWorkspaceId = workspaceId.trim()
+  if (normalizedWorkspaceId.length > 0) {
+    const matchingWorkspace =
+      persistedState.workspaces.find(workspace => workspace.id === normalizedWorkspaceId) ?? null
+    if (matchingWorkspace) {
+      return matchingWorkspace
+    }
+  }
+
+  const activeWorkspaceId =
+    typeof persistedState.activeWorkspaceId === 'string'
+      ? persistedState.activeWorkspaceId.trim()
+      : ''
+  if (activeWorkspaceId.length > 0) {
+    const activeWorkspace =
+      persistedState.workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null
+    if (activeWorkspace) {
+      return activeWorkspace
+    }
+  }
+
+  return persistedState.workspaces[0] ?? null
+}
+
+function resolveFallbackTargetSpace(
+  workspace: PersistedAppState['workspaces'][number],
+  anchor: Point,
+): WorkspaceSpaceState | null {
+  return (
+    findContainingSpaceByAnchor(workspace.spaces, anchor) ??
+    workspace.spaces.find(space => space.id === workspace.activeSpaceId) ??
+    workspace.spaces[0] ??
+    null
+  )
+}
+
+async function resolveTerminalLaunchWorkspaceContext({
+  anchor,
+  workspaceId,
+  workspacePath,
+  targetSpace,
+}: {
+  anchor: Point
+  workspaceId: string
+  workspacePath: string
+  targetSpace: WorkspaceSpaceState | null
+}): Promise<{
+  workspacePath: string
+  targetSpace: WorkspaceSpaceState | null
+}> {
+  const normalizedWorkspacePath = workspacePath.trim()
+  if (resolveSpaceWorkingDirectory(targetSpace, normalizedWorkspacePath).trim().length > 0) {
+    return {
+      workspacePath: normalizedWorkspacePath,
+      targetSpace,
+    }
+  }
+
+  const readAppState = window.opencoveApi.persistence?.readAppState
+  if (typeof readAppState !== 'function') {
+    return {
+      workspacePath: normalizedWorkspacePath,
+      targetSpace,
+    }
+  }
+
+  try {
+    const appState = await readAppState()
+    const workspace = resolvePersistedWorkspaceForTerminalLaunch(appState.state, workspaceId)
+    if (!workspace) {
+      return {
+        workspacePath: normalizedWorkspacePath,
+        targetSpace,
+      }
+    }
+
+    return {
+      workspacePath: workspace.path,
+      targetSpace: targetSpace ?? resolveFallbackTargetSpace(workspace, anchor),
+    }
+  } catch {
+    return {
+      workspacePath: normalizedWorkspacePath,
+      targetSpace,
+    }
+  }
+}
 
 export async function createTerminalNodeAtFlowPosition({
   anchor,
@@ -62,49 +164,25 @@ export async function createTerminalNodeAtFlowPosition({
     resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
   )
 
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+  let targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+  const launchWorkspaceContext = await resolveTerminalLaunchWorkspaceContext({
+    anchor: cursorAnchor,
+    workspaceId,
+    workspacePath,
+    targetSpace,
+  })
+  targetSpace = launchWorkspaceContext.targetSpace
+  const resolvedWorkspacePath = launchWorkspaceContext.workspacePath
+  const resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, resolvedWorkspacePath)
 
-  const resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
-
-  let mountId = targetSpace?.targetMountId ?? null
-  let defaultMountRootPath: string | null = null
-  if (!mountId && !targetSpace && workspaceId.trim().length > 0) {
-    const controlSurfaceInvoke = (
-      window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
-    ).opencoveApi?.controlSurface?.invoke
-
-    if (typeof controlSurfaceInvoke === 'function') {
-      try {
-        const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-          kind: 'query',
-          id: 'mount.list',
-          payload: { projectId: workspaceId },
-        })
-
-        const defaultMount = mountResult.mounts[0] ?? null
-        mountId = defaultMount?.mountId ?? null
-        defaultMountRootPath = defaultMount?.rootPath ?? null
-      } catch (error) {
-        // If we can't resolve mounts, keep the legacy local behavior (workspacePath cwd).
-        // This preserves backwards compatibility for projects created before mounts existed.
-        onShowMessage?.(
-          translate('messages.mountListFailed', { message: toErrorMessage(error) }),
-          'error',
-        )
-      }
-    }
-  }
+  const mountId = targetSpace?.targetMountId ?? null
 
   const spawnCwdUri =
     mountId && targetSpace?.targetMountId && targetSpace.directoryPath.trim().length > 0
       ? toFileUri(targetSpace.directoryPath.trim())
       : null
 
-  const nodeWorkingDirectory = mountId
-    ? spawnCwdUri
-      ? resolvedCwd
-      : (defaultMountRootPath ?? resolvedCwd)
-    : resolvedCwd
+  const nodeWorkingDirectory = resolvedCwd
 
   let spawned: SpawnTerminalResult
 

@@ -70,6 +70,38 @@ describe('home worker endpoint resolver', () => {
     })
   })
 
+  it('keeps using the startup endpoint until the local worker connection file appears', async () => {
+    const dir = await createTempUserDataDir()
+    const resolver = createHomeWorkerEndpointResolver({
+      userDataPath: dir,
+      config: {
+        version: 1,
+        mode: 'local',
+        remote: null,
+        updatedAt: null,
+      },
+      effectiveMode: 'local',
+      initialEndpoint: {
+        hostname: '127.0.0.1',
+        port: 4311,
+        token: 'startup-token',
+      },
+    })
+
+    await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 4311,
+      token: 'startup-token',
+    })
+
+    await writeWorkerConnection(dir, { port: 56278, token: 'file-token' })
+    await expect(resolver()).resolves.toEqual({
+      hostname: '127.0.0.1',
+      port: 56278,
+      token: 'file-token',
+    })
+  })
+
   it('returns the saved remote endpoint for remote mode', async () => {
     const dir = await createTempUserDataDir()
     const resolver = createHomeWorkerEndpointResolver({

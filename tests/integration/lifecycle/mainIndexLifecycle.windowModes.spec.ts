@@ -109,6 +109,13 @@ function mockMainIndexDependencies(params: {
       openExternal: vi.fn(),
     },
     BrowserWindow: params.BrowserWindow,
+    Menu: {
+      setApplicationMenu: vi.fn(),
+      buildFromTemplate: vi.fn(template => template),
+    },
+    nativeImage: {
+      createFromPath: vi.fn(() => ({})),
+    },
   }))
 
   vi.doMock('@electron-toolkit/utils', () => ({
@@ -143,6 +150,22 @@ function mockMainIndexDependencies(params: {
     hasOwnedLocalWorkerProcess: () => false,
     startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
     stopOwnedLocalWorker: vi.fn(async () => true),
+  }))
+
+  vi.doMock('../../../src/app/main/worker/resolveHomeWorkerEndpoint', () => ({
+    resolveHomeWorkerEndpoint: vi.fn(async () => ({
+      effectiveMode: 'local',
+      config: null,
+      diagnostics: [],
+    })),
+  }))
+
+  vi.doMock('../../../src/app/main/worker/homeWorkerEndpointResolver', () => ({
+    createHomeWorkerEndpointResolver: vi.fn(() => async () => ({
+      hostname: '127.0.0.1',
+      port: 43123,
+      token: 'test-token',
+    })),
   }))
 }
 

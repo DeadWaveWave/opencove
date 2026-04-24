@@ -63,6 +63,16 @@ export function sendPtyExit(ws: WebSocket, sessionId: string, seq: number, exitC
   sendJson(ws, { type: 'exit', sessionId, seq, exitCode })
 }
 
+export function sendPtyGeometry(
+  ws: WebSocket,
+  sessionId: string,
+  cols: number,
+  rows: number,
+  reason: 'frame_commit' | 'appearance_commit',
+): void {
+  sendJson(ws, { type: 'geometry', sessionId, cols, rows, reason })
+}
+
 export function sendPtyOverflow(
   ws: WebSocket,
   sessionId: string,

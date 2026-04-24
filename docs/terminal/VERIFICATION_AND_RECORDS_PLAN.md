@@ -2,7 +2,7 @@
 
 > Status: Active working plan
 > Scope: terminal and agent nodes across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-23
+> Last updated: 2026-04-24
 
 ## Purpose
 
@@ -239,6 +239,14 @@ Rules:
 - preserve real auth and environment when reproducing agent issues
 - record the exact command or script used
 - note whether the repro used Desktop only, Web only, or dual attach
+
+Current high-value script bundle:
+
+- `pnpm test:terminal:presentation`
+- `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cmd-w ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
+- `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
+- `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.spec.ts --grep "reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients"`
+- `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.agent-resume.spec.ts tests/e2e-web-canvas/workerWebCanvas.view-state.spec.ts`
 
 ## Update Record Policy
 

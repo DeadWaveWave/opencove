@@ -1,15 +1,13 @@
 import type { MutableRefObject } from 'react'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
+import type { TerminalGeometryCommitReason } from '@shared/contracts/dto'
 import { resolveStablePtySize } from '../../utils/terminalResize'
 
 /**
- * After FitAddon.fit(), the xterm element may be taller than `rows × cellHeight`
- * due to Math.floor rounding in the row calculation. The leftover fractional-row
- * pixels at the bottom can cause a duplicate cursor artifact — the real terminal
- * cursor renders in the dead zone while TUI apps (e.g. Claude Code / ink) render
- * their own visual cursor at the prompt. Clamping the element height eliminates
- * the dead zone.
+ * After xterm resizes, the element can end up slightly taller than `rows × cellHeight`
+ * because the row count is floored while the container height is not. Clamping the
+ * element height removes the dead zone that can otherwise show a duplicate cursor.
  */
 function clampXtermHeightToExactRows(terminal: Terminal): void {
   const xtermEl = terminal.element
@@ -27,68 +25,122 @@ function clampXtermHeightToExactRows(terminal: Terminal): void {
   xtermEl.style.height = `${exactHeight}px`
 }
 
-export function syncTerminalNodeSize({
+function canRefreshTerminalLayout(input: {
+  terminal: Terminal | null
+  container: HTMLElement | null
+  isPointerResizingRef: MutableRefObject<boolean>
+}): boolean {
+  if (!input.terminal || !input.container) {
+    return false
+  }
+
+  if (input.container.clientWidth <= 2 || input.container.clientHeight <= 2) {
+    return false
+  }
+
+  if (input.isPointerResizingRef.current) {
+    return false
+  }
+
+  return true
+}
+
+export function refreshTerminalNodeSize({
   terminalRef,
-  fitAddonRef,
   containerRef,
   isPointerResizingRef,
-  lastSyncedPtySizeRef,
-  sessionId,
-  shouldResizePty = true,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
-  fitAddonRef: MutableRefObject<FitAddon | null>
   containerRef: MutableRefObject<HTMLElement | null>
   isPointerResizingRef: MutableRefObject<boolean>
-  lastSyncedPtySizeRef: MutableRefObject<{ cols: number; rows: number } | null>
-  sessionId: string
-  shouldResizePty?: boolean
 }): void {
   const terminal = terminalRef.current
-  const fitAddon = fitAddonRef.current
   const container = containerRef.current
 
-  if (!terminal || !fitAddon || !container) {
+  if (!canRefreshTerminalLayout({ terminal, container, isPointerResizingRef })) {
     return
   }
 
-  if (container.clientWidth <= 2 || container.clientHeight <= 2) {
+  if (!terminal) {
     return
   }
-
-  if (isPointerResizingRef.current) {
-    return
-  }
-
-  fitAddon.fit()
 
   if (terminal.cols <= 0 || terminal.rows <= 0) {
     return
   }
 
   clampXtermHeightToExactRows(terminal)
-
   terminal.refresh(0, Math.max(0, terminal.rows - 1))
+}
+
+export function commitTerminalNodeGeometry({
+  terminalRef,
+  fitAddonRef,
+  containerRef,
+  isPointerResizingRef,
+  lastCommittedPtySizeRef,
+  sessionId,
+  reason,
+}: {
+  terminalRef: MutableRefObject<Terminal | null>
+  fitAddonRef: MutableRefObject<FitAddon | null>
+  containerRef: MutableRefObject<HTMLElement | null>
+  isPointerResizingRef: MutableRefObject<boolean>
+  lastCommittedPtySizeRef: MutableRefObject<{ cols: number; rows: number } | null>
+  sessionId: string
+  reason: TerminalGeometryCommitReason
+}): void {
+  const terminal = terminalRef.current
+  const fitAddon = fitAddonRef.current
+  const container = containerRef.current
+
+  if (!terminal || !fitAddon) {
+    return
+  }
+
+  if (!canRefreshTerminalLayout({ terminal, container, isPointerResizingRef })) {
+    return
+  }
+
+  if (!terminal) {
+    return
+  }
+
+  const measured = fitAddon.proposeDimensions()
+  if (!measured) {
+    return
+  }
 
   const nextPtySize = resolveStablePtySize({
-    previous: lastSyncedPtySizeRef.current,
-    measured: { cols: terminal.cols, rows: terminal.rows },
+    previous: lastCommittedPtySizeRef.current,
+    measured,
     preventRowShrink: false,
   })
 
   if (!nextPtySize) {
+    refreshTerminalNodeSize({
+      terminalRef,
+      containerRef,
+      isPointerResizingRef,
+    })
     return
   }
 
-  if (!shouldResizePty) {
-    return
+  if (terminal.cols !== nextPtySize.cols || terminal.rows !== nextPtySize.rows) {
+    terminal.resize(nextPtySize.cols, nextPtySize.rows)
   }
 
-  lastSyncedPtySizeRef.current = nextPtySize
+  lastCommittedPtySizeRef.current = nextPtySize
+  refreshTerminalNodeSize({
+    terminalRef,
+    containerRef,
+    isPointerResizingRef,
+  })
 
   void window.opencoveApi.pty.resize({
     sessionId,
     cols: nextPtySize.cols,
     rows: nextPtySize.rows,
+    reason,
   })
 }

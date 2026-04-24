@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import type { PresentationSnapshotTerminalResult } from '@shared/contracts/dto'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import { writeTerminalAsync } from './writeTerminal'
@@ -33,9 +34,11 @@ export async function hydrateTerminalFromSnapshot({
   skipInitialPlaceholderWrite = false,
   cachedScreenState,
   persistedSnapshot,
+  presentationSnapshotPromise,
   takePtySnapshot,
   isDisposed,
   onHydratedWriteCommitted,
+  onPresentationSnapshotAccepted,
   finalizeHydration,
 }: {
   attachPromise: Promise<void | undefined>
@@ -46,21 +49,43 @@ export async function hydrateTerminalFromSnapshot({
   skipInitialPlaceholderWrite?: boolean
   cachedScreenState: CachedTerminalScreenState | null
   persistedSnapshot: string
+  presentationSnapshotPromise?: Promise<PresentationSnapshotTerminalResult | null>
   takePtySnapshot: (payload: { sessionId: string }) => Promise<{ data: string }>
   isDisposed: () => boolean
   onHydratedWriteCommitted: (rawSnapshot: string) => void
+  onPresentationSnapshotAccepted?: (snapshot: PresentationSnapshotTerminalResult) => void
   finalizeHydration: (rawSnapshot: string) => void
 }): Promise<void> {
   const cachedSerializedScreen = cachedScreenState?.serialized ?? ''
-  const baseRawSnapshot =
-    cachedScreenState && cachedScreenState.rawSnapshot.length > 0
-      ? cachedScreenState.rawSnapshot
-      : persistedSnapshot
   const placeholderPayload =
     cachedSerializedScreen.length > 0 ? cachedSerializedScreen : persistedSnapshot
+
+  let presentationSnapshot: PresentationSnapshotTerminalResult | null = null
+  if (presentationSnapshotPromise) {
+    try {
+      presentationSnapshot = await presentationSnapshotPromise
+    } catch {
+      presentationSnapshot = null
+    }
+  }
+
+  const baseRawSnapshot =
+    presentationSnapshot === null && cachedScreenState && cachedScreenState.rawSnapshot.length > 0
+      ? cachedScreenState.rawSnapshot
+      : persistedSnapshot
   let rawSnapshot = baseRawSnapshot
 
-  if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
+  if (presentationSnapshot?.serializedScreen.length) {
+    const nextCols = Math.max(1, presentationSnapshot.cols)
+    const nextRows = Math.max(1, presentationSnapshot.rows)
+    if (terminal.cols !== nextCols || terminal.rows !== nextRows) {
+      terminal.resize(nextCols, nextRows)
+    }
+
+    await writeTerminalAsync(terminal, presentationSnapshot.serializedScreen)
+    onPresentationSnapshotAccepted?.(presentationSnapshot)
+    onHydratedWriteCommitted(rawSnapshot)
+  } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
     await writeTerminalAsync(terminal, placeholderPayload)
     onHydratedWriteCommitted(rawSnapshot)
   }
@@ -87,7 +112,9 @@ export async function hydrateTerminalFromSnapshot({
   }
 
   try {
-    if (!useLivePtySnapshotDuringHydration) {
+    if (presentationSnapshot?.serializedScreen.length) {
+      void attachPromise.catch(() => undefined)
+    } else if (!useLivePtySnapshotDuringHydration) {
       // Agent CLIs restore their own history after attach. Do not block hydration on snapshot
       // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
       // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
