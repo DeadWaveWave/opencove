@@ -1,6 +1,6 @@
 import { useScrollbackStore } from '../store/useScrollbackStore'
 import { invalidateCachedTerminalScreenState } from '../components/terminalNode/screenStateCache'
-import { clearNodeScrollbackWrite } from './persistence/scrollbackSchedule'
+import { clearScheduledScrollbackWrites } from './persistence/scrollbackSchedule'
 
 export function cleanupNodeRuntimeArtifacts(nodeId: string, sessionId: string): void {
   const normalizedSessionId = sessionId.trim()
@@ -10,5 +10,5 @@ export function cleanupNodeRuntimeArtifacts(nodeId: string, sessionId: string): 
   }
 
   useScrollbackStore.getState().clearNodeScrollback(nodeId)
-  clearNodeScrollbackWrite(nodeId)
+  clearScheduledScrollbackWrites(nodeId)
 }

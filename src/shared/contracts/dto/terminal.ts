@@ -77,14 +77,6 @@ export interface PtySessionNodeBinding {
   nodeId: string
 }
 
-export interface SyncPtySessionBindingsInput {
-  bindings: PtySessionNodeBinding[]
-}
-
-export interface SyncPtyAgentPlaceholderBindingsInput {
-  bindings: PtySessionNodeBinding[]
-}
-
 export interface SnapshotTerminalInput {
   sessionId: string
 }

@@ -182,6 +182,7 @@ Allowed:
 - selection, local scroll position, zoom, and viewport preference
 - performance optimizations that can be dropped at any time
 - cached serialized screen or dimensions as a temporary placeholder while worker truth is still pending
+- terminal and agent placeholder scrollback persisted from renderer-side publish as UX-only cache
 
 Forbidden:
 
@@ -190,6 +191,7 @@ Forbidden:
 - destructive output heuristics resetting an accepted baseline
 - renderer cache writing back canonical presentation state
 - cached raw snapshot overriding an accepted worker `presentationSnapshot`
+- main-side PTY snapshot mirroring acting as the producer of renderer placeholder correctness
 
 ## Renderer Health
 

@@ -50,8 +50,6 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
-  SyncPtyAgentPlaceholderBindingsInput,
-  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -234,9 +232,6 @@ export interface OpenCoveApi {
     kill: (payload: KillTerminalInput) => Promise<void>
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>
-    syncSessionBindings: (payload: SyncPtySessionBindingsInput) => Promise<void>
-    syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput) => Promise<void>
-    flushScrollbackMirrors: () => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
     presentationSnapshot: (
       payload: PresentationSnapshotTerminalInput,

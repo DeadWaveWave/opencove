@@ -184,11 +184,12 @@ Current landing:
 - Desktop startup no longer boots a main-owned standalone PTY/runtime path
 - Home Worker is now the required Desktop runtime host
 - cached raw screen state no longer overrides a worker `presentationSnapshot`
+- main-side raw PTY snapshot mirrors are removed from the production path
+- terminal and agent placeholder scrollback now persist from renderer-side publish as UX-only cache
 
 Remaining:
 
 - trim renderer cache APIs down to explicitly UX-only use
-- remove remaining main-side raw snapshot mirror duties that are still persistence-oriented
 
 ### Objective
 

@@ -19,6 +19,11 @@ describe('cleanupNodeRuntimeArtifacts', () => {
       value: {
         persistence: {
           writeNodeScrollback: vi.fn(async () => ({ ok: true, level: 'full', bytes: 0 })),
+          writeAgentNodePlaceholderScrollback: vi.fn(async () => ({
+            ok: true,
+            level: 'full',
+            bytes: 0,
+          })),
         },
       },
     })
@@ -43,5 +48,11 @@ describe('cleanupNodeRuntimeArtifacts', () => {
       nodeId: 'node-1',
       scrollback: null,
     })
+    expect(window.opencoveApi.persistence.writeAgentNodePlaceholderScrollback).toHaveBeenCalledWith(
+      {
+        nodeId: 'node-1',
+        scrollback: null,
+      },
+    )
   })
 })

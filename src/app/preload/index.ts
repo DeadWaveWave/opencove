@@ -53,8 +53,6 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
-  SyncPtyAgentPlaceholderBindingsInput,
-  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
@@ -366,11 +364,6 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.ptyAttach, payload),
     detach: (payload: DetachTerminalInput): Promise<void> =>
       invokeIpc(IPC_CHANNELS.ptyDetach, payload),
-    syncSessionBindings: (payload: SyncPtySessionBindingsInput): Promise<void> =>
-      invokeIpc(IPC_CHANNELS.ptySyncSessionBindings, payload),
-    syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput): Promise<void> =>
-      invokeIpc(IPC_CHANNELS.ptySyncAgentPlaceholderBindings, payload),
-    flushScrollbackMirrors: (): Promise<void> => invokeIpc(IPC_CHANNELS.ptyFlushScrollbackMirrors),
     snapshot: (payload: SnapshotTerminalInput): Promise<SnapshotTerminalResult> =>
       invokeIpc(IPC_CHANNELS.ptySnapshot, payload),
     presentationSnapshot: (
