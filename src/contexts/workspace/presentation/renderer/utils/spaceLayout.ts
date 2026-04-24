@@ -1,9 +1,15 @@
 import type { WorkspaceSpaceRect } from '../types'
+import { resolveCanonicalNodeSize } from './workspaceNodeSizing'
 export { pushAwayLayout, type LayoutDirection, type LayoutItem } from './spaceLayout.pushAway'
 
 export const SPACE_NODE_PADDING = 24
-// Must be larger than a default note window so that space label/badges render comfortably.
-export const SPACE_MIN_SIZE = { width: 560, height: 260 }
+export const SPACE_MIN_SIZE = (() => {
+  const terminalSize = resolveCanonicalNodeSize({ kind: 'terminal', bucket: 'regular' })
+  return {
+    width: terminalSize.width + SPACE_NODE_PADDING * 2,
+    height: terminalSize.height + SPACE_NODE_PADDING * 2,
+  }
+})()
 export const SPACE_CORNER_HITBOX_PX = 18
 export const SPACE_EDGE_HITBOX_PX = 8
 

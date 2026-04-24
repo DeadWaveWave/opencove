@@ -5,7 +5,10 @@ import {
   pushAwayLayout,
   resolveInteractiveSpaceFrameHandle,
   resolveSpaceFrameHandle,
+  SPACE_MIN_SIZE,
+  SPACE_NODE_PADDING,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/spaceLayout'
+import { resolveCanonicalNodeSize } from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceNodeSizing'
 
 function rectsIntersect(
   a: { x: number; y: number; width: number; height: number },
@@ -20,6 +23,15 @@ function rectsIntersect(
 }
 
 describe('spaceLayout', () => {
+  it('uses the regular terminal size plus padding as the minimum space size', () => {
+    const regularTerminalSize = resolveCanonicalNodeSize({ kind: 'terminal', bucket: 'regular' })
+
+    expect(SPACE_MIN_SIZE).toEqual({
+      width: regularTerminalSize.width + SPACE_NODE_PADDING * 2,
+      height: regularTerminalSize.height + SPACE_NODE_PADDING * 2,
+    })
+  })
+
   it('computes an explicit space rect from owned nodes (padding + min size)', () => {
     expect(
       computeSpaceRectFromNodes([
@@ -29,8 +41,8 @@ describe('spaceLayout', () => {
     ).toEqual({
       x: 76,
       y: 76,
-      width: 560,
-      height: 260,
+      width: SPACE_MIN_SIZE.width,
+      height: SPACE_MIN_SIZE.height,
     })
   })
 
