@@ -17,6 +17,7 @@ describe('hydrateFromSnapshot', () => {
     }
     const onHydratedWriteCommitted = vi.fn()
     const finalizeHydration = vi.fn()
+    const onHydrationBaselineResolved = vi.fn()
     const onPresentationSnapshotAccepted = vi.fn()
     const takePtySnapshot = vi.fn(async () => ({ data: 'live fallback output' }))
 
@@ -42,6 +43,7 @@ describe('hydrateFromSnapshot', () => {
       takePtySnapshot,
       isDisposed: () => false,
       onHydratedWriteCommitted,
+      onHydrationBaselineResolved,
       onPresentationSnapshotAccepted,
       finalizeHydration,
     })
@@ -49,6 +51,7 @@ describe('hydrateFromSnapshot', () => {
     expect(terminal.resize).toHaveBeenCalledWith(96, 30)
     expect(terminal.write).toHaveBeenCalledWith('\u001b[?1049hLIVE_SCREEN', expect.any(Function))
     expect(onPresentationSnapshotAccepted).toHaveBeenCalled()
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('presentation_snapshot')
     expect(onHydratedWriteCommitted).toHaveBeenCalledWith('\u001b[?1049hLIVE_SCREEN')
     expect(finalizeHydration).toHaveBeenCalledWith('\u001b[?1049hLIVE_SCREEN')
     expect(takePtySnapshot).not.toHaveBeenCalled()
@@ -69,6 +72,7 @@ describe('hydrateFromSnapshot', () => {
     }
     const onHydratedWriteCommitted = vi.fn()
     const finalizeHydration = vi.fn()
+    const onHydrationBaselineResolved = vi.fn()
 
     await hydrateTerminalFromSnapshot({
       attachPromise: Promise.resolve(),
@@ -97,9 +101,11 @@ describe('hydrateFromSnapshot', () => {
       takePtySnapshot: vi.fn(async () => ({ data: 'live fallback output' })),
       isDisposed: () => false,
       onHydratedWriteCommitted,
+      onHydrationBaselineResolved,
       finalizeHydration,
     })
 
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('presentation_snapshot')
     expect(onHydratedWriteCommitted).toHaveBeenCalledWith('worker serialized screen')
     expect(finalizeHydration).toHaveBeenCalledWith('worker serialized screen')
     expect(terminal.write).toHaveBeenCalledWith('worker serialized screen', expect.any(Function))
@@ -122,6 +128,7 @@ describe('hydrateFromSnapshot', () => {
     }
     const onHydratedWriteCommitted = vi.fn()
     const finalizeHydration = vi.fn()
+    const onHydrationBaselineResolved = vi.fn()
 
     await hydrateTerminalFromSnapshot({
       attachPromise: Promise.resolve(),
@@ -138,6 +145,7 @@ describe('hydrateFromSnapshot', () => {
       takePtySnapshot: vi.fn(async () => ({ data: 'live fallback output' })),
       isDisposed: () => false,
       onHydratedWriteCommitted,
+      onHydrationBaselineResolved,
       finalizeHydration,
     })
 
@@ -152,6 +160,7 @@ describe('hydrateFromSnapshot', () => {
       'live fallback output',
       expect.any(Function),
     )
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('live_pty_snapshot')
     expect(onHydratedWriteCommitted).toHaveBeenLastCalledWith('live fallback output')
     expect(finalizeHydration).toHaveBeenCalledWith('live fallback output')
   })
@@ -168,6 +177,7 @@ describe('hydrateFromSnapshot', () => {
     }
     const onHydratedWriteCommitted = vi.fn()
     const finalizeHydration = vi.fn()
+    const onHydrationBaselineResolved = vi.fn()
     const takePtySnapshot = vi.fn(async () => ({ data: 'live agent output' }))
 
     await hydrateTerminalFromSnapshot({
@@ -181,11 +191,13 @@ describe('hydrateFromSnapshot', () => {
       takePtySnapshot,
       isDisposed: () => false,
       onHydratedWriteCommitted,
+      onHydrationBaselineResolved,
       finalizeHydration,
     })
 
     expect(takePtySnapshot).toHaveBeenCalledWith({ sessionId: 'agent-session-1' })
     expect(terminal.write).toHaveBeenCalledWith('live agent output', expect.any(Function))
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('live_pty_snapshot')
     expect(onHydratedWriteCommitted).toHaveBeenCalledWith('live agent output')
     expect(finalizeHydration).toHaveBeenCalledWith('live agent output')
   })

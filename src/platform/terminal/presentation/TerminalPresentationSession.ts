@@ -132,7 +132,7 @@ export class TerminalPresentationSession {
         y: this.terminal.buffer.active.cursorY,
       },
       title: this.title,
-      serializedScreen: this.serializeAddon.serialize({ excludeModes: true }),
+      serializedScreen: this.serializeAddon.serialize(),
     }
   }
 

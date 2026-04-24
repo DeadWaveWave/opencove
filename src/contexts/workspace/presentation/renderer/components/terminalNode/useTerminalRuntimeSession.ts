@@ -35,11 +35,13 @@ import {
 import {
   attachAfterPresentationSnapshot,
   createOptionalOpenCodeThemeBridge,
+  shouldReusePreservedXtermSession,
   scheduleTestEnvironmentTerminalAutoFocus,
   requestPresentationSnapshot,
   registerRuntimeRendererAndThemeSync,
   shouldGateRestoredAgentInput,
-  shouldProtectRestoredAgentHistory,
+  shouldTreatHydratedAgentBaselineAsPlaceholder,
+  type TerminalHydrationBaselineSource,
 } from './useTerminalRuntimeSession.support'
 
 export function useTerminalRuntimeSession({
@@ -183,10 +185,10 @@ export function useTerminalRuntimeSession({
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const preservedSession = preservedXtermSessionRef.current
     preservedXtermSessionRef.current = null
-    const canReusePreservedSession =
-      preservedSession !== null &&
-      terminalClientResetVersion === 0 &&
-      (preferredRendererMode === 'auto' || preservedSession.renderer.kind === 'dom')
+    const canReusePreservedSession = shouldReusePreservedXtermSession({
+      preservedSession,
+      terminalClientResetVersion,
+    })
     const session =
       (canReusePreservedSession ? preservedSession : null) ??
       createMountedXtermSession({
@@ -285,7 +287,14 @@ export function useTerminalRuntimeSession({
     })
     let isDisposed = false
     const ptyEventHub = getPtyEventHub()
-    let hasAcceptedPresentationSnapshot = false
+    const hydrationBaselineSourceRef: { current: TerminalHydrationBaselineSource } = {
+      current:
+        preservedSession !== null ||
+        cachedScreenState?.serialized.length ||
+        persistedSnapshot.trim().length > 0
+          ? 'placeholder_snapshot'
+          : 'empty',
+    }
     const presentationSnapshotPromise = requestPresentationSnapshot(sessionId)
     const committedScreenStateRecorder = createCommittedScreenStateRecorder({
       serializeAddon,
@@ -308,9 +317,14 @@ export function useTerminalRuntimeSession({
       terminal,
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () =>
-        shouldProtectRestoredHistory() && !hasAcceptedPresentationSnapshot,
-      shouldDeferHydratedRedrawChunks: () =>
-        shouldProtectRestoredHistory() && !hasAcceptedPresentationSnapshot,
+        shouldTreatHydratedAgentBaselineAsPlaceholder({
+          kind,
+          agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+          agentLaunchMode: agentLaunchModeRef.current,
+          persistedSnapshot: scrollbackBuffer.snapshot(),
+          baselineSource: hydrationBaselineSourceRef.current,
+        }),
+      shouldDeferHydratedRedrawChunks: () => shouldProtectRestoredHistory(),
       hasRecentUserInteraction: () => hasRecentTerminalUserInteraction(recentUserInteractionAtRef),
       scrollbackBuffer,
       committedScrollbackBuffer,
@@ -374,8 +388,10 @@ export function useTerminalRuntimeSession({
         committedScreenStateRecorder.record(rawSnapshot)
         scheduleTranscriptSync()
       },
+      onHydrationBaselineResolved: source => {
+        hydrationBaselineSourceRef.current = source
+      },
       onPresentationSnapshotAccepted: snapshot => {
-        hasAcceptedPresentationSnapshot = true
         lastCommittedPtySizeRef.current = {
           cols: snapshot.cols,
           rows: snapshot.rows,

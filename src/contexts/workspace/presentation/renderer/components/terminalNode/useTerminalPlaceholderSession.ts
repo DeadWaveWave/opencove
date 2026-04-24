@@ -13,6 +13,7 @@ import {
   hasRecentTerminalUserInteraction,
   registerTerminalUserInteractionWindow,
 } from './userInteractionWindow'
+import { shouldReusePreservedXtermSession } from './useTerminalRuntimeSession.support'
 
 export function useTerminalPlaceholderSession({
   nodeId,
@@ -196,8 +197,10 @@ export function useTerminalPlaceholderSession({
       disposeInteractionWindow()
       if (
         shouldHandoffToRuntime() &&
-        terminalClientResetVersion === 0 &&
-        (preferredRendererMode === 'auto' || session.renderer.kind === 'dom')
+        shouldReusePreservedXtermSession({
+          preservedSession: session,
+          terminalClientResetVersion,
+        })
       ) {
         preservedXtermSessionRef.current = session
         return

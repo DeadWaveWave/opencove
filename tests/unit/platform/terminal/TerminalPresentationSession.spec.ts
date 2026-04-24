@@ -39,4 +39,19 @@ describe('TerminalPresentationSession', () => {
     expect(snapshot.title).toBe('opencode')
     expect(snapshot.serializedScreen).toContain('ALT_SCREEN')
   })
+
+  it('includes terminal modes in the authoritative snapshot contract', async () => {
+    const session = new TerminalPresentationSession({
+      sessionId: 'session-3',
+      cols: 20,
+      rows: 5,
+    })
+
+    await session.applyOutput(3, '\u001b[?1000h\u001b[?1006h\u001b[?2004hmouse modes ready')
+
+    const snapshot = await session.snapshot()
+
+    expect(snapshot.serializedScreen).toContain('\u001b[?1000h')
+    expect(snapshot.serializedScreen).toContain('\u001b[?2004h')
+  })
 })

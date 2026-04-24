@@ -14,6 +14,12 @@ import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
 import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
 import type { XtermSession } from './xtermSession'
 
+export type TerminalHydrationBaselineSource =
+  | 'empty'
+  | 'placeholder_snapshot'
+  | 'presentation_snapshot'
+  | 'live_pty_snapshot'
+
 export function shouldGateRestoredAgentInput(options: {
   kind: WorkspaceNodeKind
   isLiveSessionReattach: boolean
@@ -29,18 +35,52 @@ export function shouldGateRestoredAgentInput(options: {
 
 export function shouldProtectRestoredAgentHistory(options: {
   kind: WorkspaceNodeKind
-  isLiveSessionReattach: boolean
   agentResumeSessionIdVerified: boolean
   agentLaunchMode: AgentLaunchMode | null
   persistedSnapshot: string
 }): boolean {
-  void options.isLiveSessionReattach
-
   return (
     options.kind === 'agent' &&
     (options.agentResumeSessionIdVerified ||
       options.agentLaunchMode === 'resume' ||
       options.persistedSnapshot.trim().length > 0)
+  )
+}
+
+export function isAuthoritativeHydrationBaselineSource(
+  source: TerminalHydrationBaselineSource,
+): boolean {
+  return source === 'presentation_snapshot' || source === 'live_pty_snapshot'
+}
+
+export function shouldTreatHydratedAgentBaselineAsPlaceholder(options: {
+  kind: WorkspaceNodeKind
+  agentResumeSessionIdVerified: boolean
+  agentLaunchMode: AgentLaunchMode | null
+  persistedSnapshot: string
+  baselineSource: TerminalHydrationBaselineSource
+}): boolean {
+  return (
+    shouldProtectRestoredAgentHistory({
+      kind: options.kind,
+      agentResumeSessionIdVerified: options.agentResumeSessionIdVerified,
+      agentLaunchMode: options.agentLaunchMode,
+      persistedSnapshot: options.persistedSnapshot,
+    }) && !isAuthoritativeHydrationBaselineSource(options.baselineSource)
+  )
+}
+
+export function shouldReusePreservedXtermSession(options: {
+  preservedSession: XtermSession | null
+  terminalClientResetVersion: number
+}): options is {
+  preservedSession: XtermSession
+  terminalClientResetVersion: number
+} {
+  return (
+    options.preservedSession !== null &&
+    options.terminalClientResetVersion === 0 &&
+    options.preservedSession.renderer.kind === 'dom'
   )
 }
 

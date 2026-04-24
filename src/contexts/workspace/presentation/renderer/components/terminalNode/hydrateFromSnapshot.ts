@@ -2,6 +2,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { PresentationSnapshotTerminalResult } from '@shared/contracts/dto'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
+import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 import { writeTerminalAsync } from './writeTerminal'
 
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
@@ -38,6 +39,7 @@ export async function hydrateTerminalFromSnapshot({
   takePtySnapshot,
   isDisposed,
   onHydratedWriteCommitted,
+  onHydrationBaselineResolved,
   onPresentationSnapshotAccepted,
   finalizeHydration,
 }: {
@@ -53,6 +55,7 @@ export async function hydrateTerminalFromSnapshot({
   takePtySnapshot: (payload: { sessionId: string }) => Promise<{ data: string }>
   isDisposed: () => boolean
   onHydratedWriteCommitted: (rawSnapshot: string) => void
+  onHydrationBaselineResolved?: (source: TerminalHydrationBaselineSource) => void
   onPresentationSnapshotAccepted?: (snapshot: PresentationSnapshotTerminalResult) => void
   finalizeHydration: (rawSnapshot: string) => void
 }): Promise<void> {
@@ -71,6 +74,8 @@ export async function hydrateTerminalFromSnapshot({
 
   const baseRawSnapshot = persistedSnapshot
   let rawSnapshot = baseRawSnapshot
+  let hydrationBaselineSource: TerminalHydrationBaselineSource =
+    placeholderPayload.length > 0 ? 'placeholder_snapshot' : 'empty'
 
   if (presentationSnapshot?.serializedScreen.length) {
     const nextCols = Math.max(1, presentationSnapshot.cols)
@@ -82,6 +87,7 @@ export async function hydrateTerminalFromSnapshot({
     await writeTerminalAsync(terminal, presentationSnapshot.serializedScreen)
     onPresentationSnapshotAccepted?.(presentationSnapshot)
     rawSnapshot = presentationSnapshot.serializedScreen
+    hydrationBaselineSource = 'presentation_snapshot'
     onHydratedWriteCommitted(rawSnapshot)
   } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
     await writeTerminalAsync(terminal, placeholderPayload)
@@ -124,6 +130,7 @@ export async function hydrateTerminalFromSnapshot({
       void attachPromise.catch(() => undefined)
     } else {
       rawSnapshot = await restoreFromLivePtySnapshot()
+      hydrationBaselineSource = 'live_pty_snapshot'
     }
   } catch {
     rawSnapshot = baseRawSnapshot
@@ -133,6 +140,7 @@ export async function hydrateTerminalFromSnapshot({
     return
   }
 
+  onHydrationBaselineResolved?.(hydrationBaselineSource)
   onHydratedWriteCommitted(rawSnapshot)
   finalizeHydration(rawSnapshot)
 }
