@@ -3,9 +3,11 @@ import {
   clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { openPaneContextMenuInSpace } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
   test('creates new tasks in the space under the cursor (right-click anchor)', async () => {
@@ -54,10 +56,8 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      await pane.click({
-        button: 'right',
-        position: { x: 380, y: 240 },
-      })
+      await openPaneContextMenuInSpace(window, pane, 'space-anchor')
+      await expect(window.locator('[data-testid="workspace-context-new-task"]')).toBeVisible()
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
       await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
@@ -182,12 +182,12 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
         },
       )
 
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+      const paneBox = await readLocatorClientRect(pane)
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!spaceBox) {
-        throw new Error('space bounding box unavailable')
-      }
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const agentNode = window
         .locator('.terminal-node')
@@ -196,11 +196,18 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
       await expect(agentNode).toBeVisible()
       await expect(agentNode.locator('.terminal-node__badge--warning')).toHaveCount(0)
 
-      await dragLocatorTo(window, agentNode.locator('.terminal-node__header'), spaceRegion, {
+      const clamp = (value: number, min: number, max: number): number =>
+        Math.max(min, Math.min(max, value))
+      const dropInsideSpaceClientPoint = {
+        x: spaceBox.x + spaceBox.width / 2,
+        y: spaceBox.y + Math.min(spaceBox.height - 80, Math.max(160, spaceBox.height / 2)),
+      }
+
+      await dragLocatorTo(window, agentNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
-          x: Math.min(Math.max(140, Math.round(spaceBox.width * 0.35)), spaceBox.width - 40),
-          y: Math.min(Math.max(140, Math.round(spaceBox.height * 0.45)), spaceBox.height - 40),
+          x: clamp(dropInsideSpaceClientPoint.x - paneBox.x, 40, paneBox.width - 40),
+          y: clamp(dropInsideSpaceClientPoint.y - paneBox.y, 40, paneBox.height - 40),
         },
         steps: 18,
       })

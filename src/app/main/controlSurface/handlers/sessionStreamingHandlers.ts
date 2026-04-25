@@ -2,6 +2,8 @@ import process from 'node:process'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import { createAppError } from '../../../../shared/errors/appError'
 import type {
+  GetSessionPresentationSnapshotInput,
+  GetSessionPresentationSnapshotResult,
   GetSessionSnapshotInput,
   GetSessionSnapshotResult,
   ListSessionsResult,
@@ -110,6 +112,20 @@ function normalizeSnapshotPayload(payload: unknown): GetSessionSnapshotInput {
   }
 }
 
+function normalizePresentationSnapshotPayload(
+  payload: unknown,
+): GetSessionPresentationSnapshotInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for session.presentationSnapshot.',
+    })
+  }
+
+  return {
+    sessionId: normalizeRequiredString(payload.sessionId, 'session.presentationSnapshot sessionId'),
+  }
+}
+
 function normalizeSpawnTerminalPayload(payload: unknown): SpawnTerminalSessionInput {
   if (!isRecord(payload)) {
     throw createAppError('common.invalid_input', {
@@ -188,6 +204,22 @@ export function registerSessionStreamingHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
+  controlSurface.register('session.presentationSnapshot', {
+    kind: 'query',
+    validate: normalizePresentationSnapshotPayload,
+    handle: async (_ctx, payload): Promise<GetSessionPresentationSnapshotResult> => {
+      try {
+        return await deps.ptyStreamHub.presentationSnapshotSession(payload.sessionId)
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown session'
+        throw createAppError('session.not_found', {
+          debugMessage: `session.presentationSnapshot: ${message}`,
+        })
+      }
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
   controlSurface.register('session.spawnTerminal', {
     kind: 'command',
     validate: normalizeSpawnTerminalPayload,
@@ -243,6 +275,8 @@ export function registerSessionStreamingHandlers(
         cwd: resolvedSpawn.cwd,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        cols,
+        rows,
       })
 
       return {
@@ -287,6 +321,8 @@ export function registerSessionStreamingHandlers(
         cwd: payload.cwd,
         command,
         args: [],
+        cols: payload.cols,
+        rows: payload.rows,
       })
 
       return {
@@ -297,4 +333,27 @@ export function registerSessionStreamingHandlers(
     },
     defaultErrorCode: 'terminal.spawn_failed',
   })
+
+  if (deps.ptyRuntime.debugCrashHost) {
+    controlSurface.register('pty.debugCrashHost', {
+      kind: 'command',
+      validate: payload => payload ?? null,
+      handle: async () => {
+        const sessionIds = deps.ptyStreamHub
+          .listSessions()
+          .sessions.map(session => session.sessionId)
+        await deps.ptyRuntime.debugCrashHost?.()
+        await Promise.allSettled(
+          sessionIds.map(async sessionId => {
+            await Promise.resolve(deps.ptyRuntime.kill(sessionId))
+          }),
+        )
+        sessionIds.forEach(sessionId => {
+          deps.ptyStreamHub.handlePtyExit(sessionId, 1)
+        })
+        return null
+      },
+      defaultErrorCode: 'common.unexpected',
+    })
+  }
 }

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { createRollingTextBuffer } from '../../utils/rollingTextBuffer'
-import { MAX_SCROLLBACK_CHARS, SCROLLBACK_PUBLISH_DELAY_MS } from './constants'
+import {
+  MAX_SCROLLBACK_CHARS,
+  SCROLLBACK_PUBLISH_DELAY_MS,
+  TERMINAL_SCROLLBACK_FLUSH_EVENT,
+} from './constants'
 import { truncateScrollback } from './scrollback'
 
 export interface TerminalScrollbackController {
@@ -118,6 +122,21 @@ export function useTerminalScrollback({
     if (publishTimerRef.current !== null) {
       window.clearTimeout(publishTimerRef.current)
       publishTimerRef.current = null
+    }
+  }, [scheduleScrollbackPublish])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return
+    }
+
+    const handleFlush = () => {
+      scheduleScrollbackPublish(true)
+    }
+
+    window.addEventListener(TERMINAL_SCROLLBACK_FLUSH_EVENT, handleFlush)
+    return () => {
+      window.removeEventListener(TERMINAL_SCROLLBACK_FLUSH_EVENT, handleFlush)
     }
   }, [scheduleScrollbackPublish])
 

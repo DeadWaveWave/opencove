@@ -1,4 +1,5 @@
 import type { AgentProviderId } from './agent'
+import type { PresentationSnapshotTerminalResult } from './terminal'
 import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
 
@@ -268,6 +269,58 @@ export interface GetSessionSnapshotResult {
   toSeq: number
   scrollback: string
   truncated: boolean
+}
+
+export interface GetSessionPresentationSnapshotInput {
+  sessionId: string
+}
+
+export interface GetSessionPresentationSnapshotResult extends PresentationSnapshotTerminalResult {}
+
+export interface PrepareOrReviveSessionInput {
+  workspaceId: string
+  nodeIds?: string[] | null
+}
+
+export interface PreparedRuntimeAgentResult {
+  provider: AgentProviderId
+  prompt: string
+  model: string | null
+  effectiveModel: string | null
+  launchMode: 'new' | 'resume'
+  resumeSessionId: string | null
+  resumeSessionIdVerified: boolean
+  executionDirectory: string
+  expectedDirectory: string | null
+  directoryMode: 'workspace' | 'custom'
+  customDirectory: string | null
+  shouldCreateDirectory: boolean
+  taskId: string | null
+}
+
+export interface PreparedRuntimeNodeResult {
+  nodeId: string
+  kind: 'terminal' | 'agent'
+  recoveryState: 'live' | 'revived' | 'restarted' | 'fallback_terminal'
+  sessionId: string
+  isLiveSessionReattach: boolean
+  title: string
+  profileId: string | null
+  runtimeKind: 'windows' | 'wsl' | 'posix' | null
+  status: string | null
+  startedAt: string | null
+  endedAt: string | null
+  exitCode: number | null
+  lastError: string | null
+  scrollback: string | null
+  executionDirectory: string | null
+  expectedDirectory: string | null
+  agent: PreparedRuntimeAgentResult | null
+}
+
+export interface PrepareOrReviveSessionResult {
+  workspaceId: string
+  nodes: PreparedRuntimeNodeResult[]
 }
 
 export type ControlSurfaceTerminalRuntime = 'shell' | 'node'

@@ -1,19 +1,29 @@
 import { TERMINAL_LAYOUT_SYNC_EVENT } from './constants'
 
-export function registerTerminalLayoutSync(onLayoutSync: () => void): () => void {
+export type TerminalLayoutSyncTrigger = 'visibility_resume' | 'window_focus' | 'manual'
+
+export function registerTerminalLayoutSync(
+  onLayoutSync: (trigger: TerminalLayoutSyncTrigger) => void,
+): () => void {
   const handleVisibilityChange = () => {
     if (document.visibilityState === 'visible') {
-      onLayoutSync()
+      onLayoutSync('visibility_resume')
     }
+  }
+  const handleWindowFocus = () => {
+    onLayoutSync('window_focus')
+  }
+  const handleManualLayoutSync = () => {
+    onLayoutSync('manual')
   }
 
   document.addEventListener('visibilitychange', handleVisibilityChange)
-  window.addEventListener('focus', onLayoutSync)
-  window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, onLayoutSync)
+  window.addEventListener('focus', handleWindowFocus)
+  window.addEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleManualLayoutSync)
 
   return () => {
     document.removeEventListener('visibilitychange', handleVisibilityChange)
-    window.removeEventListener('focus', onLayoutSync)
-    window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, onLayoutSync)
+    window.removeEventListener('focus', handleWindowFocus)
+    window.removeEventListener(TERMINAL_LAYOUT_SYNC_EVENT, handleManualLayoutSync)
   }
 }

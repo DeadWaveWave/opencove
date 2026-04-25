@@ -1,4 +1,4 @@
-import { useEffect, type RefObject } from 'react'
+import { useEffect, useRef, type RefObject } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import { DEFAULT_TERMINAL_FONT_FAMILY } from './constants'
 import {
@@ -36,6 +36,7 @@ function isTerminalAtBottom(terminal: Terminal): boolean {
 export function useTerminalAppearanceSync({
   terminalRef,
   syncTerminalSize,
+  commitTerminalGeometry,
   terminalFontSize,
   terminalFontFamily,
   width,
@@ -45,6 +46,7 @@ export function useTerminalAppearanceSync({
 }: {
   terminalRef: RefObject<Terminal | null>
   syncTerminalSize: () => void
+  commitTerminalGeometry: () => void
   terminalFontSize: number
   terminalFontFamily: string | null
   width: number
@@ -52,6 +54,9 @@ export function useTerminalAppearanceSync({
   viewportZoom: number
   isViewportInteractionActive: boolean
 }): void {
+  const hasInitializedFontSizeRef = useRef(false)
+  const hasInitializedFontFamilyRef = useRef(false)
+
   useEffect(() => {
     const terminal = terminalRef.current
     if (!terminal) {
@@ -59,8 +64,20 @@ export function useTerminalAppearanceSync({
     }
 
     terminal.options.fontSize = terminalFontSize
-    syncTerminalSize()
-  }, [syncTerminalSize, terminalFontSize, terminalRef])
+    const frame = requestAnimationFrame(() => {
+      if (hasInitializedFontSizeRef.current) {
+        commitTerminalGeometry()
+        return
+      }
+
+      hasInitializedFontSizeRef.current = true
+      syncTerminalSize()
+    })
+
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [commitTerminalGeometry, syncTerminalSize, terminalFontSize, terminalRef])
 
   useEffect(() => {
     const terminal = terminalRef.current
@@ -69,8 +86,20 @@ export function useTerminalAppearanceSync({
     }
 
     terminal.options.fontFamily = terminalFontFamily ?? DEFAULT_TERMINAL_FONT_FAMILY
-    syncTerminalSize()
-  }, [syncTerminalSize, terminalFontFamily, terminalRef])
+    const frame = requestAnimationFrame(() => {
+      if (hasInitializedFontFamilyRef.current) {
+        commitTerminalGeometry()
+        return
+      }
+
+      hasInitializedFontFamilyRef.current = true
+      syncTerminalSize()
+    })
+
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [commitTerminalGeometry, syncTerminalSize, terminalFontFamily, terminalRef])
 
   useEffect(() => {
     const frame = requestAnimationFrame(syncTerminalSize)

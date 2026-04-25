@@ -19,6 +19,11 @@ describe('cleanupNodeRuntimeArtifacts', () => {
       value: {
         persistence: {
           writeNodeScrollback: vi.fn(async () => ({ ok: true, level: 'full', bytes: 0 })),
+          writeAgentNodePlaceholderScrollback: vi.fn(async () => ({
+            ok: true,
+            level: 'full',
+            bytes: 0,
+          })),
         },
       },
     })
@@ -28,7 +33,6 @@ describe('cleanupNodeRuntimeArtifacts', () => {
     setCachedTerminalScreenState('node-1', {
       sessionId: 'session-1',
       serialized: 'SERIALIZED',
-      rawSnapshot: 'snapshot',
       cols: 80,
       rows: 24,
     })
@@ -43,5 +47,11 @@ describe('cleanupNodeRuntimeArtifacts', () => {
       nodeId: 'node-1',
       scrollback: null,
     })
+    expect(window.opencoveApi.persistence.writeAgentNodePlaceholderScrollback).toHaveBeenCalledWith(
+      {
+        nodeId: 'node-1',
+        scrollback: null,
+      },
+    )
   })
 })

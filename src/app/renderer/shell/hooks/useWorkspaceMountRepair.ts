@@ -5,24 +5,9 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import type { CreateMountResult, ListMountsResult } from '@shared/contracts/dto'
 import { isAbsolutePath, normalizeSlashes } from '../utils/pathHelpers'
+import { isAllocateProjectPlaceholderPath } from '../utils/projectPlaceholderPath'
 import { notifyTopologyChanged } from '../utils/topologyEvents'
 import { useAppStore } from '../store/useAppStore'
-
-function isAllocateProjectPlaceholderPath(workspacePath: string, workspaceId: string): boolean {
-  const normalized = normalizeSlashes(workspacePath.trim()).replace(/\/+$/, '')
-  if (normalized.length === 0) {
-    return false
-  }
-
-  const segments = normalized.split('/').filter(Boolean)
-  if (segments.length < 2) {
-    return false
-  }
-
-  const last = segments[segments.length - 1]
-  const parent = segments[segments.length - 2]
-  return last === workspaceId && parent === 'projects'
-}
 
 async function delay(ms: number): Promise<void> {
   await new Promise<void>(resolve => {

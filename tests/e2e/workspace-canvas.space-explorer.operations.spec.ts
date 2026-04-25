@@ -473,9 +473,9 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       ).toContainText('delete-me.txt')
       await deleteConfirmation.getByRole('button', { name: 'Delete' }).click()
 
-      await expect(deleteConfirmation).toHaveCount(0)
       await expect.poll(async () => await pathExists(deleteSourcePath)).toBe(false)
       await expect(deleteEntry).toHaveCount(0)
+      await expect(deleteConfirmation).toBeHidden()
     } finally {
       await electronApp.close()
       await removePathWithRetry(fixtureDir)

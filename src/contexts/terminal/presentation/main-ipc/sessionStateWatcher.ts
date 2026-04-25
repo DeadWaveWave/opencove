@@ -46,9 +46,13 @@ type DisposableSessionWatcher = { dispose: () => void; noteInteraction?: (data?:
 export function createSessionStateWatcherController({
   sendToAllWindows,
   reportIssue,
+  onState,
+  onMetadata,
 }: {
   sendToAllWindows: SendToAllWindows
   reportIssue: (message: string) => void
+  onState?: (event: TerminalSessionStateEvent) => void
+  onMetadata?: (event: TerminalSessionMetadataEvent) => void
 }): {
   start: (input: SessionStateWatcherStartInput) => void
   noteInteraction: (sessionId: string, data?: string) => void
@@ -103,6 +107,7 @@ export function createSessionStateWatcherController({
       resumeSessionId,
     })
     sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, eventPayload)
+    onMetadata?.(eventPayload)
   }
 
   const clearSessionStateWatcher = (
@@ -178,6 +183,7 @@ export function createSessionStateWatcherController({
       state,
     })
     sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
+    onState?.(eventPayload)
   }
 
   const scheduleRetry = (sessionId: string, watcherVersion: number): void => {

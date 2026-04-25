@@ -48,7 +48,9 @@ function TerminalNodeType({
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
-  const scrollback = useScrollbackStore(state => state.scrollbackByNodeId[id] ?? null)
+  const scrollback = useScrollbackStore(
+    state => state.scrollbackByNodeId[id] ?? data.scrollback ?? null,
+  )
   const nodePosition = useNodePosition(id)
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??

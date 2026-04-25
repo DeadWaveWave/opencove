@@ -67,9 +67,7 @@ type TerminalSelectionTestApi = {
   getCachedScreenStateSummary: (nodeId: string) => {
     sessionId: string
     serializedLength: number
-    rawSnapshotLength: number
     serializedHasFrameToken: boolean
-    rawSnapshotHasFrameToken: boolean
   } | null
   emitBinaryInput: (nodeId: string, data: string) => boolean
   getSelection: (nodeId: string) => string | null
@@ -259,13 +257,12 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         return {
           sessionId: cached.sessionId,
           serializedLength: cached.serialized.length,
-          rawSnapshotLength: cached.rawSnapshot.length,
           serializedHasFrameToken: cached.serialized.includes('FRAME_29999_TOKEN'),
-          rawSnapshotHasFrameToken: cached.rawSnapshot.includes('FRAME_29999_TOKEN'),
         }
       },
       emitBinaryInput: (nodeId, data) => {
         const terminal = terminalHandles.get(nodeId) as unknown as {
+          element?: HTMLElement | null
           _core?: { coreService?: { triggerBinaryEvent?: (payload: string) => void } }
         }
         const coreService = terminal?._core?.coreService
@@ -273,6 +270,13 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
           return false
         }
 
+        const interactionTarget = terminal.element?.parentElement ?? terminal.element ?? null
+        interactionTarget?.dispatchEvent(
+          new MouseEvent('mousedown', {
+            bubbles: true,
+            cancelable: true,
+          }),
+        )
         coreService.triggerBinaryEvent(data)
         return true
       },

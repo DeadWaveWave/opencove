@@ -2,6 +2,8 @@ import type {
   AttachTerminalInput,
   DetachTerminalInput,
   KillTerminalInput,
+  PresentationSnapshotTerminalInput,
+  PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
   SnapshotTerminalInput,
   SnapshotTerminalResult,
@@ -9,6 +11,8 @@ import type {
   SpawnTerminalResult,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WriteTerminalInput,
@@ -27,6 +31,14 @@ function emitToListeners<TEvent>(listeners: PtyListenerMap<TEvent>, event: TEven
   listeners.forEach(listener => {
     listener(event)
   })
+}
+
+function normalizeTerminalSessionState(value: unknown): 'working' | 'standby' | null {
+  if (value === 'working' || value === 'standby') {
+    return value
+  }
+
+  return null
 }
 
 function resolvePtyWebSocketUrl(): string {
@@ -50,8 +62,12 @@ export class BrowserPtyClient {
   >()
   private readonly dataListeners = new Set<(event: TerminalDataEvent) => void>()
   private readonly exitListeners = new Set<(event: TerminalExitEvent) => void>()
+  private readonly geometryListeners = new Set<(event: TerminalGeometryEvent) => void>()
+  private readonly resyncListeners = new Set<(event: TerminalResyncEvent) => void>()
   private readonly stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   private readonly metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
+  private readonly latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
+  private readonly latestMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
 
   private cancelMetadataWatcher(sessionId: string): void {
     const watcher = this.metadataWatchers.get(sessionId)
@@ -266,27 +282,82 @@ export class BrowserPtyClient {
       return
     }
 
-    if (type === 'overflow') {
-      try {
-        const snapshot = await this.snapshot({ sessionId })
-        const existing = this.attachedSessions.get(sessionId)
-        if (existing) {
-          const toSeq =
-            typeof record.seq === 'number' && Number.isFinite(record.seq)
-              ? Math.floor(record.seq)
-              : existing.lastSeq
-          existing.lastSeq = Math.max(existing.lastSeq, toSeq)
-        }
+    if (type === 'geometry') {
+      const cols =
+        typeof record.cols === 'number' && Number.isFinite(record.cols)
+          ? Math.floor(record.cols)
+          : 0
+      const rows =
+        typeof record.rows === 'number' && Number.isFinite(record.rows)
+          ? Math.floor(record.rows)
+          : 0
+      const reason =
+        record.reason === 'frame_commit' || record.reason === 'appearance_commit'
+          ? record.reason
+          : null
 
-        if (snapshot.data.length > 0) {
-          emitToListeners(this.dataListeners, {
-            sessionId,
-            data: snapshot.data,
-          })
-        }
-      } catch {
-        // ignore snapshot recovery failures
+      if (cols <= 0 || rows <= 0 || !reason) {
+        return
       }
+
+      emitToListeners(this.geometryListeners, { sessionId, cols, rows, reason })
+      return
+    }
+
+    if (type === 'state') {
+      const state = normalizeTerminalSessionState(record.state)
+      if (!state) {
+        return
+      }
+
+      const eventPayload: TerminalSessionStateEvent = { sessionId, state }
+      this.latestStateBySessionId.set(sessionId, eventPayload)
+      emitToListeners(this.stateListeners, eventPayload)
+      return
+    }
+
+    if (type === 'metadata') {
+      const resumeSessionId =
+        typeof record.resumeSessionId === 'string' && record.resumeSessionId.trim().length > 0
+          ? record.resumeSessionId.trim()
+          : null
+      const profileId =
+        typeof record.profileId === 'string' && record.profileId.trim().length > 0
+          ? record.profileId.trim()
+          : null
+      const runtimeKind =
+        record.runtimeKind === 'windows' ||
+        record.runtimeKind === 'wsl' ||
+        record.runtimeKind === 'posix'
+          ? record.runtimeKind
+          : null
+
+      const eventPayload: TerminalSessionMetadataEvent = {
+        sessionId,
+        resumeSessionId,
+        ...(profileId ? { profileId } : {}),
+        ...(runtimeKind ? { runtimeKind } : {}),
+      }
+      this.latestMetadataBySessionId.set(sessionId, eventPayload)
+      emitToListeners(this.metadataListeners, eventPayload)
+      this.cancelMetadataWatcher(sessionId)
+      return
+    }
+
+    if (type === 'overflow') {
+      const reason = record.reason === 'replay_window_exceeded' ? record.reason : null
+      const recovery = record.recovery === 'presentation_snapshot' ? record.recovery : null
+
+      if (!reason || !recovery) {
+        return
+      }
+
+      emitToListeners(this.resyncListeners, {
+        sessionId,
+        reason,
+        recovery,
+      })
+      return
     }
   }
 
@@ -339,6 +410,7 @@ export class BrowserPtyClient {
       sessionId: payload.sessionId,
       cols: payload.cols,
       rows: payload.rows,
+      reason: payload.reason,
     })
   }
 
@@ -401,6 +473,23 @@ export class BrowserPtyClient {
     return { data: snapshot.scrollback }
   }
 
+  public async presentationSnapshot(
+    payload: PresentationSnapshotTerminalInput,
+  ): Promise<PresentationSnapshotTerminalResult> {
+    const snapshot = await invokeBrowserControlSurface<PresentationSnapshotTerminalResult>({
+      kind: 'query',
+      id: 'session.presentationSnapshot',
+      payload,
+    })
+
+    const existing = this.attachedSessions.get(payload.sessionId)
+    if (existing) {
+      existing.lastSeq = Math.max(existing.lastSeq, snapshot.appliedSeq)
+    }
+
+    return snapshot
+  }
+
   public async debugCrashHost(): Promise<void> {
     throw new Error('PTY host crash is unavailable in browser runtime')
   }
@@ -419,8 +508,25 @@ export class BrowserPtyClient {
     }
   }
 
+  public onGeometry(listener: (event: TerminalGeometryEvent) => void): UnsubscribeFn {
+    this.geometryListeners.add(listener)
+    return () => {
+      this.geometryListeners.delete(listener)
+    }
+  }
+
+  public onResync(listener: (event: TerminalResyncEvent) => void): UnsubscribeFn {
+    this.resyncListeners.add(listener)
+    return () => {
+      this.resyncListeners.delete(listener)
+    }
+  }
+
   public onState(listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn {
     this.stateListeners.add(listener)
+    this.latestStateBySessionId.forEach(event => {
+      listener(event)
+    })
     return () => {
       this.stateListeners.delete(listener)
     }
@@ -428,6 +534,9 @@ export class BrowserPtyClient {
 
   public onMetadata(listener: (event: TerminalSessionMetadataEvent) => void): UnsubscribeFn {
     this.metadataListeners.add(listener)
+    this.latestMetadataBySessionId.forEach(event => {
+      listener(event)
+    })
     return () => {
       this.metadataListeners.delete(listener)
     }

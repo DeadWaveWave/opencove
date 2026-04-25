@@ -1,4 +1,3 @@
-import type { Node } from '@xyflow/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_AGENT_SETTINGS,
@@ -8,19 +7,16 @@ import {
 import { applyUiLanguage, translate } from '@app/renderer/i18n'
 import type {
   PersistedWorkspaceState,
-  TerminalNodeData,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
 import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/store/useScrollbackStore'
 import { readPersistedStateWithMeta } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { getPersistencePort } from '@contexts/workspace/presentation/renderer/utils/persistence/port'
-import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { resolveCanvasCanonicalBucketFromViewport } from '@contexts/workspace/presentation/renderer/utils/workspaceNodeSizing'
 import { useAppStore } from '../store/useAppStore'
 import {
-  hydrateRuntimeNode,
   mergeHydratedNode,
-  requiresRuntimeHydration,
+  prepareWorkspaceRuntimeNodes,
   toShellWorkspaceState,
 } from './useHydrateAppState.helpers'
 
@@ -63,7 +59,6 @@ export function useHydrateAppState({
   const hydratedWorkspaceIdsRef = useRef<Set<string>>(new Set())
   const hydratingWorkspacePromisesRef = useRef<Map<string, Promise<void>>>(new Map())
   const scrollbackLoadedWorkspaceIdsRef = useRef<Set<string>>(new Set())
-  const shouldDropRuntimeSessionIdsRef = useRef(false)
   const initialHydrationWorkspaceIdRef = useRef<string | null>(null)
   const initialHydrationCompletedRef = useRef(false)
 
@@ -159,12 +154,23 @@ export function useHydrateAppState({
     return true
   }, [])
 
-  const applyHydratedNode = useCallback(
-    (workspaceId: string, hydratedNode: Node<TerminalNodeData>): void => {
+  const hydrateWorkspaceRuntimeNodes = useCallback(
+    async (workspaceId: string, persistedWorkspace: PersistedWorkspaceState): Promise<void> => {
       if (isCancelledRef.current) {
         return
       }
 
+      const { agentSettings } = useAppStore.getState()
+      const hydratedNodes = await prepareWorkspaceRuntimeNodes({
+        workspace: persistedWorkspace,
+        agentSettings,
+      })
+
+      if (isCancelledRef.current || hydratedNodes.length === 0) {
+        return
+      }
+
+      const hydratedById = new Map(hydratedNodes.map(node => [node.id, node]))
       setWorkspaces(previous =>
         previous.map(workspace => {
           if (workspace.id !== workspaceId) {
@@ -173,9 +179,10 @@ export function useHydrateAppState({
 
           return {
             ...workspace,
-            nodes: workspace.nodes.map(node =>
-              node.id === hydratedNode.id ? mergeHydratedNode(node, hydratedNode) : node,
-            ),
+            nodes: workspace.nodes.map(node => {
+              const hydratedNode = hydratedById.get(node.id)
+              return hydratedNode ? mergeHydratedNode(node, hydratedNode) : node
+            }),
           }
         }),
       )
@@ -211,44 +218,16 @@ export function useHydrateAppState({
 
       void loadWorkspaceScrollbacks(persistedWorkspace)
 
-      const dropRuntimeSessionIds = shouldDropRuntimeSessionIdsRef.current
-      const runtimeNodes = toRuntimeNodes(persistedWorkspace)
-        .filter(requiresRuntimeHydration)
-        .map(node => {
-          if (!dropRuntimeSessionIds) {
-            return node
-          }
-
-          if (node.data.kind !== 'terminal' && node.data.kind !== 'agent') {
-            return node
-          }
-
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              sessionId: '',
-            },
-          }
-        })
-      if (runtimeNodes.length === 0) {
+      const runtimeNodeCount = persistedWorkspace.nodes.filter(
+        node => node.kind === 'terminal' || node.kind === 'agent',
+      ).length
+      if (runtimeNodeCount === 0) {
         hydratedWorkspaceIdsRef.current.add(workspaceId)
         markInitialHydrationComplete(workspaceId)
         return
       }
 
-      const hydrationPromise = Promise.allSettled(
-        runtimeNodes.map(async node => {
-          const { agentSettings } = useAppStore.getState()
-          const hydratedNode = await hydrateRuntimeNode({
-            node,
-            workspacePath: persistedWorkspace.path,
-            agentSettings,
-          })
-
-          applyHydratedNode(workspaceId, hydratedNode)
-        }),
-      )
+      const hydrationPromise = hydrateWorkspaceRuntimeNodes(workspaceId, persistedWorkspace)
         .then(() => {
           hydratedWorkspaceIdsRef.current.add(workspaceId)
         })
@@ -260,7 +239,7 @@ export function useHydrateAppState({
       hydratingWorkspacePromisesRef.current.set(workspaceId, hydrationPromise)
       await hydrationPromise
     },
-    [applyHydratedNode, loadWorkspaceScrollbacks, markInitialHydrationComplete],
+    [hydrateWorkspaceRuntimeNodes, loadWorkspaceScrollbacks, markInitialHydrationComplete],
   )
 
   useEffect(() => {
@@ -276,34 +255,6 @@ export function useHydrateAppState({
     setIsPersistReady(false)
 
     const hydrateAppState = async (): Promise<void> => {
-      const shouldDropRuntimeSessionIds = (() => {
-        const currentMainPid = window.opencoveApi?.meta?.mainPid ?? null
-        if (typeof currentMainPid !== 'number' || !Number.isFinite(currentMainPid)) {
-          return false
-        }
-
-        const storageKey = 'opencove:runtime:main-pid'
-        let previousMainPid: number | null = null
-        try {
-          const raw = window.localStorage?.getItem(storageKey)
-          const parsed = raw ? Number.parseInt(raw, 10) : Number.NaN
-          if (Number.isFinite(parsed) && parsed > 0) {
-            previousMainPid = parsed
-          }
-        } catch {
-          previousMainPid = null
-        }
-
-        try {
-          window.localStorage?.setItem(storageKey, String(currentMainPid))
-        } catch {
-          // ignore localStorage failures
-        }
-
-        return previousMainPid !== currentMainPid
-      })()
-
-      shouldDropRuntimeSessionIdsRef.current = shouldDropRuntimeSessionIds
       const {
         state: persisted,
         recovery,
@@ -398,16 +349,21 @@ export function useHydrateAppState({
         }
       }
 
-      setWorkspaces(
-        persisted.workspaces.map(workspace =>
-          toShellWorkspaceState(workspace, { dropRuntimeSessionIds: shouldDropRuntimeSessionIds }),
-        ),
+      const initialWorkspaces = persisted.workspaces.map(workspace =>
+        toShellWorkspaceState(workspace, { dropRuntimeSessionIds: true }),
       )
+
+      setWorkspaces(initialWorkspaces)
       setActiveWorkspaceId(resolvedActiveWorkspaceId)
       setIsPersistReady(true)
 
       if (!resolvedActiveWorkspaceId) {
         setIsHydrated(true)
+        return
+      }
+
+      if (hydratedWorkspaceIdsRef.current.has(resolvedActiveWorkspaceId)) {
+        markInitialHydrationComplete(resolvedActiveWorkspaceId)
         return
       }
 
@@ -422,6 +378,7 @@ export function useHydrateAppState({
   }, [
     ensureWorkspaceHydrated,
     loadWorkspaceScrollbacks,
+    markInitialHydrationComplete,
     setAgentSettings,
     setWorkspaces,
     setActiveWorkspaceId,

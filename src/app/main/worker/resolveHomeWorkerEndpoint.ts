@@ -46,12 +46,30 @@ async function resolveLocalDiscoveryEndpoint(): Promise<ControlSurfaceRemoteEndp
   return workerConnection ? toEndpoint(workerConnection) : null
 }
 
+async function tryStartLocalWorkerEndpoint(
+  diagnostics: string[],
+): Promise<ControlSurfaceRemoteEndpoint | null> {
+  try {
+    const status = await startLocalWorker()
+    if (status.status === 'running' && status.connection) {
+      return toEndpoint(status.connection)
+    }
+  } catch (error) {
+    const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    diagnostics.push(`Failed to start local worker: ${detail}`)
+  }
+
+  diagnostics.push('Home worker mode is local but worker did not start.')
+  return null
+}
+
 export async function resolveHomeWorkerEndpoint(options: {
   allowConfig: boolean
   allowStandaloneMode?: boolean
   allowRemoteMode?: boolean
 }): Promise<HomeWorkerEndpointResolution> {
   const diagnostics: string[] = []
+  const fallbackMode = options.allowStandaloneMode ? 'standalone' : 'local'
 
   const wantsWorkerClientMode = isTruthyEnv(process.env['OPENCOVE_WORKER_CLIENT'])
   if (!options.allowConfig && !wantsWorkerClientMode) {
@@ -59,33 +77,44 @@ export async function resolveHomeWorkerEndpoint(options: {
       allowStandaloneMode: options.allowStandaloneMode,
       allowRemoteMode: options.allowRemoteMode,
     })
-    return { config, effectiveMode: config.mode, endpoint: null, diagnostics }
+    if (config.mode !== 'local') {
+      return { config, effectiveMode: config.mode, endpoint: null, diagnostics }
+    }
+
+    const endpoint = await tryStartLocalWorkerEndpoint(diagnostics)
+    return {
+      config,
+      effectiveMode: endpoint ? 'local' : fallbackMode,
+      endpoint,
+      diagnostics,
+    }
   }
 
   if (wantsWorkerClientMode) {
     const endpoint = await resolveLocalDiscoveryEndpoint()
-    if (!endpoint) {
-      diagnostics.push(
-        'OPENCOVE_WORKER_CLIENT=1 but no worker control surface connection file was found.',
-      )
+    if (endpoint) {
       return {
         config: await readHomeWorkerConfig(app.getPath('userData'), {
           allowStandaloneMode: options.allowStandaloneMode,
           allowRemoteMode: options.allowRemoteMode,
         }),
-        effectiveMode: 'standalone',
-        endpoint: null,
+        effectiveMode: 'local',
+        endpoint,
         diagnostics,
       }
     }
 
+    diagnostics.push(
+      'OPENCOVE_WORKER_CLIENT=1 but no worker control surface connection file was found.',
+    )
+    const startedEndpoint = await tryStartLocalWorkerEndpoint(diagnostics)
     return {
       config: await readHomeWorkerConfig(app.getPath('userData'), {
         allowStandaloneMode: options.allowStandaloneMode,
         allowRemoteMode: options.allowRemoteMode,
       }),
-      effectiveMode: 'local',
-      endpoint,
+      effectiveMode: startedEndpoint ? 'local' : fallbackMode,
+      endpoint: startedEndpoint,
       diagnostics,
     }
   }
@@ -110,23 +139,22 @@ export async function resolveHomeWorkerEndpoint(options: {
   }
 
   if (config.mode === 'local') {
-    try {
-      const status = await startLocalWorker()
-      if (status.status === 'running' && status.connection) {
-        return {
-          config,
-          effectiveMode: 'local',
-          endpoint: toEndpoint(status.connection),
-          diagnostics,
-        }
+    const endpoint = await tryStartLocalWorkerEndpoint(diagnostics)
+    if (endpoint) {
+      return {
+        config,
+        effectiveMode: 'local',
+        endpoint,
+        diagnostics,
       }
-    } catch (error) {
-      const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
-      diagnostics.push(`Failed to start local worker: ${detail}`)
     }
 
-    diagnostics.push('Home worker mode is local but worker did not start.')
-    return { config, effectiveMode: 'standalone', endpoint: null, diagnostics }
+    return {
+      config,
+      effectiveMode: fallbackMode,
+      endpoint: null,
+      diagnostics,
+    }
   }
 
   if (config.mode === 'standalone') {

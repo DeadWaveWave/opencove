@@ -49,6 +49,21 @@ const DESTRUCTIVE_TERMINAL_DISPLAY_CONTROL_SEQUENCES = [
   '\u001b[2K',
 ] as const
 
+function resolveLastDestructiveTerminalDisplayControlSequenceEnd(data: string): number {
+  let lastStart = -1
+  let lastEnd = -1
+
+  for (const sequence of ['\u001bc', ...DESTRUCTIVE_TERMINAL_DISPLAY_CONTROL_SEQUENCES]) {
+    const start = data.lastIndexOf(sequence)
+    if (start > lastStart) {
+      lastStart = start
+      lastEnd = start + sequence.length
+    }
+  }
+
+  return lastEnd
+}
+
 export function containsDestructiveTerminalDisplayControlSequence(data: string): boolean {
   return (
     data.includes('\u001bc') ||
@@ -112,6 +127,96 @@ export function containsMeaningfulTerminalDisplayContent(data: string): boolean 
   return false
 }
 
+export function containsMeaningfulTerminalDisplayContentAfterLastDestructiveSequence(
+  data: string,
+): boolean {
+  const destructiveSequenceEnd = resolveLastDestructiveTerminalDisplayControlSequenceEnd(data)
+  const visibleRegion = destructiveSequenceEnd >= 0 ? data.slice(destructiveSequenceEnd) : data
+
+  return containsMeaningfulTerminalDisplayContent(visibleRegion)
+}
+
+export function endsWithIncompleteTerminalControlSequence(data: string): boolean {
+  let index = 0
+
+  while (index < data.length) {
+    const code = data.charCodeAt(index)
+
+    if (code !== 0x1b) {
+      index += 1
+      continue
+    }
+
+    const next = data.charCodeAt(index + 1)
+    if (Number.isNaN(next)) {
+      return true
+    }
+
+    if (next === 0x5b) {
+      index += 2
+      let foundFinalByte = false
+      while (index < data.length) {
+        const finalByte = data.charCodeAt(index)
+        index += 1
+        if (finalByte >= 0x40 && finalByte <= 0x7e) {
+          foundFinalByte = true
+          break
+        }
+      }
+      if (!foundFinalByte) {
+        return true
+      }
+      continue
+    }
+
+    if (next === 0x5d) {
+      let cursor = index + 2
+      let foundTerminator = false
+      while (cursor < data.length) {
+        const cursorCode = data.charCodeAt(cursor)
+        if (cursorCode === 0x07) {
+          cursor += 1
+          foundTerminator = true
+          break
+        }
+        if (cursorCode === 0x1b && data.charCodeAt(cursor + 1) === 0x5c) {
+          cursor += 2
+          foundTerminator = true
+          break
+        }
+        cursor += 1
+      }
+      if (!foundTerminator) {
+        return true
+      }
+      index = cursor
+      continue
+    }
+
+    if (next === 0x50 || next === 0x5f || next === 0x5e || next === 0x58) {
+      let cursor = index + 2
+      let foundTerminator = false
+      while (cursor < data.length) {
+        if (data.charCodeAt(cursor) === 0x1b && data.charCodeAt(cursor + 1) === 0x5c) {
+          cursor += 2
+          foundTerminator = true
+          break
+        }
+        cursor += 1
+      }
+      if (!foundTerminator) {
+        return true
+      }
+      index = cursor
+      continue
+    }
+
+    index += 2
+  }
+
+  return false
+}
+
 export function shouldReplacePlaceholderWithBufferedOutput({
   data,
   exitCode,
@@ -119,12 +224,14 @@ export function shouldReplacePlaceholderWithBufferedOutput({
   data: string
   exitCode: number | null
 }): boolean {
-  return exitCode !== null || containsMeaningfulTerminalDisplayContent(data)
+  return (
+    exitCode !== null || containsMeaningfulTerminalDisplayContentAfterLastDestructiveSequence(data)
+  )
 }
 
 export function shouldDeferHydratedTerminalRedrawChunk(data: string): boolean {
   return (
     containsDestructiveTerminalDisplayControlSequence(data) &&
-    !containsMeaningfulTerminalDisplayContent(data)
+    !containsMeaningfulTerminalDisplayContentAfterLastDestructiveSequence(data)
   )
 }

@@ -8,11 +8,9 @@ type AgentMetadataWatcher = {
   cancelled: boolean
 }
 
-type SendToSessionSubscribers = (sessionId: string, channel: string, payload: unknown) => void
-
 export function createRemotePtyRuntimeAgentMetadataWatcher(options: {
   endpointResolver: ControlSurfaceRemoteEndpointResolver
-  sendToSessionSubscribers: SendToSessionSubscribers
+  sendToAllWindows: (channel: string, payload: unknown) => void
 }): {
   ensure: (sessionId: string) => void
   cancel: (sessionId: string) => void
@@ -95,7 +93,7 @@ export function createRemotePtyRuntimeAgentMetadataWatcher(options: {
               : null
 
           if (resumeSessionId) {
-            options.sendToSessionSubscribers(normalizedSessionId, IPC_CHANNELS.ptySessionMetadata, {
+            options.sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, {
               sessionId: normalizedSessionId,
               resumeSessionId,
             })

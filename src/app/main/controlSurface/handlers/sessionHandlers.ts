@@ -26,7 +26,9 @@ import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
+import { registerSessionPrepareOrReviveHandler } from './sessionPrepareOrReviveHandler'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
+import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import {
   isRecord,
   normalizeAgentProviderId,
@@ -300,6 +302,19 @@ export function registerSessionHandlers(
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
+      startAgentSessionStateWatcherIfEnabled({
+        ptyRuntime: deps.ptyRuntime,
+        sessionId,
+        provider,
+        cwd: workingDirectory,
+        launchMode: mode,
+        resumeSessionId,
+        startedAtMs,
+        opencodeBaseUrl: opencodeServer
+          ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
+          : null,
+      })
+
       const executionContext = resolveExecutionContextDto(workingDirectory, {
         projectId: resolvedSpace?.projectId ?? null,
         spaceId: resolvedSpaceId.length > 0 ? resolvedSpaceId : null,
@@ -329,6 +344,8 @@ export function registerSessionHandlers(
         cwd: workingDirectory,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        cols: 80,
+        rows: 24,
       })
 
       return {
@@ -346,6 +363,10 @@ export function registerSessionHandlers(
   })
 
   registerSessionLaunchAgentInMountHandler(controlSurface, { ...deps, sessions })
+  registerSessionPrepareOrReviveHandler(controlSurface, {
+    getPersistenceStore: deps.getPersistenceStore,
+    ptyStreamHub: deps.ptyStreamHub,
+  })
 
   controlSurface.register('session.get', {
     kind: 'query',

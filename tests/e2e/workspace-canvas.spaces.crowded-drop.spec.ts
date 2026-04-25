@@ -4,6 +4,7 @@ import {
   dragMouse,
   dragLocatorTo,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -47,16 +48,33 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
+      const paneBox = await readLocatorClientRect(pane)
 
       const draggedNode = window
         .locator('.terminal-node')
         .filter({ hasText: 'terminal-drag' })
         .first()
       await expect(draggedNode).toBeVisible()
+      const spaceRegion = window
+        .locator('.workspace-space-region')
+        .filter({ hasText: 'Full Scope' })
+        .first()
+      const spaceBox = await readLocatorClientRect(spaceRegion)
+
+      const clamp = (value: number, min: number, max: number): number =>
+        Math.max(min, Math.min(max, value))
+
+      const dropInsideSpaceClientPoint = {
+        x: spaceBox.x + spaceBox.width / 2,
+        y: spaceBox.y + Math.min(spaceBox.height - 80, Math.max(160, spaceBox.height / 2)),
+      }
 
       await dragLocatorTo(window, draggedNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
-        targetPosition: { x: 220, y: 220 },
+        targetPosition: {
+          x: clamp(dropInsideSpaceClientPoint.x - paneBox.x, 40, paneBox.width - 40),
+          y: clamp(dropInsideSpaceClientPoint.y - paneBox.y, 40, paneBox.height - 40),
+        },
       })
 
       await expect
