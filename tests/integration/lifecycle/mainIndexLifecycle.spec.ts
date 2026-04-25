@@ -62,6 +62,10 @@ describe('main process lifecycle', () => {
         openExternal: vi.fn(),
       },
       BrowserWindow,
+      Menu: {
+        setApplicationMenu: vi.fn(),
+        buildFromTemplate: vi.fn(template => template),
+      },
     }))
 
     vi.doMock('@electron-toolkit/utils', () => ({

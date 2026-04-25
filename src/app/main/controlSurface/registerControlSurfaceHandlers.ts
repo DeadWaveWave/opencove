@@ -55,6 +55,7 @@ export function registerControlSurfaceHandlers(
   registerFilesystemMountHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
     topology: deps.topology,
+    deleteEntry: deps.deleteEntry,
   })
   registerGitWorktreeHandlers(controlSurface, { approvedWorkspaces: deps.approvedWorkspaces })
   registerGitWorktreeMountHandlers(controlSurface, {

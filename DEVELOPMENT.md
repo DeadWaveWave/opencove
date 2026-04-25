@@ -176,7 +176,7 @@
 ## 常见问题（FAQ）
 
 -   **为什么我用 `pnpm dev` 启动后，Worker/Web UI 相关功能表现很奇怪（恢复/同步/持久化不生效）？**
-    -   先检查是否启用了 Home Worker（userData 目录下的 `home-worker.json` 中 `mode=local`，或环境变量 `OPENCOVE_WORKER_CLIENT=1`）。
+    -   先检查是否启用了本机 Worker 模式（userData 目录下的 `home-worker.json` 中 `mode=local`，或环境变量 `OPENCOVE_WORKER_CLIENT=1`）。
     -   然后执行一次 `pnpm build` 并重启 App，确保 `out/main/worker.js` 与当前源码一致。
 
 ## 文档地图（按问题找入口）
