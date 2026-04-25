@@ -2,7 +2,7 @@
 
 > Status: Active public migration plan
 > Scope: move latest `origin/main` to worker-owned multi-client terminal architecture
-> Last updated: 2026-04-24
+> Last updated: 2026-04-25
 
 Canonical references:
 
@@ -83,7 +83,7 @@ Create the canonical session baseline that latest main still lacks.
 
 ## Phase 2: Renderer Adoption And Correctness Exit
 
-Status: in progress
+Status: complete
 
 Current landing:
 
@@ -92,10 +92,8 @@ Current landing:
 - restart first-input recovery is covered and no longer depends on cache correctness
 - worker `session.prepareOrRevive` now returns durable agent placeholder scrollback as the cold-start restore baseline
 - cold-start and `cmd+w` restore now keep post-restore backspace/control redraw interactive without waiting for a later visible chunk
-
-Remaining:
-
-- finish the remaining restored click/input liveness issues without reintroducing renderer correctness cache
+- initial active workspace restore now paints persisted nodes before worker prepare resolves, while keeping local spawn/launch fallback disabled on the Electron worker path
+- restored click/input liveness is covered by integration tests and real `scripts/debug-repro-restored-agent-input.mjs` runs
 
 ### Objective
 
@@ -126,11 +124,13 @@ Current landing:
 
 - controller/viewer roles and resize rejection are enforced at the streaming contract boundary
 - resize broadcasts now flow through the shared session streaming contract
+- single-client Desktop restore and explicit node resize no longer depend on implicit attach/focus resize
 
 Remaining:
 
 - move the whole product path to worker-owned canonical geometry commits
 - prove attach/focus/typing can never perturb PTY size across Desktop and Web
+- investigate the deferred Web UI issue where opening Web UI can still perturb the Desktop Agent node size and confuse WebGL-heavy TUIs such as OpenCode
 
 ### Objective
 
@@ -155,17 +155,15 @@ Move from “controller can resize” to “worker owns canonical geometry; clie
 
 ## Phase 4: Revive Unification And Worker Prewarm
 
-Status: in progress
+Status: complete for Desktop restore
 
 Current landing:
 
 - Desktop startup no longer falls back to the old standalone production runtime path
 - live remote session attach survives window reopen without dropping the worker-owned session
-
-Remaining:
-
-- finish worker prewarm / `session.prepareOrRevive` as the single cold-start restore path
-- make restart first restore fully identical to `cmd+w` reopen semantics
+- active workspace cold start uses worker `session.prepareOrRevive` as the restore path
+- startup no longer blocks first paint on worker prepare; persisted nodes render first with empty runtime `sessionId`, then worker-prepared runtime data is merged
+- `cmd+w` reopen and full cold restart both pass the real restored-agent input script on 2026-04-25
 
 ### Objective
 

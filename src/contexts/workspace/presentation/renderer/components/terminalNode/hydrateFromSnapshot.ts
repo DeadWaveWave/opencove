@@ -103,22 +103,24 @@ export async function hydrateTerminalFromSnapshot({
   let hydrationBaselineSource: TerminalHydrationBaselineSource =
     placeholderPayload.length > 0 ? 'placeholder_snapshot' : 'empty'
 
-  if (
-    shouldUsePresentationSnapshotAsVisibleBaseline({
-      kind,
-      persistedSnapshot,
-      presentationSnapshot,
-    })
-  ) {
-    const nextCols = Math.max(1, presentationSnapshot.cols)
-    const nextRows = Math.max(1, presentationSnapshot.rows)
+  const visiblePresentationSnapshot = shouldUsePresentationSnapshotAsVisibleBaseline({
+    kind,
+    persistedSnapshot,
+    presentationSnapshot,
+  })
+    ? presentationSnapshot
+    : null
+
+  if (visiblePresentationSnapshot) {
+    const nextCols = Math.max(1, visiblePresentationSnapshot.cols)
+    const nextRows = Math.max(1, visiblePresentationSnapshot.rows)
     if (terminal.cols !== nextCols || terminal.rows !== nextRows) {
       terminal.resize(nextCols, nextRows)
     }
 
-    await writeTerminalAsync(terminal, presentationSnapshot.serializedScreen)
-    onPresentationSnapshotAccepted?.(presentationSnapshot)
-    rawSnapshot = presentationSnapshot.serializedScreen
+    await writeTerminalAsync(terminal, visiblePresentationSnapshot.serializedScreen)
+    onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
+    rawSnapshot = visiblePresentationSnapshot.serializedScreen
     hydrationBaselineSource = 'presentation_snapshot'
     onHydratedWriteCommitted(rawSnapshot)
   } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {

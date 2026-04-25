@@ -5,6 +5,18 @@ import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/ag
 import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { installMockStorage } from '../../support/persistenceTestStorage'
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (error: unknown) => void
+
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+
+  return { promise, resolve, reject }
+}
+
 function createPersistedState() {
   return {
     activeWorkspaceId: 'workspace-1',
@@ -69,7 +81,7 @@ function createHarness(
     const [workspaces, setWorkspaces] = useState<WorkspaceState[]>([])
     const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null)
 
-    const { isHydrated } = useHydrateAppStateHook({
+    const { isHydrated, isPersistReady } = useHydrateAppStateHook({
       activeWorkspaceId,
       setAgentSettings,
       setWorkspaces,
@@ -81,6 +93,10 @@ function createHarness(
     return (
       <div>
         <div data-testid="hydrated">{String(isHydrated)}</div>
+        <div data-testid="persist-ready">{String(isPersistReady)}</div>
+        <div data-testid="node-count">
+          {String(workspaces.find(workspace => workspace.id === 'workspace-1')?.nodes.length ?? 0)}
+        </div>
         <div data-testid="agent-session-id">{hydratedAgent?.data.sessionId ?? ''}</div>
         <div data-testid="agent-status">{hydratedAgent?.data.status ?? 'none'}</div>
         <div data-testid="agent-live-reattach">
@@ -188,6 +204,119 @@ describe('useHydrateAppState worker prepare', () => {
     expect(screen.getByTestId('agent-status')).toHaveTextContent('running')
     expect(screen.getByTestId('agent-live-reattach')).toHaveTextContent('true')
     expect(controlSurfaceInvoke).toHaveBeenCalledTimes(1)
+    expect(spawn).not.toHaveBeenCalled()
+    expect(launch).not.toHaveBeenCalled()
+  })
+
+  it('shows the active workspace before worker prepare resolves without using local recovery', async () => {
+    const storage = installMockStorage()
+    storage.setItem('opencove:m0:workspace-state', JSON.stringify(createPersistedState()))
+
+    const prepareDeferred = createDeferred<{
+      workspaceId: string
+      nodes: Array<{
+        nodeId: string
+        kind: 'agent'
+        recoveryState: 'live'
+        sessionId: string
+        isLiveSessionReattach: boolean
+        title: string
+        profileId: null
+        runtimeKind: 'posix'
+        status: 'running'
+        startedAt: string
+        endedAt: null
+        exitCode: null
+        lastError: null
+        scrollback: string
+        executionDirectory: string
+        expectedDirectory: string
+        agent: NonNullable<
+          ReturnType<typeof createPersistedState>['workspaces'][number]['nodes'][number]['agent']
+        >
+      }>
+    }>()
+    const spawn = vi.fn(async () => ({ sessionId: 'should-not-spawn' }))
+    const launch = vi.fn(async () => ({ sessionId: 'should-not-launch' }))
+    const controlSurfaceInvoke = vi.fn(() => prepareDeferred.promise)
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        meta: {
+          runtime: 'electron',
+          platform: 'darwin',
+          isTest: true,
+          isPackaged: false,
+          allowWhatsNewInTests: true,
+          mainPid: 123,
+          windowsPty: null,
+        },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
+        },
+        pty: {
+          spawn,
+          snapshot: vi.fn(async () => ({ data: 'legacy snapshot' })),
+        },
+        agent: {
+          launch,
+          resolveResumeSessionId: vi.fn(async () => ({ resumeSessionId: null })),
+        },
+      },
+    })
+
+    const { useHydrateAppState } =
+      await import('../../../src/app/renderer/shell/hooks/useHydrateAppState')
+
+    render(React.createElement(createHarness(useHydrateAppState)))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('persist-ready')).toHaveTextContent('true')
+    })
+    expect(screen.getByTestId('hydrated')).toHaveTextContent('false')
+    expect(screen.getByTestId('node-count')).toHaveTextContent('1')
+    expect(screen.getByTestId('agent-session-id')).toHaveTextContent('')
+    expect(controlSurfaceInvoke).toHaveBeenCalledTimes(1)
+    expect(spawn).not.toHaveBeenCalled()
+    expect(launch).not.toHaveBeenCalled()
+
+    const persistedAgent = createPersistedState().workspaces[0]?.nodes[0]?.agent
+    if (!persistedAgent) {
+      throw new Error('expected persisted agent fixture')
+    }
+
+    prepareDeferred.resolve({
+      workspaceId: 'workspace-1',
+      nodes: [
+        {
+          nodeId: 'agent-node-1',
+          kind: 'agent',
+          recoveryState: 'live',
+          sessionId: 'live-session-id',
+          isLiveSessionReattach: true,
+          title: 'codex · gpt-5.2-codex',
+          profileId: null,
+          runtimeKind: 'posix',
+          status: 'running',
+          startedAt: '2026-04-24T10:00:00.000Z',
+          endedAt: null,
+          exitCode: null,
+          lastError: null,
+          scrollback: 'persisted agent history',
+          executionDirectory: '/tmp/workspace-1',
+          expectedDirectory: '/tmp/workspace-1',
+          agent: persistedAgent,
+        },
+      ],
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hydrated')).toHaveTextContent('true')
+    })
+    expect(screen.getByTestId('agent-session-id')).toHaveTextContent('live-session-id')
+    expect(screen.getByTestId('agent-live-reattach')).toHaveTextContent('true')
     expect(spawn).not.toHaveBeenCalled()
     expect(launch).not.toHaveBeenCalled()
   })

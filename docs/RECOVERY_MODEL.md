@@ -28,6 +28,11 @@ Migration update (`2026-04-24`):
 - renderer-local `hydrateRuntimeNode` remains only as fallback when the worker contract is unavailable; it is no longer the preferred production recovery path.
 - Desktop startup no longer falls back to a main-owned standalone PTY/runtime host; recovery assumes a worker endpoint is available.
 
+Migration update (`2026-04-25`):
+
+- active workspace first paint no longer waits for worker prepare to finish.
+- restored runtime nodes still come only from worker `session.prepareOrRevive`; Electron does not fall back to renderer-local spawn/launch when the worker prepare path fails.
+
 ## 1. 问题背景
 
 当前恢复链路的核心风险，不是某个 if 写错，而是**真相分散**：

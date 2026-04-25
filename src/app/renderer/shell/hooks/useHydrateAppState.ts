@@ -353,36 +353,6 @@ export function useHydrateAppState({
         toShellWorkspaceState(workspace, { dropRuntimeSessionIds: true }),
       )
 
-      if (resolvedActiveWorkspaceId) {
-        const activePersistedWorkspace =
-          persistedWorkspaceByIdRef.current.get(resolvedActiveWorkspaceId) ?? null
-        if (activePersistedWorkspace) {
-          const hydratedNodes = await prepareWorkspaceRuntimeNodes({
-            workspace: activePersistedWorkspace,
-            agentSettings: resolvedSettings,
-            workerOnly: true,
-          })
-
-          if (isCancelledRef.current) {
-            return
-          }
-
-          if (hydratedNodes.length > 0) {
-            const hydratedById = new Map(hydratedNodes.map(node => [node.id, node]))
-            const targetWorkspace = initialWorkspaces.find(
-              workspace => workspace.id === resolvedActiveWorkspaceId,
-            )
-            if (targetWorkspace) {
-              targetWorkspace.nodes = targetWorkspace.nodes.map(node => {
-                const hydratedNode = hydratedById.get(node.id)
-                return hydratedNode ? mergeHydratedNode(node, hydratedNode) : node
-              })
-            }
-            hydratedWorkspaceIdsRef.current.add(resolvedActiveWorkspaceId)
-          }
-        }
-      }
-
       setWorkspaces(initialWorkspaces)
       setActiveWorkspaceId(resolvedActiveWorkspaceId)
       setIsPersistReady(true)
@@ -408,6 +378,7 @@ export function useHydrateAppState({
   }, [
     ensureWorkspaceHydrated,
     loadWorkspaceScrollbacks,
+    markInitialHydrationComplete,
     setAgentSettings,
     setWorkspaces,
     setActiveWorkspaceId,

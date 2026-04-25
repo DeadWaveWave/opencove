@@ -2,7 +2,7 @@
 
 > Status: Active working plan
 > Scope: terminal and agent nodes across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-24
+> Last updated: 2026-04-25
 
 ## Purpose
 
@@ -248,19 +248,28 @@ Current high-value script bundle:
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.spec.ts --grep "reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients"`
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.agent-resume.spec.ts tests/e2e-web-canvas/workerWebCanvas.view-state.spec.ts`
 
-Latest verified on `2026-04-24` for the current restore/hydration slice:
+Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 
-- cold restart real repro passed
-- `cmd+w` reopen real repro passed
-- recovery Playwright suite passed:
-  - `tests/e2e/recovery.agent-input-after-restart.spec.ts`
-  - `tests/e2e/recovery.agent-focus-after-restart.spec.ts`
-  - `tests/e2e/recovery.agent-terminal-replies.spec.ts`
-  - `tests/e2e/recovery.agent-placeholder-handoff-interaction.spec.ts`
-  - `tests/e2e/recovery.agent-input-after-window-reopen.spec.ts`
-  - `tests/e2e/recovery.agent-placeholder-click-preserves-history.spec.ts`
-- worker web-canvas shared-session checks passed:
-  - `tests/e2e-web-canvas/workerWebCanvas.spec.ts` (`reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients`)
+- `pnpm exec tsc -p tsconfig.json --noEmit`
+- `pnpm build`
+- `NODE_OPTIONS=--experimental-require-module pnpm test -- --run tests/integration/recovery/useHydrateAppState.workerPrepare.spec.tsx tests/integration/recovery/useHydrateAppState.merge.spec.tsx tests/integration/recovery/useHydrateAppState.scrollback-ownership.spec.tsx`
+- `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cmd-w ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
+- `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
+
+Current deferred Web UI-specific validation:
+
+- Opening Web UI can still perturb Desktop Agent node size and confuse WebGL-heavy TUIs such as OpenCode.
+- That issue remains tracked under Phase 3 geometry authority / dual-client renderer behavior, not under Desktop restore correctness.
+- Do not mark Phase 3 complete until a dual-client real script proves Web UI attach does not resize or poison the Desktop renderer.
+
+Local validation note:
+
+- On the current local `node v22.5.1`, Vitest 4 needs `NODE_OPTIONS=--experimental-require-module` to load its config because a dependency is ESM-only. This is an environment launcher issue observed before test execution, not a product regression.
+
+Previously verified on `2026-04-24`:
+
+- recovery Playwright suite passed, including `tests/e2e/recovery.agent-placeholder-click-preserves-history.spec.ts`
+- worker web-canvas shared-session checks passed: `tests/e2e-web-canvas/workerWebCanvas.spec.ts` (`reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients`)
 
 ## Update Record Policy
 
