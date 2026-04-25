@@ -21,6 +21,7 @@ export function useAppShellWorkspaceActions({
     const store = useAppStore.getState()
     store.setActiveWorkspaceId(workspaceId)
     store.setFocusRequest(prev => ({
+      kind: 'node',
       workspaceId,
       nodeId,
       sequence: (prev?.sequence ?? 0) + 1,

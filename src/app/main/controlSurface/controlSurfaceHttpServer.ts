@@ -13,7 +13,7 @@ import { resolveRequestAuth } from './http/requestAuth'
 import { writeSseEvent, type SyncEventPayload } from './http/syncSse'
 import { tryHandleWebAuthRoutes } from './http/webAuthRoutes'
 import { gateWebUiEntrypoint } from './http/webUiEntryGate'
-import { publishSyncEvent } from './http/publishSyncEvent'
+import { publishLiveSyncEvent, publishSyncEvent } from './http/publishSyncEvent'
 import { shouldAllowDevWebUiOrigin } from './http/devWebUiOrigin'
 import { buildUnauthorizedResult } from './http/unauthorizedResult'
 import { createLazyPersistenceStore } from './http/lazyPersistenceStore'
@@ -101,6 +101,14 @@ export function registerControlSurfaceHttpServer(
     createPersistenceStore: options.createPersistenceStore,
   })
   const getPersistenceStore = persistence.getPersistenceStore
+  const syncClients = new Set<ServerResponse>()
+  const syncEventBuffer: SyncEventPayload[] = []
+  const publishSyncEventToLiveClients = (payload: SyncEventPayload): number =>
+    publishLiveSyncEvent({
+      syncClients,
+      payload,
+      desktopSink: options.desktopSyncEventSink,
+    })
 
   const controlSurface = createControlSurface()
   registerControlSurfaceHandlers(controlSurface, {
@@ -112,13 +120,12 @@ export function registerControlSurfaceHttpServer(
     ptyRuntime,
     deleteEntry: options.deleteEntry,
     ptyStreamHub: ptyStreamService.hub,
+    publishSyncEvent: publishSyncEventToLiveClients,
+    closeWebsiteNode: options.closeWebsiteNode,
   })
   let closed = false
   let disposePromise: Promise<void> | null = null
   let pendingConnectionWrite: Promise<void> | null = null
-  const syncClients = new Set<ServerResponse>()
-  const syncEventBuffer: SyncEventPayload[] = []
-
   let resolveReady: ((info: ControlSurfaceConnectionInfo) => void) | null = null
   let rejectReady: ((error: Error) => void) | null = null
   const ready = new Promise<ControlSurfaceConnectionInfo>((resolvePromise, rejectPromise) => {
@@ -309,6 +316,7 @@ export function registerControlSurfaceHttpServer(
               syncClients,
               syncEventBuffer,
               maxBufferSize: MAX_SYNC_EVENT_BUFFER,
+              desktopSink: options.desktopSyncEventSink,
               payload: {
                 type: 'app_state.updated',
                 revision: revisionAfter,

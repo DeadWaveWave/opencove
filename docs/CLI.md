@@ -36,3 +36,7 @@ CLI 的默认运行模型应满足：
 
 这样才能保证未来 Web/Remote 复用同一条链路，而不是每个 client 各自实现一套语义。
 
+## 5. Canvas Node Control
+
+CLI 管理画布 Note / Task / Website / Agent / Terminal 窗口的目标设计见：
+`docs/CLI_CANVAS_NODE_CONTROL_SPEC.md`。

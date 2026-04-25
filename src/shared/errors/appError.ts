@@ -9,6 +9,9 @@ function createMessageMap(): Record<AppErrorCode, string> {
     'common.unexpected': 'Something went wrong. Please try again.',
     'worker.unavailable': 'Worker is unavailable.',
     'space.not_found': 'Space not found.',
+    'space.ambiguous': 'Space locator matched multiple spaces.',
+    'node.not_found': 'Node not found.',
+    'node.unsupported_operation': 'This node operation is not supported.',
     'session.not_found': 'Session not found.',
     'control_surface.unauthorized': 'Unauthorized request.',
     'integration.github.unavailable': 'GitHub integration is unavailable.',
@@ -101,12 +104,14 @@ export function createAppErrorDescriptor(
   code: AppErrorCode,
   options: {
     params?: AppErrorParams
+    details?: unknown
     debugMessage?: string
   } = {},
 ): AppErrorDescriptor {
   return {
     code,
     ...(options.params ? { params: options.params } : {}),
+    ...(options.details !== undefined ? { details: options.details } : {}),
     ...(options.debugMessage ? { debugMessage: options.debugMessage } : {}),
   }
 }
@@ -123,6 +128,7 @@ export function isAppErrorDescriptor(value: unknown): value is AppErrorDescripto
 export class OpenCoveAppError extends Error {
   public readonly code: AppErrorCode
   public readonly params: AppErrorParams | undefined
+  public readonly details: unknown | undefined
   public readonly debugMessage: string | undefined
 
   public constructor(descriptor: AppErrorDescriptor) {
@@ -130,12 +136,14 @@ export class OpenCoveAppError extends Error {
     this.name = 'OpenCoveAppError'
     this.code = descriptor.code
     this.params = descriptor.params
+    this.details = descriptor.details
     this.debugMessage = descriptor.debugMessage
   }
 
   public toDescriptor(): AppErrorDescriptor {
     return createAppErrorDescriptor(this.code, {
       params: this.params,
+      details: this.details,
       debugMessage: this.debugMessage,
     })
   }
@@ -145,6 +153,7 @@ export function createAppError(
   codeOrDescriptor: AppErrorCode | AppErrorDescriptor,
   options: {
     params?: AppErrorParams
+    details?: unknown
     debugMessage?: string
   } = {},
 ): OpenCoveAppError {

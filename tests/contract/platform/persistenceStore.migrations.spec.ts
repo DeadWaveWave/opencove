@@ -41,6 +41,9 @@ const CURRENT_SCHEMA_COLUMNS = {
     'width',
     'height',
     'kind',
+    'profile_id',
+    'runtime_kind',
+    'terminal_provider_hint',
     'label_color_override',
     'status',
     'started_at',
@@ -370,9 +373,12 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(7)
+      expect(migratedState?.userVersion).toBe(8)
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('nodes')).toContain('session_id')
+      expect(migratedState?.tables.get('nodes')).toContain('profile_id')
+      expect(migratedState?.tables.get('nodes')).toContain('runtime_kind')
+      expect(migratedState?.tables.get('nodes')).toContain('terminal_provider_hint')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('target_mount_id')
       expect(migratedState?.tables.get('workspaces')).toContain(
@@ -389,7 +395,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 7, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: 8, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
@@ -409,6 +415,9 @@ describe('PersistenceStore (migrations)', () => {
 
       const repairedState = mockDbByPath.get(dbPath)
       expect(repairedState?.tables.get('nodes')).toContain('label_color_override')
+      expect(repairedState?.tables.get('nodes')).toContain('profile_id')
+      expect(repairedState?.tables.get('nodes')).toContain('runtime_kind')
+      expect(repairedState?.tables.get('nodes')).toContain('terminal_provider_hint')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('label_color')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('target_mount_id')
       expect(repairedState?.tables.get('workspaces')).toContain(

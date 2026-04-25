@@ -1,3 +1,5 @@
+import type { CanvasFocusEventTarget } from './nodeControl'
+
 export interface GetSyncStateResult {
   revision: number
   state: unknown | null
@@ -12,6 +14,13 @@ export type SyncEventPayload =
   | {
       type: 'resync_required'
       revision: number
+    }
+  | {
+      type: 'canvas.focus'
+      revision: number
+      projectId: string
+      target: CanvasFocusEventTarget
+      createdAt: string
     }
 
 export interface WriteSyncStateInput {

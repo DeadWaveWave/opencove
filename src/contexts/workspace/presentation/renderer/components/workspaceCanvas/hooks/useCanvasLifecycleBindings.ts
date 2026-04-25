@@ -15,6 +15,7 @@ export function useWorkspaceCanvasLifecycleBindings({
   agentSettings,
   focusNodeId,
   focusSequence,
+  nodes,
   isFocusNodeTargetZoomPreviewing,
   nodesRef,
   requestNodeDeleteRef,
@@ -28,6 +29,7 @@ export function useWorkspaceCanvasLifecycleBindings({
   agentSettings: Pick<AgentSettings, 'canvasInputMode' | 'focusNodeTargetZoom'>
   focusNodeId?: string | null
   focusSequence?: number
+  nodes: Node<TerminalNodeData>[]
   isFocusNodeTargetZoomPreviewing: boolean
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   requestNodeDeleteRef: WorkspaceCanvasActionRefs['requestNodeDeleteRef']
@@ -56,6 +58,7 @@ export function useWorkspaceCanvasLifecycleBindings({
     requestNodeDeleteRef,
     focusNodeId,
     focusSequence,
+    nodes,
     focusNodeTargetZoom: agentSettings.focusNodeTargetZoom,
     isFocusNodeTargetZoomPreviewing,
     nodesRef,

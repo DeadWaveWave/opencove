@@ -11,6 +11,7 @@ import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
+import { tryHandleNodeControlCommands } from './commands/nodeControl.mjs'
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -211,6 +212,18 @@ async function main() {
 
   if (
     await tryHandleMultiEndpointCommands({
+      command,
+      args,
+      connection,
+      pretty,
+      timeoutMs,
+    })
+  ) {
+    return
+  }
+
+  if (
+    await tryHandleNodeControlCommands({
       command,
       args,
       connection,
