@@ -31,6 +31,8 @@ export function CanvasSection(props: {
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean
+  archiveSpaceDeleteWorktreeByDefault: boolean
+  archiveSpaceDeleteBranchByDefault: boolean
   defaultTerminalProfileId: string | null
   terminalProfiles: TerminalProfile[]
   detectedDefaultTerminalProfileId: string | null
@@ -42,6 +44,8 @@ export function CanvasSection(props: {
   onChangeFocusNodeOnClick: (enabled: boolean) => void
   onChangeFocusNodeTargetZoom: (zoom: FocusNodeTargetZoom) => void
   onChangeFocusNodeUseVisibleCanvasCenter: (enabled: boolean) => void
+  onChangeArchiveSpaceDeleteWorktreeByDefault: (enabled: boolean) => void
+  onChangeArchiveSpaceDeleteBranchByDefault: (enabled: boolean) => void
   onFocusNodeTargetZoomPreviewChange: (isPreviewing: boolean) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -53,6 +57,8 @@ export function CanvasSection(props: {
     focusNodeOnClick,
     focusNodeTargetZoom,
     focusNodeUseVisibleCanvasCenter,
+    archiveSpaceDeleteWorktreeByDefault,
+    archiveSpaceDeleteBranchByDefault,
     defaultTerminalProfileId,
     terminalProfiles,
     detectedDefaultTerminalProfileId,
@@ -64,6 +70,8 @@ export function CanvasSection(props: {
     onChangeFocusNodeOnClick,
     onChangeFocusNodeTargetZoom,
     onChangeFocusNodeUseVisibleCanvasCenter,
+    onChangeArchiveSpaceDeleteWorktreeByDefault,
+    onChangeArchiveSpaceDeleteBranchByDefault,
     onFocusNodeTargetZoomPreviewChange,
   } = props
   const platform =
@@ -289,6 +297,51 @@ export function CanvasSection(props: {
               onBlur={() => onFocusNodeTargetZoomPreviewChange(false)}
               onChange={event => onChangeFocusNodeTargetZoom(Number(event.target.value))}
             />
+          </div>
+        </div>
+      </div>
+
+      <div className="settings-panel__subsection">
+        <div className="settings-panel__subsection-header">
+          <strong>{t('settingsPanel.canvas.archiveSpaceDefaultsTitle')}</strong>
+          <span>{t('settingsPanel.canvas.archiveSpaceDefaultsHelp')}</span>
+        </div>
+
+        <div className="settings-list-container">
+          <div
+            className="settings-list-item"
+            data-testid="settings-archive-space-delete-worktree-default"
+          >
+            <div className="settings-list-item__left">
+              {t('settingsPanel.canvas.archiveSpaceDeleteWorktreeDefaultLabel')}
+            </div>
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                checked={archiveSpaceDeleteWorktreeByDefault}
+                onChange={event =>
+                  onChangeArchiveSpaceDeleteWorktreeByDefault(event.target.checked)
+                }
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
+          </div>
+
+          <div
+            className="settings-list-item"
+            data-testid="settings-archive-space-delete-branch-default"
+          >
+            <div className="settings-list-item__left">
+              {t('settingsPanel.canvas.archiveSpaceDeleteBranchDefaultLabel')}
+            </div>
+            <label className="cove-toggle">
+              <input
+                type="checkbox"
+                checked={archiveSpaceDeleteBranchByDefault}
+                onChange={event => onChangeArchiveSpaceDeleteBranchByDefault(event.target.checked)}
+              />
+              <span className="cove-toggle__slider"></span>
+            </label>
           </div>
         </div>
       </div>

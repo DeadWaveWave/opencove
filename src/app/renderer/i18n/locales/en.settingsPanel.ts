@@ -191,6 +191,10 @@ export const enSettingsPanel = {
     focusTargetZoomLabel: 'Target Zoom',
     focusTargetZoomHelp:
       'Zoom level used after auto-focus. Drag the slider to preview while adjusting.',
+    archiveSpaceDefaultsTitle: 'Archive Space Defaults',
+    archiveSpaceDefaultsHelp: 'Choose the default checked options in the Archive Space dialog.',
+    archiveSpaceDeleteWorktreeDefaultLabel: 'Delete worktree by default',
+    archiveSpaceDeleteBranchDefaultLabel: 'Delete branch by default',
   },
   experimental: {
     title: 'Experimental',

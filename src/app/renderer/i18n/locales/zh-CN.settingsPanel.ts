@@ -189,6 +189,10 @@ export const zhCNSettingsPanel = {
       '自动定位时以可视画布的中心为参照。打开左侧栏时，会在剩余右侧空间居中。',
     focusTargetZoomLabel: '定位缩放',
     focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
+    archiveSpaceDefaultsTitle: '归档 Space 默认操作',
+    archiveSpaceDefaultsHelp: '设置归档 Space 窗口中默认勾选的操作。',
+    archiveSpaceDeleteWorktreeDefaultLabel: '默认删除 worktree',
+    archiveSpaceDeleteBranchDefaultLabel: '默认删除分支',
   },
   experimental: {
     title: '实验性',

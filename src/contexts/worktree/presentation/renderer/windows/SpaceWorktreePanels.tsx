@@ -1,12 +1,10 @@
 import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { AI_NAMING_FEATURES } from '@shared/featureFlags/aiNaming'
-import type { WorkspaceSpaceState } from '@contexts/workspace/presentation/renderer/types'
 import type { BranchMode, SpaceWorktreeViewMode } from './spaceWorktree.shared'
 import { CoveSelect } from '@app/renderer/components/CoveSelect'
 
 export function SpaceWorktreePanels({
-  space,
   viewMode,
   isBusy,
   isMutating,
@@ -21,6 +19,7 @@ export function SpaceWorktreePanels({
   newBranchName,
   startPoint,
   existingBranchName,
+  deleteWorktreeOnArchive,
   deleteBranchOnArchive,
   onClose,
   onBranchModeChange,
@@ -29,13 +28,12 @@ export function SpaceWorktreePanels({
   onExistingBranchNameChange,
   onSuggestNames,
   onCreate,
+  onDeleteWorktreeOnArchiveChange,
   onDeleteBranchOnArchiveChange,
   onForceArchiveConfirmedChange,
-  skipArchiveHistory,
-  onSkipArchiveHistoryChange,
   onArchive,
+  onCloseOnly,
 }: {
-  space: WorkspaceSpaceState
   viewMode: SpaceWorktreeViewMode
   isBusy: boolean
   isMutating: boolean
@@ -50,6 +48,7 @@ export function SpaceWorktreePanels({
   newBranchName: string
   startPoint: string
   existingBranchName: string
+  deleteWorktreeOnArchive: boolean
   deleteBranchOnArchive: boolean
   onClose: () => void
   onBranchModeChange: (mode: BranchMode) => void
@@ -58,11 +57,11 @@ export function SpaceWorktreePanels({
   onExistingBranchNameChange: (value: string) => void
   onSuggestNames: () => void
   onCreate: () => void
+  onDeleteWorktreeOnArchiveChange: (checked: boolean) => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
   onForceArchiveConfirmedChange: (checked: boolean) => void
-  skipArchiveHistory: boolean
-  onSkipArchiveHistoryChange: (checked: boolean) => void
   onArchive: () => void
+  onCloseOnly: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const requiresForceArchiveConfirmation = !isSpaceOnWorkspaceRoot && changedFileCount > 0
@@ -217,18 +216,8 @@ export function SpaceWorktreePanels({
       {viewMode === 'archive' ? (
         <div className="workspace-space-worktree__view" data-testid="space-worktree-archive-view">
           <section className="workspace-space-worktree__surface workspace-space-worktree__surface--minimal">
-            {isSpaceOnWorkspaceRoot ? (
+            {isSpaceOnWorkspaceRoot ? null : (
               <div className="workspace-space-worktree__message-block">
-                <p className="workspace-space-worktree__lead">
-                  {t('worktree.removeSpaceContents', { name: space.name })}
-                </p>
-              </div>
-            ) : (
-              <div className="workspace-space-worktree__message-block">
-                <p className="workspace-space-worktree__lead">
-                  {t('worktree.removeWorktreeContents', { name: space.name })}
-                </p>
-
                 {changedFileCount > 0 ? (
                   <p
                     className="workspace-space-worktree__supporting-text"
@@ -263,9 +252,27 @@ export function SpaceWorktreePanels({
                 <label className="cove-window__checkbox workspace-space-worktree__option-row">
                   <input
                     type="checkbox"
+                    data-testid="space-worktree-archive-delete-worktree"
+                    checked={deleteWorktreeOnArchive}
+                    disabled={isBusy}
+                    onChange={event => {
+                      onDeleteWorktreeOnArchiveChange(event.target.checked)
+                    }}
+                  />
+                  <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
+                    <strong>{t('worktree.deleteWorktree')}</strong>
+                    <span>{t('worktree.deleteWorktreeHelp')}</span>
+                  </span>
+                </label>
+              ) : null}
+
+              {!isSpaceOnWorkspaceRoot ? (
+                <label className="cove-window__checkbox workspace-space-worktree__option-row">
+                  <input
+                    type="checkbox"
                     data-testid="space-worktree-archive-delete-branch"
                     checked={deleteBranchOnArchive}
-                    disabled={isBusy}
+                    disabled={isBusy || !deleteWorktreeOnArchive}
                     onChange={event => {
                       onDeleteBranchOnArchiveChange(event.target.checked)
                     }}
@@ -276,22 +283,6 @@ export function SpaceWorktreePanels({
                   </span>
                 </label>
               ) : null}
-
-              <label className="cove-window__checkbox workspace-space-worktree__option-row">
-                <input
-                  type="checkbox"
-                  data-testid="space-worktree-archive-skip-history"
-                  checked={skipArchiveHistory}
-                  disabled={isBusy}
-                  onChange={event => {
-                    onSkipArchiveHistoryChange(event.target.checked)
-                  }}
-                />
-                <span className="workspace-space-worktree__option-copy workspace-space-worktree__option-copy--inline">
-                  <strong>{t('worktree.skipArchiveHistory')}</strong>
-                  <span>{t('worktree.skipArchiveHistoryHelp')}</span>
-                </span>
-              </label>
             </div>
 
             <div className="workspace-space-worktree__inline-actions workspace-space-worktree__inline-actions--footer">
@@ -306,12 +297,21 @@ export function SpaceWorktreePanels({
               </button>
               <button
                 type="button"
+                className="cove-window__action cove-window__action--secondary"
+                data-testid="space-worktree-archive-close-only"
+                disabled={isBusy || (requiresForceArchiveConfirmation && !forceArchiveConfirmed)}
+                onClick={onCloseOnly}
+              >
+                {isMutating ? t('common.loading') : t('worktree.executeAndClose')}
+              </button>
+              <button
+                type="button"
                 className="cove-window__action cove-window__action--danger"
                 data-testid="space-worktree-archive-submit"
                 disabled={isBusy || (requiresForceArchiveConfirmation && !forceArchiveConfirmed)}
                 onClick={onArchive}
               >
-                {isMutating ? t('common.loading') : t('common.confirm')}
+                {isMutating ? t('common.loading') : t('worktree.executeAndArchive')}
               </button>
             </div>
           </section>

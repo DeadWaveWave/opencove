@@ -65,4 +65,6 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   updateChannel: 'stable',
   releaseNotesSeenVersion: null,
   hideWorktreeMismatchDropWarning: false,
+  archiveSpaceDeleteWorktreeByDefault: true,
+  archiveSpaceDeleteBranchByDefault: false,
 }

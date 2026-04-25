@@ -22,9 +22,9 @@ export function SpaceWorktreeWindowDialog({
   newBranchName,
   startPoint,
   existingBranchName,
+  deleteWorktreeOnArchive,
   deleteBranchOnArchive,
   forceArchiveConfirmed,
-  skipArchiveHistory,
   archiveAgentCount,
   archiveTerminalCount,
   archiveTaskCount,
@@ -39,10 +39,11 @@ export function SpaceWorktreeWindowDialog({
   onExistingBranchNameChange,
   onSuggestNames,
   onCreate,
+  onDeleteWorktreeOnArchiveChange,
   onDeleteBranchOnArchiveChange,
   onForceArchiveConfirmedChange,
-  onSkipArchiveHistoryChange,
   onArchive,
+  onCloseOnly,
 }: {
   space: WorkspaceSpaceState
   isSpaceOnWorkspaceRoot: boolean
@@ -59,9 +60,9 @@ export function SpaceWorktreeWindowDialog({
   newBranchName: string
   startPoint: string
   existingBranchName: string
+  deleteWorktreeOnArchive: boolean
   deleteBranchOnArchive: boolean
   forceArchiveConfirmed: boolean
-  skipArchiveHistory: boolean
   archiveAgentCount: number
   archiveTerminalCount: number
   archiveTaskCount: number
@@ -76,10 +77,11 @@ export function SpaceWorktreeWindowDialog({
   onExistingBranchNameChange: (value: string) => void
   onSuggestNames: () => void
   onCreate: () => void
+  onDeleteWorktreeOnArchiveChange: (checked: boolean) => void
   onDeleteBranchOnArchiveChange: (checked: boolean) => void
   onForceArchiveConfirmedChange: (checked: boolean) => void
-  onSkipArchiveHistoryChange: (checked: boolean) => void
   onArchive: () => void
+  onCloseOnly: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
   const statusLabel = currentWorktree?.branch?.trim()
@@ -178,7 +180,6 @@ export function SpaceWorktreeWindowDialog({
         </header>
 
         <SpaceWorktreePanels
-          space={space}
           viewMode={viewMode}
           isBusy={isBusy}
           isMutating={isMutating}
@@ -192,9 +193,9 @@ export function SpaceWorktreeWindowDialog({
           newBranchName={newBranchName}
           startPoint={startPoint}
           existingBranchName={existingBranchName}
+          deleteWorktreeOnArchive={deleteWorktreeOnArchive}
           deleteBranchOnArchive={deleteBranchOnArchive}
           forceArchiveConfirmed={forceArchiveConfirmed}
-          skipArchiveHistory={skipArchiveHistory}
           onClose={onClose}
           onBranchModeChange={onBranchModeChange}
           onNewBranchNameChange={onNewBranchNameChange}
@@ -202,10 +203,11 @@ export function SpaceWorktreeWindowDialog({
           onExistingBranchNameChange={onExistingBranchNameChange}
           onSuggestNames={onSuggestNames}
           onCreate={onCreate}
+          onDeleteWorktreeOnArchiveChange={onDeleteWorktreeOnArchiveChange}
           onDeleteBranchOnArchiveChange={onDeleteBranchOnArchiveChange}
           onForceArchiveConfirmedChange={onForceArchiveConfirmedChange}
-          onSkipArchiveHistoryChange={onSkipArchiveHistoryChange}
           onArchive={onArchive}
+          onCloseOnly={onCloseOnly}
         />
 
         {error ? (

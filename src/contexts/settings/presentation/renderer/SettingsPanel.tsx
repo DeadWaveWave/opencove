@@ -95,6 +95,10 @@ export function SettingsPanel({
     onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateFocusNodeUseVisibleCanvasCenter = (enabled: boolean): void =>
     onChange({ ...settings, focusNodeUseVisibleCanvasCenter: enabled })
+  const updateArchiveSpaceDeleteWorktreeByDefault = (enabled: boolean): void =>
+    onChange({ ...settings, archiveSpaceDeleteWorktreeByDefault: enabled })
+  const updateArchiveSpaceDeleteBranchByDefault = (enabled: boolean): void =>
+    onChange({ ...settings, archiveSpaceDeleteBranchByDefault: enabled })
   const updateStandbyBannerEnabled = (enabled: boolean): void =>
     onChange({ ...settings, standbyBannerEnabled: enabled })
   const updateStandbyBannerShowTask = (enabled: boolean): void =>
@@ -366,6 +370,8 @@ export function SettingsPanel({
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
                 focusNodeUseVisibleCanvasCenter={settings.focusNodeUseVisibleCanvasCenter}
+                archiveSpaceDeleteWorktreeByDefault={settings.archiveSpaceDeleteWorktreeByDefault}
+                archiveSpaceDeleteBranchByDefault={settings.archiveSpaceDeleteBranchByDefault}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
@@ -377,6 +383,10 @@ export function SettingsPanel({
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
                 onChangeFocusNodeUseVisibleCanvasCenter={updateFocusNodeUseVisibleCanvasCenter}
+                onChangeArchiveSpaceDeleteWorktreeByDefault={
+                  updateArchiveSpaceDeleteWorktreeByDefault
+                }
+                onChangeArchiveSpaceDeleteBranchByDefault={updateArchiveSpaceDeleteBranchByDefault}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
               />
             ) : null}
