@@ -131,10 +131,28 @@ export async function hydrateTerminalFromSnapshot({
   const restoreFromLivePtySnapshot = async (): Promise<string> => {
     await attachPromise.catch(() => undefined)
     const snapshot = await takePtySnapshot({ sessionId })
+    if (
+      kind === 'agent' &&
+      persistedSnapshot.trim().length > 0 &&
+      snapshot.data.length > 0 &&
+      !containsMeaningfulTerminalDisplayContent(snapshot.data)
+    ) {
+      return persistedSnapshot
+    }
+
     const mergedSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
+    const liveDelta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
+    if (
+      kind === 'agent' &&
+      persistedSnapshot.trim().length > 0 &&
+      liveDelta.length > 0 &&
+      !containsMeaningfulTerminalDisplayContent(liveDelta)
+    ) {
+      return persistedSnapshot
+    }
 
     if (cachedSerializedScreen.length > 0) {
-      const delta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
+      const delta = liveDelta
 
       if (shouldSkipRawDeltaForSerializedScreen(cachedSerializedScreen, delta)) {
         return mergedSnapshot
@@ -145,7 +163,7 @@ export async function hydrateTerminalFromSnapshot({
       return mergedSnapshot
     }
 
-    const delta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
+    const delta = liveDelta
     await writeTerminalAsync(terminal, delta)
     return mergedSnapshot
   }

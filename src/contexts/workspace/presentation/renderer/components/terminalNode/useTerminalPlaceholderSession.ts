@@ -189,12 +189,15 @@ export function useTerminalPlaceholderSession({
     }
     window.addEventListener('opencove-theme-changed', handleThemeChange)
 
-    return () => {
-      isDisposed = true
+    const disposePlaceholderInputCapture = (): void => {
       dataDisposable.dispose()
       binaryDisposable.dispose()
-      window.removeEventListener('opencove-theme-changed', handleThemeChange)
       disposeInteractionWindow()
+    }
+
+    return () => {
+      isDisposed = true
+      window.removeEventListener('opencove-theme-changed', handleThemeChange)
       if (
         shouldHandoffToRuntime() &&
         shouldReusePreservedXtermSession({
@@ -202,10 +205,25 @@ export function useTerminalPlaceholderSession({
           terminalClientResetVersion,
         })
       ) {
+        let didDisposeHandoffInputCapture = false
+        const disposeHandoffInputCapture = (): void => {
+          if (didDisposeHandoffInputCapture) {
+            return
+          }
+          didDisposeHandoffInputCapture = true
+          disposePlaceholderInputCapture()
+        }
+        const disposeSession = session.dispose
+        session.disposePlaceholderHandoffInputCapture = disposeHandoffInputCapture
+        session.dispose = () => {
+          disposeHandoffInputCapture()
+          disposeSession()
+        }
         preservedXtermSessionRef.current = session
         return
       }
 
+      disposePlaceholderInputCapture()
       session.dispose()
       terminalRef.current = null
       fitAddonRef.current = null

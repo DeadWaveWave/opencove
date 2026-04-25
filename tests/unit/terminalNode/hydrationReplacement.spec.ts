@@ -28,13 +28,21 @@ describe('hydrationReplacement', () => {
       false,
     )
     expect(shouldDeferHydratedTerminalRedrawChunk('\u001b[2J\u001b[H')).toBe(true)
+    expect(shouldDeferHydratedTerminalRedrawChunk('^[[<0;34;22M\u001b[2J\u001b[H')).toBe(true)
     expect(shouldDeferHydratedTerminalRedrawChunk('\u001b[2J\u001b[Hready')).toBe(false)
+    expect(shouldDeferHydratedTerminalRedrawChunk('^[[<0;34;22M\u001b[2J\u001b[Hready')).toBe(false)
   })
 
   it('treats buffered exits as replacement-worthy output', () => {
     expect(
       shouldReplacePlaceholderWithBufferedOutput({
         data: '\u001b[2J\u001b[H',
+        exitCode: null,
+      }),
+    ).toBe(false)
+    expect(
+      shouldReplacePlaceholderWithBufferedOutput({
+        data: '^[[<0;34;22M\u001b[2J\u001b[H',
         exitCode: null,
       }),
     ).toBe(false)

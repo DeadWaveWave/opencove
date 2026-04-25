@@ -32,6 +32,7 @@ export interface XtermSession {
   serializeAddon: SerializeAddon
   renderer: ActiveTerminalRenderer
   diagnostics: TerminalDiagnosticsHandle
+  disposePlaceholderHandoffInputCapture?: () => void
   setViewportZoom: (viewportZoom: number) => void
   setViewportInteractionActive: (active: boolean) => void
   dispose: () => void
@@ -216,6 +217,7 @@ export function createMountedXtermSession({
     serializeAddon,
     renderer,
     diagnostics,
+    disposePlaceholderHandoffInputCapture: undefined,
     setViewportZoom: effectiveDprController.setViewportZoom,
     setViewportInteractionActive: effectiveDprController.setViewportInteractionActive,
     dispose: () => {

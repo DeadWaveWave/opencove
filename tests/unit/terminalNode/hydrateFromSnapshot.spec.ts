@@ -198,6 +198,43 @@ describe('hydrateFromSnapshot', () => {
     expect(finalizeHydration).toHaveBeenCalledWith('live agent output')
   })
 
+  it('keeps a non-empty persisted agent baseline when the live PTY delta is control-only', async () => {
+    const terminal = {
+      cols: 80,
+      rows: 24,
+      resize: vi.fn(),
+      write: vi.fn((data: string, callback?: () => void) => {
+        callback?.()
+        return data
+      }),
+    }
+    const onHydratedWriteCommitted = vi.fn()
+    const finalizeHydration = vi.fn()
+    const onHydrationBaselineResolved = vi.fn()
+
+    await hydrateTerminalFromSnapshot({
+      attachPromise: Promise.resolve(),
+      sessionId: 'agent-session-control-only-live',
+      terminal: terminal as never,
+      kind: 'agent',
+      useLivePtySnapshotDuringHydration: true,
+      cachedScreenState: null,
+      persistedSnapshot: '[opencove-test-click] ready',
+      takePtySnapshot: vi.fn(async () => ({
+        data: '[opencove-test-click] ready\u001b[2J\u001b[H      ',
+      })),
+      isDisposed: () => false,
+      onHydratedWriteCommitted,
+      onHydrationBaselineResolved,
+      finalizeHydration,
+    })
+
+    expect(terminal.write).toHaveBeenCalledWith('[opencove-test-click] ready', expect.any(Function))
+    expect(terminal.write).not.toHaveBeenCalledWith('\u001b[2J\u001b[H      ', expect.any(Function))
+    expect(onHydrationBaselineResolved).toHaveBeenCalledWith('live_pty_snapshot')
+    expect(finalizeHydration).toHaveBeenCalledWith('[opencove-test-click] ready')
+  })
+
   it('keeps a non-empty persisted agent baseline when the presentation snapshot is blank-only', async () => {
     const terminal = {
       cols: 80,

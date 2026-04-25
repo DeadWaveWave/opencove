@@ -1,12 +1,6 @@
 import { useEffect } from 'react'
-import type { FitAddon } from '@xterm/addon-fit'
-import type { SearchAddon } from '@xterm/addon-search'
-import type { Terminal } from '@xterm/xterm'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
-import type { AgentLaunchMode, AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { createRollingTextBuffer } from '../../utils/rollingTextBuffer'
-import type { TerminalCommandInputState } from './commandInput'
 import { createRuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
 import {
   clearCachedTerminalScreenStateInvalidation,
@@ -15,19 +9,23 @@ import {
 } from './screenStateCache'
 import { resolveAttachablePtyApi } from './attachablePty'
 import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
-import type { TerminalThemeMode } from './theme'
 import { MAX_SCROLLBACK_CHARS } from './constants'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
-import { createTerminalOutputScheduler, type TerminalOutputScheduler } from './outputScheduler'
+import { createTerminalOutputScheduler } from './outputScheduler'
 import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
+import {
+  containsDestructiveTerminalDisplayControlSequence,
+  shouldDeferHydratedTerminalRedrawChunk,
+} from './hydrationReplacement'
 import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
 import { createMountedXtermSession } from './xtermSession'
-import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
-import type { XtermSession } from './xtermSession'
-import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
-import type { PreferredTerminalRendererMode } from './preferredRenderer'
+import type { TerminalRuntimeSessionOptions } from './useTerminalRuntimeSession.types'
+import {
+  formatTerminalDataHeadHex,
+  hasVisibleTerminalBufferContent,
+} from './terminalRuntimeDiagnostics'
 import {
   hasRecentTerminalUserInteraction,
   registerTerminalUserInteractionWindow,
@@ -90,60 +88,7 @@ export function useTerminalRuntimeSession({
   preferredRendererMode,
   terminalClientResetVersion,
   requestTerminalRendererRecovery,
-}: {
-  nodeId: string
-  sessionId: string
-  kind: WorkspaceNodeKind
-  terminalProvider: AgentProvider | null
-  agentLaunchModeRef: { current: AgentLaunchMode | null }
-  agentResumeSessionIdVerifiedRef: { current: boolean }
-  statusRef: { current: AgentRuntimeStatus | null }
-  titleRef: { current: string }
-  terminalThemeMode: TerminalThemeMode
-  isTestEnvironment: boolean
-  containerRef: { current: HTMLDivElement | null }
-  terminalRef: { current: Terminal | null }
-  fitAddonRef: { current: FitAddon | null }
-  outputSchedulerRef: { current: TerminalOutputScheduler | null }
-  isViewportInteractionActiveRef: { current: boolean }
-  suppressPtyResizeRef: { current: boolean }
-  lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null }
-  commandInputStateRef: { current: TerminalCommandInputState }
-  onCommandRunRef: { current: ((command: string) => void) | undefined }
-  scrollbackBufferRef: {
-    current: {
-      snapshot: () => string
-      set: (snapshot: string) => void
-      append: (data: string) => void
-    }
-  }
-  markScrollbackDirty: (immediate?: boolean) => void
-  scheduleTranscriptSync: () => void
-  cancelScrollbackPublish: () => void
-  disposeScrollbackPublish: () => void
-  syncTerminalSize: () => void
-  applyTerminalTheme: () => void
-  bindSearchAddonToFind: (addon: SearchAddon) => () => void
-  openTerminalFind: () => void
-  isTerminalHydratedRef: { current: boolean }
-  setIsTerminalHydrated: (hydrated: boolean) => void
-  shouldRestoreTerminalFocusRef: { current: boolean }
-  preservedXtermSessionRef: { current: XtermSession | null }
-  recentUserInteractionAtRef: { current: number }
-  pendingUserInputBufferRef: {
-    current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
-  }
-  isLiveSessionReattach: boolean
-  activeRendererKindRef: { current: TerminalRendererKind }
-  scheduleWebglPixelSnapping: () => void
-  cancelWebglPixelSnapping: () => void
-  setRendererKindAndApply: (kind: TerminalRendererKind) => void
-  terminalFontSize: number
-  viewportZoomRef: { current: number }
-  preferredRendererMode: PreferredTerminalRendererMode
-  terminalClientResetVersion: number
-  requestTerminalRendererRecovery: (request: TerminalRendererRecoveryRequest) => void
-}): void {
+}: TerminalRuntimeSessionOptions): void {
   useEffect(() => {
     if (sessionId.trim().length === 0) {
       return undefined
@@ -182,6 +127,7 @@ export function useTerminalRuntimeSession({
       preservedSession,
       terminalClientResetVersion,
     })
+    const hasPreservedVisibleBaseline = canReusePreservedSession && preservedSession !== null
     const session =
       (canReusePreservedSession ? preservedSession : null) ??
       createMountedXtermSession({
@@ -271,6 +217,8 @@ export function useTerminalRuntimeSession({
       inputDiagnosticsEnabled,
       terminalDiagnostics,
     })
+    session.disposePlaceholderHandoffInputCapture?.()
+    session.disposePlaceholderHandoffInputCapture = undefined
     const { ptyWriteQueue } = runtimeInputBridge
     const openCodeThemeBridge = createOptionalOpenCodeThemeBridge({
       terminalProvider,
@@ -318,6 +266,8 @@ export function useTerminalRuntimeSession({
           baselineSource: hydrationBaselineSourceRef.current,
         }),
       shouldDeferHydratedRedrawChunks: () =>
+        hasPreservedVisibleBaseline ||
+        hasVisibleTerminalBufferContent(terminal) ||
         shouldProtectHydratedAgentHistory({
           kind,
           agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
@@ -349,6 +299,15 @@ export function useTerminalRuntimeSession({
     })
     const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
       openCodeThemeBridge?.handlePtyOutputChunk(event.data)
+      if (diagnosticsEnabled) {
+        terminalDiagnostics.log('pty-data', {
+          dataLength: event.data.length,
+          dataStartsWithEsc: event.data.startsWith('\u001b'),
+          dataHeadHex: formatTerminalDataHeadHex(event.data),
+          containsDestructive: containsDestructiveTerminalDisplayControlSequence(event.data),
+          shouldDeferHydratedRedraw: shouldDeferHydratedTerminalRedrawChunk(event.data),
+        })
+      }
       hydrationRouter.handleDataChunk(event.data)
     })
     const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
@@ -377,13 +336,15 @@ export function useTerminalRuntimeSession({
       sessionId,
       presentationSnapshotPromise,
     })
+    const shouldSkipInitialPlaceholderWrite =
+      hasPreservedVisibleBaseline && hasVisibleTerminalBufferContent(terminal)
     void hydrateTerminalFromSnapshot({
       attachPromise,
       sessionId,
       terminal,
       kind: kind === 'agent' ? 'agent' : 'terminal',
       useLivePtySnapshotDuringHydration: kind !== 'agent' || isLiveSessionReattach,
-      skipInitialPlaceholderWrite: preservedSession !== null,
+      skipInitialPlaceholderWrite: shouldSkipInitialPlaceholderWrite,
       cachedScreenState,
       persistedSnapshot: scrollbackBuffer.snapshot(),
       presentationSnapshotPromise,

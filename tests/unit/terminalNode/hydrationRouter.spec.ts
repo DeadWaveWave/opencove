@@ -120,7 +120,7 @@ describe('hydrationRouter', () => {
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
   })
 
-  it('flushes deferred redraw control chunks immediately after real user interaction', () => {
+  it('keeps control-only redraw chunks deferred after user interaction until visible output arrives', () => {
     const terminal = {
       reset: vi.fn(),
       write: vi.fn(),
@@ -165,8 +165,12 @@ describe('hydrationRouter', () => {
     hasRecentUserInteraction = true
     router.handleDataChunk('\u001b[P')
 
+    expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
+
+    router.handleDataChunk('[prompt]')
+
     expect(outputScheduler.handleChunk).toHaveBeenCalledTimes(1)
-    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[D\u001b[P')
+    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[D\u001b[P[prompt]')
   })
 
   it('keeps destructive redraw chunks deferred even when they arrive right after user interaction', () => {
@@ -207,6 +211,52 @@ describe('hydrationRouter', () => {
 
     router.finalizeHydration('[restored history]')
     router.handleDataChunk('\u001b[2J\u001b[H')
+
+    expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
+
+    router.handleDataChunk('[redraw complete]')
+
+    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
+  })
+
+  it('defers destructive redraw chunks that arrive before hydration finalizes', () => {
+    const terminal = {
+      reset: vi.fn(),
+      write: vi.fn(),
+    }
+    const outputScheduler = {
+      handleChunk: vi.fn(),
+    }
+    const scrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+    }
+    const committedScrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+      snapshot: vi.fn(() => ''),
+    }
+
+    const router = createTerminalHydrationRouter({
+      terminal: terminal as never,
+      outputScheduler,
+      shouldReplaceAgentPlaceholderAfterHydration: () => false,
+      shouldDeferHydratedRedrawChunks: () => true,
+      hasRecentUserInteraction: () => true,
+      scrollbackBuffer,
+      committedScrollbackBuffer,
+      recordCommittedScreenState: vi.fn(),
+      scheduleTranscriptSync: vi.fn(),
+      ptyWriteQueue: { flush: vi.fn() },
+      markScrollbackDirty: vi.fn(),
+      logHydrated: vi.fn(),
+      syncTerminalSize: vi.fn(),
+      onRevealed: vi.fn(),
+      isDisposed: () => false,
+    })
+
+    router.handleDataChunk('\u001b[2J\u001b[H')
+    router.finalizeHydration('[authoritative restored history]')
 
     expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
 
@@ -267,7 +317,7 @@ describe('hydrationRouter', () => {
     }
   })
 
-  it('stops deferring later control-only redraws after visible live output has arrived', () => {
+  it('keeps destructive redraw guarded after visible live output has arrived', () => {
     const terminal = {
       reset: vi.fn(),
       write: vi.fn(),
@@ -309,6 +359,17 @@ describe('hydrationRouter', () => {
 
     expect(outputScheduler.handleChunk).toHaveBeenNthCalledWith(1, '[live prompt]')
     expect(outputScheduler.handleChunk).toHaveBeenNthCalledWith(2, '\u001b[D')
+
+    router.handleDataChunk('\u001b[2J\u001b[H')
+
+    expect(outputScheduler.handleChunk).toHaveBeenCalledTimes(2)
+
+    router.handleDataChunk('[redraw complete]')
+
+    expect(outputScheduler.handleChunk).toHaveBeenNthCalledWith(
+      3,
+      '\u001b[2J\u001b[H[redraw complete]',
+    )
   })
 
   it('does not reset an accepted worker snapshot baseline on the first redraw chunk', () => {
@@ -354,7 +415,7 @@ describe('hydrationRouter', () => {
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[Hpost-input redraw')
   })
 
-  it('passes through control-only cursor movement when no destructive redraw is pending', () => {
+  it('keeps control-only cursor movement deferred while restored history is protected', () => {
     const terminal = {
       reset: vi.fn(),
       write: vi.fn(),
@@ -393,7 +454,7 @@ describe('hydrationRouter', () => {
     router.finalizeHydration('[authoritative restored history]')
     router.handleDataChunk('\u001b[D')
 
-    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[D')
+    expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
     expect(terminal.reset).not.toHaveBeenCalled()
   })
 })
