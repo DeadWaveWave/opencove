@@ -11,7 +11,7 @@ Historical note:
 
 - This document captures an earlier renderer-cache workaround.
 - New correctness changes should move toward worker-owned presentation snapshots and fail-closed resync, not deepen renderer cache ownership.
-- The old main-side PTY snapshot mirror has since been removed from the production path; durable scrollback placeholders now come from renderer-side publish only as UX cache.
+- The old main-side PTY snapshot mirror has since been removed from the production path; terminal durable scrollback now comes from mounted renderer publish plus app-shell inactive PTY stream sync, while agent placeholder scrollback remains renderer-published UX cache.
 
 ## Symptom
 

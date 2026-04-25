@@ -183,7 +183,7 @@ Allowed:
 - performance optimizations that can be dropped at any time
 - cached serialized screen or dimensions as a temporary placeholder while worker truth is still pending
 - same-renderer handoff cache that never contributes a raw snapshot baseline
-- terminal and agent placeholder scrollback persisted from renderer-side publish as UX-only cache
+- terminal scrollback persisted from mounted renderer publish plus app-shell inactive PTY stream sync; agent placeholder scrollback remains renderer-published UX cache
 
 Forbidden:
 

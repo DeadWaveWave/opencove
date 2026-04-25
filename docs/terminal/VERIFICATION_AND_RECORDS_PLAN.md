@@ -256,6 +256,13 @@ Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 - `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cmd-w ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
 - `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
 
+Latest targeted validation on `2026-04-25` for inactive terminal scrollback durability:
+
+- `NODE_OPTIONS=--experimental-require-module pnpm test -- --run tests/unit/contexts/ptyTaskCompletion.spec.ts`
+- `NODE_OPTIONS=--experimental-require-module pnpm exec tsc -p tsconfig.json --noEmit`
+- `NODE_OPTIONS=--experimental-require-module pnpm test:e2e tests/e2e/workspace-canvas.persistence.spec.ts --project electron --reporter=line -g "arrow-key history recall"`
+- `NODE_OPTIONS=--experimental-require-module pnpm test:e2e tests/e2e/recovery.agent-placeholder-handoff-interaction.spec.ts --project electron --reporter=line`
+
 Current deferred Web UI-specific validation:
 
 - Opening Web UI can still perturb Desktop Agent node size and confuse WebGL-heavy TUIs such as OpenCode.

@@ -110,7 +110,7 @@ Migration update (`2026-04-25`):
 | resume session verified flag | Durable Fact | `agent` context | verify resume binding usecase | agent repository |
 | provider / model selection on a window | Durable Fact | `agent` context | launch / update usecases | agent repository |
 | terminal session record | Durable Fact | `terminal` context | terminal lifecycle usecase | terminal repository |
-| node scrollback | Durable Fact | `terminal` context | scrollback persistence usecase | terminal scrollback repository |
+| node scrollback | Durable Fact | `terminal` context | mounted renderer publish or app-shell inactive PTY stream sync | terminal scrollback repository |
 | PTY alive / exited / resized | Runtime Observation | `terminal` context reducer | PTY adapter callbacks | none |
 | watcher turn state | Runtime Observation | `agent` context reducer | watcher adapter callbacks | none |
 | effective model returned by CLI | Runtime Observation -> promoted field | `agent` context | launch / resume usecase | agent repository after explicit write |
