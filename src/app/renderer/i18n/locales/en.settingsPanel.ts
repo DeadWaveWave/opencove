@@ -202,7 +202,7 @@ export const enSettingsPanel = {
       'Shows remote worker and remote location UI. When disabled, OpenCove keeps the local-only workflow by default.',
     workerWebUi: {
       title: 'Worker Web UI',
-      help: 'Open the experimental browser UI served by your worker. Requires Home Worker: Local Worker.',
+      help: 'Open the experimental browser UI served by the Local Worker.',
       enabledLabel: 'Enable Web UI',
       enabledHelp:
         'Turns on the Worker-hosted Web UI and debug shell. Changing this restarts the Local Worker.',
@@ -214,7 +214,7 @@ export const enSettingsPanel = {
       statusLabel: 'Status',
       statusHelp: 'Start the Local Worker in Worker settings first.',
       status: {
-        requiresLocal: 'Requires Home Worker: Local Worker',
+        requiresLocal: 'Requires Local Worker',
         disabled: 'Disabled',
         stopped: 'Stopped',
         running: 'Ready',
@@ -361,17 +361,17 @@ export const enSettingsPanel = {
       remoteRequired: 'Remote worker hostname, port, and token are required.',
       remoteExperimentalDisabled:
         'Remote workers are experimental. Enable Remote Workers in Experimental settings to continue.',
-      stopLocalWorkerFirst: 'Stop the local worker before switching to Standalone.',
-      enableLocalRequiresRestart: 'Enable Local Worker and restart before starting it.',
+      stopLocalWorkerFirst: 'Stop the Local Worker before switching to Standalone.',
+      enableLocalRequiresRestart: 'Enable Local Worker mode and restart before starting it.',
     },
     home: {
-      title: 'Home Worker',
-      help: 'Choose where Desktop reads and writes durable state. Worker Web UI currently requires Local Worker.',
+      title: 'Worker Mode',
+      help: 'Choose whether OpenCove runs without a worker, uses the Local Worker, or connects to a Remote Worker.',
       packagedHelp:
-        'OpenCove uses the worker on this device. Most of the time, you only need to start or restart it below.',
-      packagedModeLabel: 'In Use',
-      packagedModeValue: 'Worker on this device',
-      modeLabel: 'Mode',
+        'OpenCove uses the Local Worker on this device. Most of the time, you only need to start or restart it below.',
+      packagedModeLabel: 'Current Mode',
+      packagedModeValue: 'Local Worker',
+      modeLabel: 'Worker Mode',
       mode: {
         standalone: 'Standalone (No Worker)',
         local: 'Local Worker',
@@ -401,7 +401,7 @@ export const enSettingsPanel = {
       uninstall: 'Uninstall CLI',
     },
     local: {
-      title: 'Local Worker',
+      title: 'Local Worker Status',
       help: 'Loopback-only (127.0.0.1) + token. Use SSH tunnels for remote access. Worker Web UI is experimental (see Experimental settings).',
       statusLabel: 'Status',
       status: {
@@ -423,7 +423,7 @@ export const enSettingsPanel = {
     title: 'Endpoints',
     list: {
       title: 'Registered endpoints',
-      help: 'Desktop only connects to the Home Worker. The Home Worker routes operations to endpoints.',
+      help: 'The active worker routes operations to endpoints.',
       countLabel: 'Count',
       localSubtitle: 'local',
       localRemoveHelp: 'The local endpoint cannot be removed.',

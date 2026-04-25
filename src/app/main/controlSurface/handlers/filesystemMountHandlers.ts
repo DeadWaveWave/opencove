@@ -8,7 +8,11 @@ import { registerFilesystemMountWriteHandlers } from './filesystemMountWriteHand
 
 export function registerFilesystemMountHandlers(
   controlSurface: ControlSurface,
-  deps: { approvedWorkspaces: ApprovedWorkspaceStore; topology: WorkerTopologyStore },
+  deps: {
+    approvedWorkspaces: ApprovedWorkspaceStore
+    topology: WorkerTopologyStore
+    deleteEntry?: (uri: string) => Promise<void>
+  },
 ): void {
   const port = createLocalFileSystemPort()
   const assertApprovedUri = createApprovedUriAsserter(deps.approvedWorkspaces)
@@ -23,5 +27,6 @@ export function registerFilesystemMountHandlers(
     port,
     topology: deps.topology,
     assertApprovedUri,
+    deleteEntry: deps.deleteEntry,
   })
 }
