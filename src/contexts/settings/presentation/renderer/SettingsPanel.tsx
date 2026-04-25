@@ -31,6 +31,7 @@ import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
 import { AgentEnvSection } from './settingsPanel/AgentEnvSection'
 import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
+import type { SettingsSearchResult } from './settingsPanel/settingsSearchIndex'
 import {
   createInitialInputState,
   isWorkspacePageId,
@@ -251,6 +252,20 @@ export function SettingsPanel({
     setActivePageId('experimental')
   }, [activePageId, setActivePageId, settings.experimentalRemoteWorkersEnabled])
 
+  const selectSearchResult = (result: SettingsSearchResult): void => {
+    setActivePageId(result.pageId)
+
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(result.anchorId)
+      if (!target) {
+        contentRef.current?.scrollTo({ top: 0 })
+        return
+      }
+
+      target.scrollIntoView({ block: 'start' })
+    })
+  }
+
   return (
     <div
       className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
@@ -265,6 +280,7 @@ export function SettingsPanel({
           workspaces={workspaces}
           endpointsEnabled={settings.experimentalRemoteWorkersEnabled}
           onSelectPage={setActivePageId}
+          onSelectSearchResult={selectSearchResult}
         />
 
         <div className="settings-panel__content-wrapper">

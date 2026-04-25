@@ -1,5 +1,10 @@
 export const zhCNSettingsPanel = {
   title: '设置',
+  search: {
+    label: '搜索设置',
+    placeholder: '搜索',
+    noResults: '未找到匹配的设置',
+  },
   nav: {
     general: '通用',
     worker: 'Worker',
@@ -450,6 +455,7 @@ export const zhCNSettingsPanel = {
     pullRequestBaseBranchesPlaceholder: '例如 develop',
     environmentVariablesTitle: '环境变量',
     environmentVariablesHelp: '自定义环境变量将注入到该工作区下启动的所有终端和 Agent 中。',
+    searchResultDescription: '项目 worktree 与环境设置。',
     environmentVariablesEmpty: '暂无环境变量。',
     environmentVariablesKeyPlaceholder: '例如 NODE_ENV',
     environmentVariablesValuePlaceholder: '例如 development',

@@ -1,5 +1,10 @@
 export const enSettingsPanel = {
   title: 'Settings',
+  search: {
+    label: 'Search settings',
+    placeholder: 'Search',
+    noResults: 'No matching settings',
+  },
   nav: {
     general: 'General',
     worker: 'Worker',
@@ -464,6 +469,7 @@ export const enSettingsPanel = {
     environmentVariablesTitle: 'Environment Variables',
     environmentVariablesHelp:
       'Custom environment variables injected into terminals and agents in this workspace.',
+    searchResultDescription: 'Project worktree and environment settings.',
     environmentVariablesEmpty: 'No environment variables configured.',
     environmentVariablesKeyPlaceholder: 'e.g. NODE_ENV',
     environmentVariablesValuePlaceholder: 'e.g. development',

@@ -228,7 +228,7 @@ export function CanvasSection(props: {
         </div>
       ) : null}
 
-      <div className="settings-panel__row">
+      <div className="settings-panel__row" id="settings-focus-node-on-click">
         <div className="settings-panel__row-label">
           <strong>{t('settingsPanel.canvas.focusOnClickLabel')}</strong>
           <span>{t('settingsPanel.canvas.focusOnClickHelp')}</span>
