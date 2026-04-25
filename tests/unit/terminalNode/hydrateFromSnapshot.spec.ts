@@ -155,11 +155,7 @@ describe('hydrateFromSnapshot', () => {
       expect.any(Function),
     )
     expect(terminal.reset).toHaveBeenCalledTimes(1)
-    expect(terminal.write).toHaveBeenNthCalledWith(
-      2,
-      'live fallback output',
-      expect.any(Function),
-    )
+    expect(terminal.write).toHaveBeenNthCalledWith(2, 'live fallback output', expect.any(Function))
     expect(onHydrationBaselineResolved).toHaveBeenCalledWith('live_pty_snapshot')
     expect(onHydratedWriteCommitted).toHaveBeenLastCalledWith('live fallback output')
     expect(finalizeHydration).toHaveBeenCalledWith('live fallback output')

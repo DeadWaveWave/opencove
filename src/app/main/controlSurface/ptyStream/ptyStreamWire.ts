@@ -121,11 +121,7 @@ export function sendPtyControlChanged(
   })
 }
 
-export function sendPtyState(
-  ws: WebSocket,
-  sessionId: string,
-  state: 'working' | 'standby',
-): void {
+export function sendPtyState(ws: WebSocket, sessionId: string, state: 'working' | 'standby'): void {
   sendJson(ws, {
     type: 'state',
     sessionId,

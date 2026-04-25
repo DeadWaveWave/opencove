@@ -58,8 +58,13 @@ describe('createRemotePtyStreamMessageHandler', () => {
   })
 
   it('broadcasts session state and metadata to every renderer window', () => {
-    const { handler, sendToSessionSubscribers, sendToAllWindows, externalStateListener, externalMetadataListener } =
-      createHandler()
+    const {
+      handler,
+      sendToSessionSubscribers,
+      sendToAllWindows,
+      externalStateListener,
+      externalMetadataListener,
+    } = createHandler()
 
     handler(JSON.stringify({ type: 'state', sessionId: 'session-1', state: 'working' }))
     handler(

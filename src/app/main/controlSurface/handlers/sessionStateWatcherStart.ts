@@ -1,7 +1,4 @@
-import type {
-  AgentLaunchMode,
-  AgentProviderId,
-} from '../../../../shared/contracts/dto'
+import type { AgentLaunchMode, AgentProviderId } from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 
 export function shouldStartAgentSessionStateWatcher(): boolean {

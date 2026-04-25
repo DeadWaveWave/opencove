@@ -60,8 +60,14 @@ export class RemotePtyEndpointProxy {
   private readonly topology: WorkerTopologyStore
   private readonly emitData: (remoteSessionId: string, data: string) => void
   private readonly emitExit: (remoteSessionId: string, exitCode: number) => void
-  private readonly emitState: (remoteSessionId: string, state: TerminalSessionStateEvent['state']) => void
-  private readonly emitMetadata: (remoteSessionId: string, metadata: TerminalSessionMetadataEvent) => void
+  private readonly emitState: (
+    remoteSessionId: string,
+    state: TerminalSessionStateEvent['state'],
+  ) => void
+  private readonly emitMetadata: (
+    remoteSessionId: string,
+    metadata: TerminalSessionMetadataEvent,
+  ) => void
   private readonly attachedSessions = new Map<string, AttachedSessionState>()
 
   private socket: WebSocket | null = null
@@ -77,10 +83,7 @@ export class RemotePtyEndpointProxy {
     topology: WorkerTopologyStore
     emitData: (remoteSessionId: string, data: string) => void
     emitExit: (remoteSessionId: string, exitCode: number) => void
-    emitState: (
-      remoteSessionId: string,
-      state: TerminalSessionStateEvent['state'],
-    ) => void
+    emitState: (remoteSessionId: string, state: TerminalSessionStateEvent['state']) => void
     emitMetadata: (remoteSessionId: string, metadata: TerminalSessionMetadataEvent) => void
   }) {
     this.endpointId = options.endpointId

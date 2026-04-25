@@ -28,9 +28,7 @@ export function useAppQuitPersistenceFlush({ enabled }: { enabled: boolean }): v
       window.dispatchEvent(new Event(TERMINAL_SCROLLBACK_FLUSH_EVENT))
       schedulePersistedStateWrite(producePersistedState, { delayMs: 0 })
       flushScheduledScrollbackWrites()
-      await Promise.allSettled([
-        flushScheduledPersistedStateWriteAsync(),
-      ])
+      await Promise.allSettled([flushScheduledPersistedStateWriteAsync()])
     })
   }, [enabled])
 }

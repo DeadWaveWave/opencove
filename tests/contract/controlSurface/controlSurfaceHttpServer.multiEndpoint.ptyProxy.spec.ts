@@ -45,17 +45,17 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
 
     const remoteDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
     const remoteExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
-    const remoteStateListeners = new Set<(
-      event: { sessionId: string; state: 'working' | 'standby' },
-    ) => void>()
-    const remoteMetadataListeners = new Set<(
-      event: {
+    const remoteStateListeners = new Set<
+      (event: { sessionId: string; state: 'working' | 'standby' }) => void
+    >()
+    const remoteMetadataListeners = new Set<
+      (event: {
         sessionId: string
         resumeSessionId: string | null
         profileId?: string | null
         runtimeKind?: 'windows' | 'wsl' | 'posix'
-      },
-    ) => void>()
+      }) => void
+    >()
     const remoteWrites: Array<{ sessionId: string; data: string }> = []
     let lastRemoteSessionId: string | null = null
 
@@ -81,12 +81,14 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
         remoteStateListeners.add(listener)
         return () => remoteStateListeners.delete(listener)
       },
-      onMetadata: (listener: (event: {
-        sessionId: string
-        resumeSessionId: string | null
-        profileId?: string | null
-        runtimeKind?: 'windows' | 'wsl' | 'posix'
-      }) => void) => {
+      onMetadata: (
+        listener: (event: {
+          sessionId: string
+          resumeSessionId: string | null
+          profileId?: string | null
+          runtimeKind?: 'windows' | 'wsl' | 'posix'
+        }) => void,
+      ) => {
         remoteMetadataListeners.add(listener)
         return () => remoteMetadataListeners.delete(listener)
       },
