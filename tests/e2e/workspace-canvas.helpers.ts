@@ -261,11 +261,15 @@ export async function seedWorkspaceState(
       | { ok: false; reason: string; error: { code: string; debugMessage?: string } }
     let writeResult: WriteWorkspaceStateResult
     try {
-      writeResult = await window.evaluate(async state => {
-        return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
-          raw: JSON.stringify(state),
-        })
-      }, seededState)
+      writeResult = await window.evaluate(
+        async ({ state, viewStateKey }) => {
+          window.localStorage.removeItem(viewStateKey)
+          return await window.opencoveApi.persistence.writeWorkspaceStateRaw({
+            raw: JSON.stringify(state),
+          })
+        },
+        { state: seededState, viewStateKey: viewStateStorageKey },
+      )
     } catch (error) {
       if (isRetryableNavigationError(error)) {
         await window
