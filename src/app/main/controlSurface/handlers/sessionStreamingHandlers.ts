@@ -6,6 +6,7 @@ import type {
   GetSessionPresentationSnapshotResult,
   GetSessionSnapshotInput,
   GetSessionSnapshotResult,
+  ListTerminalProfilesResult,
   ListSessionsResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
@@ -291,6 +292,16 @@ export function registerSessionStreamingHandlers(
         }),
       }
     },
+    defaultErrorCode: 'terminal.spawn_failed',
+  })
+
+  controlSurface.register('pty.listProfiles', {
+    kind: 'query',
+    validate: payload => payload ?? null,
+    handle: async (): Promise<ListTerminalProfilesResult> =>
+      deps.ptyRuntime.listProfiles
+        ? await deps.ptyRuntime.listProfiles()
+        : { profiles: [], defaultProfileId: null },
     defaultErrorCode: 'terminal.spawn_failed',
   })
 

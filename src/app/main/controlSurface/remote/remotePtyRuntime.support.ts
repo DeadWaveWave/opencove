@@ -1,5 +1,6 @@
 import type { ControlSurfaceOperationKind } from '../../../../shared/contracts/controlSurface'
 import type {
+  ListTerminalProfilesResult,
   PresentationSnapshotTerminalResult,
   SpawnTerminalResult,
 } from '../../../../shared/contracts/dto'
@@ -68,6 +69,46 @@ export function parseSpawnTerminalResult(value: unknown): SpawnTerminalResult {
     sessionId: sessionIdRaw.trim(),
     profileId: typeof record.profileId === 'string' ? record.profileId : null,
     runtimeKind,
+  }
+}
+
+export function parseListTerminalProfilesResult(value: unknown): ListTerminalProfilesResult {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Invalid pty.listProfiles response payload')
+  }
+
+  const record = value as Record<string, unknown>
+  const rawProfiles = Array.isArray(record.profiles) ? record.profiles : []
+  const profiles = rawProfiles.flatMap(profile => {
+    if (!profile || typeof profile !== 'object' || Array.isArray(profile)) {
+      return []
+    }
+
+    const entry = profile as Record<string, unknown>
+    const id = typeof entry.id === 'string' ? entry.id.trim() : ''
+    const label = typeof entry.label === 'string' ? entry.label.trim() : ''
+    const runtimeKind =
+      entry.runtimeKind === 'windows' ||
+      entry.runtimeKind === 'wsl' ||
+      entry.runtimeKind === 'posix'
+        ? entry.runtimeKind
+        : null
+
+    if (id.length === 0 || label.length === 0 || runtimeKind === null) {
+      return []
+    }
+
+    return [{ id, label, runtimeKind }]
+  })
+
+  const defaultProfileId =
+    typeof record.defaultProfileId === 'string' && record.defaultProfileId.trim().length > 0
+      ? record.defaultProfileId.trim()
+      : null
+
+  return {
+    profiles,
+    defaultProfileId,
   }
 }
 

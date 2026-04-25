@@ -1,11 +1,13 @@
 import type { SessionStateWatcherStartInput } from '../../../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
 import type {
+  ListTerminalProfilesResult,
   TerminalGeometryCommitReason,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
 
 export interface ControlSurfacePtyRuntime {
+  listProfiles?: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: {
     cwd: string
     cols: number

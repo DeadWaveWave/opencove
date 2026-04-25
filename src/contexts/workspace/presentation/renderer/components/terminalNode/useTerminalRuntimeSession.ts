@@ -21,6 +21,7 @@ import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
 import { createMountedXtermSession } from './xtermSession'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
+import { registerTerminalBinaryInputTestHandle } from './testHarness'
 import type { TerminalRuntimeSessionOptions } from './useTerminalRuntimeSession.types'
 import {
   formatTerminalDataHeadHex,
@@ -28,6 +29,7 @@ import {
 } from './terminalRuntimeDiagnostics'
 import {
   hasRecentTerminalUserInteraction,
+  markRecentTerminalUserInteraction,
   registerTerminalUserInteractionWindow,
 } from './userInteractionWindow'
 import {
@@ -220,6 +222,14 @@ export function useTerminalRuntimeSession({
     session.disposePlaceholderHandoffInputCapture?.()
     session.disposePlaceholderHandoffInputCapture = undefined
     const { ptyWriteQueue } = runtimeInputBridge
+    const disposeBinaryInputTestHandle = isTestEnvironment
+      ? registerTerminalBinaryInputTestHandle(nodeId, data => {
+          markRecentTerminalUserInteraction(recentUserInteractionAtRef)
+          ptyWriteQueue.enqueue(data, 'binary')
+          ptyWriteQueue.flush()
+          return true
+        })
+      : () => undefined
     const openCodeThemeBridge = createOptionalOpenCodeThemeBridge({
       terminalProvider,
       terminal,
@@ -418,6 +428,7 @@ export function useTerminalRuntimeSession({
       unsubscribeResync()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
+      disposeBinaryInputTestHandle()
       runtimeInputBridge.dispose()
       pendingUserInputBuffer.length = 0
       openCodeThemeBridge?.dispose()

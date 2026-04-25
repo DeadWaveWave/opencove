@@ -303,11 +303,13 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-1')
 
+      await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+]`)
       await expect
         .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)
         .toBe('space-cycle-2')
 
+      await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+[`)
       await expect
         .poll(async () => (await readWorkspaceViewState(window, seededWorkspaceId))?.activeSpaceId)

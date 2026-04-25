@@ -25,6 +25,7 @@ import {
 } from './remotePtyRuntime.webContents'
 import {
   invokeRemoteControlSurfaceValue,
+  parseListTerminalProfilesResult,
   parsePresentationSnapshot,
   parseSnapshotScrollback,
   parseSpawnTerminalResult,
@@ -307,10 +308,16 @@ export function createRemotePtyRuntime(options: {
   }
 
   const runtime: RemotePtyRuntime = {
-    listProfiles: async (): Promise<ListTerminalProfilesResult> => ({
-      profiles: [],
-      defaultProfileId: null,
-    }),
+    listProfiles: async (): Promise<ListTerminalProfilesResult> =>
+      parseListTerminalProfilesResult(
+        await invokeRemoteControlSurfaceValue<unknown>({
+          endpointResolver: options.endpointResolver,
+          kind: 'query',
+          id: 'pty.listProfiles',
+          payload: null,
+          errorMessage: 'Failed to list remote terminal profiles',
+        }),
+      ),
     spawnTerminalSession,
     spawnSession: async (spawnOptions: SpawnPtyOptions): Promise<{ sessionId: string }> => {
       if (spawnOptions.command || spawnOptions.env || spawnOptions.args?.length) {

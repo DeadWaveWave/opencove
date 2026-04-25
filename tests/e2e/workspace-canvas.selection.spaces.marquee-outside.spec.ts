@@ -316,12 +316,14 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         throw new Error('failed to read node positions after marquee selection')
       }
 
-      const outsideHeader = outsideNode.locator('.terminal-node__header')
-      await expect(outsideHeader).toBeVisible()
-      const outsideHeaderBox = await readLocatorClientRect(outsideHeader)
+      const selectedSpaceTopHandle = window.locator(
+        '[data-testid="workspace-space-drag-marquee-space-keep-outside-top"]',
+      )
+      await expect(selectedSpaceTopHandle).toBeVisible()
+      const selectedSpaceTopHandleBox = await readLocatorClientRect(selectedSpaceTopHandle)
 
-      const dragStartX = outsideHeaderBox.x + outsideHeaderBox.width * 0.5
-      const dragStartY = outsideHeaderBox.y + outsideHeaderBox.height * 0.5
+      const dragStartX = selectedSpaceTopHandleBox.x + selectedSpaceTopHandleBox.width * 0.75
+      const dragStartY = selectedSpaceTopHandleBox.y + selectedSpaceTopHandleBox.height * 0.5
       const dragEndX = dragStartX
       const dragEndY = dragStartY + 180
 

@@ -83,6 +83,7 @@ declare global {
 }
 
 const terminalHandles = new Map<string, TerminalSelectionHandle>()
+const terminalBinaryInputEmitters = new Map<string, (data: string) => boolean>()
 
 function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
   if (typeof window === 'undefined') {
@@ -261,6 +262,11 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
       },
       emitBinaryInput: (nodeId, data) => {
+        const testEmitter = terminalBinaryInputEmitters.get(nodeId)
+        if (testEmitter) {
+          return testEmitter(data)
+        }
+
         const terminal = terminalHandles.get(nodeId) as unknown as {
           element?: HTMLElement | null
           _core?: { coreService?: { triggerBinaryEvent?: (payload: string) => void } }
@@ -319,5 +325,23 @@ export function registerTerminalSelectionTestHandle(
 
   return () => {
     terminalHandles.delete(nodeId)
+  }
+}
+
+export function registerTerminalBinaryInputTestHandle(
+  nodeId: string,
+  emitBinaryInput: (data: string) => boolean,
+): () => void {
+  if (typeof window === 'undefined') {
+    return () => undefined
+  }
+
+  getTerminalSelectionTestApi()
+  terminalBinaryInputEmitters.set(nodeId, emitBinaryInput)
+
+  return () => {
+    if (terminalBinaryInputEmitters.get(nodeId) === emitBinaryInput) {
+      terminalBinaryInputEmitters.delete(nodeId)
+    }
   }
 }

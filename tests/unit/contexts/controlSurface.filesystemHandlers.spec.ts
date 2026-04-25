@@ -156,6 +156,26 @@ describe('control surface filesystem handlers', () => {
     expect(deleteEntry).toHaveBeenCalledWith(toFileUri(renamedPath))
   })
 
+  it('falls back to direct delete when trashing is unavailable', async () => {
+    const { filePath } = await createFixture()
+    const controlSurface = createSubject(true, {
+      deleteEntry: async () => {
+        throw new Error('trash unavailable')
+      },
+    })
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'filesystem.deleteEntry',
+      payload: {
+        uri: toFileUri(filePath),
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    await expect(readFile(filePath, 'utf8')).rejects.toBeTruthy()
+  })
+
   it.each([
     [
       'filesystem.readFileText',
