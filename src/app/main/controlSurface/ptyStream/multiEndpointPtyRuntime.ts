@@ -143,7 +143,7 @@ export function createMultiEndpointPtyRuntime(options: {
     resize: (sessionId, cols, rows, reason: TerminalGeometryCommitReason = 'frame_commit') => {
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
-        options.localRuntime.resize(sessionId, cols, rows)
+        options.localRuntime.resize(sessionId, cols, rows, reason)
         return
       }
 
