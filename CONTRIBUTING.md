@@ -40,7 +40,7 @@ To keep the Project healthy and to preserve future distribution options (includi
 ### Prerequisites
 
 - **Node.js**: `>= 22.12.0`
-- **pnpm**: `>= 9`
+- **pnpm**: `9.6.0`
 - **OS**: macOS, Windows, or Linux
 
 ### Setup
