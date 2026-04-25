@@ -215,6 +215,58 @@ describe('hydrationRouter', () => {
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
   })
 
+  it('does not timeout-flush a destructive redraw before visible output arrives', () => {
+    vi.useFakeTimers()
+    const terminal = {
+      reset: vi.fn(),
+      write: vi.fn(),
+    }
+    const outputScheduler = {
+      handleChunk: vi.fn(),
+    }
+    const scrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+    }
+    const committedScrollbackBuffer = {
+      set: vi.fn(),
+      append: vi.fn(),
+      snapshot: vi.fn(() => ''),
+    }
+
+    try {
+      const router = createTerminalHydrationRouter({
+        terminal: terminal as never,
+        outputScheduler,
+        shouldReplaceAgentPlaceholderAfterHydration: () => false,
+        shouldDeferHydratedRedrawChunks: () => true,
+        hasRecentUserInteraction: () => true,
+        scrollbackBuffer,
+        committedScrollbackBuffer,
+        recordCommittedScreenState: vi.fn(),
+        scheduleTranscriptSync: vi.fn(),
+        ptyWriteQueue: { flush: vi.fn() },
+        markScrollbackDirty: vi.fn(),
+        logHydrated: vi.fn(),
+        syncTerminalSize: vi.fn(),
+        onRevealed: vi.fn(),
+        isDisposed: () => false,
+      })
+
+      router.finalizeHydration('[restored history]')
+      router.handleDataChunk('\u001b[2J\u001b[H')
+      vi.advanceTimersByTime(2_500)
+
+      expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
+
+      router.handleDataChunk('[redraw complete]')
+
+      expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('stops deferring later control-only redraws after visible live output has arrived', () => {
     const terminal = {
       reset: vi.fn(),

@@ -164,6 +164,9 @@ export function createTerminalHydrationRouter({
       if (isDisposed()) {
         return
       }
+      if (hasDeferredDestructiveHydratedRedraw()) {
+        return
+      }
       flushDeferredHydratedRedraw()
     }, 2_000)
   }
@@ -245,7 +248,9 @@ export function createTerminalHydrationRouter({
             !containsMeaningfulTerminalDisplayContent(data)))
       ) {
         deferredHydratedRedrawBuffer.dataChunks.push(data)
-        scheduleDeferredHydratedRedrawFlush()
+        if (!isDestructiveControlOnlyRedraw) {
+          scheduleDeferredHydratedRedrawFlush()
+        }
         return
       }
 
