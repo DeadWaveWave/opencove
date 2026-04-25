@@ -126,6 +126,12 @@ export interface TerminalGeometryEvent {
   reason: TerminalGeometryCommitReason
 }
 
+export interface TerminalResyncEvent {
+  sessionId: string
+  reason: 'replay_window_exceeded'
+  recovery: 'presentation_snapshot'
+}
+
 export type TerminalSessionState = 'working' | 'standby'
 
 export interface TerminalSessionStateEvent {

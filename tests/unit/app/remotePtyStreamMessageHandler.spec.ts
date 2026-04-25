@@ -22,7 +22,6 @@ describe('createRemotePtyStreamMessageHandler', () => {
       externalMetadataListeners: new Set([externalMetadataListener]),
       cancelMetadataWatcher: vi.fn(),
       onSessionExit,
-      snapshot: vi.fn().mockResolvedValue(''),
       handshake: {
         onHelloAck: vi.fn(),
         onHandshakeError: vi.fn(),
@@ -125,5 +124,20 @@ describe('createRemotePtyStreamMessageHandler', () => {
       exitCode: 0,
     })
     expect(onSessionExit).toHaveBeenCalledWith('session-1')
+  })
+
+  it('broadcasts a resync request on overflow instead of replaying raw snapshot data', () => {
+    const { handler, sendToAllWindows, sendToSessionSubscribers, externalDataListener } =
+      createHandler()
+
+    handler(JSON.stringify({ type: 'overflow', sessionId: 'session-1', seq: 12 }))
+
+    expect(sendToAllWindows).toHaveBeenCalledWith(IPC_CHANNELS.ptyResync, {
+      sessionId: 'session-1',
+      reason: 'replay_window_exceeded',
+      recovery: 'presentation_snapshot',
+    })
+    expect(sendToSessionSubscribers).not.toHaveBeenCalled()
+    expect(externalDataListener).not.toHaveBeenCalled()
   })
 })

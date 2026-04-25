@@ -12,6 +12,7 @@ import type {
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WriteTerminalInput,
@@ -62,6 +63,7 @@ export class BrowserPtyClient {
   private readonly dataListeners = new Set<(event: TerminalDataEvent) => void>()
   private readonly exitListeners = new Set<(event: TerminalExitEvent) => void>()
   private readonly geometryListeners = new Set<(event: TerminalGeometryEvent) => void>()
+  private readonly resyncListeners = new Set<(event: TerminalResyncEvent) => void>()
   private readonly stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   private readonly metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   private readonly latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
@@ -343,26 +345,19 @@ export class BrowserPtyClient {
     }
 
     if (type === 'overflow') {
-      try {
-        const snapshot = await this.snapshot({ sessionId })
-        const existing = this.attachedSessions.get(sessionId)
-        if (existing) {
-          const toSeq =
-            typeof record.seq === 'number' && Number.isFinite(record.seq)
-              ? Math.floor(record.seq)
-              : existing.lastSeq
-          existing.lastSeq = Math.max(existing.lastSeq, toSeq)
-        }
+      const reason = record.reason === 'replay_window_exceeded' ? record.reason : null
+      const recovery = record.recovery === 'presentation_snapshot' ? record.recovery : null
 
-        if (snapshot.data.length > 0) {
-          emitToListeners(this.dataListeners, {
-            sessionId,
-            data: snapshot.data,
-          })
-        }
-      } catch {
-        // ignore snapshot recovery failures
+      if (!reason || !recovery) {
+        return
       }
+
+      emitToListeners(this.resyncListeners, {
+        sessionId,
+        reason,
+        recovery,
+      })
+      return
     }
   }
 
@@ -517,6 +512,13 @@ export class BrowserPtyClient {
     this.geometryListeners.add(listener)
     return () => {
       this.geometryListeners.delete(listener)
+    }
+  }
+
+  public onResync(listener: (event: TerminalResyncEvent) => void): UnsubscribeFn {
+    this.resyncListeners.add(listener)
+    return () => {
+      this.resyncListeners.delete(listener)
     }
   }
 

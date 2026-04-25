@@ -58,6 +58,7 @@ import type {
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
@@ -240,6 +241,7 @@ export interface OpenCoveApi {
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
     onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
     onGeometry: (listener: (event: TerminalGeometryEvent) => void) => UnsubscribeFn
+    onResync: (listener: (event: TerminalResyncEvent) => void) => UnsubscribeFn
     onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
     onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => UnsubscribeFn
   }

@@ -126,7 +126,6 @@ export function createRemotePtyRuntime(options: {
     onSessionExit: sessionId => {
       sessionCoordinator.untrackSession(sessionId)
     },
-    snapshot: async sessionId => await runtime.snapshot(sessionId),
     handshake: {
       onHelloAck: () => {
         if (socketHandshakeResolve) {

@@ -61,6 +61,7 @@ import type {
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
@@ -402,6 +403,17 @@ const opencoveApi = {
 
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.ptyGeometry, handler)
+      }
+    },
+    onResync: (listener: (event: TerminalResyncEvent) => void): UnsubscribeFn => {
+      const handler = (_event: Electron.IpcRendererEvent, payload: TerminalResyncEvent) => {
+        listener(payload)
+      }
+
+      ipcRenderer.on(IPC_CHANNELS.ptyResync, handler)
+
+      return () => {
+        ipcRenderer.removeListener(IPC_CHANNELS.ptyResync, handler)
       }
     },
     onState: (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {

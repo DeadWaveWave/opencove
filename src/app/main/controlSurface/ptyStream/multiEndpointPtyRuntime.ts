@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import type {
+  TerminalGeometryCommitReason,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -139,14 +140,14 @@ export function createMultiEndpointPtyRuntime(options: {
 
       getProxy(route.endpointId).write(route.remoteSessionId, data)
     },
-    resize: (sessionId, cols, rows) => {
+    resize: (sessionId, cols, rows, reason: TerminalGeometryCommitReason = 'frame_commit') => {
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
         options.localRuntime.resize(sessionId, cols, rows)
         return
       }
 
-      getProxy(route.endpointId).resize(route.remoteSessionId, cols, rows)
+      getProxy(route.endpointId).resize(route.remoteSessionId, cols, rows, reason)
     },
     kill: sessionId => {
       const route = routes.get(sessionId)

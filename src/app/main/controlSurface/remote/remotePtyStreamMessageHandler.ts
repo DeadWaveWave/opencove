@@ -3,6 +3,7 @@ import type {
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -25,7 +26,13 @@ type PtyStreamMessage =
       profileId?: string | null
       runtimeKind?: string | null
     }
-  | { type: 'overflow'; sessionId: string; seq?: number }
+  | {
+      type: 'overflow'
+      sessionId: string
+      seq?: number
+      reason?: string
+      recovery?: string
+    }
   | { type: 'control_changed'; sessionId: string }
   | { type: 'error'; code?: string; message?: string; sessionId?: string }
 
@@ -73,7 +80,6 @@ export function createRemotePtyStreamMessageHandler(options: {
   cancelMetadataWatcher: (sessionId: string) => void
   onSessionExit: (sessionId: string) => void
   onSessionAttached: (sessionId: string) => void
-  snapshot: (sessionId: string) => Promise<string>
   handshake: {
     onHelloAck: () => void
     onHandshakeError: (error: Error) => void
@@ -225,22 +231,11 @@ export function createRemotePtyStreamMessageHandler(options: {
     }
 
     if (message.type === 'overflow') {
-      void (async () => {
-        try {
-          const snapshot = await options.snapshot(sessionId)
-          if (snapshot.length > 0) {
-            options.sendToSessionSubscribers(sessionId, IPC_CHANNELS.ptyData, {
-              sessionId,
-              data: snapshot,
-            } satisfies TerminalDataEvent)
-            options.externalDataListeners.forEach(listener =>
-              listener({ sessionId, data: snapshot }),
-            )
-          }
-        } catch {
-          // ignore snapshot recovery failures
-        }
-      })()
+      options.sendToAllWindows(IPC_CHANNELS.ptyResync, {
+        sessionId,
+        reason: 'replay_window_exceeded',
+        recovery: 'presentation_snapshot',
+      } satisfies TerminalResyncEvent)
     }
   }
 }

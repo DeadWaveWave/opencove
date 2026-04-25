@@ -324,6 +324,7 @@ export function installBrowserOpenCoveApi(): void {
       onData: listener => ptyClient.onData(listener),
       onExit: listener => ptyClient.onExit(listener),
       onGeometry: listener => ptyClient.onGeometry(listener),
+      onResync: listener => ptyClient.onResync(listener),
       onState: listener => ptyClient.onState(listener),
       onMetadata: listener => ptyClient.onMetadata(listener),
     },

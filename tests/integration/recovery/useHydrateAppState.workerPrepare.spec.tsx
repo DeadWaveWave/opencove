@@ -191,4 +191,55 @@ describe('useHydrateAppState worker prepare', () => {
     expect(spawn).not.toHaveBeenCalled()
     expect(launch).not.toHaveBeenCalled()
   })
+
+  it('does not fall back to local runtime hydration when worker prepare fails in electron', async () => {
+    const storage = installMockStorage()
+    storage.setItem('opencove:m0:workspace-state', JSON.stringify(createPersistedState()))
+
+    const spawn = vi.fn(async () => ({ sessionId: 'should-not-spawn' }))
+    const launch = vi.fn(async () => ({ sessionId: 'should-not-launch' }))
+    const controlSurfaceInvoke = vi.fn(async () => {
+      throw new Error('worker unavailable')
+    })
+
+    Object.defineProperty(window, 'opencoveApi', {
+      configurable: true,
+      writable: true,
+      value: {
+        meta: {
+          runtime: 'electron',
+          platform: 'darwin',
+          isTest: true,
+          isPackaged: false,
+          allowWhatsNewInTests: true,
+          mainPid: 123,
+          windowsPty: null,
+        },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
+        },
+        pty: {
+          spawn,
+          snapshot: vi.fn(async () => ({ data: 'legacy snapshot' })),
+        },
+        agent: {
+          launch,
+          resolveResumeSessionId: vi.fn(async () => ({ resumeSessionId: null })),
+        },
+      },
+    })
+
+    const { useHydrateAppState } =
+      await import('../../../src/app/renderer/shell/hooks/useHydrateAppState')
+
+    render(React.createElement(createHarness(useHydrateAppState)))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('hydrated')).toHaveTextContent('true')
+    })
+
+    expect(screen.getByTestId('agent-session-id')).toHaveTextContent('')
+    expect(spawn).not.toHaveBeenCalled()
+    expect(launch).not.toHaveBeenCalled()
+  })
 })

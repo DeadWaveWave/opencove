@@ -8,6 +8,7 @@ import {
 } from './ptyStreamService'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import type {
+  TerminalGeometryCommitReason,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../../../shared/contracts/dto'
@@ -424,14 +425,19 @@ export class RemotePtyEndpointProxy {
       .catch(() => undefined)
   }
 
-  public resize(remoteSessionId: string, cols: number, rows: number): void {
+  public resize(
+    remoteSessionId: string,
+    cols: number,
+    rows: number,
+    reason: TerminalGeometryCommitReason = 'frame_commit',
+  ): void {
     void this.ensureSocket()
       .then(() => {
         const ws = this.socket
         if (!ws) {
           return
         }
-        trySendWs(ws, { type: 'resize', sessionId: remoteSessionId, cols, rows })
+        trySendWs(ws, { type: 'resize', sessionId: remoteSessionId, cols, rows, reason })
       })
       .catch(() => undefined)
   }

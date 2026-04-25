@@ -2,6 +2,7 @@ import type {
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '@shared/contracts/dto'
@@ -12,6 +13,7 @@ interface PtyEventSource {
   onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
   onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
   onGeometry?: (listener: (event: TerminalGeometryEvent) => void) => UnsubscribeFn
+  onResync?: (listener: (event: TerminalResyncEvent) => void) => UnsubscribeFn
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
   onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => UnsubscribeFn
 }
@@ -30,6 +32,11 @@ export interface PtyEventHub {
   onSessionGeometry: (
     sessionId: string,
     listener: (event: TerminalGeometryEvent) => void,
+  ) => UnsubscribeFn
+  onResync: (listener: (event: TerminalResyncEvent) => void) => UnsubscribeFn
+  onSessionResync: (
+    sessionId: string,
+    listener: (event: TerminalResyncEvent) => void,
   ) => UnsubscribeFn
   onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
   onSessionState: (
@@ -110,6 +117,7 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
   const dataListeners = createListenerMap<TerminalDataEvent>()
   const exitListeners = createListenerMap<TerminalExitEvent>()
   const geometryListeners = createListenerMap<TerminalGeometryEvent>()
+  const resyncListeners = createListenerMap<TerminalResyncEvent>()
   const stateListeners = createListenerMap<TerminalSessionStateEvent>()
   const metadataListeners = createListenerMap<TerminalSessionMetadataEvent>()
   const latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
@@ -118,6 +126,7 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
   let unsubscribeDataSource: UnsubscribeFn | null = null
   let unsubscribeExitSource: UnsubscribeFn | null = null
   let unsubscribeGeometrySource: UnsubscribeFn | null = null
+  let unsubscribeResyncSource: UnsubscribeFn | null = null
   let unsubscribeStateSource: UnsubscribeFn | null = null
   let unsubscribeMetadataSource: UnsubscribeFn | null = null
 
@@ -148,6 +157,16 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
 
     unsubscribeGeometrySource = source.onGeometry(event => {
       dispatchEvent(geometryListeners, event)
+    })
+  }
+
+  const ensureResyncSourceSubscription = (): void => {
+    if (unsubscribeResyncSource || !hasListeners(resyncListeners) || !source.onResync) {
+      return
+    }
+
+    unsubscribeResyncSource = source.onResync(event => {
+      dispatchEvent(resyncListeners, event)
     })
   }
 
@@ -191,6 +210,13 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
     if (unsubscribeGeometrySource && !hasListeners(geometryListeners)) {
       unsubscribeGeometrySource()
       unsubscribeGeometrySource = null
+    }
+  }
+
+  const cleanupResyncSourceSubscription = (): void => {
+    if (unsubscribeResyncSource && !hasListeners(resyncListeners)) {
+      unsubscribeResyncSource()
+      unsubscribeResyncSource = null
     }
   }
 
@@ -271,6 +297,27 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
     }
   }
 
+  const onResync = (listener: (event: TerminalResyncEvent) => void): UnsubscribeFn => {
+    const unsubscribe = subscribeGlobal(resyncListeners, listener)
+    ensureResyncSourceSubscription()
+    return () => {
+      unsubscribe()
+      cleanupResyncSourceSubscription()
+    }
+  }
+
+  const onSessionResync = (
+    sessionId: string,
+    listener: (event: TerminalResyncEvent) => void,
+  ): UnsubscribeFn => {
+    const unsubscribe = subscribeSession(resyncListeners, sessionId, listener)
+    ensureResyncSourceSubscription()
+    return () => {
+      unsubscribe()
+      cleanupResyncSourceSubscription()
+    }
+  }
+
   const onState = (listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn => {
     const unsubscribe = subscribeGlobal(stateListeners, listener)
     ensureStateSourceSubscription()
@@ -334,6 +381,8 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
     onSessionExit,
     onGeometry,
     onSessionGeometry,
+    onResync,
+    onSessionResync,
     onState,
     onSessionState,
     onMetadata,
@@ -342,11 +391,13 @@ export function createPtyEventHub(source: PtyEventSource): PtyEventHub {
       unsubscribeDataSource?.()
       unsubscribeExitSource?.()
       unsubscribeGeometrySource?.()
+      unsubscribeResyncSource?.()
       unsubscribeStateSource?.()
       unsubscribeMetadataSource?.()
       unsubscribeDataSource = null
       unsubscribeExitSource = null
       unsubscribeGeometrySource = null
+      unsubscribeResyncSource = null
       unsubscribeStateSource = null
       unsubscribeMetadataSource = null
       dataListeners.global.clear()

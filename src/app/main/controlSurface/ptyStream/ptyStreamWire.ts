@@ -85,7 +85,7 @@ export function sendPtyOverflow(
     seq,
     earliestSeq,
     reason: 'replay_window_exceeded',
-    recovery: 'snapshot',
+    recovery: 'presentation_snapshot',
   })
 }
 

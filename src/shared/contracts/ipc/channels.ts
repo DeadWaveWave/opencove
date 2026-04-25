@@ -82,6 +82,7 @@ export const IPC_CHANNELS = {
   ptyData: 'pty:data',
   ptyExit: 'pty:exit',
   ptyGeometry: 'pty:geometry',
+  ptyResync: 'pty:resync',
   ptyState: 'pty:state',
   ptySessionMetadata: 'pty:session-metadata',
   agentListModels: 'agent:list-models',

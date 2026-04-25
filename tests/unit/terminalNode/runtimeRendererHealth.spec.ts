@@ -180,4 +180,18 @@ describe('runtime renderer health', () => {
 
     health.dispose()
   })
+
+  it('allows stream resync requests without forcing DOM fallback', () => {
+    const request = {
+      reason: 'stream_resync',
+      trigger: 'resync_event',
+      forceDom: false,
+    } as const
+
+    expect(request).toEqual({
+      reason: 'stream_resync',
+      trigger: 'resync_event',
+      forceDom: false,
+    })
+  })
 })

@@ -9,9 +9,10 @@ export type TerminalRendererHealthTrigger =
   | 'mutation'
   | 'resize_observer'
   | 'theme_change'
+  | 'resync_event'
 
 export type TerminalRendererRecoveryRequest = {
-  reason: 'blank_canvas' | 'context_loss'
+  reason: 'blank_canvas' | 'context_loss' | 'stream_resync'
   trigger: TerminalRendererHealthTrigger | 'context_loss'
   forceDom: boolean
 }

@@ -3,6 +3,7 @@ import type {
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '@shared/contracts/dto'
@@ -70,6 +71,7 @@ describe('createPtyEventHub', () => {
       onGeometry: vi.fn(
         (_listener: (event: TerminalGeometryEvent) => void) => unsubscribeGeometrySource,
       ),
+      onResync: vi.fn((_listener: (event: TerminalResyncEvent) => void) => () => undefined),
       onState: vi.fn(
         (_listener: (event: TerminalSessionStateEvent) => void) => unsubscribeStateSource,
       ),
@@ -82,6 +84,7 @@ describe('createPtyEventHub', () => {
     hub.onData(() => undefined)
     hub.onExit(() => undefined)
     hub.onGeometry(() => undefined)
+    hub.onResync(() => undefined)
     hub.onState(() => undefined)
     hub.onMetadata(() => undefined)
 
@@ -131,5 +134,41 @@ describe('createPtyEventHub', () => {
       sessionId: 'session-1',
       resumeSessionId: 'resume-1',
     })
+  })
+
+  it('routes resync events by session id', () => {
+    let resyncListener: ((event: TerminalResyncEvent) => void) | undefined
+
+    const hub = createPtyEventHub({
+      onData: vi.fn((_listener: (event: TerminalDataEvent) => void) => () => undefined),
+      onExit: vi.fn((_listener: (event: TerminalExitEvent) => void) => () => undefined),
+      onGeometry: vi.fn((_listener: (event: TerminalGeometryEvent) => void) => () => undefined),
+      onResync: vi.fn((listener: (event: TerminalResyncEvent) => void) => {
+        resyncListener = listener
+        return () => undefined
+      }),
+      onState: vi.fn((_listener: (event: TerminalSessionStateEvent) => void) => () => undefined),
+      onMetadata: vi.fn(
+        (_listener: (event: TerminalSessionMetadataEvent) => void) => () => undefined,
+      ),
+    })
+
+    const sessionOneListener = vi.fn()
+    const sessionTwoListener = vi.fn()
+    hub.onSessionResync('session-1', sessionOneListener)
+    hub.onSessionResync('session-2', sessionTwoListener)
+
+    resyncListener?.({
+      sessionId: 'session-1',
+      reason: 'replay_window_exceeded',
+      recovery: 'presentation_snapshot',
+    })
+
+    expect(sessionOneListener).toHaveBeenCalledWith({
+      sessionId: 'session-1',
+      reason: 'replay_window_exceeded',
+      recovery: 'presentation_snapshot',
+    })
+    expect(sessionTwoListener).not.toHaveBeenCalled()
   })
 })

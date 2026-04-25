@@ -365,6 +365,13 @@ export function useTerminalRuntimeSession({
       syncTerminalSize()
       scheduleTranscriptSync()
     })
+    const unsubscribeResync = ptyEventHub.onSessionResync(sessionId, event => {
+      requestTerminalRendererRecovery({
+        reason: 'stream_resync',
+        trigger: event.reason === 'replay_window_exceeded' ? 'resync_event' : 'resync_event',
+        forceDom: false,
+      })
+    })
     const attachPromise = attachAfterPresentationSnapshot({
       ptyApi: ptyWithOptionalAttach,
       sessionId,
@@ -447,6 +454,7 @@ export function useTerminalRuntimeSession({
       unsubscribeData()
       unsubscribeExit()
       unsubscribeGeometry()
+      unsubscribeResync()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
       runtimeInputBridge.dispose()

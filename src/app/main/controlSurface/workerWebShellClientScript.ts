@@ -258,7 +258,7 @@ function ptyConnect(sessionId) {
         const cols = Number(ptyColsInput.value)
         const rows = Number(ptyRowsInput.value)
         if (Number.isFinite(cols) && Number.isFinite(rows)) {
-          ptySendJson({ type: 'resize', sessionId, cols, rows })
+          ptySendJson({ type: 'resize', sessionId, cols, rows, reason: 'frame_commit' })
         }
       } catch (err) {
         appendPty('[attach error] ' + String(err && err.message ? err.message : err) + '\\n')

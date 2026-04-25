@@ -280,7 +280,7 @@ export async function prepareWorkspaceRuntimeNodes({
   workspace,
   agentSettings,
   nodeIds,
-  workerOnly = false,
+  workerOnly,
 }: {
   workspace: PersistedWorkspaceState
   agentSettings: AgentSettings
@@ -297,6 +297,7 @@ export async function prepareWorkspaceRuntimeNodes({
 
   const preparedById = new Map<string, Node<TerminalNodeData>>()
   const controlSurfaceInvoke = window.opencoveApi?.controlSurface?.invoke
+  const shouldRequireWorker = workerOnly ?? typeof controlSurfaceInvoke === 'function'
 
   if (typeof controlSurfaceInvoke === 'function') {
     try {
@@ -318,7 +319,7 @@ export async function prepareWorkspaceRuntimeNodes({
         preparedById.set(currentNode.id, toHydratedRuntimeNode(currentNode, preparedNode))
       }
     } catch {
-      if (workerOnly) {
+      if (shouldRequireWorker) {
         return []
       }
 
@@ -326,7 +327,7 @@ export async function prepareWorkspaceRuntimeNodes({
     }
   }
 
-  if (workerOnly) {
+  if (shouldRequireWorker) {
     return runtimeNodes
       .map(node => preparedById.get(node.id) ?? node)
       .filter(node => preparedById.has(node.id))

@@ -468,6 +468,11 @@ export class PtyStreamHub {
       )
     }
 
-    this.ptyRuntime.resize(options.sessionId, options.cols, options.rows)
+    this.ptyRuntime.resize(
+      options.sessionId,
+      options.cols,
+      options.rows,
+      options.reason ?? 'frame_commit',
+    )
   }
 }

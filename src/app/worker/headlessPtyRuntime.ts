@@ -2,6 +2,7 @@ import { fork } from 'node:child_process'
 import { resolve } from 'node:path'
 import { PtyHostSupervisor } from '../../platform/process/ptyHost/supervisor'
 import type {
+  TerminalGeometryCommitReason,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
 } from '../../shared/contracts/dto'
@@ -23,7 +24,12 @@ type SpawnSessionOptions = {
 export interface HeadlessPtyRuntime {
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string) => void
-  resize: (sessionId: string, cols: number, rows: number) => void
+  resize: (
+    sessionId: string,
+    cols: number,
+    rows: number,
+    reason?: TerminalGeometryCommitReason,
+  ) => void
   kill: (sessionId: string) => void
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
@@ -102,7 +108,8 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
       supervisor.write(sessionId, data)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: (sessionId, cols, rows) => {
+    resize: (sessionId, cols, rows, _reason) => {
+      void _reason
       supervisor.resize(sessionId, cols, rows)
     },
     kill: sessionId => {

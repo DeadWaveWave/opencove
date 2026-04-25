@@ -48,7 +48,12 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
     >()
 
     const writes: Array<{ sessionId: string; data: string }> = []
-    const resizes: Array<{ sessionId: string; cols: number; rows: number }> = []
+    const resizes: Array<{
+      sessionId: string
+      cols: number
+      rows: number
+      reason?: 'frame_commit' | 'appearance_commit'
+    }> = []
 
     let sessionCounter = 0
     const spawnSessionId = (): string => `test-session-${sessionCounter++}`
@@ -69,8 +74,13 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
       write: (sessionId: string, data: string) => {
         writes.push({ sessionId, data })
       },
-      resize: (sessionId: string, cols: number, rows: number) => {
-        resizes.push({ sessionId, cols, rows })
+      resize: (
+        sessionId: string,
+        cols: number,
+        rows: number,
+        reason?: 'frame_commit' | 'appearance_commit',
+      ) => {
+        resizes.push({ sessionId, cols, rows, reason })
       },
       kill: () => undefined,
       onData: listener => {
@@ -272,7 +282,12 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
         )
         return controllerGeometryReceived && viewerGeometryReceived
       })
-      expect(resizes).toContainEqual({ sessionId, cols: 100, rows: 32 })
+      expect(resizes).toContainEqual({
+        sessionId,
+        cols: 100,
+        rows: 32,
+        reason: 'frame_commit',
+      })
 
       ptyRuntime.emitData(sessionId, 'presentation-ready\r\n')
       const presentationSnapshot = await invoke(baseUrl, 'test-token', {
@@ -426,7 +441,7 @@ describe('Control Surface HTTP server (session streaming integration)', () => {
           message.reason === 'replay_window_exceeded',
         { timeoutMs: 4_000 },
       )
-      expect(overflow.recovery).toBe('snapshot')
+      expect(overflow.recovery).toBe('presentation_snapshot')
 
       const snapshot = await invoke(baseUrl, 'test-token', {
         kind: 'query',
