@@ -93,21 +93,26 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
           return (await readCanvasViewport(window)).zoom
         })
         .toBeGreaterThan(1.01)
-      const zoomedViewport = await readCanvasViewport(window)
-
       const zoomedWindowDpr = await window.evaluate(() => window.devicePixelRatio)
       expect(zoomedWindowDpr).toBeCloseTo(baselineWindowDpr, 5)
 
       let zoomedMetrics: TerminalRenderMetrics | null = null
+      let zoomedViewport = await readCanvasViewport(window)
       await expect
         .poll(
           async () => {
+            zoomedViewport = await readCanvasViewport(window)
             zoomedMetrics = await readTerminalRenderMetrics(window, 'node-terminal-dpr')
-            return zoomedMetrics?.effectiveDpr ?? 0
+            const effectiveDpr = zoomedMetrics?.effectiveDpr ?? 0
+            const expectedEffectiveDpr = baselineWindowDpr * zoomedViewport.zoom
+            return (
+              zoomedMetrics?.dprDecision === 'applied:viewport-settled' &&
+              Math.abs(effectiveDpr - expectedEffectiveDpr) < 0.05
+            )
           },
           { timeout: 15_000 },
         )
-        .toBeGreaterThan(baselineWindowDpr)
+        .toBe(true)
 
       expect(zoomedMetrics?.effectiveDpr).toBeCloseTo(baselineWindowDpr * zoomedViewport.zoom, 2)
       expect(zoomedMetrics?.deviceCanvasWidth ?? 0).toBeGreaterThan(

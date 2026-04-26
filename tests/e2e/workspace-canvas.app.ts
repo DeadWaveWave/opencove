@@ -1,8 +1,8 @@
 import { _electron as electron, type ElectronApplication, type Page } from '@playwright/test'
 import { once } from 'node:events'
-import { mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, rm } from 'node:fs/promises'
 import path from 'path'
-import { resolveE2ETmpDir } from './workspace-canvas.testUtils'
+import { createTestUserDataDir } from './workspace-canvas.testUtils'
 
 const electronAppPath = path.resolve(__dirname, '../../')
 const testAgentStubScriptPath = path.resolve(__dirname, '../../scripts/test-agent-session-stub.mjs')
@@ -153,14 +153,6 @@ async function cleanupUserDataDirWithRetry(userDataDir: string, attempt = 1): Pr
     await delay(E2E_USER_DATA_DIR_CLEANUP_RETRY_DELAY_MS * attempt)
     await cleanupUserDataDirWithRetry(userDataDir, attempt + 1)
   }
-}
-
-export async function createTestUserDataDir(): Promise<string> {
-  const baseTmpDir = resolveE2ETmpDir()
-
-  const parentDir = path.join(baseTmpDir, 'opencove-e2e')
-  await mkdir(parentDir, { recursive: true })
-  return await mkdtemp(path.join(parentDir, 'cove-e2e-user-data-'))
 }
 
 function isProcessAlive(pid: number): boolean {

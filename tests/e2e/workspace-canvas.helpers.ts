@@ -5,11 +5,12 @@ import type {
   WebsiteNodeData,
 } from '../../src/contexts/workspace/presentation/renderer/types'
 import type { CreateMountResult, ListMountsResult } from '../../src/shared/contracts/dto'
-import { createTestUserDataDir, launchApp } from './workspace-canvas.app'
+import { launchApp } from './workspace-canvas.app'
 import {
   buildEchoSequenceCommand,
   buildNodeEvalCommand,
   buildPaddedNumberSequenceCommand,
+  createTestUserDataDir,
   removePathWithRetry,
 } from './workspace-canvas.testUtils'
 
