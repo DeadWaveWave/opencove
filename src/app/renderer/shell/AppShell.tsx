@@ -296,8 +296,9 @@ export default function App(): React.JSX.Element {
     handleSelectAgentNode,
     handleRequestRemoveProject,
     handleRequestManageProjectMounts,
+    handleRequestOpenProjectInFileManager,
     handleReorderWorkspaces,
-  } = useAppShellWorkspaceActions({ requestPersistFlush })
+  } = useAppShellWorkspaceActions({ requestPersistFlush, t, showMessage: handleShowMessage })
 
   useProjectContextMenuDismiss({
     projectContextMenu,
@@ -449,6 +450,7 @@ export default function App(): React.JSX.Element {
           setProjectMountManager(null)
         }}
         onRequestManageProjectMounts={handleRequestManageProjectMounts}
+        onRequestOpenProjectInFileManager={handleRequestOpenProjectInFileManager}
         onRequestRemoveProject={handleRequestRemoveProject}
         projectDeleteConfirmation={projectDeleteConfirmation}
         isRemovingProject={isRemovingProject}

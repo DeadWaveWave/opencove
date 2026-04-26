@@ -42,6 +42,8 @@ export const enMessages = {
   taskSpaceMoveBlocked: 'Tasks with active agents cannot be moved between spaces.',
   spaceRequiresNode: 'Space must include at least one task or agent.',
   projectHasNoMounts: 'Project has no mounts yet. Add a mount first.',
+  projectNoLocalLocationToOpen: 'This project does not have a local location to open.',
+  projectOpenInFileManagerFailed: 'Failed to open the project in the file manager: {{message}}',
   mountListFailed: 'Failed to load mounts: {{message}}',
   canvasImageUnsupportedType: 'Unsupported image type. Use PNG, JPEG, WebP, GIF, or AVIF.',
   canvasImageTooLarge: 'Image is too large (max {{maxMb}} MB).',
