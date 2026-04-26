@@ -6,7 +6,7 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { readFlagValue, requireFlagValue, resolveTimeoutMs, stripGlobalOptions } from './args.mjs'
-import { resolveConnectionInfo } from './connection.mjs'
+import { resolveConnectionInfo, resolveWorkerConnectionInfo } from './connection.mjs'
 import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
@@ -144,6 +144,7 @@ async function main() {
     return
   }
 
+  const isWorkerStatusCommand = command === 'worker' && args[1] === 'status'
   const capabilitiesRequest = { kind: 'query', id: 'system.capabilities', payload: null }
 
   const connection = endpoint
@@ -169,11 +170,13 @@ async function main() {
 
         return { hostname: parsed.hostname, port, token }
       })()
-    : await resolveConnectionInfo()
+    : await (isWorkerStatusCommand ? resolveWorkerConnectionInfo() : resolveConnectionInfo())
 
   if (!connection) {
     process.stderr.write(
-      '[opencove] control surface is not running (no valid connection info found).\n',
+      isWorkerStatusCommand
+        ? '[opencove] worker control surface is not running (no valid connection info found).\n'
+        : '[opencove] control surface is not running (no valid connection info found).\n',
     )
     process.exit(2)
   }
@@ -234,7 +237,7 @@ async function main() {
     return
   }
 
-  if (command === 'worker' && args[1] === 'status') {
+  if (isWorkerStatusCommand) {
     await invokeAndPrint(
       connection,
       { kind: 'query', id: 'system.ping', payload: null },

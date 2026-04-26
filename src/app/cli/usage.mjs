@@ -80,5 +80,7 @@ export function printUsage() {
   process.stdout.write(`  --worker <id-or-name> --branch <branch> [--project <id>]\n`)
   process.stdout.write(`  --worker <id-or-name> --path <absolute-path> [--project <id>]\n\n`)
   process.stdout.write(`Environment:\n`)
-  process.stdout.write(`  OPENCOVE_USER_DATA_DIR=/path/to/userData (optional override)\n`)
+  process.stdout.write(
+    `  OPENCOVE_USER_DATA_DIR=/path/to/userData (restrict lookup to this userData dir)\n`,
+  )
 }
