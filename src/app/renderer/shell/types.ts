@@ -10,11 +10,19 @@ export interface ProviderModelCatalogEntry {
 
 export type ProviderModelCatalog = Record<AgentProvider, ProviderModelCatalogEntry>
 
-export interface FocusRequest {
-  workspaceId: string
-  nodeId: string
-  sequence: number
-}
+export type FocusRequest =
+  | {
+      kind: 'node'
+      workspaceId: string
+      nodeId: string
+      sequence: number
+    }
+  | {
+      kind: 'space'
+      workspaceId: string
+      spaceId: string
+      sequence: number
+    }
 
 export interface PersistNotice {
   tone: 'warning' | 'error'

@@ -85,7 +85,7 @@ export function useWorkspaceCanvasSpaces({
   spaceVisuals: SpaceVisual[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
-  focusSpaceInViewport: (spaceId: string) => void
+  focusSpaceInViewport: (spaceId: string) => boolean
   focusAllInViewport: () => void
 } {
   const [editingSpaceId, setEditingSpaceId] = useState<string | null>(null)
@@ -310,10 +310,10 @@ export function useWorkspaceCanvasSpaces({
   }, [spaces])
 
   const focusSpaceInViewport = useCallback(
-    (spaceId: string): void => {
+    (spaceId: string): boolean => {
       const space = spacesRef.current.find(item => item.id === spaceId) ?? null
       if (!space) {
-        return
+        return false
       }
 
       const rect =
@@ -339,7 +339,7 @@ export function useWorkspaceCanvasSpaces({
         })()
 
       if (!rect) {
-        return
+        return false
       }
 
       const width = viewportWidth > 0 ? viewportWidth : DEFAULT_VIEWPORT_WIDTH
@@ -350,6 +350,7 @@ export function useWorkspaceCanvasSpaces({
       void reactFlow.setViewport(nextViewport, {
         duration: resolveWorkspaceCanvasAnimationDuration(220),
       })
+      return true
     },
     [
       focusNodeTargetZoom,

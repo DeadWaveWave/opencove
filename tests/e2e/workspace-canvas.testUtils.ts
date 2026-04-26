@@ -1,10 +1,13 @@
-import { accessSync, constants, existsSync } from 'node:fs'
+import { accessSync, constants, existsSync, statfsSync } from 'node:fs'
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'path'
 
 const E2E_PATH_DELETE_RETRY_MS = 500
 const E2E_PATH_DELETE_MAX_ATTEMPTS = 40
+const E2E_PARENT_DIR_NAME = 'opencove-e2e'
+const E2E_USER_DATA_DIR_PREFIX = 'cove-e2e-user-data-'
+const LINUX_CI_LARGE_TMP_DIR = '/mnt'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -20,17 +23,23 @@ export function resolveE2ETmpDir(): string {
     return configuredTmpDir
   }
 
-  if (process.platform === 'linux' && isTruthyEnv(process.env['CI']) && existsSync('/mnt')) {
-    try {
-      accessSync('/mnt', constants.W_OK)
-      return '/mnt'
-    } catch {
-      // Fall through to RUNNER_TEMP/tmpdir when /mnt is not writable.
+  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
+  const candidates = [maybeResolveLargeLinuxTmpDir(), runnerTempDir, tmpdir()].filter(
+    (candidate): candidate is string => typeof candidate === 'string' && candidate.length > 0,
+  )
+
+  let preferredDir = runnerTempDir || tmpdir()
+  let preferredAvailableBytes = -1
+
+  for (const candidate of new Set(candidates)) {
+    const availableBytes = readAvailableBytes(candidate)
+    if (availableBytes > preferredAvailableBytes) {
+      preferredDir = candidate
+      preferredAvailableBytes = availableBytes
     }
   }
 
-  const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
-  return runnerTempDir || tmpdir()
+  return preferredDir
 }
 
 export async function delay(ms: number): Promise<void> {
@@ -47,9 +56,9 @@ function isRetryablePathCleanupError(error: unknown): boolean {
 export async function createTestUserDataDir(): Promise<string> {
   const baseTmpDir = resolveE2ETmpDir()
 
-  const parentDir = path.join(baseTmpDir, 'opencove-e2e')
+  const parentDir = path.join(baseTmpDir, E2E_PARENT_DIR_NAME)
   await mkdir(parentDir, { recursive: true })
-  return await mkdtemp(path.join(parentDir, 'cove-e2e-user-data-'))
+  return await mkdtemp(path.join(parentDir, E2E_USER_DATA_DIR_PREFIX))
 }
 
 export async function removePathWithRetry(
@@ -89,4 +98,31 @@ export function buildPaddedNumberSequenceCommand(count: number, width: number): 
   }
 
   return `for i in $(seq 1 ${count}); do printf '%0${width}d\\n' $i; done`
+}
+
+function maybeResolveLargeLinuxTmpDir(): string | null {
+  if (process.platform !== 'linux' || !isTruthyEnv(process.env['CI'])) {
+    return null
+  }
+
+  if (!existsSync(LINUX_CI_LARGE_TMP_DIR)) {
+    return null
+  }
+
+  try {
+    accessSync(LINUX_CI_LARGE_TMP_DIR, constants.W_OK)
+    return LINUX_CI_LARGE_TMP_DIR
+  } catch {
+    return null
+  }
+}
+
+function readAvailableBytes(targetDir: string): number {
+  try {
+    accessSync(targetDir, constants.W_OK)
+    const stats = statfsSync(targetDir)
+    return Math.max(0, Number(stats.bavail) * Number(stats.bsize))
+  } catch {
+    return -1
+  }
 }

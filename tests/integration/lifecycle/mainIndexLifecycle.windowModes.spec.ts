@@ -113,6 +113,9 @@ function mockMainIndexDependencies(params: {
       setApplicationMenu: vi.fn(),
       buildFromTemplate: vi.fn(template => template),
     },
+    nativeImage: {
+      createFromPath: vi.fn(() => ({})),
+    },
   }))
 
   vi.doMock('@electron-toolkit/utils', () => ({

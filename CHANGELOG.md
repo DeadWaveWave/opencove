@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 - Settings: left-sidebar search helps users locate settings and jump directly to the matching section. (#192)
+- CLI: add canvas node control commands for creating, listing, reading, deleting, updating supported node types, and focusing nodes or Spaces. (#193)
 - Workspace canvas: experimental website window nodes with opt-in settings, shared-session profile modes, snapshot-backed warm/cold lifecycle, and in-canvas navigation handling. (#141)
 - Space Explorer: VS Code-like file and folder operations, including drag-move, context menu actions, cut/copy/paste, rename, delete, and copy path. (#123)
 - Space Explorer: side-by-side quick preview with drag-to-materialize document nodes, line numbers, theme-aware styling, and stabilized formal open/close behavior. (#143)

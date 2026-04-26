@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import {
   beginDragMouse,
   clearAndSeedWorkspace,
+  dragMouse,
   launchApp,
   readLocatorClientRect,
   storageKey,
@@ -315,23 +316,23 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         throw new Error('failed to read node positions after marquee selection')
       }
 
-      const finalOutsideBox = await readLocatorClientRect(outsideNode)
+      const outsideHeader = outsideNode.locator('.terminal-node__header')
+      await expect(outsideHeader).toBeVisible()
+      const outsideHeaderBox = await readLocatorClientRect(outsideHeader)
 
-      const dragStartX = finalOutsideBox.x + 20
-      const dragStartY = finalOutsideBox.y + 20
+      const dragStartX = outsideHeaderBox.x + 40
+      const dragStartY = outsideHeaderBox.y + outsideHeaderBox.height / 2
       const dragDx = 0
       const dragDy = 180
 
-      const nodeDrag = await beginDragMouse(window, {
+      await dragMouse(window, {
         start: { x: dragStartX, y: dragStartY },
-        initialTarget: { x: dragStartX + dragDx, y: dragStartY + dragDy },
+        end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
         steps: 12,
+        settleAfterPressMs: 64,
+        settleBeforeReleaseMs: 96,
+        settleAfterReleaseMs: 64,
       })
-      await nodeDrag.moveTo(
-        { x: dragStartX + dragDx, y: dragStartY + dragDy },
-        { settleAfterMoveMs: 48 },
-      )
-      await nodeDrag.release()
 
       await expect
         .poll(async () => {

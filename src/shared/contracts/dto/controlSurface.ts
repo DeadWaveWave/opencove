@@ -44,7 +44,15 @@ export interface ControlSurfaceCapabilitiesResult {
   }
 }
 
-export type CanvasNodeKind = 'terminal' | 'agent' | 'task' | 'note' | 'image' | 'unknown'
+export type CanvasNodeKind =
+  | 'terminal'
+  | 'agent'
+  | 'task'
+  | 'note'
+  | 'image'
+  | 'document'
+  | 'website'
+  | 'unknown'
 
 export interface CanvasNodeSummary {
   id: string

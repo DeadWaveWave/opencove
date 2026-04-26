@@ -55,3 +55,16 @@ OpenCove 的本地转译规则：
 3. 最后在 CLI 层只做参数解析与输出格式化，不写业务规则。
 
 这样才能保证未来 Web/Remote 复用同一条链路，而不是每个 client 各自实现一套语义。
+
+## 6. Canvas Node Control
+
+CLI 管理画布 Note / Task / Website / Agent / Terminal 窗口的目标设计见：
+`docs/CLI_CANVAS_NODE_CONTROL_SPEC.md`。
+
+## 7. Agent Playbook
+
+如果需要让 Agent 直接用 CLI 做本地 smoke / CRUD / focus / space locator 验证，使用：
+`docs/CLI_AGENT_PLAYBOOK.md`。
+
+如果需要一份可以直接复制给 Agent 的短提示词，使用：
+`docs/CLI_AGENT_PROMPT.md`。

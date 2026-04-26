@@ -5,6 +5,7 @@ import type { WebSessionManager } from './http/webSessionManager'
 import type { WorkerTopologyStore } from './topology/topologyStore'
 import type { MultiEndpointPtyRuntime } from './ptyStream/multiEndpointPtyRuntime'
 import type { PtyStreamHub } from './ptyStream/ptyStreamHub'
+import type { SyncEventPayload } from '../../../shared/contracts/dto'
 import { registerSystemHandlers } from './handlers/systemHandlers'
 import { registerProjectHandlers } from './handlers/projectHandlers'
 import { registerSpaceHandlers } from './handlers/spaceHandlers'
@@ -22,6 +23,7 @@ import { registerPtyMountHandlers } from './handlers/ptyMountHandlers'
 import { registerSyncHandlers } from './handlers/syncHandlers'
 import { registerTopologyHandlers } from './handlers/topologyHandlers'
 import { registerAuthHandlers } from './handlers/authHandlers'
+import { registerNodeControlHandlers } from './handlers/nodeControlHandlers'
 
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
@@ -34,6 +36,8 @@ export function registerControlSurfaceHandlers(
     ptyRuntime: MultiEndpointPtyRuntime
     ptyStreamHub: PtyStreamHub
     deleteEntry?: (uri: string) => Promise<void>
+    publishSyncEvent?: (payload: SyncEventPayload) => number
+    closeWebsiteNode?: (nodeId: string) => Promise<void> | void
   },
 ): void {
   registerSystemHandlers(controlSurface)
@@ -92,6 +96,12 @@ export function registerControlSurfaceHandlers(
     topology: deps.topology,
     ptyRuntime: deps.ptyRuntime,
     ptyStreamHub: deps.ptyStreamHub,
+  })
+  registerNodeControlHandlers(controlSurface, {
+    topology: deps.topology,
+    getPersistenceStore: deps.getPersistenceStore,
+    publishSyncEvent: deps.publishSyncEvent,
+    closeWebsiteNode: deps.closeWebsiteNode,
   })
   registerSyncHandlers(controlSurface, deps.getPersistenceStore)
 }
