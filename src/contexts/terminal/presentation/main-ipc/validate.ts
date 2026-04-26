@@ -120,7 +120,14 @@ export function normalizeKillTerminalPayload(payload: unknown): KillTerminalInpu
 }
 
 export function normalizeAttachTerminalPayload(payload: unknown): AttachTerminalInput {
-  return { sessionId: normalizeSessionId(payload, 'pty:attach') }
+  const sessionId = normalizeSessionId(payload, 'pty:attach')
+  const record = payload as Record<string, unknown>
+  const afterSeq =
+    typeof record.afterSeq === 'number' && Number.isFinite(record.afterSeq) && record.afterSeq >= 0
+      ? Math.floor(record.afterSeq)
+      : null
+
+  return { sessionId, ...(afterSeq !== null ? { afterSeq } : {}) }
 }
 
 export function normalizeDetachTerminalPayload(payload: unknown): DetachTerminalInput {

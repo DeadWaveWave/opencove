@@ -386,9 +386,12 @@ export function createRemotePtyRuntime(options: {
         externalMetadataListeners.delete(listener)
       }
     },
-    attach: async (contentsId: number, sessionId: string) => {
+    attach: async (contentsId: number, sessionId: string, afterSeq?: number | null) => {
       sessionCoordinator.trackWebContentsDestroyed(contentsId)
       sessionCoordinator.trackSession(sessionId)
+      if (typeof afterSeq === 'number' && Number.isFinite(afterSeq) && afterSeq >= 0) {
+        sessionCoordinator.updateAttachedSeq(sessionId, afterSeq)
+      }
       sessionCoordinator.addSubscriber(contentsId, sessionId)
 
       await ensureSessionAttached(sessionId)

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   commitTerminalNodeGeometry,
+  fitTerminalNodeToMeasuredSize,
   refreshTerminalNodeSize,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/syncTerminalNodeSize'
 
@@ -88,5 +89,25 @@ describe('terminal geometry sync helpers', () => {
       rows: 30,
       reason: 'frame_commit',
     })
+  })
+
+  it('can locally fit a placeholder without writing PTY geometry', () => {
+    const terminal = createTerminalMock()
+
+    const size = fitTerminalNodeToMeasuredSize({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi.fn(() => ({ cols: 64, rows: 44 })),
+        } as never,
+      },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+    })
+
+    expect(size).toStrictEqual({ cols: 64, rows: 44 })
+    expect(terminal.resize).toHaveBeenCalledWith(64, 44)
+    expect(terminal.refresh).toHaveBeenCalledWith(0, 43)
+    expect(ptyResize).not.toHaveBeenCalled()
   })
 })

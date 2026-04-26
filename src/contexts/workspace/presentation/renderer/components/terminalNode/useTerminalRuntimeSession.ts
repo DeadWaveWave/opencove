@@ -7,6 +7,7 @@ import {
   getCachedTerminalScreenState,
   isCachedTerminalScreenStateInvalidated,
 } from './screenStateCache'
+import { commitInitialTerminalNodeGeometry } from './syncTerminalNodeSize'
 import { resolveAttachablePtyApi } from './attachablePty'
 import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
 import { MAX_SCROLLBACK_CHARS } from './constants'
@@ -33,11 +34,10 @@ import {
   registerTerminalUserInteractionWindow,
 } from './userInteractionWindow'
 import {
-  attachAfterPresentationSnapshot,
   createOptionalOpenCodeThemeBridge,
   shouldReusePreservedXtermSession,
   scheduleTestEnvironmentTerminalAutoFocus,
-  requestPresentationSnapshot,
+  prepareRuntimePresentationAttach,
   registerRuntimeRendererAndThemeSync,
   shouldGateRestoredAgentInput,
   shouldProtectHydratedAgentHistory,
@@ -52,7 +52,6 @@ export function useTerminalRuntimeSession({
   terminalProvider,
   agentLaunchModeRef,
   agentResumeSessionIdVerifiedRef,
-  statusRef,
   titleRef,
   terminalThemeMode,
   isTestEnvironment,
@@ -61,6 +60,7 @@ export function useTerminalRuntimeSession({
   fitAddonRef,
   outputSchedulerRef,
   isViewportInteractionActiveRef,
+  isPointerResizingRef,
   suppressPtyResizeRef,
   lastCommittedPtySizeRef,
   commandInputStateRef,
@@ -96,12 +96,10 @@ export function useTerminalRuntimeSession({
       return undefined
     }
 
-    // Wait until the inner terminal div ref is attached
     if (!containerRef.current) {
       return undefined
     }
 
-    const ptyWithOptionalAttach = resolveAttachablePtyApi()
     const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
     suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
@@ -246,7 +244,21 @@ export function useTerminalRuntimeSession({
           ? 'placeholder_snapshot'
           : 'empty',
     }
-    const presentationSnapshotPromise = requestPresentationSnapshot(sessionId)
+    const { attachPromise, presentationSnapshotPromise } = prepareRuntimePresentationAttach({
+      ptyApi: resolveAttachablePtyApi(),
+      sessionId,
+      isLiveSessionReattach,
+      commitInitialGeometry: () =>
+        commitInitialTerminalNodeGeometry({
+          terminalRef,
+          fitAddonRef,
+          containerRef,
+          isPointerResizingRef,
+          lastCommittedPtySizeRef,
+          sessionId,
+          reason: 'frame_commit',
+        }),
+    })
     const committedScreenStateRecorder = createCommittedScreenStateRecorder({
       serializeAddon,
       sessionId,
@@ -340,11 +352,6 @@ export function useTerminalRuntimeSession({
         trigger: event.reason === 'replay_window_exceeded' ? 'resync_event' : 'resync_event',
         forceDom: false,
       })
-    })
-    const attachPromise = attachAfterPresentationSnapshot({
-      ptyApi: ptyWithOptionalAttach,
-      sessionId,
-      presentationSnapshotPromise,
     })
     const shouldSkipInitialPlaceholderWrite =
       hasPreservedVisibleBaseline && hasVisibleTerminalBufferContent(terminal)
@@ -466,10 +473,10 @@ export function useTerminalRuntimeSession({
     kind,
     agentLaunchModeRef,
     agentResumeSessionIdVerifiedRef,
-    statusRef,
     titleRef,
     outputSchedulerRef,
     isViewportInteractionActiveRef,
+    isPointerResizingRef,
     suppressPtyResizeRef,
     lastCommittedPtySizeRef,
     commandInputStateRef,

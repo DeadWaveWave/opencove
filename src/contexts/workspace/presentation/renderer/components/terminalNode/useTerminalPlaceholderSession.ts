@@ -14,6 +14,7 @@ import {
   registerTerminalUserInteractionWindow,
 } from './userInteractionWindow'
 import { shouldReusePreservedXtermSession } from './useTerminalRuntimeSession.support'
+import { fitTerminalNodeToMeasuredSize } from './syncTerminalNodeSize'
 
 export function useTerminalPlaceholderSession({
   nodeId,
@@ -26,6 +27,7 @@ export function useTerminalPlaceholderSession({
   containerRef,
   terminalRef,
   fitAddonRef,
+  isPointerResizingRef,
   suppressPtyResizeRef,
   syncTerminalSize,
   applyTerminalTheme,
@@ -56,6 +58,7 @@ export function useTerminalPlaceholderSession({
   containerRef: { current: HTMLDivElement | null }
   terminalRef: { current: Terminal | null }
   fitAddonRef: { current: FitAddon | null }
+  isPointerResizingRef: { current: boolean }
   suppressPtyResizeRef: { current: boolean }
   syncTerminalSize: () => void
   applyTerminalTheme: () => void
@@ -161,6 +164,12 @@ export function useTerminalPlaceholderSession({
     let isDisposed = false
     void (async () => {
       try {
+        fitTerminalNodeToMeasuredSize({
+          terminalRef,
+          fitAddonRef,
+          containerRef,
+          isPointerResizingRef,
+        })
         await writeTerminalAsync(session.terminal, scrollback ?? '')
       } catch {
         // placeholder is best-effort; treat write failures as hydrated to unblock UI
@@ -237,6 +246,7 @@ export function useTerminalPlaceholderSession({
     bindSearchAddonToFind,
     cancelWebglPixelSnapping,
     fitAddonRef,
+    isPointerResizingRef,
     isTerminalHydratedRef,
     isTestEnvironment,
     kind,

@@ -119,6 +119,7 @@ test.describe('Workspace Canvas - Arrange', () => {
       await expect(
         window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
       ).toBeVisible()
+      await window.locator('[data-testid="workspace-context-arrange"]').click()
 
       await expect
         .poll(async () => {

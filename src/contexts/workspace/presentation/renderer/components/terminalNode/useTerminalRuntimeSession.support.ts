@@ -141,9 +141,40 @@ export function attachAfterPresentationSnapshot(options: {
   sessionId: string
   presentationSnapshotPromise: Promise<PresentationSnapshotTerminalResult | null>
 }): Promise<void | undefined> {
-  return options.presentationSnapshotPromise.then(async () => {
-    return await options.ptyApi.attach?.({ sessionId: options.sessionId })
+  return options.presentationSnapshotPromise.then(async snapshot => {
+    return await options.ptyApi.attach?.({
+      sessionId: options.sessionId,
+      ...(snapshot ? { afterSeq: snapshot.appliedSeq } : {}),
+    })
   })
+}
+
+export function prepareRuntimePresentationAttach(options: {
+  ptyApi: AttachablePtyApi
+  sessionId: string
+  isLiveSessionReattach: boolean
+  commitInitialGeometry: () => Promise<void>
+}): {
+  attachPromise: Promise<void | undefined>
+  presentationSnapshotPromise: Promise<PresentationSnapshotTerminalResult | null>
+} {
+  const preAttachPresentationSnapshotPromise = requestPresentationSnapshot(options.sessionId)
+  const attachPromise = attachAfterPresentationSnapshot({
+    ptyApi: options.ptyApi,
+    sessionId: options.sessionId,
+    presentationSnapshotPromise: preAttachPresentationSnapshotPromise,
+  })
+  const initialGeometryCommitPromise = options.isLiveSessionReattach
+    ? Promise.resolve()
+    : attachPromise
+        .catch(() => undefined)
+        .then(() => options.commitInitialGeometry())
+        .catch(() => undefined)
+  const presentationSnapshotPromise = options.isLiveSessionReattach
+    ? preAttachPresentationSnapshotPromise
+    : initialGeometryCommitPromise.then(() => requestPresentationSnapshot(options.sessionId))
+
+  return { attachPromise, presentationSnapshotPromise }
 }
 
 export function createOptionalOpenCodeThemeBridge(options: {

@@ -27,6 +27,7 @@ export interface TerminalRuntimeSessionOptions {
   fitAddonRef: { current: FitAddon | null }
   outputSchedulerRef: { current: TerminalOutputScheduler | null }
   isViewportInteractionActiveRef: { current: boolean }
+  isPointerResizingRef: { current: boolean }
   suppressPtyResizeRef: { current: boolean }
   lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null }
   commandInputStateRef: { current: TerminalCommandInputState }

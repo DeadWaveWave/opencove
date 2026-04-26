@@ -42,7 +42,7 @@ function createProtectedRedrawRouter() {
 }
 
 describe('hydrationRouter redraw protection', () => {
-  it('does not treat printable mouse echo before a clear as redraw replacement content', () => {
+  it('strips printable mouse echo before replaying a protected redraw', () => {
     const { outputScheduler, router } = createProtectedRedrawRouter()
 
     router.finalizeHydration('[restored history]')
@@ -52,9 +52,7 @@ describe('hydrationRouter redraw protection', () => {
 
     router.handleDataChunk('[redraw complete]')
 
-    expect(outputScheduler.handleChunk).toHaveBeenCalledWith(
-      '^[[<0;34;22M\u001b[2J\u001b[H[redraw complete]',
-    )
+    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
   })
 
   it('keeps split destructive redraw chunks deferred after user interaction', () => {

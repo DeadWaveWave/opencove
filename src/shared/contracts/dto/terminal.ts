@@ -66,6 +66,7 @@ export interface KillTerminalInput {
 
 export interface AttachTerminalInput {
   sessionId: string
+  afterSeq?: number | null
 }
 
 export interface DetachTerminalInput {

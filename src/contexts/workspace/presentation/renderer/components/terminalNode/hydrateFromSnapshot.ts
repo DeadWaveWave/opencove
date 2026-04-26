@@ -52,6 +52,21 @@ function shouldUsePresentationSnapshotAsVisibleBaseline(options: {
   return true
 }
 
+function applyPresentationSnapshotGeometry(
+  terminal: Terminal,
+  snapshot: PresentationSnapshotTerminalResult | null,
+): void {
+  if (!snapshot) {
+    return
+  }
+
+  const nextCols = Math.max(1, snapshot.cols)
+  const nextRows = Math.max(1, snapshot.rows)
+  if (terminal.cols !== nextCols || terminal.rows !== nextRows) {
+    terminal.resize(nextCols, nextRows)
+  }
+}
+
 export async function hydrateTerminalFromSnapshot({
   attachPromise,
   sessionId,
@@ -110,19 +125,17 @@ export async function hydrateTerminalFromSnapshot({
   })
     ? presentationSnapshot
     : null
+  const hasPresentationSnapshotPayload = (presentationSnapshot?.serializedScreen.length ?? 0) > 0
+
+  applyPresentationSnapshotGeometry(terminal, presentationSnapshot)
 
   if (visiblePresentationSnapshot) {
-    const nextCols = Math.max(1, visiblePresentationSnapshot.cols)
-    const nextRows = Math.max(1, visiblePresentationSnapshot.rows)
-    if (terminal.cols !== nextCols || terminal.rows !== nextRows) {
-      terminal.resize(nextCols, nextRows)
-    }
-
     await writeTerminalAsync(terminal, visiblePresentationSnapshot.serializedScreen)
     onPresentationSnapshotAccepted?.(visiblePresentationSnapshot)
     rawSnapshot = visiblePresentationSnapshot.serializedScreen
     hydrationBaselineSource = 'presentation_snapshot'
     onHydratedWriteCommitted(rawSnapshot)
+    await attachPromise.catch(() => undefined)
   } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
     await writeTerminalAsync(terminal, placeholderPayload)
     onHydratedWriteCommitted(rawSnapshot)
@@ -169,9 +182,9 @@ export async function hydrateTerminalFromSnapshot({
   }
 
   try {
-    if (presentationSnapshot?.serializedScreen.length) {
+    if (hasPresentationSnapshotPayload && !visiblePresentationSnapshot) {
       void attachPromise.catch(() => undefined)
-    } else if (!useLivePtySnapshotDuringHydration) {
+    } else if (!hasPresentationSnapshotPayload && !useLivePtySnapshotDuringHydration) {
       // Agent CLIs restore their own history after attach. Do not block hydration on snapshot
       // polling: delaying terminal replies can cause some CLIs to fall back to no-color mode, and
       // it can also surface echoed escape sequences (for example `^[[...` / `^[]...`) when replies
@@ -180,7 +193,7 @@ export async function hydrateTerminalFromSnapshot({
       // and buffering output while waiting for `attach()` can delay xterm replies enough for some
       // CLIs to disable color.
       void attachPromise.catch(() => undefined)
-    } else {
+    } else if (!hasPresentationSnapshotPayload) {
       rawSnapshot = await restoreFromLivePtySnapshot()
       hydrationBaselineSource = 'live_pty_snapshot'
     }

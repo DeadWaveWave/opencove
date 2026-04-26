@@ -90,29 +90,58 @@ export function commitTerminalNodeGeometry({
   sessionId: string
   reason: TerminalGeometryCommitReason
 }): void {
+  const nextPtySize = fitTerminalNodeToMeasuredSize({
+    terminalRef,
+    fitAddonRef,
+    containerRef,
+    isPointerResizingRef,
+    lastCommittedPtySizeRef,
+  })
+
+  if (!nextPtySize) {
+    return
+  }
+
+  void window.opencoveApi.pty.resize({
+    sessionId,
+    cols: nextPtySize.cols,
+    rows: nextPtySize.rows,
+    reason,
+  })
+}
+
+export function fitTerminalNodeToMeasuredSize({
+  terminalRef,
+  fitAddonRef,
+  containerRef,
+  isPointerResizingRef,
+  lastCommittedPtySizeRef,
+}: {
+  terminalRef: MutableRefObject<Terminal | null>
+  fitAddonRef: MutableRefObject<FitAddon | null>
+  containerRef: MutableRefObject<HTMLElement | null>
+  isPointerResizingRef: MutableRefObject<boolean>
+  lastCommittedPtySizeRef?: MutableRefObject<{ cols: number; rows: number } | null>
+}): { cols: number; rows: number } | null {
   const terminal = terminalRef.current
   const fitAddon = fitAddonRef.current
   const container = containerRef.current
 
   if (!terminal || !fitAddon) {
-    return
+    return null
   }
 
   if (!canRefreshTerminalLayout({ terminal, container, isPointerResizingRef })) {
-    return
-  }
-
-  if (!terminal) {
-    return
+    return null
   }
 
   const measured = fitAddon.proposeDimensions()
   if (!measured) {
-    return
+    return null
   }
 
   const nextPtySize = resolveStablePtySize({
-    previous: lastCommittedPtySizeRef.current,
+    previous: lastCommittedPtySizeRef?.current ?? null,
     measured,
     preventRowShrink: false,
   })
@@ -123,21 +152,55 @@ export function commitTerminalNodeGeometry({
       containerRef,
       isPointerResizingRef,
     })
-    return
+    return null
   }
 
   if (terminal.cols !== nextPtySize.cols || terminal.rows !== nextPtySize.rows) {
     terminal.resize(nextPtySize.cols, nextPtySize.rows)
   }
 
-  lastCommittedPtySizeRef.current = nextPtySize
+  if (lastCommittedPtySizeRef) {
+    lastCommittedPtySizeRef.current = nextPtySize
+  }
   refreshTerminalNodeSize({
     terminalRef,
     containerRef,
     isPointerResizingRef,
   })
 
-  void window.opencoveApi.pty.resize({
+  return nextPtySize
+}
+
+export async function commitInitialTerminalNodeGeometry({
+  terminalRef,
+  fitAddonRef,
+  containerRef,
+  isPointerResizingRef,
+  lastCommittedPtySizeRef,
+  sessionId,
+  reason,
+}: {
+  terminalRef: MutableRefObject<Terminal | null>
+  fitAddonRef: MutableRefObject<FitAddon | null>
+  containerRef: MutableRefObject<HTMLElement | null>
+  isPointerResizingRef: MutableRefObject<boolean>
+  lastCommittedPtySizeRef: MutableRefObject<{ cols: number; rows: number } | null>
+  sessionId: string
+  reason: TerminalGeometryCommitReason
+}): Promise<void> {
+  const nextPtySize = fitTerminalNodeToMeasuredSize({
+    terminalRef,
+    fitAddonRef,
+    containerRef,
+    isPointerResizingRef,
+    lastCommittedPtySizeRef,
+  })
+
+  if (!nextPtySize) {
+    return
+  }
+
+  await window.opencoveApi.pty.resize({
     sessionId,
     cols: nextPtySize.cols,
     rows: nextPtySize.rows,

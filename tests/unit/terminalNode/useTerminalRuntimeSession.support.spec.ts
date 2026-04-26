@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  attachAfterPresentationSnapshot,
   isAuthoritativeHydrationBaselineSource,
   shouldProtectHydratedAgentHistory,
   shouldReusePreservedXtermSession,
@@ -74,5 +75,32 @@ describe('useTerminalRuntimeSession support', () => {
         terminalClientResetVersion: 1,
       }),
     ).toBe(false)
+  })
+
+  it('attaches from the worker presentation snapshot sequence baseline', async () => {
+    const attached: Array<{ sessionId: string; afterSeq?: number | null }> = []
+
+    await attachAfterPresentationSnapshot({
+      ptyApi: {
+        attach: async payload => {
+          attached.push(payload)
+        },
+      } as never,
+      sessionId: 'session-1',
+      presentationSnapshotPromise: Promise.resolve({
+        sessionId: 'session-1',
+        epoch: 1,
+        appliedSeq: 42,
+        presentationRevision: 3,
+        cols: 120,
+        rows: 40,
+        bufferKind: 'normal',
+        cursor: { x: 0, y: 0 },
+        title: null,
+        serializedScreen: 'ready',
+      }),
+    })
+
+    expect(attached).toStrictEqual([{ sessionId: 'session-1', afterSeq: 42 }])
   })
 })

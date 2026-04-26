@@ -3,6 +3,7 @@ import type {
   ListTerminalProfilesResult,
   PresentationSnapshotTerminalResult,
   SpawnTerminalResult,
+  TerminalRuntimeKind,
 } from '../../../../shared/contracts/dto'
 import { createAppError } from '../../../../shared/errors/appError'
 import { PTY_STREAM_WS_PATH } from '../ptyStream/ptyStreamService'
@@ -72,6 +73,10 @@ export function parseSpawnTerminalResult(value: unknown): SpawnTerminalResult {
   }
 }
 
+function parseTerminalRuntimeKind(value: unknown): TerminalRuntimeKind | null {
+  return value === 'windows' || value === 'wsl' || value === 'posix' ? value : null
+}
+
 export function parseListTerminalProfilesResult(value: unknown): ListTerminalProfilesResult {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     throw new Error('Invalid pty.listProfiles response payload')
@@ -87,12 +92,7 @@ export function parseListTerminalProfilesResult(value: unknown): ListTerminalPro
     const entry = profile as Record<string, unknown>
     const id = typeof entry.id === 'string' ? entry.id.trim() : ''
     const label = typeof entry.label === 'string' ? entry.label.trim() : ''
-    const runtimeKind =
-      entry.runtimeKind === 'windows' ||
-      entry.runtimeKind === 'wsl' ||
-      entry.runtimeKind === 'posix'
-        ? entry.runtimeKind
-        : null
+    const runtimeKind = parseTerminalRuntimeKind(entry.runtimeKind)
 
     if (id.length === 0 || label.length === 0 || runtimeKind === null) {
       return []

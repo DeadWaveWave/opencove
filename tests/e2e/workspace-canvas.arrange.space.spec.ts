@@ -9,6 +9,7 @@ import {
   ARRANGE_PADDING_PX,
   CANONICAL_GUTTER_PX,
   ensureArtifactsDir,
+  openPaneContextMenuInSpace,
   readSeededWorkspaceLayout,
   resolveCanonicalNodeSizes,
 } from './workspace-canvas.arrange.shared'
@@ -183,11 +184,7 @@ test.describe('Workspace Canvas - Arrange', () => {
       await expect(window.locator('.react-flow__node')).toHaveCount(2)
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
 
-      const viewport = await readCanvasViewport(window)
-      await openPaneContextMenu(window, pane, {
-        x: 110 * viewport.zoom + viewport.x,
-        y: 110 * viewport.zoom + viewport.y,
-      })
+      await openPaneContextMenuInSpace(window, pane, 'space-small')
 
       await expect(window.locator('.workspace-context-menu')).toBeVisible()
       await expect(window.locator('[data-testid="workspace-context-arrange"]')).toBeEnabled()

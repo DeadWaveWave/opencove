@@ -18,6 +18,7 @@ import type {
   WriteTerminalInput,
 } from '@shared/contracts/dto'
 import { getBrowserQueryToken, invokeBrowserControlSurface } from './browserControlSurface'
+import { BrowserPtyClientMetadataWatcher } from './BrowserPtyClientMetadataWatcher'
 
 type UnsubscribeFn = () => void
 
@@ -25,6 +26,14 @@ type PtyListenerMap<TEvent> = Set<(event: TEvent) => void>
 
 type AttachedSessionState = {
   lastSeq: number
+}
+
+function normalizeAttachAfterSeq(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return null
+  }
+
+  return Math.floor(value)
 }
 
 function emitToListeners<TEvent>(listeners: PtyListenerMap<TEvent>, event: TEvent): void {
@@ -56,10 +65,6 @@ export class BrowserPtyClient {
   private socketReadyPromise: Promise<void> | null = null
   private reconnectTimer: number | null = null
   private attachedSessions = new Map<string, AttachedSessionState>()
-  private readonly metadataWatchers = new Map<
-    string,
-    { timer: number | null; attempt: number; cancelled: boolean }
-  >()
   private readonly dataListeners = new Set<(event: TerminalDataEvent) => void>()
   private readonly exitListeners = new Set<(event: TerminalExitEvent) => void>()
   private readonly geometryListeners = new Set<(event: TerminalGeometryEvent) => void>()
@@ -68,98 +73,13 @@ export class BrowserPtyClient {
   private readonly metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
   private readonly latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
   private readonly latestMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
-
-  private cancelMetadataWatcher(sessionId: string): void {
-    const watcher = this.metadataWatchers.get(sessionId)
-    if (!watcher) {
-      return
-    }
-
-    watcher.cancelled = true
-    if (watcher.timer !== null) {
-      window.clearTimeout(watcher.timer)
-      watcher.timer = null
-    }
-
-    this.metadataWatchers.delete(sessionId)
-  }
-
-  private ensureAgentMetadataWatcher(sessionId: string): void {
-    if (this.metadataListeners.size === 0) {
-      return
-    }
-
-    const normalizedSessionId = sessionId.trim()
-    if (normalizedSessionId.length === 0) {
-      return
-    }
-
-    if (this.metadataWatchers.has(normalizedSessionId)) {
-      return
-    }
-
-    const watcher: { timer: number | null; attempt: number; cancelled: boolean } = {
-      timer: null,
-      attempt: 0,
-      cancelled: false,
-    }
-    this.metadataWatchers.set(normalizedSessionId, watcher)
-
-    const attemptResolve = async (): Promise<void> => {
-      if (watcher.cancelled) {
-        return
-      }
-
-      try {
-        await invokeBrowserControlSurface({
-          kind: 'query',
-          id: 'session.get',
-          payload: { sessionId: normalizedSessionId },
-        })
-      } catch {
-        this.cancelMetadataWatcher(normalizedSessionId)
-        return
-      }
-
-      try {
-        const final = await invokeBrowserControlSurface<{ resumeSessionId: string | null }>({
-          kind: 'query',
-          id: 'session.finalMessage',
-          payload: { sessionId: normalizedSessionId },
-        })
-
-        const resumeSessionId =
-          typeof final.resumeSessionId === 'string' && final.resumeSessionId.trim().length > 0
-            ? final.resumeSessionId.trim()
-            : null
-
-        if (resumeSessionId) {
-          emitToListeners(this.metadataListeners, {
-            sessionId: normalizedSessionId,
-            resumeSessionId,
-          })
-          this.cancelMetadataWatcher(normalizedSessionId)
-          return
-        }
-      } catch {
-        // Ignore session.finalMessage failures; we will retry with backoff.
-      }
-
-      if (watcher.attempt >= 6) {
-        this.cancelMetadataWatcher(normalizedSessionId)
-        return
-      }
-
-      const delayMs = Math.min(750 * 2 ** watcher.attempt, 6_000)
-      watcher.attempt += 1
-      watcher.timer = window.setTimeout(() => {
-        watcher.timer = null
-        void attemptResolve()
-      }, delayMs)
-    }
-
-    void attemptResolve()
-  }
+  private readonly metadataWatcher = new BrowserPtyClientMetadataWatcher({
+    hasListeners: () => this.metadataListeners.size > 0,
+    emit: event => {
+      this.latestMetadataBySessionId.set(event.sessionId, event)
+      emitToListeners(this.metadataListeners, event)
+    },
+  })
 
   private ensureSocket(): Promise<void> {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -340,7 +260,7 @@ export class BrowserPtyClient {
       }
       this.latestMetadataBySessionId.set(sessionId, eventPayload)
       emitToListeners(this.metadataListeners, eventPayload)
-      this.cancelMetadataWatcher(sessionId)
+      this.metadataWatcher.cancel(sessionId)
       return
     }
 
@@ -423,24 +343,26 @@ export class BrowserPtyClient {
   }
 
   public async attach(payload: AttachTerminalInput): Promise<void> {
-    const existing = this.attachedSessions.get(payload.sessionId)
-    if (!existing) {
-      this.attachedSessions.set(payload.sessionId, { lastSeq: 0 })
+    const state = this.attachedSessions.get(payload.sessionId) ?? { lastSeq: 0 }
+    const afterSeq = normalizeAttachAfterSeq(payload.afterSeq)
+    if (afterSeq !== null) {
+      state.lastSeq = Math.max(state.lastSeq, afterSeq)
     }
+    this.attachedSessions.set(payload.sessionId, state)
 
     await this.sendSocketMessage({
       type: 'attach',
       sessionId: payload.sessionId,
-      afterSeq: existing && existing.lastSeq > 0 ? existing.lastSeq : undefined,
+      afterSeq: state.lastSeq > 0 ? state.lastSeq : undefined,
       role: 'controller',
     })
 
-    this.ensureAgentMetadataWatcher(payload.sessionId)
+    this.metadataWatcher.ensure(payload.sessionId)
   }
 
   public async detach(payload: DetachTerminalInput): Promise<void> {
     this.attachedSessions.delete(payload.sessionId)
-    this.cancelMetadataWatcher(payload.sessionId)
+    this.metadataWatcher.cancel(payload.sessionId)
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return
     }

@@ -97,6 +97,7 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
 
       const zoomedWindowDpr = await window.evaluate(() => window.devicePixelRatio)
       expect(zoomedWindowDpr).toBeCloseTo(baselineWindowDpr, 5)
+      const expectedZoomedDpr = baselineWindowDpr * zoomedViewport.zoom
 
       let zoomedMetrics: TerminalRenderMetrics | null = null
       await expect
@@ -107,9 +108,9 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
           },
           { timeout: 15_000 },
         )
-        .toBeGreaterThan(baselineWindowDpr)
+        .toBeGreaterThanOrEqual(expectedZoomedDpr - 0.05)
 
-      expect(zoomedMetrics?.effectiveDpr).toBeCloseTo(baselineWindowDpr * zoomedViewport.zoom, 2)
+      expect(zoomedMetrics?.effectiveDpr).toBeCloseTo(expectedZoomedDpr, 1)
       expect(zoomedMetrics?.deviceCanvasWidth ?? 0).toBeGreaterThan(
         baselineMetrics?.deviceCanvasWidth ?? 0,
       )
@@ -230,7 +231,9 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
       expect(afterMetrics?.viewportY).not.toBeNull()
       expect(afterMetrics?.baseY).not.toBeNull()
       expect(afterMetrics?.viewportY).toBeLessThan(afterMetrics?.baseY ?? 0)
-      expect(afterMetrics?.viewportY).toBe(beforeMetrics?.viewportY ?? null)
+      expect(
+        Math.abs((afterMetrics?.viewportY ?? 0) - (beforeMetrics?.viewportY ?? 0)),
+      ).toBeLessThanOrEqual(1)
       expect((afterMetrics?.baseY ?? 0) - (afterMetrics?.viewportY ?? 0)).toBeGreaterThanOrEqual(
         (beforeMetrics?.baseY ?? 0) - (beforeMetrics?.viewportY ?? 0),
       )

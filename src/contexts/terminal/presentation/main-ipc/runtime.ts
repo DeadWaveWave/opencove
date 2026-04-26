@@ -53,7 +53,7 @@ export interface PtyRuntime {
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
   onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
   onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
-  attach: (contentsId: number, sessionId: string) => Promise<void>
+  attach: (contentsId: number, sessionId: string, afterSeq?: number | null) => Promise<void>
   detach: (contentsId: number, sessionId: string) => Promise<void>
   snapshot: (sessionId: string) => Promise<string>
   presentationSnapshot: (sessionId: string) => Promise<PresentationSnapshotTerminalResult>

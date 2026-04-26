@@ -100,7 +100,7 @@ export function registerPtyIpcHandlers(
     IPC_CHANNELS.ptyAttach,
     async (event, payload: AttachTerminalInput) => {
       const normalized = normalizeAttachTerminalPayload(payload)
-      await runtime.attach(event.sender.id, normalized.sessionId)
+      await runtime.attach(event.sender.id, normalized.sessionId, normalized.afterSeq)
     },
     { defaultErrorCode: 'terminal.attach_failed' },
   )

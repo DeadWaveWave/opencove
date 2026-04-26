@@ -219,10 +219,14 @@ export function createRemotePtySessionCoordinator(options: {
   }
 
   const updateAttachedSeq = (sessionId: string, seq: number): void => {
-    const state = attachedSessions.get(sessionId)
-    if (state) {
-      state.lastSeq = Math.max(state.lastSeq, seq)
+    const normalizedSessionId = sessionId.trim()
+    if (normalizedSessionId.length === 0) {
+      return
     }
+
+    const state = attachedSessions.get(normalizedSessionId) ?? { lastSeq: 0 }
+    state.lastSeq = Math.max(state.lastSeq, seq)
+    attachedSessions.set(normalizedSessionId, state)
   }
 
   const clear = (): void => {

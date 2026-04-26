@@ -7,6 +7,7 @@ import {
   endsWithIncompleteTerminalControlSequence,
   shouldDeferHydratedTerminalRedrawChunk,
   shouldReplacePlaceholderWithBufferedOutput,
+  stripEchoedTerminalControlSequences,
 } from './hydrationReplacement'
 import { resolveSuffixPrefixOverlap } from './overlap'
 
@@ -193,21 +194,26 @@ export function createTerminalHydrationRouter({
 
   return {
     handleDataChunk: data => {
-      if (isHydrating) {
-        hydrationBuffer.dataChunks.push(data)
+      const displayData = stripEchoedTerminalControlSequences(data)
+      if (data.length > 0 && displayData.length === 0) {
         return
       }
 
-      if (isAutomaticTerminalQuery(data)) {
-        outputScheduler.handleChunk(data)
+      if (isHydrating) {
+        hydrationBuffer.dataChunks.push(displayData)
+        return
+      }
+
+      if (isAutomaticTerminalQuery(displayData)) {
+        outputScheduler.handleChunk(displayData)
         return
       }
 
       if (shouldReplaceAgentPlaceholderOnNextVisibleChunk) {
-        deferredPlaceholderBuffer.dataChunks.push(data)
+        deferredPlaceholderBuffer.dataChunks.push(displayData)
         if (
           !shouldReplacePlaceholderWithBufferedOutput({
-            data,
+            data: displayData,
             exitCode: null,
           })
         ) {
@@ -220,17 +226,17 @@ export function createTerminalHydrationRouter({
       }
 
       if (shouldReplaceAgentPlaceholderOnNextDestructiveChunk) {
-        if (!containsDestructiveTerminalDisplayControlSequence(data)) {
-          outputScheduler.handleChunk(data)
+        if (!containsDestructiveTerminalDisplayControlSequence(displayData)) {
+          outputScheduler.handleChunk(displayData)
           return
         }
 
         shouldReplaceAgentPlaceholderOnNextDestructiveChunk = false
         shouldReplaceAgentPlaceholderOnNextVisibleChunk = true
-        deferredPlaceholderBuffer.dataChunks.push(data)
+        deferredPlaceholderBuffer.dataChunks.push(displayData)
         if (
           !shouldReplacePlaceholderWithBufferedOutput({
-            data,
+            data: displayData,
             exitCode: null,
           })
         ) {
@@ -243,7 +249,7 @@ export function createTerminalHydrationRouter({
       }
 
       if (deferredHydratedRedrawBuffer.dataChunks.length > 0) {
-        deferredHydratedRedrawBuffer.dataChunks.push(data)
+        deferredHydratedRedrawBuffer.dataChunks.push(displayData)
         const bufferedData = getDeferredHydratedRedrawData()
         const shouldFlushForVisibleOutput = shouldReplacePlaceholderWithBufferedOutput({
           data: bufferedData,
@@ -255,23 +261,23 @@ export function createTerminalHydrationRouter({
         }
 
         flushDeferredHydratedRedraw()
-        settleHydratedControlOnlyProtectionFromData(data)
+        settleHydratedControlOnlyProtectionFromData(displayData)
         return
       }
 
-      const isDestructiveControlOnlyRedraw = shouldDeferHydratedTerminalRedrawChunk(data)
-      const isControlOnlyChunk = isControlOnlyTerminalChunk(data)
+      const isDestructiveControlOnlyRedraw = shouldDeferHydratedTerminalRedrawChunk(displayData)
+      const isControlOnlyChunk = isControlOnlyTerminalChunk(displayData)
       if (
         (shouldProtectHydratedDestructiveRedraw && isDestructiveControlOnlyRedraw) ||
         (shouldProtectHydratedControlOnlyRedraw && isControlOnlyChunk)
       ) {
-        deferredHydratedRedrawBuffer.dataChunks.push(data)
+        deferredHydratedRedrawBuffer.dataChunks.push(displayData)
         maybeFlushDeferredHydratedRedrawControlOnlyChunks()
         return
       }
 
-      outputScheduler.handleChunk(data)
-      settleHydratedControlOnlyProtectionFromData(data)
+      outputScheduler.handleChunk(displayData)
+      settleHydratedControlOnlyProtectionFromData(displayData)
     },
     handleExit: exitCode => {
       if (isHydrating) {

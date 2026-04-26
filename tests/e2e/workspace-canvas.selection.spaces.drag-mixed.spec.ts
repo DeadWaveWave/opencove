@@ -1,7 +1,11 @@
 import { expect, test } from '@playwright/test'
 import {
+  beginDragMouse,
   clearAndSeedWorkspace,
+  dragMouse,
   launchApp,
+  readCanvasViewport,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -122,43 +126,27 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
       await expect(insideNode).toBeVisible()
       await expect(outsideNode).toBeVisible()
 
-      const spaceBox = await spaceRegion.boundingBox()
-      const outsideBox = await outsideNode.boundingBox()
-      if (!spaceBox || !outsideBox) {
-        throw new Error('space/outside node bounding box unavailable')
-      }
-
-      const selectionStartX = spaceBox.x + 20
-      const selectionStartY = spaceBox.y + 20
-      const selectionEndX = outsideBox.x + outsideBox.width * 0.8
-      const selectionEndY = outsideBox.y + outsideBox.height * 0.8
-
-      await window.mouse.move(selectionStartX, selectionStartY)
-      await window.mouse.down()
-      await window.mouse.move(selectionEndX, selectionEndY, { steps: 12 })
-      await window.mouse.up()
+      const insideHeader = insideNode.locator('.terminal-node__header')
+      await expect(insideHeader).toBeVisible()
+      await insideHeader.click({ position: { x: 80, y: 16 } })
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(
         window.locator('.react-flow__node.selected .terminal-node__title'),
       ).toContainText('terminal-marquee-boundary-inside')
 
-      const insideHeader = insideNode.locator('.terminal-node__header')
-      await expect(insideHeader).toBeVisible()
-      const insideHeaderBox = await insideHeader.boundingBox()
-      if (!insideHeaderBox) {
-        throw new Error('inside node header bounding box unavailable')
-      }
+      const insideHeaderBox = await readLocatorClientRect(insideHeader)
 
       const dragStartX = insideHeaderBox.x + insideHeaderBox.width * 0.5
       const dragStartY = insideHeaderBox.y + insideHeaderBox.height * 0.5
       const dragDx = 180
       const dragDy = 120
 
-      await window.mouse.move(dragStartX, dragStartY)
-      await window.mouse.down()
-      await window.mouse.move(dragStartX + dragDx, dragStartY + dragDy, { steps: 12 })
-      await window.mouse.up()
+      await dragMouse(window, {
+        start: { x: dragStartX, y: dragStartY },
+        end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
+        steps: 12,
+      })
 
       await expect
         .poll(async () => {
@@ -233,10 +221,12 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      const paneBox = await pane.boundingBox()
-      if (!paneBox) {
-        throw new Error('workspace pane bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const viewport = await readCanvasViewport(window)
+      const toClientPoint = (point: { x: number; y: number }): { x: number; y: number } => ({
+        x: paneBox.x + viewport.x + point.x * viewport.zoom,
+        y: paneBox.y + viewport.y + point.y * viewport.zoom,
+      })
 
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible()
@@ -247,25 +237,17 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         .first()
       await expect(outsideNode).toBeVisible()
 
-      const outsideBox = await outsideNode.boundingBox()
-      if (!outsideBox) {
-        throw new Error('outside node bounding box unavailable')
-      }
+      const marqueeStart = toClientPoint({ x: 170, y: 180 })
+      const marqueeEnd = toClientPoint({ x: 1285, y: 425 })
 
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!spaceBox) {
-        throw new Error('space bounding box unavailable')
-      }
-
-      const marqueeStartX = Math.max(paneBox.x + 20, spaceBox.x - 30)
-      const marqueeStartY = Math.max(paneBox.y + 20, spaceBox.y + 20)
-      const marqueeEndX = outsideBox.x + outsideBox.width * 0.75
-      const marqueeEndY = outsideBox.y + outsideBox.height * 0.75
-
-      await window.mouse.move(marqueeStartX, marqueeStartY)
-      await window.mouse.down()
-      await window.mouse.move(marqueeEndX, marqueeEndY, { steps: 12 })
-      await window.mouse.up()
+      const marqueeDrag = await beginDragMouse(window, {
+        start: marqueeStart,
+        initialTarget: marqueeEnd,
+        steps: 12,
+        draft: window.locator('.workspace-selection-draft'),
+      })
+      await marqueeDrag.moveTo(marqueeEnd, { steps: 12, settleAfterMoveMs: 48 })
+      await marqueeDrag.release()
 
       await expect(window.locator('.workspace-space-region--selected')).toHaveCount(1)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
@@ -347,20 +329,18 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       const selectedSpace = window.locator('.workspace-space-region--selected').first()
       const selectedTopHandle = selectedSpace.locator('.workspace-space-region__drag-handle--top')
-      const topHandleBox = await selectedTopHandle.boundingBox()
-      if (!topHandleBox) {
-        throw new Error('selected space top handle bounding box unavailable')
-      }
+      const topHandleBox = await readLocatorClientRect(selectedTopHandle)
 
       const dragStartX = topHandleBox.x + topHandleBox.width / 2
       const dragStartY = topHandleBox.y + topHandleBox.height / 2
       const dragDx = 180
       const dragDy = 120
 
-      await window.mouse.move(dragStartX, dragStartY)
-      await window.mouse.down()
-      await window.mouse.move(dragStartX + dragDx, dragStartY + dragDy, { steps: 12 })
-      await window.mouse.up()
+      await dragMouse(window, {
+        start: { x: dragStartX, y: dragStartY },
+        end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
+        steps: 12,
+      })
 
       await expect
         .poll(async () => {

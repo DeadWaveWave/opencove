@@ -1,5 +1,5 @@
-import { fileURLToPath } from 'node:url'
 import { shell } from 'electron'
+import { deleteEntryWithTrashFallback } from '../../../../contexts/filesystem/application/deleteEntryWithTrashFallback'
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
   copyEntryUseCase,
@@ -183,7 +183,11 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await shell.trashItem(fileURLToPath(payload.uri))
+        await deleteEntryWithTrashFallback({
+          port: deps.port,
+          input: { uri: payload.uri },
+          trashItem: async targetPath => await shell.trashItem(targetPath),
+        })
         return
       }
 

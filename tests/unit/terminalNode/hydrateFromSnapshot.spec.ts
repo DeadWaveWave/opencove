@@ -57,6 +57,65 @@ describe('hydrateFromSnapshot', () => {
     expect(takePtySnapshot).not.toHaveBeenCalled()
   })
 
+  it('waits for attach before finalizing a presentation snapshot baseline', async () => {
+    let resolveAttach!: () => void
+    let resolveWrite!: () => void
+    const attachPromise = new Promise<void>(resolve => {
+      resolveAttach = resolve
+    })
+    const writeObserved = new Promise<void>(resolve => {
+      resolveWrite = resolve
+    })
+    const terminal = {
+      cols: 80,
+      rows: 24,
+      resize: vi.fn((cols: number, rows: number) => {
+        terminal.cols = cols
+        terminal.rows = rows
+      }),
+      write: vi.fn((data: string, callback?: () => void) => {
+        callback?.()
+        resolveWrite()
+        return data
+      }),
+    }
+    const finalizeHydration = vi.fn()
+
+    const hydrationPromise = hydrateTerminalFromSnapshot({
+      attachPromise,
+      sessionId: 'terminal-session-presentation',
+      terminal: terminal as never,
+      kind: 'terminal',
+      cachedScreenState: null,
+      persistedSnapshot: '',
+      presentationSnapshotPromise: Promise.resolve({
+        sessionId: 'terminal-session-presentation',
+        epoch: 1,
+        appliedSeq: 12,
+        presentationRevision: 2,
+        cols: 100,
+        rows: 32,
+        bufferKind: 'normal',
+        cursor: { x: 1, y: 1 },
+        title: 'terminal',
+        serializedScreen: 'READY_PROMPT',
+      }),
+      takePtySnapshot: vi.fn(async () => ({ data: 'live fallback output' })),
+      isDisposed: () => false,
+      onHydratedWriteCommitted: vi.fn(),
+      finalizeHydration,
+    })
+
+    await writeObserved
+    expect(terminal.write).toHaveBeenCalledWith('READY_PROMPT', expect.any(Function))
+    expect(finalizeHydration).not.toHaveBeenCalled()
+
+    resolveAttach()
+    await hydrationPromise
+
+    expect(finalizeHydration).toHaveBeenCalledWith('READY_PROMPT')
+  })
+
   it('does not treat cached raw snapshot as correctness truth once worker presentation exists', async () => {
     const terminal = {
       cols: 80,
@@ -278,7 +337,7 @@ describe('hydrateFromSnapshot', () => {
       finalizeHydration,
     })
 
-    expect(terminal.resize).not.toHaveBeenCalled()
+    expect(terminal.resize).toHaveBeenCalledWith(96, 30)
     expect(terminal.write).toHaveBeenCalledWith('persisted restored history', expect.any(Function))
     expect(onPresentationSnapshotAccepted).not.toHaveBeenCalled()
     expect(onHydrationBaselineResolved).toHaveBeenCalledWith('placeholder_snapshot')
