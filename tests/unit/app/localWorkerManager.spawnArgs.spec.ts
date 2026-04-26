@@ -26,6 +26,8 @@ describe('local worker manager spawn args', () => {
 
     expect(args).toEqual([
       '/mock/app-path/out/main/worker.js',
+      '--started-by',
+      'desktop',
       '--parent-pid',
       '1234',
       '--hostname',
@@ -55,6 +57,8 @@ describe('local worker manager spawn args', () => {
 
     expect(args).toEqual([
       '/mock/app-path/out/main/worker.js',
+      '--started-by',
+      'desktop',
       '--parent-pid',
       '1234',
       '--hostname',

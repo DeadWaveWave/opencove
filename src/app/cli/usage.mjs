@@ -61,7 +61,10 @@ export function printUsage() {
     `  opencove worker start [--hostname <bindHost>] [--advertise-hostname <host>] [--port <port>] [--user-data <dir>] [--token <token>] [--web-ui-password-hash <hash>] [--approve-root <path>]\n`,
   )
   process.stdout.write(
-    `  opencove worker status [--endpoint <url>] [--token <token>] [--pretty]\n\n`,
+    `  opencove worker status [--all] [--user-data <dir>] [--endpoint <url>] [--token <token>] [--pretty]\n`,
+  )
+  process.stdout.write(
+    `  opencove worker stop [--user-data <dir>] [--pid <pid>] [--force] [--pretty]\n\n`,
   )
   process.stdout.write(`Global Options:\n`)
   process.stdout.write(`  --pretty                 Pretty-print JSON output\n`)

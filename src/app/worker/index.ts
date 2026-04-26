@@ -76,6 +76,19 @@ function hasFlag(argv: string[], flag: string): boolean {
   return argv.includes(flag)
 }
 
+function resolveStartedBy(argv: string[]): 'cli' | 'desktop' {
+  const raw = readFlagValue(argv, '--started-by')
+  if (!raw) {
+    return 'cli'
+  }
+
+  if (raw === 'cli' || raw === 'desktop') {
+    return raw
+  }
+
+  throw new Error(`[worker] invalid --started-by: ${raw}`)
+}
+
 async function main(): Promise<void> {
   // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
   // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
@@ -91,6 +104,7 @@ async function main(): Promise<void> {
   const webUiPasswordHash = readFlagValue(argv, '--web-ui-password-hash')
   const parentPid = resolveParentPid(argv)
   const enableWebUi = !hasFlag(argv, '--disable-web-ui')
+  const startedBy = resolveStartedBy(argv)
 
   const lock = await acquireWorkerSingleInstanceLock(userDataPath)
   if (lock.status === 'existing') {
@@ -102,7 +116,9 @@ async function main(): Promise<void> {
       process.stdout.write(`${JSON.stringify(connectionInfo)}\n`)
     }
 
-    process.stderr.write('[opencove-worker] worker is already running for this user data dir.\n')
+    process.stderr.write(
+      '[opencove-worker] Local Worker already running for this user data; printed existing connection info.\n',
+    )
     process.exit(0)
   }
 
@@ -127,6 +143,7 @@ async function main(): Promise<void> {
     enableWebShell: enableWebUi,
     webUiPasswordHash: webUiPasswordHash ?? null,
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
+    connectionStartedBy: startedBy,
   })
 
   const info = await server.ready

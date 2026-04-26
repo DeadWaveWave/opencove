@@ -12,6 +12,12 @@ import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
 import { tryHandleNodeControlCommands } from './commands/nodeControl.mjs'
+import {
+  getWorkerLifecycleStatus,
+  printWorkerLifecycleResult,
+  stopWorkerLifecycle,
+  WorkerLifecycleError,
+} from './workerLifecycle.mjs'
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -79,6 +85,8 @@ async function main() {
       workerArgs.push('--hostname', hostname)
     }
 
+    workerArgs.push('--started-by', 'cli')
+
     if (advertiseHostname) {
       workerArgs.push('--advertise-hostname', advertiseHostname)
     }
@@ -142,6 +150,41 @@ async function main() {
     })
 
     return
+  }
+
+  if (command === 'worker' && args[1] === 'status' && !endpoint) {
+    const status = await getWorkerLifecycleStatus({
+      all: args.includes('--all'),
+      userData: readFlagValue(args, '--user-data'),
+      timeoutMs,
+    })
+    printWorkerLifecycleResult(status, pretty)
+    return
+  }
+
+  if (command === 'worker' && args[1] === 'stop') {
+    if (endpoint) {
+      process.stderr.write('[opencove] worker stop only supports local workers.\n')
+      process.exit(2)
+    }
+
+    try {
+      const result = await stopWorkerLifecycle({
+        userData: readFlagValue(args, '--user-data'),
+        pid: readFlagValue(args, '--pid'),
+        force: args.includes('--force'),
+        timeoutMs,
+      })
+      printWorkerLifecycleResult(result, pretty)
+      return
+    } catch (error) {
+      if (error instanceof WorkerLifecycleError) {
+        process.stderr.write(`${error.message}\n`)
+        process.exit(2)
+      }
+
+      throw error
+    }
   }
 
   const isWorkerStatusCommand = command === 'worker' && args[1] === 'status'

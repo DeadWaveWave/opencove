@@ -35,6 +35,7 @@ export interface ControlSurfaceConnectionInfo {
   port: number
   token: string
   createdAt: string
+  startedBy?: 'cli' | 'desktop'
 }
 
 export interface ControlSurfaceServerDisposable {
@@ -374,6 +375,7 @@ export function registerControlSurfaceHttpServer(
       port: address.port,
       token,
       createdAt: new Date().toISOString(),
+      ...(options.connectionStartedBy ? { startedBy: options.connectionStartedBy } : {}),
     }
 
     pendingConnectionWrite = writeConnectionFile(

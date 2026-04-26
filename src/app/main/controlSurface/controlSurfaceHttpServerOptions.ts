@@ -12,6 +12,7 @@ export interface RegisterControlSurfaceHttpServerOptions {
   port?: number
   token?: string
   connectionFileName?: string
+  connectionStartedBy?: 'cli' | 'desktop'
   approvedWorkspaces: ApprovedWorkspaceStore
   ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
   ownsPtyRuntime?: boolean

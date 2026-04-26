@@ -110,8 +110,8 @@ function mockMainIndexDependencies(params: {
     },
     BrowserWindow: params.BrowserWindow,
     Menu: {
-      buildFromTemplate: vi.fn(() => ({})),
       setApplicationMenu: vi.fn(),
+      buildFromTemplate: vi.fn(template => template),
     },
     nativeImage: {
       createFromPath: vi.fn(() => ({})),
