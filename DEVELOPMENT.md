@@ -186,6 +186,8 @@
 -   **Landing 重构落地规范**：`docs/LANDING_ARCHITECTURE.md`
 -   **统一控制面（command/query/event）**：`docs/CONTROL_SURFACE.md`
 -   **CLI 规范**：`docs/CLI.md`
+-   **Agent CLI 操作手册**：`docs/CLI_AGENT_PLAYBOOK.md`
+-   **Agent CLI 提示词模板**：`docs/CLI_AGENT_PROMPT.md`
 -   **Filesystem（URI + providers + guardrails）**：`docs/FILESYSTEM.md`
 -   **画布内文件编辑（Document Node）**：`docs/DOCUMENT_NODE.md`
 -   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`

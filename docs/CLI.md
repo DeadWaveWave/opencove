@@ -40,3 +40,11 @@ CLI 的默认运行模型应满足：
 
 CLI 管理画布 Note / Task / Website / Agent / Terminal 窗口的目标设计见：
 `docs/CLI_CANVAS_NODE_CONTROL_SPEC.md`。
+
+## 6. Agent Playbook
+
+如果需要让 Agent 直接用 CLI 做本地 smoke / CRUD / focus / space locator 验证，使用：
+`docs/CLI_AGENT_PLAYBOOK.md`。
+
+如果需要一份可以直接复制给 Agent 的短提示词，使用：
+`docs/CLI_AGENT_PROMPT.md`。
