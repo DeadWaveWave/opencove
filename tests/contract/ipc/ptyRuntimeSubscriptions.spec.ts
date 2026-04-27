@@ -68,7 +68,7 @@ describe('Pty runtime subscriptions', () => {
     await vi.advanceTimersByTimeAsync(40)
 
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([
-      [IPC_CHANNELS.ptyData, { sessionId, data: 'hello' }],
+      [IPC_CHANNELS.ptyData, { sessionId, data: 'hello', seq: 1 }],
     ])
     expect(await runtime.snapshot(sessionId)).toBe('hello')
 
@@ -385,7 +385,7 @@ describe('Pty runtime subscriptions', () => {
     await vi.advanceTimersByTimeAsync(40)
 
     expect(send.mock.calls.filter(([channel]) => channel === IPC_CHANNELS.ptyData)).toEqual([
-      [IPC_CHANNELS.ptyData, { sessionId, data: 'hello' }],
+      [IPC_CHANNELS.ptyData, { sessionId, data: 'hello', seq: 1 }],
     ])
     expect(await runtime.snapshot(sessionId)).toBe('hello')
 

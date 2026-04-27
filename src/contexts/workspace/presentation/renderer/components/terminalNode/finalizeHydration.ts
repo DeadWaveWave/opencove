@@ -16,6 +16,7 @@ export function finalizeTerminalHydration({
   markScrollbackDirty,
   logHydrated,
   syncTerminalSize,
+  onReplayWriteCommitted,
   onRevealed,
 }: {
   isDisposed: () => boolean
@@ -40,6 +41,7 @@ export function finalizeTerminalHydration({
   markScrollbackDirty: (immediate?: boolean) => void
   logHydrated: (details: { rawSnapshotLength: number; bufferedExitCode: number | null }) => void
   syncTerminalSize: () => void
+  onReplayWriteCommitted?: () => void
   onRevealed: () => void
 }): boolean {
   if (isDisposed()) {
@@ -77,6 +79,7 @@ export function finalizeTerminalHydration({
     scrollbackBuffer,
     committedScrollbackBuffer,
     onCommittedScreenState,
+    onReplayWriteCommitted,
   })
 
   markScrollbackDirty(true)

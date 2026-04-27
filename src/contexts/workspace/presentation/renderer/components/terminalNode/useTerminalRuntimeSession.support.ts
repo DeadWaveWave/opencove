@@ -8,6 +8,7 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { AgentLaunchMode, WorkspaceNodeKind } from '../../types'
 import type { AttachablePtyApi } from './attachablePty'
 import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
+import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
 import type { TerminalThemeMode } from './theme'
 import { registerRuntimeTerminalRendererHealth } from './runtimeRendererHealth'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
@@ -22,15 +23,26 @@ export type TerminalHydrationBaselineSource =
 
 export function shouldGateRestoredAgentInput(options: {
   kind: WorkspaceNodeKind
-  isLiveSessionReattach: boolean
   persistedSnapshot: string
+  agentResumeSessionIdVerified: boolean
+  agentLaunchMode: AgentLaunchMode | null
 }): boolean {
-  void options
+  void options.persistedSnapshot
+  void options.agentResumeSessionIdVerified
+  void options.agentLaunchMode
 
-  // Live runtime sessions should never gate user input behind renderer-side restore heuristics.
-  // If the user types before the runtime session mounts, the placeholder session already buffers
-  // that input for handoff. Once a real sessionId exists, correctness belongs to the runtime.
-  return false
+  return options.kind === 'agent'
+}
+
+export function shouldAwaitRestoredAgentVisibleOutput(options: {
+  kind: WorkspaceNodeKind
+  agentResumeSessionIdVerified: boolean
+  agentLaunchMode: AgentLaunchMode | null
+}): boolean {
+  void options.agentResumeSessionIdVerified
+  void options.agentLaunchMode
+
+  return options.kind === 'agent'
 }
 
 export function shouldProtectRestoredAgentHistory(options: {
@@ -66,7 +78,7 @@ export function shouldTreatHydratedAgentBaselineAsPlaceholder(options: {
       agentResumeSessionIdVerified: options.agentResumeSessionIdVerified,
       agentLaunchMode: options.agentLaunchMode,
       persistedSnapshot: options.persistedSnapshot,
-    }) && !isAuthoritativeHydrationBaselineSource(options.baselineSource)
+    }) && options.baselineSource === 'placeholder_snapshot'
   )
 }
 
@@ -96,6 +108,136 @@ export function shouldReusePreservedXtermSession(options: {
     options.terminalClientResetVersion === 0 &&
     options.preservedSession.renderer.kind === 'dom'
   )
+}
+
+type VisibleOutputCheckHandle = number
+
+export function createRestoredAgentVisibleOutputObserver({
+  hasVisibleOutput,
+  onReady,
+  scheduleCheck = callback => window.setTimeout(callback, 50),
+  cancelCheck = handle => {
+    window.clearTimeout(handle)
+  },
+  maxChecks = 200,
+  meaningfulOutputGraceChecks = 20,
+}: {
+  hasVisibleOutput: () => boolean
+  onReady: () => void
+  scheduleCheck?: (callback: () => void) => VisibleOutputCheckHandle
+  cancelCheck?: (handle: VisibleOutputCheckHandle) => void
+  maxChecks?: number
+  meaningfulOutputGraceChecks?: number
+}) {
+  let isWaiting = false
+  let checkHandle: VisibleOutputCheckHandle | null = null
+  let checkCount = 0
+  let meaningfulOutputObservedAtCheck: number | null = null
+
+  const cancelScheduledCheck = (): void => {
+    if (checkHandle === null) {
+      return
+    }
+
+    cancelCheck(checkHandle)
+    checkHandle = null
+  }
+
+  const markReady = (): void => {
+    if (!isWaiting) {
+      return
+    }
+
+    isWaiting = false
+    cancelScheduledCheck()
+    onReady()
+  }
+
+  const scheduleVisibleOutputCheck = (): void => {
+    if (!isWaiting || checkHandle !== null) {
+      return
+    }
+
+    if (checkCount >= maxChecks) {
+      markReady()
+      return
+    }
+
+    checkCount += 1
+    checkHandle = scheduleCheck(() => {
+      checkHandle = null
+      if (!isWaiting) {
+        return
+      }
+
+      if (hasVisibleOutput()) {
+        markReady()
+        return
+      }
+
+      if (
+        meaningfulOutputObservedAtCheck !== null &&
+        checkCount - meaningfulOutputObservedAtCheck >= meaningfulOutputGraceChecks
+      ) {
+        markReady()
+        return
+      }
+
+      scheduleVisibleOutputCheck()
+    })
+  }
+
+  return {
+    beginWaiting: () => {
+      isWaiting = true
+      checkCount = 0
+      meaningfulOutputObservedAtCheck = null
+      if (hasVisibleOutput()) {
+        markReady()
+        return
+      }
+
+      scheduleVisibleOutputCheck()
+    },
+    notifyOutputObserved: (data: string) => {
+      if (!isWaiting) {
+        return
+      }
+
+      if (hasVisibleOutput()) {
+        markReady()
+        return
+      }
+
+      if (containsMeaningfulTerminalDisplayContent(data)) {
+        meaningfulOutputObservedAtCheck ??= checkCount
+        scheduleVisibleOutputCheck()
+      }
+    },
+    notifyWriteCommitted: (data?: string) => {
+      if (!isWaiting) {
+        return
+      }
+
+      if (
+        hasVisibleOutput() ||
+        (typeof data === 'string' && containsMeaningfulTerminalDisplayContent(data))
+      ) {
+        markReady()
+        return
+      }
+
+      scheduleVisibleOutputCheck()
+    },
+    stopWaiting: () => {
+      isWaiting = false
+      cancelScheduledCheck()
+    },
+    dispose: () => {
+      isWaiting = false
+      cancelScheduledCheck()
+    },
+  }
 }
 
 export function scheduleTestEnvironmentTerminalAutoFocus(options: {
@@ -139,6 +281,8 @@ export function requestPresentationSnapshot(
 export async function requestPresentationSnapshotAfterGeometry({
   sessionId,
   expectedGeometry,
+  minAppliedSeqExclusive = null,
+  requireMeaningfulSerializedScreen = false,
   requestSnapshot = requestPresentationSnapshot,
   wait = attempt =>
     new Promise<void>(resolve => {
@@ -148,27 +292,49 @@ export async function requestPresentationSnapshotAfterGeometry({
 }: {
   sessionId: string
   expectedGeometry: { cols: number; rows: number } | null
+  minAppliedSeqExclusive?: number | null
+  requireMeaningfulSerializedScreen?: boolean
   requestSnapshot?: (sessionId: string) => Promise<PresentationSnapshotTerminalResult | null>
   wait?: (attempt: number) => Promise<void>
   maxAttempts?: number
 }): Promise<PresentationSnapshotTerminalResult | null> {
-  if (!expectedGeometry) {
+  const minAppliedSeq =
+    typeof minAppliedSeqExclusive === 'number' && Number.isFinite(minAppliedSeqExclusive)
+      ? Math.max(0, Math.floor(minAppliedSeqExclusive))
+      : null
+
+  if (expectedGeometry === null && minAppliedSeq === null && !requireMeaningfulSerializedScreen) {
     return await requestSnapshot(sessionId)
   }
 
   const attemptRequest = async (
     attempt: number,
+    bestSequenceFenceSnapshot: PresentationSnapshotTerminalResult | null,
   ): Promise<PresentationSnapshotTerminalResult | null> => {
     if (attempt >= maxAttempts) {
-      return null
+      return bestSequenceFenceSnapshot
     }
 
     const snapshot = await requestSnapshot(sessionId)
     if (!snapshot) {
-      return null
+      if (attempt < maxAttempts - 1) {
+        await wait(attempt)
+      }
+
+      return attemptRequest(attempt + 1, bestSequenceFenceSnapshot)
     }
 
-    if (snapshot.cols === expectedGeometry.cols && snapshot.rows === expectedGeometry.rows) {
+    const hasExpectedGeometry =
+      expectedGeometry === null ||
+      (snapshot.cols === expectedGeometry.cols && snapshot.rows === expectedGeometry.rows)
+    const hasRequiredOutput = minAppliedSeq === null || snapshot.appliedSeq > minAppliedSeq
+    const hasRequiredScreen =
+      !requireMeaningfulSerializedScreen ||
+      containsMeaningfulTerminalDisplayContent(snapshot.serializedScreen)
+    const nextSequenceFenceSnapshot =
+      hasExpectedGeometry && hasRequiredOutput ? snapshot : bestSequenceFenceSnapshot
+
+    if (hasExpectedGeometry && hasRequiredOutput && hasRequiredScreen) {
       return snapshot
     }
 
@@ -176,10 +342,10 @@ export async function requestPresentationSnapshotAfterGeometry({
       await wait(attempt)
     }
 
-    return attemptRequest(attempt + 1)
+    return attemptRequest(attempt + 1, nextSequenceFenceSnapshot)
   }
 
-  return attemptRequest(0)
+  return attemptRequest(0, null)
 }
 
 export function attachAfterPresentationSnapshot(options: {
@@ -200,6 +366,7 @@ export function prepareRuntimePresentationAttach(options: {
   sessionId: string
   isLiveSessionReattach: boolean
   commitInitialGeometry: () => Promise<{ cols: number; rows: number } | null>
+  requirePostGeometrySnapshotOutput?: boolean
 }): {
   attachPromise: Promise<void | undefined>
   presentationSnapshotPromise: Promise<PresentationSnapshotTerminalResult | null>
@@ -218,11 +385,18 @@ export function prepareRuntimePresentationAttach(options: {
         .catch(() => null)
   const presentationSnapshotPromise = options.isLiveSessionReattach
     ? preAttachPresentationSnapshotPromise
-    : initialGeometryCommitPromise.then(expectedGeometry =>
-        requestPresentationSnapshotAfterGeometry({
-          sessionId: options.sessionId,
-          expectedGeometry,
-        }),
+    : Promise.all([preAttachPresentationSnapshotPromise, initialGeometryCommitPromise]).then(
+        ([baselineSnapshot, expectedGeometry]) =>
+          requestPresentationSnapshotAfterGeometry({
+            sessionId: options.sessionId,
+            expectedGeometry,
+            minAppliedSeqExclusive:
+              options.requirePostGeometrySnapshotOutput === true
+                ? (baselineSnapshot?.appliedSeq ?? 0)
+                : null,
+            requireMeaningfulSerializedScreen: options.requirePostGeometrySnapshotOutput === true,
+            maxAttempts: options.requirePostGeometrySnapshotOutput === true ? 80 : 8,
+          }),
       )
 
   return { attachPromise, presentationSnapshotPromise }

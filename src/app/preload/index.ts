@@ -107,8 +107,7 @@ import type {
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
-import { resolveMainProcessPid } from './mainProcessPid'
-import { resolveWindowsPtyMeta } from './windowsPtyMeta'
+import { resolveOpenCoveMeta } from './opencoveMeta'
 
 type UnsubscribeFn = () => void
 
@@ -117,17 +116,7 @@ const latestPtyMetadataBySessionId = new Map<string, TerminalSessionMetadataEven
 
 // Custom APIs for renderer
 const opencoveApi = {
-  meta: {
-    isTest: process.env.NODE_ENV === 'test',
-    isPackaged: process.env.NODE_ENV !== 'test' && process.defaultApp !== true,
-    allowWhatsNewInTests: process.env.OPENCOVE_TEST_WHATS_NEW === '1',
-    enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
-    enableTerminalInputDiagnostics: process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1',
-    runtime: 'electron',
-    platform: process.platform,
-    mainPid: resolveMainProcessPid(),
-    windowsPty: resolveWindowsPtyMeta(),
-  },
+  meta: resolveOpenCoveMeta(),
   debug: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput): void => {
       ipcRenderer.send(IPC_CHANNELS.terminalDiagnosticsLog, payload)

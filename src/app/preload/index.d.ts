@@ -114,6 +114,7 @@ export interface OpenCoveApi {
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
     enableTerminalInputDiagnostics?: boolean
+    enableTerminalTestApi?: boolean
     runtime: 'electron' | 'browser'
     platform: string
     mainPid: number | null

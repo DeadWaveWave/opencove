@@ -173,6 +173,8 @@ export interface LaunchAgentSessionInput {
   resumeSessionId?: string | null
   env?: Record<string, string> | null
   agentFullAccess?: boolean | null
+  cols?: number | null
+  rows?: number | null
 }
 
 export interface LaunchAgentSessionInMountInput {
@@ -185,6 +187,8 @@ export interface LaunchAgentSessionInMountInput {
   resumeSessionId?: string | null
   env?: Record<string, string> | null
   agentFullAccess?: boolean | null
+  cols?: number | null
+  rows?: number | null
 }
 
 export interface LaunchAgentSessionResult {

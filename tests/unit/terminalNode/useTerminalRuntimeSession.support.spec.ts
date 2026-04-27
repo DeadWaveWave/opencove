@@ -1,18 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   attachAfterPresentationSnapshot,
+  createRestoredAgentVisibleOutputObserver,
   isAuthoritativeHydrationBaselineSource,
   requestPresentationSnapshotAfterGeometry,
+  shouldAwaitRestoredAgentVisibleOutput,
+  shouldGateRestoredAgentInput,
   shouldProtectHydratedAgentHistory,
   shouldReusePreservedXtermSession,
   shouldTreatHydratedAgentBaselineAsPlaceholder,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalRuntimeSession.support'
 
-function createPresentationSnapshot(cols: number, rows: number) {
+function createPresentationSnapshot(cols: number, rows: number, appliedSeq = 42) {
   return {
     sessionId: 'session-1',
     epoch: 1,
-    appliedSeq: 42,
+    appliedSeq,
     presentationRevision: 3,
     cols,
     rows,
@@ -55,6 +58,69 @@ describe('useTerminalRuntimeSession support', () => {
         baselineSource: 'placeholder_snapshot',
       }),
     ).toBe(true)
+
+    expect(
+      shouldTreatHydratedAgentBaselineAsPlaceholder({
+        kind: 'agent',
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+        persistedSnapshot: '[restored history]',
+        baselineSource: 'empty',
+      }),
+    ).toBe(false)
+  })
+
+  it('gates restored agent input until live output catches up', () => {
+    expect(
+      shouldGateRestoredAgentInput({
+        kind: 'agent',
+        persistedSnapshot: '',
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldAwaitRestoredAgentVisibleOutput({
+        kind: 'agent',
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldGateRestoredAgentInput({
+        kind: 'agent',
+        persistedSnapshot: '',
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldGateRestoredAgentInput({
+        kind: 'agent',
+        persistedSnapshot: '',
+        agentResumeSessionIdVerified: false,
+        agentLaunchMode: 'new',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldAwaitRestoredAgentVisibleOutput({
+        kind: 'agent',
+        agentResumeSessionIdVerified: false,
+        agentLaunchMode: 'new',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldAwaitRestoredAgentVisibleOutput({
+        kind: 'terminal',
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(false)
   })
 
   it('only defers post-hydration redraw protection for non-authoritative baselines', () => {
@@ -95,6 +161,96 @@ describe('useTerminalRuntimeSession support', () => {
         terminalClientResetVersion: 1,
       }),
     ).toBe(false)
+  })
+
+  it('releases restored agent readiness after meaningful output is committed', () => {
+    const onReady = vi.fn()
+    const cancelCheck = vi.fn()
+    const observer = createRestoredAgentVisibleOutputObserver({
+      hasVisibleOutput: () => false,
+      onReady,
+      scheduleCheck: () => 1,
+      cancelCheck,
+    })
+
+    observer.beginWaiting()
+    observer.notifyWriteCommitted('\u001b[HRestored Codex prompt')
+
+    expect(onReady).toHaveBeenCalledTimes(1)
+    expect(cancelCheck).toHaveBeenCalledWith(1)
+  })
+
+  it('polls for visible restored agent output after PTY data is observed', () => {
+    const scheduledChecks: Array<() => void> = []
+    let hasVisibleOutput = false
+    const onReady = vi.fn()
+    const observer = createRestoredAgentVisibleOutputObserver({
+      hasVisibleOutput: () => hasVisibleOutput,
+      onReady,
+      scheduleCheck: callback => {
+        scheduledChecks.push(callback)
+        return scheduledChecks.length
+      },
+      cancelCheck: () => undefined,
+      maxChecks: 3,
+    })
+
+    observer.beginWaiting()
+    observer.notifyOutputObserved('\u001b[HRestored Codex prompt')
+    scheduledChecks.shift()?.()
+    expect(onReady).not.toHaveBeenCalled()
+
+    hasVisibleOutput = true
+    scheduledChecks.shift()?.()
+
+    expect(onReady).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails open after meaningful restored output when renderer visibility does not report ready', () => {
+    const scheduledChecks: Array<() => void> = []
+    const onReady = vi.fn()
+    const observer = createRestoredAgentVisibleOutputObserver({
+      hasVisibleOutput: () => false,
+      onReady,
+      scheduleCheck: callback => {
+        scheduledChecks.push(callback)
+        return scheduledChecks.length
+      },
+      cancelCheck: () => undefined,
+      maxChecks: 5,
+      meaningfulOutputGraceChecks: 1,
+    })
+
+    observer.beginWaiting()
+    observer.notifyOutputObserved('\u001b[?2026h\u001b[HRestored Codex prompt')
+    scheduledChecks.shift()?.()
+    expect(onReady).not.toHaveBeenCalled()
+
+    scheduledChecks.shift()?.()
+
+    expect(onReady).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails open when restored agent visibility never becomes observable', () => {
+    const scheduledChecks: Array<() => void> = []
+    const onReady = vi.fn()
+    const observer = createRestoredAgentVisibleOutputObserver({
+      hasVisibleOutput: () => false,
+      onReady,
+      scheduleCheck: callback => {
+        scheduledChecks.push(callback)
+        return scheduledChecks.length
+      },
+      cancelCheck: () => undefined,
+      maxChecks: 2,
+    })
+
+    observer.beginWaiting()
+    scheduledChecks.shift()?.()
+    expect(onReady).not.toHaveBeenCalled()
+
+    scheduledChecks.shift()?.()
+    expect(onReady).toHaveBeenCalledTimes(1)
   })
 
   it('attaches from the worker presentation snapshot sequence baseline', async () => {
@@ -143,6 +299,100 @@ describe('useTerminalRuntimeSession support', () => {
     expect(snapshot).toBe(committedSnapshot)
     expect(requestSnapshot).toHaveBeenCalledTimes(2)
     expect(wait).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not poll presentation snapshots when no geometry or output fence is required', async () => {
+    const requestSnapshot = vi.fn(async () => null)
+    const wait = vi.fn(async () => undefined)
+
+    const snapshot = await requestPresentationSnapshotAfterGeometry({
+      sessionId: 'session-1',
+      expectedGeometry: null,
+      requestSnapshot,
+      wait,
+    })
+
+    expect(snapshot).toBeNull()
+    expect(requestSnapshot).toHaveBeenCalledTimes(1)
+    expect(wait).not.toHaveBeenCalled()
+  })
+
+  it('waits for post-resize output before accepting an agent cold-restore geometry snapshot', async () => {
+    const resizedBeforeTuiRedraw = createPresentationSnapshot(132, 41, 42)
+    const resizedAfterControlOnlyOutput = {
+      ...createPresentationSnapshot(132, 41, 43),
+      serializedScreen: '\u001b[?2004h',
+    }
+    const resizedAfterTuiRedraw = createPresentationSnapshot(132, 41, 44)
+    const requestSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce(resizedBeforeTuiRedraw)
+      .mockResolvedValueOnce(resizedAfterControlOnlyOutput)
+      .mockResolvedValueOnce(resizedAfterTuiRedraw)
+    const wait = vi.fn(async () => undefined)
+
+    const snapshot = await requestPresentationSnapshotAfterGeometry({
+      sessionId: 'session-1',
+      expectedGeometry: { cols: 132, rows: 41 },
+      minAppliedSeqExclusive: 42,
+      requireMeaningfulSerializedScreen: true,
+      requestSnapshot,
+      wait,
+    })
+
+    expect(snapshot).toBe(resizedAfterTuiRedraw)
+    expect(requestSnapshot).toHaveBeenCalledTimes(3)
+    expect(wait).toHaveBeenCalledTimes(2)
+  })
+
+  it('still waits for meaningful restored output when initial geometry cannot be measured', async () => {
+    const controlOnlySnapshot = {
+      ...createPresentationSnapshot(132, 41, 43),
+      serializedScreen: '\u001b[?2004h',
+    }
+    const visibleSnapshot = createPresentationSnapshot(132, 41, 44)
+    const requestSnapshot = vi
+      .fn()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(controlOnlySnapshot)
+      .mockResolvedValueOnce(visibleSnapshot)
+    const wait = vi.fn(async () => undefined)
+
+    const snapshot = await requestPresentationSnapshotAfterGeometry({
+      sessionId: 'session-1',
+      expectedGeometry: null,
+      minAppliedSeqExclusive: 42,
+      requireMeaningfulSerializedScreen: true,
+      requestSnapshot,
+      wait,
+    })
+
+    expect(snapshot).toBe(visibleSnapshot)
+    expect(requestSnapshot).toHaveBeenCalledTimes(3)
+    expect(wait).toHaveBeenCalledTimes(2)
+  })
+
+  it('returns a post-geometry sequence fence when visible restored output never arrives', async () => {
+    const controlOnlySnapshot = {
+      ...createPresentationSnapshot(132, 41, 43),
+      serializedScreen: '\u001b[?2004h',
+    }
+    const requestSnapshot = vi.fn(async () => controlOnlySnapshot)
+    const wait = vi.fn(async () => undefined)
+
+    const snapshot = await requestPresentationSnapshotAfterGeometry({
+      sessionId: 'session-1',
+      expectedGeometry: { cols: 132, rows: 41 },
+      minAppliedSeqExclusive: 42,
+      requireMeaningfulSerializedScreen: true,
+      requestSnapshot,
+      wait,
+      maxAttempts: 3,
+    })
+
+    expect(snapshot).toBe(controlOnlySnapshot)
+    expect(requestSnapshot).toHaveBeenCalledTimes(3)
+    expect(wait).toHaveBeenCalledTimes(2)
   })
 
   it('fails closed instead of accepting a stale post-resize presentation geometry', async () => {

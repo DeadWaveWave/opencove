@@ -189,7 +189,7 @@ export class BrowserPtyClient {
       if (existing) {
         existing.lastSeq = Math.max(existing.lastSeq, seq)
       }
-      emitToListeners(this.dataListeners, { sessionId, data })
+      emitToListeners(this.dataListeners, { sessionId, data, seq })
       return
     }
 

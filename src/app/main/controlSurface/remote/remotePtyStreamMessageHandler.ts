@@ -73,7 +73,7 @@ export function createRemotePtyStreamMessageHandler(options: {
   attachedSessions: Map<string, AttachedSessionState>
   sendToSessionSubscribers: (sessionId: string, channel: string, payload: unknown) => void
   sendToAllWindows: (channel: string, payload: unknown) => void
-  externalDataListeners: Set<(event: { sessionId: string; data: string }) => void>
+  externalDataListeners: Set<(event: TerminalDataEvent) => void>
   externalExitListeners: Set<(event: { sessionId: string; exitCode: number }) => void>
   externalStateListeners: Set<(event: TerminalSessionStateEvent) => void>
   externalMetadataListeners: Set<(event: TerminalSessionMetadataEvent) => void>
@@ -144,8 +144,9 @@ export function createRemotePtyStreamMessageHandler(options: {
         options.sendToSessionSubscribers(sessionId, IPC_CHANNELS.ptyData, {
           sessionId,
           data,
+          seq,
         } satisfies TerminalDataEvent)
-        options.externalDataListeners.forEach(listener => listener({ sessionId, data }))
+        options.externalDataListeners.forEach(listener => listener({ sessionId, data, seq }))
       }
       return
     }

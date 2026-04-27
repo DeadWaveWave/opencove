@@ -4,6 +4,7 @@ import type {
   PresentationSnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
+  TerminalDataEvent,
   TerminalGeometryCommitReason,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
@@ -43,7 +44,7 @@ export function createRemotePtyRuntime(options: {
   connectTimeoutMs?: number
 }): RemotePtyRuntime {
   const connectTimeoutMs = options.connectTimeoutMs ?? 3_000
-  const externalDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
+  const externalDataListeners = new Set<(event: TerminalDataEvent) => void>()
   const externalExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const externalStateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const externalMetadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()

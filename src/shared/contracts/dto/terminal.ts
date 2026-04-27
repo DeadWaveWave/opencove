@@ -113,6 +113,7 @@ export interface PresentationSnapshotTerminalResult {
 export interface TerminalDataEvent {
   sessionId: string
   data: string
+  seq?: number
 }
 
 export interface TerminalExitEvent {

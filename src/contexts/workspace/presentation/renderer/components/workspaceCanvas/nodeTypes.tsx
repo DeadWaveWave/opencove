@@ -48,8 +48,8 @@ function TerminalNodeType({
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
-  const scrollback = useScrollbackStore(
-    state => state.scrollbackByNodeId[id] ?? data.scrollback ?? null,
+  const scrollback = useScrollbackStore(state =>
+    data.kind === 'agent' ? null : (state.scrollbackByNodeId[id] ?? data.scrollback ?? null),
   )
   const nodePosition = useNodePosition(id)
   const labelColor =
@@ -111,7 +111,11 @@ function TerminalNodeType({
           : undefined
       }
       onResize={frame => resizeNodeRef.current(id, frame)}
-      onScrollbackChange={nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)}
+      onScrollbackChange={
+        data.kind === 'terminal'
+          ? nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)
+          : undefined
+      }
       onCommandRun={
         data.kind === 'terminal'
           ? command => {

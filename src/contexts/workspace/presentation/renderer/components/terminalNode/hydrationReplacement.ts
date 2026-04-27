@@ -139,6 +139,20 @@ const DESTRUCTIVE_TERMINAL_DISPLAY_CONTROL_SEQUENCES = [
   '\u001b[2K',
 ] as const
 
+const FULL_SCREEN_TERMINAL_DISPLAY_CONTROL_SEQUENCES = [
+  '\u001b[?1049h',
+  '\u001b[?1049l',
+  '\u001b[?1047h',
+  '\u001b[?1047l',
+  '\u001b[?47h',
+  '\u001b[?47l',
+  '\u001b[J',
+  '\u001b[0J',
+  '\u001b[1J',
+  '\u001b[2J',
+  '\u001b[3J',
+] as const
+
 function resolveLastDestructiveTerminalDisplayControlSequenceEnd(data: string): number {
   let lastStart = -1
   let lastEnd = -1
@@ -158,6 +172,13 @@ export function containsDestructiveTerminalDisplayControlSequence(data: string):
   return (
     data.includes('\u001bc') ||
     DESTRUCTIVE_TERMINAL_DISPLAY_CONTROL_SEQUENCES.some(sequence => data.includes(sequence))
+  )
+}
+
+function containsFullScreenTerminalDisplayControlSequence(data: string): boolean {
+  return (
+    data.includes('\u001bc') ||
+    FULL_SCREEN_TERMINAL_DISPLAY_CONTROL_SEQUENCES.some(sequence => data.includes(sequence))
   )
 }
 
@@ -327,7 +348,7 @@ export function shouldReplacePlaceholderWithBufferedOutput({
 
 export function shouldDeferHydratedTerminalRedrawChunk(data: string): boolean {
   return (
-    containsDestructiveTerminalDisplayControlSequence(data) &&
+    containsFullScreenTerminalDisplayControlSequence(data) &&
     !containsMeaningfulTerminalDisplayContent(data)
   )
 }

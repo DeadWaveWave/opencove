@@ -36,7 +36,6 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => true,
       shouldDeferHydratedRedrawChunks: () => true,
-      hasRecentUserInteraction: () => false,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),
@@ -68,7 +67,7 @@ describe('hydrationRouter', () => {
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
   })
 
-  it('keeps control-only redraw chunks deferred after user interaction until visible output arrives', () => {
+  it('keeps control-only redraw chunks deferred until visible output arrives', () => {
     const terminal = {
       reset: vi.fn(),
       write: vi.fn(),
@@ -85,14 +84,11 @@ describe('hydrationRouter', () => {
       append: vi.fn(),
       snapshot: vi.fn(() => ''),
     }
-    let hasRecentUserInteraction = false
-
     const router = createTerminalHydrationRouter({
       terminal: terminal as never,
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => false,
       shouldDeferHydratedRedrawChunks: () => true,
-      hasRecentUserInteraction: () => hasRecentUserInteraction,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),
@@ -110,7 +106,6 @@ describe('hydrationRouter', () => {
 
     expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
 
-    hasRecentUserInteraction = true
     router.handleDataChunk('\u001b[P')
 
     expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
@@ -121,7 +116,7 @@ describe('hydrationRouter', () => {
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[D\u001b[P[prompt]')
   })
 
-  it('keeps destructive redraw chunks deferred even when they arrive right after user interaction', () => {
+  it('keeps destructive redraw chunks deferred until visible output arrives', () => {
     const terminal = {
       reset: vi.fn(),
       write: vi.fn(),
@@ -144,7 +139,6 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => false,
       shouldDeferHydratedRedrawChunks: () => true,
-      hasRecentUserInteraction: () => true,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),
@@ -190,7 +184,6 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => false,
       shouldDeferHydratedRedrawChunks: () => true,
-      hasRecentUserInteraction: () => true,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),
@@ -213,7 +206,7 @@ describe('hydrationRouter', () => {
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
   })
 
-  it('does not timeout-flush a destructive redraw before visible output arrives', () => {
+  it('timeout-flushes a destructive redraw if no visible output arrives', () => {
     vi.useFakeTimers()
     const terminal = {
       reset: vi.fn(),
@@ -238,7 +231,6 @@ describe('hydrationRouter', () => {
         outputScheduler,
         shouldReplaceAgentPlaceholderAfterHydration: () => false,
         shouldDeferHydratedRedrawChunks: () => true,
-        hasRecentUserInteraction: () => true,
         scrollbackBuffer,
         committedScrollbackBuffer,
         recordCommittedScreenState: vi.fn(),
@@ -255,17 +247,13 @@ describe('hydrationRouter', () => {
       router.handleDataChunk('\u001b[2J\u001b[H')
       vi.advanceTimersByTime(2_500)
 
-      expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
-
-      router.handleDataChunk('[redraw complete]')
-
-      expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
+      expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H')
     } finally {
       vi.useRealTimers()
     }
   })
 
-  it('keeps destructive redraw guarded after visible live output has arrived', () => {
+  it('keeps destructive redraw chunks coalesced after visible live output has arrived', () => {
     const terminal = {
       reset: vi.fn(),
       write: vi.fn(),
@@ -288,7 +276,6 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => false,
       shouldDeferHydratedRedrawChunks: () => true,
-      hasRecentUserInteraction: () => true,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),
@@ -343,7 +330,6 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => false,
       shouldDeferHydratedRedrawChunks: () => false,
-      hasRecentUserInteraction: () => true,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),
@@ -386,7 +372,6 @@ describe('hydrationRouter', () => {
       outputScheduler,
       shouldReplaceAgentPlaceholderAfterHydration: () => false,
       shouldDeferHydratedRedrawChunks: () => false,
-      hasRecentUserInteraction: () => false,
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: vi.fn(),

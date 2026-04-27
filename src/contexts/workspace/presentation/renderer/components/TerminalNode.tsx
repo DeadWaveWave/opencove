@@ -68,7 +68,8 @@ export function TerminalNode({
     const zoom = state.transform?.[2] ?? 1
     return Number.isFinite(zoom) && zoom > 0 ? zoom : 1
   })
-  const isTestEnvironment = window.opencoveApi.meta.isTest
+  const isTestEnvironment =
+    window.opencoveApi.meta.isTest || window.opencoveApi.meta.enableTerminalTestApi === true
   const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
   const outputSchedulerRef = useRef<TerminalOutputScheduler | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
@@ -171,8 +172,8 @@ export function TerminalNode({
     cancelScrollbackPublish,
   } = useTerminalScrollback({
     sessionId,
-    scrollback,
-    onScrollbackChange,
+    scrollback: kind === 'agent' ? null : scrollback,
+    onScrollbackChange: kind === 'agent' ? undefined : onScrollbackChange,
     isPointerResizingRef,
   })
 
@@ -296,7 +297,7 @@ export function TerminalNode({
     nodeId,
     sessionId,
     kind,
-    scrollback,
+    scrollback: kind === 'agent' ? null : scrollback,
     terminalProvider,
     terminalThemeMode,
     isTestEnvironment,
@@ -431,6 +432,8 @@ export function TerminalNode({
   }, [])
 
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
+  const isRecoveringAgentOutput =
+    kind === 'agent' && sessionId.trim().length > 0 && !isTerminalHydrated && !lastError
   const {
     consumeIgnoredClick: consumeIgnoredTerminalBodyClick,
     handlePointerDownCapture: handleTerminalBodyPointerDownCapture,
@@ -451,6 +454,7 @@ export function TerminalNode({
       lastError={lastError}
       sessionId={sessionId}
       isTerminalHydrated={isTerminalHydrated}
+      isRecoveringAgentOutput={isRecoveringAgentOutput}
       transcriptRef={transcriptRef}
       sizeStyle={sizeStyle}
       containerRef={containerRef}

@@ -90,6 +90,7 @@ export function installBrowserOpenCoveApi(): void {
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
       enableTerminalInputDiagnostics: false,
+      enableTerminalTestApi: false,
       runtime: 'browser',
       platform: resolveBrowserPlatform(),
       mainPid: null,

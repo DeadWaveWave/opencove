@@ -62,7 +62,8 @@ function captureTerminalVisibleText(terminal: Terminal): string {
     lines.push(line.translateToString(true))
   }
 
-  return lines.join('\n')
+  const text = lines.join('\n')
+  return text.trim().length > 0 ? text : ''
 }
 
 function isTerminalMouseInputEchoOnly(text: string): boolean {

@@ -57,10 +57,13 @@ export function registerSessionPrepareOrReviveHandler(
 
           const existingSessionId = normalizeOptionalString(node.sessionId)
           if (existingSessionId && deps.ptyStreamHub.hasSession(existingSessionId)) {
-            const scrollback = await resolvePreparedScrollback({
-              store,
-              node,
-            })
+            const scrollback =
+              node.kind === 'agent'
+                ? null
+                : await resolvePreparedScrollback({
+                    store,
+                    node,
+                  })
             return [
               ...preparedNodes,
               toPreparedNodeResult(node, {

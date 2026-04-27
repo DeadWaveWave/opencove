@@ -2,7 +2,7 @@
 
 > Status: Active working plan
 > Scope: terminal and agent nodes across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-25
+> Last updated: 2026-04-28
 
 ## Purpose
 
@@ -255,6 +255,18 @@ Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 - `NODE_OPTIONS=--experimental-require-module pnpm test -- --run tests/integration/recovery/useHydrateAppState.workerPrepare.spec.tsx tests/integration/recovery/useHydrateAppState.merge.spec.tsx tests/integration/recovery/useHydrateAppState.scrollback-ownership.spec.tsx`
 - `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cmd-w ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
 - `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
+
+Latest verified on `2026-04-28` for restored Agent first-input stability:
+
+- `pnpm build`
+- `pnpm check`
+- `pnpm test -- --run tests/unit/contexts/terminalInputClassification.spec.ts tests/unit/terminalNode/hydrationRouter.spec.ts tests/unit/terminalNode/hydrationRouter.sequence.spec.ts tests/unit/terminalNode/runtimeHydrationStarter.spec.ts tests/unit/terminalNode/useTerminalRuntimeSession.support.spec.ts tests/unit/terminalNode/hydrateFromSnapshot.spec.ts tests/contract/ipc/ptyRuntimeSubscriptions.spec.ts tests/unit/app/remotePtyStreamMessageHandler.spec.ts`
+- `pnpm test:terminal:presentation`
+- `ELECTRON_RUN_AS_NODE=1 OPENCOVE_REPRO_PROVIDER=codex OPENCOVE_REPRO_ITERATIONS=8 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ./node_modules/.bin/electron scripts/debug-repro-restored-agent-input.mjs`
+- `ELECTRON_RUN_AS_NODE=1 OPENCOVE_REPRO_PROVIDER=opencode OPENCOVE_REPRO_ITERATIONS=5 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ./node_modules/.bin/electron scripts/debug-repro-restored-agent-input.mjs`
+- `ELECTRON_RUN_AS_NODE=1 OPENCOVE_REPRO_PROVIDER=codex OPENCOVE_REPRO_ITERATIONS=3 OPENCOVE_REPRO_CLOSE_MODE=cmd-w ./node_modules/.bin/electron scripts/debug-repro-restored-agent-input.mjs`
+- `OPENCOVE_E2E_SKIP_BUILD=1 pnpm test:e2e:web-canvas`
+- Diagnostic check: Codex/OpenCode both reached visible worker output before input, stayed interactive after typing/backspace/enter, and reported converged renderer/worker geometry (`64x44`) in `restored-ready-before-input.json`.
 
 Latest targeted validation on `2026-04-25` for inactive terminal scrollback durability:
 

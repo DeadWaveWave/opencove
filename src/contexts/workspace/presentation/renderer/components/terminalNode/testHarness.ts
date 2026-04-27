@@ -65,6 +65,8 @@ type TerminalSelectionTestApi = {
     instanceId: number | null
   } | null
   getSize: (nodeId: string) => { cols: number; rows: number } | null
+  getRegisteredNodeIds: () => string[]
+  getRuntimeSessionId: (nodeId: string) => string | null
   getViewportY: (nodeId: string) => number | null
   getCachedScreenStateSummary: (nodeId: string) => {
     sessionId: string
@@ -86,6 +88,7 @@ declare global {
 
 const terminalHandles = new Map<string, TerminalSelectionHandle>()
 const terminalBinaryInputEmitters = new Map<string, (data: string) => boolean>()
+const terminalRuntimeSessionIds = new Map<string, string>()
 
 function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
   if (typeof window === 'undefined') {
@@ -253,6 +256,8 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
           rows: terminal.rows,
         }
       },
+      getRegisteredNodeIds: () => [...terminalHandles.keys()],
+      getRuntimeSessionId: nodeId => terminalRuntimeSessionIds.get(nodeId) ?? null,
       getViewportY: nodeId => {
         const terminal = terminalHandles.get(nodeId) as unknown as {
           buffer?: { active?: { viewportY?: unknown } }
@@ -354,5 +359,47 @@ export function registerTerminalBinaryInputTestHandle(
     if (terminalBinaryInputEmitters.get(nodeId) === emitBinaryInput) {
       terminalBinaryInputEmitters.delete(nodeId)
     }
+  }
+}
+
+export function registerTerminalRuntimeSessionTestHandle(
+  nodeId: string,
+  sessionId: string,
+): () => void {
+  if (typeof window === 'undefined') {
+    return () => undefined
+  }
+
+  getTerminalSelectionTestApi()
+  terminalRuntimeSessionIds.set(nodeId, sessionId)
+
+  return () => {
+    if (terminalRuntimeSessionIds.get(nodeId) === sessionId) {
+      terminalRuntimeSessionIds.delete(nodeId)
+    }
+  }
+}
+
+export function registerTerminalRuntimeTestHandles({
+  enabled,
+  nodeId,
+  sessionId,
+  emitBinaryInput,
+}: {
+  enabled: boolean
+  nodeId: string
+  sessionId: string
+  emitBinaryInput: (data: string) => boolean
+}): () => void {
+  if (!enabled) {
+    return () => undefined
+  }
+
+  const disposeBinaryInput = registerTerminalBinaryInputTestHandle(nodeId, emitBinaryInput)
+  const disposeRuntimeSession = registerTerminalRuntimeSessionTestHandle(nodeId, sessionId)
+
+  return () => {
+    disposeBinaryInput()
+    disposeRuntimeSession()
   }
 }

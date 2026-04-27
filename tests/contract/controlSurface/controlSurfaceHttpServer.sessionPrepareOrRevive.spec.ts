@@ -119,7 +119,8 @@ describe('Control Surface HTTP server (session.prepareOrRevive)', () => {
     )
     await approvedWorkspaces.registerRoot(workspacePath)
 
-    const spawnCalls: Array<{ cwd: string; env?: NodeJS.ProcessEnv }> = []
+    const spawnCalls: Array<{ cwd: string; env?: NodeJS.ProcessEnv; cols: number; rows: number }> =
+      []
     let sessionCounter = 0
     const ptyRuntime: ControlSurfacePtyRuntime = {
       spawnSession: async options => {
@@ -234,7 +235,12 @@ describe('Control Surface HTTP server (session.prepareOrRevive)', () => {
     let sessionCounter = 0
     const ptyRuntime: ControlSurfacePtyRuntime = {
       spawnSession: async options => {
-        spawnCalls.push({ cwd: options.cwd, env: options.env })
+        spawnCalls.push({
+          cwd: options.cwd,
+          env: options.env,
+          cols: options.cols,
+          rows: options.rows,
+        })
         sessionCounter += 1
         return { sessionId: `agent-session-${sessionCounter}` }
       },
@@ -296,6 +302,8 @@ describe('Control Surface HTTP server (session.prepareOrRevive)', () => {
       expect(preparedNode?.agent?.resumeSessionId).toBe('resume-session-1')
       expect(preparedNode?.agent?.resumeSessionIdVerified).toBe(true)
       expect(spawnCalls[0]?.env?.OPENAI_API_KEY).toBe('worker-restore-key')
+      expect(spawnCalls[0]?.cols).toBeGreaterThan(40)
+      expect(spawnCalls[0]?.rows).toBeGreaterThan(10)
     } finally {
       await disposeAndCleanup({
         server,
@@ -306,7 +314,7 @@ describe('Control Surface HTTP server (session.prepareOrRevive)', () => {
     }
   })
 
-  it('returns durable agent placeholder scrollback as the prepared restore baseline', async () => {
+  it('does not return durable agent placeholder scrollback as a renderer restore baseline', async () => {
     const userDataPath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-'))
     const workspacePath = await mkdtemp(join(tmpdir(), 'opencove-control-surface-workspace-'))
     const connectionFileName = 'control-surface.pty.prepare-or-revive.agent-scrollback.json'
@@ -350,10 +358,12 @@ describe('Control Surface HTTP server (session.prepareOrRevive)', () => {
         'durable placeholder history from worker store',
       )
 
+      const state = createAgentNodeState({ workspacePath, workspaceId, spaceId })
+      state.workspaces[0]!.nodes[0]!.scrollback = 'legacy agent renderer cache'
       const writeState = await invoke(baseUrl, 'test-token', {
         kind: 'command',
         id: 'sync.writeState',
-        payload: { state: createAgentNodeState({ workspacePath, workspaceId, spaceId }) },
+        payload: { state },
       })
       expect(writeState.status, JSON.stringify(writeState.data)).toBe(200)
 
@@ -374,7 +384,7 @@ describe('Control Surface HTTP server (session.prepareOrRevive)', () => {
         }
       )?.value?.nodes?.[0]
 
-      expect(preparedNode?.scrollback).toBe('durable placeholder history from worker store')
+      expect(preparedNode?.scrollback).toBeNull()
     } finally {
       await disposeAndCleanup({
         server,

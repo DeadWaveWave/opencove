@@ -82,6 +82,10 @@ export function useTerminalPlaceholderSession({
   terminalClientResetVersion: number
 }): void {
   useEffect(() => {
+    if (kind === 'agent') {
+      return undefined
+    }
+
     const normalizedSessionId = sessionId.trim()
     if (normalizedSessionId.length > 0) {
       return undefined
@@ -110,7 +114,7 @@ export function useTerminalPlaceholderSession({
       nodeId,
       ownerId: `${nodeId}:placeholder`,
       sessionIdForDiagnostics: '',
-      nodeKindForDiagnostics: kind === 'agent' ? 'agent' : 'terminal',
+      nodeKindForDiagnostics: 'terminal',
       titleForDiagnostics: 'placeholder',
       terminalProvider,
       terminalThemeMode,

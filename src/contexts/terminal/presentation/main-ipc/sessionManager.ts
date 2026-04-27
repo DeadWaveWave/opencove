@@ -178,13 +178,13 @@ export class TerminalSessionManager {
       return
     }
 
+    const nextSeq = (this.presentationSeqs.get(sessionId) ?? 0) + 1
     if (this.activeSessions.has(sessionId)) {
       const snapshot = this.snapshots.get(sessionId)
       if (snapshot) {
         appendSnapshotData(snapshot, data)
       }
 
-      const nextSeq = (this.presentationSeqs.get(sessionId) ?? 0) + 1
       this.presentationSeqs.set(sessionId, nextSeq)
       const presentationSession =
         this.presentationSessions.get(sessionId) ?? new TerminalPresentationSession({ sessionId })
@@ -196,7 +196,7 @@ export class TerminalSessionManager {
       return
     }
 
-    const eventPayload: TerminalDataEvent = { sessionId, data }
+    const eventPayload: TerminalDataEvent = { sessionId, data, seq: nextSeq }
     this.sendPtyDataToSubscribers(eventPayload)
   }
 

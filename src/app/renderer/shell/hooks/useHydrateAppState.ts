@@ -92,25 +92,21 @@ export function useHydrateAppState({
     const terminalNodeIds = workspace.nodes
       .filter(node => node.kind === 'terminal')
       .map(node => node.id)
-    const agentNodeIds = workspace.nodes.filter(node => node.kind === 'agent').map(node => node.id)
 
-    if (terminalNodeIds.length === 0 && agentNodeIds.length === 0) {
+    if (terminalNodeIds.length === 0) {
       scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
       return true
     }
 
-    const [terminalScrollbackResults, agentPlaceholderResults] = await Promise.all([
-      terminalNodeIds.length > 0
-        ? Promise.allSettled(terminalNodeIds.map(nodeId => port.readNodeScrollback(nodeId)))
-        : Promise.resolve([]),
-      agentNodeIds.length > 0
-        ? Promise.allSettled(
-            agentNodeIds.map(nodeId => port.readAgentNodePlaceholderScrollback(nodeId)),
-          )
-        : Promise.resolve([]),
-    ])
+    const terminalScrollbackResults = await Promise.allSettled(
+      terminalNodeIds.map(nodeId => port.readNodeScrollback(nodeId)),
+    )
 
     if (isCancelledRef.current) {
+      return false
+    }
+
+    if (terminalScrollbackResults.some(result => result.status === 'rejected')) {
       return false
     }
 
@@ -122,16 +118,9 @@ export function useHydrateAppState({
 
       scrollbacks[terminalNodeIds[index] as string] = result.value
     })
-    agentPlaceholderResults.forEach((result, index) => {
-      if (result.status !== 'fulfilled' || !result.value) {
-        return
-      }
-
-      scrollbacks[agentNodeIds[index] as string] = result.value
-    })
-
     if (Object.keys(scrollbacks).length === 0) {
-      return false
+      scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
+      return true
     }
 
     useScrollbackStore.setState(state => {
@@ -322,8 +311,8 @@ export function useHydrateAppState({
           persistedWorkspaceByIdRef.current.get(resolvedActiveWorkspaceId) ?? null
 
         if (activePersistedWorkspace) {
-          // Cold-start scrollback loads can race persistence IPC readiness. Retry briefly for the
-          // initial workspace so we keep the previous durable UI visible on first paint.
+          // Cold-start terminal scrollback loads can race persistence IPC readiness. Retry briefly
+          // for the initial workspace; agent restore must come from the runtime presentation path.
           const MAX_SCROLLBACK_LOAD_ATTEMPTS =
             window.opencoveApi?.meta?.runtime === 'electron' ? 2 : 1
           for (

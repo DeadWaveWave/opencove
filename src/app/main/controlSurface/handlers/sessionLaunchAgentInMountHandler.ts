@@ -35,6 +35,7 @@ import {
   normalizeAgentProviderId,
   normalizeFileSystemUri,
   normalizeOptionalString,
+  normalizeOptionalPositiveInt,
   resolvePathFromFileSystemUriOrThrow,
 } from './sessionLaunchPayloadSupport'
 
@@ -116,6 +117,8 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
   }
 
   const env = normalizeLaunchAgentEnv(payload.env)
+  const cols = normalizeOptionalPositiveInt(payload.cols)
+  const rows = normalizeOptionalPositiveInt(payload.rows)
 
   return {
     mountId,
@@ -131,6 +134,8 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
       resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw),
     env,
     agentFullAccess: agentFullAccess ?? null,
+    cols,
+    rows,
   }
 }
 
@@ -201,6 +206,8 @@ export function registerSessionLaunchAgentInMountHandler(
               resumeSessionId: payload.resumeSessionId ?? null,
               env: payload.env ?? null,
               agentFullAccess: payload.agentFullAccess ?? null,
+              cols: payload.cols,
+              rows: payload.rows,
             } satisfies LaunchAgentSessionInput,
           })
 
@@ -234,8 +241,8 @@ export function registerSessionLaunchAgentInMountHandler(
           cwd: remoteResult.executionContext.workingDirectory,
           command: remoteResult.command,
           args: remoteResult.args,
-          cols: 80,
-          rows: 24,
+          cols: payload.cols ?? 80,
+          rows: payload.rows ?? 24,
         })
 
         const executionContext = resolveExecutionContextDto(
@@ -359,8 +366,8 @@ export function registerSessionLaunchAgentInMountHandler(
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
-        cols: 80,
-        rows: 24,
+        cols: payload.cols ?? 80,
+        rows: payload.rows ?? 24,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
@@ -416,8 +423,8 @@ export function registerSessionLaunchAgentInMountHandler(
         cwd,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
-        cols: 80,
-        rows: 24,
+        cols: payload.cols ?? 80,
+        rows: payload.rows ?? 24,
       })
 
       return {

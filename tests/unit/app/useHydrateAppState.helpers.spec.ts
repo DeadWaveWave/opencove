@@ -92,7 +92,7 @@ function createPersistedWorkspace(): PersistedWorkspaceState {
 }
 
 describe('toShellWorkspaceState', () => {
-  it('clears terminal and agent runtime session ids on cold start while preserving placeholders', () => {
+  it('clears runtime session ids and drops agent renderer placeholders on cold start', () => {
     const state = toShellWorkspaceState(createPersistedWorkspace(), {
       dropRuntimeSessionIds: true,
     })
@@ -103,7 +103,7 @@ describe('toShellWorkspaceState', () => {
       ['note-1', ''],
     ])
     expect(state.nodes[0]?.data.scrollback).toBe('terminal history')
-    expect(state.nodes[1]?.data.scrollback).toBe('agent placeholder history')
+    expect(state.nodes[1]?.data.scrollback).toBeNull()
     expect(state.nodes[1]?.data.agent?.resumeSessionId).toBe('resume-session')
   })
 })

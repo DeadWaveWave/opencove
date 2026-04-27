@@ -6,8 +6,8 @@ import {
   removePathWithRetry,
 } from './workspace-canvas.helpers'
 
-test.describe('Recovery - Active workspace placeholder retry', () => {
-  test('retries loading agent placeholder scrollback for the initially active workspace', async () => {
+test.describe('Recovery - Active workspace agent renderer restore', () => {
+  test('does not render durable agent placeholder scrollback for the initially active workspace', async () => {
     const userDataDir = await createTestUserDataDir()
 
     try {
@@ -54,7 +54,8 @@ test.describe('Recovery - Active workspace placeholder retry', () => {
       })
 
       try {
-        // Simulate a transient IPC/persistence read failure for the first placeholder read.
+        // Simulate a transient IPC/persistence read failure for the first placeholder read. Agent
+        // rendering must not depend on this cache path.
         await restartedWindow.addInitScript({
           content: `
             (() => {
@@ -88,7 +89,7 @@ test.describe('Recovery - Active workspace placeholder retry', () => {
         await expect(restartedWindow.locator('.workspace-item')).toHaveCount(1)
         await expect(restartedWindow.locator('.terminal-node')).toHaveCount(1)
 
-        await expect(restartedWindow.locator('.terminal-node').first()).toContainText(
+        await expect(restartedWindow.locator('.terminal-node').first()).not.toContainText(
           'ACTIVE_PLACEHOLDER',
         )
       } finally {

@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { Node } from '@xyflow/react'
 import type { PersistWriteResult } from '../../../src/shared/contracts/dto/persistence'
 import {
   clearScheduledScrollbackWrites,
@@ -6,6 +7,8 @@ import {
   scheduleAgentPlaceholderScrollbackWrite,
   scheduleNodeScrollbackWrite,
 } from '../../../src/contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
+import { persistNodeScrollback } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useNodesStore.scrollbackPersistence'
+import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 type MockPersistenceApi = {
   writeNodeScrollback: ReturnType<typeof vi.fn>
@@ -71,6 +74,22 @@ describe('scrollbackSchedule', () => {
       nodeId: 'agent-1',
       scrollback: 'agent placeholder',
     })
+    expect(persistence.writeNodeScrollback).not.toHaveBeenCalled()
+  })
+
+  it('does not persist agent renderer scrollback from mounted nodes', async () => {
+    const persistence = getMockPersistence()
+    const agentNode = {
+      id: 'agent-1',
+      data: {
+        kind: 'agent',
+      },
+    } as Node<TerminalNodeData>
+
+    persistNodeScrollback(agentNode, 'agent renderer cache')
+    await vi.advanceTimersByTimeAsync(0)
+
+    expect(persistence.writeAgentNodePlaceholderScrollback).not.toHaveBeenCalled()
     expect(persistence.writeNodeScrollback).not.toHaveBeenCalled()
   })
 

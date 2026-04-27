@@ -8,6 +8,26 @@ import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement
 
 const ALT_BUFFER_ENTER_MARKER = '\u001b[?1049h'
 const ALT_BUFFER_EXIT_MARKER = '\u001b[?1049l'
+const PRESENTATION_SNAPSHOT_ATTACH_TIMEOUT_MS = 1_500
+
+async function awaitAttachForPresentationSnapshot(
+  attachPromise: Promise<void | undefined>,
+): Promise<void> {
+  let timeout: ReturnType<typeof setTimeout> | null = null
+
+  try {
+    await Promise.race([
+      attachPromise.catch(() => undefined),
+      new Promise<void>(resolve => {
+        timeout = setTimeout(resolve, PRESENTATION_SNAPSHOT_ATTACH_TIMEOUT_MS)
+      }),
+    ])
+  } finally {
+    if (timeout !== null) {
+      clearTimeout(timeout)
+    }
+  }
+}
 
 function shouldSkipRawDeltaForSerializedScreen(serialized: string, delta: string): boolean {
   // xterm serialize addon prefixes alternate buffer content with ESC[?1049h ESC[H. When a TUI is in
@@ -41,11 +61,7 @@ function shouldUsePresentationSnapshotAsVisibleBaseline(options: {
     return false
   }
 
-  if (
-    options.kind === 'agent' &&
-    options.persistedSnapshot.trim().length > 0 &&
-    !containsMeaningfulTerminalDisplayContent(serializedScreen)
-  ) {
+  if (options.kind === 'agent' && !containsMeaningfulTerminalDisplayContent(serializedScreen)) {
     return false
   }
 
@@ -98,11 +114,12 @@ export async function hydrateTerminalFromSnapshot({
   onHydratedWriteCommitted: (rawSnapshot: string) => void
   onHydrationBaselineResolved?: (source: TerminalHydrationBaselineSource) => void
   onPresentationSnapshotAccepted?: (snapshot: PresentationSnapshotTerminalResult) => void
-  finalizeHydration: (rawSnapshot: string) => void
+  finalizeHydration: (rawSnapshot: string, options?: { baselineAppliedSeq?: number | null }) => void
 }): Promise<void> {
-  const cachedSerializedScreen = cachedScreenState?.serialized ?? ''
+  const rendererPlaceholderSnapshot = kind === 'agent' ? '' : persistedSnapshot
+  const cachedSerializedScreen = kind === 'agent' ? '' : (cachedScreenState?.serialized ?? '')
   const placeholderPayload =
-    cachedSerializedScreen.length > 0 ? cachedSerializedScreen : persistedSnapshot
+    cachedSerializedScreen.length > 0 ? cachedSerializedScreen : rendererPlaceholderSnapshot
 
   let presentationSnapshot: PresentationSnapshotTerminalResult | null = null
   if (presentationSnapshotPromise) {
@@ -113,14 +130,14 @@ export async function hydrateTerminalFromSnapshot({
     }
   }
 
-  const baseRawSnapshot = persistedSnapshot
+  const baseRawSnapshot = rendererPlaceholderSnapshot
   let rawSnapshot = baseRawSnapshot
   let hydrationBaselineSource: TerminalHydrationBaselineSource =
     placeholderPayload.length > 0 ? 'placeholder_snapshot' : 'empty'
 
   const visiblePresentationSnapshot = shouldUsePresentationSnapshotAsVisibleBaseline({
     kind,
-    persistedSnapshot,
+    persistedSnapshot: rendererPlaceholderSnapshot,
     presentationSnapshot,
   })
     ? presentationSnapshot
@@ -135,7 +152,7 @@ export async function hydrateTerminalFromSnapshot({
     rawSnapshot = visiblePresentationSnapshot.serializedScreen
     hydrationBaselineSource = 'presentation_snapshot'
     onHydratedWriteCommitted(rawSnapshot)
-    await attachPromise.catch(() => undefined)
+    await awaitAttachForPresentationSnapshot(attachPromise)
   } else if (!skipInitialPlaceholderWrite && placeholderPayload.length > 0) {
     await writeTerminalAsync(terminal, placeholderPayload)
     onHydratedWriteCommitted(rawSnapshot)
@@ -146,22 +163,22 @@ export async function hydrateTerminalFromSnapshot({
     const snapshot = await takePtySnapshot({ sessionId })
     if (
       kind === 'agent' &&
-      persistedSnapshot.trim().length > 0 &&
+      rendererPlaceholderSnapshot.trim().length > 0 &&
       snapshot.data.length > 0 &&
       !containsMeaningfulTerminalDisplayContent(snapshot.data)
     ) {
-      return persistedSnapshot
+      return rendererPlaceholderSnapshot
     }
 
-    const mergedSnapshot = mergeScrollbackSnapshots(persistedSnapshot, snapshot.data)
-    const liveDelta = resolveScrollbackDelta(persistedSnapshot, mergedSnapshot)
+    const mergedSnapshot = mergeScrollbackSnapshots(rendererPlaceholderSnapshot, snapshot.data)
+    const liveDelta = resolveScrollbackDelta(rendererPlaceholderSnapshot, mergedSnapshot)
     if (
       kind === 'agent' &&
-      persistedSnapshot.trim().length > 0 &&
+      rendererPlaceholderSnapshot.trim().length > 0 &&
       liveDelta.length > 0 &&
       !containsMeaningfulTerminalDisplayContent(liveDelta)
     ) {
-      return persistedSnapshot
+      return rendererPlaceholderSnapshot
     }
 
     if (cachedSerializedScreen.length > 0) {
@@ -207,5 +224,11 @@ export async function hydrateTerminalFromSnapshot({
 
   onHydrationBaselineResolved?.(hydrationBaselineSource)
   onHydratedWriteCommitted(rawSnapshot)
-  finalizeHydration(rawSnapshot)
+  const baselineAppliedSeq = visiblePresentationSnapshot?.appliedSeq ?? null
+  if (baselineAppliedSeq === null) {
+    finalizeHydration(rawSnapshot)
+    return
+  }
+
+  finalizeHydration(rawSnapshot, { baselineAppliedSeq })
 }

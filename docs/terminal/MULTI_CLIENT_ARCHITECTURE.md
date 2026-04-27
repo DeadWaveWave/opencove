@@ -2,7 +2,7 @@
 
 > Status: Canonical technical direction
 > Scope: terminal and agent nodes rendered across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-24
+> Last updated: 2026-04-28
 
 Verification workflow:
 
@@ -181,9 +181,9 @@ Allowed:
 - skeleton or recovering UI before worker state is available
 - selection, local scroll position, zoom, and viewport preference
 - performance optimizations that can be dropped at any time
-- cached serialized screen or dimensions as a temporary placeholder while worker truth is still pending
+- cached serialized screen or dimensions as a temporary placeholder for plain terminal nodes while worker truth is still pending
 - same-renderer handoff cache that never contributes a raw snapshot baseline
-- terminal scrollback persisted from mounted renderer publish plus app-shell inactive PTY stream sync; agent placeholder scrollback remains renderer-published UX cache
+- terminal scrollback persisted from mounted renderer publish plus app-shell inactive PTY stream sync
 
 Forbidden:
 
@@ -193,6 +193,65 @@ Forbidden:
 - renderer cache writing back canonical presentation state
 - cached raw snapshot overriding an accepted worker `presentationSnapshot`
 - main-side PTY snapshot mirroring acting as the producer of renderer placeholder correctness
+
+Agent nodes are stricter than plain terminal nodes: cold-start restore must render from worker
+`presentationSnapshot -> attach(afterSeq)` only. Agent placeholder scrollback and renderer screen
+cache may remain as legacy cleanup/compatibility data, but must not be read into renderer state,
+returned by `session.prepareOrRevive`, mounted as a placeholder xterm, or persisted from renderer
+output.
+
+If a revived Agent has attached but the worker presentation is still empty, the renderer may show a
+recovering overlay and temporarily gate user input while still forwarding automatic terminal replies.
+The overlay is UX-only: it is not terminal content, it is not persisted, and it disappears on the
+first meaningful worker output. A bounded fail-open timeout is allowed only as a recoverability
+fallback so the UI never becomes permanently blank/non-interactive; that fallback must log
+diagnostics and still must not promote renderer cache into terminal truth.
+
+`isLiveSessionReattach` means the runtime session exists; it does not mean the worker presentation is
+ready to paint. Restored Agent readiness is determined by the resume contract plus an actually visible
+worker snapshot/output. This prevents App restart from hydrating a blank xterm just because the worker
+session was already alive.
+
+After a restored Agent becomes visible, destructive control-only redraws (`clear`, alternate-screen
+repaint fragments, cursor-home plus erase) are still coalesced until visible content follows, with a
+bounded timeout fallback. This applies whether the first visible baseline came from a worker snapshot,
+hydration replay, or the first live worker output after an empty hydration baseline. A client must not
+paint a naked clear-screen fragment first and wait for the next chunk to refill the canvas, because
+that reintroduces the "content disappears on first input or resize" failure mode.
+
+Hydration replay is sequence-aware. If a worker `presentationSnapshot` with `appliedSeq=N` is accepted,
+any buffered attach output at `seq <= N` is already represented by the snapshot and must not be
+replayed into xterm again. Automatic terminal queries are the exception: they remain deliverable to
+the local xterm so the runtime still receives feature/status replies during restore.
+
+That `appliedSeq` is part of the correctness contract and must be preserved through every renderer
+hydration wrapper. If an orchestration layer drops it before calling the hydration router, the client
+will replay stale attach chunks over an accepted worker snapshot and can reintroduce first-input
+screen jumps that look like renderer cache bugs.
+
+If a buffered hydration chunk has no sequence after an authoritative snapshot baseline, it is not
+safe to treat it as fresh output. The client drops non-query unknown-seq chunks instead of replaying
+possibly stale output over the accepted screen.
+
+If fresh post-snapshot Agent output is a destructive TUI repaint with visible content, that repaint
+becomes the new local baseline: reset the local xterm and write the fresh frame rather than painting
+it over a stale restored frame. This avoids old prompt lines surviving below a newly restored Codex
+or OpenCode screen.
+
+For restored Agent cold-start, a post-geometry worker snapshot is accepted as the visible baseline
+only after it contains meaningful display content. Control-only snapshots such as terminal feature
+queries, bracketed-paste toggles, or color probes can drive xterm replies during hydration, but they
+must not reveal the Agent as restored or release initial user input.
+
+Control-only snapshots are also not accepted as sequence baselines. They may align local xterm
+geometry and keep the recovery state visible, but buffered attach output after the last visible
+baseline remains eligible for replay. Otherwise a worker snapshot that only contains mode toggles
+could fence off the real restored TUI frame and make the Agent look empty until the next input.
+
+After a visible presentation snapshot has been written locally, attach completion is bounded. A stuck
+transport attach must not leave the Agent in a visible-but-input-gated state forever; the still-pending
+attach may continue in the background, while the renderer finalizes hydration against the accepted
+snapshot and visible worker output.
 
 ## Renderer Health
 
@@ -214,6 +273,7 @@ Each recovery should log a reason such as `overflow`, `gap`, `contextLoss`, `bla
 5. Any desync fails closed to snapshot resync.
 6. Hidden or frozen clients can be dropped and rebuilt without changing session truth.
 7. Accepted worker snapshots cannot be replaced by later renderer heuristics.
+8. A live Agent session is not considered visually ready until a worker snapshot/output contains visible content.
 
 ## Rollout
 

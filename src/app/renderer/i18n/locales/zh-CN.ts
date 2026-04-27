@@ -290,6 +290,7 @@ export const zhCN = {
   terminalNode: {
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
+    recoveringAgentSession: '正在恢复实时 Agent 会话…',
   },
   terminalFind: {
     placeholder: '查找…',

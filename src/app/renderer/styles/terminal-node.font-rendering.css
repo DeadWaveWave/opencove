@@ -1,0 +1,22 @@
+/* Font rendering optimization for xterm DOM renderer */
+html:not([data-cove-platform='win32']) .terminal-node__terminal .xterm .xterm-rows {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: geometricPrecision !important;
+  font-kerning: none !important;
+  shape-rendering: crispEdges;
+}
+
+html[data-cove-platform='win32'] .terminal-node__terminal .xterm .xterm-rows {
+  text-rendering: geometricPrecision !important;
+  font-kerning: none !important;
+  shape-rendering: crispEdges;
+}
+
+/* Force grayscale antialiasing on all xterm helper elements */
+html:not([data-cove-platform='win32']) .terminal-node__terminal .xterm .xterm-helpers,
+html:not([data-cove-platform='win32']) .terminal-node__terminal .xterm .xterm-helper-textarea,
+html:not([data-cove-platform='win32']) .terminal-node__terminal .xterm .xterm-screen {
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}

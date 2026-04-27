@@ -49,11 +49,13 @@ describe('createRemotePtyStreamMessageHandler', () => {
     expect(sendToSessionSubscribers).toHaveBeenCalledWith('session-1', IPC_CHANNELS.ptyData, {
       sessionId: 'session-1',
       data: 'hello',
+      seq: 3,
     })
     expect(sendToAllWindows).not.toHaveBeenCalled()
     expect(externalDataListener).toHaveBeenCalledWith({
       sessionId: 'session-1',
       data: 'hello',
+      seq: 3,
     })
   })
 

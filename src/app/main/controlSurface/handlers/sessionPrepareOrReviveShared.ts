@@ -142,11 +142,11 @@ export async function resolvePreparedScrollback(options: {
   store: PersistenceStore
   node: NormalizedPersistedNode
 }): Promise<string | null> {
-  const durableScrollback =
-    options.node.kind === 'agent'
-      ? await options.store.readAgentNodePlaceholderScrollback(options.node.id)
-      : await options.store.readNodeScrollback(options.node.id)
+  if (options.node.kind !== 'terminal') {
+    return null
+  }
 
+  const durableScrollback = await options.store.readNodeScrollback(options.node.id)
   return durableScrollback ?? options.node.scrollback
 }
 
@@ -160,7 +160,7 @@ export function toPreparedNodeResult(
     nodeId: node.id,
     kind: node.kind === 'agent' ? 'agent' : 'terminal',
     title: node.title,
-    scrollback: options.scrollback ?? node.scrollback,
+    scrollback: options.scrollback === undefined ? node.scrollback : options.scrollback,
     ...options,
   }
 }

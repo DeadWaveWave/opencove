@@ -291,6 +291,7 @@ export const en = {
   terminalNode: {
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
+    recoveringAgentSession: 'Recovering live Agent session…',
   },
   terminalFind: {
     placeholder: 'Find…',

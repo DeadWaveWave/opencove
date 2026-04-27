@@ -16,8 +16,21 @@ export function toShellWorkspaceState(
   options?: { dropRuntimeSessionIds?: boolean },
 ): WorkspaceState {
   const dropRuntimeSessionIds = options?.dropRuntimeSessionIds === true
+  const runtimeNodes = toRuntimeNodes(workspace).map(node => {
+    if (node.data.kind !== 'agent') {
+      return node
+    }
+
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        scrollback: null,
+      },
+    }
+  })
   const nodes = dropRuntimeSessionIds
-    ? toRuntimeNodes(workspace).map(node => {
+    ? runtimeNodes.map(node => {
         if (node.data.kind !== 'terminal' && node.data.kind !== 'agent') {
           return node
         }
@@ -30,7 +43,7 @@ export function toShellWorkspaceState(
           },
         }
       })
-    : toRuntimeNodes(workspace)
+    : runtimeNodes
   const validNodeIds = new Set(nodes.map(node => node.id))
   const sanitizedSpaces = sanitizeWorkspaceSpaces(
     workspace.spaces.map(space => ({
@@ -121,7 +134,7 @@ export function mergeHydratedNode(
       endedAt: hydratedNode.data.endedAt,
       exitCode: hydratedNode.data.exitCode,
       lastError: hydratedNode.data.lastError,
-      scrollback: hydratedNode.data.scrollback,
+      scrollback: hydratedNode.data.kind === 'agent' ? null : hydratedNode.data.scrollback,
       agent: mergeHydratedAgentData(currentNode.data.agent, hydratedNode.data.agent),
       task: hydratedNode.data.task ?? currentNode.data.task,
       note: hydratedNode.data.note ?? currentNode.data.note,
@@ -171,7 +184,7 @@ function toHydratedRuntimeNode(
       endedAt: preparedNode.endedAt,
       exitCode: preparedNode.exitCode,
       lastError: preparedNode.lastError,
-      scrollback: preparedNode.scrollback,
+      scrollback: preparedNode.kind === 'agent' ? null : preparedNode.scrollback,
       executionDirectory: preparedNode.executionDirectory ?? currentNode.data.executionDirectory,
       expectedDirectory: preparedNode.expectedDirectory ?? currentNode.data.expectedDirectory,
       agent:
@@ -210,7 +223,10 @@ async function hydrateRuntimeNodeLocally({
         data: {
           ...node.data,
           isLiveSessionReattach: true,
-          scrollback: mergeScrollbackSnapshots(node.data.scrollback ?? '', liveScrollback),
+          scrollback:
+            node.data.kind === 'agent'
+              ? null
+              : mergeScrollbackSnapshots(node.data.scrollback ?? '', liveScrollback),
         },
       }
     } catch {

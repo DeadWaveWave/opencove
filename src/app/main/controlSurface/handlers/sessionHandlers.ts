@@ -33,6 +33,7 @@ import {
   isRecord,
   normalizeAgentProviderId,
   normalizeOptionalString,
+  normalizeOptionalPositiveInt,
 } from './sessionLaunchPayloadSupport'
 import type { SessionRecord } from './sessionRecords'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
@@ -121,6 +122,8 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw)
 
   const env = normalizeLaunchAgentEnv(payload.env)
+  const cols = normalizeOptionalPositiveInt(payload.cols)
+  const rows = normalizeOptionalPositiveInt(payload.rows)
 
   if (
     agentFullAccess !== undefined &&
@@ -148,6 +151,8 @@ function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentSessionInput 
     resumeSessionId,
     env,
     agentFullAccess: agentFullAccess ?? null,
+    cols,
+    rows,
   }
 }
 
@@ -295,8 +300,8 @@ export function registerSessionHandlers(
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
-        cols: 80,
-        rows: 24,
+        cols: payload.cols ?? 80,
+        rows: payload.rows ?? 24,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
@@ -344,8 +349,8 @@ export function registerSessionHandlers(
         cwd: workingDirectory,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
-        cols: 80,
-        rows: 24,
+        cols: payload.cols ?? 80,
+        rows: payload.rows ?? 24,
       })
 
       return {

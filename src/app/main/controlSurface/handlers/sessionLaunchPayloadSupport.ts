@@ -19,6 +19,19 @@ export function normalizeOptionalString(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null
 }
 
+export function normalizeOptionalPositiveInt(value: unknown): number | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null
+  }
+
+  const normalized = Math.floor(value)
+  return normalized > 0 ? normalized : null
+}
+
 export function normalizeAgentProviderId(
   value: unknown,
   operationId: string,

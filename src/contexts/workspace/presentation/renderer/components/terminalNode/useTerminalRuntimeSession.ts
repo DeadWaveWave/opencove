@@ -13,7 +13,6 @@ import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
 import { MAX_SCROLLBACK_CHARS } from './constants'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
 import { createTerminalOutputScheduler } from './outputScheduler'
-import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
 import {
   containsDestructiveTerminalDisplayControlSequence,
   shouldDeferHydratedTerminalRedrawChunk,
@@ -22,14 +21,13 @@ import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
 import { createMountedXtermSession } from './xtermSession'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
-import { registerTerminalBinaryInputTestHandle } from './testHarness'
+import { registerTerminalRuntimeTestHandles } from './testHarness'
 import type { TerminalRuntimeSessionOptions } from './useTerminalRuntimeSession.types'
 import {
   formatTerminalDataHeadHex,
   hasVisibleTerminalBufferContent,
 } from './terminalRuntimeDiagnostics'
 import {
-  hasRecentTerminalUserInteraction,
   markRecentTerminalUserInteraction,
   registerTerminalUserInteractionWindow,
 } from './userInteractionWindow'
@@ -39,11 +37,13 @@ import {
   scheduleTestEnvironmentTerminalAutoFocus,
   prepareRuntimePresentationAttach,
   registerRuntimeRendererAndThemeSync,
+  shouldAwaitRestoredAgentVisibleOutput,
   shouldGateRestoredAgentInput,
-  shouldProtectHydratedAgentHistory,
   shouldTreatHydratedAgentBaselineAsPlaceholder,
   type TerminalHydrationBaselineSource,
 } from './useTerminalRuntimeSession.support'
+import { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
+import { startRuntimeTerminalHydration } from './runtimeHydrationStarter'
 
 export function useTerminalRuntimeSession({
   nodeId,
@@ -92,28 +92,30 @@ export function useTerminalRuntimeSession({
   requestTerminalRendererRecovery,
 }: TerminalRuntimeSessionOptions): void {
   useEffect(() => {
-    if (sessionId.trim().length === 0) {
+    if (sessionId.trim().length === 0 || !containerRef.current) {
       return undefined
     }
-
-    if (!containerRef.current) {
-      return undefined
-    }
-
-    const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
+    const cachedScreenState =
+      kind === 'agent' ? null : getCachedTerminalScreenState(nodeId, sessionId)
     suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))
     const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
     const scrollbackBuffer = scrollbackBufferRef.current
     const pendingUserInputBuffer = pendingUserInputBufferRef.current
-    const persistedSnapshot = scrollbackBuffer.snapshot()
+    const rendererBaselineSnapshot = kind === 'agent' ? '' : scrollbackBuffer.snapshot()
     const shouldGateInitialUserInput = shouldGateRestoredAgentInput({
       kind,
-      isLiveSessionReattach,
-      persistedSnapshot,
+      persistedSnapshot: rendererBaselineSnapshot,
+      agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+      agentLaunchMode: agentLaunchModeRef.current,
+    })
+    const shouldAwaitAgentVisibleOutput = shouldAwaitRestoredAgentVisibleOutput({
+      kind,
+      agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+      agentLaunchMode: agentLaunchModeRef.current,
     })
     const committedScrollbackBuffer = createRollingTextBuffer({
       maxChars: MAX_SCROLLBACK_CHARS,
-      initial: persistedSnapshot,
+      initial: rendererBaselineSnapshot,
     })
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
     const inputDiagnosticsEnabled = window.opencoveApi.meta?.enableTerminalInputDiagnostics === true
@@ -196,7 +198,6 @@ export function useTerminalRuntimeSession({
     }
     const serializeAddon = session.serializeAddon
     const terminalDiagnostics = session.diagnostics
-
     const testEnvironmentAutoFocusFrame = scheduleTestEnvironmentTerminalAutoFocus({
       enabled: isTestEnvironment,
       container: containerRef.current,
@@ -220,14 +221,17 @@ export function useTerminalRuntimeSession({
     session.disposePlaceholderHandoffInputCapture?.()
     session.disposePlaceholderHandoffInputCapture = undefined
     const { ptyWriteQueue } = runtimeInputBridge
-    const disposeBinaryInputTestHandle = isTestEnvironment
-      ? registerTerminalBinaryInputTestHandle(nodeId, data => {
-          markRecentTerminalUserInteraction(recentUserInteractionAtRef)
-          ptyWriteQueue.enqueue(data, 'binary')
-          ptyWriteQueue.flush()
-          return true
-        })
-      : () => undefined
+    const disposeRuntimeTestHandles = registerTerminalRuntimeTestHandles({
+      enabled: isTestEnvironment,
+      nodeId,
+      sessionId,
+      emitBinaryInput: data => {
+        markRecentTerminalUserInteraction(recentUserInteractionAtRef)
+        ptyWriteQueue.enqueue(data, 'binary')
+        ptyWriteQueue.flush()
+        return true
+      },
+    })
     const openCodeThemeBridge = createOptionalOpenCodeThemeBridge({
       terminalProvider,
       terminal,
@@ -235,12 +239,30 @@ export function useTerminalRuntimeSession({
       terminalThemeMode,
     })
     let isDisposed = false
+    let protectRestoredVisibleBaseline: () => void = () => undefined
+    const restoredAgentVisibilityGate = createRestoredAgentVisibilityGate({
+      terminal,
+      shouldAwaitAgentVisibleOutput,
+      shouldGateInitialUserInput,
+      isDisposed: () => isDisposed,
+      markHydrated: () => {
+        isTerminalHydratedRef.current = true
+        setIsTerminalHydrated(true)
+      },
+      protectVisibleBaseline: () => {
+        protectRestoredVisibleBaseline()
+      },
+      scheduleTranscriptSync,
+      reportThemeMode: () => openCodeThemeBridge?.reportThemeMode(),
+      releaseBufferedUserInput: runtimeInputBridge.releaseBufferedUserInput,
+      log: terminalDiagnostics.log,
+    })
     const ptyEventHub = getPtyEventHub()
     const hydrationBaselineSourceRef: { current: TerminalHydrationBaselineSource } = {
       current:
         preservedSession !== null ||
         cachedScreenState?.serialized.length ||
-        persistedSnapshot.trim().length > 0
+        rendererBaselineSnapshot.trim().length > 0
           ? 'placeholder_snapshot'
           : 'empty',
     }
@@ -272,6 +294,7 @@ export function useTerminalRuntimeSession({
         committedScrollbackBuffer.append(data)
         committedScreenStateRecorder.record(committedScrollbackBuffer.snapshot())
         scheduleTranscriptSync()
+        restoredAgentVisibilityGate.notifyWriteCommitted(data)
       },
     })
     outputSchedulerRef.current = outputScheduler
@@ -284,19 +307,12 @@ export function useTerminalRuntimeSession({
           kind,
           agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
           agentLaunchMode: agentLaunchModeRef.current,
-          persistedSnapshot: scrollbackBuffer.snapshot(),
+          persistedSnapshot: kind === 'agent' ? '' : scrollbackBuffer.snapshot(),
           baselineSource: hydrationBaselineSourceRef.current,
         }),
+      shouldReplaceAuthoritativeBaselineWithBufferedOutput: () => kind === 'agent',
       shouldDeferHydratedRedrawChunks: () =>
-        hasPreservedVisibleBaseline ||
-        hasVisibleTerminalBufferContent(terminal) ||
-        shouldProtectHydratedAgentHistory({
-          kind,
-          agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
-          agentLaunchMode: agentLaunchModeRef.current,
-          persistedSnapshot: scrollbackBuffer.snapshot(),
-        }),
-      hasRecentUserInteraction: () => hasRecentTerminalUserInteraction(recentUserInteractionAtRef),
+        hasPreservedVisibleBaseline || hasVisibleTerminalBufferContent(terminal),
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: nextRawSnapshot => {
@@ -309,20 +325,18 @@ export function useTerminalRuntimeSession({
         terminalDiagnostics.logHydrated(details)
       },
       syncTerminalSize,
-      onRevealed: () => {
-        if (!isDisposed) {
-          isTerminalHydratedRef.current = true
-          setIsTerminalHydrated(true)
-          scheduleTranscriptSync()
-          openCodeThemeBridge?.reportThemeMode()
-        }
+      onReplayWriteCommitted: () => {
+        restoredAgentVisibilityGate.notifyReplayWriteCommitted()
       },
+      onRevealed: restoredAgentVisibilityGate.revealAfterHydration,
       isDisposed: () => isDisposed,
     })
+    protectRestoredVisibleBaseline = hydrationRouter.protectHydratedVisibleBaseline
     const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
       openCodeThemeBridge?.handlePtyOutputChunk(event.data)
       if (diagnosticsEnabled) {
         terminalDiagnostics.log('pty-data', {
+          seq: event.seq ?? null,
           dataLength: event.data.length,
           dataStartsWithEsc: event.data.startsWith('\u001b'),
           dataHeadHex: formatTerminalDataHeadHex(event.data),
@@ -330,7 +344,8 @@ export function useTerminalRuntimeSession({
           shouldDeferHydratedRedraw: shouldDeferHydratedTerminalRedrawChunk(event.data),
         })
       }
-      hydrationRouter.handleDataChunk(event.data)
+      restoredAgentVisibilityGate.notifyOutputObserved(event.data)
+      hydrationRouter.handleDataChunk(event.data, { seq: event.seq ?? null })
     })
     const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
       hydrationRouter.handleExit(event.exitCode)
@@ -355,46 +370,26 @@ export function useTerminalRuntimeSession({
     })
     const shouldSkipInitialPlaceholderWrite =
       hasPreservedVisibleBaseline && hasVisibleTerminalBufferContent(terminal)
-    void hydrateTerminalFromSnapshot({
+    startRuntimeTerminalHydration({
       attachPromise,
       sessionId,
       terminal,
-      kind: kind === 'agent' ? 'agent' : 'terminal',
-      useLivePtySnapshotDuringHydration: kind !== 'agent' || isLiveSessionReattach,
-      skipInitialPlaceholderWrite: shouldSkipInitialPlaceholderWrite,
+      kind,
+      isLiveSessionReattach,
+      shouldSkipInitialPlaceholderWrite,
       cachedScreenState,
-      persistedSnapshot: scrollbackBuffer.snapshot(),
+      scrollbackBuffer,
+      committedScrollbackBuffer,
+      committedScreenStateRecorder,
+      scheduleTranscriptSync,
       presentationSnapshotPromise,
-      takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
+      hydrationBaselineSourceRef,
+      lastCommittedPtySizeRef,
+      runtimeInputBridge,
+      hydrationRouter,
+      shouldGateInitialUserInput,
+      shouldAwaitAgentVisibleOutput,
       isDisposed: () => isDisposed,
-      onHydratedWriteCommitted: rawSnapshot => {
-        committedScrollbackBuffer.set(rawSnapshot)
-        committedScreenStateRecorder.record(rawSnapshot)
-        scheduleTranscriptSync()
-      },
-      onHydrationBaselineResolved: source => {
-        hydrationBaselineSourceRef.current = source
-      },
-      onPresentationSnapshotAccepted: snapshot => {
-        lastCommittedPtySizeRef.current = {
-          cols: snapshot.cols,
-          rows: snapshot.rows,
-        }
-      },
-      finalizeHydration: rawSnapshot => {
-        runtimeInputBridge.enableTerminalDataForwarding()
-        hydrationRouter.finalizeHydration(rawSnapshot)
-        if (shouldGateInitialUserInput) {
-          window.setTimeout(() => {
-            if (isDisposed) {
-              return
-            }
-            runtimeInputBridge.releaseBufferedUserInput()
-          }, 1_000)
-          return
-        }
-        runtimeInputBridge.releaseBufferedUserInput()
-      },
     })
     const disposeRuntimeRendererAndThemeSync = registerRuntimeRendererAndThemeSync({
       terminal,
@@ -418,14 +413,16 @@ export function useTerminalRuntimeSession({
       }
       suppressPtyResizeRef.current = false
       const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
-      cacheTerminalScreenStateOnUnmount({
-        nodeId,
-        isInvalidated,
-        isTerminalHydrated: isTerminalHydratedRef.current,
-        hasPendingWrites: outputScheduler.hasPendingWrites(),
-        rawSnapshot: scrollbackBuffer.snapshot(),
-        resolveCommittedScreenState: committedScreenStateRecorder.resolve,
-      })
+      if (kind !== 'agent') {
+        cacheTerminalScreenStateOnUnmount({
+          nodeId,
+          isInvalidated,
+          isTerminalHydrated: isTerminalHydratedRef.current,
+          hasPendingWrites: outputScheduler.hasPendingWrites(),
+          rawSnapshot: scrollbackBuffer.snapshot(),
+          resolveCommittedScreenState: committedScreenStateRecorder.resolve,
+        })
+      }
       isDisposed = true
       disposeRuntimeRendererAndThemeSync()
       disposeInteractionWindow()
@@ -433,9 +430,10 @@ export function useTerminalRuntimeSession({
       unsubscribeExit()
       unsubscribeGeometry()
       unsubscribeResync()
+      restoredAgentVisibilityGate.dispose()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
-      disposeBinaryInputTestHandle()
+      disposeRuntimeTestHandles()
       runtimeInputBridge.dispose()
       pendingUserInputBuffer.length = 0
       openCodeThemeBridge?.dispose()

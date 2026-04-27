@@ -33,6 +33,7 @@ describe('hydrationReplacement', () => {
     expect(shouldDeferHydratedTerminalRedrawChunk('^[[<0;34;22M\u001b[2J\u001b[H')).toBe(true)
     expect(shouldDeferHydratedTerminalRedrawChunk('\u001b[2J\u001b[Hready')).toBe(false)
     expect(shouldDeferHydratedTerminalRedrawChunk('^[[<0;34;22M\u001b[2J\u001b[Hready')).toBe(false)
+    expect(shouldDeferHydratedTerminalRedrawChunk('\u001b[K')).toBe(false)
     expect(shouldDeferHydratedTerminalRedrawChunk('ready\u001b[K')).toBe(false)
   })
 

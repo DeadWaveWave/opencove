@@ -34,6 +34,14 @@ import {
 } from './sessionPrepareOrReviveShared'
 
 const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
+const DEFAULT_PTY_COLS = 80
+const DEFAULT_PTY_ROWS = 24
+const TERMINAL_NODE_HEADER_HEIGHT_PX = 34
+const TERMINAL_NODE_XTERM_PADDING_PX = 16
+const ESTIMATED_TERMINAL_CELL_WIDTH_RATIO = 0.6
+const ESTIMATED_TERMINAL_CELL_HEIGHT_RATIO = 1.15
+
+type PtyGeometry = { cols: number; rows: number }
 
 async function resolvePendingResumeSessionId(
   node: NormalizedPersistedNode,
@@ -59,6 +67,39 @@ async function resolvePendingResumeSessionId(
   })
 }
 
+function clampPtyDimension(value: number, fallback: number, max: number): number {
+  if (!Number.isFinite(value)) {
+    return fallback
+  }
+
+  const normalized = Math.floor(value)
+  if (normalized <= 0) {
+    return fallback
+  }
+
+  return Math.min(max, Math.max(1, normalized))
+}
+
+function resolveNodeInitialPtyGeometry(
+  node: NormalizedPersistedNode,
+  settings: ReturnType<typeof normalizeAgentSettings>,
+): PtyGeometry {
+  const fontSize =
+    Number.isFinite(settings.terminalFontSize) && settings.terminalFontSize > 0
+      ? settings.terminalFontSize
+      : 13
+  const contentWidth = node.width - TERMINAL_NODE_XTERM_PADDING_PX
+  const contentHeight =
+    node.height - TERMINAL_NODE_HEADER_HEIGHT_PX - TERMINAL_NODE_XTERM_PADDING_PX
+  const cellWidth = fontSize * ESTIMATED_TERMINAL_CELL_WIDTH_RATIO
+  const cellHeight = fontSize * ESTIMATED_TERMINAL_CELL_HEIGHT_RATIO
+
+  return {
+    cols: clampPtyDimension(contentWidth / cellWidth, DEFAULT_PTY_COLS, 300),
+    rows: clampPtyDimension(contentHeight / cellHeight, DEFAULT_PTY_ROWS, 120),
+  }
+}
+
 async function spawnFallbackTerminal(options: {
   controlSurface: ControlSurface
   ctx: ControlSurfaceContext
@@ -67,7 +108,9 @@ async function spawnFallbackTerminal(options: {
   space: NormalizedPersistedSpace | null
   cwd: string
   profileId: string | null
+  geometry?: PtyGeometry
 }): Promise<SpawnTerminalResult> {
+  const geometry = options.geometry ?? { cols: DEFAULT_PTY_COLS, rows: DEFAULT_PTY_ROWS }
   if (options.space?.targetMountId) {
     return await invokeCommand<SpawnTerminalResult>(options.controlSurface, options.ctx, {
       id: 'pty.spawnInMount',
@@ -75,8 +118,8 @@ async function spawnFallbackTerminal(options: {
         mountId: options.space.targetMountId,
         cwdUri: toFileUri(options.cwd),
         profileId: options.profileId,
-        cols: 80,
-        rows: 24,
+        cols: geometry.cols,
+        rows: geometry.rows,
       },
     })
   }
@@ -86,8 +129,8 @@ async function spawnFallbackTerminal(options: {
     payload: {
       cwd: options.cwd,
       profileId: options.profileId,
-      cols: 80,
-      rows: 24,
+      cols: geometry.cols,
+      rows: geometry.rows,
     },
   })
 }
@@ -163,11 +206,9 @@ export async function prepareAgentNode(options: {
   settings: ReturnType<typeof normalizeAgentSettings>
 }): Promise<PreparedRuntimeNodeResult> {
   const { controlSurface, ctx, workspace, node, space, settings } = options
-  const scrollback = await resolvePreparedScrollback({
-    store: options.store,
-    node,
-  })
+  const scrollback: string | null = null
   const terminalProfileId = resolveNodeProfileId(node) ?? settings.defaultTerminalProfileId ?? null
+  const initialGeometry = resolveNodeInitialPtyGeometry(node, settings)
   const workspaceEnv = workspace.environmentVariables
   const agentEnv = resolveAgentLaunchEnv(settings, options.agent.provider)
   const mergedEnv =
@@ -209,6 +250,8 @@ export async function prepareAgentNode(options: {
           resumeSessionId: mode === 'resume' ? sanitizedAgent.resumeSessionId : null,
           ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
           agentFullAccess: settings.agentFullAccess,
+          cols: initialGeometry.cols,
+          rows: initialGeometry.rows,
         },
       })
     }
@@ -224,6 +267,8 @@ export async function prepareAgentNode(options: {
         resumeSessionId: mode === 'resume' ? sanitizedAgent.resumeSessionId : null,
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: settings.agentFullAccess,
+        cols: initialGeometry.cols,
+        rows: initialGeometry.rows,
       },
     })
   }
@@ -263,6 +308,7 @@ export async function prepareAgentNode(options: {
           space,
           cwd: sanitizedAgent.executionDirectory,
           profileId: terminalProfileId,
+          geometry: initialGeometry,
         })
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
@@ -335,6 +381,7 @@ export async function prepareAgentNode(options: {
           space,
           cwd: sanitizedAgent.executionDirectory,
           profileId: terminalProfileId,
+          geometry: initialGeometry,
         })
         return toPreparedNodeResult(node, {
           recoveryState: 'fallback_terminal',
@@ -382,6 +429,7 @@ export async function prepareAgentNode(options: {
       space,
       cwd: sanitizedAgent.executionDirectory,
       profileId: terminalProfileId,
+      geometry: initialGeometry,
     })
     return toPreparedNodeResult(node, {
       recoveryState: 'fallback_terminal',
