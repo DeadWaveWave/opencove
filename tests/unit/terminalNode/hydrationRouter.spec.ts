@@ -52,17 +52,18 @@ describe('hydrationRouter', () => {
     router.handleDataChunk('resume ready')
     router.finalizeHydration('[placeholder history]')
 
-    expect(terminal.reset).toHaveBeenCalledTimes(1)
+    expect(terminal.reset).not.toHaveBeenCalled()
+    expect(terminal.write).toHaveBeenCalledWith('\u001bcresume ready', expect.any(Function))
     expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
 
     router.handleDataChunk('\u001b[2J\u001b[H')
 
-    expect(terminal.reset).toHaveBeenCalledTimes(1)
+    expect(terminal.reset).not.toHaveBeenCalled()
     expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
 
     router.handleDataChunk('[redraw complete]')
 
-    expect(terminal.reset).toHaveBeenCalledTimes(1)
+    expect(terminal.reset).not.toHaveBeenCalled()
     expect(outputScheduler.handleChunk).toHaveBeenCalledTimes(1)
     expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[H[redraw complete]')
   })

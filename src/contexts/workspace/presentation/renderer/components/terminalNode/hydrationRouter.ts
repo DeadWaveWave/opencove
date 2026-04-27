@@ -1,6 +1,7 @@
 import type { Terminal } from '@xterm/xterm'
 import { finalizeTerminalHydration } from './finalizeHydration'
 import { isAutomaticTerminalQuery } from './inputClassification'
+import { replayBufferedHydrationOutput } from './replayBufferedHydrationOutput'
 import {
   containsDestructiveTerminalDisplayControlSequence,
   containsMeaningfulTerminalDisplayContent,
@@ -83,6 +84,34 @@ export function createTerminalHydrationRouter({
   const isControlOnlyTerminalChunk = (data: string): boolean =>
     data.length > 0 && !containsMeaningfulTerminalDisplayContent(data)
 
+  const clearAgentPlaceholderState = (): void => {
+    scrollbackBuffer.set('')
+    committedScrollbackBuffer.set('')
+  }
+
+  const replaceAgentPlaceholderWithBufferedOutput = ({
+    data,
+    exitCode,
+  }: {
+    data: string
+    exitCode: number | null
+  }): void => {
+    clearAgentPlaceholderState()
+    replayBufferedHydrationOutput({
+      terminal,
+      rawSnapshot: '',
+      bufferedData: data,
+      bufferedExitCode: exitCode,
+      resetTerminalBeforeFirstWrite: true,
+      scrollbackBuffer,
+      committedScrollbackBuffer,
+      onCommittedScreenState: recordCommittedScreenState,
+      onReplayWriteCommitted: scheduleTranscriptSync,
+    })
+    markScrollbackDirty(true)
+    scheduleTranscriptSync()
+  }
+
   const maybeFlushDeferredHydratedRedrawControlOnlyChunks = (): void => {
     const bufferedData = getDeferredHydratedRedrawData()
     if (
@@ -109,14 +138,6 @@ export function createTerminalHydrationRouter({
     shouldProtectHydratedControlOnlyRedraw = false
   }
 
-  const resetAgentPlaceholder = (): void => {
-    terminal.reset()
-    scrollbackBuffer.set('')
-    committedScrollbackBuffer.set('')
-    recordCommittedScreenState('')
-    scheduleTranscriptSync()
-  }
-
   const flushDeferredPlaceholderReplacement = (): void => {
     if (
       deferredPlaceholderBuffer.dataChunks.length === 0 &&
@@ -125,20 +146,11 @@ export function createTerminalHydrationRouter({
       return
     }
 
-    resetAgentPlaceholder()
     const bufferedData = deferredPlaceholderBuffer.dataChunks.join('')
-    if (bufferedData.length > 0) {
-      outputScheduler.handleChunk(bufferedData)
-    }
-
-    if (deferredPlaceholderBuffer.exitCode !== null) {
-      outputScheduler.handleChunk(
-        `\r\n[process exited with code ${deferredPlaceholderBuffer.exitCode}]\r\n`,
-        {
-          immediateScrollbackPublish: true,
-        },
-      )
-    }
+    replaceAgentPlaceholderWithBufferedOutput({
+      data: bufferedData,
+      exitCode: deferredPlaceholderBuffer.exitCode,
+    })
 
     deferredPlaceholderBuffer.dataChunks.length = 0
     deferredPlaceholderBuffer.exitCode = null

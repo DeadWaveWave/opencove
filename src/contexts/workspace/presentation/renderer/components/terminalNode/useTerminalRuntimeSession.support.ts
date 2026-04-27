@@ -136,6 +136,52 @@ export function requestPresentationSnapshot(
     : Promise.resolve(null)
 }
 
+export async function requestPresentationSnapshotAfterGeometry({
+  sessionId,
+  expectedGeometry,
+  requestSnapshot = requestPresentationSnapshot,
+  wait = attempt =>
+    new Promise<void>(resolve => {
+      window.setTimeout(resolve, Math.min(50 + attempt * 25, 150))
+    }),
+  maxAttempts = 8,
+}: {
+  sessionId: string
+  expectedGeometry: { cols: number; rows: number } | null
+  requestSnapshot?: (sessionId: string) => Promise<PresentationSnapshotTerminalResult | null>
+  wait?: (attempt: number) => Promise<void>
+  maxAttempts?: number
+}): Promise<PresentationSnapshotTerminalResult | null> {
+  if (!expectedGeometry) {
+    return await requestSnapshot(sessionId)
+  }
+
+  const attemptRequest = async (
+    attempt: number,
+  ): Promise<PresentationSnapshotTerminalResult | null> => {
+    if (attempt >= maxAttempts) {
+      return null
+    }
+
+    const snapshot = await requestSnapshot(sessionId)
+    if (!snapshot) {
+      return null
+    }
+
+    if (snapshot.cols === expectedGeometry.cols && snapshot.rows === expectedGeometry.rows) {
+      return snapshot
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await wait(attempt)
+    }
+
+    return attemptRequest(attempt + 1)
+  }
+
+  return attemptRequest(0)
+}
+
 export function attachAfterPresentationSnapshot(options: {
   ptyApi: AttachablePtyApi
   sessionId: string
@@ -153,7 +199,7 @@ export function prepareRuntimePresentationAttach(options: {
   ptyApi: AttachablePtyApi
   sessionId: string
   isLiveSessionReattach: boolean
-  commitInitialGeometry: () => Promise<void>
+  commitInitialGeometry: () => Promise<{ cols: number; rows: number } | null>
 }): {
   attachPromise: Promise<void | undefined>
   presentationSnapshotPromise: Promise<PresentationSnapshotTerminalResult | null>
@@ -165,14 +211,19 @@ export function prepareRuntimePresentationAttach(options: {
     presentationSnapshotPromise: preAttachPresentationSnapshotPromise,
   })
   const initialGeometryCommitPromise = options.isLiveSessionReattach
-    ? Promise.resolve()
+    ? Promise.resolve(null)
     : attachPromise
         .catch(() => undefined)
         .then(() => options.commitInitialGeometry())
-        .catch(() => undefined)
+        .catch(() => null)
   const presentationSnapshotPromise = options.isLiveSessionReattach
     ? preAttachPresentationSnapshotPromise
-    : initialGeometryCommitPromise.then(() => requestPresentationSnapshot(options.sessionId))
+    : initialGeometryCommitPromise.then(expectedGeometry =>
+        requestPresentationSnapshotAfterGeometry({
+          sessionId: options.sessionId,
+          expectedGeometry,
+        }),
+      )
 
   return { attachPromise, presentationSnapshotPromise }
 }

@@ -60,10 +60,8 @@ export function finalizeTerminalHydration({
     // Agent CLIs can replay their own full history on resume. If we already rendered a durable
     // placeholder snapshot, keep it visible until the PTY produces real output, then replace it
     // with the resumed output to avoid double-rendered history.
-    terminal.reset()
     scrollbackBuffer.set('')
     committedScrollbackBuffer.set('')
-    onCommittedScreenState('')
   } else {
     scrollbackBuffer.set(rawSnapshot)
   }
@@ -75,6 +73,7 @@ export function finalizeTerminalHydration({
     rawSnapshot: baselineSnapshot,
     bufferedData,
     bufferedExitCode,
+    resetTerminalBeforeFirstWrite: shouldReplaceBaseline,
     scrollbackBuffer,
     committedScrollbackBuffer,
     onCommittedScreenState,

@@ -60,9 +60,12 @@ describe('hydrationRouter placeholder replacement', () => {
 
     router.handleDataChunk('ready')
 
-    expect(terminal.reset).toHaveBeenCalledTimes(1)
-    expect(outputScheduler.handleChunk).toHaveBeenCalledTimes(1)
-    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('\u001b[2J\u001b[Hready')
+    expect(terminal.reset).not.toHaveBeenCalled()
+    expect(terminal.write).toHaveBeenCalledWith(
+      '\u001bc\u001b[2J\u001b[Hready',
+      expect.any(Function),
+    )
+    expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
     expect(scheduleTranscriptSync).toHaveBeenCalled()
   })
 
@@ -112,8 +115,9 @@ describe('hydrationRouter placeholder replacement', () => {
 
     router.handleDataChunk('ready')
 
-    expect(terminal.reset).toHaveBeenCalledTimes(1)
-    expect(outputScheduler.handleChunk).toHaveBeenCalledWith('ready')
+    expect(terminal.reset).not.toHaveBeenCalled()
+    expect(terminal.write).toHaveBeenCalledWith('\u001bcready', expect.any(Function))
+    expect(outputScheduler.handleChunk).not.toHaveBeenCalled()
     expect(scheduleTranscriptSync).toHaveBeenCalled()
   })
 })

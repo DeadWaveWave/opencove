@@ -53,6 +53,8 @@ type TerminalSelectionTestApi = {
     deviceCanvasHeight: number | null
     cssCanvasWidth: number | null
     cssCanvasHeight: number | null
+    cssCellWidth: number | null
+    cssCellHeight: number | null
     baseY: number | null
     viewportY: number | null
     isUserScrolling: boolean | null
@@ -183,6 +185,7 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         const effectiveDpr = terminal?._core?._coreBrowserService?.dpr
         const deviceCanvas = dimensions.device?.canvas
         const cssCanvas = dimensions.css?.canvas
+        const cssCell = dimensions.css?.cell
         const baseY = (terminal as unknown as { buffer?: { active?: { baseY?: unknown } } })?.buffer
           ?.active?.baseY
         const viewportY = (terminal as unknown as { buffer?: { active?: { viewportY?: unknown } } })
@@ -210,6 +213,14 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
           cssCanvasHeight:
             typeof cssCanvas?.height === 'number' && Number.isFinite(cssCanvas.height)
               ? cssCanvas.height
+              : null,
+          cssCellWidth:
+            typeof cssCell?.width === 'number' && Number.isFinite(cssCell.width)
+              ? cssCell.width
+              : null,
+          cssCellHeight:
+            typeof cssCell?.height === 'number' && Number.isFinite(cssCell.height)
+              ? cssCell.height
               : null,
           baseY: typeof baseY === 'number' && Number.isFinite(baseY) ? baseY : null,
           viewportY: typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null,

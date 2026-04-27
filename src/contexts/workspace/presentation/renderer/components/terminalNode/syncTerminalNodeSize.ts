@@ -4,6 +4,13 @@ import type { Terminal } from '@xterm/xterm'
 import type { TerminalGeometryCommitReason } from '@shared/contracts/dto'
 import { resolveStablePtySize } from '../../utils/terminalResize'
 
+type PtySize = { cols: number; rows: number }
+
+type InitialGeometrySample = PtySize & {
+  containerWidth: number
+  containerHeight: number
+}
+
 /**
  * After xterm resizes, the element can end up slightly taller than `rows × cellHeight`
  * because the row count is floored while the container height is not. Clamping the
@@ -43,6 +50,85 @@ function canRefreshTerminalLayout(input: {
   }
 
   return true
+}
+
+function waitForAnimationFrame(): Promise<void> {
+  return new Promise(resolve => {
+    if (typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        resolve()
+      })
+      return
+    }
+
+    window.setTimeout(resolve, 0)
+  })
+}
+
+function isSameInitialGeometrySample(
+  previous: InitialGeometrySample | null,
+  next: InitialGeometrySample,
+): boolean {
+  return (
+    previous !== null &&
+    previous.cols === next.cols &&
+    previous.rows === next.rows &&
+    previous.containerWidth === next.containerWidth &&
+    previous.containerHeight === next.containerHeight
+  )
+}
+
+async function resolveStableInitialTerminalNodeGeometry({
+  terminalRef,
+  fitAddonRef,
+  containerRef,
+  isPointerResizingRef,
+}: {
+  terminalRef: MutableRefObject<Terminal | null>
+  fitAddonRef: MutableRefObject<FitAddon | null>
+  containerRef: MutableRefObject<HTMLElement | null>
+  isPointerResizingRef: MutableRefObject<boolean>
+}): Promise<PtySize | null> {
+  const maxAttempts = 8
+
+  const attemptResolve = async (
+    attempt: number,
+    previousSample: InitialGeometrySample | null,
+    lastResolvedSize: PtySize | null,
+  ): Promise<PtySize | null> => {
+    if (attempt >= maxAttempts) {
+      return lastResolvedSize
+    }
+
+    await waitForAnimationFrame()
+
+    const container = containerRef.current
+    const nextPtySize = fitTerminalNodeToMeasuredSize({
+      terminalRef,
+      fitAddonRef,
+      containerRef,
+      isPointerResizingRef,
+    })
+
+    if (!container || !nextPtySize) {
+      return attemptResolve(attempt + 1, previousSample, lastResolvedSize)
+    }
+
+    const nextSample: InitialGeometrySample = {
+      cols: nextPtySize.cols,
+      rows: nextPtySize.rows,
+      containerWidth: container.clientWidth,
+      containerHeight: container.clientHeight,
+    }
+
+    if (isSameInitialGeometrySample(previousSample, nextSample)) {
+      return nextPtySize
+    }
+
+    return attemptResolve(attempt + 1, nextSample, nextPtySize)
+  }
+
+  return attemptResolve(0, null, null)
 }
 
 export function refreshTerminalNodeSize({
@@ -187,17 +273,24 @@ export async function commitInitialTerminalNodeGeometry({
   lastCommittedPtySizeRef: MutableRefObject<{ cols: number; rows: number } | null>
   sessionId: string
   reason: TerminalGeometryCommitReason
-}): Promise<void> {
-  const nextPtySize = fitTerminalNodeToMeasuredSize({
+}): Promise<PtySize | null> {
+  const nextPtySize = await resolveStableInitialTerminalNodeGeometry({
     terminalRef,
     fitAddonRef,
     containerRef,
     isPointerResizingRef,
-    lastCommittedPtySizeRef,
   })
 
   if (!nextPtySize) {
-    return
+    return null
+  }
+
+  const alreadyCommitted =
+    lastCommittedPtySizeRef.current?.cols === nextPtySize.cols &&
+    lastCommittedPtySizeRef.current.rows === nextPtySize.rows
+
+  if (alreadyCommitted) {
+    return nextPtySize
   }
 
   await window.opencoveApi.pty.resize({
@@ -206,4 +299,7 @@ export async function commitInitialTerminalNodeGeometry({
     rows: nextPtySize.rows,
     reason,
   })
+
+  lastCommittedPtySizeRef.current = nextPtySize
+  return nextPtySize
 }

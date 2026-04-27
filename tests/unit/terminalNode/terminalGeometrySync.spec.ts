@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  commitInitialTerminalNodeGeometry,
   commitTerminalNodeGeometry,
   fitTerminalNodeToMeasuredSize,
   refreshTerminalNodeSize,
@@ -39,6 +40,14 @@ describe('terminal geometry sync helpers', () => {
   beforeEach(() => {
     ptyResize.mockReset()
     vi.stubGlobal('window', {
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callback(0)
+        return 1
+      },
+      setTimeout: (callback: () => void) => {
+        callback()
+        return 1
+      },
       opencoveApi: {
         pty: {
           resize: ptyResize,
@@ -109,5 +118,39 @@ describe('terminal geometry sync helpers', () => {
     expect(terminal.resize).toHaveBeenCalledWith(64, 44)
     expect(terminal.refresh).toHaveBeenCalledWith(0, 43)
     expect(ptyResize).not.toHaveBeenCalled()
+  })
+
+  it('waits for stable measured geometry before the initial restore commit', async () => {
+    const terminal = createTerminalMock()
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: null,
+    }
+
+    const size = await commitInitialTerminalNodeGeometry({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi
+            .fn()
+            .mockReturnValueOnce({ cols: 80, rows: 24 })
+            .mockReturnValueOnce({ cols: 132, rows: 41 })
+            .mockReturnValueOnce({ cols: 132, rows: 41 }),
+        } as never,
+      },
+      containerRef: { current: { clientWidth: 910, clientHeight: 620 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-initial-geometry',
+      reason: 'frame_commit',
+    })
+
+    expect(size).toStrictEqual({ cols: 132, rows: 41 })
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 132, rows: 41 })
+    expect(ptyResize).toHaveBeenCalledWith({
+      sessionId: 'session-initial-geometry',
+      cols: 132,
+      rows: 41,
+      reason: 'frame_commit',
+    })
   })
 })

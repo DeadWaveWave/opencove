@@ -109,6 +109,9 @@ export function TerminalNode({
   const statusRef = useRef(status)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
+
+  latestSessionIdRef.current = sessionId
+
   const {
     state: findState,
     open: openTerminalFind,
