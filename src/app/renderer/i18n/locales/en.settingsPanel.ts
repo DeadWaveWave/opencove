@@ -142,9 +142,14 @@ export const enSettingsPanel = {
   },
   notifications: {
     title: 'Notifications',
+    systemNotifications: {
+      enabledLabel: 'System notifications',
+      enabledHelp:
+        'Show a native system notification when an agent transitions from working to standby.',
+    },
     agentStandbyBanner: {
-      enabledLabel: 'Agent standby banner',
-      enabledHelp: 'Show a top-right banner when an agent transitions from working to standby.',
+      enabledLabel: 'Top-right banner',
+      enabledHelp: 'Show an in-app banner when an agent transitions from working to standby.',
       contextTitle: 'Banner context',
       contextHelp: 'Choose what context chips are shown in the banner.',
       showTask: 'Show task',

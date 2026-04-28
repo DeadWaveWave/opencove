@@ -185,7 +185,16 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: CoreSettingsSearchEntryDefinition[] = [
       'settingsPanel.notifications.agentStandbyBanner.showBranch',
       'settingsPanel.notifications.agentStandbyBanner.showPullRequest',
     ],
-    keywords: ['banner', 'standby', 'notification', '通知'],
+    keywords: ['banner', 'standby', 'notification', '通知', '横幅'],
+  },
+  {
+    id: 'notifications.system-notifications',
+    pageId: 'notifications',
+    pageLabelKey: 'settingsPanel.nav.notifications',
+    titleKey: 'settingsPanel.notifications.systemNotifications.enabledLabel',
+    descriptionKey: 'settingsPanel.notifications.systemNotifications.enabledHelp',
+    anchorId: 'settings-section-notifications',
+    keywords: ['system', 'native', 'notification', '通知', '系统通知'],
   },
   {
     id: 'canvas.input-mode',

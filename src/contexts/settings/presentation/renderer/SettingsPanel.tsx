@@ -100,6 +100,8 @@ export function SettingsPanel({
     onChange({ ...settings, archiveSpaceDeleteWorktreeByDefault: enabled })
   const updateArchiveSpaceDeleteBranchByDefault = (enabled: boolean): void =>
     onChange({ ...settings, archiveSpaceDeleteBranchByDefault: enabled })
+  const updateSystemNotificationsEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, systemNotificationsEnabled: enabled })
   const updateStandbyBannerEnabled = (enabled: boolean): void =>
     onChange({ ...settings, standbyBannerEnabled: enabled })
   const updateStandbyBannerShowTask = (enabled: boolean): void =>
@@ -356,12 +358,14 @@ export function SettingsPanel({
 
             {activePageId === 'notifications' ? (
               <NotificationsSection
+                systemNotificationsEnabled={settings.systemNotificationsEnabled}
                 standbyBannerEnabled={settings.standbyBannerEnabled}
                 standbyBannerShowTask={settings.standbyBannerShowTask}
                 standbyBannerShowSpace={settings.standbyBannerShowSpace}
                 standbyBannerShowBranch={settings.standbyBannerShowBranch}
                 standbyBannerShowPullRequest={settings.standbyBannerShowPullRequest}
                 githubPullRequestsEnabled={settings.githubPullRequestsEnabled}
+                onChangeSystemNotificationsEnabled={updateSystemNotificationsEnabled}
                 onChangeStandbyBannerEnabled={updateStandbyBannerEnabled}
                 onChangeStandbyBannerShowTask={updateStandbyBannerShowTask}
                 onChangeStandbyBannerShowSpace={updateStandbyBannerShowSpace}

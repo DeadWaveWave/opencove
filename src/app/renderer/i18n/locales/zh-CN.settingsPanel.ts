@@ -141,9 +141,13 @@ export const zhCNSettingsPanel = {
   },
   notifications: {
     title: '通知',
+    systemNotifications: {
+      enabledLabel: '系统通知',
+      enabledHelp: '当 Agent 从工作状态变为待命时，显示原生系统通知。',
+    },
     agentStandbyBanner: {
-      enabledLabel: 'Agent 完成提醒',
-      enabledHelp: '当 Agent 从工作状态变为待命时，在右上角显示提醒横幅。',
+      enabledLabel: '右上角横幅',
+      enabledHelp: '当 Agent 从工作状态变为待命时，显示应用内右上角横幅。',
       contextTitle: '横幅信息',
       contextHelp: '控制右上角提醒横幅中显示的上下文信息。',
       showTask: '显示任务',
