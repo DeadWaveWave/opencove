@@ -31,38 +31,10 @@ const CURRENT_SCHEMA_COLUMNS = {
     'active_space_id',
     'sort_order',
   ],
-  nodes: [
-    'id',
-    'workspace_id',
-    'title',
-    'title_pinned_by_user',
-    'position_x',
-    'position_y',
-    'width',
-    'height',
-    'kind',
-    'label_color_override',
-    'status',
-    'started_at',
-    'ended_at',
-    'exit_code',
-    'last_error',
-    'execution_directory',
-    'expected_directory',
-    'agent_json',
-    'task_json',
-  ],
-  workspace_spaces: [
-    'id',
-    'workspace_id',
-    'name',
-    'directory_path',
-    'label_color',
-    'rect_x',
-    'rect_y',
-    'rect_width',
-    'rect_height',
-  ],
+  // prettier-ignore
+  nodes: ['id', 'workspace_id', 'session_id', 'title', 'title_pinned_by_user', 'position_x', 'position_y', 'width', 'height', 'kind', 'profile_id', 'runtime_kind', 'terminal_provider_hint', 'label_color_override', 'status', 'started_at', 'ended_at', 'exit_code', 'last_error', 'execution_directory', 'expected_directory', 'agent_json', 'task_json'],
+  // prettier-ignore
+  workspace_spaces: ['id', 'workspace_id', 'name', 'directory_path', 'target_mount_id', 'label_color', 'rect_x', 'rect_y', 'rect_width', 'rect_height'],
   workspace_space_nodes: ['space_id', 'node_id', 'sort_order'],
   node_scrollback: ['node_id', 'scrollback', 'updated_at'],
 } as const
@@ -488,7 +460,7 @@ describe('PersistenceStore sort order migration', () => {
       expect(store.consumeRecovery()).toBeNull()
       store.dispose()
 
-      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(7)
+      expect(mockDbByPath.get(dbPath)?.userVersion).toBe(8)
       expect(mockDbByPath.get(dbPath)?.workspaceRows).toEqual([
         { id: 'ws-2', sortOrder: 0 },
         { id: 'ws-4', sortOrder: 1 },

@@ -6,6 +6,7 @@ import {
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { openPaneContextMenuAtFlowPoint } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
   test('creates new tasks in the space under the cursor (right-click anchor)', async () => {
@@ -54,10 +55,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      await pane.click({
-        button: 'right',
-        position: { x: 380, y: 240 },
-      })
+      await openPaneContextMenuAtFlowPoint(window, pane, { x: 380, y: 240 })
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
       await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()
