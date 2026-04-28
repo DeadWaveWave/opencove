@@ -92,6 +92,7 @@ export const IPC_CHANNELS = {
   agentReadLastMessage: 'agent:read-last-message',
   taskSuggestTitle: 'task:suggest-title',
   systemListFonts: 'system:list-fonts',
+  systemShowNotification: 'system:show-notification',
   workerGetStatus: 'worker:get-status',
   workerStart: 'worker:start',
   workerStop: 'worker:stop',

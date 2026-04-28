@@ -42,6 +42,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   focusNodeOnClick: true,
   focusNodeTargetZoom: 1,
   focusNodeUseVisibleCanvasCenter: true,
+  systemNotificationsEnabled: true,
   standbyBannerEnabled: true,
   standbyBannerShowTask: true,
   standbyBannerShowSpace: true,

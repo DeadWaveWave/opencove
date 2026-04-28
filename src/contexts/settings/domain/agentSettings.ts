@@ -153,6 +153,7 @@ export interface AgentSettings {
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean
+  systemNotificationsEnabled: boolean
   standbyBannerEnabled: boolean
   standbyBannerShowTask: boolean
   standbyBannerShowSpace: boolean
@@ -297,6 +298,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const focusNodeUseVisibleCanvasCenter =
     normalizeBoolean(value.focusNodeUseVisibleCanvasCenter) ??
     DEFAULT_AGENT_SETTINGS.focusNodeUseVisibleCanvasCenter
+  const systemNotificationsEnabled =
+    normalizeBoolean(value.systemNotificationsEnabled) ??
+    DEFAULT_AGENT_SETTINGS.systemNotificationsEnabled
   const standbyBannerEnabled =
     normalizeBoolean(value.standbyBannerEnabled) ?? DEFAULT_AGENT_SETTINGS.standbyBannerEnabled
   const standbyBannerShowTask =
@@ -415,6 +419,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     focusNodeOnClick,
     focusNodeTargetZoom,
     focusNodeUseVisibleCanvasCenter,
+    systemNotificationsEnabled,
     standbyBannerEnabled,
     standbyBannerShowTask,
     standbyBannerShowSpace,
