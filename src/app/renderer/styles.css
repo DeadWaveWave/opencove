@@ -7,6 +7,7 @@
 @import './styles/control-center.css';
 @import './styles/workspace-search-panel.css';
 @import './styles/workspace-sidebar.css';
+@import './styles/workspace-agent-item.css';
 @import './styles/workspace-canvas.css';
 @import './styles/workspace-overlays.css';
 @import './styles/workspace-overlays.spaces.explorer.preview.css';

@@ -1,0 +1,263 @@
+.agent-provider-icon {
+  --agent-provider-accent: rgba(148, 163, 184, 0.92);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--agent-provider-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--agent-provider-accent) 16%, transparent);
+  color: var(--agent-provider-accent);
+}
+
+.agent-provider-icon[data-agent-provider='claude-code'] {
+  --agent-provider-accent: rgba(217, 119, 87, 0.96);
+}
+
+.agent-provider-icon[data-agent-provider='claude-code'] .agent-provider-icon__svg {
+  width: 16px;
+  height: 16px;
+}
+
+.agent-provider-icon[data-agent-provider='codex'] {
+  --agent-provider-accent: rgba(125, 211, 252, 0.96);
+}
+
+.agent-provider-icon[data-agent-provider='opencode'] {
+  --agent-provider-accent: rgba(96, 165, 250, 0.96);
+}
+
+.agent-provider-icon[data-agent-provider='gemini'] {
+  --agent-provider-accent: rgba(196, 181, 253, 0.96);
+}
+
+.agent-provider-icon__glyph,
+.agent-provider-icon__svg {
+  width: 11px;
+  height: 11px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.agent-provider-icon__glyph {
+  stroke-width: 2.1;
+}
+
+.workspace-agent-item {
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 12px;
+  padding: 8px 10px;
+  color: var(--cove-text);
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.workspace-agent-item:hover {
+  background: var(--cove-surface-hover);
+  border-color: var(--cove-border-subtle);
+}
+
+button.workspace-agent-item:focus-visible {
+  outline: 2px solid rgba(94, 156, 255, 0.85);
+  outline-offset: 2px;
+}
+
+.workspace-agent-item--nested {
+  border-radius: 12px;
+  background: var(--cove-field);
+  padding: 7px 10px;
+}
+
+.workspace-agent-item--sidebar {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+}
+
+.workspace-agent-item--sidebar[data-cove-label-color] {
+  border-color: color-mix(in srgb, var(--cove-label-color) 32%, transparent);
+  background: color-mix(in srgb, var(--cove-label-color) 12%, var(--cove-field) 88%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 10%, transparent);
+}
+
+.workspace-agent-item--sidebar[data-cove-label-color]:hover {
+  border-color: color-mix(in srgb, var(--cove-label-color) 42%, transparent);
+  background: color-mix(in srgb, var(--cove-label-color) 18%, var(--cove-field) 82%);
+}
+
+.workspace-agent-item__singleline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.workspace-agent-item__provider {
+  flex-shrink: 0;
+}
+
+.workspace-agent-item__headline {
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.workspace-agent-item__title {
+  flex: 0 1 auto;
+  min-width: 0;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-agent-item--sidebar[data-cove-label-color] .workspace-agent-item__title {
+  color: color-mix(in srgb, var(--cove-label-color) 38%, var(--cove-text));
+}
+
+.workspace-agent-item__status {
+  --cove-status-dot: var(--cove-text-faint);
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 0;
+  font-size: calc(10px * var(--cove-ui-font-scale));
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--cove-text-faint);
+  flex-shrink: 0;
+}
+
+.workspace-agent-item--sidebar .workspace-agent-item__status {
+  margin-left: auto;
+  gap: 0;
+}
+
+.workspace-agent-item__status::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--cove-status-dot);
+}
+
+.workspace-agent-item__status--working {
+  --cove-status-dot: rgba(61, 255, 164, 0.85);
+  color: var(--cove-text-muted);
+}
+
+.workspace-agent-item__status--standby {
+  --cove-status-dot: rgba(255, 190, 114, 0.9);
+}
+
+.workspace-agent-item__status--failed {
+  --cove-status-dot: rgba(255, 96, 112, 0.9);
+}
+
+.workspace-agent-item__status--todo {
+  --cove-status-dot: var(--cove-border);
+}
+
+.workspace-agent-item__status--done {
+  --cove-status-dot: rgba(93, 206, 154, 0.85);
+}
+
+.workspace-agent-item__status--done-strong {
+  --cove-status-dot: rgba(64, 161, 115, 0.95);
+  color: var(--cove-text-muted);
+}
+
+.workspace-agent-item__status--task.workspace-agent-item__status--working {
+  --cove-status-dot: rgba(94, 156, 255, 0.92);
+}
+
+.workspace-agent-item__status--task.workspace-agent-item__status--done {
+  --cove-status-dot: rgba(93, 206, 154, 0.9);
+}
+
+.workspace-agent-item__status--task.workspace-agent-item__status--done-strong {
+  --cove-status-dot: rgba(64, 161, 115, 0.95);
+}
+
+.workspace-agent-item__status-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.workspace-agent-item__meta,
+.workspace-agent-item__task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.workspace-agent-item__meta-text,
+.workspace-agent-item__task-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workspace-agent-item__meta-text {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: var(--cove-text-faint);
+}
+
+.workspace-agent-item__task-text {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+}
+
+.workspace-agent-item__pill {
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  min-height: 18px;
+  padding: 0 7px;
+  border-radius: 999px;
+  border: 1px solid var(--cove-border-subtle);
+  background: var(--cove-surface-hover);
+  color: var(--cove-text-muted);
+  flex: 0 999 auto;
+  min-inline-size: min(4em, 40%);
+  max-width: 100%;
+}
+
+.workspace-agent-item__pill[data-cove-label-color] {
+  background: color-mix(in srgb, var(--cove-label-color) 16%, transparent);
+  border-color: color-mix(in srgb, var(--cove-label-color) 35%, transparent);
+  color: var(--cove-text);
+}
+
+.workspace-agent-item__pill-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: calc(9px * var(--cove-ui-font-scale));
+}

@@ -20,12 +20,14 @@ import {
 function reuseLinkedAgentForTask({
   taskNodeId,
   linkedAgentNodeId,
+  taskTitle,
   requirement,
   taskDirectory,
   context,
 }: {
   taskNodeId: string
   linkedAgentNodeId: string
+  taskTitle: string
   requirement: string
   taskDirectory: string
   context: TaskActionContext
@@ -55,6 +57,10 @@ function reuseLinkedAgentForTask({
           ...node,
           data: {
             ...node.data,
+            title:
+              node.data.titlePinnedByUser === true
+                ? node.data.title
+                : context.buildAgentNodeTitle(node.data.agent.provider, taskTitle),
             agent: {
               ...node.data.agent,
               prompt: requirement,
@@ -230,6 +236,7 @@ export async function runTaskAgentAction(
     const reused = reuseLinkedAgentForTask({
       taskNodeId,
       linkedAgentNodeId,
+      taskTitle: taskNode.data.title,
       requirement,
       taskDirectory,
       context,
@@ -329,7 +336,7 @@ export async function runTaskAgentAction(
       sessionId: launchedSessionId,
       profileId: launchedProfileId,
       runtimeKind: launchedRuntimeKind,
-      title: context.buildAgentNodeTitle(provider, launchedEffectiveModel),
+      title: context.buildAgentNodeTitle(provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',
       placement: {

@@ -54,6 +54,8 @@ export const en = {
     noProjectYet: 'No project yet.',
     settings: 'Settings',
     fallbackAgentLabel: 'Agent',
+    expandProjectAgents: 'Expand project agents',
+    collapseProjectAgents: 'Collapse project agents',
     status: {
       working: 'Working',
       standby: 'Standby',

@@ -5,6 +5,7 @@ import { resolveTaskExecutionContext } from '@contexts/session/application/resol
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { QuickUpdateTaskRequirement, QuickUpdateTaskTitle, UpdateTaskStatus } from './types'
+import { resolveAgentDisplayTitle } from '../../utils/agentTitle'
 
 export function WorkspaceCanvasTaskNodeType({
   data,
@@ -82,7 +83,12 @@ export function WorkspaceCanvasTaskNodeType({
     linkedAgentNode && linkedAgentNode.data.kind === 'agent' && linkedAgentNode.data.agent
       ? {
           nodeId: linkedAgentNode.id,
-          title: linkedAgentNode.data.title,
+          title: resolveAgentDisplayTitle({
+            provider: linkedAgentNode.data.agent.provider,
+            linkedTaskTitle: data.title,
+            fallbackTitle: linkedAgentNode.data.title,
+            preferFallbackTitle: linkedAgentNode.data.titlePinnedByUser === true,
+          }),
           provider: linkedAgentNode.data.agent.provider,
           status: linkedAgentNode.data.status,
           startedAt: linkedAgentNode.data.startedAt,
