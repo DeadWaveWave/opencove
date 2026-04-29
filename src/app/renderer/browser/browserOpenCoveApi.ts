@@ -1,4 +1,8 @@
-import type { ListSystemFontsResult, WorkspaceDirectory } from '@shared/contracts/dto'
+import {
+  normalizeReadFileBytesResult,
+  type ListSystemFontsResult,
+  type WorkspaceDirectory,
+} from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import type { ControlSurfaceInvokeRequest } from '@shared/contracts/controlSurface'
@@ -163,9 +167,15 @@ export function installBrowserOpenCoveApi(): void {
           payload,
         })
       },
-      readFileBytes: async () => {
-        throw new Error('Binary file reads are unavailable in browser runtime')
-      },
+      readFileBytes: async payload =>
+        normalizeReadFileBytesResult(
+          await invokeBrowserControlSurface({
+            kind: 'query',
+            id: 'filesystem.readFileBytes',
+            payload,
+          }),
+          'filesystem.readFileBytes',
+        ),
       readFileText: async payload =>
         await invokeBrowserControlSurface({
           kind: 'query',

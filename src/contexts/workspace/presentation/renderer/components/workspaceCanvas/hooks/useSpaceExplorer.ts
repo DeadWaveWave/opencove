@@ -21,6 +21,7 @@ import type {
 } from './useSpaceExplorer.types'
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewActions } from './useSpaceExplorer.quickPreviewActions'
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewDismiss } from './useSpaceExplorer.quickPreviewDismiss'
+import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 export function useWorkspaceCanvasSpaceExplorer({
   canvasRef,
@@ -162,7 +163,7 @@ export function useWorkspaceCanvasSpaceExplorer({
 
       if (mimeType) {
         kind = 'image'
-        const filesystem = window.opencoveApi?.filesystem
+        const filesystem = resolveFilesystemApiForMount(space.targetMountId ?? null)
         if (filesystem?.readFileBytes) {
           try {
             const { bytes } = await filesystem.readFileBytes({ uri: normalizedUri })
@@ -318,7 +319,7 @@ export function useWorkspaceCanvasSpaceExplorer({
         return created
       }
 
-      const filesystem = window.opencoveApi?.filesystem
+      const filesystem = resolveFilesystemApiForMount(preview.mountId)
       const workspace = window.opencoveApi?.workspace
       const mimeType = resolveCanvasImageMimeType(preview.uri)
       if (!filesystem?.readFileBytes || !workspace?.writeCanvasImage || !mimeType) {

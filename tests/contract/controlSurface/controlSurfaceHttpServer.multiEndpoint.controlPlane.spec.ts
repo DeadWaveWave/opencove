@@ -304,6 +304,14 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       expect(okRes.status, JSON.stringify(okRes.data)).toBe(200)
       expect(okRes.data.ok).toBe(true)
 
+      const bytesRes = await invoke(baseUrl, 'home-token', {
+        kind: 'query',
+        id: 'filesystem.readFileBytesInMount',
+        payload: { mountId, uri: toFileUri(inMountPath) },
+      })
+      expect(bytesRes.status, JSON.stringify(bytesRes.data)).toBe(200)
+      expect(bytesRes.data.ok).toBe(true)
+
       const badRes = await invoke(baseUrl, 'home-token', {
         kind: 'query',
         id: 'filesystem.readFileTextInMount',
@@ -312,6 +320,15 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       expect(badRes.status, JSON.stringify(badRes.data)).toBe(200)
       expect(isEnvelopeErr(badRes.data)).toBe(true)
       expect(badRes.data.error.code).toBe('common.invalid_input')
+
+      const badBytesRes = await invoke(baseUrl, 'home-token', {
+        kind: 'query',
+        id: 'filesystem.readFileBytesInMount',
+        payload: { mountId, uri: toFileUri(outsidePath) },
+      })
+      expect(badBytesRes.status, JSON.stringify(badBytesRes.data)).toBe(200)
+      expect(isEnvelopeErr(badBytesRes.data)).toBe(true)
+      expect(badBytesRes.data.error.code).toBe('common.invalid_input')
     } finally {
       await disposeAndCleanup({
         server,
