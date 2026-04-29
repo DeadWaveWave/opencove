@@ -2,7 +2,7 @@
 
 > Status: Canonical technical direction
 > Scope: terminal and agent nodes rendered across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-29
+> Last updated: 2026-04-30
 
 Verification workflow:
 
@@ -157,21 +157,24 @@ canonical geometry, or replace the explicit appearance commit path.
 OpenCove exposes display alignment as a user-controlled Settings workflow, not an automatic hidden
 resize policy:
 
-1. The first online client for the current terminal appearance profile automatically records the
-   shared reference if none exists.
+1. Automatic display alignment is enabled by default. The first online client for the current
+   terminal appearance profile records the shared reference if none exists.
 2. Go to `Settings -> General -> Terminal Display Consistency`.
-3. Choose `Set This Client as Reference` only when you want to replace the automatic reference. This
+3. Turn off `Automatic Display Alignment` when you do not want first-client reference capture. This
+   does not delete existing references or local client calibration.
+4. Choose `Set This Client as Reference` only when you want to replace the automatic reference. This
    stores the shared target cell metrics with the existing terminal appearance profile.
-4. Open another client, then choose `Calibrate This Client`. The client sweeps local display
+5. Open another client, then choose `Calibrate This Client`. The client sweeps local display
    compensation candidates and stores the best local match in that client only.
-5. If the result is not visually acceptable, adjust the shared terminal font family/size, set a new
+6. If the result is not visually acceptable, adjust the shared terminal font family/size, set a new
    reference, then calibrate the other clients again.
-6. Use `Reset This Client` to remove local compensation, or `Copy Diagnostics` when reporting a
+7. Use `Reset This Client` to remove local compensation, or `Copy Diagnostics` when reporting a
    parity issue.
 
 This workflow follows the same owner boundary as the runtime architecture:
 
 - the shared reference is a persisted user preference
+- the automatic alignment toggle is a persisted user preference and defaults to enabled
 - the client calibration is local storage scoped to the current terminal appearance profile and
   active shared reference
 - the automatic first-client reference is captured from a real mounted terminal xterm/FitAddon
@@ -179,6 +182,8 @@ This workflow follows the same owner boundary as the runtime architecture:
 - local compensation may change xterm `fontSize`, `lineHeight`, and `letterSpacing`
 - local compensation may trigger local FitAddon measurement
 - local compensation must not resize the PTY or update worker canonical `cols/rows`
+- user-facing calibration results are shown as match quality (`Exact`, `Close`, `Needs adjustment`);
+  raw engineering scores stay in diagnostics only
 
 The target is identical terminal cell metrics when the clients can support them. When exact parity is
 not possible because of platform font rendering, the fallback is explicit and inspectable: users pick

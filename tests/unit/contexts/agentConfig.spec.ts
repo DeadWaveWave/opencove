@@ -27,6 +27,7 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.canvasWheelZoomModifier).toBe('primary')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
+    expect(DEFAULT_AGENT_SETTINGS.terminalDisplayAutoCalibrationEnabled).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.uiFontSize).toBe(18)
     expect(DEFAULT_AGENT_SETTINGS.updatePolicy).toBe('prompt')
     expect(DEFAULT_AGENT_SETTINGS.updateChannel).toBe('stable')

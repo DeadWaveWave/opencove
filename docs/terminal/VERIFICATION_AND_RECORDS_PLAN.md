@@ -2,7 +2,7 @@
 
 > Status: Active working plan
 > Scope: terminal and agent nodes across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-29
+> Last updated: 2026-04-30
 
 ## Purpose
 
@@ -262,12 +262,12 @@ Latest verified on `2026-04-29` for bulk Agent startup restore profiling:
 - 20-Agent result after WebGL budgeting: `all-runtime-sessions-bound=2312ms`, `all-terminal-outputs-visible=6878ms`, `init=20`, `renderer-health-recover=0`, renderer split `8 webgl / 12 dom`.
 - Diagnostic comparison: the prior 20-Agent run created `28` terminal init cycles, `8` mixed WebGL/DOM nodes, and `3` renderer-health recoveries; the budgeted run removes that self-induced renderer churn.
 
-Latest verified on `2026-04-29` for Desktop/Web UI terminal display parity and user calibration:
+Latest verified on `2026-04-30` for Desktop/Web UI terminal display parity and user calibration:
 
 - `pnpm build`
 - `pnpm check`
 - `pnpm lint`
-- `pnpm test -- --run tests/unit/contexts/terminalDisplayReferenceAutoCapture.spec.tsx tests/unit/contexts/terminalNode.appearance-sync.spec.tsx tests/unit/contexts/terminalDisplayCalibration.spec.ts tests/unit/contexts/settingsPanel.spec.tsx tests/unit/scripts/terminal-display-calibration.spec.ts tests/unit/contexts/terminalNode.effectiveDevicePixelRatio.spec.ts`
+- `pnpm test -- --run tests/unit/contexts/terminalDisplayReferenceAutoCapture.spec.tsx tests/unit/contexts/terminalNode.appearance-sync.spec.tsx tests/unit/contexts/terminalDisplayCalibration.spec.ts tests/unit/contexts/settingsPanel.spec.tsx tests/unit/contexts/settingsPanel.terminalDisplay.spec.tsx tests/unit/scripts/terminal-display-calibration.spec.ts tests/unit/contexts/terminalNode.effectiveDevicePixelRatio.spec.ts`
 - `OPENCOVE_PROFILE_WEB_HEADFUL=1 OPENCOVE_PROFILE_WEB_DEVICE_SCALE_FACTORS=1,2 OPENCOVE_PROFILE_ASSERT_PARITY=1 pnpm profile:terminal:display-parity`
 - `OPENCOVE_PROFILE_KEEP_USER_DATA=1 OPENCOVE_PROFILE_WEB_HEADFUL=1 OPENCOVE_PROFILE_WEB_DEVICE_SCALE_FACTORS=1,2 OPENCOVE_PROFILE_ASSERT_PARITY=1 pnpm profile:terminal:display-parity`
 - Result: Desktop and Web UI DPR 1/2 all converged to `81x24`, `cssCellWidthDelta=0`, `cssCellHeightDelta=0`, and `effectiveDprDelta=0`.
@@ -276,6 +276,8 @@ Latest verified on `2026-04-29` for Desktop/Web UI terminal display parity and u
 - First-client default reference result: with `OPENCOVE_PROFILE_KEEP_USER_DATA=1`, the persisted
   `terminalDisplayReference` was automatically captured from Desktop as `81x24`, cell `7.5x15`,
   `effectiveDpr=2`.
+- UX result: automatic alignment is user-controlled and defaults to enabled; normal UI shows
+  match quality instead of the raw calibration score, while diagnostics still include the score.
 
 Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 

@@ -101,4 +101,15 @@ describe('useTerminalDisplayReferenceAutoCapture', () => {
     expect(measureFirstMountedTerminalDisplay).not.toHaveBeenCalled()
     expect(setAgentSettings).not.toHaveBeenCalled()
   })
+
+  it('does not capture a shared reference when automatic alignment is disabled', () => {
+    const settings = { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: null }
+    const setAgentSettings = vi.fn()
+    vi.mocked(measureFirstMountedTerminalDisplay).mockReturnValue(createMeasurement())
+
+    render(<Harness enabled={false} settings={settings} setAgentSettings={setAgentSettings} />)
+
+    expect(measureFirstMountedTerminalDisplay).not.toHaveBeenCalled()
+    expect(setAgentSettings).not.toHaveBeenCalled()
+  })
 })

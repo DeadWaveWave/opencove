@@ -130,6 +130,8 @@ export function SettingsPanel({
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
     onChange({ ...settings, terminalFontFamily: family })
+  const updateTerminalDisplayAutoCalibrationEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, terminalDisplayAutoCalibrationEnabled: enabled })
   const updateTerminalDisplayReference = (
     reference: AgentSettings['terminalDisplayReference'],
   ): void => onChange({ ...settings, terminalDisplayReference: reference })
@@ -307,6 +309,9 @@ export function SettingsPanel({
                 uiFontSize={settings.uiFontSize}
                 terminalFontSize={settings.terminalFontSize}
                 terminalFontFamily={settings.terminalFontFamily}
+                terminalDisplayAutoCalibrationEnabled={
+                  settings.terminalDisplayAutoCalibrationEnabled
+                }
                 terminalDisplayReference={settings.terminalDisplayReference}
                 updatePolicy={settings.updatePolicy}
                 updateChannel={settings.updateChannel}
@@ -316,6 +321,9 @@ export function SettingsPanel({
                 onChangeUiFontSize={updateUiFontSize}
                 onChangeTerminalFontSize={updateTerminalFontSize}
                 onChangeTerminalFontFamily={updateTerminalFontFamily}
+                onChangeTerminalDisplayAutoCalibrationEnabled={
+                  updateTerminalDisplayAutoCalibrationEnabled
+                }
                 onChangeTerminalDisplayReference={updateTerminalDisplayReference}
                 onChangeUpdatePolicy={updateUpdatePolicy}
                 onChangeUpdateChannel={updateUpdateChannel}

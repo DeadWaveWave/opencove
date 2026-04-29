@@ -37,6 +37,8 @@ export interface TerminalClientDisplayCalibration {
   measuredAt: string
 }
 
+export type TerminalDisplayCalibrationQuality = 'exact' | 'close' | 'needsAdjustment'
+
 function isPositiveNumber(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
 }
@@ -102,6 +104,20 @@ export function createTerminalDisplayProfileKey({
 
 function isCloseNumber(left: number, right: number): boolean {
   return Math.abs(left - right) <= 0.001
+}
+
+export function getTerminalDisplayCalibrationQuality(
+  score: number,
+): TerminalDisplayCalibrationQuality {
+  if (!Number.isFinite(score)) {
+    return 'needsAdjustment'
+  }
+
+  if (score <= 0.001) {
+    return 'exact'
+  }
+
+  return score <= 100 ? 'close' : 'needsAdjustment'
 }
 
 export function isTerminalDisplayReferenceForProfile(

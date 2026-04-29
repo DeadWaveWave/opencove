@@ -6,6 +6,7 @@ import type {
 } from '@contexts/settings/domain/terminalDisplayCalibration'
 import {
   createTerminalDisplayProfileKey,
+  getTerminalDisplayCalibrationQuality,
   isTerminalDisplayReferenceForProfile,
 } from '@contexts/settings/domain/terminalDisplayCalibration'
 import {
@@ -24,12 +25,16 @@ import {
 export function TerminalDisplayCalibrationRow({
   terminalFontSize,
   terminalFontFamily,
+  terminalDisplayAutoCalibrationEnabled,
   terminalDisplayReference,
+  onChangeTerminalDisplayAutoCalibrationEnabled,
   onChangeTerminalDisplayReference,
 }: {
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalDisplayAutoCalibrationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
+  onChangeTerminalDisplayAutoCalibrationEnabled: (enabled: boolean) => void
   onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -51,6 +56,10 @@ export function TerminalDisplayCalibrationRow({
   })
     ? terminalDisplayReference
     : null
+  const getQualityLabel = (score: number): string =>
+    t(
+      `settingsPanel.general.terminalDisplayCalibration.quality.${getTerminalDisplayCalibrationQuality(score)}`,
+    )
 
   const runWithHost = async <T,>(task: (host: HTMLDivElement) => Promise<T>): Promise<T | null> => {
     const host = measurementHostRef.current
@@ -115,7 +124,11 @@ export function TerminalDisplayCalibrationRow({
       measuredAt: new Date().toISOString(),
     }
     writeTerminalClientDisplayCalibration(calibration)
-    setStatus(t('settingsPanel.general.terminalDisplayCalibration.calibrationSaved'))
+    setStatus(
+      t('settingsPanel.general.terminalDisplayCalibration.calibrationSaved', {
+        quality: getQualityLabel(result.score),
+      }),
+    )
   }
 
   const resetThisDevice = (): void => {
@@ -127,9 +140,13 @@ export function TerminalDisplayCalibrationRow({
     const payload = {
       terminalFontSize,
       terminalFontFamily,
+      autoCalibrationEnabled: terminalDisplayAutoCalibrationEnabled,
       reference: terminalDisplayReference,
       referenceMatchesCurrentProfile: activeReference !== null,
       clientCalibration,
+      clientCalibrationQuality: clientCalibration
+        ? getTerminalDisplayCalibrationQuality(clientCalibration.score)
+        : null,
       runtime: window.opencoveApi?.meta?.runtime ?? 'unknown',
       devicePixelRatio: window.devicePixelRatio || 1,
       visualViewportScale: window.visualViewport?.scale ?? null,
@@ -142,7 +159,7 @@ export function TerminalDisplayCalibrationRow({
     ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
         fontSize: clientCalibration.fontSize,
         lineHeight: clientCalibration.lineHeight,
-        score: clientCalibration.score,
+        quality: getQualityLabel(clientCalibration.score),
       })
     : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
 
@@ -153,6 +170,28 @@ export function TerminalDisplayCalibrationRow({
           {t('settingsPanel.general.terminalDisplayCalibration.title')}
         </h4>
         <span>{t('settingsPanel.general.terminalDisplayCalibration.help')}</span>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>
+            {t('settingsPanel.general.terminalDisplayCalibration.autoCalibrationLabel')}
+          </strong>
+          <span>{t('settingsPanel.general.terminalDisplayCalibration.autoCalibrationHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <label className="cove-toggle">
+            <input
+              type="checkbox"
+              data-testid="settings-terminal-display-auto-calibration"
+              checked={terminalDisplayAutoCalibrationEnabled}
+              onChange={event =>
+                onChangeTerminalDisplayAutoCalibrationEnabled(event.target.checked)
+              }
+            />
+            <span className="cove-toggle__slider"></span>
+          </label>
+        </div>
       </div>
 
       <div className="settings-panel__row">
@@ -168,7 +207,11 @@ export function TerminalDisplayCalibrationRow({
                 })
               : terminalDisplayReference
                 ? t('settingsPanel.general.terminalDisplayCalibration.referenceStale')
-                : t('settingsPanel.general.terminalDisplayCalibration.referenceEmpty')}
+                : t(
+                    terminalDisplayAutoCalibrationEnabled
+                      ? 'settingsPanel.general.terminalDisplayCalibration.referenceEmpty'
+                      : 'settingsPanel.general.terminalDisplayCalibration.referenceEmptyAutoOff',
+                  )}
           </span>
         </div>
         <div className="settings-panel__control" style={{ alignItems: 'center', gap: 8 }}>

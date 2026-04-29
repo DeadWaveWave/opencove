@@ -135,6 +135,11 @@ describe('SettingsPanel', () => {
     )
 
     expect(screen.getByText('Terminal Display Consistency')).toBeVisible()
+    expect(screen.getByText('Automatic Display Alignment')).toBeVisible()
+    expect(
+      (screen.getByTestId('settings-terminal-display-auto-calibration') as HTMLInputElement)
+        .checked,
+    ).toBe(true)
     expect(screen.getByTestId('settings-terminal-display-set-reference')).toBeVisible()
     expect(screen.getByTestId('settings-terminal-display-calibrate')).toBeDisabled()
   })

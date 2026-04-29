@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   createTerminalDisplayProfileKey,
+  getTerminalDisplayCalibrationQuality,
   normalizeTerminalClientDisplayCalibration,
   normalizeTerminalDisplayReference,
 } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
@@ -44,6 +45,13 @@ describe('terminal display calibration state', () => {
         runtime: 'browser',
       },
     })
+  })
+
+  it('maps engineering scores to user-facing match quality', () => {
+    expect(getTerminalDisplayCalibrationQuality(0)).toBe('exact')
+    expect(getTerminalDisplayCalibrationQuality(50)).toBe('close')
+    expect(getTerminalDisplayCalibrationQuality(1000)).toBe('needsAdjustment')
+    expect(getTerminalDisplayCalibrationQuality(Number.NaN)).toBe('needsAdjustment')
   })
 
   it('keeps client calibration scoped to the matching terminal appearance profile', () => {

@@ -72,6 +72,7 @@ export function GeneralSection(props: {
   uiFontSize: number
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalDisplayAutoCalibrationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
   updatePolicy: AppUpdatePolicy
   updateChannel: AppUpdateChannel
@@ -81,6 +82,7 @@ export function GeneralSection(props: {
   onChangeUiFontSize: (size: number) => void
   onChangeTerminalFontSize: (size: number) => void
   onChangeTerminalFontFamily: (family: string | null) => void
+  onChangeTerminalDisplayAutoCalibrationEnabled: (enabled: boolean) => void
   onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
   onChangeUpdatePolicy: (policy: AppUpdatePolicy) => void
   onChangeUpdateChannel: (channel: AppUpdateChannel) => void
@@ -95,6 +97,7 @@ export function GeneralSection(props: {
     uiFontSize,
     terminalFontSize,
     terminalFontFamily,
+    terminalDisplayAutoCalibrationEnabled,
     terminalDisplayReference,
     updatePolicy,
     updateChannel,
@@ -104,6 +107,7 @@ export function GeneralSection(props: {
     onChangeUiFontSize,
     onChangeTerminalFontSize,
     onChangeTerminalFontFamily,
+    onChangeTerminalDisplayAutoCalibrationEnabled,
     onChangeTerminalDisplayReference,
     onChangeUpdatePolicy,
     onChangeUpdateChannel,
@@ -208,7 +212,11 @@ export function GeneralSection(props: {
       <TerminalDisplayCalibrationRow
         terminalFontSize={terminalFontSize}
         terminalFontFamily={terminalFontFamily}
+        terminalDisplayAutoCalibrationEnabled={terminalDisplayAutoCalibrationEnabled}
         terminalDisplayReference={terminalDisplayReference}
+        onChangeTerminalDisplayAutoCalibrationEnabled={
+          onChangeTerminalDisplayAutoCalibrationEnabled
+        }
         onChangeTerminalDisplayReference={onChangeTerminalDisplayReference}
       />
 

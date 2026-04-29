@@ -19,6 +19,21 @@ describe('normalizeAgentSettings', () => {
     expect(normalizeAgentSettings({}).defaultTerminalProfileId).toBeNull()
   })
 
+  it('defaults and normalizes terminal display auto calibration', () => {
+    expect(DEFAULT_AGENT_SETTINGS.terminalDisplayAutoCalibrationEnabled).toBe(true)
+    expect(normalizeAgentSettings({}).terminalDisplayAutoCalibrationEnabled).toBe(true)
+    expect(
+      normalizeAgentSettings({
+        terminalDisplayAutoCalibrationEnabled: false,
+      }).terminalDisplayAutoCalibrationEnabled,
+    ).toBe(false)
+    expect(
+      normalizeAgentSettings({
+        terminalDisplayAutoCalibrationEnabled: 'off',
+      }).terminalDisplayAutoCalibrationEnabled,
+    ).toBe(true)
+  })
+
   it('restores a persisted terminal profile id when it is present', () => {
     const settings = normalizeAgentSettings({
       defaultTerminalProfileId: 'wsl:Ubuntu',
