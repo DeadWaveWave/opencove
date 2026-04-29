@@ -38,6 +38,9 @@ export function useTerminalAppearanceSync({
   syncTerminalSize,
   commitTerminalGeometry,
   terminalFontSize,
+  displayTerminalFontSize = terminalFontSize,
+  displayTerminalLineHeight = 1,
+  displayTerminalLetterSpacing = 0,
   terminalFontFamily,
   width,
   height,
@@ -48,6 +51,9 @@ export function useTerminalAppearanceSync({
   syncTerminalSize: () => void
   commitTerminalGeometry: () => void
   terminalFontSize: number
+  displayTerminalFontSize?: number
+  displayTerminalLineHeight?: number
+  displayTerminalLetterSpacing?: number
   terminalFontFamily: string | null
   width: number
   height: number
@@ -56,6 +62,7 @@ export function useTerminalAppearanceSync({
 }): void {
   const hasInitializedFontSizeRef = useRef(false)
   const hasInitializedFontFamilyRef = useRef(false)
+  const previousSharedFontSizeRef = useRef(terminalFontSize)
 
   useEffect(() => {
     const terminal = terminalRef.current
@@ -63,9 +70,11 @@ export function useTerminalAppearanceSync({
       return
     }
 
-    terminal.options.fontSize = terminalFontSize
+    const sharedFontSizeChanged = previousSharedFontSizeRef.current !== terminalFontSize
+    previousSharedFontSizeRef.current = terminalFontSize
+    terminal.options.fontSize = displayTerminalFontSize
     const frame = requestAnimationFrame(() => {
-      if (hasInitializedFontSizeRef.current) {
+      if (hasInitializedFontSizeRef.current && sharedFontSizeChanged) {
         commitTerminalGeometry()
         return
       }
@@ -77,7 +86,28 @@ export function useTerminalAppearanceSync({
     return () => {
       cancelAnimationFrame(frame)
     }
-  }, [commitTerminalGeometry, syncTerminalSize, terminalFontSize, terminalRef])
+  }, [
+    commitTerminalGeometry,
+    displayTerminalFontSize,
+    syncTerminalSize,
+    terminalFontSize,
+    terminalRef,
+  ])
+
+  useEffect(() => {
+    const terminal = terminalRef.current
+    if (!terminal) {
+      return
+    }
+
+    terminal.options.lineHeight = displayTerminalLineHeight
+    terminal.options.letterSpacing = displayTerminalLetterSpacing
+    const frame = requestAnimationFrame(syncTerminalSize)
+
+    return () => {
+      cancelAnimationFrame(frame)
+    }
+  }, [displayTerminalLetterSpacing, displayTerminalLineHeight, syncTerminalSize, terminalRef])
 
   useEffect(() => {
     const terminal = terminalRef.current

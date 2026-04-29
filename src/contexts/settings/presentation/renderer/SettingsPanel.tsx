@@ -130,6 +130,13 @@ export function SettingsPanel({
     onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
   const updateTerminalFontFamily = (family: string | null): void =>
     onChange({ ...settings, terminalFontFamily: family })
+  const updateTerminalAutoReference = (enabled: boolean): void =>
+    onChange({ ...settings, terminalDisplayAutoReferenceEnabled: enabled })
+  const updateTerminalCompensation = (enabled: boolean): void =>
+    onChange({ ...settings, terminalDisplayCalibrationCompensationEnabled: enabled })
+  const updateTerminalDisplayReference = (
+    reference: AgentSettings['terminalDisplayReference'],
+  ): void => onChange({ ...settings, terminalDisplayReference: reference })
   const updateUiFontSize = (fontSize: number): void =>
     onChange({ ...settings, uiFontSize: fontSize })
   const updateUpdatePolicy = (policy: AgentSettings['updatePolicy']): void => {
@@ -304,6 +311,11 @@ export function SettingsPanel({
                 uiFontSize={settings.uiFontSize}
                 terminalFontSize={settings.terminalFontSize}
                 terminalFontFamily={settings.terminalFontFamily}
+                terminalDisplayAutoReferenceEnabled={settings.terminalDisplayAutoReferenceEnabled}
+                terminalDisplayCalibrationCompensationEnabled={
+                  settings.terminalDisplayCalibrationCompensationEnabled
+                }
+                terminalDisplayReference={settings.terminalDisplayReference}
                 updatePolicy={settings.updatePolicy}
                 updateChannel={settings.updateChannel}
                 updateState={updateState}
@@ -312,6 +324,9 @@ export function SettingsPanel({
                 onChangeUiFontSize={updateUiFontSize}
                 onChangeTerminalFontSize={updateTerminalFontSize}
                 onChangeTerminalFontFamily={updateTerminalFontFamily}
+                onChangeTerminalDisplayAutoReferenceEnabled={updateTerminalAutoReference}
+                onChangeTerminalDisplayCalibrationCompensationEnabled={updateTerminalCompensation}
+                onChangeTerminalDisplayReference={updateTerminalDisplayReference}
                 onChangeUpdatePolicy={updateUpdatePolicy}
                 onChangeUpdateChannel={updateUpdateChannel}
                 onCheckForUpdates={onCheckForUpdates}

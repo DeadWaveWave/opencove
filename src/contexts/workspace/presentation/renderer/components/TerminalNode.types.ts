@@ -6,6 +6,7 @@ import type {
   WorkspaceNodeKind,
 } from '../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { TerminalPtyGeometry } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { TerminalThemeMode } from './terminalNode/theme'
@@ -39,6 +40,7 @@ export interface TerminalNodeProps {
   height: number
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   scrollback: string | null
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>

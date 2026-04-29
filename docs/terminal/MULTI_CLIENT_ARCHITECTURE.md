@@ -2,7 +2,7 @@
 
 > Status: Canonical technical direction
 > Scope: terminal and agent nodes rendered across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-28
+> Last updated: 2026-04-30
 
 Verification workflow:
 
@@ -140,6 +140,59 @@ OpenCove uses an appearance profile as the terminal equivalent of a shared displ
 - unicode width policy and parser-sensitive xterm options
 
 The profile can be implemented with CSS variables in clients, similar to a `rem` system, but it is not the truth. The truth remains integer terminal cells: `cols x rows`.
+
+Desktop and Web UI terminal clients also share a stable terminal pixel-snap DPR. xterm rounds cell
+metrics through its effective device pixel ratio, so a 1x browser and a 2x Electron window can
+derive different cell widths from the same font setting. OpenCove normalizes this renderer-local DPR
+for terminal measurement; it is display-only and must not grant geometry authority to a renderer.
+
+Display calibration is a diagnostic layer over this profile. The profiler may sweep
+`fontSize`/`lineHeight`/`letterSpacing` candidates in a client and compare xterm/FitAddon proposed
+geometry plus cell metrics against the Desktop baseline. Calibration output is a recommended
+appearance candidate, not a runtime authority: it must not call `pty.resize`, mutate worker
+canonical geometry, or replace the explicit appearance commit path.
+
+## User Display Alignment Workflow
+
+OpenCove exposes display alignment as a user-controlled Settings workflow, not an automatic hidden
+resize policy:
+
+1. Automatic reference setup is enabled by default. The first online client for the current
+   terminal appearance profile records the shared reference if none exists.
+2. Go to `Settings -> General -> Terminal Display Consistency`.
+3. Turn off `Set Reference Automatically` when you do not want first-client reference capture. This
+   does not delete existing references or local client calibration.
+4. Keep `Apply Calibration Automatically` on when you want a saved device adjustment to be applied
+   automatically. Turn it off to compare the raw terminal font settings.
+5. Choose `Use This Device as Target` only when you want to replace the automatic reference. This
+   stores the shared target cell metrics with the existing terminal appearance profile.
+6. Open another client, then choose `Calibrate This Device`. The client sweeps local display
+   compensation candidates and stores the best local match in that client only.
+7. If the result is not visually acceptable, adjust the shared terminal font family/size, set a new
+   reference, then calibrate the other clients again.
+8. Use `Clear Device Adjustment` to remove local compensation, or `Copy Diagnostics` when reporting a
+   parity issue.
+
+This workflow follows the same owner boundary as the runtime architecture:
+
+- the shared reference is a persisted user preference
+- the automatic reference setup toggle is a persisted user preference and defaults to enabled
+- the automatic calibration compensation toggle is a persisted user preference and defaults to
+  enabled
+- the client calibration is local storage scoped to the current terminal appearance profile and
+  active shared reference
+- the automatic first-client reference is captured from a real mounted terminal xterm/FitAddon
+  instance, not from a synthetic hidden terminal
+- enabled local compensation may change xterm `fontSize`, `lineHeight`, and `letterSpacing`
+- local compensation may trigger local FitAddon measurement
+- local compensation must not resize the PTY or update worker canonical `cols/rows`
+- user-facing calibration results are shown as match quality (`Exact`, `Close`, `Needs adjustment`);
+  raw engineering scores stay in diagnostics only
+
+The target is identical terminal cell metrics when the clients can support them. When exact parity is
+not possible because of platform font rendering, the fallback is explicit and inspectable: users pick
+the closest visual candidate, keep the canonical terminal geometry stable, and attach diagnostics to
+the bug report instead of letting each renderer silently fight for size authority.
 
 ## Multi-Client Policy
 

@@ -150,20 +150,20 @@ function createTerminalHarness(input?: {
 }
 
 describe('terminal effective device pixel ratio', () => {
-  it('keeps the window DPR when the viewport is not zoomed in', () => {
+  it('uses a stable terminal pixel-snap DPR when the viewport is not zoomed in', () => {
     expect(
       resolveTerminalEffectiveDevicePixelRatio({
         baseDevicePixelRatio: 1.25,
         viewportZoom: 1,
       }),
-    ).toBe(1.25)
+    ).toBe(2)
 
     expect(
       resolveTerminalEffectiveDevicePixelRatio({
         baseDevicePixelRatio: 1.25,
         viewportZoom: 0.75,
       }),
-    ).toBe(1.25)
+    ).toBe(2)
   })
 
   it('applies a higher DPR immediately when the terminal is already at the bottom', () => {
@@ -180,7 +180,7 @@ describe('terminal effective device pixel ratio', () => {
     })
 
     expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
-    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(1.875, 5)
+    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(3, 5)
 
     controller.dispose()
 
@@ -234,7 +234,7 @@ describe('terminal effective device pixel ratio', () => {
     controller.setViewportInteractionActive(false)
 
     expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
-    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(2, 5)
+    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(3.2, 5)
   })
 
   it('recomputes the effective DPR when the window DPR changes', () => {
@@ -254,7 +254,7 @@ describe('terminal effective device pixel ratio', () => {
 
     harness.emitResize(1.5)
 
-    expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(2)
-    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(2.25, 5)
+    expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
+    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(3, 5)
   })
 })

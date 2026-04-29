@@ -34,6 +34,7 @@ import { useWebsiteWindowPolicySync } from './hooks/useWebsiteWindowPolicySync'
 import { useAppStore } from './store/useAppStore'
 import { formatKeyChord, resolveCommandKeybinding } from '@contexts/settings/domain/keybindings'
 import type { SettingsPageId } from '@contexts/settings/presentation/renderer/SettingsPanel.shared'
+import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
@@ -96,6 +97,11 @@ export default function App(): React.JSX.Element {
   useWorkspaceMountRepair({ enabled: isPersistReady, workspaces, requestPersistFlush })
   useWebsiteWindowEvents()
   useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
+  useTerminalDisplayReferenceAutoCapture({
+    enabled: isPersistReady && agentSettings.terminalDisplayAutoReferenceEnabled,
+    agentSettings,
+    setAgentSettings,
+  })
 
   const activeWorkspace = useMemo(
     () => workspaces.find(workspace => workspace.id === activeWorkspaceId) ?? null,

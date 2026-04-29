@@ -22,6 +22,7 @@ import {
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { installTerminalEffectiveDevicePixelRatioController } from './effectiveDevicePixelRatio'
 import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
+import { registerTerminalDisplayMeasurementHandle } from '@contexts/settings/presentation/renderer/terminalDisplayMeasurement'
 
 type TerminalDiagnosticsHandle = ReturnType<typeof registerTerminalDiagnostics>
 let nextXtermSessionInstanceId = 1
@@ -53,6 +54,8 @@ export function createMountedXtermSession({
   cursorBlink,
   disableStdin,
   fontSize,
+  lineHeight = 1,
+  letterSpacing = 0,
   bindSearchAddonToFind,
   syncTerminalSize,
   diagnosticsEnabled,
@@ -77,6 +80,8 @@ export function createMountedXtermSession({
   cursorBlink: boolean
   disableStdin: boolean
   fontSize: number
+  lineHeight?: number
+  letterSpacing?: number
   bindSearchAddonToFind: (addon: SearchAddon) => () => void
   syncTerminalSize: () => void
   diagnosticsEnabled: boolean
@@ -96,6 +101,8 @@ export function createMountedXtermSession({
     ...(disableStdin ? { disableStdin: true } : {}),
     fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
     fontSize,
+    lineHeight,
+    letterSpacing,
     theme: initialTerminalTheme,
     allowProposedApi: true,
     convertEol: true,
@@ -139,6 +146,7 @@ export function createMountedXtermSession({
   let cancelMouseServicePatch: () => void = () => undefined
   let disposeTerminalHitTargetCursorScope: () => void = () => undefined
   let disposeWebglPixelSnappingObserver: () => void = () => undefined
+  let disposeTerminalDisplayMeasurementHandle: () => void = () => undefined
   let effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
     terminal,
     initialViewportZoom,
@@ -187,10 +195,19 @@ export function createMountedXtermSession({
       scheduleWebglPixelSnapping: scheduleWebglPixelSnapping ?? (() => undefined),
     })
     if (isTestEnvironment) {
-      disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
+      disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(
+        nodeId,
+        terminal,
+        fitAddon,
+      )
     }
     renderer.clearTextureAtlas()
     syncTerminalSize()
+    disposeTerminalDisplayMeasurementHandle = registerTerminalDisplayMeasurementHandle({
+      nodeId,
+      terminal,
+      fitAddon,
+    })
     requestAnimationFrame(syncTerminalSize)
     scheduleWebglPixelSnapping?.()
   } else {
@@ -227,6 +244,7 @@ export function createMountedXtermSession({
       effectiveDprController.dispose()
       renderer.dispose()
       diagnostics.dispose()
+      disposeTerminalDisplayMeasurementHandle()
       disposeTerminalSelectionTestHandle()
       disposeTerminalFind()
       terminal.dispose()
