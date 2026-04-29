@@ -1,6 +1,8 @@
 import {
   normalizeReadFileBytesResult,
   type ListSystemFontsResult,
+  type ShowSystemNotificationInput,
+  type ShowSystemNotificationResult,
   type WorkspaceDirectory,
 } from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
@@ -94,6 +96,7 @@ export function installBrowserOpenCoveApi(): void {
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
       enableTerminalInputDiagnostics: false,
+      enableTerminalTestApi: false,
       runtime: 'browser',
       platform: resolveBrowserPlatform(),
       mainPid: null,
@@ -328,11 +331,13 @@ export function installBrowserOpenCoveApi(): void {
       kill: payload => ptyClient.kill(payload),
       attach: payload => ptyClient.attach(payload),
       detach: payload => ptyClient.detach(payload),
-      flushScrollbackMirrors: async () => undefined,
       snapshot: payload => ptyClient.snapshot(payload),
+      presentationSnapshot: payload => ptyClient.presentationSnapshot(payload),
       debugCrashHost: () => ptyClient.debugCrashHost(),
       onData: listener => ptyClient.onData(listener),
       onExit: listener => ptyClient.onExit(listener),
+      onGeometry: listener => ptyClient.onGeometry(listener),
+      onResync: listener => ptyClient.onResync(listener),
       onState: listener => ptyClient.onState(listener),
       onMetadata: listener => ptyClient.onMetadata(listener),
     },
@@ -350,6 +355,33 @@ export function installBrowserOpenCoveApi(): void {
     },
     system: {
       listFonts: async (): Promise<ListSystemFontsResult> => ({ fonts: [] }),
+      showNotification: async (
+        payload: ShowSystemNotificationInput,
+      ): Promise<ShowSystemNotificationResult> => {
+        if (typeof window === 'undefined' || !('Notification' in window)) {
+          return { shown: false }
+        }
+
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission()
+        }
+
+        if (Notification.permission !== 'granted') {
+          return { shown: false }
+        }
+
+        const title = payload.title.trim()
+        if (title.length === 0) {
+          return { shown: false }
+        }
+
+        const notification = new Notification(title, {
+          body: typeof payload.body === 'string' ? payload.body : undefined,
+          silent: payload.silent ?? false,
+        })
+        void notification
+        return { shown: true }
+      },
     },
     worker: {
       getStatus: async () => unsupportedWorkerStatus(),

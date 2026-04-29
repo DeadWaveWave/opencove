@@ -198,7 +198,7 @@ export function WorkerSection({
   }
 
   return (
-    <div className="settings-panel__section">
+    <div className="settings-panel__section" id="settings-section-worker">
       <div className="settings-panel__section-header">
         <h3 className="settings-panel__section-title">{t('settingsPanel.worker.title')}</h3>
       </div>
@@ -216,7 +216,7 @@ export function WorkerSection({
         </div>
       ) : null}
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-worker-home">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">{t('settingsPanel.worker.home.title')}</h4>
           <span>
@@ -336,7 +336,7 @@ export function WorkerSection({
         ) : null}
       </div>
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-worker-cli">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">{t('settingsPanel.worker.cli.title')}</h4>
           <span>{t('settingsPanel.worker.cli.help')}</span>
@@ -384,7 +384,7 @@ export function WorkerSection({
         </div>
       </div>
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-worker-local">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">{t('settingsPanel.worker.local.title')}</h4>
           <span>{t('settingsPanel.worker.local.help')}</span>

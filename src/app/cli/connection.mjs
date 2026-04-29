@@ -2,7 +2,10 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 
-import { CONTROL_SURFACE_CONNECTION_FILE } from './constants.mjs'
+import {
+  CONTROL_SURFACE_CONNECTION_FILE,
+  WORKER_CONTROL_SURFACE_CONNECTION_FILE,
+} from './constants.mjs'
 
 function isRecord(value) {
   return !!value && typeof value === 'object'
@@ -24,12 +27,12 @@ function resolveAppDataDir() {
 }
 
 function resolveUserDataCandidates() {
-  const candidates = []
   const explicitUserDataDir = process.env.OPENCOVE_USER_DATA_DIR
   if (explicitUserDataDir && explicitUserDataDir.trim().length > 0) {
-    candidates.push(path.resolve(explicitUserDataDir.trim()))
+    return [path.resolve(explicitUserDataDir.trim())]
   }
 
+  const candidates = []
   const appDataDir = resolveAppDataDir()
   candidates.push(path.join(appDataDir, 'opencove-dev'))
   candidates.push(path.join(appDataDir, 'opencove'))
@@ -97,32 +100,45 @@ function normalizeConnectionInfo(value) {
   return { hostname, port, token, pid, createdAtMs }
 }
 
-export async function resolveConnectionInfo() {
+async function resolveConnectionInfoFromFiles(fileNames) {
   const candidates = resolveUserDataCandidates()
   const results = await Promise.all(
-    candidates.map(async userDataDir => {
-      const filePath = path.join(userDataDir, CONTROL_SURFACE_CONNECTION_FILE)
+    candidates.flatMap(userDataDir =>
+      fileNames.map(async fileName => {
+        const filePath = path.join(userDataDir, fileName)
 
-      try {
-        const value = await readJsonFile(filePath)
-        const info = normalizeConnectionInfo(value)
-        if (!info) {
+        try {
+          const value = await readJsonFile(filePath)
+          const info = normalizeConnectionInfo(value)
+          if (!info) {
+            return null
+          }
+
+          if (!isProcessAlive(info.pid)) {
+            return null
+          }
+
+          return info
+        } catch {
+          // ignore missing / unreadable / invalid files
           return null
         }
-
-        if (!isProcessAlive(info.pid)) {
-          return null
-        }
-
-        return info
-      } catch {
-        // ignore missing / unreadable / invalid files
-        return null
-      }
-    }),
+      }),
+    ),
   )
 
   const infos = results.filter(Boolean)
   infos.sort((a, b) => b.createdAtMs - a.createdAtMs)
   return infos[0] || null
+}
+
+export async function resolveConnectionInfo() {
+  return await resolveConnectionInfoFromFiles([
+    CONTROL_SURFACE_CONNECTION_FILE,
+    WORKER_CONTROL_SURFACE_CONNECTION_FILE,
+  ])
+}
+
+export async function resolveWorkerConnectionInfo() {
+  return await resolveConnectionInfoFromFiles([WORKER_CONTROL_SURFACE_CONNECTION_FILE])
 }

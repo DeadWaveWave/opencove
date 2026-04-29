@@ -25,12 +25,14 @@ test.describe('Worker web canvas - Add project', () => {
     await openAuthedCanvas(page)
 
     await page.locator('[data-testid="sidebar-add-project"]').click()
-    await expect(page.locator('[data-testid="workspace-project-add-dialog"]')).toBeVisible()
+    await expect(page.locator('[data-testid="workspace-project-create-window"]')).toBeVisible()
 
-    await page.locator('[data-testid="workspace-project-add-path"]').fill(secondWorkspacePath)
-    await page.locator('[data-testid="workspace-project-add-confirm"]').click()
+    await page
+      .locator('[data-testid="workspace-project-create-default-local-root"]')
+      .fill(secondWorkspacePath)
+    await page.locator('[data-testid="workspace-project-create-confirm"]').click()
 
-    await expect(page.locator('[data-testid="workspace-project-add-dialog"]')).toHaveCount(0)
+    await expect(page.locator('[data-testid="workspace-project-create-window"]')).toHaveCount(0)
 
     await expect
       .poll(async () => {

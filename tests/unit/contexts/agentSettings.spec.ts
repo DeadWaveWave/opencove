@@ -54,6 +54,21 @@ describe('normalizeAgentSettings', () => {
     ).toBe(false)
   })
 
+  it('defaults and normalizes archive Space destructive action toggles', () => {
+    expect(DEFAULT_AGENT_SETTINGS.archiveSpaceDeleteWorktreeByDefault).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.archiveSpaceDeleteBranchByDefault).toBe(false)
+    expect(normalizeAgentSettings({}).archiveSpaceDeleteWorktreeByDefault).toBe(true)
+    expect(normalizeAgentSettings({}).archiveSpaceDeleteBranchByDefault).toBe(false)
+
+    const settings = normalizeAgentSettings({
+      archiveSpaceDeleteWorktreeByDefault: false,
+      archiveSpaceDeleteBranchByDefault: true,
+    })
+
+    expect(settings.archiveSpaceDeleteWorktreeByDefault).toBe(false)
+    expect(settings.archiveSpaceDeleteBranchByDefault).toBe(true)
+  })
+
   it('normalizes quick commands', () => {
     const settings = normalizeAgentSettings({
       quickCommands: [

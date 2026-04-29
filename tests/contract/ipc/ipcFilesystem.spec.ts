@@ -186,4 +186,33 @@ describe('IPC filesystem handlers', () => {
 
     expect(shell.trashItem).toHaveBeenCalledWith(renamedPath)
   })
+
+  it('falls back to direct delete when trashing fails', async () => {
+    vi.resetModules()
+
+    const { handlers, ipcMain, shell } = createIpcHarness()
+    shell.trashItem.mockRejectedValueOnce(new Error('trash unavailable'))
+    vi.doMock('electron', () => ({ ipcMain, shell }))
+
+    const baseDir = await mkdtemp(join(tmpdir(), 'opencove-test-fs-ipc-delete-fallback-'))
+    const targetPath = join(baseDir, 'hello.txt')
+    await writeFile(targetPath, 'hello', 'utf8')
+
+    const store = createApprovedWorkspaceStoreMock({ isPathApproved: true })
+    const { registerFilesystemIpcHandlers } =
+      await import('../../../src/contexts/filesystem/presentation/main-ipc/register')
+    registerFilesystemIpcHandlers(store)
+
+    const deleteHandler = handlers.get(IPC_CHANNELS.filesystemDeleteEntry)
+    expect(deleteHandler).toBeTypeOf('function')
+
+    await expect(
+      invokeHandledIpc(deleteHandler, null, {
+        uri: toFileUri(targetPath),
+      }),
+    ).resolves.toBeUndefined()
+
+    await expect(readFile(targetPath, 'utf8')).rejects.toBeTruthy()
+    expect(shell.trashItem).toHaveBeenCalledWith(targetPath)
+  })
 })

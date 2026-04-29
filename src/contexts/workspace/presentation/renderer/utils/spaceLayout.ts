@@ -1,9 +1,11 @@
 import type { WorkspaceSpaceRect } from '../types'
 export { pushAwayLayout, type LayoutDirection, type LayoutItem } from './spaceLayout.pushAway'
+export {
+  computeSpaceRectFromNodes,
+  SPACE_MIN_SIZE,
+  SPACE_NODE_PADDING,
+} from '@contexts/workspace/domain/workspaceSpaceLayout'
 
-export const SPACE_NODE_PADDING = 24
-// Must be larger than a default note window so that space label/badges render comfortably.
-export const SPACE_MIN_SIZE = { width: 560, height: 260 }
 export const SPACE_CORNER_HITBOX_PX = 18
 export const SPACE_EDGE_HITBOX_PX = 8
 
@@ -15,26 +17,6 @@ export type SpaceFrameHandle =
     }
 
 export type SpaceFrameHandleMode = 'auto' | 'region'
-
-export function computeSpaceRectFromNodes(
-  nodes: Array<{ x: number; y: number; width: number; height: number }>,
-): WorkspaceSpaceRect {
-  if (nodes.length === 0) {
-    return { x: 0, y: 0, width: SPACE_MIN_SIZE.width, height: SPACE_MIN_SIZE.height }
-  }
-
-  const minX = Math.min(...nodes.map(node => node.x))
-  const minY = Math.min(...nodes.map(node => node.y))
-  const maxX = Math.max(...nodes.map(node => node.x + node.width))
-  const maxY = Math.max(...nodes.map(node => node.y + node.height))
-
-  return {
-    x: minX - SPACE_NODE_PADDING,
-    y: minY - SPACE_NODE_PADDING,
-    width: Math.max(SPACE_MIN_SIZE.width, maxX - minX + SPACE_NODE_PADDING * 2),
-    height: Math.max(SPACE_MIN_SIZE.height, maxY - minY + SPACE_NODE_PADDING * 2),
-  }
-}
 
 export function resolveSpaceFrameHandle({
   rect,

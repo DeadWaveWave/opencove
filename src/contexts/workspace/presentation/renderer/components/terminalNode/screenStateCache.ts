@@ -1,7 +1,6 @@
 export interface CachedTerminalScreenState {
   sessionId: string
   serialized: string
-  rawSnapshot: string
   cols: number
   rows: number
 }
@@ -75,7 +74,6 @@ export function setCachedTerminalScreenState(
   screenStateByNodeId.set(normalizedNodeId, {
     sessionId: normalizedSessionId,
     serialized: state.serialized,
-    rawSnapshot: state.rawSnapshot,
     cols: normalizeDimension(state.cols, 80),
     rows: normalizeDimension(state.rows, 24),
   })

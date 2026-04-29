@@ -33,9 +33,22 @@ describe('computeHydratedCliPath', () => {
       '/Users/tester/.local/bin',
       '/usr/local/bin',
       '/Users/tester/bin',
+      '/Users/tester/.npm-global/bin',
       '/usr/sbin',
       '/sbin',
     ])
+  })
+
+  it('adds npm global bin as a fallback when the login shell omits it', () => {
+    const path = computeHydratedCliPath({
+      isPackaged: true,
+      platform: 'darwin',
+      currentPath: '/usr/bin:/bin',
+      homeDir: '/Users/tester',
+      shellPathFromLogin: '',
+    })
+
+    expect(path.split(':')).toContain('/Users/tester/.npm-global/bin')
   })
 
   it('uses semicolon delimiter for windows and avoids posix-only fallback segments', () => {

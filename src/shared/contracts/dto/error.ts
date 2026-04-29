@@ -5,6 +5,9 @@ export const APP_ERROR_CODES = [
   'common.unexpected',
   'worker.unavailable',
   'space.not_found',
+  'space.ambiguous',
+  'node.not_found',
+  'node.unsupported_operation',
   'session.not_found',
   'control_surface.unauthorized',
   'integration.github.unavailable',
@@ -78,5 +81,6 @@ export type AppErrorParams = Record<string, AppErrorParamValue>
 export interface AppErrorDescriptor {
   code: AppErrorCode
   params?: AppErrorParams
+  details?: unknown
   debugMessage?: string
 }

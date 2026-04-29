@@ -70,6 +70,9 @@ export async function resolveControlSurfaceConnectionInfoFromUserData(options: {
       port: parsed.port,
       token: parsed.token.trim(),
       createdAt: parsed.createdAt,
+      ...(parsed.startedBy === 'cli' || parsed.startedBy === 'desktop'
+        ? { startedBy: parsed.startedBy }
+        : {}),
     }
   } catch {
     return null

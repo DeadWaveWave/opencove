@@ -60,15 +60,26 @@ Two changes closed the gap:
 1. Main process now passes its pid into preload explicitly, so the renderer can reliably detect a new main process during full restart recovery.
 2. Placeholder -> runtime session swap now preserves focus, so a user who clicks during restoration does not lose the input target when the real xterm mounts.
 
+Later hardening on `2026-04-24` closed the remaining restore/render gap:
+
+3. Worker `session.prepareOrRevive` now returns durable agent placeholder scrollback, so cold-start first paint no longer depends on renderer-side placeholder reads racing worker readiness.
+4. Agent redraw protection is now staged: it protects the post-hydration handoff window, but it stops once real visible runtime output has arrived. This prevents restored history from being cleared by the first destructive redraw while still allowing later backspace/control redraw updates to appear immediately.
+
 ## Verification
 
 - Unit:
   - `tests/unit/app/mainProcessPid.spec.ts`
   - `tests/unit/app/useHydrateAppState.helpers.spec.ts`
+- Unit / integration for later hardening:
+  - `tests/unit/terminalNode/hydrationRouter.spec.ts`
+  - `tests/unit/terminalNode/hydrateFromSnapshot.spec.ts`
+  - `tests/integration/recovery/useHydrateAppState.workerPrepare.spec.tsx`
 - Real Electron repro:
   - `scripts/debug-repro-restored-agent-input.mjs`
 - E2E:
   - `tests/e2e/recovery.agent-focus-after-restart.spec.ts`
+  - `tests/e2e/recovery.agent-input-after-window-reopen.spec.ts`
+  - `tests/e2e/recovery.agent-placeholder-click-preserves-history.spec.ts`
 
 ## Lessons
 

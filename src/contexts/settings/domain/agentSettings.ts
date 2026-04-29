@@ -153,6 +153,7 @@ export interface AgentSettings {
   focusNodeOnClick: boolean
   focusNodeTargetZoom: FocusNodeTargetZoom
   focusNodeUseVisibleCanvasCenter: boolean
+  systemNotificationsEnabled: boolean
   standbyBannerEnabled: boolean
   standbyBannerShowTask: boolean
   standbyBannerShowSpace: boolean
@@ -176,6 +177,8 @@ export interface AgentSettings {
   updateChannel: AppUpdateChannel
   releaseNotesSeenVersion: string | null
   hideWorktreeMismatchDropWarning: boolean
+  archiveSpaceDeleteWorktreeByDefault: boolean
+  archiveSpaceDeleteBranchByDefault: boolean
 }
 export { DEFAULT_AGENT_SETTINGS }
 
@@ -295,6 +298,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const focusNodeUseVisibleCanvasCenter =
     normalizeBoolean(value.focusNodeUseVisibleCanvasCenter) ??
     DEFAULT_AGENT_SETTINGS.focusNodeUseVisibleCanvasCenter
+  const systemNotificationsEnabled =
+    normalizeBoolean(value.systemNotificationsEnabled) ??
+    DEFAULT_AGENT_SETTINGS.systemNotificationsEnabled
   const standbyBannerEnabled =
     normalizeBoolean(value.standbyBannerEnabled) ?? DEFAULT_AGENT_SETTINGS.standbyBannerEnabled
   const standbyBannerShowTask =
@@ -380,6 +386,12 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const hideWorktreeMismatchDropWarning =
     normalizeBoolean(value.hideWorktreeMismatchDropWarning) ??
     DEFAULT_AGENT_SETTINGS.hideWorktreeMismatchDropWarning
+  const archiveSpaceDeleteWorktreeByDefault =
+    normalizeBoolean(value.archiveSpaceDeleteWorktreeByDefault) ??
+    DEFAULT_AGENT_SETTINGS.archiveSpaceDeleteWorktreeByDefault
+  const archiveSpaceDeleteBranchByDefault =
+    normalizeBoolean(value.archiveSpaceDeleteBranchByDefault) ??
+    DEFAULT_AGENT_SETTINGS.archiveSpaceDeleteBranchByDefault
 
   return {
     language,
@@ -407,6 +419,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     focusNodeOnClick,
     focusNodeTargetZoom,
     focusNodeUseVisibleCanvasCenter,
+    systemNotificationsEnabled,
     standbyBannerEnabled,
     standbyBannerShowTask,
     standbyBannerShowSpace,
@@ -430,5 +443,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     updateChannel,
     releaseNotesSeenVersion,
     hideWorktreeMismatchDropWarning,
+    archiveSpaceDeleteWorktreeByDefault,
+    archiveSpaceDeleteBranchByDefault,
   }
 }

@@ -461,9 +461,14 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await expect.poll(async () => await pathExists(cutSourcePath)).toBe(false)
       await expect.poll(async () => await readFile(movedPath, 'utf8')).toBe('cut token')
 
-      await deleteEntry.click({ button: 'right', force: true })
-      await expect(contextMenu).toBeVisible()
-      await contextMenu.getByRole('button', { name: 'Delete' }).click()
+      await deleteEntry.dispatchEvent('click')
+      await expect(deleteEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
+      await explorer.focus()
+      await window.waitForTimeout(64)
+      await dispatchExplorerShortcut(window, {
+        code: 'Delete',
+        key: 'Delete',
+      })
       const deleteConfirmation = window.locator(
         '[data-testid="workspace-space-explorer-delete-confirmation"]',
       )
@@ -471,11 +476,11 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       await expect(
         window.locator('[data-testid="workspace-space-explorer-delete-message"]'),
       ).toContainText('delete-me.txt')
-      await deleteConfirmation.getByRole('button', { name: 'Delete' }).click()
+      await deleteConfirmation.getByRole('button', { name: 'Delete' }).click({ force: true })
 
-      await expect(deleteConfirmation).toHaveCount(0)
       await expect.poll(async () => await pathExists(deleteSourcePath)).toBe(false)
       await expect(deleteEntry).toHaveCount(0)
+      await expect(deleteConfirmation).toBeHidden()
     } finally {
       await electronApp.close()
       await removePathWithRetry(fixtureDir)

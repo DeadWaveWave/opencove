@@ -313,7 +313,7 @@ export function WorkspaceContextMenu({
     viewport: { width: viewportWidth, height: viewportHeight },
     gap: SUBMENU_GAP,
   })
-  const canArrangeHitSpace = Boolean(contextHitSpace && contextHitSpace.nodeIds.length >= 2)
+  const canArrangeHitSpace = Boolean(contextHitSpace && contextHitSpace.nodeIds.length >= 1)
   const canArrangeCurrentScope =
     arrangeScope === 'all'
       ? canArrangeAll

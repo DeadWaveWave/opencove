@@ -33,14 +33,23 @@ export function createHomeWorkerEndpointResolver(options: {
   userDataPath: string
   config: HomeWorkerConfigDto
   effectiveMode: HomeWorkerMode
+  initialEndpoint?: ControlSurfaceRemoteEndpoint | null
 }): ControlSurfaceRemoteEndpointResolver {
   if (options.effectiveMode === 'remote') {
-    const endpoint = options.config.remote ? toEndpoint(options.config.remote) : null
+    const endpoint =
+      options.initialEndpoint ?? (options.config.remote ? toEndpoint(options.config.remote) : null)
     return async () => endpoint
   }
 
   if (options.effectiveMode === 'local') {
-    return async () => await resolveLocalWorkerEndpoint(options.userDataPath)
+    let cachedEndpoint = options.initialEndpoint ?? null
+    return async () => {
+      const resolved = await resolveLocalWorkerEndpoint(options.userDataPath)
+      if (resolved) {
+        cachedEndpoint = resolved
+      }
+      return cachedEndpoint
+    }
   }
 
   return async () => null

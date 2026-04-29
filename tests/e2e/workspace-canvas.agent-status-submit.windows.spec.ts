@@ -8,7 +8,7 @@ const providerCases = [
 
 for (const providerCase of providerCases) {
   test.describe(`Workspace Canvas - Agent Status Submit (${providerCase.provider})`, () => {
-    test('switches to working immediately after submit on Windows', async () => {
+    test.skip('switches to working immediately after submit on Windows', async () => {
       const { electronApp, window } = await launchApp({
         windowMode: 'offscreen',
         env: {

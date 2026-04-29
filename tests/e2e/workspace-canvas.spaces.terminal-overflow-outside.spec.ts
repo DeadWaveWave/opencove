@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
+import { openPaneContextMenuAtFlowPoint } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
   test('expands the space with minimal delta and keeps the created terminal inside when the space is too small', async () => {
@@ -37,12 +38,8 @@ test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      // Right click near the center of the space.
-      await pane.click({
-        button: 'right',
-        // Pick a blank spot inside the space but outside the note node.
-        position: { x: 220, y: 220 },
-      })
+      // Pick a blank flow-space spot inside the space but outside the note node.
+      await openPaneContextMenuAtFlowPoint(window, pane, { x: 220, y: 220 })
 
       const newTerminal = window.locator('[data-testid="workspace-context-new-terminal"]')
       await expect(newTerminal).toBeVisible()

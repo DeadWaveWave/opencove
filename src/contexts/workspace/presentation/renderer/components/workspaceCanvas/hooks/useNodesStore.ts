@@ -20,6 +20,7 @@ import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
 } from './useNodesStore.types'
+import { persistNodeScrollback } from './useNodesStore.scrollbackPersistence'
 import { resolveTerminalProviderHintFromCommand } from './useNodesStore.terminalProviderHint'
 
 export function useWorkspaceCanvasNodesStore({
@@ -138,7 +139,6 @@ export function useWorkspaceCanvasNodesStore({
     return (agentLaunchTokenByNodeIdRef.current.get(nodeId) ?? 0) === token
   }, [])
   const setNodeScrollback = useScrollbackStore(state => state.setNodeScrollback)
-
   const closeNode = useCallback(
     async (nodeId: string) => {
       clearAgentLaunchToken(nodeId)
@@ -251,6 +251,7 @@ export function useWorkspaceCanvasNodesStore({
         }
 
         setNodeScrollback(nodeId, pending)
+        persistNodeScrollback(node, pending)
       }
 
       pendingScrollbacks.clear()
@@ -272,6 +273,7 @@ export function useWorkspaceCanvasNodesStore({
       }
 
       setNodeScrollback(nodeId, scrollback)
+      persistNodeScrollback(node, scrollback)
     },
     [setNodeScrollback],
   )

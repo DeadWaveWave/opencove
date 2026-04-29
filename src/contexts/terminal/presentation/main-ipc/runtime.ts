@@ -6,9 +6,13 @@ import type {
   AgentLaunchMode,
   AgentProviderId,
   ListTerminalProfilesResult,
+  PresentationSnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
   TerminalDataEvent,
+  TerminalGeometryCommitReason,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
   TerminalWriteEncoding,
 } from '../../../../shared/contracts/dto'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
@@ -19,6 +23,7 @@ import { stripAutomaticTerminalQueriesFromOutput } from '../../../../shared/term
 import type { GeminiSessionDiscoveryCursor } from '../../../agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { createSessionStateWatcherController } from './sessionStateWatcher'
 import { TerminalSessionManager } from './sessionManager'
+import { isDebugCrashHostEnabled } from './debugCrashHost'
 
 export interface StartSessionStateWatcherInput {
   sessionId: string
@@ -36,15 +41,23 @@ export interface PtyRuntime {
   spawnTerminalSession?: (input: SpawnTerminalInput) => Promise<SpawnTerminalResult>
   spawnSession: (options: SpawnPtyOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string, encoding?: TerminalWriteEncoding) => Promise<void>
-  resize: (sessionId: string, cols: number, rows: number) => Promise<void>
+  resize: (
+    sessionId: string,
+    cols: number,
+    rows: number,
+    reason?: TerminalGeometryCommitReason,
+  ) => Promise<void>
   kill: (sessionId: string) => Promise<void>
   onData: (listener: (event: { sessionId: string; data: string }) => void) => () => void
   onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => () => void
-  attach: (contentsId: number, sessionId: string) => Promise<void>
+  onState?: (listener: (event: TerminalSessionStateEvent) => void) => () => void
+  onMetadata?: (listener: (event: TerminalSessionMetadataEvent) => void) => () => void
+  attach: (contentsId: number, sessionId: string, afterSeq?: number | null) => Promise<void>
   detach: (contentsId: number, sessionId: string) => Promise<void>
   snapshot: (sessionId: string) => Promise<string>
+  presentationSnapshot: (sessionId: string) => Promise<PresentationSnapshotTerminalResult>
   startSessionStateWatcher: (input: StartSessionStateWatcherInput) => void
-  debugCrashHost?: () => void
+  debugCrashHost?: () => void | Promise<void>
   dispose: () => void
 }
 
@@ -58,10 +71,13 @@ function reportStateWatcherIssue(message: string): void {
 
 export function createPtyRuntime(): PtyRuntime {
   const profileResolver = new TerminalProfileResolver()
+  const debugCrashHostEnabled = isDebugCrashHostEnabled()
   const writeDiagnosticsEnabled =
     process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1' ||
     process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1'
   const warnedWriteSessions = new Map<string, string>()
+  const externalStateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
+  const externalMetadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
 
   const formatInputHeadHex = (value: string, limit = 12): string => {
     const chars = Array.from(value).slice(0, limit)
@@ -87,6 +103,16 @@ export function createPtyRuntime(): PtyRuntime {
     )
   }
 
+  const logPtyResizeDiagnostics = (payload: Record<string, unknown>): void => {
+    if (!writeDiagnosticsEnabled) {
+      return
+    }
+
+    process.stderr.write(
+      `[opencove-pty-resize] ${JSON.stringify({ ts: new Date().toISOString(), ...payload })}\n`,
+    )
+  }
+
   const sendToAllWindows = <Payload>(channel: string, payload: Payload): void => {
     for (const content of webContents.getAllWebContents()) {
       if (content.isDestroyed() || content.getType() !== 'window') {
@@ -104,6 +130,12 @@ export function createPtyRuntime(): PtyRuntime {
   const sessionStateWatcher = createSessionStateWatcherController({
     sendToAllWindows,
     reportIssue: reportStateWatcherIssue,
+    onState: event => {
+      externalStateListeners.forEach(listener => listener(event))
+    },
+    onMetadata: event => {
+      externalMetadataListeners.forEach(listener => listener(event))
+    },
   })
 
   const sendPtyDataToSubscriber = (contentsId: number, eventPayload: TerminalDataEvent): void => {
@@ -243,6 +275,7 @@ export function createPtyRuntime(): PtyRuntime {
       })
 
       manager.registerSession(sessionId)
+      manager.resize(sessionId, input.cols, input.rows)
       registerSessionProbeState(sessionId)
 
       return {
@@ -266,6 +299,7 @@ export function createPtyRuntime(): PtyRuntime {
       })
 
       manager.registerSession(sessionId)
+      manager.resize(sessionId, options.cols, options.rows)
       registerSessionProbeState(sessionId)
       return { sessionId }
     },
@@ -289,8 +323,31 @@ export function createPtyRuntime(): PtyRuntime {
       ptyHost.write(sessionId, data, encoding)
       sessionStateWatcher.noteInteraction(sessionId, data)
     },
-    resize: async (sessionId, cols, rows) => {
-      ptyHost.resize(sessionId, cols, rows)
+    resize: async (sessionId, cols, rows, reason) => {
+      const geometry = manager.resize(sessionId, cols, rows, reason)
+      if (!geometry.changed) {
+        logPtyResizeDiagnostics({
+          event: 'unchanged',
+          sessionId,
+          requestedCols: cols,
+          requestedRows: rows,
+          cols: geometry.cols,
+          rows: geometry.rows,
+          reason,
+        })
+        return
+      }
+
+      logPtyResizeDiagnostics({
+        event: 'forwarded',
+        sessionId,
+        requestedCols: cols,
+        requestedRows: rows,
+        cols: geometry.cols,
+        rows: geometry.rows,
+        reason,
+      })
+      ptyHost.resize(sessionId, geometry.cols, geometry.rows)
     },
     kill: async sessionId => {
       manager.kill(sessionId)
@@ -309,6 +366,18 @@ export function createPtyRuntime(): PtyRuntime {
         externalExitListeners.delete(listener)
       }
     },
+    onState: listener => {
+      externalStateListeners.add(listener)
+      return () => {
+        externalStateListeners.delete(listener)
+      }
+    },
+    onMetadata: listener => {
+      externalMetadataListeners.add(listener)
+      return () => {
+        externalMetadataListeners.delete(listener)
+      }
+    },
     attach: async (contentsId, sessionId) => {
       manager.attach(contentsId, sessionId)
     },
@@ -317,6 +386,9 @@ export function createPtyRuntime(): PtyRuntime {
     },
     snapshot: async sessionId => {
       return manager.snapshot(sessionId)
+    },
+    presentationSnapshot: async sessionId => {
+      return await manager.presentationSnapshot(sessionId)
     },
     startSessionStateWatcher: ({
       sessionId,
@@ -337,7 +409,7 @@ export function createPtyRuntime(): PtyRuntime {
         opencodeBaseUrl,
       })
     },
-    ...(process.env.NODE_ENV === 'test'
+    ...(debugCrashHostEnabled
       ? {
           debugCrashHost: () => {
             ptyHost.crash()
@@ -349,6 +421,8 @@ export function createPtyRuntime(): PtyRuntime {
       terminalProbeBufferBySession.clear()
       externalDataListeners.clear()
       externalExitListeners.clear()
+      externalStateListeners.clear()
+      externalMetadataListeners.clear()
       warnedWriteSessions.clear()
       ptyHost.dispose()
     },

@@ -120,7 +120,7 @@ describe('workspace hydration directories', () => {
     expect(hydrated.data.sessionId).toBe('restored-session-1')
   })
 
-  it('marks verified in-process sessions as live reattachments', async () => {
+  it('marks verified in-process agent sessions as live reattachments without renderer scrollback', async () => {
     const snapshot = vi.fn(async () => ({ data: 'existing output' }))
 
     Object.defineProperty(window, 'opencoveApi', {
@@ -165,7 +165,7 @@ describe('workspace hydration directories', () => {
     expect(snapshot).toHaveBeenCalledWith({ sessionId: 'existing-session-1' })
     expect(hydrated.data.sessionId).toBe('existing-session-1')
     expect(hydrated.data.isLiveSessionReattach).toBe(true)
-    expect(hydrated.data.scrollback).toBe('persisted historyexisting output')
+    expect(hydrated.data.scrollback).toBeNull()
   })
 
   it('falls back to workspace path only when terminal has no bound directory', () => {

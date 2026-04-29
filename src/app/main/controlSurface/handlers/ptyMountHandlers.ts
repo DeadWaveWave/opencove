@@ -54,6 +54,18 @@ function normalizeOptionalPositiveInt(value: unknown): number | null {
   return normalized > 0 ? normalized : null
 }
 
+function normalizeOptionalArgs(value: unknown): string[] | null {
+  if (value === null || value === undefined) {
+    return null
+  }
+
+  if (!Array.isArray(value)) {
+    return null
+  }
+
+  return value.filter((item): item is string => typeof item === 'string')
+}
+
 function normalizeFileSystemUri(uri: unknown, operationId: string): string {
   if (typeof uri !== 'string') {
     throw createAppError('common.invalid_input', {
@@ -101,6 +113,8 @@ function normalizeSpawnInMountPayload(payload: unknown): SpawnTerminalInMountInp
         : normalizeFileSystemUri(payload.cwdUri, 'pty.spawnInMount cwdUri'),
     profileId: normalizeOptionalString(payload.profileId),
     shell: normalizeOptionalString(payload.shell),
+    command: normalizeOptionalString(payload.command),
+    args: normalizeOptionalArgs(payload.args),
     cols: normalizeOptionalPositiveInt(payload.cols),
     rows: normalizeOptionalPositiveInt(payload.rows),
   }
@@ -193,13 +207,14 @@ export function registerPtyMountHandlers(
           })
         }
 
-        const command = shell ?? resolveDefaultShell()
+        const command = payload.command ?? shell ?? resolveDefaultShell()
+        const args = payload.command ? (payload.args ?? []) : []
         const { sessionId } = await deps.ptyRuntime.spawnSession({
           cwd,
           cols,
           rows,
           command,
-          args: [],
+          args,
         })
 
         deps.ptyStreamHub.registerSessionMetadata({
@@ -208,7 +223,9 @@ export function registerPtyMountHandlers(
           startedAt,
           cwd,
           command,
-          args: [],
+          args,
+          cols,
+          rows,
         })
 
         return {
@@ -231,6 +248,8 @@ export function registerPtyMountHandlers(
         rows,
         ...(profileId ? { profileId } : {}),
         ...(shell ? { shell } : {}),
+        ...(payload.command ? { command: payload.command } : {}),
+        ...(payload.args ? { args: payload.args } : {}),
       }
 
       const remoteResult = await invokeRemoteValue<SpawnTerminalResult>({
@@ -257,8 +276,10 @@ export function registerPtyMountHandlers(
         kind: 'terminal',
         startedAt,
         cwd,
-        command: shell ?? 'shell',
-        args: [],
+        command: payload.command ?? shell ?? 'shell',
+        args: payload.command ? (payload.args ?? []) : [],
+        cols,
+        rows,
       })
 
       return {

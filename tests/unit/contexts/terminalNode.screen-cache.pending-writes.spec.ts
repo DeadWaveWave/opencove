@@ -15,7 +15,6 @@ describe('TerminalNode screen cache with pending writes', () => {
     setCachedTerminalScreenState('node-cache-pending', {
       sessionId: 'session-cache-pending',
       serialized: 'SCREEN_AFTER_HYDRATION',
-      rawSnapshot: 'BOOT',
       cols: 80,
       rows: 24,
     })
@@ -43,7 +42,6 @@ describe('TerminalNode screen cache with pending writes', () => {
     expect(getCachedTerminalScreenState('node-cache-pending', 'session-cache-pending')).toEqual(
       expect.objectContaining({
         serialized: 'SCREEN_AFTER_HYDRATION',
-        rawSnapshot: 'BOOT',
       }),
     )
   })
@@ -71,7 +69,6 @@ describe('TerminalNode screen cache with pending writes', () => {
     ).toEqual(
       expect.objectContaining({
         serialized: 'SCREEN_AFTER_HYDRATION',
-        rawSnapshot: 'BOOT',
       }),
     )
   })

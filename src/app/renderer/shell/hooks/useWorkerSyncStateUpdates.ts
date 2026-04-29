@@ -179,6 +179,27 @@ export function useWorkerSyncStateUpdates(options: { enabled: boolean }): void {
                 ? Math.floor(event.revision)
                 : null
 
+            if (event.type === 'canvas.focus') {
+              const store = useAppStore.getState()
+              store.setActiveWorkspaceId(event.projectId)
+              store.setFocusRequest(prev =>
+                event.target.kind === 'node'
+                  ? {
+                      kind: 'node',
+                      workspaceId: event.projectId,
+                      nodeId: event.target.nodeId,
+                      sequence: (prev?.sequence ?? 0) + 1,
+                    }
+                  : {
+                      kind: 'space',
+                      workspaceId: event.projectId,
+                      spaceId: event.target.spaceId,
+                      sequence: (prev?.sequence ?? 0) + 1,
+                    },
+              )
+              return
+            }
+
             if (
               typeof eventRevision === 'number' &&
               eventRevision <= lastAppliedRevisionRef.current

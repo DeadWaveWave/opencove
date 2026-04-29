@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   launchApp,
+  readCanvasViewport,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -175,13 +176,6 @@ test.describe('Workspace Canvas - Nodes vs Spaces (Policy)', () => {
         },
       )
 
-      const spaceRegion = window.locator('.workspace-space-region').first()
-      await expect(spaceRegion).toBeVisible()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!spaceBox) {
-        throw new Error('space region bounding box unavailable')
-      }
-
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       const paneBox = await pane.boundingBox()
@@ -189,15 +183,17 @@ test.describe('Workspace Canvas - Nodes vs Spaces (Policy)', () => {
         throw new Error('pane bounding box unavailable')
       }
 
-      const clickPosition = {
-        x: spaceBox.x - paneBox.x + 32,
-        y: spaceBox.y - paneBox.y + spaceBox.height - 32,
+      const viewport = await readCanvasViewport(window)
+      const clickFlowPosition = {
+        x: seededRect.x + 80,
+        y: seededRect.y + seededRect.height - 80,
       }
 
-      await pane.click({
-        button: 'right',
-        position: clickPosition,
-      })
+      await window.mouse.click(
+        paneBox.x + viewport.x + clickFlowPosition.x * viewport.zoom,
+        paneBox.y + viewport.y + clickFlowPosition.y * viewport.zoom,
+        { button: 'right' },
+      )
 
       const createNote = window.locator('[data-testid="workspace-context-new-note"]')
       await expect(createNote).toBeVisible()

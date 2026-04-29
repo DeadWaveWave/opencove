@@ -1,5 +1,10 @@
 export const zhCNSettingsPanel = {
   title: '设置',
+  search: {
+    label: '搜索设置',
+    placeholder: '搜索',
+    noResults: '未找到匹配的设置',
+  },
   nav: {
     general: '通用',
     worker: 'Worker',
@@ -136,9 +141,13 @@ export const zhCNSettingsPanel = {
   },
   notifications: {
     title: '通知',
+    systemNotifications: {
+      enabledLabel: '系统通知',
+      enabledHelp: '当 Agent 从工作状态变为待命时，显示原生系统通知。',
+    },
     agentStandbyBanner: {
-      enabledLabel: 'Agent 完成提醒',
-      enabledHelp: '当 Agent 从工作状态变为待命时，在右上角显示提醒横幅。',
+      enabledLabel: '右上角横幅',
+      enabledHelp: '当 Agent 从工作状态变为待命时，显示应用内右上角横幅。',
       contextTitle: '横幅信息',
       contextHelp: '控制右上角提醒横幅中显示的上下文信息。',
       showTask: '显示任务',
@@ -189,6 +198,10 @@ export const zhCNSettingsPanel = {
       '自动定位时以可视画布的中心为参照。打开左侧栏时，会在剩余右侧空间居中。',
     focusTargetZoomLabel: '定位缩放',
     focusTargetZoomHelp: '自动定位后使用的缩放比例。拖动滑条时会临时预览画布缩放，方便调整。',
+    archiveSpaceDefaultsTitle: '归档 Space 默认操作',
+    archiveSpaceDefaultsHelp: '设置归档 Space 窗口中默认勾选的操作。',
+    archiveSpaceDeleteWorktreeDefaultLabel: '默认删除 worktree',
+    archiveSpaceDeleteBranchDefaultLabel: '默认删除分支',
   },
   experimental: {
     title: '实验性',
@@ -200,17 +213,17 @@ export const zhCNSettingsPanel = {
       '开启后将显示远程 Worker 与远程位置相关的界面入口。关闭时默认保持本地工作流。',
     workerWebUi: {
       title: 'Worker Web UI',
-      help: '通过 Worker 提供的浏览器 UI（实验性）。当前需要 Home Worker = Local Worker。',
+      help: '通过本机 Worker 提供的浏览器 UI（实验性）。',
       enabledLabel: '启用 Web UI',
-      enabledHelp: '开启 Worker 同源托管的 Web UI 与 Debug Shell。修改后会重启 Local Worker。',
+      enabledHelp: '开启本机 Worker 同源托管的 Web UI 与 Debug Shell。修改后会重启本机 Worker。',
       portLabel: '端口',
-      portHelp: '留空（或 0）表示随机端口。修改端口会重启 Local Worker。',
+      portHelp: '留空（或 0）表示随机端口。修改端口会重启本机 Worker。',
       portPlaceholder: '随机',
       portSave: '应用',
       statusLabel: '状态',
-      statusHelp: '请先在 Worker 设置里启动 Local Worker。',
+      statusHelp: '请先在 Worker 设置里启动本机 Worker。',
       status: {
-        requiresLocal: '需要将 Home Worker 设为 Local Worker',
+        requiresLocal: '需要启用本机 Worker',
         disabled: '已禁用',
         stopped: '未运行',
         running: '就绪',
@@ -222,7 +235,7 @@ export const zhCNSettingsPanel = {
       lanHelp: '将 Worker Web UI 暴露到本地局域网。需要设置密码。仅建议在可信网络中使用。',
       passwordLabel: '密码',
       passwordHelpUnset: '启用内网访问前请先设置密码。',
-      passwordHelpSet: '密码已设置。修改密码会重启 Local Worker。',
+      passwordHelpSet: '密码已设置。修改密码会重启本机 Worker。',
       passwordPlaceholder: '输入密码…',
       passwordShow: '显示',
       passwordHide: '隐藏',
@@ -351,19 +364,19 @@ export const zhCNSettingsPanel = {
       remoteExperimentalDisabled:
         '远程 Worker 为实验性功能。请先在「实验性」设置中启用远程 Worker 后再继续。',
       stopLocalWorkerFirst: '切换到 Standalone 前请先停止本机 Worker。',
-      enableLocalRequiresRestart: '请先启用 Local Worker 并重启，然后再启动 Worker。',
+      enableLocalRequiresRestart: '请先启用本机 Worker 模式并重启，然后再启动 Worker。',
     },
     home: {
-      title: 'Home Worker',
-      help: '选择 Desktop 读写 durable state 的位置。Worker Web UI 当前需要 Local Worker。',
-      packagedHelp: 'OpenCove 会直接使用这台电脑上的 Worker。通常你只需要在下面启动或重启它。',
-      packagedModeLabel: '当前使用',
+      title: 'Worker 模式',
+      help: '选择 OpenCove 不使用 Worker、使用本机 Worker，或连接远程 Worker。',
+      packagedHelp: 'OpenCove 会使用这台电脑上的本机 Worker。通常你只需要在下面启动或重启它。',
+      packagedModeLabel: '当前模式',
       packagedModeValue: '本机 Worker',
-      modeLabel: '模式',
+      modeLabel: 'Worker 模式',
       mode: {
         standalone: 'Standalone（无 Worker）',
-        local: 'Local Worker',
-        remote: 'Remote Worker',
+        local: '本机 Worker',
+        remote: '远程 Worker',
       },
       applyLabel: '应用',
       applyHelp: '变更需要重启后生效。',
@@ -389,7 +402,7 @@ export const zhCNSettingsPanel = {
       uninstall: '卸载 CLI',
     },
     local: {
-      title: 'Local Worker',
+      title: '本机 Worker 状态',
       help: '默认仅监听 127.0.0.1，并要求 token。远程访问建议使用 SSH tunnel。Worker Web UI 为实验性功能（见“实验性”设置）。',
       statusLabel: '状态',
       status: {
@@ -411,7 +424,7 @@ export const zhCNSettingsPanel = {
     title: 'Endpoints',
     list: {
       title: '已注册端点',
-      help: 'Desktop 只连接 Home Worker；Home Worker 负责将操作路由到各个 endpoint。',
+      help: '当前 Worker 负责将操作路由到各个 endpoint。',
       countLabel: '数量',
       localSubtitle: '本机',
       localRemoveHelp: '本机 endpoint 不可移除。',
@@ -450,6 +463,7 @@ export const zhCNSettingsPanel = {
     pullRequestBaseBranchesPlaceholder: '例如 develop',
     environmentVariablesTitle: '环境变量',
     environmentVariablesHelp: '自定义环境变量将注入到该工作区下启动的所有终端和 Agent 中。',
+    searchResultDescription: '项目 worktree 与环境设置。',
     environmentVariablesEmpty: '暂无环境变量。',
     environmentVariablesKeyPlaceholder: '例如 NODE_ENV',
     environmentVariablesValuePlaceholder: '例如 development',

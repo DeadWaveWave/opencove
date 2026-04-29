@@ -58,6 +58,47 @@ describe('WorkspaceSpaceRegionsOverlay space actions', () => {
     )
   })
 
+  it('keeps rename input mouse placement events away from the canvas', () => {
+    const handleSpaceDragHandlePointerDown = vi.fn()
+    const wrapperMouseDown = vi.fn()
+
+    render(
+      <div onMouseDown={wrapperMouseDown}>
+        <WorkspaceSpaceRegionsOverlay
+          workspacePath="/tmp"
+          spaceVisuals={[
+            {
+              id: 'space-1',
+              name: 'Infra',
+              directoryPath: '/tmp',
+              rect: { x: 0, y: 0, width: 200, height: 160 },
+              hasExplicitRect: true,
+            },
+          ]}
+          selectedSpaceIds={[]}
+          spaceFramePreview={null}
+          handleSpaceDragHandlePointerDown={handleSpaceDragHandlePointerDown}
+          editingSpaceId="space-1"
+          spaceRenameInputRef={{ current: null }}
+          spaceRenameDraft="Infra"
+          setSpaceRenameDraft={() => undefined}
+          commitSpaceRename={() => undefined}
+          cancelSpaceRename={() => undefined}
+          startSpaceRename={() => undefined}
+        />
+      </div>,
+    )
+
+    const input = screen.getByTestId('workspace-space-label-input-space-1')
+    expect(input).toHaveClass('nodrag')
+    expect(input).toHaveClass('nopan')
+
+    fireEvent.mouseDown(input)
+
+    expect(wrapperMouseDown).not.toHaveBeenCalled()
+    expect(handleSpaceDragHandlePointerDown).not.toHaveBeenCalled()
+  })
+
   it('shows the branch badge when bound to a git worktree', async () => {
     const listWorktrees = vi.fn(async () => {
       return {

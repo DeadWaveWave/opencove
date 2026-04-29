@@ -15,6 +15,7 @@ import type {
 import type { IpcRegistrationDisposable } from './types'
 import { registerHandledIpc } from './handle'
 import { WebsiteWindowManager } from '../websiteWindow/WebsiteWindowManager'
+import { registerWebsiteWindowManager } from '../websiteWindow/websiteWindowManagerRegistry'
 
 function normalizeNodeIdInput(payload: WebsiteWindowNodeIdInput): WebsiteWindowNodeIdInput {
   if (!payload || typeof payload.nodeId !== 'string') {
@@ -43,11 +44,13 @@ function resolveManager(event: IpcMainInvokeEvent | IpcMainEvent): WebsiteWindow
   }
 
   const nextManager = new WebsiteWindowManager(targetWindow)
+  const unregisterManager = registerWebsiteWindowManager(nextManager)
   ;(
     targetWindow as unknown as { __opencoveWebsiteWindowManager?: WebsiteWindowManager }
   ).__opencoveWebsiteWindowManager = nextManager
 
   targetWindow.once('closed', () => {
+    unregisterManager()
     nextManager.dispose()
   })
 

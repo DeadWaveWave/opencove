@@ -172,6 +172,7 @@ function buildAdditionalPathSegments(platform: NodeJS.Platform, homeDir: string)
   if (homeDir.trim().length > 0) {
     segments.push(`${homeDir}/.local/bin`)
     segments.push(`${homeDir}/bin`)
+    segments.push(`${homeDir}/.npm-global/bin`)
   }
 
   segments.push(...POSIX_FALLBACK_PATH_SEGMENTS)

@@ -34,6 +34,18 @@ function createPtyRuntimeMock(): PtyRuntime {
     attach: vi.fn(async () => undefined),
     detach: vi.fn(async () => undefined),
     snapshot: vi.fn(async () => ''),
+    presentationSnapshot: vi.fn(async () => ({
+      sessionId: 'session-1',
+      epoch: 1,
+      appliedSeq: 0,
+      presentationRevision: 0,
+      cols: 80,
+      rows: 24,
+      bufferKind: 'normal',
+      cursor: { x: 0, y: 0 },
+      title: null,
+      serializedScreen: '',
+    })),
     startSessionStateWatcher: vi.fn(),
     dispose: vi.fn(),
   }

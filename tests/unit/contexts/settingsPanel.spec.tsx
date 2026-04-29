@@ -213,6 +213,53 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('toggles archive Space default actions from canvas settings', () => {
+    const onChange = vi.fn()
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={onChange}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-canvas'))
+    fireEvent.click(
+      screen
+        .getByTestId('settings-archive-space-delete-worktree-default')
+        .querySelector('input') as HTMLInputElement,
+    )
+    fireEvent.click(
+      screen
+        .getByTestId('settings-archive-space-delete-branch-default')
+        .querySelector('input') as HTMLInputElement,
+    )
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      archiveSpaceDeleteWorktreeByDefault: false,
+    })
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      archiveSpaceDeleteBranchByDefault: true,
+    })
+  })
+
   it('updates release channel settings and exposes update actions', () => {
     const onChange = vi.fn()
     const onCheckForUpdates = vi.fn()

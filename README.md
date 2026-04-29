@@ -79,8 +79,8 @@ Downloads are available for macOS, Windows, and Linux.
 ### Building from Source
 
 #### Prerequisites
-- Node.js `>= 22`
-- pnpm `>= 9`
+- Node.js `>= 22.12.0`
+- pnpm `9.6.0`
 - (Recommended) Globally install `Claude Code` or `Codex` to experience full agent workflows.
 
 #### Build Instructions

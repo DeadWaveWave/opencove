@@ -42,9 +42,12 @@ vi.mock('@xterm/addon-webgl', () => {
 })
 
 describe('activatePreferredTerminalRenderer', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     contextLossListener = null
+    const { resetPreferredTerminalRendererStateForTests } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+    resetPreferredTerminalRendererStateForTests()
     Object.defineProperty(window, 'devicePixelRatio', {
       configurable: true,
       value: 1,
@@ -60,7 +63,7 @@ describe('activatePreferredTerminalRenderer', () => {
     })
   })
 
-  it('keeps the DOM renderer on Windows when devicePixelRatio is fractional', async () => {
+  it('uses the WebGL renderer on Windows even when devicePixelRatio is fractional', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
       return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
@@ -85,14 +88,14 @@ describe('activatePreferredTerminalRenderer', () => {
       const loadAddon = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, 'codex')
 
-      expect(loadAddon).not.toHaveBeenCalled()
-      expect(activeRenderer.kind).toBe('dom')
+      expect(loadAddon).toHaveBeenCalledTimes(1)
+      expect(activeRenderer.kind).toBe('webgl')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
   })
 
-  it('keeps the WebGL renderer for OpenCode on Windows fractional DPI', async () => {
+  it('loads the WebGL renderer for OpenCode on Windows fractional DPI', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
       return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
@@ -154,6 +157,37 @@ describe('activatePreferredTerminalRenderer', () => {
     }
   })
 
+  it('caps active WebGL renderers to avoid browser context churn', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const first = activatePreferredTerminalRenderer({ loadAddon: vi.fn() } as never, 'codex', {
+        webglRendererBudget: 1,
+      })
+      const second = activatePreferredTerminalRenderer({ loadAddon: vi.fn() } as never, 'codex', {
+        webglRendererBudget: 1,
+      })
+
+      expect(first.kind).toBe('webgl')
+      expect(second.kind).toBe('dom')
+
+      first.dispose()
+
+      const third = activatePreferredTerminalRenderer({ loadAddon: vi.fn() } as never, 'codex', {
+        webglRendererBudget: 1,
+      })
+      expect(third.kind).toBe('webgl')
+      third.dispose()
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
   it('keeps the DOM renderer when webgl rendering is unavailable', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn(() => null) as never
@@ -167,6 +201,31 @@ describe('activatePreferredTerminalRenderer', () => {
           loadAddon,
         } as never,
         'opencode',
+      )
+
+      expect(loadAddon).not.toHaveBeenCalled()
+      expect(activeRenderer.kind).toBe('dom')
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
+  it('keeps the DOM renderer when recovery forces dom mode', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const loadAddon = vi.fn()
+      const activeRenderer = activatePreferredTerminalRenderer(
+        {
+          loadAddon,
+        } as never,
+        'opencode',
+        { preferredMode: 'dom' },
       )
 
       expect(loadAddon).not.toHaveBeenCalled()
@@ -206,12 +265,13 @@ describe('activatePreferredTerminalRenderer', () => {
       const { activatePreferredTerminalRenderer } =
         await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
       const onRendererKindChange = vi.fn()
+      const onRendererIssue = vi.fn()
       const activeRenderer = activatePreferredTerminalRenderer(
         {
           loadAddon: vi.fn(),
         } as never,
         'opencode',
-        { onRendererKindChange },
+        { onRendererKindChange, onRendererIssue },
       )
 
       expect(activeRenderer.kind).toBe('webgl')
@@ -221,6 +281,10 @@ describe('activatePreferredTerminalRenderer', () => {
 
       expect(webglAddonDispose).toHaveBeenCalledTimes(1)
       expect(onRendererKindChange).toHaveBeenCalledWith('dom')
+      expect(onRendererIssue).toHaveBeenCalledWith({
+        reason: 'context_loss',
+        forceDom: true,
+      })
       expect(activeRenderer.kind).toBe('dom')
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext

@@ -45,6 +45,17 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
 
     const remoteDataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
     const remoteExitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+    const remoteStateListeners = new Set<
+      (event: { sessionId: string; state: 'working' | 'standby' }) => void
+    >()
+    const remoteMetadataListeners = new Set<
+      (event: {
+        sessionId: string
+        resumeSessionId: string | null
+        profileId?: string | null
+        runtimeKind?: 'windows' | 'wsl' | 'posix'
+      }) => void
+    >()
     const remoteWrites: Array<{ sessionId: string; data: string }> = []
     let lastRemoteSessionId: string | null = null
 
@@ -65,6 +76,21 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
       onExit: (listener: (event: { sessionId: string; exitCode: number }) => void) => {
         remoteExitListeners.add(listener)
         return () => remoteExitListeners.delete(listener)
+      },
+      onState: (listener: (event: { sessionId: string; state: 'working' | 'standby' }) => void) => {
+        remoteStateListeners.add(listener)
+        return () => remoteStateListeners.delete(listener)
+      },
+      onMetadata: (
+        listener: (event: {
+          sessionId: string
+          resumeSessionId: string | null
+          profileId?: string | null
+          runtimeKind?: 'windows' | 'wsl' | 'posix'
+        }) => void,
+      ) => {
+        remoteMetadataListeners.add(listener)
+        return () => remoteMetadataListeners.delete(listener)
       },
     } satisfies ControlSurfacePtyRuntime
 
@@ -167,6 +193,37 @@ describe('Control Surface HTTP server (multi-endpoint orchestration)', () => {
           typeof message.data === 'string',
       )
       expect(dataMessage.data).toBe(expectedData)
+
+      remoteStateListeners.forEach(listener =>
+        listener({ sessionId: remoteSessionId as string, state: 'working' }),
+      )
+      const stateMessage = await waitForMessage(
+        ws,
+        (message): message is { type: 'state'; sessionId: string; state: string } =>
+          isRecord(message) &&
+          message.type === 'state' &&
+          message.sessionId === homeSessionId &&
+          message.state === 'working',
+      )
+      expect(stateMessage.state).toBe('working')
+
+      remoteMetadataListeners.forEach(listener =>
+        listener({
+          sessionId: remoteSessionId as string,
+          resumeSessionId: 'remote-resume-1',
+          profileId: 'remote-profile',
+          runtimeKind: 'posix',
+        }),
+      )
+      const metadataMessage = await waitForMessage(
+        ws,
+        (message): message is { type: 'metadata'; sessionId: string; resumeSessionId: string } =>
+          isRecord(message) &&
+          message.type === 'metadata' &&
+          message.sessionId === homeSessionId &&
+          message.resumeSessionId === 'remote-resume-1',
+      )
+      expect(metadataMessage.resumeSessionId).toBe('remote-resume-1')
 
       sendJson(ws, { type: 'write', sessionId: homeSessionId, data: 'ping' })
       await waitForCondition(async () => remoteWrites.length > 0, { timeoutMs: 2_000 })

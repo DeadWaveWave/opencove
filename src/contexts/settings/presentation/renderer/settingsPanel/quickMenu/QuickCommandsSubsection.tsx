@@ -159,7 +159,7 @@ export function QuickCommandsSubsection({
     : 'settings-quick-command-pinned'
 
   return (
-    <div className="settings-panel__subsection">
+    <div className="settings-panel__subsection" id="settings-section-quick-commands">
       <div className="settings-panel__subsection-header">
         <strong>{t('settingsPanel.quickMenu.commands.title')}</strong>
         <span>{t('settingsPanel.quickMenu.commands.help')}</span>

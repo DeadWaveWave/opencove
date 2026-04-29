@@ -48,7 +48,9 @@ function TerminalNodeType({
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   renameTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
 }): ReactElement {
-  const scrollback = useScrollbackStore(state => state.scrollbackByNodeId[id] ?? null)
+  const scrollback = useScrollbackStore(state =>
+    data.kind === 'agent' ? null : (state.scrollbackByNodeId[id] ?? data.scrollback ?? null),
+  )
   const nodePosition = useNodePosition(id)
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -69,6 +71,7 @@ function TerminalNodeType({
       }
       terminalProvider={resolvedTerminalProvider}
       isLiveSessionReattach={data.isLiveSessionReattach === true}
+      terminalGeometry={data.terminalGeometry ?? null}
       terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}
@@ -109,7 +112,11 @@ function TerminalNodeType({
           : undefined
       }
       onResize={frame => resizeNodeRef.current(id, frame)}
-      onScrollbackChange={nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)}
+      onScrollbackChange={
+        data.kind === 'terminal'
+          ? nextScrollback => updateNodeScrollbackRef.current(id, nextScrollback)
+          : undefined
+      }
       onCommandRun={
         data.kind === 'terminal'
           ? command => {

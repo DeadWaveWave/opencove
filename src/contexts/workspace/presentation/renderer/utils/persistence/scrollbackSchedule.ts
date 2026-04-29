@@ -3,7 +3,10 @@ import { createAppErrorDescriptor } from '@shared/errors/appError'
 import { getPersistencePort } from './port'
 import { normalizeScrollback } from './normalize'
 
+type ScrollbackWriteTarget = 'terminal' | 'agent-placeholder'
+
 type PendingScrollbackWrite = {
+  target: ScrollbackWriteTarget
   scrollback: string | null
   timer: number | null
   inFlight: boolean
@@ -11,9 +14,34 @@ type PendingScrollbackWrite = {
   onResult: ((result: PersistWriteResult) => void) | null
 }
 
-const pendingByNodeId = new Map<string, PendingScrollbackWrite>()
+const pendingByKey = new Map<string, PendingScrollbackWrite>()
 
-export function scheduleNodeScrollbackWrite(
+function resolvePendingKey(target: ScrollbackWriteTarget, nodeId: string): string {
+  return `${target}:${nodeId}`
+}
+
+function resolvePersistWrite(
+  target: ScrollbackWriteTarget,
+  nodeId: string,
+  scrollback: string | null,
+): Promise<PersistWriteResult> {
+  const port = getPersistencePort()
+
+  if (!port) {
+    return Promise.resolve({
+      ok: false,
+      reason: 'unavailable',
+      error: createAppErrorDescriptor('persistence.unavailable'),
+    })
+  }
+
+  return target === 'terminal'
+    ? port.writeNodeScrollback(nodeId, scrollback)
+    : port.writeAgentNodePlaceholderScrollback(nodeId, scrollback)
+}
+
+function scheduleScrollbackWrite(
+  target: ScrollbackWriteTarget,
   nodeId: string,
   scrollback: string | null,
   options: { delayMs?: number; onResult?: (result: PersistWriteResult) => void } = {},
@@ -28,11 +56,13 @@ export function scheduleNodeScrollbackWrite(
   }
 
   const normalizedScrollback = normalizeScrollback(scrollback)
+  const pendingKey = resolvePendingKey(target, normalizedNodeId)
 
-  const existing = pendingByNodeId.get(normalizedNodeId)
+  const existing = pendingByKey.get(pendingKey)
   const pending: PendingScrollbackWrite =
     existing ??
     ({
+      target,
       scrollback: null,
       timer: null,
       inFlight: false,
@@ -42,7 +72,7 @@ export function scheduleNodeScrollbackWrite(
 
   pending.scrollback = normalizedScrollback
   pending.onResult = options.onResult ?? pending.onResult
-  pendingByNodeId.set(normalizedNodeId, pending)
+  pendingByKey.set(pendingKey, pending)
 
   if (pending.timer !== null) {
     return
@@ -50,34 +80,60 @@ export function scheduleNodeScrollbackWrite(
 
   const delayMs = options.delayMs ?? 0
   if (delayMs <= 0) {
-    flushNodeScrollbackWrite(normalizedNodeId)
+    flushScrollbackWrite(target, normalizedNodeId)
     return
   }
+
   pending.timer = window.setTimeout(() => {
     pending.timer = null
-    flushNodeScrollbackWrite(normalizedNodeId)
+    flushScrollbackWrite(target, normalizedNodeId)
   }, delayMs)
 }
 
-export function clearNodeScrollbackWrite(
+export function scheduleNodeScrollbackWrite(
+  nodeId: string,
+  scrollback: string | null,
+  options: { delayMs?: number; onResult?: (result: PersistWriteResult) => void } = {},
+): void {
+  scheduleScrollbackWrite('terminal', nodeId, scrollback, options)
+}
+
+export function scheduleAgentPlaceholderScrollbackWrite(
+  nodeId: string,
+  scrollback: string | null,
+  options: { delayMs?: number; onResult?: (result: PersistWriteResult) => void } = {},
+): void {
+  scheduleScrollbackWrite('agent-placeholder', nodeId, scrollback, options)
+}
+
+export function clearScheduledScrollbackWrites(
   nodeId: string,
   options: { onResult?: (result: PersistWriteResult) => void } = {},
 ): void {
   scheduleNodeScrollbackWrite(nodeId, null, { delayMs: 0, onResult: options.onResult })
+  scheduleAgentPlaceholderScrollbackWrite(nodeId, null, {
+    delayMs: 0,
+    onResult: options.onResult,
+  })
 }
 
-export function flushScheduledNodeScrollbackWrites(): void {
-  for (const nodeId of pendingByNodeId.keys()) {
-    flushNodeScrollbackWrite(nodeId)
+export function flushScheduledScrollbackWrites(): void {
+  for (const [pendingKey, pending] of pendingByKey.entries()) {
+    const targetPrefix = `${pending.target}:`
+    const nodeId = pendingKey.startsWith(targetPrefix)
+      ? pendingKey.slice(targetPrefix.length)
+      : pendingKey
+    flushScrollbackWrite(pending.target, nodeId)
   }
 }
 
-function flushNodeScrollbackWrite(nodeId: string): void {
+function flushScrollbackWrite(target: ScrollbackWriteTarget, nodeId: string): void {
   if (typeof window === 'undefined') {
     return
   }
 
-  const pending = pendingByNodeId.get(nodeId)
+  const pendingKey = resolvePendingKey(target, nodeId)
+  const pending = pendingByKey.get(pendingKey)
   if (!pending) {
     return
   }
@@ -96,24 +152,14 @@ function flushNodeScrollbackWrite(nodeId: string): void {
   const scrollback = pending.scrollback
   const onResult = pending.onResult
 
-  const port = getPersistencePort()
-
-  void (
-    port
-      ? port.writeNodeScrollback(nodeId, scrollback)
-      : Promise.resolve<PersistWriteResult>({
-          ok: false,
-          reason: 'unavailable',
-          error: createAppErrorDescriptor('persistence.unavailable'),
-        })
-  )
+  void resolvePersistWrite(target, nodeId, scrollback)
     .then(result => {
       onResult?.(result)
     })
     .finally(() => {
       pending.inFlight = false
 
-      const nextPending = pendingByNodeId.get(nodeId)
+      const nextPending = pendingByKey.get(pendingKey)
       if (!nextPending) {
         return
       }
@@ -123,7 +169,7 @@ function flushNodeScrollbackWrite(nodeId: string): void {
       nextPending.flushRequested = false
 
       if (shouldFlushAgain) {
-        flushNodeScrollbackWrite(nodeId)
+        flushScrollbackWrite(target, nodeId)
         return
       }
 
@@ -132,7 +178,7 @@ function flushNodeScrollbackWrite(nodeId: string): void {
         nextPending.inFlight === false &&
         nextPending.flushRequested === false
       ) {
-        pendingByNodeId.delete(nodeId)
+        pendingByKey.delete(pendingKey)
       }
     })
 }

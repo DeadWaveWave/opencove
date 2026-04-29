@@ -4,7 +4,7 @@ import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSe
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
-import type { ListMountsResult, SpawnTerminalResult } from '@shared/contracts/dto'
+import type { SpawnTerminalResult } from '@shared/contracts/dto'
 import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'
 import {
   resolveDefaultNoteWindowSize,
@@ -17,6 +17,10 @@ import {
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
+import {
+  resolveDefaultMountFallback,
+  resolveTerminalLaunchWorkspaceContext,
+} from './useInteractions.paneNodeCreation.terminalLaunch'
 import { translate } from '@app/renderer/i18n'
 
 type SetNodes = (
@@ -62,36 +66,34 @@ export async function createTerminalNodeAtFlowPosition({
     resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
   )
 
-  const targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
-
-  const resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, workspacePath)
-
+  let targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
+  const launchWorkspaceContext = await resolveTerminalLaunchWorkspaceContext({
+    anchor: cursorAnchor,
+    workspaceId,
+    workspacePath,
+    targetSpace,
+  })
+  targetSpace = launchWorkspaceContext.targetSpace
+  const resolvedWorkspacePath = launchWorkspaceContext.workspacePath
+  let resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, resolvedWorkspacePath)
   let mountId = targetSpace?.targetMountId ?? null
-  let defaultMountRootPath: string | null = null
-  if (!mountId && !targetSpace && workspaceId.trim().length > 0) {
-    const controlSurfaceInvoke = (
-      window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
-    ).opencoveApi?.controlSurface?.invoke
 
-    if (typeof controlSurfaceInvoke === 'function') {
-      try {
-        const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-          kind: 'query',
-          id: 'mount.list',
-          payload: { projectId: workspaceId },
-        })
-
-        const defaultMount = mountResult.mounts[0] ?? null
-        mountId = defaultMount?.mountId ?? null
-        defaultMountRootPath = defaultMount?.rootPath ?? null
-      } catch (error) {
-        // If we can't resolve mounts, keep the legacy local behavior (workspacePath cwd).
-        // This preserves backwards compatibility for projects created before mounts existed.
-        onShowMessage?.(
-          translate('messages.mountListFailed', { message: toErrorMessage(error) }),
-          'error',
-        )
+  if (!mountId && !targetSpace) {
+    try {
+      const defaultMountFallback = await resolveDefaultMountFallback({
+        workspaceId,
+        workspacePath: resolvedWorkspacePath,
+      })
+      if (defaultMountFallback) {
+        mountId = defaultMountFallback.mountId
+        resolvedCwd = defaultMountFallback.rootPath
       }
+    } catch (error) {
+      onShowMessage?.(
+        translate('messages.mountListFailed', { message: toErrorMessage(error) }),
+        'error',
+      )
+      return null
     }
   }
 
@@ -100,11 +102,7 @@ export async function createTerminalNodeAtFlowPosition({
       ? toFileUri(targetSpace.directoryPath.trim())
       : null
 
-  const nodeWorkingDirectory = mountId
-    ? spawnCwdUri
-      ? resolvedCwd
-      : (defaultMountRootPath ?? resolvedCwd)
-    : resolvedCwd
+  const nodeWorkingDirectory = resolvedCwd
 
   let spawned: SpawnTerminalResult
 

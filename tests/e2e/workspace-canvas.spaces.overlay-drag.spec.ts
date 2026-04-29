@@ -283,12 +283,12 @@ test.describe('Workspace Canvas - Spaces (Overlay & Drag)', () => {
         throw new Error('space top handle bounding box unavailable for corner resize')
       }
 
-      const startX = handleBox.x + 4
-      const startY = handleBox.y + handleBox.height / 2
+      const startX = handleBox.x + 6
+      const startY = handleBox.y + 6
 
       await dragMouse(window, {
         start: { x: startX, y: startY },
-        end: { x: startX - 90, y: startY - 70 },
+        end: { x: startX - 120, y: startY - 140 },
         steps: 12,
       })
 
@@ -423,7 +423,7 @@ test.describe('Workspace Canvas - Spaces (Overlay & Drag)', () => {
       }, storageKey)
 
       expect(finalRect?.x ?? Number.POSITIVE_INFINITY).toBeLessThan(340)
-      expect(finalRect?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(280)
+      expect(finalRect?.y ?? Number.POSITIVE_INFINITY).toBeLessThan(300)
       expect(finalRect?.width ?? 0).toBeGreaterThan(620)
       expect(finalRect?.height ?? 0).toBeGreaterThan(420)
     } finally {

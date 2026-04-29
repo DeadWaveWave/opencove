@@ -97,6 +97,7 @@ type SeedNode =
 
 export function buildAppState(options: {
   workspacePath: string
+  workspaceId?: string
   workspaceName?: string
   spaces: Array<{
     id: string
@@ -113,7 +114,7 @@ export function buildAppState(options: {
   workspaces: unknown[]
   settings: Record<string, unknown>
 } {
-  const workspaceId = 'workspace-1'
+  const workspaceId = options.workspaceId ?? `workspace-${randomUUID()}`
   const nodes = (options.nodes ?? []).map(node => ({
     id: node.id,
     title: node.title,
