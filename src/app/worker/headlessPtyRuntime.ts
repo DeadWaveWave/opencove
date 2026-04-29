@@ -11,6 +11,8 @@ import {
   type SessionStateWatcherStartInput,
 } from '../../contexts/terminal/presentation/main-ipc/sessionStateWatcher'
 import { isDebugCrashHostEnabled } from '../../contexts/terminal/presentation/main-ipc/debugCrashHost'
+import { TerminalProfileResolver } from '../../platform/terminal/TerminalProfileResolver'
+import type { ListTerminalProfilesResult } from '../../shared/contracts/dto'
 
 type SpawnSessionOptions = {
   cwd: string
@@ -22,6 +24,7 @@ type SpawnSessionOptions = {
 }
 
 export interface HeadlessPtyRuntime {
+  listProfiles: () => Promise<ListTerminalProfilesResult>
   spawnSession: (options: SpawnSessionOptions) => Promise<{ sessionId: string }>
   write: (sessionId: string, data: string) => void
   resize: (
@@ -48,6 +51,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
   const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
+  const profileResolver = new TerminalProfileResolver()
 
   const sessionStateWatcher = createSessionStateWatcherController({
     sendToAllWindows: () => undefined,
@@ -103,6 +107,7 @@ export function createHeadlessPtyRuntime(options: { userDataPath: string }): Hea
   })
 
   return {
+    listProfiles: async () => await profileResolver.listProfiles(),
     spawnSession: async input => await supervisor.spawn(input),
     write: (sessionId, data) => {
       supervisor.write(sessionId, data)
