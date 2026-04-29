@@ -2,7 +2,7 @@
 
 > Status: Active working plan
 > Scope: terminal and agent nodes across Desktop, Web UI, and future Mobile clients
-> Last updated: 2026-04-28
+> Last updated: 2026-04-29
 
 ## Purpose
 
@@ -88,6 +88,7 @@ Use for user-visible promises:
 - `cmd+w` close and reopen
 - Codex/OpenCode live output while another client attaches
 - resize stress under Desktop/Web interaction
+- Desktop/Web display parity profiling with calibration candidate sweep
 
 Goal:
 
@@ -214,6 +215,7 @@ These scenarios should remain easy to rerun and should never be left unowned:
 6. Another client opens while Codex or OpenCode is actively streaming output.
 7. WebGL or canvas degradation rebuilds the local renderer without killing interactivity.
 8. Hidden or backgrounded client resumes and converges through resync.
+9. Display calibration detects the best client-local appearance candidate without changing PTY geometry.
 
 Each item should have at least one durable asset:
 
@@ -247,6 +249,7 @@ Current high-value script bundle:
 - `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
 - `ELECTRON_RUN_AS_NODE=1 OPENCOVE_PROFILE_AGENT_COUNT=12 OPENCOVE_PROFILE_PROVIDER=codex ./node_modules/.bin/electron scripts/profile-agent-restore-startup.mjs`
 - `ELECTRON_RUN_AS_NODE=1 OPENCOVE_PROFILE_AGENT_COUNT=20 OPENCOVE_PROFILE_PROVIDER=codex ./node_modules/.bin/electron scripts/profile-agent-restore-startup.mjs`
+- `OPENCOVE_PROFILE_WEB_HEADFUL=1 OPENCOVE_PROFILE_WEB_DEVICE_SCALE_FACTORS=1,2 OPENCOVE_PROFILE_ASSERT_PARITY=1 pnpm profile:terminal:display-parity`
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.spec.ts --grep "reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients"`
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.agent-resume.spec.ts tests/e2e-web-canvas/workerWebCanvas.view-state.spec.ts`
 
@@ -258,6 +261,17 @@ Latest verified on `2026-04-29` for bulk Agent startup restore profiling:
 - 12-Agent result after WebGL budgeting: `all-runtime-sessions-bound=2211ms`, `all-terminal-outputs-visible=5431ms`, `init=12`, `renderer-health-recover=0`, renderer split `8 webgl / 4 dom`.
 - 20-Agent result after WebGL budgeting: `all-runtime-sessions-bound=2312ms`, `all-terminal-outputs-visible=6878ms`, `init=20`, `renderer-health-recover=0`, renderer split `8 webgl / 12 dom`.
 - Diagnostic comparison: the prior 20-Agent run created `28` terminal init cycles, `8` mixed WebGL/DOM nodes, and `3` renderer-health recoveries; the budgeted run removes that self-induced renderer churn.
+
+Latest verified on `2026-04-29` for Desktop/Web UI terminal display parity and user calibration:
+
+- `pnpm build`
+- `pnpm check`
+- `pnpm lint`
+- `pnpm test -- --run tests/unit/contexts/terminalNode.appearance-sync.spec.tsx tests/unit/contexts/terminalDisplayCalibration.spec.ts tests/unit/contexts/settingsPanel.spec.tsx tests/unit/scripts/terminal-display-calibration.spec.ts tests/unit/contexts/terminalNode.effectiveDevicePixelRatio.spec.ts`
+- `OPENCOVE_PROFILE_WEB_HEADFUL=1 OPENCOVE_PROFILE_WEB_DEVICE_SCALE_FACTORS=1,2 OPENCOVE_PROFILE_ASSERT_PARITY=1 pnpm profile:terminal:display-parity`
+- Result: Desktop and Web UI DPR 1/2 all converged to `81x24`, `cssCellWidthDelta=0`, `cssCellHeightDelta=0`, and `effectiveDprDelta=0`.
+- Calibration result: Web DPR 1 and Web DPR 2 each swept `39` appearance candidates and selected `{ fontSize: 13, lineHeight: 1, letterSpacing: 0 }` with score `0`.
+- Owner invariant result: local display compensation updates xterm display options and local FitAddon sizing, while shared font-size changes remain on the explicit `appearance_commit` geometry path.
 
 Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 

@@ -110,6 +110,35 @@ describe('SettingsPanel', () => {
     })
   })
 
+  it('exposes terminal display consistency controls in general settings', () => {
+    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+      terminalProfiles: [],
+      detectedDefaultTerminalProfileId: null,
+      refreshTerminalProfiles: async () => undefined,
+    })
+
+    render(
+      <SettingsPanel
+        settings={DEFAULT_AGENT_SETTINGS}
+        updateState={createUpdateState()}
+        modelCatalogByProvider={createModelCatalog()}
+        workspaces={[]}
+        onWorkspaceWorktreesRootChange={() => undefined}
+        isFocusNodeTargetZoomPreviewing={false}
+        onFocusNodeTargetZoomPreviewChange={() => undefined}
+        onChange={() => undefined}
+        onCheckForUpdates={() => undefined}
+        onDownloadUpdate={() => undefined}
+        onInstallUpdate={() => undefined}
+        onClose={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText('Terminal Display Consistency')).toBeVisible()
+    expect(screen.getByTestId('settings-terminal-display-set-reference')).toBeVisible()
+    expect(screen.getByTestId('settings-terminal-display-calibrate')).toBeDisabled()
+  })
+
   it('allows reordering agent providers', () => {
     const onChange = vi.fn()
     vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({

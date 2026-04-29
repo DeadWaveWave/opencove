@@ -1,3 +1,5 @@
+import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
+
 export const zhCNSettingsPanel = {
   title: '设置',
   search: {
@@ -42,6 +44,7 @@ export const zhCNSettingsPanel = {
     terminalFontFamilySearch: '搜索字体…',
     terminalFontFamilyShowAll: '显示全部字体',
     terminalFontFamilyNoResults: '未找到字体',
+    terminalDisplayCalibration: zhCNTerminalDisplayCalibration,
     updates: {
       title: '更新',
       help: '跟踪 GitHub Releases，并选择 OpenCove 如何应用应用更新。',

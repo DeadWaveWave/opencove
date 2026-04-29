@@ -5,6 +5,7 @@ import { NoteNode } from '../NoteNode'
 import { TerminalNode } from '../TerminalNode'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
+import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
@@ -30,6 +31,7 @@ function TerminalNodeType({
   dragging,
   terminalFontSize,
   terminalFontFamily,
+  terminalDisplayCalibration,
   selectNode,
   closeNodeRef,
   resizeNodeRef,
@@ -45,6 +47,7 @@ function TerminalNodeType({
   dragging?: boolean
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
@@ -142,6 +145,7 @@ function TerminalNodeType({
       height={data.height}
       terminalFontSize={terminalFontSize}
       terminalFontFamily={terminalFontFamily}
+      terminalDisplayCalibration={terminalDisplayCalibration}
       scrollback={scrollback}
       onClose={() => {
         void closeNodeRef.current(id)
@@ -266,6 +270,7 @@ interface WorkspaceCanvasNodeTypesParams {
   workspacePath: string
   terminalFontSize: number
   terminalFontFamily: string | null
+  terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -298,6 +303,7 @@ export function useWorkspaceCanvasNodeTypes({
   workspacePath,
   terminalFontSize,
   terminalFontFamily,
+  terminalDisplayCalibration,
   selectNode,
   clearNodeSelectionRef,
   closeNodeRef,
@@ -426,6 +432,7 @@ export function useWorkspaceCanvasNodeTypes({
             dragging={dragging}
             terminalFontSize={terminalFontSize}
             terminalFontFamily={terminalFontFamily}
+            terminalDisplayCalibration={terminalDisplayCalibration}
             selectNode={selectNode}
             closeNodeRef={closeNodeRef}
             resizeNodeRef={resizeNodeRef}
@@ -465,6 +472,7 @@ export function useWorkspaceCanvasNodeTypes({
     workspacePath,
     terminalFontSize,
     terminalFontFamily,
+    terminalDisplayCalibration,
     updateNoteTextRef,
     openTaskEditorRef,
     quickUpdateTaskRequirementRef,

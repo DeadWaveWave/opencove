@@ -89,6 +89,7 @@ async function selectWorkspaceDirectoryInBrowser(): Promise<WorkspaceDirectory |
 }
 
 export function installBrowserOpenCoveApi(): void {
+  const enableTerminalTestApi = shouldEnableBrowserTerminalTestApi()
   const api = {
     meta: {
       isTest: false,
@@ -96,7 +97,7 @@ export function installBrowserOpenCoveApi(): void {
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
       enableTerminalInputDiagnostics: false,
-      enableTerminalTestApi: false,
+      enableTerminalTestApi,
       runtime: 'browser',
       platform: resolveBrowserPlatform(),
       mainPid: null,
@@ -404,4 +405,18 @@ export function installBrowserOpenCoveApi(): void {
   } as Window['opencoveApi']
 
   window.opencoveApi = api
+}
+
+function shouldEnableBrowserTerminalTestApi(): boolean {
+  const hostname = window.location.hostname.toLowerCase()
+  const isLoopback =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname.endsWith('.localhost')
+  if (!isLoopback) {
+    return false
+  }
+
+  return new URLSearchParams(window.location.search).get('opencoveTerminalTestApi') === '1'
 }

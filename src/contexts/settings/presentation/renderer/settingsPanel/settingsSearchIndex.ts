@@ -71,6 +71,15 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: CoreSettingsSearchEntryDefinition[] = [
     keywords: ['font', 'family', 'terminal', 'shell', '终端', '字体'],
   },
   {
+    id: 'general.terminal-display-calibration',
+    pageId: 'general',
+    pageLabelKey: 'settingsPanel.nav.general',
+    titleKey: 'settingsPanel.general.terminalDisplayCalibration.title',
+    descriptionKey: 'settingsPanel.general.terminalDisplayCalibration.help',
+    anchorId: 'settings-section-terminal-display-calibration',
+    keywords: ['terminal', 'display', 'calibration', 'web ui', 'desktop', '终端', '校准'],
+  },
+  {
     id: 'general.updates',
     pageId: 'general',
     pageLabelKey: 'settingsPanel.nav.general',

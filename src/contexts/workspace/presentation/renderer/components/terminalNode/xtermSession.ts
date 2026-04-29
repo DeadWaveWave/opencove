@@ -53,6 +53,8 @@ export function createMountedXtermSession({
   cursorBlink,
   disableStdin,
   fontSize,
+  lineHeight = 1,
+  letterSpacing = 0,
   bindSearchAddonToFind,
   syncTerminalSize,
   diagnosticsEnabled,
@@ -77,6 +79,8 @@ export function createMountedXtermSession({
   cursorBlink: boolean
   disableStdin: boolean
   fontSize: number
+  lineHeight?: number
+  letterSpacing?: number
   bindSearchAddonToFind: (addon: SearchAddon) => () => void
   syncTerminalSize: () => void
   diagnosticsEnabled: boolean
@@ -96,6 +100,8 @@ export function createMountedXtermSession({
     ...(disableStdin ? { disableStdin: true } : {}),
     fontFamily: DEFAULT_TERMINAL_FONT_FAMILY,
     fontSize,
+    lineHeight,
+    letterSpacing,
     theme: initialTerminalTheme,
     allowProposedApi: true,
     convertEol: true,
@@ -187,7 +193,11 @@ export function createMountedXtermSession({
       scheduleWebglPixelSnapping: scheduleWebglPixelSnapping ?? (() => undefined),
     })
     if (isTestEnvironment) {
-      disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(nodeId, terminal)
+      disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(
+        nodeId,
+        terminal,
+        fitAddon,
+      )
     }
     renderer.clearTextureAtlas()
     syncTerminalSize()

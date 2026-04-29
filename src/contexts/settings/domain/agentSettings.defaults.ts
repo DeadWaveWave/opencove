@@ -60,6 +60,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   defaultTerminalWindowScalePercent: 80,
   terminalFontSize: 13,
   terminalFontFamily: null,
+  terminalDisplayReference: null,
   uiFontSize: 18,
   githubPullRequestsEnabled: true,
   updatePolicy: 'prompt',
