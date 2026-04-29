@@ -4,7 +4,9 @@ import type { TerminalNodeData } from '../types'
 import {
   buildAgentNodeTitle,
   findLinkedTaskTitleForAgent,
+  resolveAgentDisplayLabel,
   resolveAgentDisplayTitle,
+  stripAgentProviderPrefix,
 } from './agentTitle'
 
 function createNode(
@@ -87,6 +89,30 @@ describe('agentTitle', () => {
         preferFallbackTitle: true,
       }),
     ).toBe('codex · custom summary')
+  })
+
+  it('strips the provider prefix for sidebar labels', () => {
+    expect(stripAgentProviderPrefix('codex', 'codex · custom summary')).toBe('custom summary')
+    expect(stripAgentProviderPrefix('claude-code', 'claude')).toBe('claude')
+  })
+
+  it('prefers linked task text but keeps custom label text when pinned', () => {
+    expect(
+      resolveAgentDisplayLabel({
+        provider: 'codex',
+        linkedTaskTitle: 'Implement OAuth refresh flow',
+        fallbackTitle: 'codex · gpt-5.2-codex',
+      }),
+    ).toBe('Implement OAuth refresh flow')
+
+    expect(
+      resolveAgentDisplayLabel({
+        provider: 'codex',
+        linkedTaskTitle: 'Implement OAuth refresh flow',
+        fallbackTitle: 'codex · custom summary',
+        preferFallbackTitle: true,
+      }),
+    ).toBe('custom summary')
   })
 
   it('finds linked task titles by explicit task id or reverse link', () => {

@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { LabelColor } from '@shared/types/labelColor'
 import {
   DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
   DEFAULT_WORKSPACE_VIEWPORT,
@@ -57,7 +58,10 @@ vi.mock('@dnd-kit/utilities', () => ({
   },
 }))
 
-function createWorkspace(id: string, options?: { hasAgent?: boolean }): WorkspaceState {
+function createWorkspace(
+  id: string,
+  options?: { hasAgent?: boolean; spaceLabelColor?: LabelColor | null },
+): WorkspaceState {
   return {
     id,
     name: id,
@@ -157,7 +161,20 @@ function createWorkspace(id: string, options?: { hasAgent?: boolean }): Workspac
       : [],
     viewport: DEFAULT_WORKSPACE_VIEWPORT,
     isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-    spaces: [],
+    spaces:
+      options?.hasAgent && options.spaceLabelColor
+        ? [
+            {
+              id: `${id}-space`,
+              name: `${id} space`,
+              directoryPath: `/tmp/${id}`,
+              targetMountId: null,
+              labelColor: options.spaceLabelColor,
+              nodeIds: [`${id}-agent`],
+              rect: null,
+            },
+          ]
+        : [],
     activeSpaceId: null,
     spaceArchiveRecords: [],
   }
@@ -239,7 +256,10 @@ describe('Sidebar', () => {
 
     expect(workspaceButton.getAttribute('data-drag-listener')).toBe('true')
     expect(agentButton.getAttribute('data-drag-listener')).toBeNull()
-    expect(agentButton.textContent).toContain('codex · workspace-a task')
+    expect(agentButton.textContent).toContain('workspace-a task')
+    expect(
+      agentButton.querySelector('.agent-provider-icon')?.getAttribute('data-agent-provider'),
+    ).toBe('codex')
 
     fireEvent.click(workspaceButton)
     expect(onSelectWorkspace).toHaveBeenCalledWith('workspace-a')
@@ -253,6 +273,29 @@ describe('Sidebar', () => {
 
     fireEvent.click(agentButton)
     expect(onSelectAgentNode).toHaveBeenCalledWith('workspace-a', 'workspace-a-agent')
+  })
+
+  it('syncs the inherited space label color onto the sidebar provider badge', () => {
+    render(
+      <Sidebar
+        workspaces={[createWorkspace('workspace-a', { hasAgent: true, spaceLabelColor: 'blue' })]}
+        activeWorkspaceId="workspace-a"
+        activeProviderLabel="Codex"
+        activeProviderModel="gpt-5.2-codex"
+        persistNotice={null}
+        onAddWorkspace={() => undefined}
+        onSelectWorkspace={() => undefined}
+        onOpenProjectContextMenu={() => undefined}
+        onSelectAgentNode={() => undefined}
+        onReorderWorkspaces={() => undefined}
+      />,
+    )
+
+    const badge = screen
+      .getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
+      .querySelector('.agent-provider-icon')
+
+    expect(badge?.getAttribute('data-cove-label-color')).toBe('blue')
   })
 
   it('toggles the project agent tree without selecting the workspace', () => {

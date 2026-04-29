@@ -50,8 +50,10 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
 
       const agentItem = window.locator('.workspace-sidebar .workspace-agent-item').first()
       await expect(agentItem).toBeVisible()
-      await expect(agentItem.locator('.workspace-agent-item__title')).toHaveText(
-        'codex · gpt-5.2-codex',
+      await expect(agentItem.locator('.workspace-agent-item__title')).toHaveText('gpt-5.2-codex')
+      await expect(agentItem.locator('.agent-provider-icon')).toHaveAttribute(
+        'data-agent-provider',
+        'codex',
       )
 
       const zoomInButton = window.locator('.react-flow__controls-zoomin')
@@ -334,13 +336,13 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
       })
 
       await expect(doingItem.locator('.workspace-agent-item__title')).toHaveText(
-        'codex · Implement OAuth refresh flow',
+        'Implement OAuth refresh flow',
       )
       await expect(requestItem.locator('.workspace-agent-item__title')).toHaveText(
-        'claude · Clarify API contract with PM',
+        'Clarify API contract with PM',
       )
       await expect(doneItem.locator('.workspace-agent-item__title')).toHaveText(
-        'claude · Finalize migration checklist',
+        'Finalize migration checklist',
       )
     } finally {
       await electronApp.close()

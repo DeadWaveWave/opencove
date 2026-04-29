@@ -1,3 +1,45 @@
+.agent-provider-icon {
+  --agent-provider-accent: rgba(148, 163, 184, 0.92);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 20px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--agent-provider-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--agent-provider-accent) 16%, transparent);
+  color: var(--agent-provider-accent);
+}
+
+.agent-provider-icon[data-agent-provider='claude-code'] {
+  --agent-provider-accent: rgba(237, 137, 54, 0.96);
+}
+
+.agent-provider-icon[data-agent-provider='codex'] {
+  --agent-provider-accent: rgba(125, 211, 252, 0.96);
+}
+
+.agent-provider-icon[data-agent-provider='opencode'] {
+  --agent-provider-accent: rgba(96, 165, 250, 0.96);
+}
+
+.agent-provider-icon[data-agent-provider='gemini'] {
+  --agent-provider-accent: rgba(196, 181, 253, 0.96);
+}
+
+.agent-provider-icon[data-cove-label-color] {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--cove-label-color) 68%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 26%, transparent);
+}
+
+.agent-provider-icon__glyph {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2.1;
+}
+
 .workspace-agent-item {
   border: 1px solid transparent;
   background: transparent;
@@ -41,9 +83,13 @@ button.workspace-agent-item:focus-visible {
 .workspace-agent-item__singleline {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
   width: 100%;
+}
+
+.workspace-agent-item__provider {
+  flex-shrink: 0;
 }
 
 .workspace-agent-item__headline {
@@ -67,7 +113,7 @@ button.workspace-agent-item:focus-visible {
   --cove-status-dot: var(--cove-text-faint);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 0;
   padding: 0;
   font-size: calc(10px * var(--cove-ui-font-scale));
   line-height: 1.2;
@@ -169,11 +215,10 @@ button.workspace-agent-item:focus-visible {
 .workspace-agent-item__pill {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   min-width: 0;
-  max-width: 140px;
-  min-height: 20px;
-  padding: 1px 8px;
+  max-width: 72px;
+  min-height: 18px;
+  padding: 0 7px;
   border-radius: 999px;
   border: 1px solid var(--cove-border-subtle);
   background: var(--cove-surface-hover);
@@ -192,5 +237,5 @@ button.workspace-agent-item:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: calc(10px * var(--cove-ui-font-scale));
+  font-size: calc(9px * var(--cove-ui-font-scale));
 }

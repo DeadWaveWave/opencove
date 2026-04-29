@@ -27,6 +27,20 @@ export function buildAgentNodeTitle(provider: AgentProvider, label: string | nul
   return `${providerTitlePrefix(provider)} · ${normalizedLabel}`
 }
 
+export function stripAgentProviderPrefix(
+  provider: AgentProvider,
+  title: string | null | undefined,
+): string {
+  const normalizedTitle = title?.trim() ?? ''
+  const prefix = `${providerTitlePrefix(provider)} · `
+
+  if (normalizedTitle.startsWith(prefix)) {
+    return normalizedTitle.slice(prefix.length).trim()
+  }
+
+  return normalizedTitle
+}
+
 export function resolveAgentDisplayTitle({
   provider,
   linkedTaskTitle,
@@ -50,6 +64,34 @@ export function resolveAgentDisplayTitle({
 
   if (normalizedFallbackTitle.length > 0) {
     return normalizedFallbackTitle
+  }
+
+  return providerTitlePrefix(provider)
+}
+
+export function resolveAgentDisplayLabel({
+  provider,
+  linkedTaskTitle,
+  fallbackTitle,
+  preferFallbackTitle = false,
+}: {
+  provider: AgentProvider
+  linkedTaskTitle: string | null
+  fallbackTitle: string | null
+  preferFallbackTitle?: boolean
+}): string {
+  const normalizedFallbackLabel = stripAgentProviderPrefix(provider, fallbackTitle)
+  if (preferFallbackTitle && normalizedFallbackLabel.length > 0) {
+    return normalizedFallbackLabel
+  }
+
+  const normalizedLinkedTaskTitle = linkedTaskTitle?.trim() ?? ''
+  if (normalizedLinkedTaskTitle.length > 0) {
+    return normalizedLinkedTaskTitle
+  }
+
+  if (normalizedFallbackLabel.length > 0) {
+    return normalizedFallbackLabel
   }
 
   return providerTitlePrefix(provider)
