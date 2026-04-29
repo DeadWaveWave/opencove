@@ -62,6 +62,13 @@ describe('main process lifecycle', () => {
         openExternal: vi.fn(),
       },
       BrowserWindow,
+      nativeImage: {
+        createFromPath: vi.fn(),
+      },
+      Menu: {
+        buildFromTemplate: vi.fn(template => template),
+        setApplicationMenu: vi.fn(),
+      },
     }))
 
     vi.doMock('@electron-toolkit/utils', () => ({

@@ -72,6 +72,10 @@ describe('main process Wayland IME flags', () => {
         nativeImage: {
           createFromPath: vi.fn(),
         },
+        Menu: {
+          buildFromTemplate: vi.fn(template => template),
+          setApplicationMenu: vi.fn(),
+        },
       }))
 
       vi.doMock('@electron-toolkit/utils', () => ({

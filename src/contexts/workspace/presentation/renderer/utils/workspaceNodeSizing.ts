@@ -134,18 +134,19 @@ export function resolveCanonicalNodeMaxSize(kind: TerminalNodeData['kind']): Siz
   return MAX_SIZE_BY_KIND[kind]
 }
 
-export function resolveImageNodeSizeFromNaturalDimensions({
+function resolveAspectFitSizeWithinBounds({
   naturalWidth,
   naturalHeight,
   preferred,
+  min,
+  max,
 }: {
   naturalWidth: number | null
   naturalHeight: number | null
   preferred: Size
+  min: Size
+  max: Size
 }): Size {
-  const min = resolveCanonicalNodeMinSize('image')
-  const max = resolveCanonicalNodeMaxSize('image')
-
   if (
     typeof naturalWidth !== 'number' ||
     !Number.isFinite(naturalWidth) ||
@@ -213,6 +214,61 @@ export function resolveImageNodeSizeFromNaturalDimensions({
     min,
     max,
   )
+}
+
+export function resolveImageNodeSizeFromNaturalDimensions({
+  naturalWidth,
+  naturalHeight,
+  preferred,
+}: {
+  naturalWidth: number | null
+  naturalHeight: number | null
+  preferred: Size
+}): Size {
+  const min = resolveCanonicalNodeMinSize('image')
+  const max = resolveCanonicalNodeMaxSize('image')
+
+  return resolveAspectFitSizeWithinBounds({
+    naturalWidth,
+    naturalHeight,
+    preferred,
+    min,
+    max,
+  })
+}
+
+export function resolveDocumentNodeSizeFromMediaMetadata({
+  mediaKind,
+  naturalWidth,
+  naturalHeight,
+  preferred,
+}: {
+  mediaKind: 'audio' | 'video'
+  naturalWidth: number | null
+  naturalHeight: number | null
+  preferred: Size
+}): Size {
+  const min = resolveCanonicalNodeMinSize('document')
+  const max = resolveCanonicalNodeMaxSize('document')
+
+  if (mediaKind === 'audio') {
+    return clampSize(
+      {
+        width: Math.max(preferred.width, 480),
+        height: min.height,
+      },
+      min,
+      max,
+    )
+  }
+
+  return resolveAspectFitSizeWithinBounds({
+    naturalWidth,
+    naturalHeight,
+    preferred,
+    min,
+    max,
+  })
 }
 
 export function resolveCanonicalNodeSize({

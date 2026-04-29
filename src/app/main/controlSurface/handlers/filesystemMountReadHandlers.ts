@@ -1,6 +1,7 @@
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
   readDirectoryUseCase,
+  readFileBytesUseCase,
   readFileTextUseCase,
   statUseCase,
 } from '../../../../contexts/filesystem/application/usecases'
@@ -9,6 +10,9 @@ import type {
   ReadDirectoryInMountInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
+  ReadFileBytesInMountInput,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
   ReadFileTextInMountInput,
   ReadFileTextInput,
   ReadFileTextResult,
@@ -34,6 +38,50 @@ export function registerFilesystemMountReadHandlers(
     assertApprovedUri: (uri: string, debugMessage: string) => Promise<void>
   },
 ): void {
+  controlSurface.register('filesystem.readFileBytesInMount', {
+    kind: 'query',
+    validate: (payload: unknown): ReadFileBytesInMountInput => {
+      if (!isRecord(payload)) {
+        throw createAppError('common.invalid_input', {
+          debugMessage: 'Invalid payload for filesystem.readFileBytesInMount.',
+        })
+      }
+
+      return {
+        mountId: normalizeMountId(payload.mountId, 'filesystem.readFileBytesInMount'),
+        uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileBytesInMount'),
+      }
+    },
+    handle: async (_ctx, payload): Promise<ReadFileBytesResult> => {
+      const target = await resolveMountTargetOrThrow({
+        topology: deps.topology,
+        mountId: payload.mountId,
+      })
+
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.readFileBytesInMount uri is outside approved roots',
+        )
+      }
+
+      assertFileUriWithinMountRoot({
+        target,
+        uri: payload.uri,
+        debugMessage: 'filesystem.readFileBytesInMount uri is outside mount root',
+      })
+
+      if (target.endpointId !== 'local') {
+        throw createAppError('common.unavailable', {
+          debugMessage: 'filesystem.readFileBytesInMount is unavailable for remote mounts.',
+        })
+      }
+
+      return await readFileBytesUseCase(deps.port, payload satisfies ReadFileBytesInput)
+    },
+    defaultErrorCode: 'filesystem.read_file_bytes_failed',
+  })
+
   controlSurface.register('filesystem.readFileTextInMount', {
     kind: 'query',
     validate: (payload: unknown): ReadFileTextInMountInput => {

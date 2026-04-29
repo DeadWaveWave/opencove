@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toErrorMessage } from '@app/renderer/shell/utils/format'
+import { DocumentNodeBody } from './DocumentNodeBody'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
@@ -12,6 +13,8 @@ import {
   loadDocumentNodeContent,
   type DocumentNodeProps,
 } from './DocumentNode.helpers'
+import { createMediaObjectUrl } from './DocumentNode.media'
+import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
 
 export function DocumentNode({
@@ -33,7 +36,9 @@ export function DocumentNode({
   const [isSaving, setIsSaving] = useState(false)
   const [reloadNonce, setReloadNonce] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [unsupportedKind, setUnsupportedKind] = useState<'binary' | 'tooLarge' | null>(null)
+  const [unsupportedKind, setUnsupportedKind] = useState<DocumentNodeUnsupportedKind | null>(null)
+  const [mediaSource, setMediaSource] = useState<LoadedDocumentMediaSource | null>(null)
+  const [mediaLoadError, setMediaLoadError] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [closePromptOpen, setClosePromptOpen] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement | null>(null)
@@ -80,6 +85,8 @@ export function DocumentNode({
     setIsLoading(true)
     setLoadError(null)
     setUnsupportedKind(null)
+    setMediaSource(null)
+    setMediaLoadError(false)
     setSaveError(null)
     setClosePromptOpen(false)
 
@@ -91,9 +98,13 @@ export function DocumentNode({
     }
 
     let cancelled = false
+    let objectUrl: string | null = null
     void (async () => {
       try {
-        const result = await loadDocumentNodeContent(filesystemApi, uri, t('documentNode.notAFile'))
+        const result = await loadDocumentNodeContent(filesystemApi, uri, {
+          notAFile: t('documentNode.notAFile'),
+          binaryReadUnavailable: t('documentNode.binaryReadUnavailable'),
+        })
         if (cancelled) {
           return
         }
@@ -102,6 +113,28 @@ export function DocumentNode({
           setContent('')
           setSavedContent('')
           setUnsupportedKind(result.unsupportedKind)
+          setIsLoading(false)
+          return
+        }
+
+        if (result.kind === 'media') {
+          setContent('')
+          setSavedContent('')
+
+          objectUrl = createMediaObjectUrl(result.bytes, result.mimeType)
+          if (cancelled) {
+            if (objectUrl) {
+              URL.revokeObjectURL(objectUrl)
+            }
+            return
+          }
+
+          setMediaSource({
+            kind: result.mediaKind,
+            mimeType: result.mimeType,
+            url: objectUrl,
+          })
+          setMediaLoadError(false)
           setIsLoading(false)
           return
         }
@@ -121,11 +154,14 @@ export function DocumentNode({
 
     return () => {
       cancelled = true
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl)
+      }
     }
   }, [mountId, reloadNonce, t, uri])
 
   const save = useCallback(async (): Promise<boolean> => {
-    if (unsupportedKind) {
+    if (unsupportedKind || mediaSource || mediaLoadError) {
       return false
     }
 
@@ -148,7 +184,7 @@ export function DocumentNode({
       setSaveError(toErrorMessage(error))
       return false
     }
-  }, [content, mountId, t, unsupportedKind, uri])
+  }, [content, mediaLoadError, mediaSource, mountId, t, unsupportedKind, uri])
 
   const discardChanges = (): void => {
     setContent(savedContent)
@@ -169,7 +205,7 @@ export function DocumentNode({
     if (isLoading || loadError) {
       return
     }
-    if (unsupportedKind) {
+    if (unsupportedKind || mediaSource || mediaLoadError) {
       return
     }
     if (!isDirty || isSaving) {
@@ -186,7 +222,18 @@ export function DocumentNode({
     return () => {
       window.clearTimeout(handle)
     }
-  }, [content, isDirty, isLoading, isSaving, loadError, save, saveError, unsupportedKind])
+  }, [
+    content,
+    isDirty,
+    isLoading,
+    isSaving,
+    loadError,
+    mediaLoadError,
+    mediaSource,
+    save,
+    saveError,
+    unsupportedKind,
+  ])
 
   useEffect(() => {
     if (!closeIntentRef.current) {
@@ -238,6 +285,9 @@ export function DocumentNode({
     onClose()
   }
 
+  const showsEditorActions = !mediaSource && !unsupportedKind && !mediaLoadError
+  const interactiveContentClassName = 'document-node__interactive'
+
   return (
     <div
       className="document-node nowheel"
@@ -247,7 +297,7 @@ export function DocumentNode({
           return
         }
 
-        if (event.target.closest('.document-node__editor')) {
+        if (event.target.closest(`.${interactiveContentClassName}`)) {
           event.stopPropagation()
           onInteractionStart?.({
             normalizeViewport: true,
@@ -289,24 +339,26 @@ export function DocumentNode({
         </span>
 
         <div className="document-node__actions nodrag">
-          <button
-            type="button"
-            className="document-node__action"
-            onPointerDown={event => {
-              event.stopPropagation()
-            }}
-            onClick={event => {
-              event.stopPropagation()
-              void save()
-            }}
-            disabled={!isDirty || isLoading || isSaving || !!unsupportedKind}
-            aria-label={t('common.save')}
-            title={t('common.save')}
-          >
-            {isSaving ? t('common.saving') : t('common.save')}
-          </button>
+          {showsEditorActions ? (
+            <button
+              type="button"
+              className="document-node__action"
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
+              onClick={event => {
+                event.stopPropagation()
+                void save()
+              }}
+              disabled={!isDirty || isLoading || isSaving || !!unsupportedKind}
+              aria-label={t('common.save')}
+              title={t('common.save')}
+            >
+              {isSaving ? t('common.saving') : t('common.save')}
+            </button>
+          ) : null}
 
-          {isDirty ? (
+          {showsEditorActions && isDirty ? (
             <button
               type="button"
               className="document-node__action document-node__action--secondary"
@@ -398,94 +450,34 @@ export function DocumentNode({
         </div>
       ) : null}
 
-      <div className="document-node__body">
-        {isLoading ? (
-          <div className="document-node__state">{t('common.loading')}</div>
-        ) : loadError ? (
-          <div className="document-node__state document-node__state--error">
-            <div className="document-node__state-title">{t('common.error')}</div>
-            <div className="document-node__state-message">{loadError}</div>
-            <button
-              type="button"
-              className="document-node__state-action nodrag"
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                setReloadNonce(previous => previous + 1)
-              }}
-            >
-              {t('documentNode.retry')}
-            </button>
-          </div>
-        ) : unsupportedKind ? (
-          <div className="document-node__state document-node__state--warning">
-            <div className="document-node__state-title">
-              {unsupportedKind === 'binary'
-                ? t('documentNode.binaryTitle')
-                : t('documentNode.tooLargeTitle')}
-            </div>
-            <div className="document-node__state-message">
-              {unsupportedKind === 'binary'
-                ? t('documentNode.binaryMessage')
-                : t('documentNode.tooLargeMessage')}
-            </div>
-          </div>
-        ) : (
-          <>
-            {saveError ? (
-              <div className="document-node__save-error" role="status">
-                {saveError}
-              </div>
-            ) : null}
-            <div
-              className="document-node__editor"
-              onPointerDownCapture={event => {
-                event.stopPropagation()
-              }}
-            >
-              <pre
-                ref={gutterRef}
-                className="document-node__gutter nodrag nowheel"
-                aria-hidden="true"
-              >
-                {lineNumberText}
-              </pre>
-              <textarea
-                ref={textareaRef}
-                className="document-node__textarea nodrag nowheel"
-                data-testid="document-node-textarea"
-                value={content}
-                spellCheck={false}
-                onScroll={event => {
-                  const gutter = gutterRef.current
-                  if (gutter) {
-                    gutter.scrollTop = event.currentTarget.scrollTop
-                  }
-                }}
-                onChange={event => {
-                  setContent(event.target.value)
-                  if (saveError) {
-                    setSaveError(null)
-                  }
-                }}
-                onKeyDown={event => {
-                  const isSaveShortcut =
-                    event.key.toLowerCase() === 's' && (event.metaKey || event.ctrlKey)
-                  if (!isSaveShortcut) {
-                    return
-                  }
-
-                  event.preventDefault()
-                  event.stopPropagation()
-                  void save()
-                }}
-              />
-            </div>
-          </>
-        )}
-      </div>
+      <DocumentNodeBody
+        isLoading={isLoading}
+        loadError={loadError}
+        mediaLoadError={mediaLoadError}
+        unsupportedKind={unsupportedKind}
+        mediaSource={mediaSource}
+        interactiveContentClassName={interactiveContentClassName}
+        onRetry={() => {
+          setReloadNonce(previous => previous + 1)
+        }}
+        saveError={saveError}
+        lineNumberText={lineNumberText}
+        gutterRef={gutterRef}
+        textareaRef={textareaRef}
+        content={content}
+        onContentChange={nextContent => {
+          setContent(nextContent)
+          if (saveError) {
+            setSaveError(null)
+          }
+        }}
+        onSaveShortcut={() => {
+          void save()
+        }}
+        onMediaError={() => {
+          setMediaLoadError(true)
+        }}
+      />
 
       <NodeResizeHandles
         classNamePrefix="task-node"
