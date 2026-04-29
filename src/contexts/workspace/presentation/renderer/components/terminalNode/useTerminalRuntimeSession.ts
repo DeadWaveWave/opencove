@@ -7,30 +7,26 @@ import {
   getCachedTerminalScreenState,
   isCachedTerminalScreenStateInvalidated,
 } from './screenStateCache'
-import { commitInitialTerminalNodeGeometry } from './syncTerminalNodeSize'
 import { resolveAttachablePtyApi } from './attachablePty'
 import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
 import { MAX_SCROLLBACK_CHARS } from './constants'
-import { resolveInitialTerminalDimensions } from './initialDimensions'
 import { createTerminalOutputScheduler } from './outputScheduler'
-import {
-  containsDestructiveTerminalDisplayControlSequence,
-  shouldDeferHydratedTerminalRedrawChunk,
-} from './hydrationReplacement'
 import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
 import { createMountedXtermSession } from './xtermSession'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { registerTerminalRuntimeTestHandles } from './testHarness'
 import type { TerminalRuntimeSessionOptions } from './useTerminalRuntimeSession.types'
-import {
-  formatTerminalDataHeadHex,
-  hasVisibleTerminalBufferContent,
-} from './terminalRuntimeDiagnostics'
+import { hasVisibleTerminalBufferContent } from './terminalRuntimeDiagnostics'
 import {
   markRecentTerminalUserInteraction,
   registerTerminalUserInteractionWindow,
 } from './userInteractionWindow'
+import {
+  createRuntimeInitialGeometryCommitter,
+  resolveRuntimeHydrationBaselineSource,
+  resolveRuntimeInitialTerminalDimensions,
+} from './useTerminalRuntimeSession.initialGeometry'
 import {
   createOptionalOpenCodeThemeBridge,
   shouldReusePreservedXtermSession,
@@ -39,17 +35,20 @@ import {
   registerRuntimeRendererAndThemeSync,
   shouldAwaitRestoredAgentVisibleOutput,
   shouldGateRestoredAgentInput,
+  shouldRequirePostGeometrySnapshotOutput,
   shouldTreatHydratedAgentBaselineAsPlaceholder,
   type TerminalHydrationBaselineSource,
 } from './useTerminalRuntimeSession.support'
 import { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
 import { startRuntimeTerminalHydration } from './runtimeHydrationStarter'
+import { subscribeRuntimeTerminalEvents } from './useTerminalRuntimeSession.events'
 
 export function useTerminalRuntimeSession({
   nodeId,
   sessionId,
   kind,
   terminalProvider,
+  initialTerminalGeometryRef,
   agentLaunchModeRef,
   agentResumeSessionIdVerifiedRef,
   titleRef,
@@ -98,7 +97,11 @@ export function useTerminalRuntimeSession({
     const cachedScreenState =
       kind === 'agent' ? null : getCachedTerminalScreenState(nodeId, sessionId)
     suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))
-    const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
+    const initialDimensions = resolveRuntimeInitialTerminalDimensions({
+      initialTerminalGeometry: initialTerminalGeometryRef.current,
+      cachedScreenState,
+      lastCommittedPtySizeRef,
+    })
     const scrollbackBuffer = scrollbackBufferRef.current
     const pendingUserInputBuffer = pendingUserInputBufferRef.current
     const rendererBaselineSnapshot = kind === 'agent' ? '' : scrollbackBuffer.snapshot()
@@ -259,27 +262,30 @@ export function useTerminalRuntimeSession({
     })
     const ptyEventHub = getPtyEventHub()
     const hydrationBaselineSourceRef: { current: TerminalHydrationBaselineSource } = {
-      current:
-        preservedSession !== null ||
-        cachedScreenState?.serialized.length ||
-        rendererBaselineSnapshot.trim().length > 0
-          ? 'placeholder_snapshot'
-          : 'empty',
+      current: resolveRuntimeHydrationBaselineSource({
+        preservedSession,
+        cachedScreenState,
+        rendererBaselineSnapshot,
+      }),
     }
     const { attachPromise, presentationSnapshotPromise } = prepareRuntimePresentationAttach({
       ptyApi: resolveAttachablePtyApi(),
       sessionId,
       isLiveSessionReattach,
-      commitInitialGeometry: () =>
-        commitInitialTerminalNodeGeometry({
-          terminalRef,
-          fitAddonRef,
-          containerRef,
-          isPointerResizingRef,
-          lastCommittedPtySizeRef,
-          sessionId,
-          reason: 'frame_commit',
-        }),
+      commitInitialGeometry: createRuntimeInitialGeometryCommitter({
+        terminalRef,
+        fitAddonRef,
+        containerRef,
+        isPointerResizingRef,
+        lastCommittedPtySizeRef,
+        sessionId,
+      }),
+      requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({
+        kind,
+        isLiveSessionReattach,
+        agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+        agentLaunchMode: agentLaunchModeRef.current,
+      }),
     })
     const committedScreenStateRecorder = createCommittedScreenStateRecorder({
       serializeAddon,
@@ -332,41 +338,19 @@ export function useTerminalRuntimeSession({
       isDisposed: () => isDisposed,
     })
     protectRestoredVisibleBaseline = hydrationRouter.protectHydratedVisibleBaseline
-    const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
-      openCodeThemeBridge?.handlePtyOutputChunk(event.data)
-      if (diagnosticsEnabled) {
-        terminalDiagnostics.log('pty-data', {
-          seq: event.seq ?? null,
-          dataLength: event.data.length,
-          dataStartsWithEsc: event.data.startsWith('\u001b'),
-          dataHeadHex: formatTerminalDataHeadHex(event.data),
-          containsDestructive: containsDestructiveTerminalDisplayControlSequence(event.data),
-          shouldDeferHydratedRedraw: shouldDeferHydratedTerminalRedrawChunk(event.data),
-        })
-      }
-      restoredAgentVisibilityGate.notifyOutputObserved(event.data)
-      hydrationRouter.handleDataChunk(event.data, { seq: event.seq ?? null })
-    })
-    const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
-      hydrationRouter.handleExit(event.exitCode)
-    })
-    const unsubscribeGeometry = ptyEventHub.onSessionGeometry(sessionId, event => {
-      lastCommittedPtySizeRef.current = {
-        cols: event.cols,
-        rows: event.rows,
-      }
-      if (terminal.cols !== event.cols || terminal.rows !== event.rows) {
-        terminal.resize(event.cols, event.rows)
-      }
-      syncTerminalSize()
-      scheduleTranscriptSync()
-    })
-    const unsubscribeResync = ptyEventHub.onSessionResync(sessionId, event => {
-      requestTerminalRendererRecovery({
-        reason: 'stream_resync',
-        trigger: event.reason === 'replay_window_exceeded' ? 'resync_event' : 'resync_event',
-        forceDom: false,
-      })
+    const unsubscribeRuntimeEvents = subscribeRuntimeTerminalEvents({
+      ptyEventHub,
+      sessionId,
+      openCodeThemeBridge,
+      diagnosticsEnabled,
+      terminalDiagnostics,
+      restoredAgentVisibilityGate,
+      hydrationRouter,
+      lastCommittedPtySizeRef,
+      terminal,
+      syncTerminalSize,
+      scheduleTranscriptSync,
+      requestTerminalRendererRecovery,
     })
     const shouldSkipInitialPlaceholderWrite =
       hasPreservedVisibleBaseline && hasVisibleTerminalBufferContent(terminal)
@@ -426,10 +410,7 @@ export function useTerminalRuntimeSession({
       isDisposed = true
       disposeRuntimeRendererAndThemeSync()
       disposeInteractionWindow()
-      unsubscribeData()
-      unsubscribeExit()
-      unsubscribeGeometry()
-      unsubscribeResync()
+      unsubscribeRuntimeEvents()
       restoredAgentVisibilityGate.dispose()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
@@ -467,6 +448,7 @@ export function useTerminalRuntimeSession({
     syncTerminalSize,
     terminalThemeMode,
     terminalProvider,
+    initialTerminalGeometryRef,
     isTestEnvironment,
     kind,
     agentLaunchModeRef,

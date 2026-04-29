@@ -71,6 +71,7 @@ function TerminalNodeType({
       }
       terminalProvider={resolvedTerminalProvider}
       isLiveSessionReattach={data.isLiveSessionReattach === true}
+      terminalGeometry={data.terminalGeometry ?? null}
       terminalThemeMode="sync-with-ui"
       isSelected={selected === true}
       isDragging={dragging === true}

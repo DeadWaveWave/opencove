@@ -13,6 +13,7 @@ export type NodeControlNode = {
   kind: string
   profileId?: string | null
   runtimeKind?: string | null
+  terminalGeometry?: { cols: number; rows: number } | null
   terminalProviderHint?: string | null
   labelColorOverride: NodeLabelColorOverride
   status: string | null

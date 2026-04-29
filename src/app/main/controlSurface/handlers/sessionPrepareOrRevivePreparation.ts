@@ -80,10 +80,14 @@ function clampPtyDimension(value: number, fallback: number, max: number): number
   return Math.min(max, Math.max(1, normalized))
 }
 
-function resolveNodeInitialPtyGeometry(
+export function resolveNodeInitialPtyGeometry(
   node: NormalizedPersistedNode,
   settings: ReturnType<typeof normalizeAgentSettings>,
 ): PtyGeometry {
+  if (node.terminalGeometry) {
+    return node.terminalGeometry
+  }
+
   const fontSize =
     Number.isFinite(settings.terminalFontSize) && settings.terminalFontSize > 0
       ? settings.terminalFontSize

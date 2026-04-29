@@ -50,6 +50,36 @@ export function normalizeScrollback(value: unknown): string | null {
   return value.slice(-MAX_PERSISTED_SCROLLBACK_CHARS)
 }
 
+export type NormalizedTerminalGeometry = { cols: number; rows: number }
+
+export function normalizeTerminalGeometry(value: unknown): NormalizedTerminalGeometry | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const cols = value.cols
+  const rows = value.rows
+  if (
+    typeof cols !== 'number' ||
+    !Number.isFinite(cols) ||
+    typeof rows !== 'number' ||
+    !Number.isFinite(rows)
+  ) {
+    return null
+  }
+
+  const normalizedCols = Math.floor(cols)
+  const normalizedRows = Math.floor(rows)
+  if (normalizedCols <= 0 || normalizedRows <= 0) {
+    return null
+  }
+
+  return {
+    cols: Math.min(1_000, normalizedCols),
+    rows: Math.min(1_000, normalizedRows),
+  }
+}
+
 export type NormalizedPersistedNode = {
   id: string
   sessionId: string | null
@@ -61,6 +91,7 @@ export type NormalizedPersistedNode = {
   kind: string
   profileId?: string | null
   runtimeKind?: string | null
+  terminalGeometry: NormalizedTerminalGeometry | null
   terminalProviderHint?: string | null
   labelColorOverride: NodeLabelColorOverride
   status: string | null
@@ -276,6 +307,7 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         kind: normalizeString(node.kind, 'terminal'),
         profileId: normalizeOptionalString(node.profileId),
         runtimeKind: normalizeOptionalString(node.runtimeKind),
+        terminalGeometry: normalizeTerminalGeometry(node.terminalGeometry),
         terminalProviderHint: normalizeOptionalString(node.terminalProviderHint),
         labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         status: typeof node.status === 'string' ? node.status : null,

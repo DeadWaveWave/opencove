@@ -5,6 +5,7 @@ import {
   normalizeLabelColor,
   normalizeNodeLabelColorOverride,
 } from '../../../shared/types/labelColor'
+import { normalizeTerminalGeometry } from './normalize'
 import {
   appMeta,
   appSettings,
@@ -126,6 +127,11 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
           typeof node.runtimeKind === 'string' && node.runtimeKind.trim().length > 0
             ? node.runtimeKind
             : null,
+        terminalGeometry: normalizeTerminalGeometry(
+          typeof node.terminalGeometryJson === 'string'
+            ? safeJsonParse(node.terminalGeometryJson)
+            : null,
+        ),
         terminalProviderHint:
           typeof node.terminalProviderHint === 'string' &&
           node.terminalProviderHint.trim().length > 0

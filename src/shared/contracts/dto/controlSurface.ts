@@ -1,4 +1,5 @@
 import type { AgentProviderId } from './agent'
+import type { TerminalPtyGeometry } from './terminal'
 import type { PresentationSnapshotTerminalResult } from './terminal'
 import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
@@ -327,6 +328,7 @@ export interface PreparedRuntimeNodeResult {
   scrollback: string | null
   executionDirectory: string | null
   expectedDirectory: string | null
+  terminalGeometry: TerminalPtyGeometry | null
   agent: PreparedRuntimeAgentResult | null
 }
 

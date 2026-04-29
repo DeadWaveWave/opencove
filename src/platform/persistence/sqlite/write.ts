@@ -49,11 +49,11 @@ export function writeNormalizedAppState(
       INSERT INTO nodes (
         id, workspace_id, session_id, title, title_pinned_by_user,
         position_x, position_y, width, height,
-        kind, profile_id, runtime_kind, terminal_provider_hint, label_color_override,
+        kind, profile_id, runtime_kind, terminal_geometry_json, terminal_provider_hint, label_color_override,
         status, started_at, ended_at, exit_code, last_error,
         execution_directory, expected_directory, agent_json, task_json
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -130,6 +130,7 @@ export function writeNormalizedAppState(
           node.kind,
           node.profileId ?? null,
           node.runtimeKind ?? null,
+          node.terminalGeometry ? safeJsonStringify(node.terminalGeometry) : null,
           node.terminalProviderHint ?? null,
           node.labelColorOverride,
           node.status,

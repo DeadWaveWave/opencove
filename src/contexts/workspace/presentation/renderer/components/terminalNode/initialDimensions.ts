@@ -13,18 +13,22 @@ function normalizeDimension(value: number | null | undefined): number | null {
 }
 
 export function resolveInitialTerminalDimensions(
-  state: TerminalScreenStateLike | null | undefined,
+  ...states: Array<TerminalScreenStateLike | null | undefined>
 ): { cols: number; rows: number } | null {
-  if (!state) {
-    return null
+  for (const state of states) {
+    if (!state) {
+      continue
+    }
+
+    const cols = normalizeDimension(state.cols)
+    const rows = normalizeDimension(state.rows)
+
+    if (cols === null || rows === null) {
+      continue
+    }
+
+    return { cols, rows }
   }
 
-  const cols = normalizeDimension(state.cols)
-  const rows = normalizeDimension(state.rows)
-
-  if (cols === null || rows === null) {
-    return null
-  }
-
-  return { cols, rows }
+  return null
 }

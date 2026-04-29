@@ -5,6 +5,7 @@ import type { TerminalGeometryCommitReason } from '@shared/contracts/dto'
 import { resolveStablePtySize } from '../../utils/terminalResize'
 
 type PtySize = { cols: number; rows: number }
+export type InitialTerminalNodeGeometryCommitResult = PtySize & { changed: boolean }
 
 type InitialGeometrySample = PtySize & {
   containerWidth: number
@@ -273,7 +274,7 @@ export async function commitInitialTerminalNodeGeometry({
   lastCommittedPtySizeRef: MutableRefObject<{ cols: number; rows: number } | null>
   sessionId: string
   reason: TerminalGeometryCommitReason
-}): Promise<PtySize | null> {
+}): Promise<InitialTerminalNodeGeometryCommitResult | null> {
   const nextPtySize = await resolveStableInitialTerminalNodeGeometry({
     terminalRef,
     fitAddonRef,
@@ -290,7 +291,7 @@ export async function commitInitialTerminalNodeGeometry({
     lastCommittedPtySizeRef.current.rows === nextPtySize.rows
 
   if (alreadyCommitted) {
-    return nextPtySize
+    return { ...nextPtySize, changed: false }
   }
 
   await window.opencoveApi.pty.resize({
@@ -301,5 +302,5 @@ export async function commitInitialTerminalNodeGeometry({
   })
 
   lastCommittedPtySizeRef.current = nextPtySize
-  return nextPtySize
+  return { ...nextPtySize, changed: true }
 }

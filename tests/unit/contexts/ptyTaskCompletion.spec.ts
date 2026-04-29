@@ -9,7 +9,6 @@ import {
   applyAgentStateToNodes,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
 import { useScrollbackStore } from '../../../src/contexts/workspace/presentation/renderer/store/useScrollbackStore'
-import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 describe('PTY task completion side effects', () => {
   afterEach(() => {

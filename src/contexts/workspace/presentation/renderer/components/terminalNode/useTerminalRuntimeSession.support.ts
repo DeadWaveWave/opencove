@@ -45,6 +45,18 @@ export function shouldAwaitRestoredAgentVisibleOutput(options: {
   return options.kind === 'agent'
 }
 
+export function shouldRequirePostGeometrySnapshotOutput(options: {
+  kind: WorkspaceNodeKind
+  isLiveSessionReattach: boolean
+  agentResumeSessionIdVerified: boolean
+  agentLaunchMode: AgentLaunchMode | null
+}): boolean {
+  void options.agentResumeSessionIdVerified
+  void options.agentLaunchMode
+
+  return options.kind === 'agent' && !options.isLiveSessionReattach
+}
+
 export function shouldProtectRestoredAgentHistory(options: {
   kind: WorkspaceNodeKind
   agentResumeSessionIdVerified: boolean
@@ -365,7 +377,9 @@ export function prepareRuntimePresentationAttach(options: {
   ptyApi: AttachablePtyApi
   sessionId: string
   isLiveSessionReattach: boolean
-  commitInitialGeometry: () => Promise<{ cols: number; rows: number } | null>
+  commitInitialGeometry: (
+    baselineSnapshot: PresentationSnapshotTerminalResult | null,
+  ) => Promise<{ cols: number; rows: number; changed: boolean } | null>
   requirePostGeometrySnapshotOutput?: boolean
 }): {
   attachPromise: Promise<void | undefined>
@@ -381,22 +395,34 @@ export function prepareRuntimePresentationAttach(options: {
     ? Promise.resolve(null)
     : attachPromise
         .catch(() => undefined)
-        .then(() => options.commitInitialGeometry())
+        .then(async () => {
+          const baselineSnapshot = await preAttachPresentationSnapshotPromise
+          return await options.commitInitialGeometry(baselineSnapshot)
+        })
         .catch(() => null)
   const presentationSnapshotPromise = options.isLiveSessionReattach
     ? preAttachPresentationSnapshotPromise
     : Promise.all([preAttachPresentationSnapshotPromise, initialGeometryCommitPromise]).then(
-        ([baselineSnapshot, expectedGeometry]) =>
-          requestPresentationSnapshotAfterGeometry({
+        ([baselineSnapshot, initialGeometry]) => {
+          const baselineHasMeaningfulScreen =
+            baselineSnapshot !== null &&
+            containsMeaningfulTerminalDisplayContent(baselineSnapshot.serializedScreen)
+          const shouldRequireFreshMeaningfulScreen =
+            options.requirePostGeometrySnapshotOutput === true &&
+            (initialGeometry?.changed === true || !baselineHasMeaningfulScreen)
+
+          return requestPresentationSnapshotAfterGeometry({
             sessionId: options.sessionId,
-            expectedGeometry,
-            minAppliedSeqExclusive:
-              options.requirePostGeometrySnapshotOutput === true
-                ? (baselineSnapshot?.appliedSeq ?? 0)
-                : null,
-            requireMeaningfulSerializedScreen: options.requirePostGeometrySnapshotOutput === true,
-            maxAttempts: options.requirePostGeometrySnapshotOutput === true ? 80 : 8,
-          }),
+            expectedGeometry: initialGeometry
+              ? { cols: initialGeometry.cols, rows: initialGeometry.rows }
+              : null,
+            minAppliedSeqExclusive: shouldRequireFreshMeaningfulScreen
+              ? (baselineSnapshot?.appliedSeq ?? 0)
+              : null,
+            requireMeaningfulSerializedScreen: shouldRequireFreshMeaningfulScreen,
+            maxAttempts: shouldRequireFreshMeaningfulScreen ? 80 : 8,
+          })
+        },
       )
 
   return { attachPromise, presentationSnapshotPromise }

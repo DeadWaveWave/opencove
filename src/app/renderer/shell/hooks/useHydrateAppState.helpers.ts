@@ -187,6 +187,7 @@ function toHydratedRuntimeNode(
       scrollback: preparedNode.kind === 'agent' ? null : preparedNode.scrollback,
       executionDirectory: preparedNode.executionDirectory ?? currentNode.data.executionDirectory,
       expectedDirectory: preparedNode.expectedDirectory ?? currentNode.data.expectedDirectory,
+      terminalGeometry: preparedNode.terminalGeometry ?? currentNode.data.terminalGeometry ?? null,
       agent:
         currentNode.data.kind === 'agent' || preparedNode.kind === 'agent'
           ? ({

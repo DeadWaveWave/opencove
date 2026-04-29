@@ -3,10 +3,12 @@ import {
   attachAfterPresentationSnapshot,
   createRestoredAgentVisibleOutputObserver,
   isAuthoritativeHydrationBaselineSource,
+  prepareRuntimePresentationAttach,
   requestPresentationSnapshotAfterGeometry,
   shouldAwaitRestoredAgentVisibleOutput,
   shouldGateRestoredAgentInput,
   shouldProtectHydratedAgentHistory,
+  shouldRequirePostGeometrySnapshotOutput,
   shouldReusePreservedXtermSession,
   shouldTreatHydratedAgentBaselineAsPlaceholder,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalRuntimeSession.support'
@@ -29,6 +31,7 @@ function createPresentationSnapshot(cols: number, rows: number, appliedSeq = 42)
 describe('useTerminalRuntimeSession support', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('treats worker presentation and live PTY baselines as authoritative', () => {
@@ -117,6 +120,53 @@ describe('useTerminalRuntimeSession support', () => {
     expect(
       shouldAwaitRestoredAgentVisibleOutput({
         kind: 'terminal',
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(false)
+  })
+
+  it('requires post-geometry output for every cold agent snapshot', () => {
+    expect(
+      shouldRequirePostGeometrySnapshotOutput({
+        kind: 'agent',
+        isLiveSessionReattach: false,
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldRequirePostGeometrySnapshotOutput({
+        kind: 'agent',
+        isLiveSessionReattach: false,
+        agentResumeSessionIdVerified: false,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldRequirePostGeometrySnapshotOutput({
+        kind: 'agent',
+        isLiveSessionReattach: true,
+        agentResumeSessionIdVerified: true,
+        agentLaunchMode: 'resume',
+      }),
+    ).toBe(false)
+
+    expect(
+      shouldRequirePostGeometrySnapshotOutput({
+        kind: 'agent',
+        isLiveSessionReattach: false,
+        agentResumeSessionIdVerified: false,
+        agentLaunchMode: 'new',
+      }),
+    ).toBe(true)
+
+    expect(
+      shouldRequirePostGeometrySnapshotOutput({
+        kind: 'terminal',
+        isLiveSessionReattach: false,
         agentResumeSessionIdVerified: true,
         agentLaunchMode: 'resume',
       }),
@@ -408,5 +458,38 @@ describe('useTerminalRuntimeSession support', () => {
 
     expect(snapshot).toBeNull()
     expect(requestSnapshot).toHaveBeenCalledTimes(2)
+  })
+
+  it('skips the post-geometry output fence when initial geometry is already canonical', async () => {
+    const baselineSnapshot = createPresentationSnapshot(64, 44, 42)
+    const presentationSnapshot = vi.fn(async () => baselineSnapshot)
+    const attach = vi.fn(async () => undefined)
+    const commitInitialGeometry = vi.fn(async () => ({ cols: 64, rows: 44, changed: false }))
+
+    vi.stubGlobal('window', {
+      opencoveApi: {
+        pty: {
+          presentationSnapshot,
+        },
+      },
+    })
+
+    const { attachPromise, presentationSnapshotPromise } = prepareRuntimePresentationAttach({
+      ptyApi: {
+        attach,
+      } as never,
+      sessionId: 'session-1',
+      isLiveSessionReattach: false,
+      commitInitialGeometry,
+      requirePostGeometrySnapshotOutput: true,
+    })
+
+    await attachPromise
+    const snapshot = await presentationSnapshotPromise
+
+    expect(snapshot).toBe(baselineSnapshot)
+    expect(attach).toHaveBeenCalledWith({ sessionId: 'session-1', afterSeq: 42 })
+    expect(commitInitialGeometry).toHaveBeenCalledWith(baselineSnapshot)
+    expect(presentationSnapshot).toHaveBeenCalledTimes(2)
   })
 })

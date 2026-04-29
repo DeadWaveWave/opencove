@@ -152,14 +152,16 @@ export async function resolvePreparedScrollback(options: {
 
 export function toPreparedNodeResult(
   node: NormalizedPersistedNode,
-  options: Omit<PreparedRuntimeNodeResult, 'nodeId' | 'kind' | 'title' | 'scrollback'> & {
-    scrollback?: string | null
-  },
+  options: Omit<
+    PreparedRuntimeNodeResult,
+    'nodeId' | 'kind' | 'title' | 'scrollback' | 'terminalGeometry'
+  > & { scrollback?: string | null },
 ): PreparedRuntimeNodeResult {
   return {
     nodeId: node.id,
     kind: node.kind === 'agent' ? 'agent' : 'terminal',
     title: node.title,
+    terminalGeometry: node.terminalGeometry,
     scrollback: options.scrollback === undefined ? node.scrollback : options.scrollback,
     ...options,
   }

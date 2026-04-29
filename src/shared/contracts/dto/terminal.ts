@@ -57,6 +57,11 @@ export interface WriteTerminalInput {
 
 export type TerminalGeometryCommitReason = 'frame_commit' | 'appearance_commit'
 
+export interface TerminalPtyGeometry {
+  cols: number
+  rows: number
+}
+
 export interface ResizeTerminalInput {
   sessionId: string
   cols: number

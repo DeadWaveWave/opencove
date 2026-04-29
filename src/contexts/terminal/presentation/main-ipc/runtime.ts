@@ -11,7 +11,6 @@ import type {
   SpawnTerminalResult,
   TerminalDataEvent,
   TerminalGeometryCommitReason,
-  TerminalGeometryEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   TerminalWriteEncoding,
@@ -101,6 +100,16 @@ export function createPtyRuntime(): PtyRuntime {
 
     process.stderr.write(
       `[opencove-pty-write] ${JSON.stringify({ ts: new Date().toISOString(), ...payload })}\n`,
+    )
+  }
+
+  const logPtyResizeDiagnostics = (payload: Record<string, unknown>): void => {
+    if (!writeDiagnosticsEnabled) {
+      return
+    }
+
+    process.stderr.write(
+      `[opencove-pty-resize] ${JSON.stringify({ ts: new Date().toISOString(), ...payload })}\n`,
     )
   }
 
@@ -316,15 +325,29 @@ export function createPtyRuntime(): PtyRuntime {
     },
     resize: async (sessionId, cols, rows, reason) => {
       const geometry = manager.resize(sessionId, cols, rows, reason)
-      ptyHost.resize(sessionId, cols, rows)
-      if (geometry.changed && reason) {
-        sendToAllWindows(IPC_CHANNELS.ptyGeometry, {
+      if (!geometry.changed) {
+        logPtyResizeDiagnostics({
+          event: 'unchanged',
           sessionId,
+          requestedCols: cols,
+          requestedRows: rows,
           cols: geometry.cols,
           rows: geometry.rows,
           reason,
-        } satisfies TerminalGeometryEvent)
+        })
+        return
       }
+
+      logPtyResizeDiagnostics({
+        event: 'forwarded',
+        sessionId,
+        requestedCols: cols,
+        requestedRows: rows,
+        cols: geometry.cols,
+        rows: geometry.rows,
+        reason,
+      })
+      ptyHost.resize(sessionId, geometry.cols, geometry.rows)
     },
     kill: async sessionId => {
       manager.kill(sessionId)

@@ -10,12 +10,14 @@ import type { TerminalOutputScheduler } from './outputScheduler'
 import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
 import type { XtermSession } from './xtermSession'
 import type { TerminalThemeMode } from './theme'
+import type { TerminalPtyGeometry } from '@shared/contracts/dto'
 
 export interface TerminalRuntimeSessionOptions {
   nodeId: string
   sessionId: string
   kind: WorkspaceNodeKind
   terminalProvider: AgentProvider | null
+  initialTerminalGeometryRef: { current: TerminalPtyGeometry | null }
   agentLaunchModeRef: { current: AgentLaunchMode | null }
   agentResumeSessionIdVerifiedRef: { current: boolean }
   statusRef: { current: AgentRuntimeStatus | null }

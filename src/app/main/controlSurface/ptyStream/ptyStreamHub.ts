@@ -37,6 +37,7 @@ import {
   snapshotSessionPresentation,
   snapshotSessionScrollback,
 } from './ptyStreamHub.support'
+import { logPtyStreamResizeDiagnostics } from './ptyStreamDiagnostics'
 
 export class PtyStreamHub {
   private readonly ptyRuntime: ControlSurfacePtyRuntime
@@ -452,27 +453,41 @@ export class PtyStreamHub {
     }
 
     const geometry = session.presentationSession.resize(options.cols, options.rows)
-    if (geometry.changed) {
-      if (session.metadata) {
-        session.metadata = {
-          ...session.metadata,
-          cols: geometry.cols,
-          rows: geometry.rows,
-        }
-      }
-      this.broadcastGeometry(
-        options.sessionId,
-        geometry.cols,
-        geometry.rows,
-        options.reason ?? 'frame_commit',
-      )
+    const resizeReason = options.reason ?? 'frame_commit'
+    if (!geometry.changed) {
+      logPtyStreamResizeDiagnostics({
+        event: 'stream-unchanged',
+        sessionId: options.sessionId,
+        clientId: options.clientId,
+        requestedCols: options.cols,
+        requestedRows: options.rows,
+        cols: geometry.cols,
+        rows: geometry.rows,
+        reason: resizeReason,
+      })
+      return
     }
 
-    this.ptyRuntime.resize(
-      options.sessionId,
-      options.cols,
-      options.rows,
-      options.reason ?? 'frame_commit',
-    )
+    logPtyStreamResizeDiagnostics({
+      event: 'stream-forwarded',
+      sessionId: options.sessionId,
+      clientId: options.clientId,
+      requestedCols: options.cols,
+      requestedRows: options.rows,
+      cols: geometry.cols,
+      rows: geometry.rows,
+      reason: resizeReason,
+    })
+
+    if (session.metadata) {
+      session.metadata = {
+        ...session.metadata,
+        cols: geometry.cols,
+        rows: geometry.rows,
+      }
+    }
+    this.broadcastGeometry(options.sessionId, geometry.cols, geometry.rows, resizeReason)
+
+    this.ptyRuntime.resize(options.sessionId, geometry.cols, geometry.rows, resizeReason)
   }
 }

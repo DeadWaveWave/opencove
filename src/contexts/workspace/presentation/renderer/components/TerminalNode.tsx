@@ -41,6 +41,7 @@ export function TerminalNode({
   agentLaunchMode = null,
   agentResumeSessionIdVerified = false,
   isLiveSessionReattach = false,
+  terminalGeometry = null,
   terminalThemeMode = 'sync-with-ui',
   isSelected = false,
   isDragging = false,
@@ -91,6 +92,11 @@ export function TerminalNode({
   })
   const recentUserInteractionAtRef = useRef(0)
   const pendingUserInputBufferRef = useRef<Array<{ data: string; encoding: 'utf8' | 'binary' }>>([])
+  const initialTerminalGeometryRef = useRef(terminalGeometry)
+  const initialTerminalGeometryKeyRef = useRef({
+    sessionId,
+    resetVersion: 0,
+  })
   const viewportZoomRef = useRef(viewportZoom)
   const [, forceRendererRecoveryRender] = useState(0)
   const {
@@ -140,6 +146,17 @@ export function TerminalNode({
 
   const preferredRendererMode = rendererRecoveryStateRef.current.preferredMode
   const terminalClientResetVersion = rendererRecoveryStateRef.current.resetVersion
+
+  if (
+    initialTerminalGeometryKeyRef.current.sessionId !== sessionId ||
+    initialTerminalGeometryKeyRef.current.resetVersion !== terminalClientResetVersion
+  ) {
+    initialTerminalGeometryRef.current = terminalGeometry
+    initialTerminalGeometryKeyRef.current = {
+      sessionId,
+      resetVersion: terminalClientResetVersion,
+    }
+  }
 
   useEffect(() => {
     onCommandRunRef.current = onCommandRun
@@ -331,6 +348,7 @@ export function TerminalNode({
     sessionId,
     kind,
     terminalProvider,
+    initialTerminalGeometryRef,
     agentLaunchModeRef,
     agentResumeSessionIdVerifiedRef,
     statusRef,

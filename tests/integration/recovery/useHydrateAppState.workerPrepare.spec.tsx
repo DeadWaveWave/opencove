@@ -49,6 +49,7 @@ function createPersistedState() {
             lastError: null,
             scrollback: 'persisted agent history',
             profileId: null,
+            terminalGeometry: { cols: 64, rows: 44 },
             agent: {
               provider: 'codex',
               prompt: 'recover agent',
@@ -144,6 +145,7 @@ describe('useHydrateAppState worker prepare', () => {
             scrollback: 'persisted agent history',
             executionDirectory: '/tmp/workspace-1',
             expectedDirectory: '/tmp/workspace-1',
+            terminalGeometry: { cols: 64, rows: 44 },
             agent: {
               provider: 'codex',
               prompt: 'recover agent',
@@ -231,6 +233,7 @@ describe('useHydrateAppState worker prepare', () => {
         scrollback: string
         executionDirectory: string
         expectedDirectory: string
+        terminalGeometry: { cols: number; rows: number } | null
         agent: NonNullable<
           ReturnType<typeof createPersistedState>['workspaces'][number]['nodes'][number]['agent']
         >
@@ -307,6 +310,7 @@ describe('useHydrateAppState worker prepare', () => {
           scrollback: 'persisted agent history',
           executionDirectory: '/tmp/workspace-1',
           expectedDirectory: '/tmp/workspace-1',
+          terminalGeometry: { cols: 64, rows: 44 },
           agent: persistedAgent,
         },
       ],

@@ -1032,7 +1032,9 @@ async function main() {
       const diagnosticTail = logs
         .filter(
           line =>
-            line.includes('opencove-terminal-diagnostics') || line.includes('opencove-pty-write'),
+            line.includes('opencove-terminal-diagnostics') ||
+            line.includes('opencove-pty-write') ||
+            line.includes('opencove-pty-resize'),
         )
         .slice(-120)
         .join('\n')

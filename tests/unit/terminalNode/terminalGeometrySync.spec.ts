@@ -144,7 +144,7 @@ describe('terminal geometry sync helpers', () => {
       reason: 'frame_commit',
     })
 
-    expect(size).toStrictEqual({ cols: 132, rows: 41 })
+    expect(size).toStrictEqual({ cols: 132, rows: 41, changed: true })
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 132, rows: 41 })
     expect(ptyResize).toHaveBeenCalledWith({
       sessionId: 'session-initial-geometry',
@@ -152,5 +152,30 @@ describe('terminal geometry sync helpers', () => {
       rows: 41,
       reason: 'frame_commit',
     })
+  })
+
+  it('does not write PTY geometry when the initial restore size is already canonical', async () => {
+    const terminal = createTerminalMock()
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: { cols: 64, rows: 44 },
+    }
+
+    const size = await commitInitialTerminalNodeGeometry({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: {
+        current: {
+          proposeDimensions: vi.fn(() => ({ cols: 64, rows: 44 })),
+        } as never,
+      },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-initial-geometry',
+      reason: 'frame_commit',
+    })
+
+    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
+    expect(terminal.resize).toHaveBeenCalledWith(64, 44)
+    expect(ptyResize).not.toHaveBeenCalled()
   })
 })

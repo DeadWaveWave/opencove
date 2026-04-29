@@ -156,6 +156,35 @@ export function normalizeScrollback(value: unknown): string | null {
   return value.slice(-MAX_PERSISTED_SCROLLBACK_CHARS)
 }
 
+export function normalizeTerminalGeometry(value: unknown): { cols: number; rows: number } | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return null
+  }
+
+  const record = value as Record<string, unknown>
+  const cols = record.cols
+  const rows = record.rows
+  if (
+    typeof cols !== 'number' ||
+    !Number.isFinite(cols) ||
+    typeof rows !== 'number' ||
+    !Number.isFinite(rows)
+  ) {
+    return null
+  }
+
+  const normalizedCols = Math.floor(cols)
+  const normalizedRows = Math.floor(rows)
+  if (normalizedCols <= 0 || normalizedRows <= 0) {
+    return null
+  }
+
+  return {
+    cols: Math.min(1_000, normalizedCols),
+    rows: Math.min(1_000, normalizedRows),
+  }
+}
+
 export function normalizeWorkspaceViewport(value: unknown): WorkspaceViewport {
   if (!value || typeof value !== 'object') {
     return { ...DEFAULT_WORKSPACE_VIEWPORT }

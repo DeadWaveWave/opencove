@@ -41,6 +41,7 @@ export const nodes = sqliteTable('nodes', {
   kind: text('kind').notNull(),
   profileId: text('profile_id'),
   runtimeKind: text('runtime_kind'),
+  terminalGeometryJson: text('terminal_geometry_json'),
   terminalProviderHint: text('terminal_provider_hint'),
   labelColorOverride: text('label_color_override'),
   status: text('status'),

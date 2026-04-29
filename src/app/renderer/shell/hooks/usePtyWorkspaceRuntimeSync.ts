@@ -63,6 +63,53 @@ function updateWorkspacesWithAgentNodes(
   return { nextWorkspaces, didChange }
 }
 
+export function updateWorkspacesWithTerminalGeometry({
+  workspaces,
+  sessionId,
+  cols,
+  rows,
+}: {
+  workspaces: WorkspaceState[]
+  sessionId: string
+  cols: number
+  rows: number
+}): { nextWorkspaces: WorkspaceState[]; didChange: boolean } {
+  let didChange = false
+
+  const nextWorkspaces = workspaces.map(workspace => {
+    let workspaceDidChange = false
+
+    const nextNodes = workspace.nodes.map(node => {
+      const nodeKind = node.data.kind
+      if (
+        (nodeKind !== 'terminal' && nodeKind !== 'agent') ||
+        node.data.sessionId !== sessionId ||
+        (node.data.terminalGeometry?.cols === cols && node.data.terminalGeometry.rows === rows)
+      ) {
+        return node
+      }
+
+      workspaceDidChange = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          terminalGeometry: { cols, rows },
+        },
+      }
+    })
+
+    if (!workspaceDidChange) {
+      return workspace
+    }
+
+    didChange = true
+    return { ...workspace, nodes: nextNodes }
+  })
+
+  return { nextWorkspaces, didChange }
+}
+
 export function updateWorkspacesWithAgentExit({
   workspaces,
   sessionId,
@@ -277,6 +324,26 @@ export function usePtyWorkspaceRuntimeSync({
       }
     })
 
+    const unsubscribeGeometry = ptyEventHub.onGeometry(event => {
+      let didChange = false
+
+      setWorkspaces(previous => {
+        const result = updateWorkspacesWithTerminalGeometry({
+          workspaces: previous,
+          sessionId: event.sessionId,
+          cols: event.cols,
+          rows: event.rows,
+        })
+
+        didChange = result.didChange
+        return didChange ? result.nextWorkspaces : previous
+      })
+
+      if (didChange) {
+        requestPersistFlush()
+      }
+    })
+
     const unsubscribeExit = ptyEventHub.onExit(event => {
       appendInactiveTerminalChunk(
         event.sessionId,
@@ -307,6 +374,7 @@ export function usePtyWorkspaceRuntimeSync({
       unsubscribeData()
       unsubscribeState()
       unsubscribeMetadata()
+      unsubscribeGeometry()
       unsubscribeExit()
     }
   }, [requestPersistFlush, setWorkspaces])
