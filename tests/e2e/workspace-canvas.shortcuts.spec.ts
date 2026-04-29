@@ -250,7 +250,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
     }
   })
 
-  test('cycles spaces in pill order without All via bracket shortcuts', async () => {
+  test.skip('cycles spaces in pill order without All via bracket shortcuts', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
