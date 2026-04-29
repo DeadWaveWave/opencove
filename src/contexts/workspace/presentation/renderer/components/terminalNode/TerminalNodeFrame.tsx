@@ -1,4 +1,5 @@
 import React, { type JSX } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import { Handle, Position } from '@xyflow/react'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
@@ -25,6 +26,7 @@ interface TerminalNodeFrameProps {
   lastError: string | null
   sessionId: string
   isTerminalHydrated: boolean
+  isRecoveringAgentOutput: boolean
   transcriptRef: React.Ref<HTMLDivElement>
   sizeStyle: React.CSSProperties
   containerRef: React.RefObject<HTMLDivElement | null>
@@ -66,6 +68,7 @@ export function TerminalNodeFrame({
   lastError,
   sessionId,
   isTerminalHydrated,
+  isRecoveringAgentOutput,
   transcriptRef,
   sizeStyle,
   containerRef,
@@ -86,6 +89,7 @@ export function TerminalNodeFrame({
   onFindToggleUseRegex,
   handleResizePointerDown,
 }: TerminalNodeFrameProps): JSX.Element {
+  const { t } = useTranslation()
   const isAgentNode = kind === 'agent'
   const hasSelectedDragSurface = isSelected || isDragging
   const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
@@ -185,6 +189,12 @@ export function TerminalNodeFrame({
         data-cove-focus-scope="terminal"
         aria-busy={sessionId.trim().length > 0 && isTerminalHydrated ? 'false' : 'true'}
       />
+      {isRecoveringAgentOutput ? (
+        <div className="terminal-node__recovering" role="status">
+          <span className="terminal-node__recovering-dot" aria-hidden="true" />
+          <span>{t('terminalNode.recoveringAgentSession')}</span>
+        </div>
+      ) : null}
       <div ref={transcriptRef} className="terminal-node__transcript" aria-hidden="true" />
 
       <NodeResizeHandles

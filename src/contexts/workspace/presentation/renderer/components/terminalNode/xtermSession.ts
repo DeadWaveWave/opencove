@@ -14,11 +14,17 @@ import { registerTerminalSelectionTestHandle } from './testHarness'
 import { patchXtermMouseServiceWithRetry } from './patchXtermMouseService'
 import { registerTerminalHitTargetCursorScope } from './hitTargetCursorScope'
 import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
-import { activatePreferredTerminalRenderer, type ActiveTerminalRenderer } from './preferredRenderer'
+import {
+  activatePreferredTerminalRenderer,
+  type ActiveTerminalRenderer,
+  type PreferredTerminalRendererMode,
+} from './preferredRenderer'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
+import { installTerminalEffectiveDevicePixelRatioController } from './effectiveDevicePixelRatio'
 import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
 
 type TerminalDiagnosticsHandle = ReturnType<typeof registerTerminalDiagnostics>
+let nextXtermSessionInstanceId = 1
 
 export interface XtermSession {
   terminal: Terminal
@@ -26,6 +32,9 @@ export interface XtermSession {
   serializeAddon: SerializeAddon
   renderer: ActiveTerminalRenderer
   diagnostics: TerminalDiagnosticsHandle
+  disposePlaceholderHandoffInputCapture?: () => void
+  setViewportZoom: (viewportZoom: number) => void
+  setViewportInteractionActive: (active: boolean) => void
   dispose: () => void
 }
 
@@ -49,7 +58,10 @@ export function createMountedXtermSession({
   diagnosticsEnabled,
   logTerminalDiagnostics,
   onRendererKindResolved,
+  onRendererIssue,
+  preferredRendererMode = 'auto',
   scheduleWebglPixelSnapping,
+  initialViewportZoom = 1,
 }: {
   nodeId: string
   ownerId: string
@@ -70,10 +82,14 @@ export function createMountedXtermSession({
   diagnosticsEnabled: boolean
   logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
   onRendererKindResolved?: (kind: ActiveTerminalRenderer['kind']) => void
+  onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
+  preferredRendererMode?: PreferredTerminalRendererMode
   scheduleWebglPixelSnapping?: () => void
+  initialViewportZoom?: number
 }): XtermSession {
-  const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode)
   const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
+  const initialThemeScope = container?.closest('.terminal-node') ?? container ?? null
+  const initialTerminalTheme = resolveTerminalTheme(terminalThemeMode, initialThemeScope)
 
   const terminal = new Terminal({
     cursorBlink,
@@ -91,6 +107,11 @@ export function createMountedXtermSession({
   const serializeAddon = new SerializeAddon()
   const unicode11Addon = new Unicode11Addon()
   terminal.loadAddon(fitAddon)
+  ;(
+    terminal as Terminal & {
+      __opencoveXtermSessionInstanceId?: number
+    }
+  ).__opencoveXtermSessionInstanceId = nextXtermSessionInstanceId++
   terminal.loadAddon(serializeAddon)
   try {
     terminal.loadAddon(unicode11Addon)
@@ -118,14 +139,30 @@ export function createMountedXtermSession({
   let cancelMouseServicePatch: () => void = () => undefined
   let disposeTerminalHitTargetCursorScope: () => void = () => undefined
   let disposeWebglPixelSnappingObserver: () => void = () => undefined
+  let effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
+    terminal,
+    initialViewportZoom,
+    initialViewportInteractionActive: false,
+  })
 
   if (container) {
     terminal.open(container)
+    effectiveDprController.dispose()
+    effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
+      terminal,
+      initialViewportZoom,
+      initialViewportInteractionActive: false,
+      onAfterApply: () => {
+        scheduleWebglPixelSnapping?.()
+      },
+    })
     renderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
+      preferredMode: preferredRendererMode,
       onRendererKindChange: kind => {
         onRendererKindResolved?.(kind)
         scheduleWebglPixelSnapping?.()
       },
+      onRendererIssue,
     })
     onRendererKindResolved?.(renderer.kind)
     try {
@@ -180,10 +217,14 @@ export function createMountedXtermSession({
     serializeAddon,
     renderer,
     diagnostics,
+    disposePlaceholderHandoffInputCapture: undefined,
+    setViewportZoom: effectiveDprController.setViewportZoom,
+    setViewportInteractionActive: effectiveDprController.setViewportInteractionActive,
     dispose: () => {
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
       disposeWebglPixelSnappingObserver()
+      effectiveDprController.dispose()
       renderer.dispose()
       diagnostics.dispose()
       disposeTerminalSelectionTestHandle()

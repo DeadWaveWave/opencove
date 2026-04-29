@@ -1,4 +1,9 @@
 import { randomUUID } from 'node:crypto'
+import type {
+  TerminalGeometryCommitReason,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '../../../../shared/contracts/dto'
 import type { ControlSurfacePtyRuntime } from '../handlers/sessionPtyRuntime'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { RemotePtyEndpointProxy } from './remotePtyEndpointProxy'
@@ -27,6 +32,8 @@ export function createMultiEndpointPtyRuntime(options: {
 }): MultiEndpointPtyRuntime {
   const dataListeners = new Set<(event: { sessionId: string; data: string }) => void>()
   const exitListeners = new Set<(event: { sessionId: string; exitCode: number }) => void>()
+  const stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
+  const metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
 
   const routes = new Map<string, SessionRoute>()
   const homeSessionIdByRemote = new Map<string, string>()
@@ -64,6 +71,27 @@ export function createMultiEndpointPtyRuntime(options: {
 
         exitListeners.forEach(listener => listener({ sessionId: homeSessionId, exitCode }))
       },
+      emitState: (remoteSessionId, state) => {
+        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
+        if (!homeSessionId) {
+          return
+        }
+
+        stateListeners.forEach(listener => listener({ sessionId: homeSessionId, state }))
+      },
+      emitMetadata: (remoteSessionId, metadata) => {
+        const homeSessionId = homeSessionIdByRemote.get(`${endpointId}:${remoteSessionId}`)
+        if (!homeSessionId) {
+          return
+        }
+
+        metadataListeners.forEach(listener =>
+          listener({
+            ...metadata,
+            sessionId: homeSessionId,
+          }),
+        )
+      },
     })
 
     proxiesByEndpointId.set(endpointId, created)
@@ -78,7 +106,19 @@ export function createMultiEndpointPtyRuntime(options: {
     exitListeners.forEach(listener => listener(event))
   })
 
+  const disposeLocalStateListener = options.localRuntime.onState?.(event => {
+    stateListeners.forEach(listener => listener(event))
+  })
+
+  const disposeLocalMetadataListener = options.localRuntime.onMetadata?.(event => {
+    metadataListeners.forEach(listener => listener(event))
+  })
+
   return {
+    listProfiles: async () =>
+      options.localRuntime.listProfiles
+        ? await options.localRuntime.listProfiles()
+        : { profiles: [], defaultProfileId: null },
     spawnSession: async spawnOptions => {
       const { sessionId } = await options.localRuntime.spawnSession(spawnOptions)
       routes.set(sessionId, { kind: 'local' })
@@ -104,14 +144,14 @@ export function createMultiEndpointPtyRuntime(options: {
 
       getProxy(route.endpointId).write(route.remoteSessionId, data)
     },
-    resize: (sessionId, cols, rows) => {
+    resize: (sessionId, cols, rows, reason: TerminalGeometryCommitReason = 'frame_commit') => {
       const route = routes.get(sessionId)
       if (!route || route.kind === 'local') {
-        options.localRuntime.resize(sessionId, cols, rows)
+        options.localRuntime.resize(sessionId, cols, rows, reason)
         return
       }
 
-      getProxy(route.endpointId).resize(route.remoteSessionId, cols, rows)
+      getProxy(route.endpointId).resize(route.remoteSessionId, cols, rows, reason)
     },
     kill: sessionId => {
       const route = routes.get(sessionId)
@@ -134,12 +174,31 @@ export function createMultiEndpointPtyRuntime(options: {
         exitListeners.delete(listener)
       }
     },
+    onState: listener => {
+      stateListeners.add(listener)
+      return () => {
+        stateListeners.delete(listener)
+      }
+    },
+    onMetadata: listener => {
+      metadataListeners.add(listener)
+      return () => {
+        metadataListeners.delete(listener)
+      }
+    },
     startSessionStateWatcher: input => {
       options.localRuntime.startSessionStateWatcher?.(input)
     },
+    ...(options.localRuntime.debugCrashHost
+      ? {
+          debugCrashHost: () => options.localRuntime.debugCrashHost?.(),
+        }
+      : {}),
     dispose: () => {
       disposeLocalDataListener()
       disposeLocalExitListener()
+      disposeLocalStateListener?.()
+      disposeLocalMetadataListener?.()
 
       for (const proxy of proxiesByEndpointId.values()) {
         proxy.dispose()

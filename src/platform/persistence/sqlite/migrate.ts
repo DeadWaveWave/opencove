@@ -55,6 +55,10 @@ function createTables(db: Database.Database): void {
       width INTEGER NOT NULL,
       height INTEGER NOT NULL,
       kind TEXT NOT NULL,
+      profile_id TEXT,
+      runtime_kind TEXT,
+      terminal_geometry_json TEXT,
+      terminal_provider_hint TEXT,
       label_color_override TEXT,
       status TEXT,
       started_at TEXT,
@@ -209,6 +213,30 @@ function ensureCurrentSchema(db: Database.Database): void {
   ensureTableColumn(db, {
     tableName: 'nodes',
     columnName: 'label_color_override',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'profile_id',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'runtime_kind',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'terminal_geometry_json',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'nodes',
+    columnName: 'terminal_provider_hint',
     definitionSql: 'TEXT',
   })
 

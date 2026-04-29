@@ -63,7 +63,7 @@ export function ExperimentalSection({
 
       <ExperimentalWorkerWebUiSection />
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-experimental-remote-workers">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">
             {t('settingsPanel.experimental.remoteWorkersTitle')}
@@ -90,7 +90,7 @@ export function ExperimentalSection({
         </div>
       </div>
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-website-windows">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">
             {t('settingsPanel.experimental.websiteWindowsTitle')}

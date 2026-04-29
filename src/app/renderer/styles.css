@@ -14,6 +14,7 @@
 @import './styles/workspace-context-menu.css';
 @import './styles/workspace-pr-chip.css';
 @import './styles/terminal-node.css';
+@import './styles/terminal-node.font-rendering.css';
 @import './styles/terminal-node.theme-opencode.css';
 @import './styles/task-node.css';
 @import './styles/note-node.css';
@@ -22,6 +23,7 @@
 @import './styles/image-node.css';
 @import './styles/node-selected-drag-surface.css';
 @import './styles/settings-panel.css';
+@import './styles/settings-panel.search.css';
 @import './styles/settings-panel.preview.css';
 @import './styles/settings-panel.lists.css';
 @import './styles/settings-panel.buttons.css';

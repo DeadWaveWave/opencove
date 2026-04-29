@@ -12,8 +12,17 @@ import {
 } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import type { PersistNotice } from '../types'
 import { useAppStore } from '../store/useAppStore'
-import { flushScheduledNodeScrollbackWrites } from '@contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
+import { flushScheduledScrollbackWrites } from '@contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
+import { TERMINAL_SCROLLBACK_FLUSH_EVENT } from '@contexts/workspace/presentation/renderer/components/terminalNode/constants'
 import { toErrorMessage } from '../utils/format'
+
+function flushTerminalScrollback(): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.dispatchEvent(new Event(TERMINAL_SCROLLBACK_FLUSH_EVENT))
+}
 
 export function usePersistedAppState({
   workspaces,
@@ -89,14 +98,16 @@ export function usePersistedAppState({
     }
 
     const handleBeforeUnload = () => {
-      flushScheduledNodeScrollbackWrites()
+      flushTerminalScrollback()
+      flushScheduledScrollbackWrites()
       flushScheduledPersistedStateWrite()
     }
 
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      flushScheduledNodeScrollbackWrites()
+      flushTerminalScrollback()
+      flushScheduledScrollbackWrites()
       flushScheduledPersistedStateWrite()
     }
   }, [])
@@ -133,7 +144,8 @@ export function usePersistedAppState({
       delayMs: 0,
       onResult: handlePersistWriteResult,
     })
-    flushScheduledNodeScrollbackWrites()
+    flushTerminalScrollback()
+    flushScheduledScrollbackWrites()
     flushScheduledPersistedStateWrite()
   }, [handlePersistWriteResult, producePersistedState])
 

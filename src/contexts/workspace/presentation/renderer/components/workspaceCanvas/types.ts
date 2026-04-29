@@ -2,6 +2,7 @@ import type { Node } from '@xyflow/react'
 import type {
   AgentNodeData,
   Point,
+  Size,
   SpaceArchiveRecord,
   TaskPriority,
   TaskRuntimeStatus,
@@ -44,6 +45,7 @@ export interface WorkspaceCanvasProps {
   agentSettings: AgentSettings
   isFocusNodeTargetZoomPreviewing?: boolean
   focusNodeId?: string | null
+  focusSpaceId?: string | null
   focusSequence?: number
 }
 
@@ -205,6 +207,7 @@ export interface NodePlacementOptions {
 
 export interface NodeCreationPlacementOptions extends NodePlacementOptions {
   focusViewportOnCreate?: boolean
+  sizeOverride?: Size
 }
 
 export interface WorkspaceCanvasQuickPreviewState {
@@ -212,7 +215,7 @@ export interface WorkspaceCanvasQuickPreviewState {
   mountId: string | null
   uri: string
   title: string
-  kind: 'document' | 'image'
+  kind: 'document' | 'image' | 'audio' | 'video'
   rect: WorkspaceSpaceRect
   createAnchor: Point
   createPlacement?: NodeCreationPlacementOptions

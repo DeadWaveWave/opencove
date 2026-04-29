@@ -13,7 +13,6 @@ describe('terminal screen state cache', () => {
     setCachedTerminalScreenState('node-1', {
       sessionId: 'session-1',
       serialized: 'screen',
-      rawSnapshot: 'raw',
       cols: 91,
       rows: 27,
     })
@@ -21,7 +20,6 @@ describe('terminal screen state cache', () => {
     expect(getCachedTerminalScreenState('node-1', 'session-1')).toEqual({
       sessionId: 'session-1',
       serialized: 'screen',
-      rawSnapshot: 'raw',
       cols: 91,
       rows: 27,
     })
@@ -35,7 +33,6 @@ describe('terminal screen state cache', () => {
     setCachedTerminalScreenState('node-1', {
       sessionId: 'session-1',
       serialized: 'screen',
-      rawSnapshot: 'raw',
       cols: 80,
       rows: 24,
     })
@@ -47,7 +44,6 @@ describe('terminal screen state cache', () => {
     setCachedTerminalScreenState('node-1', {
       sessionId: 'session-1',
       serialized: 'stale-screen',
-      rawSnapshot: 'stale-raw',
       cols: 80,
       rows: 24,
     })
@@ -56,14 +52,12 @@ describe('terminal screen state cache', () => {
     setCachedTerminalScreenState('node-1', {
       sessionId: 'session-2',
       serialized: 'fresh-screen',
-      rawSnapshot: 'fresh-raw',
       cols: 100,
       rows: 30,
     })
     expect(getCachedTerminalScreenState('node-1', 'session-2')).toEqual({
       sessionId: 'session-2',
       serialized: 'fresh-screen',
-      rawSnapshot: 'fresh-raw',
       cols: 100,
       rows: 30,
     })

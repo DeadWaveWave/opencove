@@ -16,8 +16,6 @@ import { useApplyUiTheme } from './hooks/useApplyUiTheme'
 import { useApplyUiLanguage } from './hooks/useApplyUiLanguage'
 import { useAppQuitPersistenceFlush } from './hooks/useAppQuitPersistenceFlush'
 import { usePersistedAppState } from './hooks/usePersistedAppState'
-import { usePtySessionBindingsSync } from './hooks/usePtySessionBindingsSync'
-import { usePtyAgentPlaceholderBindingsSync } from './hooks/usePtyAgentPlaceholderBindingsSync'
 import { usePtyWorkspaceRuntimeSync } from './hooks/usePtyWorkspaceRuntimeSync'
 import { useProjectContextMenuDismiss } from './hooks/useProjectContextMenuDismiss'
 import { useProviderModelCatalog } from './hooks/useProviderModelCatalog'
@@ -92,8 +90,6 @@ export default function App(): React.JSX.Element {
   const { notifications: agentNotifications, dismiss: handleDismissAgentNotification } =
     useAgentStandbyNotifications()
 
-  usePtySessionBindingsSync()
-  usePtyAgentPlaceholderBindingsSync()
   usePtyWorkspaceRuntimeSync({ requestPersistFlush })
   useAppQuitPersistenceFlush({ enabled: isPersistReady })
   useWorkerSyncStateUpdates({ enabled: isPersistReady })
@@ -296,8 +292,9 @@ export default function App(): React.JSX.Element {
     handleSelectAgentNode,
     handleRequestRemoveProject,
     handleRequestManageProjectMounts,
+    handleRequestOpenProjectInFileManager,
     handleReorderWorkspaces,
-  } = useAppShellWorkspaceActions({ requestPersistFlush })
+  } = useAppShellWorkspaceActions({ requestPersistFlush, t, showMessage: handleShowMessage })
 
   useProjectContextMenuDismiss({
     projectContextMenu,
@@ -449,6 +446,7 @@ export default function App(): React.JSX.Element {
           setProjectMountManager(null)
         }}
         onRequestManageProjectMounts={handleRequestManageProjectMounts}
+        onRequestOpenProjectInFileManager={handleRequestOpenProjectInFileManager}
         onRequestRemoveProject={handleRequestRemoveProject}
         projectDeleteConfirmation={projectDeleteConfirmation}
         isRemovingProject={isRemovingProject}

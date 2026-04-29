@@ -41,6 +41,8 @@ import type {
   ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
+  PresentationSnapshotTerminalInput,
+  PresentationSnapshotTerminalResult,
   RemoveGitWorktreeInput,
   RemoveGitWorktreeResult,
   RenameGitBranchInput,
@@ -48,15 +50,17 @@ import type {
   SnapshotTerminalResult,
   SpawnTerminalInput,
   SpawnTerminalResult,
-  SyncPtyAgentPlaceholderBindingsInput,
-  SyncPtySessionBindingsInput,
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  ShowSystemNotificationInput,
+  ShowSystemNotificationResult,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WorkspaceDirectory,
@@ -112,6 +116,7 @@ export interface OpenCoveApi {
     allowWhatsNewInTests: boolean
     enableTerminalDiagnostics?: boolean
     enableTerminalInputDiagnostics?: boolean
+    enableTerminalTestApi?: boolean
     runtime: 'electron' | 'browser'
     platform: string
     mainPid: number | null
@@ -231,13 +236,15 @@ export interface OpenCoveApi {
     kill: (payload: KillTerminalInput) => Promise<void>
     attach: (payload: AttachTerminalInput) => Promise<void>
     detach: (payload: DetachTerminalInput) => Promise<void>
-    syncSessionBindings: (payload: SyncPtySessionBindingsInput) => Promise<void>
-    syncAgentPlaceholderBindings: (payload: SyncPtyAgentPlaceholderBindingsInput) => Promise<void>
-    flushScrollbackMirrors: () => Promise<void>
     snapshot: (payload: SnapshotTerminalInput) => Promise<SnapshotTerminalResult>
+    presentationSnapshot: (
+      payload: PresentationSnapshotTerminalInput,
+    ) => Promise<PresentationSnapshotTerminalResult>
     debugCrashHost: () => Promise<void>
     onData: (listener: (event: TerminalDataEvent) => void) => UnsubscribeFn
     onExit: (listener: (event: TerminalExitEvent) => void) => UnsubscribeFn
+    onGeometry: (listener: (event: TerminalGeometryEvent) => void) => UnsubscribeFn
+    onResync: (listener: (event: TerminalResyncEvent) => void) => UnsubscribeFn
     onState: (listener: (event: TerminalSessionStateEvent) => void) => UnsubscribeFn
     onMetadata: (listener: (event: TerminalSessionMetadataEvent) => void) => UnsubscribeFn
   }
@@ -255,6 +262,9 @@ export interface OpenCoveApi {
   }
   system: {
     listFonts: () => Promise<ListSystemFontsResult>
+    showNotification: (
+      payload: ShowSystemNotificationInput,
+    ) => Promise<ShowSystemNotificationResult>
   }
   worker: {
     getStatus: () => Promise<WorkerStatusResult>

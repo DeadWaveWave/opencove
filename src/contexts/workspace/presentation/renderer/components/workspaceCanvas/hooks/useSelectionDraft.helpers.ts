@@ -89,11 +89,32 @@ export function applySelectionDraft({
   forceDeselectIntersectingNodes?: boolean
 }): void {
   const draftRect = resolveSelectionDraftRect(reactFlow, draft)
+  const draftStart = reactFlow.screenToFlowPosition({
+    x: draft.startX,
+    y: draft.startY,
+  })
+  const resolvedStartSpaceId =
+    draft.startSpaceId ??
+    spaces.find(space => {
+      if (!space.rect) {
+        return false
+      }
 
-  const draftScope = draft.startSpaceId ?? null
-  const selectionIsInSpace = Boolean(draft.startSpaceId)
+      const hitArea = {
+        x: space.rect.x + 12,
+        y: space.rect.y + 12,
+        width: Math.max(0, space.rect.width - 24),
+        height: Math.max(0, space.rect.height - 24),
+      }
+
+      return isPointInsideRect(draftStart, hitArea)
+    })?.id ??
+    null
+
+  const draftScope = resolvedStartSpaceId
+  const selectionIsInSpace = Boolean(resolvedStartSpaceId)
   const spaceAtStart = selectionIsInSpace
-    ? (spaces.find(space => space.id === draft.startSpaceId) ?? null)
+    ? (spaces.find(space => space.id === resolvedStartSpaceId) ?? null)
     : null
   const startSpaceRect = spaceAtStart?.rect ?? null
 

@@ -62,7 +62,21 @@ function captureTerminalVisibleText(terminal: Terminal): string {
     lines.push(line.translateToString(true))
   }
 
-  return lines.join('\n')
+  const text = lines.join('\n')
+  return text.trim().length > 0 ? text : ''
+}
+
+function isTerminalMouseInputEchoOnly(text: string): boolean {
+  const compact = text.replace(/\s+/gu, '')
+
+  return compact.length > 0 && /^(?:\^\[\[<\d+;\d+;\d+[mM])+$/u.test(compact)
+}
+
+function shouldKeepPersistedTranscript(options: {
+  nextText: string
+  persistedText: string
+}): boolean {
+  return options.persistedText.trim().length > 0 && isTerminalMouseInputEchoOnly(options.nextText)
 }
 
 export function useTerminalTestTranscriptMirror({
@@ -145,6 +159,11 @@ export function useTerminalTestTranscriptMirror({
         lastNonEmptyTextRef.current.length > 0
           ? lastNonEmptyTextRef.current
           : (persistedTranscriptTextByNodeId.get(nodeId) ?? '')
+      if (shouldKeepPersistedTranscript({ nextText, persistedText })) {
+        transcriptElement.textContent = persistedText
+        return
+      }
+
       if (nextText.length === 0 && persistedText.length > 0) {
         transcriptElement.textContent = persistedText
         return

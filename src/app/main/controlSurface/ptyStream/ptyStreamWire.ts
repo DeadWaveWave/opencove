@@ -63,6 +63,16 @@ export function sendPtyExit(ws: WebSocket, sessionId: string, seq: number, exitC
   sendJson(ws, { type: 'exit', sessionId, seq, exitCode })
 }
 
+export function sendPtyGeometry(
+  ws: WebSocket,
+  sessionId: string,
+  cols: number,
+  rows: number,
+  reason: 'frame_commit' | 'appearance_commit',
+): void {
+  sendJson(ws, { type: 'geometry', sessionId, cols, rows, reason })
+}
+
 export function sendPtyOverflow(
   ws: WebSocket,
   sessionId: string,
@@ -75,7 +85,7 @@ export function sendPtyOverflow(
     seq,
     earliestSeq,
     reason: 'replay_window_exceeded',
-    recovery: 'snapshot',
+    recovery: 'presentation_snapshot',
   })
 }
 
@@ -108,5 +118,31 @@ export function sendPtyControlChanged(
     sessionId,
     controller,
     role,
+  })
+}
+
+export function sendPtyState(ws: WebSocket, sessionId: string, state: 'working' | 'standby'): void {
+  sendJson(ws, {
+    type: 'state',
+    sessionId,
+    state,
+  })
+}
+
+export function sendPtySessionMetadata(
+  ws: WebSocket,
+  payload: {
+    sessionId: string
+    resumeSessionId: string | null
+    profileId?: string | null
+    runtimeKind?: 'windows' | 'wsl' | 'posix'
+  },
+): void {
+  sendJson(ws, {
+    type: 'metadata',
+    sessionId: payload.sessionId,
+    resumeSessionId: payload.resumeSessionId,
+    ...(payload.profileId !== undefined ? { profileId: payload.profileId } : {}),
+    ...(payload.runtimeKind !== undefined ? { runtimeKind: payload.runtimeKind } : {}),
   })
 }

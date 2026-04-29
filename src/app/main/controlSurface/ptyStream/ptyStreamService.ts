@@ -85,6 +85,14 @@ function normalizePositiveInt(value: unknown): number | null {
   return intValue > 0 ? intValue : null
 }
 
+function normalizeGeometryReason(value: unknown): 'frame_commit' | 'appearance_commit' | null {
+  if (value === 'frame_commit' || value === 'appearance_commit') {
+    return value
+  }
+
+  return null
+}
+
 function resolveOfferedSubprotocols(header: IncomingMessage['headers'][string]): string[] {
   const rawValues: string[] = []
 
@@ -130,6 +138,14 @@ export function createPtyStreamService(options: {
 
   const disposeExitListener = options.ptyRuntime.onExit(({ sessionId, exitCode }) => {
     hub.handlePtyExit(sessionId, exitCode)
+  })
+
+  const disposeStateListener = options.ptyRuntime.onState?.(({ sessionId, state }) => {
+    hub.registerSessionAgentState({ sessionId, state })
+  })
+
+  const disposeMetadataListener = options.ptyRuntime.onMetadata?.(metadata => {
+    hub.registerSessionAgentMetadata(metadata)
   })
 
   const instanceId = randomBytes(18).toString('base64url')
@@ -321,6 +337,7 @@ export function createPtyStreamService(options: {
         const sessionId = normalizeSessionId(message.sessionId)
         const cols = normalizePositiveInt(message.cols)
         const rows = normalizePositiveInt(message.rows)
+        const reason = normalizeGeometryReason(message.reason)
 
         if (!sessionId) {
           closeWithError(ws, 'protocol.invalid_message', 'Missing sessionId.')
@@ -332,7 +349,7 @@ export function createPtyStreamService(options: {
           return
         }
 
-        hub.resize({ clientId: state.clientId, sessionId, cols, rows })
+        hub.resize({ clientId: state.clientId, sessionId, cols, rows, reason })
         return
       }
 
@@ -414,6 +431,8 @@ export function createPtyStreamService(options: {
 
       disposeDataListener()
       disposeExitListener()
+      disposeStateListener?.()
+      disposeMetadataListener?.()
     },
   }
 }

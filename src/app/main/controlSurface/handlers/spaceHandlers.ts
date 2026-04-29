@@ -22,6 +22,8 @@ function normalizeCanvasNodeKind(kind: unknown): CanvasNodeKind {
     case 'task':
     case 'note':
     case 'image':
+    case 'document':
+    case 'website':
       return kind
     default:
       return 'unknown'

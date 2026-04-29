@@ -5,6 +5,7 @@ export interface WorkerConnectionInfoDto {
   port: number
   token: string
   createdAt: string
+  startedBy?: 'cli' | 'desktop'
 }
 
 export interface WorkerStatusResult {

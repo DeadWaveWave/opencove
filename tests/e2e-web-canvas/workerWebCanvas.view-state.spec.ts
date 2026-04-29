@@ -15,8 +15,10 @@ test.describe('Worker web canvas view state', () => {
     page,
   }) => {
     const workspacePath = await createWorkspaceDir('view-state')
+    const workspaceId = 'workspace-1'
     const state = buildAppState({
       workspacePath,
+      workspaceId,
       spaces: [
         {
           id: 'space-a',
@@ -72,7 +74,7 @@ test.describe('Worker web canvas view state', () => {
           const viewState = (await readViewState(page)) as {
             workspaces?: Record<string, { activeSpaceId?: string | null }>
           } | null
-          return viewState?.workspaces?.['workspace-1']?.activeSpaceId ?? null
+          return viewState?.workspaces?.[workspaceId]?.activeSpaceId ?? null
         })
         .toBe('space-b')
 
@@ -81,7 +83,7 @@ test.describe('Worker web canvas view state', () => {
           const viewState = (await readViewState(secondPage)) as {
             workspaces?: Record<string, { activeSpaceId?: string | null }>
           } | null
-          return viewState?.workspaces?.['workspace-1']?.activeSpaceId ?? null
+          return viewState?.workspaces?.[workspaceId]?.activeSpaceId ?? null
         })
         .toBe('space-a')
 

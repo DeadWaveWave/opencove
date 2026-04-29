@@ -1,6 +1,9 @@
 export const enShell = {
   projectContextMenu: {
     manageMounts: 'Manage locations…',
+    openInExplorer: 'Open in Explorer',
+    openInFinder: 'Open in Finder',
+    openInFileManager: 'Open in File Manager',
     removeProject: 'Remove project',
   },
   projectMountManager: {

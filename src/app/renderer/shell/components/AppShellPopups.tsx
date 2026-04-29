@@ -43,6 +43,7 @@ export function AppShellPopups({
   projectMountManager,
   onCloseProjectMountManager,
   onRequestManageProjectMounts,
+  onRequestOpenProjectInFileManager,
   onRequestRemoveProject,
   projectDeleteConfirmation,
   isRemovingProject,
@@ -74,6 +75,7 @@ export function AppShellPopups({
   projectMountManager: ProjectMountManagerState | null
   onCloseProjectMountManager: () => void
   onRequestManageProjectMounts: (workspaceId: string) => void
+  onRequestOpenProjectInFileManager: (workspaceId: string) => void
   onRequestRemoveProject: (workspaceId: string) => void
   projectDeleteConfirmation: ProjectDeleteConfirmation | null
   isRemovingProject: boolean
@@ -140,6 +142,9 @@ export function AppShellPopups({
           y={projectContextMenu.y}
           onRequestManageMounts={workspaceId => {
             onRequestManageProjectMounts(workspaceId)
+          }}
+          onRequestOpenInFileManager={workspaceId => {
+            onRequestOpenProjectInFileManager(workspaceId)
           }}
           onRequestRemove={workspaceId => {
             onRequestRemoveProject(workspaceId)

@@ -224,7 +224,7 @@ export function ShortcutsSection({
     <div className="settings-panel__section" id="settings-section-shortcuts">
       <h3 className="settings-panel__section-title">{t('settingsPanel.shortcuts.title')}</h3>
 
-      <div className="settings-panel__row">
+      <div className="settings-panel__row" id="settings-disable-shortcuts-terminal-focused">
         <div className="settings-panel__row-label">
           <strong>{t('settingsPanel.shortcuts.disableWhenTerminalFocusedLabel')}</strong>
           <span>
@@ -248,7 +248,7 @@ export function ShortcutsSection({
         </div>
       </div>
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-keybindings">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">{t('settingsPanel.shortcuts.bindings')}</h4>
           <span>{t('settingsPanel.shortcuts.bindingsHelp')}</span>

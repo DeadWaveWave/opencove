@@ -117,9 +117,10 @@ export function useWorkspaceCanvasSpaceMenuState({
     () => nodes.filter(node => !ownedNodeIdSet.has(node.id)).length,
     [nodes, ownedNodeIdSet],
   )
+  const hasArrangeableSpace = spaces.some(space => space.nodeIds.length >= 1)
   const canArrangeCanvas = spaces.length + rootNodeCount >= 2
-  const canArrangeAll = canArrangeCanvas || spaces.some(space => space.nodeIds.length >= 2)
-  const canArrangeActiveSpace = Boolean(activeMenuSpace && activeMenuSpace.nodeIds.length >= 2)
+  const canArrangeAll = canArrangeCanvas || hasArrangeableSpace
+  const canArrangeActiveSpace = Boolean(activeMenuSpace && activeMenuSpace.nodeIds.length >= 1)
 
   return {
     activeMenuSpace,

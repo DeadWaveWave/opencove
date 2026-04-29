@@ -1,0 +1,66 @@
+.settings-panel__search {
+  padding: 0 2px 12px;
+}
+
+.settings-panel__search-input-shell {
+  position: relative;
+}
+
+.settings-panel__search-input {
+  padding-left: 34px;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.settings-panel__search-icon {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  color: var(--cove-text-faint);
+  pointer-events: none;
+  transition: color 0.18s ease;
+}
+
+.settings-panel__search-input-shell:focus-within .settings-panel__search-icon {
+  color: var(--cove-accent);
+}
+
+.settings-panel__search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+}
+
+.settings-panel__search-result {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.settings-panel__search-result:hover {
+  background: var(--cove-surface-hover);
+}
+
+.settings-panel__search-result-title {
+  color: var(--cove-text);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  font-weight: 500;
+}
+
+.settings-panel__search-result-page,
+.settings-panel__search-empty {
+  color: var(--cove-text-muted);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
+.settings-panel__search-empty {
+  padding: 8px 10px;
+}

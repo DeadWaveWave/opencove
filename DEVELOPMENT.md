@@ -176,7 +176,7 @@
 ## 常见问题（FAQ）
 
 -   **为什么我用 `pnpm dev` 启动后，Worker/Web UI 相关功能表现很奇怪（恢复/同步/持久化不生效）？**
-    -   先检查是否启用了 Home Worker（userData 目录下的 `home-worker.json` 中 `mode=local`，或环境变量 `OPENCOVE_WORKER_CLIENT=1`）。
+    -   先检查是否启用了本机 Worker 模式（userData 目录下的 `home-worker.json` 中 `mode=local`，或环境变量 `OPENCOVE_WORKER_CLIENT=1`）。
     -   然后执行一次 `pnpm build` 并重启 App，确保 `out/main/worker.js` 与当前源码一致。
 
 ## 文档地图（按问题找入口）
@@ -190,12 +190,14 @@
 -   **画布内文件编辑（Document Node）**：`docs/DOCUMENT_NODE.md`
 -   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/PERSISTENCE.md`
+-   **终端架构文档入口**：`docs/terminal/README.md`
+-   **终端多端架构（canonical）**：`docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+-   **终端渲染基准（tactical baseline）**：`docs/terminal/TUI_RENDERING_BASELINE.md`
 -   **UI 开发标准**：
     -   总体 UI 规范：`docs/UI_STANDARD.md`
     -   窗口 UI 标准：`docs/WINDOW_UI_STANDARD.md`
     -   任务 UI 标准：`docs/TASK_UI_STANDARD.md`
     -   视口导航标准：`docs/VIEWPORT_NAVIGATION_STANDARD.md`
--   **终端渲染基准**：`docs/TERMINAL_TUI_RENDERING_BASELINE.md`
 -   **诊断与复盘案例**：
     -   Win10 Codex Scroll：`docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
     -   画布抖动与终端持久化：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`

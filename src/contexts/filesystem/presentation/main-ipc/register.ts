@@ -22,6 +22,7 @@ import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import type { ApprovedWorkspaceStore } from '../../../workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { createLocalFileSystemPort } from '../../infrastructure/localFileSystemPort'
+import { deleteEntryWithTrashFallback } from '../../application/deleteEntryWithTrashFallback'
 import {
   copyEntryUseCase,
   createDirectoryUseCase,
@@ -131,7 +132,11 @@ export function registerFilesystemIpcHandlers(
         normalized.uri,
         'filesystem:delete-entry uri is outside approved roots',
       )
-      await shell.trashItem(fileURLToPath(normalized.uri))
+      await deleteEntryWithTrashFallback({
+        port,
+        input: normalized,
+        trashItem: async targetPath => await shell.trashItem(targetPath),
+      })
     },
     { defaultErrorCode: 'filesystem.delete_entry_failed' },
   )

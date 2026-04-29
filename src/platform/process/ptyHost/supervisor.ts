@@ -1,7 +1,13 @@
-import { createWriteStream, existsSync, mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { createWriteStream, mkdirSync } from 'node:fs'
+import { dirname } from 'node:path'
 import { PTY_HOST_PROTOCOL_VERSION, isPtyHostMessage } from './protocol'
 import { resolvePtyHostSpawnEnv } from './spawnEnv'
+import {
+  nowMs,
+  resolveBackoffDelay,
+  resolveBundledPtyHostEntryPath,
+  sleep,
+} from './supervisorSupport'
 import type {
   PtyHostMessage,
   PtyHostRequest,
@@ -12,8 +18,6 @@ import type {
 
 const READY_TIMEOUT_MS = 5_000
 const SPAWN_TIMEOUT_MS = 10_000
-const RESTART_BACKOFF_BASE_DELAY_MS = 250
-const RESTART_BACKOFF_MAX_DELAY_MS = 15_000
 
 export interface PtyHostSpawnOptions {
   command: string
@@ -37,37 +41,6 @@ export interface PtyHostProcess {
 export type PtyHostProcessFactory = (modulePath: string) => PtyHostProcess
 
 type UnsubscribeFn = () => void
-
-function resolveBackoffDelay(attempt: number): number {
-  if (attempt <= 0) {
-    return RESTART_BACKOFF_BASE_DELAY_MS
-  }
-  const delay = RESTART_BACKOFF_BASE_DELAY_MS * 2 ** attempt
-  return Math.min(delay, RESTART_BACKOFF_MAX_DELAY_MS)
-}
-
-function nowMs(): number {
-  return Date.now()
-}
-
-function sleep(delayMs: number): Promise<void> {
-  if (delayMs <= 0) {
-    return Promise.resolve()
-  }
-  return new Promise(resolve => {
-    setTimeout(resolve, delayMs)
-  })
-}
-
-function resolveBundledPtyHostEntryPath(baseDir: string): string {
-  const candidates = [join(baseDir, 'ptyHost.js'), join(baseDir, '..', 'ptyHost.js')]
-  const resolved = candidates.find(candidate => existsSync(candidate))
-  if (!resolved) {
-    throw new Error(`[pty-host] missing entry: ${candidates.join(', ')}`)
-  }
-
-  return resolved
-}
 
 export class PtyHostSupervisor {
   private readonly createProcess: PtyHostProcessFactory
@@ -463,7 +436,15 @@ export class PtyHostSupervisor {
       return
     }
 
-    child.postMessage({ type: 'crash' } satisfies PtyHostRequest)
+    try {
+      child.kill()
+    } catch {
+      // ignore and force supervisor crash handling below
+    }
+
+    if (this.process === child) {
+      this.handleHostExit(1)
+    }
   }
 
   public dispose(): void {

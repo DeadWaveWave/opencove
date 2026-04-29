@@ -65,6 +65,107 @@ async function readTaskLinkedAgentInfo(window: Page): Promise<{
   }
 }
 
+async function readRestoredTerminalGeometry(
+  window: Page,
+  nodeId: string,
+  sessionId: string,
+): Promise<{
+  terminalSize: { cols: number; rows: number } | null
+  snapshotSize: { cols: number; rows: number } | null
+  horizontalGapPx: number | null
+  verticalGapPx: number | null
+  cellWidthPx: number | null
+  cellHeightPx: number | null
+} | null> {
+  return await window.evaluate(
+    async payload => {
+      const terminalSize =
+        window.__opencoveTerminalSelectionTestApi?.getSize(payload.nodeId) ?? null
+      const metrics =
+        window.__opencoveTerminalSelectionTestApi?.getRenderMetrics?.(payload.nodeId) ?? null
+      const snapshot =
+        typeof window.opencoveApi.pty.presentationSnapshot === 'function'
+          ? await window.opencoveApi.pty
+              .presentationSnapshot({ sessionId: payload.sessionId })
+              .catch(() => null)
+          : null
+      const container = document.querySelector('.terminal-node__terminal')
+      if (!(container instanceof HTMLElement)) {
+        return null
+      }
+
+      const screen =
+        container.querySelector('.xterm-screen canvas') ?? container.querySelector('.xterm-screen')
+      const screenRect = screen instanceof HTMLElement ? screen.getBoundingClientRect() : null
+      const contentWidth =
+        terminalSize && metrics?.cssCellWidth && metrics.cssCellWidth > 0
+          ? terminalSize.cols * metrics.cssCellWidth
+          : metrics?.cssCanvasWidth && metrics.cssCanvasWidth > 0
+            ? metrics.cssCanvasWidth
+            : (screenRect?.width ?? null)
+      const contentHeight =
+        terminalSize && metrics?.cssCellHeight && metrics.cssCellHeight > 0
+          ? terminalSize.rows * metrics.cssCellHeight
+          : metrics?.cssCanvasHeight && metrics.cssCanvasHeight > 0
+            ? metrics.cssCanvasHeight
+            : (screenRect?.height ?? null)
+      const cellWidthPx =
+        metrics?.cssCellWidth && metrics.cssCellWidth > 0
+          ? metrics.cssCellWidth
+          : terminalSize && contentWidth
+            ? contentWidth / Math.max(1, terminalSize.cols)
+            : null
+      const cellHeightPx =
+        metrics?.cssCellHeight && metrics.cssCellHeight > 0
+          ? metrics.cssCellHeight
+          : terminalSize && contentHeight
+            ? contentHeight / Math.max(1, terminalSize.rows)
+            : null
+
+      return {
+        terminalSize,
+        snapshotSize: snapshot ? { cols: snapshot.cols, rows: snapshot.rows } : null,
+        horizontalGapPx: contentWidth === null ? null : container.clientWidth - contentWidth,
+        verticalGapPx: contentHeight === null ? null : container.clientHeight - contentHeight,
+        cellWidthPx,
+        cellHeightPx,
+      }
+    },
+    { nodeId, sessionId },
+  )
+}
+
+function hasConvergedRestoredTerminalGeometry(
+  geometry: Awaited<ReturnType<typeof readRestoredTerminalGeometry>>,
+): boolean {
+  if (!geometry?.terminalSize || !geometry.snapshotSize) {
+    return false
+  }
+
+  if (
+    geometry.terminalSize.cols !== geometry.snapshotSize.cols ||
+    geometry.terminalSize.rows !== geometry.snapshotSize.rows
+  ) {
+    return false
+  }
+
+  if (
+    geometry.horizontalGapPx === null ||
+    geometry.verticalGapPx === null ||
+    geometry.cellWidthPx === null ||
+    geometry.cellHeightPx === null
+  ) {
+    return false
+  }
+
+  return (
+    geometry.horizontalGapPx >= -2 &&
+    geometry.verticalGapPx >= -2 &&
+    geometry.horizontalGapPx <= Math.max(48, geometry.cellWidthPx * 6) &&
+    geometry.verticalGapPx <= Math.max(48, geometry.cellHeightPx * 4)
+  )
+}
+
 test.describe('Recovery - Agent placeholder replacement (OpenCode)', () => {
   test('replaces the durable placeholder scrollback with the resumed agent output after restart', async () => {
     const userDataDir = await createTestUserDataDir()
@@ -217,6 +318,21 @@ test.describe('Recovery - Agent placeholder replacement (OpenCode)', () => {
         if (initialAgentNodeId) {
           const hydratedInfo = await readTaskLinkedAgentInfo(restartedWindow)
           expect(hydratedInfo.linkedAgentNodeId).toBe(initialAgentNodeId)
+          expect(hydratedInfo.sessionId).not.toBeNull()
+
+          await expect
+            .poll(
+              async () =>
+                hasConvergedRestoredTerminalGeometry(
+                  await readRestoredTerminalGeometry(
+                    restartedWindow,
+                    initialAgentNodeId,
+                    hydratedInfo.sessionId ?? '',
+                  ),
+                ),
+              { timeout: 15_000 },
+            )
+            .toBe(true)
         }
       } finally {
         await restartedApp.close()

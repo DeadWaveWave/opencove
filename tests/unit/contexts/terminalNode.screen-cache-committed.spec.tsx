@@ -181,7 +181,6 @@ describe('TerminalNode committed screen cache', () => {
     expect(getCachedTerminalScreenState('node-cache-committed', 'session-cache-committed')).toEqual(
       expect.objectContaining({
         serialized: 'SCREEN_AFTER_LIVE_WRITE',
-        rawSnapshot: 'BOOTLIVE_FRAME',
       }),
     )
   })

@@ -5,6 +5,7 @@ import {
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
+import { openPaneContextMenuInSpace } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
   test('keeps crowded space members non-overlapping and enclosed after creation', async () => {
@@ -92,10 +93,8 @@ test.describe('Workspace Canvas - Spaces (Auto Resize on Create)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      await pane.click({
-        button: 'right',
-        position: { x: 210, y: 280 },
-      })
+      await openPaneContextMenuInSpace(window, pane, 'space-crowded')
+      await expect(window.locator('[data-testid="workspace-context-new-task"]')).toBeVisible()
       await window.locator('[data-testid="workspace-context-new-task"]').click()
 
       await expect(window.locator('[data-testid="workspace-task-creator"]')).toBeVisible()

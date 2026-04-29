@@ -12,7 +12,7 @@ export function IntegrationsSection(props: {
     <div className="settings-panel__section" id="settings-section-integrations">
       <h3 className="settings-panel__section-title">{t('settingsPanel.integrations.title')}</h3>
 
-      <div className="settings-panel__row">
+      <div className="settings-panel__row" id="settings-github-pull-requests">
         <div className="settings-panel__row-label">
           <strong>{t('settingsPanel.integrations.githubPullRequestsLabel')}</strong>
           <span>{t('settingsPanel.integrations.githubPullRequestsHelp')}</span>

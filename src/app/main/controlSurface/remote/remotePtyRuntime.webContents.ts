@@ -17,6 +17,20 @@ export function sendToWebContentsWindow(
   }
 }
 
+export function sendToWebContentsAllWindows(channel: string, payload: unknown): void {
+  for (const content of webContents.getAllWebContents()) {
+    if (content.isDestroyed() || content.getType() !== 'window') {
+      continue
+    }
+
+    try {
+      content.send(channel, payload)
+    } catch {
+      // ignore send failures
+    }
+  }
+}
+
 export function sendToWebContentsSessionSubscribers(
   subscribersBySessionId: Map<string, Set<number>>,
   sessionId: string,

@@ -1,4 +1,3 @@
-import { app } from 'electron'
 import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
@@ -22,6 +21,7 @@ import {
   resolveSessionLaunchSpawn,
 } from './sessionLaunchSupport'
 import { normalizeLaunchAgentEnv } from './sessionLaunchAgentEnv'
+import { startAgentSessionStateWatcherIfEnabled } from './sessionStateWatcherStart'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
@@ -34,18 +34,15 @@ import {
   normalizeAgentProviderId,
   normalizeFileSystemUri,
   normalizeOptionalString,
+  normalizeOptionalPositiveInt,
   resolvePathFromFileSystemUriOrThrow,
 } from './sessionLaunchPayloadSupport'
 
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
 
-function resolveOpenCodeEmbeddedXdgStateHome(): string {
-  if (typeof app?.getPath === 'function') {
-    return app.getPath('userData')
-  }
-
-  const fallback = process.env['OPENCOVE_TEST_USER_DATA_DIR']?.trim()
-  return fallback && fallback.length > 0 ? fallback : process.cwd()
+function resolveOpenCodeEmbeddedXdgStateHome(userDataPath: string): string {
+  const normalized = userDataPath.trim()
+  return normalized.length > 0 ? normalized : process.cwd()
 }
 
 function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessionInMountInput {
@@ -115,6 +112,8 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
   }
 
   const env = normalizeLaunchAgentEnv(payload.env)
+  const cols = normalizeOptionalPositiveInt(payload.cols)
+  const rows = normalizeOptionalPositiveInt(payload.rows)
 
   return {
     mountId,
@@ -130,12 +129,15 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
       resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw),
     env,
     agentFullAccess: agentFullAccess ?? null,
+    cols,
+    rows,
   }
 }
 
 export function registerSessionLaunchAgentInMountHandler(
   controlSurface: ControlSurface,
   deps: {
+    userDataPath: string
     approvedWorkspaces: ApprovedWorkspaceStore
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyRuntime: MultiEndpointPtyRuntime
@@ -200,6 +202,8 @@ export function registerSessionLaunchAgentInMountHandler(
               resumeSessionId: payload.resumeSessionId ?? null,
               env: payload.env ?? null,
               agentFullAccess: payload.agentFullAccess ?? null,
+              cols: payload.cols,
+              rows: payload.rows,
             } satisfies LaunchAgentSessionInput,
           })
 
@@ -233,6 +237,8 @@ export function registerSessionLaunchAgentInMountHandler(
           cwd: remoteResult.executionContext.workingDirectory,
           command: remoteResult.command,
           args: remoteResult.args,
+          cols: payload.cols ?? 80,
+          rows: payload.rows ?? 24,
         })
 
         const executionContext = resolveExecutionContextDto(
@@ -333,7 +339,7 @@ export function registerSessionLaunchAgentInMountHandler(
           ? {
               OPENCOVE_OPENCODE_SERVER_HOSTNAME: opencodeServer.hostname,
               OPENCOVE_OPENCODE_SERVER_PORT: String(opencodeServer.port),
-              XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(),
+              XDG_STATE_HOME: resolveOpenCodeEmbeddedXdgStateHome(deps.userDataPath),
               ...(opencodeTuiConfigPath ? { OPENCODE_TUI_CONFIG: opencodeTuiConfigPath } : {}),
             }
           : undefined
@@ -356,30 +362,25 @@ export function registerSessionLaunchAgentInMountHandler(
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
-        cols: 80,
-        rows: 24,
+        cols: payload.cols ?? 80,
+        rows: payload.rows ?? 24,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
         ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
-      const shouldStartStateWatcher =
-        process.env.NODE_ENV !== 'test' ||
-        process.env['OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER'] === '1'
-
-      if (shouldStartStateWatcher) {
-        deps.ptyRuntime.startSessionStateWatcher?.({
-          sessionId,
-          provider,
-          cwd,
-          launchMode: mode,
-          resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
-          startedAtMs,
-          opencodeBaseUrl: opencodeServer
-            ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
-            : null,
-        })
-      }
+      startAgentSessionStateWatcherIfEnabled({
+        ptyRuntime: deps.ptyRuntime,
+        sessionId,
+        provider,
+        cwd,
+        launchMode: mode,
+        resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
+        startedAtMs,
+        opencodeBaseUrl: opencodeServer
+          ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
+          : null,
+      })
 
       const executionContext = resolveExecutionContextDto(cwd, {
         projectId: null,
@@ -418,6 +419,8 @@ export function registerSessionLaunchAgentInMountHandler(
         cwd,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        cols: payload.cols ?? 80,
+        rows: payload.rows ?? 24,
       })
 
       return {

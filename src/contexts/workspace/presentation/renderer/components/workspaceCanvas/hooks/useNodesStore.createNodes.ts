@@ -408,7 +408,8 @@ export function useWorkspaceCanvasNodeCreation({
       document: DocumentNodeData,
       placementOptions?: NodeCreationPlacementOptions,
     ) => {
-      const defaultSize = resolveDefaultDocumentWindowSize(standardWindowSizeBucket)
+      const defaultSize =
+        placementOptions?.sizeOverride ?? resolveDefaultDocumentWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
         size: defaultSize,

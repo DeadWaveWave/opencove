@@ -1,6 +1,7 @@
 import type { PersistenceStore } from '../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStoreCore'
 import type { ControlSurfacePtyRuntime } from './handlers/sessionPtyRuntime'
+import type { SyncEventPayload } from '../../../shared/contracts/dto'
 
 export interface RegisterControlSurfaceHttpServerOptions {
   userDataPath: string
@@ -11,10 +12,13 @@ export interface RegisterControlSurfaceHttpServerOptions {
   port?: number
   token?: string
   connectionFileName?: string
+  connectionStartedBy?: 'cli' | 'desktop'
   approvedWorkspaces: ApprovedWorkspaceStore
   ptyRuntime: ControlSurfacePtyRuntime & { dispose?: () => void }
   ownsPtyRuntime?: boolean
   deleteEntry?: (uri: string) => Promise<void>
   enableWebShell?: boolean
   webUiPasswordHash?: string | null
+  desktopSyncEventSink?: (payload: SyncEventPayload) => number
+  closeWebsiteNode?: (nodeId: string) => Promise<void> | void
 }

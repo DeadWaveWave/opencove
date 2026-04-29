@@ -5,6 +5,7 @@ import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColo
 import type {
   CanvasImageMimeType,
   GitHubPullRequestSummary,
+  TerminalPtyGeometry,
   TerminalRuntimeKind,
   WebsiteWindowSessionMode,
 } from '@shared/contracts/dto'
@@ -104,6 +105,7 @@ export interface TerminalNodeData {
   isLiveSessionReattach?: boolean
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalGeometry?: TerminalPtyGeometry | null
   terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
   title: string
@@ -279,6 +281,7 @@ export interface PersistedTerminalNode {
   kind: WorkspaceNodeKind
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalGeometry?: TerminalPtyGeometry | null
   terminalProviderHint?: AgentProvider | null
   labelColorOverride?: NodeLabelColorOverride
   status: AgentRuntimeStatus | null

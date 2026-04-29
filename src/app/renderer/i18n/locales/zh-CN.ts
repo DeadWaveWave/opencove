@@ -88,7 +88,7 @@ export const zhCN = {
     sidebar: '侧边栏',
     minimap: '缩略图',
     theme: '主题',
-    agentStandbyBanner: 'Agent 完成提醒',
+    agentStandbyBanner: '右上角横幅',
     on: '已开启',
     off: '已关闭',
   },
@@ -277,10 +277,14 @@ export const zhCN = {
     retry: '重试',
     filesystemUnavailable: '文件系统不可用。',
     notAFile: '这不是一个文件。',
+    binaryReadUnavailable: '当前环境无法加载音频或视频预览。',
     binaryTitle: '二进制文件',
     binaryMessage: '该文件似乎是二进制或使用了不受支持的编码，无法以文本方式打开。',
     tooLargeTitle: '文件过大',
     tooLargeMessage: '该文件过大，无法在画布编辑器中打开。',
+    mediaUnsupportedTitle: '无法播放媒体',
+    mediaUnsupportedMessage:
+      '这个音频或视频文件当前无法在这里播放。OpenCove 目前会在运行环境支持时预览 MP3、WAV/WAVE、OGG/OGA、MP4 和 WebM。',
   },
   imageNode: {
     title: '图片',
@@ -292,6 +296,7 @@ export const zhCN = {
   terminalNode: {
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
+    recoveringAgentSession: '正在恢复实时 Agent 会话…',
   },
   terminalFind: {
     placeholder: '查找…',

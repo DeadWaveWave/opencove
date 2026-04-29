@@ -1,55 +1,23 @@
 import type { Node } from '@xyflow/react'
-import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { WindowDisplayInfo } from '@shared/contracts/dto'
 import type { Size, TerminalNodeData } from '../types'
-
-export type WorkspaceCanonicalSizeBucket = StandardWindowSizeBucket
-
-export const WORKSPACE_CANONICAL_GUTTER_PX = 12
-
-const CANONICAL_BUCKETS: Record<WorkspaceCanonicalSizeBucket, { col: number; row: number }> = {
-  compact: { col: 108, row: 72 },
-  regular: { col: 120, row: 80 },
-  large: { col: 132, row: 88 },
-}
-
-const KIND_UNITS: Record<TerminalNodeData['kind'], { col: number; row: number }> = {
-  terminal: { col: 4, row: 4 },
-  task: { col: 2, row: 4 },
-  agent: { col: 4, row: 8 },
-  note: { col: 2, row: 2 },
-  image: { col: 3, row: 3 },
-  document: { col: 4, row: 6 },
-  website: { col: 4, row: 6 },
-}
-
-export function resolveCanonicalNodeGridSpan(kind: TerminalNodeData['kind']): {
-  colSpan: number
-  rowSpan: number
-} {
-  const units = KIND_UNITS[kind]
-  return { colSpan: units.col, rowSpan: units.row }
-}
-
-const MIN_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
-  terminal: { width: 400, height: 260 },
-  task: { width: 220, height: 260 },
-  agent: { width: 400, height: 520 },
-  note: { width: 220, height: 140 },
-  image: { width: 180, height: 120 },
-  document: { width: 400, height: 260 },
-  website: { width: 400, height: 260 },
-}
-
-const MAX_SIZE_BY_KIND: Record<TerminalNodeData['kind'], Size> = {
-  terminal: { width: 720, height: 520 },
-  task: { width: 360, height: 520 },
-  agent: { width: 720, height: 1040 },
-  note: { width: 360, height: 260 },
-  image: { width: 960, height: 720 },
-  document: { width: 960, height: 900 },
-  website: { width: 960, height: 900 },
-}
+export {
+  WORKSPACE_CANONICAL_GUTTER_PX,
+  resolveCanonicalBucketCellSize,
+  resolveCanonicalNodeGridSpan,
+  resolveCanonicalNodeMaxSize,
+  resolveCanonicalNodeMinSize,
+  resolveCanonicalNodeSize,
+  resolveImageNodeSizeFromNaturalDimensions,
+  type WorkspaceCanonicalSizeBucket,
+} from '@contexts/workspace/domain/workspaceNodeSizing'
+import {
+  resolveCanonicalNodeMaxSize,
+  resolveCanonicalNodeMinSize,
+  resolveCanonicalNodeSize,
+  resolveImageNodeSizeFromNaturalDimensions,
+  type WorkspaceCanonicalSizeBucket,
+} from '@contexts/workspace/domain/workspaceNodeSizing'
 
 function clampSize(size: Size, min: Size, max: Size): Size {
   return {
@@ -62,90 +30,19 @@ function clampNumber(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
-function resolveViewportSize(viewport?: Partial<Size>): Size {
-  const fallbackWidth =
-    typeof window !== 'undefined' && Number.isFinite(window.innerWidth) && window.innerWidth > 0
-      ? window.innerWidth
-      : 1440
-  const fallbackHeight =
-    typeof window !== 'undefined' && Number.isFinite(window.innerHeight) && window.innerHeight > 0
-      ? window.innerHeight
-      : 900
-
-  const width =
-    typeof viewport?.width === 'number' && Number.isFinite(viewport.width) && viewport.width > 0
-      ? Math.round(viewport.width)
-      : Math.round(fallbackWidth)
-  const height =
-    typeof viewport?.height === 'number' && Number.isFinite(viewport.height) && viewport.height > 0
-      ? Math.round(viewport.height)
-      : Math.round(fallbackHeight)
-
-  return { width, height }
-}
-
-function resolveDisplayAwareViewportSize(
-  viewport?: Partial<Size>,
-  displayInfo?: WindowDisplayInfo | null,
-): Size {
-  if (
-    displayInfo &&
-    Number.isFinite(displayInfo.effectiveWidthPx) &&
-    displayInfo.effectiveWidthPx > 0 &&
-    Number.isFinite(displayInfo.effectiveHeightPx) &&
-    displayInfo.effectiveHeightPx > 0
-  ) {
-    return {
-      width: Math.round(displayInfo.effectiveWidthPx),
-      height: Math.round(displayInfo.effectiveHeightPx),
-    }
-  }
-
-  return resolveViewportSize(viewport)
-}
-
-export function resolveCanvasCanonicalBucketFromViewport(
-  viewport?: Partial<Size>,
-  displayInfo?: WindowDisplayInfo | null,
-): WorkspaceCanonicalSizeBucket {
-  const resolved = resolveDisplayAwareViewportSize(viewport, displayInfo)
-
-  if (resolved.width >= 1920 && resolved.height >= 1080) {
-    return 'large'
-  }
-
-  if (resolved.width >= 1600 && resolved.height >= 900) {
-    return 'regular'
-  }
-
-  return 'compact'
-}
-
-export function resolveCanonicalBucketCellSize(bucket: WorkspaceCanonicalSizeBucket): Size {
-  const tokens = CANONICAL_BUCKETS[bucket]
-  return { width: tokens.col, height: tokens.row }
-}
-
-export function resolveCanonicalNodeMinSize(kind: TerminalNodeData['kind']): Size {
-  return MIN_SIZE_BY_KIND[kind]
-}
-
-export function resolveCanonicalNodeMaxSize(kind: TerminalNodeData['kind']): Size {
-  return MAX_SIZE_BY_KIND[kind]
-}
-
-export function resolveImageNodeSizeFromNaturalDimensions({
+function resolveAspectFitSizeWithinBounds({
   naturalWidth,
   naturalHeight,
   preferred,
+  min,
+  max,
 }: {
   naturalWidth: number | null
   naturalHeight: number | null
   preferred: Size
+  min: Size
+  max: Size
 }): Size {
-  const min = resolveCanonicalNodeMinSize('image')
-  const max = resolveCanonicalNodeMaxSize('image')
-
   if (
     typeof naturalWidth !== 'number' ||
     !Number.isFinite(naturalWidth) ||
@@ -215,27 +112,98 @@ export function resolveImageNodeSizeFromNaturalDimensions({
   )
 }
 
-export function resolveCanonicalNodeSize({
-  kind,
-  bucket,
-}: {
-  kind: TerminalNodeData['kind']
-  bucket: WorkspaceCanonicalSizeBucket
-}): Size {
-  const tokens = CANONICAL_BUCKETS[bucket]
-  const units = KIND_UNITS[kind]
-  const desired = {
-    width: Math.round(
-      tokens.col * units.col + WORKSPACE_CANONICAL_GUTTER_PX * Math.max(0, units.col - 1),
-    ),
-    height: Math.round(
-      tokens.row * units.row + WORKSPACE_CANONICAL_GUTTER_PX * Math.max(0, units.row - 1),
-    ),
-  }
+function resolveViewportSize(viewport?: Partial<Size>): Size {
+  const fallbackWidth =
+    typeof window !== 'undefined' && Number.isFinite(window.innerWidth) && window.innerWidth > 0
+      ? window.innerWidth
+      : 1440
+  const fallbackHeight =
+    typeof window !== 'undefined' && Number.isFinite(window.innerHeight) && window.innerHeight > 0
+      ? window.innerHeight
+      : 900
 
-  return clampSize(desired, MIN_SIZE_BY_KIND[kind], MAX_SIZE_BY_KIND[kind])
+  const width =
+    typeof viewport?.width === 'number' && Number.isFinite(viewport.width) && viewport.width > 0
+      ? Math.round(viewport.width)
+      : Math.round(fallbackWidth)
+  const height =
+    typeof viewport?.height === 'number' && Number.isFinite(viewport.height) && viewport.height > 0
+      ? Math.round(viewport.height)
+      : Math.round(fallbackHeight)
+
+  return { width, height }
 }
 
+function resolveDisplayAwareViewportSize(
+  viewport?: Partial<Size>,
+  displayInfo?: WindowDisplayInfo | null,
+): Size {
+  if (
+    displayInfo &&
+    Number.isFinite(displayInfo.effectiveWidthPx) &&
+    displayInfo.effectiveWidthPx > 0 &&
+    Number.isFinite(displayInfo.effectiveHeightPx) &&
+    displayInfo.effectiveHeightPx > 0
+  ) {
+    return {
+      width: Math.round(displayInfo.effectiveWidthPx),
+      height: Math.round(displayInfo.effectiveHeightPx),
+    }
+  }
+
+  return resolveViewportSize(viewport)
+}
+
+export function resolveCanvasCanonicalBucketFromViewport(
+  viewport?: Partial<Size>,
+  displayInfo?: WindowDisplayInfo | null,
+): WorkspaceCanonicalSizeBucket {
+  const resolved = resolveDisplayAwareViewportSize(viewport, displayInfo)
+
+  if (resolved.width >= 1920 && resolved.height >= 1080) {
+    return 'large'
+  }
+
+  if (resolved.width >= 1600 && resolved.height >= 900) {
+    return 'regular'
+  }
+
+  return 'compact'
+}
+
+export function resolveDocumentNodeSizeFromMediaMetadata({
+  mediaKind,
+  naturalWidth,
+  naturalHeight,
+  preferred,
+}: {
+  mediaKind: 'audio' | 'video'
+  naturalWidth: number | null
+  naturalHeight: number | null
+  preferred: Size
+}): Size {
+  const min = resolveCanonicalNodeMinSize('document')
+  const max = resolveCanonicalNodeMaxSize('document')
+
+  if (mediaKind === 'audio') {
+    return clampSize(
+      {
+        width: Math.max(preferred.width, 480),
+        height: min.height,
+      },
+      min,
+      max,
+    )
+  }
+
+  return resolveAspectFitSizeWithinBounds({
+    naturalWidth,
+    naturalHeight,
+    preferred,
+    min,
+    max,
+  })
+}
 export function normalizeWorkspaceNodesToCanonicalSizing({
   nodes,
   enabled,

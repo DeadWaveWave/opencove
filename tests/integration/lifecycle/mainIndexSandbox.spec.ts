@@ -70,6 +70,13 @@ describe('main process sandbox flags', () => {
           openExternal: vi.fn(),
         },
         BrowserWindow,
+        Menu: {
+          setApplicationMenu: vi.fn(),
+          buildFromTemplate: vi.fn(template => template),
+        },
+        nativeImage: {
+          createFromPath: vi.fn(() => ({})),
+        },
       }))
 
       vi.doMock('@electron-toolkit/utils', () => ({

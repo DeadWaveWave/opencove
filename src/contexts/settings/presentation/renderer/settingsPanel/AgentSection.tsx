@@ -112,7 +112,7 @@ export function AgentSection(props: {
         </div>
       </div>
 
-      <div className="settings-panel__row">
+      <div className="settings-panel__row" id="settings-agent-full-access">
         <div className="settings-panel__row-label">
           <strong>{t('settingsPanel.agent.fullAccessLabel')}</strong>
           <span>{t('settingsPanel.agent.fullAccessHelp')}</span>

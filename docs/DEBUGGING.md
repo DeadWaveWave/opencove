@@ -133,6 +133,17 @@ OPENCOVE_TEST_USE_REAL_AGENTS=1 pnpm test:e2e tests/e2e/workspace-canvas.opencod
 - 该开关会让测试直接 spawn 本机安装的 CLI（如 `opencode`），可能触发真实网络请求/账号权限；仅建议用于本地调试。
 - 产物在 `test-results/**`：优先看 `trace.zip`、失败截图与控制台日志。
 
+### Restored Agent 真实复现脚本
+
+恢复后首屏、首次输入、真实 Agent TUI 尺寸/渲染问题优先使用仓库脚本：
+
+```bash
+ELECTRON_RUN_AS_NODE=1 OPENCOVE_REPRO_PROVIDER=codex OPENCOVE_REPRO_ITERATIONS=3 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ./node_modules/.bin/electron scripts/debug-repro-restored-agent-input.mjs
+ELECTRON_RUN_AS_NODE=1 OPENCOVE_REPRO_PROVIDER=opencode OPENCOVE_REPRO_ITERATIONS=2 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ./node_modules/.bin/electron scripts/debug-repro-restored-agent-input.mjs
+```
+
+用 Electron 作为 Node runner 可以避免本机 Node ABI 与 Electron 原生依赖（例如 `better-sqlite3`）不一致导致的假失败。
+
 ## Playwright 交互排查重点
 
 ### 1) 复杂拖拽优先使用真实鼠标事件

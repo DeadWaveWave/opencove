@@ -181,8 +181,18 @@ export function registerFilesystemHandlers(
   },
 ): void {
   const port = createLocalFileSystemPort()
-  const deleteEntry =
-    deps.deleteEntry ?? (async (uri: string) => await deleteEntryUseCase(port, { uri }))
+  const deleteEntry = async (uri: string): Promise<void> => {
+    if (deps.deleteEntry) {
+      try {
+        await deps.deleteEntry(uri)
+        return
+      } catch {
+        // Fall back to direct delete when trash is unavailable.
+      }
+    }
+
+    await deleteEntryUseCase(port, { uri })
+  }
 
   const assertApprovedUri = async (uri: string, debugMessage: string): Promise<void> => {
     const path = fileURLToPath(uri)
