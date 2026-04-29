@@ -34,9 +34,15 @@
     inset 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 26%, transparent);
 }
 
-.agent-provider-icon__glyph {
+.agent-provider-icon__glyph,
+.agent-provider-icon__svg {
   width: 11px;
   height: 11px;
+  display: block;
+  flex-shrink: 0;
+}
+
+.agent-provider-icon__glyph {
   stroke-width: 2.1;
 }
 
