@@ -37,6 +37,7 @@ export function SidebarAgentItems({
             key={`${workspace.id}:${node.id}`}
             className="workspace-agent-item workspace-agent-item--nested workspace-agent-item--sidebar"
             data-testid={`workspace-agent-item-${workspace.id}-${node.id}`}
+            data-cove-label-color={effectiveLabelColor ?? undefined}
             title={[
               providerText,
               displayTitle,
@@ -58,16 +59,18 @@ export function SidebarAgentItems({
                   className="workspace-agent-item__provider"
                 />
               ) : null}
-              <span className="workspace-agent-item__title">{displayTitle}</span>
-              {owningSpace ? (
-                <span
-                  className="workspace-agent-item__pill"
-                  data-cove-label-color={owningSpace.labelColor ?? undefined}
-                  title={owningSpace.name}
-                >
-                  <span className="workspace-agent-item__pill-text">{owningSpace.name}</span>
-                </span>
-              ) : null}
+              <span className="workspace-agent-item__headline">
+                <span className="workspace-agent-item__title">{displayTitle}</span>
+                {owningSpace ? (
+                  <span
+                    className="workspace-agent-item__pill"
+                    data-cove-label-color={owningSpace.labelColor ?? undefined}
+                    title={owningSpace.name}
+                  >
+                    <span className="workspace-agent-item__pill-text">{owningSpace.name}</span>
+                  </span>
+                ) : null}
+              </span>
               <span
                 className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${status}`}
                 aria-label={sidebarAgentStatusText}

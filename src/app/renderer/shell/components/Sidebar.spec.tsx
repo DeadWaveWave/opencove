@@ -291,11 +291,11 @@ describe('Sidebar', () => {
       />,
     )
 
-    const badge = screen
-      .getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
-      .querySelector('.agent-provider-icon')
+    const agentButton = screen.getByTestId('workspace-agent-item-workspace-a-workspace-a-agent')
+    const badge = agentButton.querySelector('.agent-provider-icon')
 
     expect(badge?.getAttribute('data-cove-label-color')).toBe('blue')
+    expect(agentButton.getAttribute('data-cove-label-color')).toBe('blue')
   })
 
   it('toggles the project agent tree without selecting the workspace', () => {

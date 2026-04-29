@@ -13,7 +13,7 @@
 }
 
 .agent-provider-icon[data-agent-provider='claude-code'] {
-  --agent-provider-accent: rgba(237, 137, 54, 0.96);
+  --agent-provider-accent: rgba(217, 119, 87, 0.96);
 }
 
 .agent-provider-icon[data-agent-provider='codex'] {
@@ -26,12 +26,6 @@
 
 .agent-provider-icon[data-agent-provider='gemini'] {
   --agent-provider-accent: rgba(196, 181, 253, 0.96);
-}
-
-.agent-provider-icon[data-cove-label-color] {
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--cove-label-color) 68%, transparent),
-    inset 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 26%, transparent);
 }
 
 .agent-provider-icon__glyph,
@@ -86,6 +80,17 @@ button.workspace-agent-item:focus-visible {
   padding: 6px 10px;
 }
 
+.workspace-agent-item--sidebar[data-cove-label-color] {
+  border-color: color-mix(in srgb, var(--cove-label-color) 32%, transparent);
+  background: color-mix(in srgb, var(--cove-label-color) 12%, var(--cove-field) 88%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 10%, transparent);
+}
+
+.workspace-agent-item--sidebar[data-cove-label-color]:hover {
+  border-color: color-mix(in srgb, var(--cove-label-color) 42%, transparent);
+  background: color-mix(in srgb, var(--cove-label-color) 18%, var(--cove-field) 82%);
+}
+
 .workspace-agent-item__singleline {
   display: flex;
   align-items: center;
@@ -99,6 +104,7 @@ button.workspace-agent-item:focus-visible {
 }
 
 .workspace-agent-item__headline {
+  flex: 1 1 auto;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -106,13 +112,17 @@ button.workspace-agent-item:focus-visible {
 }
 
 .workspace-agent-item__title {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   font-size: calc(12px * var(--cove-ui-font-scale));
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.workspace-agent-item--sidebar[data-cove-label-color] .workspace-agent-item__title {
+  color: color-mix(in srgb, var(--cove-label-color) 38%, var(--cove-text));
 }
 
 .workspace-agent-item__status {
@@ -222,14 +232,15 @@ button.workspace-agent-item:focus-visible {
   display: inline-flex;
   align-items: center;
   min-width: 0;
-  max-width: 72px;
   min-height: 18px;
   padding: 0 7px;
   border-radius: 999px;
   border: 1px solid var(--cove-border-subtle);
   background: var(--cove-surface-hover);
   color: var(--cove-text-muted);
-  flex: 0 1 auto;
+  flex: 0 999 auto;
+  min-inline-size: min(4em, 40%);
+  max-width: 100%;
 }
 
 .workspace-agent-item__pill[data-cove-label-color] {

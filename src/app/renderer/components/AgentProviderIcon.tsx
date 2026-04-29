@@ -39,14 +39,43 @@ function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <path
+          <ellipse cx="12" cy="4.75" rx="1.95" ry="3.15" fill="currentColor" />
+          <ellipse cx="12" cy="19.25" rx="1.95" ry="3.15" fill="currentColor" />
+          <ellipse cx="4.75" cy="12" rx="3.15" ry="1.95" fill="currentColor" />
+          <ellipse cx="19.25" cy="12" rx="3.15" ry="1.95" fill="currentColor" />
+          <ellipse
+            cx="6.85"
+            cy="6.85"
+            rx="1.85"
+            ry="3"
+            transform="rotate(-45 6.85 6.85)"
             fill="currentColor"
-            d="M13.7891 3.93188L20.2223 20.068H23.7502L17.317 3.93188H13.7891Z"
           />
-          <path
+          <ellipse
+            cx="17.15"
+            cy="6.85"
+            rx="1.85"
+            ry="3"
+            transform="rotate(45 17.15 6.85)"
             fill="currentColor"
-            d="M6.32538 13.6827L8.52662 8.01201L10.7279 13.6827H6.32538ZM6.68225 3.93188L0.25 20.068H3.84652L5.16202 16.6794H11.8914L13.2067 20.068H16.8033L10.371 3.93188H6.68225Z"
           />
+          <ellipse
+            cx="6.85"
+            cy="17.15"
+            rx="1.85"
+            ry="3"
+            transform="rotate(45 6.85 17.15)"
+            fill="currentColor"
+          />
+          <ellipse
+            cx="17.15"
+            cy="17.15"
+            rx="1.85"
+            ry="3"
+            transform="rotate(-45 17.15 17.15)"
+            fill="currentColor"
+          />
+          <circle cx="12" cy="12" r="1.55" fill="currentColor" />
         </svg>
       )
     case 'opencode':
