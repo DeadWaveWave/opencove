@@ -22,6 +22,7 @@ import {
 import { registerTerminalDiagnostics } from './registerDiagnostics'
 import { installTerminalEffectiveDevicePixelRatioController } from './effectiveDevicePixelRatio'
 import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
+import { registerTerminalDisplayMeasurementHandle } from '@contexts/settings/presentation/renderer/terminalDisplayMeasurement'
 
 type TerminalDiagnosticsHandle = ReturnType<typeof registerTerminalDiagnostics>
 let nextXtermSessionInstanceId = 1
@@ -145,6 +146,7 @@ export function createMountedXtermSession({
   let cancelMouseServicePatch: () => void = () => undefined
   let disposeTerminalHitTargetCursorScope: () => void = () => undefined
   let disposeWebglPixelSnappingObserver: () => void = () => undefined
+  let disposeTerminalDisplayMeasurementHandle: () => void = () => undefined
   let effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
     terminal,
     initialViewportZoom,
@@ -201,6 +203,11 @@ export function createMountedXtermSession({
     }
     renderer.clearTextureAtlas()
     syncTerminalSize()
+    disposeTerminalDisplayMeasurementHandle = registerTerminalDisplayMeasurementHandle({
+      nodeId,
+      terminal,
+      fitAddon,
+    })
     requestAnimationFrame(syncTerminalSize)
     scheduleWebglPixelSnapping?.()
   } else {
@@ -237,6 +244,7 @@ export function createMountedXtermSession({
       effectiveDprController.dispose()
       renderer.dispose()
       diagnostics.dispose()
+      disposeTerminalDisplayMeasurementHandle()
       disposeTerminalSelectionTestHandle()
       disposeTerminalFind()
       terminal.dispose()

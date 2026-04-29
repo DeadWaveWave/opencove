@@ -2,7 +2,7 @@ export const zhCNTerminalDisplayCalibration = {
   title: '终端显示一致性',
   help: '让 Desktop、Web UI 和未来客户端里的终端单元格在视觉上保持对齐。',
   referenceLabel: '共享参考',
-  referenceEmpty: '尚未保存参考。请在已经显示正确的客户端上先设置参考。',
+  referenceEmpty: '尚未保存参考。系统会自动使用第一个在线客户端，你也可以手动设置当前客户端。',
   referenceStale: '已保存的参考属于另一套终端外观。校准前需要重新设置参考。',
   referenceSummary: '{{cols}}×{{rows}} 单元格，单元格 {{cellWidth}}×{{cellHeight}} px。',
   setReference: '将当前客户端设为参考',

@@ -267,11 +267,15 @@ Latest verified on `2026-04-29` for Desktop/Web UI terminal display parity and u
 - `pnpm build`
 - `pnpm check`
 - `pnpm lint`
-- `pnpm test -- --run tests/unit/contexts/terminalNode.appearance-sync.spec.tsx tests/unit/contexts/terminalDisplayCalibration.spec.ts tests/unit/contexts/settingsPanel.spec.tsx tests/unit/scripts/terminal-display-calibration.spec.ts tests/unit/contexts/terminalNode.effectiveDevicePixelRatio.spec.ts`
+- `pnpm test -- --run tests/unit/contexts/terminalDisplayReferenceAutoCapture.spec.tsx tests/unit/contexts/terminalNode.appearance-sync.spec.tsx tests/unit/contexts/terminalDisplayCalibration.spec.ts tests/unit/contexts/settingsPanel.spec.tsx tests/unit/scripts/terminal-display-calibration.spec.ts tests/unit/contexts/terminalNode.effectiveDevicePixelRatio.spec.ts`
 - `OPENCOVE_PROFILE_WEB_HEADFUL=1 OPENCOVE_PROFILE_WEB_DEVICE_SCALE_FACTORS=1,2 OPENCOVE_PROFILE_ASSERT_PARITY=1 pnpm profile:terminal:display-parity`
+- `OPENCOVE_PROFILE_KEEP_USER_DATA=1 OPENCOVE_PROFILE_WEB_HEADFUL=1 OPENCOVE_PROFILE_WEB_DEVICE_SCALE_FACTORS=1,2 OPENCOVE_PROFILE_ASSERT_PARITY=1 pnpm profile:terminal:display-parity`
 - Result: Desktop and Web UI DPR 1/2 all converged to `81x24`, `cssCellWidthDelta=0`, `cssCellHeightDelta=0`, and `effectiveDprDelta=0`.
 - Calibration result: Web DPR 1 and Web DPR 2 each swept `39` appearance candidates and selected `{ fontSize: 13, lineHeight: 1, letterSpacing: 0 }` with score `0`.
 - Owner invariant result: local display compensation updates xterm display options and local FitAddon sizing, while shared font-size changes remain on the explicit `appearance_commit` geometry path.
+- First-client default reference result: with `OPENCOVE_PROFILE_KEEP_USER_DATA=1`, the persisted
+  `terminalDisplayReference` was automatically captured from Desktop as `81x24`, cell `7.5x15`,
+  `effectiveDpr=2`.
 
 Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 

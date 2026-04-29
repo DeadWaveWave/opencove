@@ -2,7 +2,8 @@ export const enTerminalDisplayCalibration = {
   title: 'Terminal Display Consistency',
   help: 'Keep terminal cells visually aligned across Desktop, Web UI, and future clients.',
   referenceLabel: 'Shared Reference',
-  referenceEmpty: 'No reference has been saved. Set it on the client that already looks right.',
+  referenceEmpty:
+    'No reference has been saved yet. The first online client is used automatically, or you can set this client manually.',
   referenceStale:
     'The saved reference belongs to a different terminal appearance. Set a new reference before calibrating.',
   referenceSummary: '{{cols}}×{{rows}} cells, {{cellWidth}}×{{cellHeight}} px cell.',

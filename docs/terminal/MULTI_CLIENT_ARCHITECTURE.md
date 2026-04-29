@@ -157,10 +157,11 @@ canonical geometry, or replace the explicit appearance commit path.
 OpenCove exposes display alignment as a user-controlled Settings workflow, not an automatic hidden
 resize policy:
 
-1. Open the client that already looks correct.
+1. The first online client for the current terminal appearance profile automatically records the
+   shared reference if none exists.
 2. Go to `Settings -> General -> Terminal Display Consistency`.
-3. Choose `Set This Client as Reference`. This stores the shared target cell metrics with the
-   existing terminal appearance profile.
+3. Choose `Set This Client as Reference` only when you want to replace the automatic reference. This
+   stores the shared target cell metrics with the existing terminal appearance profile.
 4. Open another client, then choose `Calibrate This Client`. The client sweeps local display
    compensation candidates and stores the best local match in that client only.
 5. If the result is not visually acceptable, adjust the shared terminal font family/size, set a new
@@ -173,6 +174,8 @@ This workflow follows the same owner boundary as the runtime architecture:
 - the shared reference is a persisted user preference
 - the client calibration is local storage scoped to the current terminal appearance profile and
   active shared reference
+- the automatic first-client reference is captured from a real mounted terminal xterm/FitAddon
+  instance, not from a synthetic hidden terminal
 - local compensation may change xterm `fontSize`, `lineHeight`, and `letterSpacing`
 - local compensation may trigger local FitAddon measurement
 - local compensation must not resize the PTY or update worker canonical `cols/rows`

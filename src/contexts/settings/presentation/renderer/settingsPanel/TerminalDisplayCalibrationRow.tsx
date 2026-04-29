@@ -1,269 +1,25 @@
 import React, { useMemo, useRef, useState } from 'react'
-import { FitAddon } from '@xterm/addon-fit'
-import { Terminal } from '@xterm/xterm'
-import '@xterm/xterm/css/xterm.css'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   TerminalClientDisplayCalibration,
-  TerminalDisplayMeasurement,
   TerminalDisplayReference,
 } from '@contexts/settings/domain/terminalDisplayCalibration'
 import {
   createTerminalDisplayProfileKey,
   isTerminalDisplayReferenceForProfile,
 } from '@contexts/settings/domain/terminalDisplayCalibration'
-import { DEFAULT_TERMINAL_FONT_FAMILY } from '@contexts/workspace/presentation/renderer/components/terminalNode/constants'
-import { installTerminalEffectiveDevicePixelRatioController } from '@contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio'
 import {
   clearTerminalClientDisplayCalibration,
   useTerminalClientDisplayCalibration,
   writeTerminalClientDisplayCalibration,
 } from '../terminalDisplayCalibrationStorage'
-
-type Candidate = {
-  fontSize: number
-  lineHeight: number
-  letterSpacing: number
-}
-
-type CandidateResult = {
-  candidate: Candidate
-  measurement: TerminalDisplayMeasurement
-  score: number
-  preferenceDistance: number
-}
-
-type XtermIntrospection = Terminal & {
-  _core?: {
-    _renderService?: {
-      dimensions?: {
-        css?: {
-          cell?: { width?: number; height?: number }
-        }
-      }
-    }
-  }
-}
-
-const CALIBRATION_WIDTH = 640
-const CALIBRATION_HEIGHT = 420
-const DEFAULT_LINE_HEIGHTS = [1, 1.05, 1.1]
-const DEFAULT_LETTER_SPACINGS = [0]
-
-function round(value: number, decimals = 4): number {
-  const factor = 10 ** decimals
-  return Math.round(value * factor) / factor
-}
-
-function readRuntime(): TerminalDisplayMeasurement['runtime'] {
-  const runtime = window.opencoveApi?.meta?.runtime
-  return runtime === 'browser' ? 'browser' : runtime === 'electron' ? 'desktop' : 'unknown'
-}
-
-function buildCandidates(baseFontSize: number): Candidate[] {
-  const candidates: Candidate[] = []
-  for (let fontSize = baseFontSize - 1.5; fontSize <= baseFontSize + 1.5; fontSize += 0.25) {
-    for (const lineHeight of DEFAULT_LINE_HEIGHTS) {
-      for (const letterSpacing of DEFAULT_LETTER_SPACINGS) {
-        candidates.push({ fontSize: round(fontSize, 3), lineHeight, letterSpacing })
-      }
-    }
-  }
-  return candidates.filter(candidate => candidate.fontSize > 0)
-}
-
-function scoreMeasurement(
-  candidate: Candidate,
-  measurement: TerminalDisplayMeasurement,
-  target: TerminalDisplayMeasurement,
-  preferred: Candidate,
-): CandidateResult {
-  const score = round(
-    Math.abs(measurement.cols - target.cols) * 1000 +
-      Math.abs(measurement.rows - target.rows) * 1000 +
-      Math.abs(measurement.cssCellWidth - target.cssCellWidth) * 100 +
-      Math.abs(measurement.cssCellHeight - target.cssCellHeight) * 100,
-  )
-  const preferenceDistance = round(
-    Math.abs(candidate.fontSize - preferred.fontSize) +
-      Math.abs(candidate.lineHeight - preferred.lineHeight) * 10 +
-      Math.abs(candidate.letterSpacing - preferred.letterSpacing),
-  )
-  return { candidate, measurement, score, preferenceDistance }
-}
-
-function compareCandidateResults(left: CandidateResult, right: CandidateResult): number {
-  if (left.score !== right.score) {
-    return left.score - right.score
-  }
-  if (left.preferenceDistance !== right.preferenceDistance) {
-    return left.preferenceDistance - right.preferenceDistance
-  }
-  return left.candidate.fontSize - right.candidate.fontSize
-}
-
-function waitForAnimationFrames(): Promise<void> {
-  return new Promise(resolve => {
-    requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
-  })
-}
-
-function readMeasurement({
-  terminal,
-  fitAddon,
-  fontFamily,
-}: {
-  terminal: Terminal
-  fitAddon: FitAddon
-  fontFamily: string | null
-}): TerminalDisplayMeasurement | null {
-  const proposed = fitAddon.proposeDimensions()
-  const core = terminal as XtermIntrospection
-  const cssCell = core._core?._renderService?.dimensions?.css?.cell
-  const effectiveDpr = (core._core as { _coreBrowserService?: { dpr?: unknown } } | undefined)
-    ?._coreBrowserService?.dpr
-
-  if (
-    !proposed ||
-    typeof cssCell?.width !== 'number' ||
-    typeof cssCell.height !== 'number' ||
-    typeof effectiveDpr !== 'number'
-  ) {
-    return null
-  }
-
-  return {
-    fontSize: terminal.options.fontSize ?? 13,
-    fontFamily,
-    lineHeight: terminal.options.lineHeight ?? 1,
-    letterSpacing: terminal.options.letterSpacing ?? 0,
-    cols: proposed.cols,
-    rows: proposed.rows,
-    cssCellWidth: cssCell.width,
-    cssCellHeight: cssCell.height,
-    effectiveDpr,
-    windowDevicePixelRatio: window.devicePixelRatio || 1,
-    visualViewportScale: window.visualViewport?.scale ?? null,
-    runtime: readRuntime(),
-    measuredAt: new Date().toISOString(),
-  }
-}
-
-async function applyCandidate(terminal: Terminal, candidate: Candidate): Promise<void> {
-  terminal.options.fontSize = candidate.fontSize
-  terminal.options.lineHeight = candidate.lineHeight
-  terminal.options.letterSpacing = candidate.letterSpacing
-  await waitForAnimationFrames()
-}
-
-async function createMeasuredTerminal({
-  container,
-  fontFamily,
-  baseCandidate,
-}: {
-  container: HTMLDivElement
-  fontFamily: string | null
-  baseCandidate: Candidate
-}): Promise<{
-  terminal: Terminal
-  fitAddon: FitAddon
-  dispose: () => void
-}> {
-  container.replaceChildren()
-  const terminal = new Terminal({
-    allowProposedApi: true,
-    cols: 80,
-    rows: 24,
-    fontFamily: fontFamily ?? DEFAULT_TERMINAL_FONT_FAMILY,
-    fontSize: baseCandidate.fontSize,
-    lineHeight: baseCandidate.lineHeight,
-    letterSpacing: baseCandidate.letterSpacing,
-    scrollback: 0,
-  })
-  const fitAddon = new FitAddon()
-  terminal.loadAddon(fitAddon)
-  terminal.open(container)
-  const dprController = installTerminalEffectiveDevicePixelRatioController({
-    terminal,
-    initialViewportZoom: 1,
-  })
-  await waitForAnimationFrames()
-
-  return {
-    terminal,
-    fitAddon,
-    dispose: () => {
-      dprController.dispose()
-      terminal.dispose()
-      container.replaceChildren()
-    },
-  }
-}
-
-async function measureCurrentProfile({
-  container,
-  terminalFontSize,
-  terminalFontFamily,
-}: {
-  container: HTMLDivElement
-  terminalFontSize: number
-  terminalFontFamily: string | null
-}): Promise<TerminalDisplayMeasurement | null> {
-  const baseCandidate = { fontSize: terminalFontSize, lineHeight: 1, letterSpacing: 0 }
-  const measuredTerminal = await createMeasuredTerminal({
-    container,
-    fontFamily: terminalFontFamily,
-    baseCandidate,
-  })
-
-  try {
-    return readMeasurement({
-      terminal: measuredTerminal.terminal,
-      fitAddon: measuredTerminal.fitAddon,
-      fontFamily: terminalFontFamily,
-    })
-  } finally {
-    measuredTerminal.dispose()
-  }
-}
-
-async function calibrateCurrentProfile({
-  container,
-  terminalFontSize,
-  terminalFontFamily,
-  reference,
-}: {
-  container: HTMLDivElement
-  terminalFontSize: number
-  terminalFontFamily: string | null
-  reference: TerminalDisplayReference
-}): Promise<CandidateResult | null> {
-  const baseCandidate = { fontSize: terminalFontSize, lineHeight: 1, letterSpacing: 0 }
-  const measuredTerminal = await createMeasuredTerminal({
-    container,
-    fontFamily: terminalFontFamily,
-    baseCandidate,
-  })
-
-  try {
-    const results: CandidateResult[] = []
-    await buildCandidates(terminalFontSize).reduce(async (previous, candidate) => {
-      await previous
-      await applyCandidate(measuredTerminal.terminal, candidate)
-      const measurement = readMeasurement({
-        terminal: measuredTerminal.terminal,
-        fitAddon: measuredTerminal.fitAddon,
-        fontFamily: terminalFontFamily,
-      })
-      if (measurement) {
-        results.push(scoreMeasurement(candidate, measurement, reference.measurement, baseCandidate))
-      }
-    }, Promise.resolve())
-    return results.sort(compareCandidateResults)[0] ?? null
-  } finally {
-    measuredTerminal.dispose()
-  }
-}
+import {
+  calibrateTerminalDisplayProfile,
+  measureTerminalDisplayProfile,
+  roundDisplayMetric,
+  TERMINAL_DISPLAY_MEASUREMENT_HEIGHT,
+  TERMINAL_DISPLAY_MEASUREMENT_WIDTH,
+} from '../terminalDisplayMeasurement'
 
 export function TerminalDisplayCalibrationRow({
   terminalFontSize,
@@ -312,7 +68,7 @@ export function TerminalDisplayCalibrationRow({
 
   const setCurrentAsReference = async (): Promise<void> => {
     const measurement = await runWithHost(host =>
-      measureCurrentProfile({ container: host, terminalFontSize, terminalFontFamily }),
+      measureTerminalDisplayProfile({ container: host, terminalFontSize, terminalFontFamily }),
     )
     if (!measurement) {
       setStatus(t('settingsPanel.general.terminalDisplayCalibration.measureFailed'))
@@ -330,7 +86,7 @@ export function TerminalDisplayCalibrationRow({
     }
 
     const result = await runWithHost(host =>
-      calibrateCurrentProfile({
+      calibrateTerminalDisplayProfile({
         container: host,
         terminalFontSize,
         terminalFontFamily,
@@ -407,8 +163,8 @@ export function TerminalDisplayCalibrationRow({
               ? t('settingsPanel.general.terminalDisplayCalibration.referenceSummary', {
                   cols: activeReference.measurement.cols,
                   rows: activeReference.measurement.rows,
-                  cellWidth: round(activeReference.measurement.cssCellWidth, 2),
-                  cellHeight: round(activeReference.measurement.cssCellHeight, 2),
+                  cellWidth: roundDisplayMetric(activeReference.measurement.cssCellWidth, 2),
+                  cellHeight: roundDisplayMetric(activeReference.measurement.cssCellHeight, 2),
                 })
               : terminalDisplayReference
                 ? t('settingsPanel.general.terminalDisplayCalibration.referenceStale')
@@ -476,13 +232,14 @@ export function TerminalDisplayCalibrationRow({
 
       <div
         ref={measurementHostRef}
+        className="terminal-node__terminal nodrag"
         aria-hidden="true"
         style={{
           position: 'fixed',
           left: -10_000,
           top: -10_000,
-          width: CALIBRATION_WIDTH,
-          height: CALIBRATION_HEIGHT,
+          width: TERMINAL_DISPLAY_MEASUREMENT_WIDTH,
+          height: TERMINAL_DISPLAY_MEASUREMENT_HEIGHT,
           opacity: 0,
           pointerEvents: 'none',
         }}
