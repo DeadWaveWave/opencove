@@ -115,6 +115,10 @@ export function createMultiEndpointPtyRuntime(options: {
   })
 
   return {
+    listProfiles: async () =>
+      options.localRuntime.listProfiles
+        ? await options.localRuntime.listProfiles()
+        : { profiles: [], defaultProfileId: null },
     spawnSession: async spawnOptions => {
       const { sessionId } = await options.localRuntime.spawnSession(spawnOptions)
       routes.set(sessionId, { kind: 'local' })

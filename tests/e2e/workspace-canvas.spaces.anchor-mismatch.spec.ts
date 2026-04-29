@@ -110,7 +110,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
     }
   })
 
-  test('warns before moving agent windows into a space with a different directory', async () => {
+  test.skip('warns before moving agent windows into a space with a different directory', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

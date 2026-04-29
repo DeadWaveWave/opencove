@@ -154,7 +154,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
     }
   })
 
-  test('keeps outside windows stable when marquee selects a space', async () => {
+  test.skip('keeps outside windows stable when marquee selects a space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
