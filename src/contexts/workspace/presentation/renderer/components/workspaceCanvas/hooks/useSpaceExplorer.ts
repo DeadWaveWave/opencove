@@ -299,7 +299,9 @@ export function useWorkspaceCanvasSpaceExplorer({
         return created
       }
 
-      const filesystem = resolveFilesystemApiForMount(preview.mountId ?? space.targetMountId ?? null)
+      const filesystem = resolveFilesystemApiForMount(
+        preview.mountId ?? space.targetMountId ?? null,
+      )
       const workspace = window.opencoveApi?.workspace
       const mimeType = resolveCanvasImageMimeType(preview.uri)
       if (!filesystem?.readFileBytes || !workspace?.writeCanvasImage || !mimeType) {
