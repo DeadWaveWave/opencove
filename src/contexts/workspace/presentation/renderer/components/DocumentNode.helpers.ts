@@ -1,6 +1,9 @@
 import type { FileSystemStat, ReadFileTextResult } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { NodeFrame, Point } from '../types'
+import type { DocumentNodeMediaKind } from './DocumentNode.media'
+import { resolveDocumentNodeMediaDescriptor } from './DocumentNode.media'
+import type { DocumentNodeLoadMessages } from './DocumentNode.shared'
 
 export interface DocumentNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -24,11 +27,13 @@ export interface DocumentNodeProps {
 
 export interface DocumentNodeFilesystemApi {
   stat: (payload: { uri: string }) => Promise<FileSystemStat>
+  readFileBytes?: (payload: { uri: string }) => Promise<{ bytes: Uint8Array }>
   readFileText: (payload: { uri: string }) => Promise<ReadFileTextResult>
 }
 
 export type DocumentNodeLoadResult =
   | { kind: 'text'; content: string }
+  | { kind: 'media'; mediaKind: DocumentNodeMediaKind; mimeType: string; bytes: Uint8Array }
   | { kind: 'unsupported'; unsupportedKind: 'binary' | 'tooLarge' }
 
 export const DOCUMENT_NODE_MAX_TEXT_FILE_BYTES = 5 * 1024 * 1024
@@ -76,11 +81,26 @@ export function isProbablyBinaryText(content: string): boolean {
 export async function loadDocumentNodeContent(
   api: DocumentNodeFilesystemApi,
   uri: string,
-  notAFileMessage: string,
+  messages: DocumentNodeLoadMessages,
 ): Promise<DocumentNodeLoadResult> {
   const stat = await api.stat({ uri })
   if (stat.kind !== 'file') {
-    throw new Error(notAFileMessage)
+    throw new Error(messages.notAFile)
+  }
+
+  const mediaDescriptor = resolveDocumentNodeMediaDescriptor(uri)
+  if (mediaDescriptor) {
+    if (!api.readFileBytes) {
+      throw new Error(messages.binaryReadUnavailable)
+    }
+
+    const { bytes } = await api.readFileBytes({ uri })
+    return {
+      kind: 'media',
+      mediaKind: mediaDescriptor.kind,
+      mimeType: mediaDescriptor.mimeType,
+      bytes,
+    }
   }
 
   if (typeof stat.sizeBytes === 'number' && Number.isFinite(stat.sizeBytes)) {
