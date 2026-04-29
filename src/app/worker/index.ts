@@ -7,6 +7,7 @@ import { resolveWorkerUserDataDir } from './userData'
 import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/controlSurface'
 import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
+import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -102,6 +103,13 @@ async function main(): Promise<void> {
   const port = resolvePort(argv) ?? 0
   const token = readFlagValue(argv, '--token')
   const webUiPasswordHash = readFlagValue(argv, '--web-ui-password-hash')
+  const webUiPassword = readFlagValue(argv, '--web-ui-password')
+  if (webUiPasswordHash && webUiPassword) {
+    throw new Error('[worker] choose either --web-ui-password or --web-ui-password-hash')
+  }
+  const resolvedWebUiPasswordHash = webUiPassword
+    ? await hashWebUiPassword(webUiPassword)
+    : webUiPasswordHash
   const parentPid = resolveParentPid(argv)
   const enableWebUi = !hasFlag(argv, '--disable-web-ui')
   const startedBy = resolveStartedBy(argv)
@@ -141,7 +149,7 @@ async function main(): Promise<void> {
     ownsPtyRuntime: true,
     dbPath: resolve(userDataPath, 'opencove.db'),
     enableWebShell: enableWebUi,
-    webUiPasswordHash: webUiPasswordHash ?? null,
+    webUiPasswordHash: resolvedWebUiPasswordHash ?? null,
     connectionFileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
     connectionStartedBy: startedBy,
   })
@@ -162,7 +170,7 @@ async function main(): Promise<void> {
     )
   }
   process.stderr.write(
-    `[opencove-worker] auth required (use Authorization: Bearer <token>${webUiPasswordHash ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
+    `[opencove-worker] auth required (use Authorization: Bearer <token>${resolvedWebUiPasswordHash ? ' or /auth/login password' : ' or a Desktop-issued /auth/claim ticket'})\n`,
   )
 
   let shutdownRequested = false

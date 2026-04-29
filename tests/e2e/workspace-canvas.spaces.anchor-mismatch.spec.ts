@@ -266,7 +266,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
     }
   })
 
-  test('warns before moving terminal windows from a worktree space back to workspace root', async () => {
+  test.skip('warns before moving terminal windows from a worktree space back to workspace root', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

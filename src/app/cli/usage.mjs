@@ -58,7 +58,7 @@ export function printUsage() {
   process.stdout.write(`  opencove session final --session <id> [--pretty]\n`)
   process.stdout.write(`  opencove session kill --session <id> [--pretty]\n\n`)
   process.stdout.write(
-    `  opencove worker start [--hostname <bindHost>] [--advertise-hostname <host>] [--port <port>] [--user-data <dir>] [--token <token>] [--web-ui-password-hash <hash>] [--approve-root <path>]\n`,
+    `  opencove worker start [--hostname <bindHost>] [--advertise-hostname <host>] [--port <port>] [--user-data <dir>] [--token <token>] [--web-ui-password <text> | --web-ui-password-hash <hash>] [--approve-root <path>]\n`,
   )
   process.stdout.write(
     `  opencove worker status [--all] [--user-data <dir>] [--endpoint <url>] [--token <token>] [--pretty]\n`,

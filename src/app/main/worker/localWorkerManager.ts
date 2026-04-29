@@ -10,6 +10,7 @@ import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurfa
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
 import { readHomeWorkerConfigFile } from './homeWorkerConfig'
+import { resolvePackagedWorkerScriptPath } from '../runtime/opencoveRuntimePaths'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -20,6 +21,10 @@ function isTruthyEnv(rawValue: string | undefined): boolean {
 }
 
 function resolveWorkerScriptPath(): string {
+  if (app.isPackaged) {
+    return resolvePackagedWorkerScriptPath(process.resourcesPath)
+  }
+
   return resolve(app.getAppPath(), 'out', 'main', 'worker.js')
 }
 

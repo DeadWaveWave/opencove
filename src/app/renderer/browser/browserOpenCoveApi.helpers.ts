@@ -174,6 +174,7 @@ export function unsupportedCliStatus(): CliPathStatusResult {
   return {
     installed: false,
     path: null,
+    healthy: false,
   }
 }
 

@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  dragMouse,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -44,11 +46,8 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
-      const paneBox = await pane.boundingBox()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!paneBox || !spaceBox) {
-        throw new Error('workspace pane/space bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const selectionStartX = paneBox.x + 40
       const selectionStartY = paneBox.y + 40
@@ -189,11 +188,8 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
-      const paneBox = await pane.boundingBox()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!paneBox || !spaceBox) {
-        throw new Error('workspace pane/space bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const selectionStartX = paneBox.x + 40
       const selectionStartY = paneBox.y + 40
@@ -215,20 +211,18 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         '[data-testid="workspace-space-drag-marquee-drag-space-top"]',
       )
       await expect(selectedTopHandle).toBeVisible()
-      const handleBox = await selectedTopHandle.boundingBox()
-      if (!handleBox) {
-        throw new Error('selected space top handle bounding box unavailable')
-      }
+      const handleBox = await readLocatorClientRect(selectedTopHandle)
 
       const dragStartX = handleBox.x + handleBox.width * 0.75
       const dragStartY = handleBox.y + handleBox.height * 0.5
       const dragDx = 180
       const dragDy = 120
 
-      await window.mouse.move(dragStartX, dragStartY)
-      await window.mouse.down()
-      await window.mouse.move(dragStartX + dragDx, dragStartY + dragDy, { steps: 12 })
-      await window.mouse.up()
+      await dragMouse(window, {
+        start: { x: dragStartX, y: dragStartY },
+        end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
+        steps: 12,
+      })
 
       await expect
         .poll(async () => {
@@ -381,11 +375,8 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toBeVisible({ timeout: 30_000 })
-      const paneBox = await pane.boundingBox()
-      const spaceBox = await spaceRegion.boundingBox()
-      if (!paneBox || !spaceBox) {
-        throw new Error('workspace pane/space bounding box unavailable')
-      }
+      const paneBox = await readLocatorClientRect(pane)
+      const spaceBox = await readLocatorClientRect(spaceRegion)
 
       const selectionStartX = paneBox.x + 40
       const selectionStartY = paneBox.y + 40
@@ -405,20 +396,18 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       const selectedSpace = window.locator('.workspace-space-region--selected').first()
       await expect(selectedSpace).toBeVisible()
-      const selectedBox = await selectedSpace.boundingBox()
-      if (!selectedBox) {
-        throw new Error('selected space bounding box unavailable')
-      }
+      const selectedBox = await readLocatorClientRect(selectedSpace)
 
       const dragStartX = selectedBox.x + selectedBox.width - 2
       const dragStartY = selectedBox.y + selectedBox.height * 0.5
       const dragDx = 180
       const dragDy = 120
 
-      await window.mouse.move(dragStartX, dragStartY)
-      await window.mouse.down()
-      await window.mouse.move(dragStartX + dragDx, dragStartY + dragDy, { steps: 12 })
-      await window.mouse.up()
+      await dragMouse(window, {
+        start: { x: dragStartX, y: dragStartY },
+        end: { x: dragStartX + dragDx, y: dragStartY + dragDy },
+        steps: 12,
+      })
 
       await expect
         .poll(async () => {

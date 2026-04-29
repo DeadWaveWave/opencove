@@ -408,6 +408,7 @@ export const enSettingsPanel = {
       statusLabel: 'Status',
       status: {
         installed: 'Installed ({{path}})',
+        needsRepair: 'Installed, but the launcher needs repair ({{path}})',
         notInstalled: 'Not installed',
       },
       actionsLabel: 'Actions',

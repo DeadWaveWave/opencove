@@ -349,9 +349,13 @@ export function WorkerSection({
           <div className="settings-panel__control">
             <span className="settings-panel__value" data-testid="settings-worker-cli-status">
               {cliStatus?.installed
-                ? t('settingsPanel.worker.cli.status.installed', {
-                    path: cliStatus.path ?? '—',
-                  })
+                ? cliStatus.healthy
+                  ? t('settingsPanel.worker.cli.status.installed', {
+                      path: cliStatus.path ?? '—',
+                    })
+                  : t('settingsPanel.worker.cli.status.needsRepair', {
+                      path: cliStatus.path ?? '—',
+                    })
                 : t('settingsPanel.worker.cli.status.notInstalled')}
             </span>
           </div>

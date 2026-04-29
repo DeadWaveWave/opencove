@@ -12,6 +12,10 @@
 - `*-mac.zip`
 - `*.exe`
 - `*.AppImage` / 其他 Linux 包格式（取决于 electron-builder 实际输出）
+- `opencove-server-<platform>-<arch>.tar.gz`（standalone CLI / Worker runtime，当前仅 macOS / Linux）
+
+额外的 Release asset：
+- `opencove-install.sh`
 
 ## 发布渠道
 
@@ -36,6 +40,8 @@
 - macOS 产物（如 `*.dmg`, `*.zip`）
 - Windows 产物（如 `*.exe`）
 - Linux 产物（如 `*.AppImage`）
+- macOS / Linux standalone server bundle（`opencove-server-<platform>-<arch>.tar.gz`）
+- 一键安装脚本 `opencove-install.sh`
 - 汇总校验文件 `SHA256SUMS.txt`
 
 注意：macOS 的应用内自动更新依赖稳定的代码签名（Developer ID）。当前 unsigned/ad-hoc 构建在 macOS 上会禁用更新检查；请通过 GitHub Releases 手动下载新版本。
@@ -44,6 +50,33 @@
 
 - `v0.2.0` 会创建正式 `stable` release
 - `v0.2.0-nightly.20260312.1` 会创建 `nightly` prerelease
+
+### Standalone CLI / Worker 资产
+
+如需在没有 Desktop 的机器上安装 OpenCove CLI 与 Worker，请使用 release 中的安装脚本：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
+```
+
+安装脚本会：
+
+- 按平台/架构下载 `opencove-server-<platform>-<arch>.tar.gz`
+- 安装到 `~/.local/share/opencove`（可由 `OPENCOVE_INSTALL_ROOT` 覆盖）
+- 在 `~/.local/bin/opencove` 写入 launcher（可由 `OPENCOVE_BIN_DIR` 覆盖）
+- 将 `current` symlink 指向当前 runtime bundle，便于升级覆盖
+
+服务器上的典型启动方式：
+
+```bash
+opencove worker start --hostname 0.0.0.0 --web-ui-password 'change-me'
+```
+
+当前范围：
+
+- standalone release 资产只在 macOS / Linux 发布
+- Windows 仍只发布 GUI 安装包
+- stable 的一键安装命令始终指向 GitHub Releases 的 latest asset；nightly 需要显式 tag / asset
 
 ### Stable 流程
 
@@ -128,6 +161,20 @@ git push origin v0.2.0-nightly.20260312.1
 可选处理方式：
 - Finder：右键 App → 打开 → 再次确认
 - 或终端（拷贝到 Applications 后）：`xattr -dr com.apple.quarantine /Applications/OpenCove.app`
+
+## 本地构建 Standalone 资产
+
+如需本地验证无需 Desktop 的 CLI/server 安装链，请使用：
+
+```bash
+pnpm build:standalone
+```
+
+这会：
+
+- 先构建 app 与 release manifest
+- 生成 unpacked Electron runtime
+- 再封装出 `dist/opencove-server-<platform>-<arch>.tar.gz`
 
 ## 后续启用签名 + 公证（可选）
 

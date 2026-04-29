@@ -104,6 +104,12 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: ${{ matrix.build_command }}
 
+      - name: Build standalone server bundle
+        if: matrix.artifact_name != 'windows'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: pnpm build:standalone:asset
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -115,6 +121,16 @@ jobs:
             dist/*.exe
             dist/*.zip
             dist/*.yml
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload standalone server bundle
+        if: matrix.artifact_name != 'windows'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ matrix.artifact_name }}-standalone
+          path: |
+            dist/opencove-server-*.tar.gz
           if-no-files-found: error
           retention-days: 7
 
@@ -178,6 +194,7 @@ jobs:
           files: |
             release-assets/*
             release/release-manifest.json
+            scripts/release-assets/opencove-install.sh
 
       - name: Publish stable release
         if: steps.channel.outputs.is_nightly != 'true'
@@ -193,3 +210,4 @@ jobs:
           files: |
             release-assets/*
             release/release-manifest.json
+            scripts/release-assets/opencove-install.sh
