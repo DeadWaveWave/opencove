@@ -59,6 +59,9 @@ export type NormalizedPersistedNode = {
   width: number
   height: number
   kind: string
+  profileId?: string | null
+  runtimeKind?: string | null
+  terminalProviderHint?: string | null
   labelColorOverride: NodeLabelColorOverride
   status: string | null
   startedAt: string | null
@@ -271,6 +274,9 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         width: normalizeFiniteNumber(node.width, 0),
         height: normalizeFiniteNumber(node.height, 0),
         kind: normalizeString(node.kind, 'terminal'),
+        profileId: normalizeOptionalString(node.profileId),
+        runtimeKind: normalizeOptionalString(node.runtimeKind),
+        terminalProviderHint: normalizeOptionalString(node.terminalProviderHint),
         labelColorOverride: normalizeNodeLabelColorOverride(node.labelColorOverride),
         status: typeof node.status === 'string' ? node.status : null,
         startedAt: typeof node.startedAt === 'string' ? node.startedAt : null,

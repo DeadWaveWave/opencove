@@ -24,6 +24,8 @@ export interface SpawnTerminalInput {
   cwd: string
   profileId?: string
   shell?: string
+  command?: string | null
+  args?: string[] | null
   cols: number
   rows: number
   env?: Record<string, string>
@@ -34,6 +36,8 @@ export interface SpawnTerminalInMountInput {
   cwdUri?: string | null
   profileId?: string | null
   shell?: string | null
+  command?: string | null
+  args?: string[] | null
   cols?: number | null
   rows?: number | null
 }

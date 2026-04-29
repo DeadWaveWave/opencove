@@ -31,6 +31,7 @@ import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
 import { AgentEnvSection } from './settingsPanel/AgentEnvSection'
 import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
+import type { SettingsSearchResult } from './settingsPanel/settingsSearchIndex'
 import {
   createInitialInputState,
   isWorkspacePageId,
@@ -95,6 +96,12 @@ export function SettingsPanel({
     onChange({ ...settings, focusNodeTargetZoom: zoom })
   const updateFocusNodeUseVisibleCanvasCenter = (enabled: boolean): void =>
     onChange({ ...settings, focusNodeUseVisibleCanvasCenter: enabled })
+  const updateArchiveSpaceDeleteWorktreeByDefault = (enabled: boolean): void =>
+    onChange({ ...settings, archiveSpaceDeleteWorktreeByDefault: enabled })
+  const updateArchiveSpaceDeleteBranchByDefault = (enabled: boolean): void =>
+    onChange({ ...settings, archiveSpaceDeleteBranchByDefault: enabled })
+  const updateSystemNotificationsEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, systemNotificationsEnabled: enabled })
   const updateStandbyBannerEnabled = (enabled: boolean): void =>
     onChange({ ...settings, standbyBannerEnabled: enabled })
   const updateStandbyBannerShowTask = (enabled: boolean): void =>
@@ -251,6 +258,20 @@ export function SettingsPanel({
     setActivePageId('experimental')
   }, [activePageId, setActivePageId, settings.experimentalRemoteWorkersEnabled])
 
+  const selectSearchResult = (result: SettingsSearchResult): void => {
+    setActivePageId(result.pageId)
+
+    window.requestAnimationFrame(() => {
+      const target = document.getElementById(result.anchorId)
+      if (!target) {
+        contentRef.current?.scrollTo({ top: 0 })
+        return
+      }
+
+      target.scrollIntoView({ block: 'start' })
+    })
+  }
+
   return (
     <div
       className={`settings-backdrop${isFocusNodeTargetZoomPreviewing ? ' settings-backdrop--preview' : ''}`}
@@ -265,6 +286,7 @@ export function SettingsPanel({
           workspaces={workspaces}
           endpointsEnabled={settings.experimentalRemoteWorkersEnabled}
           onSelectPage={setActivePageId}
+          onSelectSearchResult={selectSearchResult}
         />
 
         <div className="settings-panel__content-wrapper">
@@ -336,12 +358,14 @@ export function SettingsPanel({
 
             {activePageId === 'notifications' ? (
               <NotificationsSection
+                systemNotificationsEnabled={settings.systemNotificationsEnabled}
                 standbyBannerEnabled={settings.standbyBannerEnabled}
                 standbyBannerShowTask={settings.standbyBannerShowTask}
                 standbyBannerShowSpace={settings.standbyBannerShowSpace}
                 standbyBannerShowBranch={settings.standbyBannerShowBranch}
                 standbyBannerShowPullRequest={settings.standbyBannerShowPullRequest}
                 githubPullRequestsEnabled={settings.githubPullRequestsEnabled}
+                onChangeSystemNotificationsEnabled={updateSystemNotificationsEnabled}
                 onChangeStandbyBannerEnabled={updateStandbyBannerEnabled}
                 onChangeStandbyBannerShowTask={updateStandbyBannerShowTask}
                 onChangeStandbyBannerShowSpace={updateStandbyBannerShowSpace}
@@ -366,6 +390,8 @@ export function SettingsPanel({
                 focusNodeOnClick={settings.focusNodeOnClick}
                 focusNodeTargetZoom={settings.focusNodeTargetZoom}
                 focusNodeUseVisibleCanvasCenter={settings.focusNodeUseVisibleCanvasCenter}
+                archiveSpaceDeleteWorktreeByDefault={settings.archiveSpaceDeleteWorktreeByDefault}
+                archiveSpaceDeleteBranchByDefault={settings.archiveSpaceDeleteBranchByDefault}
                 defaultTerminalProfileId={settings.defaultTerminalProfileId}
                 terminalProfiles={terminalProfiles}
                 detectedDefaultTerminalProfileId={detectedDefaultTerminalProfileId}
@@ -377,6 +403,10 @@ export function SettingsPanel({
                 onChangeFocusNodeOnClick={updateFocusNodeOnClick}
                 onChangeFocusNodeTargetZoom={updateFocusNodeTargetZoom}
                 onChangeFocusNodeUseVisibleCanvasCenter={updateFocusNodeUseVisibleCanvasCenter}
+                onChangeArchiveSpaceDeleteWorktreeByDefault={
+                  updateArchiveSpaceDeleteWorktreeByDefault
+                }
+                onChangeArchiveSpaceDeleteBranchByDefault={updateArchiveSpaceDeleteBranchByDefault}
                 onFocusNodeTargetZoomPreviewChange={onFocusNodeTargetZoomPreviewChange}
               />
             ) : null}

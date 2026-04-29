@@ -139,10 +139,13 @@ export function WorkspaceSpaceRegion({
       {editingSpaceId === space.id ? (
         <input
           ref={spaceRenameInputRef}
-          className="workspace-space-region__label-input nodrag nowheel"
+          className="workspace-space-region__label-input nodrag nopan nowheel"
           data-testid={`workspace-space-label-input-${space.id}`}
           value={spaceRenameDraft}
           onPointerDown={event => {
+            event.stopPropagation()
+          }}
+          onMouseDown={event => {
             event.stopPropagation()
           }}
           onClick={event => {

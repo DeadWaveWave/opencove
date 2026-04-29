@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../src/contexts/workspace/presentation/renderer/utils/spaceAutoResize'
+import { SPACE_MIN_SIZE } from '../../../src/contexts/workspace/presentation/renderer/utils/spaceLayout'
 import type { WorkspaceSpaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
 
 describe('spaceAutoResize', () => {
@@ -35,7 +36,7 @@ describe('spaceAutoResize', () => {
     expect(result.spaces).toEqual([
       {
         ...spaces[0],
-        rect: { x: 200, y: 200, width: 988, height: 364 },
+        rect: { x: 200, y: 200, width: 988, height: SPACE_MIN_SIZE.height },
       },
     ])
     expect(result.nodePositionById.size).toBe(0)
@@ -81,7 +82,7 @@ describe('spaceAutoResize', () => {
     expect(result.spaces).toEqual([
       {
         ...spaces[0],
-        rect: { x: 200, y: 200, width: 988, height: 364 },
+        rect: { x: 200, y: 200, width: 988, height: SPACE_MIN_SIZE.height },
       },
     ])
     expect(rootNext).toEqual({ x: 1188, y: 240 })

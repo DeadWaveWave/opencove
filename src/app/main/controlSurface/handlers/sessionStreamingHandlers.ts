@@ -163,11 +163,15 @@ function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
   const rows = normalizeOptionalPositiveInt(payload.rows) ?? 24
   const profileId = normalizeOptionalString(payload.profileId)
   const shell = normalizeOptionalString(payload.shell)
+  const command = normalizeOptionalString(payload.command)
+  const args = normalizeOptionalArgs(payload.args)
 
   return {
     cwd,
     ...(profileId ? { profileId } : {}),
     ...(shell ? { shell } : {}),
+    ...(command ? { command } : {}),
+    ...(args ? { args } : {}),
     cols,
     rows,
   }
@@ -316,13 +320,14 @@ export function registerSessionStreamingHandlers(
         })
       }
 
-      const command = payload.shell ?? resolveDefaultShell()
+      const command = payload.command ?? payload.shell ?? resolveDefaultShell()
+      const args = payload.command ? (payload.args ?? []) : []
       const { sessionId } = await deps.ptyRuntime.spawnSession({
         cwd: payload.cwd,
         cols: payload.cols,
         rows: payload.rows,
         command,
-        args: [],
+        args,
       })
 
       deps.ptyStreamHub.registerSessionMetadata({
@@ -331,7 +336,7 @@ export function registerSessionStreamingHandlers(
         startedAt: new Date().toISOString(),
         cwd: payload.cwd,
         command,
-        args: [],
+        args,
         cols: payload.cols,
         rows: payload.rows,
       })

@@ -26,6 +26,7 @@ export function WorkspaceCanvasInner({
   agentSettings,
   isFocusNodeTargetZoomPreviewing = false,
   focusNodeId,
+  focusSpaceId,
   focusSequence,
 }: WorkspaceCanvasProps) {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
@@ -80,6 +81,8 @@ export function WorkspaceCanvasInner({
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     onShowMessage,
   })
+  // prettier-ignore
+  workspaceCanvasHooks.useWorkspaceCanvasFocusSpaceRequest({ focusSpaceId, focusSequence, spaces, focusSpaceInViewport: spacesApi.focusSpaceInViewport })
   const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
       workspaceId,
@@ -195,20 +198,8 @@ export function WorkspaceCanvasInner({
     reactFlow,
     onViewportChange,
   })
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({
-    workspaceId,
-    persistedMinimapVisible,
-    canvasState,
-    cancelSpaceRename: spacesApi.cancelSpaceRename,
-    reactFlow,
-    viewport,
-    agentSettings,
-    focusNodeId,
-    focusSequence,
-    isFocusNodeTargetZoomPreviewing,
-    nodesRef: nodeStore.nodesRef,
-    requestNodeDeleteRef: actionRefs.requestNodeDeleteRef,
-  })
+  // prettier-ignore
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, persistedMinimapVisible, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusNodeId, focusSequence, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
   const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes: nodeStore.setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,

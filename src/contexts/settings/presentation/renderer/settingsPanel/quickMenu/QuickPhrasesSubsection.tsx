@@ -103,7 +103,7 @@ export function QuickPhrasesSubsection({
   )
 
   return (
-    <div className="settings-panel__subsection">
+    <div className="settings-panel__subsection" id="settings-section-quick-phrases">
       <div className="settings-panel__subsection-header">
         <strong>{t('settingsPanel.quickMenu.phrases.title')}</strong>
         <span>{t('settingsPanel.quickMenu.phrases.help')}</span>

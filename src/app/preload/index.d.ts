@@ -55,6 +55,8 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  ShowSystemNotificationInput,
+  ShowSystemNotificationResult,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
@@ -260,6 +262,9 @@ export interface OpenCoveApi {
   }
   system: {
     listFonts: () => Promise<ListSystemFontsResult>
+    showNotification: (
+      payload: ShowSystemNotificationInput,
+    ) => Promise<ShowSystemNotificationResult>
   }
   worker: {
     getStatus: () => Promise<WorkerStatusResult>

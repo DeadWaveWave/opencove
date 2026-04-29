@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from '@app/renderer/i18n'
 import type { AgentStandbyNotification } from '../components/AppNotifications'
 import type { GitHubPullRequestSummary, GitWorktreeInfo } from '@shared/contracts/dto'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
@@ -116,6 +117,31 @@ function updateNotification(
   return didChange ? next : previous
 }
 
+export function formatAgentStandbySystemNotification(
+  notification: Pick<
+    AgentStandbyNotification,
+    'title' | 'workspaceName' | 'taskTitle' | 'spaceName'
+  >,
+  labels: {
+    standby: string
+    task: string
+    space: string
+  },
+): { title: string; body: string } {
+  const summary = notification.workspaceName
+    ? `${labels.standby} · ${notification.workspaceName}`
+    : labels.standby
+  const contextLines = [
+    notification.taskTitle ? `${labels.task}: ${notification.taskTitle}` : null,
+    notification.spaceName ? `${labels.space}: ${notification.spaceName}` : null,
+  ].filter((line): line is string => !!line)
+
+  return {
+    title: notification.title,
+    body: [summary, ...contextLines].join('\n'),
+  }
+}
+
 export function useAgentStandbyNotifications({
   maxVisible = 5,
 }: {
@@ -124,11 +150,15 @@ export function useAgentStandbyNotifications({
   notifications: AgentStandbyNotification[]
   dismiss: (id: string) => void
 } {
+  const { t } = useTranslation()
   const platform =
     typeof window !== 'undefined' && window.opencoveApi?.meta?.platform
       ? window.opencoveApi.meta.platform
       : undefined
   const workspaces = useAppStore(state => state.workspaces)
+  const areSystemNotificationsEnabled = useAppStore(
+    state => state.agentSettings.systemNotificationsEnabled,
+  )
   const isStandbyBannerEnabled = useAppStore(state => state.agentSettings.standbyBannerEnabled)
   const showBranch = useAppStore(state => state.agentSettings.standbyBannerShowBranch)
   const showPullRequest = useAppStore(state => state.agentSettings.standbyBannerShowPullRequest)
@@ -243,7 +273,7 @@ export function useAgentStandbyNotifications({
 
   const handleAgentEnteredStandby = useCallback(
     (payload: AgentStandbyNotificationPayload) => {
-      if (!isStandbyBannerEnabled) {
+      if (!isStandbyBannerEnabled && !areSystemNotificationsEnabled) {
         return
       }
 
@@ -276,6 +306,21 @@ export function useAgentStandbyNotifications({
           createdAt: Date.now(),
         }
 
+        if (areSystemNotificationsEnabled && window.opencoveApi?.meta?.isTest !== true) {
+          const nativeNotification = formatAgentStandbySystemNotification(next, {
+            standby: t('agentRuntime.standby'),
+            task: t('settingsPanel.nav.tasks'),
+            space: t('commandCenter.sections.spaces'),
+          })
+          void window.opencoveApi?.system
+            ?.showNotification(nativeNotification)
+            .catch(() => undefined)
+        }
+
+        if (!isStandbyBannerEnabled) {
+          return previous
+        }
+
         if (!shouldResolveBranch && !shouldResolvePullRequest) {
           const updated = [next, ...previous]
           return updated.length > maxVisible ? updated.slice(0, maxVisible) : updated
@@ -286,10 +331,12 @@ export function useAgentStandbyNotifications({
       })
     },
     [
+      areSystemNotificationsEnabled,
       isStandbyBannerEnabled,
       maxVisible,
       shouldResolveBranch,
       shouldResolvePullRequest,
+      t,
       workspacesById,
     ],
   )

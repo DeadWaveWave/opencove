@@ -1,5 +1,5 @@
 import React from 'react'
-import { FolderX, HardDrive } from 'lucide-react'
+import { FolderOpen, FolderX, HardDrive } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
 
@@ -8,15 +8,28 @@ export function ProjectContextMenu({
   x,
   y,
   onRequestManageMounts,
+  onRequestOpenInFileManager,
   onRequestRemove,
 }: {
   workspaceId: string
   x: number
   y: number
   onRequestManageMounts: (workspaceId: string) => void
+  onRequestOpenInFileManager: (workspaceId: string) => void
   onRequestRemove: (workspaceId: string) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const runtime = window.opencoveApi?.meta?.runtime
+  const platform = window.opencoveApi?.meta?.platform
+  const canOpenInFileManager = runtime === 'electron'
+  const openInFileManagerLabel =
+    platform === 'win32'
+      ? t('projectContextMenu.openInExplorer')
+      : platform === 'darwin'
+        ? t('projectContextMenu.openInFinder')
+        : t('projectContextMenu.openInFileManager')
+  const estimatedWidth = canOpenInFileManager ? 236 : 188
+  const estimatedHeight = canOpenInFileManager ? 136 : 96
 
   return (
     <ViewportMenuSurface
@@ -26,8 +39,8 @@ export function ProjectContextMenu({
         type: 'point',
         point: { x, y },
         estimatedSize: {
-          width: 188,
-          height: 96,
+          width: estimatedWidth,
+          height: estimatedHeight,
         },
       }}
     >
@@ -43,6 +56,18 @@ export function ProjectContextMenu({
           {t('projectContextMenu.manageMounts')}
         </span>
       </button>
+      {canOpenInFileManager ? (
+        <button
+          type="button"
+          data-testid={`workspace-project-open-in-file-manager-${workspaceId}`}
+          onClick={() => {
+            onRequestOpenInFileManager(workspaceId)
+          }}
+        >
+          <FolderOpen className="workspace-context-menu__icon" aria-hidden="true" />
+          <span className="workspace-context-menu__label">{openInFileManagerLabel}</span>
+        </button>
+      ) : null}
       <button
         type="button"
         data-testid={`workspace-project-remove-${workspaceId}`}

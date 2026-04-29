@@ -35,6 +35,8 @@ export function buildLocalWorkerSpawnArgs(options: {
 }): string[] {
   const args = [
     options.workerScriptPath,
+    '--started-by',
+    'desktop',
     '--parent-pid',
     String(options.parentPid),
     '--hostname',
@@ -67,6 +69,7 @@ function toDto(info: {
   port: number
   token: string
   createdAt: string
+  startedBy?: 'cli' | 'desktop'
 }): WorkerConnectionInfoDto {
   return {
     version: info.version,
@@ -75,6 +78,7 @@ function toDto(info: {
     port: info.port,
     token: info.token,
     createdAt: info.createdAt,
+    ...(info.startedBy ? { startedBy: info.startedBy } : {}),
   }
 }
 

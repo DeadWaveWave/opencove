@@ -1,9 +1,8 @@
-import { shell } from 'electron'
-import { deleteEntryWithTrashFallback } from '../../../../contexts/filesystem/application/deleteEntryWithTrashFallback'
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
   copyEntryUseCase,
   createDirectoryUseCase,
+  deleteEntryUseCase,
   moveEntryUseCase,
   renameEntryUseCase,
   writeFileTextUseCase,
@@ -41,8 +40,15 @@ export function registerFilesystemMountWriteHandlers(
     port: FileSystemPort
     topology: WorkerTopologyStore
     assertApprovedUri: (uri: string, debugMessage: string) => Promise<void>
+    deleteEntry?: (uri: string) => Promise<void>
   },
 ): void {
+  const deleteEntry =
+    deps.deleteEntry ??
+    (async (uri: string): Promise<void> => {
+      await deleteEntryUseCase(deps.port, { uri })
+    })
+
   controlSurface.register('filesystem.writeFileTextInMount', {
     kind: 'command',
     validate: (payload: unknown): WriteFileTextInMountInput => {
@@ -183,11 +189,7 @@ export function registerFilesystemMountWriteHandlers(
       })
 
       if (target.endpointId === 'local') {
-        await deleteEntryWithTrashFallback({
-          port: deps.port,
-          input: { uri: payload.uri },
-          trashItem: async targetPath => await shell.trashItem(targetPath),
-        })
+        await deleteEntry(payload.uri)
         return
       }
 

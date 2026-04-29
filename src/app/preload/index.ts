@@ -58,6 +58,8 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  ShowSystemNotificationInput,
+  ShowSystemNotificationResult,
   TerminalDataEvent,
   TerminalExitEvent,
   TerminalGeometryEvent,
@@ -459,6 +461,10 @@ const opencoveApi = {
   },
   system: {
     listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
+    showNotification: (
+      payload: ShowSystemNotificationInput,
+    ): Promise<ShowSystemNotificationResult> =>
+      invokeIpc(IPC_CHANNELS.systemShowNotification, payload),
   },
   worker: {
     getStatus: (): Promise<WorkerStatusResult> => invokeIpc(IPC_CHANNELS.workerGetStatus),

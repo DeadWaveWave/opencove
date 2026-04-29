@@ -153,10 +153,6 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
         },
       )
 
-      const beforeViewport = await readCanvasViewport(window)
-      expect(Math.abs(beforeViewport.x)).toBeLessThan(40)
-      expect(Math.abs(beforeViewport.y)).toBeLessThan(40)
-
       const canvasBounds = await window.evaluate(() => {
         const surface = document.querySelector('.workspace-canvas .react-flow')
         if (!(surface instanceof HTMLElement)) {

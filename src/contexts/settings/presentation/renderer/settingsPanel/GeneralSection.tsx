@@ -139,6 +139,7 @@ function FontFamilyRow({
             className="cove-field cove-select__trigger"
             style={{ width: '100%' }}
             onClick={() => (isOpen ? close() : open())}
+            id="settings-terminal-font-family"
             data-testid="settings-terminal-font-family"
           >
             <span className="cove-select__label">
@@ -381,7 +382,7 @@ export function GeneralSection(props: {
         onChangeTerminalFontFamily={onChangeTerminalFontFamily}
       />
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-updates">
         <div className="settings-panel__subsection-header">
           <h4 className="settings-panel__section-title">
             {t('settingsPanel.general.updates.title')}

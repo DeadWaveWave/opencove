@@ -15,6 +15,17 @@ export function printUsage() {
   process.stdout.write(`  opencove project list [--pretty]\n`)
   process.stdout.write(`  opencove space list [--project <id>] [--pretty]\n\n`)
   process.stdout.write(`  opencove space get --space <id> [--pretty]\n\n`)
+  process.stdout.write(`  opencove node list [space locator] [--kind <kind>] [--pretty]\n`)
+  process.stdout.write(`  opencove node get --node <id> [--pretty]\n`)
+  process.stdout.write(
+    `  opencove node create <note|task|website|agent|terminal> [space locator] [--focus] [--pretty]\n`,
+  )
+  process.stdout.write(
+    `  opencove node update <note|task|website> --node <id> [--frame <json>] [--pretty]\n`,
+  )
+  process.stdout.write(`  opencove node delete --node <id> [--pretty]\n`)
+  process.stdout.write(`  opencove canvas focus node --node <id> [--pretty]\n`)
+  process.stdout.write(`  opencove canvas focus space [space locator] [--pretty]\n\n`)
   process.stdout.write(`  opencove mount list --project <id> [--pretty]\n`)
   process.stdout.write(
     `  opencove mount create --project <id> --endpoint-id <id> --root-path <path> [--name <text>] [--pretty]\n\n`,
@@ -50,7 +61,10 @@ export function printUsage() {
     `  opencove worker start [--hostname <bindHost>] [--advertise-hostname <host>] [--port <port>] [--user-data <dir>] [--token <token>] [--web-ui-password-hash <hash>] [--approve-root <path>]\n`,
   )
   process.stdout.write(
-    `  opencove worker status [--endpoint <url>] [--token <token>] [--pretty]\n\n`,
+    `  opencove worker status [--all] [--user-data <dir>] [--endpoint <url>] [--token <token>] [--pretty]\n`,
+  )
+  process.stdout.write(
+    `  opencove worker stop [--user-data <dir>] [--pid <pid>] [--force] [--pretty]\n\n`,
   )
   process.stdout.write(`Global Options:\n`)
   process.stdout.write(`  --pretty                 Pretty-print JSON output\n`)
@@ -63,6 +77,13 @@ export function printUsage() {
   process.stdout.write(
     `  --timeout <ms>            Override control surface request timeout (default ${DEFAULT_TIMEOUT_MS}ms)\n\n`,
   )
+  process.stdout.write(`Space Locator:\n`)
+  process.stdout.write(`  --space <id>\n`)
+  process.stdout.write(`  --space-name <name> [--project <id>]\n`)
+  process.stdout.write(`  --worker <id-or-name> --branch <branch> [--project <id>]\n`)
+  process.stdout.write(`  --worker <id-or-name> --path <absolute-path> [--project <id>]\n\n`)
   process.stdout.write(`Environment:\n`)
-  process.stdout.write(`  OPENCOVE_USER_DATA_DIR=/path/to/userData (optional override)\n`)
+  process.stdout.write(
+    `  OPENCOVE_USER_DATA_DIR=/path/to/userData (restrict lookup to this userData dir)\n`,
+  )
 }

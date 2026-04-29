@@ -84,7 +84,7 @@ export const en = {
     sidebar: 'Sidebar',
     minimap: 'Minimap',
     theme: 'Theme',
-    agentStandbyBanner: 'Agent standby banner',
+    agentStandbyBanner: 'Top-right banner',
     on: 'On',
     off: 'Off',
   },

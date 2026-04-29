@@ -1,4 +1,9 @@
-import type { ListSystemFontsResult, WorkspaceDirectory } from '@shared/contracts/dto'
+import type {
+  ListSystemFontsResult,
+  ShowSystemNotificationInput,
+  ShowSystemNotificationResult,
+  WorkspaceDirectory,
+} from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 import type { ControlSurfaceInvokeRequest } from '@shared/contracts/controlSurface'
@@ -343,6 +348,33 @@ export function installBrowserOpenCoveApi(): void {
     },
     system: {
       listFonts: async (): Promise<ListSystemFontsResult> => ({ fonts: [] }),
+      showNotification: async (
+        payload: ShowSystemNotificationInput,
+      ): Promise<ShowSystemNotificationResult> => {
+        if (typeof window === 'undefined' || !('Notification' in window)) {
+          return { shown: false }
+        }
+
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission()
+        }
+
+        if (Notification.permission !== 'granted') {
+          return { shown: false }
+        }
+
+        const title = payload.title.trim()
+        if (title.length === 0) {
+          return { shown: false }
+        }
+
+        const notification = new Notification(title, {
+          body: typeof payload.body === 'string' ? payload.body : undefined,
+          silent: payload.silent ?? false,
+        })
+        void notification
+        return { shown: true }
+      },
     },
     worker: {
       getStatus: async () => unsupportedWorkerStatus(),

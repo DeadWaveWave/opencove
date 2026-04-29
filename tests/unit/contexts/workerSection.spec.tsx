@@ -69,18 +69,20 @@ describe('WorkerSection', () => {
 
     expect(workerStart).not.toHaveBeenCalled()
     await waitFor(() => {
-      expect(screen.getByText('Enable Local Worker and restart before starting it.')).toBeVisible()
+      expect(
+        screen.getByText('Enable Local Worker mode and restart before starting it.'),
+      ).toBeVisible()
     })
   })
 
-  it('shows local home worker as fixed in packaged builds', async () => {
+  it('shows local worker mode as fixed in packaged builds', async () => {
     installWorkerApi('local', { isPackaged: true })
 
     render(<WorkerSection remoteWorkersEnabled={false} />)
 
-    expect(await screen.findByText('In Use')).toBeVisible()
+    expect(await screen.findByText('Current Mode')).toBeVisible()
     expect(await screen.findByTestId('settings-worker-home-mode-value')).toHaveTextContent(
-      'Worker on this device',
+      'Local Worker',
     )
     expect(screen.queryByTestId('settings-worker-home-mode-trigger')).not.toBeInTheDocument()
     expect(screen.queryByTestId('settings-worker-apply-restart')).not.toBeInTheDocument()
