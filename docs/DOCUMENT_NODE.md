@@ -57,6 +57,17 @@ Doc Node 仅用于文本文件编辑：
 
 图片文件通常不以 Doc Node 打开，而由 Space Explorer 以 Image Node 的形式在画布中展示（见 `docs/SPACE_EXPLORER.md`）。
 
+### 3.3 媒体预览（当前实现）
+
+Doc Node 也承载 Space Explorer 打开的本地音视频预览窗口：
+
+- Durable truth 仍然只有文件 `uri`；不会额外持久化一份媒体内容副本
+- 读取路径走 `filesystem.readFileBytes(uri)`，并在 renderer 中用原生 `audio` / `video` 控件播放
+- 当前按 VS Code 内建 `media-preview` 范围对齐，支持：
+  - 音频：`mp3`、`wav`、`wave`、`ogg`、`oga`
+  - 视频：`mp4`、`webm`
+- 若扩展名属于支持范围，但当前 Electron / Chromium 运行时无法解码该文件的实际编码，则会显示“Media playback unavailable”，而不是回退成文本编辑
+
 ## 4. 与 Space Explorer 的关系
 
 Space Explorer 是 Doc Node 的“入口与编排面”：

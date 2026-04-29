@@ -86,7 +86,7 @@ export function registerFilesystemMountReadHandlers(
 
       return normalizeReadFileBytesResult(result, 'filesystem.readFileBytes')
     },
-    defaultErrorCode: 'common.unexpected',
+    defaultErrorCode: 'filesystem.read_file_bytes_failed',
   })
 
   controlSurface.register('filesystem.readFileTextInMount', {

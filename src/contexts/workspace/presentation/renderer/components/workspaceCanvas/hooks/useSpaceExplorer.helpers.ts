@@ -1,4 +1,16 @@
+import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type { CanvasImageMimeType } from '@shared/contracts/dto'
+import {
+  resolveDocumentNodeSizeFromMediaMetadata,
+  resolveImageNodeSizeFromNaturalDimensions,
+} from '../../../utils/workspaceNodeSizing'
+import {
+  readVideoNaturalDimensions,
+  resolveDocumentNodeMediaDescriptor,
+} from '../../DocumentNode.media'
+import { resolveDefaultDocumentWindowSize, resolveDefaultImageWindowSize } from '../constants'
+import type { WorkspaceCanvasQuickPreviewState } from '../types'
+import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 export function resolveFileNameFromFileUri(uri: string): string | null {
   try {
@@ -67,5 +79,75 @@ export async function readImageNaturalDimensions(
     if (objectUrl) {
       URL.revokeObjectURL(objectUrl)
     }
+  }
+}
+
+export async function resolveSpaceExplorerPreviewDisplay(options: {
+  uri: string
+  mountId: string | null
+  standardWindowSizeBucket: StandardWindowSizeBucket
+}): Promise<{
+  kind: WorkspaceCanvasQuickPreviewState['kind']
+  naturalWidth: number | null | undefined
+  naturalHeight: number | null | undefined
+  size: { width: number; height: number }
+}> {
+  const filesystem = resolveFilesystemApiForMount(options.mountId)
+  const imageMimeType = resolveCanvasImageMimeType(options.uri)
+  const mediaDescriptor = resolveDocumentNodeMediaDescriptor(options.uri)
+  let kind: WorkspaceCanvasQuickPreviewState['kind'] = 'document'
+  let naturalWidth: number | null | undefined
+  let naturalHeight: number | null | undefined
+  let size = resolveDefaultDocumentWindowSize(options.standardWindowSizeBucket)
+
+  if (imageMimeType) {
+    kind = 'image'
+    if (filesystem?.readFileBytes) {
+      try {
+        const { bytes } = await filesystem.readFileBytes({ uri: options.uri })
+        const dimensions = await readImageNaturalDimensions(bytes, imageMimeType)
+        naturalWidth = dimensions.naturalWidth
+        naturalHeight = dimensions.naturalHeight
+        size = resolveImageNodeSizeFromNaturalDimensions({
+          naturalWidth,
+          naturalHeight,
+          preferred: resolveDefaultImageWindowSize(),
+        })
+      } catch {
+        size = resolveDefaultImageWindowSize()
+      }
+    } else {
+      size = resolveDefaultImageWindowSize()
+    }
+  } else if (mediaDescriptor) {
+    kind = mediaDescriptor.kind
+
+    if (filesystem?.readFileBytes) {
+      try {
+        const { bytes } = await filesystem.readFileBytes({ uri: options.uri })
+        if (mediaDescriptor.kind === 'video') {
+          const dimensions = await readVideoNaturalDimensions(bytes, mediaDescriptor.mimeType)
+          naturalWidth = dimensions.naturalWidth
+          naturalHeight = dimensions.naturalHeight
+        }
+      } catch {
+        naturalWidth = null
+        naturalHeight = null
+      }
+    }
+
+    size = resolveDocumentNodeSizeFromMediaMetadata({
+      mediaKind: mediaDescriptor.kind,
+      naturalWidth: naturalWidth ?? null,
+      naturalHeight: naturalHeight ?? null,
+      preferred: resolveDefaultDocumentWindowSize(options.standardWindowSizeBucket),
+    })
+  }
+
+  return {
+    kind,
+    naturalWidth,
+    naturalHeight,
+    size,
   }
 }

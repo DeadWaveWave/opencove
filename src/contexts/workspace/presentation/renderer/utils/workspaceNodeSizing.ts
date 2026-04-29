@@ -12,10 +12,105 @@ export {
   type WorkspaceCanonicalSizeBucket,
 } from '@contexts/workspace/domain/workspaceNodeSizing'
 import {
+  resolveCanonicalNodeMaxSize,
+  resolveCanonicalNodeMinSize,
   resolveCanonicalNodeSize,
   resolveImageNodeSizeFromNaturalDimensions,
   type WorkspaceCanonicalSizeBucket,
 } from '@contexts/workspace/domain/workspaceNodeSizing'
+
+function clampSize(size: Size, min: Size, max: Size): Size {
+  return {
+    width: Math.max(min.width, Math.min(max.width, size.width)),
+    height: Math.max(min.height, Math.min(max.height, size.height)),
+  }
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+function resolveAspectFitSizeWithinBounds({
+  naturalWidth,
+  naturalHeight,
+  preferred,
+  min,
+  max,
+}: {
+  naturalWidth: number | null
+  naturalHeight: number | null
+  preferred: Size
+  min: Size
+  max: Size
+}): Size {
+  if (
+    typeof naturalWidth !== 'number' ||
+    !Number.isFinite(naturalWidth) ||
+    naturalWidth <= 0 ||
+    typeof naturalHeight !== 'number' ||
+    !Number.isFinite(naturalHeight) ||
+    naturalHeight <= 0
+  ) {
+    return clampSize(preferred, min, max)
+  }
+
+  const aspectRatio = naturalWidth / naturalHeight
+  if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+    return clampSize(preferred, min, max)
+  }
+
+  const preferredRatio =
+    Number.isFinite(preferred.width) &&
+    Number.isFinite(preferred.height) &&
+    preferred.width > 0 &&
+    preferred.height > 0
+      ? preferred.width / preferred.height
+      : 1
+
+  const baseSize =
+    aspectRatio >= preferredRatio
+      ? {
+          width: preferred.width,
+          height: preferred.width / aspectRatio,
+        }
+      : {
+          width: preferred.height * aspectRatio,
+          height: preferred.height,
+        }
+
+  if (!Number.isFinite(baseSize.width) || !Number.isFinite(baseSize.height)) {
+    return clampSize(preferred, min, max)
+  }
+
+  if (baseSize.width <= 0 || baseSize.height <= 0) {
+    return clampSize(preferred, min, max)
+  }
+
+  const minScale = Math.max(min.width / baseSize.width, min.height / baseSize.height)
+  const maxScale = Math.min(max.width / baseSize.width, max.height / baseSize.height)
+
+  if (!Number.isFinite(minScale) || !Number.isFinite(maxScale) || minScale > maxScale) {
+    return clampSize(
+      {
+        width: Math.round(baseSize.width),
+        height: Math.round(baseSize.height),
+      },
+      min,
+      max,
+    )
+  }
+
+  const scale = clampNumber(1, minScale, maxScale)
+
+  return clampSize(
+    {
+      width: Math.round(baseSize.width * scale),
+      height: Math.round(baseSize.height * scale),
+    },
+    min,
+    max,
+  )
+}
 
 function resolveViewportSize(viewport?: Partial<Size>): Size {
   const fallbackWidth =
@@ -76,6 +171,39 @@ export function resolveCanvasCanonicalBucketFromViewport(
   return 'compact'
 }
 
+export function resolveDocumentNodeSizeFromMediaMetadata({
+  mediaKind,
+  naturalWidth,
+  naturalHeight,
+  preferred,
+}: {
+  mediaKind: 'audio' | 'video'
+  naturalWidth: number | null
+  naturalHeight: number | null
+  preferred: Size
+}): Size {
+  const min = resolveCanonicalNodeMinSize('document')
+  const max = resolveCanonicalNodeMaxSize('document')
+
+  if (mediaKind === 'audio') {
+    return clampSize(
+      {
+        width: Math.max(preferred.width, 480),
+        height: min.height,
+      },
+      min,
+      max,
+    )
+  }
+
+  return resolveAspectFitSizeWithinBounds({
+    naturalWidth,
+    naturalHeight,
+    preferred,
+    min,
+    max,
+  })
+}
 export function normalizeWorkspaceNodesToCanonicalSizing({
   nodes,
   enabled,

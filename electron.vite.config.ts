@@ -22,6 +22,7 @@ export function buildOpenCoveContentSecurityPolicy(isDev: boolean): string {
     ...(styleAttributeSources ? [`style-src-attr ${styleAttributeSources.join(' ')}`] : []),
     ...(styleElementSources ? [`style-src-elem ${styleElementSources.join(' ')}`] : []),
     `img-src 'self' data: blob:`,
+    `media-src 'self' blob:`,
     `font-src 'self' data:`,
     `connect-src ${connectSources.join(' ')}`,
     `worker-src 'self' blob:`,

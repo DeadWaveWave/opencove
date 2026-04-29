@@ -81,6 +81,10 @@ export interface ReadFileTextInMountInput extends MountAwareInput {
   uri: string
 }
 
+export interface ReadFileBytesInMountInput extends MountAwareInput {
+  uri: string
+}
+
 export interface WriteFileTextInMountInput extends MountAwareInput {
   uri: string
   content: string

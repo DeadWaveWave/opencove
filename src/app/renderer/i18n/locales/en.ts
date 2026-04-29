@@ -275,11 +275,15 @@ export const en = {
     retry: 'Retry',
     filesystemUnavailable: 'Filesystem is unavailable.',
     notAFile: 'This is not a file.',
+    binaryReadUnavailable: 'This environment cannot load audio or video previews.',
     binaryTitle: 'Binary file',
     binaryMessage:
       'This file appears to be binary or uses an unsupported encoding, so it cannot be opened as text.',
     tooLargeTitle: 'File too large',
     tooLargeMessage: 'This file is too large to open in the canvas editor.',
+    mediaUnsupportedTitle: 'Media playback unavailable',
+    mediaUnsupportedMessage:
+      'This audio or video file cannot be played here. OpenCove currently previews MP3, WAV/WAVE, OGG/OGA, MP4, and WebM when the runtime supports them.',
   },
   imageNode: {
     title: 'image',
