@@ -98,7 +98,7 @@ export default function App(): React.JSX.Element {
   useWebsiteWindowEvents()
   useWebsiteWindowPolicySync(agentSettings.websiteWindowPolicy)
   useTerminalDisplayReferenceAutoCapture({
-    enabled: isPersistReady && agentSettings.terminalDisplayAutoCalibrationEnabled,
+    enabled: isPersistReady && agentSettings.terminalDisplayAutoReferenceEnabled,
     agentSettings,
     setAgentSettings,
   })

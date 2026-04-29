@@ -135,10 +135,13 @@ describe('SettingsPanel', () => {
     )
 
     expect(screen.getByText('Terminal Display Consistency')).toBeVisible()
-    expect(screen.getByText('Automatic Display Alignment')).toBeVisible()
+    expect(screen.getByText('Set Reference Automatically')).toBeVisible()
+    expect(screen.getByText('Apply Calibration Automatically')).toBeVisible()
     expect(
-      (screen.getByTestId('settings-terminal-display-auto-calibration') as HTMLInputElement)
-        .checked,
+      (screen.getByTestId('settings-terminal-display-auto-reference') as HTMLInputElement).checked,
+    ).toBe(true)
+    expect(
+      (screen.getByTestId('settings-terminal-display-compensation') as HTMLInputElement).checked,
     ).toBe(true)
     expect(screen.getByTestId('settings-terminal-display-set-reference')).toBeVisible()
     expect(screen.getByTestId('settings-terminal-display-calibrate')).toBeDisabled()

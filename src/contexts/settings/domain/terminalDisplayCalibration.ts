@@ -120,6 +120,16 @@ export function getTerminalDisplayCalibrationQuality(
   return score <= 100 ? 'close' : 'needsAdjustment'
 }
 
+export function resolveTerminalDisplayCalibrationCompensation({
+  calibration,
+  compensationEnabled,
+}: {
+  calibration: TerminalClientDisplayCalibration | null
+  compensationEnabled: boolean
+}): TerminalClientDisplayCalibration | null {
+  return compensationEnabled ? calibration : null
+}
+
 export function isTerminalDisplayReferenceForProfile(
   reference: TerminalDisplayReference | null,
   {

@@ -72,7 +72,8 @@ export function GeneralSection(props: {
   uiFontSize: number
   terminalFontSize: number
   terminalFontFamily: string | null
-  terminalDisplayAutoCalibrationEnabled: boolean
+  terminalDisplayAutoReferenceEnabled: boolean
+  terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
   updatePolicy: AppUpdatePolicy
   updateChannel: AppUpdateChannel
@@ -82,7 +83,8 @@ export function GeneralSection(props: {
   onChangeUiFontSize: (size: number) => void
   onChangeTerminalFontSize: (size: number) => void
   onChangeTerminalFontFamily: (family: string | null) => void
-  onChangeTerminalDisplayAutoCalibrationEnabled: (enabled: boolean) => void
+  onChangeTerminalDisplayAutoReferenceEnabled: (enabled: boolean) => void
+  onChangeTerminalDisplayCalibrationCompensationEnabled: (enabled: boolean) => void
   onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
   onChangeUpdatePolicy: (policy: AppUpdatePolicy) => void
   onChangeUpdateChannel: (channel: AppUpdateChannel) => void
@@ -97,7 +99,8 @@ export function GeneralSection(props: {
     uiFontSize,
     terminalFontSize,
     terminalFontFamily,
-    terminalDisplayAutoCalibrationEnabled,
+    terminalDisplayAutoReferenceEnabled,
+    terminalDisplayCalibrationCompensationEnabled,
     terminalDisplayReference,
     updatePolicy,
     updateChannel,
@@ -107,7 +110,8 @@ export function GeneralSection(props: {
     onChangeUiFontSize,
     onChangeTerminalFontSize,
     onChangeTerminalFontFamily,
-    onChangeTerminalDisplayAutoCalibrationEnabled,
+    onChangeTerminalDisplayAutoReferenceEnabled,
+    onChangeTerminalDisplayCalibrationCompensationEnabled,
     onChangeTerminalDisplayReference,
     onChangeUpdatePolicy,
     onChangeUpdateChannel,
@@ -212,10 +216,14 @@ export function GeneralSection(props: {
       <TerminalDisplayCalibrationRow
         terminalFontSize={terminalFontSize}
         terminalFontFamily={terminalFontFamily}
-        terminalDisplayAutoCalibrationEnabled={terminalDisplayAutoCalibrationEnabled}
+        terminalDisplayAutoReferenceEnabled={terminalDisplayAutoReferenceEnabled}
+        terminalDisplayCalibrationCompensationEnabled={
+          terminalDisplayCalibrationCompensationEnabled
+        }
         terminalDisplayReference={terminalDisplayReference}
-        onChangeTerminalDisplayAutoCalibrationEnabled={
-          onChangeTerminalDisplayAutoCalibrationEnabled
+        onChangeTerminalDisplayAutoReferenceEnabled={onChangeTerminalDisplayAutoReferenceEnabled}
+        onChangeTerminalDisplayCalibrationCompensationEnabled={
+          onChangeTerminalDisplayCalibrationCompensationEnabled
         }
         onChangeTerminalDisplayReference={onChangeTerminalDisplayReference}
       />

@@ -276,8 +276,9 @@ Latest verified on `2026-04-30` for Desktop/Web UI terminal display parity and u
 - First-client default reference result: with `OPENCOVE_PROFILE_KEEP_USER_DATA=1`, the persisted
   `terminalDisplayReference` was automatically captured from Desktop as `81x24`, cell `7.5x15`,
   `effectiveDpr=2`.
-- UX result: automatic alignment is user-controlled and defaults to enabled; normal UI shows
-  match quality instead of the raw calibration score, while diagnostics still include the score.
+- UX result: automatic reference setup and automatic calibration compensation are separate
+  user-controlled settings and both default to enabled; normal UI shows match quality instead of the
+  raw calibration score, while diagnostics still include the score.
 
 Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 

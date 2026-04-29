@@ -4,6 +4,7 @@ import {
   getTerminalDisplayCalibrationQuality,
   normalizeTerminalClientDisplayCalibration,
   normalizeTerminalDisplayReference,
+  resolveTerminalDisplayCalibrationCompensation,
 } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
 import {
   clearTerminalClientDisplayCalibration,
@@ -52,6 +53,42 @@ describe('terminal display calibration state', () => {
     expect(getTerminalDisplayCalibrationQuality(50)).toBe('close')
     expect(getTerminalDisplayCalibrationQuality(1000)).toBe('needsAdjustment')
     expect(getTerminalDisplayCalibrationQuality(Number.NaN)).toBe('needsAdjustment')
+  })
+
+  it('keeps saved display compensation gated by the user setting', () => {
+    const calibration = normalizeTerminalClientDisplayCalibration({
+      version: 1,
+      profileKey: createTerminalDisplayProfileKey({
+        terminalFontSize: 13,
+        terminalFontFamily: null,
+      }),
+      fontSize: 12.5,
+      lineHeight: 1,
+      letterSpacing: 0,
+      target: {
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      score: 0,
+      measuredAt: '2026-04-29T00:00:00.000Z',
+    })
+
+    expect(calibration).not.toBeNull()
+    expect(
+      resolveTerminalDisplayCalibrationCompensation({
+        calibration,
+        compensationEnabled: true,
+      }),
+    ).toBe(calibration)
+    expect(
+      resolveTerminalDisplayCalibrationCompensation({
+        calibration,
+        compensationEnabled: false,
+      }),
+    ).toBeNull()
   })
 
   it('keeps client calibration scoped to the matching terminal appearance profile', () => {

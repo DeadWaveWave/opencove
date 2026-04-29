@@ -176,7 +176,8 @@ export interface AgentSettings {
   defaultTerminalWindowScalePercent: number
   terminalFontSize: number
   terminalFontFamily: string | null
-  terminalDisplayAutoCalibrationEnabled: boolean
+  terminalDisplayAutoReferenceEnabled: boolean
+  terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
   uiFontSize: number
   githubPullRequestsEnabled: boolean
@@ -362,9 +363,13 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     typeof value.terminalFontFamily === 'string' && value.terminalFontFamily.trim().length > 0
       ? value.terminalFontFamily.trim()
       : DEFAULT_AGENT_SETTINGS.terminalFontFamily
-  const terminalDisplayAutoCalibrationEnabled =
+  const terminalDisplayAutoReferenceEnabled =
+    normalizeBoolean(value.terminalDisplayAutoReferenceEnabled) ??
     normalizeBoolean(value.terminalDisplayAutoCalibrationEnabled) ??
-    DEFAULT_AGENT_SETTINGS.terminalDisplayAutoCalibrationEnabled
+    DEFAULT_AGENT_SETTINGS.terminalDisplayAutoReferenceEnabled
+  const terminalDisplayCalibrationCompensationEnabled =
+    normalizeBoolean(value.terminalDisplayCalibrationCompensationEnabled) ??
+    DEFAULT_AGENT_SETTINGS.terminalDisplayCalibrationCompensationEnabled
   const terminalDisplayReference = normalizeTerminalDisplayReference(value.terminalDisplayReference)
   const legacyUiFontScalePercent = normalizeIntegerInRange(
     value.uiFontScalePercent,
@@ -448,7 +453,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     defaultTerminalWindowScalePercent,
     terminalFontSize,
     terminalFontFamily,
-    terminalDisplayAutoCalibrationEnabled,
+    terminalDisplayAutoReferenceEnabled,
+    terminalDisplayCalibrationCompensationEnabled,
     terminalDisplayReference,
     uiFontSize,
     githubPullRequestsEnabled,

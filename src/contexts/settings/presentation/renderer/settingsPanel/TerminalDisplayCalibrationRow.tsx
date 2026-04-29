@@ -25,16 +25,20 @@ import {
 export function TerminalDisplayCalibrationRow({
   terminalFontSize,
   terminalFontFamily,
-  terminalDisplayAutoCalibrationEnabled,
+  terminalDisplayAutoReferenceEnabled,
+  terminalDisplayCalibrationCompensationEnabled,
   terminalDisplayReference,
-  onChangeTerminalDisplayAutoCalibrationEnabled,
+  onChangeTerminalDisplayAutoReferenceEnabled,
+  onChangeTerminalDisplayCalibrationCompensationEnabled,
   onChangeTerminalDisplayReference,
 }: {
   terminalFontSize: number
   terminalFontFamily: string | null
-  terminalDisplayAutoCalibrationEnabled: boolean
+  terminalDisplayAutoReferenceEnabled: boolean
+  terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
-  onChangeTerminalDisplayAutoCalibrationEnabled: (enabled: boolean) => void
+  onChangeTerminalDisplayAutoReferenceEnabled: (enabled: boolean) => void
+  onChangeTerminalDisplayCalibrationCompensationEnabled: (enabled: boolean) => void
   onChangeTerminalDisplayReference: (reference: TerminalDisplayReference | null) => void
 }): React.JSX.Element {
   const { t } = useTranslation()
@@ -140,7 +144,8 @@ export function TerminalDisplayCalibrationRow({
     const payload = {
       terminalFontSize,
       terminalFontFamily,
-      autoCalibrationEnabled: terminalDisplayAutoCalibrationEnabled,
+      autoReferenceEnabled: terminalDisplayAutoReferenceEnabled,
+      calibrationCompensationEnabled: terminalDisplayCalibrationCompensationEnabled,
       reference: terminalDisplayReference,
       referenceMatchesCurrentProfile: activeReference !== null,
       clientCalibration,
@@ -156,11 +161,15 @@ export function TerminalDisplayCalibrationRow({
   }
 
   const summary = clientCalibration
-    ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
-        fontSize: clientCalibration.fontSize,
-        lineHeight: clientCalibration.lineHeight,
-        quality: getQualityLabel(clientCalibration.score),
-      })
+    ? terminalDisplayCalibrationCompensationEnabled
+      ? t('settingsPanel.general.terminalDisplayCalibration.clientCalibrated', {
+          fontSize: clientCalibration.fontSize,
+          lineHeight: clientCalibration.lineHeight,
+          quality: getQualityLabel(clientCalibration.score),
+        })
+      : t('settingsPanel.general.terminalDisplayCalibration.clientCalibrationPaused', {
+          quality: getQualityLabel(clientCalibration.score),
+        })
     : t('settingsPanel.general.terminalDisplayCalibration.clientDefault')
 
   return (
@@ -175,18 +184,36 @@ export function TerminalDisplayCalibrationRow({
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">
           <strong>
-            {t('settingsPanel.general.terminalDisplayCalibration.autoCalibrationLabel')}
+            {t('settingsPanel.general.terminalDisplayCalibration.autoReferenceLabel')}
           </strong>
-          <span>{t('settingsPanel.general.terminalDisplayCalibration.autoCalibrationHelp')}</span>
+          <span>{t('settingsPanel.general.terminalDisplayCalibration.autoReferenceHelp')}</span>
         </div>
         <div className="settings-panel__control">
           <label className="cove-toggle">
             <input
               type="checkbox"
-              data-testid="settings-terminal-display-auto-calibration"
-              checked={terminalDisplayAutoCalibrationEnabled}
+              data-testid="settings-terminal-display-auto-reference"
+              checked={terminalDisplayAutoReferenceEnabled}
+              onChange={event => onChangeTerminalDisplayAutoReferenceEnabled(event.target.checked)}
+            />
+            <span className="cove-toggle__slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.general.terminalDisplayCalibration.compensationLabel')}</strong>
+          <span>{t('settingsPanel.general.terminalDisplayCalibration.compensationHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <label className="cove-toggle">
+            <input
+              type="checkbox"
+              data-testid="settings-terminal-display-compensation"
+              checked={terminalDisplayCalibrationCompensationEnabled}
               onChange={event =>
-                onChangeTerminalDisplayAutoCalibrationEnabled(event.target.checked)
+                onChangeTerminalDisplayCalibrationCompensationEnabled(event.target.checked)
               }
             />
             <span className="cove-toggle__slider"></span>
@@ -208,7 +235,7 @@ export function TerminalDisplayCalibrationRow({
               : terminalDisplayReference
                 ? t('settingsPanel.general.terminalDisplayCalibration.referenceStale')
                 : t(
-                    terminalDisplayAutoCalibrationEnabled
+                    terminalDisplayAutoReferenceEnabled
                       ? 'settingsPanel.general.terminalDisplayCalibration.referenceEmpty'
                       : 'settingsPanel.general.terminalDisplayCalibration.referenceEmptyAutoOff',
                   )}

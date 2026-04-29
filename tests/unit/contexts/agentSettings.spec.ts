@@ -19,19 +19,37 @@ describe('normalizeAgentSettings', () => {
     expect(normalizeAgentSettings({}).defaultTerminalProfileId).toBeNull()
   })
 
-  it('defaults and normalizes terminal display auto calibration', () => {
-    expect(DEFAULT_AGENT_SETTINGS.terminalDisplayAutoCalibrationEnabled).toBe(true)
-    expect(normalizeAgentSettings({}).terminalDisplayAutoCalibrationEnabled).toBe(true)
+  it('defaults and normalizes terminal display reference and compensation toggles', () => {
+    expect(DEFAULT_AGENT_SETTINGS.terminalDisplayAutoReferenceEnabled).toBe(true)
+    expect(DEFAULT_AGENT_SETTINGS.terminalDisplayCalibrationCompensationEnabled).toBe(true)
+    expect(normalizeAgentSettings({}).terminalDisplayAutoReferenceEnabled).toBe(true)
+    expect(normalizeAgentSettings({}).terminalDisplayCalibrationCompensationEnabled).toBe(true)
+    expect(
+      normalizeAgentSettings({
+        terminalDisplayAutoReferenceEnabled: false,
+        terminalDisplayCalibrationCompensationEnabled: false,
+      }),
+    ).toMatchObject({
+      terminalDisplayAutoReferenceEnabled: false,
+      terminalDisplayCalibrationCompensationEnabled: false,
+    })
+    expect(
+      normalizeAgentSettings({
+        terminalDisplayAutoReferenceEnabled: 'off',
+        terminalDisplayCalibrationCompensationEnabled: 'off',
+      }),
+    ).toMatchObject({
+      terminalDisplayAutoReferenceEnabled: true,
+      terminalDisplayCalibrationCompensationEnabled: true,
+    })
+  })
+
+  it('keeps compatibility with the temporary terminal display auto-calibration field', () => {
     expect(
       normalizeAgentSettings({
         terminalDisplayAutoCalibrationEnabled: false,
-      }).terminalDisplayAutoCalibrationEnabled,
+      }).terminalDisplayAutoReferenceEnabled,
     ).toBe(false)
-    expect(
-      normalizeAgentSettings({
-        terminalDisplayAutoCalibrationEnabled: 'off',
-      }).terminalDisplayAutoCalibrationEnabled,
-    ).toBe(true)
   })
 
   it('restores a persisted terminal profile id when it is present', () => {

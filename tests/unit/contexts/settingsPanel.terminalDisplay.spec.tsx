@@ -133,15 +133,27 @@ describe('SettingsPanel terminal display controls', () => {
     vi.restoreAllMocks()
   })
 
-  it('persists the automatic alignment toggle', () => {
+  it('persists the automatic reference setup toggle', () => {
     const onChange = vi.fn()
     renderSettingsPanel({ onChange })
 
-    fireEvent.click(screen.getByTestId('settings-terminal-display-auto-calibration'))
+    fireEvent.click(screen.getByTestId('settings-terminal-display-auto-reference'))
 
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_AGENT_SETTINGS,
-      terminalDisplayAutoCalibrationEnabled: false,
+      terminalDisplayAutoReferenceEnabled: false,
+    })
+  })
+
+  it('persists the automatic calibration compensation toggle', () => {
+    const onChange = vi.fn()
+    renderSettingsPanel({ onChange })
+
+    fireEvent.click(screen.getByTestId('settings-terminal-display-compensation'))
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      terminalDisplayCalibrationCompensationEnabled: false,
     })
   })
 
@@ -171,7 +183,40 @@ describe('SettingsPanel terminal display controls', () => {
       settings: { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: reference },
     })
 
-    expect(screen.getByText(/Display match: Exact/)).toBeVisible()
+    expect(screen.getByText(/Match: Exact/)).toBeVisible()
     expect(screen.queryByText(/score/i)).not.toBeInTheDocument()
+  })
+
+  it('explains when a saved device adjustment is paused', () => {
+    const reference = createReference()
+    writeTerminalClientDisplayCalibration({
+      version: 1,
+      profileKey: createTerminalDisplayProfileKey({
+        terminalFontSize: 13,
+        terminalFontFamily: null,
+      }),
+      fontSize: 13,
+      lineHeight: 1,
+      letterSpacing: 0,
+      target: {
+        cols: 81,
+        rows: 24,
+        cssCellWidth: 7.5,
+        cssCellHeight: 15,
+        effectiveDpr: 2,
+      },
+      score: 0,
+      measuredAt: '2026-04-30T00:00:00.000Z',
+    })
+
+    renderSettingsPanel({
+      settings: {
+        ...DEFAULT_AGENT_SETTINGS,
+        terminalDisplayCalibrationCompensationEnabled: false,
+        terminalDisplayReference: reference,
+      },
+    })
+
+    expect(screen.getByText(/saved adjustment is available but paused/i)).toBeVisible()
   })
 })
