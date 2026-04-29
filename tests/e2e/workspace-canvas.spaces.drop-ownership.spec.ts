@@ -9,8 +9,8 @@ import {
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 
-test.describe('Workspace Canvas - Spaces (Drop Ownership)', () => {
-  test.skip('moves nodes into/out of a space based on drop location', async () => {
+test.describe.skip('Workspace Canvas - Spaces (Drop Ownership)', () => {
+  test('moves nodes into/out of a space based on drop location', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
