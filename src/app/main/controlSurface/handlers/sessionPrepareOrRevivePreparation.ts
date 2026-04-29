@@ -33,7 +33,10 @@ import {
   type PersistedAgentLike,
 } from './sessionPrepareOrReviveShared'
 
-const RESUME_SESSION_LOCATE_TIMEOUT_MS = 3_000
+const RECENT_RESUME_SESSION_LOCATE_TIMEOUT_MS = 750
+const COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS = 0
+const RECENT_RESUME_SESSION_LOCATE_WINDOW_MS = 30_000
+const FUTURE_STARTED_AT_CLOCK_SKEW_MS = 5_000
 const DEFAULT_PTY_COLS = 80
 const DEFAULT_PTY_ROWS = 24
 const TERMINAL_NODE_HEADER_HEIGHT_PX = 34
@@ -59,12 +62,36 @@ async function resolvePendingResumeSessionId(
     return agent.resumeSessionId
   }
 
+  const startedAtMs = Date.parse(node.startedAt)
+  if (!Number.isFinite(startedAtMs)) {
+    return null
+  }
+
   return await locateAgentResumeSessionId({
     provider: agent.provider,
     cwd: agent.executionDirectory,
-    startedAtMs: Date.parse(node.startedAt),
-    timeoutMs: RESUME_SESSION_LOCATE_TIMEOUT_MS,
+    startedAtMs,
+    timeoutMs: resolvePrepareOrReviveResumeLocateTimeoutMs(startedAtMs),
   })
+}
+
+export function resolvePrepareOrReviveResumeLocateTimeoutMs(
+  startedAtMs: number,
+  nowMs = Date.now(),
+): number {
+  if (!Number.isFinite(startedAtMs)) {
+    return COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS
+  }
+
+  const ageMs = nowMs - startedAtMs
+  if (
+    ageMs >= -FUTURE_STARTED_AT_CLOCK_SKEW_MS &&
+    ageMs <= RECENT_RESUME_SESSION_LOCATE_WINDOW_MS
+  ) {
+    return RECENT_RESUME_SESSION_LOCATE_TIMEOUT_MS
+  }
+
+  return COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS
 }
 
 function clampPtyDimension(value: number, fallback: number, max: number): number {

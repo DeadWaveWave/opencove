@@ -313,6 +313,10 @@ export async function locateAgentResumeSessionId({
   startedAtMs,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 }: LocateAgentResumeSessionInput): Promise<string | null> {
+  if (timeoutMs <= 0) {
+    return await tryFindResumeSessionId(provider, cwd, startedAtMs)
+  }
+
   const deadline = Date.now() + timeoutMs
   return await pollResumeSessionId(provider, cwd, startedAtMs, deadline)
 }

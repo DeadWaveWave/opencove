@@ -12,9 +12,14 @@ export type PreferredTerminalRendererMode = 'auto' | 'dom'
 
 export interface PreferredTerminalRendererOptions {
   preferredMode?: PreferredTerminalRendererMode
+  webglRendererBudget?: number
   onRendererKindChange?: (kind: ActiveTerminalRenderer['kind']) => void
   onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
 }
+
+const DEFAULT_WEBGL_RENDERER_BUDGET = 8
+
+let activeWebglRendererCount = 0
 
 function createDomRenderer(): ActiveTerminalRenderer {
   return {
@@ -37,6 +42,26 @@ function canUseWebglRenderer(): boolean {
   return canvas.getContext('webgl2') !== null || canvas.getContext('webgl') !== null
 }
 
+function resolveWebglRendererBudget(value: number | undefined): number {
+  if (value === undefined) {
+    return DEFAULT_WEBGL_RENDERER_BUDGET
+  }
+
+  if (!Number.isFinite(value)) {
+    return DEFAULT_WEBGL_RENDERER_BUDGET
+  }
+
+  return Math.max(0, Math.floor(value))
+}
+
+function hasWebglRendererBudget(value: number | undefined): boolean {
+  return activeWebglRendererCount < resolveWebglRendererBudget(value)
+}
+
+export function resetPreferredTerminalRendererStateForTests(): void {
+  activeWebglRendererCount = 0
+}
+
 export function activatePreferredTerminalRenderer(
   terminal: Terminal,
   _terminalProvider?: AgentProvider | null,
@@ -50,6 +75,10 @@ export function activatePreferredTerminalRenderer(
     return createDomRenderer()
   }
 
+  if (!hasWebglRendererBudget(options.webglRendererBudget)) {
+    return createDomRenderer()
+  }
+
   try {
     const webglAddonOptions = {
       customGlyphs: true,
@@ -59,6 +88,10 @@ export function activatePreferredTerminalRenderer(
 
     let disposed = false
     let kind: ActiveTerminalRenderer['kind'] = 'webgl'
+    activeWebglRendererCount += 1
+    const releaseWebglBudget = () => {
+      activeWebglRendererCount = Math.max(0, activeWebglRendererCount - 1)
+    }
     const contextLossDisposable = webglAddon.onContextLoss(() => {
       if (disposed) {
         return
@@ -66,6 +99,7 @@ export function activatePreferredTerminalRenderer(
 
       disposed = true
       kind = 'dom'
+      releaseWebglBudget()
       options.onRendererKindChange?.('dom')
       options.onRendererIssue?.({
         reason: 'context_loss',
@@ -92,6 +126,7 @@ export function activatePreferredTerminalRenderer(
         disposed = true
         contextLossDisposable.dispose()
         webglAddon.dispose()
+        releaseWebglBudget()
       },
     }
   } catch {

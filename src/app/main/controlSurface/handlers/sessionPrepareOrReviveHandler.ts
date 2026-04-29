@@ -20,6 +20,43 @@ import {
 } from './sessionPrepareOrReviveShared'
 import { prepareAgentNode, prepareTerminalNode } from './sessionPrepareOrRevivePreparation'
 
+const PREPARE_OR_REVIVE_CONCURRENCY = 4
+
+async function mapWithConcurrency<T, TResult>(
+  items: T[],
+  concurrency: number,
+  mapper: (item: T) => Promise<TResult>,
+): Promise<TResult[]> {
+  const results: TResult[] = new Array(items.length)
+  let nextIndex = 0
+  const workerCount = Math.min(items.length, Math.max(1, Math.floor(concurrency)))
+  const claimNextItem = (): { index: number; item: T } | null => {
+    while (nextIndex < items.length) {
+      const index = nextIndex
+      nextIndex += 1
+      const item = items[index]
+      if (item !== undefined) {
+        return { index, item }
+      }
+    }
+
+    return null
+  }
+  const runWorker = async (): Promise<void> => {
+    const nextItem = claimNextItem()
+    if (!nextItem) {
+      return
+    }
+
+    results[nextItem.index] = await mapper(nextItem.item)
+    await runWorker()
+  }
+
+  await Promise.all(Array.from({ length: workerCount }, () => runWorker()))
+
+  return results
+}
+
 export function registerSessionPrepareOrReviveHandler(
   controlSurface: ControlSurface,
   deps: {
@@ -45,16 +82,18 @@ export function registerSessionPrepareOrReviveHandler(
           ? new Set(payload.nodeIds)
           : null
       const settings = normalizeAgentSettings(normalized?.settings)
-      const nodes = await workspace.nodes.reduce<Promise<PreparedRuntimeNodeResult[]>>(
-        async (preparedNodesPromise, node) => {
-          const preparedNodes = await preparedNodesPromise
-          if (node.kind !== 'terminal' && node.kind !== 'agent') {
-            return preparedNodes
-          }
-          if (nodeIdFilter && !nodeIdFilter.has(node.id)) {
-            return preparedNodes
-          }
+      const runtimeNodes = workspace.nodes.filter(node => {
+        if (node.kind !== 'terminal' && node.kind !== 'agent') {
+          return false
+        }
 
+        return !nodeIdFilter || nodeIdFilter.has(node.id)
+      })
+
+      const preparedNodes = await mapWithConcurrency(
+        runtimeNodes,
+        PREPARE_OR_REVIVE_CONCURRENCY,
+        async (node): Promise<PreparedRuntimeNodeResult | null> => {
           const existingSessionId = normalizeOptionalString(node.sessionId)
           if (existingSessionId && deps.ptyStreamHub.hasSession(existingSessionId)) {
             const scrollback =
@@ -64,25 +103,22 @@ export function registerSessionPrepareOrReviveHandler(
                     store,
                     node,
                   })
-            return [
-              ...preparedNodes,
-              toPreparedNodeResult(node, {
-                recoveryState: 'live',
-                sessionId: existingSessionId,
-                isLiveSessionReattach: true,
-                profileId: resolveNodeProfileId(node),
-                runtimeKind: resolveNodeRuntimeKind(node),
-                status: node.status,
-                startedAt: node.startedAt,
-                endedAt: node.endedAt,
-                exitCode: node.exitCode,
-                lastError: node.lastError,
-                scrollback,
-                executionDirectory: normalizeOptionalString(node.executionDirectory),
-                expectedDirectory: normalizeOptionalString(node.expectedDirectory),
-                agent: normalizePersistedAgent(node.agent),
-              }),
-            ]
+            return toPreparedNodeResult(node, {
+              recoveryState: 'live',
+              sessionId: existingSessionId,
+              isLiveSessionReattach: true,
+              profileId: resolveNodeProfileId(node),
+              runtimeKind: resolveNodeRuntimeKind(node),
+              status: node.status,
+              startedAt: node.startedAt,
+              endedAt: node.endedAt,
+              exitCode: node.exitCode,
+              lastError: node.lastError,
+              scrollback,
+              executionDirectory: normalizeOptionalString(node.executionDirectory),
+              expectedDirectory: normalizeOptionalString(node.expectedDirectory),
+              agent: normalizePersistedAgent(node.agent),
+            })
           }
 
           const space = resolveOwningSpace(workspace, node.id)
@@ -90,38 +126,32 @@ export function registerSessionPrepareOrReviveHandler(
           if (node.kind === 'agent') {
             const agent = normalizePersistedAgent(node.agent)
             if (!agent) {
-              return preparedNodes
+              return null
             }
 
-            return [
-              ...preparedNodes,
-              await prepareAgentNode({
-                controlSurface,
-                ctx,
-                store,
-                workspace,
-                node,
-                space,
-                agent,
-                settings,
-              }),
-            ]
-          }
-
-          return [
-            ...preparedNodes,
-            await prepareTerminalNode({
+            return await prepareAgentNode({
               controlSurface,
               ctx,
               store,
               workspace,
               node,
               space,
-            }),
-          ]
+              agent,
+              settings,
+            })
+          }
+
+          return await prepareTerminalNode({
+            controlSurface,
+            ctx,
+            store,
+            workspace,
+            node,
+            space,
+          })
         },
-        Promise.resolve([]),
       )
+      const nodes = preparedNodes.filter((node): node is PreparedRuntimeNodeResult => node !== null)
 
       return {
         workspaceId: workspace.id,

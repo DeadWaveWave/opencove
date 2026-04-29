@@ -261,6 +261,10 @@ Terminal renderer health is session-local and recoverable:
 - Persistent blank or missing canvas triggers rebuild and resync.
 - Refresh triggers are registered once and coalesced.
 - Handoff between Desktop and Web must not reuse poisoned renderer state as truth.
+- WebGL renderer creation is budgeted per client. Bulk Agent restore must not create an unbounded
+  number of WebGL contexts and rely on Chromium to evict old contexts, because eviction creates
+  avoidable renderer rebuild, resize, and hydration churn. Clients that exceed the budget use the DOM
+  renderer directly while keeping the worker presentation truth unchanged.
 
 Each recovery should log a reason such as `overflow`, `gap`, `contextLoss`, `blankCanvas`, `visibilityResume`, or `hydrateFailure`.
 

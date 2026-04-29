@@ -42,9 +42,12 @@ vi.mock('@xterm/addon-webgl', () => {
 })
 
 describe('activatePreferredTerminalRenderer', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     contextLossListener = null
+    const { resetPreferredTerminalRendererStateForTests } =
+      await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+    resetPreferredTerminalRendererStateForTests()
     Object.defineProperty(window, 'devicePixelRatio', {
       configurable: true,
       value: 1,
@@ -149,6 +152,37 @@ describe('activatePreferredTerminalRenderer', () => {
 
       activeRenderer.dispose()
       expect(webglAddonDispose).toHaveBeenCalledTimes(1)
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
+  it('caps active WebGL renderers to avoid browser context churn', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const first = activatePreferredTerminalRenderer({ loadAddon: vi.fn() } as never, 'codex', {
+        webglRendererBudget: 1,
+      })
+      const second = activatePreferredTerminalRenderer({ loadAddon: vi.fn() } as never, 'codex', {
+        webglRendererBudget: 1,
+      })
+
+      expect(first.kind).toBe('webgl')
+      expect(second.kind).toBe('dom')
+
+      first.dispose()
+
+      const third = activatePreferredTerminalRenderer({ loadAddon: vi.fn() } as never, 'codex', {
+        webglRendererBudget: 1,
+      })
+      expect(third.kind).toBe('webgl')
+      third.dispose()
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }

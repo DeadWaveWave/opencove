@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { resolveNodeInitialPtyGeometry } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrRevivePreparation'
+import {
+  resolveNodeInitialPtyGeometry,
+  resolvePrepareOrReviveResumeLocateTimeoutMs,
+} from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrRevivePreparation'
 import type { NormalizedPersistedNode } from '../../../src/platform/persistence/sqlite/normalize'
 
 function createNode(overrides: Partial<NormalizedPersistedNode>): NormalizedPersistedNode {
@@ -48,5 +51,15 @@ describe('session prepare/revive terminal geometry', () => {
 
     expect(geometry.cols).toBeGreaterThan(40)
     expect(geometry.rows).toBeGreaterThan(10)
+  })
+})
+
+describe('session prepare/revive resume discovery timeout', () => {
+  it('uses a short polling window only for very recent agent launches', () => {
+    const nowMs = Date.parse('2026-04-29T12:00:00.000Z')
+
+    expect(resolvePrepareOrReviveResumeLocateTimeoutMs(nowMs - 5_000, nowMs)).toBeGreaterThan(0)
+    expect(resolvePrepareOrReviveResumeLocateTimeoutMs(nowMs - 5 * 60_000, nowMs)).toBe(0)
+    expect(resolvePrepareOrReviveResumeLocateTimeoutMs(Number.NaN, nowMs)).toBe(0)
   })
 })

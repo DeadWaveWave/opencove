@@ -35,6 +35,8 @@ export function createRuntimeInitialGeometryCommitter({
   isPointerResizingRef,
   lastCommittedPtySizeRef,
   sessionId,
+  canonicalInitialGeometry,
+  allowMeasuredResizeCommit = true,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   fitAddonRef: MutableRefObject<FitAddon | null>
@@ -42,6 +44,8 @@ export function createRuntimeInitialGeometryCommitter({
   isPointerResizingRef: MutableRefObject<boolean>
   lastCommittedPtySizeRef: MutableRefObject<PtySize | null>
   sessionId: string
+  canonicalInitialGeometry?: PtySize | null
+  allowMeasuredResizeCommit?: boolean
 }) {
   return (baselineSnapshot: PresentationSnapshotTerminalResult | null) => {
     if (baselineSnapshot) {
@@ -49,6 +53,18 @@ export function createRuntimeInitialGeometryCommitter({
         cols: baselineSnapshot.cols,
         rows: baselineSnapshot.rows,
       }
+    }
+
+    if (!allowMeasuredResizeCommit) {
+      const canonicalGeometry = baselineSnapshot
+        ? { cols: baselineSnapshot.cols, rows: baselineSnapshot.rows }
+        : (canonicalInitialGeometry ?? null)
+      if (!canonicalGeometry) {
+        return Promise.resolve(null)
+      }
+
+      lastCommittedPtySizeRef.current = canonicalGeometry
+      return Promise.resolve({ ...canonicalGeometry, changed: false })
     }
 
     return commitInitialTerminalNodeGeometry({

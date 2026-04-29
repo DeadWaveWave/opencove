@@ -245,8 +245,19 @@ Current high-value script bundle:
 - `pnpm test:terminal:presentation`
 - `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cmd-w ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
 - `OPENCOVE_REPRO_ITERATIONS=1 OPENCOVE_REPRO_CLOSE_MODE=cold-restart ELECTRON_RUN_AS_NODE=1 pnpm exec electron scripts/debug-repro-restored-agent-input.mjs`
+- `ELECTRON_RUN_AS_NODE=1 OPENCOVE_PROFILE_AGENT_COUNT=12 OPENCOVE_PROFILE_PROVIDER=codex ./node_modules/.bin/electron scripts/profile-agent-restore-startup.mjs`
+- `ELECTRON_RUN_AS_NODE=1 OPENCOVE_PROFILE_AGENT_COUNT=20 OPENCOVE_PROFILE_PROVIDER=codex ./node_modules/.bin/electron scripts/profile-agent-restore-startup.mjs`
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.spec.ts --grep "reconnects terminal sessions after a page reload|allows controlling a shared terminal session from multiple web clients"`
 - `OPENCOVE_E2E_SKIP_BUILD=1 node scripts/test-e2e-web-canvas.mjs -- tests/e2e-web-canvas/workerWebCanvas.agent-resume.spec.ts tests/e2e-web-canvas/workerWebCanvas.view-state.spec.ts`
+
+Latest verified on `2026-04-29` for bulk Agent startup restore profiling:
+
+- `pnpm build`
+- `ELECTRON_RUN_AS_NODE=1 OPENCOVE_PROFILE_AGENT_COUNT=12 OPENCOVE_PROFILE_PROVIDER=codex ./node_modules/.bin/electron scripts/profile-agent-restore-startup.mjs`
+- `ELECTRON_RUN_AS_NODE=1 OPENCOVE_PROFILE_AGENT_COUNT=20 OPENCOVE_PROFILE_PROVIDER=codex ./node_modules/.bin/electron scripts/profile-agent-restore-startup.mjs`
+- 12-Agent result after WebGL budgeting: `all-runtime-sessions-bound=2211ms`, `all-terminal-outputs-visible=5431ms`, `init=12`, `renderer-health-recover=0`, renderer split `8 webgl / 4 dom`.
+- 20-Agent result after WebGL budgeting: `all-runtime-sessions-bound=2312ms`, `all-terminal-outputs-visible=6878ms`, `init=20`, `renderer-health-recover=0`, renderer split `8 webgl / 12 dom`.
+- Diagnostic comparison: the prior 20-Agent run created `28` terminal init cycles, `8` mixed WebGL/DOM nodes, and `3` renderer-health recoveries; the budgeted run removes that self-induced renderer churn.
 
 Latest verified on `2026-04-25` for the current Desktop restore/hydration slice:
 
