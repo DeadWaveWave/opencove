@@ -39,43 +39,20 @@ function ProviderGlyph({ provider }: { provider: AgentProvider }): JSX.Element {
           fill="none"
           xmlns="http://www.w3.org/2000/svg"
         >
-          <ellipse cx="12" cy="4.75" rx="1.95" ry="3.15" fill="currentColor" />
-          <ellipse cx="12" cy="19.25" rx="1.95" ry="3.15" fill="currentColor" />
-          <ellipse cx="4.75" cy="12" rx="3.15" ry="1.95" fill="currentColor" />
-          <ellipse cx="19.25" cy="12" rx="3.15" ry="1.95" fill="currentColor" />
-          <ellipse
-            cx="6.85"
-            cy="6.85"
-            rx="1.85"
-            ry="3"
-            transform="rotate(-45 6.85 6.85)"
-            fill="currentColor"
-          />
-          <ellipse
-            cx="17.15"
-            cy="6.85"
-            rx="1.85"
-            ry="3"
-            transform="rotate(45 17.15 6.85)"
-            fill="currentColor"
-          />
-          <ellipse
-            cx="6.85"
-            cy="17.15"
-            rx="1.85"
-            ry="3"
-            transform="rotate(45 6.85 17.15)"
-            fill="currentColor"
-          />
-          <ellipse
-            cx="17.15"
-            cy="17.15"
-            rx="1.85"
-            ry="3"
-            transform="rotate(-45 17.15 17.15)"
-            fill="currentColor"
-          />
-          <circle cx="12" cy="12" r="1.55" fill="currentColor" />
+          <g stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+            <line x1="12" y1="12" x2="12" y2="4.7" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(30 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(60 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(90 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(120 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(150 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(180 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(210 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(240 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(270 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(300 12 12)" />
+            <line x1="12" y1="12" x2="12" y2="4.7" transform="rotate(330 12 12)" />
+          </g>
         </svg>
       )
     case 'opencode':

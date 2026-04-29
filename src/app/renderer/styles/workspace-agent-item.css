@@ -16,6 +16,11 @@
   --agent-provider-accent: rgba(217, 119, 87, 0.96);
 }
 
+.agent-provider-icon[data-agent-provider='claude-code'] .agent-provider-icon__svg {
+  width: 16px;
+  height: 16px;
+}
+
 .agent-provider-icon[data-agent-provider='codex'] {
   --agent-provider-accent: rgba(125, 211, 252, 0.96);
 }
