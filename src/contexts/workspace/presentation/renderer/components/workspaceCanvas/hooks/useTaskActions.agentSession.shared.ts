@@ -21,10 +21,7 @@ export interface TaskActionContext {
     options?: { syncLayout?: boolean },
   ) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
-  buildAgentNodeTitle: (
-    provider: AgentSettings['defaultProvider'],
-    effectiveModel: string | null,
-  ) => string
+  buildAgentNodeTitle: (provider: AgentSettings['defaultProvider'], label: string | null) => string
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
   agentSettings: AgentSettings
   workspaceId: string

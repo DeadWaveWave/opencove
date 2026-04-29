@@ -19,6 +19,7 @@ export interface TerminalNodeProps {
   nodeId: string
   sessionId: string
   title: string
+  fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
   labelColor?: LabelColor | null
   terminalProvider?: AgentProvider | null

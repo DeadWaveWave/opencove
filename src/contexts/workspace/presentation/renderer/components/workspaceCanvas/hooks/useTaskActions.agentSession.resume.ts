@@ -156,7 +156,7 @@ export async function resumeTaskAgentSessionAction(
       sessionId: launchedSessionId,
       profileId: launchedProfileId,
       runtimeKind: launchedRuntimeKind,
-      title: context.buildAgentNodeTitle(record.provider, launchedEffectiveModel),
+      title: context.buildAgentNodeTitle(record.provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',
       placement: {

@@ -29,6 +29,7 @@ export function TerminalNode({
   nodeId,
   sessionId,
   title,
+  fixedTitlePrefix = null,
   kind,
   labelColor,
   terminalProvider = null,
@@ -337,6 +338,7 @@ export function TerminalNode({
   return (
     <TerminalNodeFrame
       title={title}
+      fixedTitlePrefix={fixedTitlePrefix}
       kind={kind}
       labelColor={labelColor}
       terminalThemeMode={terminalThemeMode}

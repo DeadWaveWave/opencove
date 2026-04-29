@@ -39,9 +39,24 @@ test.describe('Workspace Canvas - Sidebar Workspaces', () => {
           scrollTop: element.scrollTop,
         }
       })
+      const pageMetrics = await window.evaluate(() => {
+        const doc = document.documentElement
+        const body = document.body
+
+        return {
+          documentScrollHeight: doc.scrollHeight,
+          documentClientHeight: doc.clientHeight,
+          bodyScrollHeight: body.scrollHeight,
+          bodyClientHeight: body.clientHeight,
+        }
+      })
 
       expect(sidebarMetrics.scrollHeight).toBeGreaterThan(sidebarMetrics.clientHeight)
       expect(sidebarMetrics.scrollTop).toBeGreaterThan(0)
+      expect(pageMetrics.documentScrollHeight).toBeLessThanOrEqual(
+        pageMetrics.documentClientHeight + 1,
+      )
+      expect(pageMetrics.bodyScrollHeight).toBeLessThanOrEqual(pageMetrics.bodyClientHeight + 1)
       await expect(lastWorkspaceName).toBeVisible()
       await expect(sidebar).toBeVisible()
       await expect(settingsButton).toBeVisible()

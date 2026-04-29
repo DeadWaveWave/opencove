@@ -1,4 +1,5 @@
 import { useMemo, type MutableRefObject, type ReactElement } from 'react'
+import { useStore, type Node } from '@xyflow/react'
 import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import { NoteNode } from '../NoteNode'
 import { TerminalNode } from '../TerminalNode'
@@ -16,6 +17,11 @@ import type {
   UpdateNodeScrollback,
   UpdateTaskStatus,
 } from './types'
+import {
+  findLinkedTaskTitleForAgent,
+  providerTitlePrefix,
+  resolveAgentDisplayTitle,
+} from '../../utils/agentTitle'
 
 function TerminalNodeType({
   data,
@@ -55,12 +61,48 @@ function TerminalNodeType({
     null
   const resolvedTerminalProvider =
     data.kind === 'agent' ? (data.agent?.provider ?? null) : (data.terminalProviderHint ?? null)
+  const linkedTaskTitle = useStore(storeState => {
+    if (data.kind !== 'agent' || !data.agent) {
+      return null
+    }
+
+    const state = storeState as unknown as {
+      nodeLookup?: { values?: unknown }
+      nodeInternals?: { values?: unknown }
+      nodes?: Array<Node<TerminalNodeData>>
+    }
+    const lookup = state.nodeLookup ?? state.nodeInternals
+    const lookupNodes =
+      lookup && typeof lookup.values === 'function'
+        ? Array.from((lookup as Map<string, Node<TerminalNodeData>>).values())
+        : null
+
+    return findLinkedTaskTitleForAgent(
+      lookupNodes ?? state.nodes ?? [],
+      id,
+      data.agent.taskId ?? null,
+    )
+  })
+  const resolvedTitle =
+    data.kind === 'agent' && data.agent
+      ? resolveAgentDisplayTitle({
+          provider: data.agent.provider,
+          linkedTaskTitle,
+          fallbackTitle: data.title,
+          preferFallbackTitle: data.titlePinnedByUser === true,
+        })
+      : data.title
 
   return (
     <TerminalNode
       nodeId={id}
       sessionId={data.sessionId}
-      title={data.title}
+      title={resolvedTitle}
+      fixedTitlePrefix={
+        data.kind === 'agent' && data.agent
+          ? `${providerTitlePrefix(data.agent.provider)} · `
+          : null
+      }
       kind={data.kind}
       labelColor={labelColor}
       agentLaunchMode={data.kind === 'agent' ? (data.agent?.launchMode ?? null) : null}
@@ -118,7 +160,7 @@ function TerminalNodeType({
           : undefined
       }
       onTitleCommit={
-        data.kind === 'terminal'
+        data.kind === 'terminal' || data.kind === 'agent'
           ? nextTitle => {
               renameTerminalTitleRef.current(id, nextTitle)
             }

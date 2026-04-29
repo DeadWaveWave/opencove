@@ -56,6 +56,8 @@ export const zhCN = {
     noProjectYet: '还没有项目。',
     settings: '设置',
     fallbackAgentLabel: 'Agent',
+    expandProjectAgents: '展开项目 Agent 列表',
+    collapseProjectAgents: '折叠项目 Agent 列表',
     status: {
       working: '运行中',
       standby: '待命',

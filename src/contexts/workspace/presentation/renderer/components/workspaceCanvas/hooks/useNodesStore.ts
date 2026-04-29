@@ -16,6 +16,7 @@ import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveRe
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
 import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
 import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
+import { resolveRenamedWorkspaceNodeTitle, shouldRenameWorkspaceNode } from './useNodesStore.title'
 import type {
   UseWorkspaceCanvasNodesStoreParams,
   UseWorkspaceCanvasNodesStoreResult,
@@ -335,12 +336,13 @@ export function useWorkspaceCanvasNodesStore({
           let hasChanged = false
 
           const nextNodes = prevNodes.map(node => {
-            if (node.id !== nodeId || node.data.kind !== 'terminal') {
+            if (!shouldRenameWorkspaceNode(node, nodeId)) {
               return node
             }
 
+            const nextTitle = resolveRenamedWorkspaceNodeTitle(node, normalizedTitle)
             const isPinned = node.data.titlePinnedByUser === true
-            if (node.data.title === normalizedTitle && isPinned) {
+            if (node.data.title === nextTitle && isPinned) {
               return node
             }
 
@@ -349,7 +351,7 @@ export function useWorkspaceCanvasNodesStore({
               ...node,
               data: {
                 ...node.data,
-                title: normalizedTitle,
+                title: nextTitle,
                 titlePinnedByUser: true,
               },
             }

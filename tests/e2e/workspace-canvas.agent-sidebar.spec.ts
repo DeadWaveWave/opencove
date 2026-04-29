@@ -50,7 +50,9 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
 
       const agentItem = window.locator('.workspace-sidebar .workspace-agent-item').first()
       await expect(agentItem).toBeVisible()
-      await expect(agentItem.locator('.workspace-agent-item__task')).toHaveCount(0)
+      await expect(agentItem.locator('.workspace-agent-item__title')).toHaveText(
+        'codex · gpt-5.2-codex',
+      )
 
       const zoomInButton = window.locator('.react-flow__controls-zoomin')
       await expect(zoomInButton).toBeVisible()
@@ -299,10 +301,23 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
         .locator('.terminal-node')
         .filter({
           has: window.locator('.terminal-node__title', {
-            hasText: 'claude · claude-sonnet-4-5',
+            hasText: 'claude · Clarify API contract with PM',
           }),
         })
         .first()
+
+      const workspaceToggle = window.locator(
+        '[data-testid="workspace-item-toggle-workspace-seeded"]',
+      )
+      await expect(workspaceToggle).toHaveAttribute('aria-expanded', 'true')
+
+      await workspaceToggle.click()
+      await expect(doingItem).toHaveCount(0)
+      await expect(workspaceToggle).toHaveAttribute('aria-expanded', 'false')
+
+      await workspaceToggle.click()
+      await expect(doingItem).toHaveCount(1)
+      await expect(workspaceToggle).toHaveAttribute('aria-expanded', 'true')
 
       await requestItem.click()
       await expect(requestNode).toBeVisible()
@@ -318,14 +333,14 @@ test.describe('Workspace Canvas - Agent Sidebar', () => {
         timeout: 30_000,
       })
 
-      await expect(doingItem.locator('.workspace-agent-item__task-text')).toHaveText(
-        'Implement OAuth refresh flow',
+      await expect(doingItem.locator('.workspace-agent-item__title')).toHaveText(
+        'codex · Implement OAuth refresh flow',
       )
-      await expect(requestItem.locator('.workspace-agent-item__task-text')).toHaveText(
-        'Clarify API contract with PM',
+      await expect(requestItem.locator('.workspace-agent-item__title')).toHaveText(
+        'claude · Clarify API contract with PM',
       )
-      await expect(doneItem.locator('.workspace-agent-item__task-text')).toHaveText(
-        'Finalize migration checklist',
+      await expect(doneItem.locator('.workspace-agent-item__title')).toHaveText(
+        'claude · Finalize migration checklist',
       )
     } finally {
       await electronApp.close()

@@ -11,8 +11,12 @@ import {
   isResumeSessionBindingVerified,
 } from '../../../utils/agentResumeBinding'
 import { invalidateCachedTerminalScreenState } from '../../terminalNode/screenStateCache'
-import { providerTitlePrefix, toErrorMessage } from '../helpers'
+import { toErrorMessage } from '../helpers'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
+import {
+  buildAgentNodeTitle as formatAgentNodeTitle,
+  findLinkedTaskTitleForAgent,
+} from '../../../utils/agentTitle'
 
 interface UseAgentNodeLifecycleParams {
   workspaceId: string
@@ -42,17 +46,14 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   agentEnvByProvider,
   environmentVariables,
 }: UseAgentNodeLifecycleParams): {
-  buildAgentNodeTitle: (
-    provider: AgentNodeData['provider'],
-    effectiveModel: string | null,
-  ) => string
+  buildAgentNodeTitle: (provider: AgentNodeData['provider'], label: string | null) => string
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
   stopAgentNode: (nodeId: string) => Promise<void>
 } {
   const { t } = useTranslation()
   const buildAgentNodeTitle = useCallback(
-    (provider: AgentNodeData['provider'], effectiveModel: string | null): string => {
-      return `${providerTitlePrefix(provider)} · ${effectiveModel ?? t('common.defaultModel')}`
+    (provider: AgentNodeData['provider'], label: string | null): string => {
+      return formatAgentNodeTitle(provider, label ?? t('common.defaultModel'))
     },
     [t],
   )
@@ -65,6 +66,11 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       }
 
       const launchData = node.data.agent
+      const linkedTaskTitle = findLinkedTaskTitleForAgent(
+        nodesRef.current,
+        nodeId,
+        launchData.taskId ?? null,
+      )
       const env = resolveEnabledEnvForAgent({ rows: agentEnvByProvider[launchData.provider] ?? [] })
       const mergedEnv =
         environmentVariables && Object.keys(environmentVariables).length > 0
@@ -305,7 +311,13 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   sessionId: launchedSessionId,
                   profileId: launchedProfileId,
                   runtimeKind: launchedRuntimeKind,
-                  title: buildAgentNodeTitle(launchData.provider, launchedEffectiveModel),
+                  title:
+                    item.data.titlePinnedByUser === true
+                      ? item.data.title
+                      : buildAgentNodeTitle(
+                          launchData.provider,
+                          linkedTaskTitle ?? launchedEffectiveModel,
+                        ),
                   status:
                     mode === 'resume'
                       ? ('standby' as const)

@@ -292,6 +292,21 @@
   color: var(--cove-text);
 }
 
+.terminal-node__title-editable {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.terminal-node__title-prefix {
+  flex: 0 0 auto;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  color: var(--cove-text);
+  white-space: nowrap;
+}
+
 .terminal-node__title-input {
   flex: 1;
   border: none;

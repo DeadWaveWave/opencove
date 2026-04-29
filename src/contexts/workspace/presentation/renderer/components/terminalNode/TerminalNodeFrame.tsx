@@ -14,6 +14,7 @@ import type { ResizeEdges } from '../../utils/nodeFrameResize'
 
 interface TerminalNodeFrameProps {
   title: string
+  fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
   labelColor?: LabelColor | null
   terminalThemeMode: TerminalThemeMode
@@ -54,6 +55,7 @@ interface TerminalNodeFrameProps {
 
 export function TerminalNodeFrame({
   title,
+  fixedTitlePrefix,
   kind,
   labelColor,
   terminalThemeMode,
@@ -150,6 +152,7 @@ export function TerminalNodeFrame({
 
       <TerminalNodeHeader
         title={title}
+        fixedTitlePrefix={fixedTitlePrefix}
         kind={kind}
         status={status}
         labelColor={labelColor ?? null}
