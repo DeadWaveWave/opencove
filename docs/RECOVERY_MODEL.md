@@ -1,5 +1,9 @@
 # RECOVERY MODEL
 
+Related terminal architecture:
+
+- `docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+
 本文档是本轮完全重构的 `Phase 0` 产物。
 
 它只回答四件事：
@@ -7,6 +11,27 @@
 - 每类状态的 owner 是谁。
 - 哪些状态是 durable fact，哪些只是 runtime observation 或 UI projection。
 - 启动、关闭、恢复时什么可以写，什么不可以写。
+
+补充边界：
+
+- 本文档主要定义 durable recovery owner 与业务恢复语义。
+- terminal presentation、multi-client attach、renderer resync、canonical geometry 由 `docs/terminal/MULTI_CLIENT_ARCHITECTURE.md` 统一定义。
+
+Current main note (`2026-04-23`):
+
+- latest `origin/main` still restores and relaunches part of the agent/session flow from renderer hydration code such as `src/app/renderer/shell/hooks/useHydrateAppState.helpers.ts` and `src/contexts/agent/presentation/renderer/hydrateAgentNode.ts`.
+- treat those paths as migration debt, not as the desired long-term owner model.
+
+Migration update (`2026-04-24`):
+
+- active workspace cold-start hydration now prefers the worker `session.prepareOrRevive` contract before runtime nodes mount.
+- renderer-local `hydrateRuntimeNode` remains only as fallback when the worker contract is unavailable; it is no longer the preferred production recovery path.
+- Desktop startup no longer falls back to a main-owned standalone PTY/runtime host; recovery assumes a worker endpoint is available.
+
+Migration update (`2026-04-25`):
+
+- active workspace first paint no longer waits for worker prepare to finish.
+- restored runtime nodes still come only from worker `session.prepareOrRevive`; Electron does not fall back to renderer-local spawn/launch when the worker prepare path fails.
 
 ## 1. 问题背景
 
@@ -85,7 +110,7 @@
 | resume session verified flag | Durable Fact | `agent` context | verify resume binding usecase | agent repository |
 | provider / model selection on a window | Durable Fact | `agent` context | launch / update usecases | agent repository |
 | terminal session record | Durable Fact | `terminal` context | terminal lifecycle usecase | terminal repository |
-| node scrollback | Durable Fact | `terminal` context | scrollback persistence usecase | terminal scrollback repository |
+| node scrollback | Durable Fact | `terminal` context | mounted renderer publish or app-shell inactive PTY stream sync | terminal scrollback repository |
 | PTY alive / exited / resized | Runtime Observation | `terminal` context reducer | PTY adapter callbacks | none |
 | watcher turn state | Runtime Observation | `agent` context reducer | watcher adapter callbacks | none |
 | effective model returned by CLI | Runtime Observation -> promoted field | `agent` context | launch / resume usecase | agent repository after explicit write |
@@ -274,4 +299,3 @@ TaskAgentLink {
 3. 不再让 hydration 同时承担“恢复判定 + 运行时探测失败后的业务降级决定”。
 4. 不再用 task session history 反推当前 active agent window 的真实 binding。
 5. 不再把“session 文件已出现”当作“launch intent 已存在”的前提。
-

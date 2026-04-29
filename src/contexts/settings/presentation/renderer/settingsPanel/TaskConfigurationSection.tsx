@@ -107,7 +107,7 @@ export function TaskConfigurationSection(props: {
         </>
       ) : null}
 
-      <div className="settings-panel__subsection">
+      <div className="settings-panel__subsection" id="settings-section-task-tags">
         <div className="settings-panel__subsection-header">
           <strong>{t('settingsPanel.tasks.tagsLabel')}</strong>
           <span>{t('settingsPanel.tasks.tagsHelp')}</span>

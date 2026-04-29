@@ -167,10 +167,9 @@ describe('TerminalNode invalidated scrollback cleanup', () => {
       />,
     )
 
-    await Promise.resolve()
-    await Promise.resolve()
-
-    expect(window.opencoveApi.pty.snapshot).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => {
+      expect(window.opencoveApi.pty.snapshot).toHaveBeenCalledTimes(1)
+    })
 
     dataListener?.({ sessionId: 'session-1', data: 'stale output' })
 

@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
 
 const { flushScheduledPersistedStateWrite, schedulePersistedStateWrite } = vi.hoisted(() => ({
@@ -20,8 +20,8 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/utils/persistence
   }
 })
 
-const { flushScheduledNodeScrollbackWrites } = vi.hoisted(() => ({
-  flushScheduledNodeScrollbackWrites: vi.fn(),
+const { flushScheduledScrollbackWrites } = vi.hoisted(() => ({
+  flushScheduledScrollbackWrites: vi.fn(),
 }))
 
 vi.mock(
@@ -33,7 +33,7 @@ vi.mock(
 
     return {
       ...actual,
-      flushScheduledNodeScrollbackWrites,
+      flushScheduledScrollbackWrites,
     }
   },
 )
@@ -42,10 +42,14 @@ import { usePersistedAppState } from '../../../src/app/renderer/shell/hooks/useP
 import { useAppStore } from '../../../src/app/renderer/shell/store/useAppStore'
 
 describe('usePersistedAppState', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   beforeEach(() => {
     flushScheduledPersistedStateWrite.mockReset()
     schedulePersistedStateWrite.mockReset()
-    flushScheduledNodeScrollbackWrites.mockReset()
+    flushScheduledScrollbackWrites.mockReset()
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -58,6 +62,7 @@ describe('usePersistedAppState', () => {
 
   it('flushes app state + node scrollbacks on beforeunload', () => {
     schedulePersistedStateWrite.mockImplementation(() => {})
+    const dispatchEventSpy = vi.spyOn(window, 'dispatchEvent')
 
     function Harness() {
       usePersistedAppState({
@@ -79,7 +84,10 @@ describe('usePersistedAppState', () => {
 
     window.dispatchEvent(new Event('beforeunload'))
 
-    expect(flushScheduledNodeScrollbackWrites).toHaveBeenCalledTimes(1)
+    expect(dispatchEventSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'opencove:terminal-flush-scrollback' }),
+    )
+    expect(flushScheduledScrollbackWrites).toHaveBeenCalledTimes(1)
     expect(flushScheduledPersistedStateWrite).toHaveBeenCalledTimes(1)
   })
 

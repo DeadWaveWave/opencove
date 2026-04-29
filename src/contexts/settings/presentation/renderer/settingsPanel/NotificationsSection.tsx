@@ -2,12 +2,14 @@ import React from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 
 export function NotificationsSection(props: {
+  systemNotificationsEnabled: boolean
   standbyBannerEnabled: boolean
   standbyBannerShowTask: boolean
   standbyBannerShowSpace: boolean
   standbyBannerShowBranch: boolean
   standbyBannerShowPullRequest: boolean
   githubPullRequestsEnabled: boolean
+  onChangeSystemNotificationsEnabled: (enabled: boolean) => void
   onChangeStandbyBannerEnabled: (enabled: boolean) => void
   onChangeStandbyBannerShowTask: (enabled: boolean) => void
   onChangeStandbyBannerShowSpace: (enabled: boolean) => void
@@ -16,12 +18,14 @@ export function NotificationsSection(props: {
 }): React.JSX.Element {
   const { t } = useTranslation()
   const {
+    systemNotificationsEnabled,
     standbyBannerEnabled,
     standbyBannerShowTask,
     standbyBannerShowSpace,
     standbyBannerShowBranch,
     standbyBannerShowPullRequest,
     githubPullRequestsEnabled,
+    onChangeSystemNotificationsEnabled,
     onChangeStandbyBannerEnabled,
     onChangeStandbyBannerShowTask,
     onChangeStandbyBannerShowSpace,
@@ -32,6 +36,24 @@ export function NotificationsSection(props: {
   return (
     <div className="settings-panel__section" id="settings-section-notifications">
       <h3 className="settings-panel__section-title">{t('settingsPanel.notifications.title')}</h3>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.notifications.systemNotifications.enabledLabel')}</strong>
+          <span>{t('settingsPanel.notifications.systemNotifications.enabledHelp')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <label className="cove-toggle">
+            <input
+              type="checkbox"
+              data-testid="settings-system-notifications-enabled"
+              checked={systemNotificationsEnabled}
+              onChange={event => onChangeSystemNotificationsEnabled(event.target.checked)}
+            />
+            <span className="cove-toggle__slider"></span>
+          </label>
+        </div>
+      </div>
 
       <div className="settings-panel__row">
         <div className="settings-panel__row-label">

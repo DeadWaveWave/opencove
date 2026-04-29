@@ -1,14 +1,7 @@
 import { useEffect } from 'react'
-import type { FitAddon } from '@xterm/addon-fit'
-import type { SearchAddon } from '@xterm/addon-search'
-import type { Terminal } from '@xterm/xterm'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
-import type { AgentLaunchMode, AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
-import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import { createRollingTextBuffer } from '../../utils/rollingTextBuffer'
-import type { TerminalCommandInputState } from './commandInput'
 import { createRuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
-import { registerTerminalLayoutSync } from './layoutSync'
 import {
   clearCachedTerminalScreenStateInvalidation,
   getCachedTerminalScreenState,
@@ -16,34 +9,48 @@ import {
 } from './screenStateCache'
 import { resolveAttachablePtyApi } from './attachablePty'
 import { cacheTerminalScreenStateOnUnmount } from './cacheTerminalScreenState'
-import type { TerminalThemeMode } from './theme'
 import { MAX_SCROLLBACK_CHARS } from './constants'
-import { resolveInitialTerminalDimensions } from './initialDimensions'
-import { createTerminalOutputScheduler, type TerminalOutputScheduler } from './outputScheduler'
-import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
+import { createTerminalOutputScheduler } from './outputScheduler'
 import { createCommittedScreenStateRecorder } from './committedScreenState'
 import { createTerminalHydrationRouter } from './hydrationRouter'
-import { createOpenCodeTuiThemeBridge } from './opencodeTuiThemeBridge'
 import { createMountedXtermSession } from './xtermSession'
-import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
-import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
 import { registerTerminalDiagnostics } from './registerDiagnostics'
-import type { XtermSession } from './xtermSession'
+import { registerTerminalRuntimeTestHandles } from './testHarness'
+import type { TerminalRuntimeSessionOptions } from './useTerminalRuntimeSession.types'
+import { hasVisibleTerminalBufferContent } from './terminalRuntimeDiagnostics'
 import {
-  hasRecentTerminalUserInteraction,
+  markRecentTerminalUserInteraction,
   registerTerminalUserInteractionWindow,
 } from './userInteractionWindow'
-
-const RESTORED_AGENT_INPUT_GATE_DELAY_MS = 1_000
+import {
+  createRuntimeInitialGeometryCommitter,
+  resolveRuntimeHydrationBaselineSource,
+  resolveRuntimeInitialTerminalDimensions,
+} from './useTerminalRuntimeSession.initialGeometry'
+import {
+  createOptionalOpenCodeThemeBridge,
+  shouldReusePreservedXtermSession,
+  scheduleTestEnvironmentTerminalAutoFocus,
+  prepareRuntimePresentationAttach,
+  registerRuntimeRendererAndThemeSync,
+  shouldAwaitRestoredAgentVisibleOutput,
+  shouldGateRestoredAgentInput,
+  shouldRequirePostGeometrySnapshotOutput,
+  shouldTreatHydratedAgentBaselineAsPlaceholder,
+  type TerminalHydrationBaselineSource,
+} from './useTerminalRuntimeSession.support'
+import { createRestoredAgentVisibilityGate } from './restoredAgentVisibilityGate'
+import { startRuntimeTerminalHydration } from './runtimeHydrationStarter'
+import { subscribeRuntimeTerminalEvents } from './useTerminalRuntimeSession.events'
 
 export function useTerminalRuntimeSession({
   nodeId,
   sessionId,
   kind,
   terminalProvider,
+  initialTerminalGeometryRef,
   agentLaunchModeRef,
   agentResumeSessionIdVerifiedRef,
-  statusRef,
   titleRef,
   terminalThemeMode,
   isTestEnvironment,
@@ -52,7 +59,9 @@ export function useTerminalRuntimeSession({
   fitAddonRef,
   outputSchedulerRef,
   isViewportInteractionActiveRef,
+  isPointerResizingRef,
   suppressPtyResizeRef,
+  lastCommittedPtySizeRef,
   commandInputStateRef,
   onCommandRunRef,
   scrollbackBufferRef,
@@ -76,81 +85,40 @@ export function useTerminalRuntimeSession({
   cancelWebglPixelSnapping,
   setRendererKindAndApply,
   terminalFontSize,
-}: {
-  nodeId: string
-  sessionId: string
-  kind: WorkspaceNodeKind
-  terminalProvider: AgentProvider | null
-  agentLaunchModeRef: { current: AgentLaunchMode | null }
-  agentResumeSessionIdVerifiedRef: { current: boolean }
-  statusRef: { current: AgentRuntimeStatus | null }
-  titleRef: { current: string }
-  terminalThemeMode: TerminalThemeMode
-  isTestEnvironment: boolean
-  containerRef: { current: HTMLDivElement | null }
-  terminalRef: { current: Terminal | null }
-  fitAddonRef: { current: FitAddon | null }
-  outputSchedulerRef: { current: TerminalOutputScheduler | null }
-  isViewportInteractionActiveRef: { current: boolean }
-  suppressPtyResizeRef: { current: boolean }
-  commandInputStateRef: { current: TerminalCommandInputState }
-  onCommandRunRef: { current: ((command: string) => void) | undefined }
-  scrollbackBufferRef: {
-    current: {
-      snapshot: () => string
-      set: (snapshot: string) => void
-      append: (data: string) => void
-    }
-  }
-  markScrollbackDirty: (immediate?: boolean) => void
-  scheduleTranscriptSync: () => void
-  cancelScrollbackPublish: () => void
-  disposeScrollbackPublish: () => void
-  syncTerminalSize: () => void
-  applyTerminalTheme: () => void
-  bindSearchAddonToFind: (addon: SearchAddon) => () => void
-  openTerminalFind: () => void
-  isTerminalHydratedRef: { current: boolean }
-  setIsTerminalHydrated: (hydrated: boolean) => void
-  shouldRestoreTerminalFocusRef: { current: boolean }
-  preservedXtermSessionRef: { current: XtermSession | null }
-  recentUserInteractionAtRef: { current: number }
-  pendingUserInputBufferRef: {
-    current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
-  }
-  isLiveSessionReattach: boolean
-  activeRendererKindRef: { current: TerminalRendererKind }
-  scheduleWebglPixelSnapping: () => void
-  cancelWebglPixelSnapping: () => void
-  setRendererKindAndApply: (kind: TerminalRendererKind) => void
-  terminalFontSize: number
-}): void {
+  viewportZoomRef,
+  preferredRendererMode,
+  terminalClientResetVersion,
+  requestTerminalRendererRecovery,
+}: TerminalRuntimeSessionOptions): void {
   useEffect(() => {
-    if (sessionId.trim().length === 0) {
+    if (sessionId.trim().length === 0 || !containerRef.current) {
       return undefined
     }
-
-    const ptyWithOptionalAttach = resolveAttachablePtyApi()
-    const cachedScreenState = getCachedTerminalScreenState(nodeId, sessionId)
+    const cachedScreenState =
+      kind === 'agent' ? null : getCachedTerminalScreenState(nodeId, sessionId)
     suppressPtyResizeRef.current = Boolean(cachedScreenState?.serialized.includes('\u001b[?1049h'))
-    const initialDimensions = resolveInitialTerminalDimensions(cachedScreenState)
+    const initialDimensions = resolveRuntimeInitialTerminalDimensions({
+      initialTerminalGeometry: initialTerminalGeometryRef.current,
+      cachedScreenState,
+      lastCommittedPtySizeRef,
+    })
     const scrollbackBuffer = scrollbackBufferRef.current
-    const persistedSnapshot = scrollbackBuffer.snapshot()
-    const shouldGateInitialUserInput =
-      kind === 'agent' &&
-      !isLiveSessionReattach &&
-      cachedScreenState === null &&
-      persistedSnapshot.trim().length > 0
-    const shouldProtectRestoredAgentHistory = (): boolean =>
-      kind === 'agent' &&
-      !isLiveSessionReattach &&
-      cachedScreenState === null &&
-      (agentResumeSessionIdVerifiedRef.current === true ||
-        agentLaunchModeRef.current === 'resume' ||
-        scrollbackBuffer.snapshot().trim().length > 0)
+    const pendingUserInputBuffer = pendingUserInputBufferRef.current
+    const rendererBaselineSnapshot = kind === 'agent' ? '' : scrollbackBuffer.snapshot()
+    const shouldGateInitialUserInput = shouldGateRestoredAgentInput({
+      kind,
+      persistedSnapshot: rendererBaselineSnapshot,
+      agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+      agentLaunchMode: agentLaunchModeRef.current,
+    })
+    const shouldAwaitAgentVisibleOutput = shouldAwaitRestoredAgentVisibleOutput({
+      kind,
+      agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+      agentLaunchMode: agentLaunchModeRef.current,
+    })
     const committedScrollbackBuffer = createRollingTextBuffer({
       maxChars: MAX_SCROLLBACK_CHARS,
-      initial: persistedSnapshot,
+      initial: rendererBaselineSnapshot,
     })
     const windowsPty = window.opencoveApi.meta?.windowsPty ?? null
     const inputDiagnosticsEnabled = window.opencoveApi.meta?.enableTerminalInputDiagnostics === true
@@ -160,8 +128,13 @@ export function useTerminalRuntimeSession({
       window.opencoveApi.debug?.logTerminalDiagnostics ?? (() => undefined)
     const preservedSession = preservedXtermSessionRef.current
     preservedXtermSessionRef.current = null
+    const canReusePreservedSession = shouldReusePreservedXtermSession({
+      preservedSession,
+      terminalClientResetVersion,
+    })
+    const hasPreservedVisibleBaseline = canReusePreservedSession && preservedSession !== null
     const session =
-      preservedSession ??
+      (canReusePreservedSession ? preservedSession : null) ??
       createMountedXtermSession({
         nodeId,
         ownerId: `${nodeId}:${sessionId}`,
@@ -181,8 +154,19 @@ export function useTerminalRuntimeSession({
         syncTerminalSize,
         diagnosticsEnabled,
         logTerminalDiagnostics,
+        initialViewportZoom: viewportZoomRef.current,
+        preferredRendererMode,
+        onRendererIssue: issue => {
+          requestTerminalRendererRecovery({
+            ...issue,
+            trigger: 'context_loss',
+          })
+        },
       })
-    if (preservedSession) {
+    if (preservedSession && !canReusePreservedSession) {
+      preservedSession.dispose()
+    }
+    if (canReusePreservedSession && preservedSession) {
       session.terminal.options.disableStdin = false
       session.terminal.options.cursorBlink = true
       session.diagnostics.dispose()
@@ -207,11 +191,6 @@ export function useTerminalRuntimeSession({
     fitAddonRef.current = session.fitAddon
     const terminal = session.terminal
     setRendererKindAndApply(session.renderer.kind)
-    const disposePositionObserver = registerWebglPixelSnappingMutationObserver({
-      container: containerRef.current,
-      isWebglRenderer: () => activeRendererKindRef.current === 'webgl',
-      scheduleWebglPixelSnapping,
-    })
     const disposeInteractionWindow = registerTerminalUserInteractionWindow({
       container: containerRef.current,
       interactionAtRef: recentUserInteractionAtRef,
@@ -222,27 +201,12 @@ export function useTerminalRuntimeSession({
     }
     const serializeAddon = session.serializeAddon
     const terminalDiagnostics = session.diagnostics
-
-    let testEnvironmentAutoFocusFrame: number | null = null
-    if (isTestEnvironment && containerRef.current) {
-      testEnvironmentAutoFocusFrame = window.requestAnimationFrame(() => {
-        const activeElement =
-          document.activeElement instanceof Element ? document.activeElement : null
-        const activeTerminalScope =
-          activeElement?.closest('[data-cove-focus-scope="terminal"]') ?? null
-        const shouldAutoFocusTerminal =
-          !activeElement ||
-          activeElement === document.body ||
-          activeElement === document.documentElement ||
-          activeTerminalScope === containerRef.current
-
-        if (shouldAutoFocusTerminal) {
-          terminal.focus()
-        }
-
-        scheduleTranscriptSync()
-      })
-    }
+    const testEnvironmentAutoFocusFrame = scheduleTestEnvironmentTerminalAutoFocus({
+      enabled: isTestEnvironment,
+      container: containerRef.current,
+      terminal,
+      scheduleTranscriptSync,
+    })
     const runtimeInputBridge = createRuntimeTerminalInputBridge({
       terminal,
       sessionId,
@@ -257,13 +221,74 @@ export function useTerminalRuntimeSession({
       inputDiagnosticsEnabled,
       terminalDiagnostics,
     })
+    session.disposePlaceholderHandoffInputCapture?.()
+    session.disposePlaceholderHandoffInputCapture = undefined
     const { ptyWriteQueue } = runtimeInputBridge
-    const openCodeThemeBridge =
-      terminalProvider === 'opencode'
-        ? createOpenCodeTuiThemeBridge({ terminal, ptyWriteQueue, terminalThemeMode })
-        : null
+    const disposeRuntimeTestHandles = registerTerminalRuntimeTestHandles({
+      enabled: isTestEnvironment,
+      nodeId,
+      sessionId,
+      emitBinaryInput: data => {
+        markRecentTerminalUserInteraction(recentUserInteractionAtRef)
+        ptyWriteQueue.enqueue(data, 'binary')
+        ptyWriteQueue.flush()
+        return true
+      },
+    })
+    const openCodeThemeBridge = createOptionalOpenCodeThemeBridge({
+      terminalProvider,
+      terminal,
+      ptyWriteQueue,
+      terminalThemeMode,
+    })
     let isDisposed = false
+    let protectRestoredVisibleBaseline: () => void = () => undefined
+    const restoredAgentVisibilityGate = createRestoredAgentVisibilityGate({
+      terminal,
+      shouldAwaitAgentVisibleOutput,
+      shouldGateInitialUserInput,
+      isDisposed: () => isDisposed,
+      markHydrated: () => {
+        isTerminalHydratedRef.current = true
+        setIsTerminalHydrated(true)
+      },
+      protectVisibleBaseline: () => {
+        protectRestoredVisibleBaseline()
+      },
+      scheduleTranscriptSync,
+      reportThemeMode: () => openCodeThemeBridge?.reportThemeMode(),
+      releaseBufferedUserInput: runtimeInputBridge.releaseBufferedUserInput,
+      log: terminalDiagnostics.log,
+    })
     const ptyEventHub = getPtyEventHub()
+    const hydrationBaselineSourceRef: { current: TerminalHydrationBaselineSource } = {
+      current: resolveRuntimeHydrationBaselineSource({
+        preservedSession,
+        cachedScreenState,
+        rendererBaselineSnapshot,
+      }),
+    }
+    const { attachPromise, presentationSnapshotPromise } = prepareRuntimePresentationAttach({
+      ptyApi: resolveAttachablePtyApi(),
+      sessionId,
+      isLiveSessionReattach,
+      commitInitialGeometry: createRuntimeInitialGeometryCommitter({
+        terminalRef,
+        fitAddonRef,
+        containerRef,
+        isPointerResizingRef,
+        lastCommittedPtySizeRef,
+        sessionId,
+        canonicalInitialGeometry: initialTerminalGeometryRef.current,
+        allowMeasuredResizeCommit: initialTerminalGeometryRef.current === null,
+      }),
+      requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({
+        kind,
+        isLiveSessionReattach,
+        agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+        agentLaunchMode: agentLaunchModeRef.current,
+      }),
+    })
     const committedScreenStateRecorder = createCommittedScreenStateRecorder({
       serializeAddon,
       sessionId,
@@ -277,6 +302,7 @@ export function useTerminalRuntimeSession({
         committedScrollbackBuffer.append(data)
         committedScreenStateRecorder.record(committedScrollbackBuffer.snapshot())
         scheduleTranscriptSync()
+        restoredAgentVisibilityGate.notifyWriteCommitted(data)
       },
     })
     outputSchedulerRef.current = outputScheduler
@@ -284,9 +310,17 @@ export function useTerminalRuntimeSession({
     const hydrationRouter = createTerminalHydrationRouter({
       terminal,
       outputScheduler,
-      shouldReplaceAgentPlaceholderAfterHydration: shouldProtectRestoredAgentHistory,
-      shouldDeferHydratedRedrawChunks: shouldProtectRestoredAgentHistory,
-      hasRecentUserInteraction: () => hasRecentTerminalUserInteraction(recentUserInteractionAtRef),
+      shouldReplaceAgentPlaceholderAfterHydration: () =>
+        shouldTreatHydratedAgentBaselineAsPlaceholder({
+          kind,
+          agentResumeSessionIdVerified: agentResumeSessionIdVerifiedRef.current === true,
+          agentLaunchMode: agentLaunchModeRef.current,
+          persistedSnapshot: kind === 'agent' ? '' : scrollbackBuffer.snapshot(),
+          baselineSource: hydrationBaselineSourceRef.current,
+        }),
+      shouldReplaceAuthoritativeBaselineWithBufferedOutput: () => kind === 'agent',
+      shouldDeferHydratedRedrawChunks: () =>
+        hasPreservedVisibleBaseline || hasVisibleTerminalBufferContent(terminal),
       scrollbackBuffer,
       committedScrollbackBuffer,
       recordCommittedScreenState: nextRawSnapshot => {
@@ -299,99 +333,92 @@ export function useTerminalRuntimeSession({
         terminalDiagnostics.logHydrated(details)
       },
       syncTerminalSize,
-      onRevealed: () => {
-        if (!isDisposed) {
-          isTerminalHydratedRef.current = true
-          setIsTerminalHydrated(true)
-          scheduleTranscriptSync()
-          openCodeThemeBridge?.reportThemeMode()
-        }
+      onReplayWriteCommitted: () => {
+        restoredAgentVisibilityGate.notifyReplayWriteCommitted()
       },
+      onRevealed: restoredAgentVisibilityGate.revealAfterHydration,
       isDisposed: () => isDisposed,
     })
-    const unsubscribeData = ptyEventHub.onSessionData(sessionId, event => {
-      openCodeThemeBridge?.handlePtyOutputChunk(event.data)
-      hydrationRouter.handleDataChunk(event.data)
+    protectRestoredVisibleBaseline = hydrationRouter.protectHydratedVisibleBaseline
+    const unsubscribeRuntimeEvents = subscribeRuntimeTerminalEvents({
+      ptyEventHub,
+      sessionId,
+      openCodeThemeBridge,
+      diagnosticsEnabled,
+      terminalDiagnostics,
+      restoredAgentVisibilityGate,
+      hydrationRouter,
+      lastCommittedPtySizeRef,
+      terminal,
+      syncTerminalSize,
+      scheduleTranscriptSync,
+      requestTerminalRendererRecovery,
     })
-    const unsubscribeExit = ptyEventHub.onSessionExit(sessionId, event => {
-      hydrationRouter.handleExit(event.exitCode)
-    })
-    const attachPromise = Promise.resolve(ptyWithOptionalAttach.attach?.({ sessionId }))
-    void hydrateTerminalFromSnapshot({
+    const shouldSkipInitialPlaceholderWrite =
+      hasPreservedVisibleBaseline && hasVisibleTerminalBufferContent(terminal)
+    startRuntimeTerminalHydration({
       attachPromise,
       sessionId,
       terminal,
-      kind: kind === 'agent' ? 'agent' : 'terminal',
-      useLivePtySnapshotDuringHydration: kind !== 'agent' || isLiveSessionReattach,
-      skipInitialPlaceholderWrite: preservedSession !== null,
+      kind,
+      isLiveSessionReattach,
+      shouldSkipInitialPlaceholderWrite,
       cachedScreenState,
-      persistedSnapshot: scrollbackBuffer.snapshot(),
-      takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
+      scrollbackBuffer,
+      committedScrollbackBuffer,
+      committedScreenStateRecorder,
+      scheduleTranscriptSync,
+      presentationSnapshotPromise,
+      hydrationBaselineSourceRef,
+      lastCommittedPtySizeRef,
+      runtimeInputBridge,
+      hydrationRouter,
+      shouldGateInitialUserInput,
+      shouldAwaitAgentVisibleOutput,
       isDisposed: () => isDisposed,
-      onHydratedWriteCommitted: rawSnapshot => {
-        committedScrollbackBuffer.set(rawSnapshot)
-        committedScreenStateRecorder.record(rawSnapshot)
-        scheduleTranscriptSync()
-      },
-      finalizeHydration: rawSnapshot => {
-        runtimeInputBridge.enableTerminalDataForwarding()
-        hydrationRouter.finalizeHydration(rawSnapshot)
-        if (shouldGateInitialUserInput) {
-          window.setTimeout(() => {
-            if (isDisposed) {
-              return
-            }
-            runtimeInputBridge.releaseBufferedUserInput()
-          }, RESTORED_AGENT_INPUT_GATE_DELAY_MS)
-          return
-        }
-
-        runtimeInputBridge.releaseBufferedUserInput()
+    })
+    const disposeRuntimeRendererAndThemeSync = registerRuntimeRendererAndThemeSync({
+      terminal,
+      renderer: session.renderer,
+      containerRef,
+      activeRendererKindRef,
+      isTerminalHydratedRef,
+      syncTerminalSize,
+      scheduleWebglPixelSnapping,
+      log: terminalDiagnostics.log,
+      requestRecovery: requestTerminalRendererRecovery,
+      terminalThemeMode,
+      applyTerminalTheme,
+      reportOpenCodeThemeMode: () => {
+        openCodeThemeBridge?.reportThemeMode()
       },
     })
-    const resizeObserver = new ResizeObserver(syncTerminalSize)
-    if (containerRef.current) {
-      resizeObserver.observe(containerRef.current)
-    }
-    const disposeLayoutSync = registerTerminalLayoutSync(syncTerminalSize)
-    const handleThemeChange = () => {
-      if (terminalThemeMode !== 'sync-with-ui') {
-        return
-      }
-      applyTerminalTheme()
-      session.renderer.clearTextureAtlas()
-      syncTerminalSize()
-      openCodeThemeBridge?.reportThemeMode()
-    }
-    window.addEventListener('opencove-theme-changed', handleThemeChange)
-    const clearPendingUserInputBuffer = (): void => {
-      pendingUserInputBufferRef.current.length = 0
-    }
     return () => {
       if (testEnvironmentAutoFocusFrame !== null) {
         window.cancelAnimationFrame(testEnvironmentAutoFocusFrame)
       }
       suppressPtyResizeRef.current = false
       const isInvalidated = isCachedTerminalScreenStateInvalidated(nodeId, sessionId)
-      cacheTerminalScreenStateOnUnmount({
-        nodeId,
-        isInvalidated,
-        isTerminalHydrated: isTerminalHydratedRef.current,
-        hasPendingWrites: outputScheduler.hasPendingWrites(),
-        rawSnapshot: scrollbackBuffer.snapshot(),
-        resolveCommittedScreenState: committedScreenStateRecorder.resolve,
-      })
+      if (kind !== 'agent') {
+        cacheTerminalScreenStateOnUnmount({
+          nodeId,
+          isInvalidated,
+          isTerminalHydrated: isTerminalHydratedRef.current,
+          hasPendingWrites: outputScheduler.hasPendingWrites(),
+          rawSnapshot: scrollbackBuffer.snapshot(),
+          resolveCommittedScreenState: committedScreenStateRecorder.resolve,
+        })
+      }
       isDisposed = true
-      disposeLayoutSync()
-      window.removeEventListener('opencove-theme-changed', handleThemeChange)
-      resizeObserver.disconnect()
+      disposeRuntimeRendererAndThemeSync()
       disposeInteractionWindow()
-      unsubscribeData()
-      unsubscribeExit()
+      unsubscribeRuntimeEvents()
+      restoredAgentVisibilityGate.dispose()
       outputScheduler.dispose()
       outputSchedulerRef.current = null
+      disposeRuntimeTestHandles()
       runtimeInputBridge.dispose()
-      clearPendingUserInputBuffer()
+      pendingUserInputBuffer.length = 0
       openCodeThemeBridge?.dispose()
       if (isInvalidated) {
         cancelScrollbackPublish()
@@ -403,7 +430,6 @@ export function useTerminalRuntimeSession({
       terminalRef.current = null
       fitAddonRef.current = null
       activeRendererKindRef.current = 'dom'
-      disposePositionObserver()
       cancelWebglPixelSnapping()
     }
   }, [
@@ -424,15 +450,17 @@ export function useTerminalRuntimeSession({
     syncTerminalSize,
     terminalThemeMode,
     terminalProvider,
+    initialTerminalGeometryRef,
     isTestEnvironment,
     kind,
     agentLaunchModeRef,
     agentResumeSessionIdVerifiedRef,
-    statusRef,
     titleRef,
     outputSchedulerRef,
     isViewportInteractionActiveRef,
+    isPointerResizingRef,
     suppressPtyResizeRef,
+    lastCommittedPtySizeRef,
     commandInputStateRef,
     onCommandRunRef,
     terminalRef,
@@ -445,5 +473,10 @@ export function useTerminalRuntimeSession({
     recentUserInteractionAtRef,
     pendingUserInputBufferRef,
     isLiveSessionReattach,
+    terminalFontSize,
+    viewportZoomRef,
+    preferredRendererMode,
+    terminalClientResetVersion,
+    requestTerminalRendererRecovery,
   ])
 }

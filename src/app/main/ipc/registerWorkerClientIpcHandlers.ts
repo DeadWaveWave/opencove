@@ -17,7 +17,7 @@ import {
 
 export function registerWorkerClientIpcHandlers(): IpcRegistrationDisposable {
   const configOptions = {
-    allowStandaloneMode: app.isPackaged === false,
+    allowStandaloneMode: false,
     allowRemoteMode: app.isPackaged === false,
   }
 

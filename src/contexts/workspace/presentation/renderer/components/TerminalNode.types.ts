@@ -6,6 +6,7 @@ import type {
   WorkspaceNodeKind,
 } from '../types'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { TerminalPtyGeometry } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { TerminalThemeMode } from './terminalNode/theme'
 
@@ -28,6 +29,7 @@ export interface TerminalNodeProps {
   terminalThemeMode?: TerminalThemeMode
   isSelected?: boolean
   isDragging?: boolean
+  terminalGeometry?: TerminalPtyGeometry | null
   status: AgentRuntimeStatus | null
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   lastError: string | null

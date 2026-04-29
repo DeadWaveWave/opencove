@@ -5,6 +5,7 @@ import type {
   WorkspaceSpaceRect,
   WorkspaceSpaceState,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { SPACE_MIN_SIZE } from '../../../src/contexts/workspace/presentation/renderer/utils/spaceLayout'
 import { arrangeWorkspaceInSpace } from '../../../src/contexts/workspace/presentation/renderer/utils/workspaceArrange'
 
 function createTerminalNode({
@@ -134,6 +135,40 @@ describe('workspace arrange utils', () => {
         expect(rectsOverlap(rects[i]!, rects[j]!)).toBe(false)
       }
     }
+  })
+
+  it('arranges a single node inside a space', () => {
+    const nodes = [
+      createTerminalNode({
+        id: 'solo',
+        position: { x: 320, y: 260 },
+        size: { width: 420, height: 280 },
+      }),
+    ]
+
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'space-1',
+        name: 'Space 1',
+        directoryPath: '/tmp',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: ['solo'],
+        rect: { x: 100, y: 200, width: 900, height: 700 },
+      },
+    ]
+
+    const result = arrangeWorkspaceInSpace({
+      spaceId: 'space-1',
+      nodes,
+      spaces,
+      style: { alignCanonicalSizes: false },
+    })
+
+    expect(result.didChange).toBe(true)
+    expect(result.warnings).toEqual([])
+    expect(result.nodes[0]?.position).toEqual({ x: 124, y: 224 })
+    expect(result.spaces[0]?.rect).toEqual({ x: 100, y: 200, ...SPACE_MIN_SIZE })
   })
 
   it('no-ops when a space has no room for bounded packing', () => {

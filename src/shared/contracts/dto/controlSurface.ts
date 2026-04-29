@@ -1,4 +1,6 @@
 import type { AgentProviderId } from './agent'
+import type { TerminalPtyGeometry } from './terminal'
+import type { PresentationSnapshotTerminalResult } from './terminal'
 import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
 
@@ -44,7 +46,15 @@ export interface ControlSurfaceCapabilitiesResult {
   }
 }
 
-export type CanvasNodeKind = 'terminal' | 'agent' | 'task' | 'note' | 'image' | 'unknown'
+export type CanvasNodeKind =
+  | 'terminal'
+  | 'agent'
+  | 'task'
+  | 'note'
+  | 'image'
+  | 'document'
+  | 'website'
+  | 'unknown'
 
 export interface CanvasNodeSummary {
   id: string
@@ -172,6 +182,8 @@ export interface LaunchAgentSessionInput {
   resumeSessionId?: string | null
   env?: Record<string, string> | null
   agentFullAccess?: boolean | null
+  cols?: number | null
+  rows?: number | null
 }
 
 export interface LaunchAgentSessionInMountInput {
@@ -184,6 +196,8 @@ export interface LaunchAgentSessionInMountInput {
   resumeSessionId?: string | null
   env?: Record<string, string> | null
   agentFullAccess?: boolean | null
+  cols?: number | null
+  rows?: number | null
 }
 
 export interface LaunchAgentSessionResult {
@@ -268,6 +282,59 @@ export interface GetSessionSnapshotResult {
   toSeq: number
   scrollback: string
   truncated: boolean
+}
+
+export interface GetSessionPresentationSnapshotInput {
+  sessionId: string
+}
+
+export interface GetSessionPresentationSnapshotResult extends PresentationSnapshotTerminalResult {}
+
+export interface PrepareOrReviveSessionInput {
+  workspaceId: string
+  nodeIds?: string[] | null
+}
+
+export interface PreparedRuntimeAgentResult {
+  provider: AgentProviderId
+  prompt: string
+  model: string | null
+  effectiveModel: string | null
+  launchMode: 'new' | 'resume'
+  resumeSessionId: string | null
+  resumeSessionIdVerified: boolean
+  executionDirectory: string
+  expectedDirectory: string | null
+  directoryMode: 'workspace' | 'custom'
+  customDirectory: string | null
+  shouldCreateDirectory: boolean
+  taskId: string | null
+}
+
+export interface PreparedRuntimeNodeResult {
+  nodeId: string
+  kind: 'terminal' | 'agent'
+  recoveryState: 'live' | 'revived' | 'restarted' | 'fallback_terminal'
+  sessionId: string
+  isLiveSessionReattach: boolean
+  title: string
+  profileId: string | null
+  runtimeKind: 'windows' | 'wsl' | 'posix' | null
+  status: string | null
+  startedAt: string | null
+  endedAt: string | null
+  exitCode: number | null
+  lastError: string | null
+  scrollback: string | null
+  executionDirectory: string | null
+  expectedDirectory: string | null
+  terminalGeometry: TerminalPtyGeometry | null
+  agent: PreparedRuntimeAgentResult | null
+}
+
+export interface PrepareOrReviveSessionResult {
+  workspaceId: string
+  nodes: PreparedRuntimeNodeResult[]
 }
 
 export type ControlSurfaceTerminalRuntime = 'shell' | 'node'

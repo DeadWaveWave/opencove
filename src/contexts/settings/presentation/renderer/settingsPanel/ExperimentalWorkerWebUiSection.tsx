@@ -257,7 +257,7 @@ export function ExperimentalWorkerWebUiSection(): React.JSX.Element {
   )
 
   return (
-    <div className="settings-panel__subsection">
+    <div className="settings-panel__subsection" id="settings-section-worker-web-ui">
       <div className="settings-panel__subsection-header">
         <h4 className="settings-panel__section-title">
           {t('settingsPanel.experimental.workerWebUi.title')}

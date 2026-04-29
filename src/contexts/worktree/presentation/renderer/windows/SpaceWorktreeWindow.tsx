@@ -81,9 +81,11 @@ export function SpaceWorktreeWindow({
   const [startPoint, setStartPoint] = useState('HEAD')
   const [existingBranchName, setExistingBranchName] = useState('')
   const [isSuggesting, setIsSuggesting] = useState(false)
+  const [deleteWorktreeOnArchive, setDeleteWorktreeOnArchive] = useState(
+    agentSettings.archiveSpaceDeleteWorktreeByDefault,
+  )
   const [deleteBranchOnArchive, setDeleteBranchOnArchive] = useState(false)
   const [forceArchiveConfirmed, setForceArchiveConfirmed] = useState(false)
-  const [skipArchiveHistory, setSkipArchiveHistory] = useState(false)
   const [guard, setGuard] = useState<
     (SpaceWorktreeGuardState & { pending: PendingOperation; spaceId: string }) | null
   >(null)
@@ -141,14 +143,21 @@ export function SpaceWorktreeWindow({
     setExistingBranchName('')
     setIsSuggesting(false)
     setIsMutating(false)
-    setDeleteBranchOnArchive(false)
+    setDeleteWorktreeOnArchive(agentSettings.archiveSpaceDeleteWorktreeByDefault)
+    setDeleteBranchOnArchive(agentSettings.archiveSpaceDeleteBranchByDefault)
     setForceArchiveConfirmed(false)
-    setSkipArchiveHistory(false)
     setGuard(null)
     setError(null)
 
     void refresh()
-  }, [refresh, resolvedInitialViewMode, spaceId, spaceIdentity])
+  }, [
+    agentSettings.archiveSpaceDeleteBranchByDefault,
+    agentSettings.archiveSpaceDeleteWorktreeByDefault,
+    refresh,
+    resolvedInitialViewMode,
+    spaceId,
+    spaceIdentity,
+  ])
 
   useEffect(() => {
     if (changedFileCount === 0) {
@@ -332,76 +341,81 @@ export function SpaceWorktreeWindow({
     t,
   ])
 
-  const handleArchive = useCallback(async () => {
-    if (!space) {
-      return
-    }
-    if (!isSpaceOnWorkspaceRoot && changedFileCount > 0 && !forceArchiveConfirmed) {
-      return
-    }
-
-    const shouldSaveArchiveRecord = !skipArchiveHistory
-    const git = shouldSaveArchiveRecord
-      ? await resolveSpaceArchiveGitSnapshot({
-          agentSettings,
-          workspacePath: worktreeRepoRootPath,
-          isSpaceOnWorkspaceRoot,
-          spaceDirectoryPath: space.directoryPath,
-          currentBranch,
-          currentWorktree,
-        })
-      : null
-
-    const snapshot = shouldSaveArchiveRecord ? buildSpaceArchiveRecord({ space, nodes, git }) : null
-    setError(null)
-    setIsMutating(true)
-    try {
-      const canContinue = await closeBlockingNodesForArchive(
-        space.id,
-        getBlockingNodes,
-        closeNodesById,
-      )
-      if (!canContinue) {
-        setError(t('worktreeGuard.closeFailed'))
+  const handleArchive = useCallback(
+    async (saveArchiveRecord: boolean) => {
+      if (!space) {
         return
       }
-      await executePendingOperation(space.id, {
-        kind: 'archive',
-        worktreePath: isSpaceOnWorkspaceRoot ? null : space.directoryPath,
-        deleteBranch: isSpaceOnWorkspaceRoot ? false : deleteBranchOnArchive,
-        archiveSpace: true,
-        force: true,
-      })
-      if (snapshot) {
-        onAppendSpaceArchiveRecord(snapshot)
+      if (!isSpaceOnWorkspaceRoot && changedFileCount > 0 && !forceArchiveConfirmed) {
+        return
       }
-      onClose()
-    } catch (operationError) {
-      setError(toSpaceWorktreeErrorMessage(operationError, t))
-    } finally {
-      setIsMutating(false)
-    }
-  }, [
-    agentSettings,
-    closeNodesById,
-    currentBranch,
-    currentWorktree,
-    changedFileCount,
-    deleteBranchOnArchive,
-    executePendingOperation,
-    forceArchiveConfirmed,
-    getBlockingNodes,
-    isSpaceOnWorkspaceRoot,
-    skipArchiveHistory,
-    onClose,
-    onAppendSpaceArchiveRecord,
-    space,
-    t,
-    nodes,
-    worktreeRepoRootPath,
-  ])
+
+      const git = saveArchiveRecord
+        ? await resolveSpaceArchiveGitSnapshot({
+            agentSettings,
+            workspacePath: worktreeRepoRootPath,
+            isSpaceOnWorkspaceRoot,
+            spaceDirectoryPath: space.directoryPath,
+            currentBranch,
+            currentWorktree,
+          })
+        : null
+
+      const snapshot = saveArchiveRecord ? buildSpaceArchiveRecord({ space, nodes, git }) : null
+      setError(null)
+      setIsMutating(true)
+      try {
+        const canContinue = await closeBlockingNodesForArchive(
+          space.id,
+          getBlockingNodes,
+          closeNodesById,
+        )
+        if (!canContinue) {
+          setError(t('worktreeGuard.closeFailed'))
+          return
+        }
+        await executePendingOperation(space.id, {
+          kind: 'archive',
+          worktreePath:
+            !isSpaceOnWorkspaceRoot && deleteWorktreeOnArchive ? space.directoryPath : null,
+          deleteBranch:
+            !isSpaceOnWorkspaceRoot && deleteWorktreeOnArchive ? deleteBranchOnArchive : false,
+          archiveSpace: true,
+          force: true,
+        })
+        if (snapshot) {
+          onAppendSpaceArchiveRecord(snapshot)
+        }
+        onClose()
+      } catch (operationError) {
+        setError(toSpaceWorktreeErrorMessage(operationError, t))
+      } finally {
+        setIsMutating(false)
+      }
+    },
+    [
+      agentSettings,
+      closeNodesById,
+      currentBranch,
+      currentWorktree,
+      changedFileCount,
+      deleteWorktreeOnArchive,
+      deleteBranchOnArchive,
+      executePendingOperation,
+      forceArchiveConfirmed,
+      getBlockingNodes,
+      isSpaceOnWorkspaceRoot,
+      onClose,
+      onAppendSpaceArchiveRecord,
+      space,
+      t,
+      nodes,
+      worktreeRepoRootPath,
+    ],
+  )
   const panelHandlers = useSpaceWorktreePanelHandlers({
     setError,
+    setDeleteWorktreeOnArchive,
     setDeleteBranchOnArchive,
     setForceArchiveConfirmed,
     setBranchMode,
@@ -411,7 +425,6 @@ export function SpaceWorktreeWindow({
     handleSuggestNames,
     handleCreate,
     handleArchive,
-    setSkipArchiveHistory,
   })
   if (!space) {
     return null
@@ -434,9 +447,9 @@ export function SpaceWorktreeWindow({
         newBranchName={newBranchName}
         startPoint={startPoint}
         existingBranchName={existingBranchName}
+        deleteWorktreeOnArchive={deleteWorktreeOnArchive}
         deleteBranchOnArchive={deleteBranchOnArchive}
         forceArchiveConfirmed={forceArchiveConfirmed}
-        skipArchiveHistory={skipArchiveHistory}
         archiveAgentCount={archiveCounts.agentCount}
         archiveTerminalCount={archiveCounts.terminalCount}
         archiveTaskCount={archiveCounts.taskCount}
@@ -451,10 +464,11 @@ export function SpaceWorktreeWindow({
         onExistingBranchNameChange={panelHandlers.onExistingBranchNameChange}
         onSuggestNames={panelHandlers.onSuggestNames}
         onCreate={panelHandlers.onCreate}
+        onDeleteWorktreeOnArchiveChange={panelHandlers.onDeleteWorktreeOnArchiveChange}
         onDeleteBranchOnArchiveChange={panelHandlers.onDeleteBranchOnArchiveChange}
         onForceArchiveConfirmedChange={panelHandlers.onForceArchiveConfirmedChange}
-        onSkipArchiveHistoryChange={panelHandlers.onSkipArchiveHistoryChange}
         onArchive={panelHandlers.onArchive}
+        onCloseOnly={panelHandlers.onCloseOnly}
       />
       {guard ? (
         <SpaceWorktreeGuardWindow

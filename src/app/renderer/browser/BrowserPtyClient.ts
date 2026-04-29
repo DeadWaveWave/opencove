@@ -2,6 +2,8 @@ import type {
   AttachTerminalInput,
   DetachTerminalInput,
   KillTerminalInput,
+  PresentationSnapshotTerminalInput,
+  PresentationSnapshotTerminalResult,
   ResizeTerminalInput,
   SnapshotTerminalInput,
   SnapshotTerminalResult,
@@ -9,11 +11,14 @@ import type {
   SpawnTerminalResult,
   TerminalDataEvent,
   TerminalExitEvent,
+  TerminalGeometryEvent,
+  TerminalResyncEvent,
   TerminalSessionMetadataEvent,
   TerminalSessionStateEvent,
   WriteTerminalInput,
 } from '@shared/contracts/dto'
 import { getBrowserQueryToken, invokeBrowserControlSurface } from './browserControlSurface'
+import { BrowserPtyClientMetadataWatcher } from './BrowserPtyClientMetadataWatcher'
 
 type UnsubscribeFn = () => void
 
@@ -23,10 +28,26 @@ type AttachedSessionState = {
   lastSeq: number
 }
 
+function normalizeAttachAfterSeq(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return null
+  }
+
+  return Math.floor(value)
+}
+
 function emitToListeners<TEvent>(listeners: PtyListenerMap<TEvent>, event: TEvent): void {
   listeners.forEach(listener => {
     listener(event)
   })
+}
+
+function normalizeTerminalSessionState(value: unknown): 'working' | 'standby' | null {
+  if (value === 'working' || value === 'standby') {
+    return value
+  }
+
+  return null
 }
 
 function resolvePtyWebSocketUrl(): string {
@@ -44,106 +65,21 @@ export class BrowserPtyClient {
   private socketReadyPromise: Promise<void> | null = null
   private reconnectTimer: number | null = null
   private attachedSessions = new Map<string, AttachedSessionState>()
-  private readonly metadataWatchers = new Map<
-    string,
-    { timer: number | null; attempt: number; cancelled: boolean }
-  >()
   private readonly dataListeners = new Set<(event: TerminalDataEvent) => void>()
   private readonly exitListeners = new Set<(event: TerminalExitEvent) => void>()
+  private readonly geometryListeners = new Set<(event: TerminalGeometryEvent) => void>()
+  private readonly resyncListeners = new Set<(event: TerminalResyncEvent) => void>()
   private readonly stateListeners = new Set<(event: TerminalSessionStateEvent) => void>()
   private readonly metadataListeners = new Set<(event: TerminalSessionMetadataEvent) => void>()
-
-  private cancelMetadataWatcher(sessionId: string): void {
-    const watcher = this.metadataWatchers.get(sessionId)
-    if (!watcher) {
-      return
-    }
-
-    watcher.cancelled = true
-    if (watcher.timer !== null) {
-      window.clearTimeout(watcher.timer)
-      watcher.timer = null
-    }
-
-    this.metadataWatchers.delete(sessionId)
-  }
-
-  private ensureAgentMetadataWatcher(sessionId: string): void {
-    if (this.metadataListeners.size === 0) {
-      return
-    }
-
-    const normalizedSessionId = sessionId.trim()
-    if (normalizedSessionId.length === 0) {
-      return
-    }
-
-    if (this.metadataWatchers.has(normalizedSessionId)) {
-      return
-    }
-
-    const watcher: { timer: number | null; attempt: number; cancelled: boolean } = {
-      timer: null,
-      attempt: 0,
-      cancelled: false,
-    }
-    this.metadataWatchers.set(normalizedSessionId, watcher)
-
-    const attemptResolve = async (): Promise<void> => {
-      if (watcher.cancelled) {
-        return
-      }
-
-      try {
-        await invokeBrowserControlSurface({
-          kind: 'query',
-          id: 'session.get',
-          payload: { sessionId: normalizedSessionId },
-        })
-      } catch {
-        this.cancelMetadataWatcher(normalizedSessionId)
-        return
-      }
-
-      try {
-        const final = await invokeBrowserControlSurface<{ resumeSessionId: string | null }>({
-          kind: 'query',
-          id: 'session.finalMessage',
-          payload: { sessionId: normalizedSessionId },
-        })
-
-        const resumeSessionId =
-          typeof final.resumeSessionId === 'string' && final.resumeSessionId.trim().length > 0
-            ? final.resumeSessionId.trim()
-            : null
-
-        if (resumeSessionId) {
-          emitToListeners(this.metadataListeners, {
-            sessionId: normalizedSessionId,
-            resumeSessionId,
-          })
-          this.cancelMetadataWatcher(normalizedSessionId)
-          return
-        }
-      } catch {
-        // Ignore session.finalMessage failures; we will retry with backoff.
-      }
-
-      if (watcher.attempt >= 6) {
-        this.cancelMetadataWatcher(normalizedSessionId)
-        return
-      }
-
-      const delayMs = Math.min(750 * 2 ** watcher.attempt, 6_000)
-      watcher.attempt += 1
-      watcher.timer = window.setTimeout(() => {
-        watcher.timer = null
-        void attemptResolve()
-      }, delayMs)
-    }
-
-    void attemptResolve()
-  }
+  private readonly latestStateBySessionId = new Map<string, TerminalSessionStateEvent>()
+  private readonly latestMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
+  private readonly metadataWatcher = new BrowserPtyClientMetadataWatcher({
+    hasListeners: () => this.metadataListeners.size > 0,
+    emit: event => {
+      this.latestMetadataBySessionId.set(event.sessionId, event)
+      emitToListeners(this.metadataListeners, event)
+    },
+  })
 
   private ensureSocket(): Promise<void> {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
@@ -253,7 +189,7 @@ export class BrowserPtyClient {
       if (existing) {
         existing.lastSeq = Math.max(existing.lastSeq, seq)
       }
-      emitToListeners(this.dataListeners, { sessionId, data })
+      emitToListeners(this.dataListeners, { sessionId, data, seq })
       return
     }
 
@@ -266,27 +202,82 @@ export class BrowserPtyClient {
       return
     }
 
-    if (type === 'overflow') {
-      try {
-        const snapshot = await this.snapshot({ sessionId })
-        const existing = this.attachedSessions.get(sessionId)
-        if (existing) {
-          const toSeq =
-            typeof record.seq === 'number' && Number.isFinite(record.seq)
-              ? Math.floor(record.seq)
-              : existing.lastSeq
-          existing.lastSeq = Math.max(existing.lastSeq, toSeq)
-        }
+    if (type === 'geometry') {
+      const cols =
+        typeof record.cols === 'number' && Number.isFinite(record.cols)
+          ? Math.floor(record.cols)
+          : 0
+      const rows =
+        typeof record.rows === 'number' && Number.isFinite(record.rows)
+          ? Math.floor(record.rows)
+          : 0
+      const reason =
+        record.reason === 'frame_commit' || record.reason === 'appearance_commit'
+          ? record.reason
+          : null
 
-        if (snapshot.data.length > 0) {
-          emitToListeners(this.dataListeners, {
-            sessionId,
-            data: snapshot.data,
-          })
-        }
-      } catch {
-        // ignore snapshot recovery failures
+      if (cols <= 0 || rows <= 0 || !reason) {
+        return
       }
+
+      emitToListeners(this.geometryListeners, { sessionId, cols, rows, reason })
+      return
+    }
+
+    if (type === 'state') {
+      const state = normalizeTerminalSessionState(record.state)
+      if (!state) {
+        return
+      }
+
+      const eventPayload: TerminalSessionStateEvent = { sessionId, state }
+      this.latestStateBySessionId.set(sessionId, eventPayload)
+      emitToListeners(this.stateListeners, eventPayload)
+      return
+    }
+
+    if (type === 'metadata') {
+      const resumeSessionId =
+        typeof record.resumeSessionId === 'string' && record.resumeSessionId.trim().length > 0
+          ? record.resumeSessionId.trim()
+          : null
+      const profileId =
+        typeof record.profileId === 'string' && record.profileId.trim().length > 0
+          ? record.profileId.trim()
+          : null
+      const runtimeKind =
+        record.runtimeKind === 'windows' ||
+        record.runtimeKind === 'wsl' ||
+        record.runtimeKind === 'posix'
+          ? record.runtimeKind
+          : null
+
+      const eventPayload: TerminalSessionMetadataEvent = {
+        sessionId,
+        resumeSessionId,
+        ...(profileId ? { profileId } : {}),
+        ...(runtimeKind ? { runtimeKind } : {}),
+      }
+      this.latestMetadataBySessionId.set(sessionId, eventPayload)
+      emitToListeners(this.metadataListeners, eventPayload)
+      this.metadataWatcher.cancel(sessionId)
+      return
+    }
+
+    if (type === 'overflow') {
+      const reason = record.reason === 'replay_window_exceeded' ? record.reason : null
+      const recovery = record.recovery === 'presentation_snapshot' ? record.recovery : null
+
+      if (!reason || !recovery) {
+        return
+      }
+
+      emitToListeners(this.resyncListeners, {
+        sessionId,
+        reason,
+        recovery,
+      })
+      return
     }
   }
 
@@ -339,6 +330,7 @@ export class BrowserPtyClient {
       sessionId: payload.sessionId,
       cols: payload.cols,
       rows: payload.rows,
+      reason: payload.reason,
     })
   }
 
@@ -351,24 +343,26 @@ export class BrowserPtyClient {
   }
 
   public async attach(payload: AttachTerminalInput): Promise<void> {
-    const existing = this.attachedSessions.get(payload.sessionId)
-    if (!existing) {
-      this.attachedSessions.set(payload.sessionId, { lastSeq: 0 })
+    const state = this.attachedSessions.get(payload.sessionId) ?? { lastSeq: 0 }
+    const afterSeq = normalizeAttachAfterSeq(payload.afterSeq)
+    if (afterSeq !== null) {
+      state.lastSeq = Math.max(state.lastSeq, afterSeq)
     }
+    this.attachedSessions.set(payload.sessionId, state)
 
     await this.sendSocketMessage({
       type: 'attach',
       sessionId: payload.sessionId,
-      afterSeq: existing && existing.lastSeq > 0 ? existing.lastSeq : undefined,
+      afterSeq: state.lastSeq > 0 ? state.lastSeq : undefined,
       role: 'controller',
     })
 
-    this.ensureAgentMetadataWatcher(payload.sessionId)
+    this.metadataWatcher.ensure(payload.sessionId)
   }
 
   public async detach(payload: DetachTerminalInput): Promise<void> {
     this.attachedSessions.delete(payload.sessionId)
-    this.cancelMetadataWatcher(payload.sessionId)
+    this.metadataWatcher.cancel(payload.sessionId)
     if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
       return
     }
@@ -401,6 +395,23 @@ export class BrowserPtyClient {
     return { data: snapshot.scrollback }
   }
 
+  public async presentationSnapshot(
+    payload: PresentationSnapshotTerminalInput,
+  ): Promise<PresentationSnapshotTerminalResult> {
+    const snapshot = await invokeBrowserControlSurface<PresentationSnapshotTerminalResult>({
+      kind: 'query',
+      id: 'session.presentationSnapshot',
+      payload,
+    })
+
+    const existing = this.attachedSessions.get(payload.sessionId)
+    if (existing) {
+      existing.lastSeq = Math.max(existing.lastSeq, snapshot.appliedSeq)
+    }
+
+    return snapshot
+  }
+
   public async debugCrashHost(): Promise<void> {
     throw new Error('PTY host crash is unavailable in browser runtime')
   }
@@ -419,8 +430,25 @@ export class BrowserPtyClient {
     }
   }
 
+  public onGeometry(listener: (event: TerminalGeometryEvent) => void): UnsubscribeFn {
+    this.geometryListeners.add(listener)
+    return () => {
+      this.geometryListeners.delete(listener)
+    }
+  }
+
+  public onResync(listener: (event: TerminalResyncEvent) => void): UnsubscribeFn {
+    this.resyncListeners.add(listener)
+    return () => {
+      this.resyncListeners.delete(listener)
+    }
+  }
+
   public onState(listener: (event: TerminalSessionStateEvent) => void): UnsubscribeFn {
     this.stateListeners.add(listener)
+    this.latestStateBySessionId.forEach(event => {
+      listener(event)
+    })
     return () => {
       this.stateListeners.delete(listener)
     }
@@ -428,6 +456,9 @@ export class BrowserPtyClient {
 
   public onMetadata(listener: (event: TerminalSessionMetadataEvent) => void): UnsubscribeFn {
     this.metadataListeners.add(listener)
+    this.latestMetadataBySessionId.forEach(event => {
+      listener(event)
+    })
     return () => {
       this.metadataListeners.delete(listener)
     }

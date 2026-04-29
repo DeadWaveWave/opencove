@@ -30,6 +30,7 @@ import {
   normalizePullRequestBaseBranchOptions,
   normalizeProvider,
   normalizeScrollback,
+  normalizeTerminalGeometry,
   normalizeTaskPriority,
   normalizeTaskRuntimeStatus,
   normalizeTaskTags,
@@ -335,6 +336,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
     kind,
     profileId: normalizeOptionalString(record.profileId),
     runtimeKind,
+    terminalGeometry: normalizeTerminalGeometry(record.terminalGeometry),
     terminalProviderHint:
       record.terminalProviderHint === 'claude-code' ||
       record.terminalProviderHint === 'codex' ||

@@ -45,6 +45,7 @@ export interface WorkspaceCanvasProps {
   agentSettings: AgentSettings
   isFocusNodeTargetZoomPreviewing?: boolean
   focusNodeId?: string | null
+  focusSpaceId?: string | null
   focusSequence?: number
 }
 

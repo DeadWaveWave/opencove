@@ -18,8 +18,8 @@ async function writeAgentPlaceholder(window: Page, nodeId: string, scrollback: s
   expect(result.ok).toBe(true)
 }
 
-test.describe('Recovery - Worker client placeholder persistence', () => {
-  test('persists and restores agent placeholder scrollback via worker control-surface', async () => {
+test.describe('Recovery - Worker client agent renderer restore', () => {
+  test('does not render persisted agent placeholder scrollback via worker control-surface', async () => {
     const userDataDir = await createTestUserDataDir()
     let workerChild: ChildProcessWithoutNullStreams | null = null
 
@@ -68,7 +68,7 @@ test.describe('Recovery - Worker client placeholder persistence', () => {
       try {
         await expect(restartedWindow.locator('.workspace-item')).toHaveCount(1)
         await expect(restartedWindow.locator('.terminal-node')).toHaveCount(1)
-        await expect(restartedWindow.locator('.terminal-node').first()).toContainText(
+        await expect(restartedWindow.locator('.terminal-node').first()).not.toContainText(
           'WORKER_PLACEHOLDER',
         )
       } finally {

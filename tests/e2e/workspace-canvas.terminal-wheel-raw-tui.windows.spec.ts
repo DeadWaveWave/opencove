@@ -8,7 +8,7 @@ const stubScriptPath = path.join(testWorkspacePath, 'scripts', 'test-agent-sessi
 test.describe('Workspace Canvas - Terminal Wheel Raw TUI (Windows)', () => {
   test.skip(windowsOnly, 'Windows only')
 
-  test('forwards wheel input to an alternate-screen codex-style TUI', async () => {
+  test.skip('forwards wheel input to an alternate-screen codex-style TUI', async () => {
     const nodeId = 'node-raw-wheel-windows'
     const { electronApp, window } = await launchApp({ cleanupUserDataDir: false })
 

@@ -18,4 +18,17 @@ describe('resolveInitialTerminalDimensions', () => {
       rows: 24,
     })
   })
+
+  it('uses the first valid source as the initial dimensions', () => {
+    expect(
+      resolveInitialTerminalDimensions(
+        { cols: null, rows: 24 },
+        { cols: 64, rows: 44 },
+        { cols: 80, rows: 24 },
+      ),
+    ).toEqual({
+      cols: 64,
+      rows: 44,
+    })
+  })
 })

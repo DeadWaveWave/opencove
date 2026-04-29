@@ -86,6 +86,7 @@ export function toRuntimeNodes(workspace: PersistedWorkspaceState): Node<Termina
         isLiveSessionReattach: false,
         profileId: node.profileId,
         runtimeKind: node.runtimeKind,
+        terminalGeometry: node.terminalGeometry ?? null,
         terminalProviderHint: node.terminalProviderHint ?? null,
         labelColorOverride: node.labelColorOverride ?? null,
         title: node.title,

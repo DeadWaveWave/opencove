@@ -1,10 +1,17 @@
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
-import type { TerminalDataEvent, TerminalExitEvent } from '../../../../shared/contracts/dto'
+import type {
+  PresentationSnapshotTerminalResult,
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalGeometryCommitReason,
+  TerminalGeometryEvent,
+} from '../../../../shared/contracts/dto'
 import {
   appendSnapshotData,
   createEmptySnapshotState,
   snapshotToString,
 } from '../../../../platform/process/pty/snapshot'
+import { TerminalPresentationSession } from '../../../../platform/terminal/presentation/TerminalPresentationSession'
 import type { SnapshotState } from '../../../../platform/process/pty/snapshot'
 import type {
   SessionStateWatcherStartInput,
@@ -34,6 +41,8 @@ export class TerminalSessionManager {
   private readonly activeSessions = new Set<string>()
   private readonly terminatedSessions = new Set<string>()
   private readonly snapshots = new Map<string, SnapshotState>()
+  private readonly presentationSessions = new Map<string, TerminalPresentationSession>()
+  private readonly presentationSeqs = new Map<string, number>()
 
   private readonly pendingPtyDataChunksBySession = new Map<string, string[]>()
   private readonly pendingPtyDataCharsBySession = new Map<string, number>()
@@ -169,18 +178,25 @@ export class TerminalSessionManager {
       return
     }
 
+    const nextSeq = (this.presentationSeqs.get(sessionId) ?? 0) + 1
     if (this.activeSessions.has(sessionId)) {
       const snapshot = this.snapshots.get(sessionId)
       if (snapshot) {
         appendSnapshotData(snapshot, data)
       }
+
+      this.presentationSeqs.set(sessionId, nextSeq)
+      const presentationSession =
+        this.presentationSessions.get(sessionId) ?? new TerminalPresentationSession({ sessionId })
+      this.presentationSessions.set(sessionId, presentationSession)
+      void presentationSession.applyOutput(nextSeq, data)
     }
 
     if (!this.hasPtyDataSubscribers(sessionId)) {
       return
     }
 
-    const eventPayload: TerminalDataEvent = { sessionId, data }
+    const eventPayload: TerminalDataEvent = { sessionId, data, seq: nextSeq }
     this.sendPtyDataToSubscribers(eventPayload)
   }
 
@@ -254,6 +270,10 @@ export class TerminalSessionManager {
     if (!this.snapshots.has(sessionId)) {
       this.snapshots.set(sessionId, createEmptySnapshotState())
     }
+    if (!this.presentationSessions.has(sessionId)) {
+      this.presentationSessions.set(sessionId, new TerminalPresentationSession({ sessionId }))
+    }
+    this.presentationSeqs.set(sessionId, 0)
   }
 
   attach(contentsId: number, sessionId: string): void {
@@ -297,6 +317,39 @@ export class TerminalSessionManager {
     return snapshotToString(snapshot)
   }
 
+  async presentationSnapshot(sessionId: string): Promise<PresentationSnapshotTerminalResult> {
+    this.flushPtyDataBroadcast(sessionId)
+    const presentationSession = this.presentationSessions.get(sessionId)
+    if (!presentationSession) {
+      throw new Error(`Unknown terminal session: ${sessionId}`)
+    }
+
+    return await presentationSession.snapshot()
+  }
+
+  resize(
+    sessionId: string,
+    cols: number,
+    rows: number,
+    reason?: TerminalGeometryCommitReason,
+  ): { cols: number; rows: number; changed: boolean } {
+    const presentationSession =
+      this.presentationSessions.get(sessionId) ?? new TerminalPresentationSession({ sessionId })
+    this.presentationSessions.set(sessionId, presentationSession)
+    const geometry = presentationSession.resize(cols, rows)
+
+    if (geometry.changed && reason) {
+      this.sendToAllWindows(IPC_CHANNELS.ptyGeometry, {
+        sessionId,
+        cols: geometry.cols,
+        rows: geometry.rows,
+        reason,
+      } satisfies TerminalGeometryEvent)
+    }
+
+    return geometry
+  }
+
   kill(sessionId: string): void {
     this.flushPtyDataBroadcast(sessionId)
     this.sessionStateWatcher.disposeSession(sessionId)
@@ -304,6 +357,9 @@ export class TerminalSessionManager {
     this.activeSessions.delete(sessionId)
     this.terminatedSessions.add(sessionId)
     this.snapshots.delete(sessionId)
+    this.presentationSeqs.delete(sessionId)
+    this.presentationSessions.get(sessionId)?.dispose()
+    this.presentationSessions.delete(sessionId)
   }
 
   startSessionStateWatcher(input: SessionStateWatcherStartInput): void {
@@ -327,5 +383,8 @@ export class TerminalSessionManager {
     this.activeSessions.clear()
     this.terminatedSessions.clear()
     this.snapshots.clear()
+    this.presentationSeqs.clear()
+    this.presentationSessions.forEach(session => session.dispose())
+    this.presentationSessions.clear()
   }
 }

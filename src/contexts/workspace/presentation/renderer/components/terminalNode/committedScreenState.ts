@@ -53,20 +53,25 @@ export function captureCommittedTerminalScreenState({
 export function writeTerminalChunkAndCapture({
   terminal,
   data,
+  terminalData = data,
   committedScrollbackBuffer,
   onCommittedScreenState,
+  onWriteCommitted,
 }: {
   terminal: Terminal
   data: string
+  terminalData?: string
   committedScrollbackBuffer: {
     append: (data: string) => void
     snapshot: () => string
   }
   onCommittedScreenState: (rawSnapshot: string) => void
+  onWriteCommitted?: () => void
 }): void {
-  terminal.write(data, () => {
+  terminal.write(terminalData, () => {
     committedScrollbackBuffer.append(data)
     onCommittedScreenState(committedScrollbackBuffer.snapshot())
+    onWriteCommitted?.()
   })
 }
 

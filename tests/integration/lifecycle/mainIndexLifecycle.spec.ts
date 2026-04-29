@@ -62,12 +62,12 @@ describe('main process lifecycle', () => {
         openExternal: vi.fn(),
       },
       BrowserWindow,
-      nativeImage: {
-        createFromPath: vi.fn(),
-      },
       Menu: {
-        buildFromTemplate: vi.fn(template => template),
         setApplicationMenu: vi.fn(),
+        buildFromTemplate: vi.fn(template => template),
+      },
+      nativeImage: {
+        createFromPath: vi.fn(() => ({})),
       },
     }))
 
@@ -103,6 +103,22 @@ describe('main process lifecycle', () => {
       hasOwnedLocalWorkerProcess: () => false,
       startLocalWorker: vi.fn(async () => ({ status: 'stopped', connection: null })),
       stopOwnedLocalWorker: vi.fn(async () => true),
+    }))
+
+    vi.doMock('../../../src/app/main/worker/resolveHomeWorkerEndpoint', () => ({
+      resolveHomeWorkerEndpoint: vi.fn(async () => ({
+        effectiveMode: 'local',
+        config: null,
+        diagnostics: [],
+      })),
+    }))
+
+    vi.doMock('../../../src/app/main/worker/homeWorkerEndpointResolver', () => ({
+      createHomeWorkerEndpointResolver: vi.fn(() => async () => ({
+        hostname: '127.0.0.1',
+        port: 43123,
+        token: 'test-token',
+      })),
     }))
 
     await import('../../../src/app/main/index')

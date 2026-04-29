@@ -6,11 +6,18 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { readFlagValue, requireFlagValue, resolveTimeoutMs, stripGlobalOptions } from './args.mjs'
-import { resolveConnectionInfo } from './connection.mjs'
+import { resolveConnectionInfo, resolveWorkerConnectionInfo } from './connection.mjs'
 import { invokeAndPrint, invokeControlSurface } from './invoke.mjs'
 import { printUsage } from './usage.mjs'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from './constants.mjs'
 import { tryHandleMultiEndpointCommands } from './commands/multiEndpoint.mjs'
+import { tryHandleNodeControlCommands } from './commands/nodeControl.mjs'
+import {
+  getWorkerLifecycleStatus,
+  printWorkerLifecycleResult,
+  stopWorkerLifecycle,
+  WorkerLifecycleError,
+} from './workerLifecycle.mjs'
 
 function toErrorMessage(error) {
   if (error instanceof Error) {
@@ -78,6 +85,8 @@ async function main() {
       workerArgs.push('--hostname', hostname)
     }
 
+    workerArgs.push('--started-by', 'cli')
+
     if (advertiseHostname) {
       workerArgs.push('--advertise-hostname', advertiseHostname)
     }
@@ -143,6 +152,42 @@ async function main() {
     return
   }
 
+  if (command === 'worker' && args[1] === 'status' && !endpoint) {
+    const status = await getWorkerLifecycleStatus({
+      all: args.includes('--all'),
+      userData: readFlagValue(args, '--user-data'),
+      timeoutMs,
+    })
+    printWorkerLifecycleResult(status, pretty)
+    return
+  }
+
+  if (command === 'worker' && args[1] === 'stop') {
+    if (endpoint) {
+      process.stderr.write('[opencove] worker stop only supports local workers.\n')
+      process.exit(2)
+    }
+
+    try {
+      const result = await stopWorkerLifecycle({
+        userData: readFlagValue(args, '--user-data'),
+        pid: readFlagValue(args, '--pid'),
+        force: args.includes('--force'),
+        timeoutMs,
+      })
+      printWorkerLifecycleResult(result, pretty)
+      return
+    } catch (error) {
+      if (error instanceof WorkerLifecycleError) {
+        process.stderr.write(`${error.message}\n`)
+        process.exit(2)
+      }
+
+      throw error
+    }
+  }
+
+  const isWorkerStatusCommand = command === 'worker' && args[1] === 'status'
   const capabilitiesRequest = { kind: 'query', id: 'system.capabilities', payload: null }
 
   const connection = endpoint
@@ -168,11 +213,13 @@ async function main() {
 
         return { hostname: parsed.hostname, port, token }
       })()
-    : await resolveConnectionInfo()
+    : await (isWorkerStatusCommand ? resolveWorkerConnectionInfo() : resolveConnectionInfo())
 
   if (!connection) {
     process.stderr.write(
-      '[opencove] control surface is not running (no valid connection info found).\n',
+      isWorkerStatusCommand
+        ? '[opencove] worker control surface is not running (no valid connection info found).\n'
+        : '[opencove] control surface is not running (no valid connection info found).\n',
     )
     process.exit(2)
   }
@@ -221,7 +268,19 @@ async function main() {
     return
   }
 
-  if (command === 'worker' && args[1] === 'status') {
+  if (
+    await tryHandleNodeControlCommands({
+      command,
+      args,
+      connection,
+      pretty,
+      timeoutMs,
+    })
+  ) {
+    return
+  }
+
+  if (isWorkerStatusCommand) {
     await invokeAndPrint(
       connection,
       { kind: 'query', id: 'system.ping', payload: null },

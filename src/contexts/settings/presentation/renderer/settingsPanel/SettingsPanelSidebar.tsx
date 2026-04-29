@@ -1,24 +1,82 @@
-import type { JSX } from 'react'
+import { useMemo, useState, type JSX } from 'react'
+import { Search } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
 import { getFolderName, getWorkspacePageId, type SettingsPageId } from '../SettingsPanel.shared'
 import { SettingsPanelNavButton } from './SettingsPanelNavButton'
+import {
+  createSettingsSearchEntries,
+  searchSettingsEntries,
+  type SettingsSearchResult,
+} from './settingsSearchIndex'
 
 export function SettingsPanelSidebar({
   activePageId,
   workspaces,
   endpointsEnabled,
   onSelectPage,
+  onSelectSearchResult,
 }: {
   activePageId: SettingsPageId
   workspaces: WorkspaceState[]
   endpointsEnabled: boolean
   onSelectPage: (pageId: SettingsPageId) => void
+  onSelectSearchResult: (result: SettingsSearchResult) => void
 }): JSX.Element {
   const { t } = useTranslation()
+  const [searchQuery, setSearchQuery] = useState('')
+  const searchEntries = useMemo(
+    () => createSettingsSearchEntries({ t, workspaces, endpointsEnabled }),
+    [endpointsEnabled, t, workspaces],
+  )
+  const searchResults = useMemo(
+    () => searchSettingsEntries(searchEntries, searchQuery),
+    [searchEntries, searchQuery],
+  )
+  const hasSearchQuery = searchQuery.trim().length > 0
+  const visibleSearchResults = searchResults.slice(0, 8)
 
   return (
     <aside className="settings-panel__sidebar" aria-label={t('settingsPanel.nav.sectionsLabel')}>
+      <div className="settings-panel__search">
+        <div className="settings-panel__search-input-shell">
+          <Search className="settings-panel__search-icon" size={14} aria-hidden="true" />
+          <input
+            id="settings-panel-search"
+            className="cove-field settings-panel__search-input"
+            type="search"
+            value={searchQuery}
+            aria-label={t('settingsPanel.search.label')}
+            placeholder={t('settingsPanel.search.placeholder')}
+            data-testid="settings-panel-search"
+            onChange={event => setSearchQuery(event.target.value)}
+          />
+        </div>
+      </div>
+
+      {hasSearchQuery ? (
+        <div className="settings-panel__search-results" data-testid="settings-panel-search-results">
+          {visibleSearchResults.length > 0 ? (
+            visibleSearchResults.map(result => (
+              <button
+                key={result.id}
+                type="button"
+                className="settings-panel__search-result"
+                data-testid={`settings-panel-search-result-${result.id}`}
+                onClick={() => onSelectSearchResult(result)}
+              >
+                <span className="settings-panel__search-result-title">{result.title}</span>
+                <span className="settings-panel__search-result-page">{result.pageLabel}</span>
+              </button>
+            ))
+          ) : (
+            <div className="settings-panel__search-empty">
+              {t('settingsPanel.search.noResults')}
+            </div>
+          )}
+        </div>
+      ) : null}
+
       <SettingsPanelNavButton
         isActive={activePageId === 'general'}
         label={t('settingsPanel.nav.general')}

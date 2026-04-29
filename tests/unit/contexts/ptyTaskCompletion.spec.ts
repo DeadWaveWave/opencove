@@ -1,12 +1,20 @@
-import { describe, expect, it } from 'vitest'
-import { updateWorkspacesWithAgentExit } from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
+import { afterEach, describe, expect, it } from 'vitest'
+import {
+  appendInactiveTerminalScrollback,
+  resolveInactiveTerminalNodeForSession,
+  updateWorkspacesWithAgentExit,
+} from '../../../src/app/renderer/shell/hooks/usePtyWorkspaceRuntimeSync'
 import {
   applyAgentExitToNodes,
   applyAgentStateToNodes,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/usePtyTaskCompletion'
-import type { WorkspaceState } from '../../../src/contexts/workspace/presentation/renderer/types'
+import { useScrollbackStore } from '../../../src/contexts/workspace/presentation/renderer/store/useScrollbackStore'
 
 describe('PTY task completion side effects', () => {
+  afterEach(() => {
+    useScrollbackStore.getState().clearAllScrollbacks()
+  })
+
   it('returns the original node array when a state event does not change any agent node', () => {
     const prevNodes = [
       {
@@ -277,7 +285,6 @@ describe('PTY task completion side effects', () => {
     const result = updateWorkspacesWithAgentExit({
       workspaces,
       sessionId: 'session-1',
-      excludeWorkspaceId: null,
       exitCode: 0,
       now: '2026-03-15T08:00:00.000Z',
     })
@@ -286,5 +293,109 @@ describe('PTY task completion side effects', () => {
     expect(result.nextWorkspaces[0]?.nodes[0]?.data.status).toBe('exited')
     expect(result.nextWorkspaces[0]?.nodes[1]?.data.kind).toBe('task')
     expect(result.nextWorkspaces[0]?.nodes[1]?.data.task?.status).toBe('doing')
+  })
+
+  it('resolves only inactive terminal nodes for background scrollback sync', () => {
+    const workspaces = [
+      {
+        id: 'workspace-a',
+        name: 'A',
+        path: '/tmp/a',
+        worktreesRoot: '/tmp/a/.worktrees',
+        nodes: [
+          {
+            id: 'terminal-a',
+            type: 'terminal',
+            position: { x: 0, y: 0 },
+            data: {
+              kind: 'terminal',
+              title: 'A',
+              sessionId: 'session-a',
+              status: null,
+              startedAt: null,
+              endedAt: null,
+              exitCode: null,
+              lastError: null,
+              scrollback: 'active',
+              agent: null,
+              task: null,
+              note: null,
+              image: null,
+              document: null,
+              website: null,
+              width: 320,
+              height: 240,
+            },
+          },
+        ],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        isMinimapVisible: true,
+        spaces: [],
+        activeSpaceId: null,
+        spaceArchiveRecords: [],
+      },
+      {
+        id: 'workspace-b',
+        name: 'B',
+        path: '/tmp/b',
+        worktreesRoot: '/tmp/b/.worktrees',
+        nodes: [
+          {
+            id: 'terminal-b',
+            type: 'terminal',
+            position: { x: 0, y: 0 },
+            data: {
+              kind: 'terminal',
+              title: 'B',
+              sessionId: 'session-b',
+              status: null,
+              startedAt: null,
+              endedAt: null,
+              exitCode: null,
+              lastError: null,
+              scrollback: 'inactive',
+              agent: null,
+              task: null,
+              note: null,
+              image: null,
+              document: null,
+              website: null,
+              width: 320,
+              height: 240,
+            },
+          },
+        ],
+        viewport: { x: 0, y: 0, zoom: 1 },
+        isMinimapVisible: true,
+        spaces: [],
+        activeSpaceId: null,
+        spaceArchiveRecords: [],
+      },
+    ] satisfies WorkspaceState[]
+
+    expect(
+      resolveInactiveTerminalNodeForSession({
+        workspaces,
+        activeWorkspaceId: 'workspace-a',
+        sessionId: 'session-a',
+      }),
+    ).toBeNull()
+    expect(
+      resolveInactiveTerminalNodeForSession({
+        workspaces,
+        activeWorkspaceId: 'workspace-a',
+        sessionId: 'session-b',
+      }),
+    ).toEqual({ nodeId: 'terminal-b', scrollback: 'inactive' })
+  })
+
+  it('appends inactive terminal chunks to the shared scrollback store', () => {
+    appendInactiveTerminalScrollback({
+      nodeId: 'terminal-b',
+      baseScrollback: 'before',
+      chunk: ' after',
+    })
+
+    expect(useScrollbackStore.getState().scrollbackByNodeId['terminal-b']).toBe('before after')
   })
 })

@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process'
+import { accessSync, constants, existsSync, statfsSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
@@ -22,6 +23,7 @@ const CRASH_SIGNATURE_PATTERNS = [
   /process crashed/i,
   /page crashed/i,
 ]
+const LINUX_CI_LARGE_TMP_DIR = '/mnt'
 
 function isTruthyEnv(rawValue) {
   if (!rawValue) {
@@ -35,13 +37,68 @@ function hasCrashSignature(output) {
   return CRASH_SIGNATURE_PATTERNS.some(pattern => pattern.test(output))
 }
 
-async function cleanupE2ETempDirs() {
+function maybeResolveLargeLinuxTmpDir() {
+  if (
+    process.platform !== 'linux' ||
+    !isTruthyEnv(process.env.CI) ||
+    !existsSync(LINUX_CI_LARGE_TMP_DIR)
+  ) {
+    return null
+  }
+
+  try {
+    accessSync(LINUX_CI_LARGE_TMP_DIR, constants.W_OK)
+    return LINUX_CI_LARGE_TMP_DIR
+  } catch {
+    return null
+  }
+}
+
+function readAvailableBytes(targetDir) {
+  try {
+    accessSync(targetDir, constants.W_OK)
+    const stats = statfsSync(targetDir)
+    return Math.max(0, Number(stats.bavail) * Number(stats.bsize))
+  } catch {
+    return -1
+  }
+}
+
+function resolvePreferredE2ETmpDir() {
   const configuredTmpDir = process.env['OPENCOVE_E2E_TMPDIR']?.trim()
+  if (configuredTmpDir) {
+    return configuredTmpDir
+  }
+
   const runnerTempDir = process.env['RUNNER_TEMP']?.trim()
+  const fallbackDir = runnerTempDir || tmpdir()
+  const candidates = [maybeResolveLargeLinuxTmpDir(), runnerTempDir, tmpdir()].filter(
+    value => typeof value === 'string' && value.length > 0,
+  )
+
+  let preferredDir = fallbackDir
+  let preferredAvailableBytes = -1
+
+  for (const candidate of new Set(candidates)) {
+    const availableBytes = readAvailableBytes(candidate)
+    if (availableBytes > preferredAvailableBytes) {
+      preferredDir = candidate
+      preferredAvailableBytes = availableBytes
+    }
+  }
+
+  return preferredDir
+}
+
+async function cleanupE2ETempDirs() {
+  const preferredTmpDir = resolvePreferredE2ETmpDir()
   const candidates = new Set(
-    [configuredTmpDir, runnerTempDir, tmpdir()].filter(
-      value => typeof value === 'string' && value.trim().length > 0,
-    ),
+    [
+      preferredTmpDir,
+      maybeResolveLargeLinuxTmpDir(),
+      process.env['RUNNER_TEMP']?.trim(),
+      tmpdir(),
+    ].filter(value => typeof value === 'string' && value.trim().length > 0),
   )
 
   await Promise.all(
@@ -134,6 +191,7 @@ async function main() {
   const isCi = isTruthyEnv(process.env.CI)
   const currentWindowMode = resolveWindowMode(process.env['OPENCOVE_E2E_WINDOW_MODE'])
   const fallbackWindowMode = resolveFallbackWindowMode(currentWindowMode)
+  const preferredE2ETmpDir = resolvePreferredE2ETmpDir()
 
   try {
     if (!isTruthyEnv(process.env['OPENCOVE_E2E_SKIP_BUILD'])) {
@@ -146,6 +204,7 @@ async function main() {
     const firstRunArgs = ['exec', 'playwright', 'test', ...forwardedArgs]
     const firstRun = await runCommand(firstRunArgs, {
       ...process.env,
+      OPENCOVE_E2E_TMPDIR: preferredE2ETmpDir,
       OPENCOVE_E2E_WINDOW_MODE: currentWindowMode,
     })
     if (firstRun.code === 0) {
@@ -174,6 +233,7 @@ async function main() {
 
     const fallbackRun = await runCommand(['exec', 'playwright', 'test', '--last-failed'], {
       ...process.env,
+      OPENCOVE_E2E_TMPDIR: preferredE2ETmpDir,
       OPENCOVE_E2E_WINDOW_MODE: fallbackWindowMode,
     })
 

@@ -84,7 +84,7 @@ export const en = {
     sidebar: 'Sidebar',
     minimap: 'Minimap',
     theme: 'Theme',
-    agentStandbyBanner: 'Agent standby banner',
+    agentStandbyBanner: 'Top-right banner',
     on: 'On',
     off: 'Off',
   },
@@ -295,6 +295,7 @@ export const en = {
   terminalNode: {
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
+    recoveringAgentSession: 'Recovering live Agent session…',
   },
   terminalFind: {
     placeholder: 'Find…',

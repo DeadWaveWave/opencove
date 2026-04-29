@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { mkdir } from 'node:fs/promises'
-import { readCanvasViewport } from './workspace-canvas.helpers'
+import { readCanvasViewport, readLocatorClientRect } from './workspace-canvas.helpers'
 
 type CanonicalSizeBucket = 'compact' | 'regular' | 'large'
 type CanonicalNodeKind = 'terminal' | 'task' | 'agent' | 'note'
@@ -74,11 +74,7 @@ export async function openPaneContextMenuAtFlowPoint(
   pane: Locator,
   point: { x: number; y: number },
 ): Promise<void> {
-  const box = await pane.boundingBox()
-  if (!box) {
-    throw new Error('Pane bounding box not available')
-  }
-
+  const box = await readLocatorClientRect(pane)
   const viewport = await readCanvasViewport(window)
   const clientX = box.x + point.x * viewport.zoom + viewport.x
   const clientY = box.y + point.y * viewport.zoom + viewport.y
@@ -103,11 +99,7 @@ export async function clickPaneAtFlowPoint(
   pane: Locator,
   point: { x: number; y: number },
 ): Promise<void> {
-  const box = await pane.boundingBox()
-  if (!box) {
-    throw new Error('Pane bounding box not available')
-  }
-
+  const box = await readLocatorClientRect(pane)
   const viewport = await readCanvasViewport(window)
   await window.mouse.click(
     box.x + point.x * viewport.zoom + viewport.x,
@@ -128,8 +120,8 @@ export async function openPaneContextMenuInSpace(
 
   const inset = 12
   await openPaneContextMenuAtFlowPoint(window, pane, {
-    x: rect.x + inset,
-    y: rect.y + Math.max(inset, Math.min(760, rect.height - inset)),
+    x: rect.x + Math.max(inset, Math.min(rect.width / 2, rect.width - inset)),
+    y: rect.y + Math.max(inset, Math.min(rect.height / 2, rect.height - inset)),
   })
 }
 

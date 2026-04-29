@@ -1,4 +1,6 @@
 const CSI_PREFIX = '\u001b['
+const OSC_PREFIX = '\u001b]'
+const OSC_STRING_TERMINATOR = '\u001b\\'
 
 const AUTOMATIC_TERMINAL_QUERY_SEQUENCES = [
   { pattern: /^6n$/u, reply: '\u001b[1;1R' },
@@ -14,6 +16,14 @@ const AUTOMATIC_TERMINAL_REPLY_PATTERNS = [
   /^\?\d+(?:;\d+)*c$/u,
   /^>\d+(?:;\d+)*c$/u,
   /^\?\d+(?:;\d+)*u$/u,
+  /^\?\d+(?:;\d+)*\$y$/u,
+] as const
+
+const TERMINAL_COLOR_VALUE_PATTERN = String.raw`(?:rgb|rgba):[0-9a-fA-F]{1,4}(?:/[0-9a-fA-F]{1,4}){2,3}`
+
+const AUTOMATIC_TERMINAL_OSC_REPLY_PATTERNS = [
+  new RegExp(String.raw`^(?:1[0-9]|[4-9]);${TERMINAL_COLOR_VALUE_PATTERN}$`, 'u'),
+  new RegExp(String.raw`^4;\d+;${TERMINAL_COLOR_VALUE_PATTERN}$`, 'u'),
 ] as const
 
 function isCsiFinalByte(charCode: number): boolean {
@@ -43,6 +53,31 @@ function readCsiSequence(
   }
 }
 
+function readOscSequence(
+  data: string,
+  startIndex: number,
+): { payload: string; endIndex: number } | null {
+  if (!data.startsWith(OSC_PREFIX, startIndex)) {
+    return null
+  }
+
+  const payloadStart = startIndex + OSC_PREFIX.length
+  const bellEndIndex = data.indexOf('\u0007', payloadStart)
+  const stEndIndex = data.indexOf(OSC_STRING_TERMINATOR, payloadStart)
+
+  if (bellEndIndex === -1 && stEndIndex === -1) {
+    return null
+  }
+
+  const useBell = bellEndIndex !== -1 && (stEndIndex === -1 || bellEndIndex < stEndIndex)
+  const payloadEndIndex = useBell ? bellEndIndex : stEndIndex
+
+  return {
+    payload: data.slice(payloadStart, payloadEndIndex),
+    endIndex: payloadEndIndex + (useBell ? 0 : OSC_STRING_TERMINATOR.length - 1),
+  }
+}
+
 function matchesRecognizedCsiSequenceChunk(data: string, patterns: readonly RegExp[]): boolean {
   if (!data.startsWith(CSI_PREFIX)) {
     return false
@@ -68,6 +103,45 @@ function matchesRecognizedCsiSequenceChunk(data: string, patterns: readonly RegE
   return sawRecognizedSequence
 }
 
+function matchesRecognizedTerminalReplyChunk(data: string): boolean {
+  if (!data.startsWith('\u001b')) {
+    return false
+  }
+
+  let cursor = 0
+  let sawRecognizedSequence = false
+
+  while (cursor < data.length) {
+    const csiSequence = readCsiSequence(data, cursor)
+    if (csiSequence) {
+      if (!AUTOMATIC_TERMINAL_REPLY_PATTERNS.some(pattern => pattern.test(csiSequence.payload))) {
+        return false
+      }
+
+      sawRecognizedSequence = true
+      cursor = csiSequence.endIndex + 1
+      continue
+    }
+
+    const oscSequence = readOscSequence(data, cursor)
+    if (oscSequence) {
+      if (
+        !AUTOMATIC_TERMINAL_OSC_REPLY_PATTERNS.some(pattern => pattern.test(oscSequence.payload))
+      ) {
+        return false
+      }
+
+      sawRecognizedSequence = true
+      cursor = oscSequence.endIndex + 1
+      continue
+    }
+
+    return false
+  }
+
+  return sawRecognizedSequence
+}
+
 function resolveAutomaticTerminalQueryReply(payload: string): string | null {
   const match = AUTOMATIC_TERMINAL_QUERY_SEQUENCES.find(sequence => sequence.pattern.test(payload))
   return match?.reply ?? null
@@ -81,7 +155,37 @@ export function isAutomaticTerminalQuery(data: string): boolean {
 }
 
 export function isAutomaticTerminalReply(data: string): boolean {
-  return matchesRecognizedCsiSequenceChunk(data, AUTOMATIC_TERMINAL_REPLY_PATTERNS)
+  return matchesRecognizedTerminalReplyChunk(data)
+}
+
+export function extractAutomaticTerminalQuerySequences(data: string): string[] {
+  if (!data.includes(CSI_PREFIX)) {
+    return []
+  }
+
+  let cursor = 0
+  const queries: string[] = []
+
+  while (cursor < data.length) {
+    const nextSequenceIndex = data.indexOf(CSI_PREFIX, cursor)
+    if (nextSequenceIndex === -1) {
+      break
+    }
+
+    const sequence = readCsiSequence(data, nextSequenceIndex)
+    if (!sequence) {
+      break
+    }
+
+    const reply = resolveAutomaticTerminalQueryReply(sequence.payload)
+    if (reply) {
+      queries.push(data.slice(nextSequenceIndex, sequence.endIndex + 1))
+    }
+
+    cursor = sequence.endIndex + 1
+  }
+
+  return queries
 }
 
 export function stripAutomaticTerminalQueriesFromOutput(data: string): {

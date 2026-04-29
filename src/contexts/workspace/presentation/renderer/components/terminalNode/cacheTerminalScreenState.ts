@@ -33,7 +33,6 @@ export function cacheTerminalScreenStateOnUnmount({
   setCachedTerminalScreenState(nodeId, {
     sessionId: latestCommittedScreenState.sessionId,
     serialized: latestCommittedScreenState.serialized,
-    rawSnapshot: latestCommittedScreenState.rawSnapshot,
     cols: latestCommittedScreenState.cols,
     rows: latestCommittedScreenState.rows,
   })

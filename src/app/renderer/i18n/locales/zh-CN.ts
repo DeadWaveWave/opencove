@@ -86,7 +86,7 @@ export const zhCN = {
     sidebar: '侧边栏',
     minimap: '缩略图',
     theme: '主题',
-    agentStandbyBanner: 'Agent 完成提醒',
+    agentStandbyBanner: '右上角横幅',
     on: '已开启',
     off: '已关闭',
   },
@@ -294,6 +294,7 @@ export const zhCN = {
   terminalNode: {
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
+    recoveringAgentSession: '正在恢复实时 Agent 会话…',
   },
   terminalFind: {
     placeholder: '查找…',

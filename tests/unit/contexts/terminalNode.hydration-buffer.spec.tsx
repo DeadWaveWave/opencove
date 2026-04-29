@@ -92,6 +92,10 @@ vi.mock('@xterm/xterm', () => {
       callback?.()
     }
 
+    public reset(): void {
+      this.written = []
+    }
+
     public emitBinary(data: string): void {
       this.binaryListener?.(data)
     }
@@ -271,7 +275,6 @@ describe('TerminalNode hydration buffering', () => {
     setCachedTerminalScreenState('node-1', {
       sessionId: 'session-1',
       serialized: 'SERIALIZED_SCREEN',
-      rawSnapshot: 'hello',
       cols: 92,
       rows: 28,
     })
@@ -318,7 +321,7 @@ describe('TerminalNode hydration buffering', () => {
 
     const { __getLastTerminal } = await import('@xterm/xterm')
     await waitFor(() => {
-      expect(__getLastTerminal()?.written).toEqual(['SERIALIZED_SCREEN', '!!'])
+      expect(__getLastTerminal()?.written).toEqual(['hello!!'])
     })
     expect(__getLastTerminal()?.cols).toBe(92)
     expect(__getLastTerminal()?.rows).toBe(28)

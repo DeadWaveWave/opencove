@@ -70,12 +70,12 @@ describe('main process sandbox flags', () => {
           openExternal: vi.fn(),
         },
         BrowserWindow,
-        nativeImage: {
-          createFromPath: vi.fn(),
-        },
         Menu: {
-          buildFromTemplate: vi.fn(template => template),
           setApplicationMenu: vi.fn(),
+          buildFromTemplate: vi.fn(template => template),
+        },
+        nativeImage: {
+          createFromPath: vi.fn(() => ({})),
         },
       }))
 

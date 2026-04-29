@@ -49,10 +49,11 @@ function WorkspaceMainComponent({
     )
   }
 
-  const focusNodeId =
-    focusRequest && focusRequest.workspaceId === activeWorkspace.id ? focusRequest.nodeId : null
-  const focusSequence =
-    focusRequest && focusRequest.workspaceId === activeWorkspace.id ? focusRequest.sequence : 0
+  const activeFocusRequest =
+    focusRequest && focusRequest.workspaceId === activeWorkspace.id ? focusRequest : null
+  const focusNodeId = activeFocusRequest?.kind === 'node' ? activeFocusRequest.nodeId : null
+  const focusSpaceId = activeFocusRequest?.kind === 'space' ? activeFocusRequest.spaceId : null
+  const focusSequence = activeFocusRequest?.sequence ?? 0
 
   return (
     <main className="workspace-main">
@@ -78,6 +79,7 @@ function WorkspaceMainComponent({
         agentSettings={agentSettings}
         isFocusNodeTargetZoomPreviewing={isFocusNodeTargetZoomPreviewing}
         focusNodeId={focusNodeId}
+        focusSpaceId={focusSpaceId}
         focusSequence={focusSequence}
       />
     </main>

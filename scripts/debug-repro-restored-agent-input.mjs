@@ -97,14 +97,153 @@ async function resolveSingleAgentBinding(window) {
   }
 }
 
-async function readAgentSnapshot(agentNode, helper, nodeId) {
+async function resolveRuntimeAgentBinding(window) {
+  const persisted = await resolveSingleAgentBinding(window)
+
+  return await window.evaluate(binding => {
+    const api = window.__opencoveTerminalSelectionTestApi
+    const registeredNodeIds =
+      typeof api?.getRegisteredNodeIds === 'function' ? api.getRegisteredNodeIds() : []
+    const domNode = document.querySelector('.react-flow__node-terminalNode')
+    const domNodeId =
+      domNode instanceof HTMLElement
+        ? (domNode.getAttribute('data-id') ?? domNode.id.replace(/^react-flow__node-/u, '').trim())
+        : null
+    const nodeId =
+      binding.nodeId ??
+      (registeredNodeIds.length === 1 ? (registeredNodeIds[0] ?? null) : null) ??
+      (domNodeId && domNodeId.length > 0 ? domNodeId : null)
+    const runtimeSessionId =
+      nodeId && typeof api?.getRuntimeSessionId === 'function'
+        ? api.getRuntimeSessionId(nodeId)
+        : null
+
+    return {
+      nodeId,
+      sessionId: binding.sessionId ?? runtimeSessionId,
+      persistedSessionId: binding.sessionId,
+      runtimeSessionId,
+      registeredNodeIds,
+    }
+  }, persisted)
+}
+
+async function waitForRuntimeAgentBinding(window, timeoutMs = 10_000) {
+  const deadline = Date.now() + timeoutMs
+  let latestBinding = null
+
+  while (Date.now() < deadline) {
+    latestBinding = await resolveRuntimeAgentBinding(window)
+    if (latestBinding.nodeId && latestBinding.sessionId) {
+      return latestBinding
+    }
+
+    await delay(100)
+  }
+
+  throw new Error(
+    `[repro] restored agent runtime binding was not ready: ${JSON.stringify(latestBinding)}`,
+  )
+}
+
+function hasConvergedTerminalGeometry(geometry) {
+  if (!geometry?.terminalSize || !geometry.snapshotSize) {
+    return false
+  }
+
+  if (
+    geometry.terminalSize.cols !== geometry.snapshotSize.cols ||
+    geometry.terminalSize.rows !== geometry.snapshotSize.rows
+  ) {
+    return false
+  }
+
+  if (
+    geometry.horizontalGapPx === null ||
+    geometry.verticalGapPx === null ||
+    geometry.cellWidthPx === null ||
+    geometry.cellHeightPx === null
+  ) {
+    return false
+  }
+
+  return (
+    geometry.horizontalGapPx >= -2 &&
+    geometry.verticalGapPx >= -2 &&
+    geometry.horizontalGapPx <= Math.max(48, geometry.cellWidthPx * 6) &&
+    geometry.verticalGapPx <= Math.max(48, geometry.cellHeightPx * 4)
+  )
+}
+
+async function readRestoredTerminalGeometry(window, nodeId, sessionId) {
+  return await window.evaluate(
+    async payload => {
+      const terminalSize =
+        window.__opencoveTerminalSelectionTestApi?.getSize(payload.nodeId) ?? null
+      const metrics =
+        window.__opencoveTerminalSelectionTestApi?.getRenderMetrics?.(payload.nodeId) ?? null
+      const snapshot =
+        typeof window.opencoveApi.pty.presentationSnapshot === 'function'
+          ? await window.opencoveApi.pty
+              .presentationSnapshot({ sessionId: payload.sessionId })
+              .catch(() => null)
+          : null
+      const container = document.querySelector('.terminal-node__terminal')
+      if (!(container instanceof HTMLElement)) {
+        return null
+      }
+
+      const screen =
+        container.querySelector('.xterm-screen canvas') ?? container.querySelector('.xterm-screen')
+      const screenRect = screen instanceof HTMLElement ? screen.getBoundingClientRect() : null
+      const contentWidth =
+        terminalSize && metrics?.cssCellWidth && metrics.cssCellWidth > 0
+          ? terminalSize.cols * metrics.cssCellWidth
+          : metrics?.cssCanvasWidth && metrics.cssCanvasWidth > 0
+            ? metrics.cssCanvasWidth
+            : (screenRect?.width ?? null)
+      const contentHeight =
+        terminalSize && metrics?.cssCellHeight && metrics.cssCellHeight > 0
+          ? terminalSize.rows * metrics.cssCellHeight
+          : metrics?.cssCanvasHeight && metrics.cssCanvasHeight > 0
+            ? metrics.cssCanvasHeight
+            : (screenRect?.height ?? null)
+      const cellWidthPx =
+        metrics?.cssCellWidth && metrics.cssCellWidth > 0
+          ? metrics.cssCellWidth
+          : terminalSize && contentWidth
+            ? contentWidth / Math.max(1, terminalSize.cols)
+            : null
+      const cellHeightPx =
+        metrics?.cssCellHeight && metrics.cssCellHeight > 0
+          ? metrics.cssCellHeight
+          : terminalSize && contentHeight
+            ? contentHeight / Math.max(1, terminalSize.rows)
+            : null
+
+      return {
+        terminalSize,
+        snapshotSize: snapshot ? { cols: snapshot.cols, rows: snapshot.rows } : null,
+        horizontalGapPx: contentWidth === null ? null : container.clientWidth - contentWidth,
+        verticalGapPx: contentHeight === null ? null : container.clientHeight - contentHeight,
+        cellWidthPx,
+        cellHeightPx,
+      }
+    },
+    { nodeId, sessionId },
+  )
+}
+
+async function readAgentSnapshot(agentNode, helper, nodeId, sessionId) {
   const snapshot = await agentNode.evaluate(node => {
     const transcript = node.querySelector('.terminal-node__transcript')
     const xterm = node.querySelector('.xterm')
+    const recovering = node.querySelector('.terminal-node__recovering')
     return {
       textContent: node.textContent ?? '',
       transcriptText: transcript?.textContent ?? '',
       xtermClassName: xterm?.className ?? '',
+      recoveringText: recovering?.textContent ?? '',
     }
   })
   const helperFocused = await helper.evaluate(node => node === document.activeElement)
@@ -120,8 +259,14 @@ async function readAgentSnapshot(agentNode, helper, nodeId) {
 
     return reader(currentNodeId)
   }, nodeId)
+  const geometry =
+    nodeId && sessionId
+      ? await readRestoredTerminalGeometry(agentNode.page(), nodeId, sessionId)
+      : null
   return {
     ...snapshot,
+    geometry,
+    geometryConverged: hasConvergedTerminalGeometry(geometry),
     helperFocused,
     debugTranscriptText,
     lastTranscriptLine: resolveLastNonEmptyLine(snapshot.transcriptText),
@@ -141,6 +286,7 @@ async function assertAgentStep({
   agentNode,
   helper,
   nodeId,
+  sessionId,
   dirPath,
   label,
   requireFocus = false,
@@ -151,7 +297,7 @@ async function assertAgentStep({
   requiredPromptLineText = null,
   forbiddenPromptLineText = null,
 }) {
-  const snapshot = await readAgentSnapshot(agentNode, helper, nodeId)
+  const snapshot = await readAgentSnapshot(agentNode, helper, nodeId, sessionId)
   await writeFile(
     path.join(dirPath, `${label}.json`),
     `${JSON.stringify(snapshot, null, 2)}\n`,
@@ -160,6 +306,32 @@ async function assertAgentStep({
 
   if (snapshot.textContent.trim().length === 0) {
     throw new Error(`[repro] ${label}: agent node text became blank`)
+  }
+
+  const hasVisibleTerminalOutput = snapshot.lastVisibleLine.trim().length > 0
+  const hasRecoveringState = snapshot.recoveringText.trim().length > 0
+  if (!hasVisibleTerminalOutput && !hasRecoveringState) {
+    throw new Error(`[repro] ${label}: restored agent has neither visible output nor recovering UI`)
+  }
+
+  if (
+    (label.includes('after-type') || label.includes('after-backspace')) &&
+    !hasVisibleTerminalOutput
+  ) {
+    throw new Error(`[repro] ${label}: restored agent did not render visible output after input`)
+  }
+
+  if (
+    (label.includes('after-handoff') ||
+      label.includes('after-type') ||
+      label.includes('after-backspace')) &&
+    hasVisibleTerminalOutput &&
+    !hasRecoveringState &&
+    !snapshot.geometryConverged
+  ) {
+    throw new Error(
+      `[repro] ${label}: terminal geometry did not converge: ${JSON.stringify(snapshot.geometry)}`,
+    )
   }
 
   if (snapshot.transcriptText.length > 0 && snapshot.transcriptText.trim().length === 0) {
@@ -244,6 +416,7 @@ async function launchApp({ userDataDir, logSink }) {
       OPENCOVE_DEV_USER_DATA_DIR: userDataDir,
       OPENCOVE_TERMINAL_DIAGNOSTICS: '1',
       OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS: '1',
+      OPENCOVE_TERMINAL_TEST_API: '1',
     },
   })
 
@@ -638,21 +811,57 @@ async function createAgent(window) {
   return agentNode
 }
 
+async function waitForRestoredAgentReady({ agentNode, helper, nodeId, sessionId, dirPath }) {
+  const deadline = Date.now() + 15_000
+  let latestSnapshot = null
+
+  while (Date.now() < deadline) {
+    latestSnapshot = await readAgentSnapshot(agentNode, helper, nodeId, sessionId)
+    if (
+      latestSnapshot.lastVisibleLine.trim().length > 0 &&
+      latestSnapshot.recoveringText.trim().length === 0
+    ) {
+      await captureWindowScreenshot(agentNode.page(), dirPath, 'restored-ready-before-input')
+      await writeFile(
+        path.join(dirPath, 'restored-ready-before-input.json'),
+        `${JSON.stringify(latestSnapshot, null, 2)}\n`,
+        'utf8',
+      )
+      return
+    }
+
+    await delay(250)
+  }
+
+  if (latestSnapshot) {
+    await writeFile(
+      path.join(dirPath, 'restored-ready-timeout.json'),
+      `${JSON.stringify(latestSnapshot, null, 2)}\n`,
+      'utf8',
+    )
+  }
+  await captureWindowScreenshot(agentNode.page(), dirPath, 'restored-ready-timeout')
+  throw new Error('[repro] restored agent did not become ready before input')
+}
+
 async function inspectRestoredAgent(window, dirPath) {
   const agentNode = window.locator('.terminal-node').first()
   await agentNode.waitFor({ state: 'visible', timeout: 60_000 })
   await agentNode.locator('.xterm').waitFor({ state: 'visible', timeout: 30_000 })
   const helper = agentNode.locator('.xterm-helper-textarea')
-  const binding = await resolveSingleAgentBinding(window)
+  const binding = await waitForRuntimeAgentBinding(window)
   const nodeId = binding.nodeId
+  const sessionId = binding.sessionId
 
   const initialMainPid = await window.evaluate(() => window.opencoveApi.meta.mainPid)
   process.stdout.write(`[repro] preload mainPid: ${String(initialMainPid)}\n`)
+  process.stdout.write(`[repro] restored binding: ${JSON.stringify(binding)}\n`)
   await captureWindowScreenshot(window, dirPath, 'restored-before-first-click')
   await assertAgentStep({
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-before-first-click',
   })
@@ -668,6 +877,7 @@ async function inspectRestoredAgent(window, dirPath) {
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-after-first-click',
     requireFocus: true,
@@ -681,6 +891,7 @@ async function inspectRestoredAgent(window, dirPath) {
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-after-2s',
     requireFocus: true,
@@ -693,9 +904,18 @@ async function inspectRestoredAgent(window, dirPath) {
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-after-handoff-wait',
     requireFocus: true,
+  })
+
+  await waitForRestoredAgentReady({
+    agentNode,
+    helper,
+    nodeId,
+    sessionId,
+    dirPath,
   })
 
   await agentNode.locator('.xterm').click()
@@ -709,6 +929,7 @@ async function inspectRestoredAgent(window, dirPath) {
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-after-second-click',
     requireFocus: true,
@@ -721,6 +942,7 @@ async function inspectRestoredAgent(window, dirPath) {
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-after-type-12',
     requireFocus: true,
@@ -734,6 +956,7 @@ async function inspectRestoredAgent(window, dirPath) {
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-after-backspace',
     requireFocus: true,
@@ -751,6 +974,7 @@ async function inspectRestoredAgent(window, dirPath) {
     agentNode,
     helper,
     nodeId,
+    sessionId,
     dirPath,
     label: 'restored-after-type-and-enter',
     requireFocus: true,
@@ -808,7 +1032,9 @@ async function main() {
       const diagnosticTail = logs
         .filter(
           line =>
-            line.includes('opencove-terminal-diagnostics') || line.includes('opencove-pty-write'),
+            line.includes('opencove-terminal-diagnostics') ||
+            line.includes('opencove-pty-write') ||
+            line.includes('opencove-pty-resize'),
         )
         .slice(-120)
         .join('\n')

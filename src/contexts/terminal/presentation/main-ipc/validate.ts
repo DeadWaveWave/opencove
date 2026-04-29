@@ -5,6 +5,7 @@ import type {
   ResizeTerminalInput,
   SpawnTerminalInput,
   SnapshotTerminalInput,
+  TerminalGeometryCommitReason,
   TerminalWriteEncoding,
   WriteTerminalInput,
 } from '../../../../shared/contracts/dto'
@@ -102,7 +103,16 @@ export function normalizeResizeTerminalPayload(payload: unknown): ResizeTerminal
     typeof record.rows === 'number' && Number.isFinite(record.rows) && record.rows > 0
       ? Math.floor(record.rows)
       : 24
-  return { sessionId, cols, rows }
+  const reason: TerminalGeometryCommitReason | null =
+    record.reason === 'frame_commit' || record.reason === 'appearance_commit' ? record.reason : null
+
+  if (!reason) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid reason for pty:resize',
+    })
+  }
+
+  return { sessionId, cols, rows, reason }
 }
 
 export function normalizeKillTerminalPayload(payload: unknown): KillTerminalInput {
@@ -110,7 +120,14 @@ export function normalizeKillTerminalPayload(payload: unknown): KillTerminalInpu
 }
 
 export function normalizeAttachTerminalPayload(payload: unknown): AttachTerminalInput {
-  return { sessionId: normalizeSessionId(payload, 'pty:attach') }
+  const sessionId = normalizeSessionId(payload, 'pty:attach')
+  const record = payload as Record<string, unknown>
+  const afterSeq =
+    typeof record.afterSeq === 'number' && Number.isFinite(record.afterSeq) && record.afterSeq >= 0
+      ? Math.floor(record.afterSeq)
+      : null
+
+  return { sessionId, ...(afterSeq !== null ? { afterSeq } : {}) }
 }
 
 export function normalizeDetachTerminalPayload(payload: unknown): DetachTerminalInput {

@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import type { PrepareOrReviveSessionResult, PreparedRuntimeNodeResult } from '@shared/contracts/dto'
 import type {
   PersistedWorkspaceState,
   TerminalNodeData,
@@ -15,8 +16,21 @@ export function toShellWorkspaceState(
   options?: { dropRuntimeSessionIds?: boolean },
 ): WorkspaceState {
   const dropRuntimeSessionIds = options?.dropRuntimeSessionIds === true
+  const runtimeNodes = toRuntimeNodes(workspace).map(node => {
+    if (node.data.kind !== 'agent') {
+      return node
+    }
+
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        scrollback: null,
+      },
+    }
+  })
   const nodes = dropRuntimeSessionIds
-    ? toRuntimeNodes(workspace).map(node => {
+    ? runtimeNodes.map(node => {
         if (node.data.kind !== 'terminal' && node.data.kind !== 'agent') {
           return node
         }
@@ -29,7 +43,7 @@ export function toShellWorkspaceState(
           },
         }
       })
-    : toRuntimeNodes(workspace)
+    : runtimeNodes
   const validNodeIds = new Set(nodes.map(node => node.id))
   const sanitizedSpaces = sanitizeWorkspaceSpaces(
     workspace.spaces.map(space => ({
@@ -82,6 +96,18 @@ function mergeHydratedAgentData(
     launchMode: hydratedAgent.launchMode,
     resumeSessionId: hydratedAgent.resumeSessionId,
     resumeSessionIdVerified: hydratedAgent.resumeSessionIdVerified,
+    executionDirectory:
+      currentAgent.executionDirectory.trim().length > 0
+        ? currentAgent.executionDirectory
+        : hydratedAgent.executionDirectory,
+    expectedDirectory:
+      currentAgent.expectedDirectory && currentAgent.expectedDirectory.trim().length > 0
+        ? currentAgent.expectedDirectory
+        : hydratedAgent.expectedDirectory,
+    directoryMode: currentAgent.directoryMode,
+    customDirectory: currentAgent.customDirectory,
+    shouldCreateDirectory: currentAgent.shouldCreateDirectory,
+    taskId: currentAgent.taskId ?? hydratedAgent.taskId,
   }
 }
 
@@ -108,7 +134,7 @@ export function mergeHydratedNode(
       endedAt: hydratedNode.data.endedAt,
       exitCode: hydratedNode.data.exitCode,
       lastError: hydratedNode.data.lastError,
-      scrollback: hydratedNode.data.scrollback,
+      scrollback: hydratedNode.data.kind === 'agent' ? null : hydratedNode.data.scrollback,
       agent: mergeHydratedAgentData(currentNode.data.agent, hydratedNode.data.agent),
       task: hydratedNode.data.task ?? currentNode.data.task,
       note: hydratedNode.data.note ?? currentNode.data.note,
@@ -139,7 +165,46 @@ export function resolveTerminalHydrationCwd(
   return workspacePath
 }
 
-export async function hydrateRuntimeNode({
+function toHydratedRuntimeNode(
+  currentNode: Node<TerminalNodeData>,
+  preparedNode: PreparedRuntimeNodeResult,
+): Node<TerminalNodeData> {
+  return {
+    ...currentNode,
+    data: {
+      ...currentNode.data,
+      kind: preparedNode.kind,
+      title: preparedNode.title,
+      sessionId: preparedNode.sessionId,
+      isLiveSessionReattach: preparedNode.isLiveSessionReattach === true,
+      profileId: preparedNode.profileId ?? currentNode.data.profileId ?? null,
+      runtimeKind: preparedNode.runtimeKind ?? currentNode.data.runtimeKind,
+      status: preparedNode.status as TerminalNodeData['status'],
+      startedAt: preparedNode.startedAt,
+      endedAt: preparedNode.endedAt,
+      exitCode: preparedNode.exitCode,
+      lastError: preparedNode.lastError,
+      scrollback: preparedNode.kind === 'agent' ? null : preparedNode.scrollback,
+      executionDirectory: preparedNode.executionDirectory ?? currentNode.data.executionDirectory,
+      expectedDirectory: preparedNode.expectedDirectory ?? currentNode.data.expectedDirectory,
+      terminalGeometry: preparedNode.terminalGeometry ?? currentNode.data.terminalGeometry ?? null,
+      agent:
+        currentNode.data.kind === 'agent' || preparedNode.kind === 'agent'
+          ? ({
+              ...(currentNode.data.agent ?? {}),
+              ...(preparedNode.agent ?? {}),
+            } as TerminalNodeData['agent'])
+          : null,
+      task: currentNode.data.task,
+      note: currentNode.data.note,
+      image: currentNode.data.image,
+      document: currentNode.data.document,
+      website: currentNode.data.website,
+    },
+  }
+}
+
+async function hydrateRuntimeNodeLocally({
   node,
   workspacePath,
   agentSettings,
@@ -159,7 +224,10 @@ export async function hydrateRuntimeNode({
         data: {
           ...node.data,
           isLiveSessionReattach: true,
-          scrollback: mergeScrollbackSnapshots(node.data.scrollback ?? '', liveScrollback),
+          scrollback:
+            node.data.kind === 'agent'
+              ? null
+              : mergeScrollbackSnapshots(node.data.scrollback ?? '', liveScrollback),
         },
       }
     } catch {
@@ -223,4 +291,93 @@ export async function hydrateRuntimeNode({
       },
     }
   }
+}
+
+export async function prepareWorkspaceRuntimeNodes({
+  workspace,
+  agentSettings,
+  nodeIds,
+  workerOnly,
+}: {
+  workspace: PersistedWorkspaceState
+  agentSettings: AgentSettings
+  nodeIds?: string[] | null
+  workerOnly?: boolean
+}): Promise<Node<TerminalNodeData>[]> {
+  const runtimeNodes = toRuntimeNodes(workspace)
+    .filter(requiresRuntimeHydration)
+    .filter(node => !nodeIds || nodeIds.includes(node.id))
+
+  if (runtimeNodes.length === 0) {
+    return []
+  }
+
+  const preparedById = new Map<string, Node<TerminalNodeData>>()
+  const controlSurfaceInvoke = window.opencoveApi?.controlSurface?.invoke
+  const shouldRequireWorker = workerOnly ?? typeof controlSurfaceInvoke === 'function'
+
+  if (typeof controlSurfaceInvoke === 'function') {
+    try {
+      const prepared = await controlSurfaceInvoke<PrepareOrReviveSessionResult>({
+        kind: 'command',
+        id: 'session.prepareOrRevive',
+        payload: {
+          workspaceId: workspace.id,
+          nodeIds: runtimeNodes.map(node => node.id),
+        },
+      })
+
+      for (const preparedNode of prepared.nodes ?? []) {
+        const currentNode = runtimeNodes.find(node => node.id === preparedNode.nodeId)
+        if (!currentNode) {
+          continue
+        }
+
+        preparedById.set(currentNode.id, toHydratedRuntimeNode(currentNode, preparedNode))
+      }
+    } catch {
+      if (shouldRequireWorker) {
+        return []
+      }
+
+      // Fall back to the legacy local hydrate path when the worker contract is unavailable.
+    }
+  }
+
+  if (shouldRequireWorker) {
+    return runtimeNodes
+      .map(node => preparedById.get(node.id) ?? node)
+      .filter(node => preparedById.has(node.id))
+  }
+
+  if (preparedById.size === runtimeNodes.length) {
+    return runtimeNodes.map(node => preparedById.get(node.id) ?? node)
+  }
+
+  return await Promise.all(
+    runtimeNodes.map(async node => {
+      const preparedNode = preparedById.get(node.id)
+      if (preparedNode) {
+        return preparedNode
+      }
+
+      return await hydrateRuntimeNodeLocally({
+        node,
+        workspacePath: workspace.path,
+        agentSettings,
+      })
+    }),
+  )
+}
+
+export async function hydrateRuntimeNode({
+  node,
+  workspacePath,
+  agentSettings,
+}: {
+  node: Node<TerminalNodeData>
+  workspacePath: string
+  agentSettings: AgentSettings
+}): Promise<Node<TerminalNodeData>> {
+  return await hydrateRuntimeNodeLocally({ node, workspacePath, agentSettings })
 }

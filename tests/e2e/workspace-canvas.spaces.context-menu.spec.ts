@@ -153,10 +153,6 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
         },
       )
 
-      const beforeViewport = await readCanvasViewport(window)
-      expect(Math.abs(beforeViewport.x)).toBeLessThan(40)
-      expect(Math.abs(beforeViewport.y)).toBeLessThan(40)
-
       const canvasBounds = await window.evaluate(() => {
         const surface = document.querySelector('.workspace-canvas .react-flow')
         if (!(surface instanceof HTMLElement)) {
@@ -296,8 +292,28 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       await window.locator('[data-testid="workspace-space-switch-space-all-focus"]').click()
       await expect(window.locator('.workspace-space-switcher__item--active')).toHaveCount(0)
       await expect(window.locator('.workspace-space-region--active')).toHaveCount(0)
+      await expect
+        .poll(async () => {
+          const viewport = await readCanvasViewport(window)
+          const minFlowX = -viewport.x / viewport.zoom
+          const maxFlowX = (canvasBounds.width - viewport.x) / viewport.zoom
+          const minFlowY = -viewport.y / viewport.zoom
+          const maxFlowY = (canvasBounds.height - viewport.y) / viewport.zoom
+          return (
+            minFlowX <= 2440 + 2 &&
+            maxFlowX >= 2440 + 560 - 2 &&
+            minFlowY <= 1520 + 2 &&
+            maxFlowY >= 1520 + 380 - 2
+          )
+        })
+        .toBe(true)
 
       await window.locator('[data-testid="workspace-space-switch-all"]').click()
+      await window.locator('[data-testid="workspace-space-switch-all"]').evaluate(element => {
+        if (element instanceof HTMLElement) {
+          element.click()
+        }
+      })
       await expect(window.locator('.workspace-space-switcher__item--active')).toHaveCount(0)
       await expect(window.locator('.workspace-space-region--active')).toHaveCount(0)
 

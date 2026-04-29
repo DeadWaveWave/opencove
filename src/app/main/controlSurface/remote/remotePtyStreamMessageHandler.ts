@@ -1,5 +1,12 @@
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
-import type { TerminalDataEvent, TerminalExitEvent } from '../../../../shared/contracts/dto'
+import type {
+  TerminalDataEvent,
+  TerminalExitEvent,
+  TerminalGeometryEvent,
+  TerminalResyncEvent,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '../../../../shared/contracts/dto'
 
 export type AttachedSessionState = {
   lastSeq: number
@@ -10,7 +17,22 @@ type PtyStreamMessage =
   | { type: 'attached'; sessionId: string; seq?: number }
   | { type: 'data'; sessionId: string; seq?: number; data?: string }
   | { type: 'exit'; sessionId: string; seq?: number; exitCode?: number }
-  | { type: 'overflow'; sessionId: string; seq?: number }
+  | { type: 'geometry'; sessionId: string; cols?: number; rows?: number; reason?: string }
+  | { type: 'state'; sessionId: string; state?: string }
+  | {
+      type: 'metadata'
+      sessionId: string
+      resumeSessionId?: string | null
+      profileId?: string | null
+      runtimeKind?: string | null
+    }
+  | {
+      type: 'overflow'
+      sessionId: string
+      seq?: number
+      reason?: string
+      recovery?: string
+    }
   | { type: 'control_changed'; sessionId: string }
   | { type: 'error'; code?: string; message?: string; sessionId?: string }
 
@@ -39,12 +61,25 @@ function normalizeOptionalRawString(value: unknown): string | null {
   return typeof value === 'string' ? value : null
 }
 
+function normalizeTerminalSessionState(value: unknown): 'working' | 'standby' | null {
+  if (value === 'working' || value === 'standby') {
+    return value
+  }
+
+  return null
+}
+
 export function createRemotePtyStreamMessageHandler(options: {
   attachedSessions: Map<string, AttachedSessionState>
   sendToSessionSubscribers: (sessionId: string, channel: string, payload: unknown) => void
-  externalDataListeners: Set<(event: { sessionId: string; data: string }) => void>
+  sendToAllWindows: (channel: string, payload: unknown) => void
+  externalDataListeners: Set<(event: TerminalDataEvent) => void>
   externalExitListeners: Set<(event: { sessionId: string; exitCode: number }) => void>
-  snapshot: (sessionId: string) => Promise<string>
+  externalStateListeners: Set<(event: TerminalSessionStateEvent) => void>
+  externalMetadataListeners: Set<(event: TerminalSessionMetadataEvent) => void>
+  cancelMetadataWatcher: (sessionId: string) => void
+  onSessionExit: (sessionId: string) => void
+  onSessionAttached: (sessionId: string) => void
   handshake: {
     onHelloAck: () => void
     onHandshakeError: (error: Error) => void
@@ -93,6 +128,7 @@ export function createRemotePtyStreamMessageHandler(options: {
       } else {
         options.attachedSessions.set(sessionId, { lastSeq: seq })
       }
+      options.onSessionAttached(sessionId)
       return
     }
 
@@ -108,8 +144,9 @@ export function createRemotePtyStreamMessageHandler(options: {
         options.sendToSessionSubscribers(sessionId, IPC_CHANNELS.ptyData, {
           sessionId,
           data,
+          seq,
         } satisfies TerminalDataEvent)
-        options.externalDataListeners.forEach(listener => listener({ sessionId, data }))
+        options.externalDataListeners.forEach(listener => listener({ sessionId, data, seq }))
       }
       return
     }
@@ -122,31 +159,84 @@ export function createRemotePtyStreamMessageHandler(options: {
         existing.lastSeq = Math.max(existing.lastSeq, seq)
       }
 
-      options.sendToSessionSubscribers(sessionId, IPC_CHANNELS.ptyExit, {
+      const eventPayload: TerminalExitEvent = {
         sessionId,
         exitCode,
-      } satisfies TerminalExitEvent)
-      options.externalExitListeners.forEach(listener => listener({ sessionId, exitCode }))
+      }
+      options.sendToAllWindows(IPC_CHANNELS.ptyExit, eventPayload)
+      options.externalExitListeners.forEach(listener => listener(eventPayload))
+      options.onSessionExit(sessionId)
+      return
+    }
+
+    if (message.type === 'geometry') {
+      const cols = normalizeOptionalFiniteInt(message.cols) ?? 0
+      const rows = normalizeOptionalFiniteInt(message.rows) ?? 0
+      const reason =
+        message.reason === 'frame_commit' || message.reason === 'appearance_commit'
+          ? message.reason
+          : null
+
+      if (cols <= 0 || rows <= 0 || !reason) {
+        return
+      }
+
+      const eventPayload: TerminalGeometryEvent = {
+        sessionId,
+        cols,
+        rows,
+        reason,
+      }
+      options.sendToAllWindows(IPC_CHANNELS.ptyGeometry, eventPayload)
+      return
+    }
+
+    if (message.type === 'state') {
+      const state = normalizeTerminalSessionState(message.state)
+      if (!state) {
+        return
+      }
+
+      const eventPayload: TerminalSessionStateEvent = { sessionId, state }
+      options.sendToAllWindows(IPC_CHANNELS.ptyState, eventPayload)
+      options.externalStateListeners.forEach(listener => listener(eventPayload))
+      return
+    }
+
+    if (message.type === 'metadata') {
+      const resumeSessionId =
+        typeof message.resumeSessionId === 'string' && message.resumeSessionId.trim().length > 0
+          ? message.resumeSessionId.trim()
+          : null
+      const profileId =
+        typeof message.profileId === 'string' && message.profileId.trim().length > 0
+          ? message.profileId.trim()
+          : null
+      const runtimeKind =
+        message.runtimeKind === 'windows' ||
+        message.runtimeKind === 'wsl' ||
+        message.runtimeKind === 'posix'
+          ? message.runtimeKind
+          : null
+
+      const eventPayload: TerminalSessionMetadataEvent = {
+        sessionId,
+        resumeSessionId,
+        ...(profileId ? { profileId } : {}),
+        ...(runtimeKind ? { runtimeKind } : {}),
+      }
+      options.sendToAllWindows(IPC_CHANNELS.ptySessionMetadata, eventPayload)
+      options.externalMetadataListeners.forEach(listener => listener(eventPayload))
+      options.cancelMetadataWatcher(sessionId)
       return
     }
 
     if (message.type === 'overflow') {
-      void (async () => {
-        try {
-          const snapshot = await options.snapshot(sessionId)
-          if (snapshot.length > 0) {
-            options.sendToSessionSubscribers(sessionId, IPC_CHANNELS.ptyData, {
-              sessionId,
-              data: snapshot,
-            } satisfies TerminalDataEvent)
-            options.externalDataListeners.forEach(listener =>
-              listener({ sessionId, data: snapshot }),
-            )
-          }
-        } catch {
-          // ignore snapshot recovery failures
-        }
-      })()
+      options.sendToAllWindows(IPC_CHANNELS.ptyResync, {
+        sessionId,
+        reason: 'replay_window_exceeded',
+        recovery: 'presentation_snapshot',
+      } satisfies TerminalResyncEvent)
     }
   }
 }

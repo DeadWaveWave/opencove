@@ -7,6 +7,11 @@ import {
   PTY_STREAM_WS_SUBPROTOCOL,
 } from './ptyStreamService'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
+import type {
+  TerminalGeometryCommitReason,
+  TerminalSessionMetadataEvent,
+  TerminalSessionStateEvent,
+} from '../../../../shared/contracts/dto'
 
 type RemoteEndpointConnection = {
   hostname: string
@@ -55,6 +60,14 @@ export class RemotePtyEndpointProxy {
   private readonly topology: WorkerTopologyStore
   private readonly emitData: (remoteSessionId: string, data: string) => void
   private readonly emitExit: (remoteSessionId: string, exitCode: number) => void
+  private readonly emitState: (
+    remoteSessionId: string,
+    state: TerminalSessionStateEvent['state'],
+  ) => void
+  private readonly emitMetadata: (
+    remoteSessionId: string,
+    metadata: TerminalSessionMetadataEvent,
+  ) => void
   private readonly attachedSessions = new Map<string, AttachedSessionState>()
 
   private socket: WebSocket | null = null
@@ -70,11 +83,15 @@ export class RemotePtyEndpointProxy {
     topology: WorkerTopologyStore
     emitData: (remoteSessionId: string, data: string) => void
     emitExit: (remoteSessionId: string, exitCode: number) => void
+    emitState: (remoteSessionId: string, state: TerminalSessionStateEvent['state']) => void
+    emitMetadata: (remoteSessionId: string, metadata: TerminalSessionMetadataEvent) => void
   }) {
     this.endpointId = options.endpointId
     this.topology = options.topology
     this.emitData = options.emitData
     this.emitExit = options.emitExit
+    this.emitState = options.emitState
+    this.emitMetadata = options.emitMetadata
   }
 
   private closeSocket(): void {
@@ -184,6 +201,41 @@ export class RemotePtyEndpointProxy {
 
     if (type === 'overflow') {
       void this.recoverOverflow(sessionId).catch(() => undefined)
+      return
+    }
+
+    if (type === 'state') {
+      const state = parsed.state === 'working' || parsed.state === 'standby' ? parsed.state : null
+      if (!state) {
+        return
+      }
+
+      this.emitState(sessionId, state)
+      return
+    }
+
+    if (type === 'metadata') {
+      const resumeSessionId =
+        typeof parsed.resumeSessionId === 'string' && parsed.resumeSessionId.trim().length > 0
+          ? parsed.resumeSessionId.trim()
+          : null
+      const profileId =
+        typeof parsed.profileId === 'string' && parsed.profileId.trim().length > 0
+          ? parsed.profileId.trim()
+          : null
+      const runtimeKind =
+        parsed.runtimeKind === 'windows' ||
+        parsed.runtimeKind === 'wsl' ||
+        parsed.runtimeKind === 'posix'
+          ? parsed.runtimeKind
+          : null
+
+      this.emitMetadata(sessionId, {
+        sessionId,
+        resumeSessionId,
+        ...(profileId ? { profileId } : {}),
+        ...(runtimeKind ? { runtimeKind } : {}),
+      })
     }
   }
 
@@ -376,14 +428,19 @@ export class RemotePtyEndpointProxy {
       .catch(() => undefined)
   }
 
-  public resize(remoteSessionId: string, cols: number, rows: number): void {
+  public resize(
+    remoteSessionId: string,
+    cols: number,
+    rows: number,
+    reason: TerminalGeometryCommitReason = 'frame_commit',
+  ): void {
     void this.ensureSocket()
       .then(() => {
         const ws = this.socket
         if (!ws) {
           return
         }
-        trySendWs(ws, { type: 'resize', sessionId: remoteSessionId, cols, rows })
+        trySendWs(ws, { type: 'resize', sessionId: remoteSessionId, cols, rows, reason })
       })
       .catch(() => undefined)
   }
