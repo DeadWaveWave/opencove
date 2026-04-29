@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { isWebUiNavigationPath } from '../webUiAssets'
 import { resolveRequestAuth } from './requestAuth'
 import type { WebSessionManager } from './webSessionManager'
 
@@ -28,7 +29,12 @@ export function gateWebUiEntrypoint(options: {
   }
 
   const pathname = options.url.pathname
-  if (pathname !== '/' && pathname !== '/web.html' && pathname !== '/debug/shell') {
+  if (
+    pathname !== '/' &&
+    pathname !== '/web.html' &&
+    pathname !== '/debug/shell' &&
+    !isWebUiNavigationPath(pathname)
+  ) {
     return false
   }
 
