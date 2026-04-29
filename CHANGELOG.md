@@ -58,6 +58,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Space Explorer: image files now support quick preview and image-node opening in mount-targeted Spaces and browser control-surface paths. (#203)
 - Windows terminal rendering: keep 125% DPI embedded terminals crisp, preserve OpenCode WebGL in manual PowerShell terminals, and snap the retained WebGL path onto the device-pixel grid. (#148)
 - Recovery: restored agent windows now keep durable restart history visible, reattach to fresh runtime sessions after full app restart, remain interactive for stdin, and preserve OpenCode embedded theme sync in the restored runtime path. (#172)
 - OpenCode: Stabilized embedded terminal rendering and cursor hit-testing to eliminate shutter-like artifacts and cursor flicker in restored canvas sessions. (#144)
