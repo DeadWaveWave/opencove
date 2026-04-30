@@ -1,5 +1,6 @@
 import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
 import { enSettingsPanelAgentExecutable } from './en.settingsPanel.agentExecutable'
+import { enWorkspaceCanvasNavigationShortcutCommands } from './en.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const enSettingsPanel = {
   title: 'Settings',
@@ -288,6 +289,18 @@ export const enSettingsPanel = {
     record: 'Record',
     recording: 'Press keys…',
     clear: 'Clear',
+    spatialNavigation: {
+      title: 'Spatial Navigation',
+      help: 'Beam-first navigation across nodes and spaces.',
+      customize: 'Customize…',
+      hide: 'Hide',
+      node: {
+        title: 'Nodes',
+      },
+      space: {
+        title: 'Spaces',
+      },
+    },
     groups: {
       app: {
         title: 'App',
@@ -347,6 +360,7 @@ export const enSettingsPanel = {
         title: 'Previous Idle Space',
         help: 'Switch to the previous space with no working agent.',
       },
+      ...enWorkspaceCanvasNavigationShortcutCommands,
     },
   },
   tasks: {

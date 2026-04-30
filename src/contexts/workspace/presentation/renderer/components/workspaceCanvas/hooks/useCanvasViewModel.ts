@@ -58,7 +58,10 @@ export function useWorkspaceCanvasViewModel({
   const { t } = useTranslation()
   const taskTitleProviderLabel = AGENT_PROVIDER_LABEL[resolveTaskTitleProvider(agentSettings)]
   const taskTitleModelLabel = resolveTaskTitleModel(agentSettings) ?? t('common.defaultModel')
-  const handleViewportMoveEnd = useWorkspaceCanvasViewportMoveEnd({ viewportRef, onViewportChange })
+  const handleViewportMoveEnd = useWorkspaceCanvasViewportMoveEnd({
+    viewportRef,
+    onViewportChange,
+  })
   const minimapNodeColor = resolveWorkspaceMinimapNodeColor
 
   const taskAgentEdges = useWorkspaceCanvasTaskAgentEdges(flowNodes)

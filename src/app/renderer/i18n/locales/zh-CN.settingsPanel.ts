@@ -1,4 +1,5 @@
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
+import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const zhCNSettingsPanel = {
   title: '设置',
@@ -290,6 +291,18 @@ export const zhCNSettingsPanel = {
     record: '录制',
     recording: '请按键…',
     clear: '清除',
+    spatialNavigation: {
+      title: '空间方位导航',
+      help: 'beam-first 规则，在节点与 Space 间进行方位导航。',
+      customize: '自定义…',
+      hide: '收起',
+      node: {
+        title: '节点',
+      },
+      space: {
+        title: 'Space',
+      },
+    },
     groups: {
       app: {
         title: '应用',
@@ -349,6 +362,7 @@ export const zhCNSettingsPanel = {
         title: '上一个空闲 Space',
         help: '切换到上一个没有 working agent 的 Space。',
       },
+      ...zhCNWorkspaceCanvasNavigationShortcutCommands,
     },
   },
   tasks: {

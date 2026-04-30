@@ -60,6 +60,7 @@ function ShortcutHarness(props: React.ComponentProps<typeof useWorkspaceCanvasSh
 describe('useWorkspaceCanvasShortcuts', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    document.body.innerHTML = ''
   })
 
   it('cycles only idle spaces when shifted bracket shortcuts are pressed', () => {
@@ -115,6 +116,8 @@ describe('useWorkspaceCanvasShortcuts', () => {
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
         activateSpace={activateSpace}
+        navigateNode={() => undefined}
+        navigateSpace={() => undefined}
       />,
     )
 
@@ -143,6 +146,8 @@ describe('useWorkspaceCanvasShortcuts', () => {
         createNoteAtViewportCenter={() => undefined}
         createTerminalAtViewportCenter={async () => undefined}
         activateSpace={activateSpace}
+        navigateNode={() => undefined}
+        navigateSpace={() => undefined}
       />,
     )
 
@@ -157,5 +162,46 @@ describe('useWorkspaceCanvasShortcuts', () => {
       }),
     )
     expect(activateSpace).toHaveBeenLastCalledWith('space-idle-b')
+  })
+
+  it('captures spatial navigation shortcuts even when an editable terminal target is focused', () => {
+    const navigateNode = vi.fn()
+
+    render(
+      <ShortcutHarness
+        enabled
+        platform="darwin"
+        keybindings={{}}
+        disableWhenTerminalFocused
+        activeSpaceId={null}
+        spaces={[]}
+        nodesRef={{ current: [] }}
+        createSpaceFromSelectedNodes={() => undefined}
+        createNoteAtViewportCenter={() => undefined}
+        createTerminalAtViewportCenter={async () => undefined}
+        activateSpace={() => undefined}
+        navigateNode={navigateNode}
+        navigateSpace={() => undefined}
+      />,
+    )
+
+    const terminalScope = document.createElement('div')
+    terminalScope.setAttribute('data-cove-focus-scope', 'terminal')
+    const textarea = document.createElement('textarea')
+    terminalScope.appendChild(textarea)
+    document.body.appendChild(terminalScope)
+
+    textarea.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'ArrowRight',
+        code: 'ArrowRight',
+        metaKey: true,
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    )
+
+    expect(navigateNode).toHaveBeenCalledWith('right')
   })
 })
