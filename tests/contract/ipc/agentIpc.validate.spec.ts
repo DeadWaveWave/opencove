@@ -5,6 +5,7 @@ describe('agent IPC validation', () => {
   it('accepts Windows absolute cwd values on non-Windows runners', async () => {
     const {
       normalizeLaunchAgentPayload,
+      normalizeListSessionsPayload,
       normalizeReadLastMessagePayload,
       normalizeResolveResumeSessionPayload,
     } = await import('../../../src/contexts/agent/presentation/main-ipc/validate')
@@ -22,6 +23,18 @@ describe('agent IPC validation', () => {
         prompt: 'hello',
       }),
     )
+
+    expect(
+      normalizeListSessionsPayload({
+        provider: 'codex',
+        cwd: 'C:\\Users\\deadwave\\project',
+        limit: 150,
+      }),
+    ).toEqual({
+      provider: 'codex',
+      cwd: 'C:\\Users\\deadwave\\project',
+      limit: 100,
+    })
 
     expect(
       normalizeResolveResumeSessionPayload({
@@ -50,7 +63,7 @@ describe('agent IPC validation', () => {
   })
 
   it('still rejects relative cwd values for agent launch', async () => {
-    const { normalizeLaunchAgentPayload } =
+    const { normalizeLaunchAgentPayload, normalizeListSessionsPayload } =
       await import('../../../src/contexts/agent/presentation/main-ipc/validate')
 
     try {
@@ -64,6 +77,18 @@ describe('agent IPC validation', () => {
       expect(error).toBeInstanceOf(OpenCoveAppError)
       expect((error as OpenCoveAppError).code).toBe('common.invalid_input')
       expect(getAppErrorDebugMessage(error)).toBe('agent:launch requires an absolute cwd')
+    }
+
+    try {
+      normalizeListSessionsPayload({
+        provider: 'codex',
+        cwd: 'relative\\path',
+      })
+      throw new Error('Expected normalizeListSessionsPayload to throw')
+    } catch (error) {
+      expect(error).toBeInstanceOf(OpenCoveAppError)
+      expect((error as OpenCoveAppError).code).toBe('common.invalid_input')
+      expect(getAppErrorDebugMessage(error)).toBe('agent:list-sessions requires an absolute cwd')
     }
   })
 })

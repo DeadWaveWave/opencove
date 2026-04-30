@@ -467,15 +467,6 @@
   background: transparent;
 }
 
-.terminal-node__action-icon {
-  width: 13px;
-  height: 13px;
-}
-
-.terminal-node__action-icon--spinning {
-  animation: terminal-node-spin 0.8s linear infinite;
-}
-
 .terminal-node__close {
   margin-left: 4px;
 }

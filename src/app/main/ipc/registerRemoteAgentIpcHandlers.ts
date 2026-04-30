@@ -4,6 +4,8 @@ import type {
   AgentProviderId,
   LaunchAgentInput,
   LaunchAgentResult,
+  ListAgentSessionsInput,
+  ListAgentSessionsResult,
   ListAgentModelsInput,
   ListAgentModelsResult,
   ListInstalledAgentProvidersResult,
@@ -147,6 +149,23 @@ async function resolveAgentSessionIdForLookup(options: {
   return { sessionId: best.sessionId, startedAtMs: best.startedAtMs }
 }
 
+async function listRemoteAgentSessions(options: {
+  endpoint: ControlSurfaceRemoteEndpoint
+  provider: AgentProviderId
+  cwd: string
+  limit: number
+}): Promise<ListAgentSessionsResult> {
+  return await invokeOk<ListAgentSessionsResult>(options.endpoint, {
+    kind: 'query',
+    id: 'agent.listSessions',
+    payload: {
+      provider: options.provider,
+      cwd: options.cwd,
+      limit: options.limit,
+    },
+  })
+}
+
 export function registerRemoteAgentIpcHandlers(options: {
   endpointResolver: ControlSurfaceRemoteEndpointResolver
   ptyRuntime: PtyRuntime
@@ -160,6 +179,22 @@ export function registerRemoteAgentIpcHandlers(options: {
   registerHandledIpc(
     IPC_CHANNELS.agentListInstalledProviders,
     async (): Promise<ListInstalledAgentProvidersResult> => ({ providers: [...AGENT_PROVIDERS] }),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.agentListSessions,
+    async (_event, payload: ListAgentSessionsInput): Promise<ListAgentSessionsResult> => {
+      const provider = payload?.provider as AgentProviderId
+      const cwd = normalizeRequiredString(payload?.cwd, 'agent.listSessions cwd')
+      const limit =
+        typeof payload?.limit === 'number' && Number.isFinite(payload.limit) && payload.limit > 0
+          ? Math.floor(payload.limit)
+          : 20
+
+      const endpoint = await resolveWorkerEndpoint(options.endpointResolver)
+      return await listRemoteAgentSessions({ endpoint, provider, cwd, limit })
+    },
     { defaultErrorCode: 'common.unexpected' },
   )
 
@@ -300,6 +335,7 @@ export function registerRemoteAgentIpcHandlers(options: {
 
   return {
     dispose: () => {
+      ipcMain.removeHandler(IPC_CHANNELS.agentListSessions)
       ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
       ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
       ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)

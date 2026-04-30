@@ -17,6 +17,7 @@ import { registerIntegrationGitHubHandlers } from './handlers/integrationGithubH
 import { registerIntegrationGitHubMountHandlers } from './handlers/integrationGithubMountHandlers'
 import { registerWorktreeHandlers } from './handlers/worktreeHandlers'
 import { registerWorkspaceHandlers } from './handlers/workspaceHandlers'
+import { registerAgentSessionCatalogHandlers } from './handlers/agentSessionCatalogHandlers'
 import { registerSessionHandlers } from './handlers/sessionHandlers'
 import { registerSessionStreamingHandlers } from './handlers/sessionStreamingHandlers'
 import { registerPtyMountHandlers } from './handlers/ptyMountHandlers'
@@ -76,6 +77,9 @@ export function registerControlSurfaceHandlers(
   registerWorktreeHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,
     getPersistenceStore: deps.getPersistenceStore,
+  })
+  registerAgentSessionCatalogHandlers(controlSurface, {
+    approvedWorkspaces: deps.approvedWorkspaces,
   })
   registerSessionHandlers(controlSurface, {
     userDataPath: deps.userDataPath,

@@ -36,6 +36,7 @@ export function useTerminalFileDropPaste({
       }
 
       const paths = Array.from(files)
+      const paths = Array.from(files)
         .map(file => window.opencoveApi.filesystem.getPathForFile(file))
         .filter(path => path.length > 0)
         .map(quoteShellPath)
@@ -48,7 +49,6 @@ export function useTerminalFileDropPaste({
 
     container.addEventListener('dragover', handleDragOver)
     container.addEventListener('drop', handleDrop)
-
     return () => {
       container.removeEventListener('dragover', handleDragOver)
       container.removeEventListener('drop', handleDrop)

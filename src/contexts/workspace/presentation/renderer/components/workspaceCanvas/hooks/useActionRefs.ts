@@ -2,13 +2,20 @@ import { useLayoutEffect, useRef } from 'react'
 import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { NodeFrame, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
-import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { AgentSessionSummary, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 
 export interface WorkspaceCanvasActionRefs {
   clearNodeSelectionRef: React.MutableRefObject<() => void>
   closeNodeRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: React.MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
+  reloadAgentSessionRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
+  listAgentSessionsRef: React.MutableRefObject<
+    (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
+  >
+  switchAgentSessionRef: React.MutableRefObject<
+    (nodeId: string, summary: AgentSessionSummary) => Promise<void>
+  >
   updateNoteTextRef: React.MutableRefObject<(nodeId: string, text: string) => void>
   updateWebsiteUrlRef: React.MutableRefObject<(nodeId: string, url: string) => void>
   setWebsitePinnedRef: React.MutableRefObject<(nodeId: string, pinned: boolean) => void>
@@ -46,6 +53,15 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   const copyAgentLastMessageRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
   )
+  const reloadAgentSessionRef = useRef<(nodeId: string) => Promise<void>>(
+    async (_nodeId: string) => undefined,
+  )
+  const listAgentSessionsRef = useRef<
+    (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
+  >(async (_nodeId: string, _limit?: number) => [])
+  const switchAgentSessionRef = useRef<
+    (nodeId: string, summary: AgentSessionSummary) => Promise<void>
+  >(async (_nodeId: string, _summary: AgentSessionSummary) => undefined)
   const updateNoteTextRef = useRef<(nodeId: string, text: string) => void>(
     (_nodeId: string, _text: string) => undefined,
   )
@@ -99,6 +115,9 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     closeNodeRef,
     resizeNodeRef,
     copyAgentLastMessageRef,
+    reloadAgentSessionRef,
+    listAgentSessionsRef,
+    switchAgentSessionRef,
     updateNoteTextRef,
     updateWebsiteUrlRef,
     setWebsitePinnedRef,
@@ -124,6 +143,9 @@ interface SyncActionRefsParams {
   closeNode: (nodeId: string) => Promise<void>
   resizeNode: (nodeId: string, desiredFrame: NodeFrame) => void
   copyAgentLastMessage: (nodeId: string) => Promise<void>
+  reloadAgentSession: (nodeId: string) => Promise<void>
+  listAgentSessions: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
+  switchAgentSession: (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   updateNoteText: (nodeId: string, text: string) => void
   updateWebsiteUrl: (nodeId: string, url: string) => void
   setWebsitePinned: (nodeId: string, pinned: boolean) => void
@@ -147,6 +169,9 @@ export function useWorkspaceCanvasSyncActionRefs({
   closeNode,
   resizeNode,
   copyAgentLastMessage,
+  reloadAgentSession,
+  listAgentSessions,
+  switchAgentSession,
   updateNoteText,
   updateWebsiteUrl,
   setWebsitePinned,
@@ -174,6 +199,18 @@ export function useWorkspaceCanvasSyncActionRefs({
   useLayoutEffect(() => {
     actionRefs.copyAgentLastMessageRef.current = copyAgentLastMessage
   }, [actionRefs.copyAgentLastMessageRef, copyAgentLastMessage])
+
+  useLayoutEffect(() => {
+    actionRefs.reloadAgentSessionRef.current = reloadAgentSession
+  }, [actionRefs.reloadAgentSessionRef, reloadAgentSession])
+
+  useLayoutEffect(() => {
+    actionRefs.listAgentSessionsRef.current = listAgentSessions
+  }, [actionRefs.listAgentSessionsRef, listAgentSessions])
+
+  useLayoutEffect(() => {
+    actionRefs.switchAgentSessionRef.current = switchAgentSession
+  }, [actionRefs.switchAgentSessionRef, switchAgentSession])
 
   useLayoutEffect(() => {
     actionRefs.updateNoteTextRef.current = (nodeId, text) => {
