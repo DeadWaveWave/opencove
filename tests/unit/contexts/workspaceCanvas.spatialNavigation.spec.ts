@@ -78,7 +78,7 @@ describe('workspace canvas spatial navigation', () => {
     ).toBeNull()
   })
 
-  it('resolves node navigation targets within the active space when there is no selected node', () => {
+  it('resolves node navigation targets across spaces and reports the target space id', () => {
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-a',
@@ -86,27 +86,35 @@ describe('workspace canvas spatial navigation', () => {
         directoryPath: '/tmp/a',
         targetMountId: null,
         labelColor: null,
-        nodeIds: ['a-left', 'a-right'],
+        nodeIds: ['a-right'],
         rect: { x: 0, y: 0, width: 300, height: 200 },
+      },
+      {
+        id: 'space-b',
+        name: 'B',
+        directoryPath: '/tmp/b',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: ['b-right'],
+        rect: { x: 400, y: 0, width: 300, height: 200 },
       },
     ]
 
     const nodes: Array<Node<TerminalNodeData>> = [
-      createTestNode('a-left', 10, 50),
-      createTestNode('a-right', 220, 50),
+      createTestNode('a-right', 10, 50),
+      createTestNode('b-right', 420, 50),
     ]
 
     const result = resolveNodeNavigationTargetId({
       direction: 'right',
-      sourceNodeId: null,
-      activeSpaceId: 'space-a',
+      sourceNodeId: 'a-right',
       nodes,
       spaces,
       viewportRect: { left: 0, top: 0, right: 300, bottom: 200 },
     })
 
-    expect(result?.targetNodeId).toBe('a-right')
-    expect(result?.containerSpaceId).toBe('space-a')
+    expect(result?.targetNodeId).toBe('b-right')
+    expect(result?.targetSpaceId).toBe('space-b')
   })
 
   it('resolves space navigation targets relative to the active space', () => {
@@ -134,7 +142,7 @@ describe('workspace canvas spatial navigation', () => {
     const target = resolveSpaceNavigationTargetId({
       direction: 'right',
       sourceNodeId: null,
-      activeSpaceId: 'space-left',
+      spaceNavigationAnchorId: 'space-left',
       spaces,
       viewportRect: { left: 0, top: 0, right: 600, bottom: 300 },
     })

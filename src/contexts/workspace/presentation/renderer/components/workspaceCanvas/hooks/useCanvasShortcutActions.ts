@@ -135,6 +135,7 @@ export function useWorkspaceCanvasShortcutActions({
   cancelSpaceRename,
   reactFlow,
   spacesRef,
+  spaceNavigationAnchorIdRef,
   nodesRef,
   setNodes,
   setSelectedNodeIds,
@@ -146,6 +147,7 @@ export function useWorkspaceCanvasShortcutActions({
   createNoteNode,
   createSpaceFromSelectedNodes,
   activateSpace,
+  setActiveSpaceIdFromNodeNavigation,
   clearNodeSelection,
   onShowMessage,
 }: {
@@ -171,6 +173,7 @@ export function useWorkspaceCanvasShortcutActions({
   cancelSpaceRename: () => void
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
+  spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   setSelectedNodeIds: React.Dispatch<React.SetStateAction<string[]>>
@@ -182,6 +185,7 @@ export function useWorkspaceCanvasShortcutActions({
   createNoteNode: (anchor: { x: number; y: number }) => Node<TerminalNodeData> | null
   createSpaceFromSelectedNodes: () => void
   activateSpace: (spaceId: string) => void
+  setActiveSpaceIdFromNodeNavigation: (spaceId: string | null) => void
   clearNodeSelection: () => void
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
 }): void {
@@ -291,7 +295,6 @@ export function useWorkspaceCanvasShortcutActions({
       const resolvedTarget = resolveNodeNavigationTargetId({
         direction,
         sourceNodeId,
-        activeSpaceId,
         nodes,
         spaces: resolvedSpaces,
         viewportRect,
@@ -306,8 +309,16 @@ export function useWorkspaceCanvasShortcutActions({
         return
       }
 
+      const desiredSpaceId = resolvedTarget.targetSpaceId
+      if (desiredSpaceId !== activeSpaceId) {
+        setActiveSpaceIdFromNodeNavigation(desiredSpaceId)
+      }
+
       selectNode(resolvedTarget.targetNodeId)
-      focusNodeInViewport(reactFlow, targetNode, { duration: 220, zoom: agentSettings.focusNodeTargetZoom })
+      focusNodeInViewport(reactFlow, targetNode, {
+        duration: 220,
+        zoom: agentSettings.focusNodeTargetZoom,
+      })
       schedulePrimaryNodeEditorFocus(resolvedTarget.targetNodeId)
     },
     [
@@ -321,6 +332,7 @@ export function useWorkspaceCanvasShortcutActions({
       selectedNodeIdsRef,
       setContextMenu,
       setEmptySelectionPrompt,
+      setActiveSpaceIdFromNodeNavigation,
       spacesRef,
     ],
   )
@@ -338,7 +350,7 @@ export function useWorkspaceCanvasShortcutActions({
       const targetSpaceId = resolveSpaceNavigationTargetId({
         direction,
         sourceNodeId,
-        activeSpaceId,
+        spaceNavigationAnchorId: spaceNavigationAnchorIdRef.current,
         spaces: spacesRef.current,
         viewportRect,
       })
@@ -352,11 +364,11 @@ export function useWorkspaceCanvasShortcutActions({
         document.activeElement.blur()
       }
       activateSpace(targetSpaceId)
+      spaceNavigationAnchorIdRef.current = targetSpaceId
       canvasRef.current?.focus?.({ preventScroll: true })
     },
     [
       activateSpace,
-      activeSpaceId,
       cancelSpaceRename,
       canvasRef,
       clearNodeSelection,
@@ -364,6 +376,7 @@ export function useWorkspaceCanvasShortcutActions({
       selectedNodeIdsRef,
       setContextMenu,
       setEmptySelectionPrompt,
+      spaceNavigationAnchorIdRef,
       spacesRef,
     ],
   )

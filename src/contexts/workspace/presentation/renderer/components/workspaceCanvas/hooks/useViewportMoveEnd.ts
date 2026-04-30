@@ -4,12 +4,14 @@ import type { Viewport } from '@xyflow/react'
 export function useWorkspaceCanvasViewportMoveEnd({
   viewportRef,
   onViewportChange,
+  onUserViewportMoveEnd,
 }: {
   viewportRef: React.MutableRefObject<Viewport>
   onViewportChange: (viewport: Viewport) => void
+  onUserViewportMoveEnd?: () => void
 }): (_event: MouseEvent | TouchEvent | null, nextViewport: Viewport) => void {
   return useCallback(
-    (_event: MouseEvent | TouchEvent | null, nextViewport: Viewport) => {
+    (event: MouseEvent | TouchEvent | null, nextViewport: Viewport) => {
       const normalizedViewport = {
         x: nextViewport.x,
         y: nextViewport.y,
@@ -18,7 +20,11 @@ export function useWorkspaceCanvasViewportMoveEnd({
 
       viewportRef.current = normalizedViewport
       onViewportChange(normalizedViewport)
+
+      if (event) {
+        onUserViewportMoveEnd?.()
+      }
     },
-    [onViewportChange, viewportRef],
+    [onUserViewportMoveEnd, onViewportChange, viewportRef],
   )
 }

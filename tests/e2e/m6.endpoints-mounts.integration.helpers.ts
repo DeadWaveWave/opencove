@@ -248,12 +248,12 @@ export async function switchSettingsPage(window: Page, pageId: string): Promise<
 export async function pollForEndpointPing(window: Page, endpointId: string): Promise<void> {
   await pollFor(
     async () =>
-      await window.evaluate(async endpointId => {
+      await window.evaluate(async evaluatedEndpointId => {
         try {
           const ping = await window.opencoveApi.controlSurface.invoke<{ ok: boolean }>({
             kind: 'query',
             id: 'endpoint.ping',
-            payload: { endpointId, timeoutMs: 10_000 },
+            payload: { endpointId: evaluatedEndpointId, timeoutMs: 10_000 },
           })
           return ping?.ok === true ? true : null
         } catch {

@@ -279,6 +279,7 @@ export function WorkspaceCanvasInner({
     cancelSpaceRename: spacesApi.cancelSpaceRename,
     reactFlow,
     spacesRef: canvasState.spacesRef,
+    spaceNavigationAnchorIdRef: canvasState.spaceNavigationAnchorIdRef,
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
@@ -290,6 +291,7 @@ export function WorkspaceCanvasInner({
     createNoteNode: nodeStore.createNoteNode,
     createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,
     activateSpace: spacesApi.activateSpace,
+    setActiveSpaceIdFromNodeNavigation: spacesApi.setActiveSpaceIdFromNodeNavigation,
     clearNodeSelection,
     onShowMessage,
   })
@@ -360,6 +362,9 @@ export function WorkspaceCanvasInner({
     agentSettings,
     viewportRef: canvasState.viewportRef,
     onViewportChange,
+    onUserViewportMoveEnd: () => {
+      canvasState.spaceNavigationAnchorIdRef.current = null
+    },
     flowNodes: canvasState.flowNodes,
     contextMenu: canvasState.contextMenu,
     setContextMenu: canvasState.setContextMenu,

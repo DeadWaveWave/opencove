@@ -85,6 +85,7 @@ export function useWorkspaceCanvasSpaces({
   spaceVisuals: SpaceVisual[]
   activateSpace: (spaceId: string) => void
   activateAllSpaces: () => void
+  setActiveSpaceIdFromNodeNavigation: (spaceId: string | null) => void
   focusSpaceInViewport: (spaceId: string) => boolean
   focusAllInViewport: () => void
 } {
@@ -95,6 +96,7 @@ export function useWorkspaceCanvasSpaces({
     useState<SpaceTargetMountPickerState | null>(null)
   const lastAppliedWorkspaceIdRef = useRef<string | null>(null)
   const lastAppliedActiveSpaceIdRef = useRef<string | null | undefined>(undefined)
+  const skipNextActiveSpaceViewportFocusRef = useRef(false)
   const viewportWidth = useStore(state => state.width)
   const viewportHeight = useStore(state => state.height)
   const viewportMinZoom = useStore(state => state.minZoom)
@@ -421,6 +423,18 @@ export function useWorkspaceCanvasSpaces({
     onActiveSpaceChange(null)
   }, [activeSpaceId, cancelSpaceRename, focusAllInViewport, onActiveSpaceChange])
 
+  const setActiveSpaceIdFromNodeNavigation = useCallback(
+    (spaceId: string | null): void => {
+      if (activeSpaceId === spaceId) {
+        return
+      }
+
+      skipNextActiveSpaceViewportFocusRef.current = true
+      onActiveSpaceChange(spaceId)
+    },
+    [activeSpaceId, onActiveSpaceChange],
+  )
+
   useEffect(() => {
     if (lastAppliedWorkspaceIdRef.current !== workspaceId) {
       lastAppliedWorkspaceIdRef.current = workspaceId
@@ -437,6 +451,11 @@ export function useWorkspaceCanvasSpaces({
     }
 
     lastAppliedActiveSpaceIdRef.current = activeSpaceId
+
+    if (skipNextActiveSpaceViewportFocusRef.current) {
+      skipNextActiveSpaceViewportFocusRef.current = false
+      return
+    }
 
     if (activeSpaceId) {
       focusSpaceInViewport(activeSpaceId)
@@ -464,6 +483,7 @@ export function useWorkspaceCanvasSpaces({
     spaceVisuals,
     activateSpace,
     activateAllSpaces,
+    setActiveSpaceIdFromNodeNavigation,
     focusSpaceInViewport,
     focusAllInViewport,
   }

@@ -62,6 +62,7 @@ export function useWorkspaceCanvasState({
   isShiftPressedRef: React.MutableRefObject<boolean>
   trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
   viewportRef: React.MutableRefObject<Viewport>
+  spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
   flowNodes: Node<TerminalNodeData>[]
 } {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
@@ -89,6 +90,7 @@ export function useWorkspaceCanvasState({
   const magneticSnappingEnabledRef = useRef(true)
   const trackpadGestureLockRef = useRef<TrackpadGestureLockState | null>(null)
   const viewportRef = useRef<Viewport>(viewport)
+  const spaceNavigationAnchorIdRef = useRef<string | null>(null)
 
   const selectedNodeIdSet = useMemo(() => new Set(selectedNodeIds), [selectedNodeIds])
 
@@ -170,6 +172,7 @@ export function useWorkspaceCanvasState({
     isShiftPressedRef,
     trackpadGestureLockRef,
     viewportRef,
+    spaceNavigationAnchorIdRef,
     flowNodes,
   }
 }

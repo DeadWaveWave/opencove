@@ -89,21 +89,18 @@ function toSpatialRectFromSpaceRect(rect: NonNullable<WorkspaceSpaceState['rect'
 export function resolveNodeNavigationTargetId({
   direction,
   sourceNodeId,
-  activeSpaceId,
   nodes,
   spaces,
   viewportRect,
 }: {
   direction: SpatialNavigationDirection
   sourceNodeId: string | null
-  activeSpaceId: string | null
   nodes: Array<Node<TerminalNodeData>>
   spaces: WorkspaceSpaceState[]
   viewportRect: { left: number; top: number; right: number; bottom: number }
-}): { targetNodeId: string; containerSpaceId: string | null } | null {
+}): { targetNodeId: string; targetSpaceId: string | null } | null {
   const nodeById = new Map(nodes.map(node => [node.id, node] as const))
 
-  const spaceById = new Map(spaces.map(space => [space.id, space] as const))
   const spaceIdByNodeId = new Map<string, string>()
   for (const space of spaces) {
     for (const nodeId of space.nodeIds) {
@@ -113,32 +110,6 @@ export function resolveNodeNavigationTargetId({
     }
   }
 
-  const resolveContainerSpaceId = (): string | null => {
-    if (sourceNodeId) {
-      return spaceIdByNodeId.get(sourceNodeId) ?? null
-    }
-    return activeSpaceId
-  }
-
-  const containerSpaceId = resolveContainerSpaceId()
-
-  const candidatesNodes = (() => {
-    if (containerSpaceId) {
-      const space = spaceById.get(containerSpaceId) ?? null
-      if (!space) {
-        return []
-      }
-      const nodeIds = new Set(space.nodeIds)
-      return nodes.filter(node => nodeIds.has(node.id))
-    }
-
-    const nodesInAnySpace = new Set<string>()
-    for (const space of spaces) {
-      space.nodeIds.forEach(id => nodesInAnySpace.add(id))
-    }
-    return nodes.filter(node => !nodesInAnySpace.has(node.id))
-  })()
-
   const sourceRect = (() => {
     if (sourceNodeId) {
       const node = nodeById.get(sourceNodeId) ?? null
@@ -147,22 +118,8 @@ export function resolveNodeNavigationTargetId({
       }
     }
 
-    // When there is no selected node, treat the container as an anchor point (not as the search rect).
-    // Using a large rect (e.g. the whole space) makes in-scope nodes non-candidates because they are
-    // not strictly "to the left/right/up/down" of the container bounds.
-    const anchorRect = (() => {
-      if (containerSpaceId) {
-        const space = spaceById.get(containerSpaceId) ?? null
-        if (space?.rect) {
-          return toSpatialRectFromSpaceRect(space.rect)
-        }
-      }
-
-      return viewportRect
-    })()
-
-    const anchorCenterX = anchorRect.left + (anchorRect.right - anchorRect.left) / 2
-    const anchorCenterY = anchorRect.top + (anchorRect.bottom - anchorRect.top) / 2
+    const anchorCenterX = viewportRect.left + (viewportRect.right - viewportRect.left) / 2
+    const anchorCenterY = viewportRect.top + (viewportRect.bottom - viewportRect.top) / 2
 
     return {
       left: anchorCenterX,
@@ -172,7 +129,7 @@ export function resolveNodeNavigationTargetId({
     }
   })()
 
-  const candidates: SpatialCandidate[] = candidatesNodes
+  const candidates: SpatialCandidate[] = nodes
     .filter(node => node.id !== sourceNodeId)
     .map(node => ({
       id: node.id,
@@ -189,19 +146,19 @@ export function resolveNodeNavigationTargetId({
     return null
   }
 
-  return { targetNodeId, containerSpaceId }
+  return { targetNodeId, targetSpaceId: spaceIdByNodeId.get(targetNodeId) ?? null }
 }
 
 export function resolveSpaceNavigationTargetId({
   direction,
   sourceNodeId,
-  activeSpaceId,
+  spaceNavigationAnchorId,
   spaces,
   viewportRect,
 }: {
   direction: SpatialNavigationDirection
   sourceNodeId: string | null
-  activeSpaceId: string | null
+  spaceNavigationAnchorId: string | null
   spaces: WorkspaceSpaceState[]
   viewportRect: { left: number; top: number; right: number; bottom: number }
 }): string | null {
@@ -215,7 +172,33 @@ export function resolveSpaceNavigationTargetId({
   }
 
   const sourceSpaceId = sourceNodeId ? (spaceIdByNodeId.get(sourceNodeId) ?? null) : null
-  const resolvedSourceSpaceId = sourceSpaceId ?? activeSpaceId
+  const resolvedAnchorSpaceId = (() => {
+    if (!spaceNavigationAnchorId) {
+      return null
+    }
+
+    const anchorSpace = spaces.find(space => space.id === spaceNavigationAnchorId) ?? null
+    return anchorSpace?.rect ? anchorSpace.id : null
+  })()
+  const viewportAnchorSpaceId = (() => {
+    const centerX = viewportRect.left + (viewportRect.right - viewportRect.left) / 2
+    const centerY = viewportRect.top + (viewportRect.bottom - viewportRect.top) / 2
+
+    for (const space of spaces) {
+      if (!space.rect) {
+        continue
+      }
+
+      const { x, y, width, height } = space.rect
+      if (centerX >= x && centerX <= x + width && centerY >= y && centerY <= y + height) {
+        return space.id
+      }
+    }
+
+    return null
+  })()
+
+  const resolvedSourceSpaceId = sourceSpaceId ?? resolvedAnchorSpaceId ?? viewportAnchorSpaceId
 
   const sourceRect = (() => {
     if (resolvedSourceSpaceId) {
@@ -224,7 +207,16 @@ export function resolveSpaceNavigationTargetId({
         return toSpatialRectFromSpaceRect(sourceSpace.rect)
       }
     }
-    return viewportRect
+
+    const anchorCenterX = viewportRect.left + (viewportRect.right - viewportRect.left) / 2
+    const anchorCenterY = viewportRect.top + (viewportRect.bottom - viewportRect.top) / 2
+
+    return {
+      left: anchorCenterX,
+      top: anchorCenterY,
+      right: anchorCenterX + 1,
+      bottom: anchorCenterY + 1,
+    }
   })()
 
   const candidates: SpatialCandidate[] = spaces
