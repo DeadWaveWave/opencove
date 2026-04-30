@@ -125,7 +125,16 @@ export async function selectCoveOption(
 
   const menu = window.locator(`[data-testid="${testId}-menu"]`)
   await expect(menu).toBeVisible()
-  await menu
-    .locator(`[data-cove-select-option-value="${optionValue.replaceAll('"', '\\"')}"]`)
-    .click()
+  const option = menu.locator(
+    `[data-cove-select-option-value="${optionValue.replaceAll('"', '\\"')}"]`,
+  )
+  await expect(option).toBeVisible()
+
+  // In offscreen/inactive Electron runs, pointer hit-testing can flake when the menu is
+  // repositioned during scroll or closed quickly by React state updates. Selecting via
+  // keyboard avoids those edge cases and exercises the same behavior as real usage.
+  await option.focus()
+  await window.keyboard.press('Enter')
+  await expect(menu).toBeHidden()
+  await expect(window.locator(`[data-testid="${testId}"]`)).toHaveValue(optionValue)
 }

@@ -44,6 +44,19 @@ function resolveConfiguredTestMatch(): string | string[] | undefined {
 const configuredTestMatch = resolveConfiguredTestMatch()
 const isCi = process.env.CI === '1' || process.env.CI === 'true'
 
+function resolveE2ERetries(rawValue: string | undefined): number {
+  const normalized = rawValue?.trim()
+  if (normalized) {
+    const parsed = Number(normalized)
+    if (Number.isInteger(parsed) && parsed >= 0) {
+      return parsed
+    }
+  }
+
+  // CI 最多重跑一次，避免把确定性失配拖成更长的失败队列。
+  return isCi ? 1 : 0
+}
+
 /**
  * Playwright 配置 - Electron E2E 测试
  *
@@ -68,8 +81,7 @@ export default defineConfig({
     timeout: 15_000,
   },
 
-  // CI 最多重跑一次，避免把确定性失配拖成更长的失败队列。
-  retries: process.env.CI ? 1 : 0,
+  retries: resolveE2ERetries(process.env.OPENCOVE_E2E_RETRIES),
 
   // 并行 worker 数量
   workers: 1, // Electron 测试建议串行运行

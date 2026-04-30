@@ -244,3 +244,22 @@ export async function switchSettingsPage(window: Page, pageId: string): Promise<
   await expect(nav).toBeVisible()
   await nav.click({ noWaitAfter: true })
 }
+
+export async function pollForEndpointPing(window: Page, endpointId: string): Promise<void> {
+  await pollFor(
+    async () =>
+      await window.evaluate(async endpointId => {
+        try {
+          const ping = await window.opencoveApi.controlSurface.invoke<{ ok: boolean }>({
+            kind: 'query',
+            id: 'endpoint.ping',
+            payload: { endpointId, timeoutMs: 10_000 },
+          })
+          return ping?.ok === true ? true : null
+        } catch {
+          return null
+        }
+      }, endpointId),
+    { label: 'remote endpoint ping', timeoutMs: 30_000 },
+  )
+}

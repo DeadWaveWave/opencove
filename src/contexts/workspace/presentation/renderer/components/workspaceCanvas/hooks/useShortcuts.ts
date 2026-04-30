@@ -12,6 +12,7 @@ import {
   toKeyChord,
 } from '@contexts/settings/domain/keybindings'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import type { SpatialNavigationDirection } from './spatialNavigation'
 import { resolveCycledSpaceId, resolveIdleSpaceIds } from './useShortcuts.helpers'
 
 const TERMINAL_FOCUS_SCOPE_SELECTOR = '[data-cove-focus-scope="terminal"]'
@@ -50,6 +51,8 @@ export function useWorkspaceCanvasShortcuts({
   createNoteAtViewportCenter,
   createTerminalAtViewportCenter,
   activateSpace,
+  navigateNode,
+  navigateSpace,
 }: {
   enabled: boolean
   platform: string | undefined
@@ -62,6 +65,8 @@ export function useWorkspaceCanvasShortcuts({
   createNoteAtViewportCenter: () => void
   createTerminalAtViewportCenter: () => Promise<void>
   activateSpace: (spaceId: string) => void
+  navigateNode: (direction: SpatialNavigationDirection) => void
+  navigateSpace: (direction: SpatialNavigationDirection) => void
 }): void {
   const spaceIds = useMemo(() => spaces.map(space => space.id), [spaces])
   const chordToCommand = useMemo(
@@ -80,11 +85,7 @@ export function useWorkspaceCanvasShortcuts({
     }
 
     const handleKeyDown = (event: KeyboardEvent): void => {
-      if (event.isComposing || event.repeat || isEditableKeyboardTarget(event.target)) {
-        return
-      }
-
-      if (disableWhenTerminalFocused && isTerminalFocusActive(event.target)) {
+      if (event.isComposing || event.repeat) {
         return
       }
 
@@ -95,6 +96,18 @@ export function useWorkspaceCanvasShortcuts({
 
       const commandId = chordToCommand.get(serializeKeyChord(chord))
       if (!commandId) {
+        return
+      }
+
+      const isSpatialNavigationCommand =
+        commandId.startsWith('workspaceCanvas.navigateNode') ||
+        commandId.startsWith('workspaceCanvas.navigateSpace')
+
+      if (!isSpatialNavigationCommand && isEditableKeyboardTarget(event.target)) {
+        return
+      }
+
+      if (!isSpatialNavigationCommand && disableWhenTerminalFocused && isTerminalFocusActive(event.target)) {
         return
       }
 
@@ -110,6 +123,30 @@ export function useWorkspaceCanvasShortcuts({
           return
         case 'workspaceCanvas.createTerminal':
           void createTerminalAtViewportCenter()
+          return
+        case 'workspaceCanvas.navigateNodeLeft':
+          navigateNode('left')
+          return
+        case 'workspaceCanvas.navigateNodeRight':
+          navigateNode('right')
+          return
+        case 'workspaceCanvas.navigateNodeUp':
+          navigateNode('up')
+          return
+        case 'workspaceCanvas.navigateNodeDown':
+          navigateNode('down')
+          return
+        case 'workspaceCanvas.navigateSpaceLeft':
+          navigateSpace('left')
+          return
+        case 'workspaceCanvas.navigateSpaceRight':
+          navigateSpace('right')
+          return
+        case 'workspaceCanvas.navigateSpaceUp':
+          navigateSpace('up')
+          return
+        case 'workspaceCanvas.navigateSpaceDown':
+          navigateSpace('down')
           return
         case 'workspaceCanvas.cycleSpacesForward':
         case 'workspaceCanvas.cycleSpacesBackward':
@@ -156,6 +193,8 @@ export function useWorkspaceCanvasShortcuts({
     disableWhenTerminalFocused,
     enabled,
     keybindings,
+    navigateNode,
+    navigateSpace,
     nodesRef,
     chordToCommand,
     spaceIds,

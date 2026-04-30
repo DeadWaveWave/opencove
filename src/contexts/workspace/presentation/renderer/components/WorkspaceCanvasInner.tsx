@@ -281,11 +281,16 @@ export function WorkspaceCanvasInner({
     spacesRef: canvasState.spacesRef,
     nodesRef: nodeStore.nodesRef,
     setNodes: nodeStore.setNodes,
+    setSelectedNodeIds: canvasState.setSelectedNodeIds,
+    setSelectedSpaceIds: canvasState.setSelectedSpaceIds,
+    selectedNodeIdsRef: canvasState.selectedNodeIdsRef,
+    selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     onSpacesChange,
     createNodeForSession: nodeStore.createNodeForSession,
     createNoteNode: nodeStore.createNoteNode,
     createSpaceFromSelectedNodes: spacesApi.createSpaceFromSelectedNodes,
     activateSpace: spacesApi.activateSpace,
+    clearNodeSelection,
     onShowMessage,
   })
   const {

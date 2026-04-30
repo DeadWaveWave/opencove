@@ -22,6 +22,7 @@ import {
   openSettings,
   pathExists,
   pollFor,
+  pollForEndpointPing,
   reserveLoopbackPort,
   startRemoteWorker,
   stopRemoteWorker,
@@ -140,6 +141,8 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
           }, endpointDisplayName),
         { label: 'remote endpoint id', timeoutMs: 30_000 },
       )
+
+      await pollForEndpointPing(window, remoteEndpointId)
 
       await closeSettings(window)
 

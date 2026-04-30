@@ -14,6 +14,14 @@ export const WORKSPACE_CANVAS_COMMAND_IDS = [
   'workspaceCanvas.cycleSpacesBackward',
   'workspaceCanvas.cycleIdleSpacesForward',
   'workspaceCanvas.cycleIdleSpacesBackward',
+  'workspaceCanvas.navigateNodeLeft',
+  'workspaceCanvas.navigateNodeRight',
+  'workspaceCanvas.navigateNodeUp',
+  'workspaceCanvas.navigateNodeDown',
+  'workspaceCanvas.navigateSpaceLeft',
+  'workspaceCanvas.navigateSpaceRight',
+  'workspaceCanvas.navigateSpaceUp',
+  'workspaceCanvas.navigateSpaceDown',
 ] as const
 
 export const COMMAND_IDS = [...APP_COMMAND_IDS, ...WORKSPACE_CANVAS_COMMAND_IDS] as const
@@ -46,6 +54,22 @@ function createCommandModifierChord(
   return {
     code,
     altKey: false,
+    ctrlKey: !isMac,
+    metaKey: isMac,
+    shiftKey: options?.shiftKey === true,
+  }
+}
+
+function createCommandModifierAltChord(
+  platform: string | undefined,
+  code: KeyChord['code'],
+  options?: Pick<KeyChord, 'shiftKey'>,
+): KeyChord {
+  const isMac = platform === 'darwin'
+
+  return {
+    code,
+    altKey: true,
     ctrlKey: !isMac,
     metaKey: isMac,
     shiftKey: options?.shiftKey === true,
@@ -144,6 +168,22 @@ export function resolveDefaultKeybindings(
       shiftKey: true,
     }),
     'workspaceCanvas.cycleIdleSpacesBackward': createCommandModifierChord(platform, 'BracketLeft', {
+      shiftKey: true,
+    }),
+    'workspaceCanvas.navigateNodeLeft': createCommandModifierAltChord(platform, 'ArrowLeft'),
+    'workspaceCanvas.navigateNodeRight': createCommandModifierAltChord(platform, 'ArrowRight'),
+    'workspaceCanvas.navigateNodeUp': createCommandModifierAltChord(platform, 'ArrowUp'),
+    'workspaceCanvas.navigateNodeDown': createCommandModifierAltChord(platform, 'ArrowDown'),
+    'workspaceCanvas.navigateSpaceLeft': createCommandModifierAltChord(platform, 'ArrowLeft', {
+      shiftKey: true,
+    }),
+    'workspaceCanvas.navigateSpaceRight': createCommandModifierAltChord(platform, 'ArrowRight', {
+      shiftKey: true,
+    }),
+    'workspaceCanvas.navigateSpaceUp': createCommandModifierAltChord(platform, 'ArrowUp', {
+      shiftKey: true,
+    }),
+    'workspaceCanvas.navigateSpaceDown': createCommandModifierAltChord(platform, 'ArrowDown', {
       shiftKey: true,
     }),
   }

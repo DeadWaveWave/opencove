@@ -85,6 +85,22 @@ function getCommandTitleKey(commandId: CommandId): string {
       return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesForward.title'
     case 'workspaceCanvas.cycleIdleSpacesBackward':
       return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesBackward.title'
+    case 'workspaceCanvas.navigateNodeLeft':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeLeft.title'
+    case 'workspaceCanvas.navigateNodeRight':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeRight.title'
+    case 'workspaceCanvas.navigateNodeUp':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeUp.title'
+    case 'workspaceCanvas.navigateNodeDown':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeDown.title'
+    case 'workspaceCanvas.navigateSpaceLeft':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceLeft.title'
+    case 'workspaceCanvas.navigateSpaceRight':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceRight.title'
+    case 'workspaceCanvas.navigateSpaceUp':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceUp.title'
+    case 'workspaceCanvas.navigateSpaceDown':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceDown.title'
     default: {
       const _exhaustive: never = commandId
       return _exhaustive
@@ -118,6 +134,22 @@ function getCommandHelpKey(commandId: CommandId): string {
       return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesForward.help'
     case 'workspaceCanvas.cycleIdleSpacesBackward':
       return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesBackward.help'
+    case 'workspaceCanvas.navigateNodeLeft':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeLeft.help'
+    case 'workspaceCanvas.navigateNodeRight':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeRight.help'
+    case 'workspaceCanvas.navigateNodeUp':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeUp.help'
+    case 'workspaceCanvas.navigateNodeDown':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeDown.help'
+    case 'workspaceCanvas.navigateSpaceLeft':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceLeft.help'
+    case 'workspaceCanvas.navigateSpaceRight':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceRight.help'
+    case 'workspaceCanvas.navigateSpaceUp':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceUp.help'
+    case 'workspaceCanvas.navigateSpaceDown':
+      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceDown.help'
     default: {
       const _exhaustive: never = commandId
       return _exhaustive

@@ -1,4 +1,5 @@
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
+import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const zhCNSettingsPanel = {
   title: '设置',
@@ -349,6 +350,7 @@ export const zhCNSettingsPanel = {
         title: '上一个空闲 Space',
         help: '切换到上一个没有 working agent 的 Space。',
       },
+      ...zhCNWorkspaceCanvasNavigationShortcutCommands,
     },
   },
   tasks: {

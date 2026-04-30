@@ -34,6 +34,20 @@ describe('settings keybindings', () => {
       metaKey: true,
       shiftKey: true,
     })
+    expect(bindings['workspaceCanvas.navigateNodeRight']).toMatchObject({
+      code: 'ArrowRight',
+      altKey: true,
+      metaKey: true,
+      ctrlKey: false,
+      shiftKey: false,
+    })
+    expect(bindings['workspaceCanvas.navigateSpaceRight']).toMatchObject({
+      code: 'ArrowRight',
+      altKey: true,
+      metaKey: true,
+      ctrlKey: false,
+      shiftKey: true,
+    })
   })
 
   it('allows overriding a command to be unassigned', () => {
