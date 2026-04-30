@@ -4,172 +4,26 @@ import {
   APP_COMMAND_IDS,
   COMMAND_IDS,
   WORKSPACE_CANVAS_COMMAND_IDS,
-  formatKeyChord,
-  formatKeyChordParts,
   isSupportedKeybindingChord,
   resolveEffectiveKeybindings,
   serializeKeyChord,
   toKeyChord,
   type CommandId,
-  type FormattedKeyChordParts,
   type KeyChord,
   type KeybindingOverrides,
 } from '@contexts/settings/domain/keybindings'
+import {
+  KeybindingValue,
+  SPATIAL_NAVIGATION_NODE_COMMAND_IDS,
+  SPATIAL_NAVIGATION_SPACE_COMMAND_IDS,
+  SpatialNavigationPreviewGroup,
+  isSpatialNavigationCommandId,
+} from './shortcuts/ShortcutKeycaps'
+import { getCommandHelpKey, getCommandTitleKey } from './shortcuts/shortcutCommandKeys'
 
 const TERMINAL_FOCUS_SCOPE_LABEL_BY_LOCALE: Record<string, string> = {
   en: 'terminal',
   'zh-CN': '终端',
-}
-
-const SPATIAL_NAVIGATION_NODE_COMMAND_IDS: CommandId[] = [
-  'workspaceCanvas.navigateNodeLeft',
-  'workspaceCanvas.navigateNodeRight',
-  'workspaceCanvas.navigateNodeUp',
-  'workspaceCanvas.navigateNodeDown',
-]
-
-const SPATIAL_NAVIGATION_SPACE_COMMAND_IDS: CommandId[] = [
-  'workspaceCanvas.navigateSpaceLeft',
-  'workspaceCanvas.navigateSpaceRight',
-  'workspaceCanvas.navigateSpaceUp',
-  'workspaceCanvas.navigateSpaceDown',
-]
-
-function isSpatialNavigationCommandId(commandId: CommandId): boolean {
-  return (
-    commandId.startsWith('workspaceCanvas.navigateNode') ||
-    commandId.startsWith('workspaceCanvas.navigateSpace')
-  )
-}
-
-function joinKeyChordPartsText(platform: string | undefined, parts: FormattedKeyChordParts): string {
-  if (platform === 'darwin') {
-    return `${parts.modifiers.join('')}${parts.key}`
-  }
-
-  return `${[...parts.modifiers, parts.key].join(' ')}`
-}
-
-function areStringArraysEqual(a: string[], b: string[]): boolean {
-  if (a.length !== b.length) {
-    return false
-  }
-
-  return a.every((value, index) => value === b[index])
-}
-
-function Keycaps({
-  tokens,
-  'aria-label': ariaLabel,
-}: {
-  tokens: string[]
-  'aria-label'?: string
-}): React.JSX.Element {
-  return (
-    <span className="settings-panel__keybinding" aria-label={ariaLabel}>
-      {tokens.map((token, index) => (
-        <span key={`${token}-${index}`} className="settings-panel__keycap">
-          {token}
-        </span>
-      ))}
-    </span>
-  )
-}
-
-function KeybindingValue({
-  platform,
-  chord,
-  formatted,
-  testId,
-}: {
-  platform: string | undefined
-  chord: KeyChord | null
-  formatted: string
-  testId: string
-}): React.JSX.Element {
-  const parts = formatKeyChordParts(platform, chord)
-  const tokens = parts ? [...parts.modifiers, parts.key] : []
-
-  return (
-    <span
-      className="settings-panel__value settings-panel__value--keybinding"
-      data-testid={testId}
-      data-keybinding={formatted}
-      title={formatted}
-    >
-      <Keycaps tokens={tokens.length > 0 ? tokens : ['—']} aria-label={formatted} />
-    </span>
-  )
-}
-
-function SpatialNavigationPreviewGroup({
-  platform,
-  title,
-  chords,
-}: {
-  platform: string | undefined
-  title: string
-  chords: {
-    up: KeyChord | null
-    down: KeyChord | null
-    left: KeyChord | null
-    right: KeyChord | null
-  }
-}): React.JSX.Element {
-  const up = formatKeyChordParts(platform, chords.up)
-  const down = formatKeyChordParts(platform, chords.down)
-  const left = formatKeyChordParts(platform, chords.left)
-  const right = formatKeyChordParts(platform, chords.right)
-  const partsList = [up, down, left, right].filter(Boolean) as FormattedKeyChordParts[]
-  const hasCommonModifiers =
-    partsList.length > 0 && partsList.every(parts => areStringArraysEqual(parts.modifiers, partsList[0].modifiers))
-  const commonModifiers = hasCommonModifiers ? partsList[0].modifiers : []
-
-  const cellTokens = (parts: FormattedKeyChordParts | null): string[] => {
-    if (!parts) {
-      return ['—']
-    }
-
-    return hasCommonModifiers ? [parts.key] : [...parts.modifiers, parts.key]
-  }
-
-  const cellLabel = (parts: FormattedKeyChordParts | null): string => {
-    if (!parts) {
-      return '—'
-    }
-
-    return joinKeyChordPartsText(platform, parts)
-  }
-
-  return (
-    <div className="settings-panel__spatial-nav-preview-group">
-      <div className="settings-panel__spatial-nav-preview-heading">
-        <span className="settings-panel__spatial-nav-preview-title">{title}</span>
-        {hasCommonModifiers && commonModifiers.length > 0 ? (
-          <Keycaps tokens={commonModifiers} aria-label={commonModifiers.join(' ')} />
-        ) : null}
-      </div>
-      <div className="settings-panel__spatial-nav-dpad" role="group" aria-label={title}>
-        <div />
-        <span className="settings-panel__spatial-nav-cell">
-          <Keycaps tokens={cellTokens(up)} aria-label={cellLabel(up)} />
-        </span>
-        <div />
-        <span className="settings-panel__spatial-nav-cell">
-          <Keycaps tokens={cellTokens(left)} aria-label={cellLabel(left)} />
-        </span>
-        <div className="settings-panel__spatial-nav-cell settings-panel__spatial-nav-cell--center" />
-        <span className="settings-panel__spatial-nav-cell">
-          <Keycaps tokens={cellTokens(right)} aria-label={cellLabel(right)} />
-        </span>
-        <div />
-        <span className="settings-panel__spatial-nav-cell">
-          <Keycaps tokens={cellTokens(down)} aria-label={cellLabel(down)} />
-        </span>
-        <div />
-      </div>
-    </div>
-  )
 }
 
 const shortcutButtonStyle: React.CSSProperties = {
@@ -212,104 +66,6 @@ function setOverride(
   }
 }
 
-function getCommandTitleKey(commandId: CommandId): string {
-  switch (commandId) {
-    case 'commandCenter.toggle':
-      return 'settingsPanel.shortcuts.commands.commandCenterToggle.title'
-    case 'app.openSettings':
-      return 'settingsPanel.shortcuts.commands.openSettings.title'
-    case 'app.togglePrimarySidebar':
-      return 'settingsPanel.shortcuts.commands.togglePrimarySidebar.title'
-    case 'workspace.addProject':
-      return 'settingsPanel.shortcuts.commands.addProject.title'
-    case 'workspace.search':
-      return 'settingsPanel.shortcuts.commands.workspaceSearch.title'
-    case 'workspaceCanvas.createSpace':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateSpace.title'
-    case 'workspaceCanvas.createNote':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateNote.title'
-    case 'workspaceCanvas.createTerminal':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateTerminal.title'
-    case 'workspaceCanvas.cycleSpacesForward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesForward.title'
-    case 'workspaceCanvas.cycleSpacesBackward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesBackward.title'
-    case 'workspaceCanvas.cycleIdleSpacesForward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesForward.title'
-    case 'workspaceCanvas.cycleIdleSpacesBackward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesBackward.title'
-    case 'workspaceCanvas.navigateNodeLeft':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeLeft.title'
-    case 'workspaceCanvas.navigateNodeRight':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeRight.title'
-    case 'workspaceCanvas.navigateNodeUp':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeUp.title'
-    case 'workspaceCanvas.navigateNodeDown':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeDown.title'
-    case 'workspaceCanvas.navigateSpaceLeft':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceLeft.title'
-    case 'workspaceCanvas.navigateSpaceRight':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceRight.title'
-    case 'workspaceCanvas.navigateSpaceUp':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceUp.title'
-    case 'workspaceCanvas.navigateSpaceDown':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceDown.title'
-    default: {
-      const _exhaustive: never = commandId
-      return _exhaustive
-    }
-  }
-}
-
-function getCommandHelpKey(commandId: CommandId): string {
-  switch (commandId) {
-    case 'commandCenter.toggle':
-      return 'settingsPanel.shortcuts.commands.commandCenterToggle.help'
-    case 'app.openSettings':
-      return 'settingsPanel.shortcuts.commands.openSettings.help'
-    case 'app.togglePrimarySidebar':
-      return 'settingsPanel.shortcuts.commands.togglePrimarySidebar.help'
-    case 'workspace.addProject':
-      return 'settingsPanel.shortcuts.commands.addProject.help'
-    case 'workspace.search':
-      return 'settingsPanel.shortcuts.commands.workspaceSearch.help'
-    case 'workspaceCanvas.createSpace':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateSpace.help'
-    case 'workspaceCanvas.createNote':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateNote.help'
-    case 'workspaceCanvas.createTerminal':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCreateTerminal.help'
-    case 'workspaceCanvas.cycleSpacesForward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesForward.help'
-    case 'workspaceCanvas.cycleSpacesBackward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleSpacesBackward.help'
-    case 'workspaceCanvas.cycleIdleSpacesForward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesForward.help'
-    case 'workspaceCanvas.cycleIdleSpacesBackward':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasCycleIdleSpacesBackward.help'
-    case 'workspaceCanvas.navigateNodeLeft':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeLeft.help'
-    case 'workspaceCanvas.navigateNodeRight':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeRight.help'
-    case 'workspaceCanvas.navigateNodeUp':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeUp.help'
-    case 'workspaceCanvas.navigateNodeDown':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateNodeDown.help'
-    case 'workspaceCanvas.navigateSpaceLeft':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceLeft.help'
-    case 'workspaceCanvas.navigateSpaceRight':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceRight.help'
-    case 'workspaceCanvas.navigateSpaceUp':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceUp.help'
-    case 'workspaceCanvas.navigateSpaceDown':
-      return 'settingsPanel.shortcuts.commands.workspaceCanvasNavigateSpaceDown.help'
-    default: {
-      const _exhaustive: never = commandId
-      return _exhaustive
-    }
-  }
-}
-
 export function ShortcutsSection({
   disableAppShortcutsWhenTerminalFocused,
   keybindings,
@@ -333,7 +89,8 @@ export function ShortcutsSection({
   )
 
   const workspaceCanvasCommandIds = React.useMemo(
-    () => WORKSPACE_CANVAS_COMMAND_IDS.filter(commandId => !isSpatialNavigationCommandId(commandId)),
+    () =>
+      WORKSPACE_CANVAS_COMMAND_IDS.filter(commandId => !isSpatialNavigationCommandId(commandId)),
     [],
   )
 
@@ -448,11 +205,7 @@ export function ShortcutsSection({
           onClick={() => {
             setShowSpatialNavigationBindings(current => {
               const next = !current
-              if (
-                !next &&
-                recordingCommandId &&
-                isSpatialNavigationCommandId(recordingCommandId)
-              ) {
+              if (!next && recordingCommandId && isSpatialNavigationCommandId(recordingCommandId)) {
                 setRecordingCommandId(null)
               }
 
@@ -510,8 +263,8 @@ export function ShortcutsSection({
             </div>
 
             {group.commandIds.map(commandId => {
-              const formatted = formatKeyChord(platform, effectiveBindings[commandId])
-              const hasBinding = formatted.length > 0
+              const chord = effectiveBindings[commandId]
+              const hasBinding = chord !== null
 
               return (
                 <div className="settings-panel__row" key={commandId}>
@@ -520,11 +273,10 @@ export function ShortcutsSection({
                     <span>{t(getCommandHelpKey(commandId))}</span>
                   </div>
                   <div className="settings-panel__control" style={{ gap: '8px', flexWrap: 'wrap' }}>
-                    {hasBinding ? (
+                    {chord ? (
                       <KeybindingValue
                         platform={platform}
-                        chord={effectiveBindings[commandId]}
-                        formatted={formatted}
+                        chord={chord}
                         testId={`settings-shortcut-value-${commandId}`}
                       />
                     ) : (
@@ -587,88 +339,90 @@ export function ShortcutsSection({
                 {spatialNavigationSummary}
                 {showSpatialNavigationBindings ? (
                   <div className="settings-panel__subsection settings-panel__subsection--spatial-nav">
-                    {[...SPATIAL_NAVIGATION_NODE_COMMAND_IDS, ...SPATIAL_NAVIGATION_SPACE_COMMAND_IDS].map(
-                      commandId => {
-                        const formatted = formatKeyChord(platform, effectiveBindings[commandId])
-                        const hasBinding = formatted.length > 0
+                    {[
+                      ...SPATIAL_NAVIGATION_NODE_COMMAND_IDS,
+                      ...SPATIAL_NAVIGATION_SPACE_COMMAND_IDS,
+                    ].map(commandId => {
+                      const chord = effectiveBindings[commandId]
+                      const hasBinding = chord !== null
 
-                        return (
-                          <div className="settings-panel__row" key={commandId}>
-                            <div className="settings-panel__row-label">
-                              <strong>{t(getCommandTitleKey(commandId))}</strong>
-                              <span>{t(getCommandHelpKey(commandId))}</span>
-                            </div>
-                            <div
-                              className="settings-panel__control"
-                              style={{ gap: '8px', flexWrap: 'wrap' }}
-                            >
-                              {hasBinding ? (
-                                <KeybindingValue
-                                  platform={platform}
-                                  chord={effectiveBindings[commandId]}
-                                  formatted={formatted}
-                                  testId={`settings-shortcut-value-${commandId}`}
-                                />
-                              ) : (
-                                <span
-                                  className="settings-panel__value"
-                                  data-testid={`settings-shortcut-value-${commandId}`}
-                                  data-keybinding=""
-                                >
-                                  {t('settingsPanel.shortcuts.unassigned')}
-                                </span>
-                              )}
-                              <button
-                                type="button"
-                                className="secondary"
-                                style={shortcutButtonStyle}
-                                data-testid={`settings-shortcut-record-${commandId}`}
-                                onClick={() => {
-                                  setRecordingCommandId(current =>
-                                    current === commandId ? null : commandId,
-                                  )
-                                }}
-                              >
-                                {recordingCommandId === commandId
-                                  ? t('settingsPanel.shortcuts.recording')
-                                  : t('settingsPanel.shortcuts.record')}
-                              </button>
-                              <button
-                                type="button"
-                                className="secondary"
-                                style={shortcutButtonStyle}
-                                data-testid={`settings-shortcut-clear-${commandId}`}
-                                onClick={() => {
-                                  onChangeKeybindings(
-                                    pruneOverrides(setOverride(keybindings, commandId, null)),
-                                  )
-                                }}
-                                disabled={
-                                  !hasBinding &&
-                                  !Object.prototype.hasOwnProperty.call(keybindings, commandId)
-                                }
-                              >
-                                {t('settingsPanel.shortcuts.clear')}
-                              </button>
-                              <button
-                                type="button"
-                                className="secondary"
-                                style={shortcutButtonStyle}
-                                data-testid={`settings-shortcut-reset-${commandId}`}
-                                onClick={() => {
-                                  onChangeKeybindings(
-                                    pruneOverrides(removeOverride(keybindings, commandId)),
-                                  )
-                                }}
-                                disabled={!Object.prototype.hasOwnProperty.call(keybindings, commandId)}
-                              >
-                                {t('common.resetToDefault')}
-                              </button>
-                            </div>
+                      return (
+                        <div className="settings-panel__row" key={commandId}>
+                          <div className="settings-panel__row-label">
+                            <strong>{t(getCommandTitleKey(commandId))}</strong>
+                            <span>{t(getCommandHelpKey(commandId))}</span>
                           </div>
-                        )
-                      },
-                    )}
+                          <div
+                            className="settings-panel__control"
+                            style={{ gap: '8px', flexWrap: 'wrap' }}
+                          >
+                            {chord ? (
+                              <KeybindingValue
+                                platform={platform}
+                                chord={chord}
+                                testId={`settings-shortcut-value-${commandId}`}
+                              />
+                            ) : (
+                              <span
+                                className="settings-panel__value"
+                                data-testid={`settings-shortcut-value-${commandId}`}
+                                data-keybinding=""
+                              >
+                                {t('settingsPanel.shortcuts.unassigned')}
+                              </span>
+                            )}
+                            <button
+                              type="button"
+                              className="secondary"
+                              style={shortcutButtonStyle}
+                              data-testid={`settings-shortcut-record-${commandId}`}
+                              onClick={() => {
+                                setRecordingCommandId(current =>
+                                  current === commandId ? null : commandId,
+                                )
+                              }}
+                            >
+                              {recordingCommandId === commandId
+                                ? t('settingsPanel.shortcuts.recording')
+                                : t('settingsPanel.shortcuts.record')}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary"
+                              style={shortcutButtonStyle}
+                              data-testid={`settings-shortcut-clear-${commandId}`}
+                              onClick={() => {
+                                onChangeKeybindings(
+                                  pruneOverrides(setOverride(keybindings, commandId, null)),
+                                )
+                              }}
+                              disabled={
+                                !hasBinding &&
+                                !Object.prototype.hasOwnProperty.call(keybindings, commandId)
+                              }
+                            >
+                              {t('settingsPanel.shortcuts.clear')}
+                            </button>
+                            <button
+                              type="button"
+                              className="secondary"
+                              style={shortcutButtonStyle}
+                              data-testid={`settings-shortcut-reset-${commandId}`}
+                              onClick={() => {
+                                onChangeKeybindings(
+                                  pruneOverrides(removeOverride(keybindings, commandId)),
+                                )
+                              }}
+                              disabled={
+                                !Object.prototype.hasOwnProperty.call(keybindings, commandId)
+                              }
+                            >
+                              {t('common.resetToDefault')}
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
                   </div>
                 ) : null}
               </>

@@ -32,4 +32,3 @@ export const enWorkspaceCanvasNavigationShortcutCommands = {
     help: 'Activate the nearest space below (beam-first).',
   },
 } as const
-

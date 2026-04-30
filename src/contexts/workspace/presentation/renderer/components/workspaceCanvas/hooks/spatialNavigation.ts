@@ -198,7 +198,10 @@ function beamBeats(
     return true
   }
 
-  return majorAxisDistance(direction, source, rect1) < majorAxisDistanceToFarEdge(direction, source, rect2)
+  return (
+    majorAxisDistance(direction, source, rect1) <
+    majorAxisDistanceToFarEdge(direction, source, rect2)
+  )
 }
 
 function isBetterCandidate(
@@ -258,4 +261,3 @@ export function resolveSpatialNavigationTargetId({
 
   return best?.id ?? null
 }
-

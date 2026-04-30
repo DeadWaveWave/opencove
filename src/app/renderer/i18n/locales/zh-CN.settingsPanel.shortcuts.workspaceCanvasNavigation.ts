@@ -32,4 +32,3 @@ export const zhCNWorkspaceCanvasNavigationShortcutCommands = {
     help: '激活下方最近的 Space（beam-first）。',
   },
 } as const
-

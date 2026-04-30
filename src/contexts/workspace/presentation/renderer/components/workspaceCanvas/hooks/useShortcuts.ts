@@ -107,7 +107,11 @@ export function useWorkspaceCanvasShortcuts({
         return
       }
 
-      if (!isSpatialNavigationCommand && disableWhenTerminalFocused && isTerminalFocusActive(event.target)) {
+      if (
+        !isSpatialNavigationCommand &&
+        disableWhenTerminalFocused &&
+        isTerminalFocusActive(event.target)
+      ) {
         return
       }
 
