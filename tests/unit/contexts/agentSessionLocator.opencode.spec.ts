@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-const { execFileMock } = vi.hoisted(() => ({
+const { execFileMock, resolveAgentExecutableInvocationMock } = vi.hoisted(() => ({
   execFileMock: vi.fn<typeof import('node:child_process').execFile>(),
+  resolveAgentExecutableInvocationMock: vi.fn(),
 }))
 
 vi.mock('node:child_process', () => {
@@ -13,11 +14,32 @@ vi.mock('node:child_process', () => {
   }
 })
 
+vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentExecutableResolver', () => {
+  return {
+    resolveAgentExecutableInvocation: resolveAgentExecutableInvocationMock,
+  }
+})
+
 import { locateAgentResumeSessionId } from '../../../src/contexts/agent/infrastructure/cli/AgentSessionLocator'
 
 describe('locateAgentResumeSessionId (opencode)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resolveAgentExecutableInvocationMock.mockResolvedValue({
+      executable: {
+        provider: 'opencode',
+        toolId: 'opencode',
+        command: 'opencode',
+        executablePath: 'opencode',
+        source: 'process_path',
+        status: 'resolved',
+        diagnostics: [],
+      },
+      invocation: {
+        command: 'opencode',
+        args: ['session', 'list', '--format', 'json', '-n', '12'],
+      },
+    })
   })
 
   it('matches the uniquely recent OpenCode session for the cwd', async () => {
