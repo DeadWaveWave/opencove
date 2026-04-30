@@ -14,19 +14,35 @@ CLI 的定位是：给 Agent/自动化脚本提供一个稳定入口，去驱动
 
 OpenCove 目前支持两条正式的 CLI 安装链路：
 
-- **Desktop 内置安装**：用户在 Desktop 的 **Settings → Worker → CLI** 中点击 **Install CLI**，由已安装的 app 写入 `opencove` launcher。
-- **Standalone server 安装**：用户直接从 GitHub Release 下载独立 runtime bundle，并通过 `opencove-install.sh` 写入同语义的 `opencove` launcher。
+- **Desktop 内置安装**：用户在 Desktop 的 **Settings → Worker → CLI** 中点击 **Install CLI**，由已安装的 app 写入 `opencove` launcher（Windows 为 `opencove.cmd`）。
+- **Standalone server 安装**：用户直接从 GitHub Release 下载独立 runtime bundle，并通过 `opencove-install.sh` / `opencove-install.ps1` 写入同语义的 `opencove` launcher。
 
 当前约束：
 
 - Desktop 安装与 standalone 安装最终都生成 runtime-backed launcher。
 - 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
-- standalone release 当前仅覆盖 macOS / Linux；Windows 暂未提供正式 CLI/server 资产。
+- standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
 
-最新 stable 的一键安装命令：
+最新 stable 的一键安装命令（macOS / Linux）：
 
 ```bash
 curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
+```
+
+Windows PowerShell：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
+```
+
+卸载 standalone runtime：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.ps1 | Invoke-Expression"
 ```
 
 无 Desktop 的 server 场景可直接启动 worker + Web UI：

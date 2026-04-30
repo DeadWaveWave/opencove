@@ -17,6 +17,10 @@ function toReleasePlatform(platform) {
     return 'linux'
   }
 
+  if (platform === 'win32') {
+    return 'windows'
+  }
+
   throw new Error(`Standalone server bundles are not supported on ${platform}.`)
 }
 
@@ -107,6 +111,29 @@ async function resolveRuntimeSource(options) {
     throw new Error('Unable to locate Linux unpacked app for standalone bundle.')
   }
 
+  if (options.platform === 'win32') {
+    const resolvedCandidates = await Promise.all(
+      directories.map(async directoryPath => {
+        const executablePath = resolve(directoryPath, `${options.executableName}.exe`)
+        const resourcesDir = resolve(directoryPath, 'resources')
+        const [hasExecutable, appRootName] = await Promise.all([
+          pathExists(executablePath),
+          resolvePackagedAppRootName(resourcesDir),
+        ])
+
+        return hasExecutable && appRootName
+          ? { kind: 'windows-unpacked', runtimePath: directoryPath, appRootName }
+          : null
+      }),
+    )
+    const matched = resolvedCandidates.find(Boolean)
+    if (matched) {
+      return matched
+    }
+
+    throw new Error('Unable to locate Windows unpacked app for standalone bundle.')
+  }
+
   throw new Error(`Unsupported standalone platform: ${options.platform}`)
 }
 
@@ -121,8 +148,11 @@ function resolveRelativePaths(input) {
     }
   }
 
+  const executableName =
+    input.platform === 'win32' ? `${input.executableName}.exe` : input.executableName
+
   return {
-    executableRelativePath: `runtime/${runtimeDirName}/${input.executableName}`,
+    executableRelativePath: `runtime/${runtimeDirName}/${executableName}`,
     cliScriptRelativePath: `runtime/${runtimeDirName}/resources/${appRootName}/src/app/cli/opencove.mjs`,
   }
 }
@@ -139,6 +169,30 @@ function runTar(outputPath, sourceDirName) {
   }
 }
 
+function quotePowerShellLiteral(value) {
+  return `'${value.replace(/'/g, "''")}'`
+}
+
+function runZip(outputPath, sourceDirName) {
+  const script = [
+    '$ErrorActionPreference = "Stop"',
+    `Compress-Archive -LiteralPath ${quotePowerShellLiteral(resolve(distDir, sourceDirName))} -DestinationPath ${quotePowerShellLiteral(outputPath)} -Force`,
+  ].join('; ')
+  const result = spawnSync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-Command', script],
+    {
+      cwd: distDir,
+      encoding: 'utf8',
+    },
+  )
+
+  if (result.status !== 0) {
+    const detail = result.stderr?.trim() || result.stdout?.trim() || 'Compress-Archive failed'
+    throw new Error(detail)
+  }
+}
+
 const packageJson = JSON.parse(await readFile(packageJsonPath, 'utf8'))
 const executableName = packageJson?.build?.executableName
 
@@ -151,7 +205,8 @@ const arch = toReleaseArch(process.arch)
 const bundleName = `opencove-server-${platform}-${arch}`
 const bundleRoot = resolve(distDir, bundleName)
 const runtimeRoot = resolve(bundleRoot, 'runtime')
-const tarballPath = resolve(distDir, `${bundleName}.tar.gz`)
+const archiveExtension = process.platform === 'win32' ? 'zip' : 'tar.gz'
+const archivePath = resolve(distDir, `${bundleName}.${archiveExtension}`)
 const runtimeSource = await resolveRuntimeSource({
   platform: process.platform,
   executableName,
@@ -164,7 +219,7 @@ const relativePaths = resolveRelativePaths({
 })
 
 await rm(bundleRoot, { recursive: true, force: true })
-await rm(tarballPath, { force: true })
+await rm(archivePath, { force: true })
 await mkdir(runtimeRoot, { recursive: true })
 await cp(runtimeSource.runtimePath, resolve(runtimeRoot, basename(runtimeSource.runtimePath)), {
   recursive: true,
@@ -188,5 +243,9 @@ await writeFile(
   ].join('\n'),
   'utf8',
 )
-runTar(tarballPath, bundleName)
-process.stdout.write(`Created standalone server bundle: ${tarballPath}\n`)
+if (process.platform === 'win32') {
+  runZip(archivePath, bundleName)
+} else {
+  runTar(archivePath, bundleName)
+}
+process.stdout.write(`Created standalone server bundle: ${archivePath}\n`)

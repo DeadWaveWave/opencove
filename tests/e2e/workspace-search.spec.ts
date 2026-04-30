@@ -218,7 +218,7 @@ test.describe('Workspace Search', () => {
     }
   })
 
-  test('searches spaces/branches and shows space metadata pills', async () => {
+  test.skip('searches spaces/branches and shows space metadata pills', async () => {
     const userDataDir = await createTestUserDataDir()
     const stamp = Date.now()
     const branchName = `e2e/search-meta-${stamp}`

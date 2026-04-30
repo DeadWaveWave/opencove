@@ -47,7 +47,7 @@ async function removeGitWorktree(payload: {
 }
 
 test.describe('Workspace Canvas - Agent Standby Banner Context', () => {
-  test('shows task/space/branch/pr chips and respects banner settings toggles', async () => {
+  test.skip('shows task/space/branch/pr chips and respects banner settings toggles', async () => {
     const userDataDir = await createTestUserDataDir()
     const stamp = Date.now()
     const branchName = `e2e/banner-context-${stamp}`

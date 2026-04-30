@@ -1,7 +1,7 @@
 # CLI / Worker 安装与独立 Server 发布设计说明
 
 日期：2026-04-29
-状态：已实现并完成本地验收（2026-04-29）
+状态：继续实现中；macOS/Linux 已本地验收，Windows release/installer 支持已补齐并进入验证（2026-04-30）
 范围：修复 Desktop 内置 CLI 安装；新增无需 Desktop 的独立 CLI / Worker / Web UI 发布与安装链路；本次先定义架构、边界、生命周期与验收，不进入实现细节。
 
 ## 实现更新（2026-04-29）
@@ -10,8 +10,15 @@
 
 - Desktop `Install CLI` / `Uninstall CLI` 改为写 runtime-backed launcher，并能识别“已安装但需修复”的坏入口。
 - packaged CLI 改为从发布 runtime 内部自洽启动，不再依赖 repo checkout 路径。
-- release workflow 新增 standalone server bundle（当前 macOS / Linux）和 `opencove-install.sh` 资产。
+- release workflow 新增 standalone server bundle（最初 macOS / Linux）和 `opencove-install.sh` 资产。
 - `opencove worker start` 新增 `--web-ui-password`，用于 server-only 的 Web UI 登录配置。
+
+继续补齐（2026-04-30）：
+
+- Desktop 内置 CLI 安装新增 Windows `opencove.cmd` launcher，并写入用户级 PATH。
+- release workflow 新增 Windows standalone bundle（`opencove-server-windows-<arch>.zip`）和 `opencove-install.ps1`。
+- standalone 安装脚本新增官方卸载路径（`--uninstall` / `opencove-uninstall.*`）。
+- release workflow 在上传前运行 standalone installer smoke，覆盖 asset -> launcher -> `opencove worker start --help`。
 
 本地验收已覆盖：
 
@@ -158,7 +165,6 @@ OpenCove 当前已经具备两类能力：
 ### 5.2 非目标
 
 - 第一轮不把 CLI 拆成独立 npm registry 包。
-- 第一轮不追求 Windows server 全平台齐发。
 - 第一轮不改变 control surface 业务语义。
 - 第一轮不重写 worker 的 auth / session 架构，只补足纯 server 可用性和安装 ergonomics。
 
@@ -403,17 +409,14 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/ope
 - 接受 standalone bundle 体积更大；
 - 换取更低的 ABI 风险和更一致的行为语义。
 
-### 10.2 第一轮平台范围
+### 10.2 平台范围更新
 
-建议第一轮优先：
+初始实现先覆盖 Linux / macOS。后续根据用户明确需要，Windows server 安装链路已补齐为正式范围：
 
-- Linux
-- macOS
-
-Windows server 暂缓，原因：
-
-- PATH / launcher / PowerShell / native runtime 差异更大；
-- scope 已经足够大，不适合在第一轮同时铺开。
+- Windows standalone asset 使用 `.zip`，避免要求用户安装 POSIX `tar` 工具。
+- Windows launcher 使用 `opencove.cmd`，由 Desktop installer 或 PowerShell installer 写入用户级 bin 目录。
+- Windows installer 默认把 `%LOCALAPPDATA%\OpenCove\bin` 加入用户级 PATH，新开的 PowerShell / cmd 可直接使用 `opencove`。
+- Windows 卸载会移除 OpenCove-owned launcher、standalone bundle 和 installer 写入的用户级 PATH 项。
 
 ## 11. 验收标准
 

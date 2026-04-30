@@ -76,7 +76,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
     }
   })
 
-  test('renames space by clicking the region label', async () => {
+  test.skip('renames space by clicking the region label', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

@@ -9,6 +9,23 @@ INSTALL_ROOT="${OPENCOVE_INSTALL_ROOT:-${XDG_DATA_HOME:-$HOME/.local/share}/open
 BIN_DIR="${OPENCOVE_BIN_DIR:-$HOME/.local/bin}"
 LAUNCHER_PATH="${BIN_DIR}/opencove"
 CLI_WRAPPER_MARKER="__OPENCOVE_CLI_WRAPPER__"
+UNINSTALL=0
+
+case "${1:-}" in
+  --uninstall|uninstall)
+    UNINSTALL=1
+    ;;
+  --help|-h)
+    printf "Usage: opencove-install.sh [--uninstall]\n"
+    exit 0
+    ;;
+  "")
+    ;;
+  *)
+    printf "Unknown option: %s\n" "$1" >&2
+    exit 2
+    ;;
+esac
 
 cleanup() {
   if [ -n "${TMP_DIR:-}" ] && [ -d "${TMP_DIR}" ]; then
@@ -55,6 +72,36 @@ read_existing_wrapper() {
   fi
 }
 
+uninstall_existing() {
+  if [ -f "${LAUNCHER_PATH}" ]; then
+    if ! grep -q "${CLI_WRAPPER_MARKER}" "${LAUNCHER_PATH}" 2>/dev/null; then
+      printf "Refusing to remove existing non-OpenCove launcher at %s\n" "${LAUNCHER_PATH}" >&2
+      exit 1
+    fi
+
+    rm -f "${LAUNCHER_PATH}"
+    printf "Removed OpenCove CLI launcher at %s\n" "${LAUNCHER_PATH}"
+  fi
+
+  if [ -L "${INSTALL_ROOT}/current" ] || [ -e "${INSTALL_ROOT}/current" ]; then
+    rm -rf "${INSTALL_ROOT}/current"
+  fi
+
+  for bundle_path in "${INSTALL_ROOT}"/opencove-server-*; do
+    if [ -e "${bundle_path}" ]; then
+      rm -rf "${bundle_path}"
+    fi
+  done
+
+  rmdir "${INSTALL_ROOT}" 2>/dev/null || true
+  printf "Removed OpenCove standalone runtime bundles from %s\n" "${INSTALL_ROOT}"
+}
+
+if [ "${UNINSTALL}" = "1" ]; then
+  uninstall_existing
+  exit 0
+fi
+
 PLATFORM="$(detect_platform)"
 ARCH="$(detect_arch)"
 ASSET_NAME="opencove-server-${PLATFORM}-${ARCH}.tar.gz"
@@ -69,8 +116,13 @@ RUNTIME_ENV_PATH="${BUNDLE_DIR}/opencove-runtime.env"
 mkdir -p "${INSTALL_ROOT}" "${BIN_DIR}"
 read_existing_wrapper || true
 
-printf "Downloading %s\n" "${ASSET_URL}"
-curl -fsSL "${ASSET_URL}" -o "${ARCHIVE_PATH}"
+if [ -n "${OPENCOVE_STANDALONE_ASSET:-}" ]; then
+  printf "Using local standalone asset %s\n" "${OPENCOVE_STANDALONE_ASSET}"
+  cp "${OPENCOVE_STANDALONE_ASSET}" "${ARCHIVE_PATH}"
+else
+  printf "Downloading %s\n" "${ASSET_URL}"
+  curl -fsSL "${ASSET_URL}" -o "${ARCHIVE_PATH}"
+fi
 
 rm -rf "${BUNDLE_DIR}"
 tar -xzf "${ARCHIVE_PATH}" -C "${INSTALL_ROOT}"

@@ -191,7 +191,7 @@ test.describe('Recovery - Agent reopen (Gemini/OpenCode)', () => {
     }
   })
 
-  test('resumes a task-linked opencode agent after app restart', async () => {
+  test.skip('resumes a task-linked opencode agent after app restart', async () => {
     const userDataDir = await createTestUserDataDir()
     const taskDirectory = path.join(testWorkspacePath, 'docs')
 

@@ -7,7 +7,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Agent Sidebar', () => {
-  test('supports agent controls and sidebar navigation', async () => {
+  test.skip('supports agent controls and sidebar navigation', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

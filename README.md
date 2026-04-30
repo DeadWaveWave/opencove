@@ -87,7 +87,11 @@ You now have two supported ways to install the `opencove` CLI:
 curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
 ```
 
-The standalone installer currently targets macOS and Linux. Windows CLI/server release assets are not published yet.
+On Windows, use PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
+```
 
 For a headless server that hosts the Web UI, start the worker directly after install:
 

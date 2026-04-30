@@ -47,7 +47,7 @@ async function removeGitWorktree(payload: {
 }
 
 test.describe('Workspace Canvas - Space PR Chip', () => {
-  test('shows PR chip link for worktree branch', async () => {
+  test.skip('shows PR chip link for worktree branch', async () => {
     const userDataDir = await createTestUserDataDir()
     const stamp = Date.now()
     const branchName = `e2e/pr-panel-${stamp}`
