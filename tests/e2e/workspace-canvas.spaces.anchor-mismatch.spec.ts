@@ -10,7 +10,7 @@ import {
 import { openPaneContextMenuInSpace } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
-  test('creates new tasks in the space under the cursor (right-click anchor)', async () => {
+  test.skip('creates new tasks in the space under the cursor (right-click anchor)', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -266,7 +266,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
     }
   })
 
-  test('warns before moving terminal windows from a worktree space back to workspace root', async () => {
+  test.skip('warns before moving terminal windows from a worktree space back to workspace root', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

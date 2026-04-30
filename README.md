@@ -76,6 +76,31 @@ Downloads are available for macOS, Windows, and Linux.
 > xattr -dr com.apple.quarantine /Applications/OpenCove.app
 > ```
 
+### CLI and Server Install
+
+You now have two supported ways to install the `opencove` CLI:
+
+- From the Desktop app: open **Settings → Worker → CLI** and click **Install CLI**.
+- Without Desktop: install the latest stable standalone runtime from GitHub Releases:
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
+```
+
+On Windows, use PowerShell:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
+```
+
+For a headless server that hosts the Web UI, start the worker directly after install:
+
+```bash
+opencove worker start --hostname 0.0.0.0 --web-ui-password 'change-me'
+```
+
+This prints the Web UI URL and enables password login for browser access. Keep the password set whenever you expose the Web UI beyond localhost.
+
 ### Building from Source
 
 #### Prerequisites

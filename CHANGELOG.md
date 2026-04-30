@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- CLI: support Desktop-managed runtime launcher repair plus standalone CLI/Worker/Web UI installers for macOS, Linux, and Windows. (#209)
 - Agent: add header-level session reload plus semantic session history switching with task-text previews for resumable agent sessions. (#207)
 - Terminal: add Desktop/Web display consistency calibration with shared reference setup, device-local compensation, diagnostics, and a real parity profiling script. (#206)
 - Space Explorer: preview and open VS Code-built-in audio/video files (`mp3`, `wav`, `wave`, `ogg`, `oga`, `mp4`, `webm`) as playable document windows. (#204)

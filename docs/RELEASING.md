@@ -12,6 +12,14 @@
 - `*-mac.zip`
 - `*.exe`
 - `*.AppImage` / 其他 Linux 包格式（取决于 electron-builder 实际输出）
+- `opencove-server-<platform>-<arch>.tar.gz`（macOS / Linux standalone CLI / Worker runtime）
+- `opencove-server-windows-<arch>.zip`（Windows standalone CLI / Worker runtime）
+
+额外的 Release asset：
+- `opencove-install.sh`
+- `opencove-install.ps1`
+- `opencove-uninstall.sh`
+- `opencove-uninstall.ps1`
 
 ## 发布渠道
 
@@ -36,6 +44,9 @@
 - macOS 产物（如 `*.dmg`, `*.zip`）
 - Windows 产物（如 `*.exe`）
 - Linux 产物（如 `*.AppImage`）
+- macOS / Linux standalone server bundle（`opencove-server-<platform>-<arch>.tar.gz`）
+- Windows standalone server bundle（`opencove-server-windows-<arch>.zip`）
+- 一键安装 / 卸载脚本（`opencove-install.sh`、`opencove-install.ps1`、`opencove-uninstall.sh`、`opencove-uninstall.ps1`）
 - 汇总校验文件 `SHA256SUMS.txt`
 
 注意：macOS 的应用内自动更新依赖稳定的代码签名（Developer ID）。当前 unsigned/ad-hoc 构建在 macOS 上会禁用更新检查；请通过 GitHub Releases 手动下载新版本。
@@ -44,6 +55,51 @@
 
 - `v0.2.0` 会创建正式 `stable` release
 - `v0.2.0-nightly.20260312.1` 会创建 `nightly` prerelease
+
+### Standalone CLI / Worker 资产
+
+如需在没有 Desktop 的机器上安装 OpenCove CLI 与 Worker，请使用 release 中的安装脚本：
+
+macOS / Linux：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
+```
+
+Windows PowerShell：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
+```
+
+安装脚本会：
+
+- 按平台/架构下载 `opencove-server-<platform>-<arch>.tar.gz` 或 `opencove-server-windows-<arch>.zip`
+- macOS / Linux 默认安装到 `~/.local/share/opencove`（可由 `OPENCOVE_INSTALL_ROOT` 覆盖）
+- Windows 默认安装到 `%LOCALAPPDATA%\OpenCove\standalone`（可由 `OPENCOVE_INSTALL_ROOT` 覆盖）
+- macOS / Linux 在 `~/.local/bin/opencove` 写入 launcher（可由 `OPENCOVE_BIN_DIR` 覆盖）
+- Windows 在 `%LOCALAPPDATA%\OpenCove\bin\opencove.cmd` 写入 launcher，并把该目录加入用户级 PATH（可由 `OPENCOVE_BIN_DIR` 覆盖）
+
+服务器上的典型启动方式：
+
+```bash
+opencove worker start --hostname 0.0.0.0 --web-ui-password 'change-me'
+```
+
+卸载 standalone runtime：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.ps1 | Invoke-Expression"
+```
+
+发布约束：
+
+- stable 的一键安装命令始终指向 GitHub Releases 的 latest asset；nightly 需要显式 tag / asset。
+- release workflow 会在上传前使用本地生成的 standalone asset 运行安装后 `opencove worker start --help` smoke。
 
 ### Stable 流程
 
@@ -128,6 +184,20 @@ git push origin v0.2.0-nightly.20260312.1
 可选处理方式：
 - Finder：右键 App → 打开 → 再次确认
 - 或终端（拷贝到 Applications 后）：`xattr -dr com.apple.quarantine /Applications/OpenCove.app`
+
+## 本地构建 Standalone 资产
+
+如需本地验证无需 Desktop 的 CLI/server 安装链，请使用：
+
+```bash
+pnpm build:standalone
+```
+
+这会：
+
+- 先构建 app 与 release manifest
+- 生成 unpacked Electron runtime
+- 再封装出 `dist/opencove-server-<platform>-<arch>.tar.gz`
 
 ## 后续启用签名 + 公证（可选）
 

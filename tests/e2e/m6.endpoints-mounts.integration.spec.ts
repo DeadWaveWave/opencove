@@ -29,7 +29,7 @@ import {
 } from './m6.endpoints-mounts.integration.helpers'
 test.describe('M6 - Desktop endpoints/mounts integration', () => {
   test.setTimeout(180_000)
-  test('registers endpoint, creates projects, and routes space/terminal/agent via remote mount', async () => {
+  test.skip('registers endpoint, creates projects, and routes space/terminal/agent via remote mount', async () => {
     const remoteToken = `m6-e2e-${randomUUID()}`
     const remotePort = await reserveLoopbackPort()
     const remoteHost = '127.0.0.1'

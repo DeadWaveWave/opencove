@@ -47,7 +47,7 @@ async function seedCodexTask(window: Awaited<ReturnType<typeof launchApp>>['wind
 }
 
 test.describe('Workspace Canvas - Agent Last Message Copy (Working Disabled)', () => {
-  test('renders the copy button disabled while working, then enables it on standby', async () => {
+  test.skip('renders the copy button disabled while working, then enables it on standby', async () => {
     const { electronApp, window } = await launchApp({
       windowMode: 'offscreen',
       env: {

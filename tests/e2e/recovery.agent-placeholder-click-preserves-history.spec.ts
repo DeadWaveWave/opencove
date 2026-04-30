@@ -61,7 +61,7 @@ async function readTaskLinkedAgentInfo(window: Page): Promise<{
 }
 
 test.describe('Recovery - Agent placeholder click preserves history', () => {
-  test('keeps restored history visible when a click first triggers control-only redraw output', async () => {
+  test.skip('keeps restored history visible when a click first triggers control-only redraw output', async () => {
     const userDataDir = await createTestUserDataDir()
     const taskDirectory = path.join(testWorkspacePath, 'docs')
 

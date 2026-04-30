@@ -10,6 +10,50 @@ CLI 的定位是：给 Agent/自动化脚本提供一个稳定入口，去驱动
 - CLI 禁止直读写 DB、状态文件或 renderer store；必须通过统一的 Control Surface 访问能力（见 `docs/CONTROL_SURFACE.md`）。
 - CLI 输出必须支持机器消费：优先 JSON；错误必须是结构化语义（而不是字符串拼接）。
 
+## 1.1 安装拓扑
+
+OpenCove 目前支持两条正式的 CLI 安装链路：
+
+- **Desktop 内置安装**：用户在 Desktop 的 **Settings → Worker → CLI** 中点击 **Install CLI**，由已安装的 app 写入 `opencove` launcher（Windows 为 `opencove.cmd`）。
+- **Standalone server 安装**：用户直接从 GitHub Release 下载独立 runtime bundle，并通过 `opencove-install.sh` / `opencove-install.ps1` 写入同语义的 `opencove` launcher。
+
+当前约束：
+
+- Desktop 安装与 standalone 安装最终都生成 runtime-backed launcher。
+- 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
+- launcher 会记录安装 owner；两条安装链可以互相覆盖安装，但卸载时只移除自己拥有的 launcher。
+- standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
+
+最新 stable 的一键安装命令（macOS / Linux）：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
+```
+
+Windows PowerShell：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
+```
+
+卸载 standalone runtime：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.ps1 | Invoke-Expression"
+```
+
+无 Desktop 的 server 场景可直接启动 worker + Web UI：
+
+```bash
+opencove worker start --hostname 0.0.0.0 --web-ui-password 'change-me'
+```
+
+当 Web UI 暴露到 localhost 之外时，必须设置密码或等价安全门禁。
+
 ## 2. Local-first 的连接模型（约束）
 
 CLI 的默认运行模型应满足：
@@ -39,6 +83,8 @@ OpenCove 的本地转译规则：
 1. CLI 默认不得误停 Desktop 启动/拥有的 Local Worker。
 2. 同一 `userData` 下最多一个 Worker；跨 `userData` 的多个 Worker 必须显式选目标。
 3. Stop 先发送 `SIGTERM`，超时且用户显式 `--force` 时才允许升级为强制结束。
+4. Desktop 内置安装与 standalone 安装写出的 launcher 必须共享同一套 runtime 语义。
+5. 打包态 CLI/Worker 必须从发布 runtime 自洽启动，不依赖源码 checkout 或外部 Desktop 进程。
 
 ## 4. 命令设计规范
 

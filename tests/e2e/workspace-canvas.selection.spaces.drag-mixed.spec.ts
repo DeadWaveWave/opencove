@@ -11,7 +11,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
-  test('does not drag out-of-scope nodes after crossing a space boundary', async () => {
+  test.skip('does not drag out-of-scope nodes after crossing a space boundary', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

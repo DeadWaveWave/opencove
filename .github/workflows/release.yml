@@ -104,6 +104,40 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
         run: ${{ matrix.build_command }}
 
+      - name: Build standalone server bundle
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+        run: pnpm build:standalone:asset
+
+      - name: Smoke standalone server install (macOS/Linux)
+        if: matrix.artifact_name != 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          asset="$(find dist -maxdepth 1 -name 'opencove-server-*.tar.gz' -print -quit)"
+          test -n "$asset"
+          export OPENCOVE_STANDALONE_ASSET="$asset"
+          export OPENCOVE_INSTALL_ROOT="$RUNNER_TEMP/opencove-standalone"
+          export OPENCOVE_BIN_DIR="$RUNNER_TEMP/opencove-bin"
+          sh scripts/release-assets/opencove-install.sh
+          "$OPENCOVE_BIN_DIR/opencove" worker start --help
+          sh scripts/release-assets/opencove-install.sh --uninstall
+
+      - name: Smoke standalone server install (Windows)
+        if: matrix.artifact_name == 'windows'
+        shell: pwsh
+        run: |
+          $asset = Get-ChildItem -Path dist -Filter 'opencove-server-*.zip' | Select-Object -First 1
+          if ($null -eq $asset) {
+            throw 'Standalone Windows asset was not produced.'
+          }
+          $env:OPENCOVE_STANDALONE_ASSET = $asset.FullName
+          $env:OPENCOVE_INSTALL_ROOT = Join-Path $env:RUNNER_TEMP 'opencove-standalone'
+          $env:OPENCOVE_BIN_DIR = Join-Path $env:RUNNER_TEMP 'opencove-bin'
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-assets/opencove-install.ps1
+          & (Join-Path $env:OPENCOVE_BIN_DIR 'opencove.cmd') worker start --help
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/release-assets/opencove-install.ps1 -Uninstall
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v7
         with:
@@ -115,6 +149,18 @@ jobs:
             dist/*.exe
             dist/*.zip
             dist/*.yml
+            !dist/opencove-server-*.tar.gz
+            !dist/opencove-server-*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload standalone server bundle
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-assets-${{ matrix.artifact_name }}-standalone
+          path: |
+            dist/opencove-server-*.tar.gz
+            dist/opencove-server-*.zip
           if-no-files-found: error
           retention-days: 7
 
@@ -178,6 +224,10 @@ jobs:
           files: |
             release-assets/*
             release/release-manifest.json
+            scripts/release-assets/opencove-install.sh
+            scripts/release-assets/opencove-install.ps1
+            scripts/release-assets/opencove-uninstall.sh
+            scripts/release-assets/opencove-uninstall.ps1
 
       - name: Publish stable release
         if: steps.channel.outputs.is_nightly != 'true'
@@ -193,3 +243,7 @@ jobs:
           files: |
             release-assets/*
             release/release-manifest.json
+            scripts/release-assets/opencove-install.sh
+            scripts/release-assets/opencove-install.ps1
+            scripts/release-assets/opencove-uninstall.sh
+            scripts/release-assets/opencove-uninstall.ps1

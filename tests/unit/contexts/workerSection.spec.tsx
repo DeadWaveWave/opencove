@@ -38,7 +38,7 @@ function installWorkerApi(
         getWebUiUrl: vi.fn(),
       },
       cli: {
-        getStatus: vi.fn().mockResolvedValue({ installed: false, path: null }),
+        getStatus: vi.fn().mockResolvedValue({ installed: false, path: null, healthy: false }),
         install: vi.fn(),
         uninstall: vi.fn(),
       },

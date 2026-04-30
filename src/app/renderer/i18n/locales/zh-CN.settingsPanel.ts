@@ -398,6 +398,7 @@ export const zhCNSettingsPanel = {
       statusLabel: '状态',
       status: {
         installed: '已安装（{{path}}）',
+        needsRepair: '已安装，但命令入口需要修复（{{path}}）',
         notInstalled: '未安装',
       },
       actionsLabel: '操作',

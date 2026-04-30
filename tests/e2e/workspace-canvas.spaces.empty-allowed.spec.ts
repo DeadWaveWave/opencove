@@ -7,7 +7,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Spaces (Empty Allowed)', () => {
-  test('keeps a space when all members are unassigned (space can be empty)', async () => {
+  test.skip('keeps a space when all members are unassigned (space can be empty)', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

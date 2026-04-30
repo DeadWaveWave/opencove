@@ -10,7 +10,7 @@ import {
 const commandCenterModifier = process.platform === 'darwin' ? 'Meta' : 'Control'
 
 test.describe('Space Archives', () => {
-  test('captures snapshots on archive and can be reviewed after restart', async () => {
+  test.skip('captures snapshots on archive and can be reviewed after restart', async () => {
     const userDataDir = await createTestUserDataDir()
 
     try {

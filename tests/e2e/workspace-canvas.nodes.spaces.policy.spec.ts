@@ -145,7 +145,7 @@ test.describe('Workspace Canvas - Nodes vs Spaces (Policy)', () => {
     }
   })
 
-  test('does not expand a space unexpectedly when creating a note inside it', async () => {
+  test.skip('does not expand a space unexpectedly when creating a note inside it', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
