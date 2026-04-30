@@ -157,7 +157,8 @@ describe('listAgentSessions', () => {
     expect(result.sessions).toHaveLength(2)
     expect(result.sessions[0]).toMatchObject({
       sessionId: 'claude-session-2',
-      title: 'Fix flaky tests',
+      title: null,
+      preview: 'Fix flaky tests',
       source: 'claude-index',
     })
   })
@@ -188,6 +189,30 @@ describe('listAgentSessions', () => {
       throw new Error(`Unexpected stat ${filePath}`)
     })
 
+    fsPromisesMock.open.mockImplementation(async (filePath: string) => {
+      if (filePath === latestFile) {
+        return createOpenHandle(
+          `${JSON.stringify({
+            type: 'user',
+            timestamp: '2026-04-28T09:55:00.000Z',
+            content: 'Improve\n session    discoverability',
+          })}\n`,
+        )
+      }
+
+      if (filePath === olderFile) {
+        return createOpenHandle(
+          `${JSON.stringify({
+            type: 'user',
+            timestamp: '2026-04-28T08:55:00.000Z',
+            content: 'Fix archived task mapping',
+          })}\n`,
+        )
+      }
+
+      throw new Error(`Unexpected open ${filePath}`)
+    })
+
     const result = await listAgentSessions({
       provider: 'claude-code',
       cwd,
@@ -196,6 +221,7 @@ describe('listAgentSessions', () => {
 
     expect(result.sessions.map(session => session.sessionId)).toEqual(['session-b', 'session-a'])
     expect(result.sessions[0]?.source).toBe('claude-jsonl')
+    expect(result.sessions[0]?.preview).toBe('Improve session discoverability')
   })
 
   it('lists Codex sessions by scanning rollout metadata across date directories', async () => {
@@ -241,6 +267,18 @@ describe('listAgentSessions', () => {
               cwd,
               timestamp: '2026-04-28T11:59:00.000Z',
             },
+          })}\n${JSON.stringify({
+            type: 'response_item',
+            payload: {
+              type: 'message',
+              role: 'user',
+              content: [
+                {
+                  type: 'input_text',
+                  text: 'Inspect the new session list UX',
+                },
+              ],
+            },
           })}\n`,
         )
       }
@@ -255,6 +293,16 @@ describe('listAgentSessions', () => {
               cwd,
               timestamp: '2026-04-28T09:58:00.000Z',
             },
+          })}\n${JSON.stringify({
+            type: 'message',
+            id: null,
+            role: 'user',
+            content: [
+              {
+                type: 'input_text',
+                text: 'Audit old session recovery behavior',
+              },
+            ],
           })}\n`,
         )
       }
@@ -287,6 +335,7 @@ describe('listAgentSessions', () => {
       'codex-older',
     ])
     expect(result.sessions[0]?.source).toBe('codex-file')
+    expect(result.sessions[0]?.preview).toBe('Inspect the new session list UX')
   })
 
   it('lists Gemini sessions that match the current project root', async () => {

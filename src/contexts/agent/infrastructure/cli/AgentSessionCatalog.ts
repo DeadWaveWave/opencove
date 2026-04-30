@@ -9,6 +9,12 @@ import type {
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { listOpenCodeSessions } from './AgentSessionCatalog.openCode'
+import {
+  normalizeSessionPreview,
+  parseClaudeFirstUserPreview,
+  parseCodexFirstUserPreview,
+  readFirstMatchingJsonlValue,
+} from './AgentSessionCatalog.preview'
 
 const DEFAULT_AGENT_SESSION_LIMIT = 20
 const MAX_AGENT_SESSION_LIMIT = 100
@@ -201,7 +207,8 @@ async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSess
                 sessionId,
                 provider: 'claude-code' as const,
                 cwd: resolvedCwd,
-                title: normalizeOptionalString(entry.firstPrompt),
+                title: null,
+                preview: normalizeSessionPreview(entry.firstPrompt),
                 startedAt: toIsoString(startedAtMs),
                 updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
                 source: 'claude-index' as const,
@@ -233,11 +240,13 @@ async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSess
 
         try {
           const stats = await fs.stat(filePath)
+          const preview = await readFirstMatchingJsonlValue(filePath, parseClaudeFirstUserPreview)
           return {
             sessionId,
             provider: 'claude-code' as const,
             cwd: resolvedCwd,
             title: null,
+            preview,
             startedAt: null,
             updatedAt: toIsoString(stats.mtimeMs),
             source: 'claude-jsonl' as const,
@@ -297,12 +306,14 @@ async function listCodexSessions(cwd: string, limit: number): Promise<AgentSessi
 
         const startedAtMs = parsed.payloadTimestampMs ?? parsed.recordTimestampMs
         const updatedAtMs = parsed.recordTimestampMs ?? parsed.payloadTimestampMs
+        const preview = await readFirstMatchingJsonlValue(filePath, parseCodexFirstUserPreview)
 
         return {
           sessionId: parsed.sessionId,
           provider: 'codex' as const,
           cwd: resolvedCwd,
           title: null,
+          preview,
           startedAt: toIsoString(startedAtMs),
           updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
           source: 'codex-file' as const,
@@ -335,6 +346,7 @@ function parseGeminiSessionSummary(rawContents: string, cwd: string): AgentSessi
       provider: 'gemini',
       cwd,
       title: null,
+      preview: null,
       startedAt: toIsoString(startedAtMs),
       updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
       source: 'gemini-file',

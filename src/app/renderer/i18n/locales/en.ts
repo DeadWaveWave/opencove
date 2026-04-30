@@ -319,11 +319,13 @@ export const en = {
     loadingSessions: 'Loading sessions',
     noSessions: 'No sessions found for this directory.',
     sessionLoadFailed: 'Failed to load sessions.',
+    currentSession: 'Current',
     sessionUpdatedAt: 'Updated {{timestamp}}',
     sessionSwitchDialog: {
       title: 'Switch session?',
       description: 'This will restart the current agent window into the selected session.',
       targetSession: 'Target session',
+      targetSessionId: 'Session ID',
       targetDirectory: 'Target directory',
       currentDirectory: 'Current directory',
       mismatch:

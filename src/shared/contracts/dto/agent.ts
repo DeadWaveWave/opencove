@@ -27,6 +27,7 @@ export interface AgentSessionSummary {
   provider: AgentProviderId
   cwd: string
   title: string | null
+  preview?: string | null
   startedAt: string | null
   updatedAt: string | null
   source: AgentSessionSummarySource

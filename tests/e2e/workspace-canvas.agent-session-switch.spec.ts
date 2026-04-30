@@ -34,10 +34,24 @@ async function seedCodexSessions(userDataDir: string): Promise<void> {
 
   await writeFile(
     path.join(sessionDirectory, 'rollout-current.jsonl'),
-    `${currentRecord}\n`,
+    `${currentRecord}\n${JSON.stringify({
+      type: 'message',
+      id: null,
+      role: 'user',
+      content: [{ type: 'input_text', text: 'Keep the current task session active' }],
+    })}\n`,
     'utf8',
   )
-  await writeFile(path.join(sessionDirectory, 'rollout-target.jsonl'), `${targetRecord}\n`, 'utf8')
+  await writeFile(
+    path.join(sessionDirectory, 'rollout-target.jsonl'),
+    `${targetRecord}\n${JSON.stringify({
+      type: 'message',
+      id: null,
+      role: 'user',
+      content: [{ type: 'input_text', text: 'Switch into the restored target task session' }],
+    })}\n`,
+    'utf8',
+  )
 }
 
 test.describe('Workspace Canvas - Agent Session Switch', () => {
@@ -111,6 +125,9 @@ test.describe('Workspace Canvas - Agent Session Switch', () => {
       await expect(window.locator('.terminal-node')).toHaveCount(1)
 
       await agentNode.locator('[data-testid="terminal-node-session-list"]').click()
+      await expect(window.locator('[data-testid="terminal-node-session-menu"]')).toContainText(
+        'Switch into the restored target task session',
+      )
       await window.locator('[data-testid="terminal-node-session-menu-item-resume-target"]').click()
 
       const switchConfirm = window.locator('[data-testid="terminal-node-session-switch-confirm"]')

@@ -34,10 +34,24 @@ async function seedCodexSessions(userDataDir: string): Promise<void> {
 
   await writeFile(
     path.join(sessionDirectory, 'rollout-current.jsonl'),
-    `${currentRecord}\n`,
+    `${currentRecord}\n${JSON.stringify({
+      type: 'message',
+      id: null,
+      role: 'user',
+      content: [{ type: 'input_text', text: 'Keep the current workspace session attached' }],
+    })}\n`,
     'utf8',
   )
-  await writeFile(path.join(sessionDirectory, 'rollout-target.jsonl'), `${targetRecord}\n`, 'utf8')
+  await writeFile(
+    path.join(sessionDirectory, 'rollout-target.jsonl'),
+    `${targetRecord}\n${JSON.stringify({
+      type: 'message',
+      id: null,
+      role: 'user',
+      content: [{ type: 'input_text', text: 'Inspect the restored feature worktree session' }],
+    })}\n`,
+    'utf8',
+  )
 }
 
 test.describe('Workspace Canvas - Agent Header Session Actions', () => {
@@ -99,6 +113,9 @@ test.describe('Workspace Canvas - Agent Header Session Actions', () => {
       ).toBeDisabled()
       await expect(
         window.locator('[data-testid="terminal-node-session-menu-item-resume-target"]'),
+      ).toBeVisible()
+      await expect(
+        sessionMenu.getByText('Inspect the restored feature worktree session'),
       ).toBeVisible()
     } finally {
       await electronApp.close()

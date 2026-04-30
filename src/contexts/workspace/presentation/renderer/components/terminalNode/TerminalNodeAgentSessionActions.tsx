@@ -2,8 +2,10 @@ import { useMemo, useRef, useState, type JSX } from 'react'
 import { Check, History, LoaderCircle, RotateCcw } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { ViewportMenuSurface } from '@app/renderer/components/ViewportMenuSurface'
+import { toRelativeTime } from '@app/renderer/shell/utils/format'
 import type { AgentRuntimeStatus } from '../../types'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
+import { toAgentSessionDisplaySummary } from './agentSessionDisplay'
 
 interface TerminalNodeAgentSessionActionsProps {
   status: AgentRuntimeStatus | null
@@ -16,16 +18,7 @@ interface TerminalNodeAgentSessionActionsProps {
 }
 
 function formatSessionTimestamp(timestamp: string | null): string {
-  if (!timestamp) {
-    return '--'
-  }
-
-  const parsed = new Date(timestamp)
-  if (Number.isNaN(parsed.getTime())) {
-    return timestamp
-  }
-
-  return parsed.toISOString().replace('T', ' ').slice(0, 16)
+  return toRelativeTime(timestamp)
 }
 
 function toErrorMessage(error: unknown, fallback: string): string {
@@ -69,6 +62,9 @@ export function TerminalNodeAgentSessionActions({
 
     return normalizedCurrentDirectory.length > 0 && normalizedCurrentDirectory !== switchTarget.cwd
   }, [normalizedCurrentDirectory, switchTarget])
+  const switchTargetDisplay = useMemo(() => {
+    return switchTarget ? toAgentSessionDisplaySummary(switchTarget) : null
+  }, [switchTarget])
 
   if (!canReload && !canListSessions) {
     return null
@@ -172,8 +168,8 @@ export function TerminalNodeAgentSessionActions({
             point: sessionMenuPoint,
             alignX: 'end',
             estimatedSize: {
-              width: 320,
-              height: 280,
+              width: 420,
+              height: 340,
             },
           }}
           onDismiss={() => {
@@ -225,6 +221,11 @@ export function TerminalNodeAgentSessionActions({
                   currentResumeSessionIdVerified &&
                   currentResumeSessionId === summary.sessionId &&
                   normalizedCurrentDirectory === summary.cwd
+                const display = toAgentSessionDisplaySummary(summary)
+                const showDirectory =
+                  normalizedCurrentDirectory.length > 0 &&
+                  normalizedCurrentDirectory !== summary.cwd
+                const updatedAt = summary.updatedAt ?? summary.startedAt
 
                 return (
                   <button
@@ -246,20 +247,45 @@ export function TerminalNodeAgentSessionActions({
                       {isCurrentSession ? <Check className="workspace-context-menu__icon" /> : null}
                     </span>
                     <span className="terminal-node__session-menu-item-content">
-                      <span className="terminal-node__session-menu-item-title">
-                        {summary.title ?? summary.sessionId}
+                      <span
+                        className="terminal-node__session-menu-item-title"
+                        title={display.title}
+                      >
+                        {display.title}
                       </span>
-                      {summary.title ? (
-                        <span className="terminal-node__session-menu-item-subtitle">
-                          {summary.sessionId}
+                      {display.subtitle ? (
+                        <span
+                          className="terminal-node__session-menu-item-subtitle"
+                          title={display.subtitle}
+                        >
+                          {display.subtitle}
                         </span>
                       ) : null}
                       <span className="terminal-node__session-menu-item-meta">
-                        {t('terminalNodeHeader.sessionUpdatedAt', {
-                          timestamp: formatSessionTimestamp(summary.updatedAt ?? summary.startedAt),
-                        })}
+                        {isCurrentSession ? (
+                          <span className="terminal-node__session-menu-item-badge">
+                            {t('terminalNodeHeader.currentSession')}
+                          </span>
+                        ) : null}
+                        {display.identity ? (
+                          <span className="terminal-node__session-menu-item-identity">
+                            {display.identity}
+                          </span>
+                        ) : null}
+                        <span>
+                          {t('terminalNodeHeader.sessionUpdatedAt', {
+                            timestamp: formatSessionTimestamp(updatedAt),
+                          })}
+                        </span>
                       </span>
-                      <span className="terminal-node__session-menu-item-meta">{summary.cwd}</span>
+                      {showDirectory ? (
+                        <span
+                          className="terminal-node__session-menu-item-directory"
+                          title={summary.cwd}
+                        >
+                          {summary.cwd}
+                        </span>
+                      ) : null}
                     </span>
                   </button>
                 )
@@ -293,6 +319,11 @@ export function TerminalNodeAgentSessionActions({
 
             <div className="cove-window__field-row">
               <label>{t('terminalNodeHeader.sessionSwitchDialog.targetSession')}</label>
+              <input value={switchTargetDisplay?.title ?? switchTarget.sessionId} disabled />
+            </div>
+
+            <div className="cove-window__field-row">
+              <label>{t('terminalNodeHeader.sessionSwitchDialog.targetSessionId')}</label>
               <input value={switchTarget.sessionId} disabled />
             </div>
 

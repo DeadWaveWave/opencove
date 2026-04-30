@@ -23,6 +23,7 @@ describe('TerminalNodeHeader agent session actions', () => {
             provider: 'codex',
             cwd: '/repo',
             title: 'Current session',
+            preview: null,
             startedAt: '2026-04-29T00:00:00.000Z',
             updatedAt: '2026-04-29T00:10:00.000Z',
             source: 'codex-file',
@@ -31,7 +32,8 @@ describe('TerminalNodeHeader agent session actions', () => {
             sessionId: 'session-target',
             provider: 'codex',
             cwd: '/repo/.opencove/worktrees/feat',
-            title: 'Target session',
+            title: null,
+            preview: 'Switch to the restored feature worktree session',
             startedAt: '2026-04-29T00:20:00.000Z',
             updatedAt: '2026-04-29T00:30:00.000Z',
             source: 'codex-file',
@@ -46,6 +48,8 @@ describe('TerminalNodeHeader agent session actions', () => {
     expect(await screen.findByTestId('terminal-node-session-menu')).toBeVisible()
     expect(screen.getByTestId('terminal-node-session-menu-item-session-current')).toBeDisabled()
     expect(screen.getByTestId('terminal-node-session-menu-item-session-target')).toBeEnabled()
+    expect(screen.getByText('Switch to the restored feature worktree session')).toBeVisible()
+    expect(screen.getByText('Current')).toBeVisible()
 
     fireEvent.click(screen.getByTestId('terminal-node-session-menu-item-session-target'))
 

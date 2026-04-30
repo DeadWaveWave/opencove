@@ -317,11 +317,13 @@ export const zhCN = {
     loadingSessions: '正在加载会话',
     noSessions: '当前目录下没有可用会话。',
     sessionLoadFailed: '加载会话失败。',
+    currentSession: '当前会话',
     sessionUpdatedAt: '更新时间 {{timestamp}}',
     sessionSwitchDialog: {
       title: '切换会话？',
       description: '这会重启当前 Agent 窗口，并切换到所选会话。',
       targetSession: '目标会话',
+      targetSessionId: '会话 ID',
       targetDirectory: '目标目录',
       currentDirectory: '当前目录',
       mismatch: '所选会话绑定到不同目录。只有在你明确知道后果时才继续。',
