@@ -36,6 +36,7 @@ import { registerCliIpcHandlers } from './registerCliIpcHandlers'
 import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers'
 import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
 import { registerControlSurfaceIpcHandlers } from './registerControlSurfaceIpcHandlers'
+import { createPersistedWorkspaceApprovalGate } from '../../../contexts/workspace/infrastructure/approval/PersistedWorkspaceApproval'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -55,13 +56,6 @@ export function registerIpcHandlers(deps?: {
   const ptyRuntime = workerEndpointResolver
     ? createRemotePtyRuntime({ endpointResolver: workerEndpointResolver })
     : (deps?.ptyRuntime ?? createPtyRuntime())
-
-  const ptyApprovedWorkspaces = workerEndpointResolver
-    ? {
-        registerRoot: async () => undefined,
-        isPathApproved: async () => true,
-      }
-    : approvedWorkspaces
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
@@ -87,10 +81,6 @@ export function registerIpcHandlers(deps?: {
     return await persistenceStorePromise
   }
 
-  if (process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_WORKSPACE) {
-    void approvedWorkspaces.registerRoot(resolve(process.env.OPENCOVE_TEST_WORKSPACE))
-  }
-
   const workspaceApprovedWorkspaces = workerEndpointResolver
     ? {
         ...approvedWorkspaces,
@@ -113,6 +103,27 @@ export function registerIpcHandlers(deps?: {
       }
     : approvedWorkspaces
 
+  const startupApprovalRoots =
+    process.env.NODE_ENV === 'test' && process.env.OPENCOVE_TEST_WORKSPACE
+      ? [resolve(process.env.OPENCOVE_TEST_WORKSPACE)]
+      : []
+
+  const startupApprovedWorkspaces = createPersistedWorkspaceApprovalGate({
+    approvedWorkspaces: workspaceApprovedWorkspaces,
+    readAppState: async () => {
+      const store = await getPersistenceStore()
+      return await store.readAppState()
+    },
+    extraRoots: startupApprovalRoots,
+    onError: error => {
+      const detail = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+      process.stderr.write(
+        `[opencove] Failed to hydrate approved workspaces from persistence: ${detail}\n`,
+      )
+    },
+  })
+  const guardedApprovedWorkspaces = startupApprovedWorkspaces.approvedWorkspaces
+
   const disposables: IpcRegistrationDisposable[] = [
     registerLocalWorkerIpcHandlers(),
     registerWorkerClientIpcHandlers(),
@@ -121,19 +132,23 @@ export function registerIpcHandlers(deps?: {
     registerClipboardIpcHandlers(),
     registerAppUpdateIpcHandlers(appUpdateService),
     registerReleaseNotesIpcHandlers(releaseNotesService),
-    registerWorkspaceIpcHandlers(workspaceApprovedWorkspaces),
-    registerFilesystemIpcHandlers(approvedWorkspaces),
+    registerWorkspaceIpcHandlers(guardedApprovedWorkspaces),
+    registerFilesystemIpcHandlers(guardedApprovedWorkspaces),
     registerPersistenceIpcHandlers(getPersistenceStore),
-    registerWorktreeIpcHandlers(approvedWorkspaces),
-    registerIntegrationIpcHandlers(approvedWorkspaces),
+    registerWorktreeIpcHandlers(guardedApprovedWorkspaces),
+    registerIntegrationIpcHandlers(guardedApprovedWorkspaces),
     registerWindowChromeIpcHandlers(),
     registerWindowMetricsIpcHandlers(),
     registerDiagnosticsIpcHandlers(),
-    registerPtyIpcHandlers(ptyRuntime, ptyApprovedWorkspaces),
+    registerPtyIpcHandlers(ptyRuntime, guardedApprovedWorkspaces),
     workerEndpointResolver
-      ? registerRemoteAgentIpcHandlers({ endpointResolver: workerEndpointResolver, ptyRuntime })
-      : registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces, getPersistenceStore),
-    registerTaskIpcHandlers(approvedWorkspaces),
+      ? registerRemoteAgentIpcHandlers({
+          endpointResolver: workerEndpointResolver,
+          ptyRuntime,
+          startupReady: startupApprovedWorkspaces.ready,
+        })
+      : registerAgentIpcHandlers(ptyRuntime, guardedApprovedWorkspaces, getPersistenceStore),
+    registerTaskIpcHandlers(guardedApprovedWorkspaces),
     registerSystemIpcHandlers(),
     registerWebsiteWindowIpcHandlers(),
   ]
