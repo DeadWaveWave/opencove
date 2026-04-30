@@ -8,6 +8,8 @@ import type {
   AgentCustomModelEnabledByProvider,
   AgentCustomModelOptionsByProvider,
 } from './agentSettings.customModels'
+import type { AgentExecutablePathOverrideByProvider } from './agentSettings.executables'
+import { normalizeAgentExecutablePathOverrideByProvider } from './agentSettings.executables'
 import {
   AGENT_PROVIDERS,
   isTaskTitleAgentProvider,
@@ -127,7 +129,9 @@ export type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './tas
 export type { QuickCommand } from './quickCommands'
 export type { QuickPhrase } from './quickPhrases'
 export type { AgentEnvByProvider, AgentEnvRow } from './agentEnv'
+export type { AgentExecutablePathOverrideByProvider } from './agentSettings.executables'
 export {
+  resolveAgentExecutablePathOverride,
   resolveAgentLaunchEnv,
   resolveAgentModel,
   resolveTaskTitleModel,
@@ -144,6 +148,7 @@ export interface AgentSettings {
   agentProviderOrder: AgentProvider[]
   agentFullAccess: boolean
   defaultTerminalProfileId: TerminalProfileId
+  agentExecutablePathOverrideByProvider: AgentExecutablePathOverrideByProvider<AgentProvider>
   customModelEnabledByProvider: AgentCustomModelEnabledByProvider<AgentProvider>
   customModelByProvider: AgentCustomModelByProvider<AgentProvider>
   customModelOptionsByProvider: AgentCustomModelOptionsByProvider<AgentProvider>
@@ -220,6 +225,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
   const agentFullAccess =
     normalizeBoolean(value.agentFullAccess) ?? DEFAULT_AGENT_SETTINGS.agentFullAccess
   const defaultTerminalProfileId = normalizeTextValue(value.defaultTerminalProfileId)
+  const agentExecutablePathOverrideByProvider = normalizeAgentExecutablePathOverrideByProvider(
+    value.agentExecutablePathOverrideByProvider,
+  )
 
   const enabledInput = isRecord(value.customModelEnabledByProvider)
     ? value.customModelEnabledByProvider
@@ -421,6 +429,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
       defaultTerminalProfileId.length > 0
         ? defaultTerminalProfileId
         : DEFAULT_AGENT_SETTINGS.defaultTerminalProfileId,
+    agentExecutablePathOverrideByProvider,
     customModelEnabledByProvider,
     customModelByProvider,
     customModelOptionsByProvider,

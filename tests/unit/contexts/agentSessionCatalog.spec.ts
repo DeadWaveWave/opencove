@@ -1,70 +1,50 @@
 import type { Dirent } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-
 const fsPromisesMock = vi.hoisted(() => ({
   readdir: vi.fn(),
   stat: vi.fn(),
   readFile: vi.fn(),
   open: vi.fn(),
 }))
-
 const osMock = vi.hoisted(() => ({
   homedir: vi.fn(() => '/Users/tester'),
 }))
-
 const execFileMock = vi.hoisted(() => vi.fn<typeof import('node:child_process').execFile>())
 const resolveOpenCodeDbPathMock = vi.hoisted(() => vi.fn())
 const openReadOnlySqliteDbMock = vi.hoisted(() => vi.fn())
-
-vi.mock('node:fs/promises', () => ({
-  default: fsPromisesMock,
-}))
-
-vi.mock('node:os', () => ({
-  default: osMock,
-}))
-
+const resolveAgentExecutableInvocationMock = vi.hoisted(() => vi.fn())
+vi.mock('node:fs/promises', () => ({ default: fsPromisesMock }))
+vi.mock('node:os', () => ({ default: osMock }))
 vi.mock('node:child_process', () => ({
   execFile: execFileMock,
   default: {
     execFile: execFileMock,
   },
 }))
-
+vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentExecutableResolver', () => ({
+  resolveAgentExecutableInvocation: resolveAgentExecutableInvocationMock,
+}))
 vi.mock('../../../src/contexts/agent/infrastructure/opencode/OpenCodeDbLocator', () => ({
   resolveOpenCodeDbPath: resolveOpenCodeDbPathMock,
 }))
-
 vi.mock('../../../src/contexts/agent/infrastructure/opencode/OpenCodeSqlite', async () => {
   const actual = await vi.importActual<
     typeof import('../../../src/contexts/agent/infrastructure/opencode/OpenCodeSqlite')
   >('../../../src/contexts/agent/infrastructure/opencode/OpenCodeSqlite')
-
   return {
     ...actual,
     openReadOnlySqliteDb: openReadOnlySqliteDbMock,
   }
 })
-
 import { listAgentSessions } from '../../../src/contexts/agent/infrastructure/cli/AgentSessionCatalog'
 
 function createFileEntry(name: string): Dirent {
-  return {
-    name,
-    isFile: () => true,
-    isDirectory: () => false,
-  } as unknown as Dirent
+  return { name, isFile: () => true, isDirectory: () => false } as unknown as Dirent
 }
-
 function createDirectoryEntry(name: string): Dirent {
-  return {
-    name,
-    isFile: () => false,
-    isDirectory: () => true,
-  } as unknown as Dirent
+  return { name, isFile: () => false, isDirectory: () => true } as unknown as Dirent
 }
-
 function toClaudeProjectDir(cwd: string): string {
   const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
   return join('/Users/tester', '.claude', 'projects', encodedPath)
@@ -113,6 +93,21 @@ describe('listAgentSessions', () => {
     fsPromisesMock.open.mockRejectedValue(new Error('ENOENT'))
     resolveOpenCodeDbPathMock.mockResolvedValue(null)
     openReadOnlySqliteDbMock.mockReset()
+    resolveAgentExecutableInvocationMock.mockResolvedValue({
+      executable: {
+        provider: 'opencode',
+        toolId: 'opencode',
+        command: 'opencode',
+        executablePath: 'opencode',
+        source: 'process_path',
+        status: 'resolved',
+        diagnostics: [],
+      },
+      invocation: {
+        command: 'opencode',
+        args: ['session', 'list', '--format', 'json', '-n', '20'],
+      },
+    })
   })
 
   afterEach(() => {

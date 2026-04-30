@@ -59,6 +59,7 @@ export async function launchAgentRuntime({
   resumeSessionId,
   agentFullAccess,
   defaultTerminalProfileId,
+  executablePathOverride,
 }: {
   node: AgentRuntimeNode
   mountId: string | null
@@ -68,6 +69,7 @@ export async function launchAgentRuntime({
   resumeSessionId: string | null
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
+  executablePathOverride: string | null
 }): Promise<AgentRuntimeLaunchResult> {
   if (mountId) {
     const cwd = executionDirectory.trim()
@@ -83,6 +85,7 @@ export async function launchAgentRuntime({
         mode,
         model: node.data.agent.model,
         resumeSessionId: mode === 'resume' ? resumeSessionId : null,
+        ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess,
       },
@@ -107,6 +110,7 @@ export async function launchAgentRuntime({
     mode,
     model: node.data.agent.model,
     resumeSessionId: mode === 'resume' ? resumeSessionId : null,
+    ...(executablePathOverride ? { executablePathOverride } : {}),
     ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
     agentFullAccess,
     cols: 80,

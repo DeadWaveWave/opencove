@@ -221,6 +221,7 @@ export async function listOpenCodeSessions(
       String(Math.max(limit, DEFAULT_AGENT_SESSION_LIMIT)),
     ],
     cwd,
+    { provider: 'opencode' },
   )
 
   const fromCli = rawOutput ? parseOpenCodeSessionList(rawOutput, cwd) : []

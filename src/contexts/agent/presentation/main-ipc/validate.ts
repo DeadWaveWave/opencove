@@ -86,6 +86,10 @@ export function normalizeListModelsPayload(payload: unknown): ListAgentModelsInp
 
   return {
     provider: normalizeProvider(record.provider),
+    executablePathOverride:
+      typeof record.executablePathOverride === 'string'
+        ? record.executablePathOverride.trim() || null
+        : null,
   }
 }
 
@@ -279,6 +283,8 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
     typeof record.resumeSessionId === 'string' ? record.resumeSessionId.trim() : ''
 
   const env = normalizeAgentLaunchEnv(record.env)
+  const executablePathOverride =
+    typeof record.executablePathOverride === 'string' ? record.executablePathOverride.trim() : ''
 
   const agentFullAccess =
     typeof record.agentFullAccess === 'boolean' ? record.agentFullAccess : true
@@ -313,6 +319,7 @@ export function normalizeLaunchAgentPayload(payload: unknown): LaunchAgentInput 
     model: model.length > 0 ? model : null,
     resumeSessionId: resumeSessionId.length > 0 ? resumeSessionId : null,
     env,
+    executablePathOverride: executablePathOverride.length > 0 ? executablePathOverride : null,
     agentFullAccess,
     cols,
     rows,

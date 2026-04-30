@@ -4,6 +4,7 @@ import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   LaunchAgentInput,
   LaunchAgentResult,
+  ListInstalledAgentProvidersInput,
   ListAgentSessionsInput,
   ListAgentSessionsResult,
   ListAgentModelsInput,
@@ -22,6 +23,10 @@ import {
   disposeAgentModelService,
   listAgentModels,
 } from '../../infrastructure/cli/AgentModelService'
+import {
+  disposeAgentExecutableResolver,
+  resolveAgentExecutableInvocation,
+} from '../../infrastructure/cli/AgentExecutableResolver'
 import { listAgentSessions } from '../../infrastructure/cli/AgentSessionCatalog'
 import { captureGeminiSessionDiscoveryCursor } from '../../infrastructure/cli/AgentSessionLocatorProviders'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
@@ -43,6 +48,12 @@ import {
   resolveAgentTestStub,
 } from './validate'
 import { createAppError } from '../../../../shared/errors/appError'
+import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
+import {
+  normalizeAgentSettings,
+  resolveAgentExecutablePathOverride,
+} from '../../../../contexts/settings/domain/agentSettings'
+import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
 
 const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
 const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
@@ -96,12 +107,25 @@ async function reserveLoopbackPort(hostname: string): Promise<number> {
 export function registerAgentIpcHandlers(
   ptyRuntime: PtyRuntime,
   approvedWorkspaces: ApprovedWorkspaceStore,
+  getPersistenceStore: () => Promise<PersistenceStore>,
 ): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.agentListInstalledProviders,
-    async (): Promise<ListInstalledAgentProvidersResult> => ({
-      providers: await listInstalledAgentProviders(),
-    }),
+    async (
+      _event,
+      payload?: ListInstalledAgentProvidersInput,
+    ): Promise<ListInstalledAgentProvidersResult> => {
+      const store = await getPersistenceStore()
+      const normalized = normalizePersistedAppState(await store.readAppState())
+      const agentSettings = normalizeAgentSettings(normalized?.settings)
+      const overrides =
+        payload?.executablePathOverrideByProvider ??
+        agentSettings.agentExecutablePathOverrideByProvider
+
+      return await listInstalledAgentProviders({
+        executablePathOverrideByProvider: overrides,
+      })
+    },
     { defaultErrorCode: 'common.unexpected' },
   )
 
@@ -126,7 +150,16 @@ export function registerAgentIpcHandlers(
     IPC_CHANNELS.agentListModels,
     async (_event, payload: ListAgentModelsInput) => {
       const normalized = normalizeListModelsPayload(payload)
-      return await listAgentModels(normalized.provider)
+      const store = await getPersistenceStore()
+      const persisted = normalizePersistedAppState(await store.readAppState())
+      const agentSettings = normalizeAgentSettings(persisted?.settings)
+
+      return await listAgentModels({
+        provider: normalized.provider,
+        executablePathOverride:
+          normalized.executablePathOverride ??
+          resolveAgentExecutablePathOverride(agentSettings, normalized.provider),
+      })
     },
     { defaultErrorCode: 'agent.list_models_failed' },
   )
@@ -219,6 +252,12 @@ export function registerAgentIpcHandlers(
     IPC_CHANNELS.agentLaunch,
     async (_event, payload: LaunchAgentInput) => {
       const normalized = normalizeLaunchAgentPayload(payload)
+      const store = await getPersistenceStore()
+      const persisted = normalizePersistedAppState(await store.readAppState())
+      const agentSettings = normalizeAgentSettings(persisted?.settings)
+      const executablePathOverride =
+        normalized.executablePathOverride ??
+        resolveAgentExecutablePathOverride(agentSettings, normalized.provider)
 
       const isApproved = await approvedWorkspaces.isPathApproved(normalized.cwd)
       if (!isApproved) {
@@ -285,10 +324,18 @@ export function registerAgentIpcHandlers(
           ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
 
-      const resolvedInvocation = await resolveAgentCliInvocation({
-        command,
-        args,
-      })
+      const resolvedInvocation = testStub
+        ? await resolveAgentCliInvocation({
+            command,
+            args,
+          })
+        : (
+            await resolveAgentExecutableInvocation({
+              provider: normalized.provider,
+              args,
+              overridePath: executablePathOverride,
+            })
+          ).invocation
 
       const resolvedSpawn = testStub
         ? {
@@ -370,6 +417,7 @@ export function registerAgentIpcHandlers(
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentReadLastMessage)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentLaunch)
+      disposeAgentExecutableResolver()
       disposeAgentModelService()
     },
   }

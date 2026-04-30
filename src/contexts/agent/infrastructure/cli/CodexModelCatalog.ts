@@ -1,6 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import type { AgentModelOption } from '@shared/contracts/dto'
-import { resolveAgentCliInvocation } from './AgentCliInvocation'
+import { resolveAgentExecutableInvocation } from './AgentExecutableResolver'
 
 const CODEX_APP_SERVER_TIMEOUT_MS = 8000
 const CODEX_APP_SERVER_SHUTDOWN_GRACE_MS = 500
@@ -98,10 +98,13 @@ export function disposeCodexModelCatalog(): void {
   }
 }
 
-export async function listCodexModelsFromCli(): Promise<AgentModelOption[]> {
-  const invocation = await resolveAgentCliInvocation({
-    command: 'codex',
+export async function listCodexModelsFromCli(
+  executablePathOverride?: string | null,
+): Promise<AgentModelOption[]> {
+  const { invocation } = await resolveAgentExecutableInvocation({
+    provider: 'codex',
     args: ['app-server'],
+    overridePath: executablePathOverride ?? null,
   })
 
   return await new Promise<AgentModelOption[]>((resolve, reject) => {

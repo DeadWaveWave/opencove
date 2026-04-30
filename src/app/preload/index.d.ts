@@ -15,6 +15,7 @@ import type {
   LaunchAgentResult,
   ListAgentSessionsInput,
   ListAgentSessionsResult,
+  ListInstalledAgentProvidersInput,
   ListGitBranchesInput,
   ListGitBranchesResult,
   ListGitWorktreesInput,
@@ -252,7 +253,9 @@ export interface OpenCoveApi {
   }
   agent: {
     listModels: (payload: ListAgentModelsInput) => Promise<ListAgentModelsResult>
-    listInstalledProviders: () => Promise<ListInstalledAgentProvidersResult>
+    listInstalledProviders: (
+      payload?: ListInstalledAgentProvidersInput,
+    ) => Promise<ListInstalledAgentProvidersResult>
     listSessions: (payload: ListAgentSessionsInput) => Promise<ListAgentSessionsResult>
     launch: (payload: LaunchAgentInput) => Promise<LaunchAgentResult>
     readLastMessage: (payload: ReadAgentLastMessageInput) => Promise<ReadAgentLastMessageResult>

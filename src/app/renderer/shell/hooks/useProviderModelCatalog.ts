@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AGENT_PROVIDERS, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import {
+  AGENT_PROVIDERS,
+  resolveAgentExecutablePathOverride,
+  type AgentProvider,
+  type AgentSettings,
+} from '@contexts/settings/domain/agentSettings'
 import { createLatestOnlyRequestStore } from '../utils/latestOnly'
 import type { ProviderModelCatalog } from '../types'
 import { toErrorMessage } from '../utils/format'
@@ -17,7 +22,13 @@ function createInitialModelCatalog(): ProviderModelCatalog {
   }, {} as ProviderModelCatalog)
 }
 
-export function useProviderModelCatalog({ isSettingsOpen }: { isSettingsOpen: boolean }): {
+export function useProviderModelCatalog({
+  isSettingsOpen,
+  agentSettings,
+}: {
+  isSettingsOpen: boolean
+  agentSettings: AgentSettings
+}): {
   providerModelCatalog: ProviderModelCatalog
   refreshProviderModels: (provider: AgentProvider) => Promise<void>
 } {
@@ -26,54 +37,60 @@ export function useProviderModelCatalog({ isSettingsOpen }: { isSettingsOpen: bo
   )
   const providerModelsRequestStoreRef = useRef(createLatestOnlyRequestStore<AgentProvider>())
 
-  const refreshProviderModels = useCallback(async (provider: AgentProvider): Promise<void> => {
-    const requestToken = providerModelsRequestStoreRef.current.start(provider)
-
-    setProviderModelCatalog(prev => ({
-      ...prev,
-      [provider]: {
-        ...prev[provider],
-        isLoading: true,
-        error: null,
-      },
-    }))
-
-    try {
-      const result = await window.opencoveApi.agent.listModels({ provider })
-
-      if (!providerModelsRequestStoreRef.current.isLatest(provider, requestToken)) {
-        return
-      }
-
-      const nextModels = [...new Set(result.models.map(model => model.id))]
+  const refreshProviderModels = useCallback(
+    async (provider: AgentProvider): Promise<void> => {
+      const requestToken = providerModelsRequestStoreRef.current.start(provider)
 
       setProviderModelCatalog(prev => ({
         ...prev,
         [provider]: {
           ...prev[provider],
-          models: nextModels,
-          source: result.source,
-          fetchedAt: result.fetchedAt,
-          error: result.error ? toErrorMessage(result.error) : null,
-          isLoading: false,
+          isLoading: true,
+          error: null,
         },
       }))
-    } catch (error) {
-      if (!providerModelsRequestStoreRef.current.isLatest(provider, requestToken)) {
-        return
-      }
 
-      setProviderModelCatalog(prev => ({
-        ...prev,
-        [provider]: {
-          ...prev[provider],
-          isLoading: false,
-          fetchedAt: new Date().toISOString(),
-          error: toErrorMessage(error),
-        },
-      }))
-    }
-  }, [])
+      try {
+        const result = await window.opencoveApi.agent.listModels({
+          provider,
+          executablePathOverride: resolveAgentExecutablePathOverride(agentSettings, provider),
+        })
+
+        if (!providerModelsRequestStoreRef.current.isLatest(provider, requestToken)) {
+          return
+        }
+
+        const nextModels = [...new Set(result.models.map(model => model.id))]
+
+        setProviderModelCatalog(prev => ({
+          ...prev,
+          [provider]: {
+            ...prev[provider],
+            models: nextModels,
+            source: result.source,
+            fetchedAt: result.fetchedAt,
+            error: result.error ? toErrorMessage(result.error) : null,
+            isLoading: false,
+          },
+        }))
+      } catch (error) {
+        if (!providerModelsRequestStoreRef.current.isLatest(provider, requestToken)) {
+          return
+        }
+
+        setProviderModelCatalog(prev => ({
+          ...prev,
+          [provider]: {
+            ...prev[provider],
+            isLoading: false,
+            fetchedAt: new Date().toISOString(),
+            error: toErrorMessage(error),
+          },
+        }))
+      }
+    },
+    [agentSettings],
+  )
 
   useEffect(() => {
     if (!isSettingsOpen) {

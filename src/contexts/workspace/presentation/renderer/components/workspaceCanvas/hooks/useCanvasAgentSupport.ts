@@ -67,6 +67,7 @@ export function useWorkspaceCanvasAgentSupport({
     agentFullAccess: agentSettings.agentFullAccess,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
     agentEnvByProvider: agentSettings.agentEnvByProvider,
+    agentExecutablePathOverrideByProvider: agentSettings.agentExecutablePathOverrideByProvider,
     environmentVariables,
     onRequestPersistFlush,
   })

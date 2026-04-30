@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { extname } from 'node:path'
+import { extname, isAbsolute } from 'node:path'
 const WINDOWS_BATCH_EXTENSIONS = new Set(['.bat', '.cmd'])
 const WINDOWS_DIRECT_EXECUTABLE_EXTENSIONS = new Set(['.com', '.exe'])
 
@@ -18,6 +18,10 @@ function isWindowsBatchCommand(command: string): boolean {
 
 function isWindowsDirectExecutable(command: string): boolean {
   return WINDOWS_DIRECT_EXECUTABLE_EXTENSIONS.has(normalizeExtension(command))
+}
+
+function isPathLikeCommand(command: string): boolean {
+  return command.includes('/') || command.includes('\\') || isAbsolute(command)
 }
 
 async function resolveWindowsCommandPath(command: string): Promise<string | null> {
@@ -58,6 +62,18 @@ export async function resolveAgentCliInvocation(
   const args = [...invocation.args]
 
   if (process.platform !== 'win32' || command.length === 0 || command.toLowerCase() === 'cmd.exe') {
+    return { command, args }
+  }
+
+  if (isPathLikeCommand(command)) {
+    if (isWindowsDirectExecutable(command)) {
+      return { command, args }
+    }
+
+    if (isWindowsBatchCommand(command)) {
+      return wrapWindowsBatchCommand(command, args)
+    }
+
     return { command, args }
   }
 

@@ -163,7 +163,7 @@ function resolveUtf8LocaleFallback(platform: NodeJS.Platform): string {
   return platform === 'darwin' ? 'en_US.UTF-8' : 'C.UTF-8'
 }
 
-function buildAdditionalPathSegments(platform: NodeJS.Platform, homeDir: string): string[] {
+export function buildAdditionalPathSegments(platform: NodeJS.Platform, homeDir: string): string[] {
   if (platform === 'win32') {
     return []
   }

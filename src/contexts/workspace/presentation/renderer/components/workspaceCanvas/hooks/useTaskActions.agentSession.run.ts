@@ -1,5 +1,9 @@
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import { resolveAgentLaunchEnv, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
+import {
+  resolveAgentExecutablePathOverride,
+  resolveAgentLaunchEnv,
+  resolveAgentModel,
+} from '@contexts/settings/domain/agentSettings'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import type {
@@ -256,6 +260,7 @@ export async function runTaskAgentAction(
 
   const provider = context.agentSettings.defaultProvider
   const model = resolveAgentModel(context.agentSettings, provider)
+  const executablePathOverride = resolveAgentExecutablePathOverride(context.agentSettings, provider)
   const env = resolveAgentLaunchEnv(context.agentSettings, provider)
   const mergedEnv =
     context.environmentVariables && Object.keys(context.environmentVariables).length > 0
@@ -284,6 +289,7 @@ export async function runTaskAgentAction(
             provider,
             mode: 'new',
             model,
+            ...(executablePathOverride ? { executablePathOverride } : {}),
             ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
             agentFullAccess: context.agentSettings.agentFullAccess,
           },
@@ -320,6 +326,7 @@ export async function runTaskAgentAction(
         prompt: requirement,
         mode: 'new',
         model,
+        ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
         cols: 80,

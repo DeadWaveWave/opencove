@@ -154,6 +154,7 @@ export async function findOpenCodeResumeSessionId(
     'opencode',
     ['session', 'list', '--format', 'json', '-n', '12'],
     resolvedCwd,
+    { provider: 'opencode' },
   )
 
   if (!rawOutput) {

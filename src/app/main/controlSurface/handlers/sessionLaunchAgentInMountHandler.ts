@@ -6,6 +6,7 @@ import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructu
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
 import {
   normalizeAgentSettings,
+  resolveAgentExecutablePathOverride,
   resolveAgentModel,
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
@@ -112,6 +113,10 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
   }
 
   const env = normalizeLaunchAgentEnv(payload.env)
+  const executablePathOverride =
+    payload.executablePathOverride === undefined || payload.executablePathOverride === null
+      ? null
+      : normalizeOptionalString(payload.executablePathOverride)
   const cols = normalizeOptionalPositiveInt(payload.cols)
   const rows = normalizeOptionalPositiveInt(payload.rows)
 
@@ -128,6 +133,7 @@ function normalizeLaunchAgentInMountPayload(payload: unknown): LaunchAgentSessio
     resumeSessionId:
       resumeSessionIdRaw === null ? null : normalizeOptionalString(resumeSessionIdRaw),
     env,
+    executablePathOverride,
     agentFullAccess: agentFullAccess ?? null,
     cols,
     rows,
@@ -299,6 +305,9 @@ export function registerSessionLaunchAgentInMountHandler(
 
       const provider = resolveProviderFromSettings(payload.provider ?? null, agentSettings)
       const model = payload.model ?? resolveAgentModel(agentSettings, provider)
+      const executablePathOverride =
+        payload.executablePathOverride ??
+        resolveAgentExecutablePathOverride(agentSettings, provider)
       const agentFullAccess = payload.agentFullAccess ?? agentSettings.agentFullAccess
 
       const testStub = resolveWorkerAgentTestStub({
@@ -357,6 +366,8 @@ export function registerSessionLaunchAgentInMountHandler(
         defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
         command: launchCommand.command,
         args: launchCommand.args,
+        provider: testStub ? null : provider,
+        executablePathOverride,
         ...(mergedEnv ? { env: mergedEnv } : {}),
       })
 

@@ -1,30 +1,42 @@
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
-import type { AgentProviderId } from '@shared/contracts/dto'
-import { resolveAgentCliCommand } from './AgentCommandFactory'
-
-const execFileAsync = promisify(execFile)
+import type {
+  AgentProviderAvailability,
+  AgentProviderId,
+  ListInstalledAgentProvidersResult,
+} from '@shared/contracts/dto'
+import { resolveAgentProviderAvailability } from './AgentExecutableResolver'
 
 const AGENT_PROVIDERS: readonly AgentProviderId[] = ['claude-code', 'codex', 'opencode', 'gemini']
 
-async function isCommandAvailable(command: string): Promise<boolean> {
-  const probeCommand = process.platform === 'win32' ? 'where.exe' : 'which'
-
-  try {
-    await execFileAsync(probeCommand, [command], { windowsHide: true })
-    return true
-  } catch {
-    return false
-  }
+function toAvailabilityRecord(
+  entries: AgentProviderAvailability[],
+): Record<AgentProviderId, AgentProviderAvailability> {
+  return entries.reduce<Record<AgentProviderId, AgentProviderAvailability>>(
+    (acc, entry) => {
+      acc[entry.provider] = entry
+      return acc
+    },
+    {} as Record<AgentProviderId, AgentProviderAvailability>,
+  )
 }
 
-export async function listInstalledAgentProviders(): Promise<AgentProviderId[]> {
-  const availability = await Promise.all(
-    AGENT_PROVIDERS.map(async provider => ({
-      provider,
-      available: await isCommandAvailable(resolveAgentCliCommand(provider)),
-    })),
+export async function listInstalledAgentProviders(options?: {
+  executablePathOverrideByProvider?: Partial<Record<AgentProviderId, string>> | null
+}): Promise<ListInstalledAgentProvidersResult> {
+  const availabilityEntries = await Promise.all(
+    AGENT_PROVIDERS.map(
+      async provider =>
+        await resolveAgentProviderAvailability({
+          provider,
+          overridePath: options?.executablePathOverrideByProvider?.[provider] ?? null,
+        }),
+    ),
   )
 
-  return availability.filter(result => result.available).map(result => result.provider)
+  return {
+    providers: availabilityEntries
+      .filter(entry => entry.status === 'available')
+      .map(entry => entry.provider),
+    availabilityByProvider: toAvailabilityRecord(availabilityEntries),
+    fetchedAt: new Date().toISOString(),
+  }
 }

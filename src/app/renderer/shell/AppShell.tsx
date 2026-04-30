@@ -68,6 +68,7 @@ export default function App(): React.JSX.Element {
 
   const { providerModelCatalog } = useProviderModelCatalog({
     isSettingsOpen,
+    agentSettings,
   })
 
   useApplyUiFontScale(agentSettings.uiFontSize)

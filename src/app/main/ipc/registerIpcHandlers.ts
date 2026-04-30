@@ -132,7 +132,7 @@ export function registerIpcHandlers(deps?: {
     registerPtyIpcHandlers(ptyRuntime, ptyApprovedWorkspaces),
     workerEndpointResolver
       ? registerRemoteAgentIpcHandlers({ endpointResolver: workerEndpointResolver, ptyRuntime })
-      : registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces),
+      : registerAgentIpcHandlers(ptyRuntime, approvedWorkspaces, getPersistenceStore),
     registerTaskIpcHandlers(approvedWorkspaces),
     registerSystemIpcHandlers(),
     registerWebsiteWindowIpcHandlers(),

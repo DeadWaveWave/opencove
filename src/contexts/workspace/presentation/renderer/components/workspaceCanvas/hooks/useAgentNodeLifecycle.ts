@@ -2,7 +2,10 @@ import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolveEnabledEnvForAgent } from '@contexts/settings/domain/agentEnv'
-import type { AgentEnvByProvider } from '@contexts/settings/domain/agentSettings'
+import type {
+  AgentEnvByProvider,
+  AgentExecutablePathOverrideByProvider,
+} from '@contexts/settings/domain/agentSettings'
 import type { AgentSessionSummary, ListMountsResult } from '@shared/contracts/dto'
 import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
@@ -37,6 +40,7 @@ interface UseAgentNodeLifecycleParams {
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
   agentEnvByProvider: AgentEnvByProvider
+  agentExecutablePathOverrideByProvider?: AgentExecutablePathOverrideByProvider
   environmentVariables?: Record<string, string>
   onRequestPersistFlush?: () => void
 }
@@ -51,6 +55,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   agentFullAccess,
   defaultTerminalProfileId,
   agentEnvByProvider,
+  agentExecutablePathOverrideByProvider,
   environmentVariables,
   onRequestPersistFlush,
 }: UseAgentNodeLifecycleParams): {
@@ -179,6 +184,10 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         return
       }
       const env = resolveEnabledEnvForAgent({ rows: agentEnvByProvider[launchData.provider] ?? [] })
+      const normalizedExecutablePathOverride =
+        agentExecutablePathOverrideByProvider?.[launchData.provider]?.trim() ?? ''
+      const executablePathOverride =
+        normalizedExecutablePathOverride.length > 0 ? normalizedExecutablePathOverride : null
       const mergedEnv =
         environmentVariables && Object.keys(environmentVariables).length > 0
           ? { ...env, ...environmentVariables }
@@ -246,6 +255,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           resumeSessionId: requestedResumeSessionId,
           agentFullAccess,
           defaultTerminalProfileId,
+          executablePathOverride,
         })
 
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
@@ -336,6 +346,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       setAgentNodeFailure,
       setNodes,
       t,
+      agentExecutablePathOverrideByProvider,
       agentFullAccess,
       defaultTerminalProfileId,
     ],

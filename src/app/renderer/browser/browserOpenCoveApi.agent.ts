@@ -119,6 +119,27 @@ export function createBrowserAgentApi(): AgentApi {
     }),
     listInstalledProviders: async (): Promise<ListInstalledAgentProvidersResult> => ({
       providers: [...AGENT_PROVIDERS],
+      availabilityByProvider: Object.fromEntries(
+        AGENT_PROVIDERS.map(provider => [
+          provider,
+          {
+            provider,
+            command:
+              provider === 'claude-code'
+                ? 'claude'
+                : provider === 'opencode'
+                  ? 'opencode'
+                  : provider === 'gemini'
+                    ? 'gemini'
+                    : 'codex',
+            status: 'available',
+            executablePath: null,
+            source: null,
+            diagnostics: ['Browser control surface reports provider availability optimistically.'],
+          },
+        ]),
+      ) as ListInstalledAgentProvidersResult['availabilityByProvider'],
+      fetchedAt: new Date().toISOString(),
     }),
     listSessions: async payload => {
       const provider = payload.provider

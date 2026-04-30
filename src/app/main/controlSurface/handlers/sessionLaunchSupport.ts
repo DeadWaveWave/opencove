@@ -1,6 +1,7 @@
 import { createServer } from 'node:net'
 import process from 'node:process'
 import { resolveAgentCliInvocation } from '../../../../contexts/agent/infrastructure/cli/AgentCliInvocation'
+import { resolveAgentExecutableInvocation } from '../../../../contexts/agent/infrastructure/cli/AgentExecutableResolver'
 import { resolveLocalWorkerEndpointRef } from '../../../../contexts/project/application/resolveLocalWorkerEndpointRef'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
@@ -116,6 +117,8 @@ interface ResolveSessionLaunchSpawnInput {
   defaultTerminalProfileId?: string | null
   command: string
   args: string[]
+  provider?: AgentProvider | null
+  executablePathOverride?: string | null
   env?: NodeJS.ProcessEnv
 }
 
@@ -129,20 +132,28 @@ interface ResolvedSessionLaunchSpawn {
 export async function resolveSessionLaunchSpawn(
   input: ResolveSessionLaunchSpawnInput,
 ): Promise<ResolvedSessionLaunchSpawn> {
+  const resolvedInvocation = input.provider
+    ? (
+        await resolveAgentExecutableInvocation({
+          provider: input.provider,
+          args: input.args,
+          overridePath: input.executablePathOverride ?? null,
+        })
+      ).invocation
+    : await resolveAgentCliInvocation({
+        command: input.command,
+        args: input.args,
+      })
+
   if (input.defaultTerminalProfileId && input.defaultTerminalProfileId.trim().length > 0) {
     return await terminalProfileResolver.resolveCommandSpawn({
       cwd: input.workingDirectory,
       profileId: input.defaultTerminalProfileId,
-      command: input.command,
-      args: input.args,
+      command: resolvedInvocation.command,
+      args: resolvedInvocation.args,
       ...(input.env ? { env: input.env } : {}),
     })
   }
-
-  const resolvedInvocation = await resolveAgentCliInvocation({
-    command: input.command,
-    args: input.args,
-  })
 
   return {
     command: resolvedInvocation.command,

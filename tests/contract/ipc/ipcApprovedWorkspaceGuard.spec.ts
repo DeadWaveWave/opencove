@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { readFile } from 'node:fs/promises'
 import { IPC_CHANNELS } from '../../../src/shared/constants/ipc'
 import type { ApprovedWorkspaceStore } from '../../../src/contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
+import type { PersistenceStore } from '../../../src/platform/persistence/sqlite/PersistenceStore'
 import type { PtyRuntime } from '../../../src/contexts/terminal/presentation/main-ipc/runtime'
 import { invokeHandledIpc } from './ipcTestUtils'
 
@@ -54,6 +55,12 @@ function createPtyRuntimeMock(): PtyRuntime {
     startSessionStateWatcher: vi.fn(),
     dispose: vi.fn(),
   }
+}
+
+function createPersistenceStoreMock(appState: unknown = null): PersistenceStore {
+  return {
+    readAppState: vi.fn(async () => appState),
+  } as unknown as PersistenceStore
 }
 
 const originalPlatform = process.platform
@@ -139,10 +146,11 @@ describe('IPC approved workspace guards', () => {
 
       const runtime = createPtyRuntimeMock()
       const store = createApprovedWorkspaceStoreMock({ isPathApproved: false })
+      const persistenceStore = createPersistenceStoreMock()
 
       const { registerAgentIpcHandlers } =
         await import('../../../src/contexts/agent/presentation/main-ipc/register')
-      registerAgentIpcHandlers(runtime, store)
+      registerAgentIpcHandlers(runtime, store, async () => persistenceStore)
 
       const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
       expect(launchHandler).toBeTypeOf('function')
@@ -188,10 +196,11 @@ describe('IPC approved workspace guards', () => {
 
       const runtime = createPtyRuntimeMock()
       const store = createApprovedWorkspaceStoreMock({ isPathApproved: true })
+      const persistenceStore = createPersistenceStoreMock()
 
       const { registerAgentIpcHandlers } =
         await import('../../../src/contexts/agent/presentation/main-ipc/register')
-      registerAgentIpcHandlers(runtime, store)
+      registerAgentIpcHandlers(runtime, store, async () => persistenceStore)
 
       const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
       expect(launchHandler).toBeTypeOf('function')
@@ -225,13 +234,32 @@ describe('IPC approved workspace guards', () => {
     try {
       const { handlers, ipcMain } = createIpcHarness()
       vi.doMock('electron', () => ({ ipcMain }))
+      vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentExecutableResolver', () => ({
+        resolveAgentExecutableInvocation: vi.fn(async ({ provider, args }) => ({
+          executable: {
+            provider,
+            toolId: provider,
+            command: 'codex',
+            executablePath: 'codex',
+            source: 'process_path',
+            status: 'resolved',
+            diagnostics: [],
+          },
+          invocation: {
+            command: 'codex',
+            args,
+          },
+        })),
+        disposeAgentExecutableResolver: vi.fn(),
+      }))
 
       const runtime = createPtyRuntimeMock()
       const store = createApprovedWorkspaceStoreMock({ isPathApproved: true })
+      const persistenceStore = createPersistenceStoreMock()
 
       const { registerAgentIpcHandlers } =
         await import('../../../src/contexts/agent/presentation/main-ipc/register')
-      registerAgentIpcHandlers(runtime, store)
+      registerAgentIpcHandlers(runtime, store, async () => persistenceStore)
 
       const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
       expect(launchHandler).toBeTypeOf('function')
@@ -280,10 +308,11 @@ describe('IPC approved workspace guards', () => {
 
       const runtime = createPtyRuntimeMock()
       const store = createApprovedWorkspaceStoreMock({ isPathApproved: true })
+      const persistenceStore = createPersistenceStoreMock()
 
       const { registerAgentIpcHandlers } =
         await import('../../../src/contexts/agent/presentation/main-ipc/register')
-      registerAgentIpcHandlers(runtime, store)
+      registerAgentIpcHandlers(runtime, store, async () => persistenceStore)
 
       const launchHandler = handlers.get(IPC_CHANNELS.agentLaunch)
       expect(launchHandler).toBeTypeOf('function')

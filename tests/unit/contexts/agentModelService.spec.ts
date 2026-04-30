@@ -9,6 +9,10 @@ const { execFileMock } = vi.hoisted(() => ({
   execFileMock: vi.fn<typeof import('node:child_process').execFile>(),
 }))
 
+const { resolveAgentExecutableInvocationMock } = vi.hoisted(() => ({
+  resolveAgentExecutableInvocationMock: vi.fn(),
+}))
+
 vi.mock('node:child_process', () => {
   return {
     execFile: execFileMock,
@@ -17,6 +21,12 @@ vi.mock('node:child_process', () => {
       execFile: execFileMock,
       spawn: spawnMock,
     },
+  }
+})
+
+vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentExecutableResolver', () => {
+  return {
+    resolveAgentExecutableInvocation: resolveAgentExecutableInvocationMock,
   }
 })
 
@@ -82,6 +92,24 @@ describe('AgentModelService', () => {
     })
   })
 
+  function mockResolvedInvocation(command: string, args: string[]) {
+    resolveAgentExecutableInvocationMock.mockResolvedValue({
+      executable: {
+        provider: 'codex',
+        toolId: 'codex',
+        command,
+        executablePath: command,
+        source: 'process_path',
+        status: 'resolved',
+        diagnostics: [],
+      },
+      invocation: {
+        command,
+        args,
+      },
+    })
+  }
+
   it('returns static Claude Code models without requiring api credentials', async () => {
     delete process.env.ANTHROPIC_API_KEY
     delete process.env.CLAUDE_API_KEY
@@ -89,7 +117,7 @@ describe('AgentModelService', () => {
     delete process.env.CLAUDE_APIKEY
 
     const { listAgentModels } = await importAgentModelService()
-    const result = await listAgentModels('claude-code')
+    const result = await listAgentModels({ provider: 'claude-code' })
 
     expect(result.provider).toBe('claude-code')
     expect(result.source).toBe('claude-static')
@@ -104,6 +132,7 @@ describe('AgentModelService', () => {
   })
 
   it('lists OpenCode models from the CLI output', async () => {
+    mockResolvedInvocation('opencode', ['models'])
     execFileMock.mockImplementation((_file, _args, options, callback) => {
       const cb = typeof options === 'function' ? options : callback
       cb?.(null, 'opencode/gpt-5-nano\nopenrouter/gpt-5\n', '')
@@ -111,7 +140,7 @@ describe('AgentModelService', () => {
     })
 
     const { listAgentModels } = await importAgentModelService()
-    const result = await listAgentModels('opencode')
+    const result = await listAgentModels({ provider: 'opencode' })
 
     expect(result.provider).toBe('opencode')
     expect(result.source).toBe('opencode-cli')
@@ -162,7 +191,7 @@ describe('AgentModelService', () => {
 
     try {
       const { listAgentModels } = await importAgentModelService()
-      const result = await listAgentModels('gemini')
+      const result = await listAgentModels({ provider: 'gemini' })
 
       expect(fetchMock).toHaveBeenCalledTimes(1)
       expect(result.provider).toBe('gemini')
@@ -193,13 +222,14 @@ describe('AgentModelService', () => {
       value: 'darwin',
       configurable: true,
     })
+    mockResolvedInvocation('codex', ['app-server'])
 
     const child = createMockChildProcess()
 
     spawnMock.mockReturnValue(child as never)
 
     const { listAgentModels } = await importAgentModelService()
-    const resultPromise = listAgentModels('codex')
+    const resultPromise = listAgentModels({ provider: 'codex' })
     await Promise.resolve()
 
     expect(child.stdin.write).toHaveBeenCalledTimes(2)
@@ -246,14 +276,15 @@ describe('AgentModelService', () => {
       value: 'darwin',
       configurable: true,
     })
+    mockResolvedInvocation('codex', ['app-server'])
 
     const child = createMockChildProcess()
 
     spawnMock.mockReturnValue(child as never)
 
     const { listAgentModels } = await importAgentModelService()
-    const firstPromise = listAgentModels('codex')
-    const secondPromise = listAgentModels('codex')
+    const firstPromise = listAgentModels({ provider: 'codex' })
+    const secondPromise = listAgentModels({ provider: 'codex' })
     await Promise.resolve()
 
     expect(spawnMock).toHaveBeenCalledTimes(1)
@@ -289,6 +320,7 @@ describe('AgentModelService', () => {
       value: 'darwin',
       configurable: true,
     })
+    mockResolvedInvocation('codex', ['app-server'])
 
     const child = createMockChildProcess()
     child.stdin.end = vi.fn(() => undefined)
@@ -296,7 +328,7 @@ describe('AgentModelService', () => {
     spawnMock.mockReturnValue(child as never)
 
     const { listAgentModels } = await importAgentModelService()
-    const resultPromise = listAgentModels('codex')
+    const resultPromise = listAgentModels({ provider: 'codex' })
     await Promise.resolve()
 
     child.stdout.emit(
@@ -335,15 +367,25 @@ describe('AgentModelService', () => {
 
     const child = createMockChildProcess()
 
-    execFileMock.mockImplementation((_file, _args, options, callback) => {
-      const cb = typeof options === 'function' ? options : callback
-      cb?.(null, 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd\r\n', '')
-      return {} as ReturnType<typeof execFileMock>
+    resolveAgentExecutableInvocationMock.mockResolvedValue({
+      executable: {
+        provider: 'codex',
+        toolId: 'codex',
+        command: 'codex',
+        executablePath: 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
+        source: 'process_path',
+        status: 'resolved',
+        diagnostics: [],
+      },
+      invocation: {
+        command: 'cmd.exe',
+        args: ['/d', '/c', 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd', 'app-server'],
+      },
     })
     spawnMock.mockReturnValue(child as never)
 
     const { listAgentModels } = await importAgentModelService()
-    const resultPromise = listAgentModels('codex')
+    const resultPromise = listAgentModels({ provider: 'codex' })
     await vi.waitFor(() => {
       expect(spawnMock).toHaveBeenCalledTimes(1)
     })

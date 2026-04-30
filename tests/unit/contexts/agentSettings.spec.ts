@@ -12,6 +12,12 @@ describe('normalizeAgentSettings', () => {
     expect(DEFAULT_AGENT_SETTINGS.agentEnvByProvider['claude-code']).toEqual([])
     expect(DEFAULT_AGENT_SETTINGS.agentEnvByProvider.opencode).toEqual([])
     expect(DEFAULT_AGENT_SETTINGS.agentEnvByProvider.gemini).toEqual([])
+    expect(DEFAULT_AGENT_SETTINGS.agentExecutablePathOverrideByProvider).toEqual({
+      'claude-code': '',
+      codex: '',
+      opencode: '',
+      gemini: '',
+    })
   })
 
   it('keeps the default terminal profile unset by default', () => {
@@ -196,6 +202,22 @@ describe('normalizeAgentSettings', () => {
       { id: 'row-1', key: 'FOO', value: 'bar', enabled: true },
     ])
     expect(settings.agentEnvByProvider.gemini).toEqual([])
+  })
+
+  it('normalizes executable path overrides by provider', () => {
+    const settings = normalizeAgentSettings({
+      agentExecutablePathOverrideByProvider: {
+        codex: '  /opt/tools/codex  ',
+        opencode: 123,
+      },
+    })
+
+    expect(settings.agentExecutablePathOverrideByProvider).toEqual({
+      'claude-code': '',
+      codex: '/opt/tools/codex',
+      opencode: '',
+      gemini: '',
+    })
   })
 
   it('defaults experimental remote workers to disabled', () => {

@@ -337,17 +337,14 @@ export function WorkspaceCanvasView({
           startSpaceRename={startSpaceRename}
           onOpenSpaceMenu={openSpaceActionMenu}
         />
-
         <WorkspaceMinimapDock
           isMinimapVisible={isMinimapVisible}
           minimapNodeColor={minimapNodeColor}
           setIsMinimapVisible={setIsMinimapVisible}
           onMinimapVisibilityChange={onMinimapVisibilityChange}
         />
-
         <Controls className="workspace-canvas__controls" showInteractive={false} />
       </ReactFlow>
-
       {activeExplorerSpace && activeExplorerSpace.rect ? (
         <WorkspaceSpaceExplorerOverlay
           canvasRef={canvasRef}
@@ -365,25 +362,18 @@ export function WorkspaceCanvasView({
           findBlockingOpenDocument={findBlockingOpenDocument}
           onShowMessage={onShowMessage}
           onClose={closeSpaceExplorer}
-          onPreviewFile={(uri, options) => {
-            previewFileInSpace(activeExplorerSpace.id, uri, options)
-          }}
-          onOpenFile={(uri, options) => {
-            openFileInSpace(activeExplorerSpace.id, uri, options)
-          }}
+          onPreviewFile={(uri, options) => previewFileInSpace(activeExplorerSpace.id, uri, options)}
+          onOpenFile={(uri, options) => openFileInSpace(activeExplorerSpace.id, uri, options)}
           onDismissQuickPreview={dismissQuickPreview}
         />
       ) : null}
-
       <WorkspaceSpaceQuickPreview
         preview={quickPreview}
         onOpen={materializeQuickPreview}
         onDragStart={beginQuickPreviewDrag}
       />
-
       <WorkspaceSnapGuidesOverlay guides={snapGuides} />
       <WorkspaceSelectionDraftOverlay canvasRef={canvasRef} draft={selectionDraft} />
-
       <WorkspaceCanvasTopOverlays
         spaces={spaces}
         activateSpace={activateSpace}
@@ -399,7 +389,6 @@ export function WorkspaceCanvasView({
         }}
         selectedNodeCount={selectedNodeCount}
       />
-
       <WorkspaceContextMenu
         contextMenu={contextMenu}
         closeContextMenu={closeContextMenu}
@@ -410,6 +399,7 @@ export function WorkspaceCanvasView({
         openTaskCreator={openTaskCreator}
         openAgentLauncher={openAgentLauncher}
         agentProviderOrder={agentSettings.agentProviderOrder}
+        agentExecutablePathOverrideByProvider={agentSettings.agentExecutablePathOverrideByProvider}
         openAgentLauncherForProvider={openAgentLauncherForProvider}
         quickCommands={agentSettings.quickCommands}
         quickPhrases={agentSettings.quickPhrases}
@@ -432,7 +422,6 @@ export function WorkspaceCanvasView({
         convertSelectedNoteToTask={convertSelectedNoteToTask}
         setSelectedNodeLabelColorOverride={setSelectedNodeLabelColorOverride}
       />
-
       <WorkspaceSpaceActionMenu
         menu={spaceActionMenu}
         availableOpeners={availablePathOpeners}
@@ -463,7 +452,6 @@ export function WorkspaceCanvasView({
           }
         }}
       />
-
       <WorkspaceCanvasWindows
         taskCreator={taskCreator}
         taskTitleProviderLabel={taskTitleProviderLabel}

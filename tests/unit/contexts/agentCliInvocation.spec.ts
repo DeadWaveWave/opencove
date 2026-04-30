@@ -98,6 +98,25 @@ describe('resolveAgentCliInvocation', () => {
     })
   })
 
+  it('keeps already-resolved Windows path-like commands without probing where.exe', async () => {
+    setPlatform('win32')
+
+    const { resolveAgentCliInvocation } =
+      await import('../../../src/contexts/agent/infrastructure/cli/AgentCliInvocation')
+
+    await expect(
+      resolveAgentCliInvocation({
+        command: 'C:\\tools\\codex',
+        args: ['app-server'],
+      }),
+    ).resolves.toEqual({
+      command: 'C:\\tools\\codex',
+      args: ['app-server'],
+    })
+
+    expect(execFileMock).not.toHaveBeenCalled()
+  })
+
   it('falls back to the npm .cmd shim when Windows resolution probe fails', async () => {
     setPlatform('win32')
     execFileMock.mockImplementation((_file, _args, options, callback) => {

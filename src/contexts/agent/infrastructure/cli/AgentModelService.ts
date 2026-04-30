@@ -4,7 +4,7 @@ import type {
   AgentProviderId,
   ListAgentModelsResult,
 } from '@shared/contracts/dto'
-import { resolveAgentCliInvocation } from './AgentCliInvocation'
+import { resolveAgentExecutableInvocation } from './AgentExecutableResolver'
 import { disposeCodexModelCatalog, listCodexModelsFromCli } from './CodexModelCatalog'
 import { listGeminiCliFallbackModels, listGeminiCliModelsFromSchema } from './GeminiModelCatalog'
 import { createAppErrorDescriptor } from '../../../../shared/errors/appError'
@@ -141,8 +141,16 @@ function readCachedGeminiModels(): ListAgentModelsResult | null {
   return cloneListAgentModelsResult(cachedGeminiModels.result)
 }
 
-async function executeCliText(command: string, args: string[]): Promise<string> {
-  const invocation = await resolveAgentCliInvocation({ command, args })
+async function executeCliText(options: {
+  provider: AgentProviderId
+  args: string[]
+  executablePathOverride?: string | null
+}): Promise<string> {
+  const { invocation } = await resolveAgentExecutableInvocation({
+    provider: options.provider,
+    args: options.args,
+    overridePath: options.executablePathOverride ?? null,
+  })
 
   return await new Promise((resolve, reject) => {
     execFile(
@@ -170,8 +178,14 @@ async function executeCliText(command: string, args: string[]): Promise<string> 
   })
 }
 
-async function listOpenCodeModelsFromCli(): Promise<AgentModelOption[]> {
-  const stdout = await executeCliText('opencode', ['models'])
+async function listOpenCodeModelsFromCli(
+  executablePathOverride?: string | null,
+): Promise<AgentModelOption[]> {
+  const stdout = await executeCliText({
+    provider: 'opencode',
+    args: ['models'],
+    executablePathOverride,
+  })
 
   return stdout
     .split(/\r?\n/)
@@ -198,7 +212,12 @@ export function disposeAgentModelService(): void {
   disposeCodexModelCatalog()
 }
 
-export async function listAgentModels(provider: AgentProviderId): Promise<ListAgentModelsResult> {
+export async function listAgentModels(options: {
+  provider: AgentProviderId
+  executablePathOverride?: string | null
+}): Promise<ListAgentModelsResult> {
+  const { provider } = options
+
   if (provider === 'codex') {
     const cachedResult = readCachedCodexModels()
     if (cachedResult) {
@@ -210,7 +229,7 @@ export async function listAgentModels(provider: AgentProviderId): Promise<ListAg
         const fetchedAt = new Date().toISOString()
 
         try {
-          const models = await listCodexModelsFromCli()
+          const models = await listCodexModelsFromCli(options.executablePathOverride)
           return rememberCodexModels({
             provider,
             source: 'codex-cli',
@@ -245,7 +264,7 @@ export async function listAgentModels(provider: AgentProviderId): Promise<ListAg
         provider,
         source: 'opencode-cli',
         fetchedAt,
-        models: await listOpenCodeModelsFromCli(),
+        models: await listOpenCodeModelsFromCli(options.executablePathOverride),
         error: null,
       }
     } catch (error) {

@@ -1,10 +1,16 @@
-import { useCallback, useMemo, useState } from 'react'
-import { AGENT_PROVIDERS, type AgentProvider } from '@contexts/settings/domain/agentSettings'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  AGENT_PROVIDERS,
+  type AgentExecutablePathOverrideByProvider,
+  type AgentProvider,
+} from '@contexts/settings/domain/agentSettings'
 
 export function useWorkspaceContextInstalledProviders({
   agentProviderOrder,
+  agentExecutablePathOverrideByProvider,
 }: {
   agentProviderOrder: AgentProvider[]
+  agentExecutablePathOverrideByProvider: AgentExecutablePathOverrideByProvider<AgentProvider>
 }): {
   sortedInstalledProviders: AgentProvider[]
   isLoadingInstalledProviders: boolean
@@ -12,6 +18,11 @@ export function useWorkspaceContextInstalledProviders({
 } {
   const [installedProviders, setInstalledProviders] = useState<AgentProvider[] | null>(null)
   const [isLoadingInstalledProviders, setIsLoadingInstalledProviders] = useState(false)
+  const overrideCacheKey = JSON.stringify(agentExecutablePathOverrideByProvider)
+
+  useEffect(() => {
+    setInstalledProviders(null)
+  }, [overrideCacheKey])
 
   const sortedInstalledProviders = useMemo(() => {
     if (!installedProviders) {
@@ -30,7 +41,9 @@ export function useWorkspaceContextInstalledProviders({
     setIsLoadingInstalledProviders(true)
 
     window.opencoveApi.agent
-      .listInstalledProviders()
+      .listInstalledProviders({
+        executablePathOverrideByProvider: agentExecutablePathOverrideByProvider,
+      })
       .then(result => {
         setInstalledProviders(result.providers)
       })
@@ -40,7 +53,7 @@ export function useWorkspaceContextInstalledProviders({
       .finally(() => {
         setIsLoadingInstalledProviders(false)
       })
-  }, [installedProviders, isLoadingInstalledProviders])
+  }, [agentExecutablePathOverrideByProvider, installedProviders, isLoadingInstalledProviders])
 
   return {
     sortedInstalledProviders,

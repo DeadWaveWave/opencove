@@ -1,4 +1,5 @@
 import type {
+  AgentExecutablePathOverrideByProvider,
   AgentProvider,
   QuickCommand,
   QuickPhrase,
@@ -26,6 +27,7 @@ export interface WorkspaceContextMenuProps {
   openTaskCreator: () => void
   openAgentLauncher: () => void
   agentProviderOrder: AgentProvider[]
+  agentExecutablePathOverrideByProvider: AgentExecutablePathOverrideByProvider<AgentProvider>
   openAgentLauncherForProvider: (provider: AgentProvider) => void
   quickCommands: QuickCommand[]
   quickPhrases: QuickPhrase[]

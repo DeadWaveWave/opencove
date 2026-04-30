@@ -1,4 +1,5 @@
 import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
+import { enSettingsPanelAgentExecutable } from './en.settingsPanel.agentExecutable'
 
 export const enSettingsPanel = {
   title: 'Settings',
@@ -100,6 +101,7 @@ export const enSettingsPanel = {
     keyPlaceholder: 'KEY',
     valuePlaceholder: 'value',
   },
+  agentExecutable: enSettingsPanelAgentExecutable,
   quickMenu: {
     title: 'Quick Commands & Phrases',
     customize: 'Customize…',

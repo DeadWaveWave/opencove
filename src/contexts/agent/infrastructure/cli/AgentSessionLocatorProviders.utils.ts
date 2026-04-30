@@ -1,7 +1,9 @@
 import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { join } from 'node:path'
+import type { AgentProviderId } from '@shared/contracts/dto'
 import { resolveAgentCliInvocation } from './AgentCliInvocation'
+import { resolveAgentExecutableInvocation } from './AgentExecutableResolver'
 
 const CLI_TIMEOUT_MS = 1_500
 const CLI_MAX_BUFFER_BYTES = 8 * 1024 * 1024
@@ -61,9 +63,18 @@ export async function executeCliCommand(
   command: string,
   args: string[],
   cwd: string,
+  options?: { provider?: AgentProviderId; executablePathOverride?: string | null },
 ): Promise<string | null> {
   try {
-    const invocation = await resolveAgentCliInvocation({ command, args })
+    const invocation = options?.provider
+      ? (
+          await resolveAgentExecutableInvocation({
+            provider: options.provider,
+            args,
+            overridePath: options.executablePathOverride ?? null,
+          })
+        ).invocation
+      : await resolveAgentCliInvocation({ command, args })
 
     return await new Promise((resolveOutput, reject) => {
       execFile(

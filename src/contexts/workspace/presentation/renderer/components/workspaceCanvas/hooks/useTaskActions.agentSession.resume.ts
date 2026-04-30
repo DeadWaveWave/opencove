@@ -1,5 +1,8 @@
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import { resolveAgentLaunchEnv } from '@contexts/settings/domain/agentSettings'
+import {
+  resolveAgentExecutablePathOverride,
+  resolveAgentLaunchEnv,
+} from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
 import type {
@@ -92,6 +95,10 @@ export async function resumeTaskAgentSessionAction(
   }
 
   const env = resolveAgentLaunchEnv(context.agentSettings, record.provider)
+  const executablePathOverride = resolveAgentExecutablePathOverride(
+    context.agentSettings,
+    record.provider,
+  )
   const mergedEnv =
     context.environmentVariables && Object.keys(context.environmentVariables).length > 0
       ? { ...env, ...context.environmentVariables }
@@ -120,6 +127,7 @@ export async function resumeTaskAgentSessionAction(
           mode: 'resume',
           model: record.model,
           resumeSessionId: record.resumeSessionId,
+          ...(executablePathOverride ? { executablePathOverride } : {}),
           ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
           agentFullAccess: context.agentSettings.agentFullAccess,
         },
@@ -139,6 +147,7 @@ export async function resumeTaskAgentSessionAction(
         mode: 'resume',
         model: record.model,
         resumeSessionId: record.resumeSessionId,
+        ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
         cols: 80,

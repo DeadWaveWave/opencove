@@ -181,6 +181,7 @@ export interface LaunchAgentSessionInput {
   model?: string | null
   resumeSessionId?: string | null
   env?: Record<string, string> | null
+  executablePathOverride?: string | null
   agentFullAccess?: boolean | null
   cols?: number | null
   rows?: number | null
@@ -195,6 +196,7 @@ export interface LaunchAgentSessionInMountInput {
   model?: string | null
   resumeSessionId?: string | null
   env?: Record<string, string> | null
+  executablePathOverride?: string | null
   agentFullAccess?: boolean | null
   cols?: number | null
   rows?: number | null

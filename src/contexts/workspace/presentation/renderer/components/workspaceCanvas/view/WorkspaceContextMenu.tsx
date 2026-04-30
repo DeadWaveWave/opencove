@@ -34,6 +34,7 @@ export function WorkspaceContextMenu({
   openTaskCreator,
   openAgentLauncher,
   agentProviderOrder,
+  agentExecutablePathOverrideByProvider,
   openAgentLauncherForProvider,
   quickCommands,
   quickPhrases,
@@ -59,7 +60,10 @@ export function WorkspaceContextMenu({
   const [openSubmenu, setOpenSubmenu] = useState<OpenSubmenu>(null)
   const closeSubmenuTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
   const { sortedInstalledProviders, isLoadingInstalledProviders, ensureInstalledProvidersLoaded } =
-    useWorkspaceContextInstalledProviders({ agentProviderOrder })
+    useWorkspaceContextInstalledProviders({
+      agentProviderOrder,
+      agentExecutablePathOverrideByProvider,
+    })
 
   const enabledQuickCommands = useMemo(
     () =>

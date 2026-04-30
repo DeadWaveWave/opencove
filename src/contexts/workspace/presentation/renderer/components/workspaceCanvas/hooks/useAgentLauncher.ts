@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import {
+  resolveAgentExecutablePathOverride,
   resolveAgentModel,
   resolveAgentLaunchEnv,
   type AgentSettings,
@@ -85,6 +86,7 @@ export function useWorkspaceCanvasAgentLauncher({
             resolveDefaultAgentWindowSize(standardWindowSizeBucket),
           )
           const model = resolveAgentModel(agentSettings, provider)
+          const executablePathOverride = resolveAgentExecutablePathOverride(agentSettings, provider)
           const env = resolveAgentLaunchEnv(agentSettings, provider)
           const anchorSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
           const mergedEnv =
@@ -144,6 +146,7 @@ export function useWorkspaceCanvasAgentLauncher({
                   provider,
                   mode: 'new',
                   model,
+                  ...(executablePathOverride ? { executablePathOverride } : {}),
                   ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
                   agentFullAccess: agentSettings.agentFullAccess,
                 },
@@ -161,6 +164,7 @@ export function useWorkspaceCanvasAgentLauncher({
               prompt: '',
               mode: 'new',
               model,
+              ...(executablePathOverride ? { executablePathOverride } : {}),
               ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
               agentFullAccess: agentSettings.agentFullAccess,
               cols: 80,

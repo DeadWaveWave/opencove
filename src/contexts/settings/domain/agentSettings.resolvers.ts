@@ -19,6 +19,14 @@ export function resolveAgentModel(settings: AgentSettings, provider: AgentProvid
   return model.length > 0 ? model : null
 }
 
+export function resolveAgentExecutablePathOverride(
+  settings: AgentSettings,
+  provider: AgentProvider,
+): string | null {
+  const normalized = settings.agentExecutablePathOverrideByProvider[provider]?.trim() ?? ''
+  return normalized.length > 0 ? normalized : null
+}
+
 export function resolveAgentLaunchEnv(
   settings: AgentSettings,
   provider: AgentProvider,

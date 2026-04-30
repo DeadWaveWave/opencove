@@ -10,7 +10,11 @@ import {
   isResumeSessionBindingVerified,
 } from '@contexts/agent/domain/agentResumeBinding'
 import { resolveInitialAgentRuntimeStatus } from '@contexts/agent/domain/agentRuntimeStatus'
-import { resolveAgentLaunchEnv, type AgentSettings } from '@contexts/settings/domain/agentSettings'
+import {
+  resolveAgentExecutablePathOverride,
+  resolveAgentLaunchEnv,
+  type AgentSettings,
+} from '@contexts/settings/domain/agentSettings'
 
 interface HydrateAgentNodeInput {
   node: Node<TerminalNodeData>
@@ -146,6 +150,10 @@ export async function hydrateAgentNode({
   const terminalProfileId = node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? null
   const agentFullAccess = agentSettings.agentFullAccess
   const env = resolveAgentLaunchEnv(agentSettings, sanitizedAgent.provider)
+  const executablePathOverride = resolveAgentExecutablePathOverride(
+    agentSettings,
+    sanitizedAgent.provider,
+  )
 
   if (shouldAutoResumeAgent) {
     try {
@@ -157,6 +165,7 @@ export async function hydrateAgentNode({
         mode: 'resume',
         model: sanitizedAgent.model,
         resumeSessionId: sanitizedAgent.resumeSessionId,
+        ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(env).length > 0 ? { env } : {}),
         agentFullAccess,
         cols: 80,
@@ -209,6 +218,7 @@ export async function hydrateAgentNode({
         prompt: sanitizedAgent.prompt,
         mode: 'new',
         model: sanitizedAgent.model,
+        ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(env).length > 0 ? { env } : {}),
         agentFullAccess,
         cols: 80,

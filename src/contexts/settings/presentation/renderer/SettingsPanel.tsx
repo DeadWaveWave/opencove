@@ -16,19 +16,17 @@ import {
   type UiLanguage,
   type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
-import { AgentSection } from './settingsPanel/AgentSection'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { EndpointsSection } from './settingsPanel/EndpointsSection'
 import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
-import { ModelOverrideSection } from './settingsPanel/ModelOverrideSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
 import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
 import { ShortcutsSection } from './settingsPanel/ShortcutsSection'
 import { TaskConfigurationSection } from './settingsPanel/TaskConfigurationSection'
 import { QuickMenuSection } from './settingsPanel/QuickMenuSection'
-import { AgentEnvSection } from './settingsPanel/AgentEnvSection'
+import { AgentSettingsPage } from './settingsPanel/AgentSettingsPage'
 import { WorkerSection } from './settingsPanel/WorkerSection'
 import { WorkspaceSection } from './settingsPanel/WorkspaceSection'
 import type { SettingsSearchResult } from './settingsPanel/settingsSearchIndex'
@@ -158,6 +156,9 @@ export function SettingsPanel({
   const updateAgentEnvByProvider = (
     agentEnvByProvider: AgentSettings['agentEnvByProvider'],
   ): void => onChange({ ...settings, agentEnvByProvider })
+  const updateAgentExecutablePathOverrideByProvider = (
+    agentExecutablePathOverrideByProvider: AgentSettings['agentExecutablePathOverrideByProvider'],
+  ): void => onChange({ ...settings, agentExecutablePathOverrideByProvider })
   const updateDisableAppShortcutsWhenTerminalFocused = (enabled: boolean): void =>
     onChange({ ...settings, disableAppShortcutsWhenTerminalFocused: enabled })
   const updateKeybindings = (keybindings: AgentSettings['keybindings']): void =>
@@ -344,31 +345,23 @@ export function SettingsPanel({
             ) : null}
 
             {activePageId === 'agent' ? (
-              <>
-                <AgentSection
-                  defaultProvider={settings.defaultProvider}
-                  agentProviderOrder={settings.agentProviderOrder}
-                  agentFullAccess={settings.agentFullAccess}
-                  onChangeDefaultProvider={updateDefaultProvider}
-                  onChangeAgentProviderOrder={updateAgentProviderOrder}
-                  onChangeAgentFullAccess={updateAgentFullAccess}
-                />
-                <ModelOverrideSection
-                  settings={settings}
-                  modelCatalogByProvider={modelCatalogByProvider}
-                  addModelInputByProvider={addModelInputByProvider}
-                  onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
-                  onSelectProviderModel={selectProviderModel}
-                  onRemoveCustomModelOption={removeCustomModelOption}
-                  onChangeAddModelInput={updateAddModelInput}
-                  onAddCustomModelOption={addCustomModelOption}
-                />
-                <AgentEnvSection
-                  agentProviderOrder={settings.agentProviderOrder}
-                  agentEnvByProvider={settings.agentEnvByProvider}
-                  onChangeAgentEnvByProvider={updateAgentEnvByProvider}
-                />
-              </>
+              <AgentSettingsPage
+                settings={settings}
+                modelCatalogByProvider={modelCatalogByProvider}
+                addModelInputByProvider={addModelInputByProvider}
+                onChangeDefaultProvider={updateDefaultProvider}
+                onChangeAgentProviderOrder={updateAgentProviderOrder}
+                onChangeAgentFullAccess={updateAgentFullAccess}
+                onToggleCustomModelEnabled={updateProviderCustomModelEnabled}
+                onSelectProviderModel={selectProviderModel}
+                onRemoveCustomModelOption={removeCustomModelOption}
+                onChangeAddModelInput={updateAddModelInput}
+                onAddCustomModelOption={addCustomModelOption}
+                onChangeAgentEnvByProvider={updateAgentEnvByProvider}
+                onChangeAgentExecutablePathOverrideByProvider={
+                  updateAgentExecutablePathOverrideByProvider
+                }
+              />
             ) : null}
 
             {activePageId === 'notifications' ? (

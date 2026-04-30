@@ -186,6 +186,7 @@
 -   **Landing 重构落地规范**：`docs/LANDING_ARCHITECTURE.md`
 -   **统一控制面（command/query/event）**：`docs/CONTROL_SURFACE.md`
 -   **CLI 规范**：`docs/CLI.md`
+-   **外部可执行发现与解析**：`docs/EXTERNAL_EXECUTABLE_RESOLUTION.md`
 -   **Filesystem（URI + providers + guardrails）**：`docs/FILESYSTEM.md`
 -   **画布内文件编辑（Document Node）**：`docs/DOCUMENT_NODE.md`
 -   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`

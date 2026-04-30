@@ -1,6 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AGENT_PROVIDERS,
   DEFAULT_AGENT_SETTINGS,
@@ -65,34 +65,52 @@ function createUpdateState(overrides: Partial<AppUpdateState> = {}): AppUpdateSt
   }
 }
 
+function mockTerminalProfiles(
+  overrides: Partial<ReturnType<typeof terminalProfilesHook.useTerminalProfiles>> = {},
+) {
+  vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+    terminalProfiles: [],
+    detectedDefaultTerminalProfileId: null,
+    refreshTerminalProfiles: async () => undefined,
+    ...overrides,
+  })
+}
+
+function renderSettingsPanel(overrides: Partial<React.ComponentProps<typeof SettingsPanel>> = {}) {
+  return render(
+    <SettingsPanel
+      settings={DEFAULT_AGENT_SETTINGS}
+      updateState={createUpdateState()}
+      modelCatalogByProvider={createModelCatalog()}
+      workspaces={[]}
+      onWorkspaceWorktreesRootChange={() => undefined}
+      isFocusNodeTargetZoomPreviewing={false}
+      onFocusNodeTargetZoomPreviewChange={() => undefined}
+      onChange={() => undefined}
+      onCheckForUpdates={() => undefined}
+      onDownloadUpdate={() => undefined}
+      onInstallUpdate={() => undefined}
+      onClose={() => undefined}
+      {...overrides}
+    />,
+  )
+}
+
 describe('SettingsPanel', () => {
+  afterEach(() => {
+    delete (window as typeof window & { opencoveApi?: Window['opencoveApi'] }).opencoveApi
+  })
+
   it('persists the selected default profile', () => {
     const onChange = vi.fn()
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
+    mockTerminalProfiles({
       terminalProfiles: [
         { id: 'powershell', label: 'PowerShell', runtimeKind: 'windows' },
         { id: 'wsl:Ubuntu', label: 'WSL (Ubuntu)', runtimeKind: 'wsl' },
       ],
       detectedDefaultTerminalProfileId: 'powershell',
-      refreshTerminalProfiles: async () => undefined,
     })
-
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={onChange}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    renderSettingsPanel({ onChange })
 
     const canvasNav = screen.getByTestId('settings-section-nav-canvas')
     fireEvent.click(canvasNav)
@@ -111,28 +129,8 @@ describe('SettingsPanel', () => {
   })
 
   it('exposes terminal display consistency controls in general settings', () => {
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
-    })
-
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={() => undefined}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    mockTerminalProfiles()
+    renderSettingsPanel()
 
     expect(screen.getByText('Terminal Display Consistency')).toBeVisible()
     expect(screen.getByText('Set Reference Automatically')).toBeVisible()
@@ -149,28 +147,8 @@ describe('SettingsPanel', () => {
 
   it('allows reordering agent providers', () => {
     const onChange = vi.fn()
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
-    })
-
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={onChange}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
 
     fireEvent.click(screen.getByTestId('settings-section-nav-agent'))
     fireEvent.click(screen.getByTestId('settings-agent-order-move-down-claude-code'))
@@ -181,30 +159,78 @@ describe('SettingsPanel', () => {
     })
   })
 
-  it('updates the standard window size bucket from canvas settings', () => {
+  it('persists agent executable overrides from the settings panel', async () => {
     const onChange = vi.fn()
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
+    const listInstalledProviders = vi.fn(async () => ({
+      providers: ['codex'],
+      availabilityByProvider: {
+        'claude-code': {
+          provider: 'claude-code',
+          command: 'claude',
+          status: 'unavailable' as const,
+          executablePath: null,
+          source: null,
+          diagnostics: [],
+        },
+        codex: {
+          provider: 'codex',
+          command: 'codex',
+          status: 'available' as const,
+          executablePath: '/usr/local/bin/codex',
+          source: 'process_path' as const,
+          diagnostics: [],
+        },
+        opencode: {
+          provider: 'opencode',
+          command: 'opencode',
+          status: 'unavailable' as const,
+          executablePath: null,
+          source: null,
+          diagnostics: [],
+        },
+        gemini: {
+          provider: 'gemini',
+          command: 'gemini',
+          status: 'unavailable' as const,
+          executablePath: null,
+          source: null,
+          diagnostics: [],
+        },
+      },
+      fetchedAt: '2026-04-30T00:00:00.000Z',
+    }))
+
+    ;(window as typeof window & { opencoveApi?: Window['opencoveApi'] }).opencoveApi = {
+      agent: {
+        listInstalledProviders,
+      },
+    } as Window['opencoveApi']
+
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-agent'))
+    fireEvent.change(screen.getByTestId('settings-agent-executable-override-codex'), {
+      target: { value: '/opt/codex/bin/codex' },
     })
 
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={onChange}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    expect(listInstalledProviders).toHaveBeenCalledWith({
+      executablePathOverrideByProvider:
+        DEFAULT_AGENT_SETTINGS.agentExecutablePathOverrideByProvider,
+    })
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      agentExecutablePathOverrideByProvider: {
+        ...DEFAULT_AGENT_SETTINGS.agentExecutablePathOverrideByProvider,
+        codex: '/opt/codex/bin/codex',
+      },
+    })
+  })
+
+  it('updates the standard window size bucket from canvas settings', () => {
+    const onChange = vi.fn()
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
 
     fireEvent.click(screen.getByTestId('settings-section-nav-canvas'))
     fireEvent.click(screen.getByTestId('settings-standard-window-size-trigger'))
@@ -218,28 +244,8 @@ describe('SettingsPanel', () => {
 
   it('toggles visible-canvas centering from canvas settings', () => {
     const onChange = vi.fn()
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
-    })
-
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={onChange}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
 
     fireEvent.click(screen.getByTestId('settings-section-nav-canvas'))
     fireEvent.click(screen.getByTestId('settings-focus-node-visible-center'))
@@ -252,28 +258,8 @@ describe('SettingsPanel', () => {
 
   it('toggles archive Space default actions from canvas settings', () => {
     const onChange = vi.fn()
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
-    })
-
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={onChange}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
 
     fireEvent.click(screen.getByTestId('settings-section-nav-canvas'))
     fireEvent.click(
@@ -301,32 +287,17 @@ describe('SettingsPanel', () => {
     const onChange = vi.fn()
     const onCheckForUpdates = vi.fn()
     const onDownloadUpdate = vi.fn()
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
+    mockTerminalProfiles()
+    renderSettingsPanel({
+      updateState: createUpdateState({
+        status: 'available',
+        latestVersion: '0.2.1',
+        checkedAt: '2026-03-20T00:00:00.000Z',
+      }),
+      onChange,
+      onCheckForUpdates,
+      onDownloadUpdate,
     })
-
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState({
-          status: 'available',
-          latestVersion: '0.2.1',
-          checkedAt: '2026-03-20T00:00:00.000Z',
-        })}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={onChange}
-        onCheckForUpdates={onCheckForUpdates}
-        onDownloadUpdate={onDownloadUpdate}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
 
     fireEvent.click(screen.getByTestId('settings-update-policy-trigger'))
     fireEvent.click(screen.getByRole('option', { name: 'Auto Update' }))
@@ -352,28 +323,8 @@ describe('SettingsPanel', () => {
 
   it('toggles experimental remote workers from experimental settings', () => {
     const onChange = vi.fn()
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
-    })
-
-    render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={onChange}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
 
     fireEvent.click(screen.getByTestId('settings-section-nav-experimental'))
     fireEvent.click(screen.getByTestId('settings-experimental-remote-workers-enabled'))
@@ -385,28 +336,8 @@ describe('SettingsPanel', () => {
   })
 
   it('hides endpoints settings until remote workers are enabled', () => {
-    vi.spyOn(terminalProfilesHook, 'useTerminalProfiles').mockReturnValue({
-      terminalProfiles: [],
-      detectedDefaultTerminalProfileId: null,
-      refreshTerminalProfiles: async () => undefined,
-    })
-
-    const { rerender } = render(
-      <SettingsPanel
-        settings={DEFAULT_AGENT_SETTINGS}
-        updateState={createUpdateState()}
-        modelCatalogByProvider={createModelCatalog()}
-        workspaces={[]}
-        onWorkspaceWorktreesRootChange={() => undefined}
-        isFocusNodeTargetZoomPreviewing={false}
-        onFocusNodeTargetZoomPreviewChange={() => undefined}
-        onChange={() => undefined}
-        onCheckForUpdates={() => undefined}
-        onDownloadUpdate={() => undefined}
-        onInstallUpdate={() => undefined}
-        onClose={() => undefined}
-      />,
-    )
+    mockTerminalProfiles()
+    const { rerender } = renderSettingsPanel()
 
     expect(screen.queryByTestId('settings-section-nav-endpoints')).not.toBeInTheDocument()
 

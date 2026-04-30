@@ -100,6 +100,21 @@ export const zhCNSettingsPanel = {
     keyPlaceholder: 'KEY',
     valuePlaceholder: 'value',
   },
+  agentExecutable: {
+    title: 'Agent 可执行文件解析',
+    help: '查看 OpenCove 如何解析每个本地 Agent CLI；当自动探测不准确时，可为某个提供方指定显式可执行路径。',
+    overrideLabel: '可执行文件覆盖路径',
+    overrideHelp: '可选的本地路径覆盖。一旦设置，OpenCove 会要求该路径必须可成功解析。',
+    overridePlaceholder: '/absolute/path/to/executable',
+    pathLabel: '当前解析路径',
+    notResolved: '未解析',
+    commandLabel: '命令：{{command}}',
+    status: {
+      available: '可用',
+      unavailable: '不可用',
+      misconfigured: '配置错误',
+    },
+  },
   quickMenu: {
     title: '快捷指令与短语',
     customize: '自定义…',

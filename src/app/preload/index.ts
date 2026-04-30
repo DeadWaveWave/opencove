@@ -18,6 +18,7 @@ import type {
   LaunchAgentResult,
   ListAgentSessionsInput,
   ListAgentSessionsResult,
+  ListInstalledAgentProvidersInput,
   ListInstalledAgentProvidersResult,
   ListGitBranchesInput,
   ListGitBranchesResult,
@@ -112,13 +113,9 @@ import type {
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
 import { resolveOpenCoveMeta } from './opencoveMeta'
-
 type UnsubscribeFn = () => void
-
-const latestPtyStateBySessionId = new Map<string, TerminalSessionStateEvent>()
-const latestPtyMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
-
-// Custom APIs for renderer
+const latestPtyStateBySessionId = new Map<string, TerminalSessionStateEvent>(),
+  latestPtyMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
 const opencoveApi = {
   meta: resolveOpenCoveMeta(),
   debug: {
@@ -207,7 +204,6 @@ const opencoveApi = {
         if (!requestId) {
           return
         }
-
         void Promise.resolve()
           .then(() => listener({ requestId }))
           .catch(() => undefined)
@@ -215,9 +211,7 @@ const opencoveApi = {
             ipcRenderer.send(IPC_CHANNELS.appPersistFlushComplete, { requestId })
           })
       }
-
       ipcRenderer.on(IPC_CHANNELS.appRequestPersistFlush, handler)
-
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.appRequestPersistFlush, handler)
       }
@@ -228,9 +222,7 @@ const opencoveApi = {
       const handler = (_event: Electron.IpcRendererEvent, payload: SyncEventPayload) => {
         listener(payload)
       }
-
       ipcRenderer.on(IPC_CHANNELS.syncStateUpdated, handler)
-
       return () => {
         ipcRenderer.removeListener(IPC_CHANNELS.syncStateUpdated, handler)
       }
@@ -446,8 +438,10 @@ const opencoveApi = {
   agent: {
     listModels: (payload: ListAgentModelsInput): Promise<ListAgentModelsResult> =>
       invokeIpc(IPC_CHANNELS.agentListModels, payload),
-    listInstalledProviders: (): Promise<ListInstalledAgentProvidersResult> =>
-      invokeIpc(IPC_CHANNELS.agentListInstalledProviders),
+    listInstalledProviders: (
+      payload?: ListInstalledAgentProvidersInput,
+    ): Promise<ListInstalledAgentProvidersResult> =>
+      invokeIpc(IPC_CHANNELS.agentListInstalledProviders, payload),
     listSessions: (payload: ListAgentSessionsInput): Promise<ListAgentSessionsResult> =>
       invokeIpc(IPC_CHANNELS.agentListSessions, payload),
     launch: (payload: LaunchAgentInput): Promise<LaunchAgentResult> =>
