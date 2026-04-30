@@ -49,6 +49,7 @@ export function createPersistedWorkspaceApprovalGate(options: {
       const roots = [...extraRoots, ...persistedRoots]
 
       const seen = new Set<string>()
+      const uniqueRoots: string[] = []
       for (const rootPath of roots) {
         const normalizedRoot = normalizeRootPath(rootPath)
         if (!normalizedRoot || seen.has(normalizedRoot)) {
@@ -56,8 +57,14 @@ export function createPersistedWorkspaceApprovalGate(options: {
         }
 
         seen.add(normalizedRoot)
-        await options.approvedWorkspaces.registerRoot(normalizedRoot)
+        uniqueRoots.push(normalizedRoot)
       }
+
+      await Promise.all(
+        uniqueRoots.map(async rootPath => {
+          await options.approvedWorkspaces.registerRoot(rootPath)
+        }),
+      )
     } catch (error) {
       options.onError?.(error)
     }
