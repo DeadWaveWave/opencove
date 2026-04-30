@@ -1,4 +1,7 @@
-import type { ListInstalledAgentProvidersResult } from '@shared/contracts/dto'
+import type {
+  ListAgentSessionsResult,
+  ListInstalledAgentProvidersResult,
+} from '@shared/contracts/dto'
 import { AGENT_PROVIDERS } from '@contexts/settings/domain/agentSettings'
 import { invokeBrowserControlSurface } from './browserControlSurface'
 
@@ -117,6 +120,24 @@ export function createBrowserAgentApi(): AgentApi {
     listInstalledProviders: async (): Promise<ListInstalledAgentProvidersResult> => ({
       providers: [...AGENT_PROVIDERS],
     }),
+    listSessions: async payload => {
+      const provider = payload.provider
+      const desiredCwd = normalizeRequiredString(payload.cwd, 'agent.listSessions cwd')
+      const limit =
+        typeof payload.limit === 'number' && Number.isFinite(payload.limit) && payload.limit > 0
+          ? Math.floor(payload.limit)
+          : 20
+
+      return await invokeBrowserControlSurface<ListAgentSessionsResult>({
+        kind: 'query',
+        id: 'agent.listSessions',
+        payload: {
+          provider,
+          cwd: desiredCwd,
+          limit,
+        },
+      })
+    },
     launch: async payload => {
       const cwd = payload.cwd.trim()
 

@@ -1,8 +1,10 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { AgentSessionSummary } from '@shared/contracts/dto'
 import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
+import { TerminalNodeAgentSessionActions } from './TerminalNodeAgentSessionActions'
 import { getStatusClassName } from './status'
 
 interface TerminalNodeHeaderProps {
@@ -11,10 +13,16 @@ interface TerminalNodeHeaderProps {
   kind: WorkspaceNodeKind
   status: AgentRuntimeStatus | null
   labelColor?: LabelColor | null
+  agentExecutionDirectory?: string | null
+  agentResumeSessionId?: string | null
+  agentResumeSessionIdVerified?: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   onTitleCommit?: (title: string) => void
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
+  onReloadSession?: () => Promise<void>
+  onListSessions?: (limit?: number) => Promise<AgentSessionSummary[]>
+  onSwitchSession?: (summary: AgentSessionSummary) => Promise<void>
 }
 
 export function TerminalNodeHeader({
@@ -23,10 +31,16 @@ export function TerminalNodeHeader({
   kind,
   status,
   labelColor,
+  agentExecutionDirectory,
+  agentResumeSessionId,
+  agentResumeSessionIdVerified = false,
   directoryMismatch,
   onTitleCommit,
   onClose,
   onCopyLastMessage,
+  onReloadSession,
+  onListSessions,
+  onSwitchSession,
 }: TerminalNodeHeaderProps): JSX.Element {
   const { t } = useTranslation()
   const [isTitleEditing, setIsTitleEditing] = useState(false)
@@ -202,6 +216,18 @@ export function TerminalNodeHeader({
             </span>
           ) : null}
         </div>
+      ) : null}
+
+      {isAgentNode ? (
+        <TerminalNodeAgentSessionActions
+          status={status}
+          currentDirectory={agentExecutionDirectory ?? null}
+          currentResumeSessionId={agentResumeSessionId ?? null}
+          currentResumeSessionIdVerified={agentResumeSessionIdVerified}
+          onReloadSession={onReloadSession}
+          onListSessions={onListSessions}
+          onSwitchSession={onSwitchSession}
+        />
       ) : null}
 
       {shouldRenderCopyLastMessageButton ? (

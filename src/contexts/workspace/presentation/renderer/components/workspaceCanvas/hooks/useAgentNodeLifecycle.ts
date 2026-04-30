@@ -1,22 +1,28 @@
 import { useCallback, type MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveEnabledEnvForAgent } from '@contexts/settings/domain/agentEnv'
 import type { AgentEnvByProvider } from '@contexts/settings/domain/agentSettings'
-import type { LaunchAgentSessionResult, ListMountsResult } from '@shared/contracts/dto'
+import type { AgentSessionSummary, ListMountsResult } from '@shared/contracts/dto'
 import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
+import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
+import { appendAgentSessionRecordToTaskHistory } from '../../../utils/agentSessionHistory'
 import {
   clearResumeSessionBinding,
   isResumeSessionBindingVerified,
 } from '../../../utils/agentResumeBinding'
 import { invalidateCachedTerminalScreenState } from '../../terminalNode/screenStateCache'
 import { toErrorMessage } from '../helpers'
-import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import {
   buildAgentNodeTitle as formatAgentNodeTitle,
   findLinkedTaskTitleForAgent,
 } from '../../../utils/agentTitle'
+import {
+  findAgentNode,
+  launchAgentRuntime,
+  normalizeOptionalString,
+  type RelaunchAgentNodeOptions,
+} from './useAgentNodeLifecycle.support'
 
 interface UseAgentNodeLifecycleParams {
   workspaceId: string
@@ -32,6 +38,7 @@ interface UseAgentNodeLifecycleParams {
   defaultTerminalProfileId: string | null
   agentEnvByProvider: AgentEnvByProvider
   environmentVariables?: Record<string, string>
+  onRequestPersistFlush?: () => void
 }
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
@@ -45,12 +52,17 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   defaultTerminalProfileId,
   agentEnvByProvider,
   environmentVariables,
+  onRequestPersistFlush,
 }: UseAgentNodeLifecycleParams): {
   buildAgentNodeTitle: (provider: AgentNodeData['provider'], label: string | null) => string
   launchAgentInNode: (nodeId: string, mode: 'new' | 'resume') => Promise<void>
+  reloadAgentNode: (nodeId: string) => Promise<void>
+  listAgentSessionsForNode: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
+  switchAgentNodeSession: (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   stopAgentNode: (nodeId: string) => Promise<void>
 } {
   const { t } = useTranslation()
+
   const buildAgentNodeTitle = useCallback(
     (provider: AgentNodeData['provider'], label: string | null): string => {
       return formatAgentNodeTitle(provider, label ?? t('common.defaultModel'))
@@ -58,10 +70,80 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
     [t],
   )
 
-  const launchAgentInNode = useCallback(
-    async (nodeId: string, mode: 'new' | 'resume') => {
-      const node = nodesRef.current.find(item => item.id === nodeId)
-      if (!node || node.data.kind !== 'agent' || !node.data.agent) {
+  const setAgentNodeFailure = useCallback(
+    (nodeId: string, message: string) => {
+      setNodes(
+        prevNodes =>
+          prevNodes.map(item => {
+            if (item.id !== nodeId) {
+              return item
+            }
+
+            return {
+              ...item,
+              data: {
+                ...item.data,
+                status: 'failed',
+                endedAt: new Date().toISOString(),
+                lastError: message,
+              },
+            }
+          }),
+        { syncLayout: false },
+      )
+    },
+    [setNodes],
+  )
+
+  const resolveMountId = useCallback(
+    async (nodeId: string): Promise<string | null | undefined> => {
+      const owningSpace = spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
+      let mountId = owningSpace?.targetMountId ?? null
+      const normalizedWorkspaceId = typeof workspaceId === 'string' ? workspaceId.trim() : ''
+
+      if (mountId || normalizedWorkspaceId.length === 0) {
+        return mountId
+      }
+
+      const controlSurfaceInvoke = (
+        window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
+      ).opencoveApi?.controlSurface?.invoke
+
+      if (typeof controlSurfaceInvoke !== 'function') {
+        return null
+      }
+
+      try {
+        const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+          kind: 'query',
+          id: 'mount.list',
+          payload: { projectId: normalizedWorkspaceId },
+        })
+        mountId = mountResult.mounts[0]?.mountId ?? null
+      } catch (error) {
+        setAgentNodeFailure(
+          nodeId,
+          t('messages.mountListFailed', { message: toErrorMessage(error) }),
+        )
+        return undefined
+      }
+
+      return mountId
+    },
+    [setAgentNodeFailure, spacesRef, t, workspaceId],
+  )
+
+  const relaunchAgentNode = useCallback(
+    async ({
+      nodeId,
+      mode,
+      executionDirectory,
+      expectedDirectory,
+      resumeSessionId,
+      startedAtOverride,
+    }: RelaunchAgentNodeOptions): Promise<void> => {
+      const node = findAgentNode(nodeId, nodesRef.current)
+      if (!node) {
         return
       }
 
@@ -71,101 +153,41 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         nodeId,
         launchData.taskId ?? null,
       )
+      const requestedExecutionDirectory = executionDirectory ?? launchData.executionDirectory
+      const requestedExpectedDirectory =
+        expectedDirectory === undefined ? launchData.expectedDirectory : expectedDirectory
+      const requestedResumeSessionId =
+        mode === 'resume'
+          ? normalizeOptionalString(
+              resumeSessionId ??
+                (isResumeSessionBindingVerified(launchData) ? launchData.resumeSessionId : null),
+            )
+          : null
+
+      if (mode === 'resume' && !requestedResumeSessionId) {
+        setAgentNodeFailure(nodeId, t('messages.resumeSessionMissing'))
+        return
+      }
+
+      if (mode === 'new' && launchData.prompt.trim().length === 0) {
+        setAgentNodeFailure(nodeId, t('messages.agentPromptRequired'))
+        return
+      }
+
+      const mountId = await resolveMountId(nodeId)
+      if (mountId === undefined) {
+        return
+      }
       const env = resolveEnabledEnvForAgent({ rows: agentEnvByProvider[launchData.provider] ?? [] })
       const mergedEnv =
         environmentVariables && Object.keys(environmentVariables).length > 0
           ? { ...env, ...environmentVariables }
           : env
-      const owningSpace = spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
-      let mountId = owningSpace?.targetMountId ?? null
-
-      const normalizedWorkspaceId = typeof workspaceId === 'string' ? workspaceId.trim() : ''
-
-      if (!mountId && normalizedWorkspaceId.length > 0) {
-        const controlSurfaceInvoke = (
-          window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
-        ).opencoveApi?.controlSurface?.invoke
-
-        if (typeof controlSurfaceInvoke === 'function') {
-          try {
-            const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-              kind: 'query',
-              id: 'mount.list',
-              payload: { projectId: normalizedWorkspaceId },
-            })
-            mountId = mountResult.mounts[0]?.mountId ?? null
-          } catch (error) {
-            setNodes(
-              prevNodes =>
-                prevNodes.map(item => {
-                  if (item.id !== nodeId) {
-                    return item
-                  }
-
-                  return {
-                    ...item,
-                    data: {
-                      ...item.data,
-                      status: 'failed',
-                      lastError: t('messages.mountListFailed', { message: toErrorMessage(error) }),
-                    },
-                  }
-                }),
-              { syncLayout: false },
-            )
-            return
-          }
-        }
-      }
-
-      if (mode === 'resume' && !isResumeSessionBindingVerified(launchData)) {
-        setNodes(
-          prevNodes =>
-            prevNodes.map(item => {
-              if (item.id !== nodeId) {
-                return item
-              }
-
-              return {
-                ...item,
-                data: {
-                  ...item.data,
-                  status: 'failed',
-                  lastError: t('messages.resumeSessionMissing'),
-                },
-              }
-            }),
-          { syncLayout: false },
-        )
-        return
-      }
-
-      if (mode === 'new' && launchData.prompt.trim().length === 0) {
-        setNodes(
-          prevNodes =>
-            prevNodes.map(item => {
-              if (item.id !== nodeId) {
-                return item
-              }
-
-              return {
-                ...item,
-                data: {
-                  ...item.data,
-                  status: 'failed',
-                  lastError: t('messages.agentPromptRequired'),
-                },
-              }
-            }),
-          { syncLayout: false },
-        )
-        return
-      }
 
       const launchToken = bumpAgentLaunchToken(nodeId)
 
       if (!mountId && launchData.shouldCreateDirectory && launchData.directoryMode === 'custom') {
-        await window.opencoveApi.workspace.ensureDirectory({ path: launchData.executionDirectory })
+        await window.opencoveApi.workspace.ensureDirectory({ path: requestedExecutionDirectory })
 
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
           return
@@ -215,69 +237,24 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       )
 
       try {
-        let launchedSessionId = ''
-        let launchedProfileId = node.data.profileId ?? defaultTerminalProfileId
-        let launchedRuntimeKind = node.data.runtimeKind
-        let launchedEffectiveModel: string | null = null
-        let launchedResumeSessionId: string | null = null
-        let launchedStartedAt = new Date().toISOString()
-        let launchedExecutionDirectory = launchData.executionDirectory
-
-        if (mountId) {
-          const cwd = launchData.executionDirectory.trim()
-          const cwdUri = cwd.length > 0 ? toFileUri(cwd) : null
-          const launched = await window.opencoveApi.controlSurface.invoke<LaunchAgentSessionResult>(
-            {
-              kind: 'command',
-              id: 'session.launchAgentInMount',
-              payload: {
-                mountId,
-                cwdUri,
-                prompt: launchData.prompt,
-                provider: launchData.provider,
-                mode,
-                model: launchData.model,
-                resumeSessionId: mode === 'resume' ? launchData.resumeSessionId : null,
-                ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
-                agentFullAccess,
-              },
-            },
-          )
-
-          launchedSessionId = launched.sessionId
-          launchedEffectiveModel = launched.effectiveModel
-          launchedResumeSessionId = launched.resumeSessionId
-          launchedStartedAt = launched.startedAt
-          launchedExecutionDirectory = launched.executionContext.workingDirectory
-        } else {
-          const launched = await window.opencoveApi.agent.launch({
-            provider: launchData.provider,
-            cwd: launchData.executionDirectory,
-            profileId: node.data.profileId ?? defaultTerminalProfileId,
-            prompt: launchData.prompt,
-            mode,
-            model: launchData.model,
-            resumeSessionId: mode === 'resume' ? launchData.resumeSessionId : null,
-            ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
-            agentFullAccess,
-            cols: 80,
-            rows: 24,
-          })
-
-          launchedSessionId = launched.sessionId
-          launchedProfileId = launched.profileId
-          launchedRuntimeKind = launched.runtimeKind
-          launchedEffectiveModel = launched.effectiveModel
-          launchedResumeSessionId = launched.resumeSessionId ?? null
-        }
+        const launched = await launchAgentRuntime({
+          node,
+          mountId,
+          mergedEnv,
+          mode,
+          executionDirectory: requestedExecutionDirectory,
+          resumeSessionId: requestedResumeSessionId,
+          agentFullAccess,
+          defaultTerminalProfileId,
+        })
 
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
-          void window.opencoveApi.pty.kill({ sessionId: launchedSessionId }).catch(() => undefined)
+          void window.opencoveApi.pty.kill({ sessionId: launched.sessionId }).catch(() => undefined)
           return
         }
 
         if (!nodesRef.current.some(item => item.id === nodeId)) {
-          void window.opencoveApi.pty.kill({ sessionId: launchedSessionId }).catch(() => undefined)
+          void window.opencoveApi.pty.kill({ sessionId: launched.sessionId }).catch(() => undefined)
           return
         }
 
@@ -291,14 +268,14 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               const nextAgentData: AgentNodeData = {
                 ...launchData,
                 launchMode: mode,
-                effectiveModel: launchedEffectiveModel,
-                executionDirectory: launchedExecutionDirectory,
+                effectiveModel: launched.effectiveModel,
+                executionDirectory: launched.executionDirectory,
                 expectedDirectory: mountId
-                  ? launchedExecutionDirectory
-                  : launchData.expectedDirectory,
+                  ? launched.executionDirectory
+                  : requestedExpectedDirectory,
                 ...(mode === 'resume'
                   ? {
-                      resumeSessionId: launchedResumeSessionId ?? launchData.resumeSessionId,
+                      resumeSessionId: launched.resumeSessionId ?? requestedResumeSessionId,
                       resumeSessionIdVerified: true,
                     }
                   : clearResumeSessionBinding()),
@@ -308,21 +285,25 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                 ...item,
                 data: {
                   ...item.data,
-                  sessionId: launchedSessionId,
-                  profileId: launchedProfileId,
-                  runtimeKind: launchedRuntimeKind,
+                  sessionId: launched.sessionId,
+                  profileId: launched.profileId,
+                  runtimeKind: launched.runtimeKind,
                   title:
                     item.data.titlePinnedByUser === true
                       ? item.data.title
                       : buildAgentNodeTitle(
                           launchData.provider,
-                          linkedTaskTitle ?? launchedEffectiveModel,
+                          linkedTaskTitle ?? launched.effectiveModel,
                         ),
                   status:
                     mode === 'resume'
                       ? ('standby' as const)
                       : resolveInitialAgentRuntimeStatus(launchData.prompt),
-                  startedAt: mode === 'new' ? launchedStartedAt : (item.data.startedAt ?? null),
+                  startedAt:
+                    startedAtOverride ??
+                    (mode === 'new'
+                      ? launched.startedAt
+                      : (item.data.startedAt ?? launched.startedAt)),
                   endedAt: null,
                   exitCode: null,
                   lastError: null,
@@ -338,43 +319,120 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           return
         }
 
-        const errorMessage = t('messages.agentLaunchFailed', { message: toErrorMessage(error) })
-
-        setNodes(
-          prevNodes =>
-            prevNodes.map(item => {
-              if (item.id !== nodeId) {
-                return item
-              }
-
-              return {
-                ...item,
-                data: {
-                  ...item.data,
-                  status: 'failed',
-                  endedAt: new Date().toISOString(),
-                  lastError: errorMessage,
-                },
-              }
-            }),
-          { syncLayout: false },
+        setAgentNodeFailure(
+          nodeId,
+          t('messages.agentLaunchFailed', { message: toErrorMessage(error) }),
         )
       }
     },
     [
       agentEnvByProvider,
-      agentFullAccess,
       buildAgentNodeTitle,
       bumpAgentLaunchToken,
-      defaultTerminalProfileId,
       environmentVariables,
       isAgentLaunchTokenCurrent,
       nodesRef,
-      spacesRef,
+      resolveMountId,
+      setAgentNodeFailure,
       setNodes,
       t,
-      workspaceId,
+      agentFullAccess,
+      defaultTerminalProfileId,
     ],
+  )
+
+  const launchAgentInNode = useCallback(
+    async (nodeId: string, mode: 'new' | 'resume') => {
+      await relaunchAgentNode({ nodeId, mode })
+    },
+    [relaunchAgentNode],
+  )
+
+  const reloadAgentNode = useCallback(
+    async (nodeId: string) => {
+      const node = findAgentNode(nodeId, nodesRef.current)
+      if (!node) {
+        return
+      }
+
+      await relaunchAgentNode({
+        nodeId,
+        mode: isResumeSessionBindingVerified(node.data.agent) ? 'resume' : 'new',
+      })
+    },
+    [nodesRef, relaunchAgentNode],
+  )
+
+  const listAgentSessionsForNode = useCallback(
+    async (nodeId: string, limit = 20): Promise<AgentSessionSummary[]> => {
+      const node = findAgentNode(nodeId, nodesRef.current)
+      if (!node) {
+        return []
+      }
+
+      const cwd = node.data.agent.executionDirectory.trim()
+      if (cwd.length === 0) {
+        return []
+      }
+
+      const result = await window.opencoveApi.agent.listSessions({
+        provider: node.data.agent.provider,
+        cwd,
+        limit,
+      })
+
+      return result.sessions
+    },
+    [nodesRef],
+  )
+
+  const switchAgentNodeSession = useCallback(
+    async (nodeId: string, summary: AgentSessionSummary) => {
+      const node = findAgentNode(nodeId, nodesRef.current)
+      if (!node) {
+        return
+      }
+
+      if (summary.provider !== node.data.agent.provider) {
+        return
+      }
+
+      const currentResumeSessionId = isResumeSessionBindingVerified(node.data.agent)
+        ? node.data.agent.resumeSessionId
+        : null
+
+      if (
+        currentResumeSessionId === summary.sessionId &&
+        node.data.agent.executionDirectory === summary.cwd
+      ) {
+        return
+      }
+
+      if (currentResumeSessionId && node.data.agent.taskId) {
+        const now = new Date().toISOString()
+        setNodes(
+          prevNodes =>
+            appendAgentSessionRecordToTaskHistory({
+              prevNodes,
+              agentNodeId: nodeId,
+              now,
+            }),
+          { syncLayout: false },
+        )
+        onRequestPersistFlush?.()
+      }
+
+      await relaunchAgentNode({
+        nodeId,
+        mode: 'resume',
+        executionDirectory: summary.cwd,
+        expectedDirectory: summary.cwd,
+        resumeSessionId: summary.sessionId,
+        startedAtOverride: summary.startedAt ?? undefined,
+      })
+      onRequestPersistFlush?.()
+    },
+    [nodesRef, onRequestPersistFlush, relaunchAgentNode, setNodes],
   )
 
   const stopAgentNode = useCallback(
@@ -417,6 +475,9 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   return {
     buildAgentNodeTitle,
     launchAgentInNode,
+    reloadAgentNode,
+    listAgentSessionsForNode,
+    switchAgentNodeSession,
     stopAgentNode,
   }
 }

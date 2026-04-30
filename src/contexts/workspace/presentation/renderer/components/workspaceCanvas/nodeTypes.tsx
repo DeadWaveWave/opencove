@@ -6,6 +6,7 @@ import { TerminalNode } from '../TerminalNode'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
+import { isResumeSessionBindingVerified } from '../../utils/agentResumeBinding'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
@@ -24,6 +25,13 @@ import {
   resolveAgentDisplayTitle,
 } from '../../utils/agentTitle'
 
+export interface WorkspaceCanvasNodeTypeProps {
+  data: TerminalNodeData
+  id: string
+  selected?: boolean
+  dragging?: boolean
+}
+
 function TerminalNodeType({
   data,
   id,
@@ -36,6 +44,9 @@ function TerminalNodeType({
   closeNodeRef,
   resizeNodeRef,
   copyAgentLastMessageRef,
+  reloadAgentSessionRef,
+  listAgentSessionsRef,
+  switchAgentSessionRef,
   updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
   updateTerminalTitleRef,
@@ -52,6 +63,16 @@ function TerminalNodeType({
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  listAgentSessionsRef: MutableRefObject<
+    (
+      nodeId: string,
+      limit?: number,
+    ) => Promise<import('@shared/contracts/dto').AgentSessionSummary[]>
+  >
+  switchAgentSessionRef: MutableRefObject<
+    (nodeId: string, summary: import('@shared/contracts/dto').AgentSessionSummary) => Promise<void>
+  >
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   updateTerminalTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
@@ -111,8 +132,12 @@ function TerminalNodeType({
       kind={data.kind}
       labelColor={labelColor}
       agentLaunchMode={data.kind === 'agent' ? (data.agent?.launchMode ?? null) : null}
+      agentExecutionDirectory={
+        data.kind === 'agent' ? (data.agent?.executionDirectory ?? null) : null
+      }
+      agentResumeSessionId={data.kind === 'agent' ? (data.agent?.resumeSessionId ?? null) : null}
       agentResumeSessionIdVerified={
-        data.kind === 'agent' ? data.agent?.resumeSessionIdVerified === true : false
+        data.kind === 'agent' && data.agent ? isResumeSessionBindingVerified(data.agent) : false
       }
       terminalProvider={resolvedTerminalProvider}
       isLiveSessionReattach={data.isLiveSessionReattach === true}
@@ -154,6 +179,27 @@ function TerminalNodeType({
         data.kind === 'agent' && data.agent && typeof data.startedAt === 'string'
           ? async () => {
               await copyAgentLastMessageRef.current(id)
+            }
+          : undefined
+      }
+      onReloadSession={
+        data.kind === 'agent' && data.agent
+          ? async () => {
+              await reloadAgentSessionRef.current(id)
+            }
+          : undefined
+      }
+      onListSessions={
+        data.kind === 'agent' && data.agent
+          ? async limit => {
+              return await listAgentSessionsRef.current(id, limit)
+            }
+          : undefined
+      }
+      onSwitchSession={
+        data.kind === 'agent' && data.agent
+          ? async summary => {
+              await switchAgentSessionRef.current(id, summary)
             }
           : undefined
       }
@@ -276,6 +322,16 @@ interface WorkspaceCanvasNodeTypesParams {
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   copyAgentLastMessageRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  reloadAgentSessionRef: MutableRefObject<(nodeId: string) => Promise<void>>
+  listAgentSessionsRef: MutableRefObject<
+    (
+      nodeId: string,
+      limit?: number,
+    ) => Promise<import('@shared/contracts/dto').AgentSessionSummary[]>
+  >
+  switchAgentSessionRef: MutableRefObject<
+    (nodeId: string, summary: import('@shared/contracts/dto').AgentSessionSummary) => Promise<void>
+  >
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
@@ -309,6 +365,9 @@ export function useWorkspaceCanvasNodeTypes({
   closeNodeRef,
   resizeNodeRef,
   copyAgentLastMessageRef,
+  reloadAgentSessionRef,
+  listAgentSessionsRef,
+  switchAgentSessionRef,
   updateNoteTextRef,
   updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
@@ -327,15 +386,10 @@ export function useWorkspaceCanvasNodeTypes({
   setWebsiteSessionRef,
 }: WorkspaceCanvasNodeTypesParams): Record<
   string,
-  (props: {
-    data: TerminalNodeData
-    id: string
-    selected?: boolean
-    dragging?: boolean
-  }) => ReactElement | null
+  (props: WorkspaceCanvasNodeTypeProps) => ReactElement | null
 > {
   return useMemo(() => {
-    const TaskNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+    const TaskNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
       const nodePosition = useNodePosition(id)
 
       return (
@@ -360,7 +414,7 @@ export function useWorkspaceCanvasNodeTypes({
       )
     }
 
-    const ImageNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+    const ImageNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
       const nodePosition = useNodePosition(id)
       return (
         <WorkspaceCanvasImageNodeType
@@ -375,7 +429,7 @@ export function useWorkspaceCanvasNodeTypes({
       )
     }
 
-    const DocumentNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+    const DocumentNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
       const nodePosition = useNodePosition(id)
       const targetMountId =
         spacesRef.current.find(candidate => candidate.nodeIds.includes(id))?.targetMountId ?? null
@@ -394,7 +448,7 @@ export function useWorkspaceCanvasNodeTypes({
       )
     }
 
-    const WebsiteNodeType = ({ data, id }: { data: TerminalNodeData; id: string }) => {
+    const WebsiteNodeType = ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
       const nodePosition = useNodePosition(id)
       return (
         <WorkspaceCanvasWebsiteNodeType
@@ -413,17 +467,7 @@ export function useWorkspaceCanvasNodeTypes({
     }
 
     return {
-      terminalNode: ({
-        data,
-        id,
-        selected,
-        dragging,
-      }: {
-        data: TerminalNodeData
-        id: string
-        selected?: boolean
-        dragging?: boolean
-      }) => {
+      terminalNode: ({ data, id, selected, dragging }: WorkspaceCanvasNodeTypeProps) => {
         return (
           <TerminalNodeType
             data={data}
@@ -437,6 +481,9 @@ export function useWorkspaceCanvasNodeTypes({
             closeNodeRef={closeNodeRef}
             resizeNodeRef={resizeNodeRef}
             copyAgentLastMessageRef={copyAgentLastMessageRef}
+            reloadAgentSessionRef={reloadAgentSessionRef}
+            listAgentSessionsRef={listAgentSessionsRef}
+            switchAgentSessionRef={switchAgentSessionRef}
             updateNodeScrollbackRef={updateNodeScrollbackRef}
             normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
             updateTerminalTitleRef={updateTerminalTitleRef}
@@ -444,7 +491,7 @@ export function useWorkspaceCanvasNodeTypes({
           />
         )
       },
-      noteNode: ({ data, id }: { data: TerminalNodeData; id: string }) => {
+      noteNode: ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
         return (
           <NoteNodeType
             data={data}
@@ -481,6 +528,9 @@ export function useWorkspaceCanvasNodeTypes({
     resizeNodeRef,
     runTaskAgentRef,
     copyAgentLastMessageRef,
+    reloadAgentSessionRef,
+    listAgentSessionsRef,
+    switchAgentSessionRef,
     resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef,
     updateNodeScrollbackRef,

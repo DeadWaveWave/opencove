@@ -16,6 +16,8 @@ import type {
   KillTerminalInput,
   LaunchAgentInput,
   LaunchAgentResult,
+  ListAgentSessionsInput,
+  ListAgentSessionsResult,
   ListInstalledAgentProvidersResult,
   ListGitBranchesInput,
   ListGitBranchesResult,
@@ -446,6 +448,8 @@ const opencoveApi = {
       invokeIpc(IPC_CHANNELS.agentListModels, payload),
     listInstalledProviders: (): Promise<ListInstalledAgentProvidersResult> =>
       invokeIpc(IPC_CHANNELS.agentListInstalledProviders),
+    listSessions: (payload: ListAgentSessionsInput): Promise<ListAgentSessionsResult> =>
+      invokeIpc(IPC_CHANNELS.agentListSessions, payload),
     launch: (payload: LaunchAgentInput): Promise<LaunchAgentResult> =>
       invokeIpc(IPC_CHANNELS.agentLaunch, payload),
     readLastMessage: (payload: ReadAgentLastMessageInput): Promise<ReadAgentLastMessageResult> =>
@@ -488,10 +492,6 @@ const opencoveApi = {
     uninstall: (): Promise<CliPathStatusResult> => invokeIpc(IPC_CHANNELS.cliUninstall),
   },
 }
-
-// Use `contextBridge` APIs to expose Electron APIs to
-// renderer only if context isolation is enabled, otherwise
-// just add to the DOM global.
 if (process.contextIsolated) {
   contextBridge.exposeInMainWorld('opencoveApi', opencoveApi)
 } else {

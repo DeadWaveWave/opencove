@@ -16,6 +16,9 @@ export function useWorkspaceCanvasRuntimeBindings({
   updateNodeScrollback,
   updateTerminalTitle,
   renameTerminalTitle,
+  reloadAgentSession,
+  listAgentSessions,
+  switchAgentSession,
   focusNodeOnClick,
   focusNodeTargetZoom,
   nodesRef,
@@ -39,6 +42,9 @@ export function useWorkspaceCanvasRuntimeBindings({
   >[0]['updateNodeScrollback']
   updateTerminalTitle: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['updateTerminalTitle']
   renameTerminalTitle: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['renameTerminalTitle']
+  reloadAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['reloadAgentSession']
+  listAgentSessions: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['listAgentSessions']
+  switchAgentSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['switchAgentSession']
   focusNodeOnClick: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['focusNodeOnClick']
   focusNodeTargetZoom: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['focusNodeTargetZoom']
   nodesRef: Parameters<typeof useWorkspaceCanvasAgentLastMessageCopy>[0]['nodesRef']
@@ -58,6 +64,9 @@ export function useWorkspaceCanvasRuntimeBindings({
     closeNode,
     resizeNode,
     copyAgentLastMessage,
+    reloadAgentSession,
+    listAgentSessions,
+    switchAgentSession,
     updateNoteText,
     updateWebsiteUrl,
     setWebsitePinned,

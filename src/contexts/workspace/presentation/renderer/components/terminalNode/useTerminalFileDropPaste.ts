@@ -48,7 +48,6 @@ export function useTerminalFileDropPaste({
 
     container.addEventListener('dragover', handleDragOver)
     container.addEventListener('drop', handleDrop)
-
     return () => {
       container.removeEventListener('dragover', handleDragOver)
       container.removeEventListener('drop', handleDrop)

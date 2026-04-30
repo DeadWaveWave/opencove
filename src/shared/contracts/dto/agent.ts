@@ -1,6 +1,14 @@
 export type AgentProviderId = 'claude-code' | 'codex' | 'opencode' | 'gemini'
 
 export type AgentModelCatalogSource = 'claude-static' | 'codex-cli' | 'opencode-cli' | 'gemini-cli'
+export type AgentSessionSummarySource =
+  | 'claude-index'
+  | 'claude-jsonl'
+  | 'codex-file'
+  | 'gemini-file'
+  | 'opencode-cli'
+  | 'opencode-db'
+  | 'control-surface'
 import type { AppErrorDescriptor } from './error'
 import type { TerminalRuntimeKind } from './terminal'
 
@@ -12,6 +20,17 @@ export interface ListAgentModelsInput {
 
 export interface ListInstalledAgentProvidersResult {
   providers: AgentProviderId[]
+}
+
+export interface AgentSessionSummary {
+  sessionId: string
+  provider: AgentProviderId
+  cwd: string
+  title: string | null
+  preview?: string | null
+  startedAt: string | null
+  updatedAt: string | null
+  source: AgentSessionSummarySource
 }
 
 export interface AgentModelOption {
@@ -27,6 +46,18 @@ export interface ListAgentModelsResult {
   fetchedAt: string
   models: AgentModelOption[]
   error: AppErrorDescriptor | null
+}
+
+export interface ListAgentSessionsInput {
+  provider: AgentProviderId
+  cwd: string
+  limit?: number | null
+}
+
+export interface ListAgentSessionsResult {
+  provider: AgentProviderId
+  cwd: string
+  sessions: AgentSessionSummary[]
 }
 
 export interface LaunchAgentInput {

@@ -41,6 +41,8 @@ export function TerminalNode({
   labelColor,
   terminalProvider = null,
   agentLaunchMode = null,
+  agentExecutionDirectory = null,
+  agentResumeSessionId = null,
   agentResumeSessionIdVerified = false,
   isLiveSessionReattach = false,
   terminalGeometry = null,
@@ -59,6 +61,9 @@ export function TerminalNode({
   scrollback,
   onClose,
   onCopyLastMessage,
+  onReloadSession,
+  onListSessions,
+  onSwitchSession,
   onResize,
   onScrollbackChange,
   onTitleCommit,
@@ -414,7 +419,6 @@ export function TerminalNode({
     viewportZoom,
     isViewportInteractionActive,
   })
-
   useTerminalFileDropPaste({ containerRef, terminalRef })
 
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
@@ -433,6 +437,9 @@ export function TerminalNode({
       fixedTitlePrefix={fixedTitlePrefix}
       kind={kind}
       labelColor={labelColor}
+      agentExecutionDirectory={agentExecutionDirectory}
+      agentResumeSessionId={agentResumeSessionId}
+      agentResumeSessionIdVerified={agentResumeSessionIdVerified}
       terminalThemeMode={terminalThemeMode}
       isSelected={hasSelectedDragSurface}
       isDragging={isDragging}
@@ -453,6 +460,9 @@ export function TerminalNode({
       onTitleCommit={onTitleCommit}
       onClose={onClose}
       onCopyLastMessage={onCopyLastMessage}
+      onReloadSession={onReloadSession}
+      onListSessions={onListSessions}
+      onSwitchSession={onSwitchSession}
       find={findState}
       onFindQueryChange={setFindQuery}
       onFindNext={findNextMatch}
