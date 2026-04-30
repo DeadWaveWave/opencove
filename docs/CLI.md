@@ -21,6 +21,7 @@ OpenCove 目前支持两条正式的 CLI 安装链路：
 
 - Desktop 安装与 standalone 安装最终都生成 runtime-backed launcher。
 - 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
+- launcher 会记录安装 owner；两条安装链可以互相覆盖安装，但卸载时只移除自己拥有的 launcher。
 - standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
 
 最新 stable 的一键安装命令（macOS / Linux）：

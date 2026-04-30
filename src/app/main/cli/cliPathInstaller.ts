@@ -10,6 +10,8 @@ import { resolvePackagedCliScriptPath } from '../runtime/opencoveRuntimePaths'
 
 const CLI_WRAPPER_MARKER = '__OPENCOVE_CLI_WRAPPER__'
 const CLI_WRAPPER_NAME = 'opencove'
+const CLI_WRAPPER_OWNER_KEY = 'OPENCOVE_INSTALL_OWNER'
+const CLI_WRAPPER_OWNER_DESKTOP = 'desktop'
 const CLI_WRAPPER_KIND_KEY = 'OPENCOVE_WRAPPER_KIND'
 const CLI_WRAPPER_ELECTRON_BIN_KEY = 'OPENCOVE_ELECTRON_BIN'
 const CLI_WRAPPER_CLI_SCRIPT_KEY = 'OPENCOVE_CLI_SCRIPT'
@@ -78,6 +80,7 @@ function resolveCliScriptPath(): string {
 function buildWrapperScript(executablePath: string, cliScriptPath: string): string {
   return `#!/bin/sh
 # ${CLI_WRAPPER_MARKER}
+# OPENCOVE_INSTALL_OWNER=${CLI_WRAPPER_OWNER_DESKTOP}
 # OPENCOVE_WRAPPER_KIND=runtime
 # OPENCOVE_ELECTRON_BIN=${executablePath}
 # OPENCOVE_CLI_SCRIPT=${cliScriptPath}
@@ -110,6 +113,7 @@ function buildWindowsWrapperScript(executablePath: string, cliScriptPath: string
 
   return `@echo off
 rem ${CLI_WRAPPER_MARKER}
+rem OPENCOVE_INSTALL_OWNER=${CLI_WRAPPER_OWNER_DESKTOP}
 rem OPENCOVE_WRAPPER_KIND=runtime
 rem OPENCOVE_ELECTRON_BIN=${escapedExecutablePath}
 rem OPENCOVE_CLI_SCRIPT=${escapedCliScriptPath}
@@ -155,6 +159,36 @@ function readMetadataValue(wrapper: string, key: string): string | null {
     .trim()
 
   return line && line.length > 0 ? line : null
+}
+
+function normalizeWrapperPath(value: string): string {
+  const normalized = value.replace(/[\\/]+$/g, '')
+  return process.platform === 'win32' ? normalized.toLowerCase() : normalized
+}
+
+function isDesktopManagedWrapper(wrapper: string): boolean {
+  const owner = readMetadataValue(wrapper, CLI_WRAPPER_OWNER_KEY)
+  if (owner === CLI_WRAPPER_OWNER_DESKTOP) {
+    return true
+  }
+
+  if (owner) {
+    return false
+  }
+
+  const electronBin = readMetadataValue(wrapper, CLI_WRAPPER_ELECTRON_BIN_KEY)
+  const cliScript = readMetadataValue(wrapper, CLI_WRAPPER_CLI_SCRIPT_KEY)
+
+  // Older Desktop wrappers did not carry an owner marker. Treat them as
+  // Desktop-managed only when they point back at this app runtime.
+  return (
+    (electronBin
+      ? normalizeWrapperPath(electronBin) === normalizeWrapperPath(process.execPath)
+      : false) ||
+    (cliScript
+      ? normalizeWrapperPath(cliScript) === normalizeWrapperPath(resolveCliScriptPath())
+      : false)
+  )
 }
 
 async function isWrapperHealthy(wrapper: string): Promise<boolean> {
@@ -267,7 +301,11 @@ export async function resolveCliPathStatus(): Promise<CliPathStatusResult> {
   const ownedCandidates = await Promise.all(
     candidates.map(async candidate => {
       const wrapper = await readWrapperIfOwned(candidate)
-      return wrapper ? { wrapper, healthy: await isWrapperHealthy(wrapper) } : null
+      if (!wrapper || !isDesktopManagedWrapper(wrapper)) {
+        return null
+      }
+
+      return { wrapper, healthy: await isWrapperHealthy(wrapper) }
     }),
   )
 

@@ -112,6 +112,7 @@ describe('cliPathInstaller', () => {
 
     const wrapper = await readFile(status.path ?? '', 'utf8')
     expect(wrapper).toContain('# OPENCOVE_WRAPPER_KIND=runtime')
+    expect(wrapper).toContain('# OPENCOVE_INSTALL_OWNER=desktop')
     expect(wrapper).toContain(
       resolve(process.resourcesPath, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs'),
     )
@@ -156,6 +157,7 @@ describe('cliPathInstaller', () => {
 
     const wrapper = await readFile(status.path ?? '', 'utf8')
     expect(wrapper).toContain('rem __OPENCOVE_CLI_WRAPPER__')
+    expect(wrapper).toContain('rem OPENCOVE_INSTALL_OWNER=desktop')
     expect(wrapper).toContain('rem OPENCOVE_WRAPPER_KIND=runtime')
     expect(wrapper).toContain('set "ELECTRON_RUN_AS_NODE=1"')
     expect(wrapper).toContain('"%ELECTRON_BIN%" "%CLI_SCRIPT%" %*')
@@ -163,5 +165,46 @@ describe('cliPathInstaller', () => {
     expect(execFileMock).toHaveBeenCalledTimes(1)
 
     await expect(resolveCliPathStatus()).resolves.toEqual(status)
+  })
+
+  it('does not report or uninstall a standalone Windows launcher as Desktop-owned', async () => {
+    setPlatform('win32')
+    const localAppData = resolve(mockHomeDir, '..', 'LocalAppData')
+    const userBinDir = resolve(localAppData, 'OpenCove', 'bin')
+    const launcherPath = resolve(userBinDir, 'opencove.cmd')
+    const cliPath = resolve(process.resourcesPath, 'app.asar', 'src', 'app', 'cli', 'opencove.mjs')
+    process.env.LOCALAPPDATA = localAppData
+    process.env.PATH = `${userBinDir};C:\\Windows\\System32`
+    await mkdir(userBinDir, { recursive: true })
+    await writeFile(
+      launcherPath,
+      [
+        '@echo off',
+        'rem __OPENCOVE_CLI_WRAPPER__',
+        'rem OPENCOVE_INSTALL_OWNER=standalone',
+        'rem OPENCOVE_WRAPPER_KIND=runtime',
+        `rem OPENCOVE_ELECTRON_BIN=${process.execPath}`,
+        `rem OPENCOVE_CLI_SCRIPT=${cliPath}`,
+        '',
+      ].join('\r\n'),
+      'utf8',
+    )
+
+    const { resolveCliPathStatus, uninstallCliFromPath } =
+      await import('../../../src/app/main/cli/cliPathInstaller')
+
+    await expect(resolveCliPathStatus()).resolves.toEqual({
+      installed: false,
+      path: null,
+      healthy: false,
+    })
+    await expect(uninstallCliFromPath()).resolves.toEqual({
+      installed: false,
+      path: null,
+      healthy: false,
+    })
+    await expect(readFile(launcherPath, 'utf8')).resolves.toContain(
+      'OPENCOVE_INSTALL_OWNER=standalone',
+    )
   })
 })

@@ -19,6 +19,7 @@
 - release workflow 新增 Windows standalone bundle（`opencove-server-windows-<arch>.zip`）和 `opencove-install.ps1`。
 - standalone 安装脚本新增官方卸载路径（`--uninstall` / `opencove-uninstall.*`）。
 - release workflow 在上传前运行 standalone installer smoke，覆盖 asset -> launcher -> `opencove worker start --help`。
+- launcher manifest 新增安装 owner，允许两条安装链互相覆盖安装，但卸载时只移除自己拥有的 launcher，避免 Desktop 与 standalone 互删。
 
 本地验收已覆盖：
 
@@ -418,6 +419,7 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/ope
 - Windows launcher 使用 `opencove.cmd`，由 Desktop installer 或 PowerShell installer 写入用户级 bin 目录。
 - Windows installer 默认把 `%LOCALAPPDATA%\OpenCove\bin` 加入用户级 PATH，新开的 PowerShell / cmd 可直接使用 `opencove`。
 - Windows 卸载会移除 OpenCove-owned launcher、standalone bundle 和 installer 写入的用户级 PATH 项。
+- Desktop / standalone launcher 都带 owner metadata；Desktop `Uninstall CLI` 不会删除 standalone-owned launcher，standalone uninstall 也不会删除 Desktop-owned launcher。
 
 ## 11. 验收标准
 

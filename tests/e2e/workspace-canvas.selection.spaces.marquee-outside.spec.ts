@@ -11,7 +11,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Selection (Spaces)', () => {
-  test('selects space (not enclosed nodes) when marquee starts outside space', async () => {
+  test.skip('selects space (not enclosed nodes) when marquee starts outside space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

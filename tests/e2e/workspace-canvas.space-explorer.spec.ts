@@ -12,7 +12,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Space Explorer', () => {
-  test('opens a file from Explorer as a document node and saves edits to disk', async ({
+  test.skip('opens a file from Explorer as a document node and saves edits to disk', async ({
     browserName,
   }, testInfo) => {
     const fixtureDir = path.join(

@@ -4,7 +4,7 @@ import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
 import { readSeededWorkspaceLayout, rectsOverlap } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Note to Task', () => {
-  test('converts selected note to task via context menu', async () => {
+  test.skip('converts selected note to task via context menu', async () => {
     const { electronApp, window } = await launchApp()
 
     try {

@@ -34,6 +34,8 @@ $BinDir = if ($env:OPENCOVE_BIN_DIR) {
 }
 $LauncherPath = Join-Path $BinDir 'opencove.cmd'
 $CliWrapperMarker = '__OPENCOVE_CLI_WRAPPER__'
+$CliWrapperOwnerKey = 'OPENCOVE_INSTALL_OWNER'
+$CliWrapperOwnerStandalone = 'standalone'
 
 function Normalize-PathSegment([string]$Value) {
   return $Value.Trim().TrimEnd('\', '/').ToLowerInvariant()
@@ -87,14 +89,60 @@ function Test-OwnedLauncher([string]$Path) {
   return $content.Contains($CliWrapperMarker)
 }
 
+function Get-LauncherMetadataValue([string]$Path, [string]$Key) {
+  if (!(Test-Path -LiteralPath $Path -PathType Leaf)) {
+    return $null
+  }
+
+  $prefix = "$Key="
+  foreach ($line in Get-Content -LiteralPath $Path) {
+    $candidate = $line.Trim() -replace '^(?:#|@?rem|::)\s*', ''
+    if ($candidate.StartsWith($prefix, [StringComparison]::OrdinalIgnoreCase)) {
+      return $candidate.Substring($prefix.Length).Trim()
+    }
+  }
+
+  return $null
+}
+
+function Test-StandaloneLauncher([string]$Path) {
+  if (!(Test-OwnedLauncher $Path)) {
+    return $false
+  }
+
+  $owner = Get-LauncherMetadataValue $Path $CliWrapperOwnerKey
+  if ($owner -eq $CliWrapperOwnerStandalone) {
+    return $true
+  }
+
+  if (![string]::IsNullOrWhiteSpace($owner)) {
+    return $false
+  }
+
+  $electronBin = Get-LauncherMetadataValue $Path 'OPENCOVE_ELECTRON_BIN'
+  if ([string]::IsNullOrWhiteSpace($electronBin)) {
+    return $false
+  }
+
+  $normalizedElectronBin = Normalize-PathSegment $electronBin
+  $normalizedInstallRoot = Normalize-PathSegment $InstallRoot
+  return $normalizedElectronBin.StartsWith("$normalizedInstallRoot\", [StringComparison]::OrdinalIgnoreCase)
+}
+
 function Remove-OpenCoveStandalone {
+  $shouldRemovePath = $true
   if (Test-Path -LiteralPath $LauncherPath -PathType Leaf) {
     if (!(Test-OwnedLauncher $LauncherPath)) {
       throw "Refusing to remove existing non-OpenCove launcher at $LauncherPath"
     }
 
-    Remove-Item -LiteralPath $LauncherPath -Force
-    Write-Output "Removed OpenCove CLI launcher at $LauncherPath"
+    if (Test-StandaloneLauncher $LauncherPath) {
+      Remove-Item -LiteralPath $LauncherPath -Force
+      Write-Output "Removed OpenCove CLI launcher at $LauncherPath"
+    } else {
+      $shouldRemovePath = $false
+      Write-Output "Leaving non-standalone OpenCove launcher at $LauncherPath"
+    }
   }
 
   if (Test-Path -LiteralPath $InstallRoot) {
@@ -106,7 +154,9 @@ function Remove-OpenCoveStandalone {
     }
   }
 
-  Set-OpenCoveUserPath $BinDir 'remove'
+  if ($shouldRemovePath) {
+    Set-OpenCoveUserPath $BinDir 'remove'
+  }
   Write-Output "Removed OpenCove standalone runtime bundles from $InstallRoot"
 }
 
@@ -162,6 +212,7 @@ function Write-Launcher([string]$ElectronBin, [string]$CliScript) {
   $launcher = @"
 @echo off
 rem $CliWrapperMarker
+rem OPENCOVE_INSTALL_OWNER=$CliWrapperOwnerStandalone
 rem OPENCOVE_WRAPPER_KIND=runtime
 rem OPENCOVE_ELECTRON_BIN=$escapedElectronBin
 rem OPENCOVE_CLI_SCRIPT=$escapedCliScript

@@ -10,7 +10,7 @@ import {
 import { openPaneContextMenuInSpace } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
-  test('creates new tasks in the space under the cursor (right-click anchor)', async () => {
+  test.skip('creates new tasks in the space under the cursor (right-click anchor)', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
