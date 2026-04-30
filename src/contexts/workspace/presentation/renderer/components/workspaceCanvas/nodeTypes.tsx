@@ -246,6 +246,8 @@ function TerminalNodeType({
 function NoteNodeType({
   data,
   id,
+  spacesRef,
+  workspacePath,
   selectNode,
   clearNodeSelectionRef,
   closeNodeRef,
@@ -255,6 +257,8 @@ function NoteNodeType({
 }: {
   data: TerminalNodeData
   id: string
+  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  workspacePath: string
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -271,6 +275,12 @@ function NoteNodeType({
     return null
   }
 
+  const containingSpace =
+    spacesRef.current.find(candidate => candidate.nodeIds.includes(id)) ?? null
+  const containingSpaceDirectory = containingSpace?.directoryPath.trim() ?? ''
+  const saveDirectoryPath =
+    containingSpaceDirectory.length > 0 ? containingSpaceDirectory : workspacePath
+
   return (
     <NoteNode
       text={data.note.text}
@@ -278,6 +288,8 @@ function NoteNodeType({
       position={nodePosition}
       width={data.width}
       height={data.height}
+      saveDirectoryPath={saveDirectoryPath}
+      saveMountId={containingSpace?.targetMountId ?? null}
       onClose={() => {
         void closeNodeRef.current(id)
       }}
@@ -496,6 +508,8 @@ export function useWorkspaceCanvasNodeTypes({
           <NoteNodeType
             data={data}
             id={id}
+            spacesRef={spacesRef}
+            workspacePath={workspacePath}
             selectNode={selectNode}
             clearNodeSelectionRef={clearNodeSelectionRef}
             closeNodeRef={closeNodeRef}
