@@ -1,3 +1,5 @@
+import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
+
 export const enSettingsPanel = {
   title: 'Settings',
   search: {
@@ -42,6 +44,7 @@ export const enSettingsPanel = {
     terminalFontFamilySearch: 'Search fonts…',
     terminalFontFamilyShowAll: 'Show all fonts',
     terminalFontFamilyNoResults: 'No fonts found',
+    terminalDisplayCalibration: enTerminalDisplayCalibration,
     updates: {
       title: 'Updates',
       help: 'Follow GitHub Releases and choose how OpenCove applies app updates.',

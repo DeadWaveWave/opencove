@@ -28,6 +28,7 @@ type InternalTerminal = Terminal & {
 
 const terminalEffectiveDprControllers = new WeakMap<Terminal, TerminalEffectiveDprController>()
 const DPR_EPSILON = 0.001
+const TERMINAL_PIXEL_SNAP_DEVICE_PIXEL_RATIO = 2
 
 type TerminalCssGeometrySnapshot = {
   canvasWidth: number | null
@@ -267,18 +268,14 @@ function updateTerminalDprDebug(
 }
 
 export function resolveTerminalEffectiveDevicePixelRatio({
-  baseDevicePixelRatio,
   viewportZoom,
 }: {
   baseDevicePixelRatio: number
   viewportZoom: number
 }): number {
-  const resolvedBaseDevicePixelRatio = normalizePositiveNumber(baseDevicePixelRatio, 1)
   const resolvedViewportZoom = normalizePositiveNumber(viewportZoom, 1)
 
-  return resolvedViewportZoom > 1
-    ? resolvedBaseDevicePixelRatio * resolvedViewportZoom
-    : resolvedBaseDevicePixelRatio
+  return TERMINAL_PIXEL_SNAP_DEVICE_PIXEL_RATIO * Math.max(1, resolvedViewportZoom)
 }
 
 export function installTerminalEffectiveDevicePixelRatioController({

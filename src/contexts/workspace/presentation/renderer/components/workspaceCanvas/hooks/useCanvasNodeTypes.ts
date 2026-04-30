@@ -1,6 +1,8 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import { useTerminalClientDisplayCalibration } from '@contexts/settings/presentation/renderer/terminalDisplayCalibrationStorage'
+import { resolveTerminalDisplayCalibrationCompensation } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
 import { useWorkspaceCanvasSelectNode } from './useSelectNode'
@@ -30,6 +32,15 @@ export function useWorkspaceCanvasComposedNodeTypes({
   agentSettings: AgentSettings
   actionRefs: WorkspaceCanvasActionRefs
 }) {
+  const savedTerminalDisplayCalibration = useTerminalClientDisplayCalibration({
+    terminalFontSize: agentSettings.terminalFontSize,
+    terminalFontFamily: agentSettings.terminalFontFamily,
+    terminalDisplayReference: agentSettings.terminalDisplayReference,
+  })
+  const terminalDisplayCalibration = resolveTerminalDisplayCalibrationCompensation({
+    calibration: savedTerminalDisplayCalibration,
+    compensationEnabled: agentSettings.terminalDisplayCalibrationCompensationEnabled,
+  })
   const selectNode: (nodeId: string, options?: { toggle?: boolean }) => void =
     useWorkspaceCanvasSelectNode({
       setNodes,
@@ -45,6 +56,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
     workspacePath,
     terminalFontSize: agentSettings.terminalFontSize,
     terminalFontFamily: agentSettings.terminalFontFamily,
+    terminalDisplayCalibration,
     selectNode,
     ...actionRefs,
   })

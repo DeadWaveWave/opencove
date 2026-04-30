@@ -51,6 +51,22 @@ describe('control surface filesystem handlers', () => {
     }
   })
 
+  it('reads file bytes when approved', async () => {
+    const { filePath } = await createFixture()
+    const controlSurface = createSubject(true)
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'filesystem.readFileBytes',
+      payload: { uri: toFileUri(filePath) },
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(new TextDecoder().decode(result.value.bytes)).toBe('hello')
+    }
+  })
+
   it('writes file content when approved', async () => {
     const { filePath } = await createFixture()
     const controlSurface = createSubject(true)
@@ -183,6 +199,11 @@ describe('control surface filesystem handlers', () => {
       async ({ filePath }: { filePath: string }) => ({ uri: toFileUri(filePath) }),
     ],
     [
+      'filesystem.readFileBytes',
+      'query',
+      async ({ filePath }: { filePath: string }) => ({ uri: toFileUri(filePath) }),
+    ],
+    [
       'filesystem.writeFileText',
       'command',
       async ({ filePath }: { filePath: string }) => ({ uri: toFileUri(filePath), content: 'next' }),
@@ -245,6 +266,15 @@ describe('control surface filesystem handlers', () => {
   it.each([
     [
       'filesystem.readFileText',
+      'query',
+      {
+        invalidPayload: null,
+        invalidSchemePayload: { uri: 'https://example.com/file.txt' },
+        invalidUriPayload: { uri: 'not a uri' },
+      },
+    ],
+    [
+      'filesystem.readFileBytes',
       'query',
       {
         invalidPayload: null,

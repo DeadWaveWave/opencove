@@ -5,6 +5,7 @@ import {
   fitTerminalNodeToMeasuredSize,
   refreshTerminalNodeSize,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/syncTerminalNodeSize'
+import { createRuntimeInitialGeometryCommitter } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/useTerminalRuntimeSession.initialGeometry'
 
 function createTerminalMock() {
   const terminal = {
@@ -176,6 +177,34 @@ describe('terminal geometry sync helpers', () => {
 
     expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
     expect(terminal.resize).toHaveBeenCalledWith(64, 44)
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
+  it('keeps durable runtime geometry canonical during restore hydration', async () => {
+    const terminal = createTerminalMock()
+    const fitAddon = {
+      proposeDimensions: vi.fn(() => ({ cols: 65, rows: 44 })),
+    }
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: null,
+    }
+    const commitInitialGeometry = createRuntimeInitialGeometryCommitter({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: { current: fitAddon as never },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-runtime-restore',
+      canonicalInitialGeometry: { cols: 64, rows: 44 },
+      allowMeasuredResizeCommit: false,
+    })
+
+    const size = await commitInitialGeometry(null)
+
+    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 64, rows: 44 })
+    expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
+    expect(terminal.resize).not.toHaveBeenCalled()
     expect(ptyResize).not.toHaveBeenCalled()
   })
 })

@@ -1,8 +1,9 @@
-import type {
-  ListSystemFontsResult,
-  ShowSystemNotificationInput,
-  ShowSystemNotificationResult,
-  WorkspaceDirectory,
+import {
+  normalizeReadFileBytesResult,
+  type ListSystemFontsResult,
+  type ShowSystemNotificationInput,
+  type ShowSystemNotificationResult,
+  type WorkspaceDirectory,
 } from '@shared/contracts/dto'
 import { BrowserPtyClient } from './BrowserPtyClient'
 import { invokeBrowserControlSurface } from './browserControlSurface'
@@ -88,6 +89,7 @@ async function selectWorkspaceDirectoryInBrowser(): Promise<WorkspaceDirectory |
 }
 
 export function installBrowserOpenCoveApi(): void {
+  const enableTerminalTestApi = shouldEnableBrowserTerminalTestApi()
   const api = {
     meta: {
       isTest: false,
@@ -95,7 +97,7 @@ export function installBrowserOpenCoveApi(): void {
       allowWhatsNewInTests: false,
       enableTerminalDiagnostics: false,
       enableTerminalInputDiagnostics: false,
-      enableTerminalTestApi: false,
+      enableTerminalTestApi,
       runtime: 'browser',
       platform: resolveBrowserPlatform(),
       mainPid: null,
@@ -169,9 +171,15 @@ export function installBrowserOpenCoveApi(): void {
           payload,
         })
       },
-      readFileBytes: async () => {
-        throw new Error('Binary file reads are unavailable in browser runtime')
-      },
+      readFileBytes: async payload =>
+        normalizeReadFileBytesResult(
+          await invokeBrowserControlSurface({
+            kind: 'query',
+            id: 'filesystem.readFileBytes',
+            payload,
+          }),
+          'filesystem.readFileBytes',
+        ),
       readFileText: async payload =>
         await invokeBrowserControlSurface({
           kind: 'query',
@@ -397,4 +405,18 @@ export function installBrowserOpenCoveApi(): void {
   } as Window['opencoveApi']
 
   window.opencoveApi = api
+}
+
+function shouldEnableBrowserTerminalTestApi(): boolean {
+  const hostname = window.location.hostname.toLowerCase()
+  const isLoopback =
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '::1' ||
+    hostname.endsWith('.localhost')
+  if (!isLoopback) {
+    return false
+  }
+
+  return new URLSearchParams(window.location.search).get('opencoveTerminalTestApi') === '1'
 }

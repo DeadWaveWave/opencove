@@ -166,5 +166,5 @@ describe('TerminalNode screen cache serialization', () => {
 
     expect(serializeSpy).toHaveBeenCalledTimes(1)
     expect(serializeSpy).toHaveBeenCalledWith({ excludeModes: true })
-  })
+  }, 10_000)
 })

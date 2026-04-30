@@ -4,6 +4,8 @@ import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   LaunchAgentInput,
   LaunchAgentResult,
+  ListAgentSessionsInput,
+  ListAgentSessionsResult,
   ListAgentModelsInput,
   ListInstalledAgentProvidersResult,
   ReadAgentLastMessageInput,
@@ -20,6 +22,7 @@ import {
   disposeAgentModelService,
   listAgentModels,
 } from '../../infrastructure/cli/AgentModelService'
+import { listAgentSessions } from '../../infrastructure/cli/AgentSessionCatalog'
 import { captureGeminiSessionDiscoveryCursor } from '../../infrastructure/cli/AgentSessionLocatorProviders'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
 import {
@@ -33,6 +36,7 @@ import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import {
   normalizeLaunchAgentPayload,
+  normalizeListSessionsPayload,
   normalizeListModelsPayload,
   normalizeReadLastMessagePayload,
   normalizeResolveResumeSessionPayload,
@@ -98,6 +102,23 @@ export function registerAgentIpcHandlers(
     async (): Promise<ListInstalledAgentProvidersResult> => ({
       providers: await listInstalledAgentProviders(),
     }),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.agentListSessions,
+    async (_event, payload: ListAgentSessionsInput): Promise<ListAgentSessionsResult> => {
+      const normalized = normalizeListSessionsPayload(payload)
+
+      const isApproved = await approvedWorkspaces.isPathApproved(normalized.cwd)
+      if (!isApproved) {
+        throw createAppError('common.approved_path_required', {
+          debugMessage: 'agent:list-sessions cwd is outside approved workspaces',
+        })
+      }
+
+      return await listAgentSessions(normalized)
+    },
     { defaultErrorCode: 'common.unexpected' },
   )
 
@@ -343,6 +364,7 @@ export function registerAgentIpcHandlers(
 
   return {
     dispose: () => {
+      electron.ipcMain.removeHandler(IPC_CHANNELS.agentListSessions)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentListModels)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentListInstalledProviders)
       electron.ipcMain.removeHandler(IPC_CHANNELS.agentResolveResumeSession)

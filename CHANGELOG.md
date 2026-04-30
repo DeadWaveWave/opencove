@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🚀 Added
 - CLI: support Desktop-managed runtime launcher repair plus standalone CLI/Worker/Web UI installers for macOS, Linux, and Windows. (#209)
+- Agent: add header-level session reload plus semantic session history switching with task-text previews for resumable agent sessions. (#207)
+- Terminal: add Desktop/Web display consistency calibration with shared reference setup, device-local compensation, diagnostics, and a real parity profiling script. (#206)
+- Space Explorer: preview and open VS Code-built-in audio/video files (`mp3`, `wav`, `wave`, `ogg`, `oga`, `mp4`, `webm`) as playable document windows. (#204)
 - Agent: system notifications now fire when agents finish work and return to standby. (#198)
 - Settings: left-sidebar search helps users locate settings and jump directly to the matching section. (#192)
 - CLI: add canvas node control commands for creating, listing, reading, deleting, updating supported node types, and focusing nodes or Spaces. (#193)
@@ -40,6 +43,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
 
 ### 💅 Changed
+- UI: project sidebar agent lists are now collapsible with task-first single-line rows, provider icons, inline title editing, and synced color accents. (#205)
+- Worker: packaged Desktop is now local-only for Home Worker, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162)
 - Worker: packaged Desktop now uses Local Worker mode, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162, #195)
 - Settings: allow auto-focus to center within the visible canvas (accounts for the primary sidebar). (#166)
 - Workspace canvas: context menus now stay near the pointer, only flip on real overflow, and reorder note/space actions for faster access. (#64)
@@ -63,6 +68,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Space Explorer: image files now support quick preview and image-node opening in mount-targeted Spaces and browser control-surface paths. (#203)
 - Terminal: preserve magnifier-like zoom geometry while restoring settled post-zoom clarity, so DPR refresh no longer doubles the visible terminal scale or clips content. (#187)
 - Terminal: restore post-zoom clarity after viewport settle without requiring a return to bottom, while preserving live scroll/focus semantics. (#186)
 - Terminal recovery: unblock Desktop first paint while worker runtime prepare continues, keep restored agent input interactive across `Cmd+W` reopen and cold restart, and preserve inactive workspace terminal output for later restore. (#191)

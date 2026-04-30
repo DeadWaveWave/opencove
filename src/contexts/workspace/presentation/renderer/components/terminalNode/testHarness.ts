@@ -1,4 +1,5 @@
 import type { Terminal } from '@xterm/xterm'
+import type { FitAddon } from '@xterm/addon-fit'
 import { peekCachedTerminalScreenState } from './screenStateCache'
 
 type TerminalSelectionHandle = Pick<
@@ -30,7 +31,12 @@ type TerminalRendererIntrospection = {
       dpr?: unknown
     }
   }
-  options?: { fontSize?: unknown; fontFamily?: unknown }
+  options?: {
+    fontSize?: unknown
+    fontFamily?: unknown
+    lineHeight?: unknown
+    letterSpacing?: unknown
+  }
   __opencoveDprDebug?: {
     lastInputZoom?: unknown
     lastDecision?: unknown
@@ -46,7 +52,13 @@ type TerminalRendererIntrospection = {
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
-  getFontOptions: (nodeId: string) => { fontSize: number | null; fontFamily: string | null } | null
+  getFontOptions: (nodeId: string) => {
+    fontSize: number | null
+    fontFamily: string | null
+    lineHeight: number | null
+    letterSpacing: number | null
+  } | null
+  getProposedGeometry: (nodeId: string) => { cols: number; rows: number } | null
   getRenderMetrics: (nodeId: string) => {
     effectiveDpr: number | null
     deviceCanvasWidth: number | null
@@ -68,6 +80,10 @@ type TerminalSelectionTestApi = {
   getRegisteredNodeIds: () => string[]
   getRuntimeSessionId: (nodeId: string) => string | null
   getViewportY: (nodeId: string) => number | null
+  setDisplayOptions: (
+    nodeId: string,
+    options: { fontSize?: number; lineHeight?: number; letterSpacing?: number },
+  ) => boolean
   getCachedScreenStateSummary: (nodeId: string) => {
     sessionId: string
     serializedLength: number
@@ -87,8 +103,13 @@ declare global {
 }
 
 const terminalHandles = new Map<string, TerminalSelectionHandle>()
+const terminalFitAddons = new Map<string, FitAddon>()
 const terminalBinaryInputEmitters = new Map<string, (data: string) => boolean>()
 const terminalRuntimeSessionIds = new Map<string, string>()
+
+function normalizeFiniteOption(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null
+}
 
 function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
   if (typeof window === 'undefined') {
@@ -171,11 +192,22 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
 
         return {
-          fontSize:
-            typeof options.fontSize === 'number' && Number.isFinite(options.fontSize)
-              ? options.fontSize
-              : null,
+          fontSize: normalizeFiniteOption(options.fontSize),
           fontFamily: typeof options.fontFamily === 'string' ? options.fontFamily : null,
+          lineHeight: normalizeFiniteOption(options.lineHeight),
+          letterSpacing: normalizeFiniteOption(options.letterSpacing),
+        }
+      },
+      getProposedGeometry: nodeId => {
+        const fitAddon = terminalFitAddons.get(nodeId)
+        const proposed = fitAddon?.proposeDimensions()
+        if (!proposed) {
+          return null
+        }
+
+        return {
+          cols: proposed.cols,
+          rows: proposed.rows,
         }
       },
       getRenderMetrics: nodeId => {
@@ -265,6 +297,24 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         const viewportY = terminal?.buffer?.active?.viewportY
         return typeof viewportY === 'number' && Number.isFinite(viewportY) ? viewportY : null
       },
+      setDisplayOptions: (nodeId, options) => {
+        const terminal = terminalHandles.get(nodeId) as unknown as TerminalRendererIntrospection
+        if (!terminal?.options) {
+          return false
+        }
+
+        if (typeof options.fontSize === 'number' && Number.isFinite(options.fontSize)) {
+          terminal.options.fontSize = options.fontSize
+        }
+        if (typeof options.lineHeight === 'number' && Number.isFinite(options.lineHeight)) {
+          terminal.options.lineHeight = options.lineHeight
+        }
+        if (typeof options.letterSpacing === 'number' && Number.isFinite(options.letterSpacing)) {
+          terminal.options.letterSpacing = options.letterSpacing
+        }
+
+        return true
+      },
       getCachedScreenStateSummary: nodeId => {
         const cached = peekCachedTerminalScreenState(nodeId)
         if (!cached) {
@@ -331,6 +381,7 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
 export function registerTerminalSelectionTestHandle(
   nodeId: string,
   terminal: TerminalSelectionHandle,
+  fitAddon?: FitAddon,
 ): () => void {
   if (typeof window === 'undefined') {
     return () => undefined
@@ -338,9 +389,13 @@ export function registerTerminalSelectionTestHandle(
 
   getTerminalSelectionTestApi()
   terminalHandles.set(nodeId, terminal)
+  if (fitAddon) {
+    terminalFitAddons.set(nodeId, fitAddon)
+  }
 
   return () => {
     terminalHandles.delete(nodeId)
+    terminalFitAddons.delete(nodeId)
   }
 }
 

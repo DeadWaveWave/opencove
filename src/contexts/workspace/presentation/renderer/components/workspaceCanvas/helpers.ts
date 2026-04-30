@@ -10,6 +10,7 @@ import {
   OpenCoveAppError,
 } from '@shared/errors/appError'
 import type { Point, Size, TaskPriority, TerminalNodeData, WorkspaceSpaceState } from '../../types'
+import { providerTitlePrefix } from '../../utils/agentTitle'
 import { TASK_PRIORITIES } from './constants'
 import type { TrackpadGestureAction, TrackpadGestureTarget } from './types'
 
@@ -397,22 +398,6 @@ function normalizeIntegrationErrorMessage(message: string): string {
 
 export function providerLabel(provider: AgentProvider): string {
   return AGENT_PROVIDER_LABEL[provider]
-}
-
-export function providerTitlePrefix(provider: AgentProvider): string {
-  if (provider === 'claude-code') {
-    return 'claude'
-  }
-
-  if (provider === 'opencode') {
-    return 'opencode'
-  }
-
-  if (provider === 'gemini') {
-    return 'gemini'
-  }
-
-  return 'codex'
 }
 
 export function normalizeDirectoryPath(workspacePath: string, customDirectory: string): string {

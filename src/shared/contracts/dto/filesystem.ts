@@ -29,6 +29,10 @@ export interface ReadFileBytesResult {
   bytes: Uint8Array
 }
 
+export interface ReadFileBytesInMountInput extends MountAwareInput {
+  uri: string
+}
+
 export interface WriteFileTextInput {
   uri: string
   content: string
@@ -74,6 +78,10 @@ export interface MountAwareInput {
 }
 
 export interface ReadFileTextInMountInput extends MountAwareInput {
+  uri: string
+}
+
+export interface ReadFileBytesInMountInput extends MountAwareInput {
   uri: string
 }
 

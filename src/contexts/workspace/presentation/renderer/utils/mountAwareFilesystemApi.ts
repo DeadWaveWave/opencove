@@ -11,6 +11,7 @@ import type {
   StatInput,
   WriteFileTextInput,
 } from '@shared/contracts/dto'
+import { normalizeReadFileBytesResult } from '@shared/contracts/dto'
 
 export interface MountAwareFilesystemApi {
   copyEntry: (payload: CopyEntryInput) => Promise<void>
@@ -39,6 +40,15 @@ export function resolveFilesystemApiForMount(
 
   if (mountId && controlSurfaceInvoke) {
     return {
+      readFileBytes: async ({ uri }) =>
+        normalizeReadFileBytesResult(
+          await window.opencoveApi.controlSurface.invoke({
+            kind: 'query',
+            id: 'filesystem.readFileBytesInMount',
+            payload: { mountId, uri },
+          }),
+          'filesystem.readFileBytesInMount',
+        ),
       stat: async ({ uri }) =>
         await window.opencoveApi.controlSurface.invoke({
           kind: 'query',

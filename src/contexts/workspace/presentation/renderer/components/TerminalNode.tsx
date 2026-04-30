@@ -12,6 +12,7 @@ import { useTerminalAppearanceSync } from './terminalNode/useTerminalAppearanceS
 import { useTerminalTestTranscriptMirror } from './terminalNode/useTerminalTestTranscriptMirror'
 import { useTerminalThemeApplier } from './terminalNode/useTerminalThemeApplier'
 import { useTerminalBodyClickFallback } from './terminalNode/useTerminalBodyClickFallback'
+import { useTerminalFileDropPaste } from './terminalNode/useTerminalFileDropPaste'
 import { useTerminalFind } from './terminalNode/useTerminalFind'
 import { useTerminalResize } from './terminalNode/useTerminalResize'
 import { useTerminalScrollback } from './terminalNode/useScrollback'
@@ -35,10 +36,13 @@ export function TerminalNode({
   nodeId,
   sessionId,
   title,
+  fixedTitlePrefix = null,
   kind,
   labelColor,
   terminalProvider = null,
   agentLaunchMode = null,
+  agentExecutionDirectory = null,
+  agentResumeSessionId = null,
   agentResumeSessionIdVerified = false,
   isLiveSessionReattach = false,
   terminalGeometry = null,
@@ -53,9 +57,13 @@ export function TerminalNode({
   height,
   terminalFontSize,
   terminalFontFamily,
+  terminalDisplayCalibration,
   scrollback,
   onClose,
   onCopyLastMessage,
+  onReloadSession,
+  onListSessions,
+  onSwitchSession,
   onResize,
   onScrollbackChange,
   onTitleCommit,
@@ -116,6 +124,9 @@ export function TerminalNode({
   const statusRef = useRef(status)
   const isTerminalHydratedRef = useRef(false)
   const [isTerminalHydrated, setIsTerminalHydrated] = useState(false)
+  const displayTerminalFontSize = terminalDisplayCalibration?.fontSize ?? terminalFontSize
+  const displayTerminalLineHeight = terminalDisplayCalibration?.lineHeight ?? 1
+  const displayTerminalLetterSpacing = terminalDisplayCalibration?.letterSpacing ?? 0
 
   latestSessionIdRef.current = sessionId
 
@@ -399,55 +410,16 @@ export function TerminalNode({
       commitTerminalGeometry('appearance_commit')
     },
     terminalFontSize,
+    displayTerminalFontSize,
+    displayTerminalLineHeight,
+    displayTerminalLetterSpacing,
     terminalFontFamily,
     width,
     height,
     viewportZoom,
     isViewportInteractionActive,
   })
-
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) {
-      return undefined
-    }
-
-    const handleDragOver = (e: DragEvent): void => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (e.dataTransfer) {
-        e.dataTransfer.dropEffect = 'copy'
-      }
-    }
-
-    const handleDrop = (e: DragEvent): void => {
-      e.preventDefault()
-      e.stopPropagation()
-
-      const files = e.dataTransfer?.files
-      if (!files || files.length === 0) {
-        return
-      }
-
-      const paths = Array.from(files)
-        .map(f => window.opencoveApi.filesystem.getPathForFile(f))
-        .filter(p => p.length > 0)
-        .map(p => (/^[a-zA-Z0-9_./-]+$/.test(p) ? p : "'" + p.replace(/'/g, "'\\''") + "'"))
-        .join(' ')
-
-      if (paths.length > 0) {
-        terminalRef.current?.paste(paths)
-      }
-    }
-
-    container.addEventListener('dragover', handleDragOver)
-    container.addEventListener('drop', handleDrop)
-
-    return () => {
-      container.removeEventListener('dragover', handleDragOver)
-      container.removeEventListener('drop', handleDrop)
-    }
-  }, [])
+  useTerminalFileDropPaste({ containerRef, terminalRef })
 
   const hasSelectedDragSurface = isDragSurfaceSelectionMode && (isSelected || isDragging)
   const isRecoveringAgentOutput =
@@ -462,8 +434,12 @@ export function TerminalNode({
   return (
     <TerminalNodeFrame
       title={title}
+      fixedTitlePrefix={fixedTitlePrefix}
       kind={kind}
       labelColor={labelColor}
+      agentExecutionDirectory={agentExecutionDirectory}
+      agentResumeSessionId={agentResumeSessionId}
+      agentResumeSessionIdVerified={agentResumeSessionIdVerified}
       terminalThemeMode={terminalThemeMode}
       isSelected={hasSelectedDragSurface}
       isDragging={isDragging}
@@ -484,6 +460,9 @@ export function TerminalNode({
       onTitleCommit={onTitleCommit}
       onClose={onClose}
       onCopyLastMessage={onCopyLastMessage}
+      onReloadSession={onReloadSession}
+      onListSessions={onListSessions}
+      onSwitchSession={onSwitchSession}
       find={findState}
       onFindQueryChange={setFindQuery}
       onFindNext={findNextMatch}

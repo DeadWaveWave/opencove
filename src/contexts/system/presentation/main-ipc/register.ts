@@ -1,3 +1,4 @@
+import { execFile } from 'node:child_process'
 import { BrowserWindow, Notification, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
@@ -8,6 +9,8 @@ import type {
 import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import { createAppError } from '../../../../shared/errors/appError'
+
+const NOTIFY_SEND_TIMEOUT_MS = 5_000
 
 const MONOSPACE_KEYWORDS = [
   'mono',
@@ -122,23 +125,45 @@ function focusFirstAppWindow(): void {
   target.focus()
 }
 
-function showSystemNotification(
+async function showSystemNotification(
   payload: ShowSystemNotificationInput,
-): ShowSystemNotificationResult {
-  if (!Notification.isSupported()) {
-    return { shown: false }
+): Promise<ShowSystemNotificationResult> {
+  if (Notification.isSupported()) {
+    const notification = new Notification({
+      title: payload.title,
+      ...(payload.body ? { body: payload.body } : {}),
+      silent: payload.silent ?? false,
+    })
+
+    notification.once('click', focusFirstAppWindow)
+    notification.show()
+
+    return { shown: true }
   }
 
-  const notification = new Notification({
-    title: payload.title,
-    ...(payload.body ? { body: payload.body } : {}),
-    silent: payload.silent ?? false,
-  })
+  if (process.platform === 'linux') {
+    const args: string[] = []
+    if (payload.silent) {
+      args.push('--urgency=low')
+    }
+    args.push(payload.title)
+    if (payload.body) {
+      args.push(payload.body)
+    }
 
-  notification.once('click', focusFirstAppWindow)
-  notification.show()
+    return new Promise<ShowSystemNotificationResult>(resolve => {
+      execFile(
+        'notify-send',
+        args,
+        { timeout: NOTIFY_SEND_TIMEOUT_MS, windowsHide: true },
+        error => {
+          resolve({ shown: error === null })
+        },
+      )
+    })
+  }
 
-  return { shown: true }
+  return { shown: false }
 }
 
 export function registerSystemIpcHandlers(): IpcRegistrationDisposable {

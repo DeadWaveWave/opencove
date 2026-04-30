@@ -51,6 +51,43 @@
   line-height: 1;
 }
 
+.note-node__action {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--cove-text-muted);
+  cursor: pointer;
+  padding: 0;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease;
+}
+
+.note-node__action svg {
+  width: 14px;
+  height: 14px;
+}
+
+.note-node__action:hover:not(:disabled) {
+  background: var(--cove-node-header-border);
+  color: var(--cove-text);
+}
+
+.note-node__action:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.note-node__action:focus-visible {
+  outline: 2px solid rgba(153, 223, 255, 0.85);
+  outline-offset: 2px;
+}
+
 .note-node__close:hover {
   color: var(--cove-text);
 }
@@ -73,4 +110,20 @@
   font-size: calc(12px * var(--cove-ui-font-scale));
   line-height: 1.45;
   font-family: inherit;
+}
+
+.note-node__save-status {
+  max-height: 42px;
+  overflow: hidden;
+  padding: 6px 10px;
+  border-top: 1px solid var(--cove-node-header-border);
+  color: var(--cove-text-muted);
+  background: var(--cove-node-header-surface);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.35;
+  text-overflow: ellipsis;
+}
+
+.note-node__save-status--error {
+  color: var(--cove-danger, #f87171);
 }

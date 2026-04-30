@@ -264,6 +264,7 @@ html,
 body,
 #root {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
@@ -285,6 +286,8 @@ body {
   grid-template-columns: var(--cove-primary-sidebar-width) minmax(0, 1fr);
   grid-template-rows: var(--cove-app-header-height) minmax(0, 1fr);
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .app-shell--sidebar-collapsed {

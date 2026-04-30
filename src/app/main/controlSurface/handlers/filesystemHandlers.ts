@@ -8,6 +8,7 @@ import {
   copyEntryUseCase,
   deleteEntryUseCase,
   readDirectoryUseCase,
+  readFileBytesUseCase,
   readFileTextUseCase,
   moveEntryUseCase,
   renameEntryUseCase,
@@ -20,6 +21,8 @@ import type {
   MoveEntryInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
   ReadFileTextInput,
   ReadFileTextResult,
   RenameEntryInput,
@@ -74,6 +77,18 @@ function normalizeReadFileTextPayload(payload: unknown): ReadFileTextInput {
 
   return {
     uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileText'),
+  }
+}
+
+function normalizeReadFileBytesPayload(payload: unknown): ReadFileBytesInput {
+  if (!isRecord(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for filesystem.readFileBytes.',
+    })
+  }
+
+  return {
+    uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileBytes'),
   }
 }
 
@@ -208,6 +223,16 @@ export function registerFilesystemHandlers(
     handle: async (_ctx, payload): Promise<ReadFileTextResult> => {
       await assertApprovedUri(payload.uri, 'filesystem.readFileText uri is outside approved roots')
       return await readFileTextUseCase(port, payload)
+    },
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('filesystem.readFileBytes', {
+    kind: 'query',
+    validate: normalizeReadFileBytesPayload,
+    handle: async (_ctx, payload): Promise<ReadFileBytesResult> => {
+      await assertApprovedUri(payload.uri, 'filesystem.readFileBytes uri is outside approved roots')
+      return await readFileBytesUseCase(port, payload)
     },
     defaultErrorCode: 'common.unexpected',
   })

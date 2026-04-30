@@ -1,37 +1,54 @@
 import React, { useCallback, useEffect, useState, type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { AgentSessionSummary } from '@shared/contracts/dto'
 import { Copy, LoaderCircle } from 'lucide-react'
 import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
+import { TerminalNodeAgentSessionActions } from './TerminalNodeAgentSessionActions'
 import { getStatusClassName } from './status'
 
 interface TerminalNodeHeaderProps {
   title: string
+  fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
   status: AgentRuntimeStatus | null
   labelColor?: LabelColor | null
+  agentExecutionDirectory?: string | null
+  agentResumeSessionId?: string | null
+  agentResumeSessionIdVerified?: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
   onTitleCommit?: (title: string) => void
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
+  onReloadSession?: () => Promise<void>
+  onListSessions?: (limit?: number) => Promise<AgentSessionSummary[]>
+  onSwitchSession?: (summary: AgentSessionSummary) => Promise<void>
 }
 
 export function TerminalNodeHeader({
   title,
+  fixedTitlePrefix = null,
   kind,
   status,
   labelColor,
+  agentExecutionDirectory,
+  agentResumeSessionId,
+  agentResumeSessionIdVerified = false,
   directoryMismatch,
   onTitleCommit,
   onClose,
   onCopyLastMessage,
+  onReloadSession,
+  onListSessions,
+  onSwitchSession,
 }: TerminalNodeHeaderProps): JSX.Element {
   const { t } = useTranslation()
   const [isTitleEditing, setIsTitleEditing] = useState(false)
-  const [titleDraft, setTitleDraft] = useState(title)
+  const [titleDraft, setTitleDraft] = useState(() => extractEditableTitle(title, fixedTitlePrefix))
   const [isCopyingLastMessage, setIsCopyingLastMessage] = useState(false)
 
-  const isTitleEditable = kind === 'terminal' && typeof onTitleCommit === 'function'
+  const isTitleEditable =
+    (kind === 'terminal' || kind === 'agent') && typeof onTitleCommit === 'function'
   const isAgentNode = kind === 'agent'
   const shouldRenderCopyLastMessageButton =
     isAgentNode &&
@@ -44,8 +61,8 @@ export function TerminalNodeHeader({
       return
     }
 
-    setTitleDraft(title)
-  }, [isTitleEditing, title])
+    setTitleDraft(extractEditableTitle(title, fixedTitlePrefix))
+  }, [fixedTitlePrefix, isTitleEditing, title])
 
   const commitTitleEdit = useCallback(() => {
     if (!isTitleEditable) {
@@ -54,18 +71,20 @@ export function TerminalNodeHeader({
 
     const normalizedTitle = titleDraft.trim()
     if (normalizedTitle.length === 0) {
-      setTitleDraft(title)
+      setTitleDraft(extractEditableTitle(title, fixedTitlePrefix))
       return
     }
 
-    if (normalizedTitle !== title) {
-      onTitleCommit(normalizedTitle)
+    const nextTitle = combineEditableTitle(normalizedTitle, fixedTitlePrefix)
+
+    if (nextTitle !== title) {
+      onTitleCommit(nextTitle)
     }
-  }, [isTitleEditable, onTitleCommit, title, titleDraft])
+  }, [fixedTitlePrefix, isTitleEditable, onTitleCommit, title, titleDraft])
 
   const cancelTitleEdit = useCallback(() => {
-    setTitleDraft(title)
-  }, [title])
+    setTitleDraft(extractEditableTitle(title, fixedTitlePrefix))
+  }, [fixedTitlePrefix, title])
 
   const startTitleEditing = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
@@ -128,9 +147,12 @@ export function TerminalNodeHeader({
       ) : null}
       {isTitleEditable ? (
         isTitleEditing ? (
-          <>
+          <span className="terminal-node__title-editable">
+            {fixedTitlePrefix ? (
+              <span className="terminal-node__title-prefix">{fixedTitlePrefix}</span>
+            ) : null}
             <span className="terminal-node__title terminal-node__title-proxy" aria-hidden="true">
-              {titleDraft}
+              {combineEditableTitle(titleDraft, fixedTitlePrefix)}
             </span>
             <input
               className="terminal-node__title-input nodrag nowheel"
@@ -167,9 +189,9 @@ export function TerminalNodeHeader({
                 }
               }}
             />
-          </>
+          </span>
         ) : (
-          <span className="terminal-node__title">{titleDraft}</span>
+          <span className="terminal-node__title">{title}</span>
         )
       ) : (
         <span className="terminal-node__title">{title}</span>
@@ -194,6 +216,18 @@ export function TerminalNodeHeader({
             </span>
           ) : null}
         </div>
+      ) : null}
+
+      {isAgentNode ? (
+        <TerminalNodeAgentSessionActions
+          status={status}
+          currentDirectory={agentExecutionDirectory ?? null}
+          currentResumeSessionId={agentResumeSessionId ?? null}
+          currentResumeSessionIdVerified={agentResumeSessionIdVerified}
+          onReloadSession={onReloadSession}
+          onListSessions={onListSessions}
+          onSwitchSession={onSwitchSession}
+        />
       ) : null}
 
       {shouldRenderCopyLastMessageButton ? (
@@ -243,4 +277,16 @@ export function TerminalNodeHeader({
       </button>
     </div>
   )
+}
+
+function extractEditableTitle(title: string, fixedTitlePrefix: string | null): string {
+  if (fixedTitlePrefix && title.startsWith(fixedTitlePrefix)) {
+    return title.slice(fixedTitlePrefix.length)
+  }
+
+  return title
+}
+
+function combineEditableTitle(title: string, fixedTitlePrefix: string | null): string {
+  return fixedTitlePrefix ? `${fixedTitlePrefix}${title}` : title
 }

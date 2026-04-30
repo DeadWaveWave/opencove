@@ -51,10 +51,12 @@ export function shouldRequirePostGeometrySnapshotOutput(options: {
   agentResumeSessionIdVerified: boolean
   agentLaunchMode: AgentLaunchMode | null
 }): boolean {
+  void options.kind
   void options.agentResumeSessionIdVerified
   void options.agentLaunchMode
+  void options.isLiveSessionReattach
 
-  return options.kind === 'agent' && !options.isLiveSessionReattach
+  return false
 }
 
 export function shouldProtectRestoredAgentHistory(options: {

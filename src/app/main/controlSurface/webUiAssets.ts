@@ -25,6 +25,24 @@ function resolveRendererAssetRoot(): string {
   return matched ?? candidates[0]
 }
 
+export function isWebUiNavigationPath(pathname: string): boolean {
+  if (!pathname.startsWith('/')) {
+    return false
+  }
+
+  if (
+    pathname === '/invoke' ||
+    pathname === '/events' ||
+    pathname.startsWith('/auth/') ||
+    pathname.startsWith('/debug/')
+  ) {
+    return false
+  }
+
+  const lastSegment = pathname.split('/').pop() ?? ''
+  return !lastSegment.includes('.')
+}
+
 function resolveContentType(filePath: string): string {
   const extension = extname(filePath).toLowerCase()
   if (extension === '.html') {
@@ -92,7 +110,7 @@ export function tryResolveWebUiResponse(
   const allowDevOrigin = options.allowDevOrigin !== false
   const devOrigin = allowDevOrigin ? resolveDevRendererOrigin() : null
   if (devOrigin) {
-    if (pathname === '/' || pathname === '/web.html') {
+    if (pathname === '/' || pathname === '/web.html' || isWebUiNavigationPath(pathname)) {
       return {
         statusCode: 200,
         contentType: 'text/html; charset=utf-8',
@@ -114,7 +132,19 @@ export function tryResolveWebUiResponse(
   }
 
   if (!existsSync(targetPath)) {
-    if (pathname === '/' || pathname === '/web.html') {
+    const shouldServeWebUiEntrypoint = pathname === '/' || pathname === '/web.html'
+    const fallbackPath = isWebUiNavigationPath(pathname) ? resolve(root, 'web.html') : null
+
+    if (shouldServeWebUiEntrypoint || fallbackPath) {
+      const webUiPath = fallbackPath ?? targetPath
+      if (existsSync(webUiPath)) {
+        return {
+          statusCode: 200,
+          contentType: 'text/html; charset=utf-8',
+          body: readFileSync(webUiPath),
+        }
+      }
+
       return {
         statusCode: 503,
         contentType: 'text/plain; charset=utf-8',

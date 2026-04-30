@@ -80,6 +80,7 @@
     "test:e2e:web-canvas": "node scripts/test-e2e-web-canvas.mjs",
     "test:e2e:web-shell": "node scripts/test-e2e-web-shell.mjs",
     "test:terminal:presentation": "node scripts/test-terminal-presentation-contract.mjs",
+    "profile:terminal:display-parity": "node scripts/profile-terminal-display-parity.mjs",
     "lint": "oxlint .",
     "lint:fix": "oxlint --fix .",
     "opencove": "node src/app/cli/opencove.mjs",

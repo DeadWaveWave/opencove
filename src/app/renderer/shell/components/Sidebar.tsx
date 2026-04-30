@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from 'react'
+import { ChevronDown, ChevronRight, Folder, FolderOpen } from 'lucide-react'
 import {
   DndContext,
   DragOverlay,
@@ -12,16 +13,11 @@ import {
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
-import { AGENT_PROVIDER_LABEL } from '@contexts/settings/domain/agentSettings'
 import type { PersistNotice, ProjectContextMenuState } from '../types'
-import { toRelativeTime } from '../utils/format'
 import { useWorkspaceMountSummaries } from '../hooks/useWorkspaceMountSummaries'
-import type {
-  TerminalNodeData,
-  WorkspaceState,
-} from '@contexts/workspace/presentation/renderer/types'
-
-type SidebarAgentStatus = 'working' | 'standby'
+import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
+import { SidebarAgentItems } from './SidebarAgentItems'
+import { getWorkspaceAgents } from '../utils/sidebarAgents'
 
 type SidebarProps = {
   workspaces: WorkspaceState[]
@@ -39,32 +35,12 @@ type SidebarProps = {
 type SortableWorkspaceItemProps = {
   workspace: WorkspaceState
   isActive: boolean
+  isExpanded: boolean
   subtitle: string
+  onToggleAgents: (workspaceId: string) => void
   onSelectWorkspace: (workspaceId: string) => void
   onOpenProjectContextMenu: (state: ProjectContextMenuState) => void
   onSelectAgentNode: (workspaceId: string, nodeId: string) => void
-}
-
-function resolveSidebarAgentStatus(runtimeStatus: TerminalNodeData['status']): SidebarAgentStatus {
-  if (runtimeStatus === null) {
-    return 'working'
-  }
-
-  if (runtimeStatus === 'running' || runtimeStatus === 'restoring') {
-    return 'working'
-  }
-
-  return 'standby'
-}
-
-function getWorkspaceAgents(workspace: WorkspaceState) {
-  return workspace.nodes
-    .filter(node => node.data.kind === 'agent')
-    .sort((left, right) => {
-      const leftTime = left.data.startedAt ? Date.parse(left.data.startedAt) : 0
-      const rightTime = right.data.startedAt ? Date.parse(right.data.startedAt) : 0
-      return rightTime - leftTime
-    })
 }
 
 function getWorkspaceMetaText(workspace: WorkspaceState, t: TranslateFn): string {
@@ -89,114 +65,39 @@ function getWorkspaceMetaText(workspace: WorkspaceState, t: TranslateFn): string
   ].join(' · ')
 }
 
-function resolveLinkedTaskTitle(workspace: WorkspaceState, nodeId: string, taskId: string | null) {
-  const linkedTaskNode =
-    (taskId
-      ? (workspace.nodes.find(
-          candidate =>
-            candidate.id === taskId && candidate.data.kind === 'task' && candidate.data.task,
-        ) ?? null)
-      : null) ??
-    workspace.nodes.find(
-      candidate =>
-        candidate.data.kind === 'task' && candidate.data.task?.linkedAgentNodeId === nodeId,
-    ) ??
-    null
-
-  return linkedTaskNode && linkedTaskNode.data.kind === 'task' ? linkedTaskNode.data.title : null
-}
-
 function WorkspaceItemContent({
   workspace,
   subtitle,
   metaText,
+  hasAgents,
+  isExpanded,
 }: {
   workspace: WorkspaceState
   subtitle: string
   metaText: string
+  hasAgents: boolean
+  isExpanded: boolean
 }): React.JSX.Element {
+  const FolderIcon = hasAgents && isExpanded ? FolderOpen : Folder
+
   return (
     <>
-      <span className="workspace-item__name">{workspace.name}</span>
+      <span className="workspace-item__headline">
+        <FolderIcon className="workspace-item__folder-icon" aria-hidden="true" />
+        <span className="workspace-item__name">{workspace.name}</span>
+      </span>
       <span className="workspace-item__subtitle">{subtitle}</span>
       <span className="workspace-item__meta">{metaText}</span>
     </>
   )
 }
 
-function WorkspaceAgentItems({
-  workspace,
-  onSelectAgentNode,
-}: {
-  workspace: WorkspaceState
-  onSelectAgentNode: (workspaceId: string, nodeId: string) => void
-}): React.JSX.Element | null {
-  const { t } = useTranslation()
-  const workspaceAgents = getWorkspaceAgents(workspace)
-
-  if (workspaceAgents.length === 0) {
-    return null
-  }
-
-  return (
-    <div className="workspace-item__agents">
-      {workspaceAgents.map(node => {
-        const provider = node.data.agent?.provider
-        const providerText = provider
-          ? AGENT_PROVIDER_LABEL[provider]
-          : t('sidebar.fallbackAgentLabel')
-        const sidebarAgentStatus = resolveSidebarAgentStatus(node.data.status)
-        const sidebarAgentStatusTone = sidebarAgentStatus
-        const startedText = toRelativeTime(node.data.startedAt)
-        const sidebarAgentStatusText =
-          sidebarAgentStatus === 'working'
-            ? t('sidebar.status.working')
-            : t('sidebar.status.standby')
-        const taskTitle = resolveLinkedTaskTitle(
-          workspace,
-          node.id,
-          node.data.agent?.taskId ?? null,
-        )
-
-        return (
-          <button
-            type="button"
-            key={`${workspace.id}:${node.id}`}
-            className="workspace-agent-item workspace-agent-item--nested"
-            data-testid={`workspace-agent-item-${workspace.id}-${node.id}`}
-            onClick={() => {
-              onSelectAgentNode(workspace.id, node.id)
-            }}
-          >
-            <span className="workspace-agent-item__headline">
-              <span className="workspace-agent-item__title">{node.data.title}</span>
-            </span>
-            <span className="workspace-agent-item__meta">
-              <span className="workspace-agent-item__meta-text">
-                {providerText} · {startedText}
-              </span>
-              <span
-                className={`workspace-agent-item__status workspace-agent-item__status--agent workspace-agent-item__status--${sidebarAgentStatusTone}`}
-              >
-                {sidebarAgentStatusText}
-              </span>
-            </span>
-            {taskTitle ? (
-              <span className="workspace-agent-item__task" title={taskTitle}>
-                <span className="workspace-agent-item__task-text">{taskTitle}</span>
-              </span>
-            ) : null}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
 function SortableWorkspaceItem({
   workspace,
   isActive,
+  isExpanded,
   subtitle,
+  onToggleAgents,
   onSelectWorkspace,
   onOpenProjectContextMenu,
   onSelectAgentNode,
@@ -211,31 +112,67 @@ function SortableWorkspaceItem({
     opacity: isDragging ? 0.4 : 1,
   }
   const metaText = getWorkspaceMetaText(workspace, t)
+  const workspaceAgents = getWorkspaceAgents(workspace)
+  const hasAgents = workspaceAgents.length > 0
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} className="workspace-item-group">
-      <button
-        type="button"
-        className={`workspace-item ${isActive ? 'workspace-item--active' : ''}`}
-        data-testid={`workspace-item-${workspace.id}`}
-        onClick={() => {
-          onSelectWorkspace(workspace.id)
-        }}
-        onContextMenu={event => {
-          event.preventDefault()
-          onOpenProjectContextMenu({
-            workspaceId: workspace.id,
-            x: event.clientX,
-            y: event.clientY,
-          })
-        }}
-        title={workspace.name}
-        {...listeners}
-      >
-        <WorkspaceItemContent workspace={workspace} subtitle={subtitle} metaText={metaText} />
-      </button>
+      <div className="workspace-item-row">
+        {hasAgents ? (
+          <button
+            type="button"
+            className="workspace-item__tree-toggle"
+            data-testid={`workspace-item-toggle-${workspace.id}`}
+            aria-expanded={isExpanded}
+            aria-label={
+              isExpanded ? t('sidebar.collapseProjectAgents') : t('sidebar.expandProjectAgents')
+            }
+            onClick={event => {
+              event.stopPropagation()
+              onToggleAgents(workspace.id)
+            }}
+          >
+            {isExpanded ? (
+              <ChevronDown className="workspace-item__tree-icon" aria-hidden="true" />
+            ) : (
+              <ChevronRight className="workspace-item__tree-icon" aria-hidden="true" />
+            )}
+          </button>
+        ) : (
+          <span className="workspace-item__tree-spacer" aria-hidden="true" />
+        )}
 
-      <WorkspaceAgentItems workspace={workspace} onSelectAgentNode={onSelectAgentNode} />
+        <button
+          type="button"
+          className={`workspace-item ${isActive ? 'workspace-item--active' : ''}`}
+          data-testid={`workspace-item-${workspace.id}`}
+          onClick={() => {
+            onSelectWorkspace(workspace.id)
+          }}
+          onContextMenu={event => {
+            event.preventDefault()
+            onOpenProjectContextMenu({
+              workspaceId: workspace.id,
+              x: event.clientX,
+              y: event.clientY,
+            })
+          }}
+          title={workspace.name}
+          {...listeners}
+        >
+          <WorkspaceItemContent
+            workspace={workspace}
+            subtitle={subtitle}
+            metaText={metaText}
+            hasAgents={hasAgents}
+            isExpanded={isExpanded}
+          />
+        </button>
+      </div>
+
+      {isExpanded ? (
+        <SidebarAgentItems workspace={workspace} onSelectAgentNode={onSelectAgentNode} />
+      ) : null}
     </div>
   )
 }
@@ -248,6 +185,7 @@ function WorkspaceItemOverlay({
   subtitle: string
 }): React.JSX.Element {
   const { t } = useTranslation()
+  const workspaceAgents = getWorkspaceAgents(workspace)
 
   return (
     <div
@@ -259,6 +197,8 @@ function WorkspaceItemOverlay({
           workspace={workspace}
           subtitle={subtitle}
           metaText={getWorkspaceMetaText(workspace, t)}
+          hasAgents={workspaceAgents.length > 0}
+          isExpanded={true}
         />
       </div>
     </div>
@@ -285,6 +225,7 @@ export function Sidebar({
     }),
   )
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [collapsedWorkspaceIds, setCollapsedWorkspaceIds] = useState<Record<string, boolean>>({})
 
   const handleDragStart = useCallback((event: DragStartEvent): void => {
     setActiveId(String(event.active.id))
@@ -314,6 +255,13 @@ export function Sidebar({
     },
     [onReorderWorkspaces],
   )
+
+  const handleToggleAgents = useCallback((workspaceId: string): void => {
+    setCollapsedWorkspaceIds(prev => ({
+      ...prev,
+      [workspaceId]: prev[workspaceId] !== true,
+    }))
+  }, [])
 
   const activeWorkspace =
     activeId === null ? null : (workspaces.find(workspace => workspace.id === activeId) ?? null)
@@ -370,7 +318,9 @@ export function Sidebar({
                   key={workspace.id}
                   workspace={workspace}
                   isActive={workspace.id === activeWorkspaceId}
+                  isExpanded={collapsedWorkspaceIds[workspace.id] !== true}
                   subtitle={mountSummaryByWorkspaceId[workspace.id] ?? '—'}
+                  onToggleAgents={handleToggleAgents}
                   onSelectWorkspace={onSelectWorkspace}
                   onOpenProjectContextMenu={onOpenProjectContextMenu}
                   onSelectAgentNode={onSelectAgentNode}

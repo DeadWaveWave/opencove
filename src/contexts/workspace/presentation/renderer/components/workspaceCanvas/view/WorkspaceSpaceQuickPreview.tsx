@@ -3,6 +3,7 @@ import { useStore } from '@xyflow/react'
 import { GripHorizontal } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import { loadDocumentNodeContent } from '../../DocumentNode.helpers'
+import { createMediaObjectUrl } from '../../DocumentNode.media'
 import type { WorkspaceCanvasQuickPreviewState } from '../types'
 import { resolveCanvasImageMimeType } from '../hooks/useSpaceExplorer.helpers'
 import { toErrorMessage } from '../helpers'
@@ -14,6 +15,8 @@ type QuickPreviewContentState =
   | { kind: 'error'; message: string }
   | { kind: 'text'; content: string }
   | { kind: 'image'; url: string }
+  | { kind: 'media'; mediaKind: 'audio' | 'video'; url: string }
+  | { kind: 'mediaUnsupported' }
   | { kind: 'unsupported'; unsupportedKind: 'binary' | 'tooLarge' }
 
 export function WorkspaceSpaceQuickPreview({
@@ -80,12 +83,21 @@ export function WorkspaceSpaceQuickPreview({
           return
         }
 
-        const result = await loadDocumentNodeContent(
-          filesystemApi,
-          preview.uri,
-          t('documentNode.notAFile'),
-        )
+        const result = await loadDocumentNodeContent(filesystemApi, preview.uri, {
+          notAFile: t('documentNode.notAFile'),
+          binaryReadUnavailable: t('documentNode.binaryReadUnavailable'),
+        })
         if (cancelled) {
+          return
+        }
+
+        if (result.kind === 'media') {
+          objectUrl = createMediaObjectUrl(result.bytes, result.mimeType)
+          setContentState({
+            kind: 'media',
+            mediaKind: result.mediaKind,
+            url: objectUrl,
+          })
           return
         }
 
@@ -134,6 +146,15 @@ export function WorkspaceSpaceQuickPreview({
         <div className="workspace-space-quick-preview__state-title">{t('common.error')}</div>
         <div className="workspace-space-quick-preview__state-message">{contentState.message}</div>
       </div>
+    ) : contentState.kind === 'mediaUnsupported' ? (
+      <div className="workspace-space-quick-preview__state workspace-space-quick-preview__state--warning">
+        <div className="workspace-space-quick-preview__state-title">
+          {t('documentNode.mediaUnsupportedTitle')}
+        </div>
+        <div className="workspace-space-quick-preview__state-message">
+          {t('documentNode.mediaUnsupportedMessage')}
+        </div>
+      </div>
     ) : contentState.kind === 'unsupported' ? (
       <div className="workspace-space-quick-preview__state workspace-space-quick-preview__state--warning">
         <div className="workspace-space-quick-preview__state-title">
@@ -155,6 +176,35 @@ export function WorkspaceSpaceQuickPreview({
           alt={preview.title}
           draggable={false}
         />
+      </div>
+    ) : contentState.kind === 'media' ? (
+      <div
+        className={`workspace-space-quick-preview__media-shell workspace-space-quick-preview__media-shell--${contentState.mediaKind}`}
+      >
+        {contentState.mediaKind === 'audio' ? (
+          <audio
+            className="workspace-space-quick-preview__media workspace-space-quick-preview__media--audio"
+            data-testid="workspace-space-quick-preview-audio"
+            controls
+            preload="metadata"
+            src={contentState.url}
+            onError={() => {
+              setContentState({ kind: 'mediaUnsupported' })
+            }}
+          />
+        ) : (
+          <video
+            className="workspace-space-quick-preview__media workspace-space-quick-preview__media--video"
+            data-testid="workspace-space-quick-preview-video"
+            controls
+            preload="metadata"
+            playsInline
+            src={contentState.url}
+            onError={() => {
+              setContentState({ kind: 'mediaUnsupported' })
+            }}
+          />
+        )}
       </div>
     ) : (
       <div className="workspace-space-quick-preview__text-shell">

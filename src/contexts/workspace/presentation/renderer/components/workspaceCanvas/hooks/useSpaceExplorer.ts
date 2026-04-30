@@ -2,8 +2,6 @@ import React from 'react'
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../../types'
 import { findNearestFreePositionOnRight, type Rect } from '../../../utils/collision'
-import { resolveImageNodeSizeFromNaturalDimensions } from '../../../utils/workspaceNodeSizing'
-import { resolveDefaultDocumentWindowSize, resolveDefaultImageWindowSize } from '../constants'
 import type { WorkspaceCanvasQuickPreviewState } from '../types'
 import { focusNodeInViewport } from '../helpers'
 import { assignNodeToSpaceAndExpand } from './useInteractions.spaceAssignment'
@@ -12,7 +10,7 @@ import {
   type SpaceExplorerOpenDocumentBlock,
 } from './useSpaceExplorer.guards'
 // prettier-ignore
-import { readImageNaturalDimensions, resolveCanvasImageMimeType, resolveFileNameFromFileUri } from './useSpaceExplorer.helpers'
+import { readImageNaturalDimensions, resolveCanvasImageMimeType, resolveFileNameFromFileUri, resolveSpaceExplorerPreviewDisplay } from './useSpaceExplorer.helpers'
 import type { SpaceExplorerClipboardItem } from '../view/WorkspaceSpaceExplorerOverlay.operations'
 import { resolveFlowRectPlacement, type ExplorerPlacementPx } from './useSpaceExplorer.placement'
 import type {
@@ -21,6 +19,7 @@ import type {
 } from './useSpaceExplorer.types'
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewActions } from './useSpaceExplorer.quickPreviewActions'
 import { useWorkspaceCanvasSpaceExplorerQuickPreviewDismiss } from './useSpaceExplorer.quickPreviewDismiss'
+import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 export function useWorkspaceCanvasSpaceExplorer({
   canvasRef,
@@ -154,33 +153,11 @@ export function useWorkspaceCanvasSpaceExplorer({
         return null
       }
 
-      const mimeType = resolveCanvasImageMimeType(normalizedUri)
-      let kind: WorkspaceCanvasQuickPreviewState['kind'] = 'document'
-      let naturalWidth: number | null | undefined
-      let naturalHeight: number | null | undefined
-      let size = resolveDefaultDocumentWindowSize(standardWindowSizeBucket)
-
-      if (mimeType) {
-        kind = 'image'
-        const filesystem = window.opencoveApi?.filesystem
-        if (filesystem?.readFileBytes) {
-          try {
-            const { bytes } = await filesystem.readFileBytes({ uri: normalizedUri })
-            const dimensions = await readImageNaturalDimensions(bytes, mimeType)
-            naturalWidth = dimensions.naturalWidth
-            naturalHeight = dimensions.naturalHeight
-            size = resolveImageNodeSizeFromNaturalDimensions({
-              naturalWidth,
-              naturalHeight,
-              preferred: resolveDefaultImageWindowSize(),
-            })
-          } catch {
-            size = resolveDefaultImageWindowSize()
-          }
-        } else {
-          size = resolveDefaultImageWindowSize()
-        }
-      }
+      const { kind, naturalWidth, naturalHeight, size } = await resolveSpaceExplorerPreviewDisplay({
+        uri: normalizedUri,
+        mountId: space.targetMountId ?? null,
+        standardWindowSizeBucket,
+      })
 
       const placement = resolveFlowRectPlacement({
         canvasRef,
@@ -231,7 +208,7 @@ export function useWorkspaceCanvasSpaceExplorer({
         return null
       }
 
-      if (preview.kind === 'document') {
+      if (preview.kind !== 'image') {
         const existingNode =
           nodesRef.current.find(node => {
             if (node.data.kind !== 'document' || !node.data.document) {
@@ -265,6 +242,10 @@ export function useWorkspaceCanvasSpaceExplorer({
           ...(preview.createPlacement ?? {}),
           targetSpaceRect: rect,
           focusViewportOnCreate: options?.focusViewportOnCreate,
+          sizeOverride: {
+            width: preview.rect.width,
+            height: preview.rect.height,
+          },
         }
 
         const created = createDocumentNode(creationAnchor, { uri: preview.uri }, creationPlacement)
@@ -318,7 +299,9 @@ export function useWorkspaceCanvasSpaceExplorer({
         return created
       }
 
-      const filesystem = window.opencoveApi?.filesystem
+      const filesystem = resolveFilesystemApiForMount(
+        preview.mountId ?? space.targetMountId ?? null,
+      )
       const workspace = window.opencoveApi?.workspace
       const mimeType = resolveCanvasImageMimeType(preview.uri)
       if (!filesystem?.readFileBytes || !workspace?.writeCanvasImage || !mimeType) {

@@ -70,7 +70,7 @@ describe('main process Wayland IME flags', () => {
         },
         BrowserWindow,
         nativeImage: {
-          createFromPath: vi.fn(),
+          createFromPath: vi.fn(() => ({})),
         },
         Menu: {
           setApplicationMenu: vi.fn(),

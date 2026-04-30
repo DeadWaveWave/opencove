@@ -1,47 +1,6 @@
 import type { Node } from '@xyflow/react'
-import type { TaskAgentSessionRecord, TerminalNodeData } from '../../../types'
-import {
-  clearResumeSessionBinding,
-  isResumeSessionBindingVerified,
-} from '../../../utils/agentResumeBinding'
-
-function createAgentSessionRecord(
-  target: Node<TerminalNodeData> | undefined,
-  now: string,
-): TaskAgentSessionRecord | null {
-  if (target?.data.kind !== 'agent' || !target.data.agent?.taskId) {
-    return null
-  }
-
-  const boundDirectory = target.data.agent.executionDirectory
-  const startedAt = target.data.startedAt ?? now
-  const shouldMarkStopped =
-    target.data.status === 'running' ||
-    target.data.status === 'standby' ||
-    target.data.status === 'restoring'
-  const resumeBinding = isResumeSessionBindingVerified(target.data.agent)
-    ? {
-        resumeSessionId: target.data.agent.resumeSessionId,
-        resumeSessionIdVerified: true,
-      }
-    : clearResumeSessionBinding()
-
-  return {
-    id: crypto.randomUUID(),
-    provider: target.data.agent.provider,
-    ...resumeBinding,
-    prompt: target.data.agent.prompt,
-    model: target.data.agent.model,
-    effectiveModel: target.data.agent.effectiveModel,
-    boundDirectory,
-    lastDirectory: boundDirectory,
-    createdAt: startedAt,
-    lastRunAt: startedAt,
-    endedAt: target.data.endedAt ?? now,
-    exitCode: shouldMarkStopped ? null : target.data.exitCode,
-    status: shouldMarkStopped ? 'stopped' : (target.data.status ?? 'exited'),
-  }
-}
+import type { TerminalNodeData } from '../../../types'
+import { createTaskAgentSessionRecord } from '../../../utils/agentSessionHistory'
 
 export function removeNodeWithRelations({
   prevNodes,
@@ -54,7 +13,7 @@ export function removeNodeWithRelations({
   target: Node<TerminalNodeData> | undefined
   now: string
 }): Node<TerminalNodeData>[] {
-  const agentSessionRecord = createAgentSessionRecord(target, now)
+  const agentSessionRecord = createTaskAgentSessionRecord(target, now)
 
   return prevNodes
     .filter(node => node.id !== nodeId)

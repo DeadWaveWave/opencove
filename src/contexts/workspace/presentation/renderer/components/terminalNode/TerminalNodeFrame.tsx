@@ -1,6 +1,7 @@
 import React, { type JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Handle, Position } from '@xyflow/react'
+import type { AgentSessionSummary } from '@shared/contracts/dto'
 import { TerminalNodeHeader } from './TerminalNodeHeader'
 import { TerminalNodeFindBar } from './TerminalNodeFindBar'
 import { NodeResizeHandles } from '../shared/NodeResizeHandles'
@@ -15,8 +16,12 @@ import type { ResizeEdges } from '../../utils/nodeFrameResize'
 
 interface TerminalNodeFrameProps {
   title: string
+  fixedTitlePrefix?: string | null
   kind: WorkspaceNodeKind
   labelColor?: LabelColor | null
+  agentExecutionDirectory?: string | null
+  agentResumeSessionId?: string | null
+  agentResumeSessionIdVerified?: boolean
   terminalThemeMode: TerminalThemeMode
   isSelected: boolean
   isDragging: boolean
@@ -37,6 +42,9 @@ interface TerminalNodeFrameProps {
   onTitleCommit?: (title: string) => void
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
+  onReloadSession?: () => Promise<void>
+  onListSessions?: (limit?: number) => Promise<AgentSessionSummary[]>
+  onSwitchSession?: (summary: AgentSessionSummary) => Promise<void>
   find: {
     isOpen: boolean
     query: string
@@ -56,8 +64,12 @@ interface TerminalNodeFrameProps {
 
 export function TerminalNodeFrame({
   title,
+  fixedTitlePrefix,
   kind,
   labelColor,
+  agentExecutionDirectory,
+  agentResumeSessionId,
+  agentResumeSessionIdVerified = false,
   terminalThemeMode,
   isSelected,
   isDragging,
@@ -78,6 +90,9 @@ export function TerminalNodeFrame({
   onTitleCommit,
   onClose,
   onCopyLastMessage,
+  onReloadSession,
+  onListSessions,
+  onSwitchSession,
   find,
   onFindQueryChange,
   onFindNext,
@@ -154,13 +169,20 @@ export function TerminalNodeFrame({
 
       <TerminalNodeHeader
         title={title}
+        fixedTitlePrefix={fixedTitlePrefix}
         kind={kind}
         status={status}
         labelColor={labelColor ?? null}
+        agentExecutionDirectory={agentExecutionDirectory}
+        agentResumeSessionId={agentResumeSessionId}
+        agentResumeSessionIdVerified={agentResumeSessionIdVerified}
         directoryMismatch={directoryMismatch}
         onTitleCommit={onTitleCommit}
         onClose={onClose}
         onCopyLastMessage={onCopyLastMessage}
+        onReloadSession={onReloadSession}
+        onListSessions={onListSessions}
+        onSwitchSession={onSwitchSession}
       />
 
       {isAgentNode && lastError ? <div className="terminal-node__error">{lastError}</div> : null}

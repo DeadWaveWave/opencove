@@ -1,6 +1,7 @@
 import type { FileSystemPort } from '../../../../contexts/filesystem/application/ports'
 import {
   readDirectoryUseCase,
+  readFileBytesUseCase,
   readFileTextUseCase,
   statUseCase,
 } from '../../../../contexts/filesystem/application/usecases'
@@ -9,12 +10,16 @@ import type {
   ReadDirectoryInMountInput,
   ReadDirectoryInput,
   ReadDirectoryResult,
+  ReadFileBytesInMountInput,
+  ReadFileBytesInput,
+  ReadFileBytesResult,
   ReadFileTextInMountInput,
   ReadFileTextInput,
   ReadFileTextResult,
   StatInMountInput,
   StatInput,
 } from '../../../../shared/contracts/dto'
+import { normalizeReadFileBytesResult } from '../../../../shared/contracts/dto/filesystemBytes'
 import type { ControlSurface } from '../controlSurface'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import {
@@ -34,6 +39,56 @@ export function registerFilesystemMountReadHandlers(
     assertApprovedUri: (uri: string, debugMessage: string) => Promise<void>
   },
 ): void {
+  controlSurface.register('filesystem.readFileBytesInMount', {
+    kind: 'query',
+    validate: (payload: unknown): ReadFileBytesInMountInput => {
+      if (!isRecord(payload)) {
+        throw createAppError('common.invalid_input', {
+          debugMessage: 'Invalid payload for filesystem.readFileBytesInMount.',
+        })
+      }
+
+      return {
+        mountId: normalizeMountId(payload.mountId, 'filesystem.readFileBytesInMount'),
+        uri: normalizeFileSystemUri(payload.uri, 'filesystem.readFileBytesInMount'),
+      }
+    },
+    handle: async (_ctx, payload): Promise<ReadFileBytesResult> => {
+      const target = await resolveMountTargetOrThrow({
+        topology: deps.topology,
+        mountId: payload.mountId,
+      })
+
+      if (target.endpointId === 'local') {
+        await deps.assertApprovedUri(
+          payload.uri,
+          'filesystem.readFileBytesInMount uri is outside approved roots',
+        )
+      }
+
+      assertFileUriWithinMountRoot({
+        target,
+        uri: payload.uri,
+        debugMessage: 'filesystem.readFileBytesInMount uri is outside mount root',
+      })
+
+      if (target.endpointId === 'local') {
+        return await readFileBytesUseCase(deps.port, payload satisfies ReadFileBytesInput)
+      }
+
+      const result = await invokeRemoteValue<unknown>({
+        topology: deps.topology,
+        endpointId: target.endpointId,
+        kind: 'query',
+        id: 'filesystem.readFileBytes',
+        payload: { uri: payload.uri } satisfies ReadFileBytesInput,
+      })
+
+      return normalizeReadFileBytesResult(result, 'filesystem.readFileBytes')
+    },
+    defaultErrorCode: 'filesystem.read_file_bytes_failed',
+  })
+
   controlSurface.register('filesystem.readFileTextInMount', {
     kind: 'query',
     validate: (payload: unknown): ReadFileTextInMountInput => {

@@ -46,4 +46,40 @@ describe('web UI assets', () => {
     expect(bodyText).not.toContain('http://127.0.0.1:5173/@vite/client')
     expect(bodyText).not.toContain('http://127.0.0.1:5173/@react-refresh')
   })
+
+  it('falls back to the web UI entrypoint for browser navigation paths', () => {
+    delete process.env['ELECTRON_RENDERER_URL']
+
+    const response = tryResolveWebUiResponse('/canvas')
+    expect(response).not.toBeNull()
+    if (!response) {
+      return
+    }
+
+    expect(response.statusCode).toBe(200)
+    expect(response.contentType).toContain('text/html')
+  })
+
+  it('does not fall back to the web UI entrypoint for API paths or missing assets', () => {
+    delete process.env['ELECTRON_RENDERER_URL']
+
+    expect(tryResolveWebUiResponse('/invoke')).toBeNull()
+    expect(tryResolveWebUiResponse('/events')).toBeNull()
+    expect(tryResolveWebUiResponse('/auth/claim')).toBeNull()
+    expect(tryResolveWebUiResponse('/missing.js')).toBeNull()
+  })
+
+  it('falls back to the dev web UI entrypoint for browser navigation paths', () => {
+    process.env['ELECTRON_RENDERER_URL'] = 'http://127.0.0.1:5173/'
+
+    const response = tryResolveWebUiResponse('/canvas')
+    expect(response).not.toBeNull()
+    if (!response) {
+      return
+    }
+
+    expect(response.statusCode).toBe(200)
+    expect(response.contentType).toContain('text/html')
+    expect(String(response.body)).toContain('http://127.0.0.1:5173/web-main.tsx')
+  })
 })
