@@ -68,6 +68,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Agent: centralize local executable resolution with per-provider overrides so provider availability, model listing, hydrate/resume, and launch stay consistent across GUI-launched shell environments. (#210)
+- Workspace approval: auto-register persisted workspace roots during startup so restored workspaces keep terminal, agent, and guarded file operations working even if `approved-workspaces.json` is missing or stale. (#210)
 - Space Explorer: image files now support quick preview and image-node opening in mount-targeted Spaces and browser control-surface paths. (#203)
 - Terminal: preserve magnifier-like zoom geometry while restoring settled post-zoom clarity, so DPR refresh no longer doubles the visible terminal scale or clips content. (#187)
 - Terminal: restore post-zoom clarity after viewport settle without requiring a return to bottom, while preserving live scroll/focus semantics. (#186)
