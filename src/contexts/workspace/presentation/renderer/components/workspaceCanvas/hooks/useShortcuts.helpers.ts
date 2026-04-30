@@ -178,7 +178,31 @@ export function resolveSpaceNavigationTargetId({
     }
 
     const anchorSpace = spaces.find(space => space.id === spaceNavigationAnchorId) ?? null
-    return anchorSpace?.rect ? anchorSpace.id : null
+    if (!anchorSpace?.rect) {
+      return null
+    }
+
+    const viewportWidth = viewportRect.right - viewportRect.left
+    const viewportHeight = viewportRect.bottom - viewportRect.top
+    const centerRatio = 0.4
+    const insetX = (viewportWidth * (1 - centerRatio)) / 2
+    const insetY = (viewportHeight * (1 - centerRatio)) / 2
+
+    const centerViewportRect = {
+      left: viewportRect.left + insetX,
+      top: viewportRect.top + insetY,
+      right: viewportRect.right - insetX,
+      bottom: viewportRect.bottom - insetY,
+    }
+
+    const anchorRect = toSpatialRectFromSpaceRect(anchorSpace.rect)
+    const overlaps =
+      anchorRect.right > centerViewportRect.left &&
+      anchorRect.left < centerViewportRect.right &&
+      anchorRect.bottom > centerViewportRect.top &&
+      anchorRect.top < centerViewportRect.bottom
+
+    return overlaps ? anchorSpace.id : null
   })()
   const viewportAnchorSpaceId = (() => {
     const centerX = viewportRect.left + (viewportRect.right - viewportRect.left) / 2

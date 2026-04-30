@@ -117,7 +117,7 @@ describe('workspace canvas spatial navigation', () => {
     expect(result?.targetSpaceId).toBe('space-b')
   })
 
-  it('resolves space navigation targets relative to the active space', () => {
+  it('resolves space navigation targets relative to the anchored space', () => {
     const spaces: WorkspaceSpaceState[] = [
       {
         id: 'space-left',
@@ -148,5 +148,38 @@ describe('workspace canvas spatial navigation', () => {
     })
 
     expect(target).toBe('space-right')
+  })
+
+  it('ignores the anchor when the anchored space is outside the viewport center band', () => {
+    const spaces: WorkspaceSpaceState[] = [
+      {
+        id: 'space-left',
+        name: 'Left',
+        directoryPath: '/tmp/left',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: 0, y: 0, width: 200, height: 200 },
+      },
+      {
+        id: 'space-right',
+        name: 'Right',
+        directoryPath: '/tmp/right',
+        targetMountId: null,
+        labelColor: null,
+        nodeIds: [],
+        rect: { x: 2000, y: 0, width: 200, height: 200 },
+      },
+    ]
+
+    const target = resolveSpaceNavigationTargetId({
+      direction: 'left',
+      sourceNodeId: null,
+      spaceNavigationAnchorId: 'space-left',
+      spaces,
+      viewportRect: { left: 1200, top: 0, right: 1800, bottom: 300 },
+    })
+
+    expect(target).toBe('space-left')
   })
 })

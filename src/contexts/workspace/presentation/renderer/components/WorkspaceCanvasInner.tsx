@@ -362,9 +362,6 @@ export function WorkspaceCanvasInner({
     agentSettings,
     viewportRef: canvasState.viewportRef,
     onViewportChange,
-    onUserViewportMoveEnd: () => {
-      canvasState.spaceNavigationAnchorIdRef.current = null
-    },
     flowNodes: canvasState.flowNodes,
     contextMenu: canvasState.contextMenu,
     setContextMenu: canvasState.setContextMenu,

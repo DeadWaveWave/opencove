@@ -18,7 +18,6 @@ export function useWorkspaceCanvasViewModel({
   agentSettings,
   viewportRef,
   onViewportChange,
-  onUserViewportMoveEnd,
   flowNodes,
   contextMenu,
   setContextMenu,
@@ -34,7 +33,6 @@ export function useWorkspaceCanvasViewModel({
   agentSettings: AgentSettings
   viewportRef: MutableRefObject<Viewport>
   onViewportChange: (viewport: Viewport) => void
-  onUserViewportMoveEnd?: () => void
   flowNodes: Node<TerminalNodeData>[]
   contextMenu: ContextMenuState | null
   setContextMenu: React.Dispatch<React.SetStateAction<ContextMenuState | null>>
@@ -63,7 +61,6 @@ export function useWorkspaceCanvasViewModel({
   const handleViewportMoveEnd = useWorkspaceCanvasViewportMoveEnd({
     viewportRef,
     onViewportChange,
-    onUserViewportMoveEnd,
   })
   const minimapNodeColor = resolveWorkspaceMinimapNodeColor
 
