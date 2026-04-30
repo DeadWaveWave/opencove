@@ -291,6 +291,18 @@ export const zhCNSettingsPanel = {
     record: '录制',
     recording: '请按键…',
     clear: '清除',
+    spatialNavigation: {
+      title: '空间方位导航',
+      help: 'beam-first 规则，在节点与 Space 间进行方位导航。',
+      customize: '自定义…',
+      hide: '收起',
+      node: {
+        title: '节点',
+      },
+      space: {
+        title: 'Space',
+      },
+    },
     groups: {
       app: {
         title: '应用',

@@ -289,6 +289,18 @@ export const enSettingsPanel = {
     record: 'Record',
     recording: 'Press keys…',
     clear: 'Clear',
+    spatialNavigation: {
+      title: 'Spatial Navigation',
+      help: 'Beam-first navigation across nodes and spaces.',
+      customize: 'Customize…',
+      hide: 'Hide',
+      node: {
+        title: 'Nodes',
+      },
+      space: {
+        title: 'Spaces',
+      },
+    },
     groups: {
       app: {
         title: 'App',

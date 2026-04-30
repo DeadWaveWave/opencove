@@ -299,32 +299,57 @@ function formatCodeLabel(code: string): string {
   }
 }
 
-export function formatKeyChord(platform: string | undefined, chord: KeyChord | null): string {
+export type FormattedKeyChordParts = {
+  modifiers: string[]
+  key: string
+}
+
+export function formatKeyChordParts(
+  platform: string | undefined,
+  chord: KeyChord | null,
+): FormattedKeyChordParts | null {
   if (!chord) {
-    return ''
+    return null
   }
 
   const isMac = platform === 'darwin'
   const key = formatCodeLabel(chord.code)
-  if (isMac) {
-    const parts = [
-      chord.ctrlKey ? '⌃' : '',
-      chord.altKey ? '⌥' : '',
-      chord.shiftKey ? '⇧' : '',
-      chord.metaKey ? '⌘' : '',
-    ].filter(Boolean)
 
-    return `${parts.join('')}${key}`
+  if (isMac) {
+    return {
+      modifiers: [
+        chord.ctrlKey ? '⌃' : '',
+        chord.altKey ? '⌥' : '',
+        chord.shiftKey ? '⇧' : '',
+        chord.metaKey ? '⌘' : '',
+      ].filter(Boolean),
+      key,
+    }
   }
 
-  const parts = [
-    chord.ctrlKey ? 'Ctrl' : '',
-    chord.altKey ? 'Alt' : '',
-    chord.shiftKey ? 'Shift' : '',
-    chord.metaKey ? 'Meta' : '',
-  ].filter(Boolean)
+  return {
+    modifiers: [
+      chord.ctrlKey ? 'Ctrl' : '',
+      chord.altKey ? 'Alt' : '',
+      chord.shiftKey ? 'Shift' : '',
+      chord.metaKey ? 'Meta' : '',
+    ].filter(Boolean),
+    key,
+  }
+}
 
-  return `${[...parts, key].join(' ')}`
+export function formatKeyChord(platform: string | undefined, chord: KeyChord | null): string {
+  const parts = formatKeyChordParts(platform, chord)
+  if (!parts) {
+    return ''
+  }
+
+  const isMac = platform === 'darwin'
+  if (isMac) {
+    return `${parts.modifiers.join('')}${parts.key}`
+  }
+
+  return `${[...parts.modifiers, parts.key].join(' ')}`
 }
 
 function normalizeKeyChord(value: unknown): KeyChord | null {

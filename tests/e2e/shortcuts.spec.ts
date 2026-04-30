@@ -84,7 +84,7 @@ test.describe('Shortcuts', () => {
       const expectedKeycap = process.platform === 'darwin' ? '⌘J' : 'Ctrl J'
       await expect(
         window.locator('[data-testid="settings-shortcut-value-commandCenter.toggle"]'),
-      ).toHaveText(expectedKeycap)
+      ).toHaveAttribute('data-keybinding', expectedKeycap)
 
       await closeSettings(window)
 
@@ -135,33 +135,33 @@ test.describe('Shortcuts', () => {
 
       await expect(
         window.locator('[data-testid="settings-shortcut-value-workspaceCanvas.createSpace"]'),
-      ).toHaveText(process.platform === 'darwin' ? '⌘G' : 'Ctrl G')
+      ).toHaveAttribute('data-keybinding', process.platform === 'darwin' ? '⌘G' : 'Ctrl G')
       await expect(
         window.locator('[data-testid="settings-shortcut-value-workspaceCanvas.createNote"]'),
-      ).toHaveText(process.platform === 'darwin' ? '⌘N' : 'Ctrl N')
+      ).toHaveAttribute('data-keybinding', process.platform === 'darwin' ? '⌘N' : 'Ctrl N')
       await expect(
         window.locator('[data-testid="settings-shortcut-value-workspaceCanvas.createTerminal"]'),
-      ).toHaveText(process.platform === 'darwin' ? '⌘T' : 'Ctrl T')
+      ).toHaveAttribute('data-keybinding', process.platform === 'darwin' ? '⌘T' : 'Ctrl T')
       await expect(
         window.locator(
           '[data-testid="settings-shortcut-value-workspaceCanvas.cycleSpacesForward"]',
         ),
-      ).toHaveText(process.platform === 'darwin' ? '⌘]' : 'Ctrl ]')
+      ).toHaveAttribute('data-keybinding', process.platform === 'darwin' ? '⌘]' : 'Ctrl ]')
       await expect(
         window.locator(
           '[data-testid="settings-shortcut-value-workspaceCanvas.cycleSpacesBackward"]',
         ),
-      ).toHaveText(process.platform === 'darwin' ? '⌘[' : 'Ctrl [')
+      ).toHaveAttribute('data-keybinding', process.platform === 'darwin' ? '⌘[' : 'Ctrl [')
       await expect(
         window.locator(
           '[data-testid="settings-shortcut-value-workspaceCanvas.cycleIdleSpacesForward"]',
         ),
-      ).toHaveText(process.platform === 'darwin' ? '⇧⌘]' : 'Ctrl Shift ]')
+      ).toHaveAttribute('data-keybinding', process.platform === 'darwin' ? '⇧⌘]' : 'Ctrl Shift ]')
       await expect(
         window.locator(
           '[data-testid="settings-shortcut-value-workspaceCanvas.cycleIdleSpacesBackward"]',
         ),
-      ).toHaveText(process.platform === 'darwin' ? '⇧⌘[' : 'Ctrl Shift [')
+      ).toHaveAttribute('data-keybinding', process.platform === 'darwin' ? '⇧⌘[' : 'Ctrl Shift [')
     } finally {
       await electronApp.close()
     }
@@ -186,7 +186,7 @@ test.describe('Shortcuts', () => {
       const expectedKeycap = process.platform === 'darwin' ? '⌘J' : 'Ctrl J'
       await expect(
         window.locator('[data-testid="settings-shortcut-value-workspaceCanvas.createNote"]'),
-      ).toHaveText(expectedKeycap)
+      ).toHaveAttribute('data-keybinding', expectedKeycap)
 
       await closeSettings(window)
 
