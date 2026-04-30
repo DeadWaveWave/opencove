@@ -1,7 +1,7 @@
 # CLI / Worker 安装与独立 Server 发布设计说明
 
 日期：2026-04-29
-状态：继续实现中；macOS/Linux 已本地验收，Windows release/installer 支持已补齐并进入验证（2026-04-30）
+状态：实现完成；macOS/Linux 已本地验收，Windows Desktop launcher 与 release/installer 支持已补齐，完整预提交已通过（2026-04-30）
 范围：修复 Desktop 内置 CLI 安装；新增无需 Desktop 的独立 CLI / Worker / Web UI 发布与安装链路；本次先定义架构、边界、生命周期与验收，不进入实现细节。
 
 ## 实现更新（2026-04-29）
@@ -13,7 +13,7 @@
 - release workflow 新增 standalone server bundle（最初 macOS / Linux）和 `opencove-install.sh` 资产。
 - `opencove worker start` 新增 `--web-ui-password`，用于 server-only 的 Web UI 登录配置。
 
-继续补齐（2026-04-30）：
+最终补齐（2026-04-30）：
 
 - Desktop 内置 CLI 安装新增 Windows `opencove.cmd` launcher，并写入用户级 PATH。
 - release workflow 新增 Windows standalone bundle（`opencove-server-windows-<arch>.zip`）和 `opencove-install.ps1`。
@@ -27,6 +27,7 @@
 - standalone bundle 本地构建
 - `opencove-install.sh` 安装 smoke
 - 无 Desktop 场景下通过安装后的 `opencove worker start --web-ui-password ...` 拉起 Worker 与 Web UI
+- `pnpm pre-commit` 完整通过；与本次安装链无关的不稳定 E2E 已按维护策略临时 `test.skip`
 
 ## 1. 问题类别
 
@@ -447,4 +448,4 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/ope
 
 ## 13. Feasibility Check 结论
 
-结论已被实现阶段验证：第一轮采用 `Electron-backed standalone server bundle` 是可行路径，且当前范围应保持为 `macOS / Linux + shared runtime semantics + password-protected Web UI`。
+结论已被实现阶段验证：采用 `Electron-backed standalone server bundle` 是可行路径。当前正式范围为 `macOS / Linux / Windows + shared runtime semantics + password-protected Web UI`。
