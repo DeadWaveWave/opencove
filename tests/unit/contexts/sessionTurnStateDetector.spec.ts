@@ -36,6 +36,23 @@ describe('detectTurnStateFromSessionLine', () => {
     expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('standby')
   })
 
+  it('detects claude assistant output_text chunks as standby', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      message: {
+        stop_reason: null,
+        content: [
+          {
+            type: 'output_text',
+            text: 'Done',
+          },
+        ],
+      },
+    })
+
+    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('standby')
+  })
+
   it('detects claude assistant tool use chunks as working', () => {
     const line = JSON.stringify({
       type: 'assistant',
@@ -48,6 +65,30 @@ describe('detectTurnStateFromSessionLine', () => {
             name: 'Bash',
           },
         ],
+      },
+    })
+
+    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('working')
+  })
+
+  it('keeps claude assistant tool-use stop records working even with empty content', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      message: {
+        stop_reason: 'tool_use',
+        content: [],
+      },
+    })
+
+    expect(detectTurnStateFromSessionLine('claude-code', line)).toBe('working')
+  })
+
+  it('keeps claude assistant pause-turn records working until continuation completes', () => {
+    const line = JSON.stringify({
+      type: 'assistant',
+      message: {
+        stop_reason: 'pause_turn',
+        content: [],
       },
     })
 

@@ -13,6 +13,7 @@ export const MAX_CANVAS_ZOOM = 2
 export const TRACKPAD_PAN_SCROLL_SPEED = 0.5
 export const TRACKPAD_PINCH_SENSITIVITY = 0.01
 export const TRACKPAD_GESTURE_LOCK_GAP_MS = 220
+export const VIEWPORT_INTERACTION_SETTLE_MS = 220
 
 export function resolveDefaultTaskWindowSize(
   bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,

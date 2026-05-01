@@ -68,6 +68,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Terminal: make automatic display-consistency shared reference match manual capture under canvas zoom, and defer zoom-time DPR settle to reduce intermittent terminal content size twitching. (#218)
 - Workspace canvas: preserve trackpad canvas wheel ownership across idle hover gaps until explicit pointer retargeting, so terminals no longer steal the next two-finger canvas pan after a brief pause. (#219)
 - Agent: centralize local executable resolution with per-provider overrides so provider availability, model listing, hydrate/resume, and launch stay consistent across GUI-launched shell environments. (#210)
 - Workspace approval: auto-register persisted workspace roots during startup so restored workspaces keep terminal, agent, and guarded file operations working even if `approved-workspaces.json` is missing or stale. (#210)
@@ -82,6 +83,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Crash recovery: recover from renderer and child-process failures with a localized error boundary and lifecycle logging to prevent silent white screens. (#137)
 - Website window: keep embedded pages clipped inside canvas nodes during zoom/occlusion, preserve stable 100% page scale, and route in-page/new-window navigation back into OpenCove. (#141)
 - Startup + shortcuts: avoid non-packaged locale hydration stalls and stabilize `Cmd/Ctrl+G` space creation when selected terminal nodes are involved. (#141)
+- Startup: unblock project restore from terminal scrollback hydration, show a dedicated loading screen during workspace restore, and replace the blank startup flash with a polished loading transition. (#215)
 - Terminal: Added Linux terminal-node shortcuts for `Ctrl+Shift+C` copy and `Ctrl+Shift+V` paste while preserving plain `Ctrl+C` as `SIGINT`. (#142)
 - Agent windows now inherit terminal profile runtime/env semantics during launch, recovery, and fallback; Windows raw-TUI wheel handling is covered by regression tests. (#110)
 - UI: unified shared menu overlays to fix prompt template, task session, and related context-menu offset issues. (#121)
@@ -105,6 +107,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - OpenCode: Keep embedded agent terminals pinned to dark theme to avoid partial light/dark desynchronization. (#60)
 - Canvas: Stabilized auto input-mode detection to default to mouse semantics until high-confidence trackpad gestures are observed. (#47)
 - Worktree window: Fixed light theme text colors in the create/archive dialog. (#47)
+- Worktree archive: keep archiving the active Space from triggering an automatic global Fit View jump. (#217)
 - Worktree create: Detect repos without commits and show an actionable error instead of failing to create the worktree. (#120)
 - Worktree create: Branch dropdown no longer jumps to the top while scrolling. (#126)
 - Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)

@@ -441,12 +441,14 @@ export function useWorkspaceCanvasSpaces({
       lastAppliedActiveSpaceIdRef.current = undefined
     }
 
-    if (lastAppliedActiveSpaceIdRef.current === undefined) {
+    const previousActiveSpaceId = lastAppliedActiveSpaceIdRef.current
+
+    if (previousActiveSpaceId === undefined) {
       lastAppliedActiveSpaceIdRef.current = activeSpaceId
       return
     }
 
-    if (lastAppliedActiveSpaceIdRef.current === activeSpaceId) {
+    if (previousActiveSpaceId === activeSpaceId) {
       return
     }
 
@@ -462,8 +464,15 @@ export function useWorkspaceCanvasSpaces({
       return
     }
 
+    if (
+      previousActiveSpaceId &&
+      !spacesRef.current.some(space => space.id === previousActiveSpaceId)
+    ) {
+      return
+    }
+
     focusAllInViewport()
-  }, [activeSpaceId, focusAllInViewport, focusSpaceInViewport, workspaceId])
+  }, [activeSpaceId, focusAllInViewport, focusSpaceInViewport, spacesRef, workspaceId])
 
   return {
     editingSpaceId,

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import {
   DEFAULT_AGENT_SETTINGS,
   type AgentSettings,
@@ -59,6 +59,7 @@ export function useHydrateAppState({
   const hydratedWorkspaceIdsRef = useRef<Set<string>>(new Set())
   const hydratingWorkspacePromisesRef = useRef<Map<string, Promise<void>>>(new Map())
   const scrollbackLoadedWorkspaceIdsRef = useRef<Set<string>>(new Set())
+  const loadingWorkspaceScrollbackPromisesRef = useRef<Map<string, Promise<void>>>(new Map())
   const initialHydrationWorkspaceIdRef = useRef<string | null>(null)
   const initialHydrationCompletedRef = useRef(false)
 
@@ -79,14 +80,10 @@ export function useHydrateAppState({
     setIsHydrated(true)
   }, [])
 
-  const loadWorkspaceScrollbacks = useCallback(async (workspace: PersistedWorkspaceState) => {
-    if (scrollbackLoadedWorkspaceIdsRef.current.has(workspace.id)) {
-      return true
-    }
-
+  const readWorkspaceScrollbacks = useCallback(async (workspace: PersistedWorkspaceState) => {
     const port = getPersistencePort()
     if (!port) {
-      return false
+      return null
     }
 
     const terminalNodeIds = workspace.nodes
@@ -94,8 +91,7 @@ export function useHydrateAppState({
       .map(node => node.id)
 
     if (terminalNodeIds.length === 0) {
-      scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
-      return true
+      return {}
     }
 
     const terminalScrollbackResults = await Promise.allSettled(
@@ -103,11 +99,11 @@ export function useHydrateAppState({
     )
 
     if (isCancelledRef.current) {
-      return false
+      return null
     }
 
     if (terminalScrollbackResults.some(result => result.status === 'rejected')) {
-      return false
+      return null
     }
 
     const scrollbacks: Record<string, string> = {}
@@ -118,30 +114,122 @@ export function useHydrateAppState({
 
       scrollbacks[terminalNodeIds[index] as string] = result.value
     })
-    if (Object.keys(scrollbacks).length === 0) {
-      scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
-      return true
-    }
 
-    useScrollbackStore.setState(state => {
-      const record = state.scrollbackByNodeId
-      let didChange = false
+    return scrollbacks
+  }, [])
 
-      Object.entries(scrollbacks).forEach(([nodeId, scrollback]) => {
-        if (record[nodeId]) {
-          return
+  const mergeWorkspaceScrollbacks = useCallback(
+    (workspaceId: string, scrollbacks: Record<string, string>): void => {
+      if (Object.keys(scrollbacks).length === 0 || isCancelledRef.current) {
+        return
+      }
+
+      startTransition(() => {
+        setWorkspaces(previous => {
+          const scrollbackByNodeId = useScrollbackStore.getState().scrollbackByNodeId
+          let didChange = false
+
+          const nextWorkspaces = previous.map(workspace => {
+            if (workspace.id !== workspaceId) {
+              return workspace
+            }
+
+            let workspaceDidChange = false
+            const nextNodes = workspace.nodes.map(node => {
+              if (node.data.kind !== 'terminal') {
+                return node
+              }
+
+              const nextScrollback = scrollbacks[node.id]
+              if (!nextScrollback) {
+                return node
+              }
+
+              const sessionId =
+                typeof node.data.sessionId === 'string' ? node.data.sessionId.trim() : ''
+              if (sessionId.length > 0) {
+                return node
+              }
+
+              if (typeof scrollbackByNodeId[node.id] === 'string') {
+                return node
+              }
+
+              const existingScrollback =
+                typeof node.data.scrollback === 'string' ? node.data.scrollback : ''
+              if (existingScrollback.length > 0) {
+                return node
+              }
+
+              workspaceDidChange = true
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  scrollback: nextScrollback,
+                },
+              }
+            })
+
+            if (!workspaceDidChange) {
+              return workspace
+            }
+
+            didChange = true
+            return {
+              ...workspace,
+              nodes: nextNodes,
+            }
+          })
+
+          return didChange ? nextWorkspaces : previous
+        })
+      })
+    },
+    [setWorkspaces],
+  )
+
+  const ensureWorkspaceScrollbacksLoaded = useCallback(
+    async (
+      workspaceId: string,
+      persistedWorkspace: PersistedWorkspaceState,
+      options?: { maxAttempts?: number },
+    ): Promise<void> => {
+      if (scrollbackLoadedWorkspaceIdsRef.current.has(workspaceId)) {
+        return
+      }
+
+      const existingPromise = loadingWorkspaceScrollbackPromisesRef.current.get(workspaceId)
+      if (existingPromise) {
+        await existingPromise
+        return
+      }
+
+      const maxAttempts = Math.max(1, Math.floor(options?.maxAttempts ?? 1))
+      const loadPromise = (async (): Promise<void> => {
+        for (let attempt = 0; attempt < maxAttempts && !isCancelledRef.current; attempt += 1) {
+          // eslint-disable-next-line no-await-in-loop -- bounded retries keep startup fallback local
+          const scrollbacks = await readWorkspaceScrollbacks(persistedWorkspace)
+          if (scrollbacks !== null) {
+            mergeWorkspaceScrollbacks(workspaceId, scrollbacks)
+            scrollbackLoadedWorkspaceIdsRef.current.add(workspaceId)
+            return
+          }
+
+          if (attempt < maxAttempts - 1) {
+            // eslint-disable-next-line no-await-in-loop -- bounded retries keep startup fallback local
+            await delay(80)
+          }
         }
-
-        record[nodeId] = scrollback
-        didChange = true
+      })().finally(() => {
+        loadingWorkspaceScrollbackPromisesRef.current.delete(workspaceId)
       })
 
-      return didChange ? { scrollbackByNodeId: record } : state
-    })
-
-    scrollbackLoadedWorkspaceIdsRef.current.add(workspace.id)
-    return true
-  }, [])
+      loadingWorkspaceScrollbackPromisesRef.current.set(workspaceId, loadPromise)
+      await loadPromise
+    },
+    [mergeWorkspaceScrollbacks, readWorkspaceScrollbacks],
+  )
 
   const hydrateWorkspaceRuntimeNodes = useCallback(
     async (workspaceId: string, persistedWorkspace: PersistedWorkspaceState): Promise<void> => {
@@ -192,8 +280,9 @@ export function useHydrateAppState({
         return
       }
 
+      void ensureWorkspaceScrollbacksLoaded(workspaceId, persistedWorkspace)
+
       if (hydratedWorkspaceIdsRef.current.has(workspaceId)) {
-        void loadWorkspaceScrollbacks(persistedWorkspace)
         markInitialHydrationComplete(workspaceId)
         return
       }
@@ -204,9 +293,6 @@ export function useHydrateAppState({
         markInitialHydrationComplete(workspaceId)
         return
       }
-
-      void loadWorkspaceScrollbacks(persistedWorkspace)
-
       const runtimeNodeCount = persistedWorkspace.nodes.filter(
         node => node.kind === 'terminal' || node.kind === 'agent',
       ).length
@@ -228,7 +314,7 @@ export function useHydrateAppState({
       hydratingWorkspacePromisesRef.current.set(workspaceId, hydrationPromise)
       await hydrationPromise
     },
-    [hydrateWorkspaceRuntimeNodes, loadWorkspaceScrollbacks, markInitialHydrationComplete],
+    [ensureWorkspaceScrollbacksLoaded, hydrateWorkspaceRuntimeNodes, markInitialHydrationComplete],
   )
 
   useEffect(() => {
@@ -239,6 +325,7 @@ export function useHydrateAppState({
     hydratedWorkspaceIdsRef.current = new Set()
     hydratingWorkspacePromisesRef.current = new Map()
     scrollbackLoadedWorkspaceIdsRef.current = new Set()
+    loadingWorkspaceScrollbackPromisesRef.current = new Map()
     useScrollbackStore.getState().clearAllScrollbacks()
     setIsHydrated(false)
     setIsPersistReady(false)
@@ -306,38 +393,6 @@ export function useHydrateAppState({
       )
       initialHydrationWorkspaceIdRef.current = resolvedActiveWorkspaceId
 
-      if (resolvedActiveWorkspaceId) {
-        const activePersistedWorkspace =
-          persistedWorkspaceByIdRef.current.get(resolvedActiveWorkspaceId) ?? null
-
-        if (activePersistedWorkspace) {
-          // Cold-start terminal scrollback loads can race persistence IPC readiness. Retry briefly
-          // for the initial workspace; agent restore must come from the runtime presentation path.
-          const MAX_SCROLLBACK_LOAD_ATTEMPTS =
-            window.opencoveApi?.meta?.runtime === 'electron' ? 2 : 1
-          for (
-            let attempt = 0;
-            attempt < MAX_SCROLLBACK_LOAD_ATTEMPTS && !isCancelledRef.current;
-            attempt += 1
-          ) {
-            // eslint-disable-next-line no-await-in-loop -- bounded retries
-            const didLoad = await loadWorkspaceScrollbacks(activePersistedWorkspace)
-            if (didLoad) {
-              break
-            }
-
-            if (attempt < MAX_SCROLLBACK_LOAD_ATTEMPTS - 1) {
-              // eslint-disable-next-line no-await-in-loop -- bounded retries
-              await delay(80)
-            }
-          }
-
-          if (isCancelledRef.current) {
-            return
-          }
-        }
-      }
-
       const initialWorkspaces = persisted.workspaces.map(workspace =>
         toShellWorkspaceState(workspace, { dropRuntimeSessionIds: true }),
       )
@@ -345,6 +400,21 @@ export function useHydrateAppState({
       setWorkspaces(initialWorkspaces)
       setActiveWorkspaceId(resolvedActiveWorkspaceId)
       setIsPersistReady(true)
+
+      if (resolvedActiveWorkspaceId) {
+        const activePersistedWorkspace =
+          persistedWorkspaceByIdRef.current.get(resolvedActiveWorkspaceId) ?? null
+        if (activePersistedWorkspace) {
+          const maxScrollbackLoadAttempts = window.opencoveApi?.meta?.runtime === 'electron' ? 2 : 1
+          void ensureWorkspaceScrollbacksLoaded(
+            resolvedActiveWorkspaceId,
+            activePersistedWorkspace,
+            {
+              maxAttempts: maxScrollbackLoadAttempts,
+            },
+          )
+        }
+      }
 
       if (!resolvedActiveWorkspaceId) {
         setIsHydrated(true)
@@ -365,8 +435,8 @@ export function useHydrateAppState({
       isCancelledRef.current = true
     }
   }, [
+    ensureWorkspaceScrollbacksLoaded,
     ensureWorkspaceHydrated,
-    loadWorkspaceScrollbacks,
     markInitialHydrationComplete,
     setAgentSettings,
     setWorkspaces,

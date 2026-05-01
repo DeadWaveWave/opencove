@@ -5,7 +5,8 @@ import {
   isTerminalDisplayReferenceForProfile,
 } from '../../domain/terminalDisplayCalibration'
 import {
-  measureFirstMountedTerminalDisplay,
+  hasMountedTerminalDisplayMeasurementHandle,
+  measureTerminalDisplayReferenceBaseline,
   TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED,
 } from './terminalDisplayMeasurement'
 
@@ -20,7 +21,7 @@ export function useTerminalDisplayReferenceAutoCapture({
   agentSettings: AgentSettings
   setAgentSettings: (action: SetStateAction<AgentSettings>) => void
 }): void {
-  const pendingProfileKeyRef = useRef<string | null>(null)
+  const pendingProfileKeysRef = useRef<Set<string>>(new Set())
   const { terminalFontSize, terminalFontFamily, terminalDisplayReference } = agentSettings
   const profileKey = createTerminalDisplayProfileKey({ terminalFontSize, terminalFontFamily })
   const hasReferenceForProfile = isTerminalDisplayReferenceForProfile(terminalDisplayReference, {
@@ -29,52 +30,66 @@ export function useTerminalDisplayReferenceAutoCapture({
   })
 
   useEffect(() => {
-    if (!enabled || hasReferenceForProfile || pendingProfileKeyRef.current === profileKey) {
+    const pendingProfileKeys = pendingProfileKeysRef.current
+    if (!enabled || hasReferenceForProfile || pendingProfileKeys.has(profileKey)) {
       return undefined
     }
 
+    let disposed = false
+
     const capture = (): void => {
-      const measurement = measureFirstMountedTerminalDisplay({
-        terminalFontSize,
-        terminalFontFamily,
-      })
-      if (!measurement) {
+      if (
+        disposed ||
+        pendingProfileKeys.has(profileKey) ||
+        !hasMountedTerminalDisplayMeasurementHandle()
+      ) {
         return
       }
 
-      pendingProfileKeyRef.current = profileKey
-      setAgentSettings(previous => {
-        const previousProfileKey = createTerminalDisplayProfileKey({
-          terminalFontSize: previous.terminalFontSize,
-          terminalFontFamily: previous.terminalFontFamily,
-        })
-        if (
-          previousProfileKey !== profileKey ||
-          isTerminalDisplayReferenceForProfile(previous.terminalDisplayReference, {
-            terminalFontSize: previous.terminalFontSize,
-            terminalFontFamily: previous.terminalFontFamily,
-          })
-        ) {
-          return previous
-        }
-
-        return {
-          ...previous,
-          terminalDisplayReference: { version: 1, measurement },
-        }
+      pendingProfileKeys.add(profileKey)
+      void measureTerminalDisplayReferenceBaseline({
+        terminalFontSize,
+        terminalFontFamily,
       })
-      pendingProfileKeyRef.current = null
+        .then(measurement => {
+          if (disposed || !measurement) {
+            return
+          }
+
+          setAgentSettings(previous => {
+            const previousProfileKey = createTerminalDisplayProfileKey({
+              terminalFontSize: previous.terminalFontSize,
+              terminalFontFamily: previous.terminalFontFamily,
+            })
+            if (
+              previousProfileKey !== profileKey ||
+              isTerminalDisplayReferenceForProfile(previous.terminalDisplayReference, {
+                terminalFontSize: previous.terminalFontSize,
+                terminalFontFamily: previous.terminalFontFamily,
+              })
+            ) {
+              return previous
+            }
+
+            return {
+              ...previous,
+              terminalDisplayReference: { version: 1, measurement },
+            }
+          })
+        })
+        .finally(() => {
+          pendingProfileKeys.delete(profileKey)
+        })
     }
 
     const frame = window.requestAnimationFrame(capture)
     window.addEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, capture)
 
     return () => {
+      disposed = true
       window.cancelAnimationFrame(frame)
       window.removeEventListener(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED, capture)
-      if (pendingProfileKeyRef.current === profileKey) {
-        pendingProfileKeyRef.current = null
-      }
+      pendingProfileKeys.delete(profileKey)
     }
   }, [
     enabled,

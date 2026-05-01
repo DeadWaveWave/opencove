@@ -91,7 +91,11 @@ function extractClaudeAssistantMessage(parsed: unknown): string | null {
     return null
   }
 
-  return collectTextContent(parsed.message.content, 'text', 'text')
+  return (
+    collectTextContent(parsed.message.content, 'text', 'text') ??
+    collectTextContent(parsed.message.content, 'output_text', 'text') ??
+    collectStructuredText(parsed.message.content)
+  )
 }
 
 function extractCodexAssistantMessage(parsed: unknown): string | null {

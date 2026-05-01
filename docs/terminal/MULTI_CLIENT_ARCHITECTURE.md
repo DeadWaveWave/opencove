@@ -181,8 +181,9 @@ This workflow follows the same owner boundary as the runtime architecture:
   enabled
 - the client calibration is local storage scoped to the current terminal appearance profile and
   active shared reference
-- the automatic first-client reference is captured from a real mounted terminal xterm/FitAddon
-  instance, not from a synthetic hidden terminal
+- the automatic first-client reference waits for a real mounted terminal to exist, then measures
+  against the same fixed reference baseline contract used by `Use This Device as Target`; it must
+  not read transformed canvas zoom output directly
 - enabled local compensation may change xterm `fontSize`, `lineHeight`, and `letterSpacing`
 - local compensation may trigger local FitAddon measurement
 - local compensation must not resize the PTY or update worker canonical `cols/rows`
