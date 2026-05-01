@@ -75,7 +75,7 @@ jobs:
           fetch-depth: 0
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 9.6.0
 
@@ -212,7 +212,7 @@ jobs:
 
       - name: Publish nightly prerelease
         if: steps.channel.outputs.is_nightly == 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ env.OPENCOVE_RELEASE_TAG }}
@@ -231,7 +231,7 @@ jobs:
 
       - name: Publish stable release
         if: steps.channel.outputs.is_nightly != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           tag_name: ${{ env.OPENCOVE_RELEASE_TAG }}
