@@ -119,6 +119,13 @@ export function mergeHydratedNode(
     return currentNode
   }
 
+  const hydratedScrollback =
+    hydratedNode.data.kind === 'agent' ? null : (hydratedNode.data.scrollback ?? null)
+  const preservedTerminalScrollback =
+    hydratedScrollback && hydratedScrollback.length > 0
+      ? hydratedScrollback
+      : (currentNode.data.scrollback ?? null)
+
   return {
     ...currentNode,
     data: {
@@ -134,7 +141,7 @@ export function mergeHydratedNode(
       endedAt: hydratedNode.data.endedAt,
       exitCode: hydratedNode.data.exitCode,
       lastError: hydratedNode.data.lastError,
-      scrollback: hydratedNode.data.kind === 'agent' ? null : hydratedNode.data.scrollback,
+      scrollback: hydratedNode.data.kind === 'agent' ? null : preservedTerminalScrollback,
       agent: mergeHydratedAgentData(currentNode.data.agent, hydratedNode.data.agent),
       task: hydratedNode.data.task ?? currentNode.data.task,
       note: hydratedNode.data.note ?? currentNode.data.note,
