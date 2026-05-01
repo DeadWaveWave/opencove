@@ -280,6 +280,79 @@ body {
   color: var(--cove-text);
 }
 
+.app-startup-state {
+  min-height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background:
+    radial-gradient(
+      circle at top,
+      color-mix(in srgb, var(--cove-accent) 18%, transparent),
+      transparent 42%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--cove-app-background-elevated) 62%, transparent),
+      transparent 100%
+    ),
+    var(--cove-app-background);
+}
+
+.app-startup-state__panel {
+  width: min(440px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 14px;
+  padding: 32px 28px;
+  text-align: center;
+  border-radius: 24px;
+  border: 1px solid color-mix(in srgb, var(--cove-border) 78%, transparent);
+  background: color-mix(in srgb, var(--cove-panel) 88%, transparent);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.app-startup-state__badge {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--cove-accent) 14%, transparent);
+  color: var(--cove-accent-text, var(--cove-text));
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.app-startup-state__spinner {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 3px solid color-mix(in srgb, var(--cove-border) 80%, transparent);
+  border-top-color: var(--cove-accent);
+  animation: cove-app-startup-spin 0.9s linear infinite;
+}
+
+.app-startup-state__panel h1 {
+  margin: 0;
+  font-size: calc(28px * var(--cove-ui-font-scale));
+  line-height: 1.15;
+}
+
+.app-startup-state__panel p {
+  margin: 0;
+  color: var(--cove-text-muted);
+  font-size: calc(15px * var(--cove-ui-font-scale));
+  line-height: 1.5;
+}
+
+@keyframes cove-app-startup-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .app-shell {
   --cove-primary-sidebar-width: 280px;
   display: grid;

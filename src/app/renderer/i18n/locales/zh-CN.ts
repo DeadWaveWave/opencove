@@ -189,6 +189,10 @@ export const zhCN = {
     description: '每个项目都有自己的无限画布和终端。',
     action: '添加项目',
   },
+  appStartupState: {
+    title: '正在打开工作区',
+    description: '正在恢复项目、Space 和终端…',
+  },
   appMessage: {
     info: '提示',
     warning: '警告',

@@ -386,6 +386,9 @@ export async function seedWorkspaceState(
       throw error
     }
     if (seededReady && workspaceCount >= payload.workspaces.length) {
+      await expect(window.locator('.app-startup-state')).toHaveCount(0)
+      await expect(window.locator('.workspace-canvas .react-flow__pane').first()).toBeVisible()
+      await window.waitForTimeout(80)
       await ensureWorkspaceMounts(window, payload.workspaces)
       return true
     }

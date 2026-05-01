@@ -187,6 +187,10 @@ export const en = {
     description: 'Each project has its own infinite canvas and terminals.',
     action: 'Add Project',
   },
+  appStartupState: {
+    title: 'Opening your workspace',
+    description: 'Restoring projects, spaces, and terminals…',
+  },
   appMessage: {
     info: 'Info',
     warning: 'Warning',
