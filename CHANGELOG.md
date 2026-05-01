@@ -81,6 +81,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Crash recovery: recover from renderer and child-process failures with a localized error boundary and lifecycle logging to prevent silent white screens. (#137)
 - Website window: keep embedded pages clipped inside canvas nodes during zoom/occlusion, preserve stable 100% page scale, and route in-page/new-window navigation back into OpenCove. (#141)
 - Startup + shortcuts: avoid non-packaged locale hydration stalls and stabilize `Cmd/Ctrl+G` space creation when selected terminal nodes are involved. (#141)
+- Startup: unblock project restore from terminal scrollback hydration, show a dedicated loading screen during workspace restore, and replace the blank startup flash with a polished loading transition. (#215)
 - Terminal: Added Linux terminal-node shortcuts for `Ctrl+Shift+C` copy and `Ctrl+Shift+V` paste while preserving plain `Ctrl+C` as `SIGINT`. (#142)
 - Agent windows now inherit terminal profile runtime/env semantics during launch, recovery, and fallback; Windows raw-TUI wheel handling is covered by regression tests. (#110)
 - UI: unified shared menu overlays to fix prompt template, task session, and related context-menu offset issues. (#121)
