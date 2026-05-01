@@ -15,7 +15,7 @@ CLI 的定位是：给 Agent/自动化脚本提供一个稳定入口，去驱动
 OpenCove 目前支持两条正式的 CLI 安装链路：
 
 - **Desktop 内置安装**：用户在 Desktop 的 **Settings → Worker → CLI** 中点击 **Install CLI**，由已安装的 app 写入 `opencove` launcher（Windows 为 `opencove.cmd`）。
-- **Standalone server 安装**：用户直接从 GitHub Release 下载独立 runtime bundle，并通过 `opencove-install.sh` / `opencove-install.ps1` 写入同语义的 `opencove` launcher。
+- **Standalone server 安装**：用户从包含 standalone installer 与 runtime bundle 的 GitHub Release 下载资产，并通过 release 专属 `opencove-install-v<tag>.sh` / `opencove-install-v<tag>.ps1` 写入同语义的 `opencove` launcher。stable release 额外提供 `opencove-install.sh` / `opencove-install.ps1` 作为 latest stable 别名。
 
 当前约束：
 
@@ -23,8 +23,10 @@ OpenCove 目前支持两条正式的 CLI 安装链路：
 - 打包态 launcher 必须指向发布 runtime 内的 CLI entrypoint，不能依赖 repo checkout 路径。
 - launcher 会记录安装 owner；两条安装链可以互相覆盖安装，但卸载时只移除自己拥有的 launcher。
 - standalone release 覆盖 macOS / Linux / Windows；Windows 资产格式为 `opencove-server-windows-<arch>.zip`。
+- stable release 同时发布 tag-pinned installer/uninstaller 和 `latest` 通用别名；nightly 只发布 tag-pinned 版本。
 
-最新 stable 的一键安装命令（macOS / Linux）：
+若 latest stable 已包含 standalone installer assets，则可使用以下通用安装命令
+（macOS / Linux）：
 
 ```bash
 curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
@@ -36,7 +38,22 @@ Windows PowerShell：
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
 ```
 
-卸载 standalone runtime：
+如果 `releases/latest/download/opencove-install.sh` 返回 `404`，说明 latest stable
+尚未发布 standalone installer；此时应改用 Desktop 安装，或等待包含这些资产的
+release。
+
+安装 nightly 或任意指定 tag 的 release 时，应改用该 release 页面中的带版本脚本：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
+```
+
+当 latest stable 已包含 uninstall assets 时，可使用以下命令卸载 standalone
+runtime：
 
 ```bash
 curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.sh | sh
@@ -44,6 +61,16 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/ope
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.ps1 | Invoke-Expression"
+```
+
+指定 nightly 或任意指定 tag 时，应使用对应的版本化 uninstall 脚本：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-uninstall-v<version>.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-uninstall-v<version>.ps1 | Invoke-Expression"
 ```
 
 无 Desktop 的 server 场景可直接启动 worker + Web UI：

@@ -81,7 +81,17 @@ Downloads are available for macOS, Windows, and Linux.
 You now have two supported ways to install the `opencove` CLI:
 
 - From the Desktop app: open **Settings → Worker → CLI** and click **Install CLI**.
-- Without Desktop: install the latest stable standalone runtime from GitHub Releases:
+- Without Desktop: use a GitHub Release that includes standalone runtime bundles
+  (`opencove-server-*`) plus release-specific installer assets such as
+  `opencove-install-v<tag>.sh` / `opencove-install-v<tag>.ps1`. Stable releases also
+  publish the generic `opencove-install.sh` / `opencove-install.ps1` aliases, which
+  always target the latest stable release.
+
+If `releases/latest/download/opencove-install.sh` returns `404`, the latest stable release
+has not published the standalone installer yet. In that case, use the Desktop installer for
+now or wait for a release that includes those assets.
+
+For the latest stable release, install on macOS / Linux with:
 
 ```bash
 curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.sh | sh
@@ -91,6 +101,17 @@ On Windows, use PowerShell:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
+```
+
+For a nightly or any specific tagged release, use the versioned installer asset from that
+release page:
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
 ```
 
 For a headless server that hosts the Web UI, start the worker directly after install:

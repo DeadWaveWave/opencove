@@ -16,10 +16,12 @@
 - `opencove-server-windows-<arch>.zip`（Windows standalone CLI / Worker runtime）
 
 额外的 Release asset：
-- `opencove-install.sh`
-- `opencove-install.ps1`
-- `opencove-uninstall.sh`
-- `opencove-uninstall.ps1`
+- 所有包含 standalone installer 的 release 都会发布 tag-pinned 脚本：
+  `opencove-install-v<tag>.sh`、`opencove-install-v<tag>.ps1`、
+  `opencove-uninstall-v<tag>.sh`、`opencove-uninstall-v<tag>.ps1`
+- 只有 stable release 额外发布 latest stable 别名：
+  `opencove-install.sh`、`opencove-install.ps1`、
+  `opencove-uninstall.sh`、`opencove-uninstall.ps1`
 
 ## 发布渠道
 
@@ -46,7 +48,8 @@
 - Linux 产物（如 `*.AppImage`）
 - macOS / Linux standalone server bundle（`opencove-server-<platform>-<arch>.tar.gz`）
 - Windows standalone server bundle（`opencove-server-windows-<arch>.zip`）
-- 一键安装 / 卸载脚本（`opencove-install.sh`、`opencove-install.ps1`、`opencove-uninstall.sh`、`opencove-uninstall.ps1`）
+- tag-pinned 一键安装 / 卸载脚本（`opencove-install-v<tag>.*`、`opencove-uninstall-v<tag>.*`）
+- stable release 额外包含 latest stable 别名（`opencove-install.*`、`opencove-uninstall.*`）
 - 汇总校验文件 `SHA256SUMS.txt`
 
 注意：macOS 的应用内自动更新依赖稳定的代码签名（Developer ID）。当前 unsigned/ad-hoc 构建在 macOS 上会禁用更新检查；请通过 GitHub Releases 手动下载新版本。
@@ -58,7 +61,28 @@
 
 ### Standalone CLI / Worker 资产
 
-如需在没有 Desktop 的机器上安装 OpenCove CLI 与 Worker，请使用 release 中的安装脚本：
+只有当 release 实际包含以下资产时，才能对外宣称“可直接通过 GitHub Release 安装
+OpenCove CLI / Worker”：
+
+- `opencove-server-<platform>-<arch>.tar.gz`
+- `opencove-server-windows-<arch>.zip`
+- `opencove-install-v<tag>.sh`
+- `opencove-install-v<tag>.ps1`
+- `opencove-uninstall-v<tag>.sh`
+- `opencove-uninstall-v<tag>.ps1`
+
+stable release 额外再提供以下 latest stable 别名：
+
+- `opencove-install.sh`
+- `opencove-install.ps1`
+- `opencove-uninstall.sh`
+- `opencove-uninstall.ps1`
+
+对外文档必须与已发布资产保持一致。如果
+`releases/latest/download/opencove-install.sh` 返回 `404`，说明 latest stable 尚未
+发布 standalone installer，README / docs 不应写成“latest stable 可直接安装”。
+
+当 latest stable 已包含这些资产时，没有 Desktop 的机器可使用以下安装脚本：
 
 macOS / Linux：
 
@@ -70,6 +94,17 @@ Windows PowerShell：
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-install.ps1 | Invoke-Expression"
+```
+
+对于 nightly 或任意指定 tag 的 release，请改用对应 release 页面里的 tag-pinned
+installer：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-install-v<version>.ps1 | Invoke-Expression"
 ```
 
 安装脚本会：
@@ -96,9 +131,20 @@ curl -fsSL https://github.com/DeadWaveWave/opencove/releases/latest/download/ope
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/latest/download/opencove-uninstall.ps1 | Invoke-Expression"
 ```
 
+对于 nightly 或任意指定 tag 的 release，请使用对应的 tag-pinned uninstall 脚本：
+
+```bash
+curl -fsSL https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-uninstall-v<version>.sh | sh
+```
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Invoke-RestMethod https://github.com/DeadWaveWave/opencove/releases/download/v<version>/opencove-uninstall-v<version>.ps1 | Invoke-Expression"
+```
+
 发布约束：
 
-- stable 的一键安装命令始终指向 GitHub Releases 的 latest asset；nightly 需要显式 tag / asset。
+- stable 同时发布 `latest` 通用别名与 tag-pinned 脚本；nightly 只发布 tag-pinned 脚本。
+- `releases/latest/download/...` 只能表示 latest stable，不得在 nightly 文档中当作“当前 nightly”使用。
 - release workflow 会在上传前使用本地生成的 standalone asset 运行安装后 `opencove worker start --help` smoke。
 
 ### Stable 流程
