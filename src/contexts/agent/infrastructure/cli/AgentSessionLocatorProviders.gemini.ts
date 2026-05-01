@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
-import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
+import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
+import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
 import {
   listDirectories,
   listFiles,
@@ -155,15 +156,21 @@ function toGeminiSessionCandidate(meta: GeminiSessionMeta): GeminiSessionCandida
 }
 
 async function listGeminiSessionCandidates(cwd: string): Promise<GeminiSessionCandidate[]> {
-  const geminiTmpDir = join(resolveHomeDirectory(), '.gemini', 'tmp')
   const resolvedCwd = resolve(cwd)
-  const projectDirectories = await listDirectories(geminiTmpDir)
+  const projectDirectories = (
+    await Promise.all(
+      resolveHomeDirectoryCandidates().map(async homeDirectory => {
+        const geminiTmpDir = join(homeDirectory, '.gemini', 'tmp')
+        return await listDirectories(geminiTmpDir)
+      }),
+    )
+  ).flat()
   const matchingProjectDirectories = (
     await Promise.all(
       projectDirectories.map(async projectDirectory => {
         const projectRoot = await fs
           .readFile(join(projectDirectory, '.project_root'), 'utf8')
-          .then(contents => contents.trim())
+          .then(normalizeAgentProjectRootPath)
           .catch(() => null)
 
         return projectRoot === resolvedCwd ? projectDirectory : null

@@ -31,6 +31,7 @@ let workerEndpointResolverForContextMenu: ReturnType<
   typeof createHomeWorkerEndpointResolver
 > | null = null
 const OPENCOVE_APP_USER_MODEL_ID = 'dev.deadwave.opencove'
+const OPENCOVE_DEV_APP_USER_MODEL_ID = 'dev.deadwave.opencove.dev'
 const WINDOW_CLOSE_PERSIST_FLUSH_TIMEOUT_MS = 1_500
 let isAppQuitInProgress = false
 
@@ -226,12 +227,16 @@ function createWindow(): void {
   }
 }
 
+function resolveAppUserModelId(): string {
+  return app.isPackaged === false ? OPENCOVE_DEV_APP_USER_MODEL_ID : OPENCOVE_APP_USER_MODEL_ID
+}
+
 // Electron ready: create browser windows & IPC.
 app.whenReady().then(async () => {
   hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
 
   // Set app user model id for windows
-  electronApp.setAppUserModelId(OPENCOVE_APP_USER_MODEL_ID)
+  electronApp.setAppUserModelId(resolveAppUserModelId())
 
   // Custom macOS menu: zoom roles (resetZoom/zoomIn/zoomOut) are intentionally omitted.
   // Those roles call webContents.setZoomLevel() on the main window, which changes the

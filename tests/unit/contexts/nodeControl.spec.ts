@@ -285,4 +285,74 @@ describe('node control handlers', () => {
       }
     }
   })
+
+  it('persists launched agent runtime metadata from the session owner', async () => {
+    const controlSurface = createControlSurface()
+    const { store, getState } = createStateStore(createAppState())
+    const launchAgent = vi.fn(async () => ({
+      sessionId: 'agent-session-1',
+      provider: 'codex' as const,
+      startedAt: '2026-04-25T00:00:00.000Z',
+      executionContext: {
+        workingDirectory: '/repo',
+      },
+      profileId: null,
+      runtimeKind: 'windows' as const,
+      resumeSessionId: null,
+      effectiveModel: 'gpt-5.4',
+      command: 'cmd.exe',
+      args: ['/d', '/c', 'codex.cmd'],
+    }))
+    const topology: WorkerTopologyStore = {
+      listEndpoints: async () => ({ endpoints: [localEndpoint] }),
+      listMounts: async () => ({ mounts: [] as MountDto[] }),
+    } as WorkerTopologyStore
+
+    controlSurface.register('session.launchAgent', {
+      kind: 'command',
+      validate: payload => payload,
+      handle: launchAgent,
+      defaultErrorCode: 'agent.launch_failed',
+    })
+    registerNodeControlHandlers(controlSurface, {
+      topology,
+      getPersistenceStore: async () => store as never,
+    })
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'node.create',
+      payload: {
+        kind: 'agent',
+        space: { kind: 'spaceId', spaceId: 'space-1' },
+        data: {
+          prompt: '',
+          provider: 'codex',
+          model: null,
+        },
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    if (!result.ok) {
+      return
+    }
+
+    expect(result.value.node).toMatchObject({
+      kind: 'agent',
+      sessionId: 'agent-session-1',
+    })
+    expect(getState().workspaces[0].nodes[0]).toMatchObject({
+      sessionId: 'agent-session-1',
+      profileId: null,
+      runtimeKind: 'windows',
+    })
+    expect(launchAgent).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        spaceId: 'space-1',
+        provider: 'codex',
+      }),
+    )
+  })
 })

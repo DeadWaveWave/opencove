@@ -6,8 +6,9 @@ import Database from 'better-sqlite3'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-const repoPath = path.resolve(new URL('..', import.meta.url).pathname)
+const repoPath = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const artifactRoot = path.join(repoPath, 'artifacts', 'agent-restore-startup-profile')
 const agentCount = Math.max(
   1,

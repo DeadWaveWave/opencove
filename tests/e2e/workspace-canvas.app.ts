@@ -279,6 +279,7 @@ async function launchAppInMode(
         OPENCOVE_TEST_WORKSPACE: testWorkspacePath,
         OPENCOVE_TEST_USER_DATA_DIR: userDataDir,
         OPENCOVE_TEST_AGENT_STUB_SCRIPT: testAgentStubScriptPath,
+        OPENCOVE_TEST_NODE_EXECUTABLE: process.execPath,
         OPENCOVE_E2E_WINDOW_MODE: launchMode,
         ...(shouldDisableElectronSandboxForLinuxCi() ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
         ...envOverrides,

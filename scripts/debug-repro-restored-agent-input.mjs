@@ -5,9 +5,10 @@ import { _electron as electron } from '@playwright/test'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import Database from 'better-sqlite3'
 
-const repoPath = path.resolve(new URL('..', import.meta.url).pathname)
+const repoPath = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const screenshotRoot = path.join(repoPath, 'artifacts', 'debug-restored-agent-input')
 const provider = process.env.OPENCOVE_REPRO_PROVIDER === 'opencode' ? 'opencode' : 'codex'
 const iterationCount = Math.max(

@@ -315,7 +315,8 @@ export async function runTaskAgentAction(
       }
 
       launchedSessionId = launched.sessionId
-      launchedProfileId = context.agentSettings.defaultTerminalProfileId
+      launchedProfileId = launched.profileId
+      launchedRuntimeKind = launched.runtimeKind ?? undefined
       launchedEffectiveModel = launched.effectiveModel
       agentDirectory = launched.executionContext.workingDirectory
     } else {

@@ -2,7 +2,8 @@ import fs from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
-import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
+import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
+import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
 
 interface ResolveSessionFilePathInput {
   provider: AgentProviderId
@@ -97,10 +98,11 @@ async function readFirstLine(filePath: string): Promise<string | null> {
   }
 }
 
-function resolveClaudeSessionFilePath(cwd: string, sessionId: string): string {
-  const claudeProjectsDir = join(resolveHomeDirectory(), '.claude', 'projects')
+function resolveClaudeSessionFilePaths(cwd: string, sessionId: string): string[] {
   const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
-  return join(claudeProjectsDir, encodedPath, `${sessionId}.jsonl`)
+  return resolveHomeDirectoryCandidates().map(homeDirectory =>
+    join(homeDirectory, '.claude', 'projects', encodedPath, `${sessionId}.jsonl`),
+  )
 }
 
 async function ensureFileExists(filePath: string): Promise<string | null> {
@@ -117,7 +119,6 @@ async function findCodexSessionFilePath(
   sessionId: string,
   startedAtMs: number,
 ): Promise<string | null> {
-  const codexSessionsDir = join(resolveHomeDirectory(), '.codex', 'sessions')
   const resolvedCwd = resolve(cwd)
 
   const dateCandidates = new Set<string>()
@@ -126,7 +127,9 @@ async function findCodexSessionFilePath(
 
   for (const timestamp of timestamps) {
     const [year, month, day] = toDateDirectoryParts(timestamp)
-    dateCandidates.add(join(codexSessionsDir, year, month, day))
+    for (const homeDirectory of resolveHomeDirectoryCandidates()) {
+      dateCandidates.add(join(homeDirectory, '.codex', 'sessions', year, month, day))
+    }
   }
 
   const files = (
@@ -195,15 +198,21 @@ async function findCodexSessionFilePath(
 }
 
 async function findGeminiSessionFilePath(cwd: string, sessionId: string): Promise<string | null> {
-  const geminiTmpDir = join(resolveHomeDirectory(), '.gemini', 'tmp')
   const resolvedCwd = resolve(cwd)
-  const projectDirectories = await listDirectories(geminiTmpDir)
+  const projectDirectories = (
+    await Promise.all(
+      resolveHomeDirectoryCandidates().map(async homeDirectory => {
+        const geminiTmpDir = join(homeDirectory, '.gemini', 'tmp')
+        return await listDirectories(geminiTmpDir)
+      }),
+    )
+  ).flat()
 
   for (const projectDirectory of projectDirectories) {
     // eslint-disable-next-line no-await-in-loop
     const projectRoot = await fs
       .readFile(join(projectDirectory, '.project_root'), 'utf8')
-      .then(contents => contents.trim())
+      .then(normalizeAgentProjectRootPath)
       .catch(() => null)
 
     if (projectRoot !== resolvedCwd) {
@@ -245,8 +254,15 @@ async function tryResolveSessionFilePath(
   startedAtMs: number,
 ): Promise<string | null> {
   if (provider === 'claude-code') {
-    const resolvedPath = resolveClaudeSessionFilePath(cwd, sessionId)
-    return await ensureFileExists(resolvedPath)
+    for (const resolvedPath of resolveClaudeSessionFilePaths(cwd, sessionId)) {
+      // eslint-disable-next-line no-await-in-loop
+      const existingPath = await ensureFileExists(resolvedPath)
+      if (existingPath) {
+        return existingPath
+      }
+    }
+
+    return null
   }
 
   if (provider === 'codex') {

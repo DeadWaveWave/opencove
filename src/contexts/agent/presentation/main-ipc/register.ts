@@ -354,6 +354,7 @@ export function registerAgentIpcHandlers(
             profileId: normalized.profileId,
             command: resolvedInvocation.command,
             args: resolvedInvocation.args,
+            useProfile: false,
             ...(sessionEnv ? { env: sessionEnv } : {}),
           })
 

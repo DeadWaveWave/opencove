@@ -273,6 +273,8 @@ export function registerRemoteAgentIpcHandlers(options: {
         sessionId: string
         provider: AgentProviderId
         startedAt: string
+        profileId: string | null
+        runtimeKind: LaunchAgentResult['runtimeKind']
         resumeSessionId: string | null
         effectiveModel: string | null
         command: string
@@ -297,7 +299,8 @@ export function registerRemoteAgentIpcHandlers(options: {
       return {
         sessionId: launched.sessionId,
         provider: launched.provider,
-        profileId: payload?.profileId ?? null,
+        profileId: launched.profileId ?? null,
+        runtimeKind: launched.runtimeKind,
         command: launched.command,
         args: launched.args,
         launchMode: mode,

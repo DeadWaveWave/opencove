@@ -315,6 +315,7 @@ export function registerSessionLaunchAgentInMountHandler(
         cwd,
         mode,
         model,
+        resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
       })
 
       const opencodeServer =
@@ -439,6 +440,8 @@ export function registerSessionLaunchAgentInMountHandler(
         provider,
         startedAt,
         executionContext,
+        profileId: resolvedSpawn.profileId,
+        runtimeKind: resolvedSpawn.runtimeKind,
         resumeSessionId: record.resumeSessionId ?? null,
         effectiveModel: launchCommand.effectiveModel,
         command: resolvedSpawn.command,

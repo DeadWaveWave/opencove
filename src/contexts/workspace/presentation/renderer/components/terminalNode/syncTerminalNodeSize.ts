@@ -29,7 +29,17 @@ function clampXtermHeightToExactRows(terminal: Terminal): void {
     return
   }
 
-  const exactHeight = Math.floor(terminal.rows * cellHeight)
+  const contentHeight = Math.floor(terminal.rows * cellHeight)
+  const computedStyle =
+    typeof window.getComputedStyle === 'function' ? window.getComputedStyle(xtermEl) : null
+  const parsePixelValue = (value: string | undefined): number => {
+    const parsed = Number.parseFloat(value ?? '')
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const verticalPadding =
+    parsePixelValue(computedStyle?.paddingTop) + parsePixelValue(computedStyle?.paddingBottom)
+  const exactHeight =
+    computedStyle?.boxSizing === 'border-box' ? contentHeight + verticalPadding : contentHeight
   xtermEl.style.height = `${exactHeight}px`
 }
 

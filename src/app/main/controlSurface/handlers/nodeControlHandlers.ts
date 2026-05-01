@@ -37,6 +37,10 @@ import { resolveCanvasFocusTargetForNodeControl } from '../../../../contexts/wor
 import type { SpaceLocatorResolverDeps } from '../../../../contexts/workspace/application/nodeControl/spaceLocator'
 import type { NodeControlAppStateStore } from '../../../../contexts/workspace/application/nodeControl/nodeControlState'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
+import {
+  managedAgentProvider,
+  managedTerminalRuntimeKind,
+} from './nodeControlHandlerRuntimeMetadata'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -308,6 +312,8 @@ function createRuntimeDeps(
           optionalString(executionContext.workingDirectory) ?? resolved.workingDirectory,
         expectedDirectory: resolved.workingDirectory,
         startedAt: optionalString(launched.startedAt) ?? ctx.now().toISOString(),
+        profileId: launched.profileId === null ? null : optionalString(launched.profileId),
+        runtimeKind: managedTerminalRuntimeKind(launched.runtimeKind),
       }
     },
     spawnTerminal: async (resolved, data) => {
@@ -364,13 +370,6 @@ function toNodeControlStateStore(store: PersistenceStore): NodeControlAppStateSt
     readAppStateRevision: store.readAppStateRevision,
     writeAppState: store.writeAppState,
   }
-}
-
-function managedAgentProvider(value: unknown) {
-  if (value === 'claude-code' || value === 'codex' || value === 'opencode' || value === 'gemini') {
-    return value
-  }
-  throw createAppError('agent.launch_failed', { debugMessage: 'Invalid launched provider.' })
 }
 
 function queued<T>(queueRef: { current: Promise<void> }, task: () => Promise<T>): Promise<T> {

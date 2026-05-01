@@ -70,7 +70,7 @@ function resolveWindowsCandidateNames(command: string): string[] {
       .map(value => value.trim().toLowerCase())
       .filter(value => value.length > 0) ?? WINDOWS_DEFAULT_EXTENSIONS
 
-  return dedupeStrings([command, ...pathExt.map(extension => `${command}${extension}`)])
+  return dedupeStrings([...pathExt.map(extension => `${command}${extension}`), command])
 }
 
 async function isUsableExecutable(filePath: string): Promise<boolean> {
@@ -92,8 +92,17 @@ async function isUsableExecutable(filePath: string): Promise<boolean> {
 }
 
 async function resolveDirectPath(command: string): Promise<string | null> {
-  const resolvedPath = isAbsolute(command) ? command : resolve(command)
-  return (await isUsableExecutable(resolvedPath)) ? resolvedPath : null
+  const candidateNames = resolveWindowsCandidateNames(command)
+
+  for (const candidateName of candidateNames) {
+    const resolvedPath = isAbsolute(candidateName) ? candidateName : resolve(candidateName)
+    // eslint-disable-next-line no-await-in-loop -- ordered Windows extension resolution is required
+    if (await isUsableExecutable(resolvedPath)) {
+      return resolvedPath
+    }
+  }
+
+  return null
 }
 
 async function searchPathDirectories(

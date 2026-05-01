@@ -32,6 +32,12 @@ function mergeRuntimeNode(
   const shouldPreservePosition = workspaceHasActiveDrag || isDragging
   const persistedSessionId = persistedNode.data.sessionId.trim()
   const existingSessionId = existingNode.data.sessionId.trim()
+  const runtimeSessionId =
+    existingSessionId.length > 0
+      ? existingSessionId
+      : persistedSessionId.length > 0
+        ? persistedSessionId
+        : ''
   const kind = persistedNode.data.kind
 
   const nextNode: Node<TerminalNodeData> = {
@@ -47,7 +53,7 @@ function mergeRuntimeNode(
     height: existingNode.height,
     data: {
       ...persistedNode.data,
-      sessionId: persistedSessionId.length > 0 ? persistedSessionId : existingSessionId,
+      sessionId: runtimeSessionId,
       scrollback: existingNode.data.scrollback ?? persistedNode.data.scrollback,
       agent:
         kind === 'agent'

@@ -40,6 +40,83 @@ function isExplicitSubmitInteraction(data: string | undefined): boolean {
   return data === '\r' || data === '\n' || data === '\r\n'
 }
 
+function scanJsonRecordCandidates(text: string): { records: string[]; remainder: string } {
+  const records: string[] = []
+  let index = 0
+  let recordStart: number | null = null
+  let depth = 0
+  let inString = false
+  let escaped = false
+
+  while (index < text.length) {
+    const char = text[index]
+    if (recordStart === null) {
+      const code = text.charCodeAt(index)
+      if (code === 0x20 || code === 0x09 || code === 0x0a || code === 0x0d) {
+        index += 1
+        continue
+      }
+
+      if (char !== '{') {
+        const nextLineBreak = text.indexOf('\n', index)
+        if (nextLineBreak === -1) {
+          return { records, remainder: text.slice(index) }
+        }
+
+        index = nextLineBreak + 1
+        continue
+      }
+
+      recordStart = index
+      depth = 1
+      inString = false
+      escaped = false
+      index += 1
+      continue
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false
+      } else if (char === '\\') {
+        escaped = true
+      } else if (char === '"') {
+        inString = false
+      }
+
+      index += 1
+      continue
+    }
+
+    if (char === '"') {
+      inString = true
+      index += 1
+      continue
+    }
+
+    if (char === '{') {
+      depth += 1
+      index += 1
+      continue
+    }
+
+    if (char === '}') {
+      depth -= 1
+      if (depth === 0) {
+        records.push(text.slice(recordStart, index + 1))
+        recordStart = null
+      }
+    }
+
+    index += 1
+  }
+
+  return {
+    records,
+    remainder: recordStart === null ? '' : text.slice(recordStart),
+  }
+}
+
 export class SessionTurnStateWatcher {
   private readonly provider: AgentProviderId
   private readonly sessionId: string
@@ -205,16 +282,11 @@ export class SessionTurnStateWatcher {
 
   private consumeTextChunk(textChunk: string): void {
     const merged = this.remainder.length > 0 ? `${this.remainder}${textChunk}` : textChunk
-    let lineStart = 0
-    let nextLineBreak = merged.indexOf('\n', lineStart)
-
-    while (nextLineBreak !== -1) {
-      this.consumeLine(merged.slice(lineStart, nextLineBreak))
-      lineStart = nextLineBreak + 1
-      nextLineBreak = merged.indexOf('\n', lineStart)
-    }
-
-    this.remainder = lineStart === 0 ? merged : merged.slice(lineStart)
+    const scanned = scanJsonRecordCandidates(merged)
+    scanned.records.forEach(record => {
+      this.consumeLine(record)
+    })
+    this.remainder = scanned.remainder
   }
 
   private consumeLine(line: string): void {

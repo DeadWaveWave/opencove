@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   buildTerminalDisplayCalibrationCandidates,
   compareTerminalDisplayMetrics,
@@ -14,7 +15,7 @@ import {
   summarizeTerminalDisplayCalibration,
 } from './lib/terminal-display-calibration.mjs'
 
-const repoPath = path.resolve(new URL('..', import.meta.url).pathname)
+const repoPath = path.resolve(fileURLToPath(new URL('..', import.meta.url)))
 const artifactRoot = path.join(repoPath, 'artifacts', 'terminal-display-parity-profile')
 const PNPM_COMMAND = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 

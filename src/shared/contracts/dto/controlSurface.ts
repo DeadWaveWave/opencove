@@ -1,5 +1,5 @@
 import type { AgentProviderId } from './agent'
-import type { TerminalPtyGeometry } from './terminal'
+import type { TerminalPtyGeometry, TerminalRuntimeKind } from './terminal'
 import type { PresentationSnapshotTerminalResult } from './terminal'
 import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
@@ -207,6 +207,8 @@ export interface LaunchAgentSessionResult {
   provider: AgentProviderId
   startedAt: string
   executionContext: ExecutionContextDto
+  profileId: string | null
+  runtimeKind: TerminalRuntimeKind | null
   resumeSessionId: string | null
   effectiveModel: string | null
   command: string

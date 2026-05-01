@@ -74,6 +74,27 @@ describe('terminal geometry sync helpers', () => {
     expect(ptyResize).not.toHaveBeenCalled()
   })
 
+  it('clamps xterm border-box height without dropping terminal padding', () => {
+    const terminal = createTerminalMock()
+    ;(
+      window as unknown as { getComputedStyle: (element: unknown) => CSSStyleDeclaration }
+    ).getComputedStyle = () =>
+      ({
+        boxSizing: 'border-box',
+        paddingTop: '8px',
+        paddingBottom: '8px',
+      }) as CSSStyleDeclaration
+
+    refreshTerminalNodeSize({
+      terminalRef: { current: terminal as never },
+      containerRef: { current: { clientWidth: 640, clientHeight: 320 } as never },
+      isPointerResizingRef: { current: false },
+    })
+
+    expect(terminal.element.style.height).toBe('304px')
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
   it('commits measured geometry only on explicit commit', () => {
     const terminal = createTerminalMock()
 

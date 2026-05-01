@@ -3,6 +3,7 @@ import {
   resolveNodeInitialPtyGeometry,
   resolvePrepareOrReviveResumeLocateTimeoutMs,
 } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrRevivePreparation'
+import { toPreparedNodeResult } from '../../../src/app/main/controlSurface/handlers/sessionPrepareOrReviveShared'
 import type { NormalizedPersistedNode } from '../../../src/platform/persistence/sqlite/normalize'
 
 function createNode(overrides: Partial<NormalizedPersistedNode>): NormalizedPersistedNode {
@@ -51,6 +52,28 @@ describe('session prepare/revive terminal geometry', () => {
 
     expect(geometry.cols).toBeGreaterThan(40)
     expect(geometry.rows).toBeGreaterThan(10)
+  })
+
+  it('returns worker-prepared geometry instead of stale null persisted geometry', () => {
+    const result = toPreparedNodeResult(createNode({ terminalGeometry: null }), {
+      recoveryState: 'revived',
+      sessionId: 'revived-session',
+      isLiveSessionReattach: false,
+      profileId: null,
+      runtimeKind: 'posix',
+      status: 'standby',
+      startedAt: '2026-04-30T00:00:00.000Z',
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      terminalGeometry: { cols: 72, rows: 42 },
+      executionDirectory: '/tmp/workspace',
+      expectedDirectory: '/tmp/workspace',
+      agent: null,
+    })
+
+    expect(result.terminalGeometry).toEqual({ cols: 72, rows: 42 })
   })
 })
 

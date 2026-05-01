@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../src/shared/constants/controlSurface'
 import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../src/shared/contracts/controlSurface'
 
 let userDataDir: string | null = null
+let appPath: string | null = null
 const { spawnMock } = vi.hoisted(() => ({ spawnMock: vi.fn() }))
 
 vi.mock('node:child_process', async importOriginal => {
@@ -30,13 +31,14 @@ vi.mock('electron', () => {
 
         return userDataDir
       },
-      getAppPath: () => '/mock/app/path',
+      getAppPath: () => appPath ?? '/mock/app/path',
     },
   }
 })
 
 import {
   getLocalWorkerStatus,
+  repairStaleLocalWorkerFiles,
   startLocalWorker,
   stopOwnedLocalWorker,
 } from '../../../src/app/main/worker/localWorkerManager'
@@ -52,11 +54,13 @@ describe('local worker manager connection file', () => {
     }
 
     userDataDir = null
+    appPath = null
   })
 
   async function createTempUserDataDir(): Promise<string> {
     const dir = await mkdtemp(join(tmpdir(), 'opencove-test-local-worker-'))
     userDataDir = dir
+    appPath = dir
     return dir
   }
 
@@ -245,6 +249,28 @@ describe('local worker manager connection file', () => {
       status: 'stopped',
       connection: null,
     })
+  })
+
+  it('removes stale connection and lock files during repair', async () => {
+    const dir = await createTempUserDataDir()
+    const staleInfo = createConnectionInfo({ pid: 999_999, port: 4321 })
+    await writeFile(
+      resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE),
+      `${JSON.stringify(staleInfo)}\n`,
+      'utf8',
+    )
+    await writeFile(
+      resolve(dir, 'opencove-worker.lock'),
+      `${JSON.stringify({ pid: process.pid, createdAt: new Date(0).toISOString() })}\n`,
+      'utf8',
+    )
+
+    await repairStaleLocalWorkerFiles(dir, 999_999)
+
+    await expect(readFile(resolve(dir, 'opencove-worker.lock'), 'utf8')).rejects.toBeDefined()
+    await expect(
+      readFile(resolve(dir, WORKER_CONTROL_SURFACE_CONNECTION_FILE), 'utf8'),
+    ).rejects.toBeDefined()
   })
 
   it('surfaces a missing worker build entry in dev', async () => {

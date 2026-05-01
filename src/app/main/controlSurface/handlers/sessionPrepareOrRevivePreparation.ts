@@ -32,19 +32,18 @@ import {
   type NormalizedPersistedWorkspace,
   type PersistedAgentLike,
 } from './sessionPrepareOrReviveShared'
+import {
+  DEFAULT_PTY_COLS,
+  DEFAULT_PTY_ROWS,
+  resolveNodeInitialPtyGeometry,
+  type PtyGeometry,
+} from './sessionPrepareOrReviveGeometry'
+export { resolveNodeInitialPtyGeometry } from './sessionPrepareOrReviveGeometry'
 
 const RECENT_RESUME_SESSION_LOCATE_TIMEOUT_MS = 750
 const COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS = 0
 const RECENT_RESUME_SESSION_LOCATE_WINDOW_MS = 30_000
 const FUTURE_STARTED_AT_CLOCK_SKEW_MS = 5_000
-const DEFAULT_PTY_COLS = 80
-const DEFAULT_PTY_ROWS = 24
-const TERMINAL_NODE_HEADER_HEIGHT_PX = 34
-const TERMINAL_NODE_XTERM_PADDING_PX = 16
-const ESTIMATED_TERMINAL_CELL_WIDTH_RATIO = 0.6
-const ESTIMATED_TERMINAL_CELL_HEIGHT_RATIO = 1.15
-
-type PtyGeometry = { cols: number; rows: number }
 
 async function resolvePendingResumeSessionId(
   node: NormalizedPersistedNode,
@@ -94,43 +93,6 @@ export function resolvePrepareOrReviveResumeLocateTimeoutMs(
   return COLD_RESUME_SESSION_LOCATE_TIMEOUT_MS
 }
 
-function clampPtyDimension(value: number, fallback: number, max: number): number {
-  if (!Number.isFinite(value)) {
-    return fallback
-  }
-
-  const normalized = Math.floor(value)
-  if (normalized <= 0) {
-    return fallback
-  }
-
-  return Math.min(max, Math.max(1, normalized))
-}
-
-export function resolveNodeInitialPtyGeometry(
-  node: NormalizedPersistedNode,
-  settings: ReturnType<typeof normalizeAgentSettings>,
-): PtyGeometry {
-  if (node.terminalGeometry) {
-    return node.terminalGeometry
-  }
-
-  const fontSize =
-    Number.isFinite(settings.terminalFontSize) && settings.terminalFontSize > 0
-      ? settings.terminalFontSize
-      : 13
-  const contentWidth = node.width - TERMINAL_NODE_XTERM_PADDING_PX
-  const contentHeight =
-    node.height - TERMINAL_NODE_HEADER_HEIGHT_PX - TERMINAL_NODE_XTERM_PADDING_PX
-  const cellWidth = fontSize * ESTIMATED_TERMINAL_CELL_WIDTH_RATIO
-  const cellHeight = fontSize * ESTIMATED_TERMINAL_CELL_HEIGHT_RATIO
-
-  return {
-    cols: clampPtyDimension(contentWidth / cellWidth, DEFAULT_PTY_COLS, 300),
-    rows: clampPtyDimension(contentHeight / cellHeight, DEFAULT_PTY_ROWS, 120),
-  }
-}
-
 async function spawnFallbackTerminal(options: {
   controlSurface: ControlSurface
   ctx: ControlSurfaceContext
@@ -175,6 +137,10 @@ export async function prepareTerminalNode(options: {
   space: NormalizedPersistedSpace | null
 }): Promise<PreparedRuntimeNodeResult> {
   const cwd = resolveTerminalRecoveryCwd(options.node, options.workspace.path)
+  const initialGeometry = options.node.terminalGeometry ?? {
+    cols: DEFAULT_PTY_COLS,
+    rows: DEFAULT_PTY_ROWS,
+  }
   const scrollback = await resolvePreparedScrollback({
     store: options.store,
     node: options.node,
@@ -188,6 +154,7 @@ export async function prepareTerminalNode(options: {
       space: options.space,
       cwd,
       profileId: resolveNodeProfileId(options.node),
+      geometry: initialGeometry,
     })
 
     return toPreparedNodeResult(options.node, {
@@ -202,6 +169,7 @@ export async function prepareTerminalNode(options: {
       exitCode: null,
       lastError: null,
       scrollback,
+      terminalGeometry: initialGeometry,
       executionDirectory: normalizeOptionalString(options.node.executionDirectory),
       expectedDirectory: normalizeOptionalString(options.node.expectedDirectory),
       agent: null,
@@ -219,6 +187,7 @@ export async function prepareTerminalNode(options: {
       exitCode: null,
       lastError: formatRecoverableError('Terminal launch failed', error),
       scrollback,
+      terminalGeometry: options.node.terminalGeometry,
       executionDirectory: normalizeOptionalString(options.node.executionDirectory),
       expectedDirectory: normalizeOptionalString(options.node.expectedDirectory),
       agent: null,
@@ -311,14 +280,16 @@ export async function prepareAgentNode(options: {
         recoveryState: 'revived',
         sessionId: launched.sessionId,
         isLiveSessionReattach: false,
-        profileId: terminalProfileId,
-        runtimeKind: 'posix',
+        profileId: launched.profileId !== undefined ? launched.profileId : terminalProfileId,
+        runtimeKind:
+          launched.runtimeKind !== undefined ? launched.runtimeKind : resolveNodeRuntimeKind(node),
         status: 'standby',
         startedAt: node.startedAt,
         endedAt: null,
         exitCode: null,
         lastError: null,
         scrollback,
+        terminalGeometry: initialGeometry,
         executionDirectory: sanitizedAgent.executionDirectory,
         expectedDirectory: sanitizedAgent.expectedDirectory,
         agent: {
@@ -353,6 +324,7 @@ export async function prepareAgentNode(options: {
           exitCode: node.exitCode,
           lastError: formatRecoverableError('Agent resume failed', error),
           scrollback,
+          terminalGeometry: initialGeometry,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -370,6 +342,7 @@ export async function prepareAgentNode(options: {
           exitCode: node.exitCode,
           lastError: formatRecoverableError('Agent resume failed', fallbackError),
           scrollback,
+          terminalGeometry: node.terminalGeometry,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -385,14 +358,16 @@ export async function prepareAgentNode(options: {
         recoveryState: 'restarted',
         sessionId: launched.sessionId,
         isLiveSessionReattach: false,
-        profileId: terminalProfileId,
-        runtimeKind: 'posix',
+        profileId: launched.profileId !== undefined ? launched.profileId : terminalProfileId,
+        runtimeKind:
+          launched.runtimeKind !== undefined ? launched.runtimeKind : resolveNodeRuntimeKind(node),
         status: resolveInitialAgentRuntimeStatus(sanitizedAgent.prompt),
         startedAt: ctx.now().toISOString(),
         endedAt: null,
         exitCode: null,
         lastError: null,
         scrollback,
+        terminalGeometry: initialGeometry,
         executionDirectory: sanitizedAgent.executionDirectory,
         expectedDirectory: sanitizedAgent.expectedDirectory,
         agent: {
@@ -426,6 +401,7 @@ export async function prepareAgentNode(options: {
           exitCode: null,
           lastError: formatRecoverableError('Agent launch failed', error),
           scrollback,
+          terminalGeometry: initialGeometry,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -443,6 +419,7 @@ export async function prepareAgentNode(options: {
           exitCode: null,
           lastError: formatRecoverableError('Agent launch failed', fallbackError),
           scrollback,
+          terminalGeometry: node.terminalGeometry,
           executionDirectory: sanitizedAgent.executionDirectory,
           expectedDirectory: sanitizedAgent.expectedDirectory,
           agent: sanitizedAgent,
@@ -474,6 +451,7 @@ export async function prepareAgentNode(options: {
       exitCode: node.exitCode,
       lastError: null,
       scrollback,
+      terminalGeometry: initialGeometry,
       executionDirectory: sanitizedAgent.executionDirectory,
       expectedDirectory: sanitizedAgent.expectedDirectory,
       agent: sanitizedAgent,
@@ -491,6 +469,7 @@ export async function prepareAgentNode(options: {
       exitCode: null,
       lastError: formatRecoverableError('Terminal launch failed', error),
       scrollback,
+      terminalGeometry: node.terminalGeometry,
       executionDirectory: sanitizedAgent.executionDirectory,
       expectedDirectory: sanitizedAgent.expectedDirectory,
       agent: sanitizedAgent,

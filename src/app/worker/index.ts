@@ -8,6 +8,7 @@ import { acquireWorkerSingleInstanceLock } from './singleInstanceLock'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../shared/constants/controlSurface'
 import { hydrateCliEnvironmentForAppLaunch } from '../../platform/os/CliEnvironment'
 import { hashWebUiPassword } from '../main/controlSurface/http/webUiPassword'
+import { isWorkerConnectionAlive } from '../main/worker/workerConnectionHealth'
 
 function readFlagValue(argv: string[], flag: string): string | null {
   const index = argv.indexOf(flag)
@@ -119,15 +120,20 @@ async function main(): Promise<void> {
     const connectionInfo = await resolveControlSurfaceConnectionInfoFromUserData({
       userDataPath,
       fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
+      requireLivePid: false,
     })
-    if (connectionInfo) {
+    if (connectionInfo && (await isWorkerConnectionAlive(connectionInfo))) {
       process.stdout.write(`${JSON.stringify(connectionInfo)}\n`)
+      process.stderr.write(
+        '[opencove-worker] Local Worker already running for this user data; printed existing connection info.\n',
+      )
+      process.exit(0)
     }
 
     process.stderr.write(
-      '[opencove-worker] Local Worker already running for this user data; printed existing connection info.\n',
+      '[opencove-worker] Worker lock exists but its connection is not reachable; launcher must repair stale worker state.\n',
     )
-    process.exit(0)
+    process.exit(1)
   }
 
   const approvedWorkspaces = createApprovedWorkspaceStoreForPath(

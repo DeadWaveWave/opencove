@@ -1,7 +1,6 @@
 import { mkdir, open, readFile, rm } from 'node:fs/promises'
-import { dirname, resolve } from 'node:path'
-
-const WORKER_LOCK_FILE = 'opencove-worker.lock'
+import { dirname } from 'node:path'
+import { resolveWorkerSingleInstanceLockPath } from '../../platform/process/workerSingleInstanceLockFile'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -41,7 +40,7 @@ export async function acquireWorkerSingleInstanceLock(
   | { status: 'acquired'; release: () => Promise<void> }
   | { status: 'existing'; existingPid: number | null }
 > {
-  const lockPath = resolve(userDataPath, WORKER_LOCK_FILE)
+  const lockPath = resolveWorkerSingleInstanceLockPath(userDataPath)
 
   const attemptAcquire = async (): Promise<
     | { status: 'acquired'; release: () => Promise<void> }

@@ -153,7 +153,8 @@ export function useWorkspaceCanvasAgentLauncher({
               })
 
             launchedSessionId = launched.sessionId
-            launchedProfileId = agentSettings.defaultTerminalProfileId
+            launchedProfileId = launched.profileId
+            launchedRuntimeKind = launched.runtimeKind ?? undefined
             launchedEffectiveModel = launched.effectiveModel
             executionDirectory = launched.executionContext.workingDirectory
           } else {

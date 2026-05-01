@@ -3,6 +3,7 @@ import process from 'node:process'
 import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
 import { parentPort as workerParentPort } from 'node:worker_threads'
+import { killWindowsProcessTree } from './windowsProcessTree'
 import {
   isPtyHostRequest,
   PTY_HOST_PROTOCOL_VERSION,
@@ -158,8 +159,27 @@ function resolveParentPort(): ParentPort {
 
 const parentPort = resolveParentPort()
 parentPort.start()
-const sessions = new Map<string, IPty>()
+
+type PtySession = {
+  pty: IPty
+  rootPid: number | null
+}
+
+const sessions = new Map<string, PtySession>()
 let hasCleanedSessions = false
+
+function terminatePtySession(session: PtySession): void {
+  const killResult = killWindowsProcessTree(session.rootPid)
+  if (killResult === 'terminated' || killResult === 'not_found') {
+    return
+  }
+
+  try {
+    session.pty.kill()
+  } catch {
+    // ignore
+  }
+}
 
 const cleanupSessions = (): void => {
   if (hasCleanedSessions) {
@@ -168,13 +188,9 @@ const cleanupSessions = (): void => {
 
   hasCleanedSessions = true
 
-  for (const [sessionId, pty] of sessions.entries()) {
+  for (const [sessionId, session] of sessions.entries()) {
     sessions.delete(sessionId)
-    try {
-      pty.kill()
-    } catch {
-      // ignore
-    }
+    terminatePtySession(session)
   }
 }
 
@@ -236,7 +252,10 @@ function spawnPtySession(request: PtyHostSpawnRequest): void {
     name: 'xterm-256color',
   })
 
-  sessions.set(sessionId, pty)
+  sessions.set(sessionId, {
+    pty,
+    rootPid: Number.isFinite(pty.pid) && pty.pid > 0 ? pty.pid : null,
+  })
 
   pty.onData(data => {
     onPtyData(sessionId, data)
@@ -257,33 +276,33 @@ function writeToSession(request: PtyHostWriteRequest): void {
 
   if (request.encoding === 'binary') {
     if (process.platform === 'win32') {
-      pty.write(convertHighByteX10MouseReportsToSgr(request.data))
+      pty.pty.write(convertHighByteX10MouseReportsToSgr(request.data))
     } else {
-      pty.write(Buffer.from(request.data, 'binary'))
+      pty.pty.write(Buffer.from(request.data, 'binary'))
     }
     return
   }
 
-  pty.write(request.data)
+  pty.pty.write(request.data)
 }
 
 function resizeSession(request: PtyHostResizeRequest): void {
-  const pty = sessions.get(request.sessionId)
-  if (!pty) {
+  const session = sessions.get(request.sessionId)
+  if (!session) {
     return
   }
 
-  pty.resize(request.cols, request.rows)
+  session.pty.resize(request.cols, request.rows)
 }
 
 function killSession(request: PtyHostKillRequest): void {
-  const pty = sessions.get(request.sessionId)
-  if (!pty) {
+  const session = sessions.get(request.sessionId)
+  if (!session) {
     return
   }
 
   sessions.delete(request.sessionId)
-  pty.kill()
+  terminatePtySession(session)
 }
 
 function shutdown(request: PtyHostShutdownRequest): void {

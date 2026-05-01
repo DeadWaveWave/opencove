@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import { basename, extname, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
-import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
+import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
 import {
   findGeminiResumeSessionId,
   findOpenCodeResumeSessionId,
@@ -175,14 +175,15 @@ function resolveCodexSessionTimestampMs(meta: CodexSessionMeta, startedAtMs: num
 }
 
 async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
-  const claudeProjectsDir = join(resolveHomeDirectory(), '.claude', 'projects')
   const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
-  const projectDir = join(claudeProjectsDir, encodedPath)
-
-  const files = (await listFiles(projectDir)).filter(file => file.endsWith('.jsonl'))
-  if (files.length === 0) {
-    return null
-  }
+  const files = (
+    await Promise.all(
+      resolveHomeDirectoryCandidates().map(async homeDirectory => {
+        const projectDir = join(homeDirectory, '.claude', 'projects', encodedPath)
+        return (await listFiles(projectDir)).filter(file => file.endsWith('.jsonl'))
+      }),
+    )
+  ).flat()
 
   const candidates = await Promise.all(
     files.map(async file => {
@@ -211,7 +212,6 @@ async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Prom
 }
 
 async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
-  const codexSessionsDir = join(resolveHomeDirectory(), '.codex', 'sessions')
   const resolvedCwd = resolve(cwd)
   const dateCandidates = new Set<string>()
   const now = Date.now()
@@ -223,7 +223,9 @@ async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promi
     now - 24 * 60 * 60 * 1000,
   ]) {
     const [year, month, day] = toDateDirectoryParts(timestamp)
-    dateCandidates.add(join(codexSessionsDir, year, month, day))
+    for (const homeDirectory of resolveHomeDirectoryCandidates()) {
+      dateCandidates.add(join(homeDirectory, '.codex', 'sessions', year, month, day))
+    }
   }
 
   const files = (

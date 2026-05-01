@@ -134,7 +134,8 @@ export async function resumeTaskAgentSessionAction(
       })
 
       launchedSessionId = launched.sessionId
-      launchedProfileId = context.agentSettings.defaultTerminalProfileId
+      launchedProfileId = launched.profileId
+      launchedRuntimeKind = launched.runtimeKind ?? undefined
       launchedEffectiveModel = launched.effectiveModel
       launchedResumeSessionId = launched.resumeSessionId ?? record.resumeSessionId
       agentDirectory = launched.executionContext.workingDirectory

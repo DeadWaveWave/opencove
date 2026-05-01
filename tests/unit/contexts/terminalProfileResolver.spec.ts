@@ -288,6 +288,34 @@ describe('TerminalProfileResolver', () => {
     })
   })
 
+  it('can bypass Windows profiles for host-resolved agent commands', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32' }),
+      homeDir: () => 'C:\\Users\\tester',
+      locateWindowsCommands: async () => [
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ],
+      listWslDistros: async () => ['Ubuntu'],
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'wsl:Ubuntu',
+      command: 'cmd.exe',
+      args: ['/d', '/c', 'C:\\Users\\tester\\AppData\\Roaming\\npm\\codex.cmd'],
+      useProfile: false,
+    })
+
+    expect(result).toMatchObject({
+      command: 'cmd.exe',
+      args: ['/d', '/c', 'C:\\Users\\tester\\AppData\\Roaming\\npm\\codex.cmd'],
+      cwd: 'C:\\repo',
+      profileId: null,
+      runtimeKind: 'windows',
+    })
+  })
+
   it('resolves agent commands through Git Bash with login shell exec semantics', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',

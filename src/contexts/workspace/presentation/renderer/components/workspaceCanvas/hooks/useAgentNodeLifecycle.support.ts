@@ -93,8 +93,8 @@ export async function launchAgentRuntime({
 
     return {
       sessionId: launched.sessionId,
-      profileId: node.data.profileId ?? defaultTerminalProfileId,
-      runtimeKind: node.data.runtimeKind,
+      profileId: launched.profileId,
+      runtimeKind: launched.runtimeKind ?? undefined,
       effectiveModel: launched.effectiveModel,
       resumeSessionId: launched.resumeSessionId ?? resumeSessionId,
       startedAt: launched.startedAt,

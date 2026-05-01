@@ -369,6 +369,8 @@ export function registerSessionHandlers(
         provider,
         startedAt,
         executionContext,
+        profileId: resolvedSpawn.profileId,
+        runtimeKind: resolvedSpawn.runtimeKind,
         resumeSessionId,
         effectiveModel: launchCommand.effectiveModel,
         command: resolvedSpawn.command,

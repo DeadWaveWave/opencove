@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { computeHomeDirectory } from '../../../src/platform/os/HomeDirectory'
+import {
+  computeHomeDirectory,
+  computeHomeDirectoryCandidates,
+} from '../../../src/platform/os/HomeDirectory'
 
 describe('computeHomeDirectory', () => {
   it('prefers HOME when it is explicitly provided on Windows', () => {
@@ -35,5 +38,21 @@ describe('computeHomeDirectory', () => {
         osHomeDir: '/home/tester',
       }),
     ).toBe('/home/tester')
+  })
+
+  it('keeps both overridden and actual Windows home candidates', () => {
+    expect(
+      computeHomeDirectoryCandidates({
+        env: {
+          HOME: 'D:\\agent-home',
+          USERPROFILE: 'D:\\agent-home',
+          HOMEDRIVE: 'C:',
+          HOMEPATH: '\\Users\\tester',
+        },
+        platform: 'win32',
+        osHomeDir: 'D:\\agent-home',
+        osUserInfoHomeDir: 'C:\\Users\\tester',
+      }),
+    ).toEqual(['D:\\agent-home', 'C:\\Users\\tester'])
   })
 })
