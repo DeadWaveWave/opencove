@@ -68,6 +68,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Workspace canvas: preserve trackpad canvas wheel ownership across idle hover gaps until explicit pointer retargeting, so terminals no longer steal the next two-finger canvas pan after a brief pause. (#219)
 - Agent: centralize local executable resolution with per-provider overrides so provider availability, model listing, hydrate/resume, and launch stay consistent across GUI-launched shell environments. (#210)
 - Workspace approval: auto-register persisted workspace roots during startup so restored workspaces keep terminal, agent, and guarded file operations working even if `approved-workspaces.json` is missing or stale. (#210)
 - Space Explorer: image files now support quick preview and image-node opening in mount-targeted Spaces and browser control-surface paths. (#203)
