@@ -208,7 +208,9 @@ jobs:
         run: node scripts/generate-release-manifest.mjs
 
       - name: Generate checksums
-        run: node scripts/generate-checksums.mjs release-assets
+        run: |
+          node scripts/generate-release-installer-assets.mjs release-assets
+          node scripts/generate-checksums.mjs release-assets
 
       - name: Publish nightly prerelease
         if: steps.channel.outputs.is_nightly == 'true'
@@ -224,10 +226,6 @@ jobs:
           files: |
             release-assets/*
             release/release-manifest.json
-            scripts/release-assets/opencove-install.sh
-            scripts/release-assets/opencove-install.ps1
-            scripts/release-assets/opencove-uninstall.sh
-            scripts/release-assets/opencove-uninstall.ps1
 
       - name: Publish stable release
         if: steps.channel.outputs.is_nightly != 'true'
@@ -243,7 +241,3 @@ jobs:
           files: |
             release-assets/*
             release/release-manifest.json
-            scripts/release-assets/opencove-install.sh
-            scripts/release-assets/opencove-install.ps1
-            scripts/release-assets/opencove-uninstall.sh
-            scripts/release-assets/opencove-uninstall.ps1
