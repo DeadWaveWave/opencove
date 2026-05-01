@@ -76,7 +76,8 @@ describe('canvas wheel gesture decisions', () => {
     expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
     expect(decision.nextTrackpadGestureLock).toMatchObject({
       action: 'pan',
-      target: 'canvas',
+      owner: 'canvas',
+      phase: 'active',
     })
   })
 
@@ -165,7 +166,8 @@ describe('canvas wheel gesture decisions', () => {
     expect(secondDecision.nextDetectedCanvasInputMode).toBe('trackpad')
     expect(secondDecision.nextTrackpadGestureLock).toMatchObject({
       action: 'pan',
-      target: 'canvas',
+      owner: 'canvas',
+      phase: 'active',
     })
   })
 
@@ -197,7 +199,8 @@ describe('canvas wheel gesture decisions', () => {
       inputModalityState: createCanvasInputModalityState('trackpad'),
       trackpadGestureLock: {
         action: 'pan',
-        target: 'canvas',
+        owner: 'canvas',
+        phase: 'active',
         lastTimestamp: 100,
       },
       wheelTarget: 'node',
@@ -210,8 +213,38 @@ describe('canvas wheel gesture decisions', () => {
     expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
     expect(decision.nextTrackpadGestureLock).toMatchObject({
       action: 'pan',
-      target: 'canvas',
+      owner: 'canvas',
+      phase: 'active',
       lastTimestamp: 180,
+    })
+  })
+
+  it('keeps the canvas as the preferred wheel owner after the gesture settles', () => {
+    const decision = resolveCanvasWheelGesture({
+      canvasInputModeSetting: 'trackpad',
+      canvasWheelBehaviorSetting: 'zoom',
+      wheelZoomModifierKey: 'meta',
+      resolvedCanvasInputMode: 'trackpad',
+      inputModalityState: createCanvasInputModalityState('trackpad'),
+      trackpadGestureLock: {
+        action: 'pan',
+        owner: 'canvas',
+        phase: 'settling',
+        lastTimestamp: 100,
+      },
+      wheelTarget: 'node',
+      isTargetWithinCanvas: true,
+      sample: sample({ deltaX: 4.75, deltaY: 5.5, timeStamp: 520 }),
+      lockTimestamp: 520,
+    })
+
+    expect(decision.canvasAction).toBe('pan')
+    expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
+    expect(decision.nextTrackpadGestureLock).toMatchObject({
+      action: 'pan',
+      owner: 'canvas',
+      phase: 'active',
+      lastTimestamp: 520,
     })
   })
 
@@ -305,7 +338,8 @@ describe('canvas wheel gesture decisions', () => {
     expect(decision.nextDetectedCanvasInputMode).toBe('trackpad')
     expect(decision.nextTrackpadGestureLock).toMatchObject({
       action: 'pinch',
-      target: 'canvas',
+      owner: 'canvas',
+      phase: 'active',
     })
   })
 })

@@ -21,6 +21,7 @@ interface UseWorkspaceCanvasInputModeParams {
   setDetectedCanvasInputMode: React.Dispatch<React.SetStateAction<DetectedCanvasInputMode>>
   canvasRef: MutableRefObject<HTMLDivElement | null>
   trackpadGestureLockRef: MutableRefObject<TrackpadGestureLockState | null>
+  setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
   viewportRef: MutableRefObject<Viewport>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>>
   onViewportChange: (viewport: { x: number; y: number; zoom: number }) => void
@@ -35,6 +36,7 @@ export function useWorkspaceCanvasInputMode({
   setDetectedCanvasInputMode,
   canvasRef,
   trackpadGestureLockRef,
+  setIsCanvasWheelGestureCaptureActive,
   viewportRef,
   reactFlow,
   onViewportChange,
@@ -59,6 +61,7 @@ export function useWorkspaceCanvasInputMode({
     setDetectedCanvasInputMode,
     canvasRef,
     trackpadGestureLockRef,
+    setIsCanvasWheelGestureCaptureActive,
     viewportRef,
     reactFlow,
     onViewportChange,

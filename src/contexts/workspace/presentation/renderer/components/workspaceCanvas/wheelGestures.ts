@@ -33,14 +33,19 @@ export interface CanvasWheelGestureDecision {
   nextTrackpadGestureLock: TrackpadGestureLockState | null
 }
 
-function resolveActiveGestureLock(
+function resolveContinuableGestureSession(
   trackpadGestureLock: TrackpadGestureLockState | null,
   lockTimestamp: number,
 ): TrackpadGestureLockState | null {
-  if (
-    trackpadGestureLock === null ||
-    lockTimestamp - trackpadGestureLock.lastTimestamp > TRACKPAD_GESTURE_LOCK_GAP_MS
-  ) {
+  if (trackpadGestureLock === null) {
+    return null
+  }
+
+  if (trackpadGestureLock.phase === 'settling') {
+    return trackpadGestureLock
+  }
+
+  if (lockTimestamp - trackpadGestureLock.lastTimestamp > TRACKPAD_GESTURE_LOCK_GAP_MS) {
     return null
   }
 
@@ -73,7 +78,7 @@ export function resolveCanvasWheelGesture({
   sample,
   lockTimestamp,
 }: ResolveCanvasWheelGestureParams): CanvasWheelGestureDecision {
-  const activeLock = resolveActiveGestureLock(trackpadGestureLock, lockTimestamp)
+  const activeLock = resolveContinuableGestureSession(trackpadGestureLock, lockTimestamp)
   const isPinchZoom = isPinchLikeZoomWheelSample(sample)
   const isZoomModifierPressed =
     wheelZoomModifierKey === 'ctrl'
@@ -142,7 +147,7 @@ export function resolveCanvasWheelGesture({
         ? 'pinch'
         : 'pan'
   const canContinueCanvasLock =
-    activeLock !== null && activeLock.action === action && activeLock.target === 'canvas'
+    activeLock !== null && activeLock.action === action && activeLock.owner === 'canvas'
 
   if (!isTargetWithinCanvas && !canContinueCanvasLock) {
     return {
@@ -160,17 +165,19 @@ export function resolveCanvasWheelGesture({
       nextInputModalityState,
       nextTrackpadGestureLock: {
         action,
-        target: wheelTarget,
+        owner: wheelTarget,
+        phase: 'active',
         lastTimestamp: lockTimestamp,
       },
     }
   }
 
   const lockedTarget =
-    activeLock !== null && activeLock.action === action ? activeLock.target : 'canvas'
+    activeLock !== null && activeLock.action === action ? activeLock.owner : 'canvas'
   const nextTrackpadGestureLock: TrackpadGestureLockState = {
     action,
-    target: lockedTarget,
+    owner: lockedTarget,
+    phase: 'active',
     lastTimestamp: lockTimestamp,
   }
 

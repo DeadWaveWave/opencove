@@ -122,6 +122,11 @@
   pointer-events: none;
 }
 
+.workspace-canvas[data-cove-wheel-gesture-capture-active='true'] .react-flow__node,
+.workspace-canvas[data-cove-wheel-gesture-capture-active='true'] .react-flow__node * {
+  pointer-events: none !important;
+}
+
 .workspace-canvas .react-flow__nodesselection-rect {
   pointer-events: none;
 }

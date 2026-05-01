@@ -132,12 +132,16 @@ export interface SpaceDragState {
 
 export type TrackpadGestureAction = 'pan' | 'pinch'
 export type TrackpadGestureTarget = 'canvas' | 'node'
+export type CanvasWheelGesturePhase = 'active' | 'settling'
 
-export interface TrackpadGestureLockState {
+export interface CanvasWheelGestureSessionState {
   action: TrackpadGestureAction
-  target: TrackpadGestureTarget
+  owner: TrackpadGestureTarget
+  phase: CanvasWheelGesturePhase
   lastTimestamp: number
 }
+
+export type TrackpadGestureLockState = CanvasWheelGestureSessionState
 
 export interface TaskCreatorState {
   anchor: Point

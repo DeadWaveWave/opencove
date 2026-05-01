@@ -81,8 +81,6 @@ export function WorkspaceCanvasInner({
     setEmptySelectionPrompt: canvasState.setEmptySelectionPrompt,
     onShowMessage,
   })
-  // prettier-ignore
-  workspaceCanvasHooks.useWorkspaceCanvasFocusSpaceRequest({ focusSpaceId, focusSequence, spaces, focusSpaceInViewport: spacesApi.focusSpaceInViewport })
   const { spaceFramePreview, handleSpaceDragHandlePointerDown } =
     workspaceCanvasHooks.useWorkspaceCanvasSpaceDrag({
       workspaceId,
@@ -194,12 +192,13 @@ export function WorkspaceCanvasInner({
     setDetectedCanvasInputMode: canvasState.setDetectedCanvasInputMode,
     canvasRef: canvasState.canvasRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
+    setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive,
     viewportRef: canvasState.viewportRef,
     reactFlow,
     onViewportChange,
   })
   // prettier-ignore
-  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, persistedMinimapVisible, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusNodeId, focusSequence, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
+  workspaceCanvasHooks.useWorkspaceCanvasLifecycleBindings({ workspaceId, persistedMinimapVisible, canvasState, cancelSpaceRename: spacesApi.cancelSpaceRename, reactFlow, viewport, agentSettings, focusSpaceId, focusNodeId, focusSequence, spaces, focusSpaceInViewport: spacesApi.focusSpaceInViewport, nodes: canvasState.flowNodes, isFocusNodeTargetZoomPreviewing, nodesRef: nodeStore.nodesRef, requestNodeDeleteRef: actionRefs.requestNodeDeleteRef })
   const nodeTypes = workspaceCanvasHooks.useWorkspaceCanvasComposedNodeTypes({
     setNodes: nodeStore.setNodes,
     setSelectedNodeIds: canvasState.setSelectedNodeIds,
@@ -393,6 +392,7 @@ export function WorkspaceCanvasInner({
     <WorkspaceCanvasView
       canvasRef={canvasState.canvasRef}
       resolvedCanvasInputMode={inputMode.resolvedCanvasInputMode}
+      isCanvasWheelGestureCaptureActive={canvasState.isCanvasWheelGestureCaptureActive}
       {...spaceUi}
       {...spaceExplorer}
       handleCanvasPointerDownCapture={handleCanvasPointerDownCapture}

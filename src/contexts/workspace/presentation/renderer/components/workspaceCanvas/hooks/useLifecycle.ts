@@ -26,6 +26,7 @@ interface UseWorkspaceCanvasLifecycleParams {
   cancelSpaceRename: () => void
   selectionDraftRef: React.MutableRefObject<SelectionDraftState | null>
   trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
+  setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
   restoredViewportWorkspaceIdRef: React.MutableRefObject<string | null>
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   viewport: Viewport
@@ -56,6 +57,7 @@ export function useWorkspaceCanvasLifecycle({
   cancelSpaceRename,
   selectionDraftRef,
   trackpadGestureLockRef,
+  setIsCanvasWheelGestureCaptureActive,
   restoredViewportWorkspaceIdRef,
   reactFlow,
   viewport,
@@ -90,9 +92,11 @@ export function useWorkspaceCanvasLifecycle({
     cancelSpaceRename()
     selectionDraftRef.current = null
     trackpadGestureLockRef.current = null
+    setIsCanvasWheelGestureCaptureActive(false)
   }, [
     cancelSpaceRename,
     selectionDraftRef,
+    setIsCanvasWheelGestureCaptureActive,
     setContextMenu,
     setEmptySelectionPrompt,
     setSelectedNodeIds,

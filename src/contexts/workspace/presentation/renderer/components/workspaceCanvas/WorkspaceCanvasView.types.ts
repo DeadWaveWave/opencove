@@ -36,6 +36,7 @@ export type SelectionDraftUiState = Pick<
 export interface WorkspaceCanvasViewProps {
   canvasRef: React.RefObject<HTMLDivElement | null>
   resolvedCanvasInputMode: string
+  isCanvasWheelGestureCaptureActive: boolean
   onCanvasClick: () => void
   handleCanvasPointerDownCapture: React.PointerEventHandler<HTMLDivElement>
   handleCanvasPointerMoveCapture: React.PointerEventHandler<HTMLDivElement>

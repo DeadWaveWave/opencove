@@ -8,10 +8,10 @@ import {
 import { NODE_DRAG_HANDLE_SELECTOR } from '../../../utils/nodeFrameResize'
 import type { WorkspaceSnapGuide } from '../../../utils/workspaceSnap'
 import type {
+  CanvasWheelGestureSessionState,
   ContextMenuState,
   EmptySelectionPromptState,
   SelectionDraftState,
-  TrackpadGestureLockState,
 } from '../types'
 import { selectDragSurfaceSelectionMode } from '../../terminalNode/reactFlowState'
 
@@ -60,7 +60,9 @@ export function useWorkspaceCanvasState({
   setSelectionDraftUi: React.Dispatch<React.SetStateAction<SelectionDraftUiState | null>>
   inputModalityStateRef: React.MutableRefObject<ReturnType<typeof createCanvasInputModalityState>>
   isShiftPressedRef: React.MutableRefObject<boolean>
-  trackpadGestureLockRef: React.MutableRefObject<TrackpadGestureLockState | null>
+  trackpadGestureLockRef: React.MutableRefObject<CanvasWheelGestureSessionState | null>
+  isCanvasWheelGestureCaptureActive: boolean
+  setIsCanvasWheelGestureCaptureActive: React.Dispatch<React.SetStateAction<boolean>>
   viewportRef: React.MutableRefObject<Viewport>
   spaceNavigationAnchorIdRef: React.MutableRefObject<string | null>
   flowNodes: Node<TerminalNodeData>[]
@@ -75,6 +77,7 @@ export function useWorkspaceCanvasState({
   const [detectedCanvasInputMode, setDetectedCanvasInputMode] =
     useState<DetectedCanvasInputMode>('mouse')
   const [isShiftPressed, setIsShiftPressed] = useState(false)
+  const [isCanvasWheelGestureCaptureActive, setIsCanvasWheelGestureCaptureActive] = useState(false)
   const [magneticSnappingEnabled, setMagneticSnappingEnabled] = useState(true)
   const [snapGuides, setSnapGuides] = useState<WorkspaceSnapGuide[] | null>(null)
 
@@ -88,7 +91,7 @@ export function useWorkspaceCanvasState({
   const inputModalityStateRef = useRef(createCanvasInputModalityState('mouse'))
   const isShiftPressedRef = useRef(false)
   const magneticSnappingEnabledRef = useRef(true)
-  const trackpadGestureLockRef = useRef<TrackpadGestureLockState | null>(null)
+  const trackpadGestureLockRef = useRef<CanvasWheelGestureSessionState | null>(null)
   const viewportRef = useRef<Viewport>(viewport)
   const spaceNavigationAnchorIdRef = useRef<string | null>(null)
 
@@ -171,6 +174,8 @@ export function useWorkspaceCanvasState({
     inputModalityStateRef,
     isShiftPressedRef,
     trackpadGestureLockRef,
+    isCanvasWheelGestureCaptureActive,
+    setIsCanvasWheelGestureCaptureActive,
     viewportRef,
     spaceNavigationAnchorIdRef,
     flowNodes,

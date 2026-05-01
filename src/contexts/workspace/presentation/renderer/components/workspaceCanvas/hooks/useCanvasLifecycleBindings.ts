@@ -1,7 +1,8 @@
 import type { Edge, Node, ReactFlowInstance, Viewport } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type { TerminalNodeData } from '../../../types'
+import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import type { WorkspaceCanvasActionRefs } from './useActionRefs'
+import { useWorkspaceCanvasFocusSpaceRequest } from './useFocusSpaceRequest'
 import { useWorkspaceCanvasLifecycle } from './useLifecycle'
 import { useWorkspaceCanvasState } from './useCanvasState'
 
@@ -13,8 +14,11 @@ export function useWorkspaceCanvasLifecycleBindings({
   reactFlow,
   viewport,
   agentSettings,
+  focusSpaceId,
   focusNodeId,
   focusSequence,
+  spaces,
+  focusSpaceInViewport,
   nodes,
   isFocusNodeTargetZoomPreviewing,
   nodesRef,
@@ -27,13 +31,23 @@ export function useWorkspaceCanvasLifecycleBindings({
   reactFlow: ReactFlowInstance<Node<TerminalNodeData>, Edge>
   viewport: Viewport
   agentSettings: Pick<AgentSettings, 'canvasInputMode' | 'focusNodeTargetZoom'>
+  focusSpaceId?: string | null
   focusNodeId?: string | null
   focusSequence?: number
+  spaces: WorkspaceSpaceState[]
+  focusSpaceInViewport: (spaceId: string) => boolean
   nodes: Node<TerminalNodeData>[]
   isFocusNodeTargetZoomPreviewing: boolean
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   requestNodeDeleteRef: WorkspaceCanvasActionRefs['requestNodeDeleteRef']
 }): void {
+  useWorkspaceCanvasFocusSpaceRequest({
+    focusSpaceId,
+    focusSequence,
+    spaces,
+    focusSpaceInViewport,
+  })
+
   useWorkspaceCanvasLifecycle({
     workspaceId,
     persistedMinimapVisible,
@@ -45,6 +59,7 @@ export function useWorkspaceCanvasLifecycleBindings({
     cancelSpaceRename,
     selectionDraftRef: canvasState.selectionDraftRef,
     trackpadGestureLockRef: canvasState.trackpadGestureLockRef,
+    setIsCanvasWheelGestureCaptureActive: canvasState.setIsCanvasWheelGestureCaptureActive,
     restoredViewportWorkspaceIdRef: canvasState.restoredViewportWorkspaceIdRef,
     reactFlow,
     viewport,

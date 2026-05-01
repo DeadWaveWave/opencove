@@ -5,6 +5,7 @@ import {
   dragMouse,
   launchApp,
   readCanvasViewport,
+  readLocatorClientRect,
 } from './workspace-canvas.helpers'
 
 type WorkspaceWindow = Awaited<ReturnType<typeof launchApp>>['window']
@@ -157,24 +158,25 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       )
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
+      const canvas = window.locator('.workspace-canvas')
       const terminal = window.locator('.terminal-node').first()
+      const terminalSurface = terminal.locator('.terminal-node__terminal')
       await expect(pane).toBeVisible()
       await expect(terminal).toBeVisible()
-      const paneBox = await pane.boundingBox()
-      if (!paneBox) {
-        throw new Error('workspace pane bounding box unavailable')
-      }
-      const terminalBox = await terminal.boundingBox()
-      if (!terminalBox) {
-        throw new Error('terminal node bounding box unavailable')
-      }
+      await expect(terminalSurface).toBeVisible()
+      const paneBox = await readLocatorClientRect(pane)
+      const terminalSurfaceBox = await readLocatorClientRect(terminalSurface)
 
       const before = await readCanvasViewport(window)
 
       await window.mouse.move(paneBox.x + 120, paneBox.y + 120)
       await window.mouse.wheel(120, 0)
+      await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'true')
 
-      await window.mouse.move(terminalBox.x + 80, terminalBox.y + 80)
+      await window.mouse.move(
+        terminalSurfaceBox.x + terminalSurfaceBox.width * 0.5,
+        terminalSurfaceBox.y + terminalSurfaceBox.height * 0.5,
+      )
       await window.mouse.wheel(120, 0)
 
       await expect
@@ -183,6 +185,97 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
           return Math.abs(current.x - before.x)
         })
         .toBeGreaterThan(80)
+      await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'true')
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('keeps canvas wheel ownership after a gesture gap until pointer intent changes', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'trackpad-canvas-owner-persists-node-hover',
+            title: 'terminal-trackpad-canvas-owner-persists',
+            position: { x: 320, y: 240 },
+            width: 520,
+            height: 320,
+          },
+        ],
+        {
+          settings: {
+            canvasInputMode: 'trackpad',
+          },
+        },
+      )
+
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      const canvas = window.locator('.workspace-canvas')
+      const terminal = window.locator('.terminal-node').first()
+      const terminalSurface = terminal.locator('.terminal-node__terminal')
+      const xterm = terminal.locator('.xterm')
+      await expect(pane).toBeVisible()
+      await expect(terminalSurface).toBeVisible()
+      await expect(xterm).toBeVisible()
+
+      await xterm.click()
+      const terminalInput = terminal.locator('.xterm-helper-textarea')
+      await expect(terminalInput).toBeFocused()
+      await window.keyboard.type(buildEchoSequenceCommand('TRACKPAD_OWNER_IDLE', 260))
+      await window.keyboard.press('Enter')
+      await expect(terminal).toContainText('TRACKPAD_OWNER_IDLE_260')
+
+      const paneBox = await readLocatorClientRect(pane)
+      const terminalSurfaceBox = await readLocatorClientRect(terminalSurface)
+
+      await window.mouse.move(paneBox.x + 96, paneBox.y + 96)
+      await window.mouse.wheel(36, 0)
+      await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'true')
+
+      const hoverPoint = {
+        x: terminalSurfaceBox.x + terminalSurfaceBox.width * 0.5,
+        y: terminalSurfaceBox.y + terminalSurfaceBox.height * 0.5,
+      }
+      await window.mouse.move(hoverPoint.x, hoverPoint.y)
+      await window.mouse.wheel(18, 0)
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(
+            ({ x, y }) =>
+              document.elementFromPoint(x, y)?.closest('.terminal-node__terminal') !== null,
+            hoverPoint,
+          )
+        })
+        .toBe(true)
+
+      await window.waitForTimeout(280)
+      await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'false')
+
+      const beforeViewport = await readCanvasViewport(window)
+      const beforeTerminalViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'trackpad-canvas-owner-persists-node-hover')
+
+      await window.mouse.wheel(18, 0)
+
+      await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'true')
+      await expect
+        .poll(async () => {
+          const current = await readCanvasViewport(window)
+          return Math.abs(current.x - beforeViewport.x)
+        })
+        .toBeGreaterThan(8)
+
+      const afterTerminalViewportY = await window.evaluate(nodeId => {
+        return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
+      }, 'trackpad-canvas-owner-persists-node-hover')
+      expect(beforeTerminalViewportY).not.toBeNull()
+      expect(afterTerminalViewportY).toBe(beforeTerminalViewportY)
     } finally {
       await electronApp.close()
     }
@@ -211,6 +304,7 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       )
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
+      const canvas = window.locator('.workspace-canvas')
       const terminal = window.locator('.terminal-node').first()
       await expect(pane).toBeVisible()
       await expect(terminal).toBeVisible()
@@ -242,6 +336,7 @@ test.describe('Workspace Canvas - Trackpad Gestures', () => {
       })
 
       await window.waitForTimeout(280)
+      await expect(canvas).toHaveAttribute('data-cove-wheel-gesture-capture-active', 'false')
       const beforeViewportY = await window.evaluate(nodeId => {
         return window.__opencoveTerminalSelectionTestApi?.getViewportY(nodeId) ?? null
       }, 'trackpad-terminal-scroll-after-pan')
