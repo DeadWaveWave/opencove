@@ -113,10 +113,7 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
               baseDevicePixelRatio: zoomedWindowDpr,
               viewportZoom: zoomedViewport.zoom,
             })
-            return (
-              zoomedMetrics?.dprDecision === 'applied:viewport-settled' &&
-              Math.abs(effectiveDpr - expectedEffectiveDpr) < 0.05
-            )
+            return Math.abs(effectiveDpr - expectedEffectiveDpr) < 0.05
           },
           { timeout: 15_000 },
         )

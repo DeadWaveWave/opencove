@@ -28,6 +28,7 @@ import {
   selectDragSurfaceSelectionMode,
   selectViewportInteractionActive,
 } from './terminalNode/reactFlowState'
+import { useViewportInteractionSettledState } from './terminalNode/useViewportInteractionSettledState'
 import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
@@ -72,6 +73,9 @@ export function TerminalNode({
 }: TerminalNodeProps): JSX.Element {
   const isDragSurfaceSelectionMode = useStore(selectDragSurfaceSelectionMode)
   const isViewportInteractionActive = useStore(selectViewportInteractionActive)
+  const isViewportInteractionSettledActive = useViewportInteractionSettledState(
+    isViewportInteractionActive,
+  )
   const viewportZoom = useStore(storeState => {
     const state = storeState as unknown as { transform?: [number, number, number] }
     const zoom = state.transform?.[2] ?? 1
@@ -188,9 +192,11 @@ export function TerminalNode({
   ])
 
   useEffect(() => {
-    isViewportInteractionActiveRef.current = isViewportInteractionActive
-    outputSchedulerRef.current?.onViewportInteractionActiveChange(isViewportInteractionActive)
-  }, [isViewportInteractionActive])
+    isViewportInteractionActiveRef.current = isViewportInteractionSettledActive
+    outputSchedulerRef.current?.onViewportInteractionActiveChange(
+      isViewportInteractionSettledActive,
+    )
+  }, [isViewportInteractionSettledActive])
 
   const {
     scrollbackBufferRef,
@@ -417,7 +423,7 @@ export function TerminalNode({
     width,
     height,
     viewportZoom,
-    isViewportInteractionActive,
+    isViewportInteractionActive: isViewportInteractionSettledActive,
   })
   useTerminalFileDropPaste({ containerRef, terminalRef })
 

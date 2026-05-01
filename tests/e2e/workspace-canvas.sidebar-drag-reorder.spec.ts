@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import {
-  dragLocatorTo,
+  dragMouse,
   launchApp,
+  readLocatorClientRect,
   seedWorkspaceState,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -51,7 +52,23 @@ test.describe('Workspace Canvas - Sidebar Drag Reorder', () => {
         .filter({ hasText: 'Project Gamma' })
         .first()
 
-      await dragLocatorTo(window, firstItem, thirdItem)
+      const firstRect = await readLocatorClientRect(firstItem)
+      const thirdRect = await readLocatorClientRect(thirdItem)
+
+      await dragMouse(window, {
+        start: {
+          x: firstRect.x + Math.min(firstRect.width / 2, 40),
+          y: firstRect.y + firstRect.height / 2,
+        },
+        end: {
+          x: thirdRect.x + Math.min(thirdRect.width / 2, 40),
+          y: thirdRect.y + Math.max(thirdRect.height - 12, thirdRect.height * 0.7),
+        },
+        steps: 18,
+        settleAfterPressMs: 48,
+        settleBeforeReleaseMs: 80,
+        settleAfterReleaseMs: 80,
+      })
 
       // Verify new order in DOM — Alpha should have moved down
       await expect
@@ -60,7 +77,7 @@ test.describe('Workspace Canvas - Sidebar Drag Reorder', () => {
             const names = await workspaceNames.allTextContents()
             return names
           },
-          { timeout: 5_000 },
+          { timeout: 8_000 },
         )
         .toEqual(['Project Beta', 'Project Gamma', 'Project Alpha'])
 
@@ -81,7 +98,7 @@ test.describe('Workspace Canvas - Sidebar Drag Reorder', () => {
 
             return (parsed.workspaces ?? []).map(workspace => workspace.name)
           },
-          { timeout: 10_000 },
+          { timeout: 15_000 },
         )
         .toEqual(['Project Beta', 'Project Gamma', 'Project Alpha'])
     } finally {

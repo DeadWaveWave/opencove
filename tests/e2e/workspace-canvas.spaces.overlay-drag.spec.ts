@@ -3,6 +3,7 @@ import {
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
+  readLocatorClientRect,
   storageKey,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -193,20 +194,20 @@ test.describe('Workspace Canvas - Spaces (Overlay & Drag)', () => {
       const dragHandle = window.locator('[data-testid="workspace-space-drag-space-drag-top"]')
       await expect(dragHandle).toBeVisible()
 
-      const handleBox = await dragHandle.boundingBox()
-      if (!handleBox) {
-        throw new Error('space drag handle bounding box unavailable')
-      }
+      const handleRect = await readLocatorClientRect(dragHandle)
 
-      const startX = handleBox.x + handleBox.width * 0.9
-      const startY = handleBox.y + handleBox.height * 0.5
+      const startX = handleRect.x + handleRect.width * 0.9
+      const startY = handleRect.y + handleRect.height * 0.5
       const dragDx = 160
       const dragDy = 110
 
       await dragMouse(window, {
         start: { x: startX, y: startY },
         end: { x: startX + dragDx, y: startY + dragDy },
-        steps: 12,
+        steps: 16,
+        settleAfterPressMs: 48,
+        settleBeforeReleaseMs: 80,
+        settleAfterReleaseMs: 80,
       })
 
       await expect
@@ -278,18 +279,18 @@ test.describe('Workspace Canvas - Spaces (Overlay & Drag)', () => {
       const topHandle = window.locator('[data-testid="workspace-space-drag-space-corner-top"]')
       await expect(topHandle).toBeVisible()
 
-      const handleBox = await topHandle.boundingBox()
-      if (!handleBox) {
-        throw new Error('space top handle bounding box unavailable for corner resize')
-      }
+      const handleRect = await readLocatorClientRect(topHandle)
 
-      const startX = handleBox.x + 6
-      const startY = handleBox.y + 6
+      const startX = handleRect.x + 6
+      const startY = handleRect.y + 6
 
       await dragMouse(window, {
         start: { x: startX, y: startY },
         end: { x: startX - 120, y: startY - 140 },
-        steps: 12,
+        steps: 16,
+        settleAfterPressMs: 48,
+        settleBeforeReleaseMs: 80,
+        settleAfterReleaseMs: 80,
       })
 
       await expect
