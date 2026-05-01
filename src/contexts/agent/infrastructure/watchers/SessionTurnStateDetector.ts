@@ -39,13 +39,13 @@ function mayContainTurnState(provider: AgentProviderId, line: string): boolean {
   return line.includes('"response_item"') || line.includes('"event_msg"')
 }
 
-function hasContentBlockType(message: Record<string, unknown>, blockType: string): boolean {
+function hasContentBlockType(message: Record<string, unknown>, blockTypes: string[]): boolean {
   if (!Array.isArray(message.content)) {
     return false
   }
 
   return message.content.some(block => {
-    return isRecord(block) && block.type === blockType
+    return isRecord(block) && typeof block.type === 'string' && blockTypes.includes(block.type)
   })
 }
 
@@ -75,11 +75,19 @@ function detectClaudeTurnState(parsed: unknown): TerminalSessionState | null {
       return null
     }
 
-    if (hasContentBlockType(message, 'tool_use') || hasContentBlockType(message, 'thinking')) {
+    if (hasContentBlockType(message, ['tool_use'])) {
       return 'working'
     }
 
-    if (hasContentBlockType(message, 'text')) {
+    if (message.stop_reason === 'tool_use' || message.stop_reason === 'pause_turn') {
+      return 'working'
+    }
+
+    if (hasContentBlockType(message, ['thinking', 'redacted_thinking'])) {
+      return 'working'
+    }
+
+    if (hasContentBlockType(message, ['text', 'output_text'])) {
       return 'standby'
     }
 
