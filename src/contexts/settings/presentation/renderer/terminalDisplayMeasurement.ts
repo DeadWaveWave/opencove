@@ -160,6 +160,27 @@ function emitMeasurementHandlesChanged(): void {
   window.dispatchEvent(new Event(TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED))
 }
 
+function createTemporaryMeasurementContainer(): HTMLDivElement | null {
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  const container = document.createElement('div')
+  container.className = 'terminal-node__terminal nodrag'
+  container.setAttribute('aria-hidden', 'true')
+  Object.assign(container.style, {
+    position: 'fixed',
+    left: '-10000px',
+    top: '-10000px',
+    width: `${TERMINAL_DISPLAY_MEASUREMENT_WIDTH}px`,
+    height: `${TERMINAL_DISPLAY_MEASUREMENT_HEIGHT}px`,
+    opacity: '0',
+    pointerEvents: 'none',
+  })
+  document.body.append(container)
+  return container
+}
+
 export function registerTerminalDisplayMeasurementHandle({
   nodeId,
   terminal,
@@ -176,6 +197,10 @@ export function registerTerminalDisplayMeasurementHandle({
     terminalDisplayMeasurementHandles.delete(nodeId)
     emitMeasurementHandlesChanged()
   }
+}
+
+export function hasMountedTerminalDisplayMeasurementHandle(): boolean {
+  return terminalDisplayMeasurementHandles.size > 0
 }
 
 export function measureFirstMountedTerminalDisplay({
@@ -198,6 +223,29 @@ export function measureFirstMountedTerminalDisplay({
   }
 
   return null
+}
+
+export async function measureTerminalDisplayReferenceBaseline({
+  terminalFontSize,
+  terminalFontFamily,
+}: {
+  terminalFontSize: number
+  terminalFontFamily: string | null
+}): Promise<TerminalDisplayMeasurement | null> {
+  const container = createTemporaryMeasurementContainer()
+  if (!container) {
+    return null
+  }
+
+  try {
+    return await measureTerminalDisplayProfile({
+      container,
+      terminalFontSize,
+      terminalFontFamily,
+    })
+  } finally {
+    container.remove()
+  }
 }
 
 async function applyCandidate(

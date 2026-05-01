@@ -11,7 +11,12 @@ import {
   type WheelInputSample,
 } from '../../../utils/inputModality'
 import type { TerminalNodeData } from '../../../types'
-import { MAX_CANVAS_ZOOM, MIN_CANVAS_ZOOM, TRACKPAD_PAN_SCROLL_SPEED } from '../constants'
+import {
+  MAX_CANVAS_ZOOM,
+  MIN_CANVAS_ZOOM,
+  TRACKPAD_PAN_SCROLL_SPEED,
+  VIEWPORT_INTERACTION_SETTLE_MS,
+} from '../constants'
 import { clampNumber, resolveWheelTarget } from '../helpers'
 import type { TrackpadGestureLockState } from '../types'
 import { resolveCanvasWheelGesture } from '../wheelGestures'
@@ -112,7 +117,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       reactFlowStore.setState({
         coveViewportInteractionActive: false,
       } as unknown as Parameters<typeof reactFlowStore.setState>[0])
-    }, 120)
+    }, VIEWPORT_INTERACTION_SETTLE_MS)
   }, [reactFlowStore])
 
   const handleCanvasWheelCapture = useCallback(
@@ -202,7 +207,7 @@ export function useWorkspaceCanvasTrackpadGestures({
         viewportCommitTimerRef.current = window.setTimeout(() => {
           viewportCommitTimerRef.current = null
           onViewportChange(viewportRef.current)
-        }, 120)
+        }, VIEWPORT_INTERACTION_SETTLE_MS)
         return
       }
 
@@ -244,7 +249,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       viewportCommitTimerRef.current = window.setTimeout(() => {
         viewportCommitTimerRef.current = null
         onViewportChange(viewportRef.current)
-      }, 120)
+      }, VIEWPORT_INTERACTION_SETTLE_MS)
     },
     [
       canvasInputModeSetting,
@@ -330,7 +335,7 @@ export function useWorkspaceCanvasTrackpadGestures({
       viewportCommitTimerRef.current = window.setTimeout(() => {
         viewportCommitTimerRef.current = null
         onViewportChange(viewportRef.current)
-      }, 120)
+      }, VIEWPORT_INTERACTION_SETTLE_MS)
     }
 
     const handleGestureStart = (rawEvent: Event): void => {

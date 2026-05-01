@@ -7,14 +7,18 @@ import {
 } from '../../../src/contexts/settings/domain/agentSettings'
 import type { TerminalDisplayMeasurement } from '../../../src/contexts/settings/domain/terminalDisplayCalibration'
 import { useTerminalDisplayReferenceAutoCapture } from '../../../src/contexts/settings/presentation/renderer/useTerminalDisplayReferenceAutoCapture'
-import { measureFirstMountedTerminalDisplay } from '../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement'
+import {
+  hasMountedTerminalDisplayMeasurementHandle,
+  measureTerminalDisplayReferenceBaseline,
+} from '../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement'
 
 vi.mock('../../../src/contexts/settings/presentation/renderer/terminalDisplayMeasurement', () => ({
   TERMINAL_DISPLAY_MEASUREMENT_WIDTH: 638,
   TERMINAL_DISPLAY_MEASUREMENT_HEIGHT: 384,
   TERMINAL_DISPLAY_MEASUREMENT_HANDLES_CHANGED:
     'opencove:terminal-display-measurement-handles-changed',
-  measureFirstMountedTerminalDisplay: vi.fn(),
+  hasMountedTerminalDisplayMeasurementHandle: vi.fn(() => true),
+  measureTerminalDisplayReferenceBaseline: vi.fn(),
 }))
 
 function createMeasurement(overrides: Partial<TerminalDisplayMeasurement> = {}) {
@@ -55,7 +59,9 @@ function Harness({
 
 describe('useTerminalDisplayReferenceAutoCapture', () => {
   beforeEach(() => {
-    vi.mocked(measureFirstMountedTerminalDisplay).mockReset()
+    vi.mocked(hasMountedTerminalDisplayMeasurementHandle).mockReset()
+    vi.mocked(hasMountedTerminalDisplayMeasurementHandle).mockReturnValue(true)
+    vi.mocked(measureTerminalDisplayReferenceBaseline).mockReset()
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation(callback => {
       callback(0)
       return 1
@@ -70,7 +76,7 @@ describe('useTerminalDisplayReferenceAutoCapture', () => {
   it('captures the current client as the shared reference when none exists', async () => {
     const settings = { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: null }
     let nextSettings: AgentSettings | null = null
-    vi.mocked(measureFirstMountedTerminalDisplay).mockReturnValue(createMeasurement())
+    vi.mocked(measureTerminalDisplayReferenceBaseline).mockResolvedValue(createMeasurement())
 
     render(
       <Harness
@@ -89,6 +95,31 @@ describe('useTerminalDisplayReferenceAutoCapture', () => {
     })
   })
 
+  it('waits for a mounted terminal handle before auto-capturing the shared reference', async () => {
+    const settings = { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: null }
+    let nextSettings: AgentSettings | null = null
+    let handlesAvailable = false
+    vi.mocked(hasMountedTerminalDisplayMeasurementHandle).mockImplementation(() => handlesAvailable)
+    vi.mocked(measureTerminalDisplayReferenceBaseline).mockResolvedValue(createMeasurement())
+
+    render(
+      <Harness
+        settings={settings}
+        setAgentSettings={action => {
+          nextSettings = typeof action === 'function' ? action(settings) : action
+        }}
+      />,
+    )
+
+    expect(measureTerminalDisplayReferenceBaseline).not.toHaveBeenCalled()
+
+    handlesAvailable = true
+    window.dispatchEvent(new Event('opencove:terminal-display-measurement-handles-changed'))
+
+    await waitFor(() => expect(nextSettings?.terminalDisplayReference).not.toBeNull())
+    expect(measureTerminalDisplayReferenceBaseline).toHaveBeenCalledTimes(1)
+  })
+
   it('does not overwrite a reference that already matches the current appearance profile', () => {
     const settings = {
       ...DEFAULT_AGENT_SETTINGS,
@@ -98,18 +129,18 @@ describe('useTerminalDisplayReferenceAutoCapture', () => {
 
     render(<Harness settings={settings} setAgentSettings={setAgentSettings} />)
 
-    expect(measureFirstMountedTerminalDisplay).not.toHaveBeenCalled()
+    expect(measureTerminalDisplayReferenceBaseline).not.toHaveBeenCalled()
     expect(setAgentSettings).not.toHaveBeenCalled()
   })
 
   it('does not capture a shared reference when automatic alignment is disabled', () => {
     const settings = { ...DEFAULT_AGENT_SETTINGS, terminalDisplayReference: null }
     const setAgentSettings = vi.fn()
-    vi.mocked(measureFirstMountedTerminalDisplay).mockReturnValue(createMeasurement())
+    vi.mocked(measureTerminalDisplayReferenceBaseline).mockResolvedValue(createMeasurement())
 
     render(<Harness enabled={false} settings={settings} setAgentSettings={setAgentSettings} />)
 
-    expect(measureFirstMountedTerminalDisplay).not.toHaveBeenCalled()
+    expect(measureTerminalDisplayReferenceBaseline).not.toHaveBeenCalled()
     expect(setAgentSettings).not.toHaveBeenCalled()
   })
 })
