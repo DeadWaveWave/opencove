@@ -8,6 +8,7 @@ import type {
 } from '@shared/contracts/dto'
 import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
 import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
+import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
 import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { listOpenCodeSessions } from './AgentSessionCatalog.openCode'
 import {
@@ -166,10 +167,7 @@ function parseCodexSessionMeta(firstLine: string): CodexSessionMeta | null {
 }
 
 function toClaudeProjectDirs(cwd: string): string[] {
-  const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
-  return resolveHomeDirectoryCandidates().map(homeDirectory =>
-    join(homeDirectory, '.claude', 'projects', encodedPath),
-  )
+  return resolveClaudeProjectDirectoryCandidateGroups(cwd)[0] ?? []
 }
 
 async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSessionSummary[]> {

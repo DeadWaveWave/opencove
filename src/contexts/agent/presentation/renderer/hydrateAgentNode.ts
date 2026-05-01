@@ -122,9 +122,10 @@ export async function hydrateAgentNode({
     node.data.status === 'running' ||
     node.data.status === 'standby' ||
     node.data.status === 'restoring'
+  const hasRecoverableAgentStatus = node.data.status !== 'stopped'
 
   const resolvedPendingResumeSessionId =
-    hasActiveAgentStatus && !isResumeSessionBindingVerified(node.data.agent)
+    hasRecoverableAgentStatus && !isResumeSessionBindingVerified(node.data.agent)
       ? await resolvePendingResumeSessionId(node)
       : null
 
@@ -142,9 +143,9 @@ export async function hydrateAgentNode({
         }
 
   const shouldAutoResumeAgent =
-    hasActiveAgentStatus && isResumeSessionBindingVerified(sanitizedAgent)
+    hasRecoverableAgentStatus && isResumeSessionBindingVerified(sanitizedAgent)
   const shouldRelaunchBlankAgent =
-    hasActiveAgentStatus &&
+    hasRecoverableAgentStatus &&
     !isResumeSessionBindingVerified(sanitizedAgent) &&
     sanitizedAgent.prompt.trim().length === 0
   const terminalProfileId = node.data.profileId ?? agentSettings.defaultTerminalProfileId ?? null
@@ -193,7 +194,7 @@ export async function hydrateAgentNode({
             ...sanitizedAgent,
             effectiveModel: restoredAgent.effectiveModel,
             launchMode: restoredAgent.launchMode,
-            resumeSessionId: restoredAgent.resumeSessionId ?? sanitizedAgent.resumeSessionId,
+            resumeSessionId: sanitizedAgent.resumeSessionId,
             resumeSessionIdVerified: true,
           },
         },

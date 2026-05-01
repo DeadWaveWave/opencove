@@ -4,6 +4,7 @@ import type {
   TerminalNodeData,
   WorkspaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import { resolveObservedResumeSessionBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
 import { truncateScrollback } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { useScrollbackStore } from '@contexts/workspace/presentation/renderer/store/useScrollbackStore'
 import { scheduleNodeScrollbackWrite } from '@contexts/workspace/presentation/renderer/utils/persistence/scrollbackSchedule'
@@ -159,6 +160,54 @@ export function updateWorkspacesWithAgentExit({
   return { nextWorkspaces, didChange }
 }
 
+export function updateWorkspacesWithAgentMetadata({
+  workspaces,
+  sessionId,
+  resumeSessionId,
+}: {
+  workspaces: WorkspaceState[]
+  sessionId: string
+  resumeSessionId: string | null | undefined
+}): { nextWorkspaces: WorkspaceState[]; didChange: boolean } {
+  let didChange = false
+
+  const nextWorkspaces = workspaces.map(workspace => {
+    let workspaceDidChange = false
+
+    const nextNodes = workspace.nodes.map(node => {
+      if (node.data.kind !== 'agent' || node.data.sessionId !== sessionId || !node.data.agent) {
+        return node
+      }
+
+      const update = resolveObservedResumeSessionBindingUpdate(node.data.agent, resumeSessionId)
+      if (!update) {
+        return node
+      }
+
+      workspaceDidChange = true
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          agent: {
+            ...node.data.agent,
+            ...update,
+          },
+        },
+      }
+    })
+
+    if (!workspaceDidChange) {
+      return workspace
+    }
+
+    didChange = true
+    return { ...workspace, nodes: nextNodes }
+  })
+
+  return { nextWorkspaces: didChange ? nextWorkspaces : workspaces, didChange }
+}
+
 export function resolveInactiveTerminalNodeForSession({
   workspaces,
   activeWorkspaceId,
@@ -278,41 +327,13 @@ export function usePtyWorkspaceRuntimeSync({
     })
 
     const unsubscribeMetadata = ptyEventHub.onMetadata(event => {
-      const nextResumeSessionId = normalizeResumeSessionId(event.resumeSessionId)
-      if (!nextResumeSessionId) {
-        return
-      }
-
       let didChange = false
 
       setWorkspaces(previous => {
-        const result = updateWorkspacesWithAgentNodes(previous, {
+        const result = updateWorkspacesWithAgentMetadata({
+          workspaces: previous,
           sessionId: event.sessionId,
-          updateNode: node => {
-            if (!node.data.agent) {
-              return null
-            }
-
-            const nextVerified = true
-            if (
-              node.data.agent.resumeSessionId === nextResumeSessionId &&
-              node.data.agent.resumeSessionIdVerified === nextVerified
-            ) {
-              return null
-            }
-
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                agent: {
-                  ...node.data.agent,
-                  resumeSessionId: nextResumeSessionId,
-                  resumeSessionIdVerified: nextVerified,
-                },
-              },
-            }
-          },
+          resumeSessionId: normalizeResumeSessionId(event.resumeSessionId),
         })
 
         didChange = result.didChange

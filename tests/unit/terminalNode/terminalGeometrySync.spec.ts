@@ -201,7 +201,7 @@ describe('terminal geometry sync helpers', () => {
     expect(ptyResize).not.toHaveBeenCalled()
   })
 
-  it('commits measured runtime geometry when the durable seed no longer matches layout', async () => {
+  it('uses durable runtime geometry locally without writing PTY geometry during restore', async () => {
     const terminal = createTerminalMock()
     const fitAddon = {
       proposeDimensions: vi.fn(() => ({ cols: 65, rows: 44 })),
@@ -222,6 +222,34 @@ describe('terminal geometry sync helpers', () => {
 
     const size = await commitInitialGeometry(null)
 
+    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 64, rows: 44 })
+    expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
+    expect(terminal.resize).toHaveBeenCalledWith(64, 44)
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
+  it('commits measured runtime geometry only when no canonical restore geometry exists', async () => {
+    const terminal = createTerminalMock()
+    const fitAddon = {
+      proposeDimensions: vi.fn(() => ({ cols: 65, rows: 44 })),
+    }
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: null,
+    }
+    const commitInitialGeometry = createRuntimeInitialGeometryCommitter({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: { current: fitAddon as never },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-runtime-restore',
+      canonicalInitialGeometry: null,
+      allowMeasuredResizeCommit: true,
+    })
+
+    const size = await commitInitialGeometry(null)
+
     expect(size).toStrictEqual({ cols: 65, rows: 44, changed: true })
     expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 65, rows: 44 })
     expect(fitAddon.proposeDimensions).toHaveBeenCalled()
@@ -232,5 +260,44 @@ describe('terminal geometry sync helpers', () => {
       rows: 44,
       reason: 'frame_commit',
     })
+  })
+
+  it('uses worker snapshot geometry locally without writing PTY geometry during restore', async () => {
+    const terminal = createTerminalMock()
+    const fitAddon = {
+      proposeDimensions: vi.fn(() => ({ cols: 65, rows: 44 })),
+    }
+    const lastCommittedPtySizeRef: { current: { cols: number; rows: number } | null } = {
+      current: null,
+    }
+    const commitInitialGeometry = createRuntimeInitialGeometryCommitter({
+      terminalRef: { current: terminal as never },
+      fitAddonRef: { current: fitAddon as never },
+      containerRef: { current: { clientWidth: 640, clientHeight: 660 } as never },
+      isPointerResizingRef: { current: false },
+      lastCommittedPtySizeRef,
+      sessionId: 'session-runtime-restore',
+      canonicalInitialGeometry: null,
+      allowMeasuredResizeCommit: true,
+    })
+
+    const size = await commitInitialGeometry({
+      sessionId: 'session-runtime-restore',
+      epoch: 1,
+      appliedSeq: 3,
+      presentationRevision: 4,
+      cols: 72,
+      rows: 20,
+      bufferKind: 'normal',
+      cursor: { x: 0, y: 0 },
+      title: '',
+      serializedScreen: '',
+    } as never)
+
+    expect(size).toStrictEqual({ cols: 72, rows: 20, changed: false })
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 72, rows: 20 })
+    expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
+    expect(terminal.resize).toHaveBeenCalledWith(72, 20)
+    expect(ptyResize).not.toHaveBeenCalled()
   })
 })

@@ -162,4 +162,69 @@ describe('session prepare/revive agent runtime metadata', () => {
     expect(prepared.profileId).toBeNull()
     expect(prepared.runtimeKind).toBe('windows')
   })
+
+  it('revives a verified non-stopped agent window without rebinding to provider metadata', async () => {
+    const controlSurface: ControlSurface = {
+      invoke: vi.fn(async (_ctx, request) => {
+        expect(request.id).toBe('session.launchAgentInMount')
+        expect((request.payload as { resumeSessionId?: string }).resumeSessionId).toBe('resume-1')
+        return {
+          ok: true,
+          value: {
+            sessionId: 'mounted-session-1',
+            provider: 'claude-code' as const,
+            startedAt: '2026-05-01T00:00:00.000Z',
+            executionContext: {
+              projectId: 'workspace-1',
+              spaceId: 'space-1',
+              mountId: 'mount-1',
+              targetId: 'target-1',
+              endpoint: { endpointId: 'local', kind: 'local' as const },
+              target: {
+                scheme: 'file' as const,
+                rootPath: 'C:\\repo',
+                rootUri: 'file:///C:/repo',
+              },
+              scope: {
+                rootPath: 'C:\\repo',
+                rootUri: 'file:///C:/repo',
+              },
+              workingDirectory: 'C:\\repo',
+            },
+            profileId: null,
+            runtimeKind: 'windows' as const,
+            resumeSessionId: 'wrong-provider-session',
+            effectiveModel: 'sonnet',
+            command: 'cmd.exe',
+            args: ['/d', '/c', 'claude.cmd', '--resume', 'resume-1'],
+          },
+        }
+      }),
+    } as ControlSurface
+    const space: NormalizedPersistedSpace = {
+      id: 'space-1',
+      name: 'Main',
+      directoryPath: 'C:\\repo',
+      targetMountId: 'mount-1',
+      labelColor: null,
+      nodeIds: ['agent-1'],
+      rect: null,
+    }
+
+    const prepared = await prepareAgentNode({
+      controlSurface,
+      ctx,
+      store: { readNodeScrollback: vi.fn(async () => null) } as never,
+      workspace: createWorkspace(space),
+      node: createAgentNode({ status: 'exited', exitCode: 0 }),
+      space,
+      agent: { ...createAgentRecord(), provider: 'claude-code', effectiveModel: 'sonnet' },
+      settings: DEFAULT_AGENT_SETTINGS,
+    })
+
+    expect(prepared.recoveryState).toBe('revived')
+    expect(prepared.status).toBe('standby')
+    expect(prepared.agent?.resumeSessionId).toBe('resume-1')
+    expect(prepared.agent?.resumeSessionIdVerified).toBe(true)
+  })
 })

@@ -22,6 +22,7 @@ import {
   formatRecoverableError,
   invokeCommand,
   isActiveAgentStatus,
+  isRecoverableAgentWindowStatus,
   resolveNodeProfileId,
   resolvePreparedScrollback,
   resolveNodeRuntimeKind,
@@ -49,7 +50,7 @@ async function resolvePendingResumeSessionId(
   node: NormalizedPersistedNode,
   agent: PersistedAgentLike,
 ): Promise<string | null> {
-  if (!isActiveAgentStatus(node.status)) {
+  if (!isRecoverableAgentWindowStatus(node.status)) {
     return null
   }
 
@@ -214,8 +215,9 @@ export async function prepareAgentNode(options: {
   const mergedEnv =
     Object.keys(workspaceEnv).length > 0 ? { ...agentEnv, ...workspaceEnv } : agentEnv
   const hasActiveStatus = isActiveAgentStatus(node.status)
+  const hasRecoverableStatus = isRecoverableAgentWindowStatus(node.status)
   const resolvedPendingResumeSessionId =
-    hasActiveStatus && !isResumeSessionBindingVerified(options.agent)
+    hasRecoverableStatus && !isResumeSessionBindingVerified(options.agent)
       ? await resolvePendingResumeSessionId(node, options.agent)
       : null
   const sanitizedAgent = resolvedPendingResumeSessionId
@@ -230,9 +232,10 @@ export async function prepareAgentNode(options: {
           ...options.agent,
           ...clearResumeSessionBinding(),
         }
-  const shouldAutoResumeAgent = hasActiveStatus && isResumeSessionBindingVerified(sanitizedAgent)
+  const shouldAutoResumeAgent =
+    hasRecoverableStatus && isResumeSessionBindingVerified(sanitizedAgent)
   const shouldRelaunchBlankAgent =
-    hasActiveStatus &&
+    hasRecoverableStatus &&
     !isResumeSessionBindingVerified(sanitizedAgent) &&
     sanitizedAgent.prompt.trim().length === 0
 
@@ -296,7 +299,7 @@ export async function prepareAgentNode(options: {
           ...sanitizedAgent,
           effectiveModel: launched.effectiveModel,
           launchMode: 'resume',
-          resumeSessionId: launched.resumeSessionId ?? sanitizedAgent.resumeSessionId,
+          resumeSessionId: sanitizedAgent.resumeSessionId,
           resumeSessionIdVerified: true,
         },
       })

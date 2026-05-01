@@ -112,6 +112,10 @@ export function isActiveAgentStatus(status: string | null): boolean {
   return status === 'running' || status === 'standby' || status === 'restoring'
 }
 
+export function isRecoverableAgentWindowStatus(status: string | null): boolean {
+  return status !== 'stopped'
+}
+
 export function resolveTerminalRecoveryCwd(
   node: NormalizedPersistedNode,
   workspacePath: string,

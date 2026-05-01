@@ -145,7 +145,7 @@ export async function resumeTaskAgentSessionAction(
       launchedProfileId = launched.profileId
       launchedRuntimeKind = launched.runtimeKind ?? undefined
       launchedEffectiveModel = launched.effectiveModel
-      launchedResumeSessionId = launched.resumeSessionId ?? record.resumeSessionId
+      launchedResumeSessionId = record.resumeSessionId
       agentDirectory = launched.executionContext.workingDirectory
     } else {
       const launched = await window.opencoveApi.agent.launch({
@@ -167,7 +167,7 @@ export async function resumeTaskAgentSessionAction(
       launchedProfileId = launched.profileId ?? null
       launchedRuntimeKind = launched.runtimeKind
       launchedEffectiveModel = launched.effectiveModel
-      launchedResumeSessionId = launched.resumeSessionId ?? record.resumeSessionId
+      launchedResumeSessionId = record.resumeSessionId
     }
 
     const createdAgentNode = await context.createNodeForSession({
@@ -232,7 +232,7 @@ export async function resumeTaskAgentSessionAction(
                       ...session,
                       lastRunAt: now,
                       lastDirectory: taskDirectory,
-                      resumeSessionId: launchedResumeSessionId ?? session.resumeSessionId,
+                      resumeSessionId: session.resumeSessionId,
                       resumeSessionIdVerified: true,
                     }
                   : session,

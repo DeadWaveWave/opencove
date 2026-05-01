@@ -63,6 +63,7 @@ export function useTerminalAppearanceSync({
   const hasInitializedFontSizeRef = useRef(false)
   const hasInitializedFontFamilyRef = useRef(false)
   const previousSharedFontSizeRef = useRef(terminalFontSize)
+  const previousSharedFontFamilyRef = useRef(terminalFontFamily)
 
   useEffect(() => {
     const terminal = terminalRef.current
@@ -115,9 +116,11 @@ export function useTerminalAppearanceSync({
       return
     }
 
+    const sharedFontFamilyChanged = previousSharedFontFamilyRef.current !== terminalFontFamily
+    previousSharedFontFamilyRef.current = terminalFontFamily
     terminal.options.fontFamily = terminalFontFamily ?? DEFAULT_TERMINAL_FONT_FAMILY
     const frame = requestAnimationFrame(() => {
-      if (hasInitializedFontFamilyRef.current) {
+      if (hasInitializedFontFamilyRef.current && sharedFontFamilyChanged) {
         commitTerminalGeometry()
         return
       }

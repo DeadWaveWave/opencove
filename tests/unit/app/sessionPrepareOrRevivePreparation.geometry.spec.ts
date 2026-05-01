@@ -44,14 +44,13 @@ describe('session prepare/revive terminal geometry', () => {
     expect(geometry).toEqual({ cols: 64, rows: 44 })
   })
 
-  it('shrinks stale durable terminal geometry that no longer fits the node frame', () => {
+  it('does not shrink durable terminal geometry during restore', () => {
     const geometry = resolveNodeInitialPtyGeometry(
       createNode({ terminalGeometry: { cols: 80, rows: 44 }, width: 520, height: 720 }),
       { terminalFontSize: 13 } as never,
     )
 
-    expect(geometry.cols).toBeLessThan(80)
-    expect(geometry.rows).toBe(44)
+    expect(geometry).toEqual({ cols: 80, rows: 44 })
   })
 
   it('falls back to a bounded frame estimate when no durable geometry exists', () => {

@@ -23,8 +23,5 @@ export function resolveNodeInitialPtyGeometry(
     return frameGeometry
   }
 
-  return {
-    cols: Math.min(node.terminalGeometry.cols, frameGeometry.cols),
-    rows: Math.min(node.terminalGeometry.rows, frameGeometry.rows),
-  }
+  return node.terminalGeometry
 }

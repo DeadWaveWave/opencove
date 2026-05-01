@@ -288,7 +288,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   : requestedExpectedDirectory,
                 ...(mode === 'resume'
                   ? {
-                      resumeSessionId: launched.resumeSessionId ?? requestedResumeSessionId,
+                      resumeSessionId: requestedResumeSessionId,
                       resumeSessionIdVerified: true,
                     }
                   : clearResumeSessionBinding()),

@@ -69,9 +69,7 @@ function resolveRuntimePlatform(explicitPlatform: string | undefined): string | 
 }
 
 function shouldForceDomRenderer(options: PreferredTerminalRendererOptions): boolean {
-  return (
-    options.terminalKind === 'agent' && resolveRuntimePlatform(options.runtimePlatform) === 'win32'
-  )
+  return resolveRuntimePlatform(options.runtimePlatform) === 'win32'
 }
 
 export function resetPreferredTerminalRendererStateForTests(): void {

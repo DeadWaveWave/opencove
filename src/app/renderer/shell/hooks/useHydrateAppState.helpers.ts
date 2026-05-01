@@ -136,6 +136,7 @@ export function mergeHydratedNode(
       isLiveSessionReattach: hydratedNode.data.isLiveSessionReattach === true,
       profileId: hydratedNode.data.profileId ?? currentNode.data.profileId ?? null,
       runtimeKind: hydratedNode.data.runtimeKind ?? currentNode.data.runtimeKind,
+      terminalGeometry: hydratedNode.data.terminalGeometry ?? currentNode.data.terminalGeometry,
       status: hydratedNode.data.status,
       startedAt: hydratedNode.data.startedAt,
       endedAt: hydratedNode.data.endedAt,

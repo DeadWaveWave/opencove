@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { getPtyEventHub } from '@app/renderer/shell/utils/ptyEventHub'
 import type { Node } from '@xyflow/react'
+import { resolveObservedResumeSessionBindingUpdate } from '@contexts/agent/domain/agentResumeBinding'
 import type { AgentRuntimeStatus, TerminalNodeData } from '../../../types'
 
 export function applyAgentStateToNodes(
@@ -77,6 +78,41 @@ export function applyAgentExitToNodes(
   }
 }
 
+export function applyAgentMetadataToNodes(
+  prevNodes: Node<TerminalNodeData>[],
+  event: { sessionId: string; resumeSessionId: string | null | undefined },
+): { nextNodes: Node<TerminalNodeData>[]; didChange: boolean } {
+  let didChange = false
+
+  const nextNodes = prevNodes.map(node => {
+    if (node.data.kind !== 'agent' || node.data.sessionId !== event.sessionId || !node.data.agent) {
+      return node
+    }
+
+    const update = resolveObservedResumeSessionBindingUpdate(node.data.agent, event.resumeSessionId)
+    if (!update) {
+      return node
+    }
+
+    didChange = true
+    return {
+      ...node,
+      data: {
+        ...node.data,
+        agent: {
+          ...node.data.agent,
+          ...update,
+        },
+      },
+    }
+  })
+
+  return {
+    nextNodes: didChange ? nextNodes : prevNodes,
+    didChange,
+  }
+}
+
 export function useWorkspaceCanvasPtyTaskCompletion({
   setNodes,
   onRequestPersistFlush,
@@ -101,47 +137,9 @@ export function useWorkspaceCanvasPtyTaskCompletion({
 
       setNodes(
         prevNodes => {
-          const nextNodes = prevNodes.map(node => {
-            if (
-              node.data.kind !== 'agent' ||
-              node.data.sessionId !== event.sessionId ||
-              !node.data.agent
-            ) {
-              return node
-            }
-
-            const nextResumeSessionId =
-              typeof event.resumeSessionId === 'string' && event.resumeSessionId.trim().length > 0
-                ? event.resumeSessionId
-                : null
-            const nextResumeSessionIdVerified = nextResumeSessionId !== null
-
-            if (
-              node.data.agent.resumeSessionId === nextResumeSessionId &&
-              node.data.agent.resumeSessionIdVerified === nextResumeSessionIdVerified
-            ) {
-              return node
-            }
-
-            if (nextResumeSessionId === null) {
-              return node
-            }
-
-            didChange = true
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                agent: {
-                  ...node.data.agent,
-                  resumeSessionId: nextResumeSessionId,
-                  resumeSessionIdVerified: true,
-                },
-              },
-            }
-          })
-
-          return didChange ? nextNodes : prevNodes
+          const result = applyAgentMetadataToNodes(prevNodes, event)
+          didChange = result.didChange
+          return result.nextNodes
         },
         { syncLayout: false },
       )

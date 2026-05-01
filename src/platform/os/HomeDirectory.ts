@@ -81,6 +81,12 @@ export function computeHomeDirectoryCandidates(
   appendUniqueHomeDirectoryCandidate(candidates, computeHomeDirectory(input), input.platform)
 
   if (input.platform === 'win32') {
+    appendUniqueHomeDirectoryCandidate(
+      candidates,
+      normalizeEnvPath(input.env.USERPROFILE),
+      input.platform,
+    )
+
     const homeDrive = normalizeEnvPath(input.env.HOMEDRIVE) ?? ''
     const homePath = normalizeEnvPath(input.env.HOMEPATH) ?? ''
     const combined = `${homeDrive}${homePath}`.trim()
