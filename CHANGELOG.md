@@ -104,6 +104,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - OpenCode: Keep embedded agent terminals pinned to dark theme to avoid partial light/dark desynchronization. (#60)
 - Canvas: Stabilized auto input-mode detection to default to mouse semantics until high-confidence trackpad gestures are observed. (#47)
 - Worktree window: Fixed light theme text colors in the create/archive dialog. (#47)
+- Worktree archive: keep archiving the active Space from triggering an automatic global Fit View jump. (#217)
 - Worktree create: Detect repos without commits and show an actionable error instead of failing to create the worktree. (#120)
 - Worktree create: Branch dropdown no longer jumps to the top while scrolling. (#126)
 - Task: Typing in the Task Name input no longer collapses Advanced Settings. (#48)
