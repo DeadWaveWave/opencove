@@ -49,6 +49,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   workspacePath: string
   environmentVariables?: Record<string, string>
   defaultTerminalProfileId: string | null
+  terminalFontSize: number
   spacesRef: React.MutableRefObject<WorkspaceSpaceState[]>
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>

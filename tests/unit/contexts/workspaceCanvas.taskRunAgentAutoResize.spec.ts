@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
+import { resolveDefaultAgentWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -8,6 +10,13 @@ import type {
 import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useTaskActions.agentSession'
 
 describe('WorkspaceCanvas task run agent auto resize', () => {
+  function expectedAgentGeometry() {
+    return resolveTerminalPtyGeometryForNodeFrame({
+      ...resolveDefaultAgentWindowSize(DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket),
+      terminalFontSize: DEFAULT_AGENT_SETTINGS.terminalFontSize,
+    })
+  }
+
   it('expands the task space to fit the created agent node', async () => {
     const launch = vi.fn(async () => ({
       sessionId: 'agent-session-1',
@@ -130,7 +139,9 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       workspacePath: '/tmp',
       onRequestPersistFlush: vi.fn(),
     })
+    const geometry = expectedAgentGeometry()
 
+    expect(launch).toHaveBeenCalledWith(expect.objectContaining(geometry))
     expect(onSpacesChange).toHaveBeenCalled()
 
     const nextSpace = spacesRef.current.find(space => space.id === 'space-1')
@@ -297,10 +308,12 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
       workspacePath: '/tmp',
       onRequestPersistFlush: vi.fn(),
     })
+    const geometry = expectedAgentGeometry()
 
     expect(controlSurfaceInvoke).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'session.launchAgentInMount',
+        payload: expect.objectContaining(geometry),
       }),
     )
     expect(createNodeForSession).toHaveBeenCalledWith(
@@ -308,6 +321,7 @@ describe('WorkspaceCanvas task run agent auto resize', () => {
         sessionId: 'mounted-session-1',
         profileId: null,
         runtimeKind: 'windows',
+        terminalGeometry: geometry,
       }),
     )
   })

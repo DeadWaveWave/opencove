@@ -20,6 +20,7 @@ export function useWorkspaceCanvasTerminalCreation({
   defaultTerminalProfileId,
   nodesRef,
   standardWindowSizeBucket,
+  terminalFontSize,
   createNodeForSession,
   setNodes,
   onSpacesChange,
@@ -34,6 +35,7 @@ export function useWorkspaceCanvasTerminalCreation({
   defaultTerminalProfileId: string | null
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
+  terminalFontSize: number
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
@@ -53,6 +55,7 @@ export function useWorkspaceCanvasTerminalCreation({
       workspaceId,
       defaultTerminalProfileId,
       standardWindowSizeBucket,
+      terminalFontSize,
       workspacePath,
       environmentVariables,
       spacesRef,
@@ -73,6 +76,7 @@ export function useWorkspaceCanvasTerminalCreation({
     spacesRef,
     defaultTerminalProfileId,
     standardWindowSizeBucket,
+    terminalFontSize,
     workspacePath,
     workspaceId,
     onShowMessage,

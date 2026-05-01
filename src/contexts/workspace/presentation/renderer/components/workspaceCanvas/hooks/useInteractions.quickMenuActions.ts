@@ -22,6 +22,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     | 'setNodes'
     | 'onSpacesChange'
     | 'defaultTerminalProfileId'
+    | 'terminalFontSize'
     | 'workspacePath'
     | 'createNodeForSession'
     | 'onShowMessage'
@@ -43,6 +44,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     setNodes,
     onSpacesChange,
     defaultTerminalProfileId,
+    terminalFontSize,
     workspacePath,
     createNodeForSession,
     onShowMessage,
@@ -81,6 +83,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         anchor,
         workspaceId,
         defaultTerminalProfileId,
+        terminalFontSize,
         standardWindowSizeBucket,
         workspacePath,
         spacesRef,
@@ -107,6 +110,7 @@ export function useWorkspaceCanvasQuickMenuActions(
       createNodeForSession,
       createWebsiteNode,
       defaultTerminalProfileId,
+      terminalFontSize,
       nodesRef,
       onSpacesChange,
       onShowMessage,

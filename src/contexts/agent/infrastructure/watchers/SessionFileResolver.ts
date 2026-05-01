@@ -4,6 +4,7 @@ import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
 import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
 import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
+import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
 
 interface ResolveSessionFilePathInput {
   provider: AgentProviderId
@@ -98,11 +99,28 @@ async function readFirstLine(filePath: string): Promise<string | null> {
   }
 }
 
-function resolveClaudeSessionFilePaths(cwd: string, sessionId: string): string[] {
-  const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
-  return resolveHomeDirectoryCandidates().map(homeDirectory =>
-    join(homeDirectory, '.claude', 'projects', encodedPath, `${sessionId}.jsonl`),
+function resolveClaudeSessionFilePathGroups(cwd: string, sessionId: string): string[][] {
+  return resolveClaudeProjectDirectoryCandidateGroups(cwd).map(projectDirectoryGroup =>
+    projectDirectoryGroup.map(projectDirectory => join(projectDirectory, `${sessionId}.jsonl`)),
   )
+}
+
+async function findExistingClaudeSessionFilePathInGroups(
+  resolvedPathGroups: string[][],
+  index = 0,
+): Promise<string | null> {
+  const resolvedPathGroup = resolvedPathGroups[index]
+  if (!resolvedPathGroup) {
+    return null
+  }
+
+  const existingPaths = await Promise.all(resolvedPathGroup.map(ensureFileExists))
+  const existingPath = existingPaths.find((path): path is string => typeof path === 'string')
+  if (existingPath) {
+    return existingPath
+  }
+
+  return await findExistingClaudeSessionFilePathInGroups(resolvedPathGroups, index + 1)
 }
 
 async function ensureFileExists(filePath: string): Promise<string | null> {
@@ -254,15 +272,9 @@ async function tryResolveSessionFilePath(
   startedAtMs: number,
 ): Promise<string | null> {
   if (provider === 'claude-code') {
-    for (const resolvedPath of resolveClaudeSessionFilePaths(cwd, sessionId)) {
-      // eslint-disable-next-line no-await-in-loop
-      const existingPath = await ensureFileExists(resolvedPath)
-      if (existingPath) {
-        return existingPath
-      }
-    }
-
-    return null
+    return await findExistingClaudeSessionFilePathInGroups(
+      resolveClaudeSessionFilePathGroups(cwd, sessionId),
+    )
   }
 
   if (provider === 'codex') {

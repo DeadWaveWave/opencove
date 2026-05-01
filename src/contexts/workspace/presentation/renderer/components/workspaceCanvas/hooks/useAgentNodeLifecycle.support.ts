@@ -1,6 +1,7 @@
 import type { Node } from '@xyflow/react'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
+import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import type { AgentNodeData, TerminalNodeData } from '../../../types'
 
 export type AgentRuntimeNode = Node<TerminalNodeData> & {
@@ -27,6 +28,7 @@ export interface AgentRuntimeLaunchResult {
   resumeSessionId: string | null
   startedAt: string
   executionDirectory: string
+  terminalGeometry: { cols: number; rows: number }
 }
 
 export function findAgentNode(
@@ -60,6 +62,7 @@ export async function launchAgentRuntime({
   agentFullAccess,
   defaultTerminalProfileId,
   executablePathOverride,
+  terminalFontSize,
 }: {
   node: AgentRuntimeNode
   mountId: string | null
@@ -70,7 +73,14 @@ export async function launchAgentRuntime({
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
   executablePathOverride: string | null
+  terminalFontSize: number
 }): Promise<AgentRuntimeLaunchResult> {
+  const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
+    width: node.data.width,
+    height: node.data.height,
+    terminalFontSize,
+  })
+
   if (mountId) {
     const cwd = executionDirectory.trim()
     const cwdUri = cwd.length > 0 ? toFileUri(cwd) : null
@@ -88,6 +98,8 @@ export async function launchAgentRuntime({
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess,
+        cols: launchGeometry.cols,
+        rows: launchGeometry.rows,
       },
     })
 
@@ -99,6 +111,7 @@ export async function launchAgentRuntime({
       resumeSessionId: launched.resumeSessionId ?? resumeSessionId,
       startedAt: launched.startedAt,
       executionDirectory: launched.executionContext.workingDirectory,
+      terminalGeometry: launchGeometry,
     }
   }
 
@@ -113,8 +126,8 @@ export async function launchAgentRuntime({
     ...(executablePathOverride ? { executablePathOverride } : {}),
     ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
     agentFullAccess,
-    cols: 80,
-    rows: 24,
+    cols: launchGeometry.cols,
+    rows: launchGeometry.rows,
   })
 
   return {
@@ -125,5 +138,6 @@ export async function launchAgentRuntime({
     resumeSessionId: launched.resumeSessionId ?? null,
     startedAt: new Date().toISOString(),
     executionDirectory,
+    terminalGeometry: launchGeometry,
   }
 }

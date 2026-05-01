@@ -3,6 +3,7 @@ import { basename, extname, join, resolve } from 'node:path'
 import { StringDecoder } from 'node:string_decoder'
 import type { AgentProviderId } from '@shared/contracts/dto'
 import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
+import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
 import {
   findGeminiResumeSessionId,
   findOpenCodeResumeSessionId,
@@ -174,12 +175,13 @@ function resolveCodexSessionTimestampMs(meta: CodexSessionMeta, startedAtMs: num
   )[0]
 }
 
-async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
-  const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
+async function findLatestClaudeResumeSessionIdInProjectDirectoryGroup(
+  projectDirectoryGroup: string[],
+  startedAtMs: number,
+): Promise<string | null> {
   const files = (
     await Promise.all(
-      resolveHomeDirectoryCandidates().map(async homeDirectory => {
-        const projectDir = join(homeDirectory, '.claude', 'projects', encodedPath)
+      projectDirectoryGroup.map(async projectDir => {
         return (await listFiles(projectDir)).filter(file => file.endsWith('.jsonl'))
       }),
     )
@@ -204,11 +206,39 @@ async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Prom
     .filter(item => item.mtimeMs >= startedAtMs - 6000)
     .sort((a, b) => b.mtimeMs - a.mtimeMs)[0]
 
-  if (!latest) {
+  return latest ? normalizeSessionIdFromPath(latest.file) : null
+}
+
+async function findClaudeResumeSessionIdInProjectDirectoryGroups(
+  projectDirectoryGroups: string[][],
+  startedAtMs: number,
+  index = 0,
+): Promise<string | null> {
+  const projectDirectoryGroup = projectDirectoryGroups[index]
+  if (!projectDirectoryGroup) {
     return null
   }
 
-  return normalizeSessionIdFromPath(latest.file)
+  const found = await findLatestClaudeResumeSessionIdInProjectDirectoryGroup(
+    projectDirectoryGroup,
+    startedAtMs,
+  )
+  if (found) {
+    return found
+  }
+
+  return await findClaudeResumeSessionIdInProjectDirectoryGroups(
+    projectDirectoryGroups,
+    startedAtMs,
+    index + 1,
+  )
+}
+
+async function findClaudeResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {
+  return await findClaudeResumeSessionIdInProjectDirectoryGroups(
+    resolveClaudeProjectDirectoryCandidateGroups(cwd),
+    startedAtMs,
+  )
 }
 
 async function findCodexResumeSessionId(cwd: string, startedAtMs: number): Promise<string | null> {

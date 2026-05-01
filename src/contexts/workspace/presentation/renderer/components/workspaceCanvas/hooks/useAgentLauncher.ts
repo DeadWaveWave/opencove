@@ -8,6 +8,7 @@ import {
   type AgentSettings,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
+import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
@@ -85,6 +86,10 @@ export function useWorkspaceCanvasAgentLauncher({
             cursorAnchor,
             resolveDefaultAgentWindowSize(standardWindowSizeBucket),
           )
+          const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
+            ...resolveDefaultAgentWindowSize(standardWindowSizeBucket),
+            terminalFontSize: agentSettings.terminalFontSize,
+          })
           const model = resolveAgentModel(agentSettings, provider)
           const executablePathOverride = resolveAgentExecutablePathOverride(agentSettings, provider)
           const env = resolveAgentLaunchEnv(agentSettings, provider)
@@ -149,6 +154,8 @@ export function useWorkspaceCanvasAgentLauncher({
                   ...(executablePathOverride ? { executablePathOverride } : {}),
                   ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
                   agentFullAccess: agentSettings.agentFullAccess,
+                  cols: launchGeometry.cols,
+                  rows: launchGeometry.rows,
                 },
               })
 
@@ -168,8 +175,8 @@ export function useWorkspaceCanvasAgentLauncher({
               ...(executablePathOverride ? { executablePathOverride } : {}),
               ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
               agentFullAccess: agentSettings.agentFullAccess,
-              cols: 80,
-              rows: 24,
+              cols: launchGeometry.cols,
+              rows: launchGeometry.rows,
             })
 
             launchedSessionId = launched.sessionId
@@ -184,6 +191,7 @@ export function useWorkspaceCanvasAgentLauncher({
             sessionId: launchedSessionId,
             profileId: launchedProfileId,
             runtimeKind: launchedRuntimeKind,
+            terminalGeometry: launchGeometry,
             title: buildAgentNodeTitle(provider, modelLabel),
             anchor,
             kind: 'agent',

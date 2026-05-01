@@ -3,8 +3,10 @@ import {
   resolveAgentExecutablePathOverride,
   resolveAgentLaunchEnv,
 } from '@contexts/settings/domain/agentSettings'
+import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
+import { resolveDefaultAgentWindowSize } from '../constants'
 import type {
   LaunchAgentSessionResult,
   ListMountsResult,
@@ -99,6 +101,10 @@ export async function resumeTaskAgentSessionAction(
     context.agentSettings,
     record.provider,
   )
+  const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
+    ...resolveDefaultAgentWindowSize(context.agentSettings.standardWindowSizeBucket),
+    terminalFontSize: context.agentSettings.terminalFontSize,
+  })
   const mergedEnv =
     context.environmentVariables && Object.keys(context.environmentVariables).length > 0
       ? { ...env, ...context.environmentVariables }
@@ -130,6 +136,8 @@ export async function resumeTaskAgentSessionAction(
           ...(executablePathOverride ? { executablePathOverride } : {}),
           ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
           agentFullAccess: context.agentSettings.agentFullAccess,
+          cols: launchGeometry.cols,
+          rows: launchGeometry.rows,
         },
       })
 
@@ -151,8 +159,8 @@ export async function resumeTaskAgentSessionAction(
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
-        cols: 80,
-        rows: 24,
+        cols: launchGeometry.cols,
+        rows: launchGeometry.rows,
       })
 
       launchedSessionId = launched.sessionId
@@ -166,6 +174,7 @@ export async function resumeTaskAgentSessionAction(
       sessionId: launchedSessionId,
       profileId: launchedProfileId,
       runtimeKind: launchedRuntimeKind,
+      terminalGeometry: launchGeometry,
       title: context.buildAgentNodeTitle(record.provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',

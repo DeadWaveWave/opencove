@@ -35,13 +35,23 @@ function createNode(overrides: Partial<NormalizedPersistedNode>): NormalizedPers
 }
 
 describe('session prepare/revive terminal geometry', () => {
-  it('uses durable terminal geometry before estimating from the node frame', () => {
+  it('uses durable terminal geometry when it still fits the node frame', () => {
     const geometry = resolveNodeInitialPtyGeometry(
       createNode({ terminalGeometry: { cols: 64, rows: 44 }, width: 900, height: 900 }),
       { terminalFontSize: 13 } as never,
     )
 
     expect(geometry).toEqual({ cols: 64, rows: 44 })
+  })
+
+  it('shrinks stale durable terminal geometry that no longer fits the node frame', () => {
+    const geometry = resolveNodeInitialPtyGeometry(
+      createNode({ terminalGeometry: { cols: 80, rows: 44 }, width: 520, height: 720 }),
+      { terminalFontSize: 13 } as never,
+    )
+
+    expect(geometry.cols).toBeLessThan(80)
+    expect(geometry.rows).toBe(44)
   })
 
   it('falls back to a bounded frame estimate when no durable geometry exists', () => {

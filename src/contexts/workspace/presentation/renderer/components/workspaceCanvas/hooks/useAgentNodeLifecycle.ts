@@ -39,6 +39,7 @@ interface UseAgentNodeLifecycleParams {
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
+  terminalFontSize: number
   agentEnvByProvider: AgentEnvByProvider
   agentExecutablePathOverrideByProvider?: AgentExecutablePathOverrideByProvider
   environmentVariables?: Record<string, string>
@@ -54,6 +55,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   isAgentLaunchTokenCurrent,
   agentFullAccess,
   defaultTerminalProfileId,
+  terminalFontSize,
   agentEnvByProvider,
   agentExecutablePathOverrideByProvider,
   environmentVariables,
@@ -256,6 +258,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           agentFullAccess,
           defaultTerminalProfileId,
           executablePathOverride,
+          terminalFontSize,
         })
 
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
@@ -298,6 +301,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   sessionId: launched.sessionId,
                   profileId: launched.profileId,
                   runtimeKind: launched.runtimeKind,
+                  terminalGeometry: launched.terminalGeometry,
                   title:
                     item.data.titlePinnedByUser === true
                       ? item.data.title
@@ -349,6 +353,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       agentExecutablePathOverrideByProvider,
       agentFullAccess,
       defaultTerminalProfileId,
+      terminalFontSize,
     ],
   )
 

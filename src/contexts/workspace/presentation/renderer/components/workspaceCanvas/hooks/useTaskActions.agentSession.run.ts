@@ -4,8 +4,10 @@ import {
   resolveAgentLaunchEnv,
   resolveAgentModel,
 } from '@contexts/settings/domain/agentSettings'
+import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
+import { resolveDefaultAgentWindowSize } from '../constants'
 import type {
   LaunchAgentSessionResult,
   ListMountsResult,
@@ -262,6 +264,10 @@ export async function runTaskAgentAction(
   const model = resolveAgentModel(context.agentSettings, provider)
   const executablePathOverride = resolveAgentExecutablePathOverride(context.agentSettings, provider)
   const env = resolveAgentLaunchEnv(context.agentSettings, provider)
+  const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
+    ...resolveDefaultAgentWindowSize(context.agentSettings.standardWindowSizeBucket),
+    terminalFontSize: context.agentSettings.terminalFontSize,
+  })
   const mergedEnv =
     context.environmentVariables && Object.keys(context.environmentVariables).length > 0
       ? { ...env, ...context.environmentVariables }
@@ -292,6 +298,8 @@ export async function runTaskAgentAction(
             ...(executablePathOverride ? { executablePathOverride } : {}),
             ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
             agentFullAccess: context.agentSettings.agentFullAccess,
+            cols: launchGeometry.cols,
+            rows: launchGeometry.rows,
           },
         })
       }
@@ -330,8 +338,8 @@ export async function runTaskAgentAction(
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
-        cols: 80,
-        rows: 24,
+        cols: launchGeometry.cols,
+        rows: launchGeometry.rows,
       })
 
       launchedSessionId = launched.sessionId
@@ -344,6 +352,7 @@ export async function runTaskAgentAction(
       sessionId: launchedSessionId,
       profileId: launchedProfileId,
       runtimeKind: launchedRuntimeKind,
+      terminalGeometry: launchGeometry,
       title: context.buildAgentNodeTitle(provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',
