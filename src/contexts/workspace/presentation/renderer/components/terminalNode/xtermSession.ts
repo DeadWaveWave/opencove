@@ -166,6 +166,8 @@ export function createMountedXtermSession({
     })
     renderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
       preferredMode: preferredRendererMode,
+      runtimePlatform: window.opencoveApi.meta?.platform,
+      terminalKind: nodeKindForDiagnostics,
       onRendererKindChange: kind => {
         onRendererKindResolved?.(kind)
         scheduleWebglPixelSnapping?.()

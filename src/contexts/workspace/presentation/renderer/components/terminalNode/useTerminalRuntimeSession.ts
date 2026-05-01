@@ -280,7 +280,7 @@ export function useTerminalRuntimeSession({
         lastCommittedPtySizeRef,
         sessionId,
         canonicalInitialGeometry: initialTerminalGeometryRef.current,
-        allowMeasuredResizeCommit: initialTerminalGeometryRef.current === null,
+        allowMeasuredResizeCommit: true,
       }),
       requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({
         kind,

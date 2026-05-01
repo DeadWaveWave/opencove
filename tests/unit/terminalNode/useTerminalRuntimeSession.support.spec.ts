@@ -126,7 +126,7 @@ describe('useTerminalRuntimeSession support', () => {
     ).toBe(false)
   })
 
-  it('does not block cold agent hydration on a post-geometry visible snapshot', () => {
+  it('requires post-geometry visible snapshots for cold agent hydration', () => {
     expect(
       shouldRequirePostGeometrySnapshotOutput({
         kind: 'agent',
@@ -134,7 +134,7 @@ describe('useTerminalRuntimeSession support', () => {
         agentResumeSessionIdVerified: true,
         agentLaunchMode: 'resume',
       }),
-    ).toBe(false)
+    ).toBe(true)
 
     expect(
       shouldRequirePostGeometrySnapshotOutput({
@@ -143,7 +143,7 @@ describe('useTerminalRuntimeSession support', () => {
         agentResumeSessionIdVerified: false,
         agentLaunchMode: 'resume',
       }),
-    ).toBe(false)
+    ).toBe(true)
 
     expect(
       shouldRequirePostGeometrySnapshotOutput({
@@ -161,7 +161,7 @@ describe('useTerminalRuntimeSession support', () => {
         agentResumeSessionIdVerified: false,
         agentLaunchMode: 'new',
       }),
-    ).toBe(false)
+    ).toBe(true)
 
     expect(
       shouldRequirePostGeometrySnapshotOutput({

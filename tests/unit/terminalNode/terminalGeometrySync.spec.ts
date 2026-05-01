@@ -201,7 +201,7 @@ describe('terminal geometry sync helpers', () => {
     expect(ptyResize).not.toHaveBeenCalled()
   })
 
-  it('keeps durable runtime geometry canonical during restore hydration', async () => {
+  it('commits measured runtime geometry when the durable seed no longer matches layout', async () => {
     const terminal = createTerminalMock()
     const fitAddon = {
       proposeDimensions: vi.fn(() => ({ cols: 65, rows: 44 })),
@@ -217,15 +217,20 @@ describe('terminal geometry sync helpers', () => {
       lastCommittedPtySizeRef,
       sessionId: 'session-runtime-restore',
       canonicalInitialGeometry: { cols: 64, rows: 44 },
-      allowMeasuredResizeCommit: false,
+      allowMeasuredResizeCommit: true,
     })
 
     const size = await commitInitialGeometry(null)
 
-    expect(size).toStrictEqual({ cols: 64, rows: 44, changed: false })
-    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 64, rows: 44 })
-    expect(fitAddon.proposeDimensions).not.toHaveBeenCalled()
-    expect(terminal.resize).not.toHaveBeenCalled()
-    expect(ptyResize).not.toHaveBeenCalled()
+    expect(size).toStrictEqual({ cols: 65, rows: 44, changed: true })
+    expect(lastCommittedPtySizeRef.current).toStrictEqual({ cols: 65, rows: 44 })
+    expect(fitAddon.proposeDimensions).toHaveBeenCalled()
+    expect(terminal.resize).toHaveBeenCalledWith(65, 44)
+    expect(ptyResize).toHaveBeenCalledWith({
+      sessionId: 'session-runtime-restore',
+      cols: 65,
+      rows: 44,
+      reason: 'frame_commit',
+    })
   })
 })

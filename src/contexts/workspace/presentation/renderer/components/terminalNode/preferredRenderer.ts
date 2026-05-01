@@ -13,6 +13,8 @@ export type PreferredTerminalRendererMode = 'auto' | 'dom'
 export interface PreferredTerminalRendererOptions {
   preferredMode?: PreferredTerminalRendererMode
   webglRendererBudget?: number
+  runtimePlatform?: string
+  terminalKind?: 'agent' | 'terminal'
   onRendererKindChange?: (kind: ActiveTerminalRenderer['kind']) => void
   onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
 }
@@ -58,6 +60,20 @@ function hasWebglRendererBudget(value: number | undefined): boolean {
   return activeWebglRendererCount < resolveWebglRendererBudget(value)
 }
 
+function resolveRuntimePlatform(explicitPlatform: string | undefined): string | null {
+  if (typeof explicitPlatform === 'string' && explicitPlatform.length > 0) {
+    return explicitPlatform
+  }
+
+  return typeof window !== 'undefined' ? (window.opencoveApi?.meta?.platform ?? null) : null
+}
+
+function shouldForceDomRenderer(options: PreferredTerminalRendererOptions): boolean {
+  return (
+    options.terminalKind === 'agent' && resolveRuntimePlatform(options.runtimePlatform) === 'win32'
+  )
+}
+
 export function resetPreferredTerminalRendererStateForTests(): void {
   activeWebglRendererCount = 0
 }
@@ -68,6 +84,10 @@ export function activatePreferredTerminalRenderer(
   options: PreferredTerminalRendererOptions = {},
 ): ActiveTerminalRenderer {
   if (options.preferredMode === 'dom') {
+    return createDomRenderer()
+  }
+
+  if (shouldForceDomRenderer(options)) {
     return createDomRenderer()
   }
 

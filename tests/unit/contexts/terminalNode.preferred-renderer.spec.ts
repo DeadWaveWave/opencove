@@ -63,6 +63,28 @@ describe('activatePreferredTerminalRenderer', () => {
     })
   })
 
+  it('uses the DOM renderer for Windows agent sessions', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const loadAddon = vi.fn()
+      const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, 'codex', {
+        runtimePlatform: 'win32',
+        terminalKind: 'agent',
+      })
+
+      expect(loadAddon).not.toHaveBeenCalled()
+      expect(activeRenderer.kind).toBe('dom')
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
   it('uses the WebGL renderer on Windows even when devicePixelRatio is fractional', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
