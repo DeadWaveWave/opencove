@@ -120,7 +120,7 @@ describe('activatePreferredTerminalRenderer', () => {
     }
   })
 
-  it('keeps OpenCode Windows agents on the DOM renderer', async () => {
+  it('keeps OpenCode Windows agents on the WebGL renderer', async () => {
     const originalGetContext = HTMLCanvasElement.prototype.getContext
     HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
       return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
@@ -148,8 +148,33 @@ describe('activatePreferredTerminalRenderer', () => {
         terminalKind: 'agent',
       })
 
-      expect(loadAddon).not.toHaveBeenCalled()
-      expect(activeRenderer.kind).toBe('dom')
+      expect(loadAddon).toHaveBeenCalledTimes(1)
+      expect(activeRenderer.kind).toBe('webgl')
+      activeRenderer.dispose()
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
+  it('lets required OpenCode Windows agents bypass the WebGL renderer budget', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const loadAddon = vi.fn()
+      const activeRenderer = activatePreferredTerminalRenderer({ loadAddon } as never, 'opencode', {
+        runtimePlatform: 'win32',
+        terminalKind: 'agent',
+        webglRendererBudget: 0,
+      })
+
+      expect(loadAddon).toHaveBeenCalledTimes(1)
+      expect(activeRenderer.kind).toBe('webgl')
+      activeRenderer.dispose()
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
@@ -252,12 +277,38 @@ describe('activatePreferredTerminalRenderer', () => {
         {
           loadAddon,
         } as never,
-        'opencode',
+        'codex',
         { preferredMode: 'dom' },
       )
 
       expect(loadAddon).not.toHaveBeenCalled()
       expect(activeRenderer.kind).toBe('dom')
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
+  it('ignores forced DOM recovery mode for OpenCode agents', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const loadAddon = vi.fn()
+      const activeRenderer = activatePreferredTerminalRenderer(
+        {
+          loadAddon,
+        } as never,
+        'opencode',
+        { preferredMode: 'dom', terminalKind: 'agent' },
+      )
+
+      expect(loadAddon).toHaveBeenCalledTimes(1)
+      expect(activeRenderer.kind).toBe('webgl')
+      activeRenderer.dispose()
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext
     }
@@ -298,7 +349,7 @@ describe('activatePreferredTerminalRenderer', () => {
         {
           loadAddon: vi.fn(),
         } as never,
-        'opencode',
+        'codex',
         { onRendererKindChange, onRendererIssue },
       )
 
@@ -312,6 +363,42 @@ describe('activatePreferredTerminalRenderer', () => {
       expect(onRendererIssue).toHaveBeenCalledWith({
         reason: 'context_loss',
         forceDom: true,
+      })
+      expect(activeRenderer.kind).toBe('dom')
+    } finally {
+      HTMLCanvasElement.prototype.getContext = originalGetContext
+    }
+  })
+
+  it('rebuilds OpenCode agents without forcing DOM when WebGL context is lost', async () => {
+    const originalGetContext = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = vi.fn((kind: string) => {
+      return kind === 'webgl2' ? ({} as WebGL2RenderingContext) : null
+    }) as never
+
+    try {
+      const { activatePreferredTerminalRenderer } =
+        await import('../../../src/contexts/workspace/presentation/renderer/components/terminalNode/preferredRenderer')
+      const onRendererKindChange = vi.fn()
+      const onRendererIssue = vi.fn()
+      const activeRenderer = activatePreferredTerminalRenderer(
+        {
+          loadAddon: vi.fn(),
+        } as never,
+        'opencode',
+        { terminalKind: 'agent', onRendererKindChange, onRendererIssue },
+      )
+
+      expect(activeRenderer.kind).toBe('webgl')
+      expect(contextLossListener).toBeTypeOf('function')
+
+      contextLossListener?.()
+
+      expect(webglAddonDispose).toHaveBeenCalledTimes(1)
+      expect(onRendererKindChange).toHaveBeenCalledWith('dom')
+      expect(onRendererIssue).toHaveBeenCalledWith({
+        reason: 'context_loss',
+        forceDom: false,
       })
       expect(activeRenderer.kind).toBe('dom')
     } finally {

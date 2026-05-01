@@ -68,8 +68,21 @@ function resolveRuntimePlatform(explicitPlatform: string | undefined): string | 
   return typeof window !== 'undefined' ? (window.opencoveApi?.meta?.platform ?? null) : null
 }
 
-function shouldForceDomRenderer(options: PreferredTerminalRendererOptions): boolean {
-  return resolveRuntimePlatform(options.runtimePlatform) === 'win32'
+function requiresWebglRenderer(
+  terminalProvider: AgentProvider | null | undefined,
+  options: PreferredTerminalRendererOptions,
+): boolean {
+  return terminalProvider === 'opencode' && options.terminalKind === 'agent'
+}
+
+function shouldForceDomRenderer(
+  terminalProvider: AgentProvider | null | undefined,
+  options: PreferredTerminalRendererOptions,
+): boolean {
+  return (
+    resolveRuntimePlatform(options.runtimePlatform) === 'win32' &&
+    !requiresWebglRenderer(terminalProvider, options)
+  )
 }
 
 export function resetPreferredTerminalRendererStateForTests(): void {
@@ -78,14 +91,16 @@ export function resetPreferredTerminalRendererStateForTests(): void {
 
 export function activatePreferredTerminalRenderer(
   terminal: Terminal,
-  _terminalProvider?: AgentProvider | null,
+  terminalProvider?: AgentProvider | null,
   options: PreferredTerminalRendererOptions = {},
 ): ActiveTerminalRenderer {
-  if (options.preferredMode === 'dom') {
+  const mustUseWebgl = requiresWebglRenderer(terminalProvider, options)
+
+  if (options.preferredMode === 'dom' && !mustUseWebgl) {
     return createDomRenderer()
   }
 
-  if (shouldForceDomRenderer(options)) {
+  if (shouldForceDomRenderer(terminalProvider, options)) {
     return createDomRenderer()
   }
 
@@ -93,7 +108,7 @@ export function activatePreferredTerminalRenderer(
     return createDomRenderer()
   }
 
-  if (!hasWebglRendererBudget(options.webglRendererBudget)) {
+  if (!mustUseWebgl && !hasWebglRendererBudget(options.webglRendererBudget)) {
     return createDomRenderer()
   }
 
@@ -121,7 +136,7 @@ export function activatePreferredTerminalRenderer(
       options.onRendererKindChange?.('dom')
       options.onRendererIssue?.({
         reason: 'context_loss',
-        forceDom: true,
+        forceDom: !mustUseWebgl,
       })
       contextLossDisposable.dispose()
       webglAddon.dispose()

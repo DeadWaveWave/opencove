@@ -289,7 +289,8 @@ export function TerminalNode({
       }
 
       rendererRecoveryPendingRef.current = true
-      if (forceDom) {
+      const requiresWebglRenderer = kind === 'agent' && terminalProvider === 'opencode'
+      if (forceDom && !requiresWebglRenderer) {
         rendererRecoveryStateRef.current.preferredMode = 'dom'
       }
       rendererRecoveryStateRef.current.resetVersion += 1
@@ -299,7 +300,7 @@ export function TerminalNode({
       cancelWebglPixelSnapping()
       forceRendererRecoveryRender(value => value + 1)
     },
-    [cancelWebglPixelSnapping, nodeId, sessionId],
+    [cancelWebglPixelSnapping, kind, nodeId, sessionId, terminalProvider],
   )
 
   const applyTerminalTheme = useTerminalThemeApplier({
