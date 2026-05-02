@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import type { Terminal } from '@xterm/xterm'
 import type { MutableRefObject } from 'react'
 import { resolveTerminalTheme, resolveTerminalUiTheme, type TerminalThemeMode } from './theme'
+import { runTerminalRenderMutationSafely } from './renderServiceSafety'
 
 export function useTerminalThemeApplier({
   terminalRef,
@@ -24,6 +25,8 @@ export function useTerminalThemeApplier({
     container?.setAttribute('data-cove-terminal-theme', resolvedTerminalUiTheme)
     terminalNode?.setAttribute('data-cove-terminal-node-theme', resolvedTerminalUiTheme)
     terminal.options.theme = { ...resolveTerminalTheme(terminalThemeMode, terminalNode) }
-    terminal.refresh(0, Math.max(0, terminal.rows - 1))
+    runTerminalRenderMutationSafely(() => {
+      terminal.refresh(0, Math.max(0, terminal.rows - 1))
+    })
   }, [containerRef, terminalRef, terminalThemeMode])
 }

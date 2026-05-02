@@ -74,6 +74,23 @@ describe('terminal geometry sync helpers', () => {
     expect(ptyResize).not.toHaveBeenCalled()
   })
 
+  it('ignores transient detached renderer errors during refresh', () => {
+    const terminal = createTerminalMock()
+    terminal.refresh = vi.fn(() => {
+      throw new TypeError("Cannot read properties of undefined (reading 'dimensions')")
+    })
+
+    expect(() => {
+      refreshTerminalNodeSize({
+        terminalRef: { current: terminal as never },
+        containerRef: { current: { clientWidth: 640, clientHeight: 320 } as never },
+        isPointerResizingRef: { current: false },
+      })
+    }).not.toThrow()
+
+    expect(ptyResize).not.toHaveBeenCalled()
+  })
+
   it('clamps xterm border-box height without dropping terminal padding', () => {
     const terminal = createTerminalMock()
     ;(

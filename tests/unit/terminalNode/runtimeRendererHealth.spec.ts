@@ -93,6 +93,78 @@ describe('runtime renderer health', () => {
     })
   })
 
+  it('treats detached render-service dimensions as a recoverable blank renderer issue', () => {
+    const container = document.createElement('div')
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({
+        width: 640,
+        height: 320,
+        top: 0,
+        left: 0,
+        right: 640,
+        bottom: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    })
+
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    Object.defineProperty(screen, 'getBoundingClientRect', {
+      value: () => ({
+        width: 640,
+        height: 320,
+        top: 0,
+        left: 0,
+        right: 640,
+        bottom: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    })
+    const canvas = document.createElement('canvas')
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      value: () => ({
+        width: 640,
+        height: 320,
+        top: 0,
+        left: 0,
+        right: 640,
+        bottom: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    })
+    screen.append(canvas)
+    container.append(screen)
+
+    const renderService = {}
+    Object.defineProperty(renderService, 'dimensions', {
+      get() {
+        throw new TypeError("Cannot read properties of undefined (reading 'dimensions')")
+      },
+    })
+
+    const issue = resolveTerminalRendererHealthIssue({
+      terminal: {
+        _core: {
+          _renderService: renderService,
+        },
+      } as never,
+      container,
+      rendererKind: 'webgl',
+    })
+
+    expect(issue).toEqual({
+      reason: 'blank_canvas',
+      trigger: 'mutation',
+      forceDom: true,
+    })
+  })
+
   it('rebuilds from worker truth after a blank canvas is detected', () => {
     const container = document.createElement('div')
     Object.defineProperty(container, 'getBoundingClientRect', {
