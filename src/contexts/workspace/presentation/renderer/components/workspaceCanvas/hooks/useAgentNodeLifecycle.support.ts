@@ -2,6 +2,7 @@ import type { Node } from '@xyflow/react'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
 import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
+import { resolveAgentNodeMinSize } from '@contexts/workspace/domain/workspaceNodeSizing'
 import type { AgentNodeData, TerminalNodeData } from '../../../types'
 
 export type AgentRuntimeNode = Node<TerminalNodeData> & {
@@ -29,6 +30,7 @@ export interface AgentRuntimeLaunchResult {
   startedAt: string
   executionDirectory: string
   terminalGeometry: { cols: number; rows: number }
+  frameSize: { width: number; height: number }
 }
 
 export function findAgentNode(
@@ -50,6 +52,18 @@ export function normalizeOptionalString(value: string | null | undefined): strin
 
   const normalized = value.trim()
   return normalized.length > 0 ? normalized : null
+}
+
+export function resolveAgentRuntimeLaunchFrameSize(node: AgentRuntimeNode): {
+  width: number
+  height: number
+} {
+  const minSize = resolveAgentNodeMinSize(node.data.agent.provider)
+
+  return {
+    width: Math.max(node.data.width, minSize.width),
+    height: Math.max(node.data.height, minSize.height),
+  }
 }
 
 export async function launchAgentRuntime({
@@ -75,9 +89,10 @@ export async function launchAgentRuntime({
   executablePathOverride: string | null
   terminalFontSize: number
 }): Promise<AgentRuntimeLaunchResult> {
+  const frameSize = resolveAgentRuntimeLaunchFrameSize(node)
   const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
-    width: node.data.width,
-    height: node.data.height,
+    width: frameSize.width,
+    height: frameSize.height,
     terminalFontSize,
   })
 
@@ -112,6 +127,7 @@ export async function launchAgentRuntime({
       startedAt: launched.startedAt,
       executionDirectory: launched.executionContext.workingDirectory,
       terminalGeometry: launchGeometry,
+      frameSize,
     }
   }
 
@@ -139,5 +155,6 @@ export async function launchAgentRuntime({
     startedAt: new Date().toISOString(),
     executionDirectory,
     terminalGeometry: launchGeometry,
+    frameSize,
   }
 }

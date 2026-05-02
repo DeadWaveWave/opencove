@@ -10,25 +10,28 @@ import { sanitizeWorkspaceSpaces } from '@contexts/workspace/presentation/render
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { mergeScrollbackSnapshots } from '@contexts/workspace/presentation/renderer/components/terminalNode/scrollback'
 import { hydrateAgentNode } from '@contexts/agent/presentation/renderer/hydrateAgentNode'
+import { repairRuntimeNodeFrame } from './runtimeNodeFrameRepair'
 
 export function toShellWorkspaceState(
   workspace: PersistedWorkspaceState,
   options?: { dropRuntimeSessionIds?: boolean },
 ): WorkspaceState {
   const dropRuntimeSessionIds = options?.dropRuntimeSessionIds === true
-  const runtimeNodes = toRuntimeNodes(workspace).map(node => {
-    if (node.data.kind !== 'agent') {
-      return node
-    }
+  const runtimeNodes = toRuntimeNodes(workspace)
+    .map(repairRuntimeNodeFrame)
+    .map(node => {
+      if (node.data.kind !== 'agent') {
+        return node
+      }
 
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        scrollback: null,
-      },
-    }
-  })
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          scrollback: null,
+        },
+      }
+    })
   const nodes = dropRuntimeSessionIds
     ? runtimeNodes.map(node => {
         if (node.data.kind !== 'terminal' && node.data.kind !== 'agent') {

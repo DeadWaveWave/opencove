@@ -21,8 +21,8 @@ vi.mock('@xterm/addon-webgl', () => {
       }
     }
 
-    public constructor() {
-      webglAddonConstructor()
+    public constructor(preserveDrawingBuffer?: boolean) {
+      webglAddonConstructor(preserveDrawingBuffer)
     }
 
     public activate(): void {}
@@ -150,6 +150,7 @@ describe('activatePreferredTerminalRenderer', () => {
 
       expect(loadAddon).toHaveBeenCalledTimes(1)
       expect(activeRenderer.kind).toBe('webgl')
+      expect(webglAddonConstructor).toHaveBeenCalledWith(undefined)
       activeRenderer.dispose()
     } finally {
       HTMLCanvasElement.prototype.getContext = originalGetContext

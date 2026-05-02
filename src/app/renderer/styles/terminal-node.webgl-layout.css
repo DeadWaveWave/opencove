@@ -1,0 +1,12 @@
+.terminal-node__terminal {
+  overflow: hidden;
+  contain: paint;
+}
+
+.terminal-node__terminal .xterm {
+  overflow: hidden;
+}
+
+.terminal-node__terminal .xterm-screen {
+  overflow: hidden;
+}

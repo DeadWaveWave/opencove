@@ -33,7 +33,7 @@ async function readTerminalRenderMetrics(
 }
 
 test.describe('Workspace Canvas - Terminal effective DPR', () => {
-  test('raises terminal backing resolution on zoom without remounting or losing focus', async () => {
+  test('keeps terminal DPR native on zoom without remounting or losing focus', async () => {
     const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
 
     try {
@@ -108,12 +108,11 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
           async () => {
             zoomedViewport = await readCanvasViewport(window)
             zoomedMetrics = await readTerminalRenderMetrics(window, 'node-terminal-dpr')
-            const effectiveDpr = zoomedMetrics?.effectiveDpr ?? 0
             const expectedEffectiveDpr = resolveTerminalEffectiveDevicePixelRatio({
               baseDevicePixelRatio: zoomedWindowDpr,
               viewportZoom: zoomedViewport.zoom,
             })
-            return Math.abs(effectiveDpr - expectedEffectiveDpr) < 0.05
+            return Math.abs((zoomedMetrics?.effectiveDpr ?? 0) - expectedEffectiveDpr) < 0.05
           },
           { timeout: 15_000 },
         )
@@ -124,11 +123,13 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
         viewportZoom: zoomedViewport.zoom,
       })
       expect(zoomedMetrics?.effectiveDpr).toBeCloseTo(expectedZoomedDpr, 1)
-      expect(zoomedMetrics?.deviceCanvasWidth ?? 0).toBeGreaterThan(
+      expect(zoomedMetrics?.deviceCanvasWidth ?? 0).toBeCloseTo(
         baselineMetrics?.deviceCanvasWidth ?? 0,
+        1,
       )
-      expect(zoomedMetrics?.deviceCanvasHeight ?? 0).toBeGreaterThan(
+      expect(zoomedMetrics?.deviceCanvasHeight ?? 0).toBeCloseTo(
         baselineMetrics?.deviceCanvasHeight ?? 0,
+        1,
       )
       expect(zoomedMetrics?.cssCanvasWidth).toBeCloseTo(baselineMetrics?.cssCanvasWidth ?? 0, 1)
       expect(zoomedMetrics?.cssCanvasHeight).toBeCloseTo(baselineMetrics?.cssCanvasHeight ?? 0, 1)
@@ -148,7 +149,7 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
     }
   })
 
-  test('sharpens a user-scrolled terminal after zoom settles without returning to bottom', async () => {
+  test('preserves a user-scrolled terminal after zoom settles without returning to bottom', async () => {
     const { electronApp, window } = await launchApp({ windowMode: 'offscreen' })
 
     try {
@@ -246,7 +247,7 @@ test.describe('Workspace Canvas - Terminal effective DPR', () => {
         hookViewportY: afterMetrics?.hookViewportY ?? null,
         hookBaseY: afterMetrics?.hookBaseY ?? null,
       })
-      expect(afterMetrics?.effectiveDpr ?? 0).toBeGreaterThan(expectedBaselineDpr)
+      expect(afterMetrics?.effectiveDpr).toBeCloseTo(expectedBaselineDpr, 2)
       expect(afterMetrics?.viewportY).not.toBeNull()
       expect(afterMetrics?.baseY).not.toBeNull()
       expect(afterMetrics?.viewportY).toBeLessThan(afterMetrics?.baseY ?? 0)

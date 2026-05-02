@@ -265,7 +265,7 @@ export async function runTaskAgentAction(
   const executablePathOverride = resolveAgentExecutablePathOverride(context.agentSettings, provider)
   const env = resolveAgentLaunchEnv(context.agentSettings, provider)
   const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
-    ...resolveDefaultAgentWindowSize(context.agentSettings.standardWindowSizeBucket),
+    ...resolveDefaultAgentWindowSize(context.agentSettings.standardWindowSizeBucket, provider),
     terminalFontSize: context.agentSettings.terminalFontSize,
   })
   const mergedEnv =

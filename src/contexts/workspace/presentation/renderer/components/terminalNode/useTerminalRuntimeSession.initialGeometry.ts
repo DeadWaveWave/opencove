@@ -64,6 +64,7 @@ export function createRuntimeInitialGeometryCommitter({
   sessionId,
   canonicalInitialGeometry,
   allowMeasuredResizeCommit = true,
+  preferMeasuredGeometryCommit = false,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   fitAddonRef: MutableRefObject<FitAddon | null>
@@ -73,13 +74,14 @@ export function createRuntimeInitialGeometryCommitter({
   sessionId: string
   canonicalInitialGeometry?: PtySize | null
   allowMeasuredResizeCommit?: boolean
+  preferMeasuredGeometryCommit?: boolean
 }) {
-  return (baselineSnapshot: PresentationSnapshotTerminalResult | null) => {
+  return async (baselineSnapshot: PresentationSnapshotTerminalResult | null) => {
     const canonicalGeometry = baselineSnapshot
       ? { cols: baselineSnapshot.cols, rows: baselineSnapshot.rows }
       : (canonicalInitialGeometry ?? null)
 
-    if (canonicalGeometry) {
+    if (canonicalGeometry && !preferMeasuredGeometryCommit) {
       lastCommittedPtySizeRef.current = canonicalGeometry
       applyCanonicalGeometryLocally({
         terminalRef,
@@ -87,14 +89,29 @@ export function createRuntimeInitialGeometryCommitter({
         isPointerResizingRef,
         geometry: canonicalGeometry,
       })
-      return Promise.resolve({ ...canonicalGeometry, changed: false })
+      return { ...canonicalGeometry, changed: false }
     }
 
     if (!allowMeasuredResizeCommit) {
-      return Promise.resolve(null)
+      if (!canonicalGeometry) {
+        return null
+      }
+
+      lastCommittedPtySizeRef.current = canonicalGeometry
+      applyCanonicalGeometryLocally({
+        terminalRef,
+        containerRef,
+        isPointerResizingRef,
+        geometry: canonicalGeometry,
+      })
+      return { ...canonicalGeometry, changed: false }
     }
 
-    return commitInitialTerminalNodeGeometry({
+    if (canonicalGeometry) {
+      lastCommittedPtySizeRef.current = canonicalGeometry
+    }
+
+    const measuredGeometry = await commitInitialTerminalNodeGeometry({
       terminalRef,
       fitAddonRef,
       containerRef,
@@ -103,6 +120,23 @@ export function createRuntimeInitialGeometryCommitter({
       sessionId,
       reason: 'frame_commit',
     })
+
+    if (measuredGeometry) {
+      return measuredGeometry
+    }
+
+    if (!canonicalGeometry) {
+      return null
+    }
+
+    lastCommittedPtySizeRef.current = canonicalGeometry
+    applyCanonicalGeometryLocally({
+      terminalRef,
+      containerRef,
+      isPointerResizingRef,
+      geometry: canonicalGeometry,
+    })
+    return { ...canonicalGeometry, changed: false }
   }
 }
 

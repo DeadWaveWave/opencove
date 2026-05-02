@@ -88,7 +88,7 @@ export function useWorkspaceCanvasNodeCreation({
     }: CreateNodeInput): Promise<Node<TerminalNodeData> | null> => {
       const defaultSize =
         kind === 'agent'
-          ? resolveDefaultAgentWindowSize(standardWindowSizeBucket)
+          ? resolveDefaultAgentWindowSize(standardWindowSizeBucket, agent?.provider)
           : resolveDefaultTerminalWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         anchor,

@@ -113,10 +113,7 @@ export function activatePreferredTerminalRenderer(
   }
 
   try {
-    const webglAddonOptions = {
-      customGlyphs: true,
-    } as unknown as ConstructorParameters<typeof WebglAddon>[0]
-    const webglAddon = new WebglAddon(webglAddonOptions)
+    const webglAddon = new WebglAddon()
     terminal.loadAddon(webglAddon)
 
     let disposed = false

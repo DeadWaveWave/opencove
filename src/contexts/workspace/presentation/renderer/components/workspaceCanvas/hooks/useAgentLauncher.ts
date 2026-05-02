@@ -82,12 +82,10 @@ export function useWorkspaceCanvasAgentLauncher({
             x: contextMenu.flowX,
             y: contextMenu.flowY,
           }
-          const anchor = resolveNodePlacementAnchorFromViewportCenter(
-            cursorAnchor,
-            resolveDefaultAgentWindowSize(standardWindowSizeBucket),
-          )
+          const defaultSize = resolveDefaultAgentWindowSize(standardWindowSizeBucket, provider)
+          const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, defaultSize)
           const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
-            ...resolveDefaultAgentWindowSize(standardWindowSizeBucket),
+            ...defaultSize,
             terminalFontSize: agentSettings.terminalFontSize,
           })
           const model = resolveAgentModel(agentSettings, provider)

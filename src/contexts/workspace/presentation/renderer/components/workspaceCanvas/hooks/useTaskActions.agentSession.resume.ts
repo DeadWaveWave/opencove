@@ -102,7 +102,10 @@ export async function resumeTaskAgentSessionAction(
     record.provider,
   )
   const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
-    ...resolveDefaultAgentWindowSize(context.agentSettings.standardWindowSizeBucket),
+    ...resolveDefaultAgentWindowSize(
+      context.agentSettings.standardWindowSizeBucket,
+      record.provider,
+    ),
     terminalFontSize: context.agentSettings.terminalFontSize,
   })
   const mergedEnv =

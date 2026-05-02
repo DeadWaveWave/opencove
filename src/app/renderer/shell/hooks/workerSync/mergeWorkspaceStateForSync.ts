@@ -7,6 +7,7 @@ import type {
 } from '@contexts/workspace/presentation/renderer/types'
 import { toRuntimeNodes } from '@contexts/workspace/presentation/renderer/utils/nodeTransform'
 import { isNodeGuardedFromSyncOverwrite } from '@contexts/workspace/presentation/renderer/utils/syncNodeGuards'
+import { repairRuntimeNodeFrame } from '../runtimeNodeFrameRepair'
 import {
   areSpaceArchiveRecordsEquivalent,
   areStringArraysEqual,
@@ -71,7 +72,7 @@ export function toShellWorkspaceStateForSync(
 ): WorkspaceState {
   const existingNodes = existingWorkspace?.nodes ?? []
   const workspaceHasActiveDrag = existingNodes.some(node => node.dragging === true)
-  const persistedNodes = toRuntimeNodes(workspace)
+  const persistedNodes = toRuntimeNodes(workspace).map(repairRuntimeNodeFrame)
   const existingNodeById = new Map(existingNodes.map(node => [node.id, node] as const))
   const persistedNodeIds = new Set(persistedNodes.map(node => node.id))
 

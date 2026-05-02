@@ -209,7 +209,7 @@ export async function prepareAgentNode(options: {
   const { controlSurface, ctx, workspace, node, space, settings } = options
   const scrollback: string | null = null
   const terminalProfileId = resolveNodeProfileId(node) ?? settings.defaultTerminalProfileId ?? null
-  const initialGeometry = resolveNodeInitialPtyGeometry(node, settings)
+  const initialGeometry = resolveNodeInitialPtyGeometry(node, settings, options.agent.provider)
   const workspaceEnv = workspace.environmentVariables
   const agentEnv = resolveAgentLaunchEnv(settings, options.agent.provider)
   const mergedEnv =

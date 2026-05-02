@@ -15,6 +15,7 @@
 @import './styles/workspace-context-menu.css';
 @import './styles/workspace-pr-chip.css';
 @import './styles/terminal-node.css';
+@import './styles/terminal-node.webgl-layout.css';
 @import './styles/terminal-node.session-actions.css';
 @import './styles/terminal-node.font-rendering.css';
 @import './styles/terminal-node.theme-opencode.css';

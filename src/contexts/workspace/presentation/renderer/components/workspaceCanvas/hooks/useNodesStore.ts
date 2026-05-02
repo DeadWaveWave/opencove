@@ -9,7 +9,10 @@ import { cleanupNodeRuntimeArtifacts } from '../../../utils/nodeRuntimeCleanup'
 import { TERMINAL_LAYOUT_SYNC_EVENT } from '../../terminalNode/constants'
 import { centerNodeInViewport } from '../helpers'
 import { syncWorkspaceCanvasTestState } from '../testHarness'
-import { resolveCanonicalNodeMinSize } from '../../../utils/workspaceNodeSizing'
+import {
+  resolveAgentNodeMinSize,
+  resolveCanonicalNodeMinSize,
+} from '../../../utils/workspaceNodeSizing'
 import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDimensions'
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
@@ -151,7 +154,6 @@ export function useWorkspaceCanvasNodesStore({
           .kill({ sessionId: target.data.sessionId })
           .catch(() => undefined)
       }
-
       if (target?.data.kind === 'image' && target.data.image) {
         const deleteCanvasImage = window.opencoveApi?.workspace?.deleteCanvasImage
         if (typeof deleteCanvasImage === 'function') {
@@ -194,10 +196,12 @@ export function useWorkspaceCanvasNodesStore({
         return
       }
 
-      const minSize = resolveCanonicalNodeMinSize(node.data.kind)
+      const minSize =
+        node.data.kind === 'agent'
+          ? resolveAgentNodeMinSize(node.data.agent?.provider)
+          : resolveCanonicalNodeMinSize(node.data.kind)
       const resolveDimension = (value: number, fallback: number): number =>
         typeof value === 'number' && Number.isFinite(value) ? Math.round(value) : fallback
-
       const normalizedFrame: NodeFrame = {
         position: {
           x: resolveDimension(desiredFrame.position.x, node.position.x),
@@ -232,7 +236,6 @@ export function useWorkspaceCanvasNodesStore({
       if (resolved.spaces !== spacesRef.current) {
         onSpacesChange(resolved.spaces)
       }
-
       onRequestPersistFlush?.()
     },
     [onRequestPersistFlush, onSpacesChange, setNodes, spacesRef],

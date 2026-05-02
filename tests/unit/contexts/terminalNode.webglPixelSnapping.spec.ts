@@ -51,11 +51,13 @@ describe('webgl pixel snapping', () => {
     expect(canvas.style.transform).toBe('')
   })
 
-  it('applies transform for misaligned WebGL canvas positions', () => {
+  it('does not translate WebGL canvases from terminal layout sync', () => {
     const container = document.createElement('div')
     const screen = document.createElement('div')
     screen.className = 'xterm-screen'
     const canvas = document.createElement('canvas')
+    canvas.style.transform = 'translate(0.4px, -0.3px)'
+    canvas.style.transformOrigin = 'top left'
     screen.append(canvas)
     container.append(screen)
 
@@ -77,15 +79,12 @@ describe('webgl pixel snapping', () => {
         toJSON: () => ({}),
       }) as DOMRect
 
-    expect(applyWebglPixelSnapping({ container, rendererKind: 'webgl' })).toEqual({
-      x: 0.4,
-      y: -0.3,
-    })
-    expect(canvas.style.transformOrigin).toBe('top left')
-    expect(canvas.style.transform).toBe('translate(0.4px, -0.3px)')
+    expect(applyWebglPixelSnapping({ container, rendererKind: 'webgl' })).toEqual({ x: 0, y: 0 })
+    expect(canvas.style.transformOrigin).toBe('')
+    expect(canvas.style.transform).toBe('')
   })
 
-  it('does not oscillate when getBoundingClientRect reflects the current transform', () => {
+  it('keeps repeated WebGL syncs idempotent', () => {
     const container = document.createElement('div')
     const screen = document.createElement('div')
     screen.className = 'xterm-screen'
@@ -122,16 +121,10 @@ describe('webgl pixel snapping', () => {
       } as DOMRect
     }
 
-    expect(applyWebglPixelSnapping({ container, rendererKind: 'webgl' })).toEqual({
-      x: 0.4,
-      y: -0.3,
-    })
-    expect(canvas.style.transform).toBe('translate(0.4px, -0.3px)')
+    expect(applyWebglPixelSnapping({ container, rendererKind: 'webgl' })).toEqual({ x: 0, y: 0 })
+    expect(canvas.style.transform).toBe('')
 
-    expect(applyWebglPixelSnapping({ container, rendererKind: 'webgl' })).toEqual({
-      x: 0.4,
-      y: -0.3,
-    })
-    expect(canvas.style.transform).toBe('translate(0.4px, -0.3px)')
+    expect(applyWebglPixelSnapping({ container, rendererKind: 'webgl' })).toEqual({ x: 0, y: 0 })
+    expect(canvas.style.transform).toBe('')
   })
 })

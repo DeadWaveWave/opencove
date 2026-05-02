@@ -1,10 +1,12 @@
 import {
   DEFAULT_AGENT_SETTINGS,
+  type AgentProvider,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { Size, TaskPriority } from '../../types'
 import {
   resolveCanvasCanonicalBucketFromViewport,
+  resolveAgentNodeSize,
   resolveCanonicalNodeSize,
 } from '../../utils/workspaceNodeSizing'
 
@@ -34,8 +36,9 @@ export function resolveDefaultImageWindowSize(viewport?: Partial<Size>): Size {
 
 export function resolveDefaultAgentWindowSize(
   bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+  provider?: AgentProvider | null,
 ): Size {
-  return resolveCanonicalNodeSize({ kind: 'agent', bucket })
+  return resolveAgentNodeSize({ bucket, provider })
 }
 
 export function resolveDefaultTerminalWindowSize(

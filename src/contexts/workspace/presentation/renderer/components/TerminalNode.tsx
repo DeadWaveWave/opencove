@@ -30,7 +30,7 @@ import {
 } from './terminalNode/reactFlowState'
 import { useViewportInteractionSettledState } from './terminalNode/useViewportInteractionSettledState'
 import { TerminalNodeFrame } from './terminalNode/TerminalNodeFrame'
-import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
+import { resolveAgentNodeMinSize, resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import type { TerminalNodeProps } from './TerminalNode.types'
 
 export function TerminalNode({
@@ -318,7 +318,10 @@ export function TerminalNode({
     position,
     width,
     height,
-    minSize: resolveCanonicalNodeMinSize(kind),
+    minSize:
+      kind === 'agent'
+        ? resolveAgentNodeMinSize(terminalProvider)
+        : resolveCanonicalNodeMinSize(kind),
     onResize,
     commitTerminalGeometry: () => {
       commitTerminalGeometry('frame_commit')

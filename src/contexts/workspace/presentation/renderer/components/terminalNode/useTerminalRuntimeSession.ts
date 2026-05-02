@@ -281,6 +281,8 @@ export function useTerminalRuntimeSession({
         sessionId,
         canonicalInitialGeometry: initialTerminalGeometryRef.current,
         allowMeasuredResizeCommit: true,
+        preferMeasuredGeometryCommit:
+          kind === 'agent' && terminalProvider === 'opencode' && !isLiveSessionReattach,
       }),
       requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({
         kind,

@@ -53,6 +53,13 @@ describe('workspace canvas default sizing', () => {
       height: 724,
     })
   })
+
+  it('uses canonical agent sizing for OpenCode windows', () => {
+    expect(resolveDefaultAgentWindowSize('regular', 'opencode')).toEqual({
+      width: 516,
+      height: 724,
+    })
+  })
 })
 
 describe('workspace canvas node placement anchor', () => {

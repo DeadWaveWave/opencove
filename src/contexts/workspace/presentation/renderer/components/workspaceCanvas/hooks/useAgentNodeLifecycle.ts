@@ -24,6 +24,7 @@ import {
   findAgentNode,
   launchAgentRuntime,
   normalizeOptionalString,
+  resolveAgentRuntimeLaunchFrameSize,
   type RelaunchAgentNodeOptions,
 } from './useAgentNodeLifecycle.support'
 
@@ -153,7 +154,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (!node) {
         return
       }
-
       const launchData = node.data.agent
       const linkedTaskTitle = findLinkedTaskTitleForAgent(
         nodesRef.current,
@@ -180,7 +180,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         setAgentNodeFailure(nodeId, t('messages.agentPromptRequired'))
         return
       }
-
       const mountId = await resolveMountId(nodeId)
       if (mountId === undefined) {
         return
@@ -194,9 +193,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         environmentVariables && Object.keys(environmentVariables).length > 0
           ? { ...env, ...environmentVariables }
           : env
-
       const launchToken = bumpAgentLaunchToken(nodeId)
-
+      const launchFrameSize = resolveAgentRuntimeLaunchFrameSize(node)
       if (!mountId && launchData.shouldCreateDirectory && launchData.directoryMode === 'custom') {
         await window.opencoveApi.workspace.ensureDirectory({ path: requestedExecutionDirectory })
 
@@ -217,7 +215,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
         return
       }
-
       setNodes(
         prevNodes =>
           prevNodes.map(item => {
@@ -229,6 +226,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               ...item,
               data: {
                 ...item.data,
+                width: launchFrameSize.width,
+                height: launchFrameSize.height,
                 status: 'restoring',
                 endedAt: null,
                 exitCode: null,
@@ -302,6 +301,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   profileId: launched.profileId,
                   runtimeKind: launched.runtimeKind,
                   terminalGeometry: launched.terminalGeometry,
+                  width: launched.frameSize.width,
+                  height: launched.frameSize.height,
                   title:
                     item.data.titlePinnedByUser === true
                       ? item.data.title

@@ -53,6 +53,16 @@ describe('session prepare/revive terminal geometry', () => {
     expect(geometry).toEqual({ cols: 80, rows: 44 })
   })
 
+  it('preserves restored OpenCode durable geometry without provider widening', () => {
+    const geometry = resolveNodeInitialPtyGeometry(
+      createNode({ terminalGeometry: { cols: 64, rows: 44 }, width: 520, height: 720 }),
+      { terminalFontSize: 13 } as never,
+      'opencode',
+    )
+
+    expect(geometry).toEqual({ cols: 64, rows: 44 })
+  })
+
   it('falls back to a bounded frame estimate when no durable geometry exists', () => {
     const geometry = resolveNodeInitialPtyGeometry(
       createNode({ terminalGeometry: null, width: 520, height: 720 }),
