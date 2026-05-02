@@ -10,6 +10,7 @@ import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
 import { WorkspaceCanvasTaskNodeType } from './nodeTypes.task'
 import { WorkspaceCanvasWebsiteNodeType } from './nodeTypes.website'
 import { useNodePosition } from './nodePosition'
+import { resolveStickyNotesDirectoryPath } from '../NoteNode.markdown'
 import type {
   QuickUpdateTaskRequirement,
   QuickUpdateTaskTitle,
@@ -147,6 +148,7 @@ function TerminalNodeType({
 function NoteNodeType({
   data,
   id,
+  workspacePath,
   selectNode,
   clearNodeSelectionRef,
   closeNodeRef,
@@ -156,6 +158,7 @@ function NoteNodeType({
 }: {
   data: TerminalNodeData
   id: string
+  workspacePath: string
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -172,6 +175,8 @@ function NoteNodeType({
     return null
   }
 
+  const saveDirectoryPath = resolveStickyNotesDirectoryPath(workspacePath)
+
   return (
     <NoteNode
       text={data.note.text}
@@ -179,6 +184,8 @@ function NoteNodeType({
       position={nodePosition}
       width={data.width}
       height={data.height}
+      saveDirectoryPath={saveDirectoryPath}
+      saveMountId={null}
       onClose={() => {
         void closeNodeRef.current(id)
       }}
@@ -393,6 +400,7 @@ export function useWorkspaceCanvasNodeTypes({
           <NoteNodeType
             data={data}
             id={id}
+            workspacePath={workspacePath}
             selectNode={selectNode}
             clearNodeSelectionRef={clearNodeSelectionRef}
             closeNodeRef={closeNodeRef}

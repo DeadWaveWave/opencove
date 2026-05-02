@@ -263,6 +263,13 @@ export const zhCN = {
   noteNode: {
     title: '便签',
     deleteNote: '删除便签',
+    saveMarkdown: '保存为 Markdown',
+    saveMarkdownPrompt: 'Markdown 文件名',
+    confirmSaveMarkdown: '保存 Markdown 文件',
+    cancelSaveMarkdown: '取消保存 Markdown',
+    defaultFileName: '便签.md',
+    invalidFileName: '请输入有效文件名。',
+    savedMarkdown: '已保存到 {{path}}',
     resizeWidth: '调整便签宽度',
     resizeHeight: '调整便签高度',
   },

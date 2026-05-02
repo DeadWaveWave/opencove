@@ -263,6 +263,13 @@ export const en = {
   noteNode: {
     title: 'note',
     deleteNote: 'Delete note',
+    saveMarkdown: 'Save as Markdown',
+    saveMarkdownPrompt: 'Markdown file name',
+    confirmSaveMarkdown: 'Save Markdown file',
+    cancelSaveMarkdown: 'Cancel Markdown save',
+    defaultFileName: 'note.md',
+    invalidFileName: 'Enter a valid file name.',
+    savedMarkdown: 'Saved to {{path}}',
     resizeWidth: 'Resize note width',
     resizeHeight: 'Resize note height',
   },

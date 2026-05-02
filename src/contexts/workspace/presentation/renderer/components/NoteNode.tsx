@@ -1,12 +1,16 @@
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { Check, Download, X } from 'lucide-react'
+import { toErrorMessage } from '@app/renderer/shell/utils/format'
 import type { NodeFrame, Point } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
+import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
+import { normalizeMarkdownFileName, saveNoteAsMarkdownFile } from './NoteNode.markdown'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -21,6 +25,8 @@ interface NoteNodeProps {
   position: Point
   width: number
   height: number
+  saveDirectoryPath: string
+  saveMountId?: string | null
   onClose: () => void
   onResize: (frame: NodeFrame) => void
   onTextChange: (text: string) => void
@@ -33,12 +39,20 @@ export function NoteNode({
   position,
   width,
   height,
+  saveDirectoryPath,
+  saveMountId = null,
   onClose,
   onResize,
   onTextChange,
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
   const { t } = useTranslation()
+  const [isSavePanelOpen, setIsSavePanelOpen] = useState(false)
+  const [markdownFileName, setMarkdownFileName] = useState(t('noteNode.defaultFileName'))
+  const [isSavingMarkdown, setIsSavingMarkdown] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [savedMarkdownPath, setSavedMarkdownPath] = useState<string | null>(null)
+  const saveInputRef = useRef<HTMLInputElement | null>(null)
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
     width,
@@ -69,6 +83,78 @@ export function NoteNode({
       renderedFrame.size.width,
     ],
   )
+
+  useEffect(() => {
+    if (!savedMarkdownPath) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSavedMarkdownPath(null)
+    }, 5000)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [savedMarkdownPath])
+
+  useEffect(() => {
+    if (!isSavePanelOpen) {
+      return
+    }
+
+    window.requestAnimationFrame(() => {
+      saveInputRef.current?.focus()
+      saveInputRef.current?.select()
+    })
+  }, [isSavePanelOpen])
+
+  const saveMarkdown = useCallback(async (rawName: string): Promise<void> => {
+    const fileName = normalizeMarkdownFileName(rawName)
+    if (!fileName) {
+      setSaveError(t('noteNode.invalidFileName'))
+      setSavedMarkdownPath(null)
+      return
+    }
+
+    const directoryPath = saveDirectoryPath.trim()
+    if (!directoryPath) {
+      setSaveError(t('documentNode.filesystemUnavailable'))
+      setSavedMarkdownPath(null)
+      return
+    }
+
+    const filesystemApi = resolveFilesystemApiForMount(saveMountId)
+    if (!filesystemApi) {
+      setSaveError(t('documentNode.filesystemUnavailable'))
+      setSavedMarkdownPath(null)
+      return
+    }
+
+    setIsSavingMarkdown(true)
+    setSaveError(null)
+    setSavedMarkdownPath(null)
+
+    try {
+      const targetPath = await saveNoteAsMarkdownFile({
+        filesystemApi,
+        directoryPath,
+        fileName,
+        text,
+      })
+      setSavedMarkdownPath(targetPath)
+      setIsSavePanelOpen(false)
+    } catch (error) {
+      setSaveError(toErrorMessage(error))
+    } finally {
+      setIsSavingMarkdown(false)
+    }
+  }, [saveDirectoryPath, saveMountId, t, text])
+
+  const closeSavePanel = useCallback((): void => {
+    setIsSavePanelOpen(false)
+    setSaveError(null)
+  }, [])
 
   return (
     <div
@@ -116,6 +202,30 @@ export function NoteNode({
         </span>
         <button
           type="button"
+          className="note-node__action nodrag"
+          onPointerDown={event => {
+            event.stopPropagation()
+          }}
+          onClick={event => {
+            event.stopPropagation()
+            onInteractionStart?.({ normalizeViewport: true })
+            setIsSavePanelOpen(prev => {
+              const next = !prev
+              if (next) {
+                setSaveError(null)
+                setSavedMarkdownPath(null)
+              }
+              return next
+            })
+          }}
+          disabled={isSavingMarkdown}
+          aria-label={t('noteNode.saveMarkdown')}
+          title={t('noteNode.saveMarkdown')}
+        >
+          <Download aria-hidden="true" />
+        </button>
+        <button
+          type="button"
           className="note-node__close nodrag"
           onClick={event => {
             event.stopPropagation()
@@ -145,6 +255,64 @@ export function NoteNode({
           onTextChange(event.target.value)
         }}
       />
+
+      {isSavePanelOpen ? (
+        <form
+          className="note-node__save-panel nodrag"
+          onPointerDown={event => {
+            event.stopPropagation()
+          }}
+          onClick={event => {
+            event.stopPropagation()
+          }}
+          onSubmit={event => {
+            event.preventDefault()
+            event.stopPropagation()
+            void saveMarkdown(markdownFileName)
+          }}
+        >
+          <input
+            ref={saveInputRef}
+            className="note-node__save-input"
+            value={markdownFileName}
+            onChange={event => {
+              setMarkdownFileName(event.target.value)
+            }}
+            aria-label={t('noteNode.saveMarkdownPrompt')}
+            disabled={isSavingMarkdown}
+          />
+          <button
+            type="submit"
+            className="note-node__save-button"
+            disabled={isSavingMarkdown}
+            aria-label={t('noteNode.confirmSaveMarkdown')}
+            title={t('noteNode.confirmSaveMarkdown')}
+          >
+            <Check aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            className="note-node__save-button"
+            onClick={closeSavePanel}
+            disabled={isSavingMarkdown}
+            aria-label={t('noteNode.cancelSaveMarkdown')}
+            title={t('noteNode.cancelSaveMarkdown')}
+          >
+            <X aria-hidden="true" />
+          </button>
+        </form>
+      ) : null}
+
+      {saveError ? (
+        <div className="note-node__save-status note-node__save-status--error" role="status">
+          {saveError}
+        </div>
+      ) : null}
+      {savedMarkdownPath ? (
+        <div className="note-node__save-status note-node__save-status--success" role="status">
+          {t('noteNode.savedMarkdown', { path: savedMarkdownPath })}
+        </div>
+      ) : null}
 
       <NodeResizeHandles
         classNamePrefix="task-node"
