@@ -1,8 +1,9 @@
 import React from 'react'
-import { MiniMap, type Node } from '@xyflow/react'
+import { MiniMap, useReactFlow, type Edge, type Node, type XYPosition } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Map as MapIcon } from 'lucide-react'
 import type { TerminalNodeData } from '../../../types'
+import { centerFlowPositionInViewportPreservingZoom } from '../helpers'
 
 interface WorkspaceMinimapDockProps {
   isMinimapVisible: boolean
@@ -18,6 +19,21 @@ export function WorkspaceMinimapDock({
   onMinimapVisibilityChange,
 }: WorkspaceMinimapDockProps): React.JSX.Element {
   const { t } = useTranslation()
+  const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
+
+  const handleMinimapClick = React.useCallback(
+    (event: React.MouseEvent<Element>, position: XYPosition) => {
+      if (event.detail !== 2) {
+        return
+      }
+
+      event.preventDefault()
+      event.stopPropagation()
+
+      centerFlowPositionInViewportPreservingZoom(reactFlow, position, { duration: 180 })
+    },
+    [reactFlow],
+  )
 
   return (
     <div
@@ -28,6 +44,7 @@ export function WorkspaceMinimapDock({
           className="workspace-canvas__minimap"
           pannable
           zoomable
+          onClick={handleMinimapClick}
           nodeColor={minimapNodeColor}
           nodeBorderRadius={6}
           maskColor="var(--cove-canvas-minimap-mask-surface)"

@@ -87,6 +87,20 @@ export function centerNodeInViewport(
   )
 }
 
+export function centerFlowPositionInViewportPreservingZoom(
+  reactFlow: ReactFlowInstance<Node<TerminalNodeData>>,
+  position: Point,
+  options: { duration?: number } = {},
+): void {
+  const viewport = reactFlow.getViewport()
+  const zoom = Number.isFinite(viewport.zoom) && viewport.zoom > 0 ? viewport.zoom : 1
+
+  reactFlow.setCenter(position.x, position.y, {
+    duration: resolveWorkspaceCanvasAnimationDuration(options.duration ?? 180),
+    zoom,
+  })
+}
+
 function shouldUseVisibleCanvasCenterFromAgentSettings(): boolean {
   // Workspace canvas rendering already depends on the app store (task windows, etc.)
   // so reading the setting here avoids threading it through large call sites.
