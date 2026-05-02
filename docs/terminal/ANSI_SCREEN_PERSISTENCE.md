@@ -7,10 +7,10 @@ Canonical architecture:
 
 - `docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
 
-Historical note:
+Case note:
 
-- This document captures an earlier renderer-cache workaround.
-- New correctness changes should move toward worker-owned presentation snapshots and fail-closed resync, not deepen renderer cache ownership.
+- This document captures a renderer-cache workaround used for a specific alternate-screen restore failure.
+- Correctness changes should preserve worker-owned presentation snapshots and fail-closed resync, not deepen renderer cache ownership.
 - The old main-side PTY snapshot mirror has since been removed from the production path; terminal durable scrollback now comes from mounted renderer publish plus app-shell inactive PTY stream sync, while agent placeholder scrollback remains renderer-published UX cache.
 
 ## Symptom
@@ -99,7 +99,7 @@ CI:
 
 - `ci (ubuntu-latest)` should pass the `Workspace Canvas - Persistence ANSI screen restore` E2E.
 
-## Follow-ups (If We Need Stronger Guarantees)
+## Additional Diagnostics
 
 - Add bounded "drain pending writes before caching" logic on unmount (avoid UI jank).
 - Extend `OPENCOVE_TERMINAL_DIAGNOSTICS=1` to log cache/hydrate decision points (cache hit/miss,

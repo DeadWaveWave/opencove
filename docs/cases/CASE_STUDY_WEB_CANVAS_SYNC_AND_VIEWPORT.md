@@ -10,7 +10,7 @@ While validating PR #155, we additionally ran the Web UI E2E suites:
 - `pnpm test:e2e:web-canvas`
 - `pnpm test:e2e:web-shell`
 
-We hit three related failures/regressions that are useful as a debugging reference for future work:
+We hit three related failures/regressions that are useful as a debugging reference:
 
 1. **React Flow viewport transform**: Playwright could resolve a locator as “visible”, but clicks failed (or timed out) because the target was outside the actual viewport.
 2. **Multi-client sync drift**: Closing a terminal node updated the persisted sync state, but a second browser client did not remove the node.
@@ -98,4 +98,3 @@ Fix direction:
 
 - `pnpm test:e2e:web-canvas` (23 tests) passes.
 - `pnpm test:e2e:web-shell` (7 tests) passes.
-

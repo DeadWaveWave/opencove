@@ -44,7 +44,7 @@ The refactor that resolved these issues followed a few principles that generaliz
 
 ## OpenCove-Specific References (This Case)
 
-Key implementation artifacts added/changed by the fix (for future readers):
+Key implementation artifacts added/changed by the fix:
 
 - Historical main durable scrollback mirror (later removed during worker-host cleanup):
   `src/app/main/ipc/ptyScrollbackMirror.ts`
