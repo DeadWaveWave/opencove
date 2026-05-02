@@ -1,6 +1,6 @@
 # Terminal TUI Rendering Baseline
 
-This document records the renderer-side TUI baseline we can fall back to when Codex/OpenCode rendering regresses.
+This document records the renderer-side TUI baseline used when Codex/OpenCode rendering regresses.
 
 Canonical architecture:
 
@@ -11,8 +11,8 @@ This file is tactical. It does not redefine terminal ownership, revive semantics
 ## Background
 
 - `codex` is more sensitive than `claude-code` to resize timing, redraw cadence, and renderer churn.
-- once resize logic becomes layered or state-machine-heavy, Codex tends to show garbled text, blank areas, or delayed redraws faster than other providers.
-- current renderer stability still depends on keeping the local fit/refresh path simple until the worker-owned presentation contract fully lands.
+- layered resize logic tends to show garbled text, blank areas, or delayed redraws faster in Codex than in other providers.
+- renderer stability depends on keeping the local fit/refresh path simple while preserving worker-owned presentation truth.
 
 ## Sensitive Path On Latest Main
 
@@ -78,6 +78,6 @@ Run the user-visible terminal stability cases first:
 
 - `tests/e2e/workspace-canvas.spec.ts`
 - `tests/e2e/workspace-canvas.terminal-theme.spec.ts`
-- the current terminal multi-client / recovery cases once they land
+- terminal multi-client / recovery cases relevant to the changed path
 
 When a TUI regression is timing-sensitive, add a real repro run alongside the E2E result instead of trusting canvas-only tests.

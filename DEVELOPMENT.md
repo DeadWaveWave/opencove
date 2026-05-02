@@ -114,7 +114,7 @@
 
 - **Web/Renderer 优先用 Playwright**：主路径走 `pnpm test:e2e` 或最低 meaningful layer 的 Playwright 用例。
 - **用户可感知变化必须跑 E2E**：新增功能、UX 改动、修复 bug、默认行为变化等，至少跑一条覆盖本次变更的 Playwright 用例（通常直接跑 `pnpm test:e2e`；或统一跑 `pnpm pre-commit`）。
-- **主题/样式改动必须遵守 UI 规范**：新增颜色走 token，Light/Dark 都要验收可读性；优先在 E2E 中附带截图。详见 `docs/UI_STANDARD.md`。
+- **主题/样式改动必须遵守 UI 规范**：新增颜色走 token，Light/Dark 都要验收可读性；优先在 E2E 中附带截图。详见 `docs/ui/README.md`。
 - **复杂交互辅以截图 / 录屏**：当行为依赖拖拽、滚动、动画、命中点或视觉反馈时，用截图或录屏帮助确认真实体验。
 - **提交前做一次 smoke 验证**：至少确认核心用户路径、关键视觉状态和交互目标没有回归。
 - **开发中用视觉调试**：必要时主动看截图、边框、命中区域、选择框、hover/active 状态，而不是只看日志和断言。
@@ -122,7 +122,7 @@
 
 ## 全局硬规则（摘要）
 
--   **架构基线**：本项目以 `DDD` 划分领域，以 `Clean` 约束依赖；`context` 是一级组织单位，每个 context 强制拆为 `domain / application / infrastructure / presentation`，`app/main`、`app/preload`、`app/renderer` 只做组合与边界。细则见 `docs/ARCHITECTURE.md`。
+-   **架构基线**：本项目以 `DDD` 划分领域，以 `Clean` 约束依赖；`context` 是一级组织单位，每个 context 强制拆为 `domain / application / infrastructure / presentation`，`app/main`、`app/preload`、`app/renderer` 只做组合与边界。细则见 `docs/architecture/ARCHITECTURE.md`。
 -   **Small vs Large**（详见 `AGENTS.md`）：
     -   **Small**：直接做，小步快反馈，跑针对性验证。
     -   **Large / 运行时高风险**：遵循 **Spec -> (Feasibility Check) -> Plan** 流程。
@@ -147,8 +147,8 @@
     -   若本次改动涉及 **Renderer 用户可见文案**，必须做好 i18n：禁止新增硬编码用户文案，新增/修改文案时同步更新 `src/app/renderer/i18n/locales/en.ts` 与 `src/app/renderer/i18n/locales/zh-CN.ts`，并在提交前做一次对应语言的最小 smoke/测试验证。
     -   通过上述检查后，再执行 `pnpm pre-commit` （type, lint, format, test）。
 -   **测试失败排查前置**：
-    -   凡遇到 `pnpm pre-commit`、`pnpm test -- --run`、`pnpm test:e2e` 或单独 `Playwright` 用例失败，继续排查前**必须先阅读** `docs/DEBUGGING.md`。
-    -   需要复现/定位 bug 时：先阅读 `docs/DEBUGGING.md` 选择合适的调试方法与测试层级；若没有覆盖到的合适方法，则自行探索新方法；当用户反馈“确实解决了困难问题”后，应补充对应案例到 `docs/cases/`，并按需更新 `docs/DEBUGGING.md`（方法+适用场景）及其它必要信息。
+    -   凡遇到 `pnpm pre-commit`、`pnpm test -- --run`、`pnpm test:e2e` 或单独 `Playwright` 用例失败，继续排查前**必须先阅读** `docs/development/DEBUGGING.md`。
+    -   需要复现/定位 bug 时：先阅读 `docs/development/DEBUGGING.md` 选择合适的调试方法与测试层级；若没有覆盖到的合适方法，则自行探索新方法；当用户反馈“确实解决了困难问题”后，应补充对应案例到 `docs/cases/`，并按需更新 `docs/development/DEBUGGING.md`（方法+适用场景）及其它必要信息。
 -   **安全（Electron Security）**：
     -   始终开启 Context Isolation。
     -   Renderer 进程禁止开启 Node Integration。
@@ -182,34 +182,34 @@
 ## 文档地图（按问题找入口）
 
 -   **Agent 关键指令与决策门槛**：`AGENTS.md`
--   **架构标准（DDD + Clean）**：`docs/ARCHITECTURE.md`
--   **Landing 重构落地规范**：`docs/LANDING_ARCHITECTURE.md`
--   **统一控制面（command/query/event）**：`docs/CONTROL_SURFACE.md`
--   **CLI 规范**：`docs/CLI.md`
--   **外部可执行发现与解析**：`docs/EXTERNAL_EXECUTABLE_RESOLUTION.md`
--   **Filesystem（URI + providers + guardrails）**：`docs/FILESYSTEM.md`
--   **画布内文件编辑（Document Node）**：`docs/DOCUMENT_NODE.md`
--   **恢复模型与 owner 表**：`docs/RECOVERY_MODEL.md`
--   **持久化（SQLite schema / migrations）**：`docs/PERSISTENCE.md`
+-   **架构标准（DDD + Clean）**：`docs/architecture/ARCHITECTURE.md`
+-   **Project / Space / Endpoint / Mount 能力链路**：`docs/architecture/WORKSPACE_CAPABILITY_ARCHITECTURE.md`
+-   **统一控制面（command/query/event）**：`docs/architecture/CONTROL_SURFACE.md`
+-   **CLI 规范**：`docs/cli/README.md`
+-   **外部可执行发现与解析**：`docs/cli/EXTERNAL_EXECUTABLE_RESOLUTION.md`
+-   **Filesystem（URI + providers + guardrails）**：`docs/canvas/FILESYSTEM.md`
+-   **画布内文件编辑（Document Node）**：`docs/canvas/DOCUMENT_NODE.md`
+-   **恢复模型与 owner 表**：`docs/architecture/RECOVERY_MODEL.md`
+-   **持久化（SQLite schema / migrations）**：`docs/architecture/PERSISTENCE.md`
 -   **终端架构文档入口**：`docs/terminal/README.md`
--   **终端多端架构（canonical）**：`docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
+-   **终端多端架构（当前 owner / attach / geometry）**：`docs/terminal/MULTI_CLIENT_ARCHITECTURE.md`
 -   **终端渲染基准（tactical baseline）**：`docs/terminal/TUI_RENDERING_BASELINE.md`
 -   **UI 开发标准**：
-    -   总体 UI 规范：`docs/UI_STANDARD.md`
-    -   窗口 UI 标准：`docs/WINDOW_UI_STANDARD.md`
-    -   任务 UI 标准：`docs/TASK_UI_STANDARD.md`
-    -   视口导航标准：`docs/VIEWPORT_NAVIGATION_STANDARD.md`
+    -   总体 UI 规范：`docs/ui/README.md`
+    -   窗口 UI 标准：`docs/ui/WINDOW_UI_STANDARD.md`
+    -   任务 UI 标准：`docs/ui/TASK_UI_STANDARD.md`
+    -   视口导航标准：`docs/ui/VIEWPORT_NAVIGATION_STANDARD.md`
 -   **诊断与复盘案例**：
     -   Win10 Codex Scroll：`docs/cases/WIN10_CODEX_SCROLL_DIAGNOSTICS.md`
     -   画布抖动与终端持久化：`docs/cases/CASE_STUDY_CANVAS_JITTER_AND_TERMINAL_DURABILITY.md`
--   **参考优秀项目与方案调研法**：`docs/REFERENCE_RESEARCH_METHOD.md`
--   **调试指南**：`docs/DEBUGGING.md`
+-   **参考优秀项目与方案调研法**：`docs/development/REFERENCE_RESEARCH_METHOD.md`
+-   **调试指南**：`docs/development/DEBUGGING.md`
 -   **贡献代码指南**：`CONTRIBUTING.md`
 -   **API Client 生成与使用**：暂无，参考 `src/shared/contracts` 定义。
 
 ## 检索建议（避免一次性读完）
 
 -   优先在 `AGENTS.md` 中查找开发及其流程规范。
--   若问题大概率已有行业成熟做法、主流产品先例或框架惯例，先读 `docs/REFERENCE_RESEARCH_METHOD.md`。
+-   若问题大概率已有行业成熟做法、主流产品先例或框架惯例，先读 `docs/development/REFERENCE_RESEARCH_METHOD.md`。
 -   涉及具体 UI/功能模块时，检索 `docs/` 下的相关文档。
 -   搜索现有代码中的实现模式，遵循 "Prioritize Reuse" 原则。

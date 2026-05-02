@@ -145,7 +145,7 @@ Interpretation:
 - wheel reaches the terminal surface
 - viewport scrolling is not being converted into actual xterm viewport movement
 
-## Expected Next Step After Win10 Manual Test
+## Evidence-Based Diagnosis After Win10 Manual Test
 
 After collecting logs from a real Windows 10 machine, the next change should be chosen from evidence, not guesswork:
 

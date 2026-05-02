@@ -143,7 +143,7 @@ pnpm install
 pnpm dev
 ```
 
-> See [RELEASING.md](docs/RELEASING.md) for more packager and build documentation.
+> See [RELEASING.md](docs/runtime/RELEASING.md) for more packager and build documentation.
 
 ### Web UI (Experimental)
 
@@ -154,8 +154,8 @@ OpenCove includes an **experimental Worker-hosted Web UI** so you can open the c
 - Dev note: LAN access uses the built `out/renderer` bundle (no HMR). Run `pnpm build` after UI changes.
 
 More details:
-- `docs/CONTROL_SURFACE.md`
-- `docs/WEB_UI_TROUBLESHOOTING.md`
+- `docs/architecture/CONTROL_SURFACE.md`
+- `docs/runtime/WEB_UI_TROUBLESHOOTING.md`
 
 ## 🏗️ Technical Architecture
 
