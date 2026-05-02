@@ -12,7 +12,7 @@ import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement
 import type { TerminalThemeMode } from './theme'
 import { registerRuntimeTerminalRendererHealth } from './runtimeRendererHealth'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
-import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
+import type { TerminalRendererKind } from './useWebglCanvasTransformCleanupScheduler'
 import type { XtermSession } from './xtermSession'
 
 export type TerminalHydrationBaselineSource =
@@ -453,7 +453,7 @@ export function registerRuntimeRendererAndThemeSync(options: {
   activeRendererKindRef: MutableRefObject<TerminalRendererKind>
   isTerminalHydratedRef: MutableRefObject<boolean>
   syncTerminalSize: () => void
-  scheduleWebglPixelSnapping: () => void
+  scheduleWebglCanvasTransformCleanup: () => void
   log: (event: string, details?: TerminalDiagnosticsLogInput['details']) => void
   requestRecovery: (request: TerminalRendererRecoveryRequest) => void
   terminalThemeMode: TerminalThemeMode
@@ -467,7 +467,7 @@ export function registerRuntimeRendererAndThemeSync(options: {
     activeRendererKindRef: options.activeRendererKindRef,
     isTerminalHydratedRef: options.isTerminalHydratedRef,
     syncTerminalSize: options.syncTerminalSize,
-    scheduleWebglPixelSnapping: options.scheduleWebglPixelSnapping,
+    scheduleWebglCanvasTransformCleanup: options.scheduleWebglCanvasTransformCleanup,
     log: options.log,
     requestRecovery: options.requestRecovery,
   })

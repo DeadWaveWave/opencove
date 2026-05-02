@@ -3,10 +3,8 @@ import {
   resolveAgentExecutablePathOverride,
   resolveAgentLaunchEnv,
 } from '@contexts/settings/domain/agentSettings'
-import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
-import { resolveDefaultAgentWindowSize } from '../constants'
 import type {
   LaunchAgentSessionResult,
   ListMountsResult,
@@ -20,6 +18,7 @@ import {
   setTaskLastError,
   type ResumeTaskAgentSessionContext,
 } from './useTaskActions.agentSession.shared'
+import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
 
 export async function resumeTaskAgentSessionAction(
   taskNodeId: string,
@@ -101,11 +100,9 @@ export async function resumeTaskAgentSessionAction(
     context.agentSettings,
     record.provider,
   )
-  const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
-    ...resolveDefaultAgentWindowSize(
-      context.agentSettings.standardWindowSizeBucket,
-      record.provider,
-    ),
+  const launchGeometry = resolveDefaultAgentLaunchGeometry({
+    bucket: context.agentSettings.standardWindowSizeBucket,
+    provider: record.provider,
     terminalFontSize: context.agentSettings.terminalFontSize,
   })
   const mergedEnv =
@@ -139,8 +136,8 @@ export async function resumeTaskAgentSessionAction(
           ...(executablePathOverride ? { executablePathOverride } : {}),
           ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
           agentFullAccess: context.agentSettings.agentFullAccess,
-          cols: launchGeometry.cols,
-          rows: launchGeometry.rows,
+          cols: launchGeometry.terminalGeometry.cols,
+          rows: launchGeometry.terminalGeometry.rows,
         },
       })
 
@@ -162,8 +159,8 @@ export async function resumeTaskAgentSessionAction(
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
-        cols: launchGeometry.cols,
-        rows: launchGeometry.rows,
+        cols: launchGeometry.terminalGeometry.cols,
+        rows: launchGeometry.terminalGeometry.rows,
       })
 
       launchedSessionId = launched.sessionId
@@ -177,7 +174,7 @@ export async function resumeTaskAgentSessionAction(
       sessionId: launchedSessionId,
       profileId: launchedProfileId,
       runtimeKind: launchedRuntimeKind,
-      terminalGeometry: launchGeometry,
+      terminalGeometry: launchGeometry.terminalGeometry,
       title: context.buildAgentNodeTitle(record.provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',

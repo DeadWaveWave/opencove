@@ -8,12 +8,10 @@ import {
   type AgentSettings,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
-import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
-import { resolveDefaultAgentWindowSize } from '../constants'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
 import type { LaunchAgentSessionResult, ListMountsResult } from '@shared/contracts/dto'
@@ -21,6 +19,7 @@ import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
+import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
 
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
@@ -82,12 +81,15 @@ export function useWorkspaceCanvasAgentLauncher({
             x: contextMenu.flowX,
             y: contextMenu.flowY,
           }
-          const defaultSize = resolveDefaultAgentWindowSize(standardWindowSizeBucket, provider)
-          const anchor = resolveNodePlacementAnchorFromViewportCenter(cursorAnchor, defaultSize)
-          const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
-            ...defaultSize,
+          const launchGeometry = resolveDefaultAgentLaunchGeometry({
+            bucket: standardWindowSizeBucket,
+            provider,
             terminalFontSize: agentSettings.terminalFontSize,
           })
+          const anchor = resolveNodePlacementAnchorFromViewportCenter(
+            cursorAnchor,
+            launchGeometry.frameSize,
+          )
           const model = resolveAgentModel(agentSettings, provider)
           const executablePathOverride = resolveAgentExecutablePathOverride(agentSettings, provider)
           const env = resolveAgentLaunchEnv(agentSettings, provider)
@@ -152,8 +154,8 @@ export function useWorkspaceCanvasAgentLauncher({
                   ...(executablePathOverride ? { executablePathOverride } : {}),
                   ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
                   agentFullAccess: agentSettings.agentFullAccess,
-                  cols: launchGeometry.cols,
-                  rows: launchGeometry.rows,
+                  cols: launchGeometry.terminalGeometry.cols,
+                  rows: launchGeometry.terminalGeometry.rows,
                 },
               })
 
@@ -173,8 +175,8 @@ export function useWorkspaceCanvasAgentLauncher({
               ...(executablePathOverride ? { executablePathOverride } : {}),
               ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
               agentFullAccess: agentSettings.agentFullAccess,
-              cols: launchGeometry.cols,
-              rows: launchGeometry.rows,
+              cols: launchGeometry.terminalGeometry.cols,
+              rows: launchGeometry.terminalGeometry.rows,
             })
 
             launchedSessionId = launched.sessionId
@@ -189,7 +191,7 @@ export function useWorkspaceCanvasAgentLauncher({
             sessionId: launchedSessionId,
             profileId: launchedProfileId,
             runtimeKind: launchedRuntimeKind,
-            terminalGeometry: launchGeometry,
+            terminalGeometry: launchGeometry.terminalGeometry,
             title: buildAgentNodeTitle(provider, modelLabel),
             anchor,
             kind: 'agent',

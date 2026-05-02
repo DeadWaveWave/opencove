@@ -120,7 +120,7 @@ export function registerRuntimeTerminalRendererHealth({
   activeRendererKindRef,
   isTerminalHydratedRef,
   syncTerminalSize,
-  scheduleWebglPixelSnapping,
+  scheduleWebglCanvasTransformCleanup,
   log,
   requestRecovery,
 }: {
@@ -130,7 +130,7 @@ export function registerRuntimeTerminalRendererHealth({
   activeRendererKindRef: MutableRefObject<ActiveTerminalRenderer['kind']>
   isTerminalHydratedRef: MutableRefObject<boolean>
   syncTerminalSize: () => void
-  scheduleWebglPixelSnapping: () => void
+  scheduleWebglCanvasTransformCleanup: () => void
   log: (event: string, details?: TerminalDiagnosticsLogInput['details']) => void
   requestRecovery: (request: TerminalRendererRecoveryRequest) => void
 }): {
@@ -144,7 +144,7 @@ export function registerRuntimeTerminalRendererHealth({
   const refreshLayout = (): void => {
     renderer.clearTextureAtlas()
     syncTerminalSize()
-    scheduleWebglPixelSnapping()
+    scheduleWebglCanvasTransformCleanup()
   }
 
   const inspect = (trigger: TerminalRendererHealthTrigger): void => {

@@ -1,8 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
-import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
-import { resolveDefaultAgentWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
+import { resolveDefaultAgentLaunchGeometry } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/agentLaunchGeometry'
 import type {
   TerminalNodeData,
   WorkspaceSpaceState,
@@ -11,10 +10,10 @@ import { runTaskAgentAction } from '../../../src/contexts/workspace/presentation
 
 describe('WorkspaceCanvas task run agent auto resize', () => {
   function expectedAgentGeometry() {
-    return resolveTerminalPtyGeometryForNodeFrame({
-      ...resolveDefaultAgentWindowSize(DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket),
+    return resolveDefaultAgentLaunchGeometry({
+      bucket: DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
       terminalFontSize: DEFAULT_AGENT_SETTINGS.terminalFontSize,
-    })
+    }).terminalGeometry
   }
 
   it('expands the task space to fit the created agent node', async () => {

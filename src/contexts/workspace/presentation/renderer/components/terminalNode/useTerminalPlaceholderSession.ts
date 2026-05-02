@@ -7,7 +7,7 @@ import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { TerminalThemeMode } from './theme'
 import { writeTerminalAsync } from './writeTerminal'
 import { createMountedXtermSession, type XtermSession } from './xtermSession'
-import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
+import type { TerminalRendererKind } from './useWebglCanvasTransformCleanupScheduler'
 import type { PreferredTerminalRendererMode } from './preferredRenderer'
 import {
   hasRecentTerminalUserInteraction,
@@ -41,7 +41,7 @@ export function useTerminalPlaceholderSession({
   recentUserInteractionAtRef,
   pendingUserInputBufferRef,
   activeRendererKindRef,
-  cancelWebglPixelSnapping,
+  cancelWebglCanvasTransformCleanup,
   setRendererKindAndApply,
   terminalFontSize,
   viewportZoomRef,
@@ -74,7 +74,7 @@ export function useTerminalPlaceholderSession({
     current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
   }
   activeRendererKindRef: { current: TerminalRendererKind }
-  cancelWebglPixelSnapping: () => void
+  cancelWebglCanvasTransformCleanup: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
   viewportZoomRef: { current: number }
@@ -241,14 +241,14 @@ export function useTerminalPlaceholderSession({
       terminalRef.current = null
       fitAddonRef.current = null
       activeRendererKindRef.current = 'dom'
-      cancelWebglPixelSnapping()
+      cancelWebglCanvasTransformCleanup()
     }
   }, [
     applyTerminalTheme,
     latestSessionIdRef,
     activeRendererKindRef,
     bindSearchAddonToFind,
-    cancelWebglPixelSnapping,
+    cancelWebglCanvasTransformCleanup,
     fitAddonRef,
     isPointerResizingRef,
     isTerminalHydratedRef,

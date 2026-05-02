@@ -7,7 +7,7 @@ import type { TerminalCommandInputState } from './commandInput'
 import type { PreferredTerminalRendererMode } from './preferredRenderer'
 import type { TerminalRendererRecoveryRequest } from './runtimeRendererHealth'
 import type { TerminalOutputScheduler } from './outputScheduler'
-import type { TerminalRendererKind } from './useWebglPixelSnappingScheduler'
+import type { TerminalRendererKind } from './useWebglCanvasTransformCleanupScheduler'
 import type { XtermSession } from './xtermSession'
 import type { TerminalThemeMode } from './theme'
 import type { TerminalPtyGeometry } from '@shared/contracts/dto'
@@ -59,8 +59,8 @@ export interface TerminalRuntimeSessionOptions {
   }
   isLiveSessionReattach: boolean
   activeRendererKindRef: { current: TerminalRendererKind }
-  scheduleWebglPixelSnapping: () => void
-  cancelWebglPixelSnapping: () => void
+  scheduleWebglCanvasTransformCleanup: () => void
+  cancelWebglCanvasTransformCleanup: () => void
   setRendererKindAndApply: (kind: TerminalRendererKind) => void
   terminalFontSize: number
   viewportZoomRef: { current: number }

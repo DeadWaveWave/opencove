@@ -13,7 +13,7 @@ import { UrlLinkProvider } from './linkProviders/url-link-provider'
 import { registerTerminalSelectionTestHandle } from './testHarness'
 import { patchXtermMouseServiceWithRetry } from './patchXtermMouseService'
 import { registerTerminalHitTargetCursorScope } from './hitTargetCursorScope'
-import { registerWebglPixelSnappingMutationObserver } from './registerWebglPixelSnappingMutationObserver'
+import { registerWebglCanvasTransformCleanupMutationObserver } from './registerWebglCanvasTransformCleanupMutationObserver'
 import {
   activatePreferredTerminalRenderer,
   type ActiveTerminalRenderer,
@@ -63,7 +63,7 @@ export function createMountedXtermSession({
   onRendererKindResolved,
   onRendererIssue,
   preferredRendererMode = 'auto',
-  scheduleWebglPixelSnapping,
+  scheduleWebglCanvasTransformCleanup,
   initialViewportZoom = 1,
 }: {
   nodeId: string
@@ -89,7 +89,7 @@ export function createMountedXtermSession({
   onRendererKindResolved?: (kind: ActiveTerminalRenderer['kind']) => void
   onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
   preferredRendererMode?: PreferredTerminalRendererMode
-  scheduleWebglPixelSnapping?: () => void
+  scheduleWebglCanvasTransformCleanup?: () => void
   initialViewportZoom?: number
 }): XtermSession {
   const resolvedTerminalUiTheme = resolveTerminalUiTheme(terminalThemeMode)
@@ -145,7 +145,7 @@ export function createMountedXtermSession({
   let disposeTerminalSelectionTestHandle: () => void = () => undefined
   let cancelMouseServicePatch: () => void = () => undefined
   let disposeTerminalHitTargetCursorScope: () => void = () => undefined
-  let disposeWebglPixelSnappingObserver: () => void = () => undefined
+  let disposeWebglCanvasTransformCleanupObserver: () => void = () => undefined
   let disposeTerminalDisplayMeasurementHandle: () => void = () => undefined
   let effectiveDprController = installTerminalEffectiveDevicePixelRatioController({
     terminal,
@@ -161,7 +161,7 @@ export function createMountedXtermSession({
       initialViewportZoom,
       initialViewportInteractionActive: false,
       onAfterApply: () => {
-        scheduleWebglPixelSnapping?.()
+        scheduleWebglCanvasTransformCleanup?.()
       },
     })
     renderer = activatePreferredTerminalRenderer(terminal, terminalProvider, {
@@ -170,7 +170,7 @@ export function createMountedXtermSession({
       terminalKind: nodeKindForDiagnostics,
       onRendererKindChange: kind => {
         onRendererKindResolved?.(kind)
-        scheduleWebglPixelSnapping?.()
+        scheduleWebglCanvasTransformCleanup?.()
       },
       onRendererIssue,
     })
@@ -191,11 +191,13 @@ export function createMountedXtermSession({
       container,
       ownerId,
     })
-    disposeWebglPixelSnappingObserver = registerWebglPixelSnappingMutationObserver({
-      container,
-      isWebglRenderer: () => renderer.kind === 'webgl',
-      scheduleWebglPixelSnapping: scheduleWebglPixelSnapping ?? (() => undefined),
-    })
+    disposeWebglCanvasTransformCleanupObserver =
+      registerWebglCanvasTransformCleanupMutationObserver({
+        container,
+        isWebglRenderer: () => renderer.kind === 'webgl',
+        scheduleWebglCanvasTransformCleanup:
+          scheduleWebglCanvasTransformCleanup ?? (() => undefined),
+      })
     if (isTestEnvironment) {
       disposeTerminalSelectionTestHandle = registerTerminalSelectionTestHandle(
         nodeId,
@@ -211,7 +213,7 @@ export function createMountedXtermSession({
       fitAddon,
     })
     requestAnimationFrame(syncTerminalSize)
-    scheduleWebglPixelSnapping?.()
+    scheduleWebglCanvasTransformCleanup?.()
   } else {
     onRendererKindResolved?.(renderer.kind)
   }
@@ -242,7 +244,7 @@ export function createMountedXtermSession({
     dispose: () => {
       cancelMouseServicePatch()
       disposeTerminalHitTargetCursorScope()
-      disposeWebglPixelSnappingObserver()
+      disposeWebglCanvasTransformCleanupObserver()
       effectiveDprController.dispose()
       renderer.dispose()
       diagnostics.dispose()

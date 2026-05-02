@@ -4,10 +4,8 @@ import {
   resolveAgentLaunchEnv,
   resolveAgentModel,
 } from '@contexts/settings/domain/agentSettings'
-import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
-import { resolveDefaultAgentWindowSize } from '../constants'
 import type {
   LaunchAgentSessionResult,
   ListMountsResult,
@@ -22,6 +20,7 @@ import {
   setTaskLastError,
   type TaskActionContext,
 } from './useTaskActions.agentSession.shared'
+import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
 
 function reuseLinkedAgentForTask({
   taskNodeId,
@@ -264,8 +263,9 @@ export async function runTaskAgentAction(
   const model = resolveAgentModel(context.agentSettings, provider)
   const executablePathOverride = resolveAgentExecutablePathOverride(context.agentSettings, provider)
   const env = resolveAgentLaunchEnv(context.agentSettings, provider)
-  const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
-    ...resolveDefaultAgentWindowSize(context.agentSettings.standardWindowSizeBucket, provider),
+  const launchGeometry = resolveDefaultAgentLaunchGeometry({
+    bucket: context.agentSettings.standardWindowSizeBucket,
+    provider,
     terminalFontSize: context.agentSettings.terminalFontSize,
   })
   const mergedEnv =
@@ -298,8 +298,8 @@ export async function runTaskAgentAction(
             ...(executablePathOverride ? { executablePathOverride } : {}),
             ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
             agentFullAccess: context.agentSettings.agentFullAccess,
-            cols: launchGeometry.cols,
-            rows: launchGeometry.rows,
+            cols: launchGeometry.terminalGeometry.cols,
+            rows: launchGeometry.terminalGeometry.rows,
           },
         })
       }
@@ -338,8 +338,8 @@ export async function runTaskAgentAction(
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
-        cols: launchGeometry.cols,
-        rows: launchGeometry.rows,
+        cols: launchGeometry.terminalGeometry.cols,
+        rows: launchGeometry.terminalGeometry.rows,
       })
 
       launchedSessionId = launched.sessionId
@@ -352,7 +352,7 @@ export async function runTaskAgentAction(
       sessionId: launchedSessionId,
       profileId: launchedProfileId,
       runtimeKind: launchedRuntimeKind,
-      terminalGeometry: launchGeometry,
+      terminalGeometry: launchGeometry.terminalGeometry,
       title: context.buildAgentNodeTitle(provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',

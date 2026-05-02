@@ -81,8 +81,8 @@ export function useTerminalRuntimeSession({
   pendingUserInputBufferRef,
   isLiveSessionReattach,
   activeRendererKindRef,
-  scheduleWebglPixelSnapping,
-  cancelWebglPixelSnapping,
+  scheduleWebglCanvasTransformCleanup,
+  cancelWebglCanvasTransformCleanup,
   setRendererKindAndApply,
   terminalFontSize,
   viewportZoomRef,
@@ -162,6 +162,7 @@ export function useTerminalRuntimeSession({
             trigger: 'context_loss',
           })
         },
+        scheduleWebglCanvasTransformCleanup,
       })
     if (preservedSession && !canReusePreservedSession) {
       preservedSession.dispose()
@@ -386,7 +387,7 @@ export function useTerminalRuntimeSession({
       activeRendererKindRef,
       isTerminalHydratedRef,
       syncTerminalSize,
-      scheduleWebglPixelSnapping,
+      scheduleWebglCanvasTransformCleanup,
       log: terminalDiagnostics.log,
       requestRecovery: requestTerminalRendererRecovery,
       terminalThemeMode,
@@ -432,7 +433,7 @@ export function useTerminalRuntimeSession({
       terminalRef.current = null
       fitAddonRef.current = null
       activeRendererKindRef.current = 'dom'
-      cancelWebglPixelSnapping()
+      cancelWebglCanvasTransformCleanup()
     }
   }, [
     cancelScrollbackPublish,
@@ -444,8 +445,8 @@ export function useTerminalRuntimeSession({
     openTerminalFind,
     scrollbackBufferRef,
     scheduleTranscriptSync,
-    scheduleWebglPixelSnapping,
-    cancelWebglPixelSnapping,
+    scheduleWebglCanvasTransformCleanup,
+    cancelWebglCanvasTransformCleanup,
     setRendererKindAndApply,
     activeRendererKindRef,
     sessionId,

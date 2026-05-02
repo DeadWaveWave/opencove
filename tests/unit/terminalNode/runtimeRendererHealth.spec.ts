@@ -128,7 +128,7 @@ describe('runtime renderer health', () => {
 
     const clearTextureAtlas = vi.fn()
     const syncTerminalSize = vi.fn()
-    const scheduleWebglPixelSnapping = vi.fn()
+    const scheduleWebglCanvasTransformCleanup = vi.fn()
     const log = vi.fn()
     const requestRecovery = vi.fn()
 
@@ -152,7 +152,7 @@ describe('runtime renderer health', () => {
       activeRendererKindRef: { current: 'webgl' },
       isTerminalHydratedRef: { current: true },
       syncTerminalSize,
-      scheduleWebglPixelSnapping,
+      scheduleWebglCanvasTransformCleanup,
       log,
       requestRecovery,
     })
@@ -162,7 +162,7 @@ describe('runtime renderer health', () => {
 
     expect(clearTextureAtlas).toHaveBeenCalledTimes(1)
     expect(syncTerminalSize).toHaveBeenCalledTimes(1)
-    expect(scheduleWebglPixelSnapping).toHaveBeenCalledTimes(1)
+    expect(scheduleWebglCanvasTransformCleanup).toHaveBeenCalledTimes(1)
     expect(log).toHaveBeenCalledWith(
       'renderer-health-recover',
       expect.objectContaining({
