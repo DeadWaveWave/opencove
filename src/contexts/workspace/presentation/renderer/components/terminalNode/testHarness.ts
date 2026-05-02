@@ -51,6 +51,7 @@ type TerminalRendererIntrospection = {
 
 type TerminalSelectionTestApi = {
   clearSelection: (nodeId: string) => boolean
+  simulateDetachedRendererOnce: (nodeId: string) => boolean
   getCellCenter: (nodeId: string, col: number, row: number) => { x: number; y: number } | null
   getFontOptions: (nodeId: string) => {
     fontSize: number | null
@@ -106,6 +107,7 @@ const terminalHandles = new Map<string, TerminalSelectionHandle>()
 const terminalFitAddons = new Map<string, FitAddon>()
 const terminalBinaryInputEmitters = new Map<string, (data: string) => boolean>()
 const terminalRuntimeSessionIds = new Map<string, string>()
+const terminalDetachedRendererRestorers = new Map<string, () => void>()
 
 function normalizeFiniteOption(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
@@ -125,6 +127,44 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         }
 
         terminal.clearSelection()
+        return true
+      },
+      simulateDetachedRendererOnce: nodeId => {
+        const terminal = terminalHandles.get(nodeId) as unknown as {
+          _core?: {
+            _renderService?: Record<string, unknown>
+          }
+        }
+        const renderService = terminal?._core?._renderService
+        if (!renderService) {
+          return false
+        }
+
+        terminalDetachedRendererRestorers.get(nodeId)?.()
+
+        const hadOwnDescriptor = Object.prototype.hasOwnProperty.call(renderService, 'dimensions')
+        const originalDescriptor = Object.getOwnPropertyDescriptor(renderService, 'dimensions') ?? null
+        const restore = (): void => {
+          if (hadOwnDescriptor && originalDescriptor) {
+            Object.defineProperty(renderService, 'dimensions', originalDescriptor)
+          } else {
+            Reflect.deleteProperty(renderService, 'dimensions')
+          }
+
+          if (terminalDetachedRendererRestorers.get(nodeId) === restore) {
+            terminalDetachedRendererRestorers.delete(nodeId)
+          }
+        }
+
+        Object.defineProperty(renderService, 'dimensions', {
+          configurable: true,
+          get() {
+            restore()
+            throw new TypeError("Cannot read properties of undefined (reading 'dimensions')")
+          },
+        })
+
+        terminalDetachedRendererRestorers.set(nodeId, restore)
         return true
       },
       getCellCenter: (nodeId, col, row) => {
@@ -394,6 +434,7 @@ export function registerTerminalSelectionTestHandle(
   }
 
   return () => {
+    terminalDetachedRendererRestorers.get(nodeId)?.()
     terminalHandles.delete(nodeId)
     terminalFitAddons.delete(nodeId)
   }
