@@ -3,6 +3,7 @@ import type { PersistenceStore } from '../../../../platform/persistence/sqlite/P
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
+import { captureGeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
 import {
   normalizeAgentSettings,
@@ -371,6 +372,10 @@ export function registerSessionLaunchAgentInMountHandler(
         executablePathOverride,
         ...(mergedEnv ? { env: mergedEnv } : {}),
       })
+      const geminiDiscoveryCursor =
+        provider === 'gemini' && mode === 'new'
+          ? await captureGeminiSessionDiscoveryCursor(cwd).catch(() => null)
+          : undefined
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
@@ -389,6 +394,7 @@ export function registerSessionLaunchAgentInMountHandler(
         launchMode: mode,
         resumeSessionId: mode === 'resume' ? (payload.resumeSessionId ?? null) : null,
         startedAtMs,
+        ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
         opencodeBaseUrl: opencodeServer
           ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
           : null,
@@ -420,6 +426,8 @@ export function registerSessionLaunchAgentInMountHandler(
         startedAtMs,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        launchMode: mode,
+        ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
         route: { kind: 'local' },
       }
 

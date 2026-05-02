@@ -1,5 +1,5 @@
 import fs from 'node:fs/promises'
-import { delimiter, extname, isAbsolute, join, resolve } from 'node:path'
+import path from 'node:path'
 import process from 'node:process'
 import type { ExecutableResolutionSource } from '@shared/contracts/dto'
 import {
@@ -31,6 +31,10 @@ function normalizeText(value: string | null | undefined): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function resolveTargetPathApi(): typeof path.posix | typeof path.win32 {
+  return process.platform === 'win32' ? path.win32 : path.posix
+}
+
 function dedupeStrings(values: readonly string[]): string[] {
   const unique: string[] = []
 
@@ -46,10 +50,13 @@ function dedupeStrings(values: readonly string[]): string[] {
 }
 
 function isPathLikeCommand(command: string): boolean {
-  return command.includes('/') || command.includes('\\') || isAbsolute(command)
+  return (
+    command.includes('/') || command.includes('\\') || resolveTargetPathApi().isAbsolute(command)
+  )
 }
 
 function splitPathValue(pathValue: string): string[] {
+  const { delimiter } = resolveTargetPathApi()
   return pathValue
     .split(delimiter)
     .map(segment => segment.trim())
@@ -57,6 +64,7 @@ function splitPathValue(pathValue: string): string[] {
 }
 
 function resolveWindowsCandidateNames(command: string): string[] {
+  const { extname } = resolveTargetPathApi()
   if (process.platform !== 'win32') {
     return [command]
   }
@@ -92,6 +100,7 @@ async function isUsableExecutable(filePath: string): Promise<boolean> {
 }
 
 async function resolveDirectPath(command: string): Promise<string | null> {
+  const { isAbsolute, resolve } = resolveTargetPathApi()
   const candidateNames = resolveWindowsCandidateNames(command)
 
   for (const candidateName of candidateNames) {
@@ -109,6 +118,7 @@ async function searchPathDirectories(
   command: string,
   directories: readonly string[],
 ): Promise<string | null> {
+  const { join } = resolveTargetPathApi()
   if (directories.length === 0) {
     return null
   }
