@@ -3,6 +3,10 @@ import type { Terminal } from '@xterm/xterm'
 import type { PresentationSnapshotTerminalResult } from '@shared/contracts/dto'
 import type { WorkspaceNodeKind } from '../../types'
 import type { CachedTerminalScreenState } from './screenStateCache'
+import {
+  restoreTerminalScrollState,
+  type TerminalScrollStateSnapshot,
+} from './effectiveDevicePixelRatio'
 import { hydrateTerminalFromSnapshot } from './hydrateFromSnapshot'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 import type { RuntimeTerminalInputBridge } from './createRuntimeTerminalInputBridge'
@@ -25,6 +29,8 @@ export function startRuntimeTerminalHydration({
   lastCommittedPtySizeRef,
   runtimeInputBridge,
   hydrationRouter,
+  scrollStateToRestore,
+  onScrollStateRestored,
   shouldGateInitialUserInput,
   shouldAwaitAgentVisibleOutput,
   isDisposed,
@@ -45,6 +51,8 @@ export function startRuntimeTerminalHydration({
   lastCommittedPtySizeRef: MutableRefObject<{ cols: number; rows: number } | null>
   runtimeInputBridge: RuntimeTerminalInputBridge
   hydrationRouter: TerminalHydrationRouter
+  scrollStateToRestore: TerminalScrollStateSnapshot | null
+  onScrollStateRestored?: () => void
   shouldGateInitialUserInput: boolean
   shouldAwaitAgentVisibleOutput: boolean
   isDisposed: () => boolean
@@ -60,6 +68,7 @@ export function startRuntimeTerminalHydration({
     persistedSnapshot: kind === 'agent' ? '' : scrollbackBuffer.snapshot(),
     presentationSnapshotPromise,
     takePtySnapshot: payload => window.opencoveApi.pty.snapshot(payload),
+    scrollStateToRestore,
     isDisposed,
     onHydratedWriteCommitted: rawSnapshot => {
       committedScrollbackBuffer.set(rawSnapshot)
@@ -77,7 +86,13 @@ export function startRuntimeTerminalHydration({
     },
     finalizeHydration: (rawSnapshot, options) => {
       runtimeInputBridge.enableTerminalDataForwarding()
-      hydrationRouter.finalizeHydration(rawSnapshot, options)
+      hydrationRouter.finalizeHydration(rawSnapshot, {
+        baselineAppliedSeq: options?.baselineAppliedSeq ?? null,
+      })
+      if (options?.scrollStateToRestore) {
+        restoreTerminalScrollState(terminal, options.scrollStateToRestore)
+      }
+      onScrollStateRestored?.()
       if (shouldGateInitialUserInput) {
         if (shouldAwaitAgentVisibleOutput) {
           return

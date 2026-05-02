@@ -79,6 +79,7 @@ export function useTerminalRuntimeSession({
   preservedXtermSessionRef,
   recentUserInteractionAtRef,
   pendingUserInputBufferRef,
+  recoveryScrollStateRef,
   isLiveSessionReattach,
   activeRendererKindRef,
   scheduleWebglCanvasTransformCleanup,
@@ -376,6 +377,12 @@ export function useTerminalRuntimeSession({
       lastCommittedPtySizeRef,
       runtimeInputBridge,
       hydrationRouter,
+      scrollStateToRestore: recoveryScrollStateRef.current,
+      onScrollStateRestored: () => {
+        if (recoveryScrollStateRef.current !== null) {
+          recoveryScrollStateRef.current = null
+        }
+      },
       shouldGateInitialUserInput,
       shouldAwaitAgentVisibleOutput,
       isDisposed: () => isDisposed,
@@ -475,6 +482,7 @@ export function useTerminalRuntimeSession({
     preservedXtermSessionRef,
     recentUserInteractionAtRef,
     pendingUserInputBufferRef,
+    recoveryScrollStateRef,
     isLiveSessionReattach,
     terminalFontSize,
     viewportZoomRef,

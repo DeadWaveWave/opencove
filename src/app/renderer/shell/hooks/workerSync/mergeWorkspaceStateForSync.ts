@@ -34,10 +34,10 @@ function mergeRuntimeNode(
   const persistedSessionId = persistedNode.data.sessionId.trim()
   const existingSessionId = existingNode.data.sessionId.trim()
   const runtimeSessionId =
-    existingSessionId.length > 0
-      ? existingSessionId
-      : persistedSessionId.length > 0
-        ? persistedSessionId
+    persistedSessionId.length > 0
+      ? persistedSessionId
+      : existingSessionId.length > 0
+        ? existingSessionId
         : ''
   const kind = persistedNode.data.kind
 

@@ -11,6 +11,7 @@ import type { TerminalRendererKind } from './useWebglCanvasTransformCleanupSched
 import type { XtermSession } from './xtermSession'
 import type { TerminalThemeMode } from './theme'
 import type { TerminalPtyGeometry } from '@shared/contracts/dto'
+import type { TerminalScrollStateSnapshot } from './effectiveDevicePixelRatio'
 
 export interface TerminalRuntimeSessionOptions {
   nodeId: string
@@ -56,6 +57,9 @@ export interface TerminalRuntimeSessionOptions {
   recentUserInteractionAtRef: { current: number }
   pendingUserInputBufferRef: {
     current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
+  }
+  recoveryScrollStateRef: {
+    current: TerminalScrollStateSnapshot | null
   }
   isLiveSessionReattach: boolean
   activeRendererKindRef: { current: TerminalRendererKind }

@@ -126,16 +126,40 @@ describe('useWorkerSyncStateUpdates helpers', () => {
     expect(nextWorkspaces[1]?.name).toBe('workspace-2-updated')
   })
 
-  it('does not overwrite a revived runtime session with stale persisted session ids', () => {
-    const existingNode = createAgentNode('agent-1', 'live-revived-pty-session')
-    const stalePersistedNode = createAgentNode('agent-1', 'old-dead-pty-session')
+  it('applies the worker session id when persisted sync state revives a runtime node', () => {
+    const existingNode = createAgentNode('agent-1', 'old-dead-pty-session')
+    const revivedPersistedNode = createAgentNode('agent-1', 'live-revived-pty-session')
     const currentWorkspace = createWorkspace('workspace-1', {
       nodes: [existingNode],
     })
     const persistedState = toPersistedState(
       [
         createWorkspace('workspace-1', {
-          nodes: [stalePersistedNode],
+          nodes: [revivedPersistedNode],
+        }),
+      ],
+      currentWorkspace.id,
+      DEFAULT_AGENT_SETTINGS,
+    )
+
+    const nextWorkspaces = resolveWorkspacesForWorkerSync({
+      currentWorkspaces: [currentWorkspace],
+      persistedWorkspaces: persistedState.workspaces,
+    })
+
+    expect(nextWorkspaces[0]?.nodes[0]?.data.sessionId).toBe('live-revived-pty-session')
+  })
+
+  it('keeps the current runtime session id when persisted sync state has no live session', () => {
+    const existingNode = createAgentNode('agent-1', 'live-revived-pty-session')
+    const persistedNodeWithoutRuntimeSession = createAgentNode('agent-1', '')
+    const currentWorkspace = createWorkspace('workspace-1', {
+      nodes: [existingNode],
+    })
+    const persistedState = toPersistedState(
+      [
+        createWorkspace('workspace-1', {
+          nodes: [persistedNodeWithoutRuntimeSession],
         }),
       ],
       currentWorkspace.id,

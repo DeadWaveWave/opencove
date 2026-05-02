@@ -50,6 +50,8 @@ export type TerminalScrollStateSnapshot = {
   baseY: number | null
   viewportY: number | null
   isUserScrolling: boolean | null
+  offsetFromBottom: number | null
+  wasAtBottom: boolean | null
 }
 
 export function captureTerminalScrollState(terminal: Terminal): TerminalScrollStateSnapshot {
@@ -73,6 +75,20 @@ export function captureTerminalScrollState(terminal: Terminal): TerminalScrollSt
       typeof terminalCore._core?._bufferService?.isUserScrolling === 'boolean'
         ? terminalCore._core._bufferService.isUserScrolling
         : null,
+    offsetFromBottom:
+      typeof activeBuffer?.baseY === 'number' &&
+      Number.isFinite(activeBuffer.baseY) &&
+      typeof activeBuffer?.viewportY === 'number' &&
+      Number.isFinite(activeBuffer.viewportY)
+        ? Math.max(0, activeBuffer.baseY - activeBuffer.viewportY)
+        : null,
+    wasAtBottom:
+      typeof activeBuffer?.baseY === 'number' &&
+      Number.isFinite(activeBuffer.baseY) &&
+      typeof activeBuffer?.viewportY === 'number' &&
+      Number.isFinite(activeBuffer.viewportY)
+        ? activeBuffer.viewportY >= activeBuffer.baseY
+        : null,
   }
 }
 
@@ -94,16 +110,46 @@ export function restoreTerminalScrollState(
     }
   }
 
-  if (typeof snapshot.isUserScrolling === 'boolean' && terminalCore._core?._bufferService) {
-    terminalCore._core._bufferService.isUserScrolling = snapshot.isUserScrolling
+  const currentBaseY =
+    typeof terminal.buffer?.active?.baseY === 'number' &&
+    Number.isFinite(terminal.buffer.active.baseY)
+      ? terminal.buffer.active.baseY
+      : snapshot.baseY
+  const resolvedViewportY = (() => {
+    if (typeof currentBaseY === 'number' && Number.isFinite(currentBaseY)) {
+      if (snapshot.wasAtBottom === true) {
+        return currentBaseY
+      }
+
+      if (
+        typeof snapshot.offsetFromBottom === 'number' &&
+        Number.isFinite(snapshot.offsetFromBottom)
+      ) {
+        return Math.max(0, currentBaseY - snapshot.offsetFromBottom)
+      }
+
+      return Math.min(Math.max(0, snapshot.viewportY), currentBaseY)
+    }
+
+    return Math.max(0, snapshot.viewportY)
+  })()
+  const nextIsUserScrolling =
+    typeof snapshot.isUserScrolling === 'boolean'
+      ? snapshot.isUserScrolling
+      : typeof currentBaseY === 'number' && Number.isFinite(currentBaseY)
+        ? resolvedViewportY < currentBaseY
+        : null
+
+  if (typeof nextIsUserScrolling === 'boolean' && terminalCore._core?._bufferService) {
+    terminalCore._core._bufferService.isUserScrolling = nextIsUserScrolling
   }
   if (terminalCore._core?._bufferService?.buffer) {
-    terminalCore._core._bufferService.buffer.ydisp = snapshot.viewportY
+    terminalCore._core._bufferService.buffer.ydisp = resolvedViewportY
   }
 
-  terminalCore._core?._viewport?.queueSync?.(snapshot.viewportY)
-  terminalCore._core?._viewport?.scrollToLine?.(snapshot.viewportY, true)
-  terminal.scrollToLine(snapshot.viewportY)
+  terminalCore._core?._viewport?.queueSync?.(resolvedViewportY)
+  terminalCore._core?._viewport?.scrollToLine?.(resolvedViewportY, true)
+  terminal.scrollToLine(resolvedViewportY)
 }
 
 function updateTerminalDprDebug(

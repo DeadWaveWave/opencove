@@ -28,6 +28,7 @@ const ctx: ControlSurfaceContext = {
 
 describe('control surface session.launchAgentInMount', () => {
   it('passes resumeSessionId through local mounted test agent resume launches', async () => {
+    const expectedRuntimeKind = process.platform === 'win32' ? 'windows' : 'posix'
     const rootPath = process.cwd()
     const rootUri = pathToFileURL(rootPath).href
     const spawnSession = vi.fn(async () => ({ sessionId: 'pty-mounted-resume' }))
@@ -94,7 +95,7 @@ describe('control surface session.launchAgentInMount', () => {
     expect(launched.ok).toBe(true)
     expect(launched.value).toMatchObject({
       profileId: null,
-      runtimeKind: 'windows',
+      runtimeKind: expectedRuntimeKind,
     })
     expect(resolveWorkerAgentTestStubMock).toHaveBeenCalledWith(
       expect.objectContaining({

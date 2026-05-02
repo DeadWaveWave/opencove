@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Terminal } from '@xterm/xterm'
 import {
+  captureTerminalScrollState,
   installTerminalEffectiveDevicePixelRatioController,
+  restoreTerminalScrollState,
   resolveTerminalEffectiveDevicePixelRatio,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio'
 
@@ -150,6 +152,26 @@ function createTerminalHarness(input?: {
 }
 
 describe('terminal effective device pixel ratio', () => {
+  it('restores the same distance from bottom after the buffer grows', () => {
+    const harness = createTerminalHarness({
+      baseDevicePixelRatio: 1.25,
+      baseY: 180,
+      viewportY: 150,
+      isUserScrolling: true,
+    })
+
+    const snapshot = captureTerminalScrollState(harness.terminal)
+    harness.emitScroll(220, 220)
+    restoreTerminalScrollState(harness.terminal, snapshot)
+
+    expect(harness.readState()).toMatchObject({
+      baseY: 220,
+      viewportY: 190,
+      isUserScrolling: true,
+      ydisp: 190,
+    })
+  })
+
   it('uses the window DPR as the terminal layout authority', () => {
     expect(
       resolveTerminalEffectiveDevicePixelRatio({

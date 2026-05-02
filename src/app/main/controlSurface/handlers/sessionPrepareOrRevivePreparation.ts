@@ -138,10 +138,11 @@ export async function prepareTerminalNode(options: {
   space: NormalizedPersistedSpace | null
 }): Promise<PreparedRuntimeNodeResult> {
   const cwd = resolveTerminalRecoveryCwd(options.node, options.workspace.path)
-  const initialGeometry = options.node.terminalGeometry ?? {
+  const spawnGeometry = options.node.terminalGeometry ?? {
     cols: DEFAULT_PTY_COLS,
     rows: DEFAULT_PTY_ROWS,
   }
+  const preparedTerminalGeometry = options.node.terminalGeometry ?? null
   const scrollback = await resolvePreparedScrollback({
     store: options.store,
     node: options.node,
@@ -155,7 +156,7 @@ export async function prepareTerminalNode(options: {
       space: options.space,
       cwd,
       profileId: resolveNodeProfileId(options.node),
-      geometry: initialGeometry,
+      geometry: spawnGeometry,
     })
 
     return toPreparedNodeResult(options.node, {
@@ -170,7 +171,7 @@ export async function prepareTerminalNode(options: {
       exitCode: null,
       lastError: null,
       scrollback,
-      terminalGeometry: initialGeometry,
+      terminalGeometry: preparedTerminalGeometry,
       executionDirectory: normalizeOptionalString(options.node.executionDirectory),
       expectedDirectory: normalizeOptionalString(options.node.expectedDirectory),
       agent: null,

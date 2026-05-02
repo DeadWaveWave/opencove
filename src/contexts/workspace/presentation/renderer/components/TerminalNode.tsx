@@ -7,6 +7,10 @@ import {
   commitTerminalNodeGeometry,
   refreshTerminalNodeSize,
 } from './terminalNode/syncTerminalNodeSize'
+import {
+  captureTerminalScrollState,
+  type TerminalScrollStateSnapshot,
+} from './terminalNode/effectiveDevicePixelRatio'
 import { resolveTerminalNodeFrameStyle } from './terminalNode/nodeFrameStyle'
 import { useTerminalAppearanceSync } from './terminalNode/useTerminalAppearanceSync'
 import { useTerminalTestTranscriptMirror } from './terminalNode/useTerminalTestTranscriptMirror'
@@ -92,23 +96,17 @@ export function TerminalNode({
   const shouldRestoreTerminalFocusRef = useRef(false)
   const latestSessionIdRef = useRef(sessionId)
   const preservedXtermSessionRef = useRef<XtermSession | null>(null)
+  const recoveryScrollStateRef = useRef<TerminalScrollStateSnapshot | null>(null)
   const rendererRecoveryPendingRef = useRef(false)
   const rendererRecoveryStateRef = useRef<{
     sessionId: string
     preferredMode: PreferredTerminalRendererMode
     resetVersion: number
-  }>({
-    sessionId,
-    preferredMode: 'auto',
-    resetVersion: 0,
-  })
+  }>({ sessionId, preferredMode: 'auto', resetVersion: 0 })
   const recentUserInteractionAtRef = useRef(0)
   const pendingUserInputBufferRef = useRef<Array<{ data: string; encoding: 'utf8' | 'binary' }>>([])
   const initialTerminalGeometryRef = useRef(terminalGeometry)
-  const initialTerminalGeometryKeyRef = useRef({
-    sessionId,
-    resetVersion: 0,
-  })
+  const initialTerminalGeometryKeyRef = useRef({ sessionId, resetVersion: 0 })
   const viewportZoomRef = useRef(viewportZoom)
   const [, forceRendererRecoveryRender] = useState(0)
   const {
@@ -151,11 +149,7 @@ export function TerminalNode({
   })
 
   if (rendererRecoveryStateRef.current.sessionId !== sessionId) {
-    rendererRecoveryStateRef.current = {
-      sessionId,
-      preferredMode: 'auto',
-      resetVersion: 0,
-    }
+    rendererRecoveryStateRef.current = { sessionId, preferredMode: 'auto', resetVersion: 0 }
     rendererRecoveryPendingRef.current = false
   }
 
@@ -167,10 +161,7 @@ export function TerminalNode({
     initialTerminalGeometryKeyRef.current.resetVersion !== terminalClientResetVersion
   ) {
     initialTerminalGeometryRef.current = terminalGeometry
-    initialTerminalGeometryKeyRef.current = {
-      sessionId,
-      resetVersion: terminalClientResetVersion,
-    }
+    initialTerminalGeometryKeyRef.current = { sessionId, resetVersion: terminalClientResetVersion }
   }
 
   useEffect(() => {
@@ -289,6 +280,14 @@ export function TerminalNode({
       }
 
       rendererRecoveryPendingRef.current = true
+      const currentTerminal = terminalRef.current
+      if (currentTerminal) {
+        const capturedScrollState = captureTerminalScrollState(currentTerminal)
+        recoveryScrollStateRef.current =
+          capturedScrollState.viewportY === null ? null : capturedScrollState
+      } else {
+        recoveryScrollStateRef.current = null
+      }
       const requiresWebglRenderer = kind === 'agent' && terminalProvider === 'opencode'
       if (forceDom && !requiresWebglRenderer) {
         rendererRecoveryStateRef.current.preferredMode = 'dom'
@@ -401,6 +400,7 @@ export function TerminalNode({
     preservedXtermSessionRef,
     recentUserInteractionAtRef,
     pendingUserInputBufferRef,
+    recoveryScrollStateRef,
     isLiveSessionReattach,
     activeRendererKindRef,
     scheduleWebglCanvasTransformCleanup,
