@@ -58,6 +58,7 @@ export interface UseWorkspaceCanvasNodesStoreResult {
   renameTerminalTitle: (nodeId: string, title: string) => void
   setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
   updateNoteText: (nodeId: string, text: string) => void
+  renameNoteTitle: (nodeId: string, title: string) => void
   updateWebsiteUrl: (nodeId: string, url: string) => void
   setWebsitePinned: (nodeId: string, pinned: boolean) => void
   setWebsiteSession: (

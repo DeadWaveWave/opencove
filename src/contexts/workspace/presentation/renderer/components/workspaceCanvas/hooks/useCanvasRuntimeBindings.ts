@@ -9,7 +9,7 @@ export function useWorkspaceCanvasRuntimeBindings({
   clearNodeSelection,
   closeNode,
   resizeNode,
-  updateNoteText,
+  noteMutations,
   updateWebsiteUrl,
   setWebsitePinned,
   setWebsiteSession,
@@ -33,7 +33,10 @@ export function useWorkspaceCanvasRuntimeBindings({
   clearNodeSelection: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['clearNodeSelection']
   closeNode: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['closeNode']
   resizeNode: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['resizeNode']
-  updateNoteText: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['updateNoteText']
+  noteMutations: Pick<
+    Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0],
+    'updateNoteText' | 'renameNoteTitle'
+  >
   updateWebsiteUrl: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['updateWebsiteUrl']
   setWebsitePinned: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsitePinned']
   setWebsiteSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsiteSession']
@@ -67,7 +70,8 @@ export function useWorkspaceCanvasRuntimeBindings({
     reloadAgentSession,
     listAgentSessions,
     switchAgentSession,
-    updateNoteText,
+    updateNoteText: noteMutations.updateNoteText,
+    renameNoteTitle: noteMutations.renameNoteTitle,
     updateWebsiteUrl,
     setWebsitePinned,
     setWebsiteSession,

@@ -323,7 +323,7 @@ export function WorkspaceCanvasInner({
     clearNodeSelection,
     closeNode: requestNodeClose,
     resizeNode: nodeStore.resizeNode,
-    updateNoteText: nodeStore.updateNoteText,
+    noteMutations: nodeStore,
     updateWebsiteUrl: nodeStore.updateWebsiteUrl,
     setWebsitePinned: nodeStore.setWebsitePinned,
     setWebsiteSession: nodeStore.setWebsiteSession,

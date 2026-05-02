@@ -268,6 +268,8 @@ export const zhCN = {
   },
   noteNode: {
     title: '便签',
+    untitledTitle: '未命名便签',
+    titleInputLabel: '便签标题',
     deleteNote: '删除便签',
     saveMarkdown: '保存为 Markdown',
     saveMarkdownPrompt: 'Markdown 文件名',

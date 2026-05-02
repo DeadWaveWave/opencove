@@ -268,6 +268,8 @@ export const en = {
   },
   noteNode: {
     title: 'note',
+    untitledTitle: 'Untitled note',
+    titleInputLabel: 'Note title',
     deleteNote: 'Delete note',
     saveMarkdown: 'Save as Markdown',
     saveMarkdownPrompt: 'Markdown file name',

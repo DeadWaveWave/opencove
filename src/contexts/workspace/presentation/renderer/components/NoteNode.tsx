@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Download } from 'lucide-react'
@@ -20,6 +20,7 @@ interface NoteNodeInteractionOptions {
 }
 
 interface NoteNodeProps {
+  title: string
   text: string
   labelColor?: LabelColor | null
   position: Point
@@ -29,11 +30,13 @@ interface NoteNodeProps {
   saveMountId?: string | null
   onClose: () => void
   onResize: (frame: NodeFrame) => void
+  onTitleChange: (title: string) => void
   onTextChange: (text: string) => void
   onInteractionStart?: (options?: NoteNodeInteractionOptions) => void
 }
 
 export function NoteNode({
+  title,
   text,
   labelColor,
   position,
@@ -43,13 +46,20 @@ export function NoteNode({
   saveMountId = null,
   onClose,
   onResize,
+  onTitleChange,
   onTextChange,
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
   const { t } = useTranslation()
+  const titleCancelRef = useRef(false)
+  const titleInputRef = useRef<HTMLInputElement | null>(null)
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [savedMarkdownPath, setSavedMarkdownPath] = useState<string | null>(null)
+  const [isTitleEditing, setIsTitleEditing] = useState(false)
+  const resolvedTitle = title.trim().length > 0 ? title : ''
+  const [titleDraft, setTitleDraft] = useState(resolvedTitle)
+  const titleMeasureText = titleDraft.length > 0 ? titleDraft : t('noteNode.untitledTitle')
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
     width,
@@ -80,6 +90,62 @@ export function NoteNode({
       renderedFrame.size.width,
     ],
   )
+
+  useEffect(() => {
+    if (isTitleEditing) {
+      return
+    }
+
+    setTitleDraft(resolvedTitle)
+  }, [isTitleEditing, resolvedTitle])
+
+  const beginTitleEditing = useCallback(() => {
+    titleCancelRef.current = false
+    setTitleDraft(resolvedTitle)
+    setIsTitleEditing(true)
+  }, [resolvedTitle])
+
+  useEffect(() => {
+    if (!isTitleEditing) {
+      return
+    }
+
+    const input = titleInputRef.current
+    if (!input) {
+      return
+    }
+
+    input.focus()
+    const caretPosition = input.value.length
+    input.setSelectionRange(caretPosition, caretPosition)
+  }, [isTitleEditing])
+
+  const commitTitleEdit = useCallback(() => {
+    const normalizedTitle = titleDraft.trim()
+    setTitleDraft(normalizedTitle)
+    setIsTitleEditing(false)
+
+    if (normalizedTitle !== title) {
+      onTitleChange(normalizedTitle)
+    }
+  }, [onTitleChange, title, titleDraft])
+
+  const cancelTitleEdit = useCallback(() => {
+    titleCancelRef.current = true
+    setTitleDraft(resolvedTitle)
+    setIsTitleEditing(false)
+  }, [resolvedTitle])
+
+  const handleTitleBlur = useCallback(() => {
+    if (titleCancelRef.current) {
+      titleCancelRef.current = false
+      setTitleDraft(resolvedTitle)
+      setIsTitleEditing(false)
+      return
+    }
+
+    commitTitleEdit()
+  }, [commitTitleEdit, resolvedTitle])
 
   const saveMarkdown = useCallback(async (): Promise<void> => {
     const rawName = window.prompt(t('noteNode.saveMarkdownPrompt'), t('noteNode.defaultFileName'))
@@ -132,11 +198,21 @@ export function NoteNode({
       className="note-node nowheel"
       style={style}
       onClickCapture={event => {
-        if (event.button !== 0 || !(event.target instanceof Element)) {
+        if (event.button !== 0) {
           return
         }
 
-        if (event.target.closest('.note-node__textarea')) {
+        const targetElement =
+          event.target instanceof Element
+            ? event.target
+            : event.target instanceof Node
+              ? event.target.parentElement
+              : null
+        if (!targetElement) {
+          return
+        }
+
+        if (targetElement.closest('.note-node__textarea')) {
           event.stopPropagation()
           onInteractionStart?.({
             normalizeViewport: true,
@@ -147,7 +223,7 @@ export function NoteNode({
           return
         }
 
-        if (event.target.closest('.nodrag')) {
+        if (targetElement.closest('.nodrag')) {
           return
         }
 
@@ -169,7 +245,78 @@ export function NoteNode({
           />
         ) : null}
         <span className="note-node__title" data-testid="note-node-title">
-          {t('noteNode.title')}
+          {isTitleEditing ? (
+            <span className="note-node__title-text-proxy" aria-hidden="true">
+              {resolvedTitle || t('noteNode.untitledTitle')}
+            </span>
+          ) : null}
+          {isTitleEditing ? (
+            <span className="note-node__title-editable" data-title-measure={titleMeasureText}>
+              <input
+                ref={titleInputRef}
+                className="note-node__title-input nowheel nodrag"
+                data-testid="note-node-title-input"
+                value={titleDraft}
+                placeholder={t('noteNode.untitledTitle')}
+                aria-label={t('noteNode.titleInputLabel')}
+                title={resolvedTitle || t('noteNode.untitledTitle')}
+                spellCheck={false}
+                onFocus={beginTitleEditing}
+                onPointerDownCapture={event => {
+                  event.stopPropagation()
+                }}
+                onPointerDown={event => {
+                  event.stopPropagation()
+                }}
+                onClick={event => {
+                  event.stopPropagation()
+                }}
+                onChange={event => {
+                  setTitleDraft(event.target.value)
+                }}
+                onBlur={handleTitleBlur}
+                onKeyDown={event => {
+                  if (event.nativeEvent.isComposing) {
+                    return
+                  }
+
+                  if (event.key === 'Escape') {
+                    event.preventDefault()
+                    cancelTitleEdit()
+                    event.currentTarget.blur()
+                    return
+                  }
+
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    event.currentTarget.blur()
+                  }
+                }}
+              />
+            </span>
+          ) : (
+            <span
+              className={
+                resolvedTitle
+                  ? 'note-node__title-display nowheel nodrag'
+                  : 'note-node__title-display note-node__title-display--placeholder nowheel nodrag'
+              }
+              data-testid="note-node-title-display"
+              title={resolvedTitle || t('noteNode.untitledTitle')}
+              onPointerDownCapture={event => {
+                event.stopPropagation()
+              }}
+              onPointerDown={event => {
+                event.stopPropagation()
+              }}
+              onClick={event => {
+                event.stopPropagation()
+                beginTitleEditing()
+              }}
+            >
+              {resolvedTitle || t('noteNode.untitledTitle')}
+            </span>
+          )}
         </span>
         <button
           type="button"
