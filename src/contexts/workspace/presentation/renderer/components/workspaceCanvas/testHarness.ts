@@ -17,6 +17,7 @@ type WorkspaceCanvasTestApi = {
   getSyncCount: () => number
   resetSyncCount: () => void
   arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => boolean
+  createTerminalAtFlowPoint: (point: { x: number; y: number }) => Promise<boolean>
 }
 
 declare global {
@@ -28,6 +29,8 @@ declare global {
 let agentSessions: WorkspaceCanvasAgentSessionState[] = []
 let syncCount = 0
 let arrangeInSpaceHandler: ((spaceId: string, style?: WorkspaceArrangeStyle) => void) | null = null
+let createTerminalAtFlowPointHandler: ((point: { x: number; y: number }) => Promise<void>) | null =
+  null
 
 function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
   if (typeof window === 'undefined') {
@@ -72,6 +75,18 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
         arrangeInSpaceHandler(normalizedSpaceId, style)
         return true
       },
+      createTerminalAtFlowPoint: async point => {
+        if (
+          !createTerminalAtFlowPointHandler ||
+          !Number.isFinite(point.x) ||
+          !Number.isFinite(point.y)
+        ) {
+          return false
+        }
+
+        await createTerminalAtFlowPointHandler(point)
+        return true
+      },
     }
   }
 
@@ -87,6 +102,17 @@ export function bindWorkspaceCanvasArrangeInSpaceTestAction(
 
   getWorkspaceCanvasTestApi()
   arrangeInSpaceHandler = handler
+}
+
+export function bindWorkspaceCanvasCreateTerminalAtFlowPointTestAction(
+  handler: ((point: { x: number; y: number }) => Promise<void>) | null,
+): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  getWorkspaceCanvasTestApi()
+  createTerminalAtFlowPointHandler = handler
 }
 
 export function syncWorkspaceCanvasTestState(nodes: Node<TerminalNodeData>[]): void {

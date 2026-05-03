@@ -32,16 +32,17 @@ export function isTerminalRenderServiceDetachedError(error: unknown): boolean {
   }
 
   const message = resolveErrorMessage(error)
-  return message.includes('dimensions') && (message.includes('undefined') || message.includes('null'))
+  return (
+    message.includes('dimensions') && (message.includes('undefined') || message.includes('null'))
+  )
 }
 
 export function readTerminalRenderDimensionsSafely(
   terminal: Terminal,
 ): TerminalRenderDimensions | null {
   try {
-    return ((terminal as InternalTerminal)._core?._renderService?.dimensions ?? null) as
-      | TerminalRenderDimensions
-      | null
+    return ((terminal as InternalTerminal)._core?._renderService?.dimensions ??
+      null) as TerminalRenderDimensions | null
   } catch (error) {
     if (isTerminalRenderServiceDetachedError(error)) {
       return null

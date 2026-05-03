@@ -108,11 +108,9 @@ const terminalFitAddons = new Map<string, FitAddon>()
 const terminalBinaryInputEmitters = new Map<string, (data: string) => boolean>()
 const terminalRuntimeSessionIds = new Map<string, string>()
 const terminalDetachedRendererRestorers = new Map<string, () => void>()
-
 function normalizeFiniteOption(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null
 }
-
 function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
   if (typeof window === 'undefined') {
     return undefined
@@ -143,7 +141,8 @@ function getTerminalSelectionTestApi(): TerminalSelectionTestApi | undefined {
         terminalDetachedRendererRestorers.get(nodeId)?.()
 
         const hadOwnDescriptor = Object.prototype.hasOwnProperty.call(renderService, 'dimensions')
-        const originalDescriptor = Object.getOwnPropertyDescriptor(renderService, 'dimensions') ?? null
+        const originalDescriptor =
+          Object.getOwnPropertyDescriptor(renderService, 'dimensions') ?? null
         const restore = (): void => {
           if (hadOwnDescriptor && originalDescriptor) {
             Object.defineProperty(renderService, 'dimensions', originalDescriptor)
