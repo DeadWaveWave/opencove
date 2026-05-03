@@ -1,6 +1,5 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, testWorkspacePath } from './workspace-canvas.helpers'
-import { openPaneContextMenuAtFlowPoint } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
   test('expands the space with minimal delta and keeps the created terminal inside when the space is too small', async () => {
@@ -38,12 +37,13 @@ test.describe('Workspace Canvas - Spaces (Terminal Overflow Outside)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      // Pick a blank flow-space spot inside the space but outside the note node.
-      await openPaneContextMenuAtFlowPoint(window, pane, { x: 220, y: 220 })
-
-      const newTerminal = window.locator('[data-testid="workspace-context-new-terminal"]')
-      await expect(newTerminal).toBeVisible()
-      await newTerminal.click()
+      const created = await window.evaluate(
+        point => {
+          return window.__opencoveWorkspaceCanvasTestApi?.createTerminalAtFlowPoint(point) ?? false
+        },
+        { x: 220, y: 220 },
+      )
+      expect(created).toBe(true)
 
       await expect(window.locator('.terminal-node')).toHaveCount(1)
 

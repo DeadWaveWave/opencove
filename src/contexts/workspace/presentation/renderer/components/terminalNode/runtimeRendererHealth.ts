@@ -3,6 +3,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { TerminalDiagnosticsLogInput } from '@shared/contracts/dto'
 import type { ActiveTerminalRenderer } from './preferredRenderer'
 import { registerTerminalLayoutSync, type TerminalLayoutSyncTrigger } from './layoutSync'
+import { readTerminalRenderDimensionsSafely } from './renderServiceSafety'
 
 export type TerminalRendererHealthTrigger =
   | TerminalLayoutSyncTrigger
@@ -75,22 +76,7 @@ export function resolveTerminalRendererHealthIssue({
     }
   }
 
-  const renderDimensions = (
-    terminal as Terminal & {
-      _core?: {
-        _renderService?: {
-          dimensions?: {
-            css?: {
-              canvas?: { width?: number; height?: number }
-            }
-            device?: {
-              canvas?: { width?: number; height?: number }
-            }
-          }
-        }
-      }
-    }
-  )._core?._renderService?.dimensions
+  const renderDimensions = readTerminalRenderDimensionsSafely(terminal)
 
   const cssCanvasWidth = renderDimensions?.css?.canvas?.width ?? 0
   const cssCanvasHeight = renderDimensions?.css?.canvas?.height ?? 0
