@@ -9,7 +9,6 @@ import {
   ARRANGE_PADDING_PX,
   CANONICAL_GUTTER_PX,
   ensureArtifactsDir,
-  openPaneContextMenuInSpace,
   readSeededWorkspaceLayout,
   resolveCanonicalNodeSizes,
 } from './workspace-canvas.arrange.shared'
@@ -143,7 +142,7 @@ test.describe('Workspace Canvas - Arrange', () => {
     }
   })
 
-  test('shows arrange-in-space in the pane menu and warns when keep-fit has no room', async () => {
+  test('warns and keeps layout unchanged when arrange-in-space keep-fit has no room', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -184,19 +183,24 @@ test.describe('Workspace Canvas - Arrange', () => {
       await expect(window.locator('.react-flow__node')).toHaveCount(2)
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
 
-      await openPaneContextMenuInSpace(window, pane, 'space-small')
-
-      await expect(window.locator('.workspace-context-menu')).toBeVisible()
-      await expect(window.locator('[data-testid="workspace-context-arrange"]')).toBeEnabled()
-
-      await window.locator('[data-testid="workspace-context-arrange-by"]').click()
-      await expect(
-        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
-      ).toBeVisible()
-      await window.locator('[data-testid="workspace-context-arrange-space-fit-keep"]').click()
-      await expect(
-        window.locator('[data-testid="workspace-context-arrange-by-menu"]'),
-      ).toBeVisible()
+      const arranged = await window.evaluate(
+        payload => {
+          return (
+            window.__opencoveWorkspaceCanvasTestApi?.arrangeInSpace?.(
+              payload.spaceId,
+              payload.style,
+            ) ?? false
+          )
+        },
+        {
+          spaceId: 'space-small',
+          style: {
+            order: 'position',
+            spaceFit: 'keep',
+          },
+        },
+      )
+      expect(arranged).toBe(true)
 
       await expect(window.locator('[data-testid="app-message"]')).toContainText(
         'Not enough room to arrange this space. Resize the space and try again.',

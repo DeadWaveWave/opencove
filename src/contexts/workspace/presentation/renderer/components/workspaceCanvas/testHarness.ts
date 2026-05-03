@@ -1,5 +1,6 @@
 import type { Node } from '@xyflow/react'
 import type { TerminalNodeData } from '../../types'
+import type { WorkspaceArrangeStyle } from '../../utils/workspaceArrange'
 
 type WorkspaceCanvasAgentSessionState = {
   nodeId: string
@@ -15,6 +16,7 @@ type WorkspaceCanvasTestApi = {
   getAgentStatusByPtySessionId: (ptySessionId: string) => string | null
   getSyncCount: () => number
   resetSyncCount: () => void
+  arrangeInSpace: (spaceId: string, style?: WorkspaceArrangeStyle) => boolean
 }
 
 declare global {
@@ -25,6 +27,7 @@ declare global {
 
 let agentSessions: WorkspaceCanvasAgentSessionState[] = []
 let syncCount = 0
+let arrangeInSpaceHandler: ((spaceId: string, style?: WorkspaceArrangeStyle) => void) | null = null
 
 function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
   if (typeof window === 'undefined') {
@@ -60,10 +63,30 @@ function getWorkspaceCanvasTestApi(): WorkspaceCanvasTestApi | undefined {
       resetSyncCount: () => {
         syncCount = 0
       },
+      arrangeInSpace: (spaceId, style) => {
+        const normalizedSpaceId = spaceId.trim()
+        if (normalizedSpaceId.length === 0 || !arrangeInSpaceHandler) {
+          return false
+        }
+
+        arrangeInSpaceHandler(normalizedSpaceId, style)
+        return true
+      },
     }
   }
 
   return window.__opencoveWorkspaceCanvasTestApi
+}
+
+export function bindWorkspaceCanvasArrangeInSpaceTestAction(
+  handler: ((spaceId: string, style?: WorkspaceArrangeStyle) => void) | null,
+): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  getWorkspaceCanvasTestApi()
+  arrangeInSpaceHandler = handler
 }
 
 export function syncWorkspaceCanvasTestState(nodes: Node<TerminalNodeData>[]): void {
