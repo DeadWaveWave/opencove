@@ -7,6 +7,7 @@ import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import type { GetSessionResult } from '../../src/shared/contracts/dto'
 import {
   buildNodeEvalCommand,
+  clickHeaderDragSurface,
   launchApp,
   readLocatorClientRect,
   removePathWithRetry,
@@ -266,7 +267,7 @@ test.describe('M6 - Desktop endpoints/mounts integration', () => {
 
       const firstTerminal = window.locator('.terminal-node').first()
       const firstHeader = firstTerminal.locator('.terminal-node__header')
-      await firstHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(firstHeader)
       await firstTerminal.click({ button: 'right' })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
-  dragLocatorTo,
+  dragHeaderDragSurfaceTo,
   launchApp,
   readCanvasViewport,
   readLocatorClientRect,
@@ -69,7 +69,7 @@ test.describe('Workspace Canvas - Spaces (Crowded Drop)', () => {
         y: 460,
       }
 
-      await dragLocatorTo(window, draggedNode.locator('.note-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, draggedNode.locator('.note-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
           x: clamp(viewport.x + dropFlowPoint.x * viewport.zoom, 40, paneBox.width - 40),

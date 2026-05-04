@@ -5,7 +5,12 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { buildNodeEvalCommand, launchApp, removePathWithRetry } from './workspace-canvas.helpers'
+import {
+  buildNodeEvalCommand,
+  clickHeaderDragSurface,
+  launchApp,
+  removePathWithRetry,
+} from './workspace-canvas.helpers'
 import { createRemoteOnlyProjectViaWizard } from './m6.endpoints-mounts.addProjectWizard.steps'
 import {
   closeSettings,
@@ -192,7 +197,7 @@ test.describe('M6 - Dev profile happy path (manual)', () => {
       const note = window.locator('.note-node').first()
       const noteHeader = note.locator('.note-node__header')
       await expect(noteHeader).toBeVisible()
-      await noteHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(noteHeader)
       await note.click({ button: 'right', position: { x: 60, y: 16 } })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 

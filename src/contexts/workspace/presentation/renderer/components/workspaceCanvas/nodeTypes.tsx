@@ -1,7 +1,6 @@
 import { useMemo, type MutableRefObject, type ReactElement } from 'react'
 import { useStore, type Node } from '@xyflow/react'
 import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
-import { NoteNode } from '../NoteNode'
 import { TerminalNode } from '../TerminalNode'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
@@ -10,6 +9,7 @@ import { isResumeSessionBindingVerified } from '../../utils/agentResumeBinding'
 import { useScrollbackStore } from '../../store/useScrollbackStore'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
 import { WorkspaceCanvasImageNodeType } from './nodeTypes.image'
+import { WorkspaceCanvasNoteNodeType } from './nodeTypes.note'
 import { WorkspaceCanvasTaskNodeType } from './nodeTypes.task'
 import { WorkspaceCanvasWebsiteNodeType } from './nodeTypes.website'
 import { useNodePosition } from './nodePosition'
@@ -111,12 +111,13 @@ function TerminalNodeType({
   })
   const resolvedTitle =
     data.kind === 'agent' && data.agent
-      ? resolveAgentDisplayTitle({
-          provider: data.agent.provider,
-          linkedTaskTitle,
-          fallbackTitle: data.title,
-          preferFallbackTitle: data.titlePinnedByUser === true,
-        })
+      ? data.titlePinnedByUser === true
+        ? data.title.trim()
+        : resolveAgentDisplayTitle({
+            provider: data.agent.provider,
+            linkedTaskTitle,
+            fallbackTitle: data.title,
+          })
       : data.title
 
   return (
@@ -243,86 +244,6 @@ function TerminalNodeType({
   )
 }
 
-function NoteNodeType({
-  data,
-  id,
-  spacesRef,
-  workspacePath,
-  selectNode,
-  clearNodeSelectionRef,
-  closeNodeRef,
-  resizeNodeRef,
-  updateNoteTextRef,
-  normalizeViewportForTerminalInteractionRef,
-}: {
-  data: TerminalNodeData
-  id: string
-  spacesRef: MutableRefObject<WorkspaceSpaceState[]>
-  workspacePath: string
-  selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
-  clearNodeSelectionRef: MutableRefObject<() => void>
-  closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
-  resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
-  updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
-  normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
-}): ReactElement | null {
-  const nodePosition = useNodePosition(id)
-  const labelColor =
-    (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
-    null
-
-  if (!data.note) {
-    return null
-  }
-
-  const containingSpace =
-    spacesRef.current.find(candidate => candidate.nodeIds.includes(id)) ?? null
-  const containingSpaceDirectory = containingSpace?.directoryPath.trim() ?? ''
-  const saveDirectoryPath =
-    containingSpaceDirectory.length > 0 ? containingSpaceDirectory : workspacePath
-
-  return (
-    <NoteNode
-      text={data.note.text}
-      labelColor={labelColor}
-      position={nodePosition}
-      width={data.width}
-      height={data.height}
-      saveDirectoryPath={saveDirectoryPath}
-      saveMountId={containingSpace?.targetMountId ?? null}
-      onClose={() => {
-        void closeNodeRef.current(id)
-      }}
-      onResize={frame => resizeNodeRef.current(id, frame)}
-      onTextChange={text => {
-        updateNoteTextRef.current(id, text)
-      }}
-      onInteractionStart={options => {
-        if (options?.clearSelection === true) {
-          window.setTimeout(() => {
-            clearNodeSelectionRef.current()
-          }, 0)
-        }
-
-        if (options?.selectNode !== false) {
-          if (options?.shiftKey === true) {
-            selectNode(id, { toggle: true })
-            return
-          }
-
-          selectNode(id)
-        }
-
-        if (options?.normalizeViewport === false) {
-          return
-        }
-
-        normalizeViewportForTerminalInteractionRef.current(id)
-      }}
-    />
-  )
-}
-
 interface WorkspaceCanvasNodeTypesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
@@ -345,6 +266,7 @@ interface WorkspaceCanvasNodeTypesParams {
     (nodeId: string, summary: import('@shared/contracts/dto').AgentSessionSummary) => Promise<void>
   >
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
+  renameNoteTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
   updateNodeScrollbackRef: MutableRefObject<UpdateNodeScrollback>
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
   requestNodeDeleteRef: MutableRefObject<(nodeIds: string[]) => void>
@@ -381,6 +303,7 @@ export function useWorkspaceCanvasNodeTypes({
   listAgentSessionsRef,
   switchAgentSessionRef,
   updateNoteTextRef,
+  renameNoteTitleRef,
   updateNodeScrollbackRef,
   normalizeViewportForTerminalInteractionRef,
   requestNodeDeleteRef,
@@ -505,7 +428,7 @@ export function useWorkspaceCanvasNodeTypes({
       },
       noteNode: ({ data, id }: WorkspaceCanvasNodeTypeProps) => {
         return (
-          <NoteNodeType
+          <WorkspaceCanvasNoteNodeType
             data={data}
             id={id}
             spacesRef={spacesRef}
@@ -515,6 +438,7 @@ export function useWorkspaceCanvasNodeTypes({
             closeNodeRef={closeNodeRef}
             resizeNodeRef={resizeNodeRef}
             updateNoteTextRef={updateNoteTextRef}
+            renameNoteTitleRef={renameNoteTitleRef}
             normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
           />
         )
@@ -535,6 +459,7 @@ export function useWorkspaceCanvasNodeTypes({
     terminalFontFamily,
     terminalDisplayCalibration,
     updateNoteTextRef,
+    renameNoteTitleRef,
     openTaskEditorRef,
     quickUpdateTaskRequirementRef,
     quickUpdateTaskTitleRef,

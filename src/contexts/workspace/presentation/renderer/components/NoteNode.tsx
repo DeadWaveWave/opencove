@@ -11,6 +11,7 @@ import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
 import { normalizeMarkdownFileName, saveNoteAsMarkdownFile } from './NoteNode.markdown'
+import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -20,6 +21,7 @@ interface NoteNodeInteractionOptions {
 }
 
 interface NoteNodeProps {
+  title: string
   text: string
   labelColor?: LabelColor | null
   position: Point
@@ -29,11 +31,13 @@ interface NoteNodeProps {
   saveMountId?: string | null
   onClose: () => void
   onResize: (frame: NodeFrame) => void
+  onTitleChange: (title: string) => void
   onTextChange: (text: string) => void
   onInteractionStart?: (options?: NoteNodeInteractionOptions) => void
 }
 
 export function NoteNode({
+  title,
   text,
   labelColor,
   position,
@@ -43,6 +47,7 @@ export function NoteNode({
   saveMountId = null,
   onClose,
   onResize,
+  onTitleChange,
   onTextChange,
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
@@ -50,6 +55,7 @@ export function NoteNode({
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [savedMarkdownPath, setSavedMarkdownPath] = useState<string | null>(null)
+  const resolvedTitle = title.trim().length > 0 ? title : ''
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
     width,
@@ -132,11 +138,21 @@ export function NoteNode({
       className="note-node nowheel"
       style={style}
       onClickCapture={event => {
-        if (event.button !== 0 || !(event.target instanceof Element)) {
+        if (event.button !== 0) {
           return
         }
 
-        if (event.target.closest('.note-node__textarea')) {
+        const targetElement =
+          event.target instanceof Element
+            ? event.target
+            : event.target instanceof Node
+              ? event.target.parentElement
+              : null
+        if (!targetElement) {
+          return
+        }
+
+        if (targetElement.closest('.note-node__textarea')) {
           event.stopPropagation()
           onInteractionStart?.({
             normalizeViewport: true,
@@ -147,7 +163,7 @@ export function NoteNode({
           return
         }
 
-        if (event.target.closest('.nodrag')) {
+        if (targetElement.closest('.nodrag')) {
           return
         }
 
@@ -168,9 +184,21 @@ export function NoteNode({
             aria-hidden="true"
           />
         ) : null}
-        <span className="note-node__title" data-testid="note-node-title">
-          {t('noteNode.title')}
-        </span>
+        <InlineNodeTitleEditor
+          value={resolvedTitle}
+          placeholder={t('noteNode.untitledTitle')}
+          ariaLabel={t('noteNode.titleInputLabel')}
+          classNamePrefix="note-node"
+          rootTestId="note-node-title"
+          displayTestId="note-node-title-display"
+          inputTestId="note-node-title-input"
+          onCommit={onTitleChange}
+        />
+        <div
+          className="note-node__header-drag-surface"
+          data-testid="note-node-header-drag-surface"
+          aria-hidden="true"
+        />
         <button
           type="button"
           className="note-node__action nodrag"

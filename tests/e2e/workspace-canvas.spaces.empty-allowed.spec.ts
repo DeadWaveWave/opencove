@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
-  dragLocatorTo,
+  clickHeaderDragSurface,
+  dragHeaderDragSurfaceTo,
   launchApp,
   storageKey,
 } from './workspace-canvas.helpers'
@@ -25,7 +26,7 @@ test.describe('Workspace Canvas - Spaces (Empty Allowed)', () => {
       const header = terminalNode.locator('.terminal-node__header')
       await expect(terminalNode).toBeVisible()
 
-      await header.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(header)
       await terminalNode.click({ button: 'right' })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
@@ -40,7 +41,7 @@ test.describe('Workspace Canvas - Spaces (Empty Allowed)', () => {
         throw new Error('workspace pane bounding box unavailable')
       }
 
-      await dragLocatorTo(window, header, pane, {
+      await dragHeaderDragSurfaceTo(window, header, pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
           x: 120,

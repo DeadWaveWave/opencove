@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp, storageKey } from './workspace-canvas.helpers'
+import {
+  clickHeaderDragSurface,
+  clearAndSeedWorkspace,
+  launchApp,
+  storageKey,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
   test('only enables selected drag surface during multi-select', async () => {
@@ -88,7 +93,7 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
         )
       }
 
-      await headerA.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(headerA)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(window.locator('.workspace-canvas')).toHaveAttribute(
         'data-cove-drag-surface-selection-mode',
@@ -102,7 +107,7 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
 
       await window.keyboard.down('Shift')
       try {
-        await headerB.click({ position: { x: 40, y: 20 } })
+        await clickHeaderDragSurface(headerB, { modifiers: ['Shift'] })
       } finally {
         await window.keyboard.up('Shift')
       }

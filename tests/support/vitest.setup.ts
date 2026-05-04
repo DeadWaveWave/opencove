@@ -4,5 +4,16 @@
  * 此文件在每个测试文件运行前自动加载
  */
 import '@testing-library/jest-dom/vitest'
+import { installMockStorage } from './persistenceTestStorage'
 
-// 全局测试工具函数可以在这里添加
+if (typeof window !== 'undefined') {
+  const storage = window.localStorage as Partial<Storage> | undefined
+  if (
+    typeof storage?.getItem !== 'function' ||
+    typeof storage.setItem !== 'function' ||
+    typeof storage.removeItem !== 'function' ||
+    typeof storage.clear !== 'function'
+  ) {
+    installMockStorage()
+  }
+}

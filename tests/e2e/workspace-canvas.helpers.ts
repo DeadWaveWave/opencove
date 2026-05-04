@@ -22,6 +22,8 @@ export {
   beginDragMouse,
   dragLocatorTo,
   dragMouse,
+  clickHeaderDragSurface,
+  dragHeaderDragSurfaceTo,
   readLocatorClientRect,
 } from './workspace-canvas.gestures'
 export {

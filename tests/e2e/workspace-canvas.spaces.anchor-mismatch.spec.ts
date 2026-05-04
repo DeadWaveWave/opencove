@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
-  dragLocatorTo,
+  dragHeaderDragSurfaceTo,
   launchApp,
   readLocatorClientRect,
   storageKey,
@@ -203,7 +203,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
         y: spaceBox.y + Math.min(spaceBox.height - 80, Math.max(160, spaceBox.height / 2)),
       }
 
-      await dragLocatorTo(window, agentNode.locator('.terminal-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, agentNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
           x: clamp(dropInsideSpaceClientPoint.x - paneBox.x, 40, paneBox.width - 40),
@@ -332,7 +332,7 @@ test.describe('Workspace Canvas - Spaces (Anchors & Directory Guards)', () => {
       await expect(terminalNode).toBeVisible()
       await expect(terminalNode.locator('.terminal-node__badge--warning')).toHaveCount(0)
 
-      await dragLocatorTo(window, terminalNode.locator('.terminal-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, terminalNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: { x: 140, y: 120 },
         steps: 18,

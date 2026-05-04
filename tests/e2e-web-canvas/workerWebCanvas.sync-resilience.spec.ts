@@ -11,6 +11,13 @@ import {
   writeTextFile,
 } from './helpers'
 
+async function clickHeaderDragSurfaceByTestId(
+  page: import('@playwright/test').Page,
+  testId: string,
+): Promise<void> {
+  await page.getByTestId(testId).first().click()
+}
+
 test.describe('Worker web canvas sync resilience', () => {
   test('does not rollback note edits when a sync update lands mid-typing', async ({ page }) => {
     const workspacePath = await createWorkspaceDir('note-no-rollback-mid-typing')
@@ -111,7 +118,7 @@ test.describe('Worker web canvas sync resilience', () => {
     const terminalNode = page.locator('.terminal-node').first()
     await expect(terminalNode).toBeVisible()
 
-    await terminalNode.locator('.terminal-node__header').click()
+    await clickHeaderDragSurfaceByTestId(page, 'terminal-node-header-drag-surface')
     await expect(page.locator('.workspace-canvas')).toHaveAttribute('data-selected-node-count', '1')
 
     await invokeValue(page.request, 'command', 'note.create', {

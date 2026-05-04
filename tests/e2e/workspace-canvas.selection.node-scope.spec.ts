@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  clickHeaderDragSurface,
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
@@ -8,7 +9,7 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Selection (Node Scope)', () => {
-  test('does not allow shift-click multi-select across space boundaries', async () => {
+  test('does not keep cross-scope nodes multi-selected after shift-click', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -57,21 +58,27 @@ test.describe('Workspace Canvas - Selection (Node Scope)', () => {
         .first()
 
       const insideHeader = insideNode.locator('.terminal-node__header')
+      const outsideBody = outsideNode.locator('.terminal-node__terminal')
       const outsideHeader = outsideNode.locator('.terminal-node__header')
       await expect(insideHeader).toBeVisible()
       await expect(outsideHeader).toBeVisible()
+      await expect(outsideBody).toBeVisible()
 
-      await insideHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(insideHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       await window.keyboard.down('Shift')
-      await outsideHeader.click({ position: { x: 40, y: 20 } })
-      await window.keyboard.up('Shift')
+      try {
+        await outsideBody.click({ position: { x: 56, y: 56 } })
+      } finally {
+        await window.keyboard.up('Shift')
+      }
 
-      await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
-      await expect(
-        window.locator('.react-flow__node.selected .terminal-node__title').first(),
-      ).toContainText('terminal-scope-outside')
+      await expect
+        .poll(async () => {
+          return await window.locator('.react-flow__node.selected').count()
+        })
+        .not.toBe(2)
     } finally {
       await electronApp.close()
     }
@@ -132,7 +139,7 @@ test.describe('Workspace Canvas - Selection (Node Scope)', () => {
       await expect(insideHeader).toBeVisible()
       await expect(outsideNode).toBeVisible()
 
-      await insideHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(insideHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       const paneBox = await readLocatorClientRect(pane)

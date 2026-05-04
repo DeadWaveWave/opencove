@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  clickHeaderDragSurface,
+  clearAndSeedWorkspace,
+  launchApp,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Terminal Header Body Focus', () => {
   test('keeps terminal focused after header click then body click', async () => {
@@ -30,7 +34,7 @@ test.describe('Workspace Canvas - Terminal Header Body Focus', () => {
       await xterm.click()
       await expect(terminalInput).toBeFocused()
 
-      await header.click()
+      await clickHeaderDragSurface(header)
       await expect(terminalInput).not.toBeFocused()
 
       await xterm.click()

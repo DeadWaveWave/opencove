@@ -78,7 +78,7 @@ test.describe('Workspace Canvas - Label Colors', () => {
         {
           id: 'node-label-edge',
           title: 'terminal-label-edge',
-          position: { x: 980, y: 560 },
+          position: { x: 900, y: 560 },
           width: 260,
           height: 180,
         },
@@ -97,8 +97,9 @@ test.describe('Workspace Canvas - Label Colors', () => {
       await minimapToggle.click()
       await expect(window.locator('.workspace-canvas__minimap')).toHaveCount(0)
 
-      await header.click({ position: { x: 40, y: 20 } })
-      await terminalNode.click({ button: 'right', position: { x: 240, y: 150 } })
+      await header.click({ position: { x: 8, y: 17 } })
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
+      await header.click({ button: 'right', position: { x: 220, y: 17 } })
 
       const selectionMenuTrigger = window.locator('[data-testid="workspace-selection-label-color"]')
       await expect(selectionMenuTrigger).toBeVisible()
@@ -250,7 +251,7 @@ test.describe('Workspace Canvas - Label Colors', () => {
         'blue',
       )
 
-      await header.click({ position: { x: 40, y: 20 } })
+      await header.click({ position: { x: 8, y: 17 } })
       await terminalNode.click({ button: 'right' })
 
       await expect(window.locator('[data-testid="workspace-selection-label-color"]')).toBeVisible()

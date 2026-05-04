@@ -53,8 +53,10 @@ export function resolveAgentDisplayTitle({
   preferFallbackTitle?: boolean
 }): string {
   const normalizedFallbackTitle = fallbackTitle?.trim() ?? ''
-  if (preferFallbackTitle && normalizedFallbackTitle.length > 0) {
-    return normalizedFallbackTitle
+  if (preferFallbackTitle) {
+    return normalizedFallbackTitle.length > 0
+      ? normalizedFallbackTitle
+      : providerTitlePrefix(provider)
   }
 
   const normalizedLinkedTaskTitle = linkedTaskTitle?.trim() ?? ''
@@ -81,8 +83,10 @@ export function resolveAgentDisplayLabel({
   preferFallbackTitle?: boolean
 }): string {
   const normalizedFallbackLabel = stripAgentProviderPrefix(provider, fallbackTitle)
-  if (preferFallbackTitle && normalizedFallbackLabel.length > 0) {
-    return normalizedFallbackLabel
+  if (preferFallbackTitle) {
+    return normalizedFallbackLabel.length > 0
+      ? normalizedFallbackLabel
+      : providerTitlePrefix(provider)
   }
 
   const normalizedLinkedTaskTitle = linkedTaskTitle?.trim() ?? ''

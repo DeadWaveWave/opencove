@@ -17,7 +17,7 @@ import { ensureNodesHaveInitialDimensions } from '../../../utils/reactFlowNodeDi
 import { removeNodeWithRelations } from './useNodesStore.closeNode'
 import { resolveWorkspaceLayoutAfterNodeResize } from './useNodesStore.resolveResizeLayout'
 import { useWorkspaceCanvasNodeCreation } from './useNodesStore.createNodes'
-import { guardNodeFromSyncOverwrite } from '../../../utils/syncNodeGuards'
+import { useWorkspaceCanvasNoteNodeMutations } from './useNodesStore.noteMutations'
 import { useWorkspaceCanvasWebsiteNodeMutations } from './useNodesStore.websiteMutations'
 import { resolveRenamedWorkspaceNodeTitle, shouldRenameWorkspaceNode } from './useNodesStore.title'
 import type {
@@ -332,9 +332,6 @@ export function useWorkspaceCanvasNodesStore({
   const renameTerminalTitle = useCallback(
     (nodeId: string, title: string) => {
       const normalizedTitle = title.trim()
-      if (normalizedTitle.length === 0) {
-        return
-      }
 
       setNodes(
         prevNodes => {
@@ -372,42 +369,10 @@ export function useWorkspaceCanvasNodesStore({
     [onRequestPersistFlush, setNodes],
   )
 
-  const updateNoteText = useCallback(
-    (nodeId: string, text: string) => {
-      guardNodeFromSyncOverwrite(nodeId)
-      setNodes(
-        prevNodes => {
-          let hasChanged = false
-
-          const nextNodes = prevNodes.map(node => {
-            if (node.id !== nodeId || node.data.kind !== 'note' || !node.data.note) {
-              return node
-            }
-
-            if (node.data.note.text === text) {
-              return node
-            }
-
-            hasChanged = true
-            return {
-              ...node,
-              data: {
-                ...node.data,
-                note: {
-                  ...node.data.note,
-                  text,
-                },
-              },
-            }
-          })
-
-          return hasChanged ? nextNodes : prevNodes
-        },
-        { syncLayout: false },
-      )
-    },
-    [setNodes],
-  )
+  const { updateNoteText, renameNoteTitle } = useWorkspaceCanvasNoteNodeMutations({
+    setNodes,
+    onRequestPersistFlush,
+  })
   const { updateWebsiteUrl, setWebsitePinned, setWebsiteSession } =
     useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
 
@@ -487,6 +452,7 @@ export function useWorkspaceCanvasNodesStore({
     renameTerminalTitle,
     setNodeLabelColorOverride,
     updateNoteText,
+    renameNoteTitle,
     updateWebsiteUrl,
     setWebsitePinned,
     setWebsiteSession,

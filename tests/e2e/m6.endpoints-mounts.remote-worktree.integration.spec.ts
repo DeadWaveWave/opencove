@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { launchApp, removePathWithRetry } from './workspace-canvas.helpers'
+import { clickHeaderDragSurface, launchApp, removePathWithRetry } from './workspace-canvas.helpers'
 import { createRemoteOnlyProjectViaWizard } from './m6.endpoints-mounts.addProjectWizard.steps'
 import {
   closeSettings,
@@ -214,7 +214,7 @@ test.describe('M6 - Remote mount worktree integration', () => {
       const note = window.locator('.note-node').first()
       const noteHeader = note.locator('.note-node__header')
       await expect(noteHeader).toBeVisible()
-      await noteHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(noteHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await note.click({ button: 'right', position: { x: 60, y: 16 } })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()

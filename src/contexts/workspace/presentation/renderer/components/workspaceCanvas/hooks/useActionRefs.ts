@@ -17,6 +17,7 @@ export interface WorkspaceCanvasActionRefs {
     (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   >
   updateNoteTextRef: React.MutableRefObject<(nodeId: string, text: string) => void>
+  renameNoteTitleRef: React.MutableRefObject<(nodeId: string, title: string) => void>
   updateWebsiteUrlRef: React.MutableRefObject<(nodeId: string, url: string) => void>
   setWebsitePinnedRef: React.MutableRefObject<(nodeId: string, pinned: boolean) => void>
   setWebsiteSessionRef: React.MutableRefObject<
@@ -64,6 +65,9 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
   >(async (_nodeId: string, _summary: AgentSessionSummary) => undefined)
   const updateNoteTextRef = useRef<(nodeId: string, text: string) => void>(
     (_nodeId: string, _text: string) => undefined,
+  )
+  const renameNoteTitleRef = useRef<(nodeId: string, title: string) => void>(
+    (_nodeId: string, _title: string) => undefined,
   )
   const updateWebsiteUrlRef = useRef<(nodeId: string, url: string) => void>(
     (_nodeId: string, _url: string) => undefined,
@@ -119,6 +123,7 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     listAgentSessionsRef,
     switchAgentSessionRef,
     updateNoteTextRef,
+    renameNoteTitleRef,
     updateWebsiteUrlRef,
     setWebsitePinnedRef,
     setWebsiteSessionRef,
@@ -147,6 +152,7 @@ interface SyncActionRefsParams {
   listAgentSessions: (nodeId: string, limit?: number) => Promise<AgentSessionSummary[]>
   switchAgentSession: (nodeId: string, summary: AgentSessionSummary) => Promise<void>
   updateNoteText: (nodeId: string, text: string) => void
+  renameNoteTitle: (nodeId: string, title: string) => void
   updateWebsiteUrl: (nodeId: string, url: string) => void
   setWebsitePinned: (nodeId: string, pinned: boolean) => void
   setWebsiteSession: (
@@ -173,6 +179,7 @@ export function useWorkspaceCanvasSyncActionRefs({
   listAgentSessions,
   switchAgentSession,
   updateNoteText,
+  renameNoteTitle,
   updateWebsiteUrl,
   setWebsitePinned,
   setWebsiteSession,
@@ -217,6 +224,12 @@ export function useWorkspaceCanvasSyncActionRefs({
       updateNoteText(nodeId, text)
     }
   }, [actionRefs.updateNoteTextRef, updateNoteText])
+
+  useLayoutEffect(() => {
+    actionRefs.renameNoteTitleRef.current = (nodeId, title) => {
+      renameNoteTitle(nodeId, title)
+    }
+  }, [actionRefs.renameNoteTitleRef, renameNoteTitle])
 
   useLayoutEffect(() => {
     actionRefs.updateWebsiteUrlRef.current = (nodeId, url) => {

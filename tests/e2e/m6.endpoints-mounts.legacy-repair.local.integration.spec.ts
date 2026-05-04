@@ -3,7 +3,7 @@ import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { expect, test } from '@playwright/test'
-import { launchApp, removePathWithRetry } from './workspace-canvas.helpers'
+import { clickHeaderDragSurface, launchApp, removePathWithRetry } from './workspace-canvas.helpers'
 import { pathExists, pollFor } from './m6.endpoints-mounts.integration.helpers'
 import { createRepo, resetWorkspaceState } from './m6.endpoints-mounts.legacy-repair.helpers'
 
@@ -86,7 +86,7 @@ test.describe('M6 - Legacy mount/space repair integration (local)', () => {
       const note = window.locator('.note-node').first()
       const noteHeader = note.locator('.note-node__header')
       await expect(noteHeader).toBeVisible()
-      await noteHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(noteHeader)
       await note.click({ button: 'right', position: { x: 60, y: 16 } })
       await window.locator('[data-testid="workspace-selection-create-space"]').click()
 

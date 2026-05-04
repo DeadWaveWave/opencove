@@ -1,5 +1,38 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import { clearAndSeedWorkspace, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
+import { clickPaneAtFlowPoint } from './workspace-canvas.arrange.shared'
+import type { Locator } from '@playwright/test'
+
+async function clickInlineTitleDisplay(display: Locator): Promise<void> {
+  await expect(display).toBeVisible()
+  await display.evaluate(element => {
+    ;(element as HTMLElement).click()
+  })
+}
+
+async function readInlineTitleMetrics(display: Locator): Promise<{
+  text: string
+  width: number
+  textWidth: number
+  textClientWidth: number
+  textScrollWidth: number
+}> {
+  await expect(display).toBeVisible()
+
+  return await display.evaluate(element => {
+    const rect = element.getBoundingClientRect()
+    const textElement = element.querySelector('.node-title-editor__display-text')
+    const textRect = textElement?.getBoundingClientRect() ?? null
+
+    return {
+      text: element.textContent?.trim() ?? '',
+      width: rect.width,
+      textWidth: textRect?.width ?? 0,
+      textClientWidth: textElement instanceof HTMLElement ? textElement.clientWidth : 0,
+      textScrollWidth: textElement instanceof HTMLElement ? textElement.scrollWidth : 0,
+    }
+  })
+}
 
 test.describe('Workspace Canvas - Unified Node Chrome', () => {
   test('uses the same compact header height and button chrome across terminal, task, and note nodes', async () => {
@@ -65,7 +98,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
     }
   })
 
-  test('starts task and terminal renaming only after header double click', async () => {
+  test('edits task and terminal titles only from the title text hit area', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -157,6 +190,11 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       const terminalHeader = terminalNode.locator('.terminal-node__header')
       const agentHeader = agentNode.locator('.terminal-node__header')
       const taskHeader = taskNode.locator('.task-node__header')
+      const terminalTitleDisplay = terminalNode.locator(
+        '[data-testid="terminal-node-title-display"]',
+      )
+      const agentTitleDisplay = agentNode.locator('[data-testid="terminal-node-title-display"]')
+      const taskTitleDisplay = taskNode.locator('[data-testid="task-node-title-display"]')
       const terminalTitleInput = terminalNode.locator(
         '[data-testid="terminal-node-inline-title-input"]',
       )
@@ -166,22 +204,101 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(terminalHeader).toBeVisible()
       await expect(agentHeader).toBeVisible()
       await expect(taskHeader).toBeVisible()
+      await expect(terminalTitleDisplay).toBeVisible()
+      await expect(agentTitleDisplay).toBeVisible()
+      await expect(taskTitleDisplay).toBeVisible()
 
-      await terminalHeader.click({ position: { x: 72, y: 16 } })
-      await agentHeader.click({ position: { x: 72, y: 16 } })
-      await taskHeader.click({ position: { x: 72, y: 16 } })
+      const terminalHeaderBox = await readLocatorClientRect(terminalHeader)
+      const terminalTitleBox = await readLocatorClientRect(terminalTitleDisplay)
+      const agentHeaderBox = await readLocatorClientRect(agentHeader)
+      const agentTitleBox = await readLocatorClientRect(agentTitleDisplay)
+      const taskHeaderBox = await readLocatorClientRect(taskHeader)
+      const taskTitleBox = await readLocatorClientRect(taskTitleDisplay)
+      const terminalBlankProbe = {
+        x: Math.min(
+          terminalHeaderBox.x + terminalHeaderBox.width - 80,
+          terminalTitleBox.x + terminalTitleBox.width + 80,
+        ),
+        y: terminalHeaderBox.y + terminalHeaderBox.height / 2,
+      }
+      const taskBlankProbe = {
+        x: Math.min(
+          taskHeaderBox.x + taskHeaderBox.width - 120,
+          taskTitleBox.x + taskTitleBox.width + 80,
+        ),
+        y: taskHeaderBox.y + taskHeaderBox.height / 2,
+      }
+      const agentBlankProbe = {
+        x: Math.min(
+          agentHeaderBox.x + agentHeaderBox.width - 160,
+          agentTitleBox.x + agentTitleBox.width + 48,
+        ),
+        y: agentHeaderBox.y + agentHeaderBox.height / 2,
+      }
+
+      const cursors = await window.evaluate(
+        ({ terminalTitle, terminalBlank, taskTitle, taskBlank }) => {
+          const readCursorAt = (point: { x: number; y: number }): string | null => {
+            const element = document.elementFromPoint(point.x, point.y)
+            return element ? window.getComputedStyle(element).cursor : null
+          }
+
+          return {
+            terminalTitle: readCursorAt(terminalTitle),
+            terminalBlank: readCursorAt(terminalBlank),
+            taskTitle: readCursorAt(taskTitle),
+            taskBlank: readCursorAt(taskBlank),
+          }
+        },
+        {
+          terminalTitle: {
+            x: terminalTitleBox.x + Math.min(terminalTitleBox.width - 2, 8),
+            y: terminalTitleBox.y + terminalTitleBox.height / 2,
+          },
+          terminalBlank: terminalBlankProbe,
+          taskTitle: {
+            x: taskTitleBox.x + Math.min(taskTitleBox.width - 2, 8),
+            y: taskTitleBox.y + taskTitleBox.height / 2,
+          },
+          taskBlank: taskBlankProbe,
+        },
+      )
+
+      expect(cursors.terminalTitle).toBe('text')
+      expect(cursors.terminalBlank).not.toBe('text')
+      expect(cursors.taskTitle).toBe('text')
+      expect(cursors.taskBlank).not.toBe('text')
+
+      await terminalHeader.click({
+        position: {
+          x: terminalBlankProbe.x - terminalHeaderBox.x,
+          y: terminalBlankProbe.y - terminalHeaderBox.y,
+        },
+      })
+      await agentHeader.click({
+        position: {
+          x: agentBlankProbe.x - agentHeaderBox.x,
+          y: agentBlankProbe.y - agentHeaderBox.y,
+        },
+      })
+      await taskHeader.click({
+        position: {
+          x: taskBlankProbe.x - taskHeaderBox.x,
+          y: taskBlankProbe.y - taskHeaderBox.y,
+        },
+      })
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(agentTitleInput).toHaveCount(0)
       await expect(taskTitleInput).toHaveCount(0)
 
-      await terminalHeader.click({ position: { x: 72, y: 16 }, clickCount: 2 })
+      await clickInlineTitleDisplay(terminalTitleDisplay)
       await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill('terminal renamed')
       await terminalTitleInput.press('Enter')
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(terminalHeader).toContainText('terminal renamed')
 
-      await agentHeader.click({ position: { x: 72, y: 16 }, clickCount: 2 })
+      await clickInlineTitleDisplay(agentTitleDisplay)
       await expect(agentTitleInput).toBeVisible({ timeout: 30_000 })
       await expect(agentTitleInput).toHaveValue('agent linked task')
       await agentTitleInput.fill('agent renamed')
@@ -189,12 +306,135 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(agentTitleInput).toHaveCount(0)
       await expect(agentHeader).toContainText('codex · agent renamed')
 
-      await taskHeader.click({ position: { x: 72, y: 16 }, clickCount: 2 })
+      await clickInlineTitleDisplay(taskTitleDisplay)
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill('task renamed')
       await taskTitleInput.press('Enter')
       await expect(taskTitleInput).toHaveCount(0)
       await expect(taskHeader).toContainText('task renamed')
+    } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('keeps long inline titles visible after blur save', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'terminal-long-title',
+            title: 'terminal',
+            position: { x: 320, y: 120 },
+            width: 460,
+            height: 300,
+            kind: 'terminal',
+          },
+          {
+            id: 'task-long-title',
+            title: 'task',
+            position: { x: 840, y: 120 },
+            width: 460,
+            height: 280,
+            kind: 'task',
+            task: {
+              requirement: 'Edit a long title, then blur into the requirement field.',
+              status: 'doing',
+              priority: 'medium',
+              tags: ['rename'],
+              linkedAgentNodeId: null,
+              lastRunAt: null,
+              autoGeneratedTitle: false,
+            },
+          },
+          {
+            id: 'note-long-title',
+            title: 'note',
+            position: { x: 320, y: 480 },
+            width: 240,
+            height: 280,
+            kind: 'note',
+            task: {
+              text: 'Edit a long title, then blur into the note body.',
+            },
+          },
+        ],
+        {
+          settings: { uiTheme: 'light' },
+        },
+      )
+
+      const longTitle =
+        '超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题超长便签标题'
+      const pane = window.locator('.workspace-canvas .react-flow__pane')
+      await expect(pane).toBeVisible()
+
+      const sidebarToggle = window.locator('[data-testid="app-header-toggle-primary-sidebar"]')
+      await expect(sidebarToggle).toBeVisible()
+      await sidebarToggle.click()
+      await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
+      await window.waitForTimeout(200)
+
+      const terminalTitleDisplay = window
+        .locator('[data-testid="terminal-node-title-display"]')
+        .first()
+      const taskTitleDisplay = window.locator('[data-testid="task-node-title-display"]').first()
+      const noteTitleDisplay = window.locator('[data-testid="note-node-title-display"]').first()
+
+      const terminalTitleInput = window
+        .locator('[data-testid="terminal-node-inline-title-input"]')
+        .first()
+      const taskTitleInput = window.locator('[data-testid="task-node-inline-title-input"]').first()
+      const noteTitleInput = window.locator('[data-testid="note-node-title-input"]').first()
+
+      await clickInlineTitleDisplay(terminalTitleDisplay)
+      await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
+      await terminalTitleInput.fill(longTitle)
+      await clickPaneAtFlowPoint(window, pane, { x: 1180, y: 120 })
+      await expect(terminalTitleInput).toHaveCount(0)
+
+      await clickInlineTitleDisplay(taskTitleDisplay)
+      await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
+      await taskTitleInput.fill(longTitle)
+      await clickPaneAtFlowPoint(window, pane, { x: 1180, y: 420 })
+      await expect(taskTitleInput).toHaveCount(0)
+
+      await clickInlineTitleDisplay(noteTitleDisplay)
+      await expect(noteTitleInput).toBeVisible({ timeout: 30_000 })
+      await noteTitleInput.fill(longTitle)
+      await clickPaneAtFlowPoint(window, pane, { x: 1180, y: 680 })
+      await expect(noteTitleInput).toHaveCount(0)
+
+      const [terminalMetrics, taskMetrics, noteMetrics] = await Promise.all([
+        readInlineTitleMetrics(terminalTitleDisplay),
+        readInlineTitleMetrics(taskTitleDisplay),
+        readInlineTitleMetrics(noteTitleDisplay),
+      ])
+
+      expect(terminalMetrics).toEqual(
+        expect.objectContaining({
+          text: longTitle,
+        }),
+      )
+      expect(taskMetrics).toEqual(
+        expect.objectContaining({
+          text: longTitle,
+        }),
+      )
+      expect(noteMetrics).toEqual(
+        expect.objectContaining({
+          text: longTitle,
+        }),
+      )
+
+      for (const metrics of [terminalMetrics, taskMetrics, noteMetrics]) {
+        expect(metrics.width).toBeGreaterThan(24)
+        expect(metrics.textWidth).toBeGreaterThan(24)
+        expect(metrics.textClientWidth).toBeGreaterThan(24)
+        expect(metrics.textScrollWidth).toBeGreaterThan(metrics.textClientWidth)
+      }
     } finally {
       await electronApp.close()
     }
