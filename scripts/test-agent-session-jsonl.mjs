@@ -89,9 +89,33 @@ async function findCodexSessionFileById(sessionId) {
   return await visitDirectory(sessionsRoot)
 }
 
+async function shouldPrefixJsonlRecordSeparator(sessionFilePath) {
+  let handle = null
+  try {
+    handle = await fs.open(sessionFilePath, 'r')
+    const stats = await handle.stat()
+    if (stats.size <= 0) {
+      return false
+    }
+
+    const buffer = Buffer.allocUnsafe(1)
+    const { bytesRead } = await handle.read(buffer, 0, 1, stats.size - 1)
+    if (bytesRead <= 0) {
+      return false
+    }
+
+    return buffer[0] !== 0x0a && buffer[0] !== 0x0d
+  } catch {
+    return false
+  } finally {
+    await handle?.close().catch(() => undefined)
+  }
+}
+
 export async function appendCodexRecord(sessionFilePath, record, { newline = true } = {}) {
   const serialized = JSON.stringify(record)
-  await fs.appendFile(sessionFilePath, newline ? `${serialized}\n` : serialized, 'utf8')
+  const prefix = (await shouldPrefixJsonlRecordSeparator(sessionFilePath)) ? '\n' : ''
+  await fs.appendFile(sessionFilePath, `${prefix}${serialized}${newline ? '\n' : ''}`, 'utf8')
 }
 
 async function createClaudeSessionFile(cwd) {
@@ -130,7 +154,8 @@ async function findClaudeSessionFile(cwd, sessionId) {
 
 async function appendClaudeRecord(sessionFilePath, record, { newline = true } = {}) {
   const serialized = JSON.stringify(record)
-  await fs.appendFile(sessionFilePath, newline ? `${serialized}\n` : serialized, 'utf8')
+  const prefix = (await shouldPrefixJsonlRecordSeparator(sessionFilePath)) ? '\n' : ''
+  await fs.appendFile(sessionFilePath, `${prefix}${serialized}${newline ? '\n' : ''}`, 'utf8')
 }
 
 export async function runJsonlStdinSubmitDelayedTurnScenario(provider, cwd) {

@@ -24,6 +24,7 @@ function isProcessAlive(pid: number): boolean {
 export async function resolveControlSurfaceConnectionInfoFromUserData(options: {
   userDataPath: string
   fileName?: string
+  requireLivePid?: boolean
 }): Promise<ControlSurfaceConnectionInfo | null> {
   const fileName = options.fileName ?? DEFAULT_CONNECTION_FILE
   const filePath = resolve(options.userDataPath, fileName)
@@ -55,7 +56,7 @@ export async function resolveControlSurfaceConnectionInfoFromUserData(options: {
       return null
     }
 
-    if (!isProcessAlive(parsed.pid)) {
+    if (options.requireLivePid !== false && !isProcessAlive(parsed.pid)) {
       return null
     }
 

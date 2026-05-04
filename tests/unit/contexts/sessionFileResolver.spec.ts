@@ -60,6 +60,37 @@ describe('resolveSessionFilePath', () => {
     }
   })
 
+  it('resolves claude-code session files from the closest ancestor project directory', async () => {
+    const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
+    const previousHome = process.env.HOME
+    process.env.HOME = tempHome
+
+    const workspaceRoot = join(tempHome, 'workspace')
+    const cwd = join(workspaceRoot, 'docs')
+    const sessionId = 'ancestor-session'
+    const startedAtMs = Date.now()
+
+    const encodedPath = resolvePath(workspaceRoot).replace(/[\\/]/g, '-').replace(/:/g, '')
+    const expectedPath = join(tempHome, '.claude', 'projects', encodedPath, `${sessionId}.jsonl`)
+
+    try {
+      await fs.mkdir(dirname(expectedPath), { recursive: true })
+      await fs.writeFile(expectedPath, '{"type":"assistant","message":{"content":[]}}\n', 'utf8')
+
+      const resolved = await resolveSessionFilePath({
+        provider: 'claude-code',
+        cwd,
+        sessionId,
+        startedAtMs,
+        timeoutMs: 0,
+      })
+
+      expect(resolved).toBe(expectedPath)
+    } finally {
+      process.env.HOME = previousHome
+    }
+  })
+
   it('resolves codex session file from rollout logs', async () => {
     const tempHome = await fs.mkdtemp(join(tmpdir(), 'opencove-test-home-'))
     const previousHome = process.env.HOME

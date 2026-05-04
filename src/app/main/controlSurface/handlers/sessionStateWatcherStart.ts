@@ -1,4 +1,5 @@
 import type { AgentLaunchMode, AgentProviderId } from '../../../../shared/contracts/dto'
+import type { GeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
 import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 
 export function shouldStartAgentSessionStateWatcher(): boolean {
@@ -16,6 +17,7 @@ export function startAgentSessionStateWatcherIfEnabled(options: {
   launchMode: AgentLaunchMode
   resumeSessionId: string | null
   startedAtMs: number
+  geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
   opencodeBaseUrl?: string | null
 }): void {
   if (!shouldStartAgentSessionStateWatcher()) {
@@ -29,6 +31,9 @@ export function startAgentSessionStateWatcherIfEnabled(options: {
     launchMode: options.launchMode,
     resumeSessionId: options.resumeSessionId,
     startedAtMs: options.startedAtMs,
+    ...(options.geminiDiscoveryCursor !== undefined
+      ? { geminiDiscoveryCursor: options.geminiDiscoveryCursor }
+      : {}),
     ...(options.opencodeBaseUrl ? { opencodeBaseUrl: options.opencodeBaseUrl } : {}),
   })
 }

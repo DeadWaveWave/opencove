@@ -3,12 +3,39 @@ import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import type { PresentationSnapshotTerminalResult, TerminalPtyGeometry } from '@shared/contracts/dto'
 import { resolveInitialTerminalDimensions } from './initialDimensions'
-import { commitInitialTerminalNodeGeometry } from './syncTerminalNodeSize'
+import { commitInitialTerminalNodeGeometry, refreshTerminalNodeSize } from './syncTerminalNodeSize'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { XtermSession } from './xtermSession'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
 
 type PtySize = { cols: number; rows: number }
+
+function applyCanonicalGeometryLocally({
+  terminalRef,
+  containerRef,
+  isPointerResizingRef,
+  geometry,
+}: {
+  terminalRef: MutableRefObject<Terminal | null>
+  containerRef: MutableRefObject<HTMLElement | null>
+  isPointerResizingRef: MutableRefObject<boolean>
+  geometry: PtySize
+}): void {
+  const terminal = terminalRef.current
+  if (!terminal) {
+    return
+  }
+
+  if (terminal.cols !== geometry.cols || terminal.rows !== geometry.rows) {
+    terminal.resize(geometry.cols, geometry.rows)
+  }
+
+  refreshTerminalNodeSize({
+    terminalRef,
+    containerRef,
+    isPointerResizingRef,
+  })
+}
 
 export function resolveRuntimeInitialTerminalDimensions({
   initialTerminalGeometry,
@@ -37,6 +64,7 @@ export function createRuntimeInitialGeometryCommitter({
   sessionId,
   canonicalInitialGeometry,
   allowMeasuredResizeCommit = true,
+  preferMeasuredGeometryCommit = false,
 }: {
   terminalRef: MutableRefObject<Terminal | null>
   fitAddonRef: MutableRefObject<FitAddon | null>
@@ -46,28 +74,44 @@ export function createRuntimeInitialGeometryCommitter({
   sessionId: string
   canonicalInitialGeometry?: PtySize | null
   allowMeasuredResizeCommit?: boolean
+  preferMeasuredGeometryCommit?: boolean
 }) {
-  return (baselineSnapshot: PresentationSnapshotTerminalResult | null) => {
-    if (baselineSnapshot) {
-      lastCommittedPtySizeRef.current = {
-        cols: baselineSnapshot.cols,
-        rows: baselineSnapshot.rows,
-      }
+  return async (baselineSnapshot: PresentationSnapshotTerminalResult | null) => {
+    const canonicalGeometry = baselineSnapshot
+      ? { cols: baselineSnapshot.cols, rows: baselineSnapshot.rows }
+      : (canonicalInitialGeometry ?? null)
+
+    if (canonicalGeometry && !preferMeasuredGeometryCommit) {
+      lastCommittedPtySizeRef.current = canonicalGeometry
+      applyCanonicalGeometryLocally({
+        terminalRef,
+        containerRef,
+        isPointerResizingRef,
+        geometry: canonicalGeometry,
+      })
+      return { ...canonicalGeometry, changed: false }
     }
 
     if (!allowMeasuredResizeCommit) {
-      const canonicalGeometry = baselineSnapshot
-        ? { cols: baselineSnapshot.cols, rows: baselineSnapshot.rows }
-        : (canonicalInitialGeometry ?? null)
       if (!canonicalGeometry) {
-        return Promise.resolve(null)
+        return null
       }
 
       lastCommittedPtySizeRef.current = canonicalGeometry
-      return Promise.resolve({ ...canonicalGeometry, changed: false })
+      applyCanonicalGeometryLocally({
+        terminalRef,
+        containerRef,
+        isPointerResizingRef,
+        geometry: canonicalGeometry,
+      })
+      return { ...canonicalGeometry, changed: false }
     }
 
-    return commitInitialTerminalNodeGeometry({
+    if (canonicalGeometry) {
+      lastCommittedPtySizeRef.current = canonicalGeometry
+    }
+
+    const measuredGeometry = await commitInitialTerminalNodeGeometry({
       terminalRef,
       fitAddonRef,
       containerRef,
@@ -76,6 +120,23 @@ export function createRuntimeInitialGeometryCommitter({
       sessionId,
       reason: 'frame_commit',
     })
+
+    if (measuredGeometry) {
+      return measuredGeometry
+    }
+
+    if (!canonicalGeometry) {
+      return null
+    }
+
+    lastCommittedPtySizeRef.current = canonicalGeometry
+    applyCanonicalGeometryLocally({
+      terminalRef,
+      containerRef,
+      isPointerResizingRef,
+      geometry: canonicalGeometry,
+    })
+    return { ...canonicalGeometry, changed: false }
   }
 }
 

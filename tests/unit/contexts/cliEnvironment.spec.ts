@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildAdditionalPathSegments,
   computeHydratedCliPath,
   computeHydratedLocaleEnv,
 } from '../../../src/platform/os/CliEnvironment'
@@ -58,9 +59,48 @@ describe('computeHydratedCliPath', () => {
       currentPath: 'C:\\Windows\\System32;C:\\Tools',
       homeDir: 'C:\\Users\\tester',
       shellPathFromLogin: 'C:\\Tools;D:\\bin',
+      env: {
+        APPDATA: 'C:\\Users\\tester\\AppData\\Roaming',
+        LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local',
+      },
     })
 
-    expect(path).toBe('C:\\Windows\\System32;C:\\Tools;D:\\bin')
+    expect(path.split(';')).toEqual([
+      'C:\\Windows\\System32',
+      'C:\\Tools',
+      'D:\\bin',
+      'C:\\Users\\tester\\AppData\\Roaming\\npm',
+      'C:\\Users\\tester\\AppData\\Local\\pnpm',
+      'C:\\Users\\tester\\AppData\\Local\\Volta\\bin',
+      'C:\\Users\\tester\\scoop\\shims',
+    ])
+    expect(path.split(';')).not.toContain('/Users/tester/.npm-global/bin')
+  })
+})
+
+describe('buildAdditionalPathSegments', () => {
+  it('adds common Windows node package manager shim directories', () => {
+    expect(
+      buildAdditionalPathSegments('win32', 'C:\\Users\\tester', {
+        APPDATA: 'C:\\Users\\tester\\AppData\\Roaming',
+        LOCALAPPDATA: 'C:\\Users\\tester\\AppData\\Local',
+        NVM_SYMLINK: 'C:\\nvm4w\\nodejs',
+        PNPM_HOME: 'C:\\Users\\tester\\AppData\\Local\\pnpm',
+        ChocolateyInstall: 'C:\\ProgramData\\chocolatey',
+        ProgramFiles: 'C:\\Program Files',
+        ProgramData: 'C:\\ProgramData',
+      }),
+    ).toEqual([
+      'C:\\nvm4w\\nodejs',
+      'C:\\Users\\tester\\AppData\\Local\\pnpm',
+      'C:\\Users\\tester\\AppData\\Roaming\\npm',
+      'C:\\Users\\tester\\AppData\\Local\\Volta\\bin',
+      'C:\\Users\\tester\\scoop\\shims',
+      'C:\\ProgramData\\scoop\\shims',
+      'C:\\ProgramData\\chocolatey\\bin',
+      'C:\\Program Files\\nodejs',
+      'C:\\Program Files\\nodejs\\node_global',
+    ])
   })
 })
 

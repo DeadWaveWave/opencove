@@ -219,6 +219,53 @@ describe('SessionTurnStateWatcher', () => {
     })
   })
 
+  it('parses adjacent JSON records when a previous writer omitted the newline separator', async () => {
+    const tempDir = await fs.mkdtemp(join(tmpdir(), 'cove-session-watcher-'))
+    const filePath = join(tempDir, 'session.jsonl')
+
+    await fs.writeFile(
+      filePath,
+      `${JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'reasoning',
+          summary: [],
+        },
+      })}${JSON.stringify({
+        type: 'response_item',
+        payload: {
+          type: 'message',
+          role: 'assistant',
+          phase: 'final_answer',
+          content: [
+            {
+              type: 'output_text',
+              text: 'Done.',
+            },
+          ],
+        },
+      })}`,
+      'utf8',
+    )
+
+    const states: string[] = []
+    const watcher = new SessionTurnStateWatcher({
+      provider: 'codex',
+      sessionId: 'session-concat',
+      filePath,
+      onState: (_sessionId, state) => {
+        states.push(state)
+      },
+    })
+
+    disposers.push(() => watcher.dispose())
+    watcher.start()
+
+    await waitForCondition(() => {
+      expect(states).toEqual(['working', 'standby'])
+    })
+  })
+
   it('tracks codex event-stream agent_message phases from commentary to final answer', async () => {
     const tempDir = await fs.mkdtemp(join(tmpdir(), 'cove-session-watcher-'))
     const filePath = join(tempDir, 'session.jsonl')

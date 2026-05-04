@@ -1,7 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { Terminal } from '@xterm/xterm'
 import {
+  captureTerminalScrollState,
   installTerminalEffectiveDevicePixelRatioController,
+  restoreTerminalScrollState,
   resolveTerminalEffectiveDevicePixelRatio,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/effectiveDevicePixelRatio'
 
@@ -150,23 +152,43 @@ function createTerminalHarness(input?: {
 }
 
 describe('terminal effective device pixel ratio', () => {
-  it('uses a stable terminal pixel-snap DPR when the viewport is not zoomed in', () => {
+  it('restores the same distance from bottom after the buffer grows', () => {
+    const harness = createTerminalHarness({
+      baseDevicePixelRatio: 1.25,
+      baseY: 180,
+      viewportY: 150,
+      isUserScrolling: true,
+    })
+
+    const snapshot = captureTerminalScrollState(harness.terminal)
+    harness.emitScroll(220, 220)
+    restoreTerminalScrollState(harness.terminal, snapshot)
+
+    expect(harness.readState()).toMatchObject({
+      baseY: 220,
+      viewportY: 190,
+      isUserScrolling: true,
+      ydisp: 190,
+    })
+  })
+
+  it('uses the window DPR as the terminal layout authority', () => {
     expect(
       resolveTerminalEffectiveDevicePixelRatio({
         baseDevicePixelRatio: 1.25,
         viewportZoom: 1,
       }),
-    ).toBe(2)
+    ).toBe(1.25)
 
     expect(
       resolveTerminalEffectiveDevicePixelRatio({
         baseDevicePixelRatio: 1.25,
         viewportZoom: 0.75,
       }),
-    ).toBe(2)
+    ).toBe(1.25)
   })
 
-  it('applies a higher DPR immediately when the terminal is already at the bottom', () => {
+  it('does not override native DPR for viewport-only zoom changes', () => {
     const harness = createTerminalHarness({
       baseDevicePixelRatio: 1.25,
       baseY: 120,
@@ -179,15 +201,15 @@ describe('terminal effective device pixel ratio', () => {
       nodeId: 'node-at-bottom',
     })
 
-    expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
-    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(3, 5)
+    expect(harness.renderService.handleDevicePixelRatioChange).not.toHaveBeenCalled()
+    expect(Object.prototype.hasOwnProperty.call(harness.coreBrowserService, 'dpr')).toBe(false)
 
     controller.dispose()
 
     expect(Object.prototype.hasOwnProperty.call(harness.coreBrowserService, 'dpr')).toBe(false)
   })
 
-  it('defers clarity while viewport interaction is active and commits after it settles', () => {
+  it('keeps scroll state unchanged when zoom settles without a DPR change', () => {
     const harness = createTerminalHarness({
       baseDevicePixelRatio: 1.25,
       baseY: 120,
@@ -207,7 +229,7 @@ describe('terminal effective device pixel ratio', () => {
 
     controller.setViewportInteractionActive(false)
 
-    expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
+    expect(harness.renderService.handleDevicePixelRatioChange).not.toHaveBeenCalled()
     expect(harness.readState()).toMatchObject({
       baseY: 120,
       viewportY: 80,
@@ -215,7 +237,7 @@ describe('terminal effective device pixel ratio', () => {
     })
   })
 
-  it('does not require returning to bottom before applying a settled refresh', () => {
+  it('does not require returning to bottom before applying a native DPR refresh', () => {
     const harness = createTerminalHarness({
       baseDevicePixelRatio: 1.25,
       baseY: 180,
@@ -230,11 +252,18 @@ describe('terminal effective device pixel ratio', () => {
       nodeId: 'node-still-in-history',
     })
 
-    controller.setViewportZoom(1.6)
-    controller.setViewportInteractionActive(false)
+    harness.emitResize(1.5)
 
     expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
-    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(3.2, 5)
+    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(1.5, 5)
+    expect(harness.readState()).toMatchObject({
+      baseY: 180,
+      viewportY: 150,
+      isUserScrolling: true,
+    })
+
+    controller.setViewportInteractionActive(false)
+    expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
   })
 
   it('recomputes the effective DPR when the window DPR changes', () => {
@@ -250,11 +279,11 @@ describe('terminal effective device pixel ratio', () => {
       nodeId: 'node-window-dpr',
     })
 
-    expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
+    expect(harness.renderService.handleDevicePixelRatioChange).not.toHaveBeenCalled()
 
     harness.emitResize(1.5)
 
     expect(harness.renderService.handleDevicePixelRatioChange).toHaveBeenCalledTimes(1)
-    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(3, 5)
+    expect((harness.coreBrowserService as unknown as { dpr?: number }).dpr).toBeCloseTo(1.5, 5)
   })
 })

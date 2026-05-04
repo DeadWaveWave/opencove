@@ -112,6 +112,10 @@ export function isActiveAgentStatus(status: string | null): boolean {
   return status === 'running' || status === 'standby' || status === 'restoring'
 }
 
+export function isRecoverableAgentWindowStatus(status: string | null): boolean {
+  return status !== 'stopped'
+}
+
 export function resolveTerminalRecoveryCwd(
   node: NormalizedPersistedNode,
   workspacePath: string,
@@ -155,15 +159,19 @@ export function toPreparedNodeResult(
   options: Omit<
     PreparedRuntimeNodeResult,
     'nodeId' | 'kind' | 'title' | 'scrollback' | 'terminalGeometry'
-  > & { scrollback?: string | null },
+  > & {
+    scrollback?: string | null
+    terminalGeometry?: PreparedRuntimeNodeResult['terminalGeometry']
+  },
 ): PreparedRuntimeNodeResult {
   return {
     nodeId: node.id,
     kind: node.kind === 'agent' ? 'agent' : 'terminal',
     title: node.title,
-    terminalGeometry: node.terminalGeometry,
-    scrollback: options.scrollback === undefined ? node.scrollback : options.scrollback,
     ...options,
+    terminalGeometry:
+      options.terminalGeometry === undefined ? node.terminalGeometry : options.terminalGeometry,
+    scrollback: options.scrollback === undefined ? node.scrollback : options.scrollback,
   }
 }
 

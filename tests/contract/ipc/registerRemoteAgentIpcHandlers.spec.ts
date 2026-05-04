@@ -38,6 +38,8 @@ describe('registerRemoteAgentIpcHandlers', () => {
           sessionId: 'session-1',
           provider: 'codex',
           startedAt: '2026-04-30T00:00:00.000Z',
+          profileId: null,
+          runtimeKind: 'windows',
           resumeSessionId: null,
           effectiveModel: 'gpt-5.2-codex',
           command: 'codex',
@@ -70,6 +72,7 @@ describe('registerRemoteAgentIpcHandlers', () => {
     const launchPromise = invokeHandledIpc(launchHandler, null, {
       provider: 'codex',
       cwd: '/tmp/persisted-workspace',
+      profileId: 'wsl:Ubuntu',
       prompt: 'hello',
     })
 
@@ -82,6 +85,8 @@ describe('registerRemoteAgentIpcHandlers', () => {
       expect.objectContaining({
         sessionId: 'session-1',
         provider: 'codex',
+        profileId: null,
+        runtimeKind: 'windows',
         command: 'codex',
         args: ['run'],
       }),

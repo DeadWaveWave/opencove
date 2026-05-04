@@ -3,6 +3,7 @@ import type { PersistenceStore } from '../../../../platform/persistence/sqlite/P
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
+import { captureGeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
 import {
   normalizeAgentSettings,
@@ -308,6 +309,10 @@ export function registerSessionHandlers(
         executablePathOverride,
         ...(mergedEnv ? { env: mergedEnv } : {}),
       })
+      const geminiDiscoveryCursor =
+        provider === 'gemini' && mode === 'new' && !resumeSessionId
+          ? await captureGeminiSessionDiscoveryCursor(workingDirectory).catch(() => null)
+          : undefined
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
@@ -326,6 +331,7 @@ export function registerSessionHandlers(
         launchMode: mode,
         resumeSessionId,
         startedAtMs,
+        ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
         opencodeBaseUrl: opencodeServer
           ? `http://${opencodeServer.hostname}:${String(opencodeServer.port)}`
           : null,
@@ -349,6 +355,8 @@ export function registerSessionHandlers(
         startedAtMs,
         command: resolvedSpawn.command,
         args: resolvedSpawn.args,
+        launchMode: mode,
+        ...(geminiDiscoveryCursor !== undefined ? { geminiDiscoveryCursor } : {}),
         route: { kind: 'local' },
       }
 
@@ -369,6 +377,8 @@ export function registerSessionHandlers(
         provider,
         startedAt,
         executionContext,
+        profileId: resolvedSpawn.profileId,
+        runtimeKind: resolvedSpawn.runtimeKind,
         resumeSessionId,
         effectiveModel: launchCommand.effectiveModel,
         command: resolvedSpawn.command,

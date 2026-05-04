@@ -162,6 +162,7 @@ export function useWorkspaceCanvasShortcutActions({
     | 'keybindings'
     | 'focusNodeTargetZoom'
     | 'standardWindowSizeBucket'
+    | 'terminalFontSize'
   >
   workspacePath: string
   environmentVariables?: Record<string, string>
@@ -252,6 +253,7 @@ export function useWorkspaceCanvasShortcutActions({
       workspaceId,
       defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
       standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+      terminalFontSize: agentSettings.terminalFontSize,
       workspacePath,
       environmentVariables,
       spacesRef,
@@ -264,6 +266,7 @@ export function useWorkspaceCanvasShortcutActions({
   }, [
     agentSettings.defaultTerminalProfileId,
     agentSettings.standardWindowSizeBucket,
+    agentSettings.terminalFontSize,
     cancelSpaceRename,
     canvasRef,
     createNodeForSession,

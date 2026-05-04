@@ -22,6 +22,7 @@ export interface ResolveCommandSpawnInput {
   args: string[]
   profileId?: string | null
   env?: NodeJS.ProcessEnv
+  useProfile?: boolean
 }
 
 function execFileText(command: string, args: string[]): Promise<string> {
@@ -238,13 +239,14 @@ export class TerminalProfileResolver {
       }
     }
 
-    const snapshot = await loadWindowsProfiles(this.deps)
-    const selectedProfile =
-      findProfileById(snapshot.profiles, input.profileId) ??
-      findProfileById(snapshot.profiles, snapshot.defaultProfileId) ??
-      null
+    const snapshot = input.useProfile === false ? null : await loadWindowsProfiles(this.deps)
+    const profile = snapshot
+      ? (findProfileById(snapshot.profiles, input.profileId) ??
+        findProfileById(snapshot.profiles, snapshot.defaultProfileId) ??
+        null)
+      : null
 
-    if (!selectedProfile) {
+    if (!profile) {
       return {
         command,
         args,
@@ -255,10 +257,10 @@ export class TerminalProfileResolver {
       }
     }
 
-    const shellSpawn = selectedProfile.resolveSpawn(input.cwd, resolvedEnv)
-    const profileId = selectedProfile.id
+    const shellSpawn = profile.resolveSpawn(input.cwd, resolvedEnv)
+    const profileId = profile.id
 
-    if (selectedProfile.runtimeKind === 'wsl') {
+    if (profile.runtimeKind === 'wsl') {
       const envPairs = Object.entries(input.env ?? {}).flatMap(([key, value]) =>
         typeof value === 'string' ? [`${key}=${value}`] : [],
       )
@@ -284,7 +286,7 @@ export class TerminalProfileResolver {
         cwd: shellSpawn.cwd,
         env: shellSpawn.env,
         profileId,
-        runtimeKind: selectedProfile.runtimeKind,
+        runtimeKind: profile.runtimeKind,
       }
     }
 
@@ -295,7 +297,7 @@ export class TerminalProfileResolver {
         cwd: shellSpawn.cwd,
         env: shellSpawn.env,
         profileId,
-        runtimeKind: selectedProfile.runtimeKind,
+        runtimeKind: profile.runtimeKind,
       }
     }
 
@@ -305,7 +307,7 @@ export class TerminalProfileResolver {
       cwd: shellSpawn.cwd,
       env: shellSpawn.env,
       profileId,
-      runtimeKind: selectedProfile.runtimeKind,
+      runtimeKind: profile.runtimeKind,
     }
   }
 }

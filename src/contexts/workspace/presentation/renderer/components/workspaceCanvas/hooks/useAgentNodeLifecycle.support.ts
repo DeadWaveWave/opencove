@@ -1,7 +1,9 @@
 import type { Node } from '@xyflow/react'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
+import { resolveAgentNodeMinSize } from '@contexts/workspace/domain/workspaceNodeSizing'
 import type { AgentNodeData, TerminalNodeData } from '../../../types'
+import { resolveAgentLaunchGeometryForFrame } from './agentLaunchGeometry'
 
 export type AgentRuntimeNode = Node<TerminalNodeData> & {
   data: TerminalNodeData & {
@@ -27,6 +29,8 @@ export interface AgentRuntimeLaunchResult {
   resumeSessionId: string | null
   startedAt: string
   executionDirectory: string
+  terminalGeometry: { cols: number; rows: number }
+  frameSize: { width: number; height: number }
 }
 
 export function findAgentNode(
@@ -50,6 +54,18 @@ export function normalizeOptionalString(value: string | null | undefined): strin
   return normalized.length > 0 ? normalized : null
 }
 
+export function resolveAgentRuntimeLaunchFrameSize(node: AgentRuntimeNode): {
+  width: number
+  height: number
+} {
+  const minSize = resolveAgentNodeMinSize(node.data.agent.provider)
+
+  return {
+    width: Math.max(node.data.width, minSize.width),
+    height: Math.max(node.data.height, minSize.height),
+  }
+}
+
 export async function launchAgentRuntime({
   node,
   mountId,
@@ -60,6 +76,7 @@ export async function launchAgentRuntime({
   agentFullAccess,
   defaultTerminalProfileId,
   executablePathOverride,
+  terminalFontSize,
 }: {
   node: AgentRuntimeNode
   mountId: string | null
@@ -70,7 +87,14 @@ export async function launchAgentRuntime({
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
   executablePathOverride: string | null
+  terminalFontSize: number
 }): Promise<AgentRuntimeLaunchResult> {
+  const frameSize = resolveAgentRuntimeLaunchFrameSize(node)
+  const launchGeometry = resolveAgentLaunchGeometryForFrame({
+    frameSize,
+    terminalFontSize,
+  })
+
   if (mountId) {
     const cwd = executionDirectory.trim()
     const cwdUri = cwd.length > 0 ? toFileUri(cwd) : null
@@ -88,17 +112,21 @@ export async function launchAgentRuntime({
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess,
+        cols: launchGeometry.terminalGeometry.cols,
+        rows: launchGeometry.terminalGeometry.rows,
       },
     })
 
     return {
       sessionId: launched.sessionId,
-      profileId: node.data.profileId ?? defaultTerminalProfileId,
-      runtimeKind: node.data.runtimeKind,
+      profileId: launched.profileId,
+      runtimeKind: launched.runtimeKind ?? undefined,
       effectiveModel: launched.effectiveModel,
-      resumeSessionId: launched.resumeSessionId ?? resumeSessionId,
+      resumeSessionId: mode === 'resume' ? resumeSessionId : (launched.resumeSessionId ?? null),
       startedAt: launched.startedAt,
       executionDirectory: launched.executionContext.workingDirectory,
+      terminalGeometry: launchGeometry.terminalGeometry,
+      frameSize: launchGeometry.frameSize,
     }
   }
 
@@ -113,8 +141,8 @@ export async function launchAgentRuntime({
     ...(executablePathOverride ? { executablePathOverride } : {}),
     ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
     agentFullAccess,
-    cols: 80,
-    rows: 24,
+    cols: launchGeometry.terminalGeometry.cols,
+    rows: launchGeometry.terminalGeometry.rows,
   })
 
   return {
@@ -122,8 +150,10 @@ export async function launchAgentRuntime({
     profileId: launched.profileId,
     runtimeKind: launched.runtimeKind,
     effectiveModel: launched.effectiveModel,
-    resumeSessionId: launched.resumeSessionId ?? null,
+    resumeSessionId: mode === 'resume' ? resumeSessionId : (launched.resumeSessionId ?? null),
     startedAt: new Date().toISOString(),
     executionDirectory,
+    terminalGeometry: launchGeometry.terminalGeometry,
+    frameSize: launchGeometry.frameSize,
   }
 }

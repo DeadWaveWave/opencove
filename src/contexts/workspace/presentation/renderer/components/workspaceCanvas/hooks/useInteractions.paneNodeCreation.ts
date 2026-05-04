@@ -1,6 +1,10 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
-import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import {
+  DEFAULT_AGENT_SETTINGS,
+  type StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
+import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
@@ -33,6 +37,7 @@ export async function createTerminalNodeAtFlowPosition({
   workspaceId,
   defaultTerminalProfileId,
   standardWindowSizeBucket,
+  terminalFontSize = DEFAULT_AGENT_SETTINGS.terminalFontSize,
   workspacePath,
   environmentVariables,
   spacesRef,
@@ -47,6 +52,7 @@ export async function createTerminalNodeAtFlowPosition({
   workspaceId: string
   defaultTerminalProfileId: string | null
   standardWindowSizeBucket: StandardWindowSizeBucket
+  terminalFontSize?: number
   workspacePath: string
   environmentVariables?: Record<string, string>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -65,6 +71,10 @@ export async function createTerminalNodeAtFlowPosition({
     cursorAnchor,
     resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
   )
+  const launchGeometry = resolveTerminalPtyGeometryForNodeFrame({
+    ...resolveDefaultTerminalWindowSize(standardWindowSizeBucket),
+    terminalFontSize,
+  })
 
   let targetSpace = findContainingSpaceByAnchor(spacesRef.current, cursorAnchor)
   const launchWorkspaceContext = await resolveTerminalLaunchWorkspaceContext({
@@ -115,8 +125,8 @@ export async function createTerminalNodeAtFlowPosition({
             mountId,
             cwdUri: spawnCwdUri,
             profileId: defaultTerminalProfileId,
-            cols: 80,
-            rows: 24,
+            cols: launchGeometry.cols,
+            rows: launchGeometry.rows,
             ...(environmentVariables && Object.keys(environmentVariables).length > 0
               ? { env: environmentVariables }
               : {}),
@@ -125,8 +135,8 @@ export async function createTerminalNodeAtFlowPosition({
       : await window.opencoveApi.pty.spawn({
           cwd: resolvedCwd,
           profileId: defaultTerminalProfileId ?? undefined,
-          cols: 80,
-          rows: 24,
+          cols: launchGeometry.cols,
+          rows: launchGeometry.rows,
           ...(environmentVariables && Object.keys(environmentVariables).length > 0
             ? { env: environmentVariables }
             : {}),
@@ -148,6 +158,7 @@ export async function createTerminalNodeAtFlowPosition({
     sessionId: spawned.sessionId,
     profileId: spawned.profileId,
     runtimeKind: spawned.runtimeKind,
+    terminalGeometry: launchGeometry,
     title: resolvedTitle,
     anchor: nodeAnchor,
     kind: 'terminal',
@@ -289,6 +300,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   spacesRef,
   nodesRef,
   standardWindowSizeBucket,
+  terminalFontSize,
   setNodes,
   onSpacesChange,
   createNodeForSession,
@@ -301,6 +313,7 @@ export async function createTerminalNodeFromPaneContextMenu({
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
+  terminalFontSize?: number
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
@@ -319,6 +332,7 @@ export async function createTerminalNodeFromPaneContextMenu({
     workspaceId: '',
     defaultTerminalProfileId,
     standardWindowSizeBucket,
+    terminalFontSize,
     workspacePath,
     environmentVariables,
     spacesRef,

@@ -44,6 +44,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 💅 Changed
 - Workspace canvas: note-style inline title editing now also applies to terminal, agent terminal, and task nodes, with text-only edit hit areas, drag-safe blank headers, placeholder titles, and long-title rendering fixes. (#226)
+- Workspace canvas: double-clicking the minimap now recenters the viewport on the target region without changing the current zoom level. (#222)
 - UI: project sidebar agent lists are now collapsible with task-first single-line rows, provider icons, inline title editing, and synced color accents. (#205)
 - Worker: packaged Desktop is now local-only for Home Worker, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162)
 - Worker: packaged Desktop now uses Local Worker mode, auto-repairs legacy standalone/remote configs on launch, recovers cleanly if local-worker startup fails, and boots the packaged local worker without Electron-only runtime imports. (#162, #195)
@@ -69,6 +70,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Workspace canvas: guard transient detached terminal renderer sync during task drag so dragging nodes no longer crashes the renderer. (#224)
+- Windows agents: restore native Codex/Claude/OpenCode launch and restart recovery, stabilize task-launched Claude restore, and keep OpenCode WebGL terminal content aligned without stale side residue. (#221)
 - Terminal: make automatic display-consistency shared reference match manual capture under canvas zoom, and defer zoom-time DPR settle to reduce intermittent terminal content size twitching. (#218)
 - Workspace canvas: preserve trackpad canvas wheel ownership across idle hover gaps until explicit pointer retargeting, so terminals no longer steal the next two-finger canvas pan after a brief pause. (#219)
 - Agent: centralize local executable resolution with per-provider overrides so provider availability, model listing, hydrate/resume, and launch stay consistent across GUI-launched shell environments. (#210)

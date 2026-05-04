@@ -28,23 +28,6 @@ type InternalTerminal = Terminal & {
 
 const terminalEffectiveDprControllers = new WeakMap<Terminal, TerminalEffectiveDprController>()
 const DPR_EPSILON = 0.001
-const TERMINAL_PIXEL_SNAP_DEVICE_PIXEL_RATIO = 2
-
-type TerminalCssGeometrySnapshot = {
-  canvasWidth: number | null
-  canvasHeight: number | null
-  cellWidth: number | null
-  cellHeight: number | null
-  screenWidthStyle: string | null
-  screenHeightStyle: string | null
-  viewportWidthStyle: string | null
-  viewportHeightStyle: string | null
-  canvasStyleSizes: Array<{
-    element: HTMLCanvasElement
-    width: string
-    height: string
-  }>
-}
 
 function normalizePositiveNumber(value: number, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback
@@ -67,6 +50,8 @@ export type TerminalScrollStateSnapshot = {
   baseY: number | null
   viewportY: number | null
   isUserScrolling: boolean | null
+  offsetFromBottom: number | null
+  wasAtBottom: boolean | null
 }
 
 export function captureTerminalScrollState(terminal: Terminal): TerminalScrollStateSnapshot {
@@ -90,6 +75,20 @@ export function captureTerminalScrollState(terminal: Terminal): TerminalScrollSt
       typeof terminalCore._core?._bufferService?.isUserScrolling === 'boolean'
         ? terminalCore._core._bufferService.isUserScrolling
         : null,
+    offsetFromBottom:
+      typeof activeBuffer?.baseY === 'number' &&
+      Number.isFinite(activeBuffer.baseY) &&
+      typeof activeBuffer?.viewportY === 'number' &&
+      Number.isFinite(activeBuffer.viewportY)
+        ? Math.max(0, activeBuffer.baseY - activeBuffer.viewportY)
+        : null,
+    wasAtBottom:
+      typeof activeBuffer?.baseY === 'number' &&
+      Number.isFinite(activeBuffer.baseY) &&
+      typeof activeBuffer?.viewportY === 'number' &&
+      Number.isFinite(activeBuffer.viewportY)
+        ? activeBuffer.viewportY >= activeBuffer.baseY
+        : null,
   }
 }
 
@@ -111,150 +110,46 @@ export function restoreTerminalScrollState(
     }
   }
 
-  if (typeof snapshot.isUserScrolling === 'boolean' && terminalCore._core?._bufferService) {
-    terminalCore._core._bufferService.isUserScrolling = snapshot.isUserScrolling
+  const currentBaseY =
+    typeof terminal.buffer?.active?.baseY === 'number' &&
+    Number.isFinite(terminal.buffer.active.baseY)
+      ? terminal.buffer.active.baseY
+      : snapshot.baseY
+  const resolvedViewportY = (() => {
+    if (typeof currentBaseY === 'number' && Number.isFinite(currentBaseY)) {
+      if (snapshot.wasAtBottom === true) {
+        return currentBaseY
+      }
+
+      if (
+        typeof snapshot.offsetFromBottom === 'number' &&
+        Number.isFinite(snapshot.offsetFromBottom)
+      ) {
+        return Math.max(0, currentBaseY - snapshot.offsetFromBottom)
+      }
+
+      return Math.min(Math.max(0, snapshot.viewportY), currentBaseY)
+    }
+
+    return Math.max(0, snapshot.viewportY)
+  })()
+  const nextIsUserScrolling =
+    typeof snapshot.isUserScrolling === 'boolean'
+      ? snapshot.isUserScrolling
+      : typeof currentBaseY === 'number' && Number.isFinite(currentBaseY)
+        ? resolvedViewportY < currentBaseY
+        : null
+
+  if (typeof nextIsUserScrolling === 'boolean' && terminalCore._core?._bufferService) {
+    terminalCore._core._bufferService.isUserScrolling = nextIsUserScrolling
   }
   if (terminalCore._core?._bufferService?.buffer) {
-    terminalCore._core._bufferService.buffer.ydisp = snapshot.viewportY
+    terminalCore._core._bufferService.buffer.ydisp = resolvedViewportY
   }
 
-  terminalCore._core?._viewport?.queueSync?.(snapshot.viewportY)
-  terminalCore._core?._viewport?.scrollToLine?.(snapshot.viewportY, true)
-  terminal.scrollToLine(snapshot.viewportY)
-}
-
-function captureTerminalCssGeometry(terminal: Terminal): TerminalCssGeometrySnapshot {
-  const renderDimensions = (
-    terminal as Terminal & {
-      _core?: {
-        _renderService?: {
-          dimensions?: {
-            css?: {
-              canvas?: { width?: number; height?: number }
-              cell?: { width?: number; height?: number }
-            }
-          }
-        }
-      }
-    }
-  )._core?._renderService?.dimensions
-
-  const terminalRoot =
-    terminal.element && typeof terminal.element.querySelector === 'function'
-      ? terminal.element
-      : null
-  const screenElement =
-    terminalRoot?.querySelector('.xterm-screen') instanceof HTMLElement
-      ? (terminalRoot.querySelector('.xterm-screen') as HTMLElement)
-      : null
-  const viewportElement =
-    terminalRoot?.querySelector('.xterm-viewport') instanceof HTMLElement
-      ? (terminalRoot.querySelector('.xterm-viewport') as HTMLElement)
-      : null
-  const canvasStyleSizes =
-    screenElement?.querySelectorAll('canvas') instanceof NodeList
-      ? Array.from(screenElement.querySelectorAll('canvas')).filter(
-          (node): node is HTMLCanvasElement => node instanceof HTMLCanvasElement,
-        )
-      : []
-
-  return {
-    canvasWidth:
-      typeof renderDimensions?.css?.canvas?.width === 'number' &&
-      Number.isFinite(renderDimensions.css.canvas.width)
-        ? renderDimensions.css.canvas.width
-        : null,
-    canvasHeight:
-      typeof renderDimensions?.css?.canvas?.height === 'number' &&
-      Number.isFinite(renderDimensions.css.canvas.height)
-        ? renderDimensions.css.canvas.height
-        : null,
-    cellWidth:
-      typeof renderDimensions?.css?.cell?.width === 'number' &&
-      Number.isFinite(renderDimensions.css.cell.width)
-        ? renderDimensions.css.cell.width
-        : null,
-    cellHeight:
-      typeof renderDimensions?.css?.cell?.height === 'number' &&
-      Number.isFinite(renderDimensions.css.cell.height)
-        ? renderDimensions.css.cell.height
-        : null,
-    screenWidthStyle: screenElement?.style.width ?? null,
-    screenHeightStyle: screenElement?.style.height ?? null,
-    viewportWidthStyle: viewportElement?.style.width ?? null,
-    viewportHeightStyle: viewportElement?.style.height ?? null,
-    canvasStyleSizes: canvasStyleSizes.map(element => ({
-      element,
-      width: element.style.width,
-      height: element.style.height,
-    })),
-  }
-}
-
-function restoreTerminalCssGeometry(
-  terminal: Terminal,
-  snapshot: TerminalCssGeometrySnapshot,
-): void {
-  const renderDimensions = (
-    terminal as Terminal & {
-      _core?: {
-        _renderService?: {
-          dimensions?: {
-            css?: {
-              canvas?: { width?: number; height?: number }
-              cell?: { width?: number; height?: number }
-            }
-          }
-        }
-      }
-    }
-  )._core?._renderService?.dimensions
-
-  if (snapshot.canvasWidth !== null && renderDimensions?.css?.canvas) {
-    renderDimensions.css.canvas.width = snapshot.canvasWidth
-  }
-  if (snapshot.canvasHeight !== null && renderDimensions?.css?.canvas) {
-    renderDimensions.css.canvas.height = snapshot.canvasHeight
-  }
-  if (snapshot.cellWidth !== null && renderDimensions?.css?.cell) {
-    renderDimensions.css.cell.width = snapshot.cellWidth
-  }
-  if (snapshot.cellHeight !== null && renderDimensions?.css?.cell) {
-    renderDimensions.css.cell.height = snapshot.cellHeight
-  }
-
-  const terminalRoot =
-    terminal.element && typeof terminal.element.querySelector === 'function'
-      ? terminal.element
-      : null
-  const screenElement =
-    terminalRoot?.querySelector('.xterm-screen') instanceof HTMLElement
-      ? (terminalRoot.querySelector('.xterm-screen') as HTMLElement)
-      : null
-  const viewportElement =
-    terminalRoot?.querySelector('.xterm-viewport') instanceof HTMLElement
-      ? (terminalRoot.querySelector('.xterm-viewport') as HTMLElement)
-      : null
-
-  if (screenElement && snapshot.screenWidthStyle !== null) {
-    screenElement.style.width = snapshot.screenWidthStyle
-  }
-  if (screenElement && snapshot.screenHeightStyle !== null) {
-    screenElement.style.height = snapshot.screenHeightStyle
-  }
-  if (viewportElement && snapshot.viewportWidthStyle !== null) {
-    viewportElement.style.width = snapshot.viewportWidthStyle
-  }
-  if (viewportElement && snapshot.viewportHeightStyle !== null) {
-    viewportElement.style.height = snapshot.viewportHeightStyle
-  }
-  for (const canvasSnapshot of snapshot.canvasStyleSizes) {
-    if (!canvasSnapshot.element.isConnected) {
-      continue
-    }
-    canvasSnapshot.element.style.width = canvasSnapshot.width
-    canvasSnapshot.element.style.height = canvasSnapshot.height
-  }
+  terminalCore._core?._viewport?.queueSync?.(resolvedViewportY)
+  terminalCore._core?._viewport?.scrollToLine?.(resolvedViewportY, true)
+  terminal.scrollToLine(resolvedViewportY)
 }
 
 function updateTerminalDprDebug(
@@ -268,14 +163,15 @@ function updateTerminalDprDebug(
 }
 
 export function resolveTerminalEffectiveDevicePixelRatio({
+  baseDevicePixelRatio,
   viewportZoom,
 }: {
   baseDevicePixelRatio: number
   viewportZoom: number
 }): number {
-  const resolvedViewportZoom = normalizePositiveNumber(viewportZoom, 1)
+  void viewportZoom
 
-  return TERMINAL_PIXEL_SNAP_DEVICE_PIXEL_RATIO * Math.max(1, resolvedViewportZoom)
+  return normalizePositiveNumber(baseDevicePixelRatio, 1)
 }
 
 export function installTerminalEffectiveDevicePixelRatioController({
@@ -358,10 +254,8 @@ export function installTerminalEffectiveDevicePixelRatioController({
     }
 
     const scrollState = captureTerminalScrollState(terminal)
-    const cssGeometry = captureTerminalCssGeometry(terminal)
     appliedEffectiveDpr = nextEffectiveDpr
     fireDprChange(appliedEffectiveDpr)
-    restoreTerminalCssGeometry(terminal, cssGeometry)
     restoreTerminalScrollState(terminal, scrollState)
     onAfterApply?.()
     updateTerminalDprDebug(internalTerminal, {

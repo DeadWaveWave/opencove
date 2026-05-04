@@ -127,6 +127,8 @@ interface ResolvedSessionLaunchSpawn {
   args: string[]
   cwd: string
   env?: NodeJS.ProcessEnv
+  profileId: string | null
+  runtimeKind: 'windows' | 'wsl' | 'posix'
 }
 
 export async function resolveSessionLaunchSpawn(
@@ -151,6 +153,7 @@ export async function resolveSessionLaunchSpawn(
       profileId: input.defaultTerminalProfileId,
       command: resolvedInvocation.command,
       args: resolvedInvocation.args,
+      useProfile: !input.provider,
       ...(input.env ? { env: input.env } : {}),
     })
   }
@@ -160,5 +163,7 @@ export async function resolveSessionLaunchSpawn(
     args: resolvedInvocation.args,
     cwd: input.workingDirectory,
     env: input.env ? { ...process.env, ...input.env } : undefined,
+    profileId: null,
+    runtimeKind: process.platform === 'win32' ? 'windows' : 'posix',
   }
 }

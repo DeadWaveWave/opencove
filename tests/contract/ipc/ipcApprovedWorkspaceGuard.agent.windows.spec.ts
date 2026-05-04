@@ -69,7 +69,7 @@ afterEach(() => {
 })
 
 describe('IPC approved workspace guards on Windows', () => {
-  it('routes Windows agent launches through the default terminal profile even for .cmd shims', async () => {
+  it('bypasses the default terminal profile for host-resolved Windows agent shims', async () => {
     vi.resetModules()
     Object.defineProperty(process, 'platform', {
       value: 'win32',
@@ -149,25 +149,32 @@ describe('IPC approved workspace guards on Windows', () => {
 
       expect(runtime.spawnSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          command: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+          command: 'cmd.exe',
           cwd: 'C:\\approved',
-          args: expect.arrayContaining(['-NoLogo', '-Command']),
+          args: [
+            '/d',
+            '/c',
+            'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
+            '--dangerously-bypass-approvals-and-sandbox',
+            'hello',
+          ],
         }),
       )
 
-      const spawnOptions = vi.mocked(runtime.spawnSession).mock.calls[0]?.[0]
-      expect(spawnOptions?.args[2]).toContain(
-        'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
-      )
       expect(result).toEqual(
         expect.objectContaining({
-          command: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
-          profileId: 'powershell',
+          command: 'cmd.exe',
+          profileId: null,
           runtimeKind: 'windows',
-          args: expect.arrayContaining(['-NoLogo', '-Command']),
+          args: [
+            '/d',
+            '/c',
+            'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
+            '--dangerously-bypass-approvals-and-sandbox',
+            'hello',
+          ],
         }),
       )
-      expect(result.args[2]).toContain('C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd')
     } finally {
       if (typeof previousNodeEnv === 'string') {
         process.env.NODE_ENV = previousNodeEnv

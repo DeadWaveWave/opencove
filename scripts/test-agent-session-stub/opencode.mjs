@@ -1,7 +1,20 @@
 import fs from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import os from 'node:os'
 import { join } from 'node:path'
 import { sleep } from './sleep.mjs'
+
+async function openWritableSqliteDb(dbPath) {
+  const require = createRequire(import.meta.url)
+
+  try {
+    const sqlite = require('node:sqlite')
+    return new sqlite.DatabaseSync(dbPath)
+  } catch {
+    const Database = require('better-sqlite3')
+    return new Database(dbPath)
+  }
+}
 
 export async function runOpenCodeIdleWithMessageScenario(cwd) {
   const hostname = process.env.OPENCOVE_OPENCODE_SERVER_HOSTNAME?.trim() ?? ''
@@ -18,14 +31,10 @@ export async function runOpenCodeIdleWithMessageScenario(cwd) {
   const opencodeDir = join(os.homedir(), '.local', 'share', 'opencode')
   const dbPath = join(opencodeDir, 'opencode.db')
   await fs.mkdir(opencodeDir, { recursive: true })
-
-  const { createRequire } = await import('node:module')
-  const require = createRequire(import.meta.url)
-  const Database = require('better-sqlite3')
-  const db = new Database(dbPath)
+  const db = await openWritableSqliteDb(dbPath)
 
   try {
-    db.pragma('journal_mode = WAL')
+    db.exec('PRAGMA journal_mode = WAL;')
     db.exec(`
       CREATE TABLE IF NOT EXISTS session (
         id TEXT PRIMARY KEY,

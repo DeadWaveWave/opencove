@@ -128,6 +128,44 @@ describe('locateAgentResumeSessionId', () => {
     expect(detected).toBe(sessionId)
   })
 
+  it('falls back to the closest claude ancestor project directory for subdirectory launches', async () => {
+    const workspaceRoot = '/Users/tester/Development/cove'
+    const cwd = join(workspaceRoot, 'docs')
+    const startedAtMs = 1_707_000_000_000
+    const exactProjectDir = toClaudeProjectDir(cwd)
+    const ancestorProjectDir = toClaudeProjectDir(workspaceRoot)
+    const targetFile = join(ancestorProjectDir, 'ancestor-session.jsonl')
+
+    fsPromisesMock.readdir.mockImplementation(async (directory: string) => {
+      if (directory === exactProjectDir) {
+        return []
+      }
+
+      if (directory === ancestorProjectDir) {
+        return [createFileEntry('ancestor-session.jsonl')]
+      }
+
+      return []
+    })
+
+    fsPromisesMock.stat.mockImplementation(async (filePath: string) => {
+      if (filePath === targetFile) {
+        return { mtimeMs: startedAtMs + 150 }
+      }
+
+      return { mtimeMs: startedAtMs - 20_000 }
+    })
+
+    const detected = await locateAgentResumeSessionId({
+      provider: 'claude-code',
+      cwd,
+      startedAtMs,
+      timeoutMs: 10,
+    })
+
+    expect(detected).toBe('ancestor-session')
+  })
+
   it('locates a gemini session by matching the project root and chat metadata', async () => {
     const cwd = '/Users/tester/Development/cove'
     const startedAtMs = Date.parse('2026-03-15T07:58:10.970Z')

@@ -20,6 +20,7 @@ interface ComputeHydratedCliPathInput {
   currentPath: string
   homeDir: string
   shellPathFromLogin: string
+  env?: NodeJS.ProcessEnv
 }
 
 interface ComputeHydratedLocaleEnvInput {
@@ -54,6 +55,29 @@ function dedupePathSegments(segments: string[]): string[] {
   }
 
   return unique
+}
+
+function normalizePathSegment(value: string | null | undefined): string | null {
+  const normalized = typeof value === 'string' ? value.trim() : ''
+  return normalized.length > 0 ? normalized : null
+}
+
+function appendPathSegment(segments: string[], value: string | null | undefined): void {
+  const normalized = normalizePathSegment(value)
+  if (normalized) {
+    segments.push(normalized)
+  }
+}
+
+function appendJoinedPathSegment(
+  segments: string[],
+  basePath: string | null | undefined,
+  ...parts: string[]
+): void {
+  const normalizedBase = normalizePathSegment(basePath)
+  if (normalizedBase) {
+    segments.push([normalizedBase, ...parts].join('\\'))
+  }
 }
 
 function resolvePosixShellPath(shellPath: string | undefined): string {
@@ -163,9 +187,29 @@ function resolveUtf8LocaleFallback(platform: NodeJS.Platform): string {
   return platform === 'darwin' ? 'en_US.UTF-8' : 'C.UTF-8'
 }
 
-export function buildAdditionalPathSegments(platform: NodeJS.Platform, homeDir: string): string[] {
+export function buildAdditionalPathSegments(
+  platform: NodeJS.Platform,
+  homeDir: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string[] {
   if (platform === 'win32') {
-    return []
+    const segments: string[] = []
+    appendPathSegment(segments, env.NVM_SYMLINK)
+    appendPathSegment(segments, env.PNPM_HOME)
+    appendJoinedPathSegment(segments, env.APPDATA, 'npm')
+    appendJoinedPathSegment(segments, env.LOCALAPPDATA, 'pnpm')
+    appendJoinedPathSegment(segments, env.LOCALAPPDATA, 'Volta', 'bin')
+    appendJoinedPathSegment(segments, homeDir, 'AppData', 'Roaming', 'npm')
+    appendJoinedPathSegment(segments, homeDir, 'AppData', 'Local', 'pnpm')
+    appendJoinedPathSegment(segments, homeDir, 'AppData', 'Local', 'Volta', 'bin')
+    appendJoinedPathSegment(segments, homeDir, 'scoop', 'shims')
+    appendJoinedPathSegment(segments, env.SCOOP, 'shims')
+    appendJoinedPathSegment(segments, env.ProgramData, 'scoop', 'shims')
+    appendJoinedPathSegment(segments, env.ChocolateyInstall, 'bin')
+    appendJoinedPathSegment(segments, env.ProgramFiles, 'nodejs')
+    appendJoinedPathSegment(segments, env.ProgramFiles, 'nodejs', 'node_global')
+    appendJoinedPathSegment(segments, env['ProgramFiles(x86)'], 'nodejs')
+    return dedupePathSegments(segments)
   }
 
   const segments: string[] = []
@@ -188,7 +232,7 @@ export function computeHydratedCliPath(input: ComputeHydratedCliPathInput): stri
 
   const currentSegments = splitPath(input.currentPath, delimiter)
   const shellSegments = splitPath(input.shellPathFromLogin, delimiter)
-  const additionalSegments = buildAdditionalPathSegments(input.platform, input.homeDir)
+  const additionalSegments = buildAdditionalPathSegments(input.platform, input.homeDir, input.env)
   const merged = dedupePathSegments([...currentSegments, ...shellSegments, ...additionalSegments])
 
   return merged.join(delimiter)

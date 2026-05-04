@@ -13,6 +13,8 @@ export type PreferredTerminalRendererMode = 'auto' | 'dom'
 export interface PreferredTerminalRendererOptions {
   preferredMode?: PreferredTerminalRendererMode
   webglRendererBudget?: number
+  runtimePlatform?: string
+  terminalKind?: 'agent' | 'terminal'
   onRendererKindChange?: (kind: ActiveTerminalRenderer['kind']) => void
   onRendererIssue?: (issue: { reason: 'context_loss'; forceDom: boolean }) => void
 }
@@ -58,16 +60,47 @@ function hasWebglRendererBudget(value: number | undefined): boolean {
   return activeWebglRendererCount < resolveWebglRendererBudget(value)
 }
 
+function resolveRuntimePlatform(explicitPlatform: string | undefined): string | null {
+  if (typeof explicitPlatform === 'string' && explicitPlatform.length > 0) {
+    return explicitPlatform
+  }
+
+  return typeof window !== 'undefined' ? (window.opencoveApi?.meta?.platform ?? null) : null
+}
+
+function requiresWebglRenderer(
+  terminalProvider: AgentProvider | null | undefined,
+  options: PreferredTerminalRendererOptions,
+): boolean {
+  return terminalProvider === 'opencode' && options.terminalKind === 'agent'
+}
+
+function shouldForceDomRenderer(
+  terminalProvider: AgentProvider | null | undefined,
+  options: PreferredTerminalRendererOptions,
+): boolean {
+  return (
+    resolveRuntimePlatform(options.runtimePlatform) === 'win32' &&
+    !requiresWebglRenderer(terminalProvider, options)
+  )
+}
+
 export function resetPreferredTerminalRendererStateForTests(): void {
   activeWebglRendererCount = 0
 }
 
 export function activatePreferredTerminalRenderer(
   terminal: Terminal,
-  _terminalProvider?: AgentProvider | null,
+  terminalProvider?: AgentProvider | null,
   options: PreferredTerminalRendererOptions = {},
 ): ActiveTerminalRenderer {
-  if (options.preferredMode === 'dom') {
+  const mustUseWebgl = requiresWebglRenderer(terminalProvider, options)
+
+  if (options.preferredMode === 'dom' && !mustUseWebgl) {
+    return createDomRenderer()
+  }
+
+  if (shouldForceDomRenderer(terminalProvider, options)) {
     return createDomRenderer()
   }
 
@@ -75,15 +108,12 @@ export function activatePreferredTerminalRenderer(
     return createDomRenderer()
   }
 
-  if (!hasWebglRendererBudget(options.webglRendererBudget)) {
+  if (!mustUseWebgl && !hasWebglRendererBudget(options.webglRendererBudget)) {
     return createDomRenderer()
   }
 
   try {
-    const webglAddonOptions = {
-      customGlyphs: true,
-    } as unknown as ConstructorParameters<typeof WebglAddon>[0]
-    const webglAddon = new WebglAddon(webglAddonOptions)
+    const webglAddon = new WebglAddon()
     terminal.loadAddon(webglAddon)
 
     let disposed = false
@@ -103,7 +133,7 @@ export function activatePreferredTerminalRenderer(
       options.onRendererKindChange?.('dom')
       options.onRendererIssue?.({
         reason: 'context_loss',
-        forceDom: true,
+        forceDom: !mustUseWebgl,
       })
       contextLossDisposable.dispose()
       webglAddon.dispose()

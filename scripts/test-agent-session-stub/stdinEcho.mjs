@@ -1,5 +1,7 @@
 import { sleep } from './sleep.mjs'
 
+const STDIN_ECHO_SCENARIO_LIFETIME_MS = 180_000
+
 function bufferToHex(buffer) {
   if (!buffer || buffer.length === 0) {
     return ''
@@ -21,5 +23,5 @@ export async function runStdinEchoScenario() {
   })
 
   // Keep alive long enough for E2E to send a few keystrokes.
-  await sleep(20_000)
+  await sleep(STDIN_ECHO_SCENARIO_LIFETIME_MS)
 }

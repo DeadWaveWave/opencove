@@ -1,109 +1,113 @@
 import { describe, expect, it } from 'vitest'
-import {
-  DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-  DEFAULT_WORKSPACE_VIEWPORT,
-  type PersistedWorkspaceState,
-} from '../../../src/contexts/workspace/presentation/renderer/types'
-import { toShellWorkspaceState } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
+import { mergeHydratedNode } from '../../../src/app/renderer/shell/hooks/useHydrateAppState.helpers'
+import { repairRuntimeNodeFrame } from '../../../src/app/renderer/shell/hooks/runtimeNodeFrameRepair'
+import type { TerminalNodeData } from '../../../src/contexts/workspace/presentation/renderer/types'
 
-function createPersistedWorkspace(): PersistedWorkspaceState {
+function createRuntimeNode(overrides: Partial<TerminalNodeData>): {
+  id: string
+  type: string
+  position: { x: number; y: number }
+  data: TerminalNodeData
+} {
   return {
-    id: 'workspace-1',
-    name: 'Workspace 1',
-    path: '/tmp/workspace-1',
-    worktreesRoot: '',
-    pullRequestBaseBranchOptions: [],
-    viewport: DEFAULT_WORKSPACE_VIEWPORT,
-    isMinimapVisible: DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-    activeSpaceId: null,
-    spaceArchiveRecords: [],
-    spaces: [],
-    nodes: [
-      {
-        id: 'terminal-1',
-        sessionId: 'terminal-session',
-        title: 'Terminal',
-        position: { x: 10, y: 20 },
-        width: 320,
-        height: 240,
-        kind: 'terminal',
-        status: null,
-        startedAt: null,
-        endedAt: null,
-        exitCode: null,
-        lastError: null,
-        scrollback: 'terminal history',
-        executionDirectory: '/tmp/workspace-1',
-        expectedDirectory: '/tmp/workspace-1',
-        agent: null,
-        task: null,
-      },
-      {
-        id: 'agent-1',
-        sessionId: 'agent-session',
-        title: 'codex · gpt-5.4',
-        position: { x: 40, y: 60 },
-        width: 360,
-        height: 260,
+    id: 'terminal-node-1',
+    type: 'terminalNode',
+    position: { x: 0, y: 0 },
+    data: {
+      sessionId: '',
+      title: 'terminal',
+      width: 520,
+      height: 360,
+      kind: 'terminal',
+      status: null,
+      startedAt: null,
+      endedAt: null,
+      exitCode: null,
+      lastError: null,
+      scrollback: null,
+      agent: null,
+      task: null,
+      note: null,
+      image: null,
+      document: null,
+      website: null,
+      ...overrides,
+    },
+  }
+}
+
+describe('mergeHydratedNode', () => {
+  it('keeps worker-prepared terminal geometry in the runtime node projection', () => {
+    const merged = mergeHydratedNode(
+      createRuntimeNode({ terminalGeometry: null }),
+      createRuntimeNode({
+        sessionId: 'runtime-session',
+        terminalGeometry: { cols: 72, rows: 20 },
+      }),
+    )
+
+    expect(merged.data.terminalGeometry).toEqual({ cols: 72, rows: 20 })
+  })
+})
+
+describe('repairRuntimeNodeFrame', () => {
+  it('does not widen persisted OpenCode agent nodes beyond canonical agent sizing', () => {
+    const repaired = repairRuntimeNodeFrame(
+      createRuntimeNode({
         kind: 'agent',
-        status: 'standby',
-        startedAt: '2026-04-13T00:00:00.000Z',
-        endedAt: null,
-        exitCode: null,
-        lastError: null,
-        scrollback: 'agent placeholder history',
+        width: 516,
+        height: 724,
         agent: {
-          provider: 'codex',
+          provider: 'opencode',
           prompt: '',
-          model: 'gpt-5.4',
-          effectiveModel: 'gpt-5.4',
-          launchMode: 'resume',
-          resumeSessionId: 'resume-session',
-          resumeSessionIdVerified: true,
-          executionDirectory: '/tmp/workspace-1',
-          expectedDirectory: '/tmp/workspace-1',
+          model: null,
+          effectiveModel: null,
+          launchMode: 'new',
+          resumeSessionId: null,
+          resumeSessionIdVerified: false,
+          executionDirectory: 'D:\\Development\\opencove',
+          expectedDirectory: 'D:\\Development\\opencove',
           directoryMode: 'workspace',
           customDirectory: null,
           shouldCreateDirectory: false,
           taskId: null,
         },
-        task: null,
-      },
-      {
-        id: 'note-1',
-        title: 'Note',
-        position: { x: 80, y: 100 },
-        width: 200,
-        height: 140,
-        kind: 'note',
-        status: null,
-        startedAt: null,
-        endedAt: null,
-        exitCode: null,
-        lastError: null,
-        scrollback: null,
-        agent: null,
-        task: {
-          text: 'keep me',
+      }) as never,
+    )
+
+    expect(repaired.data.width).toBe(516)
+    expect(repaired.data.height).toBe(724)
+    expect(repaired.initialWidth).toBeUndefined()
+    expect(repaired.initialHeight).toBeUndefined()
+  })
+
+  it('repairs undersized agent nodes to the canonical minimum frame', () => {
+    const repaired = repairRuntimeNodeFrame(
+      createRuntimeNode({
+        kind: 'agent',
+        width: 360,
+        height: 500,
+        agent: {
+          provider: 'opencode',
+          prompt: '',
+          model: null,
+          effectiveModel: null,
+          launchMode: 'new',
+          resumeSessionId: null,
+          resumeSessionIdVerified: false,
+          executionDirectory: 'D:\\Development\\opencove',
+          expectedDirectory: 'D:\\Development\\opencove',
+          directoryMode: 'workspace',
+          customDirectory: null,
+          shouldCreateDirectory: false,
+          taskId: null,
         },
-      },
-    ],
-  }
-}
+      }) as never,
+    )
 
-describe('toShellWorkspaceState', () => {
-  it('clears runtime session ids and drops agent renderer placeholders on cold start', () => {
-    const state = toShellWorkspaceState(createPersistedWorkspace(), {
-      dropRuntimeSessionIds: true,
-    })
-
-    expect(state.nodes.map(node => [node.id, node.data.sessionId])).toEqual([
-      ['terminal-1', ''],
-      ['agent-1', ''],
-      ['note-1', ''],
-    ])
-    expect(state.nodes[0]?.data.scrollback).toBe('terminal history')
-    expect(state.nodes[1]?.data.scrollback).toBeNull()
-    expect(state.nodes[1]?.data.agent?.resumeSessionId).toBe('resume-session')
+    expect(repaired.data.width).toBe(400)
+    expect(repaired.data.height).toBe(520)
+    expect(repaired.initialWidth).toBe(400)
+    expect(repaired.initialHeight).toBe(520)
   })
 })

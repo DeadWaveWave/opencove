@@ -3,6 +3,8 @@ import type { WindowDisplayInfo } from '@shared/contracts/dto'
 import type { Size, TerminalNodeData } from '../types'
 export {
   WORKSPACE_CANONICAL_GUTTER_PX,
+  resolveAgentNodeMinSize,
+  resolveAgentNodeSize,
   resolveCanonicalBucketCellSize,
   resolveCanonicalNodeGridSpan,
   resolveCanonicalNodeMaxSize,

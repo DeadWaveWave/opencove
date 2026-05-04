@@ -231,6 +231,14 @@ describe('Pty runtime provider watchers', () => {
       launchMode: 'new',
       resumeSessionId: null,
       startedAtMs: Date.now(),
+      geminiDiscoveryCursor: {
+        entriesByFilePath: {
+          '/tmp/workspace/.gemini/chats/session-existing.json': {
+            signature: 'existing-signature',
+            hadRelevantTurn: true,
+          },
+        },
+      },
     })
 
     await vi.advanceTimersByTimeAsync(0)
@@ -243,8 +251,20 @@ describe('Pty runtime provider watchers', () => {
     await vi.advanceTimersByTimeAsync(200)
     await vi.advanceTimersByTimeAsync(0)
 
-    expect(captureGeminiSessionDiscoveryCursor).toHaveBeenCalledTimes(1)
+    expect(captureGeminiSessionDiscoveryCursor).not.toHaveBeenCalled()
     expect(locateGeminiResumeSessionId).toHaveBeenCalledTimes(1)
+    expect(locateGeminiResumeSessionId).toHaveBeenCalledWith(
+      expect.objectContaining({
+        discoveryCursor: {
+          entriesByFilePath: {
+            '/tmp/workspace/.gemini/chats/session-existing.json': {
+              signature: 'existing-signature',
+              hadRelevantTurn: true,
+            },
+          },
+        },
+      }),
+    )
     expect(resolveSessionFilePath).toHaveBeenCalledTimes(1)
     expect(geminiWatcherStart).toHaveBeenCalledTimes(1)
     expect(

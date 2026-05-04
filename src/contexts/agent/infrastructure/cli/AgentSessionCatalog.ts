@@ -6,7 +6,9 @@ import type {
   ListAgentSessionsInput,
   ListAgentSessionsResult,
 } from '@shared/contracts/dto'
-import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
+import { resolveHomeDirectoryCandidates } from '../../../../platform/os/HomeDirectory'
+import { normalizeAgentProjectRootPath } from '../AgentProjectRootPath'
+import { resolveClaudeProjectDirectoryCandidateGroups } from '../ClaudeProjectPaths'
 import { listDirectories, listFiles, parseTimestampMs } from './AgentSessionLocatorProviders.utils'
 import { listOpenCodeSessions } from './AgentSessionCatalog.openCode'
 import {
@@ -164,68 +166,80 @@ function parseCodexSessionMeta(firstLine: string): CodexSessionMeta | null {
   }
 }
 
-function toClaudeProjectDir(cwd: string): string {
-  const encodedPath = resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
-  return join(resolveHomeDirectory(), '.claude', 'projects', encodedPath)
+function toClaudeProjectDirs(cwd: string): string[] {
+  return resolveClaudeProjectDirectoryCandidateGroups(cwd)[0] ?? []
 }
 
 async function listClaudeSessions(cwd: string, limit: number): Promise<AgentSessionSummary[]> {
   const resolvedCwd = resolve(cwd)
-  const projectDir = toClaudeProjectDir(resolvedCwd)
-  const indexPath = join(projectDir, 'sessions-index.json')
-  const indexContents = await fs.readFile(indexPath, 'utf8').catch(() => null)
+  const projectDirs = toClaudeProjectDirs(resolvedCwd)
+  const indexedSessions = (
+    await Promise.all(
+      projectDirs.map(async projectDir => {
+        const indexPath = join(projectDir, 'sessions-index.json')
+        const indexContents = await fs.readFile(indexPath, 'utf8').catch(() => null)
+        if (!indexContents) {
+          return []
+        }
 
-  if (indexContents) {
-    try {
-      const parsed = JSON.parse(indexContents) as {
-        entries?: Array<{
-          sessionId?: unknown
-          projectPath?: unknown
-          firstPrompt?: unknown
-          created?: unknown
-          modified?: unknown
-          fileMtime?: unknown
-        }>
-      }
+        try {
+          const parsed = JSON.parse(indexContents) as {
+            entries?: Array<{
+              sessionId?: unknown
+              projectPath?: unknown
+              firstPrompt?: unknown
+              created?: unknown
+              modified?: unknown
+              fileMtime?: unknown
+            }>
+          }
 
-      const indexedSessions = Array.isArray(parsed.entries)
-        ? parsed.entries
-            .map(entry => {
-              const sessionId = normalizeOptionalString(entry.sessionId)
-              const projectPath =
-                typeof entry.projectPath === 'string' ? resolve(entry.projectPath.trim()) : null
+          return Array.isArray(parsed.entries)
+            ? parsed.entries
+                .map(entry => {
+                  const sessionId = normalizeOptionalString(entry.sessionId)
+                  const projectPath =
+                    typeof entry.projectPath === 'string' ? resolve(entry.projectPath.trim()) : null
 
-              if (!sessionId || projectPath !== resolvedCwd) {
-                return null
-              }
+                  if (!sessionId || projectPath !== resolvedCwd) {
+                    return null
+                  }
 
-              const startedAtMs = parseTimestampMs(entry.created)
-              const updatedAtMs =
-                parseTimestampMs(entry.modified) ?? parseTimestampMs(entry.fileMtime)
+                  const startedAtMs = parseTimestampMs(entry.created)
+                  const updatedAtMs =
+                    parseTimestampMs(entry.modified) ?? parseTimestampMs(entry.fileMtime)
 
-              return {
-                sessionId,
-                provider: 'claude-code' as const,
-                cwd: resolvedCwd,
-                title: null,
-                preview: normalizeSessionPreview(entry.firstPrompt),
-                startedAt: toIsoString(startedAtMs),
-                updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
-                source: 'claude-index' as const,
-              }
-            })
-            .filter(isNonNull)
-        : []
+                  return {
+                    sessionId,
+                    provider: 'claude-code' as const,
+                    cwd: resolvedCwd,
+                    title: null,
+                    preview: normalizeSessionPreview(entry.firstPrompt),
+                    startedAt: toIsoString(startedAtMs),
+                    updatedAt: toIsoString(updatedAtMs ?? startedAtMs),
+                    source: 'claude-index' as const,
+                  }
+                })
+                .filter(isNonNull)
+            : []
+        } catch {
+          return []
+        }
+      }),
+    )
+  ).flat()
 
-      if (indexedSessions.length > 0) {
-        return sortSessionSummaries(indexedSessions, limit)
-      }
-    } catch {
-      // fall through to jsonl scan
-    }
+  if (indexedSessions.length > 0) {
+    return sortSessionSummaries(indexedSessions, limit)
   }
 
-  const files = (await listFiles(projectDir)).filter(filePath => filePath.endsWith('.jsonl'))
+  const files = (
+    await Promise.all(
+      projectDirs.map(async projectDir => {
+        return (await listFiles(projectDir)).filter(filePath => filePath.endsWith('.jsonl'))
+      }),
+    )
+  ).flat()
   if (files.length === 0) {
     return []
   }
@@ -279,8 +293,14 @@ async function listCodexDateDirectories(rootDirectory: string): Promise<string[]
 
 async function listCodexSessions(cwd: string, limit: number): Promise<AgentSessionSummary[]> {
   const resolvedCwd = resolve(cwd)
-  const codexSessionsDir = join(resolveHomeDirectory(), '.codex', 'sessions')
-  const dayDirectories = await listCodexDateDirectories(codexSessionsDir)
+  const dayDirectories = (
+    await Promise.all(
+      resolveHomeDirectoryCandidates().map(async homeDirectory => {
+        const codexSessionsDir = join(homeDirectory, '.codex', 'sessions')
+        return await listCodexDateDirectories(codexSessionsDir)
+      }),
+    )
+  ).flat()
 
   const rolloutFiles = (
     await Promise.all(
@@ -358,15 +378,21 @@ function parseGeminiSessionSummary(rawContents: string, cwd: string): AgentSessi
 
 async function listGeminiSessions(cwd: string, limit: number): Promise<AgentSessionSummary[]> {
   const resolvedCwd = resolve(cwd)
-  const geminiTmpDir = join(resolveHomeDirectory(), '.gemini', 'tmp')
-  const projectDirectories = await listDirectories(geminiTmpDir)
+  const projectDirectories = (
+    await Promise.all(
+      resolveHomeDirectoryCandidates().map(async homeDirectory => {
+        const geminiTmpDir = join(homeDirectory, '.gemini', 'tmp')
+        return await listDirectories(geminiTmpDir)
+      }),
+    )
+  ).flat()
 
   const matchingProjectDirectories = (
     await Promise.all(
       projectDirectories.map(async projectDirectory => {
         const projectRoot = await fs
           .readFile(join(projectDirectory, '.project_root'), 'utf8')
-          .then(contents => contents.trim())
+          .then(normalizeAgentProjectRootPath)
           .catch(() => null)
 
         return projectRoot === resolvedCwd ? projectDirectory : null

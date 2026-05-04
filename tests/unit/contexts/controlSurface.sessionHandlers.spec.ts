@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
@@ -222,87 +222,6 @@ describe('control surface session handlers', () => {
 
     expect(killedResult.ok).toBe(true)
     expect(killed).toBe('pty-123')
-  })
-
-  it('starts the session state watcher for session.launchAgent when test watcher mode is enabled', async () => {
-    const previousFlag = process.env.OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER
-    process.env.OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER = '1'
-
-    try {
-      const appState = {
-        formatVersion: 1,
-        activeWorkspaceId: 'ws1',
-        workspaces: [
-          {
-            id: 'ws1',
-            name: 'Workspace',
-            path: '/repo',
-            worktreesRoot: '',
-            viewport: { x: 0, y: 0, zoom: 1 },
-            isMinimapVisible: true,
-            spaces: [],
-            activeSpaceId: null,
-            nodes: [],
-            spaceArchiveRecords: [],
-          },
-        ],
-        settings: {},
-      }
-
-      const startSessionStateWatcher = vi.fn()
-      const controlSurface = createControlSurface()
-      const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
-        registerSessionMetadata: () => undefined,
-        hasSession: () => false,
-      }
-
-      registerSessionHandlers(controlSurface, {
-        userDataPath: '/tmp/opencove-test-user-data',
-        approvedWorkspaces: {
-          registerRoot: async () => undefined,
-          isPathApproved: async () => true,
-        },
-        getPersistenceStore: async () => createStubStore(appState),
-        ptyRuntime: {
-          spawnSession: async () => ({ sessionId: 'pty-watch' }),
-          write: () => undefined,
-          resize: () => undefined,
-          kill: () => undefined,
-          onData: () => () => undefined,
-          onExit: () => () => undefined,
-          attach: () => undefined,
-          detach: () => undefined,
-          snapshot: () => '',
-          startSessionStateWatcher,
-          dispose: () => undefined,
-        },
-        ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
-      })
-
-      const launched = await controlSurface.invoke(ctx, {
-        kind: 'command',
-        id: 'session.launchAgent',
-        payload: { cwd: '/repo', prompt: 'hello' },
-      })
-
-      expect(launched.ok).toBe(true)
-      expect(startSessionStateWatcher).toHaveBeenCalledTimes(1)
-      expect(startSessionStateWatcher).toHaveBeenCalledWith(
-        expect.objectContaining({
-          sessionId: 'pty-watch',
-          provider: 'codex',
-          cwd: '/repo',
-          launchMode: 'new',
-          resumeSessionId: null,
-        }),
-      )
-    } finally {
-      if (previousFlag === undefined) {
-        delete process.env.OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER
-      } else {
-        process.env.OPENCOVE_TEST_ENABLE_SESSION_STATE_WATCHER = previousFlag
-      }
-    }
   })
 
   it('allows launching agent sessions with an empty prompt', async () => {

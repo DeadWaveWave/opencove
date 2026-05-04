@@ -58,6 +58,7 @@ export async function startWorker(options: {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1',
       OPENCOVE_USER_DATA_DIR: options.userDataDir,
+      OPENCOVE_TEST_NODE_EXECUTABLE: process.execPath,
       ...options.env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],

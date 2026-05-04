@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { join } from 'node:path'
 
 const { statMock } = vi.hoisted(() => ({
   statMock: vi.fn(),
@@ -77,7 +78,9 @@ describe('ExecutableLocator', () => {
   it('prefers shell-derived PATH entries over the current process PATH', async () => {
     setPlatform('darwin')
     process.env.PATH = '/process/bin'
-    mockExecutablePaths(['/shell/bin/codex', '/process/bin/codex'])
+    const shellCodexPath = join('/shell/bin', 'codex')
+    const processCodexPath = join('/process/bin', 'codex')
+    mockExecutablePaths([shellCodexPath, processCodexPath])
     getShellEnvironmentSnapshotMock.mockResolvedValue({
       env: { PATH: '/shell/bin' },
       shellPath: '/bin/zsh',
@@ -91,7 +94,7 @@ describe('ExecutableLocator', () => {
       command: 'codex',
     })
 
-    expect(result.executablePath).toBe('/shell/bin/codex')
+    expect(result.executablePath).toBe(shellCodexPath)
     expect(result.source).toBe('shell_env_path')
     expect(result.status).toBe('resolved')
     expect(result.diagnostics).toContain('shell captured')
@@ -118,5 +121,75 @@ describe('ExecutableLocator', () => {
       diagnostics: ['Configured override was not executable: /missing/codex'],
     })
     expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+  })
+
+  it('prefers Windows executable shims over extensionless npm launchers', async () => {
+    setPlatform('win32')
+    process.env.PATH = 'C:\\nvm4w\\nodejs'
+    process.env.PATHEXT = '.COM;.EXE;.BAT;.CMD'
+    mockExecutablePaths(['C:\\nvm4w\\nodejs\\codex', 'C:\\nvm4w\\nodejs\\codex.cmd'])
+    getShellEnvironmentSnapshotMock.mockResolvedValue({
+      env: { PATH: 'C:\\nvm4w\\nodejs' },
+      shellPath: null,
+      source: 'process_env',
+      diagnostics: ['windows env'],
+    })
+
+    const { locateExecutable } = await import('../../../src/platform/process/ExecutableLocator')
+    const result = await locateExecutable({
+      toolId: 'codex',
+      command: 'codex',
+    })
+
+    expect(result.executablePath).toBe('C:\\nvm4w\\nodejs\\codex.cmd')
+    expect(result.status).toBe('resolved')
+  })
+
+  it('upgrades Windows extensionless override paths to executable shims', async () => {
+    setPlatform('win32')
+    process.env.PATHEXT = '.COM;.EXE;.BAT;.CMD'
+    mockExecutablePaths(['C:\\nvm4w\\nodejs\\codex', 'C:\\nvm4w\\nodejs\\codex.cmd'])
+
+    const { locateExecutable } = await import('../../../src/platform/process/ExecutableLocator')
+    const result = await locateExecutable({
+      toolId: 'codex',
+      command: 'codex',
+      overridePath: 'C:\\nvm4w\\nodejs\\codex',
+    })
+
+    expect(result).toEqual({
+      toolId: 'codex',
+      command: 'codex',
+      executablePath: 'C:\\nvm4w\\nodejs\\codex.cmd',
+      source: 'override',
+      status: 'resolved',
+      diagnostics: ['Resolved codex from explicit override.'],
+    })
+    expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+  })
+
+  it('resolves Windows executables from fallback directories when PATH is incomplete', async () => {
+    setPlatform('win32')
+    process.env.PATH = 'C:\\Windows\\System32'
+    process.env.PATHEXT = '.COM;.EXE;.BAT;.CMD'
+    mockExecutablePaths(['C:\\nvm4w\\nodejs\\codex.cmd'])
+    getShellEnvironmentSnapshotMock.mockResolvedValue({
+      env: { PATH: 'C:\\Windows\\System32' },
+      shellPath: null,
+      source: 'process_env',
+      diagnostics: ['Windows uses the current process environment without shell capture.'],
+    })
+
+    const { locateExecutable } = await import('../../../src/platform/process/ExecutableLocator')
+    const result = await locateExecutable({
+      toolId: 'codex',
+      command: 'codex',
+      fallbackDirectories: ['C:\\nvm4w\\nodejs'],
+    })
+
+    expect(result.executablePath).toBe('C:\\nvm4w\\nodejs\\codex.cmd')
+    expect(result.source).toBe('fallback_directory')
+    expect(result.status).toBe('resolved')
+    expect(result.diagnostics).toContain('Resolved codex from fallback executable directories.')
   })
 })

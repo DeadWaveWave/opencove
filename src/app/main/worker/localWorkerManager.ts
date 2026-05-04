@@ -5,12 +5,14 @@ import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import type { Readable } from 'node:stream'
 import type { WorkerConnectionInfoDto, WorkerStatusResult } from '../../../shared/contracts/dto'
-import { CONTROL_SURFACE_PROTOCOL_VERSION } from '../../../shared/contracts/controlSurface'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { invokeControlSurface } from '../controlSurface/remote/controlSurfaceHttpClient'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
 import { readHomeWorkerConfigFile } from './homeWorkerConfig'
 import { resolvePackagedWorkerScriptPath } from '../runtime/opencoveRuntimePaths'
+import { removeConnectionFile } from '../controlSurface/http/connectionFile'
+import { removeWorkerSingleInstanceLock } from '../../../platform/process/workerSingleInstanceLockFile'
+import { isWorkerConnectionAlive } from './workerConnectionHealth'
 
 function isTruthyEnv(rawValue: string | undefined): boolean {
   if (!rawValue) {
@@ -87,10 +89,13 @@ function toDto(info: {
   }
 }
 
-async function resolveConnectionFromUserData(): Promise<WorkerConnectionInfoDto | null> {
+async function resolveConnectionFromUserData(options?: {
+  requireLivePid?: boolean
+}): Promise<WorkerConnectionInfoDto | null> {
   const info = await resolveControlSurfaceConnectionInfoFromUserData({
     userDataPath: app.getPath('userData'),
     fileName: WORKER_CONTROL_SURFACE_CONNECTION_FILE,
+    requireLivePid: options?.requireLivePid,
   })
 
   return info ? toDto(info) : null
@@ -102,53 +107,6 @@ let activeWorkerChild: WorkerChildProcess | null = null
 
 function childHasExited(child: WorkerChildProcess): boolean {
   return child.exitCode !== null || child.signalCode !== null
-}
-
-async function isConnectionAlive(connection: WorkerConnectionInfoDto): Promise<boolean> {
-  try {
-    const endpoint = {
-      hostname: connection.hostname,
-      port: connection.port,
-      token: connection.token,
-    }
-
-    const pingResponse = await invokeControlSurface(
-      endpoint,
-      { kind: 'query', id: 'system.ping', payload: null },
-      { timeoutMs: 750 },
-    )
-    if (pingResponse.httpStatus !== 200 || pingResponse.result?.ok !== true) {
-      return false
-    }
-
-    const capabilitiesResponse = await invokeControlSurface(
-      endpoint,
-      { kind: 'query', id: 'system.capabilities', payload: null },
-      { timeoutMs: 750 },
-    )
-    if (capabilitiesResponse.httpStatus !== 200 || capabilitiesResponse.result?.ok !== true) {
-      return false
-    }
-
-    const capabilities = capabilitiesResponse.result.value
-    const protocolVersion =
-      capabilities && typeof capabilities === 'object' && !Array.isArray(capabilities)
-        ? (capabilities as Record<string, unknown>).protocolVersion
-        : null
-    if (protocolVersion !== CONTROL_SURFACE_PROTOCOL_VERSION) {
-      return false
-    }
-
-    const endpointsResponse = await invokeControlSurface(
-      endpoint,
-      { kind: 'query', id: 'endpoint.list', payload: null },
-      { timeoutMs: 750 },
-    )
-
-    return endpointsResponse.httpStatus === 200 && endpointsResponse.result?.ok === true
-  } catch {
-    return false
-  }
 }
 
 async function waitForPidExit(pid: number, timeoutMs: number): Promise<void> {
@@ -218,13 +176,28 @@ async function stopByPid(pid: number): Promise<void> {
   }
 }
 
+export async function repairStaleLocalWorkerFiles(
+  userDataPath: string,
+  stalePid?: number | null,
+): Promise<void> {
+  if (typeof stalePid === 'number' && Number.isFinite(stalePid) && stalePid > 0) {
+    await stopByPid(stalePid)
+    await waitForPidExit(stalePid, 1_500)
+  }
+
+  await removeConnectionFile(userDataPath, WORKER_CONTROL_SURFACE_CONNECTION_FILE).catch(
+    () => undefined,
+  )
+  await removeWorkerSingleInstanceLock(userDataPath).catch(() => undefined)
+}
+
 export async function getLocalWorkerStatus(): Promise<WorkerStatusResult> {
   const connection = await resolveConnectionFromUserData()
   if (!connection) {
     return { status: 'stopped', connection: null }
   }
 
-  return (await isConnectionAlive(connection))
+  return (await isWorkerConnectionAlive(connection))
     ? { status: 'running', connection }
     : { status: 'stopped', connection: null }
 }
@@ -249,43 +222,32 @@ export async function stopOwnedLocalWorker(): Promise<boolean> {
   return true
 }
 
-export async function startLocalWorker(): Promise<WorkerStatusResult> {
-  const existing = await resolveConnectionFromUserData()
-  if (existing) {
-    if (await isConnectionAlive(existing)) {
-      return { status: 'running', connection: existing }
+async function waitForExistingWorkerConnection(
+  timeoutMs: number,
+): Promise<WorkerConnectionInfoDto | null> {
+  const deadlineMs = Date.now() + timeoutMs
+
+  const poll = async (): Promise<WorkerConnectionInfoDto | null> => {
+    const connection = await resolveConnectionFromUserData({ requireLivePid: false })
+    if (connection && (await isWorkerConnectionAlive(connection))) {
+      return connection
     }
 
-    await stopByPid(existing.pid)
-    await waitForPidExit(existing.pid, 1_500)
+    if (Date.now() >= deadlineMs) {
+      return null
+    }
+
+    await new Promise<void>(resolvePromise => {
+      setTimeout(resolvePromise, 150).unref()
+    })
+
+    return await poll()
   }
 
-  const workerScriptPath = resolveWorkerScriptPath()
-  if (!existsSync(workerScriptPath)) {
-    throw new Error(
-      `Local worker entry is missing: ${workerScriptPath}. Run \`pnpm build\` once before using Worker/Web UI in dev.`,
-    )
-  }
+  return await poll()
+}
 
-  const userDataPath = app.getPath('userData')
-  const workerConfig = await readHomeWorkerConfigFile(userDataPath)
-  const enableWebUi = workerConfig.webUi.enabled
-  const port = workerConfig.webUi.port ?? 0
-  const exposeOnLan = enableWebUi && workerConfig.webUi.exposeOnLan
-  const bindHostname = exposeOnLan ? '0.0.0.0' : '127.0.0.1'
-  const advertiseHostname = '127.0.0.1'
-  const webUiPasswordHash = exposeOnLan ? workerConfig.webUi.passwordHash : null
-  const args = buildLocalWorkerSpawnArgs({
-    workerScriptPath,
-    userDataPath,
-    parentPid: process.pid,
-    bindHostname,
-    advertiseHostname,
-    port,
-    enableWebUi,
-    webUiPasswordHash,
-  })
-
+function spawnWorkerChild(args: string[], userDataPath: string): WorkerChildProcess {
   const child = spawn(process.execPath, args, {
     env: {
       ...process.env,
@@ -310,13 +272,47 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
     process.stderr.write(chunk)
   })
 
-  const info = await new Promise<WorkerConnectionInfoDto>((resolvePromise, rejectPromise) => {
+  return child
+}
+
+async function waitForWorkerReadyPayload(
+  child: WorkerChildProcess,
+): Promise<WorkerConnectionInfoDto> {
+  return await new Promise<WorkerConnectionInfoDto>((resolvePromise, rejectPromise) => {
     const rl = createInterface({ input: child.stdout })
+    let settled = false
 
     const timeout = setTimeout(() => {
+      if (settled) {
+        return
+      }
+
+      settled = true
       rl.close()
       rejectPromise(new Error('Timed out waiting for worker ready payload'))
     }, 7_500)
+
+    const resolveReady = (info: WorkerConnectionInfoDto): void => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      clearTimeout(timeout)
+      rl.close()
+      resolvePromise(info)
+    }
+
+    const rejectReady = (error: Error): void => {
+      if (settled) {
+        return
+      }
+
+      settled = true
+      clearTimeout(timeout)
+      rl.close()
+      rejectPromise(error)
+    }
 
     rl.on('line', line => {
       try {
@@ -337,9 +333,7 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
           return
         }
 
-        clearTimeout(timeout)
-        rl.close()
-        resolvePromise({
+        resolveReady({
           version,
           pid,
           hostname,
@@ -353,13 +347,94 @@ export async function startLocalWorker(): Promise<WorkerStatusResult> {
     })
 
     child.once('exit', code => {
-      clearTimeout(timeout)
-      rl.close()
-      rejectPromise(new Error(`Worker exited before ready (code=${code ?? 1})`))
+      rejectReady(new Error(`Worker exited before ready (code=${code ?? 1})`))
     })
   })
+}
 
-  return { status: 'running', connection: info }
+async function spawnWorkerAndWaitForLiveConnection(
+  args: string[],
+  userDataPath: string,
+): Promise<WorkerConnectionInfoDto> {
+  const child = spawnWorkerChild(args, userDataPath)
+  const info = await waitForWorkerReadyPayload(child)
+
+  if (!(await isWorkerConnectionAlive(info))) {
+    await stopOwnedLocalWorker().catch(() => undefined)
+    await repairStaleLocalWorkerFiles(userDataPath, null)
+    throw new Error('Worker ready payload endpoint is not reachable')
+  }
+
+  return info
+}
+
+async function recoverAfterFailedWorkerStart(
+  userDataPath: string,
+): Promise<WorkerConnectionInfoDto | null> {
+  await stopOwnedLocalWorker().catch(() => undefined)
+
+  const racedConnection = await waitForExistingWorkerConnection(1_500)
+  if (racedConnection) {
+    return racedConnection
+  }
+
+  await repairStaleLocalWorkerFiles(userDataPath, null)
+  return null
+}
+
+export async function startLocalWorker(): Promise<WorkerStatusResult> {
+  const userDataPath = app.getPath('userData')
+  const existing = await resolveConnectionFromUserData({ requireLivePid: false })
+  if (existing) {
+    if (await isWorkerConnectionAlive(existing)) {
+      return { status: 'running', connection: existing }
+    }
+
+    await repairStaleLocalWorkerFiles(userDataPath, existing.pid)
+  }
+
+  const workerScriptPath = resolveWorkerScriptPath()
+  if (!existsSync(workerScriptPath)) {
+    throw new Error(
+      `Local worker entry is missing: ${workerScriptPath}. Run \`pnpm build\` once before using Worker/Web UI in dev.`,
+    )
+  }
+
+  const workerConfig = await readHomeWorkerConfigFile(userDataPath)
+  const enableWebUi = workerConfig.webUi.enabled
+  const port = workerConfig.webUi.port ?? 0
+  const exposeOnLan = enableWebUi && workerConfig.webUi.exposeOnLan
+  const bindHostname = exposeOnLan ? '0.0.0.0' : '127.0.0.1'
+  const advertiseHostname = '127.0.0.1'
+  const webUiPasswordHash = exposeOnLan ? workerConfig.webUi.passwordHash : null
+  const args = buildLocalWorkerSpawnArgs({
+    workerScriptPath,
+    userDataPath,
+    parentPid: process.pid,
+    bindHostname,
+    advertiseHostname,
+    port,
+    enableWebUi,
+    webUiPasswordHash,
+  })
+
+  try {
+    const info = await spawnWorkerAndWaitForLiveConnection(args, userDataPath)
+    return { status: 'running', connection: info }
+  } catch (firstError) {
+    const recoveredConnection = await recoverAfterFailedWorkerStart(userDataPath)
+    if (recoveredConnection) {
+      return { status: 'running', connection: recoveredConnection }
+    }
+
+    try {
+      const retryInfo = await spawnWorkerAndWaitForLiveConnection(args, userDataPath)
+      return { status: 'running', connection: retryInfo }
+    } catch (retryError) {
+      await stopOwnedLocalWorker().catch(() => undefined)
+      throw retryError instanceof Error ? retryError : firstError
+    }
+  }
 }
 
 export async function stopLocalWorker(): Promise<WorkerStatusResult> {

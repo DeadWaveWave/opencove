@@ -3,6 +3,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { TerminalDiagnosticsLogInput } from '@shared/contracts/dto'
 import type { ActiveTerminalRenderer } from './preferredRenderer'
 import { registerTerminalLayoutSync, type TerminalLayoutSyncTrigger } from './layoutSync'
+import { readTerminalRenderDimensionsSafely } from './renderServiceSafety'
 
 export type TerminalRendererHealthTrigger =
   | TerminalLayoutSyncTrigger
@@ -75,22 +76,7 @@ export function resolveTerminalRendererHealthIssue({
     }
   }
 
-  const renderDimensions = (
-    terminal as Terminal & {
-      _core?: {
-        _renderService?: {
-          dimensions?: {
-            css?: {
-              canvas?: { width?: number; height?: number }
-            }
-            device?: {
-              canvas?: { width?: number; height?: number }
-            }
-          }
-        }
-      }
-    }
-  )._core?._renderService?.dimensions
+  const renderDimensions = readTerminalRenderDimensionsSafely(terminal)
 
   const cssCanvasWidth = renderDimensions?.css?.canvas?.width ?? 0
   const cssCanvasHeight = renderDimensions?.css?.canvas?.height ?? 0
@@ -120,7 +106,7 @@ export function registerRuntimeTerminalRendererHealth({
   activeRendererKindRef,
   isTerminalHydratedRef,
   syncTerminalSize,
-  scheduleWebglPixelSnapping,
+  scheduleWebglCanvasTransformCleanup,
   log,
   requestRecovery,
 }: {
@@ -130,7 +116,7 @@ export function registerRuntimeTerminalRendererHealth({
   activeRendererKindRef: MutableRefObject<ActiveTerminalRenderer['kind']>
   isTerminalHydratedRef: MutableRefObject<boolean>
   syncTerminalSize: () => void
-  scheduleWebglPixelSnapping: () => void
+  scheduleWebglCanvasTransformCleanup: () => void
   log: (event: string, details?: TerminalDiagnosticsLogInput['details']) => void
   requestRecovery: (request: TerminalRendererRecoveryRequest) => void
 }): {
@@ -144,7 +130,7 @@ export function registerRuntimeTerminalRendererHealth({
   const refreshLayout = (): void => {
     renderer.clearTextureAtlas()
     syncTerminalSize()
-    scheduleWebglPixelSnapping()
+    scheduleWebglCanvasTransformCleanup()
   }
 
   const inspect = (trigger: TerminalRendererHealthTrigger): void => {

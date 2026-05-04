@@ -1,17 +1,17 @@
 # 案例库（Case Library）
 
-本目录用于收纳 **可复用的调试/诊断案例**，目标是让后续开发者（包括 AI）能通过真实案例快速建立直觉、复用排查路径、避免重复踩坑。
+本目录用于收纳 **可复用的调试/诊断案例**，目标是让开发者（包括 AI）能通过真实案例快速建立直觉、复用排查路径、避免重复踩坑。
 
 与之对应：
 
-- `docs/DEBUGGING.md`：只记录 **方法** 与 **适用场景**（playbook / checklist）
+- `docs/development/DEBUGGING.md`：只记录 **方法** 与 **适用场景**（playbook / checklist）
 - `docs/cases/*`：记录 **具体案例**（symptom → repro → investigation → root cause → fix → tests → lessons）
 
 ## 如何阅读
 
 建议按以下顺序：
 
-1. 先读 `docs/DEBUGGING.md`，确定你遇到的症状属于哪个场景、应该跑哪些最小命令。
+1. 先读 `docs/development/DEBUGGING.md`，确定你遇到的症状属于哪个场景、应该跑哪些最小命令。
 2. 再在本目录按关键词/标签找相似案例，复用“怎么复现、怎么看证据、怎么定位”的路径。
 
 ## 案例模板（建议）

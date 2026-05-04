@@ -93,6 +93,78 @@ describe('runtime renderer health', () => {
     })
   })
 
+  it('treats detached render-service dimensions as a recoverable blank renderer issue', () => {
+    const container = document.createElement('div')
+    Object.defineProperty(container, 'getBoundingClientRect', {
+      value: () => ({
+        width: 640,
+        height: 320,
+        top: 0,
+        left: 0,
+        right: 640,
+        bottom: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    })
+
+    const screen = document.createElement('div')
+    screen.className = 'xterm-screen'
+    Object.defineProperty(screen, 'getBoundingClientRect', {
+      value: () => ({
+        width: 640,
+        height: 320,
+        top: 0,
+        left: 0,
+        right: 640,
+        bottom: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    })
+    const canvas = document.createElement('canvas')
+    Object.defineProperty(canvas, 'getBoundingClientRect', {
+      value: () => ({
+        width: 640,
+        height: 320,
+        top: 0,
+        left: 0,
+        right: 640,
+        bottom: 320,
+        x: 0,
+        y: 0,
+        toJSON: () => ({}),
+      }),
+    })
+    screen.append(canvas)
+    container.append(screen)
+
+    const renderService = {}
+    Object.defineProperty(renderService, 'dimensions', {
+      get() {
+        throw new TypeError("Cannot read properties of undefined (reading 'dimensions')")
+      },
+    })
+
+    const issue = resolveTerminalRendererHealthIssue({
+      terminal: {
+        _core: {
+          _renderService: renderService,
+        },
+      } as never,
+      container,
+      rendererKind: 'webgl',
+    })
+
+    expect(issue).toEqual({
+      reason: 'blank_canvas',
+      trigger: 'mutation',
+      forceDom: true,
+    })
+  })
+
   it('rebuilds from worker truth after a blank canvas is detected', () => {
     const container = document.createElement('div')
     Object.defineProperty(container, 'getBoundingClientRect', {
@@ -128,7 +200,7 @@ describe('runtime renderer health', () => {
 
     const clearTextureAtlas = vi.fn()
     const syncTerminalSize = vi.fn()
-    const scheduleWebglPixelSnapping = vi.fn()
+    const scheduleWebglCanvasTransformCleanup = vi.fn()
     const log = vi.fn()
     const requestRecovery = vi.fn()
 
@@ -152,7 +224,7 @@ describe('runtime renderer health', () => {
       activeRendererKindRef: { current: 'webgl' },
       isTerminalHydratedRef: { current: true },
       syncTerminalSize,
-      scheduleWebglPixelSnapping,
+      scheduleWebglCanvasTransformCleanup,
       log,
       requestRecovery,
     })
@@ -162,7 +234,7 @@ describe('runtime renderer health', () => {
 
     expect(clearTextureAtlas).toHaveBeenCalledTimes(1)
     expect(syncTerminalSize).toHaveBeenCalledTimes(1)
-    expect(scheduleWebglPixelSnapping).toHaveBeenCalledTimes(1)
+    expect(scheduleWebglCanvasTransformCleanup).toHaveBeenCalledTimes(1)
     expect(log).toHaveBeenCalledWith(
       'renderer-health-recover',
       expect.objectContaining({

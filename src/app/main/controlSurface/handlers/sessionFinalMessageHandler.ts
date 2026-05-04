@@ -1,5 +1,6 @@
 import type { ControlSurface } from '../controlSurface'
 import { locateAgentResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocator'
+import { locateGeminiResumeSessionId } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
 import {
   readLastAssistantMessageFromOpenCodeSession,
   readLastAssistantMessageFromSessionFile,
@@ -95,12 +96,21 @@ export function registerSessionFinalMessageHandler(
       const startedAtMs = record.startedAtMs
       const resumeSessionId =
         record.resumeSessionId ??
-        (await locateAgentResumeSessionId({
-          provider: record.provider,
-          cwd: record.cwd,
-          startedAtMs,
-          timeoutMs: RESUME_SESSION_LOCATE_TIMEOUT_MS,
-        }))
+        (record.provider === 'gemini'
+          ? await locateGeminiResumeSessionId({
+              cwd: record.cwd,
+              startedAtMs,
+              timeoutMs: RESUME_SESSION_LOCATE_TIMEOUT_MS,
+              ...(record.launchMode === 'new' && record.geminiDiscoveryCursor !== undefined
+                ? { discoveryCursor: record.geminiDiscoveryCursor }
+                : {}),
+            })
+          : await locateAgentResumeSessionId({
+              provider: record.provider,
+              cwd: record.cwd,
+              startedAtMs,
+              timeoutMs: RESUME_SESSION_LOCATE_TIMEOUT_MS,
+            }))
 
       if (resumeSessionId) {
         record.resumeSessionId = resumeSessionId

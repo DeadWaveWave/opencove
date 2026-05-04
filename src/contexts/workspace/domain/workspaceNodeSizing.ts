@@ -1,4 +1,4 @@
-import type { StandardWindowSizeBucket } from '../../settings/domain/agentSettings'
+import type { AgentProvider, StandardWindowSizeBucket } from '../../settings/domain/agentSettings'
 
 export type WorkspaceCanonicalSizeBucket = StandardWindowSizeBucket
 
@@ -80,6 +80,10 @@ export function resolveCanonicalBucketCellSize(bucket: WorkspaceCanonicalSizeBuc
 
 export function resolveCanonicalNodeMinSize(kind: WorkspaceNodeKind): Size {
   return MIN_SIZE_BY_KIND[kind]
+}
+
+export function resolveAgentNodeMinSize(_provider?: AgentProvider | null): Size {
+  return resolveCanonicalNodeMinSize('agent')
 }
 
 export function resolveCanonicalNodeMaxSize(kind: WorkspaceNodeKind): Size {
@@ -186,4 +190,24 @@ export function resolveCanonicalNodeSize({
   }
 
   return clampSize(desired, MIN_SIZE_BY_KIND[kind], MAX_SIZE_BY_KIND[kind])
+}
+
+export function resolveAgentNodeSize({
+  bucket,
+}: {
+  bucket: WorkspaceCanonicalSizeBucket
+  provider?: AgentProvider | null
+}): Size {
+  const base = resolveCanonicalNodeSize({ kind: 'agent', bucket })
+  const min = resolveAgentNodeMinSize()
+  const max = resolveCanonicalNodeMaxSize('agent')
+
+  return clampSize(
+    {
+      width: Math.max(base.width, min.width),
+      height: Math.max(base.height, min.height),
+    },
+    min,
+    max,
+  )
 }

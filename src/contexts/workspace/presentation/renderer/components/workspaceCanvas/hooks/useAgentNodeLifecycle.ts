@@ -24,6 +24,7 @@ import {
   findAgentNode,
   launchAgentRuntime,
   normalizeOptionalString,
+  resolveAgentRuntimeLaunchFrameSize,
   type RelaunchAgentNodeOptions,
 } from './useAgentNodeLifecycle.support'
 
@@ -39,6 +40,7 @@ interface UseAgentNodeLifecycleParams {
   isAgentLaunchTokenCurrent: (nodeId: string, token: number) => boolean
   agentFullAccess: boolean
   defaultTerminalProfileId: string | null
+  terminalFontSize: number
   agentEnvByProvider: AgentEnvByProvider
   agentExecutablePathOverrideByProvider?: AgentExecutablePathOverrideByProvider
   environmentVariables?: Record<string, string>
@@ -54,6 +56,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   isAgentLaunchTokenCurrent,
   agentFullAccess,
   defaultTerminalProfileId,
+  terminalFontSize,
   agentEnvByProvider,
   agentExecutablePathOverrideByProvider,
   environmentVariables,
@@ -151,7 +154,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (!node) {
         return
       }
-
       const launchData = node.data.agent
       const linkedTaskTitle = findLinkedTaskTitleForAgent(
         nodesRef.current,
@@ -178,7 +180,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         setAgentNodeFailure(nodeId, t('messages.agentPromptRequired'))
         return
       }
-
       const mountId = await resolveMountId(nodeId)
       if (mountId === undefined) {
         return
@@ -192,9 +193,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         environmentVariables && Object.keys(environmentVariables).length > 0
           ? { ...env, ...environmentVariables }
           : env
-
       const launchToken = bumpAgentLaunchToken(nodeId)
-
+      const launchFrameSize = resolveAgentRuntimeLaunchFrameSize(node)
       if (!mountId && launchData.shouldCreateDirectory && launchData.directoryMode === 'custom') {
         await window.opencoveApi.workspace.ensureDirectory({ path: requestedExecutionDirectory })
 
@@ -215,7 +215,6 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
         return
       }
-
       setNodes(
         prevNodes =>
           prevNodes.map(item => {
@@ -227,6 +226,8 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
               ...item,
               data: {
                 ...item.data,
+                width: launchFrameSize.width,
+                height: launchFrameSize.height,
                 status: 'restoring',
                 endedAt: null,
                 exitCode: null,
@@ -256,6 +257,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
           agentFullAccess,
           defaultTerminalProfileId,
           executablePathOverride,
+          terminalFontSize,
         })
 
         if (!isAgentLaunchTokenCurrent(nodeId, launchToken)) {
@@ -285,7 +287,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   : requestedExpectedDirectory,
                 ...(mode === 'resume'
                   ? {
-                      resumeSessionId: launched.resumeSessionId ?? requestedResumeSessionId,
+                      resumeSessionId: requestedResumeSessionId,
                       resumeSessionIdVerified: true,
                     }
                   : clearResumeSessionBinding()),
@@ -298,6 +300,9 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
                   sessionId: launched.sessionId,
                   profileId: launched.profileId,
                   runtimeKind: launched.runtimeKind,
+                  terminalGeometry: launched.terminalGeometry,
+                  width: launched.frameSize.width,
+                  height: launched.frameSize.height,
                   title:
                     item.data.titlePinnedByUser === true
                       ? item.data.title
@@ -349,6 +354,7 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
       agentExecutablePathOverrideByProvider,
       agentFullAccess,
       defaultTerminalProfileId,
+      terminalFontSize,
     ],
   )
 

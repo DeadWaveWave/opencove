@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useLayoutEffect } from 'react'
 import {
   getViewportForBounds,
   useStore,
@@ -21,6 +21,7 @@ import {
 } from '../../../utils/workspaceArrange'
 import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import type { ShowWorkspaceCanvasMessage } from '../types'
+import { bindWorkspaceCanvasArrangeInSpaceTestAction } from '../testHarness'
 
 const DEFAULT_VIEWPORT_WIDTH = 1440
 const DEFAULT_VIEWPORT_HEIGHT = 900
@@ -236,6 +237,17 @@ export function useWorkspaceCanvasArrange({
     },
     [commitArrange, nodesRef, onShowMessage, spacesRef, standardWindowSizeBucket, t],
   )
+
+  useLayoutEffect(() => {
+    if (window.opencoveApi?.meta?.isTest !== true) {
+      return
+    }
+
+    bindWorkspaceCanvasArrangeInSpaceTestAction(arrangeInSpace)
+    return () => {
+      bindWorkspaceCanvasArrangeInSpaceTestAction(null)
+    }
+  }, [arrangeInSpace])
 
   return {
     arrangeAll,

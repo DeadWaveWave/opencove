@@ -3,6 +3,10 @@ import type { FitAddon } from '@xterm/addon-fit'
 import type { Terminal } from '@xterm/xterm'
 import type { TerminalGeometryCommitReason } from '@shared/contracts/dto'
 import { resolveStablePtySize } from '../../utils/terminalResize'
+import {
+  readTerminalRenderDimensionsSafely,
+  runTerminalRenderMutationSafely,
+} from './renderServiceSafety'
 
 type PtySize = { cols: number; rows: number }
 export type InitialTerminalNodeGeometryCommitResult = PtySize & { changed: boolean }
@@ -23,13 +27,22 @@ function clampXtermHeightToExactRows(terminal: Terminal): void {
     return
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const cellHeight: unknown = (terminal as any)._core?._renderService?.dimensions?.css?.cell?.height
+  const cellHeight = readTerminalRenderDimensionsSafely(terminal)?.css?.cell?.height
   if (typeof cellHeight !== 'number' || !Number.isFinite(cellHeight) || cellHeight <= 0) {
     return
   }
 
-  const exactHeight = Math.floor(terminal.rows * cellHeight)
+  const contentHeight = Math.floor(terminal.rows * cellHeight)
+  const computedStyle =
+    typeof window.getComputedStyle === 'function' ? window.getComputedStyle(xtermEl) : null
+  const parsePixelValue = (value: string | undefined): number => {
+    const parsed = Number.parseFloat(value ?? '')
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+  const verticalPadding =
+    parsePixelValue(computedStyle?.paddingTop) + parsePixelValue(computedStyle?.paddingBottom)
+  const exactHeight =
+    computedStyle?.boxSizing === 'border-box' ? contentHeight + verticalPadding : contentHeight
   xtermEl.style.height = `${exactHeight}px`
 }
 
@@ -157,7 +170,9 @@ export function refreshTerminalNodeSize({
   }
 
   clampXtermHeightToExactRows(terminal)
-  terminal.refresh(0, Math.max(0, terminal.rows - 1))
+  runTerminalRenderMutationSafely(() => {
+    terminal.refresh(0, Math.max(0, terminal.rows - 1))
+  })
 }
 
 export function commitTerminalNodeGeometry({

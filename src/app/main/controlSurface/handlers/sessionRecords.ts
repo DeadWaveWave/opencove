@@ -1,4 +1,5 @@
-import type { GetSessionResult } from '../../../../shared/contracts/dto'
+import type { AgentLaunchMode, GetSessionResult } from '../../../../shared/contracts/dto'
+import type { GeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
 
 export type SessionRoute =
   | {
@@ -13,4 +14,6 @@ export type SessionRoute =
 export type SessionRecord = GetSessionResult & {
   startedAtMs: number
   route: SessionRoute
+  launchMode?: AgentLaunchMode
+  geminiDiscoveryCursor?: GeminiSessionDiscoveryCursor | null
 }

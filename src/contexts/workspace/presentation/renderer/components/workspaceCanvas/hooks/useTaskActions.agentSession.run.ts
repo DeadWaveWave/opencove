@@ -20,6 +20,7 @@ import {
   setTaskLastError,
   type TaskActionContext,
 } from './useTaskActions.agentSession.shared'
+import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
 
 function reuseLinkedAgentForTask({
   taskNodeId,
@@ -262,6 +263,11 @@ export async function runTaskAgentAction(
   const model = resolveAgentModel(context.agentSettings, provider)
   const executablePathOverride = resolveAgentExecutablePathOverride(context.agentSettings, provider)
   const env = resolveAgentLaunchEnv(context.agentSettings, provider)
+  const launchGeometry = resolveDefaultAgentLaunchGeometry({
+    bucket: context.agentSettings.standardWindowSizeBucket,
+    provider,
+    terminalFontSize: context.agentSettings.terminalFontSize,
+  })
   const mergedEnv =
     context.environmentVariables && Object.keys(context.environmentVariables).length > 0
       ? { ...env, ...context.environmentVariables }
@@ -292,6 +298,8 @@ export async function runTaskAgentAction(
             ...(executablePathOverride ? { executablePathOverride } : {}),
             ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
             agentFullAccess: context.agentSettings.agentFullAccess,
+            cols: launchGeometry.terminalGeometry.cols,
+            rows: launchGeometry.terminalGeometry.rows,
           },
         })
       }
@@ -315,7 +323,8 @@ export async function runTaskAgentAction(
       }
 
       launchedSessionId = launched.sessionId
-      launchedProfileId = context.agentSettings.defaultTerminalProfileId
+      launchedProfileId = launched.profileId
+      launchedRuntimeKind = launched.runtimeKind ?? undefined
       launchedEffectiveModel = launched.effectiveModel
       agentDirectory = launched.executionContext.workingDirectory
     } else {
@@ -329,8 +338,8 @@ export async function runTaskAgentAction(
         ...(executablePathOverride ? { executablePathOverride } : {}),
         ...(Object.keys(mergedEnv).length > 0 ? { env: mergedEnv } : {}),
         agentFullAccess: context.agentSettings.agentFullAccess,
-        cols: 80,
-        rows: 24,
+        cols: launchGeometry.terminalGeometry.cols,
+        rows: launchGeometry.terminalGeometry.rows,
       })
 
       launchedSessionId = launched.sessionId
@@ -343,6 +352,7 @@ export async function runTaskAgentAction(
       sessionId: launchedSessionId,
       profileId: launchedProfileId,
       runtimeKind: launchedRuntimeKind,
+      terminalGeometry: launchGeometry.terminalGeometry,
       title: context.buildAgentNodeTitle(provider, taskNode.data.title),
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',

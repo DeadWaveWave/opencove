@@ -9,6 +9,7 @@ function AppearanceHarness({
   displayFontSize,
   displayLineHeight = 1,
   displayLetterSpacing = 0,
+  fontFamily = null,
   onCommitGeometry,
   onSyncSize,
 }: {
@@ -17,6 +18,7 @@ function AppearanceHarness({
   displayFontSize: number
   displayLineHeight?: number
   displayLetterSpacing?: number
+  fontFamily?: string | null
   onCommitGeometry: () => void
   onSyncSize: () => void
 }): null {
@@ -30,7 +32,7 @@ function AppearanceHarness({
     displayTerminalFontSize: displayFontSize,
     displayTerminalLineHeight: displayLineHeight,
     displayTerminalLetterSpacing: displayLetterSpacing,
-    terminalFontFamily: null,
+    terminalFontFamily: fontFamily,
     width: 640,
     height: 420,
     viewportZoom: 1,
@@ -87,6 +89,41 @@ describe('useTerminalAppearanceSync', () => {
     expect(onCommitGeometry).not.toHaveBeenCalled()
   })
 
+  it('does not commit PTY geometry on initial mount or callback-only refreshes', () => {
+    const terminal = { options: {} }
+    const firstCommitGeometry = vi.fn()
+    const firstSyncSize = vi.fn()
+    const secondCommitGeometry = vi.fn()
+    const secondSyncSize = vi.fn()
+    const { rerender } = render(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        fontFamily={null}
+        onCommitGeometry={firstCommitGeometry}
+        onSyncSize={firstSyncSize}
+      />,
+    )
+
+    expect(firstCommitGeometry).not.toHaveBeenCalled()
+
+    rerender(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        fontFamily={null}
+        onCommitGeometry={secondCommitGeometry}
+        onSyncSize={secondSyncSize}
+      />,
+    )
+
+    expect(firstCommitGeometry).not.toHaveBeenCalled()
+    expect(secondCommitGeometry).not.toHaveBeenCalled()
+    expect(secondSyncSize).toHaveBeenCalled()
+  })
+
   it('keeps shared font size changes on the explicit appearance geometry path', () => {
     const terminal = { options: {} }
     const onCommitGeometry = vi.fn()
@@ -106,6 +143,35 @@ describe('useTerminalAppearanceSync', () => {
         terminal={terminal}
         sharedFontSize={14}
         displayFontSize={14}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    expect(onCommitGeometry).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps shared font family changes on the explicit appearance geometry path', () => {
+    const terminal = { options: {} }
+    const onCommitGeometry = vi.fn()
+    const onSyncSize = vi.fn()
+    const { rerender } = render(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        fontFamily={null}
+        onCommitGeometry={onCommitGeometry}
+        onSyncSize={onSyncSize}
+      />,
+    )
+
+    rerender(
+      <AppearanceHarness
+        terminal={terminal}
+        sharedFontSize={13}
+        displayFontSize={13}
+        fontFamily="Consolas"
         onCommitGeometry={onCommitGeometry}
         onSyncSize={onSyncSize}
       />,

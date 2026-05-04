@@ -3,6 +3,10 @@ import type { PresentationSnapshotTerminalResult } from '@shared/contracts/dto'
 import { mergeScrollbackSnapshots, resolveScrollbackDelta } from './scrollback'
 import type { CachedTerminalScreenState } from './screenStateCache'
 import type { TerminalHydrationBaselineSource } from './useTerminalRuntimeSession.support'
+import {
+  captureTerminalScrollState,
+  type TerminalScrollStateSnapshot,
+} from './effectiveDevicePixelRatio'
 import { writeTerminalAsync } from './writeTerminal'
 import { containsMeaningfulTerminalDisplayContent } from './hydrationReplacement'
 
@@ -94,6 +98,7 @@ export async function hydrateTerminalFromSnapshot({
   persistedSnapshot,
   presentationSnapshotPromise,
   takePtySnapshot,
+  scrollStateToRestore,
   isDisposed,
   onHydratedWriteCommitted,
   onHydrationBaselineResolved,
@@ -110,11 +115,18 @@ export async function hydrateTerminalFromSnapshot({
   persistedSnapshot: string
   presentationSnapshotPromise?: Promise<PresentationSnapshotTerminalResult | null>
   takePtySnapshot: (payload: { sessionId: string }) => Promise<{ data: string }>
+  scrollStateToRestore?: TerminalScrollStateSnapshot | null
   isDisposed: () => boolean
   onHydratedWriteCommitted: (rawSnapshot: string) => void
   onHydrationBaselineResolved?: (source: TerminalHydrationBaselineSource) => void
   onPresentationSnapshotAccepted?: (snapshot: PresentationSnapshotTerminalResult) => void
-  finalizeHydration: (rawSnapshot: string, options?: { baselineAppliedSeq?: number | null }) => void
+  finalizeHydration: (
+    rawSnapshot: string,
+    options?: {
+      baselineAppliedSeq?: number | null
+      scrollStateToRestore?: TerminalScrollStateSnapshot | null
+    },
+  ) => void
 }): Promise<void> {
   const rendererPlaceholderSnapshot = kind === 'agent' ? '' : persistedSnapshot
   const cachedSerializedScreen = kind === 'agent' ? '' : (cachedScreenState?.serialized ?? '')
@@ -134,6 +146,7 @@ export async function hydrateTerminalFromSnapshot({
   let rawSnapshot = baseRawSnapshot
   let hydrationBaselineSource: TerminalHydrationBaselineSource =
     placeholderPayload.length > 0 ? 'placeholder_snapshot' : 'empty'
+  let pendingScrollStateToRestore = scrollStateToRestore ?? null
 
   const visiblePresentationSnapshot = shouldUsePresentationSnapshotAsVisibleBaseline({
     kind,
@@ -188,6 +201,11 @@ export async function hydrateTerminalFromSnapshot({
         return mergedSnapshot
       }
 
+      if (pendingScrollStateToRestore === null) {
+        const capturedScrollState = captureTerminalScrollState(terminal)
+        pendingScrollStateToRestore =
+          capturedScrollState.viewportY === null ? null : capturedScrollState
+      }
       terminal.reset()
       await writeTerminalAsync(terminal, mergedSnapshot)
       return mergedSnapshot
@@ -225,10 +243,19 @@ export async function hydrateTerminalFromSnapshot({
   onHydrationBaselineResolved?.(hydrationBaselineSource)
   onHydratedWriteCommitted(rawSnapshot)
   const baselineAppliedSeq = visiblePresentationSnapshot?.appliedSeq ?? null
-  if (baselineAppliedSeq === null) {
+  const finalizeOptions =
+    baselineAppliedSeq === null && pendingScrollStateToRestore === null
+      ? undefined
+      : {
+          ...(baselineAppliedSeq === null ? {} : { baselineAppliedSeq }),
+          ...(pendingScrollStateToRestore === null
+            ? {}
+            : { scrollStateToRestore: pendingScrollStateToRestore }),
+        }
+  if (finalizeOptions === undefined) {
     finalizeHydration(rawSnapshot)
     return
   }
 
-  finalizeHydration(rawSnapshot, { baselineAppliedSeq })
+  finalizeHydration(rawSnapshot, finalizeOptions)
 }

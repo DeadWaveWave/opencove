@@ -1,5 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { DEFAULT_AGENT_SETTINGS } from '../../../src/contexts/settings/domain/agentSettings'
+import { resolveTerminalPtyGeometryForNodeFrame } from '../../../src/contexts/workspace/domain/terminalPtyGeometry'
+import { resolveDefaultTerminalWindowSize } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { createTerminalNodeAtFlowPosition } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/useInteractions.paneNodeCreation'
+
+function regularTerminalLaunchGeometry() {
+  return resolveTerminalPtyGeometryForNodeFrame({
+    ...resolveDefaultTerminalWindowSize('regular'),
+    terminalFontSize: DEFAULT_AGENT_SETTINGS.terminalFontSize,
+  })
+}
 
 describe('createTerminalNodeAtFlowPosition', () => {
   beforeEach(() => {
@@ -67,16 +77,18 @@ describe('createTerminalNodeAtFlowPosition', () => {
       onSpacesChange: vi.fn(),
       createNodeForSession,
     })
+    const expectedGeometry = regularTerminalLaunchGeometry()
 
     expect(ptySpawn).toHaveBeenCalledWith({
       cwd: '/workspace/root/space',
-      cols: 80,
-      rows: 24,
+      cols: expectedGeometry.cols,
+      rows: expectedGeometry.rows,
       profileId: undefined,
     })
     expect(createNodeForSession).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: 'session-1',
+        terminalGeometry: expectedGeometry,
         executionDirectory: '/workspace/root/space',
         expectedDirectory: '/workspace/root/space',
       }),
@@ -135,12 +147,13 @@ describe('createTerminalNodeAtFlowPosition', () => {
       onSpacesChange: vi.fn(),
       createNodeForSession,
     })
+    const expectedGeometry = regularTerminalLaunchGeometry()
 
     expect(controlSurfaceInvoke).not.toHaveBeenCalled()
     expect(ptySpawn).toHaveBeenCalledWith({
       cwd: '/workspace/root',
-      cols: 80,
-      rows: 24,
+      cols: expectedGeometry.cols,
+      rows: expectedGeometry.rows,
       profileId: undefined,
     })
   })
@@ -204,6 +217,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       onSpacesChange: vi.fn(),
       createNodeForSession,
     })
+    const expectedGeometry = regularTerminalLaunchGeometry()
 
     expect(controlSurfaceInvoke).toHaveBeenNthCalledWith(1, {
       kind: 'query',
@@ -217,14 +231,15 @@ describe('createTerminalNodeAtFlowPosition', () => {
         mountId: 'mount-remote',
         cwdUri: null,
         profileId: null,
-        cols: 80,
-        rows: 24,
+        cols: expectedGeometry.cols,
+        rows: expectedGeometry.rows,
       },
     })
     expect(ptySpawn).not.toHaveBeenCalled()
     expect(createNodeForSession).toHaveBeenCalledWith(
       expect.objectContaining({
         sessionId: 'session-remote',
+        terminalGeometry: expectedGeometry,
         executionDirectory: '/remote/root',
         expectedDirectory: '/remote/root',
       }),

@@ -254,6 +254,7 @@ export function WorkspaceCanvasInner({
     workspacePath,
     environmentVariables,
     defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
+    terminalFontSize: agentSettings.terminalFontSize,
     spacesRef: canvasState.spacesRef,
     onSpacesChange,
     nodesRef: nodeStore.nodesRef,

@@ -13,7 +13,7 @@ import type {
   WorkspaceViewport,
 } from '../../types'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
-import type { MountDto, TerminalRuntimeKind } from '@shared/contracts/dto'
+import type { MountDto, TerminalPtyGeometry, TerminalRuntimeKind } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
@@ -191,6 +191,7 @@ export interface CreateNodeInput {
   sessionId: string
   profileId?: string | null
   runtimeKind?: TerminalRuntimeKind
+  terminalGeometry?: TerminalPtyGeometry | null
   title: string
   anchor: Point
   kind: 'terminal' | 'agent'

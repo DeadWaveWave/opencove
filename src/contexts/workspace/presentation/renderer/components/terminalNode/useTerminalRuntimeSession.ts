@@ -79,10 +79,11 @@ export function useTerminalRuntimeSession({
   preservedXtermSessionRef,
   recentUserInteractionAtRef,
   pendingUserInputBufferRef,
+  recoveryScrollStateRef,
   isLiveSessionReattach,
   activeRendererKindRef,
-  scheduleWebglPixelSnapping,
-  cancelWebglPixelSnapping,
+  scheduleWebglCanvasTransformCleanup,
+  cancelWebglCanvasTransformCleanup,
   setRendererKindAndApply,
   terminalFontSize,
   viewportZoomRef,
@@ -162,6 +163,7 @@ export function useTerminalRuntimeSession({
             trigger: 'context_loss',
           })
         },
+        scheduleWebglCanvasTransformCleanup,
       })
     if (preservedSession && !canReusePreservedSession) {
       preservedSession.dispose()
@@ -280,7 +282,9 @@ export function useTerminalRuntimeSession({
         lastCommittedPtySizeRef,
         sessionId,
         canonicalInitialGeometry: initialTerminalGeometryRef.current,
-        allowMeasuredResizeCommit: initialTerminalGeometryRef.current === null,
+        allowMeasuredResizeCommit: true,
+        preferMeasuredGeometryCommit:
+          kind === 'agent' && terminalProvider === 'opencode' && !isLiveSessionReattach,
       }),
       requirePostGeometrySnapshotOutput: shouldRequirePostGeometrySnapshotOutput({
         kind,
@@ -373,6 +377,12 @@ export function useTerminalRuntimeSession({
       lastCommittedPtySizeRef,
       runtimeInputBridge,
       hydrationRouter,
+      scrollStateToRestore: recoveryScrollStateRef.current,
+      onScrollStateRestored: () => {
+        if (recoveryScrollStateRef.current !== null) {
+          recoveryScrollStateRef.current = null
+        }
+      },
       shouldGateInitialUserInput,
       shouldAwaitAgentVisibleOutput,
       isDisposed: () => isDisposed,
@@ -384,7 +394,7 @@ export function useTerminalRuntimeSession({
       activeRendererKindRef,
       isTerminalHydratedRef,
       syncTerminalSize,
-      scheduleWebglPixelSnapping,
+      scheduleWebglCanvasTransformCleanup,
       log: terminalDiagnostics.log,
       requestRecovery: requestTerminalRendererRecovery,
       terminalThemeMode,
@@ -430,7 +440,7 @@ export function useTerminalRuntimeSession({
       terminalRef.current = null
       fitAddonRef.current = null
       activeRendererKindRef.current = 'dom'
-      cancelWebglPixelSnapping()
+      cancelWebglCanvasTransformCleanup()
     }
   }, [
     cancelScrollbackPublish,
@@ -442,8 +452,8 @@ export function useTerminalRuntimeSession({
     openTerminalFind,
     scrollbackBufferRef,
     scheduleTranscriptSync,
-    scheduleWebglPixelSnapping,
-    cancelWebglPixelSnapping,
+    scheduleWebglCanvasTransformCleanup,
+    cancelWebglCanvasTransformCleanup,
     setRendererKindAndApply,
     activeRendererKindRef,
     sessionId,
@@ -472,6 +482,7 @@ export function useTerminalRuntimeSession({
     preservedXtermSessionRef,
     recentUserInteractionAtRef,
     pendingUserInputBufferRef,
+    recoveryScrollStateRef,
     isLiveSessionReattach,
     terminalFontSize,
     viewportZoomRef,

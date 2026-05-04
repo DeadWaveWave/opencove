@@ -5,6 +5,7 @@ import {
   resolveDefaultTerminalWindowSize,
   resolveDefaultTaskWindowSize,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
+import { resolveDefaultAgentLaunchGeometry } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/agentLaunchGeometry'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
 
 describe('workspace canvas default sizing', () => {
@@ -51,6 +52,32 @@ describe('workspace canvas default sizing', () => {
     expect(resolveDefaultAgentWindowSize()).toEqual({
       width: 516,
       height: 724,
+    })
+  })
+
+  it('uses canonical agent sizing for OpenCode windows', () => {
+    expect(resolveDefaultAgentWindowSize('regular', 'opencode')).toEqual({
+      width: 516,
+      height: 724,
+    })
+  })
+
+  it('resolves default agent launch frame and PTY geometry from one owner', () => {
+    expect(
+      resolveDefaultAgentLaunchGeometry({
+        bucket: 'regular',
+        provider: 'opencode',
+        terminalFontSize: 13,
+      }),
+    ).toEqual({
+      frameSize: {
+        width: 516,
+        height: 724,
+      },
+      terminalGeometry: {
+        cols: 64,
+        rows: 45,
+      },
     })
   })
 })
