@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  clickHeaderDragSurface,
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
@@ -85,7 +86,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       await window.keyboard.down('Shift')
       try {
-        await outsideHeader.click({ position: { x: 40, y: 20 } })
+        await clickHeaderDragSurface(outsideHeader, { modifiers: ['Shift'] })
       } finally {
         await window.keyboard.up('Shift')
       }

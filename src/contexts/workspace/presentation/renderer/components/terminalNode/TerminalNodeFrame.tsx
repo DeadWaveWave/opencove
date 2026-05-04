@@ -146,6 +146,10 @@ export function TerminalNodeFrame({
           return
         }
 
+        if (event.target instanceof Element && event.target.closest('.nodrag')) {
+          return
+        }
+
         const interaction = resolveTerminalNodeInteraction(event.target)
         if (!interaction) {
           return
@@ -177,6 +181,21 @@ export function TerminalNodeFrame({
         agentResumeSessionId={agentResumeSessionId}
         agentResumeSessionIdVerified={agentResumeSessionIdVerified}
         directoryMismatch={directoryMismatch}
+        onHeaderPointerDownCapture={event => {
+          if (event.button !== 0 || event.shiftKey || isSelected) {
+            return
+          }
+
+          if (!(event.target instanceof Element) || event.target.closest('.nodrag')) {
+            return
+          }
+
+          onInteractionStart?.({
+            normalizeViewport: false,
+            selectNode: true,
+            shiftKey: false,
+          })
+        }}
         onTitleCommit={onTitleCommit}
         onClose={onClose}
         onCopyLastMessage={onCopyLastMessage}

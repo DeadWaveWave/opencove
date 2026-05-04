@@ -13,6 +13,10 @@ export function resolveRenamedWorkspaceNodeTitle(
   node: Node<TerminalNodeData>,
   normalizedTitle: string,
 ): string {
+  if (normalizedTitle.length === 0) {
+    return ''
+  }
+
   if (node.data.kind !== 'agent' || !node.data.agent) {
     return normalizedTitle
   }

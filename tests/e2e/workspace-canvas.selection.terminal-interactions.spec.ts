@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 import {
+  clickHeaderDragSurface,
   clearAndSeedWorkspace,
-  dragLocatorTo,
+  dragHeaderDragSurfaceTo,
   launchApp,
   storageKey,
 } from './workspace-canvas.helpers'
@@ -50,22 +51,18 @@ test.describe('Workspace Canvas - Selection', () => {
       await expect(firstHeader).toBeVisible()
       await expect(secondHeader).toBeVisible()
 
-      await firstHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(firstHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       await window.keyboard.down('Shift')
-      await secondHeader.click({ position: { x: 40, y: 20 } })
-      await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
+      try {
+        await clickHeaderDragSurface(secondHeader)
+        await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
 
-      const firstHeaderBox = await firstHeader.boundingBox()
-      if (!firstHeaderBox) {
-        throw new Error('first header bounding box unavailable')
+        await clickHeaderDragSurface(firstHeader)
+      } finally {
+        await window.keyboard.up('Shift')
       }
-
-      await window.mouse.move(firstHeaderBox.x + 40, firstHeaderBox.y + 20)
-      await window.mouse.down()
-      await window.mouse.up()
-      await window.keyboard.up('Shift')
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(
@@ -110,7 +107,7 @@ test.describe('Workspace Canvas - Selection', () => {
       await expect(settingsButton).toHaveAttribute('aria-label', '设置')
       await expect(terminalBody).toBeVisible()
 
-      await header.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(header)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
@@ -165,7 +162,7 @@ test.describe('Workspace Canvas - Selection', () => {
       const terminalBody = terminal.locator('.terminal-node__terminal')
       await expect(header).toBeVisible()
 
-      await header.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(header)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
@@ -365,7 +362,7 @@ test.describe('Workspace Canvas - Selection', () => {
       }
 
       const header = terminal.locator('.terminal-node__header')
-      await dragLocatorTo(window, header, pane, {
+      await dragHeaderDragSurfaceTo(window, header, pane, {
         sourcePosition: { x: 140, y: 16 },
         targetPosition: { x: 760, y: 80 },
       })
@@ -425,13 +422,13 @@ test.describe('Workspace Canvas - Selection', () => {
       await expect(firstHeader).toBeVisible()
       await expect(secondHeader).toBeVisible()
 
-      await firstHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(firstHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(
         window.locator('.react-flow__node.selected .terminal-node__title').first(),
       ).toContainText('terminal-mouse-window-switch-a')
 
-      await secondHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(secondHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(
         window.locator('.react-flow__node.selected .terminal-node__title').first(),

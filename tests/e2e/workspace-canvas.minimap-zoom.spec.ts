@@ -1,7 +1,7 @@
 import { expect, test, type Locator } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
-  dragLocatorTo,
+  dragHeaderDragSurfaceTo,
   launchApp,
   readCanvasViewport,
 } from './workspace-canvas.helpers'
@@ -218,7 +218,7 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       const header = terminal.locator('.terminal-node__header')
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
-      await dragLocatorTo(window, header, pane, {
+      await dragHeaderDragSurfaceTo(window, header, pane, {
         sourcePosition: { x: 120, y: 18 },
         targetPosition: { x: 240, y: 220 },
       })
@@ -386,9 +386,9 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      await dragLocatorTo(window, taskNode.locator('.task-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, taskNode.locator('.task-node__header'), pane, {
         sourcePosition: { x: 120, y: 18 },
-        targetPosition: { x: 240, y: 220 },
+        targetPosition: { x: 420, y: 260 },
       })
 
       await expect

@@ -243,6 +243,8 @@ export const zhCN = {
   },
   settingsPanel: zhCNSettingsPanel,
   taskNode: {
+    untitledTitle: '未命名任务',
+    titleInputLabel: '任务标题',
     openFullTaskEditor: '打开完整任务编辑器',
     deleteTask: '删除任务',
     noTags: '没有标签',
@@ -305,6 +307,8 @@ export const zhCN = {
   },
   websiteNode: zhCNWebsiteNode,
   terminalNode: {
+    untitledTitle: '未命名终端',
+    titleInputLabel: '终端标题',
     resizeWidth: '调整终端宽度',
     resizeHeight: '调整终端高度',
     recoveringAgentSession: '正在恢复实时 Agent 会话…',

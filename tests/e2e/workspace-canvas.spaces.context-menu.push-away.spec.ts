@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  clickHeaderDragSurface,
   clickCreateSpaceFromSelectionContextMenu,
   dragMouse,
   launchApp,
@@ -44,7 +45,7 @@ test.describe('Workspace Canvas - Spaces (Push Away)', () => {
         .filter({ hasText: 'terminal-space-create-left' })
         .first()
       await expect(leftNode).toBeVisible()
-      await leftNode.locator('.terminal-node__header').click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(leftNode.locator('.terminal-node__header'))
 
       const rightNode = window
         .locator('.terminal-node')

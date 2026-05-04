@@ -41,6 +41,13 @@
   min-width: 0;
 }
 
+.task-node__header-drag-surface {
+  flex: 0 1 48px;
+  width: 48px;
+  min-width: 24px;
+  min-height: 100%;
+}
+
 .task-node--enriching .task-node__header-main {
   padding-left: 18px;
 }
@@ -87,38 +94,6 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
-}
-
-.task-node__title-button {
-  border: none;
-  background: transparent;
-  text-align: left;
-  width: fit-content;
-  max-width: 100%;
-  cursor: text;
-  padding: 0;
-}
-
-.task-node__title-button:hover {
-  color: var(--cove-text);
-}
-
-.task-node__title-input {
-  flex: 1;
-  min-width: 0;
-  width: auto;
-  border: none;
-  background: transparent;
-  color: var(--cove-text);
-  border-radius: 0;
-  padding: 0;
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  font-family: inherit;
-}
-
-.task-node__title-input:focus {
-  outline: none;
-  box-shadow: none;
 }
 
 .task-node__timestamps {

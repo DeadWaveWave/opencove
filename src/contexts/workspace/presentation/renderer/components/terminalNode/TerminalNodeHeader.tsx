@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, type JSX } from 'react'
+import { useCallback, useState, type JSX, type PointerEvent } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AgentSessionSummary } from '@shared/contracts/dto'
 import { Copy, LoaderCircle } from 'lucide-react'
@@ -6,6 +6,7 @@ import type { AgentRuntimeStatus, WorkspaceNodeKind } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { TerminalNodeAgentSessionActions } from './TerminalNodeAgentSessionActions'
 import { getStatusClassName } from './status'
+import { InlineNodeTitleEditor } from '../shared/InlineNodeTitleEditor'
 
 interface TerminalNodeHeaderProps {
   title: string
@@ -17,6 +18,7 @@ interface TerminalNodeHeaderProps {
   agentResumeSessionId?: string | null
   agentResumeSessionIdVerified?: boolean
   directoryMismatch?: { executionDirectory: string; expectedDirectory: string } | null
+  onHeaderPointerDownCapture?: (event: PointerEvent<HTMLDivElement>) => void
   onTitleCommit?: (title: string) => void
   onClose: () => void
   onCopyLastMessage?: () => Promise<void>
@@ -35,6 +37,7 @@ export function TerminalNodeHeader({
   agentResumeSessionId,
   agentResumeSessionIdVerified = false,
   directoryMismatch,
+  onHeaderPointerDownCapture,
   onTitleCommit,
   onClose,
   onCopyLastMessage,
@@ -43,74 +46,32 @@ export function TerminalNodeHeader({
   onSwitchSession,
 }: TerminalNodeHeaderProps): JSX.Element {
   const { t } = useTranslation()
-  const [isTitleEditing, setIsTitleEditing] = useState(false)
-  const [titleDraft, setTitleDraft] = useState(() => extractEditableTitle(title, fixedTitlePrefix))
   const [isCopyingLastMessage, setIsCopyingLastMessage] = useState(false)
 
   const isTitleEditable =
     (kind === 'terminal' || kind === 'agent') && typeof onTitleCommit === 'function'
   const isAgentNode = kind === 'agent'
+  const editableTitle = extractEditableTitle(title, fixedTitlePrefix)
   const shouldRenderCopyLastMessageButton =
     isAgentNode &&
     (status === 'standby' || status === 'running') &&
     typeof onCopyLastMessage === 'function'
   const isCopyLastMessageDisabled = isCopyingLastMessage || status !== 'standby'
 
-  useEffect(() => {
-    if (isTitleEditing) {
-      return
-    }
-
-    setTitleDraft(extractEditableTitle(title, fixedTitlePrefix))
-  }, [fixedTitlePrefix, isTitleEditing, title])
-
-  const commitTitleEdit = useCallback(() => {
-    if (!isTitleEditable) {
-      return
-    }
-
-    const normalizedTitle = titleDraft.trim()
-    if (normalizedTitle.length === 0) {
-      setTitleDraft(extractEditableTitle(title, fixedTitlePrefix))
-      return
-    }
-
-    const nextTitle = combineEditableTitle(normalizedTitle, fixedTitlePrefix)
-
-    if (nextTitle !== title) {
-      onTitleCommit(nextTitle)
-    }
-  }, [fixedTitlePrefix, isTitleEditable, onTitleCommit, title, titleDraft])
-
-  const cancelTitleEdit = useCallback(() => {
-    setTitleDraft(extractEditableTitle(title, fixedTitlePrefix))
-  }, [fixedTitlePrefix, title])
-
-  const startTitleEditing = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (!isTitleEditable || isTitleEditing) {
+  const commitTitleEdit = useCallback(
+    (nextEditableTitle: string) => {
+      if (!isTitleEditable) {
         return
       }
 
-      if (event.target instanceof Element && event.target.closest('.nodrag')) {
-        return
-      }
-
-      event.stopPropagation()
-      setIsTitleEditing(true)
+      const normalizedTitle = nextEditableTitle.trim()
+      const nextTitle =
+        fixedTitlePrefix && normalizedTitle.length > 0
+          ? combineEditableTitle(normalizedTitle, fixedTitlePrefix)
+          : normalizedTitle
+      onTitleCommit?.(nextTitle)
     },
-    [isTitleEditable, isTitleEditing],
-  )
-
-  const handleHeaderClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (event.detail !== 2) {
-        return
-      }
-
-      startTitleEditing(event)
-    },
-    [startTitleEditing],
+    [fixedTitlePrefix, isTitleEditable, onTitleCommit],
   )
 
   const statusLabel = (() => {
@@ -135,8 +96,7 @@ export function TerminalNodeHeader({
     <div
       className="terminal-node__header"
       data-node-drag-handle="true"
-      onClick={handleHeaderClick}
-      onDoubleClick={startTitleEditing}
+      onPointerDownCapture={onHeaderPointerDownCapture}
     >
       {labelColor ? (
         <span
@@ -146,56 +106,24 @@ export function TerminalNodeHeader({
         />
       ) : null}
       {isTitleEditable ? (
-        isTitleEditing ? (
-          <span className="terminal-node__title-editable">
-            {fixedTitlePrefix ? (
-              <span className="terminal-node__title-prefix">{fixedTitlePrefix}</span>
-            ) : null}
-            <span className="terminal-node__title terminal-node__title-proxy" aria-hidden="true">
-              {combineEditableTitle(titleDraft, fixedTitlePrefix)}
-            </span>
-            <input
-              className="terminal-node__title-input nodrag nowheel"
-              data-testid="terminal-node-inline-title-input"
-              value={titleDraft}
-              autoFocus
-              onFocus={() => {
-                setIsTitleEditing(true)
-              }}
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-              }}
-              onChange={event => {
-                setTitleDraft(event.target.value)
-              }}
-              onBlur={() => {
-                commitTitleEdit()
-                setIsTitleEditing(false)
-              }}
-              onKeyDown={event => {
-                if (event.key === 'Escape') {
-                  event.preventDefault()
-                  cancelTitleEdit()
-                  event.currentTarget.blur()
-                  return
-                }
-
-                if (event.key === 'Enter') {
-                  event.preventDefault()
-                  event.currentTarget.blur()
-                }
-              }}
-            />
-          </span>
-        ) : (
-          <span className="terminal-node__title">{title}</span>
-        )
+        <InlineNodeTitleEditor
+          value={editableTitle}
+          placeholder={t('terminalNode.untitledTitle')}
+          ariaLabel={t('terminalNode.titleInputLabel')}
+          classNamePrefix="terminal-node"
+          displayTestId="terminal-node-title-display"
+          inputTestId="terminal-node-inline-title-input"
+          prefix={fixedTitlePrefix}
+          onCommit={commitTitleEdit}
+        />
       ) : (
         <span className="terminal-node__title">{title}</span>
       )}
+      <div
+        className="terminal-node__header-drag-surface"
+        data-testid="terminal-node-header-drag-surface"
+        aria-hidden="true"
+      />
 
       {directoryMismatch || isAgentNode ? (
         <div className="terminal-node__header-badges nodrag">
@@ -282,6 +210,10 @@ export function TerminalNodeHeader({
 function extractEditableTitle(title: string, fixedTitlePrefix: string | null): string {
   if (fixedTitlePrefix && title.startsWith(fixedTitlePrefix)) {
     return title.slice(fixedTitlePrefix.length)
+  }
+
+  if (fixedTitlePrefix && title.trim() === fixedTitlePrefix.trim()) {
+    return ''
   }
 
   return title

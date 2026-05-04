@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
-  dragLocatorTo,
+  dragHeaderDragSurfaceTo,
   launchApp,
   readCanvasViewport,
   readLocatorClientRect,
@@ -67,7 +67,7 @@ test.describe.skip('Workspace Canvas - Spaces (Drop Ownership)', () => {
         y: spaceBox.y + Math.min(spaceBox.height - 80, Math.max(140, spaceBox.height / 2)),
       }
 
-      await dragLocatorTo(window, rootNode.locator('.terminal-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, rootNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
           x: clamp(dropInsideSpaceClientPoint.x - paneBox.x, 40, paneBox.width - 40),
@@ -112,7 +112,7 @@ test.describe.skip('Workspace Canvas - Spaces (Drop Ownership)', () => {
       const spaceBottom = refreshedSpaceBox.y + refreshedSpaceBox.height
       const safeDropY = Math.min(paneBox.y + paneBox.height - 24, spaceBottom + 120)
 
-      await dragLocatorTo(window, rootNode.locator('.terminal-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, rootNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
           x: clamp(80, 40, paneBox.width - 40),
@@ -194,7 +194,7 @@ test.describe.skip('Workspace Canvas - Spaces (Drop Ownership)', () => {
         .first()
       await expect(boundaryNode).toBeVisible()
 
-      await dragLocatorTo(window, boundaryNode.locator('.terminal-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, boundaryNode.locator('.terminal-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: { x: 350, y: 340 },
       })
@@ -320,7 +320,7 @@ test.describe.skip('Workspace Canvas - Spaces (Drop Ownership)', () => {
       const viewport = await readCanvasViewport(window)
       const dropFlowPoint = { x: 950, y: 560 }
 
-      await dragLocatorTo(window, draggedNode.locator('.note-node__header'), pane, {
+      await dragHeaderDragSurfaceTo(window, draggedNode.locator('.note-node__header'), pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: {
           x: clamp(viewport.x + dropFlowPoint.x * viewport.zoom, 40, paneBox.width - 40),

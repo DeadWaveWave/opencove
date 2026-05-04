@@ -1,0 +1,105 @@
+.node-title-editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  color: var(--cove-text);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.2;
+}
+
+.node-title-editor[class*='terminal-node__title'] .node-title-editor__editable,
+.node-title-editor[class*='task-node__title'] .node-title-editor__editable {
+  flex: 1;
+}
+
+.node-title-editor[class*='terminal-node__title'] .node-title-editor__prefix {
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.node-title-editor__display {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  color: var(--cove-text);
+  cursor: text;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.node-title-editor__display--placeholder {
+  color: var(--cove-text-faint);
+}
+
+.node-title-editor__display-text {
+  flex: 0 1 auto;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.node-title-editor__editable {
+  flex: 0 1 auto;
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  cursor: text;
+}
+
+.node-title-editor--editing {
+  flex: 1 1 auto;
+}
+
+.node-title-editor--editing .node-title-editor__editable {
+  flex: 1 1 auto;
+}
+
+.node-title-editor__prefix {
+  flex: 0 0 auto;
+  color: var(--cove-text);
+  white-space: nowrap;
+}
+
+.node-title-editor__input-wrap {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  display: flex;
+  overflow: hidden;
+}
+
+.node-title-editor--editing .node-title-editor__input-wrap {
+  flex: 1 1 auto;
+}
+
+.node-title-editor__input {
+  min-width: 0;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  color: var(--cove-text);
+  cursor: text;
+  font: inherit;
+  line-height: inherit;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: clip;
+}
+
+.node-title-editor__input::placeholder {
+  color: var(--cove-text-faint);
+  opacity: 1;
+}
+
+.node-title-editor__input:focus {
+  outline: none;
+  box-shadow: none;
+}

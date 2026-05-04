@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { Download } from 'lucide-react'
@@ -11,6 +11,7 @@ import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
 import { normalizeMarkdownFileName, saveNoteAsMarkdownFile } from './NoteNode.markdown'
+import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -51,15 +52,10 @@ export function NoteNode({
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
   const { t } = useTranslation()
-  const titleCancelRef = useRef(false)
-  const titleInputRef = useRef<HTMLInputElement | null>(null)
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [savedMarkdownPath, setSavedMarkdownPath] = useState<string | null>(null)
-  const [isTitleEditing, setIsTitleEditing] = useState(false)
   const resolvedTitle = title.trim().length > 0 ? title : ''
-  const [titleDraft, setTitleDraft] = useState(resolvedTitle)
-  const titleMeasureText = titleDraft.length > 0 ? titleDraft : t('noteNode.untitledTitle')
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
     width,
@@ -90,62 +86,6 @@ export function NoteNode({
       renderedFrame.size.width,
     ],
   )
-
-  useEffect(() => {
-    if (isTitleEditing) {
-      return
-    }
-
-    setTitleDraft(resolvedTitle)
-  }, [isTitleEditing, resolvedTitle])
-
-  const beginTitleEditing = useCallback(() => {
-    titleCancelRef.current = false
-    setTitleDraft(resolvedTitle)
-    setIsTitleEditing(true)
-  }, [resolvedTitle])
-
-  useEffect(() => {
-    if (!isTitleEditing) {
-      return
-    }
-
-    const input = titleInputRef.current
-    if (!input) {
-      return
-    }
-
-    input.focus()
-    const caretPosition = input.value.length
-    input.setSelectionRange(caretPosition, caretPosition)
-  }, [isTitleEditing])
-
-  const commitTitleEdit = useCallback(() => {
-    const normalizedTitle = titleDraft.trim()
-    setTitleDraft(normalizedTitle)
-    setIsTitleEditing(false)
-
-    if (normalizedTitle !== title) {
-      onTitleChange(normalizedTitle)
-    }
-  }, [onTitleChange, title, titleDraft])
-
-  const cancelTitleEdit = useCallback(() => {
-    titleCancelRef.current = true
-    setTitleDraft(resolvedTitle)
-    setIsTitleEditing(false)
-  }, [resolvedTitle])
-
-  const handleTitleBlur = useCallback(() => {
-    if (titleCancelRef.current) {
-      titleCancelRef.current = false
-      setTitleDraft(resolvedTitle)
-      setIsTitleEditing(false)
-      return
-    }
-
-    commitTitleEdit()
-  }, [commitTitleEdit, resolvedTitle])
 
   const saveMarkdown = useCallback(async (): Promise<void> => {
     const rawName = window.prompt(t('noteNode.saveMarkdownPrompt'), t('noteNode.defaultFileName'))
@@ -244,80 +184,21 @@ export function NoteNode({
             aria-hidden="true"
           />
         ) : null}
-        <span className="note-node__title" data-testid="note-node-title">
-          {isTitleEditing ? (
-            <span className="note-node__title-text-proxy" aria-hidden="true">
-              {resolvedTitle || t('noteNode.untitledTitle')}
-            </span>
-          ) : null}
-          {isTitleEditing ? (
-            <span className="note-node__title-editable" data-title-measure={titleMeasureText}>
-              <input
-                ref={titleInputRef}
-                className="note-node__title-input nowheel nodrag"
-                data-testid="note-node-title-input"
-                value={titleDraft}
-                placeholder={t('noteNode.untitledTitle')}
-                aria-label={t('noteNode.titleInputLabel')}
-                title={resolvedTitle || t('noteNode.untitledTitle')}
-                spellCheck={false}
-                onFocus={beginTitleEditing}
-                onPointerDownCapture={event => {
-                  event.stopPropagation()
-                }}
-                onPointerDown={event => {
-                  event.stopPropagation()
-                }}
-                onClick={event => {
-                  event.stopPropagation()
-                }}
-                onChange={event => {
-                  setTitleDraft(event.target.value)
-                }}
-                onBlur={handleTitleBlur}
-                onKeyDown={event => {
-                  if (event.nativeEvent.isComposing) {
-                    return
-                  }
-
-                  if (event.key === 'Escape') {
-                    event.preventDefault()
-                    cancelTitleEdit()
-                    event.currentTarget.blur()
-                    return
-                  }
-
-                  if (event.key === 'Enter') {
-                    event.preventDefault()
-                    event.currentTarget.blur()
-                  }
-                }}
-              />
-            </span>
-          ) : (
-            <span
-              className={
-                resolvedTitle
-                  ? 'note-node__title-display nowheel nodrag'
-                  : 'note-node__title-display note-node__title-display--placeholder nowheel nodrag'
-              }
-              data-testid="note-node-title-display"
-              title={resolvedTitle || t('noteNode.untitledTitle')}
-              onPointerDownCapture={event => {
-                event.stopPropagation()
-              }}
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                beginTitleEditing()
-              }}
-            >
-              {resolvedTitle || t('noteNode.untitledTitle')}
-            </span>
-          )}
-        </span>
+        <InlineNodeTitleEditor
+          value={resolvedTitle}
+          placeholder={t('noteNode.untitledTitle')}
+          ariaLabel={t('noteNode.titleInputLabel')}
+          classNamePrefix="note-node"
+          rootTestId="note-node-title"
+          displayTestId="note-node-title-display"
+          inputTestId="note-node-title-input"
+          onCommit={onTitleChange}
+        />
+        <div
+          className="note-node__header-drag-surface"
+          data-testid="note-node-header-drag-surface"
+          aria-hidden="true"
+        />
         <button
           type="button"
           className="note-node__action nodrag"

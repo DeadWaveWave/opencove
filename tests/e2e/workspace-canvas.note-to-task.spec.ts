@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 import { resolveDefaultTaskWindowSize } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  clickHeaderDragSurface,
+  launchApp,
+} from './workspace-canvas.helpers'
 import { readSeededWorkspaceLayout, rectsOverlap } from './workspace-canvas.arrange.shared'
 
 test.describe('Workspace Canvas - Note to Task', () => {
@@ -49,7 +53,7 @@ test.describe('Workspace Canvas - Note to Task', () => {
 
       const noteHeader = noteNode.locator('.note-node__header')
       await expect(noteHeader).toBeVisible()
-      await noteHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(noteHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       await noteNode.click({ button: 'right', position: { x: 60, y: 16 } })
@@ -151,7 +155,7 @@ test.describe('Workspace Canvas - Note to Task', () => {
 
       const noteHeader = noteNode.locator('.note-node__header')
       await expect(noteHeader).toBeVisible()
-      await noteHeader.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(noteHeader)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       await noteNode.click({ button: 'right', position: { x: 60, y: 16 } })

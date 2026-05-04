@@ -4,6 +4,7 @@ import {
   resolveDefaultTerminalWindowSize,
 } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import {
+  clickHeaderDragSurface,
   clearAndSeedWorkspace,
   launchApp,
   readCanvasViewport,
@@ -161,10 +162,7 @@ test.describe('Workspace Canvas - Shortcuts', () => {
         },
       ])
 
-      await window
-        .locator('.terminal-node__header')
-        .first()
-        .click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(window.locator('.terminal-node__header').first())
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await focusWorkspaceCanvas(window)
       await window.keyboard.press(`${commandModifier}+G`)

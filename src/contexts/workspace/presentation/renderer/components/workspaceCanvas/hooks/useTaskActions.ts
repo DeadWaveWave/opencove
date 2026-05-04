@@ -207,9 +207,6 @@ export function useWorkspaceCanvasTaskActions({
   const quickUpdateTaskTitle = useCallback(
     (taskNodeId: string, nextTitle: string) => {
       const normalizedTitle = nextTitle.trim()
-      if (normalizedTitle.length === 0) {
-        return
-      }
 
       const now = new Date().toISOString()
       setNodes(prevNodes =>

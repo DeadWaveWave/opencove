@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   beginDragMouse,
+  clickHeaderDragSurface,
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
@@ -128,7 +129,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
 
       const insideHeader = insideNode.locator('.terminal-node__header')
       await expect(insideHeader).toBeVisible()
-      await insideHeader.click({ position: { x: 80, y: 16 } })
+      await clickHeaderDragSurface(insideHeader)
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(

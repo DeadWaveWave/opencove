@@ -1,5 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp, storageKey } from './workspace-canvas.helpers'
+import {
+  clearAndSeedWorkspace,
+  clickHeaderDragSurface,
+  launchApp,
+  storageKey,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
   test('supports task edit, resize, and delete confirmation', async () => {
@@ -55,11 +60,7 @@ test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
       await expect(taskNode.locator('.task-node__inline-hint')).toHaveCount(0)
 
       const inlineTitleInput = taskNode.locator('[data-testid="task-node-inline-title-input"]')
-      await taskNode.locator('.task-node__header').dispatchEvent('click', {
-        bubbles: true,
-        cancelable: true,
-        detail: 2,
-      })
+      await taskNode.locator('[data-testid="task-node-title-display"]').click()
       await expect(inlineTitleInput).toBeVisible()
       await inlineTitleInput.fill('Retry login workflow final')
       await inlineTitleInput.press('Enter')
@@ -136,7 +137,7 @@ test.describe('Workspace Canvas - Tasks (Edit & Delete)', () => {
       await expect(deleteDialog).toBeHidden()
       await expect(taskNode).toBeVisible()
 
-      await taskNode.locator('.task-node__header').click()
+      await clickHeaderDragSurface(taskNode.locator('.task-node__header'))
       await window.keyboard.press('Backspace')
       await expect(deleteDialog).toBeVisible()
       await window.keyboard.press('Enter')

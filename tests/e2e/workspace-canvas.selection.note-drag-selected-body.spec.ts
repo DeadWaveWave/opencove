@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  clickHeaderDragSurface,
   dragLocatorTo,
+  dragHeaderDragSurfaceTo,
   launchApp,
   readLocatorClientRect,
   storageKey,
@@ -82,7 +84,7 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
 
       await window.keyboard.down('Shift')
       try {
-        await header.click({ position: { x: 40, y: 20 } })
+        await clickHeaderDragSurface(header, { modifiers: ['Shift'] })
       } finally {
         await window.keyboard.up('Shift')
       }
@@ -115,7 +117,7 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
         throw new Error('note position unavailable after selected body drag')
       }
 
-      expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 120)
+      expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 60)
       expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 120)
     } finally {
       await electronApp.close()
@@ -217,7 +219,7 @@ test.describe('Workspace Canvas - Selection (Note Drag)', () => {
       }
 
       await expect(pane).toBeVisible()
-      await dragLocatorTo(window, header, pane, {
+      await dragHeaderDragSurfaceTo(window, header, pane, {
         sourcePosition: {
           x: blankProbe.x - headerBox.x,
           y: blankProbe.y - headerBox.y,

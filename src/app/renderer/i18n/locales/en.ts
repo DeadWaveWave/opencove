@@ -241,6 +241,8 @@ export const en = {
   },
   settingsPanel: enSettingsPanel,
   taskNode: {
+    untitledTitle: 'Untitled task',
+    titleInputLabel: 'Task title',
     openFullTaskEditor: 'Open full task editor',
     deleteTask: 'Delete task',
     noTags: 'No tags',
@@ -306,6 +308,8 @@ export const en = {
   },
   websiteNode: enWebsiteNode,
   terminalNode: {
+    untitledTitle: 'Untitled terminal',
+    titleInputLabel: 'Terminal title',
     resizeWidth: 'Resize terminal width',
     resizeHeight: 'Resize terminal height',
     recoveringAgentSession: 'Recovering live Agent session…',

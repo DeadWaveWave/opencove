@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
+  clickHeaderDragSurface,
   clickCreateSpaceFromSelectionContextMenu,
   launchApp,
   readCanvasViewport,
@@ -25,7 +26,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       const terminalNode = window.locator('.terminal-node').first()
       const header = terminalNode.locator('.terminal-node__header')
       await expect(terminalNode).toBeVisible()
-      await header.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(header)
 
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await pane.click({
@@ -60,7 +61,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       const header = terminalNode.locator('.terminal-node__header')
       await expect(terminalNode).toBeVisible()
 
-      await header.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(header)
       await clickCreateSpaceFromSelectionContextMenu(window, terminalNode)
 
       await terminalNode.click({ button: 'right' })
@@ -94,7 +95,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
       const header = terminalNode.locator('.terminal-node__header')
       await expect(terminalNode).toBeVisible()
 
-      await header.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(header)
       await clickCreateSpaceFromSelectionContextMenu(window, terminalNode)
 
       const labelButton = window.locator('.workspace-space-region__label').first()
@@ -401,10 +402,7 @@ test.describe('Workspace Canvas - Spaces (Menu & Switch)', () => {
         throw new Error('workspace space switcher layout unavailable')
       }
 
-      await window
-        .locator('.terminal-node__header')
-        .first()
-        .click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(window.locator('.terminal-node__header').first())
       await expect(window.locator('.workspace-selection-hint')).toBeVisible()
 
       await expect

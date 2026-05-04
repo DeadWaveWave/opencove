@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
-import { clearAndSeedWorkspace, dragMouse, launchApp, storageKey } from './workspace-canvas.helpers'
+import {
+  clickHeaderDragSurface,
+  clearAndSeedWorkspace,
+  dragHeaderDragSurfaceTo,
+  launchApp,
+  storageKey,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
   const readNodePositions = async (
@@ -44,7 +50,7 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
     }, storageKey)
   }
 
-  test('replaces selection when dragging an unselected terminal', async () => {
+  test('drags the newly selected terminal from the header blank area', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -89,11 +95,17 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
       await expect(headerA).toBeVisible()
       await expect(headerB).toBeVisible()
 
-      await headerA.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(headerA)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
       await expect(
         window.locator('.react-flow__node.selected .terminal-node__title').first(),
       ).toContainText('terminal-drag-unselected-a')
+
+      await clickHeaderDragSurface(headerB)
+      await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
+      await expect(
+        window.locator('.react-flow__node.selected .terminal-node__title').first(),
+      ).toContainText('terminal-drag-unselected-b')
 
       const before = await readNodePositions(window)
       if (!before) {
@@ -103,19 +115,15 @@ test.describe('Workspace Canvas - Selection (Terminal Drag)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       const paneBox = await pane.boundingBox()
-      const headerBox = await headerB.boundingBox()
-      if (!paneBox || !headerBox) {
-        throw new Error('header/pane bounding box unavailable for drag')
+      if (!paneBox) {
+        throw new Error('pane bounding box unavailable for drag')
       }
 
-      const startX = Math.min(paneBox.x + paneBox.width - 40, headerBox.x + 140)
-      const startY = headerBox.y + 20
-      const endX = Math.min(paneBox.x + paneBox.width - 60, startX + 240)
-      const endY = Math.min(paneBox.y + paneBox.height - 60, startY + 220)
-
-      await dragMouse(window, {
-        start: { x: startX, y: startY },
-        end: { x: endX, y: endY },
+      await dragHeaderDragSurfaceTo(window, headerB, pane, {
+        targetPosition: {
+          x: Math.max(620, Math.min(paneBox.width - 140, 1080)),
+          y: Math.min(paneBox.height - 80, 320),
+        },
         steps: 12,
       })
 

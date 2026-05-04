@@ -21,6 +21,7 @@ import { MIN_HEIGHT, MIN_WIDTH, shouldStopWheelPropagation } from './taskNode/he
 import { getTaskPriorityLabel } from '@app/renderer/i18n/labels'
 import type { LabelColor } from '@shared/types/labelColor'
 import { TaskPromptTemplatesMenu } from './promptTemplates/TaskPromptTemplatesMenu'
+import { InlineNodeTitleEditor } from '@contexts/workspace/presentation/renderer/components/shared/InlineNodeTitleEditor'
 
 interface TaskNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -88,8 +89,6 @@ export function TaskNode({
   const { t } = useTranslation()
   const workspaceId = useAppStore(state => state.activeWorkspaceId)
 
-  const [isTitleEditing, setIsTitleEditing] = useState(false)
-  const [titleDraft, setTitleDraft] = useState(title)
   const [isRequirementEditing, setIsRequirementEditing] = useState(false)
   const [requirementDraft, setRequirementDraft] = useState(requirement)
   const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = useState<{
@@ -110,63 +109,12 @@ export function TaskNode({
   })
 
   useEffect(() => {
-    if (isTitleEditing) {
-      return
-    }
-
-    setTitleDraft(title)
-  }, [isTitleEditing, title])
-
-  useEffect(() => {
     if (isRequirementEditing) {
       return
     }
 
     setRequirementDraft(requirement)
   }, [isRequirementEditing, requirement])
-
-  const commitTitleDraft = useCallback(() => {
-    const normalized = titleDraft.trim()
-    if (normalized.length === 0) {
-      setTitleDraft(title)
-      return
-    }
-
-    if (normalized !== title) {
-      onQuickTitleSave(normalized)
-    }
-  }, [onQuickTitleSave, title, titleDraft])
-
-  const cancelTitleEdit = useCallback(() => {
-    setTitleDraft(title)
-  }, [title])
-
-  const startTitleEditing = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (isTitleEditing) {
-        return
-      }
-
-      if (event.target instanceof Element && event.target.closest('.nodrag')) {
-        return
-      }
-
-      event.stopPropagation()
-      setIsTitleEditing(true)
-    },
-    [isTitleEditing],
-  )
-
-  const handleHeaderClick = useCallback(
-    (event: React.MouseEvent<HTMLDivElement>) => {
-      if (event.detail !== 2) {
-        return
-      }
-
-      startTitleEditing(event)
-    },
-    [startTitleEditing],
-  )
 
   const commitRequirementDraft = useCallback(() => {
     const normalized = requirementDraft.trim()
@@ -260,12 +208,7 @@ export function TaskNode({
         />
       ) : null}
 
-      <div
-        className="task-node__header"
-        data-node-drag-handle="true"
-        onClick={handleHeaderClick}
-        onDoubleClick={startTitleEditing}
-      >
+      <div className="task-node__header" data-node-drag-handle="true">
         <div className="task-node__header-main">
           <div className="task-node__title-row">
             {labelColor ? (
@@ -276,50 +219,20 @@ export function TaskNode({
               />
             ) : null}
 
-            {isTitleEditing ? (
-              <>
-                <span className="task-node__title task-node__title-proxy" aria-hidden="true">
-                  {titleDraft}
-                </span>
-                <input
-                  className="task-node__title-input nodrag nowheel"
-                  data-testid="task-node-inline-title-input"
-                  value={titleDraft}
-                  autoFocus
-                  onFocus={() => {
-                    setIsTitleEditing(true)
-                  }}
-                  onPointerDown={event => {
-                    event.stopPropagation()
-                  }}
-                  onClick={event => {
-                    event.stopPropagation()
-                  }}
-                  onChange={event => {
-                    setTitleDraft(event.target.value)
-                  }}
-                  onBlur={() => {
-                    commitTitleDraft()
-                    setIsTitleEditing(false)
-                  }}
-                  onKeyDown={event => {
-                    if (event.key === 'Escape') {
-                      event.preventDefault()
-                      cancelTitleEdit()
-                      event.currentTarget.blur()
-                      return
-                    }
-
-                    if (event.key === 'Enter') {
-                      event.preventDefault()
-                      event.currentTarget.blur()
-                    }
-                  }}
-                />
-              </>
-            ) : (
-              <span className="task-node__title">{titleDraft}</span>
-            )}
+            <InlineNodeTitleEditor
+              value={title}
+              placeholder={t('taskNode.untitledTitle')}
+              ariaLabel={t('taskNode.titleInputLabel')}
+              classNamePrefix="task-node"
+              displayTestId="task-node-title-display"
+              inputTestId="task-node-inline-title-input"
+              onCommit={onQuickTitleSave}
+            />
+            <div
+              className="task-node__header-drag-surface"
+              data-testid="task-node-header-drag-surface"
+              aria-hidden="true"
+            />
           </div>
         </div>
 

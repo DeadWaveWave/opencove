@@ -1,5 +1,9 @@
 import { expect, test } from '@playwright/test'
-import { clearAndSeedWorkspace, launchApp } from './workspace-canvas.helpers'
+import {
+  clickHeaderDragSurface,
+  clearAndSeedWorkspace,
+  launchApp,
+} from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Selection', () => {
   test('keeps terminal window focus ring stable while typing', async () => {
@@ -51,7 +55,7 @@ test.describe('Workspace Canvas - Selection', () => {
 
       const header = terminal.locator('.terminal-node__header')
       await expect(header).toBeVisible()
-      await header.click({ position: { x: 40, y: 20 } })
+      await clickHeaderDragSurface(header)
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(1)
 
       await expect

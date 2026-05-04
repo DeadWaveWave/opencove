@@ -111,12 +111,13 @@ function TerminalNodeType({
   })
   const resolvedTitle =
     data.kind === 'agent' && data.agent
-      ? resolveAgentDisplayTitle({
-          provider: data.agent.provider,
-          linkedTaskTitle,
-          fallbackTitle: data.title,
-          preferFallbackTitle: data.titlePinnedByUser === true,
-        })
+      ? data.titlePinnedByUser === true
+        ? data.title.trim()
+        : resolveAgentDisplayTitle({
+            provider: data.agent.provider,
+            linkedTaskTitle,
+            fallbackTitle: data.title,
+          })
       : data.title
 
   return (

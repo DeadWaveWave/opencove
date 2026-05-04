@@ -2,7 +2,8 @@ import { expect, test } from '@playwright/test'
 import {
   beginDragMouse,
   clearAndSeedWorkspace,
-  dragLocatorTo,
+  clickHeaderDragSurface,
+  dragHeaderDragSurfaceTo,
   launchApp,
   readCanvasViewport,
   readLocatorClientRect,
@@ -168,7 +169,7 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      await dragLocatorTo(window, header, pane, {
+      await dragHeaderDragSurfaceTo(window, header, pane, {
         sourcePosition: { x: 80, y: 16 },
         targetPosition: { x: 360, y: 320 },
       })
@@ -176,7 +177,9 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       await expect(firstTerminal).toBeVisible()
       await expect(firstTerminal.locator('.xterm')).toBeVisible()
 
-      await terminals.nth(1).locator('.terminal-node__header').click({ force: true })
+      await clickHeaderDragSurface(terminals.nth(1).locator('.terminal-node__header'), {
+        force: true,
+      })
 
       await expect(firstTerminal).toBeVisible()
       await expect(firstTerminal.locator('.xterm')).toBeVisible()
@@ -227,7 +230,7 @@ test.describe('Workspace Canvas - Drag & Resize', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      await dragLocatorTo(window, header, pane, {
+      await dragHeaderDragSurfaceTo(window, header, pane, {
         sourcePosition: { x: 120, y: 16 },
         targetPosition: { x: 680, y: 420 },
       })

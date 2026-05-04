@@ -1,7 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
+  clickHeaderDragSurface,
   clearAndSeedWorkspace,
   dragMouse,
+  dragHeaderDragSurfaceTo,
   launchApp,
   readCanvasViewport,
   storageKey,
@@ -93,8 +95,8 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
       const leftHeader = leftTerminal.locator('.terminal-node__header')
       const rightHeader = rightTerminal.locator('.terminal-node__header')
 
-      await leftHeader.click({ position: { x: 40, y: 20 } })
-      await rightHeader.click({ position: { x: 40, y: 20 }, modifiers: ['Shift'] })
+      await clickHeaderDragSurface(leftHeader)
+      await clickHeaderDragSurface(rightHeader, { modifiers: ['Shift'] })
 
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(2)
       await expect(window.locator('.react-flow__nodesselection-rect')).toHaveCount(1)
@@ -110,21 +112,18 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
       const paneBox = await pane.boundingBox()
-      const headerBox = await rightHeader.boundingBox()
-      if (!paneBox || !headerBox) {
-        throw new Error('header/pane bounding box unavailable for multi-drag')
+      if (!paneBox) {
+        throw new Error('pane bounding box unavailable for multi-drag')
       }
-
-      const startX = Math.min(paneBox.x + paneBox.width - 40, headerBox.x + 140)
-      const startY = headerBox.y + 20
-      const endX = Math.min(paneBox.x + paneBox.width - 60, startX + 240)
-      const endY = Math.min(paneBox.y + paneBox.height - 60, startY + 220)
 
       await window.waitForTimeout(150)
 
-      await dragMouse(window, {
-        start: { x: startX, y: startY },
-        end: { x: endX, y: endY },
+      await dragHeaderDragSurfaceTo(window, rightHeader, pane, {
+        sourcePosition: { x: 140, y: 16 },
+        targetPosition: {
+          x: Math.min(paneBox.width - 60, 380),
+          y: Math.min(paneBox.height - 60, 240),
+        },
         steps: 12,
       })
 
@@ -241,19 +240,12 @@ test.describe('Workspace Canvas - Selection (Terminal Multi Drag)', () => {
         throw new Error('node positions unavailable before multi-drag')
       }
 
-      const headerBox = await rightHeader.boundingBox()
-      if (!headerBox) {
-        throw new Error('header bounding box unavailable for multi-drag')
-      }
-
-      const startX = headerBox.x + 140
-      const startY = headerBox.y + 20
-      const endX = Math.min(paneBox.x + paneBox.width - 60, startX + 240)
-      const endY = Math.min(paneBox.y + paneBox.height - 60, startY + 220)
-
-      await dragMouse(window, {
-        start: { x: startX, y: startY },
-        end: { x: endX, y: endY },
+      await dragHeaderDragSurfaceTo(window, rightHeader, pane, {
+        sourcePosition: { x: 140, y: 16 },
+        targetPosition: {
+          x: Math.min(paneBox.width - 60, 380),
+          y: Math.min(paneBox.height - 60, 240),
+        },
         steps: 12,
       })
 

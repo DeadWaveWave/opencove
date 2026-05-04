@@ -329,9 +329,6 @@ export function useWorkspaceCanvasNodesStore({
   const renameTerminalTitle = useCallback(
     (nodeId: string, title: string) => {
       const normalizedTitle = title.trim()
-      if (normalizedTitle.length === 0) {
-        return
-      }
 
       setNodes(
         prevNodes => {

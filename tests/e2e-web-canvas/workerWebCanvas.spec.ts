@@ -12,6 +12,13 @@ import {
   invokeValue,
 } from './helpers'
 
+async function clickHeaderDragSurfaceByTestId(
+  page: import('@playwright/test').Page,
+  testId: string,
+): Promise<void> {
+  await page.getByTestId(testId).first().click()
+}
+
 test.describe('Worker web canvas', () => {
   test('opens the full canvas via ticket claim without leaving a token in the URL', async ({
     page,
@@ -228,7 +235,7 @@ test.describe('Worker web canvas', () => {
 
     const terminalHeader = terminal.locator('.terminal-node__header')
     await expect(terminalHeader).toBeVisible()
-    await terminalHeader.click({ position: { x: 24, y: 16 } })
+    await clickHeaderDragSurfaceByTestId(page, 'terminal-node-header-drag-surface')
 
     await expect(terminalWrapper).toHaveClass(/selected/)
 
