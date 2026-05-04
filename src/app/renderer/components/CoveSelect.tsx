@@ -29,6 +29,7 @@ export function CoveSelect({
   triggerTestId,
   menuTestId,
   ariaLabel,
+  showTriggerBadge = true,
   onChange,
 }: {
   id?: string
@@ -43,6 +44,7 @@ export function CoveSelect({
   triggerTestId?: string
   menuTestId?: string
   ariaLabel?: string
+  showTriggerBadge?: boolean
   onChange: (nextValue: string) => void
 }): React.JSX.Element {
   const listboxId = useId()
@@ -322,7 +324,7 @@ export function CoveSelect({
       >
         <span className="cove-select__label">
           <span className="cove-select__label-text">{selectedOption?.label ?? ''}</span>
-          {selectedOption?.badge ? (
+          {showTriggerBadge && selectedOption?.badge ? (
             <span className="cove-select__pill">{selectedOption.badge}</span>
           ) : null}
         </span>

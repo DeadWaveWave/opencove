@@ -49,36 +49,38 @@ export function AddProjectWizardDefaultLocationSection({
 
   return (
     <div className="cove-window__field-row">
-      <label>{t('addProjectWizard.defaultLocationLabel')}</label>
-      {showRemote ? (
-        <div
-          className="cove-window__segmented"
-          data-testid="workspace-project-create-default-location"
-        >
-          <button
-            type="button"
-            className={`cove-window__segment${defaultLocationKind === 'local' ? ' cove-window__segment--selected' : ''}`}
-            disabled={isBusy}
-            onClick={() => onChangeDefaultLocationKind('local')}
-            data-testid="workspace-project-create-default-location-local"
+      <div className="cove-window__label-row">
+        <label>{t('addProjectWizard.defaultLocationLabel')}</label>
+        {showRemote ? (
+          <div
+            className="cove-window__segmented"
+            data-testid="workspace-project-create-default-location"
           >
-            {t('addProjectWizard.defaultLocationLocal')}
-          </button>
-          <button
-            type="button"
-            className={`cove-window__segment${defaultLocationKind === 'remote' ? ' cove-window__segment--selected' : ''}`}
-            disabled={isBusy}
-            onClick={() => onChangeDefaultLocationKind('remote')}
-            data-testid="workspace-project-create-default-location-remote"
-          >
-            {t('addProjectWizard.defaultLocationRemote')}
-          </button>
-        </div>
-      ) : null}
+            <button
+              type="button"
+              className={`cove-window__segment${defaultLocationKind === 'local' ? ' cove-window__segment--selected' : ''}`}
+              disabled={isBusy}
+              onClick={() => onChangeDefaultLocationKind('local')}
+              data-testid="workspace-project-create-default-location-local"
+            >
+              {t('addProjectWizard.defaultLocationLocal')}
+            </button>
+            <button
+              type="button"
+              className={`cove-window__segment${defaultLocationKind === 'remote' ? ' cove-window__segment--selected' : ''}`}
+              disabled={isBusy}
+              onClick={() => onChangeDefaultLocationKind('remote')}
+              data-testid="workspace-project-create-default-location-remote"
+            >
+              {t('addProjectWizard.defaultLocationRemote')}
+            </button>
+          </div>
+        ) : null}
+      </div>
 
       {effectiveDefaultLocationKind === 'local' ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-          <div style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
+        <div className="cove-window__section-card cove-window__section-card--subtle">
+          <div className="cove-window__path-row cove-window__path-row--single-action">
             <input
               className="cove-field"
               type="text"
@@ -95,34 +97,18 @@ export function AddProjectWizardDefaultLocationSection({
               disabled={isBusy || !canBrowseLocal}
               onClick={() => onBrowseDefaultLocalRootPath()}
               data-testid="workspace-project-create-default-local-browse"
-              style={{ flexShrink: 0 }}
             >
               {t('addProjectWizard.browse')}
             </button>
           </div>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+        <div className="cove-window__section-card">
           {remoteEndpointsCount === 0 ? (
-            <div
-              style={{
-                border: '1px solid var(--cove-border-subtle)',
-                borderRadius: 12,
-                background: 'rgba(255, 255, 255, 0.03)',
-                padding: '10px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-              }}
-            >
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ fontWeight: 600, fontSize: 13 }}>
-                  {t('addProjectWizard.noRemoteWorkersTitle')}
-                </div>
-                <div style={{ color: 'var(--cove-text-muted)', fontSize: 12 }}>
-                  {t('addProjectWizard.noRemoteWorkersHint')}
-                </div>
+            <div className="cove-window__empty-card">
+              <div className="cove-window__section-card-heading">
+                <strong>{t('addProjectWizard.noRemoteWorkersTitle')}</strong>
+                <span>{t('addProjectWizard.noRemoteWorkersHint')}</span>
               </div>
               <button
                 type="button"
@@ -137,16 +123,17 @@ export function AddProjectWizardDefaultLocationSection({
               </button>
             </div>
           ) : (
-            <>
+            <div className="cove-window__stack cove-window__stack--tight">
               <CoveSelect
                 testId="workspace-project-create-default-remote-endpoint"
                 value={defaultRemoteEndpointId}
                 options={endpointOptions}
                 disabled={isBusy || endpointOptions.length === 0}
+                showTriggerBadge={false}
                 onChange={nextValue => onChangeDefaultRemoteEndpointId(nextValue)}
               />
               {remoteStatusSlot ?? null}
-              <div style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
+              <div className="cove-window__path-row cove-window__path-row--single-action">
                 <input
                   className="cove-field"
                   type="text"
@@ -155,14 +142,12 @@ export function AddProjectWizardDefaultLocationSection({
                   disabled={isBusy}
                   placeholder={t('addProjectWizard.remotePathPlaceholder')}
                   data-testid="workspace-project-create-default-remote-root"
-                  style={{ flex: 1 }}
                 />
                 <button
                   type="button"
                   className="cove-window__action cove-window__action--ghost"
                   disabled={isBusy || defaultRemoteEndpointId.trim().length === 0}
                   data-testid="workspace-project-create-default-remote-browse"
-                  style={{ flexShrink: 0 }}
                   onClick={() => {
                     onBrowseDefaultRemoteRootPath()
                   }}
@@ -170,7 +155,7 @@ export function AddProjectWizardDefaultLocationSection({
                   {t('addProjectWizard.browse')}
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       )}

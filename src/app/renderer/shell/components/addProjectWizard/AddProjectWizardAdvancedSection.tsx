@@ -84,7 +84,7 @@ export function AddProjectWizardAdvancedSection({
       </div>
 
       {isAdvancedOpen ? (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%' }}>
+        <div className="cove-window__stack">
           <AddProjectWizardPlannedMountsSection
             t={t}
             defaultMount={defaultMountPreview}
@@ -94,10 +94,12 @@ export function AddProjectWizardAdvancedSection({
             onRemoveExtraMount={onRemoveExtraMount}
           />
 
-          <div className="cove-window__field-row">
-            <label>{t('addProjectWizard.addExtraLocalLabel')}</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-              <div style={{ display: 'flex', gap: 10 }}>
+          <div className="cove-window__section-card cove-window__section-card--subtle">
+            <div className="cove-window__section-card-heading">
+              <strong>{t('addProjectWizard.addExtraLocalLabel')}</strong>
+            </div>
+            <div className="cove-window__stack cove-window__stack--tight">
+              <div className="cove-window__path-row cove-window__path-row--single-action">
                 <input
                   className="cove-field"
                   type="text"
@@ -106,7 +108,6 @@ export function AddProjectWizardAdvancedSection({
                   disabled={isBusy}
                   placeholder={t('addProjectWizard.localPathPlaceholder')}
                   data-testid="workspace-project-create-extra-local-root"
-                  style={{ flex: 1 }}
                 />
                 <button
                   type="button"
@@ -116,7 +117,6 @@ export function AddProjectWizardAdvancedSection({
                     onBrowseExtraLocalRootPath()
                   }}
                   data-testid="workspace-project-create-extra-local-browse"
-                  style={{ flexShrink: 0 }}
                 >
                   {t('addProjectWizard.browse')}
                 </button>
@@ -130,34 +130,61 @@ export function AddProjectWizardAdvancedSection({
                 placeholder={t('addProjectWizard.localNamePlaceholder')}
                 data-testid="workspace-project-create-extra-local-name"
               />
-              <button
-                type="button"
-                className="cove-window__action cove-window__action--primary"
-                disabled={isBusy || extraLocalRootPath.trim().length === 0}
-                onClick={() => onAddExtraLocalMount()}
-                data-testid="workspace-project-create-extra-local-add"
-              >
-                {t('common.add')}
-              </button>
+              <div className="cove-window__button-row cove-window__button-row--end">
+                <button
+                  type="button"
+                  className="cove-window__action cove-window__action--primary"
+                  disabled={isBusy || extraLocalRootPath.trim().length === 0}
+                  onClick={() => onAddExtraLocalMount()}
+                  data-testid="workspace-project-create-extra-local-add"
+                >
+                  {t('common.add')}
+                </button>
+              </div>
             </div>
           </div>
 
-          <div className="cove-window__field-row">
-            <label>{t('addProjectWizard.addExtraRemoteLabel')}</label>
-            {showRemote ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                {remoteEndpointsCount === 0 ? (
+          <div className="cove-window__section-card">
+            <div className="cove-window__section-card-header">
+              <div className="cove-window__section-card-heading">
+                <strong>{t('addProjectWizard.addExtraRemoteLabel')}</strong>
+              </div>
+              {showRemote ? (
+                <div className="cove-window__section-card-actions">
                   <button
                     type="button"
                     className="cove-window__action cove-window__action--ghost"
                     disabled={isBusy}
-                    data-testid="workspace-project-create-advanced-open-endpoints"
+                    data-testid="workspace-project-create-refresh-endpoints"
                     onClick={() => {
-                      onRequestOpenEndpoints()
+                      onReloadEndpoints()
                     }}
                   >
-                    {t('addProjectWizard.openEndpointsAction')}
+                    {t('common.refresh')}
                   </button>
+                </div>
+              ) : null}
+            </div>
+            {showRemote ? (
+              <div className="cove-window__stack cove-window__stack--tight">
+                {remoteEndpointsCount === 0 ? (
+                  <div className="cove-window__empty-card">
+                    <div className="cove-window__section-card-heading">
+                      <strong>{t('addProjectWizard.noRemoteWorkersTitle')}</strong>
+                      <span>{t('addProjectWizard.noRemoteWorkersHint')}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="cove-window__action cove-window__action--primary"
+                      disabled={isBusy}
+                      data-testid="workspace-project-create-advanced-open-endpoints"
+                      onClick={() => {
+                        onRequestOpenEndpoints()
+                      }}
+                    >
+                      {t('addProjectWizard.openEndpointsAction')}
+                    </button>
+                  </div>
                 ) : (
                   <>
                     <CoveSelect
@@ -165,10 +192,11 @@ export function AddProjectWizardAdvancedSection({
                       value={extraRemoteEndpointId}
                       options={endpointOptions}
                       disabled={isBusy || endpointOptions.length === 0}
+                      showTriggerBadge={false}
                       onChange={nextValue => onChangeExtraRemoteEndpointId(nextValue)}
                     />
                     {extraRemoteStatusSlot ?? null}
-                    <div style={{ display: 'flex', gap: 10 }}>
+                    <div className="cove-window__path-row cove-window__path-row--single-action">
                       <input
                         className="cove-field"
                         type="text"
@@ -177,14 +205,12 @@ export function AddProjectWizardAdvancedSection({
                         disabled={isBusy || endpointOptions.length === 0}
                         placeholder={t('addProjectWizard.remotePathPlaceholder')}
                         data-testid="workspace-project-create-extra-remote-root"
-                        style={{ flex: 1 }}
                       />
                       <button
                         type="button"
                         className="cove-window__action cove-window__action--ghost"
                         disabled={isBusy || extraRemoteEndpointId.trim().length === 0}
                         data-testid="workspace-project-create-extra-remote-browse"
-                        style={{ flexShrink: 0 }}
                         onClick={() => {
                           onBrowseExtraRemoteRootPath()
                         }}
@@ -201,34 +227,22 @@ export function AddProjectWizardAdvancedSection({
                       placeholder={t('addProjectWizard.remoteNamePlaceholder')}
                       data-testid="workspace-project-create-extra-remote-name"
                     />
-                    <button
-                      type="button"
-                      className="cove-window__action cove-window__action--primary"
-                      disabled={isBusy || !canCreateExtraRemote}
-                      onClick={() => onAddExtraRemoteMount()}
-                      data-testid="workspace-project-create-extra-remote-add"
-                    >
-                      {t('common.add')}
-                    </button>
+                    <div className="cove-window__button-row cove-window__button-row--end">
+                      <button
+                        type="button"
+                        className="cove-window__action cove-window__action--primary"
+                        disabled={isBusy || !canCreateExtraRemote}
+                        onClick={() => onAddExtraRemoteMount()}
+                        data-testid="workspace-project-create-extra-remote-add"
+                      >
+                        {t('common.add')}
+                      </button>
+                    </div>
                   </>
                 )}
               </div>
             ) : null}
           </div>
-
-          {showRemote ? (
-            <button
-              type="button"
-              className="cove-window__action cove-window__action--ghost"
-              disabled={isBusy}
-              data-testid="workspace-project-create-refresh-endpoints"
-              onClick={() => {
-                onReloadEndpoints()
-              }}
-            >
-              {t('common.refresh')}
-            </button>
-          ) : null}
         </div>
       ) : null}
     </div>

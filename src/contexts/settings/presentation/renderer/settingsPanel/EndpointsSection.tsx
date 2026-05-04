@@ -3,11 +3,7 @@ import { useTranslation } from '@app/renderer/i18n'
 import type { WorkerEndpointOverviewDto } from '@shared/contracts/dto'
 import { RemoteEndpointStatusPanel } from '@app/renderer/shell/components/RemoteEndpointStatusPanel'
 import { useEndpointOverviews } from '@app/renderer/shell/hooks/useEndpointOverviews'
-import {
-  getEndpointActionExecution,
-  getEndpointAccessLabel,
-  getEndpointAccessTarget,
-} from '@app/renderer/shell/utils/endpointOverviewUi'
+import { getEndpointActionExecution } from '@app/renderer/shell/utils/endpointOverviewUi'
 import { notifyTopologyChanged } from '@app/renderer/shell/utils/topologyEvents'
 import { EndpointsRegisterDialog } from './EndpointsRegisterDialog'
 import { toErrorMessage } from './workerSectionUtils'
@@ -36,7 +32,7 @@ function parseOptionalPort(value: string): number | null {
 export function EndpointsSection(): React.JSX.Element {
   const { t } = useTranslation()
   const {
-    overviews,
+    remoteOverviews,
     error: overviewError,
     isLoading,
     busyByEndpointId,
@@ -62,6 +58,7 @@ export function EndpointsSection(): React.JSX.Element {
   const managedPortValue = parseOptionalPort(managedPort)
   const managedRemotePortValue = parseOptionalPort(managedRemotePort)
   const manualPortValue = parseRequiredPort(manualPort)
+  const remoteEndpoints = remoteOverviews
 
   const canRegisterManaged = managedHost.trim().length > 0 && managedPortValue !== 0
   const canRegisterManual =
@@ -224,12 +221,14 @@ export function EndpointsSection(): React.JSX.Element {
           <span>{t('settingsPanel.endpoints.list.help')}</span>
         </div>
 
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.endpoints.list.countLabel')}</strong>
+        <div className="settings-panel__endpoint-toolbar">
+          <div className="settings-panel__endpoint-toolbar-meta">
+            <strong>
+              {t('settingsPanel.endpoints.list.countLabel')}: {String(remoteEndpoints.length)}
+            </strong>
+            <span>{t('settingsPanel.endpoints.register.recommendedHint')}</span>
           </div>
-          <div className="settings-panel__control">
-            <span className="settings-panel__value">{String(overviews.length)}</span>
+          <div className="settings-panel__endpoint-toolbar-actions">
             <button
               type="button"
               className="secondary"
@@ -241,15 +240,6 @@ export function EndpointsSection(): React.JSX.Element {
             >
               {t('common.refresh')}
             </button>
-          </div>
-        </div>
-
-        <div className="settings-panel__row">
-          <div className="settings-panel__row-label">
-            <strong>{t('settingsPanel.endpoints.register.recommendedTitle')}</strong>
-            <span>{t('settingsPanel.endpoints.register.recommendedHint')}</span>
-          </div>
-          <div className="settings-panel__control">
             <button
               type="button"
               className="primary"
@@ -262,41 +252,43 @@ export function EndpointsSection(): React.JSX.Element {
           </div>
         </div>
 
-        {overviews.map(overview => {
-          const canRemove = overview.endpoint.endpointId !== 'local'
-          const isBusy = Boolean(busyByEndpointId[overview.endpoint.endpointId])
-          const accessLabel = getEndpointAccessLabel(t, overview.endpoint)
-          const accessTarget = getEndpointAccessTarget(overview.endpoint)
-
-          return (
-            <div
-              key={overview.endpoint.endpointId}
-              className="settings-panel__row"
-              style={{ alignItems: 'stretch' }}
+        {remoteEndpoints.length === 0 ? (
+          <div className="cove-window__empty-card">
+            <div className="cove-window__section-card-heading">
+              <strong>{t('settingsPanel.endpoints.register.recommendedTitle')}</strong>
+              <span>{t('settingsPanel.endpoints.register.managedHelp')}</span>
+            </div>
+            <button
+              type="button"
+              className="primary"
+              data-testid="settings-endpoints-empty-register"
+              disabled={registerBusy}
+              onClick={openRegisterWindow}
             >
-              <div className="settings-panel__row-label" style={{ paddingTop: 4 }}>
-                <strong>{overview.endpoint.displayName}</strong>
-                <span>{accessTarget ? `${accessLabel} · ${accessTarget}` : accessLabel}</span>
-              </div>
-              <div className="settings-panel__control" style={{ flexDirection: 'column', gap: 8 }}>
-                <RemoteEndpointStatusPanel
-                  t={t}
-                  overview={overview}
-                  isBusy={isBusy || removingEndpointId === overview.endpoint.endpointId}
-                  onRunRecommendedAction={nextOverview => {
-                    void runRecommendedAction(nextOverview)
-                  }}
-                  onReconnect={
-                    overview.endpoint.endpointId !== 'local'
-                      ? nextOverview => {
-                          void handleReconnect(nextOverview)
-                        }
-                      : undefined
-                  }
-                />
+              {t('settingsPanel.endpoints.actions.add')}
+            </button>
+          </div>
+        ) : (
+          <div className="settings-panel__endpoint-list">
+            {remoteEndpoints.map(overview => {
+              const isBusy = Boolean(busyByEndpointId[overview.endpoint.endpointId])
 
-                {canRemove ? (
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              return (
+                <div key={overview.endpoint.endpointId} className="settings-panel__endpoint-card">
+                  <RemoteEndpointStatusPanel
+                    t={t}
+                    overview={overview}
+                    compact
+                    isBusy={isBusy || removingEndpointId === overview.endpoint.endpointId}
+                    onRunRecommendedAction={nextOverview => {
+                      void runRecommendedAction(nextOverview)
+                    }}
+                    onReconnect={nextOverview => {
+                      void handleReconnect(nextOverview)
+                    }}
+                  />
+
+                  <div className="settings-panel__endpoint-card-actions">
                     <button
                       type="button"
                       className="secondary"
@@ -309,11 +301,11 @@ export function EndpointsSection(): React.JSX.Element {
                       {t('common.remove')}
                     </button>
                   </div>
-                ) : null}
-              </div>
-            </div>
-          )
-        })}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       <EndpointsRegisterDialog

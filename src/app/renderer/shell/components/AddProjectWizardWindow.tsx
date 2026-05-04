@@ -303,12 +303,12 @@ export function AddProjectWizardWindow({
         }}
       >
         <section
-          className="cove-window"
+          className="cove-window cove-window--xwide"
           data-testid="workspace-project-create-window"
           onClick={event => event.stopPropagation()}
         >
           <h3>{t('addProjectWizard.title')}</h3>
-          <p>
+          <p className="cove-window__intro">
             {remoteWorkersEnabled
               ? t('addProjectWizard.description')
               : t('addProjectWizard.descriptionLocalOnly')}
@@ -353,15 +353,14 @@ export function AddProjectWizardWindow({
                   t={t}
                   overview={defaultRemoteOverview}
                   busyByEndpointId={busyByEndpointId}
+                  compact
+                  showIdentity={false}
                   testIdPrefix="workspace-project-create-default-remote-status"
                   onRunAction={endpointId => {
                     void runRemoteEndpointAction(endpointId)
                   }}
                   onReconnect={endpointId => {
                     void reconnectRemoteEndpoint(endpointId)
-                  }}
-                  onRefresh={() => {
-                    void reloadRemoteOverviews()
                   }}
                 />
               }
@@ -403,15 +402,14 @@ export function AddProjectWizardWindow({
                     t={t}
                     overview={extraRemoteOverview}
                     busyByEndpointId={busyByEndpointId}
+                    compact
+                    showIdentity={false}
                     testIdPrefix="workspace-project-create-extra-remote-status"
                     onRunAction={endpointId => {
                       void runRemoteEndpointAction(endpointId)
                     }}
                     onReconnect={endpointId => {
                       void reconnectRemoteEndpoint(endpointId)
-                    }}
-                    onRefresh={() => {
-                      void reloadRemoteOverviews()
                     }}
                   />
                 }

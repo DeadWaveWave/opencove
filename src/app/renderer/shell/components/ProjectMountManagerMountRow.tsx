@@ -23,45 +23,21 @@ export function ProjectMountManagerMountRow({
   const controlsDisabled = isBusy || actionsDisabled
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: 12,
-        border: '1px solid var(--cove-border-subtle)',
-        background: 'var(--cove-field)',
-        borderRadius: 12,
-        padding: '10px 12px',
-      }}
-    >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--cove-text)' }}>
-            {mount.name}
-          </div>
+    <div className="cove-window__mount-row">
+      <div className="cove-window__mount-row-main">
+        <div className="cove-window__mount-row-title">
+          <strong>{mount.name}</strong>
           {isDefault ? (
-            <span
-              style={{
-                borderRadius: 999,
-                padding: '2px 8px',
-                fontSize: 10,
-                fontWeight: 700,
-                lineHeight: 1.2,
-                background: 'rgba(42, 255, 140, 0.18)',
-                border: '1px solid rgba(42, 255, 140, 0.35)',
-                color: 'var(--cove-text)',
-              }}
-            >
+            <span className="cove-window__badge cove-window__badge--success">
               {t('projectMountManager.defaultMountBadge')}
             </span>
           ) : null}
         </div>
-        <div style={{ fontSize: 12, color: 'var(--cove-text-muted)' }}>
+        <div className="cove-window__mount-row-meta">
           {endpointLabel} · {mount.rootPath}
         </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div className="cove-window__mount-row-actions">
         {isDefault ? null : (
           <button
             type="button"

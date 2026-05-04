@@ -331,14 +331,14 @@ export function ProjectMountManagerWindow({
         }}
       >
         <section
-          className="cove-window"
+          className="cove-window cove-window--xwide"
           data-testid="workspace-project-mount-manager-window"
           onClick={event => {
             event.stopPropagation()
           }}
         >
           <h3>{t('projectMountManager.title', { workspaceName: workspace.name })}</h3>
-          <p>{t('projectMountManager.description')}</p>
+          <p className="cove-window__intro">{t('projectMountManager.description')}</p>
 
           <div className="cove-window__fields">
             {displayError ? (
@@ -349,25 +349,12 @@ export function ProjectMountManagerWindow({
 
             {!remoteWorkersEnabled && hasRemoteMounts ? (
               <div
-                style={{
-                  border: '1px solid var(--cove-border-subtle)',
-                  borderRadius: 12,
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  padding: '10px 12px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                }}
+                className="cove-window__empty-card"
                 data-testid="workspace-project-mount-remote-experimental-hint"
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  <div style={{ fontWeight: 600, fontSize: 13 }}>
-                    {t('projectMountManager.remoteExperimentalTitle')}
-                  </div>
-                  <div style={{ color: 'var(--cove-text-muted)', fontSize: 12 }}>
-                    {t('projectMountManager.remoteExperimentalHint')}
-                  </div>
+                <div className="cove-window__section-card-heading">
+                  <strong>{t('projectMountManager.remoteExperimentalTitle')}</strong>
+                  <span>{t('projectMountManager.remoteExperimentalHint')}</span>
                 </div>
                 <button
                   type="button"
@@ -383,13 +370,13 @@ export function ProjectMountManagerWindow({
               </div>
             ) : null}
 
-            <div className="cove-window__field-row">
-              <label>{t('projectMountManager.listLabel')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+            <div className="cove-window__section-card cove-window__section-card--subtle">
+              <div className="cove-window__section-card-heading">
+                <strong>{t('projectMountManager.listLabel')}</strong>
+              </div>
+              <div className="cove-window__stack cove-window__stack--tight">
                 {mounts.length === 0 ? (
-                  <div style={{ color: 'var(--cove-text-faint)', fontSize: 12 }}>
-                    {t('projectMountManager.empty')}
-                  </div>
+                  <div className="cove-window__field-help">{t('projectMountManager.empty')}</div>
                 ) : (
                   mounts.map((mount, index) => (
                     <ProjectMountManagerMountRow
@@ -438,15 +425,14 @@ export function ProjectMountManagerWindow({
                     t={t}
                     overview={remoteEndpoint}
                     busyByEndpointId={busyByEndpointId}
+                    compact
+                    showIdentity={false}
                     testIdPrefix="workspace-project-mount-remote-status"
                     onRunAction={endpointId => {
                       void runRemoteEndpointAction(endpointId)
                     }}
                     onReconnect={endpointId => {
                       void reconnectRemoteEndpoint(endpointId)
-                    }}
-                    onRefresh={() => {
-                      void reloadEndpoints()
                     }}
                   />
                 }

@@ -1,0 +1,49 @@
+.settings-panel__endpoint-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.settings-panel__endpoint-toolbar-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-panel__endpoint-toolbar-meta strong {
+  font-size: calc(13px * var(--cove-ui-font-scale));
+  font-weight: 500;
+  color: var(--cove-text);
+}
+
+.settings-panel__endpoint-toolbar-meta span {
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+  color: var(--cove-text-muted);
+}
+
+.settings-panel__endpoint-toolbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.settings-panel__endpoint-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-panel__endpoint-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.settings-panel__endpoint-card-actions {
+  display: flex;
+  justify-content: flex-end;
+}

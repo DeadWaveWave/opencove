@@ -36,13 +36,13 @@ export function AddProjectWizardPlannedMountsSection({
   })
 
   return (
-    <div className="cove-window__field-row">
-      <label>{t('addProjectWizard.mountsLabel')}</label>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+    <div className="cove-window__section-card cove-window__section-card--subtle">
+      <div className="cove-window__section-card-heading">
+        <strong>{t('addProjectWizard.mountsLabel')}</strong>
+      </div>
+      <div className="cove-window__stack cove-window__stack--tight">
         {rows.length === 0 ? (
-          <div style={{ color: 'var(--cove-text-faint)', fontSize: 12 }}>
-            {t('addProjectWizard.mountsEmpty')}
-          </div>
+          <div className="cove-window__field-help">{t('addProjectWizard.mountsEmpty')}</div>
         ) : (
           rows.map(row => {
             const isDefault = row.kind === 'default'
@@ -50,53 +50,33 @@ export function AddProjectWizardPlannedMountsSection({
             return (
               <div
                 key={row.kind === 'default' ? 'default' : row.mount.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  border: '1px solid var(--cove-border-subtle)',
-                  background: 'var(--cove-field)',
-                  borderRadius: 12,
-                  padding: '10px 12px',
-                }}
+                className="cove-window__mount-row"
               >
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2, flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: 'var(--cove-text)' }}>
-                      {mount.name ?? t('addProjectWizard.mountUnnamed')}
-                    </div>
+                <div className="cove-window__mount-row-main">
+                  <div className="cove-window__mount-row-title">
+                    <strong>{mount.name ?? t('addProjectWizard.mountUnnamed')}</strong>
                     {isDefault ? (
-                      <span
-                        style={{
-                          borderRadius: 999,
-                          padding: '2px 8px',
-                          fontSize: 10,
-                          fontWeight: 700,
-                          lineHeight: 1.2,
-                          background: 'rgba(42, 255, 140, 0.18)',
-                          border: '1px solid rgba(42, 255, 140, 0.35)',
-                          color: 'var(--cove-text)',
-                        }}
-                      >
+                      <span className="cove-window__badge cove-window__badge--success">
                         {t('addProjectWizard.defaultMountBadge')}
                       </span>
                     ) : null}
                   </div>
-                  <div style={{ fontSize: 12, color: 'var(--cove-text-muted)' }}>
+                  <div className="cove-window__mount-row-meta">
                     {endpointLabelById.get(mount.endpointId) ?? mount.endpointId} · {mount.rootPath}
                   </div>
                 </div>
                 {row.kind === 'extra' ? (
-                  <button
-                    type="button"
-                    className="cove-window__action cove-window__action--danger"
-                    disabled={isBusy}
-                    onClick={() => onRemoveExtraMount(row.mount.id)}
-                    data-testid={`workspace-project-create-mount-remove-${row.mount.id}`}
-                  >
-                    {t('common.remove')}
-                  </button>
+                  <div className="cove-window__mount-row-actions">
+                    <button
+                      type="button"
+                      className="cove-window__action cove-window__action--danger"
+                      disabled={isBusy}
+                      onClick={() => onRemoveExtraMount(row.mount.id)}
+                      data-testid={`workspace-project-create-mount-remove-${row.mount.id}`}
+                    >
+                      {t('common.remove')}
+                    </button>
+                  </div>
                 ) : null}
               </div>
             )
