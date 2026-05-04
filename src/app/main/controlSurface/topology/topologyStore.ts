@@ -1,6 +1,6 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
-import { randomUUID } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { createAppError } from '../../../../shared/errors/appError'
 import type {
@@ -8,6 +8,8 @@ import type {
   CreateMountResult,
   ListMountsInput,
   ListMountsResult,
+  RegisterManagedSshWorkerEndpointInput,
+  RegisterManagedSshWorkerEndpointResult,
   ListWorkerEndpointsResult,
   PromoteMountInput,
   RegisterWorkerEndpointInput,
@@ -22,6 +24,7 @@ import {
   LOCAL_ENDPOINT_TIMESTAMP,
   SECRETS_FILE_NAME,
   TOPOLOGY_FILE_NAME,
+  type ManagedSshEndpointRecord,
   type MountRecord,
   normalizeHostname,
   normalizeNonEmptyString,
@@ -34,28 +37,23 @@ import {
   toEndpointDto,
   toMountDto,
 } from './topologyFileV1'
-
-async function readJsonFile(filePath: string): Promise<unknown | null> {
-  try {
-    const raw = await readFile(filePath, 'utf8')
-    return JSON.parse(raw) as unknown
-  } catch {
-    return null
-  }
-}
-
-type RemoteEndpointConnection = {
-  hostname: string
-  port: number
-  token: string
-}
+import {
+  type EndpointRuntimeAccess,
+  type ManagedSshEndpointConnectionResolver,
+  type ManagedSshEndpointRuntimeDisposer,
+  readJsonFile,
+  type RemoteEndpointConnection,
+} from './topologyEndpointAccess'
 
 export interface WorkerTopologyStore {
   listEndpoints: () => Promise<ListWorkerEndpointsResult>
   registerEndpoint: (input: RegisterWorkerEndpointInput) => Promise<RegisterWorkerEndpointResult>
+  registerManagedSshEndpoint: (
+    input: RegisterManagedSshWorkerEndpointInput,
+  ) => Promise<RegisterManagedSshWorkerEndpointResult>
   removeEndpoint: (input: RemoveWorkerEndpointInput) => Promise<void>
+  resolveEndpointRuntimeAccess: (endpointId: string) => Promise<EndpointRuntimeAccess | null>
   resolveRemoteEndpointConnection: (endpointId: string) => Promise<RemoteEndpointConnection | null>
-
   listMounts: (input: ListMountsInput) => Promise<ListMountsResult>
   createMount: (input: CreateMountInput) => Promise<CreateMountResult>
   removeMount: (input: RemoveMountInput) => Promise<void>
@@ -63,7 +61,11 @@ export interface WorkerTopologyStore {
   resolveMountTarget: (input: ResolveMountTargetInput) => Promise<ResolveMountTargetResult | null>
 }
 
-export function createWorkerTopologyStore(options: { userDataPath: string }): WorkerTopologyStore {
+export function createWorkerTopologyStore(options: {
+  userDataPath: string
+  resolveManagedSshEndpointConnection?: ManagedSshEndpointConnectionResolver
+  disposeManagedSshEndpointRuntime?: ManagedSshEndpointRuntimeDisposer
+}): WorkerTopologyStore {
   const topologyPath = resolve(options.userDataPath, TOPOLOGY_FILE_NAME)
   const secretsPath = resolve(options.userDataPath, SECRETS_FILE_NAME)
 
@@ -101,10 +103,7 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
   }
 
   const persistQueued = async (): Promise<void> => {
-    writeQueue = writeQueue.then(async () => {
-      await persist()
-    })
-
+    writeQueue = writeQueue.then(async () => await persist())
     return await writeQueue
   }
 
@@ -117,6 +116,7 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
       displayName: 'Local',
       createdAt: LOCAL_ENDPOINT_TIMESTAMP,
       updatedAt: LOCAL_ENDPOINT_TIMESTAMP,
+      access: null,
       remote: null,
     }
 
@@ -152,6 +152,61 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
       hostname,
       port,
       credentialRef,
+      accessKind: 'manual',
+      managedSsh: null,
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    topology.endpoints = [...topology.endpoints, record]
+    secrets.tokensByCredentialRef[credentialRef] = token
+
+    await persistQueued()
+
+    return { endpoint: toEndpointDto(record) }
+  }
+
+  const registerManagedSshEndpoint = async (
+    input: RegisterManagedSshWorkerEndpointInput,
+  ): Promise<RegisterManagedSshWorkerEndpointResult> => {
+    await ensureLoaded()
+
+    const host = normalizeHostname(input.host)
+    const port = input.port === null || input.port === undefined ? null : normalizePort(input.port)
+    const username = normalizeNonEmptyString(input.username)
+    const remotePort = normalizePort(input.remotePort ?? 39_291)
+    const remotePlatform =
+      input.remotePlatform === 'posix' || input.remotePlatform === 'windows'
+        ? input.remotePlatform
+        : 'auto'
+    if (!host || remotePort === null) {
+      throw createAppError('common.invalid_input', {
+        debugMessage: 'endpoint.registerManagedSsh requires host and remotePort.',
+      })
+    }
+
+    const displayName =
+      normalizeNonEmptyString(input.displayName) ?? `${username ? `${username}@` : ''}${host}`
+    const endpointId = randomUUID()
+    const credentialRef = endpointId
+    const token = randomBytes(24).toString('base64url')
+    const now = new Date().toISOString()
+    const managedSsh: ManagedSshEndpointRecord = {
+      host,
+      port,
+      username,
+      remotePort,
+      remotePlatform,
+    }
+    const record: RemoteEndpointRecord = {
+      endpointId,
+      kind: 'remote_worker',
+      displayName,
+      hostname: '127.0.0.1',
+      port: remotePort,
+      credentialRef,
+      accessKind: 'managed_ssh',
+      managedSsh,
       createdAt: now,
       updatedAt: now,
     }
@@ -181,12 +236,21 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
     topology.mounts = topology.mounts.filter(mount => mount.endpointId !== endpointId)
     delete secrets.tokensByCredentialRef[matched.credentialRef]
 
+    if (matched.accessKind === 'managed_ssh' && matched.managedSsh) {
+      await options.disposeManagedSshEndpointRuntime?.({
+        endpointId: matched.endpointId,
+        displayName: matched.displayName,
+        token: '',
+        ssh: matched.managedSsh,
+      })
+    }
+
     await persistQueued()
   }
 
-  const resolveRemoteEndpointConnection = async (
+  const resolveEndpointRuntimeAccess = async (
     endpointId: string,
-  ): Promise<RemoteEndpointConnection | null> => {
+  ): Promise<EndpointRuntimeAccess | null> => {
     await ensureLoaded()
 
     if (endpointId === 'local') {
@@ -204,11 +268,48 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
       return null
     }
 
-    return {
-      hostname: endpoint.hostname,
-      port: endpoint.port,
-      token,
+    const endpointDto = toEndpointDto(endpoint)
+    if (endpoint.accessKind === 'managed_ssh' && endpoint.managedSsh) {
+      return {
+        endpoint: endpointDto,
+        token,
+        kind: 'managed_ssh',
+        managedSsh: endpoint.managedSsh,
+      }
     }
+
+    return {
+      endpoint: endpointDto,
+      token,
+      kind: 'manual',
+      connection: {
+        hostname: endpoint.hostname,
+        port: endpoint.port,
+        token,
+      },
+    }
+  }
+
+  const resolveRemoteEndpointConnection = async (
+    endpointId: string,
+  ): Promise<RemoteEndpointConnection | null> => {
+    const access = await resolveEndpointRuntimeAccess(endpointId)
+    if (!access) {
+      return null
+    }
+
+    if (access.kind === 'manual') {
+      return access.connection
+    }
+
+    return (
+      (await options.resolveManagedSshEndpointConnection?.({
+        endpointId: access.endpoint.endpointId,
+        displayName: access.endpoint.displayName,
+        token: access.token,
+        ssh: access.managedSsh,
+      })) ?? null
+    )
   }
 
   const listMounts = async (input: ListMountsInput): Promise<ListMountsResult> => {
@@ -386,7 +487,9 @@ export function createWorkerTopologyStore(options: { userDataPath: string }): Wo
   return {
     listEndpoints,
     registerEndpoint,
+    registerManagedSshEndpoint,
     removeEndpoint,
+    resolveEndpointRuntimeAccess,
     resolveRemoteEndpointConnection,
     listMounts,
     createMount,

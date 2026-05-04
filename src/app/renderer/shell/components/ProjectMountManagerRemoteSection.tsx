@@ -14,6 +14,7 @@ export function ProjectMountManagerRemoteSection({
   remoteRootPath,
   remoteMountName,
   canCreateRemote,
+  remoteStatusSlot,
   onChangeRemoteEndpointId,
   onChangeRemoteRootPath,
   onChangeRemoteMountName,
@@ -29,6 +30,7 @@ export function ProjectMountManagerRemoteSection({
   remoteRootPath: string
   remoteMountName: string
   canCreateRemote: boolean
+  remoteStatusSlot?: React.ReactNode
   onChangeRemoteEndpointId: (value: string) => void
   onChangeRemoteRootPath: (value: string) => void
   onChangeRemoteMountName: (value: string) => void
@@ -71,6 +73,7 @@ export function ProjectMountManagerRemoteSection({
                 disabled={isBusy}
                 onChange={nextValue => onChangeRemoteEndpointId(nextValue)}
               />
+              {remoteStatusSlot ?? null}
               <div style={{ display: 'flex', gap: 10 }}>
                 <input
                   className="cove-field"

@@ -22,6 +22,8 @@ import { createMultiEndpointPtyRuntime } from './ptyStream/multiEndpointPtyRunti
 import type { RegisterControlSurfaceHttpServerOptions } from './controlSurfaceHttpServerOptions'
 import { createWorkerTopologyStore } from './topology/topologyStore'
 import { registerControlSurfaceHandlers } from './registerControlSurfaceHandlers'
+import { createManagedSshEndpointRuntime } from './topology/managedSshEndpointRuntime'
+import { createEndpointHealthService } from './topology/endpointHealthService'
 const DEFAULT_CONTROL_SURFACE_HOSTNAME = '127.0.0.1'
 const DEFAULT_CONTROL_SURFACE_CONNECTION_FILE = 'control-surface.json'
 const CONTROL_SURFACE_CONNECTION_VERSION = 1 as const
@@ -80,7 +82,16 @@ export function registerControlSurfaceHttpServer(
     },
   }
 
-  const topology = createWorkerTopologyStore({ userDataPath: options.userDataPath })
+  const managedSshRuntime = createManagedSshEndpointRuntime()
+  const topology = createWorkerTopologyStore({
+    userDataPath: options.userDataPath,
+    resolveManagedSshEndpointConnection: managedSshRuntime.resolveConnection,
+    disposeManagedSshEndpointRuntime: managedSshRuntime.disposeEndpoint,
+  })
+  const endpointHealth = createEndpointHealthService({
+    topology,
+    managedRuntime: managedSshRuntime,
+  })
   const ptyRuntime = createMultiEndpointPtyRuntime({
     localRuntime: options.ptyRuntime,
     topology,
@@ -123,6 +134,7 @@ export function registerControlSurfaceHttpServer(
     ptyStreamHub: ptyStreamService.hub,
     publishSyncEvent: publishSyncEventToLiveClients,
     closeWebsiteNode: options.closeWebsiteNode,
+    endpointHealth,
   })
   let closed = false
   let disposePromise: Promise<void> | null = null
@@ -441,6 +453,12 @@ export function registerControlSurfaceHttpServer(
 
         try {
           ptyRuntime.dispose()
+        } catch {
+          // ignore
+        }
+
+        try {
+          await managedSshRuntime.dispose()
         } catch {
           // ignore
         }

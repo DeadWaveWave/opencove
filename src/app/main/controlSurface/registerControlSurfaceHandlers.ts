@@ -25,6 +25,7 @@ import { registerSyncHandlers } from './handlers/syncHandlers'
 import { registerTopologyHandlers } from './handlers/topologyHandlers'
 import { registerAuthHandlers } from './handlers/authHandlers'
 import { registerNodeControlHandlers } from './handlers/nodeControlHandlers'
+import type { EndpointHealthService } from './topology/endpointHealthService'
 
 export function registerControlSurfaceHandlers(
   controlSurface: ControlSurface,
@@ -39,6 +40,7 @@ export function registerControlSurfaceHandlers(
     deleteEntry?: (uri: string) => Promise<void>
     publishSyncEvent?: (payload: SyncEventPayload) => number
     closeWebsiteNode?: (nodeId: string) => Promise<void> | void
+    endpointHealth: EndpointHealthService
   },
 ): void {
   registerSystemHandlers(controlSurface)
@@ -46,6 +48,7 @@ export function registerControlSurfaceHandlers(
   registerTopologyHandlers(controlSurface, {
     topology: deps.topology,
     approvedWorkspaces: deps.approvedWorkspaces,
+    endpointHealth: deps.endpointHealth,
   })
   registerProjectHandlers(controlSurface, deps.getPersistenceStore)
   registerSpaceHandlers(controlSurface, deps.getPersistenceStore)

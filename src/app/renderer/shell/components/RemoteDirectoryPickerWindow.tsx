@@ -3,11 +3,19 @@ import { useTranslation } from '@app/renderer/i18n'
 import type {
   FileSystemEntry,
   GetEndpointHomeDirectoryResult,
+  PrepareWorkerEndpointResult,
   ReadEndpointDirectoryResult,
+  RepairWorkerEndpointResult,
+  WorkerEndpointOverviewDto,
 } from '@shared/contracts/dto'
 import { fromFileUri } from '@contexts/filesystem/domain/fileUri'
 import { toErrorMessage } from '../utils/format'
+import {
+  getEndpointActionExecution,
+  getEndpointTechnicalDetails,
+} from '../utils/endpointOverviewUi'
 import { dirname, isAbsolutePath, normalizeSlashes } from '../utils/pathHelpers'
+import { RemoteEndpointStatusPanel } from './RemoteEndpointStatusPanel'
 
 function sortEntries(a: FileSystemEntry, b: FileSystemEntry): number {
   const aIsDirectory = a.kind === 'directory'
@@ -44,6 +52,7 @@ export function RemoteDirectoryPickerWindow({
   const { t } = useTranslation()
   const requestCounterRef = useRef(0)
   const pathInputElementRef = useRef<HTMLInputElement | null>(null)
+  const [overview, setOverview] = useState<WorkerEndpointOverviewDto | null>(null)
   const [currentPath, setCurrentPath] = useState<string>('')
   const [pathInput, setPathInput] = useState('')
   const [entries, setEntries] = useState<FileSystemEntry[]>([])
@@ -73,8 +82,11 @@ export function RemoteDirectoryPickerWindow({
     return parent && parent !== currentPath ? parent : null
   }, [currentPath])
 
+  const canBrowse = overview?.canBrowse === true
+  const technicalDetails = overview ? getEndpointTechnicalDetails(overview) : []
+
   const loadDirectory = useCallback(
-    async (path: string) => {
+    async (path: string): Promise<void> => {
       const trimmed = normalizeSlashes(path.trim())
       if (trimmed.length === 0) {
         return
@@ -118,50 +130,116 @@ export function RemoteDirectoryPickerWindow({
     [endpointId, t],
   )
 
+  const loadInitialDirectory = useCallback(async (): Promise<void> => {
+    const preferred = normalizeSlashes((initialPath ?? '').trim())
+    if (preferred.length > 0 && isAbsolutePath(preferred)) {
+      await loadDirectory(preferred)
+      return
+    }
+
+    try {
+      const resolved =
+        await window.opencoveApi.controlSurface.invoke<GetEndpointHomeDirectoryResult>({
+          kind: 'query',
+          id: 'endpoint.homeDirectory',
+          payload: { endpointId },
+        })
+      const home =
+        typeof resolved.homeDirectory === 'string' && resolved.homeDirectory.trim().length > 0
+          ? resolved.homeDirectory.trim()
+          : '/'
+      await loadDirectory(home)
+    } catch {
+      await loadDirectory('/')
+    }
+  }, [endpointId, initialPath, loadDirectory])
+
+  const handlePrepare = useCallback(
+    async (reason: 'connect' | 'browse' | 'reconnect', shouldLoadDirectory: boolean) => {
+      setIsBusy(true)
+      setError(null)
+
+      try {
+        const result = await window.opencoveApi.controlSurface.invoke<PrepareWorkerEndpointResult>({
+          kind: 'command',
+          id: 'endpoint.prepare',
+          payload: { endpointId, reason },
+        })
+        setOverview(result.overview)
+        if (result.overview.canBrowse && shouldLoadDirectory) {
+          await loadInitialDirectory()
+        }
+      } catch (caughtError) {
+        setError(toErrorMessage(caughtError))
+      } finally {
+        setIsBusy(false)
+      }
+    },
+    [endpointId, loadInitialDirectory],
+  )
+
+  const handleRepair = useCallback(
+    async (
+      action:
+        | 'repair_credentials'
+        | 'repair_tunnel'
+        | 'install_runtime'
+        | 'update_runtime'
+        | 'retry',
+    ) => {
+      setIsBusy(true)
+      setError(null)
+
+      try {
+        const result = await window.opencoveApi.controlSurface.invoke<RepairWorkerEndpointResult>({
+          kind: 'command',
+          id: 'endpoint.repair',
+          payload: { endpointId, action },
+        })
+        setOverview(result.overview)
+        if (result.overview.canBrowse) {
+          await loadInitialDirectory()
+        }
+      } catch (caughtError) {
+        setError(toErrorMessage(caughtError))
+      } finally {
+        setIsBusy(false)
+      }
+    },
+    [endpointId, loadInitialDirectory],
+  )
+
+  const runRecommendedAction = useCallback(async () => {
+    if (!overview) {
+      return
+    }
+
+    const action = getEndpointActionExecution(overview.recommendedAction)
+    if (!action) {
+      return
+    }
+
+    if (action.kind === 'prepare') {
+      await handlePrepare(action.reason, true)
+      return
+    }
+
+    await handleRepair(action.action)
+  }, [handlePrepare, handleRepair, overview])
+
   useLayoutEffect(() => {
     if (!isOpen) {
       return
     }
 
-    const initialRequestGuard = (requestCounterRef.current += 1)
+    requestCounterRef.current += 1
+    setOverview(null)
     setError(null)
     setEntries([])
     setCurrentPath('')
     setPathInput('')
-
-    void (async () => {
-      const preferred = normalizeSlashes((initialPath ?? '').trim())
-      if (preferred.length > 0 && isAbsolutePath(preferred)) {
-        if (requestCounterRef.current !== initialRequestGuard) {
-          return
-        }
-        await loadDirectory(preferred)
-        return
-      }
-
-      try {
-        const resolved =
-          await window.opencoveApi.controlSurface.invoke<GetEndpointHomeDirectoryResult>({
-            kind: 'query',
-            id: 'endpoint.homeDirectory',
-            payload: { endpointId },
-          })
-        if (requestCounterRef.current !== initialRequestGuard) {
-          return
-        }
-        const home =
-          typeof resolved.homeDirectory === 'string' && resolved.homeDirectory.trim().length > 0
-            ? resolved.homeDirectory.trim()
-            : '/'
-        await loadDirectory(home)
-      } catch {
-        if (requestCounterRef.current !== initialRequestGuard) {
-          return
-        }
-        await loadDirectory('/')
-      }
-    })()
-  }, [endpointId, initialPath, isOpen, loadDirectory])
+    void handlePrepare('browse', true)
+  }, [handlePrepare, isOpen])
 
   if (!isOpen) {
     return null
@@ -196,6 +274,25 @@ export function RemoteDirectoryPickerWindow({
             </p>
           ) : null}
 
+          {overview ? (
+            <RemoteEndpointStatusPanel
+              t={t}
+              overview={overview}
+              isBusy={isBusy}
+              connectedHint={t('common.remoteEndpoints.readyHintBrowse')}
+              testIdPrefix="remote-directory-picker-status"
+              onRunRecommendedAction={() => {
+                void runRecommendedAction()
+              }}
+              onReconnect={() => {
+                void handlePrepare('reconnect', true)
+              }}
+              onRefresh={() => {
+                void handlePrepare('browse', canBrowse)
+              }}
+            />
+          ) : null}
+
           <div className="cove-window__field-row">
             <label htmlFor="remote-directory-picker-path">
               {t('remoteDirectoryPicker.pathLabel')}
@@ -207,7 +304,7 @@ export function RemoteDirectoryPickerWindow({
                 type="text"
                 ref={pathInputElementRef}
                 value={pathInput}
-                disabled={isBusy}
+                disabled={isBusy || !canBrowse}
                 placeholder={t('remoteDirectoryPicker.pathPlaceholder')}
                 data-testid="remote-directory-picker-path"
                 style={{ flex: 1 }}
@@ -224,7 +321,7 @@ export function RemoteDirectoryPickerWindow({
               <button
                 type="button"
                 className="cove-window__action cove-window__action--ghost"
-                disabled={isBusy || !parentPath}
+                disabled={isBusy || !canBrowse || !parentPath}
                 data-testid="remote-directory-picker-up"
                 style={{ flexShrink: 0 }}
                 onClick={() => {
@@ -240,7 +337,7 @@ export function RemoteDirectoryPickerWindow({
               <button
                 type="button"
                 className="cove-window__action cove-window__action--ghost"
-                disabled={isBusy || refreshCandidate.trim().length === 0}
+                disabled={isBusy || !canBrowse || refreshCandidate.trim().length === 0}
                 data-testid="remote-directory-picker-refresh"
                 style={{ flexShrink: 0 }}
                 onClick={() => {
@@ -279,14 +376,20 @@ export function RemoteDirectoryPickerWindow({
                     }}
                     data-testid="remote-directory-picker-empty"
                   >
-                    {isBusy ? t('common.loading') : t('remoteDirectoryPicker.empty')}
+                    {isBusy
+                      ? t('common.loading')
+                      : canBrowse
+                        ? t('remoteDirectoryPicker.empty')
+                        : overview
+                          ? t('remoteDirectoryPicker.waitForConnection')
+                          : t('remoteDirectoryPicker.preparing')}
                   </div>
                 ) : (
                   entries.map((entry, index) => (
                     <button
                       key={entry.uri}
                       type="button"
-                      disabled={isBusy}
+                      disabled={isBusy || !canBrowse}
                       data-testid={`remote-directory-picker-entry-${String(index)}`}
                       onClick={() => {
                         const resolved = fromFileUri(entry.uri)
@@ -322,6 +425,12 @@ export function RemoteDirectoryPickerWindow({
               </div>
             </div>
           </div>
+
+          {!error && technicalDetails.length > 0 && !overview?.canBrowse ? (
+            <div style={{ fontSize: 12, color: 'var(--cove-text-muted)' }}>
+              {technicalDetails[0]}
+            </div>
+          ) : null}
         </div>
 
         <div className="cove-window__actions">
@@ -339,7 +448,7 @@ export function RemoteDirectoryPickerWindow({
           <button
             type="button"
             className="cove-window__action cove-window__action--primary"
-            disabled={isBusy || currentPath.trim().length === 0}
+            disabled={isBusy || !canBrowse || currentPath.trim().length === 0}
             data-testid="remote-directory-picker-select"
             onClick={() => {
               onSelect(currentPath)

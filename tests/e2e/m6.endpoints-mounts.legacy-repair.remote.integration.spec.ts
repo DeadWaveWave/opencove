@@ -78,11 +78,14 @@ test.describe('M6 - Legacy mount/space repair integration (remote)', () => {
       await openSettings(window)
       await switchSettingsPage(window, 'endpoints')
       await window.locator('[data-testid="settings-endpoints-open-register"]').click()
+      await window.locator('[data-testid="settings-endpoints-register-mode-manual"]').click()
 
       await window
         .locator('[data-testid="settings-endpoints-register-displayName"]')
         .fill(endpointDisplayName)
-      await window.locator('[data-testid="settings-endpoints-register-hostname"]').fill(remoteHost)
+      await window
+        .locator('[data-testid="settings-endpoints-register-manual-hostname"]')
+        .fill(remoteHost)
       await window
         .locator('[data-testid="settings-endpoints-register-port"]')
         .fill(String(remotePort))

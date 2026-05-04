@@ -1,31 +1,18 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import type { WorkerEndpointDto } from '@shared/contracts/dto'
-import { toErrorMessage } from '../utils/format'
 import { basename, isAbsolutePath } from '../utils/pathHelpers'
 import { RemoteDirectoryPickerWindow } from './RemoteDirectoryPickerWindow'
+import { RemoteEndpointStatusSlot } from './RemoteEndpointStatusSlot'
 import { AddProjectWizardAdvancedSection } from './addProjectWizard/AddProjectWizardAdvancedSection'
 import {
   AddProjectWizardDefaultLocationSection,
   type DefaultLocationKind,
 } from './addProjectWizard/AddProjectWizardDefaultLocationSection'
 import type { PlannedMount } from './addProjectWizard/AddProjectWizardPlannedMountsSection'
-import type { DraftMount } from './addProjectWizard/helpers'
+import type { DraftMount, RemotePickerState } from './addProjectWizard/helpers'
 import { useAddProjectWizardCreateProject } from './addProjectWizard/useAddProjectWizardCreateProject'
-type RemotePickerTarget = 'default' | 'extra'
-type RemotePickerState = {
-  target: RemotePickerTarget
-  endpointId: string
-  endpointLabel: string
-  initialPath: string | null
-}
-function resolveMountName(rootPath: string, nameInput: string): string | null {
-  const normalizedName = nameInput.trim()
-  const fallbackName = basename(rootPath).trim()
-  return normalizedName.length > 0 ? normalizedName : fallbackName.length > 0 ? fallbackName : null
-}
-
+import { useAddProjectWizardRemoteEndpoints } from './addProjectWizard/useAddProjectWizardRemoteEndpoints'
 export function AddProjectWizardWindow({
   existingWorkspaces,
   remoteWorkersEnabled,
@@ -38,7 +25,6 @@ export function AddProjectWizardWindow({
   onRequestOpenEndpoints: () => void
 }): React.JSX.Element {
   const { t } = useTranslation()
-  const [endpoints, setEndpoints] = useState<WorkerEndpointDto[]>([])
   const [extraMounts, setExtraMounts] = useState<DraftMount[]>([])
   const [projectName, setProjectName] = useState('')
   const [defaultLocationKind, setDefaultLocationKind] = useState<DefaultLocationKind>('local')
@@ -59,82 +45,31 @@ export function AddProjectWizardWindow({
   const [homeWorkerMode, setHomeWorkerMode] = useState<'standalone' | 'local' | 'remote' | null>(
     null,
   )
-  const remoteEndpoints = useMemo(
-    () => endpoints.filter(endpoint => endpoint.endpointId !== 'local'),
-    [endpoints],
-  )
-
-  const endpointLabelById = useMemo(() => {
-    const map = new Map<string, string>()
-    for (const endpoint of endpoints) {
-      map.set(endpoint.endpointId, endpoint.displayName)
-    }
-    return map
-  }, [endpoints])
-
-  const endpointOptions = useMemo(
-    () =>
-      remoteEndpoints.map(endpoint => ({
-        value: endpoint.endpointId,
-        label: endpoint.displayName,
-      })),
-    [remoteEndpoints],
-  )
+  const {
+    remoteOverviews,
+    endpointLabelById,
+    endpointOptions,
+    defaultRemoteOverview,
+    extraRemoteOverview,
+    endpointError,
+    busyByEndpointId,
+    reloadRemoteOverviews,
+    runRemoteEndpointAction,
+    reconnectRemoteEndpoint,
+  } = useAddProjectWizardRemoteEndpoints({
+    remoteWorkersEnabled,
+    t,
+    defaultRemoteEndpointId,
+    setDefaultRemoteEndpointId,
+    extraRemoteEndpointId,
+    setExtraRemoteEndpointId,
+    setError,
+  })
 
   const canBrowseLocal =
     typeof window !== 'undefined' &&
     window.opencoveApi?.meta?.runtime === 'electron' &&
     homeWorkerMode !== 'remote'
-
-  const reloadEndpoints = useCallback(async (): Promise<void> => {
-    const endpointResult = await window.opencoveApi.controlSurface.invoke<{
-      endpoints: WorkerEndpointDto[]
-    }>({
-      kind: 'query',
-      id: 'endpoint.list',
-      payload: null,
-    })
-
-    setEndpoints(endpointResult.endpoints)
-    setDefaultRemoteEndpointId(current => {
-      const trimmed = current.trim()
-      if (
-        trimmed.length > 0 &&
-        endpointResult.endpoints.some(endpoint => endpoint.endpointId === trimmed)
-      ) {
-        return trimmed
-      }
-
-      const firstRemote = endpointResult.endpoints.find(endpoint => endpoint.endpointId !== 'local')
-      return firstRemote?.endpointId ?? ''
-    })
-    setExtraRemoteEndpointId(current => {
-      const trimmed = current.trim()
-      if (
-        trimmed.length > 0 &&
-        endpointResult.endpoints.some(endpoint => endpoint.endpointId === trimmed)
-      ) {
-        return trimmed
-      }
-
-      const firstRemote = endpointResult.endpoints.find(endpoint => endpoint.endpointId !== 'local')
-      return firstRemote?.endpointId ?? ''
-    })
-  }, [])
-
-  const reloadEndpointsWithUi = useCallback(() => {
-    void (async () => {
-      setError(null)
-      setIsBusy(true)
-      try {
-        await reloadEndpoints()
-      } catch (caughtError) {
-        setError(toErrorMessage(caughtError))
-      } finally {
-        setIsBusy(false)
-      }
-    })()
-  }, [reloadEndpoints])
 
   useEffect(() => {
     void (async () => {
@@ -146,15 +81,6 @@ export function AddProjectWizardWindow({
       }
     })()
   }, [])
-
-  useEffect(() => {
-    if (!remoteWorkersEnabled) {
-      setEndpoints([])
-      return
-    }
-
-    reloadEndpointsWithUi()
-  }, [reloadEndpointsWithUi, remoteWorkersEnabled])
 
   useEffect(() => {
     if (!remoteWorkersEnabled) {
@@ -178,6 +104,8 @@ export function AddProjectWizardWindow({
     return fallback ? basename(fallback).trim() : ''
   }, [defaultLocalRootPath, defaultLocationKind, defaultRemoteRootPath, extraMounts, projectName])
 
+  const displayError = error ?? endpointError
+
   const defaultMountPreview = useMemo<PlannedMount | null>(() => {
     if (!remoteWorkersEnabled) {
       const rootPath = defaultLocalRootPath.trim()
@@ -188,7 +116,7 @@ export function AddProjectWizardWindow({
       return {
         endpointId: 'local',
         rootPath,
-        name: resolveMountName(rootPath, defaultLocalMountName),
+        name: defaultLocalMountName.trim() || basename(rootPath).trim() || null,
       }
     }
 
@@ -201,7 +129,7 @@ export function AddProjectWizardWindow({
       return {
         endpointId: 'local',
         rootPath,
-        name: resolveMountName(rootPath, defaultLocalMountName),
+        name: defaultLocalMountName.trim() || basename(rootPath).trim() || null,
       }
     }
 
@@ -214,7 +142,7 @@ export function AddProjectWizardWindow({
     return {
       endpointId,
       rootPath,
-      name: resolveMountName(rootPath, defaultRemoteMountName),
+      name: defaultRemoteMountName.trim() || basename(rootPath).trim() || null,
     }
   }, [
     defaultLocalMountName,
@@ -273,7 +201,7 @@ export function AddProjectWizardWindow({
   }, [canBrowseLocal, extraLocalMountName])
 
   const openRemotePicker = useCallback(
-    (target: RemotePickerTarget) => {
+    (target: 'default' | 'extra') => {
       const endpointId =
         target === 'default' ? defaultRemoteEndpointId.trim() : extraRemoteEndpointId.trim()
       if (endpointId.length === 0) {
@@ -314,7 +242,7 @@ export function AddProjectWizardWindow({
     addExtraMountDraft({
       endpointId: 'local',
       rootPath,
-      name: resolveMountName(rootPath, extraLocalMountName),
+      name: extraLocalMountName.trim() || basename(rootPath).trim() || null,
     })
     setExtraLocalRootPath('')
     setExtraLocalMountName('')
@@ -335,7 +263,7 @@ export function AddProjectWizardWindow({
     addExtraMountDraft({
       endpointId,
       rootPath,
-      name: resolveMountName(rootPath, extraRemoteMountName),
+      name: extraRemoteMountName.trim() || basename(rootPath).trim() || null,
     })
     setExtraRemoteRootPath('')
     setExtraRemoteMountName('')
@@ -387,9 +315,9 @@ export function AddProjectWizardWindow({
           </p>
 
           <div className="cove-window__fields">
-            {error ? (
+            {displayError ? (
               <p className="cove-window__error" data-testid="workspace-project-create-error">
-                {error}
+                {displayError}
               </p>
             ) : null}
 
@@ -414,12 +342,29 @@ export function AddProjectWizardWindow({
               isBusy={isBusy}
               canBrowseLocal={canBrowseLocal}
               showRemote={remoteWorkersEnabled}
-              remoteEndpointsCount={remoteEndpoints.length}
+              remoteEndpointsCount={remoteOverviews.length}
               endpointOptions={endpointOptions}
               defaultLocationKind={defaultLocationKind}
               defaultLocalRootPath={defaultLocalRootPath}
               defaultRemoteEndpointId={defaultRemoteEndpointId}
               defaultRemoteRootPath={defaultRemoteRootPath}
+              remoteStatusSlot={
+                <RemoteEndpointStatusSlot
+                  t={t}
+                  overview={defaultRemoteOverview}
+                  busyByEndpointId={busyByEndpointId}
+                  testIdPrefix="workspace-project-create-default-remote-status"
+                  onRunAction={endpointId => {
+                    void runRemoteEndpointAction(endpointId)
+                  }}
+                  onReconnect={endpointId => {
+                    void reconnectRemoteEndpoint(endpointId)
+                  }}
+                  onRefresh={() => {
+                    void reloadRemoteOverviews()
+                  }}
+                />
+              }
               onChangeDefaultLocationKind={setDefaultLocationKind}
               onChangeDefaultLocalRootPath={setDefaultLocalRootPath}
               onBrowseDefaultLocalRootPath={() => void browseDefaultLocalMount()}
@@ -445,7 +390,7 @@ export function AddProjectWizardWindow({
                 defaultMountPreview={defaultMountPreview}
                 extraMounts={extraMounts}
                 endpointLabelById={endpointLabelById}
-                remoteEndpointsCount={remoteEndpoints.length}
+                remoteEndpointsCount={remoteOverviews.length}
                 endpointOptions={endpointOptions}
                 extraLocalRootPath={extraLocalRootPath}
                 extraLocalMountName={extraLocalMountName}
@@ -453,6 +398,23 @@ export function AddProjectWizardWindow({
                 extraRemoteRootPath={extraRemoteRootPath}
                 extraRemoteMountName={extraRemoteMountName}
                 canCreateExtraRemote={canCreateExtraRemote}
+                extraRemoteStatusSlot={
+                  <RemoteEndpointStatusSlot
+                    t={t}
+                    overview={extraRemoteOverview}
+                    busyByEndpointId={busyByEndpointId}
+                    testIdPrefix="workspace-project-create-extra-remote-status"
+                    onRunAction={endpointId => {
+                      void runRemoteEndpointAction(endpointId)
+                    }}
+                    onReconnect={endpointId => {
+                      void reconnectRemoteEndpoint(endpointId)
+                    }}
+                    onRefresh={() => {
+                      void reloadRemoteOverviews()
+                    }}
+                  />
+                }
                 onToggleAdvanced={() => setIsAdvancedOpen(open => !open)}
                 onChangeExtraLocalRootPath={setExtraLocalRootPath}
                 onChangeExtraLocalMountName={setExtraLocalMountName}
@@ -468,7 +430,9 @@ export function AddProjectWizardWindow({
                   addExtraRemoteMount()
                 }}
                 onRemoveExtraMount={removeExtraMountDraft}
-                onReloadEndpoints={reloadEndpointsWithUi}
+                onReloadEndpoints={() => {
+                  void reloadRemoteOverviews()
+                }}
                 onRequestOpenEndpoints={onRequestOpenEndpoints}
               />
             ) : null}

@@ -22,6 +22,7 @@ export function AddProjectWizardAdvancedSection({
   extraRemoteRootPath,
   extraRemoteMountName,
   canCreateExtraRemote,
+  extraRemoteStatusSlot,
   onToggleAdvanced,
   onChangeExtraLocalRootPath,
   onChangeExtraLocalMountName,
@@ -52,6 +53,7 @@ export function AddProjectWizardAdvancedSection({
   extraRemoteRootPath: string
   extraRemoteMountName: string
   canCreateExtraRemote: boolean
+  extraRemoteStatusSlot?: React.ReactNode
   onToggleAdvanced: () => void
   onChangeExtraLocalRootPath: (value: string) => void
   onChangeExtraLocalMountName: (value: string) => void
@@ -165,6 +167,7 @@ export function AddProjectWizardAdvancedSection({
                       disabled={isBusy || endpointOptions.length === 0}
                       onChange={nextValue => onChangeExtraRemoteEndpointId(nextValue)}
                     />
+                    {extraRemoteStatusSlot ?? null}
                     <div style={{ display: 'flex', gap: 10 }}>
                       <input
                         className="cove-field"

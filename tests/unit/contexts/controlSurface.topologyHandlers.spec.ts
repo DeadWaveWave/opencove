@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerTopologyHandlers } from '../../../src/app/main/controlSurface/handlers/topologyHandlers'
+import type { EndpointHealthService } from '../../../src/app/main/controlSurface/topology/endpointHealthService'
 import type { WorkerTopologyStore } from '../../../src/app/main/controlSurface/topology/topologyStore'
 
 const { invokeControlSurfaceMock } = vi.hoisted(() => ({
@@ -27,13 +28,20 @@ const ctx: ControlSurfaceContext = {
   },
 }
 
-function createSubject(): ReturnType<typeof createControlSurface> {
+function createSubject(options?: {
+  topology?: Partial<WorkerTopologyStore>
+  endpointHealth?: Partial<EndpointHealthService>
+}) {
   const topology: WorkerTopologyStore = {
     listEndpoints: async () => ({ endpoints: [] }),
     registerEndpoint: async () => {
       throw new Error('not used')
     },
+    registerManagedSshEndpoint: async () => {
+      throw new Error('not used')
+    },
     removeEndpoint: async () => undefined,
+    resolveEndpointRuntimeAccess: async () => null,
     resolveRemoteEndpointConnection: async endpointId =>
       endpointId === 'remote' ? { hostname: 'example.com', port: 1234, token: 'token' } : null,
     listMounts: async () => ({ projectId: 'project', mounts: [] }),
@@ -43,6 +51,64 @@ function createSubject(): ReturnType<typeof createControlSurface> {
     removeMount: async () => undefined,
     promoteMount: async () => undefined,
     resolveMountTarget: async () => null,
+    ...options?.topology,
+  }
+
+  const endpointHealth: EndpointHealthService = {
+    listOverviews: async () => ({ endpoints: [] }),
+    prepareEndpoint: async input => ({
+      overview: {
+        endpoint: {
+          endpointId: input.endpointId,
+          kind: 'remote_worker',
+          displayName: input.endpointId,
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+          access: null,
+          remote: null,
+        },
+        status: 'disconnected',
+        summary: 'Not connected.',
+        details: [],
+        checkedAt: '2026-04-12T00:00:00.000Z',
+        recommendedAction: 'connect',
+        isManaged: false,
+        canBrowse: false,
+        runtime: {
+          appVersion: null,
+          protocolVersion: null,
+          platform: null,
+          pid: null,
+        },
+      },
+    }),
+    repairEndpoint: async input => ({
+      overview: {
+        endpoint: {
+          endpointId: input.endpointId,
+          kind: 'remote_worker',
+          displayName: input.endpointId,
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+          access: null,
+          remote: null,
+        },
+        status: 'error',
+        summary: 'Endpoint error.',
+        details: [],
+        checkedAt: '2026-04-12T00:00:00.000Z',
+        recommendedAction: 'retry',
+        isManaged: false,
+        canBrowse: false,
+        runtime: {
+          appVersion: null,
+          protocolVersion: null,
+          platform: null,
+          pid: null,
+        },
+      },
+    }),
+    ...options?.endpointHealth,
   }
 
   const controlSurface = createControlSurface()
@@ -52,9 +118,10 @@ function createSubject(): ReturnType<typeof createControlSurface> {
       registerRoot: async () => undefined,
       isPathApproved: async () => true,
     },
+    endpointHealth,
   })
 
-  return controlSurface
+  return { controlSurface, topology, endpointHealth }
 }
 
 describe('control surface topology handlers', () => {
@@ -89,7 +156,7 @@ describe('control surface topology handlers', () => {
         },
       })
 
-    const controlSurface = createSubject()
+    const { controlSurface } = createSubject()
 
     const result = await controlSurface.invoke(ctx, {
       kind: 'query',
@@ -139,7 +206,7 @@ describe('control surface topology handlers', () => {
         },
       })
 
-    const controlSurface = createSubject()
+    const { controlSurface } = createSubject()
 
     const result = await controlSurface.invoke(ctx, {
       kind: 'query',
@@ -168,7 +235,7 @@ describe('control surface topology handlers', () => {
       },
     })
 
-    const controlSurface = createSubject()
+    const { controlSurface } = createSubject()
 
     const result = await controlSurface.invoke(ctx, {
       kind: 'query',
@@ -184,5 +251,189 @@ describe('control surface topology handlers', () => {
         homeDirectory: '/',
       })
     }
+  })
+
+  it('forwards endpoint overview queries to the endpoint health service', async () => {
+    const listOverviews = vi.fn(async () => ({
+      endpoints: [
+        {
+          endpoint: {
+            endpointId: 'managed-1',
+            kind: 'remote_worker' as const,
+            displayName: 'SSH Box',
+            createdAt: '2026-04-12T00:00:00.000Z',
+            updatedAt: '2026-04-12T00:00:00.000Z',
+            access: null,
+            remote: null,
+          },
+          status: 'disconnected' as const,
+          summary: 'Not connected.',
+          details: [],
+          checkedAt: '2026-04-12T00:00:00.000Z',
+          recommendedAction: 'connect' as const,
+          isManaged: true,
+          canBrowse: false,
+          runtime: {
+            appVersion: null,
+            protocolVersion: null,
+            platform: null,
+            pid: null,
+          },
+        },
+      ],
+    }))
+    const { controlSurface } = createSubject({
+      endpointHealth: { listOverviews },
+    })
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'endpoint.overview.list',
+      payload: null,
+    })
+
+    expect(result.ok).toBe(true)
+    if (result.ok) {
+      expect(result.value.endpoints).toHaveLength(1)
+      expect(result.value.endpoints[0]?.endpoint.displayName).toBe('SSH Box')
+    }
+    expect(listOverviews).toHaveBeenCalledTimes(1)
+  })
+
+  it('forwards endpoint.prepare to the endpoint health service', async () => {
+    const prepareEndpoint = vi.fn(async () => ({
+      overview: {
+        endpoint: {
+          endpointId: 'managed-1',
+          kind: 'remote_worker' as const,
+          displayName: 'SSH Box',
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+          access: null,
+          remote: null,
+        },
+        status: 'connected' as const,
+        summary: 'Connected.',
+        details: [],
+        checkedAt: '2026-04-12T00:00:00.000Z',
+        recommendedAction: 'browse' as const,
+        isManaged: true,
+        canBrowse: true,
+        runtime: {
+          appVersion: null,
+          protocolVersion: null,
+          platform: null,
+          pid: null,
+        },
+      },
+    }))
+    const { controlSurface } = createSubject({
+      endpointHealth: { prepareEndpoint },
+    })
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'endpoint.prepare',
+      payload: { endpointId: 'managed-1', reason: 'browse' },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(prepareEndpoint).toHaveBeenCalledWith({
+      endpointId: 'managed-1',
+      reason: 'browse',
+    })
+  })
+
+  it('forwards endpoint.repair to the endpoint health service', async () => {
+    const repairEndpoint = vi.fn(async () => ({
+      overview: {
+        endpoint: {
+          endpointId: 'managed-1',
+          kind: 'remote_worker' as const,
+          displayName: 'SSH Box',
+          createdAt: '2026-04-12T00:00:00.000Z',
+          updatedAt: '2026-04-12T00:00:00.000Z',
+          access: null,
+          remote: null,
+        },
+        status: 'connected' as const,
+        summary: 'Connected.',
+        details: [],
+        checkedAt: '2026-04-12T00:00:00.000Z',
+        recommendedAction: 'browse' as const,
+        isManaged: true,
+        canBrowse: true,
+        runtime: {
+          appVersion: null,
+          protocolVersion: null,
+          platform: null,
+          pid: null,
+        },
+      },
+    }))
+    const { controlSurface } = createSubject({
+      endpointHealth: { repairEndpoint },
+    })
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'endpoint.repair',
+      payload: { endpointId: 'managed-1', action: 'repair_tunnel' },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(repairEndpoint).toHaveBeenCalledWith({
+      endpointId: 'managed-1',
+      action: 'repair_tunnel',
+    })
+  })
+
+  it('forwards managed SSH registration to the topology store', async () => {
+    const registerManagedSshEndpoint = vi.fn(async () => ({
+      endpoint: {
+        endpointId: 'managed-1',
+        kind: 'remote_worker' as const,
+        displayName: 'SSH Box',
+        createdAt: '2026-04-12T00:00:00.000Z',
+        updatedAt: '2026-04-12T00:00:00.000Z',
+        access: {
+          kind: 'managed_ssh' as const,
+          managedSsh: {
+            host: 'example.com',
+            port: 22,
+            username: 'ubuntu',
+            remotePort: 39291,
+            remotePlatform: 'auto' as const,
+          },
+        },
+        remote: null,
+      },
+    }))
+    const { controlSurface } = createSubject({
+      topology: { registerManagedSshEndpoint },
+    })
+
+    const result = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'endpoint.registerManagedSsh',
+      payload: {
+        displayName: 'SSH Box',
+        host: 'example.com',
+        port: 22,
+        username: 'ubuntu',
+        remotePort: 39291,
+        remotePlatform: 'auto',
+      },
+    })
+
+    expect(result.ok).toBe(true)
+    expect(registerManagedSshEndpoint).toHaveBeenCalledWith({
+      displayName: 'SSH Box',
+      host: 'example.com',
+      port: 22,
+      username: 'ubuntu',
+      remotePort: 39291,
+      remotePlatform: 'auto',
+    })
   })
 })

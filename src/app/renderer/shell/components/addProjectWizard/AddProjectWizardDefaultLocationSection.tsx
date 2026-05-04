@@ -15,6 +15,7 @@ export function AddProjectWizardDefaultLocationSection({
   defaultLocalRootPath,
   defaultRemoteEndpointId,
   defaultRemoteRootPath,
+  remoteStatusSlot,
   onChangeDefaultLocationKind,
   onChangeDefaultLocalRootPath,
   onBrowseDefaultLocalRootPath,
@@ -33,6 +34,7 @@ export function AddProjectWizardDefaultLocationSection({
   defaultLocalRootPath: string
   defaultRemoteEndpointId: string
   defaultRemoteRootPath: string
+  remoteStatusSlot?: React.ReactNode
   onChangeDefaultLocationKind: (kind: DefaultLocationKind) => void
   onChangeDefaultLocalRootPath: (value: string) => void
   onBrowseDefaultLocalRootPath: () => void
@@ -143,6 +145,7 @@ export function AddProjectWizardDefaultLocationSection({
                 disabled={isBusy || endpointOptions.length === 0}
                 onChange={nextValue => onChangeDefaultRemoteEndpointId(nextValue)}
               />
+              {remoteStatusSlot ?? null}
               <div style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
                 <input
                   className="cove-field"

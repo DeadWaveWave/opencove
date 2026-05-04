@@ -1,4 +1,5 @@
 import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
+import { enSettingsPanelEndpoints } from './en.settingsPanel.endpoints'
 import { enSettingsPanelAgentExecutable } from './en.settingsPanel.agentExecutable'
 import { enWorkspaceCanvasNavigationShortcutCommands } from './en.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
@@ -453,32 +454,7 @@ export const enSettingsPanel = {
       copyToken: 'Copy',
     },
   },
-  endpoints: {
-    title: 'Endpoints',
-    list: {
-      title: 'Registered endpoints',
-      help: 'The active worker routes operations to endpoints.',
-      countLabel: 'Count',
-      localSubtitle: 'local',
-      localRemoveHelp: 'The local endpoint cannot be removed.',
-      lastPing: 'Last ping: pid {{pid}} · {{now}}',
-    },
-    actions: {
-      add: 'Add endpoint',
-      ping: 'Ping',
-      pinging: 'Pinging…',
-    },
-    register: {
-      title: 'Register endpoint',
-      help: 'Register a remote worker endpoint by hostname, port, and token. Token is never stored in renderer state.',
-      displayNameLabel: 'Display name (optional)',
-      hostnameLabel: 'Hostname',
-      portLabel: 'Port',
-      tokenLabel: 'Token',
-      tokenHelp: 'This token is submitted once and cleared after registration.',
-      tokenRequired: 'Token is required.',
-    },
-  },
+  endpoints: enSettingsPanelEndpoints,
   workspace: {
     title: 'Workspace Worktree',
     selectProjectFirst: 'Select a project first',

@@ -123,11 +123,14 @@ test.describe('M6 - Remote mount worktree integration', () => {
       await openSettings(window)
       await switchSettingsPage(window, 'endpoints')
       await window.locator('[data-testid="settings-endpoints-open-register"]').click()
+      await window.locator('[data-testid="settings-endpoints-register-mode-manual"]').click()
 
       await window
         .locator('[data-testid="settings-endpoints-register-displayName"]')
         .fill(endpointDisplayName)
-      await window.locator('[data-testid="settings-endpoints-register-hostname"]').fill(remoteHost)
+      await window
+        .locator('[data-testid="settings-endpoints-register-manual-hostname"]')
+        .fill(remoteHost)
       await window
         .locator('[data-testid="settings-endpoints-register-port"]')
         .fill(String(remotePort))
@@ -136,8 +139,6 @@ test.describe('M6 - Remote mount worktree integration', () => {
 
       const endpointRow = window.locator('.settings-panel__row', { hasText: endpointDisplayName })
       await expect(endpointRow).toBeVisible()
-      await endpointRow.locator('[data-testid^="settings-endpoints-ping-"]').click()
-      await expect(endpointRow.locator('.settings-panel__hint')).toBeVisible()
 
       const remoteEndpointId = await pollFor(
         async () =>

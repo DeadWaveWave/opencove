@@ -1,4 +1,5 @@
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
+import { zhCNSettingsPanelEndpoints } from './zh-CN.settingsPanel.endpoints'
 import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const zhCNSettingsPanel = {
@@ -453,32 +454,7 @@ export const zhCNSettingsPanel = {
       copyToken: '复制',
     },
   },
-  endpoints: {
-    title: 'Endpoints',
-    list: {
-      title: '已注册端点',
-      help: '当前 Worker 负责将操作路由到各个 endpoint。',
-      countLabel: '数量',
-      localSubtitle: '本机',
-      localRemoveHelp: '本机 endpoint 不可移除。',
-      lastPing: '最近一次 ping：pid {{pid}} · {{now}}',
-    },
-    actions: {
-      add: '添加端点',
-      ping: 'Ping',
-      pinging: 'Ping 中…',
-    },
-    register: {
-      title: '注册端点',
-      help: '通过 hostname、port、token 注册一个远程 worker endpoint。Token 不会被写入 renderer state。',
-      displayNameLabel: '显示名称（可选）',
-      hostnameLabel: '主机',
-      portLabel: '端口',
-      tokenLabel: 'Token',
-      tokenHelp: 'Token 仅提交一次，注册后会自动清空。',
-      tokenRequired: 'Token 不能为空。',
-    },
-  },
+  endpoints: zhCNSettingsPanelEndpoints,
   workspace: {
     title: '工作区 Worktree',
     selectProjectFirst: '请先选择一个项目',

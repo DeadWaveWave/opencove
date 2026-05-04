@@ -1,18 +1,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WorkspaceState } from '@contexts/workspace/presentation/renderer/types'
-import type {
-  CreateMountResult,
-  ListMountsResult,
-  ListWorkerEndpointsResult,
-  MountDto,
-  WorkerEndpointDto,
-} from '@shared/contracts/dto'
+import type { CreateMountResult, ListMountsResult, MountDto } from '@shared/contracts/dto'
 import { toErrorMessage } from '../utils/format'
 import { notifyTopologyChanged } from '../utils/topologyEvents'
 import { basename, isAbsolutePath } from '../utils/pathHelpers'
+import { useEndpointOverviews } from '../hooks/useEndpointOverviews'
+import { RemoteEndpointStatusSlot } from './RemoteEndpointStatusSlot'
+import { ProjectMountManagerLocalSection } from './ProjectMountManagerLocalSection'
 import { ProjectMountManagerMountRow } from './ProjectMountManagerMountRow'
 import { ProjectMountManagerRemoteSection } from './ProjectMountManagerRemoteSection'
+import { getEndpointActionExecution } from '../utils/endpointOverviewUi'
 
 export function ProjectMountManagerWindow({
   workspace,
@@ -26,7 +24,15 @@ export function ProjectMountManagerWindow({
   onRequestOpenEndpoints: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
-  const [endpoints, setEndpoints] = useState<WorkerEndpointDto[]>([])
+  const {
+    remoteOverviews,
+    overviewByEndpointId,
+    error: endpointError,
+    busyByEndpointId,
+    reload: reloadEndpoints,
+    prepareEndpoint,
+    repairEndpoint,
+  } = useEndpointOverviews({ enabled: remoteWorkersEnabled })
   const [mounts, setMounts] = useState<MountDto[]>([])
   const [homeWorkerMode, setHomeWorkerMode] = useState<'standalone' | 'local' | 'remote' | null>(
     null,
@@ -40,68 +46,61 @@ export function ProjectMountManagerWindow({
   const [isBusy, setIsBusy] = useState(false)
   const workspaceId = workspace?.id ?? null
 
-  const remoteEndpoints = useMemo(
-    () => endpoints.filter(endpoint => endpoint.endpointId !== 'local'),
-    [endpoints],
-  )
-
   const endpointLabelById = useMemo(() => {
     const map = new Map<string, string>()
-    for (const endpoint of endpoints) {
-      map.set(endpoint.endpointId, endpoint.displayName)
+    map.set('local', 'Local')
+    for (const overview of remoteOverviews) {
+      map.set(overview.endpoint.endpointId, overview.endpoint.displayName)
     }
     return map
-  }, [endpoints])
+  }, [remoteOverviews])
 
-  const reload = useCallback(async (): Promise<void> => {
+  const reloadMounts = useCallback(async (): Promise<void> => {
     if (!workspaceId) {
       return
     }
 
-    const [endpointResult, mountResult] = await Promise.all([
-      remoteWorkersEnabled
-        ? window.opencoveApi.controlSurface.invoke<ListWorkerEndpointsResult>({
-            kind: 'query',
-            id: 'endpoint.list',
-            payload: null,
-          })
-        : Promise.resolve({ endpoints: [] }),
-      window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-        kind: 'query',
-        id: 'mount.list',
-        payload: { projectId: workspaceId },
-      }),
-    ])
-
-    setEndpoints(endpointResult.endpoints)
-    setMounts(mountResult.mounts)
-    setRemoteEndpointId(current => {
-      const trimmed = current.trim()
-      if (
-        trimmed.length > 0 &&
-        endpointResult.endpoints.some(endpoint => endpoint.endpointId === trimmed)
-      ) {
-        return trimmed
-      }
-
-      const firstRemote = endpointResult.endpoints.find(endpoint => endpoint.endpointId !== 'local')
-      return firstRemote?.endpointId ?? ''
+    const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
+      kind: 'query',
+      id: 'mount.list',
+      payload: { projectId: workspaceId },
     })
-  }, [remoteWorkersEnabled, workspaceId])
+
+    setMounts(mountResult.mounts)
+  }, [workspaceId])
 
   useEffect(() => {
     void (async () => {
       setError(null)
       setIsBusy(true)
       try {
-        await reload()
+        await reloadMounts()
       } catch (caughtError) {
         setError(toErrorMessage(caughtError))
       } finally {
         setIsBusy(false)
       }
     })()
-  }, [reload])
+  }, [reloadMounts])
+
+  useEffect(() => {
+    if (!remoteWorkersEnabled) {
+      setRemoteEndpointId('')
+      return
+    }
+
+    setRemoteEndpointId(current => {
+      const trimmed = current.trim()
+      if (
+        trimmed.length > 0 &&
+        remoteOverviews.some(overview => overview.endpoint.endpointId === trimmed)
+      ) {
+        return trimmed
+      }
+
+      return remoteOverviews[0]?.endpoint.endpointId ?? ''
+    })
+  }, [remoteOverviews, remoteWorkersEnabled])
 
   useEffect(() => {
     void (async () => {
@@ -114,11 +113,52 @@ export function ProjectMountManagerWindow({
     })()
   }, [])
 
+  const runRemoteEndpointAction = useCallback(
+    async (endpointId: string) => {
+      const overview = overviewByEndpointId.get(endpointId) ?? null
+      if (!overview) {
+        return
+      }
+
+      const action = getEndpointActionExecution(overview.recommendedAction)
+      if (!action) {
+        return
+      }
+
+      setError(null)
+      try {
+        if (action.kind === 'prepare') {
+          await prepareEndpoint({ endpointId, reason: action.reason })
+          return
+        }
+
+        await repairEndpoint({ endpointId, action: action.action })
+      } catch (caughtError) {
+        setError(toErrorMessage(caughtError))
+      }
+    },
+    [overviewByEndpointId, prepareEndpoint, repairEndpoint],
+  )
+
+  const reconnectRemoteEndpoint = useCallback(
+    async (endpointId: string) => {
+      setError(null)
+      try {
+        await prepareEndpoint({ endpointId, reason: 'reconnect' })
+      } catch (caughtError) {
+        setError(toErrorMessage(caughtError))
+      }
+    },
+    [prepareEndpoint],
+  )
+
   if (!workspace) {
     return null
   }
 
   const hasRemoteMounts = mounts.some(mount => mount.endpointId !== 'local')
+  const remoteEndpoint = overviewByEndpointId.get(remoteEndpointId.trim()) ?? null
+  const displayError = error ?? endpointError
 
   const canBrowseLocal =
     typeof window !== 'undefined' &&
@@ -158,7 +198,7 @@ export function ProjectMountManagerWindow({
 
       setLocalRootPath('')
       setLocalMountName('')
-      await reload()
+      await reloadMounts()
       notifyTopologyChanged()
     } catch (caughtError) {
       setError(toErrorMessage(caughtError))
@@ -224,7 +264,7 @@ export function ProjectMountManagerWindow({
 
       setRemoteRootPath('')
       setRemoteMountName('')
-      await reload()
+      await reloadMounts()
       notifyTopologyChanged()
     } catch (caughtError) {
       setError(toErrorMessage(caughtError))
@@ -242,7 +282,7 @@ export function ProjectMountManagerWindow({
         id: 'mount.remove',
         payload: { mountId },
       })
-      await reload()
+      await reloadMounts()
       notifyTopologyChanged()
     } catch (caughtError) {
       setError(toErrorMessage(caughtError))
@@ -260,7 +300,7 @@ export function ProjectMountManagerWindow({
         id: 'mount.promote',
         payload: { mountId },
       })
-      await reload()
+      await reloadMounts()
       notifyTopologyChanged()
     } catch (caughtError) {
       setError(toErrorMessage(caughtError))
@@ -301,9 +341,9 @@ export function ProjectMountManagerWindow({
           <p>{t('projectMountManager.description')}</p>
 
           <div className="cove-window__fields">
-            {error ? (
+            {displayError ? (
               <p className="cove-window__error" data-testid="workspace-project-mount-error">
-                {error}
+                {displayError}
               </p>
             ) : null}
 
@@ -367,66 +407,49 @@ export function ProjectMountManagerWindow({
               </div>
             </div>
 
-            <div className="cove-window__field-row">
-              <label>{t('projectMountManager.addLocalLabel')}</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
-                <div style={{ display: 'flex', gap: 10, width: '100%', alignItems: 'center' }}>
-                  <input
-                    className="cove-field"
-                    type="text"
-                    value={localRootPath}
-                    onChange={event => setLocalRootPath(event.target.value)}
-                    disabled={isBusy}
-                    placeholder={t('projectMountManager.localRootPlaceholder')}
-                    data-testid="workspace-project-mount-local-root"
-                    style={{ flex: 1 }}
-                  />
-                  <button
-                    type="button"
-                    className="cove-window__action cove-window__action--ghost"
-                    disabled={isBusy || !canBrowseLocal}
-                    data-testid="workspace-project-mount-browse-local"
-                    style={{ flexShrink: 0 }}
-                    onClick={() => {
-                      void browseLocalMount()
-                    }}
-                  >
-                    {t('projectMountManager.browseLocalAction')}
-                  </button>
-                </div>
-                <input
-                  className="cove-field"
-                  type="text"
-                  value={localMountName}
-                  onChange={event => setLocalMountName(event.target.value)}
-                  disabled={isBusy}
-                  placeholder={t('projectMountManager.localNamePlaceholder')}
-                  data-testid="workspace-project-mount-local-name"
-                />
-                <button
-                  type="button"
-                  className="cove-window__action cove-window__action--primary"
-                  disabled={isBusy || localRootPath.trim().length === 0}
-                  data-testid="workspace-project-mount-add-local"
-                  onClick={() => {
-                    void createLocalMount()
-                  }}
-                >
-                  {t('common.add')}
-                </button>
-              </div>
-            </div>
+            <ProjectMountManagerLocalSection
+              t={t}
+              isBusy={isBusy}
+              canBrowseLocal={canBrowseLocal}
+              localRootPath={localRootPath}
+              localMountName={localMountName}
+              onChangeLocalRootPath={setLocalRootPath}
+              onChangeLocalMountName={setLocalMountName}
+              onBrowseLocal={() => {
+                void browseLocalMount()
+              }}
+              onCreateLocal={() => {
+                void createLocalMount()
+              }}
+            />
 
             {remoteWorkersEnabled ? (
               <ProjectMountManagerRemoteSection
                 t={t}
                 isBusy={isBusy}
-                remoteEndpoints={remoteEndpoints}
+                remoteEndpoints={remoteOverviews.map(overview => overview.endpoint)}
                 endpointLabelById={endpointLabelById}
                 remoteEndpointId={remoteEndpointId}
                 remoteRootPath={remoteRootPath}
                 remoteMountName={remoteMountName}
                 canCreateRemote={canCreateRemote}
+                remoteStatusSlot={
+                  <RemoteEndpointStatusSlot
+                    t={t}
+                    overview={remoteEndpoint}
+                    busyByEndpointId={busyByEndpointId}
+                    testIdPrefix="workspace-project-mount-remote-status"
+                    onRunAction={endpointId => {
+                      void runRemoteEndpointAction(endpointId)
+                    }}
+                    onReconnect={endpointId => {
+                      void reconnectRemoteEndpoint(endpointId)
+                    }}
+                    onRefresh={() => {
+                      void reloadEndpoints()
+                    }}
+                  />
+                }
                 onChangeRemoteEndpointId={setRemoteEndpointId}
                 onChangeRemoteRootPath={setRemoteRootPath}
                 onChangeRemoteMountName={setRemoteMountName}
@@ -438,7 +461,8 @@ export function ProjectMountManagerWindow({
                     setError(null)
                     setIsBusy(true)
                     try {
-                      await reload()
+                      await reloadMounts()
+                      await reloadEndpoints()
                     } catch (caughtError) {
                       setError(toErrorMessage(caughtError))
                     } finally {

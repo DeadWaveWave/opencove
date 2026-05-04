@@ -1,8 +1,20 @@
-import type { MountDto, WorkerEndpointDto } from '../../../../shared/contracts/dto'
+import type {
+  MountDto,
+  WorkerEndpointDto,
+  WorkerEndpointManagedSshPlatformDto,
+} from '../../../../shared/contracts/dto'
 
 export const TOPOLOGY_FILE_NAME = 'worker-topology.json'
 export const SECRETS_FILE_NAME = 'worker-endpoint-secrets.json'
 export const LOCAL_ENDPOINT_TIMESTAMP = new Date(0).toISOString()
+
+export type ManagedSshEndpointRecord = {
+  host: string
+  port: number | null
+  username: string | null
+  remotePort: number
+  remotePlatform: WorkerEndpointManagedSshPlatformDto
+}
 
 export type RemoteEndpointRecord = {
   endpointId: string
@@ -11,6 +23,8 @@ export type RemoteEndpointRecord = {
   hostname: string
   port: number
   credentialRef: string
+  accessKind: 'manual' | 'managed_ssh'
+  managedSsh: ManagedSshEndpointRecord | null
   createdAt: string
   updatedAt: string
 }
@@ -93,6 +107,8 @@ function normalizeRemoteEndpointRecord(value: unknown): RemoteEndpointRecord | n
   const hostname = normalizeHostname(value.hostname)
   const port = normalizePort(value.port)
   const credentialRef = normalizeNonEmptyString(value.credentialRef) ?? endpointId
+  const accessKind = value.accessKind === 'managed_ssh' ? 'managed_ssh' : 'manual'
+  const managedSsh = normalizeManagedSshEndpointRecord(value.managedSsh)
 
   if (!hostname || port === null) {
     return null
@@ -108,8 +124,48 @@ function normalizeRemoteEndpointRecord(value: unknown): RemoteEndpointRecord | n
     hostname,
     port,
     credentialRef,
+    accessKind,
+    managedSsh: accessKind === 'managed_ssh' && managedSsh ? managedSsh : null,
     createdAt,
     updatedAt,
+  }
+}
+
+function normalizeManagedSshEndpointRecord(value: unknown): ManagedSshEndpointRecord | null {
+  if (!isRecord(value)) {
+    return null
+  }
+
+  const host = normalizeNonEmptyString(value.host)
+  if (!host) {
+    return null
+  }
+
+  const portRaw = value.port
+  const port =
+    portRaw === null || portRaw === undefined
+      ? null
+      : typeof portRaw === 'number' && Number.isFinite(portRaw)
+        ? Math.max(1, Math.min(65_535, Math.floor(portRaw)))
+        : null
+
+  const username = normalizeNonEmptyString(value.username)
+  const remotePort = normalizePort(value.remotePort)
+  const remotePlatform =
+    value.remotePlatform === 'posix' || value.remotePlatform === 'windows'
+      ? value.remotePlatform
+      : 'auto'
+
+  if (remotePort === null) {
+    return null
+  }
+
+  return {
+    host,
+    port,
+    username,
+    remotePort,
+    remotePlatform,
   }
 }
 
@@ -214,10 +270,18 @@ export function toEndpointDto(record: RemoteEndpointRecord): WorkerEndpointDto {
     displayName: record.displayName,
     createdAt: record.createdAt,
     updatedAt: record.updatedAt,
-    remote: {
-      hostname: record.hostname,
-      port: record.port,
+    access: {
+      kind: record.accessKind,
+      managedSsh:
+        record.accessKind === 'managed_ssh' && record.managedSsh ? record.managedSsh : null,
     },
+    remote:
+      record.accessKind === 'manual'
+        ? {
+            hostname: record.hostname,
+            port: record.port,
+          }
+        : null,
   }
 }
 

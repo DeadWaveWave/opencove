@@ -5,6 +5,13 @@ export type DraftMount = {
   name: string | null
 }
 
+export type RemotePickerState = {
+  target: 'default' | 'extra'
+  endpointId: string
+  endpointLabel: string
+  initialPath: string | null
+}
+
 export function isAbsolutePath(pathValue: string): boolean {
   return /^([a-zA-Z]:[\\/]|\/)/.test(pathValue)
 }

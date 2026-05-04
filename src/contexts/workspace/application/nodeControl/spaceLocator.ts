@@ -174,6 +174,7 @@ async function enumerateResolvedSpaces(
     displayName: 'Local',
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
+    access: null,
     remote: null,
   }
   const endpointById = new Map(endpoints.map(endpoint => [endpoint.endpointId, endpoint]))

@@ -1,5 +1,6 @@
 import type { TranslationDictionary } from './schema'
 
+import { zhCNCommonRemoteEndpoints } from './zh-CN.commonRemoteEndpoints'
 import { zhCNMessages } from './zh-CN.messages'
 import { zhCNShell } from './zh-CN.shell'
 import { zhCNSpaceExplorer } from './zh-CN.spaceExplorer'
@@ -35,6 +36,7 @@ export const zhCN = {
     percentUnit: '%',
     pixelUnit: 'px',
     minuteUnit: '分钟',
+    remoteEndpoints: zhCNCommonRemoteEndpoints,
   },
   taskPriorities: {
     low: '低',

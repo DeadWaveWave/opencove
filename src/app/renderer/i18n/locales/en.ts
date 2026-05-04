@@ -1,4 +1,5 @@
 import { enMessages } from './en.messages'
+import { enCommonRemoteEndpoints } from './en.commonRemoteEndpoints'
 import { enShell } from './en.shell'
 import { enSpaceExplorer } from './en.spaceExplorer'
 import { enSettingsPanel } from './en.settingsPanel'
@@ -33,6 +34,7 @@ export const en = {
     percentUnit: '%',
     pixelUnit: 'px',
     minuteUnit: 'min',
+    remoteEndpoints: enCommonRemoteEndpoints,
   },
   taskPriorities: {
     low: 'Low',

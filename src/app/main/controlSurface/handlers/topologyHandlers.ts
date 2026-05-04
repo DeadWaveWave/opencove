@@ -3,225 +3,42 @@ import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appE
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import type {
   ControlSurfaceHomeDirectoryResult,
-  CreateMountInput,
-  GetEndpointHomeDirectoryInput,
   GetEndpointHomeDirectoryResult,
-  ListMountsInput,
-  PingWorkerEndpointInput,
+  ListWorkerEndpointOverviewsResult,
   PingWorkerEndpointResult,
-  PromoteMountInput,
-  ReadEndpointDirectoryInput,
+  PrepareWorkerEndpointResult,
+  RepairWorkerEndpointResult,
   ReadEndpointDirectoryResult,
-  RegisterWorkerEndpointInput,
-  RemoveMountInput,
-  RemoveWorkerEndpointInput,
-  ResolveMountTargetInput,
 } from '../../../../shared/contracts/dto'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
-import type { AppErrorDescriptor } from '../../../../shared/contracts/dto'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === 'object' && !Array.isArray(value)
-}
-
-function isUnknownControlSurfaceOperationError(
-  error: AppErrorDescriptor | null | undefined,
-  operationId: string,
-): boolean {
-  if (!error) {
-    return false
-  }
-
-  if (error.code !== 'common.invalid_input') {
-    return false
-  }
-
-  const debugMessage = typeof error.debugMessage === 'string' ? error.debugMessage : ''
-  return debugMessage.includes('Unknown control surface') && debugMessage.includes(operationId)
-}
-
-function normalizeOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) {
-    return null
-  }
-
-  if (typeof value !== 'string') {
-    return null
-  }
-
-  const trimmed = value.trim()
-  return trimmed.length > 0 ? trimmed : null
-}
-
-function normalizeRequiredString(value: unknown, debugName: string): string {
-  const normalized = normalizeOptionalString(value)
-  if (!normalized) {
-    throw createAppError('common.invalid_input', { debugMessage: `Missing ${debugName}.` })
-  }
-
-  return normalized
-}
-
-function normalizeRequiredPort(value: unknown, debugName: string): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw createAppError('common.invalid_input', { debugMessage: `Invalid ${debugName}.` })
-  }
-
-  const port = Math.floor(value)
-  if (port <= 0 || port > 65_535) {
-    throw createAppError('common.invalid_input', { debugMessage: `Invalid ${debugName}.` })
-  }
-
-  return port
-}
-
-function isAbsolutePathLike(pathValue: string): boolean {
-  return /^([a-zA-Z]:[\\/]|\\\\|\/)/.test(pathValue)
-}
-
-function normalizeRequiredAbsolutePath(value: unknown, debugName: string): string {
-  const path = normalizeRequiredString(value, debugName)
-  if (!isAbsolutePathLike(path)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: `${debugName} requires an absolute path`,
-    })
-  }
-
-  return path
-}
-
-function normalizeRegisterEndpointPayload(payload: unknown): RegisterWorkerEndpointInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.register.',
-    })
-  }
-
-  return {
-    displayName: normalizeOptionalString(payload.displayName),
-    hostname: normalizeRequiredString(payload.hostname, 'endpoint.register hostname'),
-    port: normalizeRequiredPort(payload.port, 'endpoint.register port'),
-    token: normalizeRequiredString(payload.token, 'endpoint.register token'),
-  }
-}
-
-function normalizeRemoveEndpointPayload(payload: unknown): RemoveWorkerEndpointInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.remove.',
-    })
-  }
-
-  return { endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.remove endpointId') }
-}
-
-function normalizeListMountsPayload(payload: unknown): ListMountsInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mount.list.',
-    })
-  }
-
-  return {
-    projectId: normalizeRequiredString(payload.projectId, 'mount.list projectId'),
-  }
-}
-
-function normalizeCreateMountPayload(payload: unknown): CreateMountInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mount.create.',
-    })
-  }
-
-  return {
-    projectId: normalizeRequiredString(payload.projectId, 'mount.create projectId'),
-    name: normalizeOptionalString(payload.name),
-    endpointId: normalizeRequiredString(payload.endpointId, 'mount.create endpointId'),
-    rootPath: normalizeRequiredString(payload.rootPath, 'mount.create rootPath'),
-  }
-}
-
-function normalizeRemoveMountPayload(payload: unknown): RemoveMountInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mount.remove.',
-    })
-  }
-
-  return { mountId: normalizeRequiredString(payload.mountId, 'mount.remove mountId') }
-}
-
-function normalizePromoteMountPayload(payload: unknown): PromoteMountInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mount.promote.',
-    })
-  }
-
-  return { mountId: normalizeRequiredString(payload.mountId, 'mount.promote mountId') }
-}
-
-function normalizeResolveMountTargetPayload(payload: unknown): ResolveMountTargetInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for mountTarget.resolve.',
-    })
-  }
-
-  return { mountId: normalizeRequiredString(payload.mountId, 'mountTarget.resolve mountId') }
-}
-
-function normalizePingEndpointPayload(payload: unknown): PingWorkerEndpointInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.ping.',
-    })
-  }
-
-  const timeoutMsRaw = payload.timeoutMs
-  const timeoutMs =
-    typeof timeoutMsRaw === 'number' && Number.isFinite(timeoutMsRaw) && timeoutMsRaw > 0
-      ? Math.floor(timeoutMsRaw)
-      : null
-
-  return {
-    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.ping endpointId'),
-    ...(timeoutMs !== null ? { timeoutMs } : {}),
-  }
-}
-
-function normalizeEndpointHomeDirectoryPayload(payload: unknown): GetEndpointHomeDirectoryInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.homeDirectory.',
-    })
-  }
-
-  return {
-    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.homeDirectory endpointId'),
-  }
-}
-
-function normalizeEndpointReadDirectoryPayload(payload: unknown): ReadEndpointDirectoryInput {
-  if (!isRecord(payload)) {
-    throw createAppError('common.invalid_input', {
-      debugMessage: 'Invalid payload for endpoint.readDirectory.',
-    })
-  }
-
-  return {
-    endpointId: normalizeRequiredString(payload.endpointId, 'endpoint.readDirectory endpointId'),
-    path: normalizeRequiredAbsolutePath(payload.path, 'endpoint.readDirectory path'),
-  }
-}
+import type { EndpointHealthService } from '../topology/endpointHealthService'
+import {
+  isUnknownControlSurfaceOperationError,
+  normalizeCreateMountPayload,
+  normalizeEndpointHomeDirectoryPayload,
+  normalizeEndpointReadDirectoryPayload,
+  normalizeListMountsPayload,
+  normalizePingEndpointPayload,
+  normalizePrepareEndpointPayload,
+  normalizePromoteMountPayload,
+  normalizeRegisterEndpointPayload,
+  normalizeRegisterManagedSshEndpointPayload,
+  normalizeRemoveEndpointPayload,
+  normalizeRemoveMountPayload,
+  normalizeRepairEndpointPayload,
+  normalizeResolveMountTargetPayload,
+} from './topologyHandlerPayloads'
 
 export function registerTopologyHandlers(
   controlSurface: ControlSurface,
-  deps: { topology: WorkerTopologyStore; approvedWorkspaces: ApprovedWorkspaceStore },
+  deps: {
+    topology: WorkerTopologyStore
+    approvedWorkspaces: ApprovedWorkspaceStore
+    endpointHealth: EndpointHealthService
+  },
 ): void {
   controlSurface.register('endpoint.list', {
     kind: 'query',
@@ -237,10 +54,41 @@ export function registerTopologyHandlers(
     defaultErrorCode: 'common.unexpected',
   })
 
+  controlSurface.register('endpoint.registerManagedSsh', {
+    kind: 'command',
+    validate: normalizeRegisterManagedSshEndpointPayload,
+    handle: async (_ctx, payload) => await deps.topology.registerManagedSshEndpoint(payload),
+    defaultErrorCode: 'common.unexpected',
+  })
+
   controlSurface.register('endpoint.remove', {
     kind: 'command',
     validate: normalizeRemoveEndpointPayload,
     handle: async (_ctx, payload) => await deps.topology.removeEndpoint(payload),
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('endpoint.overview.list', {
+    kind: 'query',
+    validate: payload => payload ?? null,
+    handle: async (): Promise<ListWorkerEndpointOverviewsResult> =>
+      await deps.endpointHealth.listOverviews(),
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('endpoint.prepare', {
+    kind: 'command',
+    validate: normalizePrepareEndpointPayload,
+    handle: async (_ctx, payload): Promise<PrepareWorkerEndpointResult> =>
+      await deps.endpointHealth.prepareEndpoint(payload),
+    defaultErrorCode: 'common.unexpected',
+  })
+
+  controlSurface.register('endpoint.repair', {
+    kind: 'command',
+    validate: normalizeRepairEndpointPayload,
+    handle: async (_ctx, payload): Promise<RepairWorkerEndpointResult> =>
+      await deps.endpointHealth.repairEndpoint(payload),
     defaultErrorCode: 'common.unexpected',
   })
 
