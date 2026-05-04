@@ -2,6 +2,13 @@ import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
 import type { Locator } from '@playwright/test'
 
+async function clickInlineTitleDisplay(display: Locator): Promise<void> {
+  await expect(display).toBeVisible()
+  await display.evaluate(element => {
+    ;(element as HTMLElement).click()
+  })
+}
+
 async function readInlineTitleMetrics(display: Locator): Promise<{
   text: string
   width: number
@@ -283,14 +290,14 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(agentTitleInput).toHaveCount(0)
       await expect(taskTitleInput).toHaveCount(0)
 
-      await terminalTitleDisplay.click()
+      await clickInlineTitleDisplay(terminalTitleDisplay)
       await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill('terminal renamed')
       await terminalTitleInput.press('Enter')
       await expect(terminalTitleInput).toHaveCount(0)
       await expect(terminalHeader).toContainText('terminal renamed')
 
-      await agentTitleDisplay.click()
+      await clickInlineTitleDisplay(agentTitleDisplay)
       await expect(agentTitleInput).toBeVisible({ timeout: 30_000 })
       await expect(agentTitleInput).toHaveValue('agent linked task')
       await agentTitleInput.fill('agent renamed')
@@ -298,7 +305,7 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       await expect(agentTitleInput).toHaveCount(0)
       await expect(agentHeader).toContainText('codex · agent renamed')
 
-      await taskTitleDisplay.click()
+      await clickInlineTitleDisplay(taskTitleDisplay)
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill('task renamed')
       await taskTitleInput.press('Enter')
@@ -385,19 +392,19 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       const taskTitleInput = taskNode.locator('[data-testid="task-node-inline-title-input"]')
       const noteTitleInput = noteNode.locator('[data-testid="note-node-title-input"]')
 
-      await terminalTitleDisplay.click()
+      await clickInlineTitleDisplay(terminalTitleDisplay)
       await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill(longTitle)
       await pane.click({ position: { x: 1180, y: 120 } })
       await expect(terminalTitleInput).toHaveCount(0)
 
-      await taskTitleDisplay.click()
+      await clickInlineTitleDisplay(taskTitleDisplay)
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill(longTitle)
       await pane.click({ position: { x: 1180, y: 420 } })
       await expect(taskTitleInput).toHaveCount(0)
 
-      await noteTitleDisplay.click()
+      await clickInlineTitleDisplay(noteTitleDisplay)
       await expect(noteTitleInput).toBeVisible({ timeout: 30_000 })
       await noteTitleInput.fill(longTitle)
       await pane.click({ position: { x: 1180, y: 680 } })

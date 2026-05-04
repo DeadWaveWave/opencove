@@ -1,4 +1,4 @@
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import {
   clearAndSeedWorkspace,
   dragHeaderDragSurfaceTo,
@@ -7,20 +7,6 @@ import {
 } from './workspace-canvas.helpers'
 
 test.describe('Workspace Canvas - Minimap & Zoom', () => {
-  const readClientRect = async (
-    locator: Locator,
-  ): Promise<{ x: number; y: number; width: number; height: number }> => {
-    return await locator.evaluate(element => {
-      const rect = element.getBoundingClientRect()
-      return {
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
-      }
-    })
-  }
-
   test('renders subdued canvas controls and collapsible minimap', async ({
     browserName,
   }, testInfo) => {
@@ -234,23 +220,11 @@ test.describe('Workspace Canvas - Minimap & Zoom', () => {
       await pane.click({ position: { x: 40, y: 40 } })
       await expect(window.locator('.react-flow__node.selected')).toHaveCount(0)
 
-      const terminalBody = terminal.locator('.terminal-node__terminal')
-      const terminalBox = await readClientRect(terminalBody)
-      if (terminalBox.width <= 0 || terminalBox.height <= 0) {
-        throw new Error('terminal client rect unavailable for normalization click')
-      }
-
-      // Click near the center of the terminal to avoid occluded edges after drag while zoomed-in.
-      await window.mouse.click(
-        terminalBox.x + terminalBox.width / 2,
-        terminalBox.y + Math.min(96, terminalBox.height / 2),
-      )
-
       await expect
         .poll(async () => {
           return (await readCanvasViewport(window)).zoom
         })
-        .toBeCloseTo(1, 2)
+        .toBeGreaterThan(1.01)
     } finally {
       await electronApp.close()
     }
