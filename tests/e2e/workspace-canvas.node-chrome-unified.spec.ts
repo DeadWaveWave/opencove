@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { clearAndSeedWorkspace, launchApp, readLocatorClientRect } from './workspace-canvas.helpers'
+import { clickPaneAtFlowPoint } from './workspace-canvas.arrange.shared'
 import type { Locator } from '@playwright/test'
 
 async function clickInlineTitleDisplay(display: Locator): Promise<void> {
@@ -370,44 +371,40 @@ test.describe('Workspace Canvas - Unified Node Chrome', () => {
       const pane = window.locator('.workspace-canvas .react-flow__pane')
       await expect(pane).toBeVisible()
 
-      const terminalNode = window.locator('.terminal-node').first()
-      const taskNode = window.locator('.task-node').first()
-      const noteNode = window.locator('.note-node').first()
-
       const sidebarToggle = window.locator('[data-testid="app-header-toggle-primary-sidebar"]')
       await expect(sidebarToggle).toBeVisible()
       await sidebarToggle.click()
       await expect(window.locator('.app-shell--sidebar-collapsed')).toHaveCount(1)
       await window.waitForTimeout(200)
 
-      const terminalTitleDisplay = terminalNode.locator(
-        '[data-testid="terminal-node-title-display"]',
-      )
-      const taskTitleDisplay = taskNode.locator('[data-testid="task-node-title-display"]')
-      const noteTitleDisplay = noteNode.locator('[data-testid="note-node-title-display"]')
+      const terminalTitleDisplay = window
+        .locator('[data-testid="terminal-node-title-display"]')
+        .first()
+      const taskTitleDisplay = window.locator('[data-testid="task-node-title-display"]').first()
+      const noteTitleDisplay = window.locator('[data-testid="note-node-title-display"]').first()
 
-      const terminalTitleInput = terminalNode.locator(
-        '[data-testid="terminal-node-inline-title-input"]',
-      )
-      const taskTitleInput = taskNode.locator('[data-testid="task-node-inline-title-input"]')
-      const noteTitleInput = noteNode.locator('[data-testid="note-node-title-input"]')
+      const terminalTitleInput = window
+        .locator('[data-testid="terminal-node-inline-title-input"]')
+        .first()
+      const taskTitleInput = window.locator('[data-testid="task-node-inline-title-input"]').first()
+      const noteTitleInput = window.locator('[data-testid="note-node-title-input"]').first()
 
       await clickInlineTitleDisplay(terminalTitleDisplay)
       await expect(terminalTitleInput).toBeVisible({ timeout: 30_000 })
       await terminalTitleInput.fill(longTitle)
-      await pane.click({ position: { x: 1180, y: 120 } })
+      await clickPaneAtFlowPoint(window, pane, { x: 1180, y: 120 })
       await expect(terminalTitleInput).toHaveCount(0)
 
       await clickInlineTitleDisplay(taskTitleDisplay)
       await expect(taskTitleInput).toBeVisible({ timeout: 30_000 })
       await taskTitleInput.fill(longTitle)
-      await pane.click({ position: { x: 1180, y: 420 } })
+      await clickPaneAtFlowPoint(window, pane, { x: 1180, y: 420 })
       await expect(taskTitleInput).toHaveCount(0)
 
       await clickInlineTitleDisplay(noteTitleDisplay)
       await expect(noteTitleInput).toBeVisible({ timeout: 30_000 })
       await noteTitleInput.fill(longTitle)
-      await pane.click({ position: { x: 1180, y: 680 } })
+      await clickPaneAtFlowPoint(window, pane, { x: 1180, y: 680 })
       await expect(noteTitleInput).toHaveCount(0)
 
       const [terminalMetrics, taskMetrics, noteMetrics] = await Promise.all([
