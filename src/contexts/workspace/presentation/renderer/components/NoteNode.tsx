@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { Check, Download, X } from 'lucide-react'
+import { Check, Download, FileText, X } from 'lucide-react'
+import { useAppStore } from '@app/renderer/shell/store/useAppStore'
 import { toErrorMessage } from '@app/renderer/shell/utils/format'
+import { TaskPromptTemplatesMenu } from '@contexts/task/presentation/renderer/components/promptTemplates/TaskPromptTemplatesMenu'
 import type { NodeFrame, Point } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
@@ -47,12 +49,18 @@ export function NoteNode({
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
   const { t } = useTranslation()
+  const workspaceId = useAppStore(state => state.activeWorkspaceId)
   const [isSavePanelOpen, setIsSavePanelOpen] = useState(false)
   const [markdownFileName, setMarkdownFileName] = useState(t('noteNode.defaultFileName'))
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [savedMarkdownPath, setSavedMarkdownPath] = useState<string | null>(null)
   const saveInputRef = useRef<HTMLInputElement | null>(null)
+  const [promptTemplatesMenuAnchor, setPromptTemplatesMenuAnchor] = useState<{
+    x: number
+    y: number
+  } | null>(null)
+  const promptTemplatesTriggerRef = useRef<HTMLButtonElement | null>(null)
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
     width,
@@ -65,6 +73,7 @@ export function NoteNode({
     position,
     size: { width, height },
   }
+  const isPromptTemplatesMenuOpen = promptTemplatesMenuAnchor !== null
   const style = useMemo(
     () => ({
       width: renderedFrame.size.width,
@@ -176,7 +185,11 @@ export function NoteNode({
           return
         }
 
-        if (event.target.closest('.nodrag')) {
+        if (
+          event.target.closest(
+            '.nodrag, button, input, textarea, select, a, .workspace-context-menu, .cove-window, .cove-window-backdrop',
+          )
+        ) {
           return
         }
 
@@ -200,6 +213,33 @@ export function NoteNode({
         <span className="note-node__title" data-testid="note-node-title">
           {t('noteNode.title')}
         </span>
+        <button
+          ref={promptTemplatesTriggerRef}
+          type="button"
+          className="note-node__action nodrag"
+          data-testid="note-node-open-prompt-templates"
+          onPointerDown={event => {
+            event.stopPropagation()
+          }}
+          onClick={event => {
+            event.stopPropagation()
+
+            if (isPromptTemplatesMenuOpen) {
+              setPromptTemplatesMenuAnchor(null)
+              return
+            }
+
+            const rect = event.currentTarget.getBoundingClientRect()
+            setPromptTemplatesMenuAnchor({
+              x: rect.right,
+              y: rect.bottom,
+            })
+          }}
+          aria-label={t('taskPromptTemplates.openMenu')}
+          title={t('taskPromptTemplates.openMenu')}
+        >
+          <FileText aria-hidden="true" />
+        </button>
         <button
           type="button"
           className="note-node__action nodrag"
@@ -237,6 +277,21 @@ export function NoteNode({
           ×
         </button>
       </div>
+
+      <TaskPromptTemplatesMenu
+        isOpen={isPromptTemplatesMenuOpen}
+        anchor={promptTemplatesMenuAnchor}
+        workspaceId={workspaceId}
+        closeMenu={() => {
+          setPromptTemplatesMenuAnchor(null)
+        }}
+        triggerRef={promptTemplatesTriggerRef}
+        currentRequirement={text}
+        onChangeRequirement={nextRequirement => {
+          onTextChange(nextRequirement)
+        }}
+        testIdPrefix="note-node"
+      />
 
       <textarea
         className="note-node__textarea nodrag nowheel"
