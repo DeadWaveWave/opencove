@@ -24,7 +24,6 @@
   height: 34px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 0 10px;
   background: var(--cove-terminal-node-header-surface);
@@ -45,9 +44,8 @@
 }
 
 .terminal-node__header-drag-surface {
-  flex: 0 1 48px;
+  flex: 0 0 48px;
   width: 48px;
-  min-width: 24px;
   min-height: 100%;
   pointer-events: none;
 }
@@ -310,6 +308,7 @@
 }
 
 .terminal-node__header-badges {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -370,6 +369,7 @@
 }
 
 .terminal-node__action {
+  flex: 0 0 auto;
   border: 1px solid var(--cove-border-subtle);
   background: var(--cove-field);
   color: var(--cove-text);

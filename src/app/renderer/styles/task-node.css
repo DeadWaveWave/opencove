@@ -13,7 +13,6 @@
   height: 34px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
   padding: 0 10px;
   background: var(--cove-node-header-surface);
@@ -42,9 +41,8 @@
 }
 
 .task-node__header-drag-surface {
-  flex: 0 1 48px;
+  flex: 0 0 48px;
   width: 48px;
-  min-width: 24px;
   min-height: 100%;
 }
 
@@ -105,12 +103,14 @@
 }
 
 .task-node__header-actions {
+  flex: 0 0 auto;
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
 
 .task-node__icon-button {
+  flex: 0 0 auto;
   width: 24px;
   height: 24px;
   display: inline-flex;

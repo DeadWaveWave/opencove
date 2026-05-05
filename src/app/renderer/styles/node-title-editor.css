@@ -54,7 +54,7 @@
 }
 
 .node-title-editor--editing {
-  flex: 1 1 auto;
+  flex: 1 1 0%;
 }
 
 .node-title-editor--editing .node-title-editor__editable {
