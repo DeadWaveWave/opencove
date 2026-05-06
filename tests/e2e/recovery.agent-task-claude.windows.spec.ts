@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import fs from 'node:fs/promises'
 import path from 'node:path'
 import {
   clearAndSeedWorkspace,
@@ -122,9 +123,16 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
 
   test('restores task-launched claude-code after restart without terminal overflow', async () => {
     const userDataDir = await createTestUserDataDir()
-    const taskDirectory = path.join(testWorkspacePath, 'docs')
+    const taskDirectory = path.join(
+      testWorkspacePath,
+      '.opencove',
+      'worktrees',
+      `claude-recovery-${String(Date.now())}`,
+    )
 
     try {
+      await fs.mkdir(taskDirectory, { recursive: true })
+
       const { electronApp, window } = await launchApp({
         windowMode: 'offscreen',
         userDataDir,
@@ -256,6 +264,7 @@ test.describe('Recovery - task Claude agent (Windows)', () => {
       }
     } finally {
       await removePathWithRetry(userDataDir)
+      await fs.rm(taskDirectory, { recursive: true, force: true })
     }
   })
 })

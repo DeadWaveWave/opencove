@@ -2,15 +2,25 @@ import { dirname, join, resolve } from 'node:path'
 import { resolveHomeDirectoryCandidates } from '../../../platform/os/HomeDirectory'
 
 export function encodeClaudeProjectPath(cwd: string): string {
+  return resolve(cwd).replace(/[^A-Za-z0-9]/g, '-')
+}
+
+function encodeSlashOnlyClaudeProjectPath(cwd: string): string {
   return resolve(cwd).replace(/[:\\/]/g, '-')
 }
 
-function encodeLegacyClaudeProjectPath(cwd: string): string {
+function encodeColonlessClaudeProjectPath(cwd: string): string {
   return resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
 }
 
 function resolveClaudeProjectPathEncodings(cwd: string): string[] {
-  return [...new Set([encodeClaudeProjectPath(cwd), encodeLegacyClaudeProjectPath(cwd)])]
+  return [
+    ...new Set([
+      encodeClaudeProjectPath(cwd),
+      encodeSlashOnlyClaudeProjectPath(cwd),
+      encodeColonlessClaudeProjectPath(cwd),
+    ]),
+  ]
 }
 
 export function resolveClaudeWorkspacePathCandidates(cwd: string): string[] {

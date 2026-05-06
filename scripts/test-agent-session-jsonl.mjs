@@ -125,7 +125,7 @@ async function createClaudeSessionFile(cwd) {
     os.homedir(),
     '.claude',
     'projects',
-    resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, ''),
+    encodeClaudeProjectPath(cwd),
     `${sessionId}.jsonl`,
   )
 
@@ -134,13 +134,28 @@ async function createClaudeSessionFile(cwd) {
   return sessionFilePath
 }
 
-function resolveClaudeProjectDirectory(cwd) {
-  return join(
-    os.homedir(),
-    '.claude',
-    'projects',
-    resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, ''),
-  )
+function encodeClaudeProjectPath(cwd) {
+  return resolve(cwd).replace(/[^A-Za-z0-9]/g, '-')
+}
+
+function encodeSlashOnlyClaudeProjectPath(cwd) {
+  return resolve(cwd).replace(/[:\\/]/g, '-')
+}
+
+function encodeColonlessClaudeProjectPath(cwd) {
+  return resolve(cwd).replace(/[\\/]/g, '-').replace(/:/g, '')
+}
+
+function resolveClaudeProjectDirectoryCandidates(cwd) {
+  const encodedPaths = [
+    ...new Set([
+      encodeClaudeProjectPath(cwd),
+      encodeSlashOnlyClaudeProjectPath(cwd),
+      encodeColonlessClaudeProjectPath(cwd),
+    ]),
+  ]
+
+  return encodedPaths.map(encodedPath => join(os.homedir(), '.claude', 'projects', encodedPath))
 }
 
 async function findClaudeSessionFile(cwd, sessionId) {
@@ -148,8 +163,18 @@ async function findClaudeSessionFile(cwd, sessionId) {
     return null
   }
 
-  const candidatePath = join(resolveClaudeProjectDirectory(cwd), `${sessionId.trim()}.jsonl`)
-  return (await pathExists(candidatePath)) ? candidatePath : null
+  const candidatePaths = resolveClaudeProjectDirectoryCandidates(cwd).map(projectDirectory =>
+    join(projectDirectory, `${sessionId.trim()}.jsonl`),
+  )
+
+  for (const candidatePath of candidatePaths) {
+    // eslint-disable-next-line no-await-in-loop -- bounded compatibility lookup
+    if (await pathExists(candidatePath)) {
+      return candidatePath
+    }
+  }
+
+  return null
 }
 
 async function appendClaudeRecord(sessionFilePath, record, { newline = true } = {}) {
