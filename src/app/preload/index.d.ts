@@ -107,6 +107,10 @@ import type {
   SetHomeWorkerWebUiSecurityInput,
   WorkerStatusResult,
   CliPathStatusResult,
+  OpenIssueReportGithubInput,
+  PrepareIssueReportInput,
+  PrepareIssueReportResult,
+  ShowIssueReportFileInput,
 } from '../../shared/contracts/dto'
 import type { ControlSurfaceInvokeRequest } from '../../shared/contracts/controlSurface'
 
@@ -128,6 +132,11 @@ export interface OpenCoveApi {
   debug?: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
+  }
+  issueReport: {
+    prepare: (payload: PrepareIssueReportInput) => Promise<PrepareIssueReportResult>
+    openGitHubIssue: (payload: OpenIssueReportGithubInput) => Promise<void>
+    showReportFile: (payload: ShowIssueReportFileInput) => Promise<void>
   }
   controlSurface: {
     invoke: <TValue = unknown>(request: ControlSurfaceInvokeRequest) => Promise<TValue>

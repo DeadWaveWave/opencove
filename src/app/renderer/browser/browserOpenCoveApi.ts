@@ -106,6 +106,13 @@ export function installBrowserOpenCoveApi(): void {
     debug: {
       logTerminalDiagnostics: () => undefined,
     },
+    issueReport: {
+      prepare: async () => {
+        throw new Error('Issue reports are only available in the desktop app')
+      },
+      openGitHubIssue: async () => undefined,
+      showReportFile: async () => undefined,
+    },
     controlSurface: {
       invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
         await invokeBrowserControlSurface<TValue>(request),

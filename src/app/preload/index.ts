@@ -112,6 +112,7 @@ import type {
   CliPathStatusResult,
 } from '../../shared/contracts/dto'
 import { invokeIpc } from './ipcInvoke'
+import { createIssueReportPreloadApi } from './issueReportApi'
 import { resolveOpenCoveMeta } from './opencoveMeta'
 type UnsubscribeFn = () => void
 const latestPtyStateBySessionId = new Map<string, TerminalSessionStateEvent>(),
@@ -126,6 +127,7 @@ const opencoveApi = {
       ipcRenderer.send(IPC_CHANNELS.runtimeDiagnosticsLog, payload)
     },
   },
+  issueReport: createIssueReportPreloadApi(),
   controlSurface: {
     invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>
       invokeIpc(IPC_CHANNELS.controlSurfaceInvoke, request),

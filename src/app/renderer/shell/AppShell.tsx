@@ -26,6 +26,7 @@ import { useFloatingMessage } from './hooks/useFloatingMessage'
 import { useWorkspaceStateHandlers } from './hooks/useWorkspaceStateHandlers'
 import { useAppUpdates } from './hooks/useAppUpdates'
 import { useAppShellWorkspaceActions } from './hooks/useAppShellWorkspaceActions'
+import { useShellOverlayState } from './hooks/useShellOverlayState'
 import { useWhatsNew } from './hooks/useWhatsNew'
 import { useWorkerSyncStateUpdates } from './hooks/useWorkerSyncStateUpdates'
 import { useWorkspaceMountRepair } from './hooks/useWorkspaceMountRepair'
@@ -114,92 +115,62 @@ export default function App(): React.JSX.Element {
 
   const isPrimarySidebarCollapsed = agentSettings.isPrimarySidebarCollapsed === true
 
-  const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
-  const [isControlCenterOpen, setIsControlCenterOpen] = useState(false)
-  const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
-  const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
-  const [isAddProjectWizardOpen, setIsAddProjectWizardOpen] = useState(false)
   const [isFocusNodeTargetZoomPreviewing, setIsFocusNodeTargetZoomPreviewing] = useState(false)
   const [settingsInitialPageId, setSettingsInitialPageId] = useState<SettingsPageId | null>(null)
+  const {
+    isCommandCenterOpen,
+    isControlCenterOpen,
+    isIssueReportOpen,
+    isWorkspaceSearchOpen,
+    isSpaceArchivesOpen,
+    isAddProjectWizardOpen,
+    hasBlockingOverlay,
+    toggleCommandCenter,
+    closeCommandCenter,
+    toggleControlCenter,
+    closeControlCenter,
+    toggleIssueReport,
+    closeIssueReport,
+    openWorkspaceSearch,
+    closeWorkspaceSearch,
+    openSpaceArchives,
+    closeSpaceArchives,
+    openAddProjectWizard,
+    closeAddProjectWizard,
+    closeTransientOverlays,
+  } = useShellOverlayState()
 
-  useWebsiteWindowOcclusionSync(
+  const hasBlockingShellOverlay =
     isSettingsOpen ||
-      isCommandCenterOpen ||
-      isControlCenterOpen ||
-      isWorkspaceSearchOpen ||
-      isSpaceArchivesOpen ||
-      isAddProjectWizardOpen ||
-      projectMountManager !== null ||
-      projectDeleteConfirmation !== null,
-  )
+    hasBlockingOverlay ||
+    projectMountManager !== null ||
+    projectDeleteConfirmation !== null
 
-  const toggleCommandCenter = useCallback((): void => {
-    setIsWorkspaceSearchOpen(false)
-    setIsControlCenterOpen(false)
-    setIsSpaceArchivesOpen(false)
-    setIsCommandCenterOpen(open => !open)
-  }, [])
-
-  const closeCommandCenter = useCallback((): void => setIsCommandCenterOpen(false), [])
-
-  const toggleControlCenter = useCallback((): void => {
-    setIsCommandCenterOpen(false)
-    setIsWorkspaceSearchOpen(false)
-    setIsSpaceArchivesOpen(false)
-    setIsControlCenterOpen(open => !open)
-  }, [])
-
-  const closeControlCenter = useCallback((): void => setIsControlCenterOpen(false), [])
-
-  const openWorkspaceSearch = useCallback((): void => {
-    closeCommandCenter()
-    setIsControlCenterOpen(false)
-    setIsSpaceArchivesOpen(false)
-    setIsWorkspaceSearchOpen(true)
-  }, [closeCommandCenter])
-
-  const closeWorkspaceSearch = useCallback((): void => setIsWorkspaceSearchOpen(false), [])
-
-  const openSpaceArchives = useCallback((): void => {
-    closeCommandCenter()
-    closeWorkspaceSearch()
-    closeControlCenter()
-    setIsSpaceArchivesOpen(true)
-  }, [closeCommandCenter, closeControlCenter, closeWorkspaceSearch])
-
-  const closeSpaceArchives = useCallback((): void => setIsSpaceArchivesOpen(false), [])
+  useWebsiteWindowOcclusionSync(hasBlockingShellOverlay)
 
   useAppKeybindings({
-    enabled: isPersistReady && !isSettingsOpen && projectDeleteConfirmation === null,
+    enabled:
+      isPersistReady && !isSettingsOpen && !isIssueReportOpen && projectDeleteConfirmation === null,
     settings: {
       disableAppShortcutsWhenTerminalFocused: agentSettings.disableAppShortcutsWhenTerminalFocused,
       keybindings: agentSettings.keybindings,
     },
     onToggleCommandCenter: toggleCommandCenter,
     onOpenSettings: () => {
-      closeCommandCenter()
-      closeWorkspaceSearch()
-      closeControlCenter()
-      closeSpaceArchives()
+      closeTransientOverlays()
       setSettingsInitialPageId(null)
       setSettingsOpenPageId(null)
       setIsSettingsOpen(true)
     },
     onTogglePrimarySidebar: () => {
-      closeCommandCenter()
-      closeWorkspaceSearch()
-      closeControlCenter()
-      closeSpaceArchives()
+      closeTransientOverlays()
       setAgentSettings(prev => ({
         ...prev,
         isPrimarySidebarCollapsed: !prev.isPrimarySidebarCollapsed,
       }))
     },
     onAddProject: () => {
-      closeCommandCenter()
-      closeWorkspaceSearch()
-      closeControlCenter()
-      closeSpaceArchives()
+      closeTransientOverlays()
       void handleAddWorkspace()
     },
     onOpenWorkspaceSearch: () => {
@@ -212,11 +183,8 @@ export default function App(): React.JSX.Element {
       return
     }
 
-    setIsCommandCenterOpen(false)
-    setIsWorkspaceSearchOpen(false)
-    setIsControlCenterOpen(false)
-    setIsSpaceArchivesOpen(false)
-  }, [isSettingsOpen, projectDeleteConfirmation])
+    closeTransientOverlays()
+  }, [closeTransientOverlays, isSettingsOpen, projectDeleteConfirmation])
 
   useEffect(() => {
     if (!isSettingsOpen) {
@@ -267,12 +235,8 @@ export default function App(): React.JSX.Element {
     resolveAgentModel(agentSettings, agentSettings.defaultProvider) ?? t('common.defaultFollowCli')
   const handleAddWorkspace = useCallback((): void => {
     setIsFocusNodeTargetZoomPreviewing(false)
-    closeCommandCenter()
-    closeControlCenter()
-    setIsWorkspaceSearchOpen(false)
-    setIsSpaceArchivesOpen(false)
-    setIsAddProjectWizardOpen(true)
-  }, [closeCommandCenter, closeControlCenter])
+    openAddProjectWizard()
+  }, [openAddProjectWizard])
 
   const {
     handleWorkspaceNodesChange,
@@ -305,11 +269,11 @@ export default function App(): React.JSX.Element {
     (initialPageId: SettingsPageId | null = null): void => {
       setIsFocusNodeTargetZoomPreviewing(false)
       setSettingsInitialPageId(initialPageId)
-      closeControlCenter()
+      closeTransientOverlays()
       setSettingsOpenPageId(null)
       setIsSettingsOpen(true)
     },
-    [closeControlCenter, setIsSettingsOpen, setSettingsOpenPageId],
+    [closeTransientOverlays, setIsSettingsOpen, setSettingsOpenPageId],
   )
 
   return (
@@ -320,10 +284,11 @@ export default function App(): React.JSX.Element {
         >
           <AppHeader
             activeWorkspaceName={activeWorkspace?.name ?? null}
-            activeWorkspacePath={null}
+            activeWorkspacePath={activeWorkspace?.path ?? null}
             isSidebarCollapsed={isPrimarySidebarCollapsed}
             isControlCenterOpen={isControlCenterOpen}
             isCommandCenterOpen={isCommandCenterOpen}
+            isIssueReportOpen={isIssueReportOpen}
             commandCenterShortcutHint={commandCenterShortcutHint}
             updateState={updateState}
             onToggleSidebar={() => {
@@ -334,6 +299,8 @@ export default function App(): React.JSX.Element {
             }}
             onToggleControlCenter={toggleControlCenter}
             onToggleCommandCenter={toggleCommandCenter}
+            onToggleIssueReport={toggleIssueReport}
+            onCloseIssueReport={closeIssueReport}
             onOpenSettings={handleOpenSettings}
             onCheckForUpdates={checkForUpdates}
             onDownloadUpdate={downloadUpdate}
@@ -361,13 +328,7 @@ export default function App(): React.JSX.Element {
             focusRequest={focusRequest}
             isFocusNodeTargetZoomPreviewing={isSettingsOpen && isFocusNodeTargetZoomPreviewing}
             shortcutsEnabled={
-              isPersistReady &&
-              !isSettingsOpen &&
-              !isCommandCenterOpen &&
-              !isControlCenterOpen &&
-              !isWorkspaceSearchOpen &&
-              !isSpaceArchivesOpen &&
-              projectDeleteConfirmation === null
+              isPersistReady && !hasBlockingShellOverlay && projectDeleteConfirmation === null
             }
             onAddWorkspace={handleAddWorkspace}
             onShowMessage={handleShowMessage}
@@ -440,7 +401,7 @@ export default function App(): React.JSX.Element {
           onCloseSpaceArchives={closeSpaceArchives}
           isAddProjectWizardOpen={isAddProjectWizardOpen}
           onCloseAddProjectWizard={() => {
-            setIsAddProjectWizardOpen(false)
+            closeAddProjectWizard()
           }}
           projectContextMenu={projectContextMenu}
           projectMountManager={projectMountManager}

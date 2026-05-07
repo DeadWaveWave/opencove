@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   ChevronDown,
+  Bug,
   Download,
   LoaderCircle,
   Maximize2,
@@ -14,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { AppUpdateState } from '@shared/contracts/dto'
+import { IssueReportDialog } from './IssueReportDialog'
 
 export function AppHeader({
   activeWorkspaceName,
@@ -21,11 +23,14 @@ export function AppHeader({
   isSidebarCollapsed,
   isControlCenterOpen,
   isCommandCenterOpen,
+  isIssueReportOpen,
   commandCenterShortcutHint,
   updateState,
   onToggleSidebar,
   onToggleControlCenter,
   onToggleCommandCenter,
+  onToggleIssueReport,
+  onCloseIssueReport,
   onOpenSettings,
   onCheckForUpdates,
   onDownloadUpdate,
@@ -36,11 +41,14 @@ export function AppHeader({
   isSidebarCollapsed: boolean
   isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
+  isIssueReportOpen: boolean
   commandCenterShortcutHint: string
   updateState: AppUpdateState | null
   onToggleSidebar: () => void
   onToggleControlCenter: () => void
   onToggleCommandCenter: () => void
+  onToggleIssueReport: () => void
+  onCloseIssueReport: () => void
   onOpenSettings: () => void
   onCheckForUpdates: () => void
   onDownloadUpdate: () => void
@@ -179,131 +187,152 @@ export function AppHeader({
   }, [canToggleFullscreen, resolveFullscreenElement])
 
   return (
-    <header
-      className={`app-header ${isMac ? 'app-header--mac' : ''} ${isWindows ? 'app-header--windows' : ''}`.trim()}
-      role="banner"
-    >
-      <div className="app-header__section app-header__section--left">
-        <button
-          type="button"
-          className="app-header__icon-button"
-          data-testid="app-header-toggle-primary-sidebar"
-          aria-label={t('appHeader.togglePrimarySidebar')}
-          aria-pressed={!isSidebarCollapsed}
-          title={t('appHeader.togglePrimarySidebar')}
-          onClick={() => {
-            onToggleSidebar()
-          }}
-        >
-          <ToggleIcon aria-hidden="true" size={18} />
-        </button>
-      </div>
-
-      <div
-        className="app-header__center"
-        title={activeWorkspacePath ?? undefined}
-        aria-label={activeWorkspacePath ?? undefined}
+    <>
+      <header
+        className={`app-header ${isMac ? 'app-header--mac' : ''} ${isWindows ? 'app-header--windows' : ''}`.trim()}
+        role="banner"
       >
-        <button
-          type="button"
-          className={`app-header__command-center ${isCommandCenterOpen ? 'app-header__command-center--open' : ''}`}
-          data-testid="app-header-command-center"
-          aria-haspopup="dialog"
-          aria-expanded={isCommandCenterOpen}
-          aria-label={t('appHeader.commandCenter')}
-          title={t('appHeader.commandCenterHint', {
-            shortcut: commandCenterShortcutHint,
-          })}
-          onClick={() => {
-            onToggleCommandCenter()
-          }}
-        >
-          <Search aria-hidden="true" size={16} className="app-header__command-center-icon" />
-          <span className="app-header__command-center-title">
-            {activeWorkspaceName ?? t('appHeader.commandCenterFallbackTitle')}
-          </span>
-          <span className="app-header__command-center-keycap" aria-hidden="true">
-            {commandCenterShortcutHint}
-          </span>
-          <ChevronDown
-            aria-hidden="true"
-            size={16}
-            className="app-header__command-center-chevron"
-          />
-        </button>
-      </div>
-
-      <div className="app-header__section app-header__section--right">
-        {updateAction ? (
+        <div className="app-header__section app-header__section--left">
           <button
             type="button"
-            className={`app-header__update-button${updateAction.disabled ? ' app-header__update-button--disabled' : ''}`}
-            data-testid="app-header-update"
-            aria-label={updateAction.title}
-            title={updateAction.title}
+            className="app-header__icon-button"
+            data-testid="app-header-toggle-primary-sidebar"
+            aria-label={t('appHeader.togglePrimarySidebar')}
+            aria-pressed={!isSidebarCollapsed}
+            title={t('appHeader.togglePrimarySidebar')}
             onClick={() => {
-              updateAction.onClick()
+              onToggleSidebar()
             }}
-            disabled={updateAction.disabled}
           >
-            <UpdateActionIcon
+            <ToggleIcon aria-hidden="true" size={18} />
+          </button>
+        </div>
+
+        <div
+          className="app-header__center"
+          title={activeWorkspacePath ?? undefined}
+          aria-label={activeWorkspacePath ?? undefined}
+        >
+          <button
+            type="button"
+            className={`app-header__command-center ${isCommandCenterOpen ? 'app-header__command-center--open' : ''}`}
+            data-testid="app-header-command-center"
+            aria-haspopup="dialog"
+            aria-expanded={isCommandCenterOpen}
+            aria-label={t('appHeader.commandCenter')}
+            title={t('appHeader.commandCenterHint', {
+              shortcut: commandCenterShortcutHint,
+            })}
+            onClick={() => {
+              onToggleCommandCenter()
+            }}
+          >
+            <Search aria-hidden="true" size={16} className="app-header__command-center-icon" />
+            <span className="app-header__command-center-title">
+              {activeWorkspaceName ?? t('appHeader.commandCenterFallbackTitle')}
+            </span>
+            <span className="app-header__command-center-keycap" aria-hidden="true">
+              {commandCenterShortcutHint}
+            </span>
+            <ChevronDown
               aria-hidden="true"
               size={16}
-              className={
-                updateState?.status === 'downloading' ? 'app-header__update-icon--spinning' : ''
-              }
+              className="app-header__command-center-chevron"
             />
-            <span>{updateAction.label}</span>
           </button>
-        ) : null}
-        {isBrowserRuntime ? (
+        </div>
+
+        <div className="app-header__section app-header__section--right">
+          {updateAction ? (
+            <button
+              type="button"
+              className={`app-header__update-button${updateAction.disabled ? ' app-header__update-button--disabled' : ''}`}
+              data-testid="app-header-update"
+              aria-label={updateAction.title}
+              title={updateAction.title}
+              onClick={() => {
+                updateAction.onClick()
+              }}
+              disabled={updateAction.disabled}
+            >
+              <UpdateActionIcon
+                aria-hidden="true"
+                size={16}
+                className={
+                  updateState?.status === 'downloading' ? 'app-header__update-icon--spinning' : ''
+                }
+              />
+              <span>{updateAction.label}</span>
+            </button>
+          ) : null}
+          {isBrowserRuntime ? (
+            <button
+              type="button"
+              className={`app-header__icon-button${isFullscreen ? ' app-header__icon-button--active' : ''}`}
+              data-testid="app-header-fullscreen"
+              aria-label={
+                isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')
+              }
+              aria-pressed={isFullscreen}
+              title={isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')}
+              onClick={() => {
+                void toggleFullscreen()
+              }}
+              disabled={!canToggleFullscreen}
+            >
+              {isFullscreen ? (
+                <Minimize2 aria-hidden="true" size={18} />
+              ) : (
+                <Maximize2 aria-hidden="true" size={18} />
+              )}
+            </button>
+          ) : null}
           <button
             type="button"
-            className={`app-header__icon-button${isFullscreen ? ' app-header__icon-button--active' : ''}`}
-            data-testid="app-header-fullscreen"
-            aria-label={
-              isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')
-            }
-            aria-pressed={isFullscreen}
-            title={isFullscreen ? t('appHeader.exitFullscreen') : t('appHeader.enterFullscreen')}
+            className={`app-header__icon-button${isControlCenterOpen ? ' app-header__icon-button--active' : ''}`}
+            data-testid="app-header-control-center"
+            aria-label={t('controlCenter.open')}
+            aria-pressed={isControlCenterOpen}
+            title={t('controlCenter.open')}
             onClick={() => {
-              void toggleFullscreen()
+              onToggleControlCenter()
             }}
-            disabled={!canToggleFullscreen}
           >
-            {isFullscreen ? (
-              <Minimize2 aria-hidden="true" size={18} />
-            ) : (
-              <Maximize2 aria-hidden="true" size={18} />
-            )}
+            <SlidersHorizontal aria-hidden="true" size={18} />
           </button>
-        ) : null}
-        <button
-          type="button"
-          className={`app-header__icon-button${isControlCenterOpen ? ' app-header__icon-button--active' : ''}`}
-          data-testid="app-header-control-center"
-          aria-label={t('controlCenter.open')}
-          aria-pressed={isControlCenterOpen}
-          title={t('controlCenter.open')}
-          onClick={() => {
-            onToggleControlCenter()
-          }}
-        >
-          <SlidersHorizontal aria-hidden="true" size={18} />
-        </button>
-        <button
-          type="button"
-          className="app-header__icon-button"
-          data-testid="app-header-settings"
-          aria-label={t('common.settings')}
-          title={t('common.settings')}
-          onClick={() => {
-            onOpenSettings()
-          }}
-        >
-          <Settings aria-hidden="true" size={18} />
-        </button>
-      </div>
-    </header>
+          <button
+            type="button"
+            className={`app-header__icon-button${isIssueReportOpen ? ' app-header__icon-button--active' : ''}`}
+            data-testid="app-header-report-issue"
+            aria-label={t('issueReport.open')}
+            aria-pressed={isIssueReportOpen}
+            title={t('issueReport.open')}
+            onClick={() => {
+              onToggleIssueReport()
+            }}
+          >
+            <Bug aria-hidden="true" size={18} />
+          </button>
+          <button
+            type="button"
+            className="app-header__icon-button"
+            data-testid="app-header-settings"
+            aria-label={t('common.settings')}
+            title={t('common.settings')}
+            onClick={() => {
+              onOpenSettings()
+            }}
+          >
+            <Settings aria-hidden="true" size={18} />
+          </button>
+        </div>
+      </header>
+      <IssueReportDialog
+        isOpen={isIssueReportOpen}
+        activeWorkspaceName={activeWorkspaceName}
+        activeWorkspacePath={activeWorkspacePath}
+        onClose={onCloseIssueReport}
+      />
+    </>
   )
 }
