@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Diagnostics: add Settings performance snapshots with copyable renderer and process metrics for terminal/agent lag investigation. (#231)
 - Remote: productize managed SSH endpoint setup with topology health, runtime repair/bootstrap actions, remote browse, and unified endpoint-driven project/location flows. (#227)
 - CLI: support Desktop-managed runtime launcher repair plus standalone CLI/Worker/Web UI installers for macOS, Linux, and Windows. (#209)
 - Agent: add header-level session reload plus semantic session history switching with task-text previews for resumable agent sessions. (#207)
@@ -71,6 +72,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Terminal: reduce multi-terminal output jank by globally pacing xterm writes and throttling committed screen-cache serialization. (#231)
 - Agent recovery: task-launched Claude Code sessions now persist and restore correctly from `.opencove/worktrees/...` paths in installed Windows builds. (#228)
 - Workspace canvas: guard transient detached terminal renderer sync during task drag so dragging nodes no longer crashes the renderer. (#224)
 - Windows agents: restore native Codex/Claude/OpenCode launch and restart recovery, stabilize task-launched Claude restore, and keep OpenCode WebGL terminal content aligned without stale side residue. (#221)
