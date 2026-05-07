@@ -54,6 +54,7 @@ async function createPackagedCli(resourcesDir: string): Promise<string> {
 
 describe('cliPathInstaller', () => {
   beforeEach(async () => {
+    execFileMock.mockReset()
     originalPlatform = process.platform
     originalLocalAppData = process.env.LOCALAPPDATA
     originalPath = process.env.PATH
@@ -101,6 +102,7 @@ describe('cliPathInstaller', () => {
   })
 
   it('installs from packaged resources and reports a healthy launcher', async () => {
+    setPlatform('linux')
     const { installCliToPath, resolveCliPathStatus } =
       await import('../../../src/app/main/cli/cliPathInstaller')
 
@@ -121,6 +123,7 @@ describe('cliPathInstaller', () => {
   })
 
   it('marks an owned launcher as unhealthy when the target script is missing', async () => {
+    setPlatform('linux')
     const { installCliToPath, resolveCliPathStatus } =
       await import('../../../src/app/main/cli/cliPathInstaller')
 

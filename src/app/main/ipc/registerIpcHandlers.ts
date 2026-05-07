@@ -21,6 +21,8 @@ import { registerPersistenceIpcHandlers } from '../../../platform/persistence/sq
 import { registerWindowChromeIpcHandlers } from './registerWindowChromeIpcHandlers'
 import { registerWindowMetricsIpcHandlers } from './registerWindowMetricsIpcHandlers'
 import { registerDiagnosticsIpcHandlers } from './registerDiagnosticsIpcHandlers'
+import { createIssueReportService } from '../../../contexts/issueReport/infrastructure/main/IssueReportService'
+import { registerIssueReportIpcHandlers } from '../../../contexts/issueReport/presentation/main-ipc/register'
 import { registerSystemIpcHandlers } from '../../../contexts/system/presentation/main-ipc/register'
 import {
   invokeControlSurface,
@@ -140,6 +142,13 @@ export function registerIpcHandlers(deps?: {
     registerWindowChromeIpcHandlers(),
     registerWindowMetricsIpcHandlers(),
     registerDiagnosticsIpcHandlers(),
+    registerIssueReportIpcHandlers(
+      createIssueReportService({
+        getUpdateState: () => appUpdateService.getState(),
+        getPersistenceStore,
+        workerEndpointResolver,
+      }),
+    ),
     registerPtyIpcHandlers(ptyRuntime, guardedApprovedWorkspaces),
     workerEndpointResolver
       ? registerRemoteAgentIpcHandlers({
