@@ -44,6 +44,7 @@ import type {
   ReadCanvasImageInput,
   ReadCanvasImageResult,
   WindowDisplayInfo,
+  PerformanceDiagnosticsSnapshotResult,
   ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
@@ -125,6 +126,10 @@ const opencoveApi = {
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput): void => {
       ipcRenderer.send(IPC_CHANNELS.runtimeDiagnosticsLog, payload)
     },
+  },
+  performanceDiagnostics: {
+    getSnapshot: (): Promise<PerformanceDiagnosticsSnapshotResult> =>
+      invokeIpc(IPC_CHANNELS.performanceDiagnosticsSnapshot),
   },
   controlSurface: {
     invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>

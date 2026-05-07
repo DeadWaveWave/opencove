@@ -338,6 +338,20 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
     anchorId: 'settings-github-pull-requests',
     keywords: ['github', 'pull request', 'pr', 'gh', '集成'],
   },
+  {
+    id: 'diagnostics.performance',
+    pageId: 'diagnostics',
+    pageLabelKey: 'settingsPanel.nav.diagnostics',
+    titleKey: 'settingsPanel.diagnostics.title',
+    descriptionKey: 'settingsPanel.diagnostics.help',
+    anchorId: 'settings-section-diagnostics',
+    keywordKeys: [
+      'settingsPanel.diagnostics.processTotals',
+      'settingsPanel.diagnostics.metrics.frameP95',
+      'settingsPanel.diagnostics.metrics.jsHeap',
+    ],
+    keywords: ['performance', 'diagnostics', 'memory', 'cpu', 'terminal', '性能', '诊断', '内存'],
+  },
 ]
 
 function normalizeSearchText(value: string): string {

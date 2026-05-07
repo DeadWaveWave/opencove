@@ -9,6 +9,8 @@ export function resolveOpenCoveMeta() {
     enableTerminalDiagnostics: process.env.OPENCOVE_TERMINAL_DIAGNOSTICS === '1',
     enableTerminalInputDiagnostics: process.env.OPENCOVE_TERMINAL_INPUT_DIAGNOSTICS === '1',
     enableTerminalTestApi: process.env.OPENCOVE_TERMINAL_TEST_API === '1',
+    disableTerminalTranscriptMirror:
+      process.env.OPENCOVE_DISABLE_TERMINAL_TRANSCRIPT_MIRROR === '1',
     runtime: 'electron' as const,
     platform: process.platform,
     mainPid: resolveMainProcessPid(),

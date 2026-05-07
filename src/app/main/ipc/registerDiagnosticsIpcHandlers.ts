@@ -1,11 +1,15 @@
 import { ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import type {
+  PerformanceDiagnosticsSnapshotResult,
   RuntimeDiagnosticsLogInput,
   TerminalDiagnosticsLogInput,
 } from '../../../shared/contracts/dto'
 import type { IpcRegistrationDisposable } from './types'
 import { createMainRuntimeDiagnosticsLogger } from '../runtimeDiagnostics'
+import { registerHandledIpc } from './handle'
+import { createAppError } from '../../../shared/errors/appError'
+import { collectPerformanceDiagnosticsSnapshot } from '../diagnostics/performanceDiagnosticsCollector'
 
 function isTerminalDiagnosticsEnabled(): boolean {
   return (
@@ -21,6 +25,16 @@ function writeTerminalDiagnosticsLine(payload: TerminalDiagnosticsLogInput): voi
   })
 
   process.stdout.write(`[opencove-terminal-diagnostics] ${line}\n`)
+}
+
+function normalizePerformanceDiagnosticsSnapshotPayload(payload: unknown): null {
+  if (payload === undefined || payload === null) {
+    return null
+  }
+
+  throw createAppError('common.invalid_input', {
+    debugMessage: 'performance-diagnostics:snapshot does not accept a payload',
+  })
 }
 
 export function registerDiagnosticsIpcHandlers(): IpcRegistrationDisposable {
@@ -56,11 +70,20 @@ export function registerDiagnosticsIpcHandlers(): IpcRegistrationDisposable {
 
   ipcMain.on(IPC_CHANNELS.terminalDiagnosticsLog, handleTerminalDiagnosticsLog)
   ipcMain.on(IPC_CHANNELS.runtimeDiagnosticsLog, handleRuntimeDiagnosticsLog)
+  registerHandledIpc(
+    IPC_CHANNELS.performanceDiagnosticsSnapshot,
+    async (_event, payload: unknown): Promise<PerformanceDiagnosticsSnapshotResult> => {
+      normalizePerformanceDiagnosticsSnapshotPayload(payload)
+      return await collectPerformanceDiagnosticsSnapshot()
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
 
   return {
     dispose: () => {
       ipcMain.removeListener(IPC_CHANNELS.terminalDiagnosticsLog, handleTerminalDiagnosticsLog)
       ipcMain.removeListener(IPC_CHANNELS.runtimeDiagnosticsLog, handleRuntimeDiagnosticsLog)
+      ipcMain.removeHandler(IPC_CHANNELS.performanceDiagnosticsSnapshot)
     },
   }
 }

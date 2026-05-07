@@ -31,6 +31,7 @@
 @import './styles/settings-panel.preview.css';
 @import './styles/settings-panel.lists.css';
 @import './styles/settings-panel.buttons.css';
+@import './styles/settings-panel.diagnostics.css';
 @import './styles/cove-window.css';
 @import './styles/remote-ui.css';
 @import './styles/remote-ui.settings.css';

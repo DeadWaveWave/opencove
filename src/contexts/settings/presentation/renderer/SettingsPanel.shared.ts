@@ -43,6 +43,7 @@ type CorePageId =
   | 'shortcuts'
   | 'task-configuration'
   | 'integrations'
+  | 'diagnostics'
 type WorkspacePageId = `workspace:${string}`
 export type SettingsPageId = CorePageId | WorkspacePageId
 

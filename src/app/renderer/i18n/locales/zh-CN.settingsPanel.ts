@@ -1,4 +1,5 @@
 import { zhCNTerminalDisplayCalibration } from './zh-CN.terminalDisplayCalibration'
+import { zhCNSettingsPanelDiagnostics } from './zh-CN.settingsPanel.diagnostics'
 import { zhCNSettingsPanelEndpoints } from './zh-CN.settingsPanel.endpoints'
 import { zhCNWorkspaceCanvasNavigationShortcutCommands } from './zh-CN.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
@@ -22,6 +23,7 @@ export const zhCNSettingsPanel = {
     tasks: '任务',
     models: '模型',
     integrations: '集成',
+    diagnostics: '诊断',
     projects: '项目',
     sectionsLabel: '设置分区',
   },
@@ -390,6 +392,7 @@ export const zhCNSettingsPanel = {
     githubPullRequestsLabel: 'GitHub PR 链接',
     githubPullRequestsHelp: '在画布中显示 PR 链接，点击后在 GitHub 打开（需要 `gh`）。',
   },
+  diagnostics: zhCNSettingsPanelDiagnostics,
   worker: {
     title: 'Worker',
     errors: {

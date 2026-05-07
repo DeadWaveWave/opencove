@@ -20,6 +20,7 @@ import { CanvasSection } from './settingsPanel/CanvasSection'
 import { EndpointsSection } from './settingsPanel/EndpointsSection'
 import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
+import { DiagnosticsSection } from './settingsPanel/DiagnosticsSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
 import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
@@ -388,6 +389,8 @@ export function SettingsPanel({
                 onChangeGitHubPullRequestsEnabled={updateGitHubPullRequestsEnabled}
               />
             ) : null}
+
+            {activePageId === 'diagnostics' ? <DiagnosticsSection /> : null}
 
             {activePageId === 'canvas' ? (
               <CanvasSection

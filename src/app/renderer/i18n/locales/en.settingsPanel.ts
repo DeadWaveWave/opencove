@@ -1,6 +1,7 @@
 import { enTerminalDisplayCalibration } from './en.terminalDisplayCalibration'
 import { enSettingsPanelEndpoints } from './en.settingsPanel.endpoints'
 import { enSettingsPanelAgentExecutable } from './en.settingsPanel.agentExecutable'
+import { enSettingsPanelDiagnostics } from './en.settingsPanel.diagnostics'
 import { enWorkspaceCanvasNavigationShortcutCommands } from './en.settingsPanel.shortcuts.workspaceCanvasNavigation'
 
 export const enSettingsPanel = {
@@ -23,6 +24,7 @@ export const enSettingsPanel = {
     tasks: 'Tasks',
     models: 'Models',
     integrations: 'Integrations',
+    diagnostics: 'Diagnostics',
     projects: 'Projects',
     sectionsLabel: 'Settings sections',
   },
@@ -389,6 +391,7 @@ export const enSettingsPanel = {
     githubPullRequestsHelp:
       'Show pull request links on the canvas and open them on GitHub (requires `gh`).',
   },
+  diagnostics: enSettingsPanelDiagnostics,
   worker: {
     title: 'Worker',
     errors: {
