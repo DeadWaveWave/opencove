@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
-- Diagnostics: add Settings performance snapshots and a header real-time monitor with copyable renderer and process metrics for terminal/agent lag investigation. (#231)
+- Diagnostics: add Settings performance snapshots, a header real-time monitor, process-metric fallbacks, and automatic jank records for terminal/agent lag investigation. (#231)
 - Support: add an in-app issue report flow that generates a local redacted diagnostic report and opens a prefilled GitHub issue for Run Agent failures. (#230)
 - Remote: productize managed SSH endpoint setup with topology health, runtime repair/bootstrap actions, remote browse, and unified endpoint-driven project/location flows. (#227)
 - CLI: support Desktop-managed runtime launcher repair plus standalone CLI/Worker/Web UI installers for macOS, Linux, and Windows. (#209)
