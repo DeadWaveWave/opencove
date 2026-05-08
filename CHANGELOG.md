@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
 
 ### 💅 Changed
+- Space Explorer: now opens at half the canonical agent window width by default, uses flatter VS Code-style selection chrome, and creates new files/folders inline in the tree with preserved selection. (#232)
 - Workspace canvas: note-style inline title editing now also applies to terminal, agent terminal, and task nodes, with text-only edit hit areas, drag-safe blank headers, placeholder titles, and long-title rendering fixes. (#226)
 - Workspace canvas: double-clicking the minimap now recenters the viewport on the target region without changing the current zoom level. (#222)
 - UI: project sidebar agent lists are now collapsible with task-first single-line rows, provider icons, inline title editing, and synced color accents. (#205)
