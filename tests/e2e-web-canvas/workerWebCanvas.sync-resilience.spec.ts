@@ -452,7 +452,9 @@ test.describe('Worker web canvas sync resilience', () => {
 
     const documentNode = page.locator('.document-node').first()
     await expect(documentNode).toBeVisible()
-    await expect(documentNode.locator('[data-testid="document-node-textarea"]')).toBeVisible()
+    await expect(
+      documentNode.locator('[data-testid="document-node-editor"] .monaco-editor'),
+    ).toBeVisible()
 
     await documentNode.locator('.document-node__close').click()
     await expect(page.locator('.document-node')).toHaveCount(0)

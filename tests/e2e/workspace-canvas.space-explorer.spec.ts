@@ -11,6 +11,8 @@ import {
   testWorkspacePath,
 } from './workspace-canvas.helpers'
 
+const selectAllShortcut = process.platform === 'darwin' ? 'Meta+A' : 'Control+A'
+
 test.describe('Workspace Canvas - Space Explorer', () => {
   test.skip('opens a file from Explorer as a document node and saves edits to disk', async ({
     browserName,
@@ -197,8 +199,9 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       await window.locator('[data-testid="workspace-space-switch-space-explorer"]').click()
       await expect(explorer).toBeVisible()
 
-      const textarea = documentNode.locator('[data-testid="document-node-textarea"]')
-      await expect(textarea).toHaveValue(initialContent)
+      const editor = documentNode.locator('[data-testid="document-node-editor"] .monaco-editor')
+      await expect(editor).toBeVisible()
+      await expect(editor).toContainText(initialContent)
 
       // Image files open as image nodes.
       await window
@@ -231,7 +234,9 @@ test.describe('Workspace Canvas - Space Explorer', () => {
       await expect(explorer).toBeHidden()
 
       const nextContent = `${initialContent}\nchanged`
-      await textarea.fill(nextContent)
+      await editor.click()
+      await window.keyboard.press(selectAllShortcut)
+      await window.keyboard.insertText(nextContent)
 
       await expect.poll(async () => await readFile(fixtureFilePath, 'utf8')).toBe(nextContent)
     } finally {

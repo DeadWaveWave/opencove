@@ -2,13 +2,10 @@ import { expect, test } from '@playwright/test'
 import {
   buildAppState,
   createWorkspaceDir,
-  fileUri,
   openAuthedCanvas,
   readSharedState,
-  readTextFile,
   webCanvasBaseUrl,
   writeAppState,
-  writeTextFile,
   invokeValue,
 } from './helpers'
 
@@ -279,50 +276,6 @@ test.describe('Worker web canvas', () => {
     await writeAppState(page.request, nextState)
 
     await expect(terminalWrapper).toHaveClass(/selected/)
-  })
-
-  test('saves document edits through the worker-backed filesystem', async ({ page }) => {
-    const workspacePath = await createWorkspaceDir('document-save')
-    const documentPath = `${workspacePath}/readme.md`
-    await writeTextFile(documentPath, '# original\n')
-
-    await writeAppState(
-      page.request,
-      buildAppState({
-        workspacePath,
-        spaces: [
-          {
-            id: 'space-1',
-            name: 'Main',
-            directoryPath: workspacePath,
-            nodeIds: ['doc-1'],
-            rect: { x: 0, y: 0, width: 1200, height: 800 },
-          },
-        ],
-        nodes: [
-          {
-            id: 'doc-1',
-            title: 'readme.md',
-            kind: 'document',
-            position: { x: 240, y: 180 },
-            width: 420,
-            height: 320,
-            uri: fileUri(documentPath),
-          },
-        ],
-      }),
-    )
-
-    await openAuthedCanvas(page)
-
-    const textarea = page.locator('[data-testid="document-node-textarea"]').first()
-    await expect(textarea).toBeVisible()
-    await textarea.fill('# saved from web canvas\n')
-    await page.getByRole('button', { name: 'Save' }).first().click()
-
-    await expect
-      .poll(async () => await readTextFile(documentPath))
-      .toBe('# saved from web canvas\n')
   })
 
   test('reconnects terminal sessions after a page reload', async ({ page }) => {

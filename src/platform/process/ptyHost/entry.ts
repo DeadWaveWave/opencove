@@ -4,6 +4,7 @@ import type { IPty } from 'node-pty'
 import { spawn } from 'node-pty'
 import { parentPort as workerParentPort } from 'node:worker_threads'
 import { killWindowsProcessTree } from './windowsProcessTree'
+import { ensureNodePtySpawnHelperExecutable } from './spawnHelperPermissions'
 import {
   isPtyHostRequest,
   PTY_HOST_PROTOCOL_VERSION,
@@ -195,6 +196,7 @@ const cleanupSessions = (): void => {
 }
 
 cleanupOrphanedNodePtySpawnHelpers()
+ensureNodePtySpawnHelperExecutable()
 
 process.once('SIGINT', () => {
   cleanupSessions()

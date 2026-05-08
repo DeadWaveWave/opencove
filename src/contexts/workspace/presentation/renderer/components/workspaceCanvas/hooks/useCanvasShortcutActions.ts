@@ -87,7 +87,7 @@ function focusPrimaryNodeEditor(nodeId: string): boolean {
     '.terminal-node__terminal .xterm-helper-textarea',
     '[data-testid="task-node-inline-requirement-input"]',
     '[data-testid="note-node-textarea"]',
-    '[data-testid="document-node-textarea"]',
+    '[data-testid="document-node-editor-input"]',
     'textarea, input, [contenteditable="true"]',
   ] as const
 

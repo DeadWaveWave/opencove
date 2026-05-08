@@ -193,8 +193,7 @@
 .document-node__editor {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: auto 1fr;
+  display: flex;
 }
 
 .document-node__interactive {
@@ -202,35 +201,66 @@
   min-height: 0;
 }
 
-.document-node__gutter {
-  margin: 0;
-  padding: 10px 10px 10px 12px;
-  border-right: 1px solid var(--cove-border-subtle);
-  background: color-mix(in srgb, var(--cove-field) 38%, transparent);
-  color: var(--cove-text-muted);
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  line-height: 1.45;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  text-align: right;
-  user-select: none;
-  overflow: hidden;
-  min-width: 36px;
-  min-height: 0;
-}
-
-.document-node__textarea {
+.document-node__monaco-shell {
   flex: 1;
   min-height: 0;
-  width: 100%;
-  resize: none;
-  border: none;
-  outline: none;
-  padding: 10px 12px;
-  background: transparent;
-  color: var(--cove-text);
+  position: relative;
+}
+
+.document-node__monaco {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  background: color-mix(in srgb, var(--cove-node-surface) 96%, black 4%);
+}
+
+.document-node__monaco .monaco-editor,
+.document-node__monaco .monaco-editor .overflow-guard,
+.document-node__monaco .monaco-editor-background,
+.document-node__monaco .monaco-editor .margin {
+  background: color-mix(in srgb, var(--cove-node-surface) 96%, black 4%);
+}
+
+.document-node__monaco .monaco-editor .inputarea {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: transparent !important;
+  outline: none !important;
+  caret-color: transparent !important;
+  opacity: 0 !important;
+}
+
+.document-node__monaco .monaco-editor,
+.document-node__monaco .monaco-editor .overflow-guard {
+  border-radius: 0 0 14px 14px;
+}
+
+.document-node__monaco .monaco-editor .current-line {
+  border-color: color-mix(in srgb, var(--cove-border-subtle) 88%, transparent);
+}
+
+.document-node__editor-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--cove-node-surface) 82%, transparent);
+  color: var(--cove-text-muted);
   font-size: calc(12px * var(--cove-ui-font-scale));
-  line-height: 1.45;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.document-node__conflict-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px 0 12px;
+}
+
+.document-node__conflict-text {
+  min-width: 0;
 }
 
 .document-node__media-shell {

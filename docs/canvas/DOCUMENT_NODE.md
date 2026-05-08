@@ -25,6 +25,8 @@ Document Node 持久化的是：
 - 无 mount context 时调用 `filesystem.readFileText`。
 - 有 mount context 时调用 `filesystem.readFileTextInMount`。
 - 文件疑似二进制或过大时显示不可编辑状态。
+- 文本编辑器使用 Monaco（VS Code 同款编辑器内核）。
+- 已打开的 clean 文本文档在磁盘内容变化后应自动刷新；dirty 文档不得静默覆盖本地草稿，而应进入可解释的冲突状态。
 
 保存文本文件：
 

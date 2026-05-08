@@ -191,8 +191,12 @@ test.describe('Worker web canvas sync between clients', () => {
 
       await expect(primaryDoc).toBeVisible()
       await expect(secondaryDoc).toBeVisible()
-      await expect(primaryDoc.locator('[data-testid="document-node-textarea"]')).toBeVisible()
-      await expect(secondaryDoc.locator('[data-testid="document-node-textarea"]')).toBeVisible()
+      await expect(
+        primaryDoc.locator('[data-testid="document-node-editor"] .monaco-editor'),
+      ).toBeVisible()
+      await expect(
+        secondaryDoc.locator('[data-testid="document-node-editor"] .monaco-editor'),
+      ).toBeVisible()
 
       const beforeCloseState = await readSharedState(page.request)
       const beforeCloseRevision = beforeCloseState.revision
