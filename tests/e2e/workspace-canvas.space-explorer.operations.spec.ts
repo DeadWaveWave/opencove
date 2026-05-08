@@ -18,6 +18,64 @@ import {
 } from './workspace-canvas.space-explorer.operations.helpers'
 
 test.describe('Workspace Canvas - Space Explorer Operations', () => {
+  test('creates files and folders inline from a selected Explorer directory', async () => {
+    const fixtureDir = path.join(
+      testWorkspacePath,
+      'artifacts',
+      'e2e',
+      'space-explorer-operations',
+      randomUUID(),
+    )
+    const folderPath = path.join(fixtureDir, 'target-folder')
+    const createdFilePath = path.join(folderPath, 'created.md')
+    const createdFolderPath = path.join(folderPath, 'created-folder')
+
+    await mkdir(folderPath, { recursive: true })
+
+    const { electronApp, window } = await launchApp()
+
+    try {
+      const spaceId = 'space-explorer-create'
+      const explorer = await openExplorer(window, spaceId, fixtureDir)
+      const folderEntry = explorerEntry(window, spaceId, toFileUri(folderPath))
+
+      await expect(folderEntry).toBeVisible()
+      await expect(folderEntry).toHaveAttribute('aria-expanded', 'false')
+      await folderEntry.click({ button: 'right', force: true })
+
+      const contextMenu = window.locator('[data-testid="workspace-space-explorer-context-menu"]')
+      await expect(contextMenu).toBeVisible()
+      await contextMenu.getByRole('button', { name: 'New File' }).click()
+
+      const createInput = explorer.getByTestId('workspace-space-explorer-create-input')
+      await expect(createInput).toBeVisible()
+      await expect(folderEntry).toHaveAttribute('aria-expanded', 'true')
+      await createInput.fill('created.md')
+      await createInput.press('Enter')
+
+      const createdFileEntry = explorerEntry(window, spaceId, toFileUri(createdFilePath))
+      await expect.poll(async () => await pathExists(createdFilePath)).toBe(true)
+      await expect(createdFileEntry).toBeVisible()
+      await expect(createdFileEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
+      await expect(createdFileEntry).toHaveCSS('border-radius', '0px')
+
+      await folderEntry.click({ button: 'right', force: true })
+      await expect(contextMenu).toBeVisible()
+      await contextMenu.getByRole('button', { name: 'New Folder' }).click()
+
+      const folderCreateInput = explorer.getByTestId('workspace-space-explorer-create-input')
+      await expect(folderCreateInput).toBeVisible()
+      await folderCreateInput.fill('created-folder')
+      await folderCreateInput.press('Enter')
+
+      await expect.poll(async () => await pathExists(createdFolderPath)).toBe(true)
+      await expect(explorerEntry(window, spaceId, toFileUri(createdFolderPath))).toBeVisible()
+    } finally {
+      await electronApp.close()
+      await removePathWithRetry(fixtureDir)
+    }
+  })
+
   test('supports Explorer context menu actions and keyboard shortcuts', async () => {
     const fixtureDir = path.join(
       testWorkspacePath,

@@ -3,7 +3,7 @@ import { useStore } from '@xyflow/react'
 import { useTranslation } from '@app/renderer/i18n'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { ResolveMountTargetResult } from '@shared/contracts/dto'
-import type { ShowWorkspaceCanvasMessage } from '../types'
+import type { ShowWorkspaceCanvasMessage, WorkspaceCanvasProps } from '../types'
 import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'
 import { toErrorMessage } from '../helpers'
 import { selectViewportTransform } from './WorkspaceSpaceExplorerOverlay.helpers'
@@ -22,6 +22,7 @@ export function WorkspaceSpaceExplorerOverlay({
   targetMountId,
   directoryPath,
   rect,
+  agentSettings,
   explorerClipboard,
   setExplorerClipboard,
   findBlockingOpenDocument,
@@ -36,6 +37,7 @@ export function WorkspaceSpaceExplorerOverlay({
   targetMountId: string | null
   directoryPath: string
   rect: { x: number; y: number; width: number; height: number }
+  agentSettings: WorkspaceCanvasProps['agentSettings']
   explorerClipboard: SpaceExplorerClipboardItem | null
   setExplorerClipboard: (next: SpaceExplorerClipboardItem | null) => void
   findBlockingOpenDocument: (uri: string) => SpaceExplorerOpenDocumentBlock | null
@@ -157,11 +159,22 @@ export function WorkspaceSpaceExplorerOverlay({
   const placement = React.useMemo(() => {
     return resolveExplorerWindowPlacement({
       spaceRect: rect,
-      preferredWidth: manualWidth ?? resolveExplorerAutoPreferredWidth(rect.width),
+      preferredWidth:
+        manualWidth ??
+        resolveExplorerAutoPreferredWidth(
+          agentSettings.standardWindowSizeBucket,
+          agentSettings.defaultProvider,
+        ),
       preferredHeight: Math.max(0, Math.floor(rect.height - 64)),
       preferredOffset: manualOffset ?? resolveExplorerDefaultOffset(),
     })
-  }, [manualOffset, manualWidth, rect])
+  }, [
+    agentSettings.defaultProvider,
+    agentSettings.standardWindowSizeBucket,
+    manualOffset,
+    manualWidth,
+    rect,
+  ])
 
   const stopResize = React.useCallback(() => {
     resizeStartRef.current = null

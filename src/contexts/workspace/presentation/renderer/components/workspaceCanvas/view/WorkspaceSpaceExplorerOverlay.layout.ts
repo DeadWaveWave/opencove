@@ -1,3 +1,10 @@
+import {
+  DEFAULT_AGENT_SETTINGS,
+  type AgentProvider,
+  type StandardWindowSizeBucket,
+} from '@contexts/settings/domain/agentSettings'
+import { resolveDefaultAgentWindowSize } from '../constants'
+
 export interface SpaceExplorerSpaceRect {
   x: number
   y: number
@@ -22,12 +29,10 @@ export interface SpaceExplorerWindowPlacement {
   maxHeight: number
 }
 
-const EXPLORER_MIN_WIDTH_INSIDE = 280
+const EXPLORER_MIN_WIDTH_INSIDE = 224
 const EXPLORER_MIN_HEIGHT_INSIDE = 260
 const EXPLORER_MAX_WIDTH = 460
 const EXPLORER_MAX_HEIGHT = 720
-const EXPLORER_DEFAULT_WIDTH = 340
-const EXPLORER_PREFERRED_WIDTH_RATIO = 0.34
 const EXPLORER_NODE_PADDING = 16
 const EXPLORER_NODE_TOP_OFFSET = 36
 
@@ -35,11 +40,11 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
 }
 
-export function resolveExplorerAutoPreferredWidth(spaceWidth: number): number {
-  const derivedPreferredWidth = Math.floor(spaceWidth * EXPLORER_PREFERRED_WIDTH_RATIO)
-  return derivedPreferredWidth > EXPLORER_DEFAULT_WIDTH
-    ? derivedPreferredWidth
-    : EXPLORER_DEFAULT_WIDTH
+export function resolveExplorerAutoPreferredWidth(
+  bucket: StandardWindowSizeBucket = DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket,
+  provider: AgentProvider | null = DEFAULT_AGENT_SETTINGS.defaultProvider,
+): number {
+  return Math.round(resolveDefaultAgentWindowSize(bucket, provider).width / 2)
 }
 
 export function resolveExplorerDefaultOffset(): SpaceExplorerWindowOffset {

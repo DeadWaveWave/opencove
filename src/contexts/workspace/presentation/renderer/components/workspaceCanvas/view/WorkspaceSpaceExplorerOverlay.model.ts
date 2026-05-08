@@ -158,6 +158,20 @@ export function useSpaceExplorerOverlayModel({
   const rootListing = directoryListings[rootUri] ?? null
   const isLoadingRoot = rootListing === null ? true : rootListing.isLoading
   const rootError = rootListing?.error ?? null
+  const hasPendingExpandedDirectoryListing = React.useMemo(() => {
+    if (isLoadingRoot) {
+      return true
+    }
+
+    for (const uri of expandedDirectoryUris) {
+      const listing = directoryListings[uri]
+      if (!listing || listing.isLoading) {
+        return true
+      }
+    }
+
+    return false
+  }, [directoryListings, expandedDirectoryUris, isLoadingRoot])
 
   const rows = React.useMemo<SpaceExplorerRow[]>(() => {
     if (!rootListing || rootListing.isLoading || rootListing.error) {
@@ -288,8 +302,12 @@ export function useSpaceExplorerOverlayModel({
       return
     }
 
+    if (hasPendingExpandedDirectoryListing) {
+      return
+    }
+
     selectEntry(entryRows[0]?.entry ?? null)
-  }, [entryRows, selectEntry, selectedEntryUri])
+  }, [entryRows, hasPendingExpandedDirectoryListing, selectEntry, selectedEntryUri])
 
   const actions = useSpaceExplorerOverlayActions({
     t,
@@ -366,6 +384,14 @@ export function useSpaceExplorerOverlayModel({
     }
   }, [actions, mutations.rename, onDismissQuickPreview])
 
+  const create = {
+    ...mutations.create,
+    start: (mode: Exclude<SpaceExplorerCreateMode, null>) => {
+      setFilterQuery('')
+      mutations.create.start(mode)
+    },
+  }
+
   return {
     isLoadingRoot,
     rootError,
@@ -386,7 +412,7 @@ export function useSpaceExplorerOverlayModel({
         setFilterQuery('')
       },
     },
-    create: mutations.create,
+    create,
     rename: mutations.rename,
     contextMenu: actions.contextMenu,
     deleteConfirmation: mutations.deleteConfirmation,

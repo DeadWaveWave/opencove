@@ -358,6 +358,7 @@ export function WorkspaceCanvasView({
               : workspacePath
           }
           rect={activeExplorerSpace.rect}
+          agentSettings={agentSettings}
           explorerClipboard={explorerClipboard}
           setExplorerClipboard={setExplorerClipboard}
           findBlockingOpenDocument={findBlockingOpenDocument}

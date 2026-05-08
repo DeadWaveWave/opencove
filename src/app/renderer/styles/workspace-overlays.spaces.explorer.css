@@ -213,7 +213,6 @@
 
 .workspace-space-explorer__header-action:focus-visible,
 .workspace-space-explorer__filter-clear:focus-visible,
-.workspace-space-explorer__create-action:focus-visible,
 .workspace-space-explorer__entry:focus-visible,
 .workspace-space-explorer__state-action:focus-visible {
   outline: 2px solid rgba(142, 210, 255, 0.85);
@@ -283,92 +282,6 @@
 .workspace-space-explorer__filter-clear svg {
   width: 14px;
   height: 14px;
-}
-
-.workspace-space-explorer__create {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  align-items: center;
-  gap: 6px;
-  margin: 8px 10px 0 10px;
-  padding: 6px 8px;
-  border-radius: 12px;
-  border: 1px solid var(--cove-border-subtle);
-  background: color-mix(in srgb, var(--cove-field) 92%, var(--cove-surface-strong));
-}
-
-.workspace-space-explorer__create-icon {
-  width: 20px;
-  height: 20px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--cove-text-muted);
-}
-
-.workspace-space-explorer__create-icon svg {
-  width: 16px;
-  height: 16px;
-}
-
-.workspace-space-explorer__create-input {
-  width: 100%;
-  min-width: 0;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--cove-text);
-  font-size: calc(12px * var(--cove-ui-font-scale));
-  line-height: 1.3;
-  padding: 4px 6px;
-}
-
-.workspace-space-explorer__create-input::placeholder {
-  color: var(--cove-text-muted);
-}
-
-.workspace-space-explorer__create-action {
-  width: 28px;
-  height: 28px;
-  border-radius: 10px;
-  border: none;
-  background: transparent;
-  color: var(--cove-text-muted);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background-color 0.15s ease,
-    color 0.15s ease,
-    opacity 0.15s ease;
-}
-
-.workspace-space-explorer__create-action svg {
-  width: 16px;
-  height: 16px;
-}
-
-.workspace-space-explorer__create-action:hover {
-  background: var(--cove-surface-hover);
-  color: var(--cove-text);
-}
-
-.workspace-space-explorer__create-action:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.workspace-space-explorer__create-action:disabled:hover {
-  background: transparent;
-  color: var(--cove-text-muted);
-}
-
-.workspace-space-explorer__create-error {
-  grid-column: 1 / -1;
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  color: color-mix(in srgb, var(--cove-label-orange) 72%, var(--cove-text));
-  padding: 2px 4px 0 4px;
 }
 
 .workspace-space-explorer__state {

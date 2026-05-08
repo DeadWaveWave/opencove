@@ -6,10 +6,17 @@ import {
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/view/WorkspaceSpaceExplorerOverlay.layout'
 
 describe('space explorer window layout', () => {
+  it('defaults to half of the canonical agent window width', () => {
+    expect(resolveExplorerAutoPreferredWidth('compact')).toBe(234)
+    expect(resolveExplorerAutoPreferredWidth('regular')).toBe(258)
+    expect(resolveExplorerAutoPreferredWidth('large')).toBe(282)
+  })
+
   it('places the explorer as a window inside the owning space', () => {
+    const preferredWidth = resolveExplorerAutoPreferredWidth('regular')
     const placement = resolveExplorerWindowPlacement({
       spaceRect: { x: 340, y: 280, width: 960, height: 520 },
-      preferredWidth: resolveExplorerAutoPreferredWidth(960),
+      preferredWidth,
       preferredHeight: 520,
       preferredOffset: resolveExplorerDefaultOffset(),
     })
@@ -18,7 +25,7 @@ describe('space explorer window layout', () => {
     expect(placement.top).toBeGreaterThanOrEqual(280)
     expect(placement.left + placement.width).toBeLessThanOrEqual(340 + 960)
     expect(placement.top + placement.height).toBeLessThanOrEqual(280 + 520)
-    expect(placement.width).toBeGreaterThanOrEqual(320)
+    expect(placement.width).toBe(preferredWidth)
     expect(placement.height).toBeGreaterThanOrEqual(420)
   })
 
