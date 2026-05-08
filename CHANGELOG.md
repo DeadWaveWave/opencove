@@ -45,6 +45,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - CLI: Local Worker lifecycle controls with `worker status --all` and ownership-safe `worker stop`. (#195)
 
 ### 💅 Changed
+- Workspace canvas: document nodes now use a Monaco editor with live disk refresh, dirty/conflict protection, and dark-theme fixes. (#233)
 - Workspace canvas: note-style inline title editing now also applies to terminal, agent terminal, and task nodes, with text-only edit hit areas, drag-safe blank headers, placeholder titles, and long-title rendering fixes. (#226)
 - Workspace canvas: double-clicking the minimap now recenters the viewport on the target region without changing the current zoom level. (#222)
 - UI: project sidebar agent lists are now collapsible with task-first single-line rows, provider icons, inline title editing, and synced color accents. (#205)
@@ -72,6 +73,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent: macOS PTY host now self-heals `spawn-helper` execute permission so `run_agent` launches do not fail. (#233)
 - Agent recovery: task-launched Claude Code sessions now persist and restore correctly from `.opencove/worktrees/...` paths in installed Windows builds. (#228)
 - Workspace canvas: guard transient detached terminal renderer sync during task drag so dragging nodes no longer crashes the renderer. (#224)
 - Windows agents: restore native Codex/Claude/OpenCode launch and restart recovery, stabilize task-launched Claude restore, and keep OpenCode WebGL terminal content aligned without stale side residue. (#221)
