@@ -147,6 +147,34 @@
   color: var(--cove-text);
 }
 
+.app-header__performance-button {
+  position: relative;
+}
+
+.app-header__performance-dot {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--cove-label-gray);
+  box-shadow: 0 0 0 1px var(--cove-surface);
+}
+
+.app-header__performance-button--normal .app-header__performance-dot {
+  background: var(--cove-label-green);
+}
+
+.app-header__performance-button--busy .app-header__performance-dot {
+  background: var(--cove-label-yellow);
+}
+
+.app-header__performance-button--janky .app-header__performance-dot,
+.app-header__performance-button--memoryGrowth .app-header__performance-dot {
+  background: var(--cove-label-orange);
+}
+
 .app-header__update-button {
   min-width: 0;
   height: 28px;

@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import {
+  Activity,
   ChevronDown,
   Bug,
   Download,
@@ -14,8 +15,15 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
+import type { PerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
+import type {
+  RendererDomSnapshot,
+  RendererFrameSnapshot,
+  RendererMemoryTrendSnapshot,
+} from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
 import type { AppUpdateState } from '@shared/contracts/dto'
 import { IssueReportDialog } from './IssueReportDialog'
+import { PerformanceMonitorPanel } from './PerformanceMonitorPanel'
 
 export function AppHeader({
   activeWorkspaceName,
@@ -23,12 +31,19 @@ export function AppHeader({
   isSidebarCollapsed,
   isControlCenterOpen,
   isCommandCenterOpen,
+  isPerformanceMonitorOpen,
   isIssueReportOpen,
   commandCenterShortcutHint,
+  performanceStatus,
+  rendererSnapshot,
+  frameSnapshot,
+  memoryTrend,
   updateState,
   onToggleSidebar,
   onToggleControlCenter,
   onToggleCommandCenter,
+  onTogglePerformanceMonitor,
+  onClosePerformanceMonitor,
   onToggleIssueReport,
   onCloseIssueReport,
   onOpenSettings,
@@ -41,12 +56,19 @@ export function AppHeader({
   isSidebarCollapsed: boolean
   isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
+  isPerformanceMonitorOpen: boolean
   isIssueReportOpen: boolean
   commandCenterShortcutHint: string
+  performanceStatus: PerformanceStatus
+  rendererSnapshot: RendererDomSnapshot
+  frameSnapshot: RendererFrameSnapshot
+  memoryTrend: RendererMemoryTrendSnapshot
   updateState: AppUpdateState | null
   onToggleSidebar: () => void
   onToggleControlCenter: () => void
   onToggleCommandCenter: () => void
+  onTogglePerformanceMonitor: () => void
+  onClosePerformanceMonitor: () => void
   onToggleIssueReport: () => void
   onCloseIssueReport: () => void
   onOpenSettings: () => void
@@ -108,6 +130,7 @@ export function AppHeader({
     return null
   }, [onCheckForUpdates, onDownloadUpdate, onInstallUpdate, t, updateState])
   const UpdateActionIcon = updateAction?.icon ?? Download
+  const performanceStatusLabel = t(`performanceMonitor.status.${performanceStatus}`)
 
   const resolveFullscreenElement = useCallback((): Element | null => {
     if (typeof document === 'undefined') {
@@ -302,6 +325,22 @@ export function AppHeader({
           </button>
           <button
             type="button"
+            className={`app-header__icon-button app-header__performance-button app-header__performance-button--${performanceStatus}${
+              isPerformanceMonitorOpen ? ' app-header__icon-button--active' : ''
+            }`}
+            data-testid="app-header-performance-monitor"
+            aria-label={t('performanceMonitor.open')}
+            aria-pressed={isPerformanceMonitorOpen}
+            title={t('performanceMonitor.statusButtonTitle', { status: performanceStatusLabel })}
+            onClick={() => {
+              onTogglePerformanceMonitor()
+            }}
+          >
+            <Activity aria-hidden="true" size={18} />
+            <span className="app-header__performance-dot" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
             className={`app-header__icon-button${isIssueReportOpen ? ' app-header__icon-button--active' : ''}`}
             data-testid="app-header-report-issue"
             aria-label={t('issueReport.open')}
@@ -332,6 +371,14 @@ export function AppHeader({
         activeWorkspaceName={activeWorkspaceName}
         activeWorkspacePath={activeWorkspacePath}
         onClose={onCloseIssueReport}
+      />
+      <PerformanceMonitorPanel
+        isOpen={isPerformanceMonitorOpen}
+        status={performanceStatus}
+        frameSnapshot={frameSnapshot}
+        rendererSnapshot={rendererSnapshot}
+        memoryTrend={memoryTrend}
+        onClose={onClosePerformanceMonitor}
       />
     </>
   )

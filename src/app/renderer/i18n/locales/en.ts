@@ -6,6 +6,7 @@ import { enSettingsPanel } from './en.settingsPanel'
 import { enWorktree } from './en.worktree'
 import { enWebsiteNode } from './en.websiteNode'
 import { enIssueReport } from './en.issueReport'
+import { enPerformanceMonitor } from './en.performanceMonitor'
 
 export const en = {
   common: {
@@ -206,6 +207,7 @@ export const en = {
     dismiss: 'Dismiss',
   },
   issueReport: enIssueReport,
+  performanceMonitor: enPerformanceMonitor,
   agentRuntime: {
     working: 'Working',
     standby: 'Standby',

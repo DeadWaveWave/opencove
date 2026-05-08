@@ -1,5 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { resolvePerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
+import {
+  useRendererDomSampler,
+  useRendererFrameSampler,
+  useRendererMemoryTrend,
+} from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
 import { AGENT_PROVIDER_LABEL, resolveAgentModel } from '@contexts/settings/domain/agentSettings'
 import { toPersistedState } from '@contexts/workspace/presentation/renderer/utils/persistence'
 import { AppHeader } from './components/AppHeader'
@@ -40,6 +46,18 @@ import { useTerminalDisplayReferenceAutoCapture } from '@contexts/settings/prese
 
 export default function App(): React.JSX.Element {
   const { t } = useTranslation()
+  const rendererSnapshot = useRendererDomSampler()
+  const frameSnapshot = useRendererFrameSampler()
+  const memoryTrend = useRendererMemoryTrend(rendererSnapshot)
+  const performanceStatus = useMemo(
+    () =>
+      resolvePerformanceStatus({
+        frames: frameSnapshot,
+        dom: rendererSnapshot,
+        memoryTrend,
+      }),
+    [frameSnapshot, memoryTrend, rendererSnapshot],
+  )
   const {
     workspaces,
     activeWorkspaceId,
@@ -120,6 +138,7 @@ export default function App(): React.JSX.Element {
   const {
     isCommandCenterOpen,
     isControlCenterOpen,
+    isPerformanceMonitorOpen,
     isIssueReportOpen,
     isWorkspaceSearchOpen,
     isSpaceArchivesOpen,
@@ -129,6 +148,8 @@ export default function App(): React.JSX.Element {
     closeCommandCenter,
     toggleControlCenter,
     closeControlCenter,
+    togglePerformanceMonitor,
+    closePerformanceMonitor,
     toggleIssueReport,
     closeIssueReport,
     openWorkspaceSearch,
@@ -288,8 +309,13 @@ export default function App(): React.JSX.Element {
             isSidebarCollapsed={isPrimarySidebarCollapsed}
             isControlCenterOpen={isControlCenterOpen}
             isCommandCenterOpen={isCommandCenterOpen}
+            isPerformanceMonitorOpen={isPerformanceMonitorOpen}
             isIssueReportOpen={isIssueReportOpen}
             commandCenterShortcutHint={commandCenterShortcutHint}
+            performanceStatus={performanceStatus}
+            rendererSnapshot={rendererSnapshot}
+            frameSnapshot={frameSnapshot}
+            memoryTrend={memoryTrend}
             updateState={updateState}
             onToggleSidebar={() => {
               setAgentSettings(prev => ({
@@ -299,6 +325,8 @@ export default function App(): React.JSX.Element {
             }}
             onToggleControlCenter={toggleControlCenter}
             onToggleCommandCenter={toggleCommandCenter}
+            onTogglePerformanceMonitor={togglePerformanceMonitor}
+            onClosePerformanceMonitor={closePerformanceMonitor}
             onToggleIssueReport={toggleIssueReport}
             onCloseIssueReport={closeIssueReport}
             onOpenSettings={handleOpenSettings}

@@ -12,17 +12,22 @@ export const zhCNSettingsPanelDiagnostics = {
   metrics: {
     frameP95: '帧耗时 p95',
     longTasks: '长任务',
-    jsHeap: 'JS heap',
+    jsHeap: 'JS 堆内存',
+    jsHeapDelta: 'JS 堆内存变化',
     domNodes: 'DOM 节点',
     terminals: '终端',
     xtermInstances: 'xterm 实例',
+  },
+  memoryTerms: {
+    workingSet: '正在使用内存：当前实际驻留在内存中的部分，更接近任务管理器看到的即时占用。',
+    private: '已申请内存：进程向系统申请的专用内存额度，不等于当前实际占用；持续上涨才更值得关注。',
   },
   table: {
     kind: '类型',
     scope: '范围',
     count: '数量',
-    private: 'Private',
-    workingSet: 'Working set',
+    private: '已申请内存',
+    workingSet: '正在使用内存',
     threads: '线程',
   },
   scope: {

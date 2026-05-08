@@ -13,16 +13,22 @@ export const enSettingsPanelDiagnostics = {
     frameP95: 'Frame p95',
     longTasks: 'Long tasks',
     jsHeap: 'JS heap',
+    jsHeapDelta: 'JS heap change',
     domNodes: 'DOM nodes',
     terminals: 'Terminals',
     xtermInstances: 'xterm instances',
+  },
+  memoryTerms: {
+    workingSet: 'Memory in use: the part currently resident in RAM, closest to Task Manager.',
+    private:
+      'Reserved memory: dedicated memory requested by the process; sustained growth matters more than one sample.',
   },
   table: {
     kind: 'Kind',
     scope: 'Scope',
     count: 'Count',
-    private: 'Private',
-    workingSet: 'Working set',
+    private: 'Reserved memory',
+    workingSet: 'Memory in use',
     threads: 'Threads',
   },
   scope: {

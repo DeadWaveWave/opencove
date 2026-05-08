@@ -60,6 +60,19 @@
   font-weight: 600;
 }
 
+.settings-panel__diagnostics-memory-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cove-field) 70%, transparent);
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+}
+
 .settings-panel__diagnostics-table td:nth-child(n + 3),
 .settings-panel__diagnostics-table th:nth-child(n + 3) {
   text-align: right;
