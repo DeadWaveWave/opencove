@@ -1,35 +1,36 @@
-import type { JSX, MutableRefObject } from 'react'
+import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
+import { DocumentNodeMonacoEditor } from './DocumentNode.monaco'
 import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
 
 export function DocumentNodeBody({
+  uri,
   isLoading,
   loadError,
   mediaLoadError,
   unsupportedKind,
   mediaSource,
   interactiveContentClassName,
+  hasExternalConflict,
   onRetry,
+  onReloadFromDisk,
   saveError,
-  lineNumberText,
-  gutterRef,
-  textareaRef,
   content,
   onContentChange,
   onSaveShortcut,
   onMediaError,
 }: {
+  uri: string
   isLoading: boolean
   loadError: string | null
   mediaLoadError: boolean
   unsupportedKind: DocumentNodeUnsupportedKind | null
   mediaSource: LoadedDocumentMediaSource | null
   interactiveContentClassName: string
+  hasExternalConflict: boolean
   onRetry: () => void
+  onReloadFromDisk: () => void
   saveError: string | null
-  lineNumberText: string
-  gutterRef: MutableRefObject<HTMLPreElement | null>
-  textareaRef: MutableRefObject<HTMLTextAreaElement | null>
   content: string
   onContentChange: (next: string) => void
   onSaveShortcut: () => void
@@ -111,6 +112,31 @@ export function DocumentNodeBody({
         </div>
       ) : (
         <>
+          {hasExternalConflict ? (
+            <div className="document-node__conflict-banner" role="status">
+              <div className="document-node__conflict-text">
+                <div className="document-node__state-title">
+                  {t('documentNode.externalChangeTitle')}
+                </div>
+                <div className="document-node__state-message">
+                  {t('documentNode.externalChangeMessage')}
+                </div>
+              </div>
+              <button
+                type="button"
+                className="document-node__state-action nodrag"
+                onPointerDown={event => {
+                  event.stopPropagation()
+                }}
+                onClick={event => {
+                  event.stopPropagation()
+                  onReloadFromDisk()
+                }}
+              >
+                {t('documentNode.reloadFromDisk')}
+              </button>
+            </div>
+          ) : null}
           {saveError ? (
             <div className="document-node__save-error" role="status">
               {saveError}
@@ -122,39 +148,11 @@ export function DocumentNodeBody({
               event.stopPropagation()
             }}
           >
-            <pre
-              ref={gutterRef}
-              className="document-node__gutter nodrag nowheel"
-              aria-hidden="true"
-            >
-              {lineNumberText}
-            </pre>
-            <textarea
-              ref={textareaRef}
-              className="document-node__textarea nodrag nowheel"
-              data-testid="document-node-textarea"
-              value={content}
-              spellCheck={false}
-              onScroll={event => {
-                const gutter = gutterRef.current
-                if (gutter) {
-                  gutter.scrollTop = event.currentTarget.scrollTop
-                }
-              }}
-              onChange={event => {
-                onContentChange(event.target.value)
-              }}
-              onKeyDown={event => {
-                const isSaveShortcut =
-                  event.key.toLowerCase() === 's' && (event.metaKey || event.ctrlKey)
-                if (!isSaveShortcut) {
-                  return
-                }
-
-                event.preventDefault()
-                event.stopPropagation()
-                onSaveShortcut()
-              }}
+            <DocumentNodeMonacoEditor
+              uri={uri}
+              content={content}
+              onContentChange={onContentChange}
+              onSaveShortcut={onSaveShortcut}
             />
           </div>
         </>

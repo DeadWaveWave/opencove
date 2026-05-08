@@ -32,9 +32,15 @@ export interface DocumentNodeFilesystemApi {
 }
 
 export type DocumentNodeLoadResult =
-  | { kind: 'text'; content: string }
-  | { kind: 'media'; mediaKind: DocumentNodeMediaKind; mimeType: string; bytes: Uint8Array }
-  | { kind: 'unsupported'; unsupportedKind: 'binary' | 'tooLarge' }
+  | { kind: 'text'; content: string; stat: FileSystemStat }
+  | {
+      kind: 'media'
+      mediaKind: DocumentNodeMediaKind
+      mimeType: string
+      bytes: Uint8Array
+      stat: FileSystemStat
+    }
+  | { kind: 'unsupported'; unsupportedKind: 'binary' | 'tooLarge'; stat: FileSystemStat }
 
 export const DOCUMENT_NODE_MAX_TEXT_FILE_BYTES = 5 * 1024 * 1024
 
@@ -100,6 +106,7 @@ export async function loadDocumentNodeContent(
       mediaKind: mediaDescriptor.kind,
       mimeType: mediaDescriptor.mimeType,
       bytes,
+      stat,
     }
   }
 
@@ -108,6 +115,7 @@ export async function loadDocumentNodeContent(
       return {
         kind: 'unsupported',
         unsupportedKind: 'tooLarge',
+        stat,
       }
     }
   }
@@ -117,11 +125,13 @@ export async function loadDocumentNodeContent(
     return {
       kind: 'unsupported',
       unsupportedKind: 'binary',
+      stat,
     }
   }
 
   return {
     kind: 'text',
     content: result.content,
+    stat,
   }
 }

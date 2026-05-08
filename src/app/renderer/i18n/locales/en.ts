@@ -289,11 +289,14 @@ export const en = {
     title: 'document',
     close: 'Close',
     discard: 'Discard',
+    overwrite: 'Overwrite',
+    overwriteAndClose: 'Overwrite & Close',
     unsavedPrompt: 'Unsaved changes.',
     saveAndClose: 'Save & Close',
     retry: 'Retry',
     filesystemUnavailable: 'Filesystem is unavailable.',
     notAFile: 'This is not a file.',
+    editorUnavailable: 'The code editor is unavailable.',
     binaryReadUnavailable: 'This environment cannot load audio or video previews.',
     binaryTitle: 'Binary file',
     binaryMessage:
@@ -303,6 +306,11 @@ export const en = {
     mediaUnsupportedTitle: 'Media playback unavailable',
     mediaUnsupportedMessage:
       'This audio or video file cannot be played here. OpenCove currently previews MP3, WAV/WAVE, OGG/OGA, MP4, and WebM when the runtime supports them.',
+    externalChangeTitle: 'File changed on disk.',
+    externalChangeMessage:
+      'Reload to get the latest version, or overwrite the file with your edits.',
+    reloadFromDisk: 'Reload',
+    externalChangeSaveBlocked: 'This file changed on disk. Reload it or overwrite your edits.',
   },
   imageNode: {
     title: 'image',

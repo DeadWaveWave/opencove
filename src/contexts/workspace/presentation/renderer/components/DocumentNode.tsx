@@ -1,21 +1,29 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
+import type { FileSystemStat } from '@shared/contracts/dto'
 import { useTranslation } from '@app/renderer/i18n'
 import { toErrorMessage } from '@app/renderer/shell/utils/format'
-import { DocumentNodeBody } from './DocumentNodeBody'
-import { NodeResizeHandles } from './shared/NodeResizeHandles'
-import { useNodeFrameResize } from '../utils/nodeFrameResize'
-import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
-import { shouldStopWheelPropagation } from './taskNode/helpers'
-import { suppressExplorerOverlayInteractions } from './workspaceCanvas/explorerInteractionGuard'
+import { DocumentNodeChrome } from './DocumentNodeChrome'
+import { createMediaObjectUrl } from './DocumentNode.media'
+import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
+import {
+  useDocumentNodeExternalRefresh,
+  type DocumentNodeExternalRefreshState,
+} from './useDocumentNodeExternalRefresh'
 import {
   decodeUriPathname,
   loadDocumentNodeContent,
+  type DocumentNodeLoadResult,
   type DocumentNodeProps,
 } from './DocumentNode.helpers'
-import { createMediaObjectUrl } from './DocumentNode.media'
-import type { DocumentNodeUnsupportedKind, LoadedDocumentMediaSource } from './DocumentNode.shared'
+import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
+import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
+
+const DOCUMENT_NODE_AUTO_SAVE_DELAY_MS = 650
+// Keep disk refresh ahead of auto-save so dirty drafts can enter conflict state
+// before a background save overwrites an external change.
+const DOCUMENT_NODE_EXTERNAL_REFRESH_INTERVAL_MS = 300
 
 export function DocumentNode({
   title,
@@ -34,20 +42,54 @@ export function DocumentNode({
   const [savedContent, setSavedContent] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-  const [reloadNonce, setReloadNonce] = useState(0)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [unsupportedKind, setUnsupportedKind] = useState<DocumentNodeUnsupportedKind | null>(null)
   const [mediaSource, setMediaSource] = useState<LoadedDocumentMediaSource | null>(null)
   const [mediaLoadError, setMediaLoadError] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [closePromptOpen, setClosePromptOpen] = useState(false)
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
-  const gutterRef = useRef<HTMLPreElement | null>(null)
+  const [hasExternalConflict, setHasExternalConflict] = useState(false)
+  const [lastKnownDiskStat, setLastKnownDiskStat] = useState<FileSystemStat | null>(null)
+  const [externalConflictStat, setExternalConflictStat] = useState<FileSystemStat | null>(null)
   const closeIntentRef = useRef(false)
+  const isMountedRef = useRef(true)
+  const mediaObjectUrlRef = useRef<string | null>(null)
 
   const isDirty = content !== savedContent
-
   const displayPath = useMemo(() => decodeUriPathname(uri), [uri])
+  const loadMessages = useMemo(
+    () => ({
+      notAFile: t('documentNode.notAFile'),
+      binaryReadUnavailable: t('documentNode.binaryReadUnavailable'),
+    }),
+    [t],
+  )
+
+  const latestStateRef = useRef<DocumentNodeExternalRefreshState>({
+    content,
+    savedContent,
+    isLoading,
+    isSaving,
+    loadError,
+    unsupportedKind,
+    mediaSource,
+    mediaLoadError,
+    lastKnownDiskStat,
+    externalConflictStat,
+  })
+
+  latestStateRef.current = {
+    content,
+    savedContent,
+    isLoading,
+    isSaving,
+    loadError,
+    unsupportedKind,
+    mediaSource,
+    mediaLoadError,
+    lastKnownDiskStat,
+    externalConflictStat,
+  }
 
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
@@ -81,149 +123,191 @@ export function DocumentNode({
     ],
   )
 
-  useEffect(() => {
-    setIsLoading(true)
-    setLoadError(null)
-    setUnsupportedKind(null)
-    setMediaSource(null)
-    setMediaLoadError(false)
-    setSaveError(null)
-    setClosePromptOpen(false)
-
-    const filesystemApi = resolveFilesystemApiForMount(mountId)
-    if (!filesystemApi) {
-      setIsLoading(false)
-      setLoadError(t('documentNode.filesystemUnavailable'))
+  const revokeMediaObjectUrl = useCallback((): void => {
+    if (!mediaObjectUrlRef.current) {
       return
     }
 
-    let cancelled = false
-    let objectUrl: string | null = null
-    void (async () => {
-      try {
-        const result = await loadDocumentNodeContent(filesystemApi, uri, {
-          notAFile: t('documentNode.notAFile'),
-          binaryReadUnavailable: t('documentNode.binaryReadUnavailable'),
-        })
-        if (cancelled) {
-          return
-        }
+    URL.revokeObjectURL(mediaObjectUrlRef.current)
+    mediaObjectUrlRef.current = null
+  }, [])
 
-        if (result.kind === 'unsupported') {
-          setContent('')
-          setSavedContent('')
-          setUnsupportedKind(result.unsupportedKind)
-          setIsLoading(false)
-          return
-        }
-
-        if (result.kind === 'media') {
-          setContent('')
-          setSavedContent('')
-
-          objectUrl = createMediaObjectUrl(result.bytes, result.mimeType)
-          if (cancelled) {
-            if (objectUrl) {
-              URL.revokeObjectURL(objectUrl)
-            }
-            return
-          }
-
-          setMediaSource({
-            kind: result.mediaKind,
-            mimeType: result.mimeType,
-            url: objectUrl,
-          })
-          setMediaLoadError(false)
-          setIsLoading(false)
-          return
-        }
-
-        setContent(result.content)
-        setSavedContent(result.content)
-        setIsLoading(false)
-      } catch (error) {
-        if (cancelled) {
-          return
-        }
-
-        setIsLoading(false)
-        setLoadError(toErrorMessage(error))
+  const applyLoadedResult = useCallback(
+    (result: DocumentNodeLoadResult): void => {
+      if (!isMountedRef.current) {
+        return
       }
-    })()
+
+      setLoadError(null)
+      setSaveError(null)
+      setHasExternalConflict(false)
+      setExternalConflictStat(null)
+      setLastKnownDiskStat(result.stat)
+      setClosePromptOpen(false)
+
+      if (result.kind === 'unsupported') {
+        revokeMediaObjectUrl()
+        setContent('')
+        setSavedContent('')
+        setUnsupportedKind(result.unsupportedKind)
+        setMediaSource(null)
+        setMediaLoadError(false)
+        return
+      }
+
+      if (result.kind === 'media') {
+        revokeMediaObjectUrl()
+        const objectUrl = createMediaObjectUrl(result.bytes, result.mimeType)
+        mediaObjectUrlRef.current = objectUrl
+
+        setContent('')
+        setSavedContent('')
+        setUnsupportedKind(null)
+        setMediaSource({
+          kind: result.mediaKind,
+          mimeType: result.mimeType,
+          url: objectUrl,
+        })
+        setMediaLoadError(false)
+        return
+      }
+
+      revokeMediaObjectUrl()
+      setUnsupportedKind(null)
+      setMediaSource(null)
+      setMediaLoadError(false)
+      setContent(result.content)
+      setSavedContent(result.content)
+    },
+    [revokeMediaObjectUrl],
+  )
+
+  const reloadFromDisk = useCallback(
+    async (options?: { showLoading?: boolean }): Promise<boolean> => {
+      const showLoading = options?.showLoading ?? false
+      const filesystemApi = resolveFilesystemApiForMount(mountId)
+      if (!filesystemApi) {
+        if (isMountedRef.current) {
+          setIsLoading(false)
+          setLoadError(t('documentNode.filesystemUnavailable'))
+        }
+        return false
+      }
+
+      if (showLoading) {
+        setIsLoading(true)
+      }
+
+      try {
+        const result = await loadDocumentNodeContent(filesystemApi, uri, loadMessages)
+        applyLoadedResult(result)
+        return true
+      } catch (error) {
+        if (isMountedRef.current) {
+          setLoadError(toErrorMessage(error))
+        }
+        return false
+      } finally {
+        if (showLoading && isMountedRef.current) {
+          setIsLoading(false)
+        }
+      }
+    },
+    [applyLoadedResult, loadMessages, mountId, t, uri],
+  )
+
+  useEffect(() => {
+    isMountedRef.current = true
+    setIsLoading(true)
+    setLoadError(null)
+    setSaveError(null)
+    setHasExternalConflict(false)
+    setExternalConflictStat(null)
+    setUnsupportedKind(null)
+    setMediaSource(null)
+    setMediaLoadError(false)
+
+    void reloadFromDisk({ showLoading: true })
 
     return () => {
-      cancelled = true
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl)
+      isMountedRef.current = false
+      revokeMediaObjectUrl()
+    }
+  }, [mountId, reloadFromDisk, revokeMediaObjectUrl, uri])
+
+  const save = useCallback(
+    async (options?: { overwrite?: boolean }): Promise<boolean> => {
+      if (unsupportedKind || mediaSource || mediaLoadError) {
+        return false
       }
+
+      if (hasExternalConflict && options?.overwrite !== true) {
+        setSaveError(t('documentNode.externalChangeSaveBlocked'))
+        return false
+      }
+
+      const filesystemApi = resolveFilesystemApiForMount(mountId)
+      if (!filesystemApi) {
+        setSaveError(t('documentNode.filesystemUnavailable'))
+        return false
+      }
+
+      setIsSaving(true)
+      setSaveError(null)
+
+      try {
+        await filesystemApi.writeFileText({ uri, content })
+        const stat = await filesystemApi.stat({ uri })
+
+        setSavedContent(content)
+        setLastKnownDiskStat(stat)
+        setHasExternalConflict(false)
+        setExternalConflictStat(null)
+        setIsSaving(false)
+        return true
+      } catch (error) {
+        setIsSaving(false)
+        setSaveError(toErrorMessage(error))
+        return false
+      }
+    },
+    [content, hasExternalConflict, mediaLoadError, mediaSource, mountId, t, unsupportedKind, uri],
+  )
+
+  const discardChanges = useCallback(async (): Promise<boolean> => {
+    if (hasExternalConflict) {
+      return await reloadFromDisk()
     }
-  }, [mountId, reloadNonce, t, uri])
 
-  const save = useCallback(async (): Promise<boolean> => {
-    if (unsupportedKind || mediaSource || mediaLoadError) {
-      return false
-    }
-
-    const filesystemApi = resolveFilesystemApiForMount(mountId)
-    if (!filesystemApi) {
-      setSaveError(t('documentNode.filesystemUnavailable'))
-      return false
-    }
-
-    setIsSaving(true)
-    setSaveError(null)
-
-    try {
-      await filesystemApi.writeFileText({ uri, content })
-      setSavedContent(content)
-      setIsSaving(false)
-      return true
-    } catch (error) {
-      setIsSaving(false)
-      setSaveError(toErrorMessage(error))
-      return false
-    }
-  }, [content, mediaLoadError, mediaSource, mountId, t, unsupportedKind, uri])
-
-  const discardChanges = (): void => {
     setContent(savedContent)
     setSaveError(null)
     setClosePromptOpen(false)
-  }
-
-  const lineNumberText = useMemo(() => {
-    const lineCount = Math.max(1, content.split('\n').length)
-    let buffer = ''
-    for (let line = 1; line <= lineCount; line += 1) {
-      buffer += line === lineCount ? `${line}` : `${line}\n`
-    }
-    return buffer
-  }, [content])
+    return true
+  }, [hasExternalConflict, reloadFromDisk, savedContent])
 
   useEffect(() => {
     if (isLoading || loadError) {
       return
     }
+
     if (unsupportedKind || mediaSource || mediaLoadError) {
       return
     }
-    if (!isDirty || isSaving) {
-      return
-    }
-    if (saveError) {
+
+    if (!isDirty || isSaving || hasExternalConflict || saveError) {
       return
     }
 
     const handle = window.setTimeout(() => {
       void save()
-    }, 650)
+    }, DOCUMENT_NODE_AUTO_SAVE_DELAY_MS)
 
     return () => {
       window.clearTimeout(handle)
     }
   }, [
     content,
+    hasExternalConflict,
     isDirty,
     isLoading,
     isSaving,
@@ -234,6 +318,22 @@ export function DocumentNode({
     saveError,
     unsupportedKind,
   ])
+
+  useDocumentNodeExternalRefresh({
+    mountId,
+    uri,
+    intervalMs: DOCUMENT_NODE_EXTERNAL_REFRESH_INTERVAL_MS,
+    isLoading,
+    loadError,
+    unsupportedKind,
+    mediaSource,
+    mediaLoadError,
+    loadMessages,
+    latestStateRef,
+    applyLoadedResult,
+    setHasExternalConflict,
+    setExternalConflictStat,
+  })
 
   useEffect(() => {
     if (!closeIntentRef.current) {
@@ -251,13 +351,13 @@ export function DocumentNode({
     }
 
     if (isDirty) {
-      void save()
+      void save({ overwrite: hasExternalConflict })
       return
     }
 
     closeIntentRef.current = false
     onClose()
-  }, [isDirty, isSaving, onClose, save, saveError])
+  }, [hasExternalConflict, isDirty, isSaving, onClose, save, saveError])
 
   const requestClose = (): void => {
     if (!isDirty && !isSaving) {
@@ -269,221 +369,83 @@ export function DocumentNode({
     setClosePromptOpen(false)
 
     if (!isSaving && isDirty) {
-      void save()
+      void save({ overwrite: hasExternalConflict })
     }
   }
 
   const confirmCloseSave = async (): Promise<void> => {
-    const ok = await save()
+    const ok = await save({ overwrite: hasExternalConflict })
     if (ok) {
       onClose()
     }
   }
 
-  const confirmCloseDiscard = (): void => {
-    discardChanges()
-    onClose()
+  const confirmCloseDiscard = async (): Promise<void> => {
+    const ok = await discardChanges()
+    if (ok) {
+      onClose()
+    }
   }
 
-  const showsEditorActions = !mediaSource && !unsupportedKind && !mediaLoadError
-  const interactiveContentClassName = 'document-node__interactive'
-
   return (
-    <div
-      className="document-node nowheel"
+    <DocumentNodeChrome
+      title={title}
+      uri={uri}
+      displayPath={displayPath}
+      labelColor={labelColor}
       style={style}
-      onClickCapture={event => {
-        if (event.button !== 0 || !(event.target instanceof Element)) {
-          return
-        }
-
-        if (event.target.closest(`.${interactiveContentClassName}`)) {
-          event.stopPropagation()
-          onInteractionStart?.({
-            normalizeViewport: true,
-            clearSelection: true,
-            selectNode: false,
-            shiftKey: event.shiftKey,
-          })
-          return
-        }
-
-        if (event.target.closest('.nodrag')) {
-          return
-        }
-
-        event.stopPropagation()
-        onInteractionStart?.({ shiftKey: event.shiftKey })
-      }}
-      onWheel={event => {
-        if (shouldStopWheelPropagation(event.currentTarget)) {
-          event.stopPropagation()
+      isDirty={isDirty}
+      isLoading={isLoading}
+      isSaving={isSaving}
+      loadError={loadError}
+      mediaLoadError={mediaLoadError}
+      unsupportedKind={unsupportedKind}
+      mediaSource={mediaSource}
+      hasExternalConflict={hasExternalConflict}
+      saveError={saveError}
+      content={content}
+      onContentChange={nextContent => {
+        setContent(nextContent)
+        if (saveError) {
+          setSaveError(null)
         }
       }}
-    >
-      <div className="document-node__header" data-node-drag-handle="true">
-        {labelColor ? (
-          <span
-            className="cove-label-dot cove-label-dot--solid"
-            data-cove-label-color={labelColor}
-            aria-hidden="true"
-          />
-        ) : null}
-        <span
-          className="document-node__title"
-          data-testid="document-node-title"
-          title={displayPath}
-        >
-          {isDirty ? <span className="document-node__dirty-dot" aria-hidden="true" /> : null}
-          <span className="document-node__title-text">{title}</span>
-        </span>
+      onRetry={() => {
+        void reloadFromDisk({ showLoading: true })
+      }}
+      onReloadFromDisk={() => {
+        void reloadFromDisk()
+      }}
+      onSaveShortcut={() => {
+        if (hasExternalConflict) {
+          setSaveError(t('documentNode.externalChangeSaveBlocked'))
+          return
+        }
 
-        <div className="document-node__actions nodrag">
-          {showsEditorActions ? (
-            <button
-              type="button"
-              className="document-node__action"
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                void save()
-              }}
-              disabled={!isDirty || isLoading || isSaving || !!unsupportedKind}
-              aria-label={t('common.save')}
-              title={t('common.save')}
-            >
-              {isSaving ? t('common.saving') : t('common.save')}
-            </button>
-          ) : null}
-
-          {showsEditorActions && isDirty ? (
-            <button
-              type="button"
-              className="document-node__action document-node__action--secondary"
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                discardChanges()
-              }}
-              disabled={isLoading || isSaving || !!unsupportedKind}
-              aria-label={t('documentNode.discard')}
-              title={t('documentNode.discard')}
-            >
-              {t('documentNode.discard')}
-            </button>
-          ) : null}
-
-          <button
-            type="button"
-            className="document-node__close nodrag"
-            onPointerDown={event => {
-              event.stopPropagation()
-              suppressExplorerOverlayInteractions()
-            }}
-            onClick={event => {
-              event.stopPropagation()
-              requestClose()
-            }}
-            aria-label={t('documentNode.close')}
-            title={t('documentNode.close')}
-          >
-            ×
-          </button>
-        </div>
-      </div>
-
-      {closePromptOpen ? (
-        <div className="document-node__close-prompt nodrag" role="dialog">
-          <span className="document-node__close-prompt-text">
-            {t('documentNode.unsavedPrompt')}
-          </span>
-          <div className="document-node__close-prompt-actions">
-            <button
-              type="button"
-              className="document-node__close-prompt-action"
-              onPointerDown={event => {
-                event.stopPropagation()
-                suppressExplorerOverlayInteractions()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                void confirmCloseSave()
-              }}
-              disabled={isSaving}
-            >
-              {t('documentNode.saveAndClose')}
-            </button>
-            <button
-              type="button"
-              className="document-node__close-prompt-action document-node__close-prompt-action--secondary"
-              onPointerDown={event => {
-                event.stopPropagation()
-                suppressExplorerOverlayInteractions()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                confirmCloseDiscard()
-              }}
-              disabled={isSaving}
-            >
-              {t('documentNode.discard')}
-            </button>
-            <button
-              type="button"
-              className="document-node__close-prompt-action document-node__close-prompt-action--ghost"
-              onPointerDown={event => {
-                event.stopPropagation()
-              }}
-              onClick={event => {
-                event.stopPropagation()
-                setClosePromptOpen(false)
-              }}
-              disabled={isSaving}
-            >
-              {t('common.cancel')}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      <DocumentNodeBody
-        isLoading={isLoading}
-        loadError={loadError}
-        mediaLoadError={mediaLoadError}
-        unsupportedKind={unsupportedKind}
-        mediaSource={mediaSource}
-        interactiveContentClassName={interactiveContentClassName}
-        onRetry={() => {
-          setReloadNonce(previous => previous + 1)
-        }}
-        saveError={saveError}
-        lineNumberText={lineNumberText}
-        gutterRef={gutterRef}
-        textareaRef={textareaRef}
-        content={content}
-        onContentChange={nextContent => {
-          setContent(nextContent)
-          if (saveError) {
-            setSaveError(null)
-          }
-        }}
-        onSaveShortcut={() => {
-          void save()
-        }}
-        onMediaError={() => {
-          setMediaLoadError(true)
-        }}
-      />
-
-      <NodeResizeHandles
-        classNamePrefix="task-node"
-        testIdPrefix="document-resizer"
-        handleResizePointerDown={handleResizePointerDown}
-      />
-    </div>
+        void save()
+      }}
+      onMediaError={() => {
+        setMediaLoadError(true)
+      }}
+      onSave={() => {
+        void save({ overwrite: hasExternalConflict })
+      }}
+      onDiscard={() => {
+        void discardChanges()
+      }}
+      onRequestClose={requestClose}
+      onConfirmCloseSave={() => {
+        void confirmCloseSave()
+      }}
+      onConfirmCloseDiscard={() => {
+        void confirmCloseDiscard()
+      }}
+      closePromptOpen={closePromptOpen}
+      onClosePromptCancel={() => {
+        setClosePromptOpen(false)
+      }}
+      handleResizePointerDown={handleResizePointerDown}
+      onInteractionStart={onInteractionStart}
+    />
   )
 }
