@@ -17,6 +17,14 @@ export interface SpaceExplorerWindowOffset {
   y: number
 }
 
+export interface SpaceExplorerViewportBounds {
+  width: number
+  height: number
+  translateX: number
+  translateY: number
+  zoom: number
+}
+
 export interface SpaceExplorerWindowPlacement {
   width: number
   height: number
@@ -35,9 +43,26 @@ const EXPLORER_MAX_WIDTH = 460
 const EXPLORER_MAX_HEIGHT = 720
 const EXPLORER_NODE_PADDING = 16
 const EXPLORER_NODE_TOP_OFFSET = 36
+const EXPLORER_VIEWPORT_PADDING = 16
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value))
+}
+
+function isValidViewportBounds(
+  viewport: SpaceExplorerViewportBounds | null | undefined,
+): viewport is SpaceExplorerViewportBounds {
+  return (
+    !!viewport &&
+    Number.isFinite(viewport.width) &&
+    Number.isFinite(viewport.height) &&
+    Number.isFinite(viewport.translateX) &&
+    Number.isFinite(viewport.translateY) &&
+    Number.isFinite(viewport.zoom) &&
+    viewport.width > 0 &&
+    viewport.height > 0 &&
+    viewport.zoom > 0
+  )
 }
 
 export function resolveExplorerAutoPreferredWidth(
@@ -59,32 +84,61 @@ export function resolveExplorerWindowPlacement({
   preferredWidth,
   preferredHeight,
   preferredOffset,
+  viewport,
 }: {
   spaceRect: SpaceExplorerSpaceRect
   preferredWidth: number
   preferredHeight: number
   preferredOffset: SpaceExplorerWindowOffset
+  viewport?: SpaceExplorerViewportBounds | null
 }): SpaceExplorerWindowPlacement {
-  const widthAvailable = Math.max(0, spaceRect.width - EXPLORER_NODE_PADDING * 2)
+  const viewportBounds = isValidViewportBounds(viewport) ? viewport : null
+  const visibleRight = viewportBounds
+    ? (viewportBounds.width - EXPLORER_VIEWPORT_PADDING - viewportBounds.translateX) /
+      viewportBounds.zoom
+    : Infinity
+  const visibleBottom = viewportBounds
+    ? (viewportBounds.height - EXPLORER_VIEWPORT_PADDING - viewportBounds.translateY) /
+      viewportBounds.zoom
+    : Infinity
+  const offsetForSize = {
+    x: Math.max(EXPLORER_NODE_PADDING, preferredOffset.x),
+    y: Math.max(EXPLORER_NODE_PADDING, preferredOffset.y),
+  }
+  const widthAvailable = Math.max(0, spaceRect.width - offsetForSize.x - EXPLORER_NODE_PADDING)
   const heightAvailable = Math.max(
     0,
-    spaceRect.height - EXPLORER_NODE_TOP_OFFSET - EXPLORER_NODE_PADDING,
+    spaceRect.height - Math.max(offsetForSize.y, EXPLORER_NODE_TOP_OFFSET) - EXPLORER_NODE_PADDING,
   )
+  const viewportWidthAvailable = viewportBounds
+    ? Math.max(0, visibleRight - (spaceRect.x + offsetForSize.x))
+    : Infinity
+  const viewportHeightAvailable = viewportBounds
+    ? Math.max(0, visibleBottom - (spaceRect.y + offsetForSize.y))
+    : Infinity
 
-  const maxWidth = Math.floor(Math.min(EXPLORER_MAX_WIDTH, widthAvailable))
+  const maxWidth = Math.floor(Math.min(EXPLORER_MAX_WIDTH, widthAvailable, viewportWidthAvailable))
   const minWidth = Math.min(EXPLORER_MIN_WIDTH_INSIDE, maxWidth)
   const width = clamp(preferredWidth, minWidth, maxWidth)
-  const maxHeight = Math.floor(Math.min(EXPLORER_MAX_HEIGHT, heightAvailable))
+  const maxHeight = Math.floor(
+    Math.min(EXPLORER_MAX_HEIGHT, heightAvailable, viewportHeightAvailable),
+  )
   const minHeight = Math.min(EXPLORER_MIN_HEIGHT_INSIDE, maxHeight)
   const height = clamp(preferredHeight, minHeight, maxHeight)
 
   const maxOffsetX = Math.max(
     EXPLORER_NODE_PADDING,
-    spaceRect.width - width - EXPLORER_NODE_PADDING,
+    Math.min(
+      spaceRect.width - width - EXPLORER_NODE_PADDING,
+      viewportBounds ? visibleRight - spaceRect.x - width : Infinity,
+    ),
   )
   const maxOffsetY = Math.max(
     EXPLORER_NODE_PADDING,
-    spaceRect.height - height - EXPLORER_NODE_PADDING,
+    Math.min(
+      spaceRect.height - height - EXPLORER_NODE_PADDING,
+      viewportBounds ? visibleBottom - spaceRect.y - height : Infinity,
+    ),
   )
   const offset = {
     x: Math.round(clamp(preferredOffset.x, EXPLORER_NODE_PADDING, maxOffsetX)),

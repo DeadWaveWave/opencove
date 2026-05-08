@@ -29,6 +29,22 @@ describe('space explorer window layout', () => {
     expect(placement.height).toBeGreaterThanOrEqual(420)
   })
 
+  it('clamps the explorer to the visible canvas viewport when the viewport is shorter', () => {
+    const preferredWidth = resolveExplorerAutoPreferredWidth('regular')
+    const placement = resolveExplorerWindowPlacement({
+      spaceRect: { x: 340, y: 280, width: 960, height: 520 },
+      preferredWidth,
+      preferredHeight: 520,
+      preferredOffset: resolveExplorerDefaultOffset(),
+      viewport: { width: 1280, height: 684, translateX: 0, translateY: 0, zoom: 1 },
+    })
+
+    expect(placement.left).toBeGreaterThanOrEqual(340)
+    expect(placement.top).toBeGreaterThanOrEqual(280)
+    expect(placement.left + placement.width).toBeLessThanOrEqual(340 + 960 - 16)
+    expect(placement.top + placement.height).toBeLessThanOrEqual(684 - 16)
+  })
+
   it('clamps dragged offsets and manual width to the space bounds', () => {
     const placement = resolveExplorerWindowPlacement({
       spaceRect: { x: 10, y: 20, width: 360, height: 300 },

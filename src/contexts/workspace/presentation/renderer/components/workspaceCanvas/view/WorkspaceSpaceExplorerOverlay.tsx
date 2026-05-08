@@ -12,6 +12,7 @@ import {
   resolveExplorerDefaultOffset,
   resolveExplorerWindowPlacement,
   type SpaceExplorerWindowOffset,
+  type SpaceExplorerViewportBounds,
 } from './WorkspaceSpaceExplorerOverlay.layout'
 import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
 import { WorkspaceSpaceExplorerOverlayBody } from './WorkspaceSpaceExplorerOverlayBody'
@@ -59,6 +60,8 @@ export function WorkspaceSpaceExplorerOverlay({
 }): React.JSX.Element | null {
   const { t } = useTranslation()
   const [translateX, translateY, zoom] = useStore(selectViewportTransform)
+  const viewportWidth = useStore(state => state.width)
+  const viewportHeight = useStore(state => state.height)
   const viewportZoom = Number.isFinite(zoom) && zoom > 0 ? zoom : 1
   const containerRef = React.useRef<HTMLElement | null>(null)
   const createInputRef = React.useRef<HTMLInputElement | null>(null)
@@ -155,6 +158,24 @@ export function WorkspaceSpaceExplorerOverlay({
     rootResolveError === null
   const rootUri = isResolvingMountRoot ? null : (directoryRootUri ?? resolvedMountRootUri)
   const mountIdForFilesystem = targetMountId
+  const viewportBounds = React.useMemo<SpaceExplorerViewportBounds | null>(() => {
+    if (
+      !Number.isFinite(viewportWidth) ||
+      !Number.isFinite(viewportHeight) ||
+      viewportWidth <= 0 ||
+      viewportHeight <= 0
+    ) {
+      return null
+    }
+
+    return {
+      width: viewportWidth,
+      height: viewportHeight,
+      translateX,
+      translateY,
+      zoom: viewportZoom,
+    }
+  }, [translateX, translateY, viewportHeight, viewportWidth, viewportZoom])
 
   const placement = React.useMemo(() => {
     return resolveExplorerWindowPlacement({
@@ -167,6 +188,7 @@ export function WorkspaceSpaceExplorerOverlay({
         ),
       preferredHeight: Math.max(0, Math.floor(rect.height - 64)),
       preferredOffset: manualOffset ?? resolveExplorerDefaultOffset(),
+      viewport: viewportBounds,
     })
   }, [
     agentSettings.defaultProvider,
@@ -174,6 +196,7 @@ export function WorkspaceSpaceExplorerOverlay({
     manualOffset,
     manualWidth,
     rect,
+    viewportBounds,
   ])
 
   const stopResize = React.useCallback(() => {
@@ -289,6 +312,7 @@ export function WorkspaceSpaceExplorerOverlay({
           preferredWidth: placement.width,
           preferredHeight: placement.height,
           preferredOffset: nextOffset,
+          viewport: viewportBounds,
         })
         setManualOffset(clampedPlacement.offset)
       }
@@ -306,7 +330,15 @@ export function WorkspaceSpaceExplorerOverlay({
         window.removeEventListener('pointercancel', handleEnd, true)
       }
     },
-    [placement.height, placement.offset, placement.width, rect, stopWindowDrag, viewportZoom],
+    [
+      placement.height,
+      placement.offset,
+      placement.width,
+      rect,
+      stopWindowDrag,
+      viewportBounds,
+      viewportZoom,
+    ],
   )
 
   const handleResizeStart = React.useCallback(
