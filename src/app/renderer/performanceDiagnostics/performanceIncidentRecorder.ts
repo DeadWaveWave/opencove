@@ -150,12 +150,12 @@ export function usePerformanceIncidentRecorder({
   const lastRecordedAtRef = useRef(0)
   const previousLongTaskRef = useRef<{ count: number; totalMs: number } | null>(null)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
       mountedRef.current = false
-    },
-    [],
-  )
+    }
+  }, [])
 
   useEffect(() => {
     const previousLongTask = previousLongTaskRef.current

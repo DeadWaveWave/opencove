@@ -270,12 +270,12 @@ export function usePerformanceDiagnosticsSnapshot({
   const mountedRef = useRef(true)
   const requestIdRef = useRef(0)
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
       mountedRef.current = false
-    },
-    [],
-  )
+    }
+  }, [])
 
   useEffect(() => {
     snapshotRef.current = snapshot
