@@ -24,6 +24,7 @@ export function WorkspaceSpaceExplorerTree({
   isLoadingRoot,
   rootError,
   rows,
+  isFilterActive,
   selectedEntryUri,
   renameEntryUri,
   renameDraftName,
@@ -51,6 +52,7 @@ export function WorkspaceSpaceExplorerTree({
   isLoadingRoot: boolean
   rootError: string | null
   rows: SpaceExplorerRow[]
+  isFilterActive: boolean
   selectedEntryUri: string | null
   renameEntryUri: string | null
   renameDraftName: string
@@ -126,6 +128,8 @@ export function WorkspaceSpaceExplorerTree({
     <div
       className={treeClassName}
       data-testid="workspace-space-explorer-tree"
+      role="tree"
+      aria-label={t('spaceActions.files')}
       onWheel={event => {
         if (shouldStopWheelPropagation(event.currentTarget)) {
           event.stopPropagation()
@@ -168,7 +172,9 @@ export function WorkspaceSpaceExplorerTree({
       }}
     >
       {rows.length === 0 ? (
-        <div className="workspace-space-explorer__state">{t('spaceExplorer.empty')}</div>
+        <div className="workspace-space-explorer__state">
+          {isFilterActive ? t('spaceExplorer.noMatches') : t('spaceExplorer.empty')}
+        </div>
       ) : null}
       {rows.map(row => {
         if (row.kind === 'state') {
@@ -313,6 +319,9 @@ export function WorkspaceSpaceExplorerTree({
             type="button"
             draggable
             tabIndex={-1}
+            role="treeitem"
+            aria-selected={isSelected}
+            aria-expanded={row.entry.kind === 'directory' ? row.isExpanded : undefined}
             className={className}
             data-testid={`workspace-space-explorer-entry-${spaceId}-${encodeURIComponent(row.entry.uri)}`}
             title={row.entry.name}

@@ -123,21 +123,30 @@ export function useSpaceExplorerOverlayActions({
   )
 
   const moveSelection = React.useCallback(
-    (direction: 'next' | 'previous') => {
+    (direction: 'next' | 'previous' | 'first' | 'last') => {
       if (entryRows.length === 0) {
         return
       }
 
       const currentIndex = entryRows.findIndex(row => row.entry.uri === selectedEntryUri)
-      const nextIndex =
-        currentIndex < 0
-          ? direction === 'next'
-            ? 0
-            : entryRows.length - 1
-          : Math.min(
-              entryRows.length - 1,
-              Math.max(0, currentIndex + (direction === 'next' ? 1 : -1)),
-            )
+      const nextIndex = (() => {
+        if (direction === 'first') {
+          return 0
+        }
+
+        if (direction === 'last') {
+          return entryRows.length - 1
+        }
+
+        if (currentIndex < 0) {
+          return direction === 'next' ? 0 : entryRows.length - 1
+        }
+
+        return Math.min(
+          entryRows.length - 1,
+          Math.max(0, currentIndex + (direction === 'next' ? 1 : -1)),
+        )
+      })()
 
       selectEntry(entryRows[nextIndex]?.entry ?? null)
     },

@@ -349,7 +349,6 @@ export function WorkspaceCanvasView({
       </ReactFlow>
       {activeExplorerSpace && activeExplorerSpace.rect ? (
         <WorkspaceSpaceExplorerOverlay
-          canvasRef={canvasRef}
           spaceId={activeExplorerSpace.id}
           spaceName={activeExplorerSpace.name}
           targetMountId={activeExplorerSpace.targetMountId ?? null}

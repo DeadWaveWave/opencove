@@ -1,108 +1,21 @@
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import path from 'node:path'
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
 import { toFileUri } from '../../src/contexts/filesystem/domain/fileUri'
 import {
   beginDragMouse,
-  clearAndSeedWorkspace,
   dragLocatorTo,
   launchApp,
   removePathWithRetry,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
-
-function explorerEntry(window: Page, spaceId: string, uri: string): Locator {
-  return window.locator(
-    `[data-testid="workspace-space-explorer-entry-${spaceId}-${encodeURIComponent(uri)}"]`,
-  )
-}
-
-async function openExplorer(
-  window: Page,
-  spaceId: string,
-  directoryPath: string,
-): Promise<Locator> {
-  await clearAndSeedWorkspace(
-    window,
-    [
-      {
-        id: `${spaceId}-anchor`,
-        title: 'Anchor note',
-        position: { x: 420, y: 320 },
-        width: 320,
-        height: 220,
-        kind: 'note',
-        task: {
-          text: 'Keep this space alive',
-        },
-      },
-    ],
-    {
-      spaces: [
-        {
-          id: spaceId,
-          name: 'Explorer Space',
-          directoryPath,
-          nodeIds: [`${spaceId}-anchor`],
-          rect: {
-            x: 340,
-            y: 280,
-            width: 920,
-            height: 520,
-          },
-        },
-      ],
-      activeSpaceId: spaceId,
-    },
-  )
-
-  const spaceSwitch = window.locator(`[data-testid="workspace-space-switch-${spaceId}"]`)
-  const filesPill = window.locator(`[data-testid="workspace-space-files-${spaceId}"]`)
-  await expect(spaceSwitch).toBeVisible()
-
-  if (!(await filesPill.isVisible())) {
-    await spaceSwitch.click({ noWaitAfter: true })
-  }
-
-  await expect(filesPill).toBeVisible()
-  await filesPill.click({ noWaitAfter: true })
-
-  const explorer = window.locator('[data-testid="workspace-space-explorer"]')
-  await expect(explorer).toBeVisible()
-  return explorer
-}
-
-async function pathExists(targetPath: string): Promise<boolean> {
-  try {
-    await access(targetPath)
-    return true
-  } catch {
-    return false
-  }
-}
-
-async function dispatchExplorerShortcut(
-  window: Page,
-  options: {
-    code: string
-    key: string
-    altKey?: boolean
-    ctrlKey?: boolean
-    metaKey?: boolean
-    shiftKey?: boolean
-  },
-): Promise<void> {
-  await window.evaluate(input => {
-    window.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        ...input,
-        bubbles: true,
-        cancelable: true,
-      }),
-    )
-  }, options)
-}
+import {
+  dispatchExplorerShortcut,
+  explorerEntry,
+  openExplorer,
+  pathExists,
+} from './workspace-canvas.space-explorer.operations.helpers'
 
 test.describe('Workspace Canvas - Space Explorer Operations', () => {
   test('supports Explorer context menu actions and keyboard shortcuts', async () => {
@@ -209,6 +122,22 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
 
       await copyEntry.dispatchEvent('click')
       await expect(copyEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
+
+      const filterInput = explorer.locator('[data-testid="workspace-space-explorer-filter-input"]')
+      await explorer.focus()
+      await dispatchExplorerShortcut(window, {
+        code: 'KeyF',
+        key: 'f',
+        altKey: true,
+        ctrlKey: true,
+      })
+      await expect(filterInput).toBeFocused()
+      await filterInput.fill('copy')
+      await expect(copyEntry).toBeVisible()
+      await expect(renamedEntry).toHaveCount(0)
+      await filterInput.press('Escape')
+      await expect(renamedEntry).toBeVisible()
+
       await explorer.focus()
       await dispatchExplorerShortcut(window, {
         code: 'KeyC',
@@ -302,6 +231,11 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
       )
       await expect(targetFolderChildEntry).toBeVisible()
 
+      await explorer.getByRole('button', { name: 'Collapse All' }).click()
+      await expect(targetFolderChildEntry).toHaveCount(0)
+      await targetFolderEntry.click()
+      await expect(targetFolderChildEntry).toBeVisible()
+
       const dragSourceBox = await dragSourceEntry.boundingBox()
       const targetFolderChildBox = await targetFolderChildEntry.boundingBox()
       if (!dragSourceBox || !targetFolderChildBox) {
@@ -384,103 +318,6 @@ test.describe('Workspace Canvas - Space Explorer Operations', () => {
         'Close the open document "open-me.md" before changing this file.',
       )
       await expect.poll(async () => await pathExists(openPath)).toBe(true)
-    } finally {
-      await electronApp.close()
-      await removePathWithRetry(fixtureDir)
-    }
-  })
-
-  test('supports cut-paste moves and delete confirmation', async () => {
-    const fixtureDir = path.join(
-      testWorkspacePath,
-      'artifacts',
-      'e2e',
-      'space-explorer-operations',
-      randomUUID(),
-    )
-    const targetFolderPath = path.join(fixtureDir, 'target-folder')
-    const cutSourcePath = path.join(fixtureDir, 'cut-me.txt')
-    const movedPath = path.join(targetFolderPath, 'cut-me.txt')
-    const deleteSourcePath = path.join(fixtureDir, 'delete-me.txt')
-
-    await mkdir(targetFolderPath, { recursive: true })
-    await writeFile(cutSourcePath, 'cut token', 'utf8')
-    await writeFile(deleteSourcePath, 'delete token', 'utf8')
-
-    const { electronApp, window } = await launchApp()
-
-    try {
-      const spaceId = 'space-explorer-keyboard-ops'
-      const explorer = await openExplorer(window, spaceId, fixtureDir)
-
-      const cutSourceEntry = explorerEntry(window, spaceId, toFileUri(cutSourcePath))
-      const targetFolderEntry = explorerEntry(window, spaceId, toFileUri(targetFolderPath))
-      const deleteEntry = explorerEntry(window, spaceId, toFileUri(deleteSourcePath))
-
-      await expect(cutSourceEntry).toBeVisible()
-      await expect(targetFolderEntry).toBeVisible()
-      await expect(deleteEntry).toBeVisible()
-
-      await cutSourceEntry.click({ button: 'right', force: true })
-      const contextMenu = window.locator('[data-testid="workspace-space-explorer-context-menu"]')
-      await expect(contextMenu).toBeVisible()
-      await contextMenu.getByRole('button', { name: 'Cut' }).click()
-      await expect(cutSourceEntry).toHaveClass(/workspace-space-explorer__entry--cut/)
-
-      await targetFolderEntry.dispatchEvent('click')
-      await expect(targetFolderEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
-      await explorer.focus()
-      await window.waitForTimeout(64)
-      await dispatchExplorerShortcut(window, {
-        code: 'KeyV',
-        key: 'v',
-        ctrlKey: true,
-      })
-
-      await expect.poll(async () => await pathExists(cutSourcePath)).toBe(false)
-      await expect.poll(async () => await readFile(movedPath, 'utf8')).toBe('cut token')
-      await expect(cutSourceEntry).toHaveCount(0)
-      await expect(explorerEntry(window, spaceId, toFileUri(movedPath))).toBeVisible()
-
-      await explorer.focus()
-      await dispatchExplorerShortcut(window, {
-        code: 'KeyZ',
-        key: 'z',
-        ctrlKey: true,
-      })
-      await expect.poll(async () => await pathExists(cutSourcePath)).toBe(true)
-      await expect.poll(async () => await pathExists(movedPath)).toBe(false)
-
-      await explorer.focus()
-      await dispatchExplorerShortcut(window, {
-        code: 'KeyZ',
-        key: 'z',
-        ctrlKey: true,
-        shiftKey: true,
-      })
-      await expect.poll(async () => await pathExists(cutSourcePath)).toBe(false)
-      await expect.poll(async () => await readFile(movedPath, 'utf8')).toBe('cut token')
-
-      await deleteEntry.dispatchEvent('click')
-      await expect(deleteEntry).toHaveClass(/workspace-space-explorer__entry--selected/)
-      await explorer.focus()
-      await window.waitForTimeout(64)
-      await dispatchExplorerShortcut(window, {
-        code: 'Delete',
-        key: 'Delete',
-      })
-      const deleteConfirmation = window.locator(
-        '[data-testid="workspace-space-explorer-delete-confirmation"]',
-      )
-      await expect(deleteConfirmation).toBeVisible()
-      await expect(
-        window.locator('[data-testid="workspace-space-explorer-delete-message"]'),
-      ).toContainText('delete-me.txt')
-      await deleteConfirmation.getByRole('button', { name: 'Delete' }).click({ force: true })
-
-      await expect.poll(async () => await pathExists(deleteSourcePath)).toBe(false)
-      await expect(deleteEntry).toHaveCount(0)
-      await expect(deleteConfirmation).toBeHidden()
     } finally {
       await electronApp.close()
       await removePathWithRetry(fixtureDir)
