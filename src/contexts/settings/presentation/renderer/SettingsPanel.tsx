@@ -166,6 +166,8 @@ export function SettingsPanel({
     onChange({ ...settings, keybindings })
   const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
     onChange({ ...settings, githubPullRequestsEnabled: enabled })
+  const updatePerformanceMonitorHeaderButtonEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, performanceMonitorHeaderButtonEnabled: enabled })
 
   const removeTaskTagOption = (tag: string): void => {
     const nextTags = settings.taskTagOptions.filter(option => option !== tag)
@@ -389,9 +391,12 @@ export function SettingsPanel({
                 onChangeGitHubPullRequestsEnabled={updateGitHubPullRequestsEnabled}
               />
             ) : null}
-
-            {activePageId === 'diagnostics' ? <DiagnosticsSection /> : null}
-
+            {activePageId === 'diagnostics' ? (
+              <DiagnosticsSection
+                headerButtonEnabled={settings.performanceMonitorHeaderButtonEnabled}
+                onChangeHeaderButtonEnabled={updatePerformanceMonitorHeaderButtonEnabled}
+              />
+            ) : null}
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}

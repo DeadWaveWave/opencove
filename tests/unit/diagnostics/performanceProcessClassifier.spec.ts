@@ -34,6 +34,15 @@ describe('performance process classifier', () => {
     ).toBe('opencove-pty-host')
     expect(
       classifyPerformanceProcess({
+        pid: 107,
+        mainPid: 100,
+        name: 'OpenCove.exe',
+        commandLine:
+          'OpenCove.exe C:/Users/app/resources/app.asar/out/main/worker.js --started-by desktop',
+      }),
+    ).toBe('opencove-worker')
+    expect(
+      classifyPerformanceProcess({
         pid: 103,
         mainPid: 100,
         name: 'codex.exe',

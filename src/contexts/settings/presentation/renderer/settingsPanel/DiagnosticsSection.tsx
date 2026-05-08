@@ -19,7 +19,13 @@ import {
 } from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
 import type { PerformanceDiagnosticsProcessSummary } from '@shared/contracts/dto'
 
-export function DiagnosticsSection(): React.JSX.Element {
+export function DiagnosticsSection({
+  headerButtonEnabled,
+  onChangeHeaderButtonEnabled,
+}: {
+  headerButtonEnabled: boolean
+  onChangeHeaderButtonEnabled: (enabled: boolean) => void
+}): React.JSX.Element {
   const { t } = useTranslation()
   const [copyStatus, setCopyStatus] = useState<string | null>(null)
   const copyStatusTimerRef = useRef<number | null>(null)
@@ -75,6 +81,24 @@ export function DiagnosticsSection(): React.JSX.Element {
       <div className="settings-panel__subsection-header">
         <h3 className="settings-panel__section-title">{t('settingsPanel.diagnostics.title')}</h3>
         <span>{t('settingsPanel.diagnostics.help')}</span>
+      </div>
+
+      <div className="settings-panel__row">
+        <div className="settings-panel__row-label">
+          <strong>{t('settingsPanel.diagnostics.headerMonitor.label')}</strong>
+          <span>{t('settingsPanel.diagnostics.headerMonitor.help')}</span>
+        </div>
+        <div className="settings-panel__control">
+          <label className="cove-toggle">
+            <input
+              type="checkbox"
+              data-testid="settings-performance-monitor-header-button-enabled"
+              checked={headerButtonEnabled}
+              onChange={event => onChangeHeaderButtonEnabled(event.target.checked)}
+            />
+            <span className="cove-toggle__slider"></span>
+          </label>
+        </div>
       </div>
 
       <div className="settings-panel__diagnostics-actions">
@@ -180,6 +204,10 @@ export function DiagnosticsSection(): React.JSX.Element {
           <tbody>
             {visibleProcessSummary.length > 0 ? (
               visibleProcessSummary.map(row => <ProcessSummaryRow key={row.kind} row={row} />)
+            ) : !snapshot && !error ? (
+              <tr>
+                <td colSpan={6}>{t('common.loading')}</td>
+              </tr>
             ) : (
               <tr>
                 <td colSpan={6}>{t('settingsPanel.diagnostics.noProcessRows')}</td>

@@ -185,6 +185,7 @@ export interface AgentSettings {
   terminalDisplayCalibrationCompensationEnabled: boolean
   terminalDisplayReference: TerminalDisplayReference | null
   uiFontSize: number
+  performanceMonitorHeaderButtonEnabled: boolean
   githubPullRequestsEnabled: boolean
   updatePolicy: AppUpdatePolicy
   updateChannel: AppUpdateChannel
@@ -392,6 +393,9 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     MIN_UI_FONT_SIZE,
     MAX_UI_FONT_SIZE,
   )
+  const performanceMonitorHeaderButtonEnabled =
+    normalizeBoolean(value.performanceMonitorHeaderButtonEnabled) ??
+    DEFAULT_AGENT_SETTINGS.performanceMonitorHeaderButtonEnabled
   const githubPullRequestsEnabled =
     normalizeBoolean(value.githubPullRequestsEnabled) ??
     DEFAULT_AGENT_SETTINGS.githubPullRequestsEnabled
@@ -466,6 +470,7 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     terminalDisplayCalibrationCompensationEnabled,
     terminalDisplayReference,
     uiFontSize,
+    performanceMonitorHeaderButtonEnabled,
     githubPullRequestsEnabled,
     updatePolicy,
     updateChannel,

@@ -363,6 +363,47 @@ describe('SettingsPanel', () => {
     expect(screen.getByTestId('settings-section-nav-endpoints')).toBeVisible()
   })
 
+  it('toggles the opt-in header performance monitor button from diagnostics settings', () => {
+    const onChange = vi.fn()
+    ;(window as typeof window & { opencoveApi?: Window['opencoveApi'] }).opencoveApi = {
+      performanceDiagnostics: {
+        getSnapshot: vi.fn(async () => ({
+          capturedAt: '2026-05-07T00:00:00.000Z',
+          platform: 'win32',
+          arch: 'x64',
+          mainPid: 100,
+          processTree: {
+            status: 'available' as const,
+            rootPid: 100,
+            sampledProcessCount: 0,
+            message: null,
+          },
+          processes: [],
+          processSummary: [],
+          electronMetrics: [],
+          notes: [],
+        })),
+      },
+    } as Window['opencoveApi']
+
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-diagnostics'))
+
+    const toggle = screen.getByTestId(
+      'settings-performance-monitor-header-button-enabled',
+    ) as HTMLInputElement
+    expect(toggle.checked).toBe(false)
+
+    fireEvent.click(toggle)
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      performanceMonitorHeaderButtonEnabled: true,
+    })
+  })
+
   it('loads and copies performance diagnostics from settings', async () => {
     const getSnapshot = vi.fn(async () => ({
       capturedAt: '2026-05-07T00:00:00.000Z',

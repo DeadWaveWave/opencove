@@ -38,6 +38,7 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>>
       isSidebarCollapsed={false}
       isControlCenterOpen={false}
       isCommandCenterOpen={false}
+      isPerformanceMonitorEnabled={true}
       isPerformanceMonitorOpen={false}
       isIssueReportOpen={false}
       commandCenterShortcutHint="—"

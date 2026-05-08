@@ -349,8 +349,21 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
       'settingsPanel.diagnostics.processTotals',
       'settingsPanel.diagnostics.metrics.frameP95',
       'settingsPanel.diagnostics.metrics.jsHeap',
+      'settingsPanel.diagnostics.headerMonitor.label',
     ],
-    keywords: ['performance', 'diagnostics', 'memory', 'cpu', 'terminal', '性能', '诊断', '内存'],
+    keywords: [
+      'performance',
+      'diagnostics',
+      'memory',
+      'cpu',
+      'terminal',
+      'monitor',
+      'header',
+      '性能',
+      '诊断',
+      '内存',
+      '监控',
+    ],
   },
 ]
 

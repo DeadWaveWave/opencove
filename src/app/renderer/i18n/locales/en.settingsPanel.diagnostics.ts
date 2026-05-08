@@ -9,6 +9,10 @@ export const enSettingsPanelDiagnostics = {
   processTotals: 'Process Totals',
   capturedAt: 'Captured at {{time}}',
   noProcessRows: 'No process rows available.',
+  headerMonitor: {
+    label: 'Show Performance Monitor in the header',
+    help: 'Adds a status button in the top-right header for opening the live floating performance panel. Automatic jank recording stays active when this is off.',
+  },
   metrics: {
     frameP95: 'Frame p95',
     longTasks: 'Long tasks',

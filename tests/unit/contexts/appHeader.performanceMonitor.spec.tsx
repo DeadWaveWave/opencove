@@ -38,6 +38,7 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>>
       isSidebarCollapsed={false}
       isControlCenterOpen={false}
       isCommandCenterOpen={false}
+      isPerformanceMonitorEnabled={true}
       isPerformanceMonitorOpen={false}
       isIssueReportOpen={false}
       commandCenterShortcutHint="—"
@@ -79,6 +80,13 @@ describe('AppHeader performance monitor', () => {
       'aria-pressed',
       'false',
     )
+  })
+
+  it('hides the header performance button when the setting is off', () => {
+    renderHeader({ isPerformanceMonitorEnabled: false, isPerformanceMonitorOpen: true })
+
+    expect(screen.queryByTestId('app-header-performance-monitor')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('performance-monitor-panel')).not.toBeInTheDocument()
   })
 
   it('loads and copies the live performance report while open', async () => {

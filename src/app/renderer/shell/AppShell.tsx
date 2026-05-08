@@ -215,6 +215,12 @@ export default function App(): React.JSX.Element {
   }, [closeTransientOverlays, isSettingsOpen, projectDeleteConfirmation])
 
   useEffect(() => {
+    if (!agentSettings.performanceMonitorHeaderButtonEnabled) {
+      closePerformanceMonitor()
+    }
+  }, [agentSettings.performanceMonitorHeaderButtonEnabled, closePerformanceMonitor])
+
+  useEffect(() => {
     if (!isSettingsOpen) {
       setIsFocusNodeTargetZoomPreviewing(false)
     }
@@ -316,6 +322,7 @@ export default function App(): React.JSX.Element {
             isSidebarCollapsed={isPrimarySidebarCollapsed}
             isControlCenterOpen={isControlCenterOpen}
             isCommandCenterOpen={isCommandCenterOpen}
+            isPerformanceMonitorEnabled={agentSettings.performanceMonitorHeaderButtonEnabled}
             isPerformanceMonitorOpen={isPerformanceMonitorOpen}
             isIssueReportOpen={isIssueReportOpen}
             commandCenterShortcutHint={commandCenterShortcutHint}

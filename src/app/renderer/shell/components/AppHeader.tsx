@@ -32,6 +32,7 @@ export function AppHeader({
   isSidebarCollapsed,
   isControlCenterOpen,
   isCommandCenterOpen,
+  isPerformanceMonitorEnabled,
   isPerformanceMonitorOpen,
   isIssueReportOpen,
   commandCenterShortcutHint,
@@ -58,6 +59,7 @@ export function AppHeader({
   isSidebarCollapsed: boolean
   isControlCenterOpen: boolean
   isCommandCenterOpen: boolean
+  isPerformanceMonitorEnabled: boolean
   isPerformanceMonitorOpen: boolean
   isIssueReportOpen: boolean
   commandCenterShortcutHint: string
@@ -326,22 +328,26 @@ export function AppHeader({
           >
             <SlidersHorizontal aria-hidden="true" size={18} />
           </button>
-          <button
-            type="button"
-            className={`app-header__icon-button app-header__performance-button app-header__performance-button--${performanceStatus}${
-              isPerformanceMonitorOpen ? ' app-header__icon-button--active' : ''
-            }`}
-            data-testid="app-header-performance-monitor"
-            aria-label={t('performanceMonitor.open')}
-            aria-pressed={isPerformanceMonitorOpen}
-            title={t('performanceMonitor.statusButtonTitle', { status: performanceStatusLabel })}
-            onClick={() => {
-              onTogglePerformanceMonitor()
-            }}
-          >
-            <Activity aria-hidden="true" size={18} />
-            <span className="app-header__performance-dot" aria-hidden="true" />
-          </button>
+          {isPerformanceMonitorEnabled ? (
+            <button
+              type="button"
+              className={`app-header__icon-button app-header__performance-button app-header__performance-button--${performanceStatus}${
+                isPerformanceMonitorOpen ? ' app-header__icon-button--active' : ''
+              }`}
+              data-testid="app-header-performance-monitor"
+              aria-label={t('performanceMonitor.open')}
+              aria-pressed={isPerformanceMonitorOpen}
+              title={t('performanceMonitor.statusButtonTitle', {
+                status: performanceStatusLabel,
+              })}
+              onClick={() => {
+                onTogglePerformanceMonitor()
+              }}
+            >
+              <Activity aria-hidden="true" size={18} />
+              <span className="app-header__performance-dot" aria-hidden="true" />
+            </button>
+          ) : null}
           <button
             type="button"
             className={`app-header__icon-button${isIssueReportOpen ? ' app-header__icon-button--active' : ''}`}
@@ -375,15 +381,17 @@ export function AppHeader({
         activeWorkspacePath={activeWorkspacePath}
         onClose={onCloseIssueReport}
       />
-      <PerformanceMonitorPanel
-        isOpen={isPerformanceMonitorOpen}
-        status={performanceStatus}
-        frameSnapshot={frameSnapshot}
-        rendererSnapshot={rendererSnapshot}
-        memoryTrend={memoryTrend}
-        incidents={performanceIncidents}
-        onClose={onClosePerformanceMonitor}
-      />
+      {isPerformanceMonitorEnabled ? (
+        <PerformanceMonitorPanel
+          isOpen={isPerformanceMonitorOpen}
+          status={performanceStatus}
+          frameSnapshot={frameSnapshot}
+          rendererSnapshot={rendererSnapshot}
+          memoryTrend={memoryTrend}
+          incidents={performanceIncidents}
+          onClose={onClosePerformanceMonitor}
+        />
+      ) : null}
     </>
   )
 }

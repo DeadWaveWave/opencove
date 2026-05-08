@@ -297,6 +297,10 @@ export function PerformanceMonitorPanel({
         <tbody>
           {visibleRows.length > 0 ? (
             visibleRows.map(row => <ProcessSummaryRow key={row.kind} row={row} />)
+          ) : !snapshot && !error ? (
+            <tr>
+              <td colSpan={6}>{t('common.loading')}</td>
+            </tr>
           ) : (
             <tr>
               <td colSpan={6}>{t('performanceMonitor.noProcessRows')}</td>

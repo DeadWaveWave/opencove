@@ -9,6 +9,10 @@ export const zhCNSettingsPanelDiagnostics = {
   processTotals: '进程汇总',
   capturedAt: '采集时间 {{time}}',
   noProcessRows: '暂无进程数据。',
+  headerMonitor: {
+    label: '在右上角显示性能监控',
+    help: '在顶部右侧显示状态按钮，用于打开实时悬浮性能面板。关闭后，自动卡顿记录仍会继续运行。',
+  },
   metrics: {
     frameP95: '帧耗时 p95',
     longTasks: '长任务',
