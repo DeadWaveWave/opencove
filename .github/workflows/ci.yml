@@ -130,6 +130,8 @@ jobs:
 
   ci-macos:
     runs-on: macos-latest
+    env:
+      NODE_OPTIONS: --max-old-space-size=4096
 
     steps:
       - name: Checkout

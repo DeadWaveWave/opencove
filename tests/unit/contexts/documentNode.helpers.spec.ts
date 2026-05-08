@@ -67,6 +67,12 @@ describe('DocumentNode helpers', () => {
       mediaKind: 'audio',
       mimeType: 'audio/mpeg',
       bytes: Uint8Array.from([1, 2, 3, 4]),
+      stat: {
+        uri: 'file:///tmp/tone.mp3',
+        kind: 'file',
+        sizeBytes: 4,
+        mtimeMs: null,
+      },
     })
     expect(readFileBytes).toHaveBeenCalledOnce()
     expect(readFileText).not.toHaveBeenCalled()
