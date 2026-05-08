@@ -8,9 +8,10 @@ import {
   formatMs,
   formatPercent,
   formatSignedBytes,
+  getDisplayProcessSummary,
   getProcessKindLabelKey,
   getProcessScopeLabelKey,
-  getVisibleProcessSummary,
+  isUsingElectronMetricsFallback,
   sortProcessSummaryByMemory,
   summarizeProcessResources,
   type PerformanceStatus,
@@ -21,6 +22,7 @@ import {
   type RendererFrameSnapshot,
   type RendererMemoryTrendSnapshot,
 } from '@app/renderer/performanceDiagnostics/rendererDiagnosticsSampling'
+import type { PerformanceIncident } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
 import type { PerformanceDiagnosticsProcessSummary } from '@shared/contracts/dto'
 
 const PROCESS_POLL_INTERVAL_MS = 5_000
@@ -32,6 +34,7 @@ export function PerformanceMonitorPanel({
   frameSnapshot,
   rendererSnapshot,
   memoryTrend,
+  incidents,
   onClose,
 }: {
   isOpen: boolean
@@ -39,6 +42,7 @@ export function PerformanceMonitorPanel({
   frameSnapshot: RendererFrameSnapshot
   rendererSnapshot: RendererDomSnapshot
   memoryTrend: RendererMemoryTrendSnapshot
+  incidents: PerformanceIncident[]
   onClose: () => void
 }): React.JSX.Element | null {
   const { t } = useTranslation()
@@ -52,10 +56,11 @@ export function PerformanceMonitorPanel({
 
   const statusLabel = t(`performanceMonitor.status.${status}`)
   const visibleRows = useMemo(
-    () => sortProcessSummaryByMemory(getVisibleProcessSummary(snapshot)).slice(0, 6),
+    () => sortProcessSummaryByMemory(getDisplayProcessSummary(snapshot)).slice(0, 6),
     [snapshot],
   )
   const processTotals = useMemo(() => summarizeProcessResources(snapshot), [snapshot])
+  const isElectronMetricsFallback = isUsingElectronMetricsFallback(snapshot)
 
   useEffect(() => {
     if (!isOpen) {
@@ -100,6 +105,7 @@ export function PerformanceMonitorPanel({
             status,
           },
           processTotals,
+          incidents,
         },
         null,
         2,
@@ -240,6 +246,43 @@ export function PerformanceMonitorPanel({
 
       <p className="performance-monitor__memory-help">{t('performanceMonitor.memoryHelp')}</p>
 
+      <div className="performance-monitor__process-status">
+        {snapshot ? (
+          <span>
+            {t(`performanceMonitor.processTreeStatus.${snapshot.processTree.status}`, {
+              count: snapshot.processTree.sampledProcessCount,
+              message: snapshot.processTree.message,
+            })}
+          </span>
+        ) : null}
+        {isElectronMetricsFallback ? (
+          <span>{t('performanceMonitor.processTreeStatus.electronFallback')}</span>
+        ) : null}
+        {snapshot?.notes.map(note => (
+          <span key={note}>{note}</span>
+        ))}
+      </div>
+
+      <section className="performance-monitor__section" data-testid="performance-monitor-incidents">
+        <div className="performance-monitor__section-header">
+          <div className="performance-monitor__section-title">
+            {t('performanceMonitor.sections.incidents')}
+          </div>
+          <span>{t('performanceMonitor.incidents.recentLimit')}</span>
+        </div>
+        {incidents.length > 0 ? (
+          <div className="performance-monitor__incident-list">
+            {incidents.map(incident => (
+              <IncidentRow key={incident.id} incident={incident} />
+            ))}
+          </div>
+        ) : (
+          <p className="performance-monitor__incident-empty">
+            {t('performanceMonitor.incidents.empty')}
+          </p>
+        )}
+      </section>
+
       <table className="performance-monitor__table">
         <thead>
           <tr>
@@ -263,6 +306,27 @@ export function PerformanceMonitorPanel({
       </table>
     </section>,
     document.body,
+  )
+}
+
+function IncidentRow({ incident }: { incident: PerformanceIncident }): React.JSX.Element {
+  const { t } = useTranslation()
+  const processRows = incident.processSnapshot
+    ? sortProcessSummaryByMemory(getDisplayProcessSummary(incident.processSnapshot))
+    : []
+  const topProcess = processRows[0] ?? null
+  return (
+    <div className="performance-monitor__incident-row">
+      <div>
+        <strong>{t(`performanceMonitor.incidents.trigger.${incident.trigger}`)}</strong>
+        <span>{incident.capturedAt}</span>
+      </div>
+      <div>
+        <span>{formatMs(incident.frameP95Ms)}</span>
+        <span>{formatBytes(incident.jsHeapUsedBytes)}</span>
+        <span>{topProcess ? t(getProcessKindLabelKey(topProcess.kind)) : '-'}</span>
+      </div>
+    </div>
   )
 }
 

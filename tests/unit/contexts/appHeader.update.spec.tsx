@@ -68,6 +68,7 @@ describe('AppHeader update indicator', () => {
         rendererSnapshot={rendererSnapshot}
         frameSnapshot={frameSnapshot}
         memoryTrend={memoryTrend}
+        performanceIncidents={[]}
         updateState={createUpdateState({ status: 'available', latestVersion: '0.2.1' })}
         onToggleSidebar={() => undefined}
         onToggleControlCenter={() => undefined}
@@ -105,6 +106,7 @@ describe('AppHeader update indicator', () => {
         rendererSnapshot={rendererSnapshot}
         frameSnapshot={frameSnapshot}
         memoryTrend={memoryTrend}
+        performanceIncidents={[]}
         updateState={createUpdateState({ status: 'downloaded', latestVersion: '0.2.1' })}
         onToggleSidebar={() => undefined}
         onToggleControlCenter={() => undefined}

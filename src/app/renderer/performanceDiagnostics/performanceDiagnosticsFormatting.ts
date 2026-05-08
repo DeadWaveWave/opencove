@@ -1,4 +1,5 @@
 import type {
+  PerformanceDiagnosticsElectronMetric,
   PerformanceDiagnosticsProcessSummary,
   PerformanceDiagnosticsSnapshotResult,
   PerformanceProcessKind,
@@ -18,6 +19,30 @@ export interface ProcessResourceTotals {
   privateBytes: number | null
   threadCount: number | null
   electronCpuPercent: number | null
+}
+
+const KIB_BYTES = 1024
+
+function electronMetricMemoryToBytes(value: number | null): number | null {
+  return value === null || !Number.isFinite(value) ? null : Math.round(value * KIB_BYTES)
+}
+
+function resolveElectronMetricKind(
+  metric: PerformanceDiagnosticsElectronMetric,
+): PerformanceProcessKind {
+  const type = metric.type.toLowerCase()
+  const label = `${metric.name ?? ''} ${metric.serviceName ?? ''}`.toLowerCase()
+
+  if (type === 'browser') {
+    return 'opencove-main'
+  }
+  if (type === 'tab' || type === 'renderer' || label.includes('renderer')) {
+    return 'opencove-renderer'
+  }
+  if (type === 'utility' || type === 'gpu' || label.includes('utility')) {
+    return 'opencove-utility'
+  }
+  return 'other'
 }
 
 export function formatBytes(value: number | null): string {
@@ -76,6 +101,56 @@ export function getVisibleProcessSummary(
   return snapshot?.processSummary.filter(row => row.scope !== 'diagnostics') ?? []
 }
 
+export function summarizeElectronMetrics(
+  snapshot: PerformanceDiagnosticsSnapshotResult | null,
+): PerformanceDiagnosticsProcessSummary[] {
+  if (!snapshot || snapshot.electronMetrics.length === 0) {
+    return []
+  }
+
+  const rows = new Map<PerformanceProcessKind, PerformanceDiagnosticsProcessSummary>()
+  for (const metric of snapshot.electronMetrics) {
+    const kind = resolveElectronMetricKind(metric)
+    const existing = rows.get(kind) ?? {
+      kind,
+      scope: kind === 'other' ? 'other' : 'opencove',
+      count: 0,
+      workingSetBytes: 0,
+      privateBytes: 0,
+      threadCount: null,
+    }
+    existing.count += 1
+    existing.workingSetBytes = addNullable(
+      existing.workingSetBytes,
+      electronMetricMemoryToBytes(metric.memory.workingSetSize),
+    )
+    existing.privateBytes = addNullable(
+      existing.privateBytes,
+      electronMetricMemoryToBytes(metric.memory.privateBytes),
+    )
+    rows.set(kind, existing)
+  }
+
+  return [...rows.values()].sort(
+    (a, b) => a.scope.localeCompare(b.scope) || a.kind.localeCompare(b.kind),
+  )
+}
+
+export function isUsingElectronMetricsFallback(
+  snapshot: PerformanceDiagnosticsSnapshotResult | null,
+): boolean {
+  return (
+    getVisibleProcessSummary(snapshot).length === 0 && summarizeElectronMetrics(snapshot).length > 0
+  )
+}
+
+export function getDisplayProcessSummary(
+  snapshot: PerformanceDiagnosticsSnapshotResult | null,
+): PerformanceDiagnosticsProcessSummary[] {
+  const processTreeRows = getVisibleProcessSummary(snapshot)
+  return processTreeRows.length > 0 ? processTreeRows : summarizeElectronMetrics(snapshot)
+}
+
 export function sortProcessSummaryByMemory(
   rows: PerformanceDiagnosticsProcessSummary[],
 ): PerformanceDiagnosticsProcessSummary[] {
@@ -96,7 +171,7 @@ function addNullable(left: number | null, right: number | null): number | null {
 export function summarizeProcessResources(
   snapshot: PerformanceDiagnosticsSnapshotResult | null,
 ): ProcessResourceTotals {
-  const rows = getVisibleProcessSummary(snapshot)
+  const rows = getDisplayProcessSummary(snapshot)
   const electronCpuValues = snapshot?.electronMetrics
     .map(metric => metric.cpuPercent)
     .filter((value): value is number => value !== null && Number.isFinite(value))

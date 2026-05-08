@@ -45,6 +45,7 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>>
       rendererSnapshot={rendererSnapshot}
       frameSnapshot={frameSnapshot}
       memoryTrend={memoryTrend}
+      performanceIncidents={[]}
       updateState={null}
       onToggleSidebar={() => undefined}
       onToggleControlCenter={() => undefined}
@@ -134,6 +135,7 @@ describe('AppHeader performance monitor', () => {
     renderHeader({ isPerformanceMonitorOpen: true })
 
     expect(await screen.findByTestId('performance-monitor-panel')).toBeVisible()
+    expect(screen.getByText('No jank records yet.')).toBeVisible()
     await waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(1))
     expect(screen.getByText('Codex CLI')).toBeVisible()
 
@@ -141,5 +143,60 @@ describe('AppHeader performance monitor', () => {
 
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
     expect(writeText.mock.calls[0]?.[0]).toContain('external-agent-codex')
+  })
+
+  it('shows automatically recorded jank incidents in the live panel', async () => {
+    ;(window as typeof window & { opencoveApi?: Window['opencoveApi'] }).opencoveApi = {
+      performanceDiagnostics: {
+        getSnapshot: vi.fn(async () => ({
+          capturedAt: '2026-05-08T00:00:00.000Z',
+          platform: 'win32',
+          arch: 'x64',
+          mainPid: 100,
+          processTree: {
+            status: 'available' as const,
+            rootPid: 100,
+            sampledProcessCount: 0,
+            message: null,
+          },
+          processes: [],
+          processSummary: [],
+          electronMetrics: [],
+          notes: [],
+        })),
+      },
+      clipboard: {
+        readText: vi.fn(async () => ''),
+        writeText: vi.fn(async () => undefined),
+      },
+    } as Window['opencoveApi']
+
+    renderHeader({
+      isPerformanceMonitorOpen: true,
+      performanceIncidents: [
+        {
+          id: 'incident-1',
+          capturedAt: '2026-05-08T00:00:01.000Z',
+          trigger: 'frameJank',
+          status: 'janky',
+          frameP95Ms: 48,
+          frameMaxMs: 130,
+          longTaskCount: 1,
+          longTaskTotalMs: 80,
+          longTaskDeltaCount: 1,
+          longTaskDeltaMs: 80,
+          jsHeapUsedBytes: 128 * 1024 * 1024,
+          jsHeapDeltaBytes: 32 * 1024 * 1024,
+          domNodeCount: 120,
+          terminalNodeCount: 10,
+          xtermInstanceCount: 10,
+          processSnapshot: null,
+          processSnapshotError: null,
+        },
+      ],
+    })
+
+    expect(await screen.findByText('Frame jank')).toBeVisible()
+    expect(screen.getByText('48.0 ms')).toBeVisible()
   })
 })

@@ -45,6 +45,7 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>>
       rendererSnapshot={rendererSnapshot}
       frameSnapshot={frameSnapshot}
       memoryTrend={memoryTrend}
+      performanceIncidents={[]}
       updateState={null}
       onToggleSidebar={() => undefined}
       onToggleControlCenter={() => undefined}

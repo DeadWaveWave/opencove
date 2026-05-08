@@ -23,6 +23,12 @@ export const enSettingsPanelDiagnostics = {
     private:
       'Reserved memory: dedicated memory requested by the process; sustained growth matters more than one sample.',
   },
+  processTreeStatus: {
+    available: 'Process tree: captured {{count}} processes.',
+    unsupported: 'Process tree unavailable: {{message}}',
+    error: 'Process tree failed: {{message}}',
+    electronFallback: 'Showing Electron process metrics because process-tree rows are empty.',
+  },
   table: {
     kind: 'Kind',
     scope: 'Scope',

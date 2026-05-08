@@ -22,6 +22,12 @@ export const zhCNSettingsPanelDiagnostics = {
     workingSet: '正在使用内存：当前实际驻留在内存中的部分，更接近任务管理器看到的即时占用。',
     private: '已申请内存：进程向系统申请的专用内存额度，不等于当前实际占用；持续上涨才更值得关注。',
   },
+  processTreeStatus: {
+    available: '进程树：已采集 {{count}} 个进程。',
+    unsupported: '进程树不可用：{{message}}',
+    error: '进程树采集失败：{{message}}',
+    electronFallback: '进程树暂无行数据，当前显示 Electron 进程指标作为兜底。',
+  },
   table: {
     kind: '类型',
     scope: '范围',

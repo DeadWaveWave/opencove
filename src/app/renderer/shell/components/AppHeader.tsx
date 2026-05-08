@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { PerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
+import type { PerformanceIncident } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
 import type {
   RendererDomSnapshot,
   RendererFrameSnapshot,
@@ -38,6 +39,7 @@ export function AppHeader({
   rendererSnapshot,
   frameSnapshot,
   memoryTrend,
+  performanceIncidents,
   updateState,
   onToggleSidebar,
   onToggleControlCenter,
@@ -63,6 +65,7 @@ export function AppHeader({
   rendererSnapshot: RendererDomSnapshot
   frameSnapshot: RendererFrameSnapshot
   memoryTrend: RendererMemoryTrendSnapshot
+  performanceIncidents: PerformanceIncident[]
   updateState: AppUpdateState | null
   onToggleSidebar: () => void
   onToggleControlCenter: () => void
@@ -378,6 +381,7 @@ export function AppHeader({
         frameSnapshot={frameSnapshot}
         rendererSnapshot={rendererSnapshot}
         memoryTrend={memoryTrend}
+        incidents={performanceIncidents}
         onClose={onClosePerformanceMonitor}
       />
     </>

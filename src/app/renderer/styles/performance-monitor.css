@@ -152,6 +152,18 @@
   text-transform: uppercase;
 }
 
+.performance-monitor__section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.performance-monitor__section-header > span {
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+}
+
 .performance-monitor__metric-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -187,6 +199,7 @@
 }
 
 .performance-monitor__memory-help,
+.performance-monitor__process-status,
 .performance-monitor__error {
   margin: 0;
   padding: 8px 10px;
@@ -196,6 +209,60 @@
   color: var(--cove-text-faint);
   font-size: calc(11px * var(--cove-ui-font-scale));
   line-height: 1.45;
+}
+
+.performance-monitor__process-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.performance-monitor__incident-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.performance-monitor__incident-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cove-field) 72%, transparent);
+}
+
+.performance-monitor__incident-row > div {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.performance-monitor__incident-row > div:first-child {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.performance-monitor__incident-row strong {
+  color: var(--cove-text);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.performance-monitor__incident-row span,
+.performance-monitor__incident-empty {
+  min-width: 0;
+  margin: 0;
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .performance-monitor__error {

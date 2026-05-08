@@ -32,6 +32,13 @@ export const enPerformanceMonitor = {
   sections: {
     renderer: 'Renderer',
     processes: 'Processes',
+    incidents: 'Recent jank records',
+  },
+  processTreeStatus: {
+    available: 'Process tree: captured {{count}} processes.',
+    unsupported: 'Process tree unavailable: {{message}}',
+    error: 'Process tree failed: {{message}}',
+    electronFallback: 'Showing Electron process metrics because process-tree rows are empty.',
   },
   table: {
     kind: 'Kind',
@@ -44,4 +51,13 @@ export const enPerformanceMonitor = {
   noProcessRows: 'No process rows available.',
   memoryHelp:
     'Memory in use is the currently resident part. Reserved memory is what the process requested; sustained growth is the signal.',
+  incidents: {
+    empty: 'No jank records yet.',
+    trigger: {
+      frameJank: 'Frame jank',
+      longTask: 'Long task',
+      memoryGrowth: 'Memory growth',
+    },
+    recentLimit: 'Latest 8',
+  },
 }

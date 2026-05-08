@@ -6,9 +6,10 @@ import {
   formatInteger,
   formatMs,
   formatSignedBytes,
+  getDisplayProcessSummary,
   getProcessKindLabelKey,
   getProcessScopeLabelKey,
-  getVisibleProcessSummary,
+  isUsingElectronMetricsFallback,
 } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
 import {
   usePerformanceDiagnosticsSnapshot,
@@ -40,7 +41,8 @@ export function DiagnosticsSection(): React.JSX.Element {
     [],
   )
 
-  const visibleProcessSummary = useMemo(() => getVisibleProcessSummary(snapshot), [snapshot])
+  const visibleProcessSummary = useMemo(() => getDisplayProcessSummary(snapshot), [snapshot])
+  const isElectronMetricsFallback = isUsingElectronMetricsFallback(snapshot)
 
   const copyDiagnostics = async (): Promise<void> => {
     if (!snapshot) {
@@ -149,6 +151,17 @@ export function DiagnosticsSection(): React.JSX.Element {
         </div>
 
         <div className="settings-panel__diagnostics-memory-note">
+          {snapshot ? (
+            <span>
+              {t(`settingsPanel.diagnostics.processTreeStatus.${snapshot.processTree.status}`, {
+                count: snapshot.processTree.sampledProcessCount,
+                message: snapshot.processTree.message,
+              })}
+            </span>
+          ) : null}
+          {isElectronMetricsFallback ? (
+            <span>{t('settingsPanel.diagnostics.processTreeStatus.electronFallback')}</span>
+          ) : null}
           <span>{t('settingsPanel.diagnostics.memoryTerms.workingSet')}</span>
           <span>{t('settingsPanel.diagnostics.memoryTerms.private')}</span>
         </div>

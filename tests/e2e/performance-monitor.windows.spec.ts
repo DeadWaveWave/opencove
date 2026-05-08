@@ -20,6 +20,8 @@ test.describe('Performance Monitor (Windows)', () => {
       await expect(panel).toBeVisible()
       await expect(panel).toContainText(/Frame p95|帧耗时 p95/)
       await expect(panel).toContainText(/Memory in use|正在使用内存/)
+      await expect(panel).toContainText(/Process tree|进程树/)
+      await expect(panel).not.toContainText(/No process rows available|暂无进程数据/)
 
       const screenshotPath = testInfo.outputPath('performance-monitor-panel.png')
       await window.screenshot({ path: screenshotPath })

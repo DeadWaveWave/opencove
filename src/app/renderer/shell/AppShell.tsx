@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import { resolvePerformanceStatus } from '@app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
+import { usePerformanceIncidentRecorder } from '@app/renderer/performanceDiagnostics/performanceIncidentRecorder'
 import {
   useRendererDomSampler,
   useRendererFrameSampler,
@@ -58,6 +59,12 @@ export default function App(): React.JSX.Element {
       }),
     [frameSnapshot, memoryTrend, rendererSnapshot],
   )
+  const performanceIncidents = usePerformanceIncidentRecorder({
+    status: performanceStatus,
+    frameSnapshot,
+    rendererSnapshot,
+    memoryTrend,
+  })
   const {
     workspaces,
     activeWorkspaceId,
@@ -316,6 +323,7 @@ export default function App(): React.JSX.Element {
             rendererSnapshot={rendererSnapshot}
             frameSnapshot={frameSnapshot}
             memoryTrend={memoryTrend}
+            performanceIncidents={performanceIncidents}
             updateState={updateState}
             onToggleSidebar={() => {
               setAgentSettings(prev => ({

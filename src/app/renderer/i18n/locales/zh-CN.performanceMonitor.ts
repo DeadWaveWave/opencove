@@ -32,6 +32,13 @@ export const zhCNPerformanceMonitor = {
   sections: {
     renderer: 'Renderer',
     processes: '进程',
+    incidents: '最近卡顿记录',
+  },
+  processTreeStatus: {
+    available: '进程树：已采集 {{count}} 个进程。',
+    unsupported: '进程树不可用：{{message}}',
+    error: '进程树采集失败：{{message}}',
+    electronFallback: '进程树暂无行数据，当前显示 Electron 进程指标作为兜底。',
   },
   table: {
     kind: '类型',
@@ -44,4 +51,13 @@ export const zhCNPerformanceMonitor = {
   noProcessRows: '暂无进程数据。',
   memoryHelp:
     '正在使用内存是当前驻留内存；已申请内存是进程向系统申请的专用额度，持续上涨才是重点。',
+  incidents: {
+    empty: '还没有自动记录到卡顿。',
+    trigger: {
+      frameJank: '帧卡顿',
+      longTask: '长任务',
+      memoryGrowth: '内存增长',
+    },
+    recentLimit: '最近 8 条',
+  },
 }
