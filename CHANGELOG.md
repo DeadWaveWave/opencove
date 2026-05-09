@@ -75,6 +75,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Desktop: upgrade Electron to 41.5.1 and queue website-window snapshot requests until the runtime is ready, preventing dropped captures during activation/loading transitions. (#238)
 - Agent: unify external CLI command environment ownership so GUI/Desktop launches resolve shebang-based Node CLIs consistently across availability, model listing, launch/resume, session discovery, task title generation, and worktree naming. (#236)
 - Terminal: reduce multi-terminal output jank by globally pacing xterm writes and throttling committed screen-cache serialization. (#231)
 - Space Explorer: clamp the window to the visible canvas viewport so shorter inactive macOS windows no longer overflow the canvas. (#232)
