@@ -24,8 +24,6 @@ export const enSettingsPanelDiagnostics = {
   },
   memoryTerms: {
     workingSet: 'Memory in use: the part currently resident in RAM, closest to Task Manager.',
-    private:
-      'Reserved memory: dedicated memory requested by the process; sustained growth matters more than one sample.',
   },
   processTreeStatus: {
     available: 'Process tree: captured {{count}} processes.',
@@ -37,7 +35,6 @@ export const enSettingsPanelDiagnostics = {
     kind: 'Kind',
     scope: 'Scope',
     count: 'Count',
-    private: 'Reserved memory',
     workingSet: 'Memory in use',
     threads: 'Threads',
   },

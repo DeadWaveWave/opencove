@@ -26,7 +26,6 @@ export const zhCNPerformanceMonitor = {
     xtermInstances: 'xterm 实例',
     electronCpu: 'Electron CPU',
     memoryInUse: '正在使用内存',
-    reservedMemory: '已申请内存',
     threads: '线程',
   },
   sections: {
@@ -45,12 +44,10 @@ export const zhCNPerformanceMonitor = {
     scope: '范围',
     count: '数量',
     memoryInUse: '正在使用内存',
-    reservedMemory: '已申请内存',
     threads: '线程',
   },
   noProcessRows: '暂无进程数据。',
-  memoryHelp:
-    '正在使用内存是当前驻留内存；已申请内存是进程向系统申请的专用额度，持续上涨才是重点。',
+  memoryHelp: '正在使用内存是当前实际驻留在 RAM 中的部分。',
   incidents: {
     empty: '还没有自动记录到卡顿。',
     trigger: {

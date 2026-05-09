@@ -146,6 +146,8 @@ describe('AppHeader performance monitor', () => {
     expect(screen.getByText('No jank records yet.')).toBeVisible()
     await waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(1))
     expect(screen.getByText('Codex CLI')).toBeVisible()
+    expect(screen.getAllByText('Threads')).toHaveLength(2)
+    expect(screen.queryByText('Reserved memory')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('performance-monitor-copy'))
 

@@ -24,7 +24,6 @@ export const zhCNSettingsPanelDiagnostics = {
   },
   memoryTerms: {
     workingSet: '正在使用内存：当前实际驻留在内存中的部分，更接近任务管理器看到的即时占用。',
-    private: '已申请内存：进程向系统申请的专用内存额度，不等于当前实际占用；持续上涨才更值得关注。',
   },
   processTreeStatus: {
     available: '进程树：已采集 {{count}} 个进程。',
@@ -36,7 +35,6 @@ export const zhCNSettingsPanelDiagnostics = {
     kind: '类型',
     scope: '范围',
     count: '数量',
-    private: '已申请内存',
     workingSet: '正在使用内存',
     threads: '线程',
   },

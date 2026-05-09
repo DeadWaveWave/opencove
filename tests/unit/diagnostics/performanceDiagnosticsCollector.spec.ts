@@ -121,16 +121,39 @@ describe('performance diagnostics collector helpers', () => {
       execFile as unknown as {
         [promisify.custom]: () => Promise<{ stdout: string; stderr: string }>
       }
-    )[promisify.custom] = vi.fn(async () => ({
-      stdout: [
-        `${mainPid} 1 120000 OpenCove OpenCove`,
-        `200 1 80000 node node out/main/worker.js --started-by desktop --parent-pid ${mainPid}`,
-        '201 200 32000 node node out/main/ptyHost.js',
-        `202 ${mainPid} 40000 codex codex exec`,
-        `203 ${mainPid} 5000 ps ps -ww -axo pid=,ppid=,rss=,ucomm=,args=`,
-      ].join('\n'),
-      stderr: '',
-    }))
+    )[promisify.custom] = vi.fn(async (_file: string, args: string[]) => {
+      if (args[0] === '-ww') {
+        return {
+          stdout: [
+            `${mainPid} 1 120000 OpenCove OpenCove`,
+            `200 1 80000 node node out/main/worker.js --started-by desktop --parent-pid ${mainPid}`,
+            '201 200 32000 node node out/main/ptyHost.js',
+            `202 ${mainPid} 40000 codex codex exec`,
+            `203 ${mainPid} 5000 ps ps -ww -axo pid=,ppid=,rss=,ucomm=,args=`,
+          ].join('\n'),
+          stderr: '',
+        }
+      }
+      if (args[0] === '-M') {
+        return {
+          stdout: [
+            'USER   PID   TT   %CPU STAT PRI     STIME     UTIME COMMAND',
+            `deadwave ${mainPid}   ??    0.0 S    31T   0:00.00   0:00.00 OpenCove`,
+            `         ${mainPid}         0.0 S    31T   0:00.00   0:00.00`,
+            'deadwave 200   ??    0.0 S    31T   0:00.00   0:00.00 node',
+            '         200         0.0 S    31T   0:00.00   0:00.00',
+            '         200         0.0 S    31T   0:00.00   0:00.00',
+            'deadwave 201   ??    0.0 S    31T   0:00.00   0:00.00 node',
+            'deadwave 202   ??    0.0 S    31T   0:00.00   0:00.00 codex',
+            '         202         0.0 S    31T   0:00.00   0:00.00',
+            '         202         0.0 S    31T   0:00.00   0:00.00',
+            '         202         0.0 S    31T   0:00.00   0:00.00',
+          ].join('\n'),
+          stderr: '',
+        }
+      }
+      throw new Error(`unexpected ps invocation: ${args.join(' ')}`)
+    })
 
     vi.doMock('node:child_process', () => ({
       default: {
@@ -164,10 +187,10 @@ describe('performance diagnostics collector helpers', () => {
     })
     expect(snapshot.processSummary).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: 'opencove-main', count: 1 }),
-        expect.objectContaining({ kind: 'opencove-worker', count: 1 }),
-        expect.objectContaining({ kind: 'opencove-pty-host', count: 1 }),
-        expect.objectContaining({ kind: 'external-agent-codex', count: 1 }),
+        expect.objectContaining({ kind: 'opencove-main', count: 1, threadCount: 2 }),
+        expect.objectContaining({ kind: 'opencove-worker', count: 1, threadCount: 3 }),
+        expect.objectContaining({ kind: 'opencove-pty-host', count: 1, threadCount: 1 }),
+        expect.objectContaining({ kind: 'external-agent-codex', count: 1, threadCount: 4 }),
       ]),
     )
     expect(snapshot.processSummary).not.toEqual(
@@ -188,10 +211,10 @@ describe('performance diagnostics collector helpers', () => {
       }
     )[promisify.custom] = vi.fn(async () => ({
       stdout: [
-        `${mainPid} 1 64000 OpenCove OpenCove --type=browser`,
-        `210 ${mainPid} 48000 OpenCove OpenCove --type=renderer`,
-        `211 ${mainPid} 16000 bash bash -lc pwd`,
-        `212 ${mainPid} 5000 ps ps -ww -axo pid=,ppid=,rss=,comm=,args=`,
+        `${mainPid} 1 64000 8 OpenCove OpenCove --type=browser`,
+        `210 ${mainPid} 48000 5 OpenCove OpenCove --type=renderer`,
+        `211 ${mainPid} 16000 2 bash bash -lc pwd`,
+        `212 ${mainPid} 5000 1 ps ps -ww -axo pid=,ppid=,rss=,nlwp=,comm=,args=`,
       ].join('\n'),
       stderr: '',
     }))
@@ -228,9 +251,9 @@ describe('performance diagnostics collector helpers', () => {
     })
     expect(snapshot.processSummary).toEqual(
       expect.arrayContaining([
-        expect.objectContaining({ kind: 'opencove-main', count: 1 }),
-        expect.objectContaining({ kind: 'opencove-renderer', count: 1 }),
-        expect.objectContaining({ kind: 'external-shell', count: 1 }),
+        expect.objectContaining({ kind: 'opencove-main', count: 1, threadCount: 8 }),
+        expect.objectContaining({ kind: 'opencove-renderer', count: 1, threadCount: 5 }),
+        expect.objectContaining({ kind: 'external-shell', count: 1, threadCount: 2 }),
       ]),
     )
     expect(snapshot.processSummary).not.toEqual(

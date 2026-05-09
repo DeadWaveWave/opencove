@@ -459,7 +459,9 @@ describe('SettingsPanel', () => {
     await waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(1))
     expect(screen.getByText('OpenCove renderer')).toBeVisible()
     expect(screen.getByText('Codex CLI')).toBeVisible()
-    expect(screen.getByText('10.0 MB')).toBeVisible()
+    expect(screen.getByText('12.0 MB')).toBeVisible()
+    expect(screen.getByText('Threads')).toBeVisible()
+    expect(screen.queryByText('Reserved memory')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('settings-diagnostics-copy'))
     await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))

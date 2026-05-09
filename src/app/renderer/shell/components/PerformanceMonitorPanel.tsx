@@ -235,10 +235,6 @@ export function PerformanceMonitorPanel({
           value={formatBytes(processTotals.workingSetBytes)}
         />
         <MetricTile
-          label={t('performanceMonitor.metrics.reservedMemory')}
-          value={formatBytes(processTotals.privateBytes)}
-        />
-        <MetricTile
           label={t('performanceMonitor.metrics.threads')}
           value={formatInteger(processTotals.threadCount)}
         />
@@ -290,7 +286,6 @@ export function PerformanceMonitorPanel({
             <th>{t('performanceMonitor.table.scope')}</th>
             <th>{t('performanceMonitor.table.count')}</th>
             <th>{t('performanceMonitor.table.memoryInUse')}</th>
-            <th>{t('performanceMonitor.table.reservedMemory')}</th>
             <th>{t('performanceMonitor.table.threads')}</th>
           </tr>
         </thead>
@@ -299,11 +294,11 @@ export function PerformanceMonitorPanel({
             visibleRows.map(row => <ProcessSummaryRow key={row.kind} row={row} />)
           ) : !snapshot && !error ? (
             <tr>
-              <td colSpan={6}>{t('common.loading')}</td>
+              <td colSpan={5}>{t('common.loading')}</td>
             </tr>
           ) : (
             <tr>
-              <td colSpan={6}>{t('performanceMonitor.noProcessRows')}</td>
+              <td colSpan={5}>{t('performanceMonitor.noProcessRows')}</td>
             </tr>
           )}
         </tbody>
@@ -378,7 +373,6 @@ function ProcessSummaryRow({
       <td>{t(getProcessScopeLabelKey(row.scope))}</td>
       <td>{row.count}</td>
       <td>{formatBytes(row.workingSetBytes)}</td>
-      <td>{formatBytes(row.privateBytes)}</td>
       <td>{formatInteger(row.threadCount)}</td>
     </tr>
   )

@@ -26,7 +26,6 @@ export const enPerformanceMonitor = {
     xtermInstances: 'xterm instances',
     electronCpu: 'Electron CPU',
     memoryInUse: 'Memory in use',
-    reservedMemory: 'Reserved memory',
     threads: 'Threads',
   },
   sections: {
@@ -45,12 +44,10 @@ export const enPerformanceMonitor = {
     scope: 'Scope',
     count: 'Count',
     memoryInUse: 'Memory in use',
-    reservedMemory: 'Reserved memory',
     threads: 'Threads',
   },
   noProcessRows: 'No process rows available.',
-  memoryHelp:
-    'Memory in use is the currently resident part. Reserved memory is what the process requested; sustained growth is the signal.',
+  memoryHelp: 'Memory in use is the part currently resident in RAM.',
   incidents: {
     empty: 'No jank records yet.',
     trigger: {

@@ -155,8 +155,8 @@ export function sortProcessSummaryByMemory(
   rows: PerformanceDiagnosticsProcessSummary[],
 ): PerformanceDiagnosticsProcessSummary[] {
   return [...rows].sort((left, right) => {
-    const leftBytes = Math.max(left.workingSetBytes ?? 0, left.privateBytes ?? 0)
-    const rightBytes = Math.max(right.workingSetBytes ?? 0, right.privateBytes ?? 0)
+    const leftBytes = left.workingSetBytes ?? 0
+    const rightBytes = right.workingSetBytes ?? 0
     return rightBytes - leftBytes
   })
 }

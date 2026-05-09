@@ -3,6 +3,7 @@ import type { PerformanceDiagnosticsSnapshotResult } from '../../../src/shared/c
 import {
   getDisplayProcessSummary,
   isUsingElectronMetricsFallback,
+  sortProcessSummaryByMemory,
   summarizeProcessResources,
 } from '../../../src/app/renderer/performanceDiagnostics/performanceDiagnosticsFormatting'
 
@@ -84,5 +85,28 @@ describe('performance diagnostics formatting', () => {
       privateBytes: 320 * 1024,
       electronCpuPercent: 6,
     })
+  })
+
+  it('sorts visible rows by memory in use instead of reserved memory', () => {
+    expect(
+      sortProcessSummaryByMemory([
+        {
+          kind: 'opencove-main',
+          scope: 'opencove',
+          count: 1,
+          workingSetBytes: 10,
+          privateBytes: 500,
+          threadCount: 2,
+        },
+        {
+          kind: 'external-agent-codex',
+          scope: 'external-agent',
+          count: 1,
+          workingSetBytes: 20,
+          privateBytes: 0,
+          threadCount: 4,
+        },
+      ]),
+    ).toMatchObject([{ kind: 'external-agent-codex' }, { kind: 'opencove-main' }])
   })
 })

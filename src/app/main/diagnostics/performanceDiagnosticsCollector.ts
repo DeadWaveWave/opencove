@@ -26,7 +26,7 @@ const SELF_PROCESS_FALLBACK_NOTE =
   'Process-tree rows were unavailable; showing the current OpenCove main process as a fallback.'
 const UNIX_PS_QUERY_ARGUMENTS: Record<'darwin' | 'linux', string[]> = {
   darwin: ['-ww', '-axo', 'pid=,ppid=,rss=,ucomm=,args='],
-  linux: ['-ww', '-axo', 'pid=,ppid=,rss=,comm=,args='],
+  linux: ['-ww', '-axo', 'pid=,ppid=,rss=,nlwp=,comm=,args='],
 }
 
 export interface WindowsProcessRow {
@@ -223,7 +223,7 @@ function normalizeUnixProcessLine(
   const pattern =
     platform === 'darwin'
       ? /^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/
-      : /^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/
+      : /^(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/
   const match = pattern.exec(trimmed)
   if (!match) {
     return null
@@ -234,17 +234,22 @@ function normalizeUnixProcessLine(
     return null
   }
 
-  const commandLine = match[5]?.trim() || match[4] || `pid-${pid}`
+  const threadCount = platform === 'linux' ? toProcessId(match[4]) : null
+  const name = platform === 'linux' ? match[5] : match[4]
+  const commandLine =
+    platform === 'linux'
+      ? match[6]?.trim() || match[5] || `pid-${pid}`
+      : match[5]?.trim() || match[4] || `pid-${pid}`
   return {
     pid,
     parentPid: toProcessId(match[2]),
-    name: match[4] || `pid-${pid}`,
+    name: name || `pid-${pid}`,
     commandLine,
     workingSetBytes: kibToBytes(toNonNegativeNumber(match[3])),
     privateBytes: null,
     cpuUserTimeMs: null,
     cpuKernelTimeMs: null,
-    threadCount: null,
+    threadCount,
   }
 }
 
@@ -259,6 +264,32 @@ async function readUnixProcessRows(
     .split(/\r?\n/)
     .map(line => normalizeUnixProcessLine(line, platform))
     .filter((row): row is RawPerformanceProcessRow => row !== null)
+}
+
+function countDarwinThreadsByPid(text: string): Map<number, number> {
+  const counts = new Map<number, number>()
+  for (const line of text.split(/\r?\n/)) {
+    const pidToken = line
+      .trim()
+      .split(/\s+/)
+      .find(token => /^\d+$/.test(token))
+    const pid = toProcessId(pidToken)
+    if (pid === null) {
+      continue
+    }
+    counts.set(pid, (counts.get(pid) ?? 0) + 1)
+  }
+  return counts
+}
+
+async function readDarwinThreadCounts(pids: readonly number[]): Promise<Map<number, number>> {
+  if (pids.length === 0) {
+    return new Map()
+  }
+  const { stdout } = await execFileAsync('ps', ['-M', '-p', pids.join(',')], {
+    maxBuffer: PROCESS_QUERY_MAX_BUFFER_BYTES,
+  })
+  return countDarwinThreadsByPid(typeof stdout === 'string' ? stdout : '')
 }
 
 async function resolveLocalWorkerPid(): Promise<number | null> {
@@ -309,7 +340,14 @@ async function collectUnixProcessTree(
   const rows = await readUnixProcessRows(platform)
   const localWorkerPid = await resolveLocalWorkerPid()
   const rootPids = discoverRelatedProcessRootPids(rows, rootPid, localWorkerPid)
-  const descendants = collectDescendantRawRowsForRoots(rows, rootPids)
+  let descendants = collectDescendantRawRowsForRoots(rows, rootPids)
+  if (platform === 'darwin') {
+    const threadCounts = await readDarwinThreadCounts(descendants.map(row => row.pid))
+    descendants = descendants.map(row => ({
+      ...row,
+      threadCount: threadCounts.get(row.pid) ?? null,
+    }))
+  }
   const processes = descendants
     .map(row => normalizePerformanceProcessRow(row, rootPid))
     .filter(row => row.kind !== 'diagnostics-collector')
