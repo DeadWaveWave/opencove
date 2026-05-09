@@ -25,9 +25,12 @@ import { ensureWebsiteWindowRuntime } from './websiteWindowRuntimeFactory'
 import { normalizeWebsiteCanvasZoom } from './websiteWindowView'
 import {
   applyWebsiteWindowViewportMetrics,
-  captureWebsiteWindowRuntimeSnapshot,
-  normalizeWebsiteWindowSnapshotQuality,
+  flushPendingWebsiteWindowRuntimeSnapshot,
 } from './websiteWindowRuntimeViewOps'
+import {
+  applyPendingWebsiteWindowSnapshotRequest,
+  captureWebsiteWindowSnapshotRequest,
+} from './websiteWindowSnapshotRequests'
 import { ensureWebsiteWindowView } from './websiteWindowEnsureView'
 import {
   disposeWebsiteWindowRuntime,
@@ -43,6 +46,7 @@ import { resolveBrowserWindowScaleFactor } from './websiteWindowScaleFactor'
 export class WebsiteWindowManager {
   private policy: WebsiteWindowPolicy = { ...DEFAULT_WEBSITE_WINDOW_POLICY }
   private runtimeByNodeId = new Map<string, WebsiteWindowRuntime>()
+  private pendingSnapshotQualityByNodeId = new Map<string, number>()
   private configuredSessions = new WeakSet<Session>()
   private isOccluded = false
   constructor(private window: BrowserWindow) {}
@@ -52,6 +56,7 @@ export class WebsiteWindowManager {
     }
 
     this.runtimeByNodeId.clear()
+    this.pendingSnapshotQualityByNodeId.clear()
   }
   configurePolicy(payload: ConfigureWebsiteWindowPolicyInput): void {
     const normalized = normalizeWebsiteWindowPolicy(payload.policy)
@@ -130,6 +135,10 @@ export class WebsiteWindowManager {
       runtime.canvasZoom = normalizeWebsiteCanvasZoom(payload.canvasZoom)
     }
 
+    applyPendingWebsiteWindowSnapshotRequest({
+      runtime,
+      pendingSnapshotQualityByNodeId: this.pendingSnapshotQualityByNodeId,
+    })
     this.markActive(runtime)
 
     const windowScaleFactor = resolveBrowserWindowScaleFactor(this.window)
@@ -147,6 +156,7 @@ export class WebsiteWindowManager {
       runtime,
       emit: eventPayload => this.emit(eventPayload),
     })
+    this.flushPendingSnapshot(runtime)
   }
 
   deactivate(nodeId: string): void {
@@ -207,6 +217,7 @@ export class WebsiteWindowManager {
         windowScaleFactor,
       })
     }
+    this.flushPendingSnapshot(runtime)
   }
 
   navigate(payload: NavigateWebsiteWindowInput): void {
@@ -346,19 +357,10 @@ export class WebsiteWindowManager {
   }
 
   captureSnapshot(payload: CaptureWebsiteWindowSnapshotInput): void {
-    const nodeId = typeof payload?.nodeId === 'string' ? payload.nodeId.trim() : ''
-    if (nodeId.length === 0) {
-      return
-    }
-
-    const runtime = this.runtimeByNodeId.get(nodeId) ?? null
-    if (!runtime) {
-      return
-    }
-
-    captureWebsiteWindowRuntimeSnapshot({
-      runtime,
-      quality: normalizeWebsiteWindowSnapshotQuality(payload.quality),
+    captureWebsiteWindowSnapshotRequest({
+      payload,
+      runtimeByNodeId: this.runtimeByNodeId,
+      pendingSnapshotQualityByNodeId: this.pendingSnapshotQualityByNodeId,
       emit: eventPayload => this.emit(eventPayload),
     })
   }
@@ -375,6 +377,7 @@ export class WebsiteWindowManager {
       configuredSessions: this.configuredSessions,
       emitState: nextRuntime => this.emitState(nextRuntime),
       emit: payload => this.emit(payload),
+      flushPendingSnapshot: nextRuntime => this.flushPendingSnapshot(nextRuntime),
     })
 
     const view = runtime.view
@@ -463,6 +466,12 @@ export class WebsiteWindowManager {
       window: this.window,
       emit: payload => this.emit(payload),
       emitState: nextRuntime => this.emitState(nextRuntime),
+    })
+  }
+  private flushPendingSnapshot(runtime: WebsiteWindowRuntime): void {
+    flushPendingWebsiteWindowRuntimeSnapshot({
+      runtime,
+      emit: payload => this.emit(payload),
     })
   }
   private emitState(runtime: WebsiteWindowRuntime): void {

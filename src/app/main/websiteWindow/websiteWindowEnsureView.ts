@@ -18,11 +18,13 @@ export function ensureWebsiteWindowView({
   configuredSessions,
   emitState,
   emit,
+  flushPendingSnapshot,
 }: {
   runtime: WebsiteWindowRuntime
   configuredSessions: WeakSet<Session>
   emitState: (runtime: WebsiteWindowRuntime) => void
   emit: (payload: WebsiteWindowEventPayload) => void
+  flushPendingSnapshot: (runtime: WebsiteWindowRuntime) => void
 }): void {
   if (runtime.view) {
     try {
@@ -85,6 +87,9 @@ export function ensureWebsiteWindowView({
     },
     emit: payload => {
       emit(payload)
+    },
+    flushPendingSnapshot: nextRuntime => {
+      flushPendingSnapshot(nextRuntime)
     },
   })
 }

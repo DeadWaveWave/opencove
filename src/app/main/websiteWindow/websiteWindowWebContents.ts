@@ -54,11 +54,13 @@ export function registerWebsiteWebContentsRuntimeListeners({
   contents,
   emitState,
   emit,
+  flushPendingSnapshot,
 }: {
   runtime: WebsiteWindowRuntime
   contents: WebContents
   emitState: (runtime: WebsiteWindowRuntime) => void
   emit: (payload: WebsiteWindowEventPayload) => void
+  flushPendingSnapshot: (runtime: WebsiteWindowRuntime) => void
 }): () => void {
   const nodeId = runtime.nodeId
 
@@ -101,6 +103,8 @@ export function registerWebsiteWebContentsRuntimeListeners({
       contents,
       canvasZoom: runtime.canvasZoom,
     })
+
+    flushPendingSnapshot(runtime)
   }
 
   const handleDidNavigate = (_event: Electron.Event, url: string) => {

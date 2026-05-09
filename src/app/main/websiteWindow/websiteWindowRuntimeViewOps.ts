@@ -1,5 +1,6 @@
 import type { WebsiteWindowBounds, WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
+import { resolveWebsiteWindowRuntimeWebContents } from './websiteWindowNavigationOps'
 import { syncWebsiteWindowDeviceMetrics } from './websiteWindowDeviceMetrics'
 import { syncWebsiteWindowScrollbarStyle } from './websiteWindowScrollbarStyle'
 import { normalizeWebsiteCanvasZoom, resolveWebsiteViewBorderRadius } from './websiteWindowView'
@@ -19,24 +20,13 @@ export function captureWebsiteWindowRuntimeSnapshot({
   quality: number
   emit: (payload: WebsiteWindowEventPayload) => void
 }): void {
-  const view = runtime.view
-  if (!view) {
-    return
-  }
-
-  let contents: (typeof view)['webContents'] | null = null
-  try {
-    contents = view.webContents
-  } catch {
-    return
-  }
-
-  if (!contents || contents.isDestroyed()) {
+  const contents = resolveWebsiteWindowRuntimeWebContents(runtime)
+  if (!contents) {
     return
   }
 
   void contents
-    .capturePage()
+    .capturePage(undefined, { stayHidden: true })
     .then(image => {
       const jpeg = image.toJPEG(quality)
       const dataUrl = `data:image/jpeg;base64,${jpeg.toString('base64')}`
@@ -44,6 +34,81 @@ export function captureWebsiteWindowRuntimeSnapshot({
       emit({ type: 'snapshot', nodeId: runtime.nodeId, dataUrl })
     })
     .catch(() => undefined)
+}
+
+function hasCapturableWebsiteWindowBounds(runtime: WebsiteWindowRuntime): boolean {
+  const bounds = runtime.viewportBounds ?? runtime.bounds
+  return Boolean(bounds && bounds.width > 0 && bounds.height > 0)
+}
+
+function isWebsiteWindowRuntimeReadyForSnapshot(runtime: WebsiteWindowRuntime): boolean {
+  return (
+    runtime.lifecycle === 'active' &&
+    runtime.isLoading === false &&
+    typeof runtime.url === 'string' &&
+    runtime.url.trim().length > 0 &&
+    hasCapturableWebsiteWindowBounds(runtime)
+  )
+}
+
+export function flushPendingWebsiteWindowRuntimeSnapshot({
+  runtime,
+  emit,
+}: {
+  runtime: WebsiteWindowRuntime
+  emit: (payload: WebsiteWindowEventPayload) => void
+}): boolean {
+  const pendingQuality = runtime.pendingSnapshotQuality
+  if (pendingQuality === null || runtime.snapshotCaptureInFlight) {
+    return false
+  }
+
+  if (!isWebsiteWindowRuntimeReadyForSnapshot(runtime)) {
+    return false
+  }
+
+  const contents = resolveWebsiteWindowRuntimeWebContents(runtime)
+  if (!contents) {
+    return false
+  }
+
+  runtime.snapshotCaptureInFlight = true
+  void contents
+    .capturePage(undefined, { stayHidden: true })
+    .then(image => {
+      const jpeg = image.toJPEG(pendingQuality)
+      const dataUrl = `data:image/jpeg;base64,${jpeg.toString('base64')}`
+      runtime.snapshotDataUrl = dataUrl
+      if (runtime.pendingSnapshotQuality === pendingQuality) {
+        runtime.pendingSnapshotQuality = null
+      }
+      emit({ type: 'snapshot', nodeId: runtime.nodeId, dataUrl })
+    })
+    .catch(() => undefined)
+    .finally(() => {
+      runtime.snapshotCaptureInFlight = false
+      if (
+        runtime.pendingSnapshotQuality !== null &&
+        runtime.pendingSnapshotQuality !== pendingQuality
+      ) {
+        flushPendingWebsiteWindowRuntimeSnapshot({ runtime, emit })
+      }
+    })
+
+  return true
+}
+
+export function requestWebsiteWindowRuntimeSnapshot({
+  runtime,
+  quality,
+  emit,
+}: {
+  runtime: WebsiteWindowRuntime
+  quality: number
+  emit: (payload: WebsiteWindowEventPayload) => void
+}): void {
+  runtime.pendingSnapshotQuality = quality
+  flushPendingWebsiteWindowRuntimeSnapshot({ runtime, emit })
 }
 
 export function applyWebsiteWindowBounds(

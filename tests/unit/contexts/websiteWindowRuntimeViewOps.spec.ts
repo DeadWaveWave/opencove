@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from 'vitest'
-import { applyWebsiteWindowViewportMetrics } from '../../../src/app/main/websiteWindow/websiteWindowRuntimeViewOps'
+import {
+  applyWebsiteWindowViewportMetrics,
+  flushPendingWebsiteWindowRuntimeSnapshot,
+  requestWebsiteWindowRuntimeSnapshot,
+} from '../../../src/app/main/websiteWindow/websiteWindowRuntimeViewOps'
 
 describe('websiteWindowRuntimeViewOps', () => {
   it('scales the native view corner radius to match the canvas zoom', () => {
@@ -101,5 +105,63 @@ describe('websiteWindowRuntimeViewOps', () => {
 
     expect(hostSetBounds).toHaveBeenCalledWith({ x: 0, y: 0, width: 240, height: 160 })
     expect(viewSetBounds).toHaveBeenCalledWith({ x: -60, y: 0, width: 300, height: 160 })
+  })
+
+  it('keeps snapshot requests pending until the runtime is ready to capture', async () => {
+    const emit = vi.fn()
+    const capturePage = vi.fn()
+    const toJPEG = vi.fn(() => Buffer.from('snapshot'))
+
+    const runtime = {
+      nodeId: 'website-node',
+      lifecycle: 'active',
+      isLoading: true,
+      url: null,
+      bounds: { x: 0, y: 0, width: 480, height: 320 },
+      viewportBounds: { x: 0, y: 0, width: 480, height: 320 },
+      pendingSnapshotQuality: null,
+      snapshotCaptureInFlight: false,
+      snapshotDataUrl: null,
+      view: {
+        webContents: {
+          isDestroyed: vi.fn(() => false),
+          capturePage,
+        },
+      },
+    } as Parameters<typeof requestWebsiteWindowRuntimeSnapshot>[0]['runtime']
+
+    requestWebsiteWindowRuntimeSnapshot({
+      runtime,
+      quality: 60,
+      emit,
+    })
+
+    expect(capturePage).not.toHaveBeenCalled()
+    expect(runtime.pendingSnapshotQuality).toBe(60)
+
+    runtime.isLoading = false
+    runtime.url = 'https://example.com'
+    capturePage.mockResolvedValue({
+      toJPEG,
+    })
+
+    expect(
+      flushPendingWebsiteWindowRuntimeSnapshot({
+        runtime,
+        emit,
+      }),
+    ).toBe(true)
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(capturePage).toHaveBeenCalledWith(undefined, { stayHidden: true })
+    expect(runtime.pendingSnapshotQuality).toBeNull()
+    expect(runtime.snapshotDataUrl).toBe('data:image/jpeg;base64,c25hcHNob3Q=')
+    expect(emit).toHaveBeenCalledWith({
+      type: 'snapshot',
+      nodeId: 'website-node',
+      dataUrl: 'data:image/jpeg;base64,c25hcHNob3Q=',
+    })
   })
 })

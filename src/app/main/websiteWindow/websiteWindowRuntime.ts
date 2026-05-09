@@ -26,6 +26,8 @@ export interface WebsiteWindowRuntime {
   title: string | null
   url: string | null
   snapshotDataUrl: string | null
+  pendingSnapshotQuality: number | null
+  snapshotCaptureInFlight: boolean
   scrollbarCssKey: string | null
   scrollbarCssSizePx: number | null
   scrollbarCssVersion: number
