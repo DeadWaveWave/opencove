@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { access, mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { promisify } from 'node:util'
@@ -10,6 +10,15 @@ import { disposeShellEnvironmentService } from '../../../src/platform/os/ShellEn
 
 const execFileAsync = promisify(execFile)
 const ORIGINAL_ENV = { ...process.env }
+
+async function hasExecutable(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath)
+    return true
+  } catch {
+    return false
+  }
+}
 
 afterEach(() => {
   process.env = { ...ORIGINAL_ENV }
@@ -51,6 +60,10 @@ describe('CliEnvironment hydration', () => {
 
   it('hydrates PATH from an interactive zsh env so shebang-based CLIs can resolve node', async () => {
     if (process.platform === 'win32') {
+      return
+    }
+
+    if (!(await hasExecutable('/bin/zsh'))) {
       return
     }
 

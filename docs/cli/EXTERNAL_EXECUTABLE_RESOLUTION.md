@@ -25,6 +25,7 @@ Command environment:
   - test mode：当前进程环境。
   - 显式 `OPENCOVE_TRUST_PROCESS_ENV=1`：当前进程环境。
   - 其它 POSIX GUI/desktop 场景：shell-derived env。
+- 当 owner 是 Windows `process_env` 时，仍会把常见稳定 shim/bin 目录正规化进 PATH，避免能解析到 `codex.cmd` / `claude.cmd`，但 wrapper 再找 `node` 时失败。
 - 会清理 shell capture 期间注入的保护性环境变量，避免把捕获辅助变量泄漏到真实 CLI。
 
 Executable locator:
@@ -120,6 +121,8 @@ Windows:
 
 - `nvm-windows`
   - 常见依赖 `NVM_SYMLINK` / `nodejs` symlink。
+- `scoop`
+  - 常见依赖 `~/scoop/shims` 或 `%SCOOP%\\shims`；command env 与 fallback directories 都应覆盖，确保 npm/pnpm wrapper 再次调用 `node` 时也能成功。
 - `%APPDATA%\\npm`
   - npm global CLI 常见安装位置。
 - `Volta`, `pnpm`, `scoop`, `chocolatey`
@@ -129,6 +132,7 @@ Windows:
 
 - `nvm` / `fnm` 这类“每个 shell 动态注入 PATH”的方案，**不能**只靠硬编码 fallback 目录解决；shell-derived env 是主路径。
 - `Volta` / `asdf` / `mise` 这类 shim 方案，既应被 shell-derived env 覆盖，也应在 fallback directories 中保留稳定兜底。
+- Windows 上如果 CLI wrapper 本身已能被解析，但内部再次调用 `node` 仍依赖 PATH，则 command env 也必须包含对应的稳定 shim/bin 目录，不能只在 discovery 阶段补 fallback。
 
 ## Settings Integration
 

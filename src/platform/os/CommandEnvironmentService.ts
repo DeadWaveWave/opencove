@@ -4,6 +4,8 @@ import {
   sanitizeCapturedShellEnvironment,
   type ShellEnvironmentSnapshot,
 } from './ShellEnvironmentService'
+import { mergeCommandPath } from './CommandPathSegments'
+import { resolveHomeDirectory } from './HomeDirectory'
 
 const TRUST_PROCESS_ENV_MARKER = 'OPENCOVE_TRUST_PROCESS_ENV'
 
@@ -52,29 +54,71 @@ function resolveProcessEnvironmentReason(): string | null {
   return null
 }
 
+function normalizeProcessCommandEnvironment(env: NodeJS.ProcessEnv): {
+  env: NodeJS.ProcessEnv
+  diagnostics: string[]
+} {
+  const nextEnv = { ...env }
+  if (process.platform !== 'win32') {
+    return {
+      env: nextEnv,
+      diagnostics: [],
+    }
+  }
+
+  const currentPath = nextEnv.PATH ?? ''
+  const normalizedPath = mergeCommandPath({
+    platform: process.platform,
+    currentPath,
+    homeDir: resolveHomeDirectory(),
+    env: nextEnv,
+  })
+  if (normalizedPath === currentPath) {
+    return {
+      env: nextEnv,
+      diagnostics: [],
+    }
+  }
+
+  nextEnv.PATH = normalizedPath
+  return {
+    env: nextEnv,
+    diagnostics: [
+      'Appended stable Windows command fallback directories to the current process PATH.',
+    ],
+  }
+}
+
 function toCommandEnvironmentSnapshot(
   shellSnapshot: ShellEnvironmentSnapshot,
 ): CommandEnvironmentSnapshot {
   const source = shellSnapshot.source === 'process_env' ? 'process_env' : 'shell_env'
+  const normalizedProcessEnvironment =
+    source === 'process_env' ? normalizeProcessCommandEnvironment(shellSnapshot.env) : null
+  const env =
+    source === 'shell_env'
+      ? sanitizeCapturedShellEnvironment(shellSnapshot.env)
+      : normalizedProcessEnvironment!.env
   return {
-    env:
-      source === 'shell_env'
-        ? sanitizeCapturedShellEnvironment(shellSnapshot.env)
-        : { ...shellSnapshot.env },
+    env,
     shellPath: shellSnapshot.shellPath,
     source,
-    diagnostics: [...shellSnapshot.diagnostics],
+    diagnostics: [
+      ...shellSnapshot.diagnostics,
+      ...(normalizedProcessEnvironment?.diagnostics ?? []),
+    ],
   }
 }
 
 async function resolveCommandEnvironmentSnapshot(): Promise<CommandEnvironmentSnapshot> {
   const processEnvironmentReason = resolveProcessEnvironmentReason()
   if (processEnvironmentReason) {
+    const normalizedProcessEnvironment = normalizeProcessCommandEnvironment(process.env)
     return {
-      env: { ...process.env },
+      env: normalizedProcessEnvironment.env,
       shellPath: null,
       source: 'process_env',
-      diagnostics: [processEnvironmentReason],
+      diagnostics: [processEnvironmentReason, ...normalizedProcessEnvironment.diagnostics],
     }
   }
 

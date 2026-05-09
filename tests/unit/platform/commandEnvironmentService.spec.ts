@@ -88,4 +88,39 @@ describe('CommandEnvironmentService', () => {
     ])
     expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
   })
+
+  it('enriches Windows process PATH with stable fallback directories for wrapper runtimes', async () => {
+    setPlatform('win32')
+    process.env.NODE_ENV = 'production'
+    process.env.PATH = 'C:\\Windows\\System32'
+    delete process.env.HOME
+    process.env.USERPROFILE = 'C:\\Users\\tester'
+    process.env.SCOOP = 'C:\\Users\\tester\\scoop'
+    process.env.ProgramFiles = 'C:\\Program Files'
+    process.env.ProgramData = 'C:\\ProgramData'
+    process.env.APPDATA = 'C:\\Users\\tester\\AppData\\Roaming'
+    process.env.LOCALAPPDATA = 'C:\\Users\\tester\\AppData\\Local'
+    process.env.NVM_SYMLINK = 'C:\\nvm4w\\nodejs'
+
+    const { getCommandEnvironmentSnapshot } = await importCommandEnvironmentService()
+    const snapshot = await getCommandEnvironmentSnapshot()
+
+    expect(snapshot.source).toBe('process_env')
+    expect(snapshot.env.PATH?.split(';')).toEqual([
+      'C:\\Windows\\System32',
+      'C:\\nvm4w\\nodejs',
+      'C:\\Users\\tester\\AppData\\Roaming\\npm',
+      'C:\\Users\\tester\\AppData\\Local\\pnpm',
+      'C:\\Users\\tester\\AppData\\Local\\Volta\\bin',
+      'C:\\Users\\tester\\scoop\\shims',
+      'C:\\ProgramData\\scoop\\shims',
+      'C:\\Program Files\\nodejs',
+      'C:\\Program Files\\nodejs\\node_global',
+    ])
+    expect(snapshot.diagnostics).toEqual([
+      'Windows uses the current process environment for command execution.',
+      'Appended stable Windows command fallback directories to the current process PATH.',
+    ])
+    expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+  })
 })

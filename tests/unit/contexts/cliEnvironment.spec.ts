@@ -25,6 +25,7 @@ describe('computeHydratedCliPath', () => {
       currentPath: '/usr/bin:/bin:/opt/homebrew/bin',
       homeDir: '/Users/tester',
       shellPathFromLogin: '/Users/tester/.local/bin:/usr/local/bin:/usr/bin',
+      env: {},
     })
 
     expect(path.split(':')).toEqual([
@@ -50,6 +51,7 @@ describe('computeHydratedCliPath', () => {
       currentPath: '/usr/bin:/bin',
       homeDir: '/Users/tester',
       shellPathFromLogin: '',
+      env: {},
     })
 
     expect(path.split(':')).toContain('/Users/tester/.npm-global/bin')
