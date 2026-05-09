@@ -29,7 +29,11 @@ export interface TerminalDiagnosticsLogInput {
 }
 
 export type RuntimeDiagnosticsLevel = 'info' | 'error'
-export type RuntimeDiagnosticsSource = 'main-app' | 'main-window' | 'renderer-error-boundary'
+export type RuntimeDiagnosticsSource =
+  | 'main-app'
+  | 'main-window'
+  | 'renderer-error-boundary'
+  | 'renderer-performance-monitor'
 export type RuntimeDiagnosticsDetailValue = string | number | boolean | null
 
 export interface RuntimeDiagnosticsLogInput {

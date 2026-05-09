@@ -4,6 +4,33 @@ import { describe, expect, it, vi } from 'vitest'
 import type { AppUpdateState } from '../../../src/shared/contracts/dto'
 import { AppHeader } from '../../../src/app/renderer/shell/components/AppHeader'
 
+const rendererSnapshot = {
+  domNodeCount: 0,
+  terminalNodeCount: 0,
+  xtermInstanceCount: 0,
+  terminalCanvasCount: 0,
+  jsHeapUsedBytes: null,
+  jsHeapTotalBytes: null,
+}
+
+const frameSnapshot = {
+  sampleCount: 0,
+  frameP95Ms: null,
+  frameMaxMs: null,
+  longTaskCount: 0,
+  longTaskTotalMs: 0,
+}
+
+const memoryTrend = {
+  sampleCount: 0,
+  durationMs: 0,
+  baselineJsHeapUsedBytes: null,
+  currentJsHeapUsedBytes: null,
+  deltaJsHeapUsedBytes: null,
+  deltaPercent: null,
+  isGrowing: false,
+}
+
 function createUpdateState(overrides: Partial<AppUpdateState>): AppUpdateState {
   return {
     policy: 'prompt',
@@ -32,10 +59,25 @@ describe('AppHeader update indicator', () => {
         activeWorkspaceName="Workspace"
         activeWorkspacePath="/tmp/workspace"
         isSidebarCollapsed={false}
+        isControlCenterOpen={false}
         isCommandCenterOpen={false}
+        isPerformanceMonitorEnabled={true}
+        isPerformanceMonitorOpen={false}
+        isIssueReportOpen={false}
+        commandCenterShortcutHint="—"
+        performanceStatus="normal"
+        rendererSnapshot={rendererSnapshot}
+        frameSnapshot={frameSnapshot}
+        memoryTrend={memoryTrend}
+        performanceIncidents={[]}
         updateState={createUpdateState({ status: 'available', latestVersion: '0.2.1' })}
         onToggleSidebar={() => undefined}
+        onToggleControlCenter={() => undefined}
         onToggleCommandCenter={() => undefined}
+        onTogglePerformanceMonitor={() => undefined}
+        onClosePerformanceMonitor={() => undefined}
+        onToggleIssueReport={() => undefined}
+        onCloseIssueReport={() => undefined}
         onOpenSettings={() => undefined}
         onCheckForUpdates={() => undefined}
         onDownloadUpdate={onDownloadUpdate}
@@ -56,10 +98,25 @@ describe('AppHeader update indicator', () => {
         activeWorkspaceName="Workspace"
         activeWorkspacePath="/tmp/workspace"
         isSidebarCollapsed={false}
+        isControlCenterOpen={false}
         isCommandCenterOpen={false}
+        isPerformanceMonitorEnabled={true}
+        isPerformanceMonitorOpen={false}
+        isIssueReportOpen={false}
+        commandCenterShortcutHint="—"
+        performanceStatus="normal"
+        rendererSnapshot={rendererSnapshot}
+        frameSnapshot={frameSnapshot}
+        memoryTrend={memoryTrend}
+        performanceIncidents={[]}
         updateState={createUpdateState({ status: 'downloaded', latestVersion: '0.2.1' })}
         onToggleSidebar={() => undefined}
+        onToggleControlCenter={() => undefined}
         onToggleCommandCenter={() => undefined}
+        onTogglePerformanceMonitor={() => undefined}
+        onClosePerformanceMonitor={() => undefined}
+        onToggleIssueReport={() => undefined}
+        onCloseIssueReport={() => undefined}
         onOpenSettings={() => undefined}
         onCheckForUpdates={() => undefined}
         onDownloadUpdate={() => undefined}

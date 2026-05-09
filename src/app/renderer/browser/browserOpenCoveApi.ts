@@ -98,6 +98,7 @@ export function installBrowserOpenCoveApi(): void {
       enableTerminalDiagnostics: false,
       enableTerminalInputDiagnostics: false,
       enableTerminalTestApi,
+      disableTerminalTranscriptMirror: false,
       runtime: 'browser',
       platform: resolveBrowserPlatform(),
       mainPid: null,
@@ -105,6 +106,25 @@ export function installBrowserOpenCoveApi(): void {
     },
     debug: {
       logTerminalDiagnostics: () => undefined,
+      logRuntimeDiagnostics: () => undefined,
+    },
+    performanceDiagnostics: {
+      getSnapshot: async () => ({
+        capturedAt: new Date().toISOString(),
+        platform: resolveBrowserPlatform(),
+        arch: 'browser',
+        mainPid: 0,
+        processTree: {
+          status: 'unsupported',
+          rootPid: 0,
+          sampledProcessCount: 0,
+          message: 'Process diagnostics are unavailable in browser runtime.',
+        },
+        processes: [],
+        processSummary: [],
+        electronMetrics: [],
+        notes: ['Process diagnostics are unavailable in browser runtime.'],
+      }),
     },
     issueReport: {
       prepare: async () => {

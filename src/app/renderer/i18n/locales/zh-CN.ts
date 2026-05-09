@@ -8,6 +8,7 @@ import { zhCNSettingsPanel } from './zh-CN.settingsPanel'
 import { zhCNWorktree } from './zh-CN.worktree'
 import { zhCNWebsiteNode } from './zh-CN.websiteNode'
 import { zhCNIssueReport } from './zh-CN.issueReport'
+import { zhCNPerformanceMonitor } from './zh-CN.performanceMonitor'
 
 export const zhCN = {
   common: {
@@ -208,6 +209,7 @@ export const zhCN = {
     dismiss: '忽略',
   },
   issueReport: zhCNIssueReport,
+  performanceMonitor: zhCNPerformanceMonitor,
   agentRuntime: {
     working: '运行中',
     standby: '待命',

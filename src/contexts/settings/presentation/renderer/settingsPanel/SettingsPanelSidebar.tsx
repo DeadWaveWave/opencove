@@ -140,6 +140,12 @@ export function SettingsPanelSidebar({
         onClick={() => onSelectPage('integrations')}
       />
       <SettingsPanelNavButton
+        isActive={activePageId === 'diagnostics'}
+        label={t('settingsPanel.nav.diagnostics')}
+        testId="settings-section-nav-diagnostics"
+        onClick={() => onSelectPage('diagnostics')}
+      />
+      <SettingsPanelNavButton
         isActive={activePageId === 'experimental'}
         label={t('settingsPanel.nav.experimental')}
         testId="settings-section-nav-experimental"

@@ -25,6 +25,16 @@ describe('normalizeAgentSettings', () => {
     expect(normalizeAgentSettings({}).defaultTerminalProfileId).toBeNull()
   })
 
+  it('keeps the header performance monitor opt-in by default', () => {
+    expect(DEFAULT_AGENT_SETTINGS.performanceMonitorHeaderButtonEnabled).toBe(false)
+    expect(normalizeAgentSettings({}).performanceMonitorHeaderButtonEnabled).toBe(false)
+    expect(
+      normalizeAgentSettings({
+        performanceMonitorHeaderButtonEnabled: true,
+      }).performanceMonitorHeaderButtonEnabled,
+    ).toBe(true)
+  })
+
   it('defaults and normalizes terminal display reference and compensation toggles', () => {
     expect(DEFAULT_AGENT_SETTINGS.terminalDisplayAutoReferenceEnabled).toBe(true)
     expect(DEFAULT_AGENT_SETTINGS.terminalDisplayCalibrationCompensationEnabled).toBe(true)

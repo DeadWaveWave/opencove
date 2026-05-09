@@ -6,6 +6,7 @@
 @import './styles/app-header.css';
 @import './styles/command-center.css';
 @import './styles/control-center.css';
+@import './styles/performance-monitor.css';
 @import './styles/workspace-search-panel.css';
 @import './styles/workspace-sidebar.css';
 @import './styles/workspace-agent-item.css';
@@ -31,6 +32,7 @@
 @import './styles/settings-panel.preview.css';
 @import './styles/settings-panel.lists.css';
 @import './styles/settings-panel.buttons.css';
+@import './styles/settings-panel.diagnostics.css';
 @import './styles/cove-window.css';
 @import './styles/remote-ui.css';
 @import './styles/remote-ui.settings.css';

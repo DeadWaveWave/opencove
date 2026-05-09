@@ -20,6 +20,7 @@ import { CanvasSection } from './settingsPanel/CanvasSection'
 import { EndpointsSection } from './settingsPanel/EndpointsSection'
 import { ExperimentalSection } from './settingsPanel/ExperimentalSection'
 import { GeneralSection } from './settingsPanel/GeneralSection'
+import { DiagnosticsSection } from './settingsPanel/DiagnosticsSection'
 import { IntegrationsSection } from './settingsPanel/IntegrationsSection'
 import { NotificationsSection } from './settingsPanel/NotificationsSection'
 import { SettingsPanelSidebar } from './settingsPanel/SettingsPanelSidebar'
@@ -165,6 +166,8 @@ export function SettingsPanel({
     onChange({ ...settings, keybindings })
   const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
     onChange({ ...settings, githubPullRequestsEnabled: enabled })
+  const updatePerformanceMonitorHeaderButtonEnabled = (enabled: boolean): void =>
+    onChange({ ...settings, performanceMonitorHeaderButtonEnabled: enabled })
 
   const removeTaskTagOption = (tag: string): void => {
     const nextTags = settings.taskTagOptions.filter(option => option !== tag)
@@ -388,7 +391,12 @@ export function SettingsPanel({
                 onChangeGitHubPullRequestsEnabled={updateGitHubPullRequestsEnabled}
               />
             ) : null}
-
+            {activePageId === 'diagnostics' ? (
+              <DiagnosticsSection
+                headerButtonEnabled={settings.performanceMonitorHeaderButtonEnabled}
+                onChangeHeaderButtonEnabled={updatePerformanceMonitorHeaderButtonEnabled}
+              />
+            ) : null}
             {activePageId === 'canvas' ? (
               <CanvasSection
                 canvasInputMode={settings.canvasInputMode}

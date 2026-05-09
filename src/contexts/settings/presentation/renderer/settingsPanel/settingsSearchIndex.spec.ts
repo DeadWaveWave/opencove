@@ -79,4 +79,20 @@ describe('settingsSearchIndex', () => {
       anchorId: 'settings-section-workspace-workspace-1',
     })
   })
+
+  it('finds the performance diagnostics page', () => {
+    const entries = createSettingsSearchEntries({
+      t: createTranslator(en),
+      workspaces: [],
+      endpointsEnabled: false,
+    })
+
+    const results = searchSettingsEntries(entries, 'memory diagnostics')
+
+    expect(results[0]).toMatchObject({
+      id: 'diagnostics.performance',
+      pageId: 'diagnostics',
+      anchorId: 'settings-section-diagnostics',
+    })
+  })
 })

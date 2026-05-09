@@ -66,6 +66,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   terminalDisplayCalibrationCompensationEnabled: true,
   terminalDisplayReference: null,
   uiFontSize: 18,
+  performanceMonitorHeaderButtonEnabled: false,
   githubPullRequestsEnabled: true,
   updatePolicy: 'prompt',
   updateChannel: 'stable',

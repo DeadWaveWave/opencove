@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Diagnostics: add Settings performance snapshots, a header real-time monitor, process-metric fallbacks, and automatic jank records for terminal/agent lag investigation. (#231)
 - Support: add an in-app issue report flow that generates a local redacted diagnostic report and opens a prefilled GitHub issue for Run Agent failures. (#230)
 - Remote: productize managed SSH endpoint setup with topology health, runtime repair/bootstrap actions, remote browse, and unified endpoint-driven project/location flows. (#227)
 - CLI: support Desktop-managed runtime launcher repair plus standalone CLI/Worker/Web UI installers for macOS, Linux, and Windows. (#209)
@@ -75,6 +76,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Agent: unify external CLI command environment ownership so GUI/Desktop launches resolve shebang-based Node CLIs consistently across availability, model listing, launch/resume, session discovery, task title generation, and worktree naming. (#236)
+- Terminal: reduce multi-terminal output jank by globally pacing xterm writes and throttling committed screen-cache serialization. (#231)
 - Space Explorer: clamp the window to the visible canvas viewport so shorter inactive macOS windows no longer overflow the canvas. (#232)
 - Agent: macOS PTY host now self-heals `spawn-helper` execute permission so `run_agent` launches do not fail. (#233)
 - Agent recovery: task-launched Claude Code sessions now persist and restore correctly from `.opencove/worktrees/...` paths in installed Windows builds. (#228)

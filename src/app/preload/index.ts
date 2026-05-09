@@ -114,6 +114,7 @@ import type {
 import { invokeIpc } from './ipcInvoke'
 import { createIssueReportPreloadApi } from './issueReportApi'
 import { resolveOpenCoveMeta } from './opencoveMeta'
+import { createPerformanceDiagnosticsPreloadApi } from './performanceDiagnosticsApi'
 type UnsubscribeFn = () => void
 const latestPtyStateBySessionId = new Map<string, TerminalSessionStateEvent>(),
   latestPtyMetadataBySessionId = new Map<string, TerminalSessionMetadataEvent>()
@@ -127,6 +128,7 @@ const opencoveApi = {
       ipcRenderer.send(IPC_CHANNELS.runtimeDiagnosticsLog, payload)
     },
   },
+  performanceDiagnostics: createPerformanceDiagnosticsPreloadApi(),
   issueReport: createIssueReportPreloadApi(),
   controlSurface: {
     invoke: async <TValue>(request: ControlSurfaceInvokeRequest): Promise<TValue> =>

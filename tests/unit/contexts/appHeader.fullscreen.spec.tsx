@@ -3,6 +3,33 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi, afterEach } from 'vitest'
 import { AppHeader } from '../../../src/app/renderer/shell/components/AppHeader'
 
+const rendererSnapshot = {
+  domNodeCount: 0,
+  terminalNodeCount: 0,
+  xtermInstanceCount: 0,
+  terminalCanvasCount: 0,
+  jsHeapUsedBytes: null,
+  jsHeapTotalBytes: null,
+}
+
+const frameSnapshot = {
+  sampleCount: 0,
+  frameP95Ms: null,
+  frameMaxMs: null,
+  longTaskCount: 0,
+  longTaskTotalMs: 0,
+}
+
+const memoryTrend = {
+  sampleCount: 0,
+  durationMs: 0,
+  baselineJsHeapUsedBytes: null,
+  currentJsHeapUsedBytes: null,
+  deltaJsHeapUsedBytes: null,
+  deltaPercent: null,
+  isGrowing: false,
+}
+
 function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>> = {}): void {
   render(
     <AppHeader
@@ -11,11 +38,23 @@ function renderHeader(overrides: Partial<React.ComponentProps<typeof AppHeader>>
       isSidebarCollapsed={false}
       isControlCenterOpen={false}
       isCommandCenterOpen={false}
+      isPerformanceMonitorEnabled={true}
+      isPerformanceMonitorOpen={false}
+      isIssueReportOpen={false}
       commandCenterShortcutHint="—"
+      performanceStatus="normal"
+      rendererSnapshot={rendererSnapshot}
+      frameSnapshot={frameSnapshot}
+      memoryTrend={memoryTrend}
+      performanceIncidents={[]}
       updateState={null}
       onToggleSidebar={() => undefined}
       onToggleControlCenter={() => undefined}
       onToggleCommandCenter={() => undefined}
+      onTogglePerformanceMonitor={() => undefined}
+      onClosePerformanceMonitor={() => undefined}
+      onToggleIssueReport={() => undefined}
+      onCloseIssueReport={() => undefined}
       onOpenSettings={() => undefined}
       onCheckForUpdates={() => undefined}
       onDownloadUpdate={() => undefined}

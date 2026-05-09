@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   AGENT_PROVIDERS,
@@ -84,6 +84,7 @@ function renderSettingsPanel(overrides: Partial<React.ComponentProps<typeof Sett
       modelCatalogByProvider={createModelCatalog()}
       workspaces={[]}
       onWorkspaceWorktreesRootChange={() => undefined}
+      onWorkspaceEnvironmentVariablesChange={() => undefined}
       isFocusNodeTargetZoomPreviewing={false}
       onFocusNodeTargetZoomPreviewChange={() => undefined}
       onChange={() => undefined}
@@ -348,6 +349,7 @@ describe('SettingsPanel', () => {
         modelCatalogByProvider={createModelCatalog()}
         workspaces={[]}
         onWorkspaceWorktreesRootChange={() => undefined}
+        onWorkspaceEnvironmentVariablesChange={() => undefined}
         isFocusNodeTargetZoomPreviewing={false}
         onFocusNodeTargetZoomPreviewChange={() => undefined}
         onChange={() => undefined}
@@ -359,5 +361,110 @@ describe('SettingsPanel', () => {
     )
 
     expect(screen.getByTestId('settings-section-nav-endpoints')).toBeVisible()
+  })
+
+  it('toggles the opt-in header performance monitor button from diagnostics settings', () => {
+    const onChange = vi.fn()
+    ;(window as typeof window & { opencoveApi?: Window['opencoveApi'] }).opencoveApi = {
+      performanceDiagnostics: {
+        getSnapshot: vi.fn(async () => ({
+          capturedAt: '2026-05-07T00:00:00.000Z',
+          platform: 'win32',
+          arch: 'x64',
+          mainPid: 100,
+          processTree: {
+            status: 'available' as const,
+            rootPid: 100,
+            sampledProcessCount: 0,
+            message: null,
+          },
+          processes: [],
+          processSummary: [],
+          electronMetrics: [],
+          notes: [],
+        })),
+      },
+    } as Window['opencoveApi']
+
+    mockTerminalProfiles()
+    renderSettingsPanel({ onChange })
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-diagnostics'))
+
+    const toggle = screen.getByTestId(
+      'settings-performance-monitor-header-button-enabled',
+    ) as HTMLInputElement
+    expect(toggle.checked).toBe(false)
+
+    fireEvent.click(toggle)
+
+    expect(onChange).toHaveBeenCalledWith({
+      ...DEFAULT_AGENT_SETTINGS,
+      performanceMonitorHeaderButtonEnabled: true,
+    })
+  })
+
+  it('loads and copies performance diagnostics from settings', async () => {
+    const getSnapshot = vi.fn(async () => ({
+      capturedAt: '2026-05-07T00:00:00.000Z',
+      platform: 'win32',
+      arch: 'x64',
+      mainPid: 100,
+      processTree: {
+        status: 'available' as const,
+        rootPid: 100,
+        sampledProcessCount: 2,
+        message: null,
+      },
+      processes: [],
+      processSummary: [
+        {
+          kind: 'opencove-renderer' as const,
+          scope: 'opencove' as const,
+          count: 1,
+          workingSetBytes: 24 * 1024 * 1024,
+          privateBytes: 20 * 1024 * 1024,
+          threadCount: 12,
+        },
+        {
+          kind: 'external-agent-codex' as const,
+          scope: 'external-agent' as const,
+          count: 1,
+          workingSetBytes: 12 * 1024 * 1024,
+          privateBytes: 10 * 1024 * 1024,
+          threadCount: 4,
+        },
+      ],
+      electronMetrics: [],
+      notes: ['collector excluded'],
+    }))
+    const writeText = vi.fn(async () => undefined)
+
+    ;(window as typeof window & { opencoveApi?: Window['opencoveApi'] }).opencoveApi = {
+      performanceDiagnostics: {
+        getSnapshot,
+      },
+      clipboard: {
+        readText: vi.fn(async () => ''),
+        writeText,
+      },
+    } as Window['opencoveApi']
+
+    mockTerminalProfiles()
+    renderSettingsPanel()
+
+    fireEvent.click(screen.getByTestId('settings-section-nav-diagnostics'))
+
+    expect(await screen.findByText('Performance Diagnostics')).toBeVisible()
+    await waitFor(() => expect(getSnapshot).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('OpenCove renderer')).toBeVisible()
+    expect(screen.getByText('Codex CLI')).toBeVisible()
+    expect(screen.getByText('12.0 MB')).toBeVisible()
+    expect(screen.getByText('Threads')).toBeVisible()
+    expect(screen.queryByText('Reserved memory')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('settings-diagnostics-copy'))
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1))
+    expect(writeText.mock.calls[0]?.[0]).toContain('external-agent-codex')
   })
 })

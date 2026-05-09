@@ -41,6 +41,7 @@ import type {
   ReadCanvasImageInput,
   ReadCanvasImageResult,
   WindowDisplayInfo,
+  PerformanceDiagnosticsSnapshotResult,
   ReadAgentNodePlaceholderScrollbackInput,
   ReadNodeScrollbackInput,
   ResizeTerminalInput,
@@ -124,6 +125,7 @@ export interface OpenCoveApi {
     enableTerminalDiagnostics?: boolean
     enableTerminalInputDiagnostics?: boolean
     enableTerminalTestApi?: boolean
+    disableTerminalTranscriptMirror?: boolean
     runtime: 'electron' | 'browser'
     platform: string
     mainPid: number | null
@@ -132,6 +134,9 @@ export interface OpenCoveApi {
   debug?: {
     logTerminalDiagnostics: (payload: TerminalDiagnosticsLogInput) => void
     logRuntimeDiagnostics: (payload: RuntimeDiagnosticsLogInput) => void
+  }
+  performanceDiagnostics: {
+    getSnapshot: () => Promise<PerformanceDiagnosticsSnapshotResult>
   }
   issueReport: {
     prepare: (payload: PrepareIssueReportInput) => Promise<PrepareIssueReportResult>

@@ -1,0 +1,94 @@
+/* --- Settings Diagnostics --- */
+.settings-panel__diagnostics-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-panel__diagnostics-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.settings-panel__diagnostics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.settings-panel__diagnostics-metric {
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--cove-border-subtle);
+  background: color-mix(in srgb, var(--cove-field) 72%, transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-panel__diagnostics-metric span {
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  color: var(--cove-text-faint);
+}
+
+.settings-panel__diagnostics-metric strong {
+  font-size: calc(14px * var(--cove-ui-font-scale));
+  color: var(--cove-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-panel__diagnostics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: calc(12px * var(--cove-ui-font-scale));
+  color: var(--cove-text-muted);
+}
+
+.settings-panel__diagnostics-table th,
+.settings-panel__diagnostics-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--cove-border-subtle);
+  text-align: left;
+  vertical-align: top;
+}
+
+.settings-panel__diagnostics-table th {
+  color: var(--cove-text-faint);
+  font-weight: 600;
+}
+
+.settings-panel__diagnostics-memory-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border: 1px solid var(--cove-border-subtle);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--cove-field) 70%, transparent);
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.45;
+}
+
+.settings-panel__diagnostics-table td:nth-child(n + 3),
+.settings-panel__diagnostics-table th:nth-child(n + 3) {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.settings-panel__diagnostics-error {
+  color: var(--cove-label-red);
+  font-size: calc(12px * var(--cove-ui-font-scale));
+}
+
+.settings-panel__diagnostics-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--cove-text-faint);
+  font-size: calc(11px * var(--cove-ui-font-scale));
+  line-height: 1.4;
+}

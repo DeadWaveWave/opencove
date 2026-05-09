@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react'
 export function useShellOverlayState(): {
   isCommandCenterOpen: boolean
   isControlCenterOpen: boolean
+  isPerformanceMonitorOpen: boolean
   isIssueReportOpen: boolean
   isWorkspaceSearchOpen: boolean
   isSpaceArchivesOpen: boolean
@@ -12,6 +13,8 @@ export function useShellOverlayState(): {
   closeCommandCenter: () => void
   toggleControlCenter: () => void
   closeControlCenter: () => void
+  togglePerformanceMonitor: () => void
+  closePerformanceMonitor: () => void
   toggleIssueReport: () => void
   closeIssueReport: () => void
   openWorkspaceSearch: () => void
@@ -24,6 +27,7 @@ export function useShellOverlayState(): {
 } {
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false)
   const [isControlCenterOpen, setIsControlCenterOpen] = useState(false)
+  const [isPerformanceMonitorOpen, setIsPerformanceMonitorOpen] = useState(false)
   const [isIssueReportOpen, setIsIssueReportOpen] = useState(false)
   const [isWorkspaceSearchOpen, setIsWorkspaceSearchOpen] = useState(false)
   const [isSpaceArchivesOpen, setIsSpaceArchivesOpen] = useState(false)
@@ -31,6 +35,7 @@ export function useShellOverlayState(): {
 
   const closeCommandCenter = useCallback((): void => setIsCommandCenterOpen(false), [])
   const closeControlCenter = useCallback((): void => setIsControlCenterOpen(false), [])
+  const closePerformanceMonitor = useCallback((): void => setIsPerformanceMonitorOpen(false), [])
   const closeIssueReport = useCallback((): void => setIsIssueReportOpen(false), [])
   const closeWorkspaceSearch = useCallback((): void => setIsWorkspaceSearchOpen(false), [])
   const closeSpaceArchives = useCallback((): void => setIsSpaceArchivesOpen(false), [])
@@ -40,6 +45,7 @@ export function useShellOverlayState(): {
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
+    setIsPerformanceMonitorOpen(false)
     setIsSpaceArchivesOpen(false)
     setIsIssueReportOpen(false)
     setIsAddProjectWizardOpen(false)
@@ -48,6 +54,7 @@ export function useShellOverlayState(): {
   const toggleCommandCenter = useCallback((): void => {
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
+    setIsPerformanceMonitorOpen(false)
     setIsSpaceArchivesOpen(false)
     setIsIssueReportOpen(false)
     setIsCommandCenterOpen(open => !open)
@@ -57,14 +64,25 @@ export function useShellOverlayState(): {
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsSpaceArchivesOpen(false)
+    setIsPerformanceMonitorOpen(false)
     setIsIssueReportOpen(false)
     setIsControlCenterOpen(open => !open)
+  }, [])
+
+  const togglePerformanceMonitor = useCallback((): void => {
+    setIsCommandCenterOpen(false)
+    setIsWorkspaceSearchOpen(false)
+    setIsControlCenterOpen(false)
+    setIsSpaceArchivesOpen(false)
+    setIsIssueReportOpen(false)
+    setIsPerformanceMonitorOpen(open => !open)
   }, [])
 
   const toggleIssueReport = useCallback((): void => {
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
+    setIsPerformanceMonitorOpen(false)
     setIsSpaceArchivesOpen(false)
     setIsIssueReportOpen(open => !open)
   }, [])
@@ -72,6 +90,7 @@ export function useShellOverlayState(): {
   const openWorkspaceSearch = useCallback((): void => {
     setIsCommandCenterOpen(false)
     setIsControlCenterOpen(false)
+    setIsPerformanceMonitorOpen(false)
     setIsSpaceArchivesOpen(false)
     setIsIssueReportOpen(false)
     setIsWorkspaceSearchOpen(true)
@@ -81,6 +100,7 @@ export function useShellOverlayState(): {
     setIsCommandCenterOpen(false)
     setIsWorkspaceSearchOpen(false)
     setIsControlCenterOpen(false)
+    setIsPerformanceMonitorOpen(false)
     setIsIssueReportOpen(false)
     setIsSpaceArchivesOpen(true)
   }, [])
@@ -93,6 +113,7 @@ export function useShellOverlayState(): {
   return {
     isCommandCenterOpen,
     isControlCenterOpen,
+    isPerformanceMonitorOpen,
     isIssueReportOpen,
     isWorkspaceSearchOpen,
     isSpaceArchivesOpen,
@@ -108,6 +129,8 @@ export function useShellOverlayState(): {
     closeCommandCenter,
     toggleControlCenter,
     closeControlCenter,
+    togglePerformanceMonitor,
+    closePerformanceMonitor,
     toggleIssueReport,
     closeIssueReport,
     openWorkspaceSearch,

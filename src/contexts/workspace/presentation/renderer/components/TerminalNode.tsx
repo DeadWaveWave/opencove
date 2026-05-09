@@ -88,6 +88,7 @@ export function TerminalNode({
   const isTestEnvironment =
     window.opencoveApi.meta.isTest || window.opencoveApi.meta.enableTerminalTestApi === true
   const diagnosticsEnabled = window.opencoveApi.meta?.enableTerminalDiagnostics === true
+  const transcriptMirrorDisabled = window.opencoveApi.meta?.disableTerminalTranscriptMirror === true
   const outputSchedulerRef = useRef<TerminalOutputScheduler | null>(null)
   const isViewportInteractionActiveRef = useRef(isViewportInteractionActive)
   const terminalRef = useRef<Terminal | null>(null)
@@ -308,7 +309,7 @@ export function TerminalNode({
     terminalThemeMode,
   })
   const { transcriptRef, scheduleTranscriptSync } = useTerminalTestTranscriptMirror({
-    enabled: isTestEnvironment || diagnosticsEnabled,
+    enabled: (isTestEnvironment || diagnosticsEnabled) && !transcriptMirrorDisabled,
     nodeId,
     resetKey: sessionId,
     terminalRef,
