@@ -74,6 +74,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent: unify external CLI command environment ownership so GUI/Desktop launches resolve shebang-based Node CLIs consistently across availability, model listing, launch/resume, session discovery, task title generation, and worktree naming. (#236)
 - Space Explorer: clamp the window to the visible canvas viewport so shorter inactive macOS windows no longer overflow the canvas. (#232)
 - Agent: macOS PTY host now self-heals `spawn-helper` execute permission so `run_agent` launches do not fail. (#233)
 - Agent recovery: task-launched Claude Code sessions now persist and restore correctly from `.opencove/worktrees/...` paths in installed Windows builds. (#228)
