@@ -108,11 +108,12 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
                   return { ok: false as const, reason: 'missing terminal size' }
                 }
 
-                // The exact last cell can land on a platform-specific rounding boundary in CI.
-                // Probe the last interior cell instead so we still verify the lower-right content
-                // area without depending on a single edge pixel.
-                const targetCol = Math.max(size.cols - 1, 1)
-                const targetRow = Math.max(size.rows - 1, 1)
+                // Electron/Linux CI can land the lower-right interior cell center directly on the
+                // scrollbar or resize-handle boundary because of subpixel rounding and overlay
+                // hitboxes. Step one more cell inward on both axes so we still validate the
+                // lower-right content area without depending on those borders.
+                const targetCol = Math.max(size.cols - 2, 1)
+                const targetRow = Math.max(size.rows - 2, 1)
                 const center = api.getCellCenter(id, targetCol, targetRow)
                 if (!center) {
                   return { ok: false as const, reason: 'missing cell center' }
@@ -188,11 +189,11 @@ test.describe('Workspace Canvas - Terminal scrollbar gutter', () => {
                   ),
                   insideScrollbarBounds:
                     scrollbarElement instanceof HTMLElement
-                      ? pointInsideRect(scrollbarElement.getBoundingClientRect(), center)
+                      ? pointInsideRect(scrollbarElement.getBoundingClientRect(), center, 0.5)
                       : false,
                   insideResizerBounds: resizers.some(resizer =>
                     resizer instanceof HTMLElement
-                      ? pointInsideRect(resizer.getBoundingClientRect(), center)
+                      ? pointInsideRect(resizer.getBoundingClientRect(), center, 0.5)
                       : false,
                   ),
                   insideScrollbar:
