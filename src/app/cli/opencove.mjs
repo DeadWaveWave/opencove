@@ -138,6 +138,7 @@ async function main() {
       env: {
         ...process.env,
         ELECTRON_RUN_AS_NODE: '1',
+        OPENCOVE_TRUST_PROCESS_ENV: '1',
         ...(shouldDisableSandbox ? { ELECTRON_DISABLE_SANDBOX: '1' } : {}),
       },
       windowsHide: true,

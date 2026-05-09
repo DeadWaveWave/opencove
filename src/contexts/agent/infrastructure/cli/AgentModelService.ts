@@ -146,7 +146,7 @@ async function executeCliText(options: {
   args: string[]
   executablePathOverride?: string | null
 }): Promise<string> {
-  const { invocation } = await resolveAgentExecutableInvocation({
+  const { invocation, commandEnvironment } = await resolveAgentExecutableInvocation({
     provider: options.provider,
     args: options.args,
     overridePath: options.executablePathOverride ?? null,
@@ -157,7 +157,7 @@ async function executeCliText(options: {
       invocation.command,
       invocation.args,
       {
-        env: process.env,
+        env: commandEnvironment.env,
         encoding: 'utf8',
         windowsHide: true,
         timeout: CLI_MODEL_LIST_TIMEOUT_MS,

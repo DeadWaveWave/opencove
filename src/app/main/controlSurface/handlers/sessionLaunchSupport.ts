@@ -5,6 +5,7 @@ import { resolveAgentExecutableInvocation } from '../../../../contexts/agent/inf
 import { resolveLocalWorkerEndpointRef } from '../../../../contexts/project/application/resolveLocalWorkerEndpointRef'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
+import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import {
   normalizeAgentSettings,
   type AgentProvider,
@@ -134,18 +135,24 @@ interface ResolvedSessionLaunchSpawn {
 export async function resolveSessionLaunchSpawn(
   input: ResolveSessionLaunchSpawnInput,
 ): Promise<ResolvedSessionLaunchSpawn> {
-  const resolvedInvocation = input.provider
-    ? (
-        await resolveAgentExecutableInvocation({
-          provider: input.provider,
-          args: input.args,
-          overridePath: input.executablePathOverride ?? null,
-        })
-      ).invocation
-    : await resolveAgentCliInvocation({
-        command: input.command,
+  const providerInvocation = input.provider
+    ? await resolveAgentExecutableInvocation({
+        provider: input.provider,
         args: input.args,
+        overridePath: input.executablePathOverride ?? null,
       })
+    : null
+
+  const resolvedInvocation =
+    providerInvocation?.invocation ??
+    (await resolveAgentCliInvocation({
+      command: input.command,
+      args: input.args,
+    }))
+  const baseEnv = providerInvocation
+    ? { ...providerInvocation.commandEnvironment.env }
+    : await getCommandExecutionEnvironment()
+  const mergedEnv = input.env ? { ...baseEnv, ...input.env } : baseEnv
 
   if (input.defaultTerminalProfileId && input.defaultTerminalProfileId.trim().length > 0) {
     return await terminalProfileResolver.resolveCommandSpawn({
@@ -154,7 +161,7 @@ export async function resolveSessionLaunchSpawn(
       command: resolvedInvocation.command,
       args: resolvedInvocation.args,
       useProfile: !input.provider,
-      ...(input.env ? { env: input.env } : {}),
+      env: mergedEnv,
     })
   }
 
@@ -162,7 +169,7 @@ export async function resolveSessionLaunchSpawn(
     command: resolvedInvocation.command,
     args: resolvedInvocation.args,
     cwd: input.workingDirectory,
-    env: input.env ? { ...process.env, ...input.env } : undefined,
+    env: mergedEnv,
     profileId: null,
     runtimeKind: process.platform === 'win32' ? 'windows' : 'posix',
   }

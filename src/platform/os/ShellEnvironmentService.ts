@@ -5,6 +5,11 @@ const SHELL_ENV_MARKER = '__OPENCOVE_SHELL_ENV_MARKER__'
 const SHELL_CAPTURE_TIMEOUT_MS = 2_000
 const DEFAULT_POSIX_SHELL = '/bin/zsh'
 const POSIX_FALLBACK_SHELLS = ['/bin/zsh', '/bin/bash']
+export const SHELL_ENV_CAPTURE_PROTECTIVE_ENV: Readonly<Record<string, string>> = {
+  DISABLE_AUTO_UPDATE: 'true',
+  ZSH_TMUX_AUTOSTARTED: 'true',
+  ZSH_TMUX_AUTOSTART: 'false',
+}
 const ANSI_ESCAPE_PATTERN =
   // Strip common ANSI color/control sequences that shell prompts may emit.
   new RegExp(String.raw`\u001B\[[0-?]*[ -/]*[@-~]`, 'g')
@@ -31,6 +36,10 @@ function normalizeShellPath(shellPath: string | undefined): string {
 
 function stripAnsi(value: string): string {
   return value.replaceAll(ANSI_ESCAPE_PATTERN, '')
+}
+
+function cloneEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  return { ...env }
 }
 
 function parseShellEnvironment(stdout: string): NodeJS.ProcessEnv | null {
@@ -83,9 +92,7 @@ async function captureEnvironmentFromShell(
         windowsHide: true,
         env: {
           ...process.env,
-          DISABLE_AUTO_UPDATE: 'true',
-          ZSH_TMUX_AUTOSTARTED: 'true',
-          ZSH_TMUX_AUTOSTART: 'false',
+          ...SHELL_ENV_CAPTURE_PROTECTIVE_ENV,
         },
       },
       (error, stdout, stderr) => {
@@ -196,4 +203,26 @@ export async function getShellEnvironmentSnapshot(
 
 export function disposeShellEnvironmentService(): void {
   cachedShellEnvironmentPromise = null
+}
+
+export function sanitizeCapturedShellEnvironment(
+  capturedEnv: NodeJS.ProcessEnv,
+  baseEnv: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+  const sanitized = cloneEnv(capturedEnv)
+
+  for (const [key, value] of Object.entries(SHELL_ENV_CAPTURE_PROTECTIVE_ENV)) {
+    const originalValue = baseEnv[key]
+
+    if (typeof originalValue === 'string') {
+      sanitized[key] = originalValue
+      continue
+    }
+
+    if (sanitized[key] === value) {
+      delete sanitized[key]
+    }
+  }
+
+  return sanitized
 }

@@ -39,6 +39,12 @@ describe('locateAgentResumeSessionId (opencode)', () => {
         command: 'opencode',
         args: ['session', 'list', '--format', 'json', '-n', '12'],
       },
+      commandEnvironment: {
+        env: { PATH: '/shell/bin' },
+        shellPath: '/bin/zsh',
+        source: 'shell_env',
+        diagnostics: [],
+      },
     })
   })
 

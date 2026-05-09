@@ -107,6 +107,12 @@ describe('listAgentSessions', () => {
         command: 'opencode',
         args: ['session', 'list', '--format', 'json', '-n', '20'],
       },
+      commandEnvironment: {
+        env: { PATH: '/shell/bin' },
+        shellPath: '/bin/zsh',
+        source: 'shell_env',
+        diagnostics: [],
+      },
     })
   })
 

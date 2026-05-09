@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs/promises'
 import { join } from 'node:path'
 import type { AgentProviderId } from '@shared/contracts/dto'
+import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import { resolveAgentCliInvocation } from './AgentCliInvocation'
 import { resolveAgentExecutableInvocation } from './AgentExecutableResolver'
 
@@ -66,15 +67,17 @@ export async function executeCliCommand(
   options?: { provider?: AgentProviderId; executablePathOverride?: string | null },
 ): Promise<string | null> {
   try {
-    const invocation = options?.provider
-      ? (
-          await resolveAgentExecutableInvocation({
-            provider: options.provider,
-            args,
-            overridePath: options.executablePathOverride ?? null,
-          })
-        ).invocation
-      : await resolveAgentCliInvocation({ command, args })
+    const providerInvocation = options?.provider
+      ? await resolveAgentExecutableInvocation({
+          provider: options.provider,
+          args,
+          overridePath: options.executablePathOverride ?? null,
+        })
+      : null
+    const invocation =
+      providerInvocation?.invocation ?? (await resolveAgentCliInvocation({ command, args }))
+    const env =
+      providerInvocation?.commandEnvironment.env ?? (await getCommandExecutionEnvironment())
 
     return await new Promise((resolveOutput, reject) => {
       execFile(
@@ -82,7 +85,7 @@ export async function executeCliCommand(
         invocation.args,
         {
           cwd,
-          env: process.env,
+          env,
           encoding: 'utf8',
           windowsHide: true,
           timeout: CLI_TIMEOUT_MS,

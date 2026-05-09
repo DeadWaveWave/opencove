@@ -101,7 +101,7 @@ export function disposeCodexModelCatalog(): void {
 export async function listCodexModelsFromCli(
   executablePathOverride?: string | null,
 ): Promise<AgentModelOption[]> {
-  const { invocation } = await resolveAgentExecutableInvocation({
+  const { invocation, commandEnvironment } = await resolveAgentExecutableInvocation({
     provider: 'codex',
     args: ['app-server'],
     overridePath: executablePathOverride ?? null,
@@ -110,7 +110,7 @@ export async function listCodexModelsFromCli(
   return await new Promise<AgentModelOption[]>((resolve, reject) => {
     const child = spawn(invocation.command, invocation.args, {
       stdio: ['pipe', 'pipe', 'pipe'],
-      env: process.env,
+      env: commandEnvironment.env,
     })
     trackCodexModelChild(child)
 

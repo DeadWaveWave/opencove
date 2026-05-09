@@ -233,7 +233,7 @@ function resolveAppUserModelId(): string {
 
 // Electron ready: create browser windows & IPC.
 app.whenReady().then(async () => {
-  hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
+  await hydrateCliEnvironmentForAppLaunch(app.isPackaged === true)
 
   // Set app user model id for windows
   electronApp.setAppUserModelId(resolveAppUserModelId())

@@ -95,7 +95,7 @@ async function main(): Promise<void> {
   // The worker is frequently launched from GUI contexts (Desktop app, system services) where PATH
   // can be incomplete. Hydrate the environment so git/ssh/etc behave consistently across Desktop,
   // Web UI, and remote/headless installs.
-  hydrateCliEnvironmentForAppLaunch(true)
+  await hydrateCliEnvironmentForAppLaunch(true)
 
   const argv = process.argv.slice(2)
   const userDataPath = readFlagValue(argv, '--user-data') ?? resolveWorkerUserDataDir()

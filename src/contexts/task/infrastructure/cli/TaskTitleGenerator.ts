@@ -3,6 +3,7 @@ import { readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isTaskTitleAgentProvider } from '../../../settings/domain/agentSettings'
+import { resolveAgentExecutableInvocation } from '../../../agent/infrastructure/cli/AgentExecutableResolver'
 import type {
   SuggestTaskTitleInput,
   SuggestTaskTitleResult,
@@ -184,14 +185,19 @@ function testModeTitle(requirement: string): string {
 }
 
 async function executeCommand(
-  command: string,
+  provider: 'claude-code' | 'codex',
   args: string[],
   cwd: string,
 ): Promise<CommandExecutionResult> {
+  const { invocation, commandEnvironment } = await resolveAgentExecutableInvocation({
+    provider,
+    args,
+  })
+
   return await new Promise((resolve, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(invocation.command, invocation.args, {
       cwd,
-      env: process.env,
+      env: commandEnvironment.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
 
@@ -274,7 +280,7 @@ export async function suggestTaskTitle(
   })
 
   try {
-    const result = await executeCommand(command.command, command.args, cwd)
+    const result = await executeCommand(command.provider, command.args, cwd)
 
     let rawOutput = result.stdout
     if (command.outputMode === 'file') {

@@ -5,8 +5,8 @@ const { statMock } = vi.hoisted(() => ({
   statMock: vi.fn(),
 }))
 
-const { getShellEnvironmentSnapshotMock } = vi.hoisted(() => ({
-  getShellEnvironmentSnapshotMock: vi.fn(),
+const { getCommandEnvironmentSnapshotMock } = vi.hoisted(() => ({
+  getCommandEnvironmentSnapshotMock: vi.fn(),
 }))
 
 vi.mock('node:fs/promises', () => ({
@@ -16,8 +16,8 @@ vi.mock('node:fs/promises', () => ({
   stat: statMock,
 }))
 
-vi.mock('../../../src/platform/os/ShellEnvironmentService', () => ({
-  getShellEnvironmentSnapshot: getShellEnvironmentSnapshotMock,
+vi.mock('../../../src/platform/os/CommandEnvironmentService', () => ({
+  getCommandEnvironmentSnapshot: getCommandEnvironmentSnapshotMock,
 }))
 
 const ORIGINAL_ENV = { ...process.env }
@@ -72,7 +72,7 @@ describe('ExecutableLocator', () => {
       status: 'resolved',
       diagnostics: ['Resolved codex from explicit override.'],
     })
-    expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+    expect(getCommandEnvironmentSnapshotMock).not.toHaveBeenCalled()
   })
 
   it('prefers shell-derived PATH entries over the current process PATH', async () => {
@@ -81,10 +81,10 @@ describe('ExecutableLocator', () => {
     const shellCodexPath = join('/shell/bin', 'codex')
     const processCodexPath = join('/process/bin', 'codex')
     mockExecutablePaths([shellCodexPath, processCodexPath])
-    getShellEnvironmentSnapshotMock.mockResolvedValue({
+    getCommandEnvironmentSnapshotMock.mockResolvedValue({
       env: { PATH: '/shell/bin' },
       shellPath: '/bin/zsh',
-      source: 'default_shell',
+      source: 'shell_env',
       diagnostics: ['shell captured'],
     })
 
@@ -120,7 +120,7 @@ describe('ExecutableLocator', () => {
       status: 'invalid_override',
       diagnostics: ['Configured override was not executable: /missing/codex'],
     })
-    expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+    expect(getCommandEnvironmentSnapshotMock).not.toHaveBeenCalled()
   })
 
   it('prefers Windows executable shims over extensionless npm launchers', async () => {
@@ -128,7 +128,7 @@ describe('ExecutableLocator', () => {
     process.env.PATH = 'C:\\nvm4w\\nodejs'
     process.env.PATHEXT = '.COM;.EXE;.BAT;.CMD'
     mockExecutablePaths(['C:\\nvm4w\\nodejs\\codex', 'C:\\nvm4w\\nodejs\\codex.cmd'])
-    getShellEnvironmentSnapshotMock.mockResolvedValue({
+    getCommandEnvironmentSnapshotMock.mockResolvedValue({
       env: { PATH: 'C:\\nvm4w\\nodejs' },
       shellPath: null,
       source: 'process_env',
@@ -165,7 +165,7 @@ describe('ExecutableLocator', () => {
       status: 'resolved',
       diagnostics: ['Resolved codex from explicit override.'],
     })
-    expect(getShellEnvironmentSnapshotMock).not.toHaveBeenCalled()
+    expect(getCommandEnvironmentSnapshotMock).not.toHaveBeenCalled()
   })
 
   it('resolves Windows executables from fallback directories when PATH is incomplete', async () => {
@@ -173,7 +173,7 @@ describe('ExecutableLocator', () => {
     process.env.PATH = 'C:\\Windows\\System32'
     process.env.PATHEXT = '.COM;.EXE;.BAT;.CMD'
     mockExecutablePaths(['C:\\nvm4w\\nodejs\\codex.cmd'])
-    getShellEnvironmentSnapshotMock.mockResolvedValue({
+    getCommandEnvironmentSnapshotMock.mockResolvedValue({
       env: { PATH: 'C:\\Windows\\System32' },
       shellPath: null,
       source: 'process_env',

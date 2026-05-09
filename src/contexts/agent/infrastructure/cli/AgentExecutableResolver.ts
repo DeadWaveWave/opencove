@@ -6,6 +6,10 @@ import type {
 import { buildAdditionalPathSegments } from '../../../../platform/os/CliEnvironment'
 import { resolveHomeDirectory } from '../../../../platform/os/HomeDirectory'
 import {
+  getCommandEnvironmentSnapshot,
+  type CommandEnvironmentSnapshot,
+} from '../../../../platform/os/CommandEnvironmentService'
+import {
   locateExecutable,
   type ExecutableLocationResult,
 } from '../../../../platform/process/ExecutableLocator'
@@ -78,7 +82,11 @@ export async function resolveAgentExecutableInvocation(options: {
   provider: AgentProviderId
   args: string[]
   overridePath?: string | null
-}): Promise<{ executable: ResolvedAgentExecutable; invocation: AgentCliInvocation }> {
+}): Promise<{
+  executable: ResolvedAgentExecutable
+  invocation: AgentCliInvocation
+  commandEnvironment: CommandEnvironmentSnapshot
+}> {
   const executable = await resolveAgentExecutable({
     provider: options.provider,
     overridePath: options.overridePath ?? null,
@@ -93,8 +101,11 @@ export async function resolveAgentExecutableInvocation(options: {
     )
   }
 
+  const commandEnvironment = await getCommandEnvironmentSnapshot()
+
   return {
     executable,
+    commandEnvironment,
     invocation: await resolveAgentCliInvocation({
       command: executable.executablePath,
       args: [...options.args],

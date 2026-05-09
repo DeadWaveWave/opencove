@@ -92,7 +92,11 @@ describe('AgentModelService', () => {
     })
   })
 
-  function mockResolvedInvocation(command: string, args: string[]) {
+  function mockResolvedInvocation(
+    command: string,
+    args: string[],
+    env: NodeJS.ProcessEnv = { PATH: '/shell/bin' },
+  ) {
     resolveAgentExecutableInvocationMock.mockResolvedValue({
       executable: {
         provider: 'codex',
@@ -106,6 +110,12 @@ describe('AgentModelService', () => {
       invocation: {
         command,
         args,
+      },
+      commandEnvironment: {
+        env,
+        shellPath: '/bin/zsh',
+        source: 'shell_env',
+        diagnostics: [],
       },
     })
   }
@@ -381,6 +391,12 @@ describe('AgentModelService', () => {
         command: 'cmd.exe',
         args: ['/d', '/c', 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd', 'app-server'],
       },
+      commandEnvironment: {
+        env: { PATH: 'C:\\Users\\deadwave\\AppData\\Roaming\\npm' },
+        shellPath: null,
+        source: 'process_env',
+        diagnostics: [],
+      },
     })
     spawnMock.mockReturnValue(child as never)
 
@@ -395,7 +411,7 @@ describe('AgentModelService', () => {
       ['/d', '/c', 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd', 'app-server'],
       expect.objectContaining({
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: process.env,
+        env: { PATH: 'C:\\Users\\deadwave\\AppData\\Roaming\\npm' },
       }),
     )
 

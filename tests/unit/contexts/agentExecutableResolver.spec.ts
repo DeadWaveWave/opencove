@@ -20,6 +20,15 @@ vi.mock('../../../src/platform/os/HomeDirectory', () => ({
   resolveHomeDirectory: vi.fn(() => '/Users/tester'),
 }))
 
+vi.mock('../../../src/platform/os/CommandEnvironmentService', () => ({
+  getCommandEnvironmentSnapshot: vi.fn(async () => ({
+    env: { PATH: '/Users/tester/.npm-global/bin' },
+    shellPath: '/bin/zsh',
+    source: 'shell_env',
+    diagnostics: ['shell env'],
+  })),
+}))
+
 vi.mock('../../../src/contexts/agent/infrastructure/cli/AgentCliInvocation', () => ({
   resolveAgentCliInvocation: resolveAgentCliInvocationMock,
 }))
@@ -120,6 +129,12 @@ describe('AgentExecutableResolver', () => {
     expect(result.invocation).toEqual({
       command: 'cmd.exe',
       args: ['/d', '/c', 'C:\\Users\\tester\\AppData\\Roaming\\npm\\codex.cmd', 'app-server'],
+    })
+    expect(result.commandEnvironment).toEqual({
+      env: { PATH: '/Users/tester/.npm-global/bin' },
+      shellPath: '/bin/zsh',
+      source: 'shell_env',
+      diagnostics: ['shell env'],
     })
     expect(result.executable.executablePath).toBe(
       'C:\\Users\\tester\\AppData\\Roaming\\npm\\codex.cmd',

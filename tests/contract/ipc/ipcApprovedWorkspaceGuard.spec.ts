@@ -249,6 +249,12 @@ describe('IPC approved workspace guards', () => {
             command: 'codex',
             args,
           },
+          commandEnvironment: {
+            env: { PATH: '/shell/bin' },
+            shellPath: '/bin/zsh',
+            source: 'shell_env',
+            diagnostics: [],
+          },
         })),
         disposeAgentExecutableResolver: vi.fn(),
       }))

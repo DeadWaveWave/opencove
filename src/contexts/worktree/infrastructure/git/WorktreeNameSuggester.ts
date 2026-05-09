@@ -3,6 +3,7 @@ import { readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { isWorktreeNameSuggestionProvider } from '../../../settings/domain/agentSettings'
+import { resolveAgentExecutableInvocation } from '../../../agent/infrastructure/cli/AgentExecutableResolver'
 import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
@@ -119,14 +120,19 @@ function testModeSuggestion(input: SuggestWorktreeNamesInput): SuggestWorktreeNa
 }
 
 async function executeCommand(
-  command: string,
+  provider: 'claude-code' | 'codex',
   args: string[],
   cwd: string,
 ): Promise<CommandExecutionResult> {
+  const { invocation, commandEnvironment } = await resolveAgentExecutableInvocation({
+    provider,
+    args,
+  })
+
   return await new Promise((resolvePromise, reject) => {
-    const child = spawn(command, args, {
+    const child = spawn(invocation.command, invocation.args, {
       cwd,
-      env: process.env,
+      env: commandEnvironment.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     })
 
@@ -205,7 +211,7 @@ export async function suggestWorktreeNames(
   const fallbackBranch = `space/${fallbackSlug}`
 
   try {
-    const result = await executeCommand(command.command, command.args, cwd)
+    const result = await executeCommand(command.provider, command.args, cwd)
 
     let rawOutput = result.stdout
     if (command.outputMode === 'file') {

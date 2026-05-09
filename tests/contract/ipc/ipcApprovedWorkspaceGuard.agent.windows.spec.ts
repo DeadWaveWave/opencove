@@ -97,6 +97,12 @@ describe('IPC approved workspace guards on Windows', () => {
             command: 'cmd.exe',
             args: ['/d', '/c', 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd', ...args],
           },
+          commandEnvironment: {
+            env: { PATH: 'C:\\Users\\deadwave\\AppData\\Roaming\\npm' },
+            shellPath: null,
+            source: 'process_env',
+            diagnostics: [],
+          },
         })),
         disposeAgentExecutableResolver: vi.fn(),
       }))

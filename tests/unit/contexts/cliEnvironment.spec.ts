@@ -35,6 +35,9 @@ describe('computeHydratedCliPath', () => {
       '/usr/local/bin',
       '/Users/tester/bin',
       '/Users/tester/.npm-global/bin',
+      '/Users/tester/.local/share/mise/shims',
+      '/Users/tester/.volta/bin',
+      '/Users/tester/.asdf/shims',
       '/usr/sbin',
       '/sbin',
     ])
@@ -79,6 +82,31 @@ describe('computeHydratedCliPath', () => {
 })
 
 describe('buildAdditionalPathSegments', () => {
+  it('adds common POSIX shim directories for shell-managed node toolchains', () => {
+    expect(
+      buildAdditionalPathSegments('darwin', '/Users/tester', {
+        PNPM_HOME: '/Users/tester/Library/pnpm',
+        VOLTA_HOME: '/Users/tester/.volta',
+        ASDF_DATA_DIR: '/Users/tester/.asdf',
+        XDG_DATA_HOME: '/Users/tester/.local/share',
+      }),
+    ).toEqual([
+      '/Users/tester/Library/pnpm',
+      '/Users/tester/.local/bin',
+      '/Users/tester/bin',
+      '/Users/tester/.npm-global/bin',
+      '/Users/tester/.local/share/mise/shims',
+      '/Users/tester/.volta/bin',
+      '/Users/tester/.asdf/shims',
+      '/opt/homebrew/bin',
+      '/usr/local/bin',
+      '/usr/bin',
+      '/bin',
+      '/usr/sbin',
+      '/sbin',
+    ])
+  })
+
   it('adds common Windows node package manager shim directories', () => {
     expect(
       buildAdditionalPathSegments('win32', 'C:\\Users\\tester', {

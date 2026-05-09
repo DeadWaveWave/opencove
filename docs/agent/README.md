@@ -6,6 +6,7 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 
 - Providers: `claude-code`, `codex`, `opencode`, `gemini`.
 - Provider executable discovery uses `AgentExecutableResolver`.
+- Provider model list, launch paths, session discovery, and AI helper CLI paths must share the same command environment owner.
 - Provider model list and launch paths receive provider-level executable override when configured.
 - Agent launch can run in a Space mount via `session.launchAgentInMount`.
 - Agent session restore participates in worker `session.prepareOrRevive`.
@@ -26,7 +27,7 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 
 ## Related Docs
 
-- `../EXTERNAL_EXECUTABLE_RESOLUTION.md`
-- `../RECOVERY_MODEL.md`
+- `../cli/EXTERNAL_EXECUTABLE_RESOLUTION.md`
+- `../architecture/RECOVERY_MODEL.md`
 - `../terminal/MULTI_CLIENT_ARCHITECTURE.md`
 - `../CLI_CANVAS_NODE_CONTROL.md`

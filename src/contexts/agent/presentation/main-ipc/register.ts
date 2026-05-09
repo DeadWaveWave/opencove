@@ -324,18 +324,20 @@ export function registerAgentIpcHandlers(
           ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
 
+      const providerInvocation = testStub
+        ? null
+        : await resolveAgentExecutableInvocation({
+            provider: normalized.provider,
+            args,
+            overridePath: executablePathOverride,
+          })
+
       const resolvedInvocation = testStub
         ? await resolveAgentCliInvocation({
             command,
             args,
           })
-        : (
-            await resolveAgentExecutableInvocation({
-              provider: normalized.provider,
-              args,
-              overridePath: executablePathOverride,
-            })
-          ).invocation
+        : providerInvocation!.invocation
 
       const resolvedSpawn = testStub
         ? {
@@ -355,7 +357,12 @@ export function registerAgentIpcHandlers(
             command: resolvedInvocation.command,
             args: resolvedInvocation.args,
             useProfile: false,
-            ...(sessionEnv ? { env: sessionEnv } : {}),
+            env: sessionEnv
+              ? {
+                  ...(providerInvocation?.commandEnvironment.env ?? process.env),
+                  ...sessionEnv,
+                }
+              : (providerInvocation?.commandEnvironment.env ?? process.env),
           })
 
       const mergedEnv =

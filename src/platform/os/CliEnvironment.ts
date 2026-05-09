@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process'
 import process from 'node:process'
+import { getCommandEnvironmentSnapshot } from './CommandEnvironmentService'
 import { resolveHomeDirectory } from './HomeDirectory'
 
 const POSIX_FALLBACK_PATH_SEGMENTS = [
@@ -10,9 +10,6 @@ const POSIX_FALLBACK_PATH_SEGMENTS = [
   '/usr/sbin',
   '/sbin',
 ]
-
-const PATH_MARKER = '__OPENCOVE_PATH_MARKER__'
-const LOCALE_MARKER = '__OPENCOVE_LOCALE_MARKER__'
 
 interface ComputeHydratedCliPathInput {
   isPackaged: boolean
@@ -29,8 +26,6 @@ interface ComputeHydratedLocaleEnvInput {
   currentEnv: NodeJS.ProcessEnv
   loginShellEnv: Partial<Pick<NodeJS.ProcessEnv, 'LANG' | 'LC_ALL' | 'LC_CTYPE'>>
 }
-
-type LoginShellLocaleEnv = Partial<Pick<NodeJS.ProcessEnv, 'LANG' | 'LC_ALL' | 'LC_CTYPE'>>
 
 function splitPath(pathValue: string, delimiter: string): string[] {
   if (pathValue.trim().length === 0) {
@@ -80,86 +75,14 @@ function appendJoinedPathSegment(
   }
 }
 
-function resolvePosixShellPath(shellPath: string | undefined): string {
-  const normalized = typeof shellPath === 'string' ? shellPath.trim() : ''
-  return normalized.length > 0 ? normalized : '/bin/zsh'
-}
-
-function readLoginShellPath(shellPath: string): string {
-  try {
-    const output = execFileSync(
-      shellPath,
-      ['-l', '-c', `printf '${PATH_MARKER}%s${PATH_MARKER}' "$PATH"`],
-      {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      },
-    )
-
-    const start = output.indexOf(PATH_MARKER)
-    if (start < 0) {
-      return ''
-    }
-
-    const from = start + PATH_MARKER.length
-    const end = output.indexOf(PATH_MARKER, from)
-    if (end < 0) {
-      return ''
-    }
-
-    return output.slice(from, end).trim()
-  } catch {
-    return ''
-  }
-}
-
-function parseLoginShellLocaleOutput(output: string): LoginShellLocaleEnv {
-  const lines = output.split(/\r?\n/)
-  const values = new Map<string, string>()
-
-  for (const line of lines) {
-    if (!line.startsWith(`${LOCALE_MARKER}:`)) {
-      continue
-    }
-
-    const payload = line.slice(LOCALE_MARKER.length + 1)
-    const separatorIndex = payload.indexOf('=')
-    if (separatorIndex <= 0) {
-      continue
-    }
-
-    const key = payload.slice(0, separatorIndex).trim()
-    const value = payload.slice(separatorIndex + 1).trim()
-    if (key === 'LANG' || key === 'LC_ALL' || key === 'LC_CTYPE') {
-      values.set(key, value)
-    }
-  }
-
-  return {
-    LANG: values.get('LANG'),
-    LC_ALL: values.get('LC_ALL'),
-    LC_CTYPE: values.get('LC_CTYPE'),
-  }
-}
-
-function readLoginShellLocaleEnv(shellPath: string): LoginShellLocaleEnv {
-  try {
-    const output = execFileSync(
-      shellPath,
-      [
-        '-l',
-        '-c',
-        `printf '${LOCALE_MARKER}:LANG=%s\\n' "$LANG"; printf '${LOCALE_MARKER}:LC_ALL=%s\\n' "$LC_ALL"; printf '${LOCALE_MARKER}:LC_CTYPE=%s\\n' "$LC_CTYPE"`,
-      ],
-      {
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'ignore'],
-      },
-    )
-
-    return parseLoginShellLocaleOutput(output)
-  } catch {
-    return {}
+function appendJoinedPosixPathSegment(
+  segments: string[],
+  basePath: string | null | undefined,
+  ...parts: string[]
+): void {
+  const normalizedBase = normalizePathSegment(basePath)
+  if (normalizedBase) {
+    segments.push([normalizedBase, ...parts].join('/'))
   }
 }
 
@@ -213,14 +136,32 @@ export function buildAdditionalPathSegments(
   }
 
   const segments: string[] = []
+  appendPathSegment(segments, env.PNPM_HOME)
   if (homeDir.trim().length > 0) {
     segments.push(`${homeDir}/.local/bin`)
     segments.push(`${homeDir}/bin`)
     segments.push(`${homeDir}/.npm-global/bin`)
+    segments.push(`${homeDir}/.local/share/mise/shims`)
   }
+  appendJoinedPosixPathSegment(
+    segments,
+    env.VOLTA_HOME ?? (homeDir.trim() ? `${homeDir}/.volta` : null),
+    'bin',
+  )
+  appendJoinedPosixPathSegment(
+    segments,
+    env.ASDF_DATA_DIR ?? (homeDir.trim() ? `${homeDir}/.asdf` : null),
+    'shims',
+  )
+  appendJoinedPosixPathSegment(
+    segments,
+    env.XDG_DATA_HOME ?? (homeDir.trim() ? `${homeDir}/.local/share` : null),
+    'mise',
+    'shims',
+  )
 
   segments.push(...POSIX_FALLBACK_PATH_SEGMENTS)
-  return segments
+  return dedupePathSegments(segments)
 }
 
 export function computeHydratedCliPath(input: ComputeHydratedCliPathInput): string {
@@ -274,18 +215,22 @@ export function computeHydratedLocaleEnv(
   return nextEnv
 }
 
-export function hydrateCliEnvironmentForAppLaunch(isPackaged: boolean): void {
+export async function hydrateCliEnvironmentForAppLaunch(isPackaged: boolean): Promise<void> {
   if (!isPackaged) {
     return
   }
 
   const currentPath = process.env.PATH ?? ''
-  const shellPath = resolvePosixShellPath(process.env.SHELL)
-
-  const shellPathFromLogin =
-    isPackaged && process.platform !== 'win32' ? readLoginShellPath(shellPath) : ''
+  const commandEnvironment = await getCommandEnvironmentSnapshot()
+  const shellPathFromLogin = process.platform !== 'win32' ? (commandEnvironment.env.PATH ?? '') : ''
   const loginShellLocaleEnv =
-    isPackaged && process.platform !== 'win32' ? readLoginShellLocaleEnv(shellPath) : {}
+    process.platform !== 'win32'
+      ? {
+          LANG: commandEnvironment.env.LANG,
+          LC_ALL: commandEnvironment.env.LC_ALL,
+          LC_CTYPE: commandEnvironment.env.LC_CTYPE,
+        }
+      : {}
 
   const applyHydratedLocaleEnv = (): void => {
     const nextLocaleEnv = computeHydratedLocaleEnv({

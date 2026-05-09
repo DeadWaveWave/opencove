@@ -3,9 +3,9 @@ import path from 'node:path'
 import process from 'node:process'
 import type { ExecutableResolutionSource } from '@shared/contracts/dto'
 import {
-  getShellEnvironmentSnapshot,
-  type ShellEnvironmentSnapshot,
-} from '../os/ShellEnvironmentService'
+  getCommandEnvironmentSnapshot,
+  type CommandEnvironmentSnapshot,
+} from '../os/CommandEnvironmentService'
 
 export type ExecutableResolutionStatus = 'resolved' | 'not_found' | 'invalid_override'
 
@@ -137,17 +137,20 @@ async function searchPathDirectories(
   return checks.find(check => check.isExecutable)?.candidatePath ?? null
 }
 
-async function resolveOverridePath(overridePath: string): Promise<string | null> {
+async function resolveOverridePath(
+  overridePath: string,
+  envSnapshot?: CommandEnvironmentSnapshot,
+): Promise<string | null> {
   if (isPathLikeCommand(overridePath)) {
     return await resolveDirectPath(overridePath)
   }
 
-  return await searchPathDirectories(overridePath, splitPathValue(process.env.PATH ?? ''))
+  return await searchPathDirectories(overridePath, splitPathValue(envSnapshot?.env.PATH ?? ''))
 }
 
 async function resolveExecutableFromSnapshot(
   command: string,
-  snapshot: ShellEnvironmentSnapshot,
+  snapshot: CommandEnvironmentSnapshot,
 ): Promise<string | null> {
   if (isPathLikeCommand(command)) {
     return await resolveDirectPath(command)
@@ -176,7 +179,15 @@ export async function locateExecutable(
   }
 
   if (overridePath.length > 0) {
-    const resolvedOverride = await resolveOverridePath(overridePath)
+    const commandEnvironment = isPathLikeCommand(overridePath)
+      ? null
+      : await getCommandEnvironmentSnapshot()
+    diagnostics.push(...(commandEnvironment?.diagnostics ?? []))
+
+    const resolvedOverride = await resolveOverridePath(
+      overridePath,
+      commandEnvironment ?? undefined,
+    )
     if (resolvedOverride) {
       diagnostics.push(`Resolved ${request.toolId} from explicit override.`)
       return {
@@ -200,31 +211,42 @@ export async function locateExecutable(
     }
   }
 
-  const shellSnapshot = await getShellEnvironmentSnapshot()
-  diagnostics.push(...shellSnapshot.diagnostics)
+  const commandEnvironment = await getCommandEnvironmentSnapshot()
+  diagnostics.push(...commandEnvironment.diagnostics)
 
-  const fromShellPath = await resolveExecutableFromSnapshot(command, shellSnapshot)
-  if (fromShellPath) {
-    diagnostics.push(`Resolved ${request.toolId} from shell-derived PATH.`)
+  const fromRuntimeEnvPath = await resolveExecutableFromSnapshot(command, commandEnvironment)
+  if (fromRuntimeEnvPath) {
+    const source =
+      commandEnvironment.source === 'shell_env'
+        ? ('shell_env_path' as const)
+        : ('process_path' as const)
+    diagnostics.push(
+      `Resolved ${request.toolId} from ${
+        source === 'shell_env_path' ? 'shell-derived' : 'current process'
+      } PATH.`,
+    )
     return {
       toolId: request.toolId,
       command,
-      executablePath: fromShellPath,
-      source: 'shell_env_path',
+      executablePath: fromRuntimeEnvPath,
+      source,
       status: 'resolved',
       diagnostics,
     }
   }
 
-  const processPathSnapshot: ShellEnvironmentSnapshot = {
+  const processPathSnapshot: CommandEnvironmentSnapshot = {
     env: { ...process.env },
     shellPath: null,
     source: 'process_env',
     diagnostics: [],
   }
 
-  const fromProcessPath = await resolveExecutableFromSnapshot(command, processPathSnapshot)
-  if (fromProcessPath) {
+  const fromProcessPath =
+    commandEnvironment.source === 'process_env'
+      ? null
+      : await resolveExecutableFromSnapshot(command, processPathSnapshot)
+  if (fromProcessPath && commandEnvironment.source !== 'process_env') {
     diagnostics.push(`Resolved ${request.toolId} from current process PATH.`)
     return {
       toolId: request.toolId,
@@ -254,7 +276,9 @@ export async function locateExecutable(
   }
 
   diagnostics.push(
-    `Unable to resolve ${request.toolId} (${command}) from shell PATH, process PATH, or fallback directories.`,
+    commandEnvironment.source === 'process_env'
+      ? `Unable to resolve ${request.toolId} (${command}) from current process PATH or fallback directories.`
+      : `Unable to resolve ${request.toolId} (${command}) from shell PATH, process PATH, or fallback directories.`,
   )
   return {
     toolId: request.toolId,
