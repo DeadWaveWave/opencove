@@ -95,12 +95,15 @@ describe('CommandEnvironmentService', () => {
     process.env.PATH = 'C:\\Windows\\System32'
     delete process.env.HOME
     process.env.USERPROFILE = 'C:\\Users\\tester'
+    delete process.env.PNPM_HOME
     process.env.SCOOP = 'C:\\Users\\tester\\scoop'
     process.env.ProgramFiles = 'C:\\Program Files'
+    delete process.env['ProgramFiles(x86)']
     process.env.ProgramData = 'C:\\ProgramData'
     process.env.APPDATA = 'C:\\Users\\tester\\AppData\\Roaming'
     process.env.LOCALAPPDATA = 'C:\\Users\\tester\\AppData\\Local'
     process.env.NVM_SYMLINK = 'C:\\nvm4w\\nodejs'
+    delete process.env.ChocolateyInstall
 
     const { getCommandEnvironmentSnapshot } = await importCommandEnvironmentService()
     const snapshot = await getCommandEnvironmentSnapshot()
