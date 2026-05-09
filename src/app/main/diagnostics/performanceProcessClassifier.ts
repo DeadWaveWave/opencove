@@ -79,6 +79,14 @@ export function classifyPerformanceProcess(input: {
   ) {
     return 'diagnostics-collector'
   }
+  if (
+    nameStem === 'ps' &&
+    commandLine.includes('pid=,ppid=,rss=') &&
+    commandLine.includes('args=') &&
+    (commandLine.includes('ucomm=') || commandLine.includes('comm='))
+  ) {
+    return 'diagnostics-collector'
+  }
   if (commandLine.includes('profile-terminal-output-stub.mjs')) {
     return 'external-output-stub'
   }

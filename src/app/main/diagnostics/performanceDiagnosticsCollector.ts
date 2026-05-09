@@ -13,14 +13,21 @@ import {
   summarizePerformanceProcesses,
   type RawPerformanceProcessRow,
 } from './performanceProcessClassifier'
+import {
+  collectDescendantRawRowsForRoots,
+  discoverRelatedProcessRootPids,
+} from './performanceProcessTreeHelpers'
 import { resolveControlSurfaceConnectionInfoFromUserData } from '../controlSurface/remote/resolveControlSurfaceConnectionInfo'
 import { WORKER_CONTROL_SURFACE_CONNECTION_FILE } from '../../../shared/constants/controlSurface'
 
 const execFileAsync = promisify(execFile)
-const WINDOWS_PROCESS_QUERY_MAX_BUFFER_BYTES = 20 * 1024 * 1024
-const WINDOWS_WORKER_PARENT_PID_PATTERN = /(?:^|\s)--parent-pid(?:=|\s+)"?(\d+)"?(?=\s|$)/i
+const PROCESS_QUERY_MAX_BUFFER_BYTES = 20 * 1024 * 1024
 const SELF_PROCESS_FALLBACK_NOTE =
   'Process-tree rows were unavailable; showing the current OpenCove main process as a fallback.'
+const UNIX_PS_QUERY_ARGUMENTS: Record<'darwin' | 'linux', string[]> = {
+  darwin: ['-ww', '-axo', 'pid=,ppid=,rss=,ucomm=,args='],
+  linux: ['-ww', '-axo', 'pid=,ppid=,rss=,comm=,args='],
+}
 
 export interface WindowsProcessRow {
   ProcessId?: unknown
@@ -58,6 +65,10 @@ function toNonNegativeNumber(value: unknown): number | null {
 function toCpuTimeMs(value: unknown): number | null {
   const time100ns = toNonNegativeNumber(value)
   return time100ns === null ? null : Math.round(time100ns / 10_000)
+}
+
+function kibToBytes(value: number | null): number | null {
+  return value === null ? null : Math.round(value * 1024)
 }
 
 function normalizeWindowsRows(value: unknown): WindowsProcessRow[] {
@@ -113,33 +124,6 @@ function getCommandLine(row: WindowsProcessRow): string {
   return typeof row.CommandLine === 'string' ? row.CommandLine : ''
 }
 
-function getNormalizedCommandLine(row: WindowsProcessRow): string {
-  return getCommandLine(row).replace(/\\/g, '/').toLowerCase()
-}
-
-function isOpenCoveWorkerRow(row: WindowsProcessRow): boolean {
-  const commandLine = getNormalizedCommandLine(row)
-  return (
-    commandLine.includes('worker.js') &&
-    (commandLine.includes('--started-by') ||
-      commandLine.includes('--user-data') ||
-      commandLine.includes('/out/main/worker.js'))
-  )
-}
-
-function readWorkerParentPid(row: WindowsProcessRow): number | null {
-  if (!isOpenCoveWorkerRow(row)) {
-    return null
-  }
-
-  const match = WINDOWS_WORKER_PARENT_PID_PATTERN.exec(getCommandLine(row))
-  if (!match?.[1]) {
-    return null
-  }
-
-  return toProcessId(match[1])
-}
-
 function collectDescendantRowsForRoots(
   rows: WindowsProcessRow[],
   rootPids: readonly number[],
@@ -166,24 +150,28 @@ export function discoverRelatedWindowsRootPids(
   mainPid: number,
   localWorkerPid: number | null,
 ): number[] {
-  const rootPids = new Set<number>([mainPid])
-  if (localWorkerPid !== null && localWorkerPid > 0) {
-    rootPids.add(localWorkerPid)
-  }
-
-  for (const row of rows) {
-    const pid = toProcessId(row.ProcessId)
-    if (pid === null) {
-      continue
-    }
-
-    const workerParentPid = readWorkerParentPid(row)
-    if (workerParentPid === mainPid) {
-      rootPids.add(pid)
-    }
-  }
-
-  return [...rootPids]
+  return discoverRelatedProcessRootPids(
+    rows
+      .map(row => {
+        const pid = toProcessId(row.ProcessId)
+        return pid === null
+          ? null
+          : {
+              pid,
+              commandLine: getCommandLine(row),
+            }
+      })
+      .filter(
+        (
+          row,
+        ): row is {
+          pid: number
+          commandLine: string
+        } => row !== null,
+      ),
+    mainPid,
+    localWorkerPid,
+  )
 }
 
 function normalizeWindowsRow(row: WindowsProcessRow): RawPerformanceProcessRow | null {
@@ -213,7 +201,7 @@ async function readWindowsProcessRows(): Promise<WindowsProcessRow[]> {
   ].join(' ')
   const { stdout } = await execFileAsync('powershell.exe', ['-NoProfile', '-Command', command], {
     windowsHide: true,
-    maxBuffer: WINDOWS_PROCESS_QUERY_MAX_BUFFER_BYTES,
+    maxBuffer: PROCESS_QUERY_MAX_BUFFER_BYTES,
   })
   const text = typeof stdout === 'string' ? stdout.trim() : ''
   if (!text) {
@@ -221,6 +209,56 @@ async function readWindowsProcessRows(): Promise<WindowsProcessRow[]> {
   }
 
   return normalizeWindowsRows(JSON.parse(text))
+}
+
+function normalizeUnixProcessLine(
+  line: string,
+  platform: 'darwin' | 'linux',
+): RawPerformanceProcessRow | null {
+  const trimmed = line.trim()
+  if (!trimmed) {
+    return null
+  }
+
+  const pattern =
+    platform === 'darwin'
+      ? /^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/
+      : /^(\d+)\s+(\d+)\s+(\d+)\s+(\S+)\s*(.*)$/
+  const match = pattern.exec(trimmed)
+  if (!match) {
+    return null
+  }
+
+  const pid = toProcessId(match[1])
+  if (pid === null) {
+    return null
+  }
+
+  const commandLine = match[5]?.trim() || match[4] || `pid-${pid}`
+  return {
+    pid,
+    parentPid: toProcessId(match[2]),
+    name: match[4] || `pid-${pid}`,
+    commandLine,
+    workingSetBytes: kibToBytes(toNonNegativeNumber(match[3])),
+    privateBytes: null,
+    cpuUserTimeMs: null,
+    cpuKernelTimeMs: null,
+    threadCount: null,
+  }
+}
+
+async function readUnixProcessRows(
+  platform: 'darwin' | 'linux',
+): Promise<RawPerformanceProcessRow[]> {
+  const { stdout } = await execFileAsync('ps', UNIX_PS_QUERY_ARGUMENTS[platform], {
+    maxBuffer: PROCESS_QUERY_MAX_BUFFER_BYTES,
+  })
+  const text = typeof stdout === 'string' ? stdout : ''
+  return text
+    .split(/\r?\n/)
+    .map(line => normalizeUnixProcessLine(line, platform))
+    .filter((row): row is RawPerformanceProcessRow => row !== null)
 }
 
 async function resolveLocalWorkerPid(): Promise<number | null> {
@@ -261,25 +299,53 @@ async function collectWindowsProcessTree(rootPid: number): Promise<{
   }
 }
 
+async function collectUnixProcessTree(
+  rootPid: number,
+  platform: 'darwin' | 'linux',
+): Promise<{
+  status: PerformanceDiagnosticsProcessTreeStatus
+  processes: PerformanceDiagnosticsProcess[]
+}> {
+  const rows = await readUnixProcessRows(platform)
+  const localWorkerPid = await resolveLocalWorkerPid()
+  const rootPids = discoverRelatedProcessRootPids(rows, rootPid, localWorkerPid)
+  const descendants = collectDescendantRawRowsForRoots(rows, rootPids)
+  const processes = descendants
+    .map(row => normalizePerformanceProcessRow(row, rootPid))
+    .filter(row => row.kind !== 'diagnostics-collector')
+
+  return {
+    status: {
+      status: 'available',
+      rootPid,
+      sampledProcessCount: processes.length,
+      message: null,
+    },
+    processes,
+  }
+}
+
 async function collectProcessTree(rootPid: number): Promise<{
   status: PerformanceDiagnosticsProcessTreeStatus
   processes: PerformanceDiagnosticsProcess[]
 }> {
-  if (process.platform !== 'win32') {
+  try {
+    if (process.platform === 'win32') {
+      return await collectWindowsProcessTree(rootPid)
+    }
+    if (process.platform === 'darwin' || process.platform === 'linux') {
+      return await collectUnixProcessTree(rootPid, process.platform)
+    }
+
     return {
       status: {
         status: 'unsupported',
         rootPid,
         sampledProcessCount: 0,
-        message:
-          'Full process-tree attribution is currently implemented for Windows; Electron process metrics are still available.',
+        message: `Full process-tree attribution is not implemented for ${process.platform}. Electron process metrics are still available.`,
       },
       processes: [],
     }
-  }
-
-  try {
-    return await collectWindowsProcessTree(rootPid)
   } catch (error) {
     return {
       status: {

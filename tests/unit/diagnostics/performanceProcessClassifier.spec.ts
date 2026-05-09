@@ -87,6 +87,17 @@ describe('performance process classifier', () => {
     ).toBe('diagnostics-collector')
   })
 
+  it('marks the transient Unix ps query as diagnostics collector', () => {
+    expect(
+      classifyPerformanceProcess({
+        pid: 201,
+        mainPid: 100,
+        name: 'ps',
+        commandLine: 'ps -ww -axo pid=,ppid=,rss=,ucomm=,args=',
+      }),
+    ).toBe('diagnostics-collector')
+  })
+
   it('redacts common secrets from command lines', () => {
     expect(
       sanitizeProcessCommandLine(
