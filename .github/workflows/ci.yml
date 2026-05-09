@@ -110,7 +110,7 @@ jobs:
         env:
           OPENCOVE_E2E_SKIP_BUILD: '1'
           OPENCOVE_E2E_WINDOW_MODE: inactive
-        run: xvfb-run -a pnpm test:e2e -- --shard=${{ matrix.shard }}/3 --max-failures=2
+        run: xvfb-run -a -s "-screen 0 1600x1200x24" pnpm test:e2e -- --shard=${{ matrix.shard }}/3 --max-failures=2
 
       - name: Upload Playwright artifacts
         if: failure()

@@ -82,7 +82,15 @@ function createWindow(): void {
     width: initialWidth,
     height: initialHeight,
     show: false,
-    ...(isTestEnv ? { useContentSize: true } : {}),
+    ...(isTestEnv
+      ? {
+          useContentSize: true,
+          // Electron 41 can clamp background E2E windows to the runner display bounds more eagerly
+          // than earlier versions, which shrinks the effective canvas area and destabilizes layout-
+          // sensitive tests. Keep the requested test surface size even on smaller virtual displays.
+          enableLargerThanScreen: true,
+        }
+      : {}),
     ...(keepRendererActiveWhenHidden ? { paintWhenInitiallyHidden: true } : {}),
     ...(placeWindowOffscreen ? { x: E2E_OFFSCREEN_COORDINATE, y: E2E_OFFSCREEN_COORDINATE } : {}),
     autoHideMenuBar: true,

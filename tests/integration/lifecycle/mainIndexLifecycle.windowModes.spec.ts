@@ -200,6 +200,7 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.show).not.toHaveBeenCalled()
 
         const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
         const webPreferences = firstWindowOptions['webPreferences'] as {
           backgroundThrottling?: boolean
         }
@@ -238,6 +239,9 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.showInactive).toHaveBeenCalledTimes(1)
         expect(mainWindow.show).not.toHaveBeenCalled()
 
+        const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
+
         app.emit('before-quit')
         expect(dispose).not.toHaveBeenCalled()
 
@@ -272,6 +276,7 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.showInactive).not.toHaveBeenCalled()
 
         const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
         expect(firstWindowOptions['paintWhenInitiallyHidden']).toBe(true)
 
         const webPreferences = firstWindowOptions['webPreferences'] as {
@@ -314,6 +319,7 @@ describe('main process lifecycle window modes', () => {
         expect(mainWindow.setPosition).toHaveBeenCalledWith(-50000, -50000, false)
 
         const firstWindowOptions = BrowserWindow.constructorOptions[0]
+        expect(firstWindowOptions['enableLargerThanScreen']).toBe(true)
         expect(firstWindowOptions['x']).toBe(-50000)
         expect(firstWindowOptions['y']).toBe(-50000)
         expect(firstWindowOptions['paintWhenInitiallyHidden']).toBeUndefined()
