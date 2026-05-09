@@ -8,7 +8,11 @@ import {
   resolveParentDirectoryUri,
   type SpaceExplorerClipboardItem,
 } from './WorkspaceSpaceExplorerOverlay.operations'
-import type { SpaceExplorerRow } from './WorkspaceSpaceExplorerOverlay.model'
+import type {
+  SpaceExplorerCreateMode,
+  SpaceExplorerRow,
+} from './WorkspaceSpaceExplorerOverlay.model'
+import { WorkspaceSpaceExplorerOverlayCreateRow } from './WorkspaceSpaceExplorerOverlayCreateRow'
 
 function renderRowDisclosure(row: Extract<SpaceExplorerRow, { kind: 'entry' }>): React.JSX.Element {
   if (row.entry.kind !== 'directory') {
@@ -24,6 +28,13 @@ export function WorkspaceSpaceExplorerTree({
   isLoadingRoot,
   rootError,
   rows,
+  isFilterActive,
+  createMode,
+  createTargetDirectoryUri,
+  createDraftName,
+  createError,
+  createIsCreating,
+  createInputRef,
   selectedEntryUri,
   renameEntryUri,
   renameDraftName,
@@ -38,6 +49,9 @@ export function WorkspaceSpaceExplorerTree({
   onEntryPreview,
   onEntryOpen,
   onEntryContextMenu,
+  onCreateDraftChange,
+  onCreateSubmit,
+  onCreateCancel,
   onRenameDraftChange,
   onRenameSubmit,
   onRenameCancel,
@@ -51,6 +65,13 @@ export function WorkspaceSpaceExplorerTree({
   isLoadingRoot: boolean
   rootError: string | null
   rows: SpaceExplorerRow[]
+  isFilterActive: boolean
+  createMode: SpaceExplorerCreateMode
+  createTargetDirectoryUri: string | null
+  createDraftName: string
+  createError: string | null
+  createIsCreating: boolean
+  createInputRef: React.RefObject<HTMLInputElement | null>
   selectedEntryUri: string | null
   renameEntryUri: string | null
   renameDraftName: string
@@ -65,6 +86,9 @@ export function WorkspaceSpaceExplorerTree({
   onEntryPreview: (entry: FileSystemEntry) => void
   onEntryOpen: (entry: FileSystemEntry) => void
   onEntryContextMenu: (entry: FileSystemEntry, point: { x: number; y: number }) => void
+  onCreateDraftChange: (value: string) => void
+  onCreateSubmit: () => Promise<void>
+  onCreateCancel: () => void
   onRenameDraftChange: (value: string) => void
   onRenameSubmit: () => void
   onRenameCancel: () => void
@@ -122,10 +146,44 @@ export function WorkspaceSpaceExplorerTree({
       ? 'workspace-space-explorer__tree workspace-space-explorer__tree--drop-target'
       : 'workspace-space-explorer__tree'
 
+  const isCreateTargetVisible =
+    !!createMode &&
+    !!createTargetDirectoryUri &&
+    createTargetDirectoryUri !== rootUri &&
+    rows.some(
+      row =>
+        row.kind === 'entry' &&
+        row.entry.kind === 'directory' &&
+        row.entry.uri === createTargetDirectoryUri,
+    )
+  const shouldRenderCreateAtRoot =
+    !!createMode &&
+    !!createTargetDirectoryUri &&
+    (createTargetDirectoryUri === rootUri || !isCreateTargetVisible)
+
+  const renderCreateRow = (depth: number): React.JSX.Element | null =>
+    createMode ? (
+      <WorkspaceSpaceExplorerOverlayCreateRow
+        mode={createMode}
+        rootUri={rootUri}
+        targetDirectoryUri={createTargetDirectoryUri}
+        depth={depth}
+        draftName={createDraftName}
+        error={createError}
+        isCreating={createIsCreating}
+        inputRef={createInputRef}
+        onDraftChange={onCreateDraftChange}
+        onSubmit={onCreateSubmit}
+        onCancel={onCreateCancel}
+      />
+    ) : null
+
   return (
     <div
       className={treeClassName}
       data-testid="workspace-space-explorer-tree"
+      role="tree"
+      aria-label={t('spaceActions.files')}
       onWheel={event => {
         if (shouldStopWheelPropagation(event.currentTarget)) {
           event.stopPropagation()
@@ -167,8 +225,11 @@ export function WorkspaceSpaceExplorerTree({
         onRequestDropMove(rootUri)
       }}
     >
-      {rows.length === 0 ? (
-        <div className="workspace-space-explorer__state">{t('spaceExplorer.empty')}</div>
+      {shouldRenderCreateAtRoot ? renderCreateRow(0) : null}
+      {rows.length === 0 && !createMode ? (
+        <div className="workspace-space-explorer__state">
+          {isFilterActive ? t('spaceExplorer.noMatches') : t('spaceExplorer.empty')}
+        </div>
       ) : null}
       {rows.map(row => {
         if (row.kind === 'state') {
@@ -308,100 +369,109 @@ export function WorkspaceSpaceExplorerTree({
         }
 
         return (
-          <button
-            key={row.entry.uri}
-            type="button"
-            draggable
-            tabIndex={-1}
-            className={className}
-            data-testid={`workspace-space-explorer-entry-${spaceId}-${encodeURIComponent(row.entry.uri)}`}
-            title={row.entry.name}
-            style={{ paddingLeft: `${10 + row.depth * 14}px` }}
-            onClick={event => {
-              event.stopPropagation()
-              clearPendingFilePreview()
-              if (isExplorerOverlayInteractionSuppressed()) {
-                return
-              }
+          <React.Fragment key={row.entry.uri}>
+            <button
+              type="button"
+              draggable
+              tabIndex={-1}
+              role="treeitem"
+              aria-selected={isSelected}
+              aria-expanded={row.entry.kind === 'directory' ? row.isExpanded : undefined}
+              className={className}
+              data-testid={`workspace-space-explorer-entry-${spaceId}-${encodeURIComponent(row.entry.uri)}`}
+              title={row.entry.name}
+              style={{ paddingLeft: `${10 + row.depth * 14}px` }}
+              onClick={event => {
+                event.stopPropagation()
+                clearPendingFilePreview()
+                if (isExplorerOverlayInteractionSuppressed()) {
+                  return
+                }
 
-              if (row.entry.kind === 'directory') {
-                onEntryPreview(row.entry)
-                return
-              }
+                if (row.entry.kind === 'directory') {
+                  onEntryPreview(row.entry)
+                  return
+                }
 
-              onEntrySelect(row.entry)
-              pendingFilePreviewTimerRef.current = window.setTimeout(() => {
-                pendingFilePreviewTimerRef.current = null
-                onEntryPreview(row.entry)
-              }, 220)
-            }}
-            onDoubleClick={event => {
-              event.stopPropagation()
-              clearPendingFilePreview()
-              if (isExplorerOverlayInteractionSuppressed()) {
-                return
-              }
-              onEntryOpen(row.entry)
-            }}
-            onContextMenu={event => {
-              event.preventDefault()
-              event.stopPropagation()
-              clearPendingFilePreview()
-              onEntryContextMenu(row.entry, { x: event.clientX, y: event.clientY })
-            }}
-            onDragStart={event => {
-              event.stopPropagation()
-              clearPendingFilePreview()
-              event.dataTransfer.effectAllowed = 'move'
-              onEntryDragStart(row.entry)
-            }}
-            onDragEnd={event => {
-              event.stopPropagation()
-              onEntryDragEnd()
-            }}
-            onDragOver={event => {
-              if (!draggedEntryUri) {
-                return
-              }
+                onEntrySelect(row.entry)
+                pendingFilePreviewTimerRef.current = window.setTimeout(() => {
+                  pendingFilePreviewTimerRef.current = null
+                  onEntryPreview(row.entry)
+                }, 220)
+              }}
+              onDoubleClick={event => {
+                event.stopPropagation()
+                clearPendingFilePreview()
+                if (isExplorerOverlayInteractionSuppressed()) {
+                  return
+                }
+                onEntryOpen(row.entry)
+              }}
+              onContextMenu={event => {
+                event.preventDefault()
+                event.stopPropagation()
+                clearPendingFilePreview()
+                onEntryContextMenu(row.entry, { x: event.clientX, y: event.clientY })
+              }}
+              onDragStart={event => {
+                event.stopPropagation()
+                clearPendingFilePreview()
+                event.dataTransfer.effectAllowed = 'move'
+                onEntryDragStart(row.entry)
+              }}
+              onDragEnd={event => {
+                event.stopPropagation()
+                onEntryDragEnd()
+              }}
+              onDragOver={event => {
+                if (!draggedEntryUri) {
+                  return
+                }
 
-              event.preventDefault()
-              event.stopPropagation()
-              onDropTargetChange(resolveRowDropDirectoryUri(row))
-            }}
-            onDragLeave={event => {
-              if (!draggedEntryUri) {
-                return
-              }
+                event.preventDefault()
+                event.stopPropagation()
+                onDropTargetChange(resolveRowDropDirectoryUri(row))
+              }}
+              onDragLeave={event => {
+                if (!draggedEntryUri) {
+                  return
+                }
 
-              if (
-                event.relatedTarget instanceof Element &&
-                event.currentTarget.contains(event.relatedTarget)
-              ) {
-                return
-              }
+                if (
+                  event.relatedTarget instanceof Element &&
+                  event.currentTarget.contains(event.relatedTarget)
+                ) {
+                  return
+                }
 
-              onDropTargetChange(null)
-            }}
-            onDrop={event => {
-              if (!draggedEntryUri) {
-                return
-              }
+                onDropTargetChange(null)
+              }}
+              onDrop={event => {
+                if (!draggedEntryUri) {
+                  return
+                }
 
-              event.preventDefault()
-              event.stopPropagation()
-              onRequestDropMove(resolveRowDropDirectoryUri(row))
-            }}
-          >
-            <span className="workspace-space-explorer__entry-disclosure" aria-hidden="true">
-              {renderRowDisclosure(row)}
-            </span>
-            {row.entry.kind === 'directory' ? (
-              <Folder className="workspace-space-explorer__entry-icon" aria-hidden="true" />
-            ) : (
-              <FileText className="workspace-space-explorer__entry-icon" aria-hidden="true" />
-            )}
-            <span className="workspace-space-explorer__entry-label">{row.entry.name}</span>
-          </button>
+                event.preventDefault()
+                event.stopPropagation()
+                onRequestDropMove(resolveRowDropDirectoryUri(row))
+              }}
+            >
+              <span className="workspace-space-explorer__entry-disclosure" aria-hidden="true">
+                {renderRowDisclosure(row)}
+              </span>
+              {row.entry.kind === 'directory' ? (
+                <Folder className="workspace-space-explorer__entry-icon" aria-hidden="true" />
+              ) : (
+                <FileText className="workspace-space-explorer__entry-icon" aria-hidden="true" />
+              )}
+              <span className="workspace-space-explorer__entry-label">{row.entry.name}</span>
+            </button>
+            {createMode &&
+            createTargetDirectoryUri === row.entry.uri &&
+            row.entry.kind === 'directory'
+              ? renderCreateRow(row.depth + 1)
+              : null}
+          </React.Fragment>
         )
       })}
     </div>

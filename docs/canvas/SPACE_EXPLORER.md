@@ -1,11 +1,12 @@
 # Space Explorer
 
-Space Explorer 是吸附在 Space 边界上的文件浏览器。它用于在当前 Space 的 mount root 内浏览、创建和打开文件，并把文件物化为画布节点。
+Space Explorer 是 Space 内的实体窗口节点形态文件浏览器。它用于在当前 Space 的 mount root 内浏览、创建和打开文件，并把文件物化为画布节点。
 
 ## Entry
 
 - 在 Space 左上角点击 `Files` pill 打开或关闭 Explorer。
-- Space 离开视口时 Explorer 自动关闭。
+- Explorer 按 Space 的 canvas 坐标定位，随画布平移/缩放一起移动和缩放。
+- Explorer 可以在 Space 内拖动窗口头部，也可以从右侧拖拽调整宽度；这些是 renderer-local UI 状态，不写入 durable workspace state。
 - `Esc` 关闭当前 Explorer。
 - Git worktree 变更计数会以低噪音提示显示在入口上。
 
@@ -23,14 +24,27 @@ Explorer 只展示 root 内条目；越界路径不会进入文件树。
 ## File Tree Operations
 
 - 点击文件夹：展开或折叠。
-- 点击文件：创建或聚焦对应画布节点。
+- 单击文件：在 Space 内打开 quick preview。
+- 双击文件：创建或聚焦对应画布节点。
 - 选中行用于确定创建/复制/移动等操作的目标目录。
 - `New File`：创建空文件。
 - `New Folder`：创建目录。
 - `Refresh`：重新读取当前目录。
+- `Collapse All`：折叠所有已展开目录。
+- 过滤框：筛选当前已加载/可见树行，保留匹配项的可见父级上下文。
+
+键盘交互贴近 VS Code Explorer：
+
+- `ArrowUp / ArrowDown` 移动选中项。
+- `ArrowLeft / ArrowRight / Enter` 折叠、展开或打开选中项。
+- `Home / End` 跳到首/末可见项。
+- `F2` 重命名选中项。
+- `Cmd/Ctrl+F` 或 VS Code 风格的 `Cmd+Option+F / Ctrl+Alt+F` 聚焦过滤框。
+- `Shift+F10` 打开选中项上下文菜单。
 
 创建位置规则：
 
+- 新建输入框以内联树行显示在目标目录内；目标目录折叠时会先展开。
 - 选中目录时，在该目录下创建。
 - 选中文件时，在该文件所在目录创建。
 - 无选中项时，在 Explorer root 下创建。

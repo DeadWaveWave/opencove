@@ -61,6 +61,9 @@ export function useSpaceExplorerOverlayMutations({
   setDropTargetDirectoryUri: React.Dispatch<React.SetStateAction<string | null>>
 }) {
   const [createMode, setCreateMode] = React.useState<SpaceExplorerCreateMode>(null)
+  const [createTargetDirectoryUri, setCreateTargetDirectoryUri] = React.useState<string | null>(
+    null,
+  )
   const [createDraftName, setCreateDraftName] = React.useState('')
   const [createError, setCreateError] = React.useState<string | null>(null)
   const [isCreating, setIsCreating] = React.useState(false)
@@ -89,15 +92,20 @@ export function useSpaceExplorerOverlayMutations({
 
   const startCreate = React.useCallback(
     (mode: Exclude<SpaceExplorerCreateMode, null>) => {
+      const targetDirectoryUri = resolveCreateBaseUri()
       closeContextMenu()
       setRenameEntryUri(null)
       setRenameDraftName('')
       setRenameError(null)
       setCreateMode(mode)
+      setCreateTargetDirectoryUri(targetDirectoryUri)
       setCreateDraftName('')
       setCreateError(null)
+      if (targetDirectoryUri !== rootUri) {
+        setExpandedDirectoryUris(previous => new Set(previous).add(targetDirectoryUri))
+      }
     },
-    [closeContextMenu],
+    [closeContextMenu, resolveCreateBaseUri, rootUri, setExpandedDirectoryUris],
   )
 
   const submitCreate = React.useCallback(async (): Promise<void> => {
@@ -111,7 +119,7 @@ export function useSpaceExplorerOverlayMutations({
       return
     }
 
-    const baseUri = resolveCreateBaseUri()
+    const baseUri = createTargetDirectoryUri ?? resolveCreateBaseUri()
     const targetUri = buildChildUri(baseUri, createDraftName)
     if (!targetUri) {
       setCreateError(t('spaceExplorer.createFailed'))
@@ -133,6 +141,7 @@ export function useSpaceExplorerOverlayMutations({
         kind: createMode === 'directory' ? 'directory' : 'file',
       })
       setCreateMode(null)
+      setCreateTargetDirectoryUri(null)
       setCreateDraftName('')
       refresh()
     } catch (error) {
@@ -143,6 +152,7 @@ export function useSpaceExplorerOverlayMutations({
   }, [
     createDraftName,
     createMode,
+    createTargetDirectoryUri,
     mountId,
     refresh,
     resolveCreateBaseUri,
@@ -158,6 +168,7 @@ export function useSpaceExplorerOverlayMutations({
 
       closeContextMenu()
       setCreateMode(null)
+      setCreateTargetDirectoryUri(null)
       setCreateDraftName('')
       setCreateError(null)
       setRenameEntryUri(entry.uri)
@@ -364,12 +375,14 @@ export function useSpaceExplorerOverlayMutations({
   return {
     create: {
       mode: createMode,
+      targetDirectoryUri: createTargetDirectoryUri,
       draftName: createDraftName,
       error: createError,
       isCreating,
       start: startCreate,
       cancel: () => {
         setCreateMode(null)
+        setCreateTargetDirectoryUri(null)
         setCreateDraftName('')
         setCreateError(null)
       },

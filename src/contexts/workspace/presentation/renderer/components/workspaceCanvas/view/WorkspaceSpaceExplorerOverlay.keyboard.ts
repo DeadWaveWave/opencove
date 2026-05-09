@@ -26,13 +26,15 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
   undoMove,
   redoMove,
   pasteIntoSelectionTarget,
+  startRenameSelection,
+  focusFilterInput,
   openKeyboardContextMenu,
   onClose,
 }: {
   rootRef: React.RefObject<HTMLElement | null>
   contextMenu: SpaceExplorerContextMenuState | null
   dismissTransientUi: () => boolean
-  moveSelection: (direction: 'next' | 'previous') => void
+  moveSelection: (direction: 'next' | 'previous' | 'first' | 'last') => void
   collapseSelectionOrFocusParent: () => void
   expandSelectionOrOpen: () => void
   requestDeleteSelection: () => void
@@ -44,6 +46,8 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
   undoMove: () => Promise<void>
   redoMove: () => Promise<void>
   pasteIntoSelectionTarget: () => Promise<void>
+  startRenameSelection: () => void
+  focusFilterInput: () => void
   openKeyboardContextMenu: () => void
   onClose: () => void
 }): void {
@@ -106,8 +110,15 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
         return
       }
 
+      const key = event.key.toLowerCase()
+      if ((event.metaKey || event.ctrlKey) && key === 'f' && !event.shiftKey) {
+        clearPendingCopyPathChord()
+        event.preventDefault()
+        focusFilterInput()
+        return
+      }
+
       if ((event.metaKey || event.ctrlKey) && !event.altKey) {
-        const key = event.key.toLowerCase()
         if (key === 'c') {
           clearPendingCopyPathChord()
           event.preventDefault()
@@ -158,6 +169,14 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
           event.preventDefault()
           moveSelection('next')
           return
+        case 'Home':
+          event.preventDefault()
+          moveSelection('first')
+          return
+        case 'End':
+          event.preventDefault()
+          moveSelection('last')
+          return
         case 'ArrowLeft':
           event.preventDefault()
           collapseSelectionOrFocusParent()
@@ -171,6 +190,10 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
         case 'Backspace':
           event.preventDefault()
           requestDeleteSelection()
+          return
+        case 'F2':
+          event.preventDefault()
+          startRenameSelection()
           return
         default:
           return
@@ -192,12 +215,14 @@ export function useWorkspaceSpaceExplorerOverlayKeyboard({
     cutSelection,
     dismissTransientUi,
     expandSelectionOrOpen,
+    focusFilterInput,
     onClose,
     openKeyboardContextMenu,
     pasteIntoSelectionTarget,
     redoMove,
     requestDeleteSelection,
     rootRef,
+    startRenameSelection,
     undoMove,
     moveSelection,
   ])

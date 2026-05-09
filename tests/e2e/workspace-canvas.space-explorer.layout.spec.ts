@@ -6,6 +6,7 @@ import {
   clearAndSeedWorkspace,
   dragMouse,
   launchApp,
+  readCanvasViewport,
   removePathWithRetry,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -156,7 +157,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
     }
   })
 
-  test('resizes Explorer width and auto-closes when its space leaves the viewport', async () => {
+  test('resizes as a canvas window and remains open across viewport moves', async () => {
     const fixtureDir = path.join(
       testWorkspacePath,
       'artifacts',
@@ -243,7 +244,7 @@ test.describe('Workspace Canvas - Space Explorer', () => {
 
       const readExplorerWidth = async (): Promise<number> =>
         Math.round((await explorer.boundingBox())?.width ?? 0)
-      await expect.poll(readExplorerWidth).toBeGreaterThan(250)
+      await expect.poll(readExplorerWidth).toBeGreaterThan(240)
       await window.waitForTimeout(150)
 
       const boxBefore = await explorer.boundingBox()
@@ -276,8 +277,31 @@ test.describe('Workspace Canvas - Space Explorer', () => {
         .poll(readExplorerWidth)
         .toBeGreaterThanOrEqual(Math.min(Math.round(boxBefore.width) + 20, 360))
 
+      const zoomBefore = (await readCanvasViewport(window)).zoom
+      const explorerBoxBeforeZoom = await explorer.boundingBox()
+      if (!explorerBoxBeforeZoom) {
+        throw new Error('Explorer bounding box unavailable before zoom')
+      }
+
+      const zoomInButton = window.locator('.react-flow__controls-zoomin')
+      await expect(zoomInButton).toBeVisible()
+      await zoomInButton.click({ force: true })
+      await zoomInButton.click({ force: true })
+
+      await expect
+        .poll(async () => (await readCanvasViewport(window)).zoom)
+        .toBeGreaterThan(zoomBefore + 0.01)
+
+      const zoomAfter = (await readCanvasViewport(window)).zoom
+      const explorerBoxAfterZoom = await explorer.boundingBox()
+      if (!explorerBoxAfterZoom) {
+        throw new Error('Explorer bounding box unavailable after zoom')
+      }
+      const expectedScaledWidth = explorerBoxBeforeZoom.width * (zoomAfter / zoomBefore)
+      expect(Math.abs(explorerBoxAfterZoom.width - expectedScaledWidth)).toBeLessThanOrEqual(8)
+
       await window.locator('[data-testid="workspace-space-switch-space-away"]').click()
-      await expect(explorer).toBeHidden()
+      await expect(explorer).toHaveCount(1)
     } finally {
       await electronApp.close()
       await removePathWithRetry(fixtureDir)

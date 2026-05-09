@@ -349,7 +349,6 @@ export function WorkspaceCanvasView({
       </ReactFlow>
       {activeExplorerSpace && activeExplorerSpace.rect ? (
         <WorkspaceSpaceExplorerOverlay
-          canvasRef={canvasRef}
           spaceId={activeExplorerSpace.id}
           spaceName={activeExplorerSpace.name}
           targetMountId={activeExplorerSpace.targetMountId ?? null}
@@ -359,6 +358,7 @@ export function WorkspaceCanvasView({
               : workspacePath
           }
           rect={activeExplorerSpace.rect}
+          agentSettings={agentSettings}
           explorerClipboard={explorerClipboard}
           setExplorerClipboard={setExplorerClipboard}
           findBlockingOpenDocument={findBlockingOpenDocument}

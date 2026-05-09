@@ -1,21 +1,15 @@
 import React from 'react'
-import { Check, FilePlus, FileText, Folder, FolderPlus, RefreshCw, X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { useTranslation, type TranslateFn } from '@app/renderer/i18n'
 import type { ShowWorkspaceCanvasMessage } from '../types'
 import type { SpaceExplorerOpenDocumentBlock } from '../hooks/useSpaceExplorer.guards'
 import { useWorkspaceSpaceExplorerOverlayKeyboard } from './WorkspaceSpaceExplorerOverlay.keyboard'
-import {
-  useSpaceExplorerOverlayModel,
-  type SpaceExplorerCreateMode,
-} from './WorkspaceSpaceExplorerOverlay.model'
+import { useSpaceExplorerOverlayModel } from './WorkspaceSpaceExplorerOverlay.model'
 import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
 import { WorkspaceSpaceExplorerOverlayContextMenu } from './WorkspaceSpaceExplorerOverlayContextMenu'
+import { WorkspaceSpaceExplorerOverlayHeader } from './WorkspaceSpaceExplorerOverlayHeader'
 import { WorkspaceSpaceExplorerOverlayWindows } from './WorkspaceSpaceExplorerOverlayWindows'
 import { WorkspaceSpaceExplorerTree } from './WorkspaceSpaceExplorerOverlay.tree'
-
-function resolveCreateIcon(mode: Exclude<SpaceExplorerCreateMode, null>): React.JSX.Element {
-  return mode === 'directory' ? <Folder aria-hidden="true" /> : <FileText aria-hidden="true" />
-}
 
 type WorkspaceSpaceExplorerOverlayBodyProps = {
   spaceName: string
@@ -34,6 +28,7 @@ type WorkspaceSpaceExplorerOverlayBodyProps = {
   createInputRef: React.RefObject<HTMLInputElement | null>
   renameInputRef: React.RefObject<HTMLInputElement | null>
   containerRef: React.RefObject<HTMLElement | null>
+  onWindowDragStart: React.PointerEventHandler<HTMLElement>
 }
 
 type WorkspaceSpaceExplorerOverlayBodyReadyProps = Omit<
@@ -62,6 +57,7 @@ function WorkspaceSpaceExplorerOverlayBodyReady({
   createInputRef,
   renameInputRef,
   containerRef,
+  onWindowDragStart,
 }: WorkspaceSpaceExplorerOverlayBodyReadyProps): React.JSX.Element {
   const model = useSpaceExplorerOverlayModel({
     rootUri,
@@ -79,6 +75,12 @@ function WorkspaceSpaceExplorerOverlayBodyReady({
   const hasRootError = !!effectiveRootError
   const explorerContextMenu = model.contextMenu
   const closeExplorerContextMenu = model.closeContextMenu
+  const filterInputRef = React.useRef<HTMLInputElement | null>(null)
+
+  const focusFilterInput = React.useCallback(() => {
+    filterInputRef.current?.focus()
+    filterInputRef.current?.select()
+  }, [])
 
   const openKeyboardContextMenu = React.useCallback(() => {
     const selectedSelector =
@@ -122,12 +124,13 @@ function WorkspaceSpaceExplorerOverlayBodyReady({
     const handle = window.setTimeout(() => {
       createInputRef.current?.focus()
       createInputRef.current?.select()
+      createInputRef.current?.scrollIntoView?.({ block: 'nearest' })
     }, 0)
 
     return () => {
       window.clearTimeout(handle)
     }
-  }, [createInputRef, model.create.mode])
+  }, [createInputRef, model.create.mode, model.create.targetDirectoryUri])
 
   React.useEffect(() => {
     if (!model.rename.entryUri) {
@@ -182,144 +185,75 @@ function WorkspaceSpaceExplorerOverlayBodyReady({
     undoMove: model.undoMove,
     redoMove: model.redoMove,
     pasteIntoSelectionTarget: model.pasteIntoSelectionTarget,
+    startRenameSelection: model.startRenameSelection,
+    focusFilterInput,
     openKeyboardContextMenu,
     onClose,
   })
 
   return (
     <>
-      <header className="workspace-space-explorer__header">
-        <div className="workspace-space-explorer__title" title={spaceName}>
-          {t('spaceActions.files')}
-        </div>
-        <div className="workspace-space-explorer__header-actions">
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action"
-            aria-label={t('spaceExplorer.newFile')}
-            title={t('spaceExplorer.newFile')}
-            disabled={hasRootError}
-            onClick={event => {
-              event.stopPropagation()
-              model.create.start('file')
-            }}
-          >
-            <FilePlus aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action"
-            aria-label={t('spaceExplorer.newFolder')}
-            title={t('spaceExplorer.newFolder')}
-            disabled={hasRootError}
-            onClick={event => {
-              event.stopPropagation()
-              model.create.start('directory')
-            }}
-          >
-            <FolderPlus aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action"
-            aria-label={t('spaceExplorer.refresh')}
-            title={t('spaceExplorer.refresh')}
-            onClick={event => {
-              event.stopPropagation()
-              model.refresh()
-            }}
-          >
-            <RefreshCw aria-hidden="true" />
-          </button>
-          <button
-            type="button"
-            className="workspace-space-explorer__header-action workspace-space-explorer__header-action--close"
-            aria-label={t('common.close')}
-            title={t('common.close')}
-            onClick={event => {
-              event.stopPropagation()
-              onClose()
-            }}
-          >
-            <X aria-hidden="true" />
-          </button>
-        </div>
-      </header>
+      <WorkspaceSpaceExplorerOverlayHeader
+        spaceName={spaceName}
+        hasRootError={hasRootError}
+        onWindowDragStart={onWindowDragStart}
+        onCreateFile={() => {
+          model.create.start('file')
+        }}
+        onCreateFolder={() => {
+          model.create.start('directory')
+        }}
+        onCollapseAll={model.collapseAll}
+        onRefresh={model.refresh}
+        onClose={onClose}
+      />
 
       <div className="workspace-space-explorer__body">
-        {model.create.mode ? (
-          <form
-            className="workspace-space-explorer__create"
-            onSubmit={event => {
-              event.preventDefault()
+        <div className="workspace-space-explorer__filter nodrag">
+          <Search className="workspace-space-explorer__filter-icon" aria-hidden="true" />
+          <input
+            ref={filterInputRef}
+            className="workspace-space-explorer__filter-input nowheel nodrag"
+            value={model.filter.query}
+            placeholder={t('spaceExplorer.filterPlaceholder')}
+            aria-label={t('spaceExplorer.filterPlaceholder')}
+            data-testid="workspace-space-explorer-filter-input"
+            onPointerDown={event => {
               event.stopPropagation()
-              void model.create.submit()
             }}
-            onBlur={event => {
-              if (
-                model.create.isCreating ||
-                (event.relatedTarget instanceof Node &&
-                  event.currentTarget.contains(event.relatedTarget))
-              ) {
+            onChange={event => {
+              model.filter.setQuery(event.target.value)
+            }}
+            onKeyDown={event => {
+              if (event.key !== 'Escape' || model.filter.query.trim().length === 0) {
                 return
               }
 
-              model.create.cancel()
+              event.preventDefault()
+              event.stopPropagation()
+              model.filter.clear()
             }}
-          >
-            <span className="workspace-space-explorer__create-icon" aria-hidden="true">
-              {resolveCreateIcon(model.create.mode)}
-            </span>
-            <input
-              ref={createInputRef}
-              className="workspace-space-explorer__create-input"
-              value={model.create.draftName}
-              placeholder={
-                model.create.mode === 'directory'
-                  ? t('spaceExplorer.folderNamePlaceholder')
-                  : t('spaceExplorer.fileNamePlaceholder')
-              }
-              disabled={model.create.isCreating}
-              onChange={event => {
-                model.create.setDraftName(event.target.value)
-              }}
-              onKeyDown={event => {
-                if (event.key !== 'Escape') {
-                  return
-                }
-
-                event.preventDefault()
-                event.stopPropagation()
-                if (!model.create.isCreating) {
-                  model.create.cancel()
-                }
-              }}
-            />
-            <button
-              type="submit"
-              className="workspace-space-explorer__create-action"
-              disabled={model.create.isCreating}
-            >
-              <Check aria-hidden="true" />
-            </button>
+          />
+          {model.filter.query.trim().length > 0 ? (
             <button
               type="button"
-              className="workspace-space-explorer__create-action workspace-space-explorer__create-action--cancel"
-              disabled={model.create.isCreating}
-              onClick={event => {
+              className="workspace-space-explorer__filter-clear"
+              aria-label={t('spaceExplorer.clearFilter')}
+              title={t('spaceExplorer.clearFilter')}
+              onPointerDown={event => {
                 event.stopPropagation()
-                model.create.cancel()
+              }}
+              onClick={event => {
+                event.preventDefault()
+                event.stopPropagation()
+                model.filter.clear()
+                filterInputRef.current?.focus()
               }}
             >
               <X aria-hidden="true" />
             </button>
-            {model.create.error ? (
-              <div className="workspace-space-explorer__create-error" role="status">
-                {model.create.error}
-              </div>
-            ) : null}
-          </form>
-        ) : null}
+          ) : null}
+        </div>
 
         <WorkspaceSpaceExplorerTree
           spaceId={spaceId}
@@ -327,6 +261,13 @@ function WorkspaceSpaceExplorerOverlayBodyReady({
           isLoadingRoot={model.isLoadingRoot}
           rootError={effectiveRootError}
           rows={model.rows}
+          isFilterActive={model.filter.isActive}
+          createMode={model.create.mode}
+          createTargetDirectoryUri={model.create.targetDirectoryUri}
+          createDraftName={model.create.draftName}
+          createError={model.create.error}
+          createIsCreating={model.create.isCreating}
+          createInputRef={createInputRef}
           selectedEntryUri={model.selectedEntryUri}
           renameEntryUri={model.rename.entryUri}
           renameDraftName={model.rename.draftName}
@@ -341,6 +282,9 @@ function WorkspaceSpaceExplorerOverlayBodyReady({
           onEntryPreview={model.previewEntrySelection}
           onEntryOpen={model.openEntry}
           onEntryContextMenu={model.openEntryContextMenu}
+          onCreateDraftChange={model.create.setDraftName}
+          onCreateSubmit={model.create.submit}
+          onCreateCancel={model.create.cancel}
           onRenameDraftChange={model.rename.setDraftName}
           onRenameSubmit={model.rename.submit}
           onRenameCancel={model.rename.cancel}
@@ -410,31 +354,19 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
     createInputRef,
     renameInputRef,
     containerRef,
+    onWindowDragStart,
   }: WorkspaceSpaceExplorerOverlayBodyProps): React.JSX.Element {
     const { t } = useTranslation()
 
     if (!rootUri) {
       return (
         <>
-          <header className="workspace-space-explorer__header">
-            <div className="workspace-space-explorer__title" title={spaceName}>
-              {t('spaceActions.files')}
-            </div>
-            <div className="workspace-space-explorer__header-actions">
-              <button
-                type="button"
-                className="workspace-space-explorer__header-action workspace-space-explorer__header-action--close"
-                aria-label={t('common.close')}
-                title={t('common.close')}
-                onClick={event => {
-                  event.stopPropagation()
-                  onClose()
-                }}
-              >
-                <X aria-hidden="true" />
-              </button>
-            </div>
-          </header>
+          <WorkspaceSpaceExplorerOverlayHeader
+            spaceName={spaceName}
+            showFileActions={false}
+            onWindowDragStart={onWindowDragStart}
+            onClose={onClose}
+          />
           <div className="workspace-space-explorer__state">{t('common.loading')}</div>
         </>
       )
@@ -459,6 +391,7 @@ export const WorkspaceSpaceExplorerOverlayBody = React.memo(
         createInputRef={createInputRef}
         renameInputRef={renameInputRef}
         containerRef={containerRef}
+        onWindowDragStart={onWindowDragStart}
       />
     )
   },

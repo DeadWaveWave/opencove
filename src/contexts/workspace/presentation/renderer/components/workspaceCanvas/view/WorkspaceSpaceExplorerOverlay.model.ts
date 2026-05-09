@@ -7,7 +7,10 @@ import { toErrorMessage } from '../helpers'
 import { isWithinRootUri, sortEntries } from './WorkspaceSpaceExplorerOverlay.helpers'
 import { useSpaceExplorerOverlayActions } from './WorkspaceSpaceExplorerOverlay.actions'
 import { useSpaceExplorerOverlayMutations } from './WorkspaceSpaceExplorerOverlay.mutations'
-import type { SpaceExplorerClipboardItem } from './WorkspaceSpaceExplorerOverlay.operations'
+import {
+  resolveParentDirectoryUri,
+  type SpaceExplorerClipboardItem,
+} from './WorkspaceSpaceExplorerOverlay.operations'
 import { resolveFilesystemApiForMount } from '../../../utils/mountAwareFilesystemApi'
 
 export type SpaceExplorerCreateMode = 'file' | 'directory' | null
@@ -72,6 +75,7 @@ export function useSpaceExplorerOverlayModel({
   const [selectedEntryKind, setSelectedEntryKind] = React.useState<FileSystemEntry['kind'] | null>(
     null,
   )
+  const [filterQuery, setFilterQuery] = React.useState('')
   const [directoryListings, setDirectoryListings] = React.useState<
     Record<string, DirectoryListing>
   >(() => ({}))
@@ -130,6 +134,7 @@ export function useSpaceExplorerOverlayModel({
     setRefreshNonce(previous => previous + 1)
     setSelectedEntryUri(null)
     setSelectedEntryKind(null)
+    setFilterQuery('')
   }, [mountId, rootUri, spaceId])
 
   React.useEffect(() => {
@@ -153,6 +158,20 @@ export function useSpaceExplorerOverlayModel({
   const rootListing = directoryListings[rootUri] ?? null
   const isLoadingRoot = rootListing === null ? true : rootListing.isLoading
   const rootError = rootListing?.error ?? null
+  const hasPendingExpandedDirectoryListing = React.useMemo(() => {
+    if (isLoadingRoot) {
+      return true
+    }
+
+    for (const uri of expandedDirectoryUris) {
+      const listing = directoryListings[uri]
+      if (!listing || listing.isLoading) {
+        return true
+      }
+    }
+
+    return false
+  }, [directoryListings, expandedDirectoryUris, isLoadingRoot])
 
   const rows = React.useMemo<SpaceExplorerRow[]>(() => {
     if (!rootListing || rootListing.isLoading || rootListing.error) {
@@ -211,12 +230,52 @@ export function useSpaceExplorerOverlayModel({
     return list
   }, [directoryListings, expandedDirectoryUris, rootListing, rootUri, t])
 
+  const normalizedFilterQuery = filterQuery.trim().toLocaleLowerCase()
+  const isFilterActive = normalizedFilterQuery.length > 0
+
+  const filteredRows = React.useMemo<SpaceExplorerRow[]>(() => {
+    if (!isFilterActive) {
+      return rows
+    }
+
+    const entryRows = rows.filter(
+      (row): row is Extract<SpaceExplorerRow, { kind: 'entry' }> => row.kind === 'entry',
+    )
+    const visibleDirectoryUris = new Set(
+      entryRows.filter(row => row.entry.kind === 'directory').map(row => row.entry.uri),
+    )
+    const includedUris = new Set<string>()
+
+    for (const row of entryRows) {
+      const searchable = `${row.entry.name}\n${row.entry.uri}`.toLocaleLowerCase()
+      if (!searchable.includes(normalizedFilterQuery)) {
+        continue
+      }
+
+      includedUris.add(row.entry.uri)
+
+      let parentUri = resolveParentDirectoryUri(row.entry.uri, rootUri)
+      while (parentUri !== rootUri && visibleDirectoryUris.has(parentUri)) {
+        includedUris.add(parentUri)
+        parentUri = resolveParentDirectoryUri(parentUri, rootUri)
+      }
+    }
+
+    return rows.filter(row => {
+      if (row.kind === 'entry') {
+        return includedUris.has(row.entry.uri)
+      }
+
+      return includedUris.has(row.parentDirectoryUri)
+    })
+  }, [isFilterActive, normalizedFilterQuery, rootUri, rows])
+
   const entryRows = React.useMemo(
     () =>
-      rows.filter(
+      filteredRows.filter(
         (row): row is Extract<SpaceExplorerRow, { kind: 'entry' }> => row.kind === 'entry',
       ),
-    [rows],
+    [filteredRows],
   )
 
   const entriesByUri = React.useMemo(() => {
@@ -233,6 +292,22 @@ export function useSpaceExplorerOverlayModel({
     setSelectedEntryUri(entry?.uri ?? null)
     setSelectedEntryKind(entry?.kind ?? null)
   }, [])
+
+  React.useEffect(() => {
+    if (!selectedEntryUri) {
+      return
+    }
+
+    if (entryRows.some(row => row.entry.uri === selectedEntryUri)) {
+      return
+    }
+
+    if (hasPendingExpandedDirectoryListing) {
+      return
+    }
+
+    selectEntry(entryRows[0]?.entry ?? null)
+  }, [entryRows, hasPendingExpandedDirectoryListing, selectEntry, selectedEntryUri])
 
   const actions = useSpaceExplorerOverlayActions({
     t,
@@ -293,9 +368,13 @@ export function useSpaceExplorerOverlayModel({
       actions.setDropTargetDirectoryUri(null)
       didClose = true
     }
+    if (filterQuery.trim().length > 0) {
+      setFilterQuery('')
+      didClose = true
+    }
 
     return didClose
-  }, [actions, mutations])
+  }, [actions, filterQuery, mutations])
 
   const startRenameSelection = React.useCallback(() => {
     const entry = actions.resolveSelectedEntry()
@@ -305,14 +384,35 @@ export function useSpaceExplorerOverlayModel({
     }
   }, [actions, mutations.rename, onDismissQuickPreview])
 
+  const create = {
+    ...mutations.create,
+    start: (mode: Exclude<SpaceExplorerCreateMode, null>) => {
+      setFilterQuery('')
+      mutations.create.start(mode)
+    },
+  }
+
   return {
     isLoadingRoot,
     rootError,
-    rows,
+    rows: filteredRows,
     selectedEntryUri,
     selectEntry,
     refresh,
-    create: mutations.create,
+    collapseAll: () => {
+      onDismissQuickPreview()
+      setExpandedDirectoryUris(new Set())
+      actions.closeContextMenu()
+    },
+    filter: {
+      query: filterQuery,
+      isActive: isFilterActive,
+      setQuery: setFilterQuery,
+      clear: () => {
+        setFilterQuery('')
+      },
+    },
+    create,
     rename: mutations.rename,
     contextMenu: actions.contextMenu,
     deleteConfirmation: mutations.deleteConfirmation,
