@@ -220,6 +220,7 @@ export function useTerminalRuntimeSession({
       shouldGateInitialUserInput,
       pendingUserInputBufferRef,
       recentUserInteractionAtRef,
+      suppressPassiveSyntheticInteraction: terminalProvider === 'opencode',
       inputDiagnosticsEnabled,
       terminalDiagnostics,
     })

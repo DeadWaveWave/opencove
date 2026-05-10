@@ -3,6 +3,7 @@ import {
   extractAutomaticTerminalQuerySequences,
   isAutomaticTerminalQuery,
   isAutomaticTerminalReply,
+  isTerminalSyntheticInteractionSequence,
 } from '../../../src/contexts/workspace/presentation/renderer/components/terminalNode/inputClassification'
 import { stripAutomaticTerminalQueriesFromOutput } from '../../../src/shared/terminal/automaticTerminalSequences'
 
@@ -72,5 +73,22 @@ describe('extractAutomaticTerminalQuerySequences', () => {
       '\u001b[6n',
       '\u001b[c',
     ])
+  })
+})
+
+describe('isTerminalSyntheticInteractionSequence', () => {
+  it('returns true for focus and mouse protocol events', () => {
+    expect(isTerminalSyntheticInteractionSequence('\u001b[I')).toBe(true)
+    expect(isTerminalSyntheticInteractionSequence('\u001b[O')).toBe(true)
+    expect(isTerminalSyntheticInteractionSequence('\u001b[<0;34;22M')).toBe(true)
+    expect(isTerminalSyntheticInteractionSequence('\u001b[M`~~')).toBe(true)
+  })
+
+  it('returns false for typed text and automatic terminal replies', () => {
+    expect(isTerminalSyntheticInteractionSequence('hello')).toBe(false)
+    expect(isTerminalSyntheticInteractionSequence('\u001b[1;1R')).toBe(false)
+    expect(
+      isTerminalSyntheticInteractionSequence('\u001b]10;rgb:d6d6/e4e4/ffff\u001b\\'),
+    ).toBe(false)
   })
 })

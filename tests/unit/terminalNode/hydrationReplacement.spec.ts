@@ -69,6 +69,9 @@ describe('hydrationReplacement', () => {
     expect(stripEchoedTerminalControlSequences('^[[<0;34;22M\u001b[2J\u001b[Hready')).toBe(
       '\u001b[2J\u001b[Hready',
     )
+    expect(stripEchoedTerminalControlSequences('\u001b[Iready')).toBe('ready')
+    expect(stripEchoedTerminalControlSequences('\u001b[<0;34;22Mready')).toBe('ready')
+    expect(stripEchoedTerminalControlSequences('\u001b[M`~~ready')).toBe('ready')
     expect(stripEchoedTerminalControlSequences('^[[1;1Rready')).toBe('ready')
     expect(stripEchoedTerminalControlSequences('before^[[?1;2cafter')).toBe('beforeafter')
   })

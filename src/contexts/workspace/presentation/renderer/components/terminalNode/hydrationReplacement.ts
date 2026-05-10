@@ -31,6 +31,42 @@ function consumeUntilStTerminator(data: string, index: number): number {
   return cursor
 }
 
+
+function consumeSyntheticInteractionSequence(data: string, index: number): number | null {
+  if (!data.startsWith('\u001b[', index)) {
+    return null
+  }
+
+  if (data.startsWith('\u001b[I', index) || data.startsWith('\u001b[O', index)) {
+    return index + 3
+  }
+
+  if (data.startsWith('\u001b[M', index)) {
+    const buttonByte = data.charCodeAt(index + 3)
+    const xByte = data.charCodeAt(index + 4)
+    const yByte = data.charCodeAt(index + 5)
+    const isCompleteX10Report =
+      Number.isFinite(buttonByte) &&
+      Number.isFinite(xByte) &&
+      Number.isFinite(yByte) &&
+      buttonByte >= 32 &&
+      buttonByte <= 255 &&
+      xByte >= 32 &&
+      xByte <= 255 &&
+      yByte >= 32 &&
+      yByte <= 255
+
+    return isCompleteX10Report ? index + 6 : data.length
+  }
+
+  const sgrMouseMatch = /^\u001b\[<\d+;\d+;\d+[mM]/u.exec(data.slice(index))
+  if (sgrMouseMatch) {
+    return index + sgrMouseMatch[0].length
+  }
+
+  return null
+}
+
 function consumeCaretEscapedControlSequence(data: string, index: number): number | null {
   if (!data.startsWith('^[', index)) {
     return null
@@ -93,7 +129,7 @@ function consumeCaretEscapedControlSequence(data: string, index: number): number
 }
 
 export function stripEchoedTerminalControlSequences(data: string): string {
-  if (!data.includes('^[')) {
+  if (!data.includes('^[') && !data.includes('\u001b[')) {
     return data
   }
 
@@ -101,21 +137,39 @@ export function stripEchoedTerminalControlSequences(data: string): string {
   let result = ''
 
   while (index < data.length) {
-    const nextIndex = data.indexOf('^[', index)
+    const nextCaretIndex = data.indexOf('^[', index)
+    const nextEscIndex = data.indexOf('\u001b[', index)
+
+    let nextIndex = -1
+    if (nextCaretIndex === -1) {
+      nextIndex = nextEscIndex
+    } else if (nextEscIndex === -1) {
+      nextIndex = nextCaretIndex
+    } else {
+      nextIndex = Math.min(nextCaretIndex, nextEscIndex)
+    }
+
     if (nextIndex === -1) {
       result += data.slice(index)
       break
     }
 
     result += data.slice(index, nextIndex)
-    const consumedEnd = consumeCaretEscapedControlSequence(data, nextIndex)
-    if (consumedEnd === null) {
-      result += data.charAt(nextIndex)
-      index = nextIndex + 1
+
+    const consumedCaretEnd = consumeCaretEscapedControlSequence(data, nextIndex)
+    if (consumedCaretEnd !== null) {
+      index = consumedCaretEnd
       continue
     }
 
-    index = consumedEnd
+    const consumedSyntheticEnd = consumeSyntheticInteractionSequence(data, nextIndex)
+    if (consumedSyntheticEnd !== null) {
+      index = consumedSyntheticEnd
+      continue
+    }
+
+    result += data.charAt(nextIndex)
+    index = nextIndex + 1
   }
 
   return result
@@ -191,6 +245,12 @@ export function containsMeaningfulTerminalDisplayContent(data: string): boolean 
     const caretEscapedControlEnd = consumeCaretEscapedControlSequence(data, index)
     if (caretEscapedControlEnd !== null) {
       index = caretEscapedControlEnd
+      continue
+    }
+
+    const syntheticInteractionEnd = consumeSyntheticInteractionSequence(data, index)
+    if (syntheticInteractionEnd !== null) {
+      index = syntheticInteractionEnd
       continue
     }
 

@@ -2,7 +2,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { TerminalDiagnosticsLogInput } from '@shared/contracts/dto'
 import { parseTerminalCommandInput, type TerminalCommandInputState } from './commandInput'
 import { createPtyWriteQueue, handleTerminalCustomKeyEvent } from './inputBridge'
-import { isAutomaticTerminalReply } from './inputClassification'
+import { isAutomaticTerminalReply, isTerminalSyntheticInteractionSequence } from './inputClassification'
 import { hasRecentTerminalUserInteraction } from './userInteractionWindow'
 
 export interface RuntimeTerminalInputBridge {
@@ -37,6 +37,7 @@ export function createRuntimeTerminalInputBridge({
   shouldGateInitialUserInput,
   pendingUserInputBufferRef,
   recentUserInteractionAtRef,
+  suppressPassiveSyntheticInteraction,
   inputDiagnosticsEnabled,
   terminalDiagnostics,
 }: {
@@ -52,6 +53,7 @@ export function createRuntimeTerminalInputBridge({
     current: Array<{ data: string; encoding: 'utf8' | 'binary' }>
   }
   recentUserInteractionAtRef: { current: number }
+  suppressPassiveSyntheticInteraction: boolean
   inputDiagnosticsEnabled: boolean
   terminalDiagnostics: {
     log: (event: string, details?: TerminalDiagnosticsLogInput['details']) => void
@@ -88,15 +90,41 @@ export function createRuntimeTerminalInputBridge({
   let isBufferedUserInputGateOpen = !shouldGateInitialUserInput
   let shouldForwardTerminalData = false
 
+  const shouldBufferUserInput = (data: string): boolean => {
+    if (data.length === 0) {
+      return false
+    }
+
+    if (!data.startsWith('\u001b')) {
+      return true
+    }
+
+    if (isTerminalSyntheticInteractionSequence(data)) {
+      return false
+    }
+
+    return hasRecentTerminalUserInteraction(recentUserInteractionAtRef)
+  }
+
+
+  const shouldDropPassiveSyntheticInteraction = (data: string): boolean => {
+    if (!suppressPassiveSyntheticInteraction) {
+      return false
+    }
+
+    if (!isTerminalSyntheticInteractionSequence(data)) {
+      return false
+    }
+
+    return !hasRecentTerminalUserInteraction(recentUserInteractionAtRef)
+  }
+
   const bufferUserInput = (data: string, encoding: 'utf8' | 'binary'): void => {
     if (data.length === 0) {
       return
     }
 
-    if (
-      data.startsWith('\u001b') &&
-      !hasRecentTerminalUserInteraction(recentUserInteractionAtRef)
-    ) {
+    if (!shouldBufferUserInput(data)) {
       return
     }
 
@@ -149,6 +177,17 @@ export function createRuntimeTerminalInputBridge({
         shouldForwardTerminalData,
         inputGateOpen: isBufferedUserInputGateOpen,
       })
+    }
+
+    if (shouldDropPassiveSyntheticInteraction(data)) {
+      if (inputDiagnosticsEnabled) {
+        terminalDiagnostics.log('xterm-onData-dropped', {
+          reason: 'synthetic-interaction-without-recent-user-input',
+          dataLength: data.length,
+          dataHeadHex: formatInputHeadHex(data),
+        })
+      }
+      return
     }
 
     if (!isBufferedUserInputGateOpen) {
@@ -231,6 +270,17 @@ export function createRuntimeTerminalInputBridge({
         shouldForwardTerminalData,
         inputGateOpen: isBufferedUserInputGateOpen,
       })
+    }
+
+    if (shouldDropPassiveSyntheticInteraction(data)) {
+      if (inputDiagnosticsEnabled) {
+        terminalDiagnostics.log('xterm-onBinary-dropped', {
+          reason: 'synthetic-interaction-without-recent-user-input',
+          dataLength: data.length,
+          dataHeadHex: formatInputHeadHex(data),
+        })
+      }
+      return
     }
 
     if (!isBufferedUserInputGateOpen) {

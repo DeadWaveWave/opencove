@@ -158,6 +158,60 @@ export function isAutomaticTerminalReply(data: string): boolean {
   return matchesRecognizedTerminalReplyChunk(data)
 }
 
+export function isTerminalSyntheticInteractionSequence(data: string): boolean {
+  if (!data.startsWith(CSI_PREFIX)) {
+    return false
+  }
+
+  let cursor = 0
+  let sawRecognizedSequence = false
+
+  while (cursor < data.length) {
+    if (data.startsWith('\u001b[M', cursor)) {
+      const buttonByte = data.charCodeAt(cursor + 3)
+      const xByte = data.charCodeAt(cursor + 4)
+      const yByte = data.charCodeAt(cursor + 5)
+      const isCompleteX10Report =
+        Number.isFinite(buttonByte) &&
+        Number.isFinite(xByte) &&
+        Number.isFinite(yByte) &&
+        buttonByte >= 32 &&
+        buttonByte <= 255 &&
+        xByte >= 32 &&
+        xByte <= 255 &&
+        yByte >= 32 &&
+        yByte <= 255
+
+      if (!isCompleteX10Report) {
+        return false
+      }
+
+      sawRecognizedSequence = true
+      cursor += 6
+      continue
+    }
+
+    const sequence = readCsiSequence(data, cursor)
+    if (!sequence) {
+      return false
+    }
+
+    const payload = sequence.payload
+
+    const isFocusEvent = payload === 'I' || payload === 'O'
+    const isSgrMouseEvent = /^<\d+;\d+;\d+[mM]$/u.test(payload)
+
+    if (!isFocusEvent && !isSgrMouseEvent) {
+      return false
+    }
+
+    sawRecognizedSequence = true
+    cursor = sequence.endIndex + 1
+  }
+
+  return sawRecognizedSequence
+}
+
 export function extractAutomaticTerminalQuerySequences(data: string): string[] {
   if (!data.includes(CSI_PREFIX)) {
     return []
