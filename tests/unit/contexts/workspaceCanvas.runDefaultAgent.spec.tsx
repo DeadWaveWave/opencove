@@ -10,6 +10,7 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import { createMountAwareAgentControlSurface } from './workspaceCanvas.mountTestSupport'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -102,7 +103,7 @@ vi.mock('../../../src/contexts/workspace/presentation/renderer/components/TaskNo
 
 describe('WorkspaceCanvas run default agent', () => {
   it('launches the default agent directly from the pane context menu with standby initial status', async () => {
-    const launch = vi.fn(async () => ({
+    const launchInMount = vi.fn(async () => ({
       sessionId: 'new-session',
       provider: 'codex' as const,
       command: 'codex',
@@ -110,7 +111,25 @@ describe('WorkspaceCanvas run default agent', () => {
       launchMode: 'new' as const,
       effectiveModel: 'gpt-5.2-codex',
       resumeSessionId: null,
+      profileId: 'wsl:Ubuntu',
+      runtimeKind: 'posix' as const,
+      startedAt: '2026-05-10T00:00:00.000Z',
+      executionContext: {
+        projectId: 'workspace-1',
+        spaceId: null,
+        mountId: 'mount-local',
+        targetId: 'target-local',
+        workingDirectory: '/tmp/repo',
+        target: { rootPath: '/tmp/repo', rootUri: 'file:///tmp/repo' },
+        scope: { rootPath: '/tmp/repo', rootUri: 'file:///tmp/repo' },
+        endpoint: { endpointId: 'local', kind: 'local' as const },
+      },
     }))
+    const controlSurfaceInvoke = createMountAwareAgentControlSurface({
+      workspaceId: 'workspace-1',
+      rootPath: '/tmp/repo',
+      launchInMount,
+    })
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -125,8 +144,11 @@ describe('WorkspaceCanvas run default agent', () => {
         workspace: {
           ensureDirectory: vi.fn(async () => undefined),
         },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
+        },
         agent: {
-          launch,
+          launch: vi.fn(),
         },
         task: {
           suggestTitle: vi.fn(async () => ({
@@ -194,17 +216,24 @@ describe('WorkspaceCanvas run default agent', () => {
     fireEvent.click(await screen.findByTestId('workspace-context-run-default-agent'))
 
     await waitFor(() => {
-      expect(launch).toHaveBeenCalledTimes(1)
+      expect(launchInMount).toHaveBeenCalledTimes(1)
     })
 
-    expect(launch).toHaveBeenCalledWith(
+    expect(controlSurfaceInvoke).toHaveBeenNthCalledWith(1, {
+      kind: 'query',
+      id: 'mount.list',
+      payload: { projectId: 'workspace-1' },
+    })
+    expect(launchInMount).toHaveBeenCalledWith(
       expect.objectContaining({
+        mountId: 'mount-local',
+        cwdUri: 'file:///tmp/repo',
         provider: 'codex',
-        cwd: '/tmp/repo',
-        profileId: 'wsl:Ubuntu',
         prompt: '',
         mode: 'new',
         model: 'gpt-5.2-codex',
+        cols: expect.any(Number),
+        rows: expect.any(Number),
       }),
     )
     await waitFor(() => {
@@ -224,7 +253,7 @@ describe('WorkspaceCanvas run default agent', () => {
   })
 
   it('can expand the pane context menu to launch a specific installed agent CLI', async () => {
-    const launch = vi.fn(async () => ({
+    const launchInMount = vi.fn(async () => ({
       sessionId: 'new-session',
       provider: 'claude-code' as const,
       command: 'claude',
@@ -232,11 +261,29 @@ describe('WorkspaceCanvas run default agent', () => {
       launchMode: 'new' as const,
       effectiveModel: 'claude-sonnet-4-6',
       resumeSessionId: null,
+      profileId: null,
+      runtimeKind: 'posix' as const,
+      startedAt: '2026-05-10T00:00:00.000Z',
+      executionContext: {
+        projectId: 'workspace-1',
+        spaceId: null,
+        mountId: 'mount-local',
+        targetId: 'target-local',
+        workingDirectory: '/tmp/repo',
+        target: { rootPath: '/tmp/repo', rootUri: 'file:///tmp/repo' },
+        scope: { rootPath: '/tmp/repo', rootUri: 'file:///tmp/repo' },
+        endpoint: { endpointId: 'local', kind: 'local' as const },
+      },
     }))
 
     const listInstalledProviders = vi.fn(async () => ({
       providers: ['claude-code' as const],
     }))
+    const controlSurfaceInvoke = createMountAwareAgentControlSurface({
+      workspaceId: 'workspace-1',
+      rootPath: '/tmp/repo',
+      launchInMount,
+    })
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -251,8 +298,11 @@ describe('WorkspaceCanvas run default agent', () => {
         workspace: {
           ensureDirectory: vi.fn(async () => undefined),
         },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
+        },
         agent: {
-          launch,
+          launch: vi.fn(),
           listInstalledProviders,
         },
         task: {
@@ -322,17 +372,19 @@ describe('WorkspaceCanvas run default agent', () => {
     })
 
     await waitFor(() => {
-      expect(launch).toHaveBeenCalledTimes(1)
+      expect(launchInMount).toHaveBeenCalledTimes(1)
     })
 
-    expect(launch).toHaveBeenCalledWith(
+    expect(launchInMount).toHaveBeenCalledWith(
       expect.objectContaining({
+        mountId: 'mount-local',
+        cwdUri: 'file:///tmp/repo',
         provider: 'claude-code',
-        cwd: '/tmp/repo',
-        profileId: null,
         prompt: '',
         mode: 'new',
         model: 'claude-sonnet-4-6',
+        cols: expect.any(Number),
+        rows: expect.any(Number),
       }),
     )
   })
