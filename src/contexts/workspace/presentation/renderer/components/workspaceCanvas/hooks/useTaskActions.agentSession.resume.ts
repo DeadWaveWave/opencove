@@ -5,11 +5,7 @@ import {
 } from '@contexts/settings/domain/agentSettings'
 import { isResumeSessionBindingVerified } from '../../../utils/agentResumeBinding'
 import { toErrorMessage } from '../helpers'
-import type {
-  LaunchAgentSessionResult,
-  ListMountsResult,
-  TerminalRuntimeKind,
-} from '@shared/contracts/dto'
+import type { LaunchAgentSessionResult, TerminalRuntimeKind } from '@shared/contracts/dto'
 import {
   assignAgentNodeToTaskSpace,
   createTaskAgentAnchor,
@@ -19,6 +15,7 @@ import {
   type ResumeTaskAgentSessionContext,
 } from './useTaskActions.agentSession.shared'
 import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
+import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 
 export async function resumeTaskAgentSessionAction(
   taskNodeId: string,
@@ -55,44 +52,35 @@ export async function resumeTaskAgentSessionAction(
     return
   }
 
-  const taskSpace = findTaskSpace(taskNodeId, context.spacesRef)
-  let mountId = taskSpace?.targetMountId ?? null
-  let taskDirectory =
-    taskSpace && taskSpace.directoryPath.trim().length > 0
-      ? taskSpace.directoryPath.trim()
-      : context.workspacePath
+  let resolvedTaskSpace = findTaskSpace(taskNodeId, context.spacesRef)
+  const shouldFallbackToFirstMount =
+    resolvedTaskSpace === null &&
+    typeof context.workspaceId === 'string' &&
+    context.workspaceId.trim().length > 0
+  let mountId: string | null = null
+  let taskDirectory = context.workspacePath
 
-  const normalizedWorkspaceId =
-    typeof context.workspaceId === 'string' ? context.workspaceId.trim() : ''
-
-  if (!mountId && normalizedWorkspaceId.length > 0) {
-    const controlSurfaceInvoke = (
-      window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
-    ).opencoveApi?.controlSurface?.invoke
-
-    if (typeof controlSurfaceInvoke === 'function') {
-      try {
-        const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-          kind: 'query',
-          id: 'mount.list',
-          payload: { projectId: normalizedWorkspaceId },
-        })
-
-        const defaultMount = mountResult.mounts[0] ?? null
-        if (defaultMount) {
-          mountId = defaultMount.mountId
-          taskDirectory = defaultMount.rootPath
-        }
-      } catch (error) {
-        setTaskLastError({
-          taskNodeId,
-          message: context.t('messages.mountListFailed', { message: toErrorMessage(error) }),
-          setNodes: context.setNodes,
-        })
-        context.onRequestPersistFlush?.()
-        return
-      }
-    }
+  try {
+    const mountContext = await resolveSpaceMountLaunchContext({
+      workspaceId: context.workspaceId,
+      workspacePath: context.workspacePath,
+      space: resolvedTaskSpace,
+      spaces: context.spacesRef.current,
+      onSpacesChange: context.onSpacesChange,
+      onRequestPersistFlush: context.onRequestPersistFlush,
+      fallbackToFirstMount: shouldFallbackToFirstMount,
+    })
+    resolvedTaskSpace = mountContext.space
+    mountId = mountContext.mountId
+    taskDirectory = mountContext.workingDirectory
+  } catch (error) {
+    setTaskLastError({
+      taskNodeId,
+      message: context.t('messages.mountListFailed', { message: toErrorMessage(error) }),
+      setNodes: context.setNodes,
+    })
+    context.onRequestPersistFlush?.()
+    return
   }
 
   const env = resolveAgentLaunchEnv(context.agentSettings, record.provider)
@@ -179,7 +167,7 @@ export async function resumeTaskAgentSessionAction(
       anchor: createTaskAgentAnchor(taskNode),
       kind: 'agent',
       placement: {
-        targetSpaceRect: taskSpace?.rect ?? null,
+        targetSpaceRect: resolvedTaskSpace?.rect ?? null,
         preferredDirection: 'right',
       },
       agent: {

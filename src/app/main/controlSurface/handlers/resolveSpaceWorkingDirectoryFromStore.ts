@@ -10,6 +10,8 @@ export async function resolveSpaceWorkingDirectoryFromStore(options: {
 }): Promise<{
   projectId: string
   workspacePath: string
+  directoryPath: string
+  targetMountId: string | null
   workingDirectory: string
   agentSettings: ReturnType<typeof normalizeAgentSettings>
 }> {
@@ -26,6 +28,8 @@ export async function resolveSpaceWorkingDirectoryFromStore(options: {
     return {
       projectId: workspace.id,
       workspacePath: workspace.path,
+      directoryPath: space.directoryPath,
+      targetMountId: space.targetMountId,
       workingDirectory: resolveSpaceWorkingDirectory(space, workspace.path),
       agentSettings: normalizeAgentSettings(normalized?.settings),
     }

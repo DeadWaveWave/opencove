@@ -1,6 +1,7 @@
 import process from 'node:process'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
 import { createAppError } from '../../../../shared/errors/appError'
+import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type {
   GetSessionPresentationSnapshotInput,
   GetSessionPresentationSnapshotResult,
@@ -20,6 +21,8 @@ import type { ControlSurfacePtyRuntime } from './sessionPtyRuntime'
 import { resolveExecutionContextDto, resolveSessionLaunchSpawn } from './sessionLaunchSupport'
 import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
+import type { WorkerTopologyStore } from '../topology/topologyStore'
+import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -177,6 +180,24 @@ function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
   }
 }
 
+async function invokeInternalCommand<TResult>(
+  controlSurface: ControlSurface,
+  ctx: Parameters<ControlSurface['invoke']>[0],
+  request: { id: string; payload: unknown },
+): Promise<TResult> {
+  const result = await controlSurface.invoke(ctx, {
+    kind: 'command',
+    id: request.id,
+    payload: request.payload,
+  })
+
+  if (result.ok === false) {
+    throw createAppError(result.error)
+  }
+
+  return result.value as TResult
+}
+
 export function registerSessionStreamingHandlers(
   controlSurface: ControlSurface,
   deps: {
@@ -184,6 +205,7 @@ export function registerSessionStreamingHandlers(
     getPersistenceStore: () => Promise<PersistenceStore>
     ptyRuntime: ControlSurfacePtyRuntime
     ptyStreamHub: PtyStreamHub
+    topology: WorkerTopologyStore
   },
 ): void {
   controlSurface.register('session.list', {
@@ -229,11 +251,73 @@ export function registerSessionStreamingHandlers(
     kind: 'command',
     validate: normalizeSpawnTerminalPayload,
     handle: async (ctx, payload): Promise<SpawnTerminalSessionResult> => {
-      const { workingDirectory, agentSettings, projectId } =
-        await resolveSpaceWorkingDirectoryFromStore({
-          spaceId: payload.spaceId,
-          getPersistenceStore: deps.getPersistenceStore,
+      const {
+        workingDirectory,
+        agentSettings,
+        projectId,
+        directoryPath,
+        targetMountId,
+        workspacePath,
+      } = await resolveSpaceWorkingDirectoryFromStore({
+        spaceId: payload.spaceId,
+        getPersistenceStore: deps.getPersistenceStore,
+      })
+
+      const mountContext = resolveSpaceMountContext({
+        space: { directoryPath, targetMountId },
+        workspacePath,
+        mounts: (await deps.topology.listMounts({ projectId })).mounts,
+      })
+
+      if (mountContext.mount) {
+        const runtime = payload.runtime ?? 'shell'
+        const spawnCommand = payload.command ?? (runtime === 'node' ? 'node' : null)
+        const cwdUri =
+          mountContext.workingDirectory.trim().length > 0
+            ? toFileUri(mountContext.workingDirectory)
+            : null
+
+        const spawned = await invokeInternalCommand<SpawnTerminalResult>(controlSurface, ctx, {
+          id: 'pty.spawnInMount',
+          payload: {
+            mountId: mountContext.mount.mountId,
+            cwdUri,
+            profileId: agentSettings.defaultTerminalProfileId,
+            ...(spawnCommand ? { command: spawnCommand } : {}),
+            ...(spawnCommand && payload.args ? { args: payload.args } : {}),
+            cols: payload.cols,
+            rows: payload.rows,
+          },
         })
+
+        const session =
+          deps.ptyStreamHub
+            .listSessions()
+            .sessions.find(item => item.sessionId === spawned.sessionId) ?? null
+
+        return {
+          sessionId: spawned.sessionId,
+          startedAt: session?.startedAt ?? ctx.now().toISOString(),
+          cwd: session?.cwd ?? mountContext.workingDirectory,
+          command: session?.command ?? spawnCommand ?? resolveDefaultShell(),
+          args: session?.args ?? (spawnCommand ? (payload.args ?? []) : []),
+          executionContext: resolveExecutionContextDto(
+            session?.cwd ?? mountContext.workingDirectory,
+            {
+              projectId,
+              spaceId: payload.spaceId,
+              mountId: mountContext.mount.mountId,
+              targetId: mountContext.mount.targetId,
+              endpointId: mountContext.mount.endpointId,
+              endpointKind: mountContext.mount.endpointId === 'local' ? 'local' : 'remote_worker',
+              targetRootPath: mountContext.mount.rootPath,
+              targetRootUri: mountContext.mount.rootUri,
+              scopeRootPath: mountContext.mount.rootPath,
+              scopeRootUri: mountContext.mount.rootUri,
+            },
+          ),
+        }
+      }
 
       const isApproved = await deps.approvedWorkspaces.isPathApproved(workingDirectory)
       if (!isApproved) {

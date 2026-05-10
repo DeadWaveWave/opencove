@@ -9,17 +9,17 @@ import {
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { AgentNodeData, Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { clearResumeSessionBinding } from '../../../utils/agentResumeBinding'
 import { resolveNodePlacementAnchorFromViewportCenter, toErrorMessage } from '../helpers'
 import type { ContextMenuState, CreateNodeInput, ShowWorkspaceCanvasMessage } from '../types'
-import type { LaunchAgentSessionResult, ListMountsResult } from '@shared/contracts/dto'
+import type { LaunchAgentSessionResult } from '@shared/contracts/dto'
 import {
   assignNodeToSpaceAndExpand,
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 import { resolveDefaultAgentLaunchGeometry } from './agentLaunchGeometry'
+import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 
 interface UseAgentLauncherParams {
   agentSettings: AgentSettings
@@ -98,35 +98,32 @@ export function useWorkspaceCanvasAgentLauncher({
             environmentVariables && Object.keys(environmentVariables).length > 0
               ? { ...env, ...environmentVariables }
               : env
-          let mountId = anchorSpace?.targetMountId ?? null
+          let resolvedAnchorSpace = anchorSpace
+          const shouldFallbackToFirstMount = !resolvedAnchorSpace && workspaceId.trim().length > 0
 
-          if (!mountId && !anchorSpace && workspaceId.trim().length > 0) {
-            const controlSurfaceInvoke = (
-              window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
-            ).opencoveApi?.controlSurface?.invoke
+          let mountId: string | null = null
+          let fallbackExecutionDirectory = workspacePath
 
-            if (typeof controlSurfaceInvoke === 'function') {
-              try {
-                const mountResult =
-                  await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-                    kind: 'query',
-                    id: 'mount.list',
-                    payload: { projectId: workspaceId },
-                  })
-                mountId = mountResult.mounts[0]?.mountId ?? null
-              } catch (error) {
-                onShowMessage?.(
-                  t('messages.mountListFailed', { message: toErrorMessage(error) }),
-                  'error',
-                )
-                return
-              }
-            }
+          try {
+            const resolvedMountContext = await resolveSpaceMountLaunchContext({
+              workspaceId,
+              workspacePath,
+              space: resolvedAnchorSpace,
+              spaces: spacesRef.current,
+              onSpacesChange,
+              onRequestPersistFlush,
+              fallbackToFirstMount: shouldFallbackToFirstMount,
+            })
+            resolvedAnchorSpace = resolvedMountContext.space
+            mountId = resolvedMountContext.mountId
+            fallbackExecutionDirectory = resolvedMountContext.workingDirectory
+          } catch (error) {
+            onShowMessage?.(
+              t('messages.mountListFailed', { message: toErrorMessage(error) }),
+              'error',
+            )
+            return
           }
-          const fallbackExecutionDirectory = resolveSpaceWorkingDirectory(
-            anchorSpace,
-            workspacePath,
-          )
 
           let launchedSessionId = ''
           let launchedProfileId: string | null = null
@@ -136,8 +133,8 @@ export function useWorkspaceCanvasAgentLauncher({
 
           if (mountId) {
             const spawnCwdUri =
-              anchorSpace?.targetMountId && anchorSpace.directoryPath.trim().length > 0
-                ? toFileUri(anchorSpace.directoryPath.trim())
+              fallbackExecutionDirectory.trim().length > 0
+                ? toFileUri(fallbackExecutionDirectory.trim())
                 : null
 
             const launched =
@@ -196,7 +193,7 @@ export function useWorkspaceCanvasAgentLauncher({
             anchor,
             kind: 'agent',
             placement: {
-              targetSpaceRect: anchorSpace?.rect ?? null,
+              targetSpaceRect: resolvedAnchorSpace?.rect ?? null,
             },
             agent: {
               provider,
@@ -218,13 +215,13 @@ export function useWorkspaceCanvasAgentLauncher({
             return
           }
 
-          if (!anchorSpace) {
+          if (!resolvedAnchorSpace) {
             return
           }
 
           assignNodeToSpaceAndExpand({
             createdNodeId: created.id,
-            targetSpaceId: anchorSpace.id,
+            targetSpaceId: resolvedAnchorSpace.id,
             spacesRef,
             nodesRef,
             setNodes,

@@ -27,6 +27,7 @@ Space:
 
 - 保存空间边界、节点归属和 `targetMountId`。
 - Space Explorer、task/agent launch、terminal spawn 都从 Space 解析执行上下文。
+- 当旧 Space 缺失 `targetMountId`、或绑定的 mount 已失效，但 `directoryPath` 仍能映射到现有 mount 时，启动路径会先修复 Space 的 mount 绑定，再继续执行。
 
 Endpoint:
 
@@ -81,6 +82,7 @@ src/
 | --- | --- | --- |
 | endpoint registry | topology store | `endpoint.*` |
 | mount registry | topology store | `mount.*`, `mountTarget.resolve` |
+| space mount resolution | shared space application helper | renderer launchers, `session.launchAgent`, `session.spawnTerminal`, `node.*` |
 | filesystem | filesystem context + topology routing | `filesystem.*`, `filesystem.*InMount` |
 | worktree | worktree context + mount routing | `gitWorktree.*`, `gitWorktree.*InMount` |
 | terminal runtime | Worker PTY runtime | `pty.spawn`, `pty.spawnInMount`, `/pty` |
@@ -93,9 +95,10 @@ src/
 
 1. UI 输入只表达 intent；执行目录、mount、endpoint 的解析在 application/usecase 或 topology owner 内完成。
 2. 一个 Space 的 mount-aware 文件/PTY/worktree 操作必须通过 `targetMountId` 解析 scope。
-3. Remote mount 操作必须路由到目标 Worker，不得由 Desktop 猜测远端路径。
-4. Durable workspace state 与 runtime observation 分开建模。
-5. 新增外部能力必须先有 Control Surface contract，再接 CLI/IPC/Web UI。
+3. 只携带 `spaceId` 的通用 launch/spawn intent，在命中 mount 时也必须先解析 mount，再委派到 `*InMount` 路径执行。
+4. Remote mount 操作必须路由到目标 Worker，不得由 Desktop 猜测远端路径。
+5. Durable workspace state 与 runtime observation 分开建模。
+6. 新增外部能力必须先有 Control Surface contract，再接 CLI/IPC/Web UI。
 
 ## Testing Structure
 

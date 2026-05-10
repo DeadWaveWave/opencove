@@ -60,7 +60,10 @@ describe('createTerminalNodeAtFlowPosition', () => {
           })),
         },
         controlSurface: {
-          invoke: vi.fn(),
+          invoke: vi.fn(async () => ({
+            projectId: 'workspace-1',
+            mounts: [],
+          })),
         },
       },
     })
@@ -229,7 +232,7 @@ describe('createTerminalNodeAtFlowPosition', () => {
       id: 'pty.spawnInMount',
       payload: {
         mountId: 'mount-remote',
-        cwdUri: null,
+        cwdUri: 'file:///remote/root',
         profileId: null,
         cols: expectedGeometry.cols,
         rows: expectedGeometry.rows,

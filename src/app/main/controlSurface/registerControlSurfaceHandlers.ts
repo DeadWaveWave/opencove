@@ -97,6 +97,7 @@ export function registerControlSurfaceHandlers(
     getPersistenceStore: deps.getPersistenceStore,
     ptyRuntime: deps.ptyRuntime,
     ptyStreamHub: deps.ptyStreamHub,
+    topology: deps.topology,
   })
   registerPtyMountHandlers(controlSurface, {
     approvedWorkspaces: deps.approvedWorkspaces,

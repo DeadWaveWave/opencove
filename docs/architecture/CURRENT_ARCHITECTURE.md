@@ -58,12 +58,16 @@ Filesystem 使用 URI-first contracts。普通 `filesystem.*` 访问本机 appro
 
 Space 的执行与文件访问以 `targetMountId` 为主。`directoryPath` 仍存在，用于兼容、显示和部分 fallback，但 mount-aware 路径中不应把它当作唯一执行真相。
 
+`session.launchAgent`、`session.spawnTerminal` 这类只携带 `spaceId` 的通用 intent，当前也会先按 Space 的 mount 上下文解析执行目录；当 Space 绑定了 mount 时，handler 会内部委派到 `session.launchAgentInMount` 或 `pty.spawnInMount`，而不是继续把 `directoryPath` 当成纯本机 cwd 直接执行。
+
+Renderer 侧的 task / agent / terminal 启动入口与 main / node-control 共享同一套 mount 解析语义：如果旧数据里的 `targetMountId` 缺失或失效，但 `directoryPath` 仍能落在某个 project mount 内，调用方会先把 Space 修复为该 mount root/working directory，再继续发起 launch。
+
 当前画布能力包括：
 
 - Space Explorer：通过 mount root 浏览、创建、删除、复制、移动、重命名和打开文件。
 - Document Node：基于文件 URI 编辑文本文件，并在 mount 上下文中读写。
 - Image / media preview：从文件 bytes 创建画布预览或媒体窗口。
-- CLI node control：通过 `node.*` 和 `canvas.focus` 管理 Note、Task、Website、Agent、Terminal 节点。
+- CLI node control：通过 `node.*` 和 `canvas.focus` 管理 Note、Task、Website、Agent、Terminal 节点；其按 Space 定位 endpoint / working directory 时，也使用同一套 mount-aware 解析规则。
 
 ## Terminal And Sessions
 
