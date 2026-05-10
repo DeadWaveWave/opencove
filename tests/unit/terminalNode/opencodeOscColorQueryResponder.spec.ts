@@ -27,7 +27,7 @@ function createTerminalHarness(theme: Record<string, unknown>) {
 }
 
 describe('registerOpenCodeOscColorQueryResponder', () => {
-  it('responds to OSC 4 palette queries', () => {
+  it('responds to OSC 4 palette queries when alt-screen is active', () => {
     const { terminal, handlers } = createTerminalHarness({
       background: '#0a0f1d',
       foreground: '#d6e4ff',
@@ -36,16 +36,20 @@ describe('registerOpenCodeOscColorQueryResponder', () => {
     })
 
     const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
-    registerOpenCodeOscColorQueryResponder({ terminal, ptyWriteQueue })
+    registerOpenCodeOscColorQueryResponder({
+      terminal,
+      ptyWriteQueue,
+      isAltScreenActive: () => true,
+    })
 
     const handler = handlers.get(4)
     expect(handler).toBeTypeOf('function')
     expect(handler?.('0;?')).toBe(true)
-    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b]4;0;#000000\u0007')
+    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith(']4;0;#000000')
     expect(ptyWriteQueue.flush).toHaveBeenCalled()
   })
 
-  it('responds to OSC 10/11 special color queries using the active xterm theme', () => {
+  it('responds to OSC 10/11 special color queries using the active xterm theme when alt-screen is active', () => {
     const { terminal, handlers } = createTerminalHarness({
       background: '#fbfcff',
       foreground: 'rgba(17, 24, 39, 0.92)',
@@ -54,12 +58,36 @@ describe('registerOpenCodeOscColorQueryResponder', () => {
     })
 
     const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
-    registerOpenCodeOscColorQueryResponder({ terminal, ptyWriteQueue })
+    registerOpenCodeOscColorQueryResponder({
+      terminal,
+      ptyWriteQueue,
+      isAltScreenActive: () => true,
+    })
 
     expect(handlers.get(11)?.('?')).toBe(true)
-    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b]11;#fbfcff\u0007')
+    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith(']11;#fbfcff')
 
     expect(handlers.get(10)?.('?')).toBe(true)
-    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith('\u001b]10;#111827\u0007')
+    expect(ptyWriteQueue.enqueue).toHaveBeenCalledWith(']10;#111827')
+  })
+
+  it('ignores OSC color queries before alt-screen is active', () => {
+    const { terminal, handlers } = createTerminalHarness({
+      background: '#0a0f1d',
+      foreground: '#d6e4ff',
+    })
+
+    const ptyWriteQueue = { enqueue: vi.fn(), flush: vi.fn() }
+    registerOpenCodeOscColorQueryResponder({
+      terminal,
+      ptyWriteQueue,
+      isAltScreenActive: () => false,
+    })
+
+    expect(handlers.get(4)?.('0;?')).toBe(false)
+    expect(handlers.get(10)?.('?')).toBe(false)
+    expect(handlers.get(11)?.('?')).toBe(false)
+    expect(ptyWriteQueue.enqueue).not.toHaveBeenCalled()
+    expect(ptyWriteQueue.flush).not.toHaveBeenCalled()
   })
 })

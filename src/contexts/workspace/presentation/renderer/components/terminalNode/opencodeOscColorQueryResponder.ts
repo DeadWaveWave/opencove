@@ -138,9 +138,11 @@ function resolveSpecialColor(terminal: Terminal, identifier: number): string | n
 export function registerOpenCodeOscColorQueryResponder({
   terminal,
   ptyWriteQueue,
+  isAltScreenActive,
 }: {
   terminal: Terminal
   ptyWriteQueue: PtyWriteQueue
+  isAltScreenActive: () => boolean
 }): () => void {
   const parser = (terminal as unknown as { parser?: XtermOscParser }).parser
   if (!parser || typeof parser.registerOscHandler !== 'function') {
@@ -152,6 +154,10 @@ export function registerOpenCodeOscColorQueryResponder({
 
   disposables.push(
     registerOscHandler(4, data => {
+      if (!isAltScreenActive()) {
+        return false
+      }
+
       const match = data.match(/^(\d+);\?$/)
       if (!match) {
         return false
@@ -167,7 +173,7 @@ export function registerOpenCodeOscColorQueryResponder({
         return false
       }
 
-      sendOscResponse(ptyWriteQueue, `\u001b]4;${index};${color}\u0007`)
+      sendOscResponse(ptyWriteQueue, `\x1b]4;${index};${color}\x07`)
       return true
     }),
   )
@@ -175,6 +181,10 @@ export function registerOpenCodeOscColorQueryResponder({
   const registerSpecialColorHandler = (identifier: number) => {
     disposables.push(
       registerOscHandler(identifier, data => {
+        if (!isAltScreenActive()) {
+          return false
+        }
+
         if (data.trim() !== '?') {
           return false
         }
@@ -184,7 +194,7 @@ export function registerOpenCodeOscColorQueryResponder({
           return false
         }
 
-        sendOscResponse(ptyWriteQueue, `\u001b]${identifier};${color}\u0007`)
+        sendOscResponse(ptyWriteQueue, `\x1b]${identifier};${color}\x07`)
         return true
       }),
     )

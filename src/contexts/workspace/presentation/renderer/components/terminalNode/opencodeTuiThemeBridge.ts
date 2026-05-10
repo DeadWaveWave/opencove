@@ -7,12 +7,12 @@ type PtyWriteQueue = {
   flush: () => void
 }
 
-const OPENCODE_ALT_SCREEN_ENABLE_SEQUENCE = '\u001b[?1049h'
-const OPENCODE_ALT_SCREEN_DISABLE_SEQUENCE = '\u001b[?1049l'
+const OPENCODE_ALT_SCREEN_ENABLE_SEQUENCE = '[?1049h'
+const OPENCODE_ALT_SCREEN_DISABLE_SEQUENCE = '[?1049l'
 const OPENCODE_ALT_SCREEN_MATCH_BUFFER_SIZE = 32
 
 function buildOpenCodeThemeModeReport(themeMode: 'light' | 'dark'): string {
-  return themeMode === 'light' ? '\u001b[?997;2n' : '\u001b[?997;1n'
+  return themeMode === 'light' ? '[?997;2n' : '[?997;1n'
 }
 
 function isTerminalInAltScreen(terminal: Terminal): boolean {
@@ -36,10 +36,15 @@ export function createOpenCodeTuiThemeBridge({
   reportThemeMode: () => void
   dispose: () => void
 } {
-  const disposeOscResponder = registerOpenCodeOscColorQueryResponder({ terminal, ptyWriteQueue })
   let isAltScreenActive = false
   let lastReported: 'light' | 'dark' | null = null
   let matchBuffer = ''
+
+  const disposeOscResponder = registerOpenCodeOscColorQueryResponder({
+    terminal,
+    ptyWriteQueue,
+    isAltScreenActive: () => isAltScreenActive || isTerminalInAltScreen(terminal),
+  })
 
   const reportThemeMode = (): void => {
     const resolvedTheme = resolveTerminalUiTheme(terminalThemeMode)
