@@ -43,7 +43,11 @@ Topology:
 
 - `endpoint.list`
 - `endpoint.register`
+- `endpoint.registerManagedSsh`
 - `endpoint.remove`
+- `endpoint.overview.list`
+- `endpoint.prepare`
+- `endpoint.repair`
 - `endpoint.ping`
 - `endpoint.homeDirectory`
 - `endpoint.readDirectory`
@@ -90,6 +94,10 @@ Worker endpoints and mounts are managed by the topology store:
 - `worker-topology.json` stores remote endpoints and mounts.
 - `worker-endpoint-secrets.json` stores endpoint tokens separately.
 - The local endpoint is implicit and always identified as `local`.
+
+Managed SSH remains a topology-level endpoint record. `endpoint.prepare` / `endpoint.repair`
+own local tunnel orchestration, remote runtime bootstrap, and health projection; browse flows
+still resolve through `endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
 
 Mount-aware operations resolve `mountId` through `mountTarget.resolve`, enforce mount root scope, then route to the correct endpoint.
 

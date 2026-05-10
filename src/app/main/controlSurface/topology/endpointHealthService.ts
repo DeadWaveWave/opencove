@@ -157,7 +157,8 @@ async function probeEndpointConnection(connection: {
   }
 }
 
-function recommendedActionForStatus(
+function recommendedActionForAccessStatus(
+  access: { kind: 'manual' | 'managed_ssh' },
   status: WorkerEndpointHealthStatusDto,
 ): WorkerEndpointHealthActionDto {
   switch (status) {
@@ -168,13 +169,13 @@ function recommendedActionForStatus(
     case 'disconnected':
       return 'connect'
     case 'auth_failed':
-      return 'repair_credentials'
+      return access.kind === 'managed_ssh' ? 'repair_credentials' : 'show_details'
     case 'tunnel_failed':
-      return 'repair_tunnel'
+      return access.kind === 'managed_ssh' ? 'repair_tunnel' : 'show_details'
     case 'needs_setup':
-      return 'install_runtime'
+      return access.kind === 'managed_ssh' ? 'install_runtime' : 'show_details'
     case 'version_mismatch':
-      return 'update_runtime'
+      return access.kind === 'managed_ssh' ? 'update_runtime' : 'show_details'
     case 'error':
     default:
       return 'retry'
@@ -223,7 +224,7 @@ export function createEndpointHealthService(options: {
         status: probed.status,
         details: probed.details,
         runtime: probed.runtime,
-        recommendedAction: recommendedActionForStatus(probed.status),
+        recommendedAction: recommendedActionForAccessStatus(access, probed.status),
         canBrowse: probed.status === 'connected',
       })
     }
@@ -276,7 +277,7 @@ export function createEndpointHealthService(options: {
       status,
       details: probed.details,
       runtime: probed.runtime,
-      recommendedAction: recommendedActionForStatus(status),
+      recommendedAction: recommendedActionForAccessStatus(access, status),
       canBrowse: status === 'connected',
     })
   }
@@ -337,7 +338,7 @@ export function createEndpointHealthService(options: {
             status: probed.status,
             details: probed.details,
             runtime: probed.runtime,
-            recommendedAction: recommendedActionForStatus(probed.status),
+            recommendedAction: recommendedActionForAccessStatus(access, probed.status),
             canBrowse: probed.status === 'connected',
           }),
         }
@@ -372,7 +373,10 @@ export function createEndpointHealthService(options: {
       }
 
       const prepared = await options.managedRuntime.prepare(toManagedRuntimeAccess(access), {
-        restartTunnel: input.action === 'repair_tunnel' || input.action === 'retry',
+        restartTunnel:
+          input.action === 'repair_credentials' ||
+          input.action === 'repair_tunnel' ||
+          input.action === 'retry',
         reinstallRuntime: input.action === 'update_runtime' || input.action === 'install_runtime',
         allowBootstrap: true,
       })
@@ -384,7 +388,7 @@ export function createEndpointHealthService(options: {
             status: probed.status,
             details: probed.details,
             runtime: probed.runtime,
-            recommendedAction: recommendedActionForStatus(probed.status),
+            recommendedAction: recommendedActionForAccessStatus(access, probed.status),
             canBrowse: probed.status === 'connected',
           }),
         }
@@ -394,7 +398,8 @@ export function createEndpointHealthService(options: {
         overview: buildOverview(access.endpoint, {
           status: prepared.snapshot.status === 'error' ? 'tunnel_failed' : 'error',
           details: [prepared.snapshot.lastError ?? 'Remote repair did not finish successfully.'],
-          recommendedAction: recommendedActionForStatus(
+          recommendedAction: recommendedActionForAccessStatus(
+            access,
             prepared.snapshot.status === 'error' ? 'tunnel_failed' : 'error',
           ),
         }),
