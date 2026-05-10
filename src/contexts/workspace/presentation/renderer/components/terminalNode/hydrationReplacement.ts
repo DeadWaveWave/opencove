@@ -59,9 +59,32 @@ function consumeSyntheticInteractionSequence(data: string, index: number): numbe
     return isCompleteX10Report ? index + 6 : data.length
   }
 
-  const sgrMouseMatch = /^\u001b\[<\d+;\d+;\d+[mM]/u.exec(data.slice(index))
-  if (sgrMouseMatch) {
-    return index + sgrMouseMatch[0].length
+  if (data.startsWith('\u001b[<', index)) {
+    let cursor = index + 3
+    let separatorCount = 0
+
+    while (cursor < data.length) {
+      const code = data.charCodeAt(cursor)
+
+      if (code >= 0x30 && code <= 0x39) {
+        cursor += 1
+        continue
+      }
+
+      if (code === 0x3b) {
+        separatorCount += 1
+        cursor += 1
+        continue
+      }
+
+      if ((code === 0x6d || code === 0x4d) && separatorCount >= 2) {
+        return cursor + 1
+      }
+
+      break
+    }
+
+    return data.length
   }
 
   return null
