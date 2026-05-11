@@ -56,7 +56,7 @@ export function toShellWorkspaceState(
   )
   const hasActiveSpace =
     workspace.activeSpaceId !== null &&
-    sanitizedSpaces.some(space => space.id === workspace.activeSpaceId)
+    sanitizedSpaces.some(space => space.id === workspace.activeSpaceId && !space.parentSpaceId)
 
   return {
     id: workspace.id,

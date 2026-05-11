@@ -178,55 +178,61 @@ export function searchWorkspace({
   const spaceByNodeId = buildSpaceByNodeId(spaces)
   const inheritedLabelColorByNodeId = buildInheritedLabelColorByNodeId(spaces)
 
-  spaces.forEach((space, index) => {
-    const worktreeInfo = resolveWorktreeInfo(space.directoryPath, workspacePath, worktreeInfoByPath)
-    const pullRequest = resolvePullRequestSummary(worktreeInfo, pullRequestsByBranch)
-    const branchName = worktreeInfo?.branch?.trim() ?? ''
-    const head = worktreeInfo?.head?.trim() ?? null
-    const branchKey = branchName.length > 0 ? branchName : head ? head : ''
+  spaces
+    .filter(space => !space.parentSpaceId)
+    .forEach((space, index) => {
+      const worktreeInfo = resolveWorktreeInfo(
+        space.directoryPath,
+        workspacePath,
+        worktreeInfoByPath,
+      )
+      const pullRequest = resolvePullRequestSummary(worktreeInfo, pullRequestsByBranch)
+      const branchName = worktreeInfo?.branch?.trim() ?? ''
+      const head = worktreeInfo?.head?.trim() ?? null
+      const branchKey = branchName.length > 0 ? branchName : head ? head : ''
 
-    const candidateText = [
-      space.name,
-      space.directoryPath,
-      branchName,
-      head,
-      pullRequest ? `#${pullRequest.number}` : '',
-      pullRequest?.title ?? '',
-    ]
-      .filter(Boolean)
-      .join('\n')
+      const candidateText = [
+        space.name,
+        space.directoryPath,
+        branchName,
+        head,
+        pullRequest ? `#${pullRequest.number}` : '',
+        pullRequest?.title ?? '',
+      ]
+        .filter(Boolean)
+        .join('\n')
 
-    const score = fuzzyScore(candidateText, normalizedQuery)
-    if (score === null) {
-      return
-    }
+      const score = fuzzyScore(candidateText, normalizedQuery)
+      if (score === null) {
+        return
+      }
 
-    hits.push({
-      index: nodes.length + index,
-      id: `space:${space.id}`,
-      spaceId: space.id,
-      kind: 'space',
-      title: space.name,
-      subtitle: toSingleLineSnippet(space.directoryPath),
-      score,
-      effectiveLabelColor: space.labelColor,
-      context: {
-        space: {
-          id: space.id,
-          name: space.name,
-          labelColor: space.labelColor,
+      hits.push({
+        index: nodes.length + index,
+        id: `space:${space.id}`,
+        spaceId: space.id,
+        kind: 'space',
+        title: space.name,
+        subtitle: toSingleLineSnippet(space.directoryPath),
+        score,
+        effectiveLabelColor: space.labelColor,
+        context: {
+          space: {
+            id: space.id,
+            name: space.name,
+            labelColor: space.labelColor,
+          },
+          branch:
+            branchKey.length > 0
+              ? {
+                  name: branchName.length > 0 ? branchName : branchKey,
+                  head: branchName.length > 0 ? null : head,
+                }
+              : null,
+          pullRequest,
         },
-        branch:
-          branchKey.length > 0
-            ? {
-                name: branchName.length > 0 ? branchName : branchKey,
-                head: branchName.length > 0 ? null : head,
-              }
-            : null,
-        pullRequest,
-      },
+      })
     })
-  })
 
   nodes.forEach((node, index) => {
     const kind = node.data.kind

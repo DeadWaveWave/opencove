@@ -5,6 +5,7 @@ import type {
   TaskNodeData,
   WorkspaceSpaceState,
 } from '@contexts/workspace/presentation/renderer/types'
+import { isSpaceBoundaryEqual } from './spaceBoundaryEquality'
 
 export function isPersistedAppState(value: unknown): value is PersistedAppState {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
@@ -304,6 +305,24 @@ function mergeSpaces(options: {
         baseSpace.targetMountId,
         localSpace.targetMountId,
         snapshotSpace?.targetMountId,
+        (left, right) => left === right,
+      ),
+      parentSpaceId: mergeSnapshotField(
+        baseSpace.parentSpaceId ?? null,
+        localSpace.parentSpaceId ?? null,
+        snapshotSpace?.parentSpaceId,
+        (left, right) => left === right,
+      ),
+      boundary: mergeSnapshotField(
+        baseSpace.boundary ?? null,
+        localSpace.boundary ?? null,
+        snapshotSpace?.boundary,
+        isSpaceBoundaryEqual,
+      ),
+      sortOrder: mergeSnapshotField(
+        baseSpace.sortOrder ?? 0,
+        localSpace.sortOrder ?? 0,
+        snapshotSpace?.sortOrder,
         (left, right) => left === right,
       ),
       labelColor: mergeSnapshotField(

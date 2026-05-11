@@ -30,6 +30,8 @@ export function WorkspaceCanvasMenus({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
+  createChildSpaceFromSelectedNodes,
+  createChildSpaceInParent,
   createEmptySpaceAtPoint,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
@@ -72,6 +74,8 @@ export function WorkspaceCanvasMenus({
   | 'arrangeCanvas'
   | 'arrangeInSpace'
   | 'createSpaceFromSelectedNodes'
+  | 'createChildSpaceFromSelectedNodes'
+  | 'createChildSpaceInParent'
   | 'createEmptySpaceAtPoint'
   | 'clearNodeSelection'
   | 'canConvertSelectedNoteToTask'
@@ -127,6 +131,8 @@ export function WorkspaceCanvasMenus({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+        createChildSpaceFromSelectedNodes={createChildSpaceFromSelectedNodes}
+        createChildSpaceInParent={createChildSpaceInParent}
         createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}
         canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}
@@ -138,7 +144,12 @@ export function WorkspaceCanvasMenus({
         menu={spaceActionMenu}
         availableOpeners={availablePathOpeners}
         canArrange={canArrangeActiveSpace}
-        canCreateWorktree={activeMenuSpace !== null && isActiveMenuSpaceOnWorkspaceRoot}
+        canCreateChildSpace={activeMenuSpace !== null && !activeMenuSpace.parentSpaceId}
+        canCreateWorktree={
+          activeMenuSpace !== null &&
+          !activeMenuSpace.parentSpaceId &&
+          isActiveMenuSpaceOnWorkspaceRoot
+        }
         canArchive={activeMenuSpace !== null}
         closeMenu={closeSpaceActionMenu}
         setSpaceLabelColor={setSpaceLabelColor}
@@ -151,6 +162,11 @@ export function WorkspaceCanvasMenus({
         onArchive={() => {
           if (activeMenuSpace) {
             openSpaceArchive(activeMenuSpace.id)
+          }
+        }}
+        onCreateChildSpace={() => {
+          if (activeMenuSpace) {
+            createChildSpaceInParent(activeMenuSpace.id)
           }
         }}
         onCopyPath={() => {

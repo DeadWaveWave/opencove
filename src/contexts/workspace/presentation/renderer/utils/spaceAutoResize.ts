@@ -1,4 +1,5 @@
 import type { WorkspaceSpaceRect, WorkspaceSpaceState } from '../types'
+import { clampRectInsideRect } from '@contexts/space/application/spaceContainment'
 import {
   pushAwayLayout,
   SPACE_MIN_SIZE,
@@ -127,26 +128,40 @@ export function expandSpaceToFitOwnedNodesAndPushAway({
     return { spaces, nodePositionById: new Map() }
   }
 
+  const parentRect = targetSpace.parentSpaceId
+    ? (spaces.find(space => space.id === targetSpace.parentSpaceId)?.rect ?? null)
+    : null
+  const resolvedExpandedRect = parentRect
+    ? clampRectInsideRect(expandedRect, parentRect, padding)
+    : expandedRect
+  if (rectEquals(existingRect, resolvedExpandedRect)) {
+    return { spaces, nodePositionById: new Map() }
+  }
+
   const draftSpaces = spaces.map(space =>
     space.id === targetSpaceId
       ? {
           ...space,
-          rect: expandedRect,
+          rect: resolvedExpandedRect,
         }
       : space,
   )
 
+  if (parentRect) {
+    return { spaces: draftSpaces, nodePositionById: new Map() }
+  }
+
   const expandedDirections: LayoutDirection[] = []
-  if (expandedRect.x < existingRect.x) {
+  if (resolvedExpandedRect.x < existingRect.x) {
     expandedDirections.push('x-')
   }
-  if (expandedRect.x + expandedRect.width > existingRect.x + existingRect.width) {
+  if (resolvedExpandedRect.x + resolvedExpandedRect.width > existingRect.x + existingRect.width) {
     expandedDirections.push('x+')
   }
-  if (expandedRect.y < existingRect.y) {
+  if (resolvedExpandedRect.y < existingRect.y) {
     expandedDirections.push('y-')
   }
-  if (expandedRect.y + expandedRect.height > existingRect.y + existingRect.height) {
+  if (resolvedExpandedRect.y + resolvedExpandedRect.height > existingRect.y + existingRect.height) {
     expandedDirections.push('y+')
   }
 

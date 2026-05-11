@@ -1,8 +1,6 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react'
-import {
-  WorkspaceContextPaneMenuContent,
-  WorkspaceContextSelectionMenuContent,
-} from './WorkspaceContextMenuParts'
+import { WorkspaceContextPaneMenuContent } from './WorkspaceContextMenuParts'
+import { WorkspaceContextSelectionMenuContent } from './WorkspaceContextMenuSelectionParts'
 import { WorkspaceContextSubmenus } from './WorkspaceContextSubmenus'
 import {
   MENU_WIDTH,
@@ -49,6 +47,8 @@ export function WorkspaceContextMenu({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
+  createChildSpaceFromSelectedNodes,
+  createChildSpaceInParent,
   createEmptySpaceAtPoint,
   clearNodeSelection,
   canConvertSelectedNoteToTask,
@@ -190,6 +190,18 @@ export function WorkspaceContextMenu({
     setOpenSubmenu(null)
     createEmptySpaceAtPoint({ x: contextMenu.flowX, y: contextMenu.flowY })
   }, [closeContextMenu, contextHitSpace, contextMenu, createEmptySpaceAtPoint])
+
+  const createChildSpaceFromContextMenu = useCallback(() => {
+    if (!contextMenu || contextMenu.kind !== 'pane' || !contextHitSpace) {
+      return
+    }
+
+    closeContextMenu()
+    setOpenSubmenu(null)
+    createChildSpaceInParent(contextHitSpace.id, {
+      anchor: { x: contextMenu.flowX, y: contextMenu.flowY },
+    })
+  }, [closeContextMenu, contextHitSpace, contextMenu, createChildSpaceInParent])
 
   const keepAgentProviderSubmenuOpen = useCallback(() => {
     cancelScheduledSubmenuClose()
@@ -371,6 +383,8 @@ export function WorkspaceContextMenu({
             openAgentLauncher={openAgentLauncher}
             createEmptySpaceFromContextMenu={createEmptySpaceFromContextMenu}
             canCreateEmptySpace={contextHitSpace === null}
+            createChildSpaceFromContextMenu={createChildSpaceFromContextMenu}
+            canCreateChildSpace={Boolean(contextHitSpace && !contextHitSpace.parentSpaceId)}
             openAgentProviderSubmenu={openAgentProviderSubmenu}
             agentProviderToggleRef={agentProviderToggleRef}
             isLoadingInstalledProviders={isLoadingInstalledProviders}
@@ -401,6 +415,7 @@ export function WorkspaceContextMenu({
         ) : (
           <WorkspaceContextSelectionMenuContent
             createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
+            createChildSpaceFromSelectedNodes={createChildSpaceFromSelectedNodes}
             openLabelColorSubmenu={openLabelColorSubmenu}
             labelColorButtonRef={labelColorButtonRef}
             canConvertSelectedNoteToTask={canConvertSelectedNoteToTask}

@@ -127,7 +127,7 @@ function writePersistedViewState(state: PersistedAppViewState): void {
 function resolveSanitizedActiveSpaceId(
   workspace: PersistedAppState['workspaces'][number],
 ): string | null {
-  const firstSpaceId = workspace.spaces[0]?.id ?? null
+  const firstSpaceId = workspace.spaces.find(space => !space.parentSpaceId)?.id ?? null
   return normalizeOptionalString(firstSpaceId)
 }
 
@@ -171,7 +171,9 @@ export function applyLocalViewStateToPersistedState(state: PersistedAppState): P
 
       const activeSpaceId =
         workspaceView.activeSpaceId &&
-        workspace.spaces.some(space => space.id === workspaceView.activeSpaceId)
+        workspace.spaces.some(
+          space => space.id === workspaceView.activeSpaceId && !space.parentSpaceId,
+        )
           ? workspaceView.activeSpaceId
           : workspace.activeSpaceId
 

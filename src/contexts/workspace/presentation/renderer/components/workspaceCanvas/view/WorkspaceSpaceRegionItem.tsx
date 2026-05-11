@@ -98,13 +98,18 @@ export function WorkspaceSpaceRegionItem({
   const filesPillTitle = filesPillCountLabel
     ? `${t('spaceActions.openExplorer')} · ${filesPillCountLabel}`
     : t('spaceActions.openExplorer')
+  const className = [
+    'workspace-space-region',
+    space.parentSpaceId ? 'workspace-space-region--child' : null,
+    isSelected ? 'workspace-space-region--selected' : null,
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div
-      className={
-        isSelected
-          ? 'workspace-space-region workspace-space-region--selected'
-          : 'workspace-space-region'
-      }
+      className={className}
+      data-parent-space-id={space.parentSpaceId ?? undefined}
       data-cove-label-color={space.labelColor ?? undefined}
       style={{
         transform: `translate(${resolvedRect.x}px, ${resolvedRect.y}px)`,

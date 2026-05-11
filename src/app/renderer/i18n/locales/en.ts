@@ -8,6 +8,7 @@ import { enWebsiteNode } from './en.websiteNode'
 import { enIssueReport } from './en.issueReport'
 import { enPerformanceMonitor } from './en.performanceMonitor'
 import { enRole } from './en.role'
+import { enWorkspaceCanvas } from './en.workspaceCanvas'
 
 export const en = {
   common: {
@@ -378,73 +379,7 @@ export const en = {
     emptySpaceWarningSingle: 'Deleting this last node will leave the space empty.',
     emptySpaceWarningMultiple: 'Deleting these last nodes will leave the space empty.',
   },
-  workspaceContextMenu: {
-    newTerminal: 'New Terminal',
-    newNote: 'New Note',
-    newWebsite: 'New Website',
-    newTask: 'New Task',
-    newRole: 'New Role',
-    runAgent: 'Run Agent',
-    runRole: 'Run Role',
-    noProjectRoles: 'No roles in this project',
-    createEmptySpace: 'Create Empty Space',
-    arrange: 'Arrange',
-    arrangeBy: 'Arrange By',
-    createSpaceWithSelected: 'Create Space with Selected',
-    convertToTask: 'Convert to Task',
-    clearSelection: 'Clear Selection',
-  },
-  workspaceArrangeMenu: {
-    scope: 'Scope',
-    scopeAll: 'All',
-    scopeCanvas: 'Canvas',
-    scopeSpace: 'Space',
-    order: 'Order',
-    orderPosition: 'Current position',
-    orderCreatedAt: 'Created time',
-    orderKind: 'Node type',
-    orderSize: 'Node size',
-    spaceFit: 'Space',
-    spaceFitTight: 'Tighten Space',
-    spaceFitKeep: 'Keep Space size',
-    style: 'Style',
-    alignCanonicalSizes: 'Align standard sizes',
-    magneticSnapping: 'Magnetic snapping',
-  },
-  workspaceCanvas: {
-    selectionHint_one: 'Selected {{count}} window.',
-    selectionHint_other: 'Selected {{count}} windows.',
-    showMinimap: 'Show minimap',
-    hideMinimap: 'Hide minimap',
-    labelColorFilterAll: 'Show all',
-    clearLabelColorFilter: 'Clear label filter',
-  },
-  labelColors: {
-    title: 'Label Color',
-    autoInherit: 'Auto (inherit Space)',
-    none: 'None',
-    gray: 'Gray',
-    red: 'Red',
-    orange: 'Orange',
-    yellow: 'Yellow',
-    green: 'Green',
-    blue: 'Blue',
-    purple: 'Purple',
-  },
-  space: {
-    defaultName: 'Space {{count}}',
-  },
-  spaceActions: {
-    arrangeInSpace: 'Arrange in Space',
-    createWorktree: 'Create Worktree',
-    archive: 'Archive',
-    copyPath: 'Copy Path',
-    files: 'Files',
-    open: 'Open',
-    openExplorer: 'Open Explorer',
-    openSpaceActions: 'Open {{name}} space actions',
-    title: 'Space Actions',
-  },
+  ...enWorkspaceCanvas,
   spaceExplorer: enSpaceExplorer,
   branchRenameDialog: {
     title: 'Rename Branch',

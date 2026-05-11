@@ -4,6 +4,7 @@ import {
   normalizeLabelColor,
   normalizeNodeLabelColorOverride,
 } from '../../../shared/types/labelColor'
+import { normalizeSpaceBoundary, type SpaceBoundary } from '../../../shared/types/spaceBoundary'
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -111,6 +112,9 @@ export type NormalizedPersistedSpace = {
   name: string
   directoryPath: string
   targetMountId: string | null
+  parentSpaceId: string | null
+  boundary: SpaceBoundary
+  sortOrder: number
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: { x: number; y: number; width: number; height: number } | null
@@ -331,7 +335,8 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
     const spacesInput = Array.isArray(workspace.spaces) ? workspace.spaces : []
     const normalizedSpaces: NormalizedPersistedSpace[] = []
 
-    for (const space of spacesInput) {
+    for (let index = 0; index < spacesInput.length; index += 1) {
+      const space = spacesInput[index]
       if (!isRecord(space)) {
         continue
       }
@@ -346,6 +351,9 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
         name: normalizeString(space.name),
         directoryPath: normalizeString(space.directoryPath),
         targetMountId: normalizeOptionalString(space.targetMountId),
+        parentSpaceId: normalizeOptionalString(space.parentSpaceId),
+        boundary: normalizeSpaceBoundary(space.boundary ?? space.boundaryJson),
+        sortOrder: Math.max(0, Math.floor(normalizeFiniteNumber(space.sortOrder, index))),
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeNodeIds(space.nodeIds),
         rect: normalizeRect(space.rect),
@@ -365,7 +373,11 @@ export function normalizePersistedAppState(value: unknown): NormalizedPersistedA
       spaces: normalizedSpaces,
       activeSpaceId:
         typeof workspace.activeSpaceId === 'string' && workspace.activeSpaceId.length > 0
-          ? workspace.activeSpaceId
+          ? normalizedSpaces.some(
+              space => space.id === workspace.activeSpaceId && !space.parentSpaceId,
+            )
+            ? workspace.activeSpaceId
+            : null
           : null,
       nodes: normalizedNodes,
     })

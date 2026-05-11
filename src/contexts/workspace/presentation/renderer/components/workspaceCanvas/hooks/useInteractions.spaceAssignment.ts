@@ -1,5 +1,6 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
+import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { Point, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { expandSpaceToFitOwnedNodesAndPushAway } from '../../../utils/spaceAutoResize'
 import { sanitizeSpaces } from '../helpers'
@@ -15,20 +16,7 @@ export function findContainingSpaceByAnchor(
   spaces: WorkspaceSpaceState[],
   anchor: Point,
 ): WorkspaceSpaceState | null {
-  return (
-    spaces.find(space => {
-      if (!space.rect) {
-        return false
-      }
-
-      return (
-        anchor.x >= space.rect.x &&
-        anchor.x <= space.rect.x + space.rect.width &&
-        anchor.y >= space.rect.y &&
-        anchor.y <= space.rect.y + space.rect.height
-      )
-    }) ?? null
-  )
+  return resolveInnermostSpaceAtPoint(spaces, anchor)
 }
 
 export function assignNodeToSpaceAndExpand({

@@ -440,6 +440,7 @@ export function useWorkspaceCanvasSpaceDrag({
         targetSpace,
         handle,
         nodes: nodesRef.current,
+        spaces: spacesRef.current,
         selectedNodeIds: selectedNodeIdsRef.current,
       })
       spaceDragSawPointerMoveRef.current = false

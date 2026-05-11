@@ -1,23 +1,13 @@
 import type { Node } from '@xyflow/react'
+import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { sanitizeSpaces } from '../helpers'
-import { isPointInsideRect } from './useSpaceOwnership.helpers'
 
 export function resolveSpaceAtPoint(
   spaces: WorkspaceSpaceState[],
   point: { x: number; y: number },
 ): WorkspaceSpaceState | null {
-  for (const space of spaces) {
-    if (!space.rect) {
-      continue
-    }
-
-    if (isPointInsideRect(point, space.rect)) {
-      return space
-    }
-  }
-
-  return null
+  return resolveInnermostSpaceAtPoint(spaces, point)
 }
 
 export function buildDraggedNodesForTarget({

@@ -2,6 +2,7 @@ import type { Node } from '@xyflow/react'
 import type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
 import type { AgentSettings, AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
+import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 import type {
   CanvasImageMimeType,
   GitHubPullRequestSummary,
@@ -199,6 +200,9 @@ export interface WorkspaceSpaceState {
   name: string
   directoryPath: string
   targetMountId: string | null
+  parentSpaceId?: string | null
+  boundary?: SpaceBoundary | null
+  sortOrder?: number
   labelColor: LabelColor | null
   nodeIds: string[]
   rect: WorkspaceSpaceRect | null

@@ -354,7 +354,7 @@ export function useWorkspaceCanvasShortcutActions({
         direction,
         sourceNodeId,
         spaceNavigationAnchorId: spaceNavigationAnchorIdRef.current,
-        spaces: spacesRef.current,
+        spaces: spacesRef.current.filter(space => !space.parentSpaceId),
         viewportRect,
       })
 

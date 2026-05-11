@@ -48,7 +48,7 @@ export function useWorkspaceStateHandlers({
         )
         const hasActiveSpace =
           workspace.activeSpaceId !== null &&
-          nextSpaces.some(space => space.id === workspace.activeSpaceId)
+          nextSpaces.some(space => space.id === workspace.activeSpaceId && !space.parentSpaceId)
 
         return {
           ...workspace,
@@ -134,7 +134,9 @@ export function useWorkspaceStateHandlers({
         const sanitizedSpaces = sanitizeWorkspaceSpaces(spaces)
         const hasActiveSpace =
           workspace.activeSpaceId !== null &&
-          sanitizedSpaces.some(space => space.id === workspace.activeSpaceId)
+          sanitizedSpaces.some(
+            space => space.id === workspace.activeSpaceId && !space.parentSpaceId,
+          )
 
         return {
           ...workspace,
@@ -159,7 +161,8 @@ export function useWorkspaceStateHandlers({
         }
 
         const hasTargetSpace =
-          spaceId !== null && workspace.spaces.some(space => space.id === spaceId)
+          spaceId !== null &&
+          workspace.spaces.some(space => space.id === spaceId && !space.parentSpaceId)
         const nextSpaceId = hasTargetSpace ? spaceId : null
         if (workspace.activeSpaceId === nextSpaceId) {
           return workspace

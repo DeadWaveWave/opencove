@@ -3,6 +3,7 @@ import type { TerminalPtyGeometry, TerminalRuntimeKind } from './terminal'
 import type { PresentationSnapshotTerminalResult } from './terminal'
 import type { WorkerEndpointKindDto } from './topology'
 import type { GitWorktreeInfo, RemoveGitWorktreeResult } from './worktree'
+import type { SpaceBoundary } from '../../types/spaceBoundary'
 
 export interface ControlSurfacePingResult {
   ok: true
@@ -112,6 +113,10 @@ export interface ListSpacesResult {
     id: string
     name: string
     directoryPath: string
+    targetMountId: string | null
+    parentSpaceId: string | null
+    boundary: SpaceBoundary
+    sortOrder: number
     nodeIds: string[]
     nodes: CanvasNodeSummary[]
   }>
@@ -128,9 +133,40 @@ export interface GetSpaceResult {
     id: string
     name: string
     directoryPath: string
+    targetMountId: string | null
+    parentSpaceId: string | null
+    boundary: SpaceBoundary
+    sortOrder: number
     nodeIds: string[]
     nodes: CanvasNodeSummary[]
   }
+}
+
+export interface CreateChildSpaceInput {
+  projectId?: string | null
+  parentSpaceId: string
+  name?: string | null
+  initialNodeIds?: string[] | null
+  rect?: { x: number; y: number; width: number; height: number } | null
+  anchor?: { x: number; y: number } | null
+}
+
+export interface CreateChildSpaceResult {
+  projectId: string
+  activeSpaceId: string | null
+  childSpace: {
+    id: string
+    name: string
+    directoryPath: string
+    targetMountId: string | null
+    parentSpaceId: string | null
+    boundary: SpaceBoundary
+    sortOrder: number
+    nodeIds: string[]
+    nodes: CanvasNodeSummary[]
+    rect: { x: number; y: number; width: number; height: number } | null
+  }
+  movedNodeIds: string[]
 }
 
 export interface ListWorktreesInput {

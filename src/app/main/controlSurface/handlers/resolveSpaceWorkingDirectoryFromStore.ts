@@ -3,6 +3,7 @@ import { normalizePersistedAppState } from '../../../../platform/persistence/sql
 import { resolveSpaceWorkingDirectory } from '../../../../contexts/space/application/resolveSpaceWorkingDirectory'
 import { normalizeAgentSettings } from '../../../../contexts/settings/domain/agentSettings'
 import { createAppError } from '../../../../shared/errors/appError'
+import type { SpaceBoundary } from '../../../../shared/types/spaceBoundary'
 
 export async function resolveSpaceWorkingDirectoryFromStore(options: {
   spaceId: string
@@ -12,6 +13,7 @@ export async function resolveSpaceWorkingDirectoryFromStore(options: {
   workspacePath: string
   directoryPath: string
   targetMountId: string | null
+  boundary: SpaceBoundary
   workingDirectory: string
   agentSettings: ReturnType<typeof normalizeAgentSettings>
 }> {
@@ -30,6 +32,7 @@ export async function resolveSpaceWorkingDirectoryFromStore(options: {
       workspacePath: workspace.path,
       directoryPath: space.directoryPath,
       targetMountId: space.targetMountId,
+      boundary: space.boundary,
       workingDirectory: resolveSpaceWorkingDirectory(space, workspace.path),
       agentSettings: normalizeAgentSettings(normalized?.settings),
     }

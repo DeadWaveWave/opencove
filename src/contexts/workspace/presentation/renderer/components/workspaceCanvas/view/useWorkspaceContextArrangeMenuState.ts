@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { WorkspaceSpaceState } from '../../../types'
 import type {
   WorkspaceArrangeOrder,
@@ -7,7 +8,6 @@ import type {
 } from '../../../utils/workspaceArrange'
 import type { ContextMenuState } from '../types'
 import type { ArrangeScope } from './WorkspaceContextArrangeBySubmenu'
-import { isPointWithinRect } from './WorkspaceContextMenu.helpers'
 
 export function useWorkspaceContextArrangeMenuState(params: {
   contextMenu: ContextMenuState | null
@@ -47,8 +47,7 @@ export function useWorkspaceContextArrangeMenuState(params: {
     }
 
     const anchor = { x: contextMenu.flowX, y: contextMenu.flowY }
-    const hitSpace =
-      spaces.find(space => space.rect && isPointWithinRect(anchor, space.rect)) ?? null
+    const hitSpace = resolveInnermostSpaceAtPoint(spaces, anchor)
     const nextHitSpaceId = hitSpace?.id ?? null
 
     contextHitSpaceIdRef.current = nextHitSpaceId

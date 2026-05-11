@@ -15,6 +15,7 @@ import type {
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
 import type { MountDto, TerminalPtyGeometry, TerminalRuntimeKind } from '@shared/contracts/dto'
 import type { LabelColor } from '@shared/types/labelColor'
+import type { SpaceBoundary } from '@shared/types/spaceBoundary'
 
 export type WorkspaceCanvasMessageTone = 'info' | 'warning' | 'error'
 
@@ -107,6 +108,9 @@ export interface SpaceVisual {
   name: string
   directoryPath: string
   targetMountId: string | null
+  parentSpaceId: string | null
+  boundary: SpaceBoundary | null
+  sortOrder: number
   labelColor: LabelColor | null
   rect: WorkspaceSpaceRect
   hasExplicitRect: boolean

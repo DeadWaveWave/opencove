@@ -154,6 +154,22 @@ export function WorkspaceSpaceRegionsOverlay({
     worktreeRepoRootPath,
   })
 
+  const orderedSpaceVisuals = React.useMemo(() => {
+    return [...spaceVisuals].sort((left, right) => {
+      const leftDepth = left.parentSpaceId ? 1 : 0
+      const rightDepth = right.parentSpaceId ? 1 : 0
+      if (leftDepth !== rightDepth) {
+        return leftDepth - rightDepth
+      }
+
+      if (left.sortOrder !== right.sortOrder) {
+        return left.sortOrder - right.sortOrder
+      }
+
+      return left.name.localeCompare(right.name, undefined, { sensitivity: 'base' })
+    })
+  }, [spaceVisuals])
+
   React.useEffect(() => {
     if (!branchRename?.spaceId) {
       return
@@ -279,7 +295,7 @@ export function WorkspaceSpaceRegionsOverlay({
   return (
     <>
       <ViewportPortal>
-        {spaceVisuals.map(space => {
+        {orderedSpaceVisuals.map(space => {
           const normalizedDirectoryPath = normalizeComparablePath(space.directoryPath)
           const resolvedRect = spaceFramePreview?.get(space.id) ?? space.rect
           const isSelected = selectedSpaceIdSet.has(space.id)

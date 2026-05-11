@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { getViewportForBounds, useStore, type Node, type ReactFlowInstance } from '@xyflow/react'
+import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type {
   FocusNodeTargetZoom,
   StandardWindowSizeBucket,
@@ -14,11 +14,9 @@ import type {
 } from '../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import { computeSpaceRectFromNodes } from '../../../utils/spaceLayout'
-import { resolveWorkspaceCanvasAnimationDuration } from '../helpers'
 import { useWorkspaceCanvasCreateSpace } from './useSpaces.createSpace'
-
-const DEFAULT_VIEWPORT_WIDTH = 1440
-const DEFAULT_VIEWPORT_HEIGHT = 900
+import { useWorkspaceCanvasCreateChildSpace } from './useSpaces.createChildSpace'
+import { useWorkspaceCanvasSpaceFocus } from './useSpaces.focus'
 
 interface UseWorkspaceCanvasSpacesParams {
   workspaceId: string
@@ -75,6 +73,11 @@ export function useWorkspaceCanvasSpaces({
   commitSpaceRename: (spaceId: string) => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   createSpaceFromSelectedNodes: () => void
+  createChildSpaceFromSelectedNodes: () => void
+  createChildSpaceInParent: (
+    parentSpaceId: string,
+    options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
+  ) => string | null
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => void
   spaceTargetMountPicker: SpaceTargetMountPickerState | null
   setSpaceTargetMountPicker: React.Dispatch<
@@ -94,13 +97,6 @@ export function useWorkspaceCanvasSpaces({
   const spaceRenameInputRef = useRef<HTMLInputElement>(null)
   const [spaceTargetMountPicker, setSpaceTargetMountPicker] =
     useState<SpaceTargetMountPickerState | null>(null)
-  const lastAppliedWorkspaceIdRef = useRef<string | null>(null)
-  const lastAppliedActiveSpaceIdRef = useRef<string | null | undefined>(undefined)
-  const skipNextActiveSpaceViewportFocusRef = useRef(false)
-  const viewportWidth = useStore(state => state.width)
-  const viewportHeight = useStore(state => state.height)
-  const viewportMinZoom = useStore(state => state.minZoom)
-  const viewportMaxZoom = useStore(state => state.maxZoom)
 
   useLayoutEffect(() => {
     spacesRef.current = spaces
@@ -211,6 +207,21 @@ export function useWorkspaceCanvasSpaces({
     onShowMessage,
   })
 
+  const { createChildSpaceInParent, createChildSpaceFromSelectedNodes } =
+    useWorkspaceCanvasCreateChildSpace({
+      workspacePath,
+      nodesRef,
+      setNodes,
+      spacesRef,
+      selectedNodeIdsRef,
+      onSpacesChange,
+      onRequestPersistFlush,
+      setContextMenu,
+      setEmptySelectionPrompt,
+      cancelSpaceRename,
+      onShowMessage,
+    })
+
   const startSpaceRename = useCallback(
     (spaceId: string) => {
       // Prefer the render-prop `spaces` snapshot. Refs can lag behind React commits just long enough
@@ -303,6 +314,9 @@ export function useWorkspaceCanvasSpaces({
           name: space.name,
           directoryPath: space.directoryPath,
           targetMountId: space.targetMountId,
+          parentSpaceId: space.parentSpaceId ?? null,
+          boundary: space.boundary ?? null,
+          sortOrder: space.sortOrder ?? 0,
           labelColor: space.labelColor,
           rect,
           hasExplicitRect: true,
@@ -311,60 +325,22 @@ export function useWorkspaceCanvasSpaces({
       .filter((item): item is SpaceVisual => item !== null)
   }, [spaces])
 
-  const focusSpaceInViewport = useCallback(
-    (spaceId: string): boolean => {
-      const space = spacesRef.current.find(item => item.id === spaceId) ?? null
-      if (!space) {
-        return false
-      }
-
-      const rect =
-        space.rect ??
-        (() => {
-          const nodeById = new Map(nodesRef.current.map(node => [node.id, node]))
-          const ownedNodes = space.nodeIds
-            .map(nodeId => nodeById.get(nodeId))
-            .filter((node): node is Node<TerminalNodeData> => Boolean(node))
-
-          if (ownedNodes.length === 0) {
-            return null
-          }
-
-          return computeSpaceRectFromNodes(
-            ownedNodes.map(node => ({
-              x: node.position.x,
-              y: node.position.y,
-              width: node.data.width,
-              height: node.data.height,
-            })),
-          )
-        })()
-
-      if (!rect) {
-        return false
-      }
-
-      const width = viewportWidth > 0 ? viewportWidth : DEFAULT_VIEWPORT_WIDTH
-      const height = viewportHeight > 0 ? viewportHeight : DEFAULT_VIEWPORT_HEIGHT
-      const maxZoom = Math.max(viewportMinZoom, Math.min(viewportMaxZoom, focusNodeTargetZoom))
-      const nextViewport = getViewportForBounds(rect, width, height, viewportMinZoom, maxZoom, 0.16)
-
-      void reactFlow.setViewport(nextViewport, {
-        duration: resolveWorkspaceCanvasAnimationDuration(220),
-      })
-      return true
-    },
-    [
-      focusNodeTargetZoom,
-      nodesRef,
-      reactFlow,
-      spacesRef,
-      viewportHeight,
-      viewportMaxZoom,
-      viewportMinZoom,
-      viewportWidth,
-    ],
-  )
+  const {
+    activateSpace,
+    activateAllSpaces,
+    setActiveSpaceIdFromNodeNavigation,
+    focusSpaceInViewport,
+    focusAllInViewport,
+  } = useWorkspaceCanvasSpaceFocus({
+    workspaceId,
+    activeSpaceId,
+    onActiveSpaceChange,
+    focusNodeTargetZoom,
+    reactFlow,
+    nodesRef,
+    spacesRef,
+    cancelSpaceRename,
+  })
 
   const createEmptySpaceAtPoint = useCallback(
     (point: { x: number; y: number }) => {
@@ -385,95 +361,6 @@ export function useWorkspaceCanvasSpaces({
     [createEmptySpaceAtPointInternal, focusSpaceInViewport],
   )
 
-  const focusAllInViewport = useCallback((): void => {
-    if (nodesRef.current.length === 0) {
-      return
-    }
-
-    void reactFlow.fitView({
-      padding: 0.16,
-      duration: resolveWorkspaceCanvasAnimationDuration(220),
-    })
-  }, [nodesRef, reactFlow])
-
-  const activateSpace = useCallback(
-    (spaceId: string): void => {
-      if (!spacesRef.current.some(space => space.id === spaceId)) {
-        return
-      }
-
-      cancelSpaceRename()
-      if (activeSpaceId === spaceId) {
-        focusSpaceInViewport(spaceId)
-        return
-      }
-
-      onActiveSpaceChange(spaceId)
-    },
-    [activeSpaceId, cancelSpaceRename, focusSpaceInViewport, onActiveSpaceChange, spacesRef],
-  )
-
-  const activateAllSpaces = useCallback((): void => {
-    cancelSpaceRename()
-    if (activeSpaceId === null) {
-      focusAllInViewport()
-      return
-    }
-
-    onActiveSpaceChange(null)
-  }, [activeSpaceId, cancelSpaceRename, focusAllInViewport, onActiveSpaceChange])
-
-  const setActiveSpaceIdFromNodeNavigation = useCallback(
-    (spaceId: string | null): void => {
-      if (activeSpaceId === spaceId) {
-        return
-      }
-
-      skipNextActiveSpaceViewportFocusRef.current = true
-      onActiveSpaceChange(spaceId)
-    },
-    [activeSpaceId, onActiveSpaceChange],
-  )
-
-  useEffect(() => {
-    if (lastAppliedWorkspaceIdRef.current !== workspaceId) {
-      lastAppliedWorkspaceIdRef.current = workspaceId
-      lastAppliedActiveSpaceIdRef.current = undefined
-    }
-
-    const previousActiveSpaceId = lastAppliedActiveSpaceIdRef.current
-
-    if (previousActiveSpaceId === undefined) {
-      lastAppliedActiveSpaceIdRef.current = activeSpaceId
-      return
-    }
-
-    if (previousActiveSpaceId === activeSpaceId) {
-      return
-    }
-
-    lastAppliedActiveSpaceIdRef.current = activeSpaceId
-
-    if (skipNextActiveSpaceViewportFocusRef.current) {
-      skipNextActiveSpaceViewportFocusRef.current = false
-      return
-    }
-
-    if (activeSpaceId) {
-      focusSpaceInViewport(activeSpaceId)
-      return
-    }
-
-    if (
-      previousActiveSpaceId &&
-      !spacesRef.current.some(space => space.id === previousActiveSpaceId)
-    ) {
-      return
-    }
-
-    focusAllInViewport()
-  }, [activeSpaceId, focusAllInViewport, focusSpaceInViewport, spacesRef, workspaceId])
-
   return {
     editingSpaceId,
     spaceRenameDraft,
@@ -484,6 +371,8 @@ export function useWorkspaceCanvasSpaces({
     commitSpaceRename,
     setSpaceLabelColor,
     createSpaceFromSelectedNodes,
+    createChildSpaceFromSelectedNodes,
+    createChildSpaceInParent,
     createEmptySpaceAtPoint,
     spaceTargetMountPicker,
     setSpaceTargetMountPicker,

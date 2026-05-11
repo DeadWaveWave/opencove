@@ -100,6 +100,10 @@ export interface SeedWorkspace {
     id: string
     name: string
     directoryPath: string
+    targetMountId?: string | null
+    parentSpaceId?: string | null
+    boundary?: unknown
+    sortOrder?: number
     labelColor?: string | null
     nodeIds: string[]
     rect?: {

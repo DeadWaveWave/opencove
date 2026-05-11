@@ -11,6 +11,7 @@ import { repairRuntimeNodeFrame } from '../runtimeNodeFrameRepair'
 import {
   areSpaceArchiveRecordsEquivalent,
   areStringArraysEqual,
+  isWorkspaceSpaceBoundaryEqual,
   isNodeEquivalent,
   isWorkspaceSpaceRectEqual,
   shallowEqualRecord,
@@ -161,6 +162,10 @@ export function toShellWorkspaceStateForSync(
       existing &&
       existing.name === space.name &&
       existing.directoryPath === space.directoryPath &&
+      (existing.targetMountId ?? null) === (space.targetMountId ?? null) &&
+      (existing.parentSpaceId ?? null) === (space.parentSpaceId ?? null) &&
+      (existing.sortOrder ?? 0) === (space.sortOrder ?? 0) &&
+      isWorkspaceSpaceBoundaryEqual(existing.boundary, space.boundary) &&
       existing.labelColor === space.labelColor &&
       isWorkspaceSpaceRectEqual(existing.rect, space.rect) &&
       areStringArraysEqual(existing.nodeIds, nodeIds)
@@ -184,11 +189,12 @@ export function toShellWorkspaceStateForSync(
 
   const hasActiveSpace =
     workspace.activeSpaceId !== null &&
-    sanitizedSpaces.some(space => space.id === workspace.activeSpaceId)
+    sanitizedSpaces.some(space => space.id === workspace.activeSpaceId && !space.parentSpaceId)
 
   const existingActiveSpaceId = existingWorkspace?.activeSpaceId ?? null
   const resolvedActiveSpaceId =
-    existingActiveSpaceId && sanitizedSpaces.some(space => space.id === existingActiveSpaceId)
+    existingActiveSpaceId &&
+    sanitizedSpaces.some(space => space.id === existingActiveSpaceId && !space.parentSpaceId)
       ? existingActiveSpaceId
       : hasActiveSpace
         ? workspace.activeSpaceId

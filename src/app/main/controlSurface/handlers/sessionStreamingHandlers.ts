@@ -257,6 +257,7 @@ export function registerSessionStreamingHandlers(
         projectId,
         directoryPath,
         targetMountId,
+        boundary,
         workspacePath,
       } = await resolveSpaceWorkingDirectoryFromStore({
         spaceId: payload.spaceId,
@@ -264,7 +265,7 @@ export function registerSessionStreamingHandlers(
       })
 
       const mountContext = resolveSpaceMountContext({
-        space: { directoryPath, targetMountId },
+        space: { directoryPath, targetMountId, boundary },
         workspacePath,
         mounts: (await deps.topology.listMounts({ projectId })).mounts,
       })
@@ -312,8 +313,8 @@ export function registerSessionStreamingHandlers(
               endpointKind: mountContext.mount.endpointId === 'local' ? 'local' : 'remote_worker',
               targetRootPath: mountContext.mount.rootPath,
               targetRootUri: mountContext.mount.rootUri,
-              scopeRootPath: mountContext.mount.rootPath,
-              scopeRootUri: mountContext.mount.rootUri,
+              scopeRootPath: mountContext.scope?.rootPath ?? mountContext.mount.rootPath,
+              scopeRootUri: mountContext.scope?.rootUri ?? mountContext.mount.rootUri,
             },
           ),
         }

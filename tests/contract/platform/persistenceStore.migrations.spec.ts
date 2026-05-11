@@ -61,6 +61,9 @@ const CURRENT_SCHEMA_COLUMNS = {
     'name',
     'directory_path',
     'target_mount_id',
+    'parent_space_id',
+    'boundary_json',
+    'sort_order',
     'label_color',
     'rect_x',
     'rect_y',
@@ -373,7 +376,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(8)
+      expect(migratedState?.userVersion).toBe(9)
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('nodes')).toContain('session_id')
       expect(migratedState?.tables.get('nodes')).toContain('profile_id')
@@ -381,6 +384,9 @@ describe('PersistenceStore (migrations)', () => {
       expect(migratedState?.tables.get('nodes')).toContain('terminal_provider_hint')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('label_color')
       expect(migratedState?.tables.get('workspace_spaces')).toContain('target_mount_id')
+      expect(migratedState?.tables.get('workspace_spaces')).toContain('parent_space_id')
+      expect(migratedState?.tables.get('workspace_spaces')).toContain('boundary_json')
+      expect(migratedState?.tables.get('workspace_spaces')).toContain('sort_order')
       expect(migratedState?.tables.get('workspaces')).toContain(
         'pull_request_base_branch_options_json',
       )
@@ -395,7 +401,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 8, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: 9, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 
@@ -420,6 +426,9 @@ describe('PersistenceStore (migrations)', () => {
       expect(repairedState?.tables.get('nodes')).toContain('terminal_provider_hint')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('label_color')
       expect(repairedState?.tables.get('workspace_spaces')).toContain('target_mount_id')
+      expect(repairedState?.tables.get('workspace_spaces')).toContain('parent_space_id')
+      expect(repairedState?.tables.get('workspace_spaces')).toContain('boundary_json')
+      expect(repairedState?.tables.get('workspace_spaces')).toContain('sort_order')
       expect(repairedState?.tables.get('workspaces')).toContain(
         'pull_request_base_branch_options_json',
       )

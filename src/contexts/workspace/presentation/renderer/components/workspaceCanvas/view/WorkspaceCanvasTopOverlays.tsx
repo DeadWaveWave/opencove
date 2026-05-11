@@ -61,8 +61,9 @@ export function WorkspaceCanvasTopOverlays({
     }
   }, [isFilterMenuOpen])
 
+  const topLevelSpaces = React.useMemo(() => spaces.filter(space => !space.parentSpaceId), [spaces])
   const hasAnyOverlay =
-    selectedNodeCount > 0 || spaces.length > 0 || orderedUsedLabelColors.length > 0
+    selectedNodeCount > 0 || topLevelSpaces.length > 0 || orderedUsedLabelColors.length > 0
 
   if (!hasAnyOverlay) {
     return null
@@ -70,9 +71,9 @@ export function WorkspaceCanvasTopOverlays({
 
   return (
     <div className="workspace-canvas__top-overlays">
-      {spaces.length > 0 ? (
+      {topLevelSpaces.length > 0 ? (
         <WorkspaceSpaceSwitcher
-          spaces={spaces}
+          spaces={topLevelSpaces}
           activateSpace={activateSpace}
           activateAllSpaces={activateAllSpaces}
           cancelSpaceRename={cancelSpaceRename}

@@ -12,6 +12,7 @@ interface CreateSpaceDragStateParams {
   targetSpace: WorkspaceSpaceState
   handle: SpaceFrameHandle
   nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
   selectedNodeIds: string[]
 }
 
@@ -24,6 +25,7 @@ export function createSpaceDragState({
   targetSpace,
   handle,
   nodes,
+  spaces,
   selectedNodeIds,
 }: CreateSpaceDragStateParams): SpaceDragState {
   const movableNodes =
@@ -39,6 +41,8 @@ export function createSpaceDragState({
       : resolveOwnedBounds({
           nodeIds: targetSpace.nodeIds,
           nodes,
+          spaces,
+          spaceId: targetSpace.id,
         })
 
   return {
@@ -62,15 +66,26 @@ export function createSpaceDragState({
 function resolveOwnedBounds({
   nodeIds,
   nodes,
+  spaces,
+  spaceId,
 }: {
   nodeIds: string[]
   nodes: Node<TerminalNodeData>[]
+  spaces: WorkspaceSpaceState[]
+  spaceId: string
 }): SpaceDragState['ownedBounds'] {
+  const descendantSpaceIds = collectDescendantSpaceIds(spaces, spaceId)
+  const descendantRects = spaces
+    .filter(space => descendantSpaceIds.has(space.id) && space.rect)
+    .map(space => space.rect!)
   const ownedNodes = nodeIds
+    .concat(
+      spaces.filter(space => descendantSpaceIds.has(space.id)).flatMap(space => space.nodeIds),
+    )
     .map(nodeId => nodes.find(node => node.id === nodeId))
     .filter((node): node is Node<TerminalNodeData> => Boolean(node))
 
-  if (ownedNodes.length === 0) {
+  if (ownedNodes.length === 0 && descendantRects.length === 0) {
     return null
   }
 
@@ -86,6 +101,13 @@ function resolveOwnedBounds({
     bottom = Math.max(bottom, node.position.y + node.data.height)
   }
 
+  for (const rect of descendantRects) {
+    left = Math.min(left, rect.x)
+    top = Math.min(top, rect.y)
+    right = Math.max(right, rect.x + rect.width)
+    bottom = Math.max(bottom, rect.y + rect.height)
+  }
+
   if (
     !Number.isFinite(left) ||
     !Number.isFinite(top) ||
@@ -96,4 +118,29 @@ function resolveOwnedBounds({
   }
 
   return { left, top, right, bottom }
+}
+
+function collectDescendantSpaceIds(
+  spaces: WorkspaceSpaceState[],
+  rootSpaceId: string,
+): Set<string> {
+  const descendants = new Set<string>()
+  let changed = true
+
+  while (changed) {
+    changed = false
+    for (const space of spaces) {
+      const parentId = space.parentSpaceId ?? null
+      if (!parentId || descendants.has(space.id)) {
+        continue
+      }
+
+      if (parentId === rootSpaceId || descendants.has(parentId)) {
+        descendants.add(space.id)
+        changed = true
+      }
+    }
+  }
+
+  return descendants
 }

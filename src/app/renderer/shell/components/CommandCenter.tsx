@@ -93,7 +93,7 @@ function resolveActiveSpace(activeWorkspace: WorkspaceState | null): {
   }
 
   const index = activeWorkspace.spaces.findIndex(
-    space => space.id === activeWorkspace.activeSpaceId,
+    space => space.id === activeWorkspace.activeSpaceId && !space.parentSpaceId,
   )
   return {
     space: index >= 0 ? activeWorkspace.spaces[index] : null,
@@ -201,15 +201,15 @@ export function CommandCenter({
     }))
 
     const spaceItems: CommandCenterItem[] =
-      activeWorkspace?.spaces.map(space => ({
-        id: `space:${space.id}`,
-        title: space.name,
-        subtitle: undefined,
-        icon: <SquareDashed aria-hidden="true" size={16} />,
-        onSelect: () => {
-          onSelectSpace(space.id)
-        },
-      })) ?? []
+      activeWorkspace?.spaces
+        .filter(space => !space.parentSpaceId)
+        .map(space => ({
+          id: `space:${space.id}`,
+          title: space.name,
+          subtitle: undefined,
+          icon: <SquareDashed aria-hidden="true" size={16} />,
+          onSelect: () => onSelectSpace(space.id),
+        })) ?? []
 
     const sections: CommandCenterSection[] = []
 

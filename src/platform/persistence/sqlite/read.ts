@@ -5,6 +5,7 @@ import {
   normalizeLabelColor,
   normalizeNodeLabelColorOverride,
 } from '../../../shared/types/labelColor'
+import { normalizeSpaceBoundary } from '../../../shared/types/spaceBoundary'
 import { normalizeTerminalGeometry } from './normalize'
 import {
   appMeta,
@@ -150,36 +151,46 @@ export function readAppStateFromDb(db: BetterSQLite3Database): NormalizedPersist
         task: typeof node.taskJson === 'string' ? safeJsonParse(node.taskJson) : null,
       }))
 
-      const workspaceSpaces = (spacesByWorkspaceId.get(workspace.id) ?? []).map(space => {
-        const links = [...(spaceNodesBySpaceId.get(space.id) ?? [])].sort(
-          (left, right) => left.sortOrder - right.sortOrder,
-        )
+      const workspaceSpaces = [...(spacesByWorkspaceId.get(workspace.id) ?? [])]
+        .sort((left, right) => left.sortOrder - right.sortOrder)
+        .map(space => {
+          const links = [...(spaceNodesBySpaceId.get(space.id) ?? [])].sort(
+            (left, right) => left.sortOrder - right.sortOrder,
+          )
 
-        return {
-          id: space.id,
-          name: space.name,
-          directoryPath: space.directoryPath,
-          targetMountId: typeof space.targetMountId === 'string' ? space.targetMountId : null,
-          labelColor: normalizeLabelColor(space.labelColor),
-          nodeIds: links.map(link => link.nodeId),
-          rect:
-            space.rectX !== null &&
-            space.rectY !== null &&
-            space.rectWidth !== null &&
-            space.rectHeight !== null
-              ? {
-                  x: space.rectX,
-                  y: space.rectY,
-                  width: space.rectWidth,
-                  height: space.rectHeight,
-                }
-              : null,
-        }
-      })
+          return {
+            id: space.id,
+            name: space.name,
+            directoryPath: space.directoryPath,
+            targetMountId: typeof space.targetMountId === 'string' ? space.targetMountId : null,
+            parentSpaceId:
+              typeof space.parentSpaceId === 'string' && space.parentSpaceId.trim().length > 0
+                ? space.parentSpaceId
+                : null,
+            boundary: normalizeSpaceBoundary(
+              typeof space.boundaryJson === 'string' ? safeJsonParse(space.boundaryJson) : null,
+            ),
+            sortOrder: Number.isFinite(space.sortOrder) ? Math.max(0, space.sortOrder) : 0,
+            labelColor: normalizeLabelColor(space.labelColor),
+            nodeIds: links.map(link => link.nodeId),
+            rect:
+              space.rectX !== null &&
+              space.rectY !== null &&
+              space.rectWidth !== null &&
+              space.rectHeight !== null
+                ? {
+                    x: space.rectX,
+                    y: space.rectY,
+                    width: space.rectWidth,
+                    height: space.rectHeight,
+                  }
+                : null,
+          }
+        })
 
       const activeSpaceId =
         workspace.activeSpaceId &&
-        workspaceSpaces.some(space => space.id === workspace.activeSpaceId)
+        workspaceSpaces.some(space => space.id === workspace.activeSpaceId && !space.parentSpaceId)
           ? workspace.activeSpaceId
           : null
 

@@ -77,6 +77,9 @@ function createTables(db: Database.Database): void {
       name TEXT NOT NULL,
       directory_path TEXT NOT NULL,
       target_mount_id TEXT,
+      parent_space_id TEXT,
+      boundary_json TEXT NOT NULL DEFAULT '{}',
+      sort_order INTEGER NOT NULL DEFAULT 0,
       label_color TEXT,
       rect_x REAL,
       rect_y REAL,
@@ -256,6 +259,24 @@ function ensureCurrentSchema(db: Database.Database): void {
     tableName: 'workspace_spaces',
     columnName: 'target_mount_id',
     definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'parent_space_id',
+    definitionSql: 'TEXT',
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'boundary_json',
+    definitionSql: "TEXT NOT NULL DEFAULT '{}'",
+  })
+
+  ensureTableColumn(db, {
+    tableName: 'workspace_spaces',
+    columnName: 'sort_order',
+    definitionSql: 'INTEGER NOT NULL DEFAULT 0',
   })
 }
 

@@ -4,6 +4,8 @@ import type {
   TerminalNodeData,
   WorkspaceSpaceRect,
 } from '@contexts/workspace/presentation/renderer/types'
+import type { SpaceBoundary } from '@shared/types/spaceBoundary'
+import { areStringArraysEqual, isSpaceBoundaryEqual } from '@shared/sync/spaceBoundaryEquality'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -47,20 +49,7 @@ export function shallowEqualRecord(left: UnknownRecord, right: UnknownRecord): b
   return true
 }
 
-export function areStringArraysEqual(left: readonly string[], right: readonly string[]): boolean {
-  if (left === right) {
-    return true
-  }
-  if (left.length !== right.length) {
-    return false
-  }
-  for (let index = 0; index < left.length; index += 1) {
-    if (left[index] !== right[index]) {
-      return false
-    }
-  }
-  return true
-}
+export { areStringArraysEqual }
 
 export function isWorkspaceSpaceRectEqual(
   left: WorkspaceSpaceRect | null,
@@ -78,6 +67,13 @@ export function isWorkspaceSpaceRectEqual(
     left.width === right.width &&
     left.height === right.height
   )
+}
+
+export function isWorkspaceSpaceBoundaryEqual(
+  left: SpaceBoundary | null | undefined,
+  right: SpaceBoundary | null | undefined,
+): boolean {
+  return isSpaceBoundaryEqual(left, right)
 }
 
 export function areSpaceArchiveRecordsEquivalent(

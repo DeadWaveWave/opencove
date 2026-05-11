@@ -12,6 +12,7 @@ import {
   normalizeWorkspaceViewport,
 } from './normalize'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
+import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 
 export function toPersistedState(
   workspaces: WorkspaceState[],
@@ -35,7 +36,7 @@ export function toPersistedState(
         typeof workspace.isMinimapVisible === 'boolean'
           ? workspace.isMinimapVisible
           : DEFAULT_WORKSPACE_MINIMAP_VISIBLE,
-      spaces: workspace.spaces.map(space => ({
+      spaces: workspace.spaces.map((space, index) => ({
         id: space.id,
         name: space.name,
         directoryPath:
@@ -43,13 +44,19 @@ export function toPersistedState(
           normalizeOptionalString(workspace.path) ??
           workspace.path,
         targetMountId: normalizeOptionalString(space.targetMountId),
+        parentSpaceId: normalizeOptionalString(space.parentSpaceId),
+        boundary: normalizeSpaceBoundary(space.boundary),
+        sortOrder:
+          typeof space.sortOrder === 'number' && Number.isFinite(space.sortOrder)
+            ? Math.max(0, Math.floor(space.sortOrder))
+            : index,
         labelColor: normalizeLabelColor(space.labelColor),
         nodeIds: normalizeWorkspaceSpaceNodeIds(space.nodeIds),
         rect: normalizeWorkspaceSpaceRect(space.rect),
       })),
       activeSpaceId:
         workspace.activeSpaceId &&
-        workspace.spaces.some(space => space.id === workspace.activeSpaceId)
+        workspace.spaces.some(space => space.id === workspace.activeSpaceId && !space.parentSpaceId)
           ? workspace.activeSpaceId
           : null,
       spaceArchiveRecords: Array.isArray(workspace.spaceArchiveRecords)

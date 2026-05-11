@@ -5,6 +5,7 @@ import {
   Copy,
   FolderOpen,
   GitBranchPlus,
+  Group,
   LayoutGrid,
   Package,
   Tag,
@@ -26,11 +27,13 @@ interface WorkspaceSpaceActionMenuProps {
   menu: SpaceActionMenuState | null
   availableOpeners: WorkspacePathOpener[]
   canArrange?: boolean
+  canCreateChildSpace: boolean
   canCreateWorktree: boolean
   canArchive: boolean
   closeMenu: () => void
   setSpaceLabelColor: (spaceId: string, labelColor: LabelColor | null) => void
   onArrange?: (spaceId: string) => void
+  onCreateChildSpace: () => void
   onCreateWorktree: () => void
   onArchive: () => void
   onCopyPath: () => void | Promise<void>
@@ -68,11 +71,13 @@ export function WorkspaceSpaceActionMenu({
   menu,
   availableOpeners,
   canArrange = true,
+  canCreateChildSpace,
   canCreateWorktree,
   canArchive,
   closeMenu,
   setSpaceLabelColor,
   onArrange,
+  onCreateChildSpace,
   onCreateWorktree,
   onArchive,
   onCopyPath,
@@ -243,6 +248,22 @@ export function WorkspaceSpaceActionMenu({
             <GitBranchPlus className="workspace-context-menu__icon" aria-hidden="true" />
             <span className="workspace-context-menu__label">
               {t('spaceActions.createWorktree')}
+            </span>
+          </button>
+        ) : null}
+
+        {canCreateChildSpace ? (
+          <button
+            type="button"
+            data-testid="workspace-space-action-create-child"
+            onClick={() => {
+              onCreateChildSpace()
+              closeMenu()
+            }}
+          >
+            <Group className="workspace-context-menu__icon" aria-hidden="true" />
+            <span className="workspace-context-menu__label">
+              {t('spaceActions.createChildSpace')}
             </span>
           </button>
         ) : null}

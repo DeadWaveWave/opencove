@@ -68,7 +68,8 @@ export function useWorkspaceCanvasShortcuts({
   navigateNode: (direction: SpatialNavigationDirection) => void
   navigateSpace: (direction: SpatialNavigationDirection) => void
 }): void {
-  const spaceIds = useMemo(() => spaces.map(space => space.id), [spaces])
+  const topLevelSpaces = useMemo(() => spaces.filter(space => !space.parentSpaceId), [spaces])
+  const spaceIds = useMemo(() => topLevelSpaces.map(space => space.id), [topLevelSpaces])
   const chordToCommand = useMemo(
     () =>
       createChordToCommandMap({
@@ -166,7 +167,7 @@ export function useWorkspaceCanvasShortcuts({
             spaceIds:
               commandId === 'workspaceCanvas.cycleIdleSpacesForward' ||
               commandId === 'workspaceCanvas.cycleIdleSpacesBackward'
-                ? resolveIdleSpaceIds({ spaces, nodes: nodesRef.current })
+                ? resolveIdleSpaceIds({ spaces: topLevelSpaces, nodes: nodesRef.current })
                 : spaceIds,
           })
 
@@ -202,6 +203,6 @@ export function useWorkspaceCanvasShortcuts({
     nodesRef,
     chordToCommand,
     spaceIds,
-    spaces,
+    topLevelSpaces,
   ])
 }

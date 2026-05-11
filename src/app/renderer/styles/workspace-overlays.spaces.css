@@ -15,6 +15,32 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cove-label-color) 10%, transparent);
 }
 
+.workspace-space-region--child {
+  border-style: solid;
+  border-color: color-mix(in srgb, var(--cove-space-region-border) 68%, var(--cove-text-muted));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--cove-window-surface) 34%, transparent),
+      transparent 42%
+    ),
+    color-mix(in srgb, var(--cove-space-region-surface) 82%, transparent);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--cove-border) 38%, transparent),
+    0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+.workspace-space-region--child[data-cove-label-color] {
+  border-color: color-mix(in srgb, var(--cove-label-color) 72%, var(--cove-border));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--cove-label-color) 18%, transparent),
+      transparent 46%
+    ),
+    color-mix(in srgb, var(--cove-space-region-surface) 76%, transparent);
+}
+
 .workspace-space-region--active {
   border-color: var(--cove-space-region-border-active);
   background: var(--cove-space-region-surface-active);

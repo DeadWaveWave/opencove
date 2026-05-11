@@ -93,6 +93,61 @@ describe('mergePersistedAppStates', () => {
     expect(merged.workspaces[0]?.spaces[0]?.rect).toEqual(localRect)
   })
 
+  it('keeps base child-space topology when local did not change it (snapshot-aware)', () => {
+    const rect: WorkspaceSpaceRect = { x: 0, y: 0, width: 100, height: 100 }
+    const snapshotBoundary = {
+      allowedMountIds: ['mount-1'],
+      scopesByMountId: {
+        'mount-1': {
+          rootPath: '/tmp/workspace',
+          rootUri: 'file:///tmp/workspace',
+        },
+      },
+      allowedPluginIds: null,
+      capabilities: null,
+      trustLevel: null,
+    }
+    const childBoundary = {
+      ...snapshotBoundary,
+      scopesByMountId: {
+        'mount-1': {
+          rootPath: '/tmp/workspace/packages/app',
+          rootUri: 'file:///tmp/workspace/packages/app',
+        },
+      },
+    }
+
+    const baseSnapshot = createState({ rect, nodeTitle: 'snapshot' })
+    const base = createState({ rect, nodeTitle: 'base' })
+    const local = createState({ rect, nodeTitle: 'local' })
+
+    baseSnapshot.workspaces[0]!.spaces[0] = {
+      ...baseSnapshot.workspaces[0]!.spaces[0]!,
+      parentSpaceId: null,
+      boundary: snapshotBoundary,
+      sortOrder: 0,
+    }
+    base.workspaces[0]!.spaces[0] = {
+      ...base.workspaces[0]!.spaces[0]!,
+      parentSpaceId: 'parent-space',
+      boundary: childBoundary,
+      sortOrder: 7,
+    }
+    local.workspaces[0]!.spaces[0] = {
+      ...local.workspaces[0]!.spaces[0]!,
+      parentSpaceId: null,
+      boundary: snapshotBoundary,
+      sortOrder: 0,
+    }
+
+    const merged = mergePersistedAppStates(base, local, baseSnapshot)
+    const mergedSpace = merged.workspaces[0]?.spaces[0]
+
+    expect(mergedSpace?.parentSpaceId).toBe('parent-space')
+    expect(mergedSpace?.boundary).toEqual(childBoundary)
+    expect(mergedSpace?.sortOrder).toBe(7)
+  })
+
   it('keeps base task linkedAgentNodeId when local did not change it (snapshot-aware)', () => {
     const baseLinkedAgentNodeId = 'agent-1'
 

@@ -224,6 +224,7 @@ export function registerSessionHandlers(
           space: {
             directoryPath: resolvedSpace.directoryPath,
             targetMountId: resolvedSpace.targetMountId,
+            boundary: resolvedSpace.boundary,
           },
           workspacePath: resolvedSpace.workspacePath,
           mounts: (await deps.topology.listMounts({ projectId: resolvedSpace.projectId })).mounts,
@@ -261,6 +262,8 @@ export function registerSessionHandlers(
             ...launched.executionContext,
             projectId: resolvedSpace.projectId,
             spaceId: resolvedSpaceId,
+            scope: mountContext.scope ?? launched.executionContext.scope,
+            workingDirectory: mountContext.workingDirectory,
           }
           const record = sessions.get(launched.sessionId)
           if (record) {

@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import { clampRectInsideRect } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 import type { SpaceDragState } from '../types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
@@ -10,6 +11,8 @@ type SetNodes = (
 ) => void
 
 type ResolveResizedRect = (dragState: SpaceDragState, dx: number, dy: number) => WorkspaceSpaceRect
+
+const CHILD_SPACE_DRAG_PADDING = 12
 
 export interface ProjectedSpaceDragLayout {
   nextSpaces: WorkspaceSpaceState[]
@@ -33,9 +36,28 @@ export function projectWorkspaceSpaceDragLayout({
 }): ProjectedSpaceDragLayout | null {
   const baselineNodes = restoreBaselineNodes(nodes, dragState.allNodePositions)
   const handle = dragState.handle
+  const targetSpace = spaces.find(space => space.id === dragState.spaceId) ?? null
+  const movedSpaceIds = new Set([
+    dragState.spaceId,
+    ...collectDescendantSpaceIds(spaces, dragState.spaceId),
+  ])
+  const owningSpaceIdByNodeId = buildOwningSpaceIdByNodeId(spaces)
 
   if (handle.kind === 'move') {
-    if (dx === 0 && dy === 0) {
+    const desiredRect: WorkspaceSpaceRect = {
+      ...dragState.initialRect,
+      x: dragState.initialRect.x + dx,
+      y: dragState.initialRect.y + dy,
+    }
+    const nextRect = resolveContainedSpaceRect({
+      desiredRect,
+      space: targetSpace,
+      spaces,
+    })
+    const effectiveDx = nextRect.x - dragState.initialRect.x
+    const effectiveDy = nextRect.y - dragState.initialRect.y
+
+    if (effectiveDx === 0 && effectiveDy === 0) {
       return {
         nextSpaces: spaces,
         nextNodePositionById: new Map(
@@ -44,47 +66,74 @@ export function projectWorkspaceSpaceDragLayout({
       }
     }
 
-    const nextRect: WorkspaceSpaceRect = {
-      ...dragState.initialRect,
-      x: dragState.initialRect.x + dx,
-      y: dragState.initialRect.y + dy,
-    }
-
     const draftSpaces = spaces.map(space =>
-      space.id === dragState.spaceId
+      movedSpaceIds.has(space.id) && space.rect
         ? {
             ...space,
-            rect: nextRect,
+            rect: {
+              ...space.rect,
+              x: space.rect.x + effectiveDx,
+              y: space.rect.y + effectiveDy,
+            },
           }
         : space,
     )
 
     const draftNodes = baselineNodes.map(node => {
       const initial = dragState.initialNodePositions.get(node.id)
-      if (!initial) {
+      const ownerSpaceId = owningSpaceIdByNodeId.get(node.id) ?? null
+      if (!initial && (!ownerSpaceId || !movedSpaceIds.has(ownerSpaceId))) {
         return node
       }
 
+      const baseline = initial ?? node.position
       return {
         ...node,
         position: {
-          x: initial.x + dx,
-          y: initial.y + dy,
+          x: baseline.x + effectiveDx,
+          y: baseline.y + effectiveDy,
         },
       }
     })
 
-    return projectWorkspacePushAwayLayout({
+    if (targetSpace?.parentSpaceId) {
+      return {
+        nextSpaces: draftSpaces,
+        nextNodePositionById: new Map(
+          draftNodes
+            .filter(node => {
+              const ownerSpaceId = owningSpaceIdByNodeId.get(node.id) ?? null
+              return (
+                dragState.initialNodePositions.has(node.id) ||
+                (ownerSpaceId !== null && movedSpaceIds.has(ownerSpaceId))
+              )
+            })
+            .map(node => [node.id, { x: node.position.x, y: node.position.y }]),
+        ),
+      }
+    }
+
+    const projected = projectWorkspacePushAwayLayout({
       spaces: draftSpaces,
       nodes: draftNodes,
-      pinnedGroupIds: [dragState.spaceId],
+      pinnedGroupIds: [...movedSpaceIds],
       sourceGroupIds: [dragState.spaceId],
-      directions: resolveMoveDirections(dx, dy),
+      directions: resolveMoveDirections(effectiveDx, effectiveDy),
       gap: 0,
+    })
+
+    return propagateMovedParentDeltas({
+      projected,
+      previousSpaces: spaces,
+      baselineNodes,
     })
   }
 
-  const nextRect = resolveResizedRect(dragState, dx, dy)
+  const nextRect = resolveContainedSpaceRect({
+    desiredRect: resolveResizedRect(dragState, dx, dy),
+    space: targetSpace,
+    spaces,
+  })
   if (rectEquals(nextRect, dragState.initialRect)) {
     return null
   }
@@ -98,13 +147,27 @@ export function projectWorkspaceSpaceDragLayout({
       : space,
   )
 
-  return projectWorkspacePushAwayLayout({
+  if (targetSpace?.parentSpaceId) {
+    return {
+      nextSpaces: draftSpaces,
+      nextNodePositionById: new Map(),
+    }
+  }
+
+  const projected = projectWorkspacePushAwayLayout({
     spaces: draftSpaces,
     nodes: baselineNodes,
     pinnedGroupIds: [dragState.spaceId],
     sourceGroupIds: [dragState.spaceId],
     directions: resolveResizeDirections(dragState.initialRect, nextRect),
     gap: 0,
+  })
+
+  return propagateMovedParentDeltas({
+    projected,
+    previousSpaces: spaces,
+    baselineNodes,
+    excludeParentIds: new Set([dragState.spaceId]),
   })
 }
 
@@ -194,6 +257,138 @@ function restoreBaselineNodes(
 
 function rectEquals(a: WorkspaceSpaceRect, b: WorkspaceSpaceRect): boolean {
   return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height
+}
+
+function collectDescendantSpaceIds(
+  spaces: WorkspaceSpaceState[],
+  rootSpaceId: string,
+): Set<string> {
+  const descendants = new Set<string>()
+  let changed = true
+
+  while (changed) {
+    changed = false
+    for (const space of spaces) {
+      const parentSpaceId = space.parentSpaceId ?? null
+      if (!parentSpaceId || descendants.has(space.id)) {
+        continue
+      }
+
+      if (parentSpaceId === rootSpaceId || descendants.has(parentSpaceId)) {
+        descendants.add(space.id)
+        changed = true
+      }
+    }
+  }
+
+  return descendants
+}
+
+function buildOwningSpaceIdByNodeId(spaces: WorkspaceSpaceState[]): Map<string, string> {
+  const owningSpaceIdByNodeId = new Map<string, string>()
+
+  for (const space of spaces) {
+    for (const nodeId of space.nodeIds) {
+      owningSpaceIdByNodeId.set(nodeId, space.id)
+    }
+  }
+
+  return owningSpaceIdByNodeId
+}
+
+function resolveContainedSpaceRect({
+  desiredRect,
+  space,
+  spaces,
+}: {
+  desiredRect: WorkspaceSpaceRect
+  space: WorkspaceSpaceState | null
+  spaces: WorkspaceSpaceState[]
+}): WorkspaceSpaceRect {
+  const parentSpaceId = space?.parentSpaceId ?? null
+  if (!parentSpaceId) {
+    return desiredRect
+  }
+
+  const parentRect = spaces.find(candidate => candidate.id === parentSpaceId)?.rect ?? null
+  return parentRect
+    ? clampRectInsideRect(desiredRect, parentRect, CHILD_SPACE_DRAG_PADDING)
+    : desiredRect
+}
+
+function propagateMovedParentDeltas({
+  projected,
+  previousSpaces,
+  baselineNodes,
+  excludeParentIds = new Set(),
+}: {
+  projected: ProjectedSpaceDragLayout
+  previousSpaces: WorkspaceSpaceState[]
+  baselineNodes: Node<TerminalNodeData>[]
+  excludeParentIds?: Set<string>
+}): ProjectedSpaceDragLayout {
+  const nextSpaceById = new Map(projected.nextSpaces.map(space => [space.id, space] as const))
+  const previousSpaceById = new Map(previousSpaces.map(space => [space.id, space] as const))
+  const baselineNodeById = new Map(baselineNodes.map(node => [node.id, node] as const))
+  const nextNodePositionById = new Map(projected.nextNodePositionById)
+  let nextSpaces = projected.nextSpaces
+
+  for (const previousParent of previousSpaces) {
+    if (excludeParentIds.has(previousParent.id) || !previousParent.rect) {
+      continue
+    }
+
+    const nextParent = nextSpaceById.get(previousParent.id) ?? null
+    if (!nextParent?.rect) {
+      continue
+    }
+
+    const dx = nextParent.rect.x - previousParent.rect.x
+    const dy = nextParent.rect.y - previousParent.rect.y
+    if (dx === 0 && dy === 0) {
+      continue
+    }
+
+    const descendantSpaceIds = collectDescendantSpaceIds(previousSpaces, previousParent.id)
+    for (const descendantSpaceId of descendantSpaceIds) {
+      const previousDescendant = previousSpaceById.get(descendantSpaceId) ?? null
+      const nextDescendant = nextSpaceById.get(descendantSpaceId) ?? null
+      if (!previousDescendant?.rect || !nextDescendant?.rect) {
+        continue
+      }
+
+      if (!rectEquals(previousDescendant.rect, nextDescendant.rect)) {
+        continue
+      }
+
+      const movedRect = {
+        ...nextDescendant.rect,
+        x: nextDescendant.rect.x + dx,
+        y: nextDescendant.rect.y + dy,
+      }
+      nextSpaceById.set(descendantSpaceId, { ...nextDescendant, rect: movedRect })
+      nextSpaces = nextSpaces.map(space =>
+        space.id === descendantSpaceId ? { ...space, rect: movedRect } : space,
+      )
+
+      for (const nodeId of previousDescendant.nodeIds) {
+        const baselineNode = baselineNodeById.get(nodeId) ?? null
+        if (!baselineNode) {
+          continue
+        }
+
+        nextNodePositionById.set(nodeId, {
+          x: baselineNode.position.x + dx,
+          y: baselineNode.position.y + dy,
+        })
+      }
+    }
+  }
+
+  return {
+    nextSpaces,
+    nextNodePositionById,
+  }
 }
 
 function resolveMoveDirections(dx: number, dy: number): LayoutDirection[] {

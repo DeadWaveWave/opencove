@@ -69,4 +69,38 @@ describe('resolveSpaceMountContext', () => {
       directoryPath: '/repo',
     })
   })
+
+  it('uses child boundary scope as the working directory and repairs projection drift', () => {
+    const resolved = resolveSpaceMountContext({
+      space: {
+        directoryPath: '/repo',
+        targetMountId: 'mount-1',
+        boundary: {
+          allowedMountIds: ['mount-1'],
+          scopesByMountId: {
+            'mount-1': {
+              rootPath: '/repo/packages/app',
+              rootUri: 'file:///repo/packages/app',
+            },
+          },
+          allowedPluginIds: null,
+          capabilities: null,
+          trustLevel: null,
+        },
+      },
+      workspacePath: '/repo',
+      mounts: [createMount({})],
+    })
+
+    expect(resolved.mount?.mountId).toBe('mount-1')
+    expect(resolved.workingDirectory).toBe('/repo/packages/app')
+    expect(resolved.scope).toEqual({
+      rootPath: '/repo/packages/app',
+      rootUri: 'file:///repo/packages/app',
+    })
+    expect(resolved.repair).toEqual({
+      targetMountId: 'mount-1',
+      directoryPath: '/repo/packages/app',
+    })
+  })
 })

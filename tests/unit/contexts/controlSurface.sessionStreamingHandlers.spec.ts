@@ -98,8 +98,20 @@ describe('control surface session streaming handlers', () => {
             {
               id: 's1',
               name: 'Space A',
-              directoryPath: '/repo/worktrees/feature-b',
+              directoryPath: '/repo',
               targetMountId: 'mount-1',
+              boundary: {
+                allowedMountIds: ['mount-1'],
+                scopesByMountId: {
+                  'mount-1': {
+                    rootPath: '/repo/worktrees/feature-b',
+                    rootUri: 'file:///repo/worktrees/feature-b',
+                  },
+                },
+                allowedPluginIds: null,
+                capabilities: null,
+                trustLevel: null,
+              },
               labelColor: null,
               nodeIds: [],
               rect: null,
@@ -223,8 +235,8 @@ describe('control surface session streaming handlers', () => {
         rootUri,
       },
       scope: {
-        rootPath,
-        rootUri,
+        rootPath: '/repo/worktrees/feature-b',
+        rootUri: 'file:///repo/worktrees/feature-b',
       },
       endpoint: {
         endpointId: 'local',

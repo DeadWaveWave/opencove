@@ -1,4 +1,5 @@
 import type { Node } from '@xyflow/react'
+import { resolveInnermostSpaceAtPoint } from '@contexts/space/application/spaceContainment'
 import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '../../../types'
 
 export type WorkspaceNodeRegion = { kind: 'root' } | { kind: 'space'; spaceId: string }
@@ -19,23 +20,8 @@ export function resolveRegionAtPoint(
   spaces: WorkspaceSpaceState[],
   point: { x: number; y: number },
 ): WorkspaceNodeRegion {
-  for (const space of spaces) {
-    const rect = space.rect
-    if (!rect) {
-      continue
-    }
-
-    if (
-      point.x >= rect.x &&
-      point.x <= rect.x + rect.width &&
-      point.y >= rect.y &&
-      point.y <= rect.y + rect.height
-    ) {
-      return { kind: 'space', spaceId: space.id }
-    }
-  }
-
-  return { kind: 'root' }
+  const space = resolveInnermostSpaceAtPoint(spaces, point)
+  return space ? { kind: 'space', spaceId: space.id } : { kind: 'root' }
 }
 
 export function resolveSpaceRectForRegion(

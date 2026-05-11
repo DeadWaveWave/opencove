@@ -10,6 +10,7 @@ import { zhCNWebsiteNode } from './zh-CN.websiteNode'
 import { zhCNIssueReport } from './zh-CN.issueReport'
 import { zhCNPerformanceMonitor } from './zh-CN.performanceMonitor'
 import { zhCNRole } from './zh-CN.role'
+import { zhCNWorkspaceCanvas } from './zh-CN.workspaceCanvas'
 
 export const zhCN = {
   common: {
@@ -374,73 +375,7 @@ export const zhCN = {
     emptySpaceWarningSingle: '删除最后这个节点会使该 Space 变为空。',
     emptySpaceWarningMultiple: '删除最后这几个节点会使该 Space 变为空。',
   },
-  workspaceContextMenu: {
-    newTerminal: '新建终端',
-    newNote: '新建便签',
-    newWebsite: '新建网页窗口',
-    newTask: '新建任务',
-    newRole: '新建角色',
-    runAgent: '运行 Agent',
-    runRole: '运行角色',
-    noProjectRoles: '当前项目还没有角色',
-    createEmptySpace: '创建空 Space',
-    arrange: '整理',
-    arrangeBy: '整理方式',
-    createSpaceWithSelected: '用所选节点创建 Space',
-    convertToTask: '转换为任务',
-    clearSelection: '清除选择',
-  },
-  workspaceArrangeMenu: {
-    scope: '范围',
-    scopeAll: '全局',
-    scopeCanvas: '画布',
-    scopeSpace: '空间',
-    order: '顺序',
-    orderPosition: '当前布局',
-    orderCreatedAt: '创建时间',
-    orderKind: '节点类型',
-    orderSize: '节点大小',
-    spaceFit: 'Space',
-    spaceFitTight: '紧缩 Space',
-    spaceFitKeep: '保持 Space 大小',
-    style: '样式',
-    alignCanonicalSizes: '对齐标准尺寸',
-    magneticSnapping: '磁吸对齐',
-  },
-  workspaceCanvas: {
-    selectionHint_one: '已选中 {{count}} 个窗口。',
-    selectionHint_other: '已选中 {{count}} 个窗口。',
-    showMinimap: '显示缩略图',
-    hideMinimap: '隐藏缩略图',
-    labelColorFilterAll: '显示全部',
-    clearLabelColorFilter: '清除颜色过滤',
-  },
-  labelColors: {
-    title: '颜色标注',
-    autoInherit: '自动（跟随 Space）',
-    none: '无',
-    gray: '灰色',
-    red: '红色',
-    orange: '橙色',
-    yellow: '黄色',
-    green: '绿色',
-    blue: '蓝色',
-    purple: '紫色',
-  },
-  space: {
-    defaultName: '空间 {{count}}',
-  },
-  spaceActions: {
-    arrangeInSpace: '整理 Space 内',
-    createWorktree: '创建 Worktree',
-    archive: '归档',
-    copyPath: '复制路径',
-    files: '文件',
-    open: '打开',
-    openExplorer: '打开 Explorer',
-    openSpaceActions: '打开 {{name}} 的空间操作',
-    title: '空间操作',
-  },
+  ...zhCNWorkspaceCanvas,
   spaceExplorer: zhCNSpaceExplorer,
   branchRenameDialog: {
     title: '重命名分支',

@@ -18,6 +18,7 @@ import type {
 } from '@shared/contracts/dto'
 import { CANVAS_IMAGE_MIME_TYPES } from '@shared/contracts/dto'
 import { normalizeLabelColor, normalizeNodeLabelColorOverride } from '@shared/types/labelColor'
+import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
 import { ensurePersistedRoleData } from './ensureRoleNodeData'
 import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
@@ -117,6 +118,12 @@ function ensurePersistedWorkspaceSpace(
     name,
     directoryPath: normalizedDirectoryPath,
     targetMountId: normalizeOptionalString(record.targetMountId),
+    parentSpaceId: normalizeOptionalString(record.parentSpaceId),
+    boundary: normalizeSpaceBoundary(record.boundary),
+    sortOrder:
+      typeof record.sortOrder === 'number' && Number.isFinite(record.sortOrder)
+        ? Math.max(0, Math.floor(record.sortOrder))
+        : 0,
     labelColor: normalizeLabelColor(record.labelColor),
     nodeIds: normalizeWorkspaceSpaceNodeIds(record.nodeIds),
     rect: normalizeWorkspaceSpaceRect(record.rect),
@@ -421,7 +428,8 @@ export function ensurePersistedWorkspace(workspace: unknown): PersistedWorkspace
   }))
   const normalizedActiveSpaceId = typeof activeSpaceId === 'string' ? activeSpaceId : null
   const resolvedActiveSpaceId =
-    normalizedActiveSpaceId && sanitizedSpaces.some(space => space.id === normalizedActiveSpaceId)
+    normalizedActiveSpaceId &&
+    sanitizedSpaces.some(space => space.id === normalizedActiveSpaceId && !space.parentSpaceId)
       ? normalizedActiveSpaceId
       : null
 

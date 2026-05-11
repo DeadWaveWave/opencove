@@ -60,10 +60,11 @@ export function writeNormalizedAppState(
   const insertSpace = db.prepare(
     `
       INSERT INTO workspace_spaces (
-        id, workspace_id, name, directory_path, target_mount_id, label_color,
+        id, workspace_id, name, directory_path, target_mount_id,
+        parent_space_id, boundary_json, sort_order, label_color,
         rect_x, rect_y, rect_width, rect_height
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
   )
 
@@ -152,6 +153,9 @@ export function writeNormalizedAppState(
           space.name,
           space.directoryPath,
           space.targetMountId,
+          space.parentSpaceId,
+          safeJsonStringify(space.boundary),
+          space.sortOrder,
           space.labelColor,
           space.rect?.x ?? null,
           space.rect?.y ?? null,
