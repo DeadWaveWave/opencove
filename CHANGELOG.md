@@ -77,6 +77,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Workspace canvas: browser download panels now merge live runtime download events with persisted records, so in-progress and incognito downloads stay visible before persistence catches up. (#246)
 - Mounts: route generic Space-based agent/terminal launches through the resolved mount, repair stale Space bindings, and keep node-control space resolution aligned with the same mount-aware context rules. (#241)
 - Remote: harden managed SSH endpoint lifecycle coverage, make repair actions respect manual vs managed authority, and verify remote-only project browse via fake SSH E2E. (#240)
 - Desktop: upgrade Electron to 41.5.1 and queue website-window snapshot requests until the runtime is ready, preventing dropped captures during activation/loading transitions. (#238)

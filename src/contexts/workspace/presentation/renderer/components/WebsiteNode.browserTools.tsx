@@ -17,6 +17,7 @@ import {
   WebsiteNodeBrowserPanel,
   type WebsiteNodeBrowserPanelKind,
 } from './WebsiteNode.browserPanel'
+import { mergeBrowserDownloadRecords } from './WebsiteNode.browserDownloads'
 
 const FALLBACK_HOME_URL = 'https://www.google.com/'
 
@@ -245,6 +246,10 @@ export function WebsiteNodeBrowserTools({
 
   const pendingPermission =
     permissionRequests.find(item => !dismissedPermissionIds.has(item.requestId)) ?? null
+  const visibleDownloads = useMemo(
+    () => mergeBrowserDownloadRecords(downloadRecords, downloads),
+    [downloadRecords, downloads],
+  )
 
   return (
     <>
@@ -385,7 +390,7 @@ export function WebsiteNodeBrowserTools({
           panel={activePanel}
           bookmarks={bookmarks}
           history={history}
-          downloads={downloadRecords}
+          downloads={visibleDownloads}
           onNavigate={onNavigate}
           onDeleteBookmark={id => {
             if (!browserApi) {
