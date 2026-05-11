@@ -38,14 +38,22 @@ export function resolveResizedNodeFrame({
   edges,
   delta,
   minSize,
+  maxSize,
   aspectRatio,
 }: {
   initialFrame: NodeFrame
   edges: ResizeEdges
   delta: Point
   minSize: Size
+  maxSize?: Size | null
   aspectRatio?: number | null
 }): NodeFrame {
+  const effectiveMinSize = maxSize
+    ? {
+        width: Math.min(minSize.width, maxSize.width),
+        height: Math.min(minSize.height, maxSize.height),
+      }
+    : minSize
   const isValidAspectRatio =
     typeof aspectRatio === 'number' && Number.isFinite(aspectRatio) && aspectRatio > 0
 
@@ -103,16 +111,20 @@ export function resolveResizedNodeFrame({
       nextWidth <= 0 ||
       nextHeight <= 0
     ) {
-      nextHeight = Math.max(minSize.height, minSize.width / aspectRatio)
+      nextHeight = Math.max(effectiveMinSize.height, effectiveMinSize.width / aspectRatio)
       nextWidth = nextHeight * aspectRatio
     }
 
-    const scale = Math.max(minSize.width / nextWidth, minSize.height / nextHeight, 1)
+    const scale = Math.max(
+      effectiveMinSize.width / nextWidth,
+      effectiveMinSize.height / nextHeight,
+      1,
+    )
     nextWidth *= scale
     nextHeight *= scale
 
-    const resolvedWidth = Math.max(minSize.width, Math.round(nextWidth))
-    const resolvedHeight = Math.max(minSize.height, Math.round(nextHeight))
+    const resolvedWidth = Math.max(effectiveMinSize.width, Math.round(nextWidth))
+    const resolvedHeight = Math.max(effectiveMinSize.height, Math.round(nextHeight))
 
     const nextX =
       edges.left && !edges.right
@@ -163,20 +175,36 @@ export function resolveResizedNodeFrame({
     nextHeight = initialFrame.size.height - delta.y
   }
 
-  if (nextWidth < minSize.width) {
+  if (nextWidth < effectiveMinSize.width) {
     if (edges.left && !edges.right) {
-      nextX = initialFrame.position.x + (initialFrame.size.width - minSize.width)
+      nextX = initialFrame.position.x + (initialFrame.size.width - effectiveMinSize.width)
     }
 
-    nextWidth = minSize.width
+    nextWidth = effectiveMinSize.width
   }
 
-  if (nextHeight < minSize.height) {
+  if (nextHeight < effectiveMinSize.height) {
     if (edges.top && !edges.bottom) {
-      nextY = initialFrame.position.y + (initialFrame.size.height - minSize.height)
+      nextY = initialFrame.position.y + (initialFrame.size.height - effectiveMinSize.height)
     }
 
-    nextHeight = minSize.height
+    nextHeight = effectiveMinSize.height
+  }
+
+  if (maxSize && nextWidth > maxSize.width) {
+    if (edges.left && !edges.right) {
+      nextX = initialFrame.position.x + (initialFrame.size.width - maxSize.width)
+    }
+
+    nextWidth = maxSize.width
+  }
+
+  if (maxSize && nextHeight > maxSize.height) {
+    if (edges.top && !edges.bottom) {
+      nextY = initialFrame.position.y + (initialFrame.size.height - maxSize.height)
+    }
+
+    nextHeight = maxSize.height
   }
 
   return {
@@ -217,6 +245,7 @@ export function useNodeFrameResize({
   width,
   height,
   minSize,
+  maxSize,
   aspectRatio,
   onResize,
   onResizeStart,
@@ -226,6 +255,7 @@ export function useNodeFrameResize({
   width: number
   height: number
   minSize: Size
+  maxSize?: Size | null
   aspectRatio?: number | null
   onResize: (frame: NodeFrame) => void
   onResizeStart?: () => void
@@ -260,6 +290,11 @@ export function useNodeFrameResize({
   useEffect(() => {
     minSizeRef.current = minSize
   }, [minSize])
+
+  const maxSizeRef = useRef(maxSize ?? null)
+  useEffect(() => {
+    maxSizeRef.current = maxSize ?? null
+  }, [maxSize])
 
   const onResizeRef = useRef(onResize)
   useEffect(() => {
@@ -375,6 +410,7 @@ export function useNodeFrameResize({
             zoomRef.current,
           ),
           minSize: minSizeRef.current,
+          maxSize: maxSizeRef.current,
           aspectRatio: start.aspectRatio,
         })
 

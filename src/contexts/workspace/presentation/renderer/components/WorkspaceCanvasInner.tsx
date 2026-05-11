@@ -318,6 +318,8 @@ export function WorkspaceCanvasInner({
     updateWebsiteUrl: nodeStore.updateWebsiteUrl,
     setWebsitePinned: nodeStore.setWebsitePinned,
     setWebsiteSession: nodeStore.setWebsiteSession,
+    setWebsiteMode: nodeStore.setWebsiteMode,
+    setWebsiteFullscreen: nodeStore.setWebsiteFullscreen,
     updateNodeScrollback: nodeStore.updateNodeScrollback,
     updateTerminalTitle: nodeStore.updateTerminalTitle,
     renameTerminalTitle: nodeStore.renameTerminalTitle,

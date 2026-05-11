@@ -189,6 +189,7 @@
 -   **外部可执行发现与解析**：`docs/cli/EXTERNAL_EXECUTABLE_RESOLUTION.md`
 -   **Filesystem（URI + providers + guardrails）**：`docs/canvas/FILESYSTEM.md`
 -   **画布内文件编辑（Document Node）**：`docs/canvas/DOCUMENT_NODE.md`
+-   **画布内浏览器能力规格**：`docs/canvas/BROWSER_WINDOW_CAPABILITY_SPEC.md`
 -   **恢复模型与 owner 表**：`docs/architecture/RECOVERY_MODEL.md`
 -   **持久化（SQLite schema / migrations）**：`docs/architecture/PERSISTENCE.md`
 -   **终端架构文档入口**：`docs/terminal/README.md`

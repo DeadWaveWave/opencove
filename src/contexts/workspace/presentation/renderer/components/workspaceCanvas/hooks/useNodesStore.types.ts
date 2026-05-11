@@ -4,7 +4,7 @@ import type {
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { ProjectRoleDefinition } from '@contexts/settings/domain/projectRoles'
-import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type {
   DocumentNodeData,
   ImageNodeData,
@@ -80,6 +80,13 @@ export interface UseWorkspaceCanvasNodesStoreResult {
     nodeId: string,
     sessionMode: WebsiteWindowSessionMode,
     profileId: string | null,
+  ) => void
+  setWebsiteMode: (nodeId: string, browserMode: BrowserMode) => void
+  setWebsiteFullscreen: (
+    nodeId: string,
+    frame: NodeFrame,
+    previousFrame: NodeFrame | null,
+    isFullscreen: boolean,
   ) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (anchor: Point, options?: CreateNoteNodeOptions) => Node<TerminalNodeData> | null

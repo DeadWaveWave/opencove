@@ -1,5 +1,5 @@
 import { WebContentsView } from 'electron'
-import type { Session, WebContents } from 'electron'
+import type { DownloadItem, Session, WebContents } from 'electron'
 import type { WebsiteWindowEventPayload } from '../../../shared/contracts/dto'
 import type { WebsiteWindowRuntime } from './websiteWindowRuntime'
 import { disposeWebsiteWindowDeviceMetrics } from './websiteWindowDeviceMetrics'
@@ -19,12 +19,25 @@ export function ensureWebsiteWindowView({
   emitState,
   emit,
   flushPendingSnapshot,
+  recordHistoryVisit,
+  onPermissionCheck,
+  onPermissionRequest,
+  onDownload,
 }: {
   runtime: WebsiteWindowRuntime
   configuredSessions: WeakSet<Session>
   emitState: (runtime: WebsiteWindowRuntime) => void
   emit: (payload: WebsiteWindowEventPayload) => void
   flushPendingSnapshot: (runtime: WebsiteWindowRuntime) => void
+  recordHistoryVisit?: (runtime: WebsiteWindowRuntime) => void
+  onPermissionCheck?: (contents: WebContents | null, permission: string, origin: string) => boolean
+  onPermissionRequest?: (
+    contents: WebContents,
+    permission: string,
+    origin: string,
+    callback: (granted: boolean) => void,
+  ) => void
+  onDownload?: (contents: WebContents, item: DownloadItem) => void
 }): void {
   if (runtime.view) {
     try {
@@ -64,7 +77,13 @@ export function ensureWebsiteWindowView({
     profileId: runtime.profileId,
   })
 
-  configureWebsiteSessionPermissions(configuredSessions, session)
+  configureWebsiteSessionPermissions({
+    configuredSessions,
+    session,
+    onPermissionCheck,
+    onPermissionRequest,
+    onDownload,
+  })
 
   const view = new WebContentsView({
     webPreferences: {
@@ -91,6 +110,7 @@ export function ensureWebsiteWindowView({
     flushPendingSnapshot: nextRuntime => {
       flushPendingSnapshot(nextRuntime)
     },
+    recordHistoryVisit,
   })
 }
 

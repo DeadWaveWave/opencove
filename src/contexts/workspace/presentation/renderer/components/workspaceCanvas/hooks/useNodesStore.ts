@@ -379,8 +379,13 @@ export function useWorkspaceCanvasNodesStore({
       setNodes,
       onRequestPersistFlush,
     })
-  const { updateWebsiteUrl, setWebsitePinned, setWebsiteSession } =
-    useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
+  const {
+    updateWebsiteUrl,
+    setWebsitePinned,
+    setWebsiteSession,
+    setWebsiteMode,
+    setWebsiteFullscreen,
+  } = useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
 
   const setNodeLabelColorOverride = useCallback(
     (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => {
@@ -464,6 +469,8 @@ export function useWorkspaceCanvasNodesStore({
     updateWebsiteUrl,
     setWebsitePinned,
     setWebsiteSession,
+    setWebsiteMode,
+    setWebsiteFullscreen,
     createNodeForSession,
     createNoteNode,
     createTaskNode,

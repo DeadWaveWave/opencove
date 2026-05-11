@@ -39,6 +39,9 @@ import { registerRemoteAgentIpcHandlers } from './registerRemoteAgentIpcHandlers
 import { registerWebsiteWindowIpcHandlers } from './registerWebsiteWindowIpcHandlers'
 import { registerControlSurfaceIpcHandlers } from './registerControlSurfaceIpcHandlers'
 import { createPersistedWorkspaceApprovalGate } from '../../../contexts/workspace/infrastructure/approval/PersistedWorkspaceApproval'
+import type { BrowserProfileStore } from '../../../contexts/browser/infrastructure/main/BrowserProfileStore'
+import { createBrowserProfileStore } from '../../../contexts/browser/infrastructure/main/BrowserProfileStore'
+import { registerBrowserProfileIpcHandlers } from '../../../contexts/browser/presentation/main-ipc/register'
 
 export type { IpcRegistrationDisposable } from './types'
 
@@ -60,6 +63,7 @@ export function registerIpcHandlers(deps?: {
     : (deps?.ptyRuntime ?? createPtyRuntime())
 
   let persistenceStorePromise: Promise<PersistenceStore> | null = null
+  let browserProfileStorePromise: Promise<BrowserProfileStore> | null = null
   const getPersistenceStore = async (): Promise<PersistenceStore> => {
     if (persistenceStorePromise) {
       return await persistenceStorePromise
@@ -81,6 +85,29 @@ export function registerIpcHandlers(deps?: {
     })
     persistenceStorePromise = nextStorePromise
     return await persistenceStorePromise
+  }
+
+  const getBrowserProfileStore = async (): Promise<BrowserProfileStore> => {
+    if (browserProfileStorePromise) {
+      return await browserProfileStorePromise
+    }
+
+    const dbPath = resolve(app.getPath('userData'), 'opencove.db')
+    const nextStorePromise = (async () => {
+      if (!workerEndpointResolver) {
+        await getPersistenceStore()
+      }
+
+      return await createBrowserProfileStore({ dbPath })
+    })().catch(error => {
+      if (browserProfileStorePromise === nextStorePromise) {
+        browserProfileStorePromise = null
+      }
+
+      throw error
+    })
+    browserProfileStorePromise = nextStorePromise
+    return await browserProfileStorePromise
   }
 
   const workspaceApprovedWorkspaces = workerEndpointResolver
@@ -159,7 +186,8 @@ export function registerIpcHandlers(deps?: {
       : registerAgentIpcHandlers(ptyRuntime, guardedApprovedWorkspaces, getPersistenceStore),
     registerTaskIpcHandlers(guardedApprovedWorkspaces),
     registerSystemIpcHandlers(),
-    registerWebsiteWindowIpcHandlers(),
+    registerBrowserProfileIpcHandlers(getBrowserProfileStore),
+    registerWebsiteWindowIpcHandlers(getBrowserProfileStore),
   ]
 
   if (workerEndpointResolver) {
@@ -174,7 +202,16 @@ export function registerIpcHandlers(deps?: {
 
       const storePromise = persistenceStorePromise
       persistenceStorePromise = null
+      const browserStorePromise = browserProfileStorePromise
+      browserProfileStorePromise = null
       void Promise.resolve(storePromise)
+        .then(store => {
+          store?.dispose()
+        })
+        .catch(() => {
+          // ignore
+        })
+      void Promise.resolve(browserStorePromise)
         .then(store => {
           store?.dispose()
         })

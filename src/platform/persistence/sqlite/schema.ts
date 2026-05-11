@@ -1,4 +1,12 @@
-import { integer, real, sqliteTable, text, primaryKey } from 'drizzle-orm/sqlite-core'
+import {
+  integer,
+  real,
+  sqliteTable,
+  text,
+  primaryKey,
+  index,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
 
 export type DbAppMetaKey = 'format_version' | 'active_workspace_id' | 'app_state_revision'
 
@@ -91,3 +99,97 @@ export const agentNodePlaceholderScrollback = sqliteTable('agent_node_placeholde
   scrollback: text('scrollback').notNull(),
   updatedAt: text('updated_at').notNull(),
 })
+
+export const browserProfileSettings = sqliteTable('browser_profile_settings', {
+  profileKey: text('profile_key').primaryKey(),
+  homepageUrl: text('homepage_url'),
+  updatedAt: text('updated_at').notNull(),
+})
+
+export const browserHistory = sqliteTable(
+  'browser_history',
+  {
+    id: text('id').primaryKey(),
+    profileKey: text('profile_key').notNull(),
+    url: text('url').notNull(),
+    title: text('title'),
+    faviconUrl: text('favicon_url'),
+    visitCount: integer('visit_count').notNull(),
+    lastVisitedAt: text('last_visited_at').notNull(),
+  },
+  table => ({
+    profileVisitedIdx: index('browser_history_profile_visited_idx').on(
+      table.profileKey,
+      table.lastVisitedAt,
+    ),
+    profileUrlIdx: uniqueIndex('browser_history_profile_url_unique_idx').on(
+      table.profileKey,
+      table.url,
+    ),
+  }),
+)
+
+export const browserBookmarks = sqliteTable(
+  'browser_bookmarks',
+  {
+    id: text('id').primaryKey(),
+    profileKey: text('profile_key').notNull(),
+    url: text('url').notNull(),
+    title: text('title').notNull(),
+    faviconUrl: text('favicon_url'),
+    folderId: text('folder_id'),
+    sortOrder: integer('sort_order').notNull(),
+    createdAt: text('created_at').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  table => ({
+    profileUpdatedIdx: index('browser_bookmarks_profile_updated_idx').on(
+      table.profileKey,
+      table.updatedAt,
+    ),
+    profileUrlIdx: uniqueIndex('browser_bookmarks_profile_url_unique_idx').on(
+      table.profileKey,
+      table.url,
+    ),
+  }),
+)
+
+export const browserDownloads = sqliteTable(
+  'browser_downloads',
+  {
+    id: text('id').primaryKey(),
+    profileKey: text('profile_key').notNull(),
+    url: text('url').notNull(),
+    filename: text('filename').notNull(),
+    savePath: text('save_path'),
+    state: text('state').notNull(),
+    receivedBytes: integer('received_bytes').notNull(),
+    totalBytes: integer('total_bytes'),
+    startedAt: text('started_at').notNull(),
+    endedAt: text('ended_at'),
+    error: text('error'),
+  },
+  table => ({
+    profileStartedIdx: index('browser_downloads_profile_started_idx').on(
+      table.profileKey,
+      table.startedAt,
+    ),
+  }),
+)
+
+export const browserPermissionDecisions = sqliteTable(
+  'browser_permission_decisions',
+  {
+    id: text('id').primaryKey(),
+    profileKey: text('profile_key').notNull(),
+    origin: text('origin').notNull(),
+    permission: text('permission').notNull(),
+    decision: text('decision').notNull(),
+    updatedAt: text('updated_at').notNull(),
+  },
+  table => ({
+    profileOriginPermissionIdx: uniqueIndex(
+      'browser_permissions_profile_origin_permission_unique_idx',
+    ).on(table.profileKey, table.origin, table.permission),
+  }),
+)

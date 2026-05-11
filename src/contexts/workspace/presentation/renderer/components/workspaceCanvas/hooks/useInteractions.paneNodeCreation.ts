@@ -24,6 +24,7 @@ import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
 import { resolveTerminalLaunchWorkspaceContext } from './useInteractions.paneNodeCreation.terminalLaunch'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 import { translate } from '@app/renderer/i18n'
+import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -269,12 +270,12 @@ export function createWebsiteNodeAtFlowPosition({
 
   const created = createWebsiteNode(
     nodeAnchor,
-    {
+    createWebsiteNodeData({
       url,
       pinned: false,
       sessionMode: 'shared',
       profileId: null,
-    },
+    }),
     {
       targetSpaceRect: targetSpace?.rect ?? null,
     },

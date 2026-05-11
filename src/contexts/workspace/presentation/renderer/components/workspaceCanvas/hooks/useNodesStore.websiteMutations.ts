@@ -1,5 +1,7 @@
 import { useCallback } from 'react'
-import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { NodeFrame } from '../../../types'
+import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 
 export function useWorkspaceCanvasWebsiteNodeMutations({
@@ -10,7 +12,11 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
   onRequestPersistFlush?: () => void
 }): Pick<
   UseWorkspaceCanvasNodesStoreResult,
-  'updateWebsiteUrl' | 'setWebsitePinned' | 'setWebsiteSession'
+  | 'updateWebsiteUrl'
+  | 'setWebsitePinned'
+  | 'setWebsiteSession'
+  | 'setWebsiteMode'
+  | 'setWebsiteFullscreen'
 > {
   const updateWebsiteUrl = useCallback(
     (nodeId: string, url: string) => {
@@ -40,12 +46,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
               ...node,
               data: {
                 ...node.data,
-                website: {
+                website: createWebsiteNodeData({
+                  ...previousWebsite,
                   url: normalizedUrl,
-                  pinned: previousWebsite?.pinned ?? false,
-                  sessionMode: previousWebsite?.sessionMode ?? 'shared',
-                  profileId: previousWebsite?.profileId ?? null,
-                },
+                }),
               },
             }
           })
@@ -86,12 +90,10 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
               ...node,
               data: {
                 ...node.data,
-                website: {
-                  url: previousWebsite?.url ?? '',
+                website: createWebsiteNodeData({
+                  ...previousWebsite,
                   pinned,
-                  sessionMode: previousWebsite?.sessionMode ?? 'shared',
-                  profileId: previousWebsite?.profileId ?? null,
-                },
+                }),
               },
             }
           })
@@ -135,12 +137,11 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
               ...node,
               data: {
                 ...node.data,
-                website: {
-                  url: previousWebsite?.url ?? '',
-                  pinned: previousWebsite?.pinned ?? false,
+                website: createWebsiteNodeData({
+                  ...previousWebsite,
                   sessionMode,
                   profileId,
-                },
+                }),
               },
             }
           })
@@ -155,5 +156,91 @@ export function useWorkspaceCanvasWebsiteNodeMutations({
     [onRequestPersistFlush, setNodes],
   )
 
-  return { updateWebsiteUrl, setWebsitePinned, setWebsiteSession }
+  const setWebsiteMode = useCallback(
+    (nodeId: string, browserMode: BrowserMode) => {
+      const normalizedNodeId = nodeId.trim()
+      if (normalizedNodeId.length === 0) {
+        return
+      }
+
+      setNodes(
+        prevNodes => {
+          let hasChanged = false
+          const nextNodes = prevNodes.map(node => {
+            if (node.id !== normalizedNodeId || node.data.kind !== 'website') {
+              return node
+            }
+
+            const previousWebsite = node.data.website
+            if (previousWebsite?.browserMode === browserMode) {
+              return node
+            }
+
+            hasChanged = true
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                website: createWebsiteNodeData({ ...previousWebsite, browserMode }),
+              },
+            }
+          })
+
+          return hasChanged ? nextNodes : prevNodes
+        },
+        { syncLayout: false },
+      )
+
+      onRequestPersistFlush?.()
+    },
+    [onRequestPersistFlush, setNodes],
+  )
+
+  const setWebsiteFullscreen = useCallback(
+    (nodeId: string, frame: NodeFrame, previousFrame: NodeFrame | null, isFullscreen: boolean) => {
+      const normalizedNodeId = nodeId.trim()
+      if (normalizedNodeId.length === 0) {
+        return
+      }
+
+      setNodes(prevNodes => {
+        let hasChanged = false
+        const nextNodes = prevNodes.map(node => {
+          if (node.id !== normalizedNodeId || node.data.kind !== 'website') {
+            return node
+          }
+
+          const previousWebsite = node.data.website
+          hasChanged = true
+          return {
+            ...node,
+            position: frame.position,
+            data: {
+              ...node.data,
+              width: frame.size.width,
+              height: frame.size.height,
+              website: createWebsiteNodeData({
+                ...previousWebsite,
+                isFullscreen,
+                previousFrame,
+              }),
+            },
+          }
+        })
+
+        return hasChanged ? nextNodes : prevNodes
+      })
+
+      onRequestPersistFlush?.()
+    },
+    [onRequestPersistFlush, setNodes],
+  )
+
+  return {
+    updateWebsiteUrl,
+    setWebsitePinned,
+    setWebsiteSession,
+    setWebsiteMode,
+    setWebsiteFullscreen,
+  }
 }

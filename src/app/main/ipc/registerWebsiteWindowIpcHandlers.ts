@@ -5,6 +5,7 @@ import type {
   ActivateWebsiteWindowInput,
   CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
+  FindWebsiteWindowInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowBoundsInput,
   SetWebsiteWindowOccludedInput,
@@ -16,6 +17,9 @@ import type { IpcRegistrationDisposable } from './types'
 import { registerHandledIpc } from './handle'
 import { WebsiteWindowManager } from '../websiteWindow/WebsiteWindowManager'
 import { registerWebsiteWindowManager } from '../websiteWindow/websiteWindowManagerRegistry'
+import type { BrowserProfileStore } from '../../../contexts/browser/infrastructure/main/BrowserProfileStore'
+
+type BrowserProfileStoreResolver = () => Promise<BrowserProfileStore>
 
 function normalizeNodeIdInput(payload: WebsiteWindowNodeIdInput): WebsiteWindowNodeIdInput {
   if (!payload || typeof payload.nodeId !== 'string') {
@@ -30,7 +34,10 @@ function normalizeNodeIdInput(payload: WebsiteWindowNodeIdInput): WebsiteWindowN
   return { nodeId }
 }
 
-function resolveManager(event: IpcMainInvokeEvent | IpcMainEvent): WebsiteWindowManager {
+function resolveManager(
+  event: IpcMainInvokeEvent | IpcMainEvent,
+  getBrowserProfileStore?: BrowserProfileStoreResolver,
+): WebsiteWindowManager {
   const targetWindow = BrowserWindow.fromWebContents(event.sender)
   if (!targetWindow || targetWindow.isDestroyed()) {
     throw new Error('Unable to resolve BrowserWindow for website window request')
@@ -43,7 +50,7 @@ function resolveManager(event: IpcMainInvokeEvent | IpcMainEvent): WebsiteWindow
     return existing
   }
 
-  const nextManager = new WebsiteWindowManager(targetWindow)
+  const nextManager = new WebsiteWindowManager(targetWindow, getBrowserProfileStore)
   const unregisterManager = registerWebsiteWindowManager(nextManager)
   ;(
     targetWindow as unknown as { __opencoveWebsiteWindowManager?: WebsiteWindowManager }
@@ -57,7 +64,23 @@ function resolveManager(event: IpcMainInvokeEvent | IpcMainEvent): WebsiteWindow
   return nextManager
 }
 
-export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
+function normalizeFindInput(payload: FindWebsiteWindowInput): FindWebsiteWindowInput {
+  const normalizedNode = normalizeNodeIdInput(payload)
+  if (!payload || typeof payload.query !== 'string') {
+    throw new Error('Invalid website find payload')
+  }
+
+  return {
+    nodeId: normalizedNode.nodeId,
+    query: payload.query,
+    forward: payload.forward !== false,
+    findNext: payload.findNext === true,
+  }
+}
+
+export function registerWebsiteWindowIpcHandlers(
+  getBrowserProfileStore?: BrowserProfileStoreResolver,
+): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.websiteWindowConfigurePolicy,
     (event: IpcMainInvokeEvent, payload: ConfigureWebsiteWindowPolicyInput): void => {
@@ -65,7 +88,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
         throw new Error('Invalid website window policy payload')
       }
 
-      resolveManager(event).configurePolicy(payload)
+      resolveManager(event, getBrowserProfileStore).configurePolicy(payload)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -77,7 +100,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
         throw new Error('Invalid website window occlusion payload')
       }
 
-      resolveManager(event).setOccluded(payload)
+      resolveManager(event, getBrowserProfileStore).setOccluded(payload)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -85,7 +108,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.websiteWindowActivate,
     (event: IpcMainInvokeEvent, payload: ActivateWebsiteWindowInput): void => {
-      resolveManager(event).activate(payload)
+      resolveManager(event, getBrowserProfileStore).activate(payload)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -94,7 +117,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     IPC_CHANNELS.websiteWindowDeactivate,
     (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
       const normalized = normalizeNodeIdInput(payload)
-      resolveManager(event).deactivate(normalized.nodeId)
+      resolveManager(event, getBrowserProfileStore).deactivate(normalized.nodeId)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -102,7 +125,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.websiteWindowNavigate,
     (event: IpcMainInvokeEvent, payload: NavigateWebsiteWindowInput): void => {
-      resolveManager(event).navigate(payload)
+      resolveManager(event, getBrowserProfileStore).navigate(payload)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -111,7 +134,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     IPC_CHANNELS.websiteWindowGoBack,
     (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
       const normalized = normalizeNodeIdInput(payload)
-      resolveManager(event).goBack(normalized.nodeId)
+      resolveManager(event, getBrowserProfileStore).goBack(normalized.nodeId)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -120,7 +143,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     IPC_CHANNELS.websiteWindowGoForward,
     (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
       const normalized = normalizeNodeIdInput(payload)
-      resolveManager(event).goForward(normalized.nodeId)
+      resolveManager(event, getBrowserProfileStore).goForward(normalized.nodeId)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -129,7 +152,33 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     IPC_CHANNELS.websiteWindowReload,
     (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
       const normalized = normalizeNodeIdInput(payload)
-      resolveManager(event).reload(normalized.nodeId)
+      resolveManager(event, getBrowserProfileStore).reload(normalized.nodeId)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.websiteWindowStop,
+    (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
+      const normalized = normalizeNodeIdInput(payload)
+      resolveManager(event, getBrowserProfileStore).stop(normalized.nodeId)
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.websiteWindowFindInPage,
+    (event: IpcMainInvokeEvent, payload: FindWebsiteWindowInput): void => {
+      resolveManager(event, getBrowserProfileStore).findInPage(normalizeFindInput(payload))
+    },
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
+  registerHandledIpc(
+    IPC_CHANNELS.websiteWindowStopFindInPage,
+    (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
+      const normalized = normalizeNodeIdInput(payload)
+      resolveManager(event, getBrowserProfileStore).stopFindInPage(normalized.nodeId)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -138,7 +187,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     IPC_CHANNELS.websiteWindowClose,
     (event: IpcMainInvokeEvent, payload: WebsiteWindowNodeIdInput): void => {
       const normalized = normalizeNodeIdInput(payload)
-      resolveManager(event).close(normalized.nodeId)
+      resolveManager(event, getBrowserProfileStore).close(normalized.nodeId)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -146,7 +195,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.websiteWindowSetPinned,
     (event: IpcMainInvokeEvent, payload: SetWebsiteWindowPinnedInput): void => {
-      resolveManager(event).setPinned(payload)
+      resolveManager(event, getBrowserProfileStore).setPinned(payload)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -154,7 +203,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.websiteWindowSetSession,
     (event: IpcMainInvokeEvent, payload: SetWebsiteWindowSessionInput): void => {
-      resolveManager(event).setSession(payload)
+      resolveManager(event, getBrowserProfileStore).setSession(payload)
     },
     { defaultErrorCode: 'common.unexpected' },
   )
@@ -163,7 +212,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     typeof ipcMain.on === 'function' && typeof ipcMain.removeListener === 'function'
       ? (event: IpcMainEvent, payload: SetWebsiteWindowBoundsInput): void => {
           try {
-            resolveManager(event).setBounds(payload)
+            resolveManager(event, getBrowserProfileStore).setBounds(payload)
           } catch {
             // ignore - bounds updates must never crash
           }
@@ -178,7 +227,7 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
     typeof ipcMain.on === 'function' && typeof ipcMain.removeListener === 'function'
       ? (event: IpcMainEvent, payload: CaptureWebsiteWindowSnapshotInput): void => {
           try {
-            resolveManager(event).captureSnapshot(payload)
+            resolveManager(event, getBrowserProfileStore).captureSnapshot(payload)
           } catch {
             // ignore - snapshot requests must never crash
           }
@@ -199,6 +248,9 @@ export function registerWebsiteWindowIpcHandlers(): IpcRegistrationDisposable {
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowGoBack)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowGoForward)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowReload)
+      ipcMain.removeHandler(IPC_CHANNELS.websiteWindowStop)
+      ipcMain.removeHandler(IPC_CHANNELS.websiteWindowFindInPage)
+      ipcMain.removeHandler(IPC_CHANNELS.websiteWindowStopFindInPage)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowClose)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowSetPinned)
       ipcMain.removeHandler(IPC_CHANNELS.websiteWindowSetSession)

@@ -69,6 +69,49 @@ const CURRENT_SCHEMA_COLUMNS = {
   ],
   workspace_space_nodes: ['space_id', 'node_id', 'sort_order'],
   node_scrollback: ['node_id', 'scrollback', 'updated_at'],
+  agent_node_placeholder_scrollback: ['node_id', 'scrollback', 'updated_at'],
+  browser_profile_settings: ['profile_key', 'homepage_url', 'updated_at'],
+  browser_history: [
+    'id',
+    'profile_key',
+    'url',
+    'title',
+    'favicon_url',
+    'visit_count',
+    'last_visited_at',
+  ],
+  browser_bookmarks: [
+    'id',
+    'profile_key',
+    'url',
+    'title',
+    'favicon_url',
+    'folder_id',
+    'sort_order',
+    'created_at',
+    'updated_at',
+  ],
+  browser_downloads: [
+    'id',
+    'profile_key',
+    'url',
+    'filename',
+    'save_path',
+    'state',
+    'received_bytes',
+    'total_bytes',
+    'started_at',
+    'ended_at',
+    'error',
+  ],
+  browser_permission_decisions: [
+    'id',
+    'profile_key',
+    'origin',
+    'permission',
+    'decision',
+    'updated_at',
+  ],
 } as const
 
 function createVersion2Tables(): Map<string, string[]> {
@@ -373,7 +416,7 @@ describe('PersistenceStore (migrations)', () => {
       store.dispose()
 
       const migratedState = mockDbByPath.get(dbPath)
-      expect(migratedState?.userVersion).toBe(8)
+      expect(migratedState?.userVersion).toBe(9)
       expect(migratedState?.tables.get('nodes')).toContain('label_color_override')
       expect(migratedState?.tables.get('nodes')).toContain('session_id')
       expect(migratedState?.tables.get('nodes')).toContain('profile_id')
@@ -395,7 +438,7 @@ describe('PersistenceStore (migrations)', () => {
       tempDir = await mkdtemp(join(tmpdir(), 'cove-persist-'))
       const dbPath = join(tempDir, 'opencove.db')
       const mockDbByPath = new Map<string, MockDbState>([
-        [dbPath, createMockDbState({ userVersion: 8, version2Schema: true })],
+        [dbPath, createMockDbState({ userVersion: 9, version2Schema: true })],
       ])
       vi.doMock('better-sqlite3', () => ({ default: createMockDatabaseModule(mockDbByPath) }))
 

@@ -1,40 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
-import { ArrowLeft, ArrowRight, Globe, LoaderCircle, Pin, PinOff, RotateCw } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Globe,
+  LoaderCircle,
+  Maximize2,
+  Minimize2,
+  Pin,
+  PinOff,
+  RotateCw,
+  Square,
+} from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
-import type { LabelColor } from '@shared/types/labelColor'
-import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
-import type { NodeFrame, Point } from '../types'
+import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { useWebsiteWindowStore } from '../store/useWebsiteWindowStore'
 import { useWebsiteNodeNativeView } from './WebsiteNode.nativeView'
-
-interface WebsiteNodeInteractionOptions {
-  normalizeViewport?: boolean
-  selectNode?: boolean
-  shiftKey?: boolean
-}
-
-export interface WebsiteNodeProps {
-  nodeId: string
-  title: string
-  url: string
-  pinned: boolean
-  sessionMode: WebsiteWindowSessionMode
-  profileId: string | null
-  labelColor: LabelColor | null
-  position: Point
-  width: number
-  height: number
-  onClose: () => void
-  onResize: (frame: NodeFrame) => void
-  onInteractionStart?: (options?: WebsiteNodeInteractionOptions) => void
-  onUrlCommit: (nextUrl: string) => void
-  onPinnedChange: (nextPinned: boolean) => void
-  onSessionChange: (sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
-}
+import { useWebsiteNodeFrameConstraints } from './WebsiteNode.frame'
+import { WebsiteNodeBrowserTools } from './WebsiteNode.browserTools'
+import { WebsiteNodeNativePlaceholder } from './WebsiteNode.nativePlaceholder'
+import type { WebsiteNodeProps } from './WebsiteNode.types'
 
 export function WebsiteNode({
   nodeId,
@@ -43,6 +31,9 @@ export function WebsiteNode({
   pinned,
   sessionMode,
   profileId,
+  browserMode,
+  isFullscreen,
+  previousFrame,
   labelColor,
   position,
   width,
@@ -53,21 +44,36 @@ export function WebsiteNode({
   onUrlCommit,
   onPinnedChange,
   onSessionChange,
+  onModeChange,
+  onFullscreenChange,
 }: WebsiteNodeProps): JSX.Element {
   const { t } = useTranslation()
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const runtime = useWebsiteWindowStore(state => state.runtimeByNodeId[nodeId] ?? null)
   const lifecycle = runtime?.lifecycle ?? 'cold'
   const isOccluded = runtime?.isOccluded === true
+  const nativeApiAvailable = typeof window.opencoveApi?.websiteWindow?.activate === 'function'
+  const nativeViewEnabled = browserMode === 'native' && nativeApiAvailable
   const { activate, isCanvasZoomFrozen } = useWebsiteNodeNativeView({
     nodeId,
     desiredUrl: url,
     pinned,
     sessionMode,
     profileId,
+    enabled: nativeViewEnabled,
     lifecycle,
     isOccluded,
     viewportRef,
+  })
+  const { maxNodeSize, toggleFullscreen } = useWebsiteNodeFrameConstraints({
+    viewportRef,
+    position,
+    width,
+    height,
+    isFullscreen,
+    previousFrame,
+    onResize,
+    onFullscreenChange,
   })
 
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
@@ -75,6 +81,7 @@ export function WebsiteNode({
     width,
     height,
     minSize: resolveCanonicalNodeMinSize('website'),
+    maxSize: isFullscreen ? null : maxNodeSize,
     onResize,
   })
 
@@ -115,11 +122,20 @@ export function WebsiteNode({
   const canGoBack = runtime?.canGoBack === true
   const canGoForward = runtime?.canGoForward === true
   const isLoading = runtime?.isLoading === true
+  const currentUrl = runtime?.url ?? url
+
+  useEffect(() => {
+    if (browserMode === 'native') {
+      return
+    }
+
+    void window.opencoveApi?.websiteWindow?.close?.({ nodeId }).catch(() => undefined)
+  }, [browserMode, nodeId])
 
   useEffect(() => {
     const runtimeUrl = runtime?.url?.trim() ?? ''
-    const currentUrl = url.trim()
-    if (runtimeUrl.length === 0 || runtimeUrl === currentUrl) {
+    const committedUrl = url.trim()
+    if (runtimeUrl.length === 0 || runtimeUrl === committedUrl) {
       return
     }
 
@@ -129,8 +145,10 @@ export function WebsiteNode({
   const commitUrl = useCallback(() => {
     const nextUrl = draftUrl.trim()
     onUrlCommit(nextUrl)
-    activate(nextUrl)
-  }, [activate, draftUrl, onUrlCommit])
+    if (nativeViewEnabled) {
+      activate(nextUrl)
+    }
+  }, [activate, draftUrl, nativeViewEnabled, onUrlCommit])
 
   const togglePinned = useCallback(() => {
     const nextPinned = pinned !== true
@@ -205,7 +223,9 @@ export function WebsiteNode({
 
         event.stopPropagation()
         onInteractionStart?.({ shiftKey: event.shiftKey })
-        activate(url)
+        if (nativeViewEnabled) {
+          activate(url)
+        }
       }}
     >
       <div className="website-node__surface">
@@ -254,12 +274,18 @@ export function WebsiteNode({
               className="website-node__icon-button nodrag"
               onClick={event => {
                 event.stopPropagation()
-                void window.opencoveApi?.websiteWindow?.reload?.({ nodeId }).catch(() => undefined)
+                const api = window.opencoveApi?.websiteWindow
+                if (isLoading) {
+                  void api?.stop?.({ nodeId }).catch(() => undefined)
+                  return
+                }
+
+                void api?.reload?.({ nodeId }).catch(() => undefined)
               }}
-              aria-label={t('websiteNode.reload')}
-              title={t('websiteNode.reload')}
+              aria-label={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
+              title={isLoading ? t('websiteNode.stop') : t('websiteNode.reload')}
             >
-              <RotateCw aria-hidden="true" />
+              {isLoading ? <Square aria-hidden="true" /> : <RotateCw aria-hidden="true" />}
             </button>
           </div>
 
@@ -308,6 +334,38 @@ export function WebsiteNode({
             >
               {pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
             </button>
+
+            <button
+              type="button"
+              className="website-node__icon-button nodrag"
+              onClick={event => {
+                event.stopPropagation()
+                toggleFullscreen()
+              }}
+              aria-label={
+                isFullscreen ? t('websiteNode.exitFullscreen') : t('websiteNode.enterFullscreen')
+              }
+              title={
+                isFullscreen ? t('websiteNode.exitFullscreen') : t('websiteNode.enterFullscreen')
+              }
+            >
+              {isFullscreen ? <Minimize2 aria-hidden="true" /> : <Maximize2 aria-hidden="true" />}
+            </button>
+
+            <select
+              className="website-node__session nodrag"
+              value={browserMode}
+              aria-label={t('websiteNode.browserMode')}
+              title={t('websiteNode.browserMode')}
+              onChange={event => {
+                onModeChange(event.target.value as BrowserMode)
+              }}
+            >
+              <option value="native" disabled={!nativeApiAvailable}>
+                {t('websiteNode.modeNative')}
+              </option>
+              <option value="iframe">{t('websiteNode.modeIframe')}</option>
+            </select>
 
             <select
               className="website-node__session nodrag"
@@ -366,9 +424,46 @@ export function WebsiteNode({
           </div>
         </div>
 
+        <WebsiteNodeBrowserTools
+          nodeId={nodeId}
+          url={url}
+          currentUrl={currentUrl}
+          title={displayTitle}
+          faviconUrl={runtime?.faviconUrl ?? null}
+          sessionMode={sessionMode}
+          profileId={profileId}
+          browserMode={browserMode}
+          nativeApiAvailable={nativeApiAvailable}
+          findResult={runtime?.findResult ?? null}
+          downloads={runtime?.downloads ?? []}
+          permissionRequests={runtime?.permissionRequests ?? []}
+          onNavigate={nextUrl => {
+            onUrlCommit(nextUrl)
+            if (nativeViewEnabled) {
+              activate(nextUrl)
+            }
+          }}
+          onInteractionStart={() => {
+            onInteractionStart?.({ normalizeViewport: false, selectNode: false })
+          }}
+        />
+
         <div className="website-node__body">
           <div ref={viewportRef} className="website-node__viewport" aria-label={displayTitle}>
-            {snapshotDataUrl && (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) ? (
+            {browserMode === 'native' && !nativeApiAvailable ? (
+              <WebsiteNodeNativePlaceholder onOpenAsIframe={() => onModeChange('iframe')} />
+            ) : null}
+            {browserMode === 'iframe' && url.trim().length > 0 ? (
+              <iframe
+                className="website-node__iframe"
+                src={url}
+                title={displayTitle}
+                sandbox="allow-downloads allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts"
+              />
+            ) : null}
+            {nativeViewEnabled &&
+            snapshotDataUrl &&
+            (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) ? (
               <img
                 className="website-node__snapshot"
                 src={snapshotDataUrl}

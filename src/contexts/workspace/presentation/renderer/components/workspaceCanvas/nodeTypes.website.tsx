@@ -2,7 +2,7 @@ import type { MutableRefObject, ReactElement } from 'react'
 import { WebsiteNode } from '../WebsiteNode'
 import type { NodeFrame, Point, TerminalNodeData } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
-import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 
 export function WorkspaceCanvasWebsiteNodeType({
   data,
@@ -15,6 +15,8 @@ export function WorkspaceCanvasWebsiteNodeType({
   updateWebsiteUrlRef,
   setWebsitePinnedRef,
   setWebsiteSessionRef,
+  setWebsiteModeRef,
+  setWebsiteFullscreenRef,
 }: {
   data: TerminalNodeData
   id: string
@@ -27,6 +29,15 @@ export function WorkspaceCanvasWebsiteNodeType({
   setWebsitePinnedRef: MutableRefObject<(nodeId: string, pinned: boolean) => void>
   setWebsiteSessionRef: MutableRefObject<
     (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
+  >
+  setWebsiteModeRef: MutableRefObject<(nodeId: string, browserMode: BrowserMode) => void>
+  setWebsiteFullscreenRef: MutableRefObject<
+    (
+      nodeId: string,
+      frame: NodeFrame,
+      previousFrame: NodeFrame | null,
+      isFullscreen: boolean,
+    ) => void
   >
 }): ReactElement | null {
   const labelColor =
@@ -45,6 +56,9 @@ export function WorkspaceCanvasWebsiteNodeType({
       pinned={data.website.pinned}
       sessionMode={data.website.sessionMode}
       profileId={data.website.profileId}
+      browserMode={data.website.browserMode ?? 'native'}
+      isFullscreen={data.website.isFullscreen === true}
+      previousFrame={data.website.previousFrame ?? null}
       labelColor={labelColor}
       position={nodePosition}
       width={data.width}
@@ -77,6 +91,12 @@ export function WorkspaceCanvasWebsiteNodeType({
       }}
       onSessionChange={(nextMode, nextProfileId) => {
         setWebsiteSessionRef.current(id, nextMode, nextProfileId)
+      }}
+      onModeChange={nextMode => {
+        setWebsiteModeRef.current(id, nextMode)
+      }}
+      onFullscreenChange={(frame, previousFrame, isFullscreen) => {
+        setWebsiteFullscreenRef.current(id, frame, previousFrame, isFullscreen)
       }}
     />
   )

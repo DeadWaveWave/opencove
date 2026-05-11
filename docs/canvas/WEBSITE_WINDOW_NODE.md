@@ -1,13 +1,15 @@
 # Website Window Node
 
-Website Window Node lets a canvas node host a real web page runtime while keeping durable canvas state separate from Electron `webContents` state.
+Website Window Node lets a canvas node host a browser runtime while keeping durable canvas state separate from Electron `webContents` state. The complete browser capability plan and current implementation status live in `docs/canvas/BROWSER_WINDOW_CAPABILITY_SPEC.md`.
 
 ## Current Capabilities
 
 - Create from canvas/pane menu.
 - Create from pasted URL when website window paste is enabled.
-- Navigate, go back, go forward and reload.
-- Persist node URL, pinned flag, session mode, profile id and frame.
+- Navigate, go back, go forward, reload, stop and go home.
+- Support homepage, local history, bookmarks, downloads, permission prompts and page find in client-native mode.
+- Support `native` and `iframe` browser modes.
+- Persist node URL, pinned flag, session mode, profile id, browser mode, fullscreen state, previous frame and current frame.
 - Support session modes: `shared`, `incognito`, `profile`.
 - Manage runtime lifecycle states: `active`, `warm`, `cold`.
 - Capture an in-memory snapshot for cold placeholder.
@@ -48,6 +50,9 @@ Current operations:
 - `websiteWindow.goBack`
 - `websiteWindow.goForward`
 - `websiteWindow.reload`
+- `websiteWindow.stop`
+- `websiteWindow.findInPage`
+- `websiteWindow.stopFindInPage`
 - `websiteWindow.close`
 - `websiteWindow.setPinned`
 - `websiteWindow.setSession`
@@ -60,6 +65,11 @@ Events:
 - `closed`
 - `error`
 - `open-url`
+- `find-result`
+- `download`
+- `permission-request`
+
+Browser profile operations are exposed separately through `browserProfile.*` preload APIs. Those APIs own homepage, history, bookmarks, downloads and permission decisions as client-local data.
 
 ## Durable State
 
@@ -69,11 +79,15 @@ Persisted node data:
 - `pinned`
 - `sessionMode`
 - `profileId`
+- `browserMode`
+- `isFullscreen`
+- `previousFrame`
 - node frame and canvas metadata
 
 Not persisted:
 
 - `webContents`
+- browser cookies/cache, history, bookmarks, downloads and permission decisions in shared workspace state
 - DOM / JS heap
 - current scroll position or form state
 - in-memory snapshot image
@@ -104,6 +118,9 @@ Pinned nodes and `keepAliveHosts` influence discard behavior but do not make bro
 - Website runtime is hosted by Main-managed Electron views.
 - Renderer communicates through validated IPC.
 - Electron security baseline remains `contextIsolation: true`, `nodeIntegration: false`, and sandboxed web content where applicable.
+- Full native browser capability exists only in the desktop/client runtime.
+- WebUI-created browser nodes default to iframe mode.
+- WebUI renders synced native nodes as a client-only placeholder and only switches to iframe after explicit user action.
 
 ## Verification Anchors
 

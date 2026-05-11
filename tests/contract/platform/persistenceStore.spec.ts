@@ -2,6 +2,7 @@ import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { CURRENT_SCHEMA_COLUMNS } from './persistenceSchemaColumns'
 
 const PERSISTENCE_STORE_TEST_TIMEOUT_MS = 20_000
 
@@ -12,64 +13,6 @@ type MockDbState = {
   workspaceRows: Array<{ id: string; sortOrder: number }>
   failOnFirstOpen?: boolean
 }
-
-const CURRENT_SCHEMA_COLUMNS = {
-  app_meta: ['key', 'value'],
-  app_settings: ['id', 'value'],
-  workspaces: [
-    'id',
-    'name',
-    'path',
-    'worktrees_root',
-    'pull_request_base_branch_options_json',
-    'space_archive_records_json',
-    'viewport_x',
-    'viewport_y',
-    'viewport_zoom',
-    'is_minimap_visible',
-    'active_space_id',
-    'sort_order',
-  ],
-  nodes: [
-    'id',
-    'workspace_id',
-    'session_id',
-    'title',
-    'title_pinned_by_user',
-    'position_x',
-    'position_y',
-    'width',
-    'height',
-    'kind',
-    'profile_id',
-    'runtime_kind',
-    'terminal_provider_hint',
-    'label_color_override',
-    'status',
-    'started_at',
-    'ended_at',
-    'exit_code',
-    'last_error',
-    'execution_directory',
-    'expected_directory',
-    'agent_json',
-    'task_json',
-  ],
-  workspace_spaces: [
-    'id',
-    'workspace_id',
-    'name',
-    'directory_path',
-    'target_mount_id',
-    'label_color',
-    'rect_x',
-    'rect_y',
-    'rect_width',
-    'rect_height',
-  ],
-  workspace_space_nodes: ['space_id', 'node_id', 'sort_order'],
-  node_scrollback: ['node_id', 'scrollback', 'updated_at'],
-} as const
 
 function createVersion2Tables(): Map<string, string[]> {
   return new Map<string, string[]>([

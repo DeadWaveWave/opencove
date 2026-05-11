@@ -247,6 +247,14 @@
   user-select: none;
 }
 
+.website-node__iframe {
+  width: 100%;
+  height: 100%;
+  display: block;
+  border: 0;
+  background: var(--cove-node-surface);
+}
+
 .website-node__overlay {
   position: absolute;
   inset: 0;

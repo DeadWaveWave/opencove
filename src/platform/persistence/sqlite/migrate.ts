@@ -102,6 +102,70 @@ function createTables(db: Database.Database): void {
       scrollback TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS browser_profile_settings (
+      profile_key TEXT PRIMARY KEY,
+      homepage_url TEXT,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS browser_history (
+      id TEXT PRIMARY KEY,
+      profile_key TEXT NOT NULL,
+      url TEXT NOT NULL,
+      title TEXT,
+      favicon_url TEXT,
+      visit_count INTEGER NOT NULL,
+      last_visited_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS browser_bookmarks (
+      id TEXT PRIMARY KEY,
+      profile_key TEXT NOT NULL,
+      url TEXT NOT NULL,
+      title TEXT NOT NULL,
+      favicon_url TEXT,
+      folder_id TEXT,
+      sort_order INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS browser_downloads (
+      id TEXT PRIMARY KEY,
+      profile_key TEXT NOT NULL,
+      url TEXT NOT NULL,
+      filename TEXT NOT NULL,
+      save_path TEXT,
+      state TEXT NOT NULL,
+      received_bytes INTEGER NOT NULL,
+      total_bytes INTEGER,
+      started_at TEXT NOT NULL,
+      ended_at TEXT,
+      error TEXT
+    );
+
+    CREATE TABLE IF NOT EXISTS browser_permission_decisions (
+      id TEXT PRIMARY KEY,
+      profile_key TEXT NOT NULL,
+      origin TEXT NOT NULL,
+      permission TEXT NOT NULL,
+      decision TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS browser_history_profile_visited_idx
+      ON browser_history (profile_key, last_visited_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS browser_history_profile_url_unique_idx
+      ON browser_history (profile_key, url);
+    CREATE INDEX IF NOT EXISTS browser_bookmarks_profile_updated_idx
+      ON browser_bookmarks (profile_key, updated_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS browser_bookmarks_profile_url_unique_idx
+      ON browser_bookmarks (profile_key, url);
+    CREATE INDEX IF NOT EXISTS browser_downloads_profile_started_idx
+      ON browser_downloads (profile_key, started_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS browser_permissions_profile_origin_permission_unique_idx
+      ON browser_permission_decisions (profile_key, origin, permission);
   `)
 }
 

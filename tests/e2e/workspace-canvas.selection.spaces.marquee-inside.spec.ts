@@ -67,7 +67,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         y: paneBox.y + viewport.y + point.y * viewport.zoom,
       })
       const start = toClientPoint({ x: 220, y: 180 })
-      const end = toClientPoint({ x: 1308, y: 440 })
+      const end = toClientPoint({ x: 820, y: 440 })
 
       const drag = await beginDragMouse(window, {
         start,
@@ -157,7 +157,7 @@ test.describe('Workspace Canvas - Selection (Spaces)', () => {
         y: paneBox.y + viewport.y + point.y * viewport.zoom,
       })
       const start = toClientPoint({ x: 220, y: 180 })
-      const end = toClientPoint({ x: 1308, y: 440 })
+      const end = toClientPoint({ x: 820, y: 440 })
 
       const drag = await beginDragMouse(window, {
         start,

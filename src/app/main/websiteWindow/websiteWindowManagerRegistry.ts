@@ -1,4 +1,5 @@
 import type { WebsiteWindowManager } from './WebsiteWindowManager'
+import type { RespondBrowserPermissionInput } from '../../../shared/contracts/dto'
 
 const managers = new Set<WebsiteWindowManager>()
 
@@ -15,4 +16,18 @@ export async function closeWebsiteWindowNodeAcrossManagers(nodeId: string): Prom
       await Promise.resolve(manager.close(nodeId))
     }),
   )
+}
+
+export function cancelWebsiteWindowDownloadAcrossManagers(downloadId: string): void {
+  for (const manager of managers) {
+    manager.cancelDownload(downloadId)
+  }
+}
+
+export function respondWebsiteWindowPermissionAcrossManagers(
+  response: RespondBrowserPermissionInput,
+): void {
+  for (const manager of managers) {
+    manager.respondPermissionRequest(response)
+  }
 }
