@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Document editor: add VS Code-style shortcut handling for word wrap (`Alt/Option+Z`) and editor-local find (`Cmd/Ctrl+F`) inside Monaco document nodes. (#244)
 - Workspace canvas: add project-scoped reusable roles with prompt-backed creation/edit/delete, provider-selectable role runs, role nodes, and role-to-agent relationship edges. (#242)
 - Diagnostics: add Settings performance snapshots, a header real-time monitor, process-metric fallbacks, and automatic jank records for terminal/agent lag investigation. (#231)
 - Support: add an in-app issue report flow that generates a local redacted diagnostic report and opens a prefilled GitHub issue for Run Agent failures. (#230)
