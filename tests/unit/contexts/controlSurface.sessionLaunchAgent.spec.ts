@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { pathToFileURL } from 'node:url'
 import { createControlSurface } from '../../../src/app/main/controlSurface/controlSurface'
 import type { ControlSurfaceContext } from '../../../src/app/main/controlSurface/types'
 import { registerSessionHandlers } from '../../../src/app/main/controlSurface/handlers/sessionHandlers'
@@ -47,8 +48,8 @@ function createTopologyStub() {
   } as never
 }
 
-describe('control surface session handlers', () => {
-  it('returns session.not_found for unknown session ids', async () => {
+describe('control surface session launch agent', () => {
+  it('allows launching agent sessions with an empty prompt', async () => {
     const appState = {
       formatVersion: 1,
       activeWorkspaceId: 'ws1',
@@ -83,6 +84,7 @@ describe('control surface session handlers', () => {
       registerSessionMetadata: () => undefined,
       hasSession: () => false,
     }
+
     registerSessionHandlers(controlSurface, {
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
@@ -91,95 +93,10 @@ describe('control surface session handlers', () => {
       },
       getPersistenceStore: async () => createStubStore(appState),
       ptyRuntime: {
-        spawnSession: async () => ({ sessionId: 'pty-1' }),
+        spawnSession: async () => ({ sessionId: 'pty-empty-prompt' }),
         write: () => undefined,
         resize: () => undefined,
         kill: () => undefined,
-        onData: () => () => undefined,
-        onExit: () => () => undefined,
-        attach: () => undefined,
-        detach: () => undefined,
-        snapshot: () => '',
-        startSessionStateWatcher: () => undefined,
-        dispose: () => undefined,
-      },
-      ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
-      topology: createTopologyStub(),
-    })
-
-    const result = await controlSurface.invoke(ctx, {
-      kind: 'query',
-      id: 'session.get',
-      payload: { sessionId: 'missing' },
-    })
-
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.error.code).toBe('session.not_found')
-    }
-  })
-
-  it('launches an agent session and returns metadata via session.get', async () => {
-    const appState = {
-      formatVersion: 1,
-      activeWorkspaceId: 'ws1',
-      workspaces: [
-        {
-          id: 'ws1',
-          name: 'Workspace',
-          path: '/repo',
-          worktreesRoot: '',
-          viewport: { x: 0, y: 0, zoom: 1 },
-          isMinimapVisible: true,
-          spaces: [
-            {
-              id: 's1',
-              name: 'Space A',
-              directoryPath: '/repo',
-              labelColor: null,
-              nodeIds: [],
-              rect: null,
-            },
-          ],
-          activeSpaceId: null,
-          nodes: [],
-          spaceArchiveRecords: [],
-        },
-      ],
-      settings: {},
-    }
-
-    let killed: string | null = null
-    let spawnedCommand: {
-      command: string
-      args: string[]
-    } | null = null
-
-    const controlSurface = createControlSurface()
-    const ptyStreamHub: Pick<PtyStreamHub, 'registerSessionMetadata' | 'hasSession'> = {
-      registerSessionMetadata: () => undefined,
-      hasSession: () => false,
-    }
-    registerSessionHandlers(controlSurface, {
-      userDataPath: '/tmp/opencove-test-user-data',
-      approvedWorkspaces: {
-        registerRoot: async () => undefined,
-        isPathApproved: async () => true,
-      },
-      getPersistenceStore: async () => createStubStore(appState),
-      ptyRuntime: {
-        spawnSession: async input => {
-          spawnedCommand = {
-            command: input.command,
-            args: input.args,
-          }
-          return { sessionId: 'pty-123' }
-        },
-        write: () => undefined,
-        resize: () => undefined,
-        kill: sessionId => {
-          killed = sessionId
-        },
         onData: () => () => undefined,
         onExit: () => () => undefined,
         attach: () => undefined,
@@ -195,7 +112,7 @@ describe('control surface session handlers', () => {
     const launched = await controlSurface.invoke(ctx, {
       kind: 'command',
       id: 'session.launchAgent',
-      payload: { spaceId: 's1', prompt: 'hello' },
+      payload: { spaceId: 's1', prompt: '' },
     })
 
     expect(launched.ok).toBe(true)
@@ -203,36 +120,21 @@ describe('control surface session handlers', () => {
       return
     }
 
-    const sessionId = launched.value.sessionId
-    expect(sessionId).toBe('pty-123')
+    expect(launched.value.sessionId).toBe('pty-empty-prompt')
 
     const fetched = await controlSurface.invoke(ctx, {
       kind: 'query',
       id: 'session.get',
-      payload: { sessionId },
+      payload: { sessionId: launched.value.sessionId },
     })
 
     expect(fetched.ok).toBe(true)
     if (fetched.ok) {
-      expect(fetched.value.sessionId).toBe('pty-123')
-      expect(fetched.value.cwd).toBe('/repo')
-      expect(fetched.value.provider).toBe('codex')
-      expect('startedAtMs' in fetched.value).toBe(false)
-      expect(fetched.value.command).toBe(spawnedCommand?.command)
-      expect(fetched.value.args).toEqual(spawnedCommand?.args)
+      expect(fetched.value.prompt).toBe('')
     }
-
-    const killedResult = await controlSurface.invoke(ctx, {
-      kind: 'command',
-      id: 'session.kill',
-      payload: { sessionId },
-    })
-
-    expect(killedResult.ok).toBe(true)
-    expect(killed).toBe('pty-123')
   })
 
-  it('rejects invalid providers', async () => {
+  it('launches an agent session by cwd when no spaces exist', async () => {
     const appState = {
       formatVersion: 1,
       activeWorkspaceId: 'ws1',
@@ -244,16 +146,7 @@ describe('control surface session handlers', () => {
           worktreesRoot: '',
           viewport: { x: 0, y: 0, zoom: 1 },
           isMinimapVisible: true,
-          spaces: [
-            {
-              id: 's1',
-              name: 'Space A',
-              directoryPath: '/repo',
-              labelColor: null,
-              nodeIds: [],
-              rect: null,
-            },
-          ],
+          spaces: [],
           activeSpaceId: null,
           nodes: [],
           spaceArchiveRecords: [],
@@ -267,6 +160,7 @@ describe('control surface session handlers', () => {
       registerSessionMetadata: () => undefined,
       hasSession: () => false,
     }
+
     registerSessionHandlers(controlSurface, {
       userDataPath: '/tmp/opencove-test-user-data',
       approvedWorkspaces: {
@@ -275,7 +169,7 @@ describe('control surface session handlers', () => {
       },
       getPersistenceStore: async () => createStubStore(appState),
       ptyRuntime: {
-        spawnSession: async () => ({ sessionId: 'pty-1' }),
+        spawnSession: async () => ({ sessionId: 'pty-cwd' }),
         write: () => undefined,
         resize: () => undefined,
         kill: () => undefined,
@@ -291,15 +185,165 @@ describe('control surface session handlers', () => {
       topology: createTopologyStub(),
     })
 
-    const result = await controlSurface.invoke(ctx, {
+    const launched = await controlSurface.invoke(ctx, {
       kind: 'command',
       id: 'session.launchAgent',
-      payload: { spaceId: 's1', prompt: 'hello', provider: 'nope' },
+      payload: { cwd: '/repo', prompt: 'hello' },
     })
 
-    expect(result.ok).toBe(false)
-    if (!result.ok) {
-      expect(result.error.code).toBe('common.invalid_input')
+    expect(launched.ok).toBe(true)
+    if (!launched.ok) {
+      return
+    }
+
+    expect(launched.value.sessionId).toBe('pty-cwd')
+
+    const fetched = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'session.get',
+      payload: { sessionId: launched.value.sessionId },
+    })
+
+    expect(fetched.ok).toBe(true)
+    if (fetched.ok) {
+      expect(fetched.value.cwd).toBe('/repo')
+    }
+  })
+
+  it('routes space-based agent launches through session.launchAgentInMount when the space resolves to a mount', async () => {
+    const rootPath = '/repo'
+    const rootUri = pathToFileURL(rootPath).href
+    const appState = {
+      formatVersion: 1,
+      activeWorkspaceId: 'ws1',
+      workspaces: [
+        {
+          id: 'ws1',
+          name: 'Workspace',
+          path: rootPath,
+          worktreesRoot: '',
+          viewport: { x: 0, y: 0, zoom: 1 },
+          isMinimapVisible: true,
+          spaces: [
+            {
+              id: 's-mounted',
+              name: 'Mounted Space',
+              directoryPath: '/repo/worktrees/feature-a',
+              targetMountId: 'mount-1',
+              labelColor: null,
+              nodeIds: [],
+              rect: null,
+            },
+          ],
+          activeSpaceId: null,
+          nodes: [],
+          spaceArchiveRecords: [],
+        },
+      ],
+      settings: {},
+    }
+
+    const spawnSession = vi.fn(async input => {
+      expect(input.cwd).toBe('/repo/worktrees/feature-a')
+      return { sessionId: 'pty-mounted' }
+    })
+    const controlSurface = createControlSurface()
+    registerSessionHandlers(controlSurface, {
+      userDataPath: '/tmp/opencove-test-user-data',
+      approvedWorkspaces: {
+        registerRoot: async () => undefined,
+        isPathApproved: async () => true,
+      },
+      getPersistenceStore: async () => createStubStore(appState),
+      ptyRuntime: {
+        spawnSession,
+        write: () => undefined,
+        resize: () => undefined,
+        kill: () => undefined,
+        onData: () => () => undefined,
+        onExit: () => () => undefined,
+        attach: () => undefined,
+        detach: () => undefined,
+        snapshot: () => '',
+        startSessionStateWatcher: () => undefined,
+        registerRemoteSession: () => 'remote-home-session',
+        dispose: () => undefined,
+      },
+      ptyStreamHub: {
+        registerSessionMetadata: () => undefined,
+        hasSession: () => false,
+      } as unknown as PtyStreamHub,
+      topology: {
+        listMounts: async () => ({
+          projectId: 'ws1',
+          mounts: [
+            {
+              mountId: 'mount-1',
+              projectId: 'ws1',
+              name: 'Primary',
+              sortOrder: 0,
+              endpointId: 'local',
+              targetId: 'target-1',
+              rootPath,
+              rootUri,
+              createdAt: '2026-03-27T00:00:00.000Z',
+              updatedAt: '2026-03-27T00:00:00.000Z',
+            },
+          ],
+        }),
+        resolveMountTarget: async () => ({
+          mountId: 'mount-1',
+          endpointId: 'local',
+          targetId: 'target-1',
+          rootPath,
+          rootUri,
+        }),
+      } as never,
+    })
+
+    const launched = await controlSurface.invoke(ctx, {
+      kind: 'command',
+      id: 'session.launchAgent',
+      payload: { spaceId: 's-mounted', prompt: 'hello from mount' },
+    })
+
+    expect(launched.ok).toBe(true)
+    if (!launched.ok) {
+      return
+    }
+
+    expect(spawnSession).toHaveBeenCalledTimes(1)
+    expect(launched.value.executionContext).toMatchObject({
+      projectId: 'ws1',
+      spaceId: 's-mounted',
+      mountId: 'mount-1',
+      targetId: 'target-1',
+      workingDirectory: '/repo/worktrees/feature-a',
+      target: {
+        rootPath,
+        rootUri,
+      },
+      scope: {
+        rootPath,
+        rootUri,
+      },
+      endpoint: {
+        endpointId: 'local',
+        kind: 'local',
+      },
+    })
+
+    const fetched = await controlSurface.invoke(ctx, {
+      kind: 'query',
+      id: 'session.get',
+      payload: { sessionId: launched.value.sessionId },
+    })
+
+    expect(fetched.ok).toBe(true)
+    if (fetched.ok) {
+      expect(fetched.value.executionContext.projectId).toBe('ws1')
+      expect(fetched.value.executionContext.spaceId).toBe('s-mounted')
+      expect(fetched.value.executionContext.mountId).toBe('mount-1')
     }
   })
 })

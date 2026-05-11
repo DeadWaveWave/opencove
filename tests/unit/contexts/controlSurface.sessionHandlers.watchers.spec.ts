@@ -94,6 +94,9 @@ describe('control surface session handler watchers', () => {
           dispose: () => undefined,
         },
         ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
+        topology: {
+          listMounts: async () => ({ projectId: 'ws1', mounts: [] }),
+        } as never,
       })
 
       const launched = await controlSurface.invoke(ctx, {
@@ -163,6 +166,9 @@ describe('control surface session handler watchers', () => {
           dispose: () => undefined,
         },
         ptyStreamHub: ptyStreamHub as unknown as PtyStreamHub,
+        topology: {
+          listMounts: async () => ({ projectId: 'ws1', mounts: [] }),
+        } as never,
       })
 
       const launched = await controlSurface.invoke(ctx, {

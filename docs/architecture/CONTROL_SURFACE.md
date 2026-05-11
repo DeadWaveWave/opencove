@@ -43,7 +43,11 @@ Topology:
 
 - `endpoint.list`
 - `endpoint.register`
+- `endpoint.registerManagedSsh`
 - `endpoint.remove`
+- `endpoint.overview.list`
+- `endpoint.prepare`
+- `endpoint.repair`
 - `endpoint.ping`
 - `endpoint.homeDirectory`
 - `endpoint.readDirectory`
@@ -72,6 +76,8 @@ Sessions and PTY:
 - `pty.spawnInMount`
 - `pty.listProfiles`
 
+其中 `session.launchAgent` 和 `session.spawnTerminal` 是通用 intent：当 payload 通过 `spaceId` 命中一个 mount-aware Space 时，handler 会先解析该 Space 的 mount 上下文，再内部委派到 `session.launchAgentInMount` 或 `pty.spawnInMount`。
+
 Canvas node control:
 
 - `node.list`
@@ -91,7 +97,13 @@ Worker endpoints and mounts are managed by the topology store:
 - `worker-endpoint-secrets.json` stores endpoint tokens separately.
 - The local endpoint is implicit and always identified as `local`.
 
+Managed SSH remains a topology-level endpoint record. `endpoint.prepare` / `endpoint.repair`
+own local tunnel orchestration, remote runtime bootstrap, and health projection; browse flows
+still resolve through `endpoint.homeDirectory` and `endpoint.readDirectory` on the target Worker.
+
 Mount-aware operations resolve `mountId` through `mountTarget.resolve`, enforce mount root scope, then route to the correct endpoint.
+
+对仅持有 `spaceId` 的 session/node-control 调用，当前也复用同一套 Space mount 解析规则：优先以 `targetMountId` 为 authority，必要时从兼容性的 `directoryPath` 推断并修复旧 Space 绑定，然后再决定是否进入 mount-aware 路由。
 
 ## Architectural Boundary
 

@@ -6,7 +6,7 @@ import type {
   AgentEnvByProvider,
   AgentExecutablePathOverrideByProvider,
 } from '@contexts/settings/domain/agentSettings'
-import type { AgentSessionSummary, ListMountsResult } from '@shared/contracts/dto'
+import type { AgentSessionSummary } from '@shared/contracts/dto'
 import type { AgentNodeData, TerminalNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveInitialAgentRuntimeStatus } from '../../../utils/agentRuntimeStatus'
 import { appendAgentSessionRecordToTaskHistory } from '../../../utils/agentSessionHistory'
@@ -16,6 +16,7 @@ import {
 } from '../../../utils/agentResumeBinding'
 import { invalidateCachedTerminalScreenState } from '../../terminalNode/screenStateCache'
 import { toErrorMessage } from '../helpers'
+import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 import {
   buildAgentNodeTitle as formatAgentNodeTitle,
   findLinkedTaskTitleForAgent,
@@ -30,8 +31,10 @@ import {
 
 interface UseAgentNodeLifecycleParams {
   workspaceId: string
+  workspacePath: string
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
+  onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
     options?: { syncLayout?: boolean },
@@ -49,8 +52,10 @@ interface UseAgentNodeLifecycleParams {
 
 export function useWorkspaceCanvasAgentNodeLifecycle({
   workspaceId,
+  workspacePath,
   nodesRef,
   spacesRef,
+  onSpacesChange,
   setNodes,
   bumpAgentLaunchToken,
   isAgentLaunchTokenCurrent,
@@ -106,28 +111,16 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
   const resolveMountId = useCallback(
     async (nodeId: string): Promise<string | null | undefined> => {
       const owningSpace = spacesRef.current.find(space => space.nodeIds.includes(nodeId)) ?? null
-      let mountId = owningSpace?.targetMountId ?? null
-      const normalizedWorkspaceId = typeof workspaceId === 'string' ? workspaceId.trim() : ''
-
-      if (mountId || normalizedWorkspaceId.length === 0) {
-        return mountId
-      }
-
-      const controlSurfaceInvoke = (
-        window as unknown as { opencoveApi?: { controlSurface?: { invoke?: unknown } } }
-      ).opencoveApi?.controlSurface?.invoke
-
-      if (typeof controlSurfaceInvoke !== 'function') {
-        return null
-      }
-
       try {
-        const mountResult = await window.opencoveApi.controlSurface.invoke<ListMountsResult>({
-          kind: 'query',
-          id: 'mount.list',
-          payload: { projectId: normalizedWorkspaceId },
+        const resolvedMountContext = await resolveSpaceMountLaunchContext({
+          workspaceId,
+          workspacePath,
+          space: owningSpace,
+          spaces: spacesRef.current,
+          onSpacesChange,
+          onRequestPersistFlush,
         })
-        mountId = mountResult.mounts[0]?.mountId ?? null
+        return resolvedMountContext.mountId
       } catch (error) {
         setAgentNodeFailure(
           nodeId,
@@ -135,10 +128,16 @@ export function useWorkspaceCanvasAgentNodeLifecycle({
         )
         return undefined
       }
-
-      return mountId
     },
-    [setAgentNodeFailure, spacesRef, t, workspaceId],
+    [
+      onRequestPersistFlush,
+      onSpacesChange,
+      setAgentNodeFailure,
+      spacesRef,
+      t,
+      workspaceId,
+      workspacePath,
+    ],
   )
 
   const relaunchAgentNode = useCallback(

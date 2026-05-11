@@ -33,6 +33,19 @@ const localEndpoint: WorkerEndpointDto = {
   remote: null,
 }
 
+const remoteEndpoint: WorkerEndpointDto = {
+  endpointId: 'endpoint-1',
+  kind: 'remote_worker',
+  displayName: 'Worker A',
+  createdAt: '2026-04-25T00:00:00.000Z',
+  updatedAt: '2026-04-25T00:00:00.000Z',
+  access: null,
+  remote: {
+    hostname: '127.0.0.1',
+    port: 39291,
+  },
+}
+
 function createSpace(
   overrides: Partial<NodeControlAppState['workspaces'][number]['spaces'][number]>,
 ) {
@@ -219,6 +232,49 @@ describe('node control application use cases', () => {
     expect(result.node.sessionId).toBe('term-1')
     expect(spawnTerminal).toHaveBeenCalledTimes(1)
     expect(getState().workspaces[0].spaces[1].nodeIds).toEqual([result.node.id])
+  })
+
+  it('repairs stale target mounts during node-control space resolution', async () => {
+    const state = createAppState({
+      workspaces: [
+        {
+          ...createAppState().workspaces[0],
+          spaces: [
+            createSpace({
+              id: 'space-mounted',
+              directoryPath: '/repo/worktrees/feature-x',
+              targetMountId: 'stale-mount',
+            }),
+          ],
+        },
+      ],
+    })
+
+    const resolved = await resolveSpaceLocatorForNodeControl(
+      state,
+      createLocatorDeps({
+        listEndpoints: async () => [localEndpoint, remoteEndpoint],
+        listMounts: async () => [
+          {
+            mountId: 'mount-1',
+            projectId: 'project-1',
+            name: 'Primary',
+            sortOrder: 0,
+            endpointId: 'endpoint-1',
+            targetId: 'target-1',
+            rootPath: '/repo',
+            rootUri: 'file:///repo',
+            createdAt: '2026-04-25T00:00:00.000Z',
+            updatedAt: '2026-04-25T00:00:00.000Z',
+          },
+        ],
+      }),
+      { kind: 'spaceId', spaceId: 'space-mounted' },
+    )
+
+    expect(resolved.workingDirectory).toBe('/repo/worktrees/feature-x')
+    expect(resolved.mount?.mountId).toBe('mount-1')
+    expect(resolved.endpoint.endpointId).toBe('endpoint-1')
   })
 
   it('resolves node focus targets without writing app state', async () => {

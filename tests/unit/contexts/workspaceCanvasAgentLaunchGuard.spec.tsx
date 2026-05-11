@@ -9,6 +9,7 @@ import type {
   WorkspaceViewport,
 } from '../../../src/contexts/workspace/presentation/renderer/types'
 import { WorkspaceCanvas } from '../../../src/contexts/workspace/presentation/renderer/components/WorkspaceCanvas'
+import { createMountAwareAgentControlSurface } from './workspaceCanvas.mountTestSupport'
 
 vi.mock('@xyflow/react', () => {
   let currentNodes: Array<{ id: string; type: string; data: unknown }> = []
@@ -120,6 +121,10 @@ describe('WorkspaceCanvas agent launch guard', () => {
     const kill = vi.fn(async () => undefined)
     const launch = vi.fn(() => deferred.promise)
     const onExit = vi.fn(() => () => undefined)
+    const controlSurfaceInvoke = createMountAwareAgentControlSurface({
+      workspaceId: 'workspace-1',
+      rootPath: '/tmp',
+    })
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -132,6 +137,9 @@ describe('WorkspaceCanvas agent launch guard', () => {
         },
         workspace: {
           ensureDirectory: vi.fn(async () => undefined),
+        },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
         },
         agent: {
           launch,
@@ -292,6 +300,10 @@ describe('WorkspaceCanvas agent launch guard', () => {
     const kill = vi.fn(async () => undefined)
     const launch = vi.fn(() => deferred.promise)
     const onExit = vi.fn(() => () => undefined)
+    const controlSurfaceInvoke = createMountAwareAgentControlSurface({
+      workspaceId: 'workspace-1',
+      rootPath: '/tmp',
+    })
 
     Object.defineProperty(window, 'opencoveApi', {
       configurable: true,
@@ -304,6 +316,9 @@ describe('WorkspaceCanvas agent launch guard', () => {
         },
         workspace: {
           ensureDirectory: vi.fn(async () => undefined),
+        },
+        controlSurface: {
+          invoke: controlSurfaceInvoke,
         },
         agent: {
           launch,
@@ -434,8 +449,11 @@ describe('WorkspaceCanvas agent launch guard', () => {
 
     expect(launch).toHaveBeenCalledWith(
       expect.objectContaining({
+        cwd: '/tmp',
         mode: 'new',
         resumeSessionId: null,
+        cols: expect.any(Number),
+        rows: expect.any(Number),
       }),
     )
 

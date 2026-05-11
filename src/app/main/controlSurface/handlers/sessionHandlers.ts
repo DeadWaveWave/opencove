@@ -2,6 +2,7 @@ import type { ControlSurface } from '../controlSurface'
 import type { PersistenceStore } from '../../../../platform/persistence/sqlite/PersistenceStore'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError } from '../../../../shared/errors/appError'
+import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import { buildAgentLaunchCommand } from '../../../../contexts/agent/infrastructure/cli/AgentCommandFactory'
 import { captureGeminiSessionDiscoveryCursor } from '../../../../contexts/agent/infrastructure/cli/AgentSessionLocatorProviders'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../../../contexts/agent/infrastructure/opencode/OpenCodeTuiConfig'
@@ -11,6 +12,7 @@ import {
   resolveAgentModel,
 } from '../../../../contexts/settings/domain/agentSettings'
 import { normalizePersistedAppState } from '../../../../platform/persistence/sqlite/normalize'
+import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
 import type {
   GetSessionInput,
   GetSessionResult,
@@ -26,6 +28,7 @@ import {
 import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDirectoryFromStore'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { resolveWorkerAgentTestStub } from './sessionAgentTestStub'
+import { invokeInternalCommand } from './controlSurfaceInternalCommand'
 import { registerSessionFinalMessageHandler } from './sessionFinalMessageHandler'
 import { registerSessionLaunchAgentInMountHandler } from './sessionLaunchAgentInMountHandler'
 import { registerSessionPrepareOrReviveHandler } from './sessionPrepareOrReviveHandler'
@@ -203,7 +206,7 @@ export function registerSessionHandlers(
   controlSurface.register('session.launchAgent', {
     kind: 'command',
     validate: normalizeLaunchAgentPayload,
-    handle: async (_ctx, payload): Promise<LaunchAgentSessionResult> => {
+    handle: async (ctx, payload): Promise<LaunchAgentSessionResult> => {
       const resolvedSpaceId = typeof payload.spaceId === 'string' ? payload.spaceId.trim() : ''
       const resolvedCwd = typeof payload.cwd === 'string' ? payload.cwd.trim() : ''
       const mode = payload.mode === 'resume' ? 'resume' : 'new'
@@ -215,6 +218,64 @@ export function registerSessionHandlers(
             getPersistenceStore: deps.getPersistenceStore,
           })
         : null
+
+      if (resolvedSpace) {
+        const mountContext = resolveSpaceMountContext({
+          space: {
+            directoryPath: resolvedSpace.directoryPath,
+            targetMountId: resolvedSpace.targetMountId,
+          },
+          workspacePath: resolvedSpace.workspacePath,
+          mounts: (await deps.topology.listMounts({ projectId: resolvedSpace.projectId })).mounts,
+        })
+
+        if (mountContext.mount) {
+          const cwdUri =
+            mountContext.workingDirectory.trim().length > 0
+              ? toFileUri(mountContext.workingDirectory)
+              : null
+
+          const launched = await invokeInternalCommand<LaunchAgentSessionResult>(
+            controlSurface,
+            ctx,
+            {
+              id: 'session.launchAgentInMount',
+              payload: {
+                mountId: mountContext.mount.mountId,
+                cwdUri,
+                prompt: payload.prompt,
+                provider: payload.provider ?? null,
+                mode,
+                model: payload.model ?? null,
+                resumeSessionId,
+                env: payload.env ?? null,
+                executablePathOverride: payload.executablePathOverride ?? null,
+                agentFullAccess: payload.agentFullAccess ?? null,
+                cols: payload.cols,
+                rows: payload.rows,
+              } satisfies LaunchAgentSessionInput & { mountId: string; cwdUri: string | null },
+            },
+          )
+
+          const executionContext = {
+            ...launched.executionContext,
+            projectId: resolvedSpace.projectId,
+            spaceId: resolvedSpaceId,
+          }
+          const record = sessions.get(launched.sessionId)
+          if (record) {
+            sessions.set(launched.sessionId, {
+              ...record,
+              executionContext,
+            })
+          }
+
+          return {
+            ...launched,
+            executionContext,
+          }
+        }
+      }
 
       const { workingDirectory, agentSettings } = resolvedSpace
         ? resolvedSpace

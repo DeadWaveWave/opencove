@@ -4,9 +4,9 @@ import {
   DEFAULT_AGENT_SETTINGS,
   type StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
+import { isAllocateProjectPlaceholderPath } from '@app/renderer/shell/utils/projectPlaceholderPath'
 import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import { resolveSpaceWorkingDirectory } from '@contexts/space/application/resolveSpaceWorkingDirectory'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import type { SpawnTerminalResult } from '@shared/contracts/dto'
 import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'
@@ -21,10 +21,8 @@ import {
   findContainingSpaceByAnchor,
 } from './useInteractions.spaceAssignment'
 import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
-import {
-  resolveDefaultMountFallback,
-  resolveTerminalLaunchWorkspaceContext,
-} from './useInteractions.paneNodeCreation.terminalLaunch'
+import { resolveTerminalLaunchWorkspaceContext } from './useInteractions.paneNodeCreation.terminalLaunch'
+import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 import { translate } from '@app/renderer/i18n'
 
 type SetNodes = (
@@ -44,6 +42,7 @@ export async function createTerminalNodeAtFlowPosition({
   nodesRef,
   setNodes,
   onSpacesChange,
+  onRequestPersistFlush,
   createNodeForSession,
   onShowMessage,
   title,
@@ -59,6 +58,7 @@ export async function createTerminalNodeAtFlowPosition({
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
+  onRequestPersistFlush?: () => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   onShowMessage?: (message: string, level: 'info' | 'warning' | 'error') => void
   title?: string | null
@@ -85,32 +85,34 @@ export async function createTerminalNodeAtFlowPosition({
   })
   targetSpace = launchWorkspaceContext.targetSpace
   const resolvedWorkspacePath = launchWorkspaceContext.workspacePath
-  let resolvedCwd = resolveSpaceWorkingDirectory(targetSpace, resolvedWorkspacePath)
-  let mountId = targetSpace?.targetMountId ?? null
+  const shouldFallbackToFirstMount =
+    !targetSpace && isAllocateProjectPlaceholderPath(resolvedWorkspacePath, workspaceId)
+  let mountId: string | null = null
+  let resolvedCwd = resolvedWorkspacePath
 
-  if (!mountId && !targetSpace) {
-    try {
-      const defaultMountFallback = await resolveDefaultMountFallback({
-        workspaceId,
-        workspacePath: resolvedWorkspacePath,
-      })
-      if (defaultMountFallback) {
-        mountId = defaultMountFallback.mountId
-        resolvedCwd = defaultMountFallback.rootPath
-      }
-    } catch (error) {
-      onShowMessage?.(
-        translate('messages.mountListFailed', { message: toErrorMessage(error) }),
-        'error',
-      )
-      return null
-    }
+  try {
+    const mountContext = await resolveSpaceMountLaunchContext({
+      workspaceId,
+      workspacePath: resolvedWorkspacePath,
+      space: targetSpace,
+      spaces: spacesRef.current,
+      onSpacesChange,
+      onRequestPersistFlush,
+      fallbackToFirstMount: shouldFallbackToFirstMount,
+    })
+    targetSpace = mountContext.space
+    mountId = mountContext.mountId
+    resolvedCwd = mountContext.workingDirectory
+  } catch (error) {
+    onShowMessage?.(
+      translate('messages.mountListFailed', { message: toErrorMessage(error) }),
+      'error',
+    )
+    return null
   }
 
   const spawnCwdUri =
-    mountId && targetSpace?.targetMountId && targetSpace.directoryPath.trim().length > 0
-      ? toFileUri(targetSpace.directoryPath.trim())
-      : null
+    mountId && resolvedCwd.trim().length > 0 ? toFileUri(resolvedCwd.trim()) : null
 
   const nodeWorkingDirectory = resolvedCwd
 

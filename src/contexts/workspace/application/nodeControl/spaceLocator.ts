@@ -11,7 +11,7 @@ import type {
   NodeControlSpace,
   NodeControlWorkspace,
 } from './nodeControlState'
-import { resolveSpaceWorkingDirectory } from '../../../space/application/resolveSpaceWorkingDirectory'
+import { resolveSpaceMountContext } from '../../../space/application/resolveSpaceMountContext'
 
 type Workspace = NodeControlWorkspace
 type Space = NodeControlSpace
@@ -148,17 +148,16 @@ function resolveMountForSpace(
   mountsByProject: Map<string, MountDto[]>,
   localEndpoint: WorkerEndpointDto,
 ): { mount: MountDto | null; endpointId: string; workingDirectory: string } {
-  const workingDirectory = resolveSpaceWorkingDirectory(space, workspace.path)
-  const mount =
-    space.targetMountId && space.targetMountId.trim().length > 0
-      ? (mountsByProject.get(workspace.id)?.find(item => item.mountId === space.targetMountId) ??
-        null)
-      : null
+  const resolved = resolveSpaceMountContext({
+    space,
+    workspacePath: workspace.path,
+    mounts: mountsByProject.get(workspace.id) ?? [],
+  })
 
   return {
-    mount,
-    endpointId: mount?.endpointId ?? localEndpoint.endpointId,
-    workingDirectory,
+    mount: resolved.mount,
+    endpointId: resolved.mount?.endpointId ?? localEndpoint.endpointId,
+    workingDirectory: resolved.workingDirectory,
   }
 }
 
