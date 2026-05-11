@@ -10,6 +10,7 @@ import {
 } from '@contexts/settings/domain/keybindings'
 
 const TERMINAL_FOCUS_SCOPE_SELECTOR = '[data-cove-focus-scope="terminal"]'
+const DOCUMENT_EDITOR_FOCUS_SCOPE_SELECTOR = '[data-cove-focus-scope="document-editor"]'
 
 function isTerminalFocusActive(target: EventTarget | null): boolean {
   if (target instanceof Element && target.closest(TERMINAL_FOCUS_SCOPE_SELECTOR)) {
@@ -30,6 +31,15 @@ function isTerminalFindShortcut(event: KeyboardEvent): boolean {
   }
 
   return event.key.toLowerCase() === 'f'
+}
+
+function isDocumentEditorFocusActive(target: EventTarget | null): boolean {
+  if (target instanceof Element && target.closest(DOCUMENT_EDITOR_FOCUS_SCOPE_SELECTOR)) {
+    return true
+  }
+
+  const activeElement = document.activeElement instanceof Element ? document.activeElement : null
+  return !!activeElement?.closest(DOCUMENT_EDITOR_FOCUS_SCOPE_SELECTOR)
 }
 
 export function useAppKeybindings({
@@ -90,6 +100,10 @@ export function useAppKeybindings({
 
       const commandId = chordToCommand.get(serializeKeyChord(chord))
       if (!commandId) {
+        return
+      }
+
+      if (commandId === 'workspace.search' && isDocumentEditorFocusActive(event.target)) {
         return
       }
 
