@@ -6,15 +6,6 @@ import {
   AGENT_PROVIDERS,
   resolveTaskTitleProvider,
   type AgentProvider,
-  type AgentSettings,
-  type CanvasInputMode,
-  type CanvasWheelBehavior,
-  type CanvasWheelZoomModifier,
-  type FocusNodeTargetZoom,
-  type StandardWindowSizeBucket,
-  type TaskTitleProvider,
-  type UiLanguage,
-  type UiTheme,
 } from '@contexts/settings/domain/agentSettings'
 import { CanvasSection } from './settingsPanel/CanvasSection'
 import { EndpointsSection } from './settingsPanel/EndpointsSection'
@@ -37,6 +28,7 @@ import {
   type SettingsPanelProps,
 } from './SettingsPanel.shared'
 import { useSettingsPanelPageState } from './useSettingsPanelPageState'
+import { createSettingsPanelUpdaters } from './useSettingsPanelUpdaters'
 
 export function SettingsPanel({
   initialPageId,
@@ -75,99 +67,53 @@ export function SettingsPanel({
     }
   }, [initialPageId, setActivePageId])
 
-  const updateDefaultProvider = (provider: AgentProvider): void =>
-    onChange({ ...settings, defaultProvider: provider })
-  const updateAgentProviderOrder = (providers: AgentProvider[]): void =>
-    onChange({ ...settings, agentProviderOrder: providers })
-  const updateLanguage = (language: UiLanguage): void => onChange({ ...settings, language })
-  const updateUiTheme = (uiTheme: UiTheme): void => onChange({ ...settings, uiTheme })
-  const updateAgentFullAccess = (enabled: boolean): void =>
-    onChange({ ...settings, agentFullAccess: enabled })
-  const updateDefaultTerminalProfileId = (profileId: string | null): void =>
-    onChange({ ...settings, defaultTerminalProfileId: profileId })
-  const updateTaskTitleProvider = (provider: TaskTitleProvider): void =>
-    onChange({ ...settings, taskTitleProvider: provider })
-  const updateTaskTitleModel = (model: string): void =>
-    onChange({ ...settings, taskTitleModel: model })
-  const updateFocusNodeOnClick = (enabled: boolean): void =>
-    onChange({ ...settings, focusNodeOnClick: enabled })
-  const updateFocusNodeTargetZoom = (zoom: FocusNodeTargetZoom): void =>
-    onChange({ ...settings, focusNodeTargetZoom: zoom })
-  const updateFocusNodeUseVisibleCanvasCenter = (enabled: boolean): void =>
-    onChange({ ...settings, focusNodeUseVisibleCanvasCenter: enabled })
-  const updateArchiveSpaceDeleteWorktreeByDefault = (enabled: boolean): void =>
-    onChange({ ...settings, archiveSpaceDeleteWorktreeByDefault: enabled })
-  const updateArchiveSpaceDeleteBranchByDefault = (enabled: boolean): void =>
-    onChange({ ...settings, archiveSpaceDeleteBranchByDefault: enabled })
-  const updateSystemNotificationsEnabled = (enabled: boolean): void =>
-    onChange({ ...settings, systemNotificationsEnabled: enabled })
-  const updateStandbyBannerEnabled = (enabled: boolean): void =>
-    onChange({ ...settings, standbyBannerEnabled: enabled })
-  const updateStandbyBannerShowTask = (enabled: boolean): void =>
-    onChange({ ...settings, standbyBannerShowTask: enabled })
-  const updateStandbyBannerShowSpace = (enabled: boolean): void =>
-    onChange({ ...settings, standbyBannerShowSpace: enabled })
-  const updateStandbyBannerShowBranch = (enabled: boolean): void =>
-    onChange({ ...settings, standbyBannerShowBranch: enabled })
-  const updateStandbyBannerShowPullRequest = (enabled: boolean): void =>
-    onChange({ ...settings, standbyBannerShowPullRequest: enabled })
-  const updateCanvasInputMode = (mode: CanvasInputMode): void =>
-    onChange({ ...settings, canvasInputMode: mode })
-  const updateCanvasWheelBehavior = (behavior: CanvasWheelBehavior): void =>
-    onChange({ ...settings, canvasWheelBehavior: behavior })
-  const updateCanvasWheelZoomModifier = (modifier: CanvasWheelZoomModifier): void =>
-    onChange({ ...settings, canvasWheelZoomModifier: modifier })
-  const updateStandardWindowSizeBucket = (bucket: StandardWindowSizeBucket): void =>
-    onChange({ ...settings, standardWindowSizeBucket: bucket })
-  const updateWebsiteWindowPolicy = (policy: AgentSettings['websiteWindowPolicy']): void =>
-    onChange({ ...settings, websiteWindowPolicy: policy })
-  const updateExperimentalWebsiteWindowPasteEnabled = (enabled: boolean): void =>
-    onChange({ ...settings, experimentalWebsiteWindowPasteEnabled: enabled })
-  const updateExperimentalRemoteWorkersEnabled = (enabled: boolean): void =>
-    onChange({ ...settings, experimentalRemoteWorkersEnabled: enabled })
-  const updateTerminalFontSize = (fontSize: number): void =>
-    onChange({ ...settings, terminalFontSize: Math.round(fontSize) })
-  const updateTerminalFontFamily = (family: string | null): void =>
-    onChange({ ...settings, terminalFontFamily: family })
-  const updateTerminalAutoReference = (enabled: boolean): void =>
-    onChange({ ...settings, terminalDisplayAutoReferenceEnabled: enabled })
-  const updateTerminalCompensation = (enabled: boolean): void =>
-    onChange({ ...settings, terminalDisplayCalibrationCompensationEnabled: enabled })
-  const updateTerminalDisplayReference = (
-    reference: AgentSettings['terminalDisplayReference'],
-  ): void => onChange({ ...settings, terminalDisplayReference: reference })
-  const updateUiFontSize = (fontSize: number): void =>
-    onChange({ ...settings, uiFontSize: fontSize })
-  const updateUpdatePolicy = (policy: AgentSettings['updatePolicy']): void => {
-    const normalized = settings.updateChannel === 'nightly' && policy === 'auto' ? 'prompt' : policy
-    onChange({ ...settings, updatePolicy: normalized })
-  }
-
-  const updateUpdateChannel = (channel: AgentSettings['updateChannel']): void => {
-    const normalizedPolicy =
-      channel === 'nightly' && settings.updatePolicy === 'auto' ? 'prompt' : settings.updatePolicy
-    onChange({ ...settings, updateChannel: channel, updatePolicy: normalizedPolicy })
-  }
-  const updateTaskTagOptions = (nextTags: string[]): void =>
-    onChange({ ...settings, taskTagOptions: nextTags })
-  const updateQuickCommands = (quickCommands: AgentSettings['quickCommands']): void =>
-    onChange({ ...settings, quickCommands })
-  const updateQuickPhrases = (quickPhrases: AgentSettings['quickPhrases']): void =>
-    onChange({ ...settings, quickPhrases })
-  const updateAgentEnvByProvider = (
-    agentEnvByProvider: AgentSettings['agentEnvByProvider'],
-  ): void => onChange({ ...settings, agentEnvByProvider })
-  const updateAgentExecutablePathOverrideByProvider = (
-    agentExecutablePathOverrideByProvider: AgentSettings['agentExecutablePathOverrideByProvider'],
-  ): void => onChange({ ...settings, agentExecutablePathOverrideByProvider })
-  const updateDisableAppShortcutsWhenTerminalFocused = (enabled: boolean): void =>
-    onChange({ ...settings, disableAppShortcutsWhenTerminalFocused: enabled })
-  const updateKeybindings = (keybindings: AgentSettings['keybindings']): void =>
-    onChange({ ...settings, keybindings })
-  const updateGitHubPullRequestsEnabled = (enabled: boolean): void =>
-    onChange({ ...settings, githubPullRequestsEnabled: enabled })
-  const updatePerformanceMonitorHeaderButtonEnabled = (enabled: boolean): void =>
-    onChange({ ...settings, performanceMonitorHeaderButtonEnabled: enabled })
+  const {
+    updateDefaultProvider,
+    updateAgentProviderOrder,
+    updateLanguage,
+    updateUiTheme,
+    updateAgentFullAccess,
+    updateDefaultTerminalProfileId,
+    updateTaskTitleProvider,
+    updateTaskTitleModel,
+    updateFocusNodeOnClick,
+    updateFocusNodeTargetZoom,
+    updateFocusNodeUseVisibleCanvasCenter,
+    updateArchiveSpaceDeleteWorktreeByDefault,
+    updateArchiveSpaceDeleteBranchByDefault,
+    updateSystemNotificationsEnabled,
+    updateStandbyBannerEnabled,
+    updateStandbyBannerShowTask,
+    updateStandbyBannerShowSpace,
+    updateStandbyBannerShowBranch,
+    updateStandbyBannerShowPullRequest,
+    updateCanvasInputMode,
+    updateCanvasWheelBehavior,
+    updateCanvasWheelZoomModifier,
+    updateStandardWindowSizeBucket,
+    updateWebsiteWindowPolicy,
+    updateBrowserDefaultMode,
+    updateBrowserSearchEngine,
+    updateExperimentalWebsiteWindowPasteEnabled,
+    updateExperimentalRemoteWorkersEnabled,
+    updateTerminalFontSize,
+    updateTerminalFontFamily,
+    updateTerminalAutoReference,
+    updateTerminalCompensation,
+    updateTerminalDisplayReference,
+    updateUiFontSize,
+    updateUpdatePolicy,
+    updateUpdateChannel,
+    updateTaskTagOptions,
+    updateQuickCommands,
+    updateQuickPhrases,
+    updateAgentEnvByProvider,
+    updateAgentExecutablePathOverrideByProvider,
+    updateDisableAppShortcutsWhenTerminalFocused,
+    updateKeybindings,
+    updateGitHubPullRequestsEnabled,
+    updatePerformanceMonitorHeaderButtonEnabled,
+  } = createSettingsPanelUpdaters({ settings, onChange })
 
   const removeTaskTagOption = (tag: string): void => {
     const nextTags = settings.taskTagOptions.filter(option => option !== tag)
@@ -430,9 +376,13 @@ export function SettingsPanel({
             {activePageId === 'experimental' ? (
               <ExperimentalSection
                 websiteWindowPolicy={settings.websiteWindowPolicy}
+                browserDefaultMode={settings.browserDefaultMode}
+                browserSearchEngine={settings.browserSearchEngine}
                 websiteWindowPasteEnabled={settings.experimentalWebsiteWindowPasteEnabled}
                 remoteWorkersEnabled={settings.experimentalRemoteWorkersEnabled}
                 onChangeWebsiteWindowPolicy={updateWebsiteWindowPolicy}
+                onChangeBrowserDefaultMode={updateBrowserDefaultMode}
+                onChangeBrowserSearchEngine={updateBrowserSearchEngine}
                 onChangeWebsiteWindowPasteEnabled={updateExperimentalWebsiteWindowPasteEnabled}
                 onChangeRemoteWorkersEnabled={updateExperimentalRemoteWorkersEnabled}
               />

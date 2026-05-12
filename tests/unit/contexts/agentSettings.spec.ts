@@ -93,6 +93,33 @@ describe('normalizeAgentSettings', () => {
     ).toBe(DEFAULT_AGENT_SETTINGS.standardWindowSizeBucket)
   })
 
+  it('defaults and normalizes browser runtime settings', () => {
+    expect(DEFAULT_AGENT_SETTINGS.browserDefaultMode).toBe('native')
+    expect(DEFAULT_AGENT_SETTINGS.browserSearchEngine).toBe('google')
+    expect(normalizeAgentSettings({}).browserDefaultMode).toBe('native')
+    expect(normalizeAgentSettings({}).browserSearchEngine).toBe('google')
+
+    expect(
+      normalizeAgentSettings({
+        browserDefaultMode: 'iframe',
+        browserSearchEngine: 'duckduckgo',
+      }),
+    ).toMatchObject({
+      browserDefaultMode: 'iframe',
+      browserSearchEngine: 'duckduckgo',
+    })
+
+    expect(
+      normalizeAgentSettings({
+        browserDefaultMode: 'invalid',
+        browserSearchEngine: 'invalid',
+      }),
+    ).toMatchObject({
+      browserDefaultMode: 'native',
+      browserSearchEngine: 'google',
+    })
+  })
+
   it('defaults and normalizes the visible-canvas focus centering toggle', () => {
     expect(DEFAULT_AGENT_SETTINGS.focusNodeUseVisibleCanvasCenter).toBe(true)
     expect(normalizeAgentSettings({}).focusNodeUseVisibleCanvasCenter).toBe(true)

@@ -13,6 +13,8 @@ export function useWorkspaceCanvasRuntimeBindings({
   updateWebsiteUrl,
   setWebsitePinned,
   setWebsiteSession,
+  setWebsiteMode,
+  setWebsiteFullscreen,
   updateNodeScrollback,
   updateTerminalTitle,
   renameTerminalTitle,
@@ -40,6 +42,10 @@ export function useWorkspaceCanvasRuntimeBindings({
   updateWebsiteUrl: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['updateWebsiteUrl']
   setWebsitePinned: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsitePinned']
   setWebsiteSession: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsiteSession']
+  setWebsiteMode: Parameters<typeof useWorkspaceCanvasSyncActionRefs>[0]['setWebsiteMode']
+  setWebsiteFullscreen: Parameters<
+    typeof useWorkspaceCanvasSyncActionRefs
+  >[0]['setWebsiteFullscreen']
   updateNodeScrollback: Parameters<
     typeof useWorkspaceCanvasSyncActionRefs
   >[0]['updateNodeScrollback']
@@ -75,6 +81,8 @@ export function useWorkspaceCanvasRuntimeBindings({
     updateWebsiteUrl,
     setWebsitePinned,
     setWebsiteSession,
+    setWebsiteMode,
+    setWebsiteFullscreen,
     updateNodeScrollback,
     updateTerminalTitle,
     renameTerminalTitle,

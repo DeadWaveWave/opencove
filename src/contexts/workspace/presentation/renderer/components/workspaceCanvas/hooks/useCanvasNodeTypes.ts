@@ -59,6 +59,8 @@ export function useWorkspaceCanvasComposedNodeTypes({
     terminalDisplayCalibration,
     agentProviderOrder: agentSettings.agentProviderOrder,
     defaultProvider: agentSettings.defaultProvider,
+    browserDefaultMode: agentSettings.browserDefaultMode,
+    browserSearchEngine: agentSettings.browserSearchEngine,
     selectNode,
     ...actionRefs,
   })

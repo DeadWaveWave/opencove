@@ -267,6 +267,19 @@ export const enSettingsPanel = {
     websiteWindowEnabledLabel: 'Enable Website Windows',
     websiteWindowEnabledHelp:
       'Turns the feature on and allows website nodes to render live web content.',
+    websiteWindowDefaultModeLabel: 'Default Open Mode',
+    websiteWindowDefaultModeHelp:
+      'Choose the full desktop browser or the simpler web-compatible viewer.',
+    websiteWindowModeNative: 'Full browser',
+    websiteWindowModeIframe: 'Web-compatible viewer',
+    browserSearchEngineLabel: 'Default Search Engine',
+    browserSearchEngineHelp: 'Used by browser address bars and the start page for search text.',
+    browserSearchEngine: {
+      google: 'Google',
+      duckduckgo: 'DuckDuckGo',
+      bing: 'Bing',
+      brave: 'Brave Search',
+    },
     websiteWindowPasteLabel: 'Auto-create from Paste',
     websiteWindowPasteHelp:
       'When enabled, pasting a valid website URL onto the canvas creates a website node automatically.',

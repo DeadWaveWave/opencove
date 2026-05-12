@@ -37,6 +37,17 @@ const CURRENT_SCHEMA_COLUMNS = {
   workspace_spaces: ['id', 'workspace_id', 'name', 'directory_path', 'target_mount_id', 'parent_space_id', 'boundary_json', 'sort_order', 'label_color', 'rect_x', 'rect_y', 'rect_width', 'rect_height'],
   workspace_space_nodes: ['space_id', 'node_id', 'sort_order'],
   node_scrollback: ['node_id', 'scrollback', 'updated_at'],
+  agent_node_placeholder_scrollback: ['node_id', 'scrollback', 'updated_at'],
+  // prettier-ignore
+  browser_profile_settings: ['profile_key', 'homepage_url', 'updated_at'],
+  // prettier-ignore
+  browser_history: ['id', 'profile_key', 'url', 'title', 'favicon_url', 'visit_count', 'last_visited_at'],
+  // prettier-ignore
+  browser_bookmarks: ['id', 'profile_key', 'url', 'title', 'favicon_url', 'folder_id', 'sort_order', 'created_at', 'updated_at'],
+  // prettier-ignore
+  browser_downloads: ['id', 'profile_key', 'url', 'filename', 'save_path', 'state', 'received_bytes', 'total_bytes', 'started_at', 'ended_at', 'error'],
+  // prettier-ignore
+  browser_permission_decisions: ['id', 'profile_key', 'origin', 'permission', 'decision', 'updated_at'],
 } as const
 
 function createMockDbState(

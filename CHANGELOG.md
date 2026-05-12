@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
+- Workspace canvas: add full browser-window capability with client-local history, bookmarks, Safari-style start page, Settings-owned full-browser/web-compatible viewer modes, configurable search engine, downloads, permissions, find, fullscreen, four-terminal default sizing, 90% normal-window constraints, and WebUI web-compatible viewer support. (#246)
 - Document editor: add VS Code-style shortcut handling for word wrap (`Alt/Option+Z`) and editor-local find (`Cmd/Ctrl+F`) inside Monaco document nodes. (#244)
 - Workspace canvas: add canvas-only Child Spaces with contained creation, drag/resize boundaries, selected-node moves, and mount-aware execution context. (#245)
 - Workspace canvas: add project-scoped reusable roles with prompt-backed creation/edit/delete, provider-selectable role runs, role nodes, and role-to-agent relationship edges. (#242)
@@ -79,6 +80,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### 🐞 Fixed
 - Workspace canvas: block nodes at Child Space edges until the drag pointer enters the child, preventing pre-entry overlap and ownership drift. (#245)
+- Workspace canvas: browser download panels now merge live runtime download events with persisted records, so in-progress and incognito downloads stay visible before persistence catches up. (#246)
 - Mounts: route generic Space-based agent/terminal launches through the resolved mount, repair stale Space bindings, and keep node-control space resolution aligned with the same mount-aware context rules. (#241)
 - Remote: harden managed SSH endpoint lifecycle coverage, make repair actions respect manual vs managed authority, and verify remote-only project browse via fake SSH E2E. (#240)
 - Desktop: upgrade Electron to 41.5.1 and queue website-window snapshot requests until the runtime is ready, preventing dropped captures during activation/loading transitions. (#238)

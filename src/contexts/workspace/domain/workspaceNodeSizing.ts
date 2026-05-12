@@ -33,7 +33,7 @@ const KIND_UNITS: Record<WorkspaceNodeKind, { col: number; row: number }> = {
   role: { col: 3, row: 4 },
   image: { col: 3, row: 3 },
   document: { col: 4, row: 6 },
-  website: { col: 4, row: 6 },
+  website: { col: 8, row: 8 },
 }
 
 const MIN_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
@@ -55,7 +55,7 @@ const MAX_SIZE_BY_KIND: Record<WorkspaceNodeKind, Size> = {
   role: { width: 520, height: 640 },
   image: { width: 960, height: 720 },
   document: { width: 960, height: 900 },
-  website: { width: 960, height: 900 },
+  website: { width: 1280, height: 1040 },
 }
 
 function clampSize(size: Size, min: Size, max: Size): Size {

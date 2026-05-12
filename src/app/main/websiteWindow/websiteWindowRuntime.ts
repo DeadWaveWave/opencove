@@ -25,6 +25,7 @@ export interface WebsiteWindowRuntime {
   isLoading: boolean
   title: string | null
   url: string | null
+  faviconUrl: string | null
   snapshotDataUrl: string | null
   pendingSnapshotQuality: number | null
   snapshotCaptureInFlight: boolean

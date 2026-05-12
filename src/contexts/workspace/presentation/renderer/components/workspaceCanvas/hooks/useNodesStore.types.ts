@@ -4,7 +4,7 @@ import type {
   StandardWindowSizeBucket,
 } from '@contexts/settings/domain/agentSettings'
 import type { ProjectRoleDefinition } from '@contexts/settings/domain/projectRoles'
-import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type {
   DocumentNodeData,
   ImageNodeData,
@@ -40,6 +40,7 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
 }
 
 export interface UseWorkspaceCanvasNodeCreationParams {
@@ -50,6 +51,7 @@ export interface UseWorkspaceCanvasNodeCreationParams {
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
 }
 
 export interface UseWorkspaceCanvasNodesStoreResult {
@@ -80,6 +82,13 @@ export interface UseWorkspaceCanvasNodesStoreResult {
     nodeId: string,
     sessionMode: WebsiteWindowSessionMode,
     profileId: string | null,
+  ) => void
+  setWebsiteMode: (nodeId: string, browserMode: BrowserMode) => void
+  setWebsiteFullscreen: (
+    nodeId: string,
+    frame: NodeFrame,
+    previousFrame: NodeFrame | null,
+    isFullscreen: boolean,
   ) => void
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (anchor: Point, options?: CreateNoteNodeOptions) => Node<TerminalNodeData> | null

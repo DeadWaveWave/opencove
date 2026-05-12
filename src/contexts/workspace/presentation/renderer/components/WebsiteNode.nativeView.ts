@@ -35,6 +35,7 @@ export function useWebsiteNodeNativeView({
   pinned,
   sessionMode,
   profileId,
+  enabled,
   lifecycle,
   isOccluded,
   viewportRef,
@@ -44,6 +45,7 @@ export function useWebsiteNodeNativeView({
   pinned: boolean
   sessionMode: WebsiteWindowSessionMode
   profileId: string | null
+  enabled: boolean
   lifecycle: WebsiteWindowLifecycle
   isOccluded: boolean
   viewportRef: React.RefObject<HTMLDivElement | null>
@@ -150,7 +152,7 @@ export function useWebsiteNodeNativeView({
   const activate = useCallback(
     (nextUrl: string) => {
       const api = window.opencoveApi?.websiteWindow
-      if (!api || typeof api.activate !== 'function') {
+      if (!enabled || !api || typeof api.activate !== 'function') {
         return
       }
 
@@ -172,12 +174,12 @@ export function useWebsiteNodeNativeView({
         })
         .catch(() => undefined)
     },
-    [nodeId, pinned, profileId, sessionMode, viewportRef],
+    [enabled, nodeId, pinned, profileId, sessionMode, viewportRef],
   )
 
   const lastSentViewportStateRef = useRef<WebsiteViewportState | null>(null)
   useEffect(() => {
-    if (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
+    if (!enabled || lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
       lastSentViewportStateRef.current = null
       return
     }
@@ -238,10 +240,10 @@ export function useWebsiteNodeNativeView({
     return () => {
       window.cancelAnimationFrame(raf)
     }
-  }, [isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
+  }, [enabled, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
 
   useEffect(() => {
-    if (lifecycle === 'active' || isOccluded) {
+    if (!enabled || lifecycle === 'active' || isOccluded) {
       return
     }
 
@@ -293,10 +295,10 @@ export function useWebsiteNodeNativeView({
     return () => {
       stop()
     }
-  }, [activate, isOccluded, lifecycle, pinned, viewportRef])
+  }, [activate, enabled, isOccluded, lifecycle, pinned, viewportRef])
 
   useLayoutEffect(() => {
-    if (lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
+    if (!enabled || lifecycle !== 'active' || isCanvasZoomFrozen || isOccluded) {
       return
     }
 
@@ -320,7 +322,7 @@ export function useWebsiteNodeNativeView({
         canvasZoom: viewportState.canvasZoom,
       })
     }
-  }, [canvasZoom, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
+  }, [canvasZoom, enabled, isCanvasZoomFrozen, isOccluded, lifecycle, nodeId, viewportRef])
 
   useEffect(() => {
     if (lifecycle !== 'active' || isOccluded) {

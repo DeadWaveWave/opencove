@@ -1,20 +1,34 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { WebsiteWindowPolicy } from '@shared/contracts/dto'
+import { CoveSelect } from '@app/renderer/components/CoveSelect'
+import {
+  BROWSER_SEARCH_ENGINES,
+  type BrowserSearchEngineId,
+} from '@contexts/settings/domain/browserSettings'
+import type { BrowserMode } from '@shared/contracts/dto'
 import { ExperimentalWorkerWebUiSection } from './ExperimentalWorkerWebUiSection'
 
 export function ExperimentalSection({
   websiteWindowPolicy,
+  browserDefaultMode,
+  browserSearchEngine,
   websiteWindowPasteEnabled,
   remoteWorkersEnabled,
   onChangeWebsiteWindowPolicy,
+  onChangeBrowserDefaultMode,
+  onChangeBrowserSearchEngine,
   onChangeWebsiteWindowPasteEnabled,
   onChangeRemoteWorkersEnabled,
 }: {
   websiteWindowPolicy: WebsiteWindowPolicy
+  browserDefaultMode: BrowserMode
+  browserSearchEngine: BrowserSearchEngineId
   websiteWindowPasteEnabled: boolean
   remoteWorkersEnabled: boolean
   onChangeWebsiteWindowPolicy: (policy: WebsiteWindowPolicy) => void
+  onChangeBrowserDefaultMode: (mode: BrowserMode) => void
+  onChangeBrowserSearchEngine: (engine: BrowserSearchEngineId) => void
   onChangeWebsiteWindowPasteEnabled: (enabled: boolean) => void
   onChangeRemoteWorkersEnabled: (enabled: boolean) => void
 }): React.JSX.Element {
@@ -117,6 +131,54 @@ export function ExperimentalSection({
               />
               <span className="cove-toggle__slider"></span>
             </label>
+          </div>
+        </div>
+
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.experimental.websiteWindowDefaultModeLabel')}</strong>
+            <span>{t('settingsPanel.experimental.websiteWindowDefaultModeHelp')}</span>
+          </div>
+          <div className="settings-panel__control">
+            <CoveSelect
+              id="settings-website-window-default-mode"
+              testId="settings-website-window-default-mode"
+              value={browserDefaultMode}
+              disabled={!websiteWindowPolicy.enabled}
+              options={[
+                {
+                  value: 'native',
+                  label: t('settingsPanel.experimental.websiteWindowModeNative'),
+                },
+                {
+                  value: 'iframe',
+                  label: t('settingsPanel.experimental.websiteWindowModeIframe'),
+                },
+              ]}
+              onChange={nextValue => onChangeBrowserDefaultMode(nextValue as BrowserMode)}
+            />
+          </div>
+        </div>
+
+        <div className="settings-panel__row">
+          <div className="settings-panel__row-label">
+            <strong>{t('settingsPanel.experimental.browserSearchEngineLabel')}</strong>
+            <span>{t('settingsPanel.experimental.browserSearchEngineHelp')}</span>
+          </div>
+          <div className="settings-panel__control">
+            <CoveSelect
+              id="settings-browser-search-engine"
+              testId="settings-browser-search-engine"
+              value={browserSearchEngine}
+              disabled={!websiteWindowPolicy.enabled}
+              options={BROWSER_SEARCH_ENGINES.map(engine => ({
+                value: engine,
+                label: t(`settingsPanel.experimental.browserSearchEngine.${engine}`),
+              }))}
+              onChange={nextValue =>
+                onChangeBrowserSearchEngine(nextValue as BrowserSearchEngineId)
+              }
+            />
           </div>
         </div>
 

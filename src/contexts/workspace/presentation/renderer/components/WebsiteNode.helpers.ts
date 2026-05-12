@@ -40,7 +40,9 @@ function resolveViewportBounds(element: HTMLDivElement | null): WebsiteWindowBou
   }
 }
 
-function resolveWorkspaceBounds(element: HTMLDivElement | null): WebsiteWindowBounds | null {
+export function resolveWebsiteWorkspaceBounds(
+  element: HTMLDivElement | null,
+): WebsiteWindowBounds | null {
   const workspaceMain = document.querySelector('.workspace-main')
   const clipElement =
     workspaceMain instanceof HTMLElement ? workspaceMain : element?.closest('.workspace-main')
@@ -149,7 +151,7 @@ export function resolveViewportState(
     return null
   }
 
-  const rawWorkspaceBounds = resolveWorkspaceBounds(element)
+  const rawWorkspaceBounds = resolveWebsiteWorkspaceBounds(element)
   if (!rawWorkspaceBounds) {
     return null
   }
@@ -174,7 +176,7 @@ export function resolveViewportFocusRatio(element: HTMLDivElement | null): numbe
     return null
   }
 
-  const workspaceBounds = resolveWorkspaceBounds(element)
+  const workspaceBounds = resolveWebsiteWorkspaceBounds(element)
   if (!workspaceBounds) {
     return null
   }

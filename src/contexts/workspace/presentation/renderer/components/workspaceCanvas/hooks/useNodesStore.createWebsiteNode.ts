@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { BrowserMode } from '@shared/contracts/dto'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveDefaultWebsiteWindowSize } from '../constants'
 import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
@@ -10,6 +11,7 @@ import type { UseWorkspaceCanvasNodesStoreResult } from './useNodesStore.types'
 import { EMPTY_NODE_KIND_DATA } from './useNodesStore.nodeData'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import { HIDDEN_WEBSITE_BOUNDS } from '../../WebsiteNode.helpers'
+import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 
 export function useWorkspaceCanvasWebsiteNodeCreation({
   nodesRef,
@@ -19,6 +21,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   onNodeCreated,
   setNodes,
   standardWindowSizeBucket,
+  browserDefaultMode,
 }: {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -27,6 +30,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
 }): (
   anchor: Point,
   website: WebsiteNodeData,
@@ -36,6 +40,10 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
 
   return useCallback(
     (anchor: Point, website: WebsiteNodeData, placementOptions?: NodePlacementOptions) => {
+      const websiteData = createWebsiteNodeData({
+        browserMode: browserDefaultMode,
+        ...website,
+      })
       const defaultSize = resolveDefaultWebsiteWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
@@ -64,7 +72,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
         position: resolvedPlacement.placement,
         data: {
           sessionId: '',
-          title: website.url.trim().length > 0 ? website.url : t('websiteNode.title'),
+          title: websiteData.url.trim().length > 0 ? websiteData.url : t('websiteNode.title'),
           titlePinnedByUser: false,
           width: defaultSize.width,
           height: defaultSize.height,
@@ -76,7 +84,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
           lastError: null,
           scrollback: null,
           ...EMPTY_NODE_KIND_DATA,
-          website,
+          website: websiteData,
         },
         draggable: true,
         selectable: true,
@@ -86,15 +94,15 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       onNodeCreated?.(nextNode.id)
       onRequestPersistFlush?.()
 
-      const normalizedUrl = website.url.trim()
-      if (normalizedUrl.length > 0) {
+      const normalizedUrl = websiteData.url.trim()
+      if (websiteData.browserMode === 'native' && normalizedUrl.length > 0) {
         void window.opencoveApi?.websiteWindow
           ?.activate?.({
             nodeId: nextNode.id,
             url: normalizedUrl,
-            pinned: website.pinned === true,
-            sessionMode: website.sessionMode,
-            profileId: website.profileId,
+            pinned: websiteData.pinned === true,
+            sessionMode: websiteData.sessionMode,
+            profileId: websiteData.profileId,
             bounds: HIDDEN_WEBSITE_BOUNDS,
           })
           .catch(() => undefined)
@@ -110,6 +118,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      browserDefaultMode,
       t,
     ],
   )

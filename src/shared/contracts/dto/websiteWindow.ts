@@ -51,6 +51,13 @@ export interface WebsiteWindowNodeIdInput {
   nodeId: string
 }
 
+export interface FindWebsiteWindowInput {
+  nodeId: string
+  query: string
+  forward?: boolean | null
+  findNext?: boolean | null
+}
+
 export interface SetWebsiteWindowPinnedInput {
   nodeId: string
   pinned: boolean
@@ -77,6 +84,7 @@ export interface WebsiteWindowStateEvent {
   isLoading: boolean
   canGoBack: boolean
   canGoForward: boolean
+  faviconUrl: string | null
 }
 
 export interface WebsiteWindowSnapshotEvent {
@@ -102,9 +110,49 @@ export interface WebsiteWindowOpenUrlEvent {
   url: string
 }
 
+export interface WebsiteWindowFindResultEvent {
+  type: 'find-result'
+  nodeId: string
+  requestId: number
+  activeMatchOrdinal: number
+  matches: number
+  finalUpdate: boolean
+}
+
+export interface WebsiteWindowFindRequestEvent {
+  type: 'find-request'
+  nodeId: string
+  requestId: number
+}
+
+export interface WebsiteWindowDownloadEvent {
+  type: 'download'
+  nodeId: string | null
+  downloadId: string
+  url: string
+  filename: string
+  receivedBytes: number
+  totalBytes: number | null
+  state: 'progressing' | 'completed' | 'cancelled' | 'interrupted'
+  savePath: string | null
+  error: string | null
+}
+
+export interface WebsiteWindowPermissionRequestEvent {
+  type: 'permission-request'
+  nodeId: string
+  requestId: string
+  origin: string
+  permission: string
+}
+
 export type WebsiteWindowEventPayload =
   | WebsiteWindowStateEvent
   | WebsiteWindowSnapshotEvent
   | WebsiteWindowClosedEvent
   | WebsiteWindowErrorEvent
   | WebsiteWindowOpenUrlEvent
+  | WebsiteWindowFindResultEvent
+  | WebsiteWindowFindRequestEvent
+  | WebsiteWindowDownloadEvent
+  | WebsiteWindowPermissionRequestEvent

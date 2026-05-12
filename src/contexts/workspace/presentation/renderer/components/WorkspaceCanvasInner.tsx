@@ -47,6 +47,7 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    browserDefaultMode: agentSettings.browserDefaultMode,
   })
   const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
     workspaceId,
@@ -249,6 +250,7 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     nodesRef: nodeStore.nodesRef,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    browserDefaultMode: agentSettings.browserDefaultMode,
     createNodeForSession: nodeStore.createNodeForSession,
     createNoteNode: nodeStore.createNoteNode,
     onShowMessage,
@@ -318,6 +320,8 @@ export function WorkspaceCanvasInner({
     updateWebsiteUrl: nodeStore.updateWebsiteUrl,
     setWebsitePinned: nodeStore.setWebsitePinned,
     setWebsiteSession: nodeStore.setWebsiteSession,
+    setWebsiteMode: nodeStore.setWebsiteMode,
+    setWebsiteFullscreen: nodeStore.setWebsiteFullscreen,
     updateNodeScrollback: nodeStore.updateNodeScrollback,
     updateTerminalTitle: nodeStore.updateTerminalTitle,
     renameTerminalTitle: nodeStore.renameTerminalTitle,

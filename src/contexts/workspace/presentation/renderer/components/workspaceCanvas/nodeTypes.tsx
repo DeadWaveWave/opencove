@@ -1,6 +1,7 @@
 import { useMemo, type MutableRefObject, type ReactElement } from 'react'
-import type { WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 import type { NodeFrame, WorkspaceSpaceState } from '../../types'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
@@ -27,6 +28,8 @@ interface WorkspaceCanvasNodeTypesParams {
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   agentProviderOrder: AgentProvider[]
   defaultProvider: AgentProvider
+  browserDefaultMode: BrowserMode
+  browserSearchEngine: BrowserSearchEngineId
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -66,6 +69,15 @@ interface WorkspaceCanvasNodeTypesParams {
   setWebsiteSessionRef: MutableRefObject<
     (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
   >
+  setWebsiteModeRef: MutableRefObject<(nodeId: string, browserMode: BrowserMode) => void>
+  setWebsiteFullscreenRef: MutableRefObject<
+    (
+      nodeId: string,
+      frame: NodeFrame,
+      previousFrame: NodeFrame | null,
+      isFullscreen: boolean,
+    ) => void
+  >
 }
 
 export function useWorkspaceCanvasNodeTypes({
@@ -76,6 +88,8 @@ export function useWorkspaceCanvasNodeTypes({
   terminalDisplayCalibration,
   agentProviderOrder,
   defaultProvider,
+  browserDefaultMode,
+  browserSearchEngine,
   selectNode,
   clearNodeSelectionRef,
   closeNodeRef,
@@ -104,6 +118,8 @@ export function useWorkspaceCanvasNodeTypes({
   updateWebsiteUrlRef,
   setWebsitePinnedRef,
   setWebsiteSessionRef,
+  setWebsiteModeRef,
+  setWebsiteFullscreenRef,
 }: WorkspaceCanvasNodeTypesParams): Record<
   string,
   (props: WorkspaceCanvasNodeTypeProps) => ReactElement | null
@@ -182,6 +198,10 @@ export function useWorkspaceCanvasNodeTypes({
           updateWebsiteUrlRef={updateWebsiteUrlRef}
           setWebsitePinnedRef={setWebsitePinnedRef}
           setWebsiteSessionRef={setWebsiteSessionRef}
+          setWebsiteModeRef={setWebsiteModeRef}
+          setWebsiteFullscreenRef={setWebsiteFullscreenRef}
+          browserDefaultMode={browserDefaultMode}
+          browserSearchEngine={browserSearchEngine}
         />
       )
     }
@@ -260,6 +280,8 @@ export function useWorkspaceCanvasNodeTypes({
     terminalDisplayCalibration,
     agentProviderOrder,
     defaultProvider,
+    browserDefaultMode,
+    browserSearchEngine,
     updateNoteTextRef,
     renameNoteTitleRef,
     updateRoleProviderRef,
@@ -284,5 +306,7 @@ export function useWorkspaceCanvasNodeTypes({
     updateWebsiteUrlRef,
     setWebsitePinnedRef,
     setWebsiteSessionRef,
+    setWebsiteModeRef,
+    setWebsiteFullscreenRef,
   ])
 }

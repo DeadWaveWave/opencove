@@ -37,6 +37,7 @@ export function useWorkspaceCanvasNodesStore({
   onShowMessage,
   onNodeCreated,
   standardWindowSizeBucket,
+  browserDefaultMode,
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   const nodesRef = useRef(nodes)
@@ -379,8 +380,13 @@ export function useWorkspaceCanvasNodesStore({
       setNodes,
       onRequestPersistFlush,
     })
-  const { updateWebsiteUrl, setWebsitePinned, setWebsiteSession } =
-    useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
+  const {
+    updateWebsiteUrl,
+    setWebsitePinned,
+    setWebsiteSession,
+    setWebsiteMode,
+    setWebsiteFullscreen,
+  } = useWorkspaceCanvasWebsiteNodeMutations({ setNodes, onRequestPersistFlush })
 
   const setNodeLabelColorOverride = useCallback(
     (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => {
@@ -440,6 +446,7 @@ export function useWorkspaceCanvasNodesStore({
     onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
     setNodes,
     standardWindowSizeBucket,
+    browserDefaultMode,
   })
 
   return {
@@ -464,6 +471,8 @@ export function useWorkspaceCanvasNodesStore({
     updateWebsiteUrl,
     setWebsitePinned,
     setWebsiteSession,
+    setWebsiteMode,
+    setWebsiteFullscreen,
     createNodeForSession,
     createNoteNode,
     createTaskNode,

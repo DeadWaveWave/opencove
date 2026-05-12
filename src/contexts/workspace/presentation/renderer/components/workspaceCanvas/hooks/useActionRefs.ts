@@ -3,7 +3,11 @@ import type { Node, ReactFlowInstance } from '@xyflow/react'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { NodeFrame, TaskRuntimeStatus, TerminalNodeData } from '../../../types'
 import { focusNodeInViewport } from '../helpers'
-import type { AgentSessionSummary, WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type {
+  AgentSessionSummary,
+  BrowserMode,
+  WebsiteWindowSessionMode,
+} from '@shared/contracts/dto'
 
 export interface WorkspaceCanvasActionRefs {
   clearNodeSelectionRef: React.MutableRefObject<() => void>
@@ -26,6 +30,15 @@ export interface WorkspaceCanvasActionRefs {
   setWebsitePinnedRef: React.MutableRefObject<(nodeId: string, pinned: boolean) => void>
   setWebsiteSessionRef: React.MutableRefObject<
     (nodeId: string, sessionMode: WebsiteWindowSessionMode, profileId: string | null) => void
+  >
+  setWebsiteModeRef: React.MutableRefObject<(nodeId: string, browserMode: BrowserMode) => void>
+  setWebsiteFullscreenRef: React.MutableRefObject<
+    (
+      nodeId: string,
+      frame: NodeFrame,
+      previousFrame: NodeFrame | null,
+      isFullscreen: boolean,
+    ) => void
   >
   runTaskAgentRef: React.MutableRefObject<(nodeId: string) => Promise<void>>
   resumeTaskAgentSessionRef: React.MutableRefObject<
@@ -94,6 +107,24 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     (_nodeId: string, _sessionMode: WebsiteWindowSessionMode, _profileId: string | null) =>
       undefined,
   )
+  const setWebsiteModeRef = useRef<(nodeId: string, browserMode: BrowserMode) => void>(
+    (_nodeId: string, _browserMode: BrowserMode) => undefined,
+  )
+  const setWebsiteFullscreenRef = useRef<
+    (
+      nodeId: string,
+      frame: NodeFrame,
+      previousFrame: NodeFrame | null,
+      isFullscreen: boolean,
+    ) => void
+  >(
+    (
+      _nodeId: string,
+      _frame: NodeFrame,
+      _previousFrame: NodeFrame | null,
+      _isFullscreen: boolean,
+    ) => undefined,
+  )
   const runTaskAgentRef = useRef<(nodeId: string) => Promise<void>>(
     async (_nodeId: string) => undefined,
   )
@@ -143,6 +174,8 @@ export function useWorkspaceCanvasActionRefs(): WorkspaceCanvasActionRefs {
     runRoleRef,
     setWebsitePinnedRef,
     setWebsiteSessionRef,
+    setWebsiteModeRef,
+    setWebsiteFullscreenRef,
     runTaskAgentRef,
     resumeTaskAgentSessionRef,
     removeTaskAgentSessionRecordRef,
@@ -176,6 +209,13 @@ interface SyncActionRefsParams {
     sessionMode: WebsiteWindowSessionMode,
     profileId: string | null,
   ) => void
+  setWebsiteMode: (nodeId: string, browserMode: BrowserMode) => void
+  setWebsiteFullscreen: (
+    nodeId: string,
+    frame: NodeFrame,
+    previousFrame: NodeFrame | null,
+    isFullscreen: boolean,
+  ) => void
   updateNodeScrollback: (nodeId: string, scrollback: string) => void
   updateTerminalTitle: (nodeId: string, title: string) => void
   renameTerminalTitle: (nodeId: string, title: string) => void
@@ -199,6 +239,8 @@ export function useWorkspaceCanvasSyncActionRefs({
   updateWebsiteUrl,
   setWebsitePinned,
   setWebsiteSession,
+  setWebsiteMode,
+  setWebsiteFullscreen,
   updateNodeScrollback,
   updateTerminalTitle,
   renameTerminalTitle,
@@ -264,6 +306,18 @@ export function useWorkspaceCanvasSyncActionRefs({
       setWebsiteSession(nodeId, sessionMode, profileId)
     }
   }, [actionRefs.setWebsiteSessionRef, setWebsiteSession])
+
+  useLayoutEffect(() => {
+    actionRefs.setWebsiteModeRef.current = (nodeId, browserMode) => {
+      setWebsiteMode(nodeId, browserMode)
+    }
+  }, [actionRefs.setWebsiteModeRef, setWebsiteMode])
+
+  useLayoutEffect(() => {
+    actionRefs.setWebsiteFullscreenRef.current = (nodeId, frame, previousFrame, isFullscreen) => {
+      setWebsiteFullscreen(nodeId, frame, previousFrame, isFullscreen)
+    }
+  }, [actionRefs.setWebsiteFullscreenRef, setWebsiteFullscreen])
 
   useLayoutEffect(() => {
     actionRefs.updateNodeScrollbackRef.current = (nodeId, scrollback) => {

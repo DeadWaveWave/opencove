@@ -43,6 +43,7 @@ export function ensureWebsiteWindowRuntime({
     isLoading: false,
     title: null,
     url: null,
+    faviconUrl: null,
     snapshotDataUrl: null,
     pendingSnapshotQuality: null,
     snapshotCaptureInFlight: false,

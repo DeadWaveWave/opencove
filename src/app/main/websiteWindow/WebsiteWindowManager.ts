@@ -1,8 +1,8 @@
-import { View } from 'electron'
 import type { BrowserWindow, Session } from 'electron'
 import type {
   ActivateWebsiteWindowInput,
   CaptureWebsiteWindowSnapshotInput,
+  FindWebsiteWindowInput,
   ConfigureWebsiteWindowPolicyInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowOccludedInput,
@@ -11,6 +11,7 @@ import type {
   SetWebsiteWindowSessionInput,
   WebsiteWindowEventPayload,
   WebsiteWindowPolicy,
+  RespondBrowserPermissionInput,
 } from '../../../shared/contracts/dto'
 import { IPC_CHANNELS } from '../../../shared/contracts/ipc'
 import { boundsEqual, normalizeBounds } from './websiteWindowBounds'
@@ -38,18 +39,39 @@ import {
   transitionWebsiteWindowToWarm,
   transitionWebsiteWindowToCold,
 } from './websiteWindowLifecycle'
-import {
-  loadWebsiteWindowRuntimeDesiredUrl,
-  resolveWebsiteWindowRuntimeWebContents,
-} from './websiteWindowNavigationOps'
+import { loadWebsiteWindowRuntimeDesiredUrl } from './websiteWindowNavigationOps'
 import { resolveBrowserWindowScaleFactor } from './websiteWindowScaleFactor'
+import {
+  findInWebsiteWindowNode,
+  goBackWebsiteWindowNode,
+  goForwardWebsiteWindowNode,
+  reloadWebsiteWindowNode,
+  stopFindInWebsiteWindowNode,
+  stopWebsiteWindowNode,
+} from './websiteWindowNavigationCommands'
+import {
+  WebsiteWindowBrowserIntegration,
+  type BrowserProfileStoreResolver,
+} from './websiteWindowBrowserIntegration'
+import { attachWebsiteWindowHostView } from './websiteWindowHostView'
+
 export class WebsiteWindowManager {
   private policy: WebsiteWindowPolicy = { ...DEFAULT_WEBSITE_WINDOW_POLICY }
   private runtimeByNodeId = new Map<string, WebsiteWindowRuntime>()
   private pendingSnapshotQualityByNodeId = new Map<string, number>()
   private configuredSessions = new WeakSet<Session>()
+  private readonly browserIntegration: WebsiteWindowBrowserIntegration
   private isOccluded = false
-  constructor(private window: BrowserWindow) {}
+  constructor(
+    private window: BrowserWindow,
+    getBrowserProfileStore?: BrowserProfileStoreResolver,
+  ) {
+    this.browserIntegration = new WebsiteWindowBrowserIntegration({
+      getBrowserProfileStore,
+      getRuntimes: () => this.runtimeByNodeId.values(),
+      emit: payload => this.emit(payload),
+    })
+  }
   dispose(): void {
     for (const runtime of this.runtimeByNodeId.values()) {
       disposeWebsiteWindowRuntime(runtime, this.window)
@@ -57,6 +79,7 @@ export class WebsiteWindowManager {
 
     this.runtimeByNodeId.clear()
     this.pendingSnapshotQualityByNodeId.clear()
+    this.browserIntegration.dispose()
   }
   configurePolicy(payload: ConfigureWebsiteWindowPolicyInput): void {
     const normalized = normalizeWebsiteWindowPolicy(payload.policy)
@@ -243,37 +266,35 @@ export class WebsiteWindowManager {
   }
 
   goBack(nodeId: string): void {
-    const runtime = this.runtimeByNodeId.get(nodeId) ?? null
-    const contents = runtime ? resolveWebsiteWindowRuntimeWebContents(runtime) : null
-    if (!runtime || !contents) {
-      return
-    }
-
-    if (contents.canGoBack()) {
-      contents.goBack()
-    }
+    goBackWebsiteWindowNode(this.runtimeByNodeId, nodeId)
   }
 
   goForward(nodeId: string): void {
-    const runtime = this.runtimeByNodeId.get(nodeId) ?? null
-    const contents = runtime ? resolveWebsiteWindowRuntimeWebContents(runtime) : null
-    if (!runtime || !contents) {
-      return
-    }
-
-    if (contents.canGoForward()) {
-      contents.goForward()
-    }
+    goForwardWebsiteWindowNode(this.runtimeByNodeId, nodeId)
   }
 
   reload(nodeId: string): void {
-    const runtime = this.runtimeByNodeId.get(nodeId) ?? null
-    const contents = runtime ? resolveWebsiteWindowRuntimeWebContents(runtime) : null
-    if (!runtime || !contents) {
-      return
-    }
+    reloadWebsiteWindowNode(this.runtimeByNodeId, nodeId)
+  }
 
-    contents.reload()
+  stop(nodeId: string): void {
+    stopWebsiteWindowNode(this.runtimeByNodeId, nodeId)
+  }
+
+  findInPage(payload: FindWebsiteWindowInput): void {
+    findInWebsiteWindowNode(this.runtimeByNodeId, payload)
+  }
+
+  stopFindInPage(nodeId: string): void {
+    stopFindInWebsiteWindowNode(this.runtimeByNodeId, nodeId)
+  }
+
+  cancelDownload(downloadId: string): void {
+    this.browserIntegration.cancelDownload(downloadId)
+  }
+
+  respondPermissionRequest(response: RespondBrowserPermissionInput): void {
+    this.browserIntegration.respondPermissionRequest(response)
   }
 
   close(nodeId: string): void {
@@ -287,6 +308,7 @@ export class WebsiteWindowManager {
       return
     }
 
+    this.browserIntegration.cancelPermissionRequestsForNode(normalized)
     disposeWebsiteWindowRuntime(runtime, this.window)
     this.runtimeByNodeId.delete(normalized)
     this.emit({ type: 'closed', nodeId: normalized })
@@ -378,46 +400,16 @@ export class WebsiteWindowManager {
       emitState: nextRuntime => this.emitState(nextRuntime),
       emit: payload => this.emit(payload),
       flushPendingSnapshot: nextRuntime => this.flushPendingSnapshot(nextRuntime),
+      recordHistoryVisit: nextRuntime => this.browserIntegration.recordHistoryVisit(nextRuntime),
+      onPermissionCheck: (contents, permission, origin) =>
+        this.browserIntegration.handlePermissionCheck(contents, permission, origin),
+      onPermissionRequest: (contents, permission, origin, callback) =>
+        this.browserIntegration.handlePermissionRequest(contents, permission, origin, callback),
+      onDownload: (contents, item) => this.browserIntegration.handleDownload(contents, item),
     })
 
-    const view = runtime.view
-    if (!view) {
-      throw new Error('Failed to create WebContentsView for website window')
-    }
-
-    if (!runtime.hostView) {
-      const hostView = new View()
-      hostView.setBackgroundColor('#00000000')
-      runtime.hostView = hostView
-    }
-
-    const hostView = runtime.hostView
-    if (hostView) {
-      try {
-        hostView.addChildView(view)
-      } catch {
-        // ignore - view may already be gone during shutdown
-      }
-    }
-
     this.refreshDiscardTimer(runtime)
-    if (!this.window.isDestroyed() && !this.isOccluded) {
-      try {
-        if (hostView) {
-          this.window.contentView.addChildView(hostView)
-        }
-      } catch {
-        // ignore - window/view may already be gone during shutdown
-      }
-
-      try {
-        hostView?.setVisible(false)
-        view.setVisible(false)
-      } catch {
-        // ignore - view may already be destroyed during shutdown
-      }
-    }
-
+    attachWebsiteWindowHostView({ runtime, window: this.window, isOccluded: this.isOccluded })
     this.enforceActiveBudget(runtime.nodeId)
     this.emitState(runtime)
   }
@@ -485,6 +477,7 @@ export class WebsiteWindowManager {
       isLoading: runtime.isLoading,
       canGoBack: runtime.canGoBack,
       canGoForward: runtime.canGoForward,
+      faviconUrl: runtime.faviconUrl,
     })
   }
   private emit(payload: WebsiteWindowEventPayload): void {

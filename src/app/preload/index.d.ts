@@ -95,6 +95,7 @@ import type {
   ActivateWebsiteWindowInput,
   CaptureWebsiteWindowSnapshotInput,
   ConfigureWebsiteWindowPolicyInput,
+  FindWebsiteWindowInput,
   NavigateWebsiteWindowInput,
   SetWebsiteWindowOccludedInput,
   SetWebsiteWindowBoundsInput,
@@ -102,6 +103,22 @@ import type {
   SetWebsiteWindowSessionInput,
   WebsiteWindowEventPayload,
   WebsiteWindowNodeIdInput,
+  BrowserBookmark,
+  BrowserDownloadIdInput,
+  BrowserDownloadRecord,
+  BrowserHistoryEntry,
+  BrowserHomepageResult,
+  ClearBrowserHistoryInput,
+  DeleteBrowserBookmarkInput,
+  DeleteBrowserHistoryInput,
+  FindBrowserBookmarkInput,
+  GetBrowserHomepageInput,
+  ListBrowserBookmarksInput,
+  ListBrowserDownloadsInput,
+  ListBrowserHistoryInput,
+  RespondBrowserPermissionInput,
+  SetBrowserHomepageInput,
+  UpsertBrowserBookmarkInput,
   HomeWorkerConfigDto,
   SetHomeWorkerConfigInput,
   SetHomeWorkerWebUiSettingsInput,
@@ -201,11 +218,30 @@ export interface OpenCoveApi {
     goBack: (payload: WebsiteWindowNodeIdInput) => Promise<void>
     goForward: (payload: WebsiteWindowNodeIdInput) => Promise<void>
     reload: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    stop: (payload: WebsiteWindowNodeIdInput) => Promise<void>
+    findInPage: (payload: FindWebsiteWindowInput) => Promise<void>
+    stopFindInPage: (payload: WebsiteWindowNodeIdInput) => Promise<void>
     close: (payload: WebsiteWindowNodeIdInput) => Promise<void>
     setPinned: (payload: SetWebsiteWindowPinnedInput) => Promise<void>
     setSession: (payload: SetWebsiteWindowSessionInput) => Promise<void>
     captureSnapshot: (payload: CaptureWebsiteWindowSnapshotInput) => void
     onEvent: (listener: (event: WebsiteWindowEventPayload) => void) => UnsubscribeFn
+  }
+  browserProfile?: {
+    getHomepage: (payload: GetBrowserHomepageInput) => Promise<BrowserHomepageResult>
+    setHomepage: (payload: SetBrowserHomepageInput) => Promise<void>
+    listHistory: (payload: ListBrowserHistoryInput) => Promise<BrowserHistoryEntry[]>
+    deleteHistory: (payload: DeleteBrowserHistoryInput) => Promise<void>
+    clearHistory: (payload: ClearBrowserHistoryInput) => Promise<void>
+    listBookmarks: (payload: ListBrowserBookmarksInput) => Promise<BrowserBookmark[]>
+    findBookmark: (payload: FindBrowserBookmarkInput) => Promise<BrowserBookmark | null>
+    upsertBookmark: (payload: UpsertBrowserBookmarkInput) => Promise<BrowserBookmark>
+    deleteBookmark: (payload: DeleteBrowserBookmarkInput) => Promise<void>
+    listDownloads: (payload: ListBrowserDownloadsInput) => Promise<BrowserDownloadRecord[]>
+    clearDownloads: (payload: ListBrowserDownloadsInput) => Promise<void>
+    cancelDownload: (payload: BrowserDownloadIdInput) => Promise<void>
+    showDownload: (payload: BrowserDownloadIdInput) => Promise<void>
+    respondPermission: (payload: RespondBrowserPermissionInput) => Promise<void>
   }
   workspace: {
     selectDirectory: () => Promise<WorkspaceDirectory | null>

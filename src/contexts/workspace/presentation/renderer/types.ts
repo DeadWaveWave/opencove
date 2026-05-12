@@ -9,6 +9,7 @@ import type {
   TerminalPtyGeometry,
   TerminalRuntimeKind,
   WebsiteWindowSessionMode,
+  BrowserMode,
 } from '@shared/contracts/dto'
 
 export type { AgentRuntimeStatus } from '@contexts/agent/domain/types'
@@ -125,6 +126,9 @@ export interface WebsiteNodeData {
   pinned: boolean
   sessionMode: WebsiteWindowSessionMode
   profileId: string | null
+  browserMode?: BrowserMode
+  isFullscreen?: boolean
+  previousFrame?: NodeFrame | null
 }
 
 export interface TerminalNodeData {

@@ -8,7 +8,7 @@ import { isAllocateProjectPlaceholderPath } from '@app/renderer/shell/utils/proj
 import { resolveTerminalPtyGeometryForNodeFrame } from '@contexts/workspace/domain/terminalPtyGeometry'
 import { toFileUri } from '@contexts/filesystem/domain/fileUri'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
-import type { SpawnTerminalResult } from '@shared/contracts/dto'
+import type { BrowserMode, SpawnTerminalResult } from '@shared/contracts/dto'
 import type { ContextMenuState, CreateNodeInput, NodePlacementOptions } from '../types'
 import {
   resolveDefaultNoteWindowSize,
@@ -24,6 +24,7 @@ import { createNoteNodeAtAnchor } from './useInteractions.noteCreation'
 import { resolveTerminalLaunchWorkspaceContext } from './useInteractions.paneNodeCreation.terminalLaunch'
 import { resolveSpaceMountLaunchContext } from './spaceMountLaunchContext'
 import { translate } from '@app/renderer/i18n'
+import { createWebsiteNodeData } from '../../../utils/websiteNodeData'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -236,6 +237,7 @@ export function createNoteNodeAtFlowPosition({
 export function createWebsiteNodeAtFlowPosition({
   anchor,
   standardWindowSizeBucket,
+  browserDefaultMode,
   url,
   createWebsiteNode,
   spacesRef,
@@ -245,6 +247,7 @@ export function createWebsiteNodeAtFlowPosition({
 }: {
   anchor: Point
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
   url: string
   createWebsiteNode: (
     anchor: Point,
@@ -269,12 +272,13 @@ export function createWebsiteNodeAtFlowPosition({
 
   const created = createWebsiteNode(
     nodeAnchor,
-    {
+    createWebsiteNodeData({
       url,
+      browserMode: browserDefaultMode,
       pinned: false,
       sessionMode: 'shared',
       profileId: null,
-    },
+    }),
     {
       targetSpaceRect: targetSpace?.rect ?? null,
     },
@@ -350,6 +354,7 @@ export function createWebsiteNodeFromPaneContextMenu({
   url,
   createWebsiteNode,
   standardWindowSizeBucket,
+  browserDefaultMode,
   spacesRef,
   nodesRef,
   setNodes,
@@ -364,6 +369,7 @@ export function createWebsiteNodeFromPaneContextMenu({
     placement?: NodePlacementOptions,
   ) => Node<TerminalNodeData> | null
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   setNodes: SetNodes
@@ -382,6 +388,7 @@ export function createWebsiteNodeFromPaneContextMenu({
     },
     url,
     standardWindowSizeBucket,
+    browserDefaultMode,
     createWebsiteNode,
     spacesRef,
     nodesRef,

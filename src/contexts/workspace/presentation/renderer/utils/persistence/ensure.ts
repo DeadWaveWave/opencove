@@ -12,6 +12,7 @@ import type {
 } from '../../types'
 import type { WorkspaceSpaceState } from '../../types'
 import type {
+  BrowserMode,
   CanvasImageMimeType,
   TerminalRuntimeKind,
   WebsiteWindowSessionMode,
@@ -22,6 +23,7 @@ import { normalizeSpaceBoundary } from '@shared/types/spaceBoundary'
 import { normalizeResumeSessionBinding } from './ensureResumeSessionBinding'
 import { ensurePersistedRoleData } from './ensureRoleNodeData'
 import { ensurePersistedSpaceArchiveRecord } from './ensureSpaceArchiveRecord'
+import { normalizeWebsiteNodeFrame } from '../websiteNodeData'
 import {
   normalizeAgentRuntimeStatus,
   normalizeDirectoryMode,
@@ -264,6 +266,22 @@ function ensurePersistedDocumentData(value: unknown): DocumentNodeData | null {
   return { uri }
 }
 
+function normalizeBrowserMode(value: unknown): BrowserMode {
+  return value === 'iframe' ? 'iframe' : 'native'
+}
+
+function createDefaultWebsiteData(): WebsiteNodeData {
+  return {
+    url: '',
+    pinned: false,
+    sessionMode: 'shared',
+    profileId: null,
+    browserMode: 'native',
+    isFullscreen: false,
+    previousFrame: null,
+  }
+}
+
 function ensurePersistedWebsiteData(value: unknown): WebsiteNodeData | null {
   if (!value || typeof value !== 'object') {
     return null
@@ -289,6 +307,9 @@ function ensurePersistedWebsiteData(value: unknown): WebsiteNodeData | null {
     pinned,
     sessionMode: effectiveSessionMode,
     profileId: effectiveSessionMode === 'profile' ? normalizedProfileId : null,
+    browserMode: normalizeBrowserMode(record.browserMode),
+    isFullscreen: record.isFullscreen === true,
+    previousFrame: normalizeWebsiteNodeFrame(record.previousFrame),
   }
 }
 
@@ -375,7 +396,7 @@ function ensurePersistedNode(node: unknown): PersistedTerminalNode | null {
               : kind === 'document'
                 ? document
                 : kind === 'website'
-                  ? (website ?? { url: '', pinned: false, sessionMode: 'shared', profileId: null })
+                  ? (website ?? createDefaultWebsiteData())
                   : null,
     position: {
       x: positionRecord.x,

@@ -17,6 +17,7 @@ export function buildOpenCoveContentSecurityPolicy(isDev: boolean): string {
     `form-action 'none'`,
     `frame-ancestors 'none'`,
     `object-src 'none'`,
+    `frame-src 'self' http: https:`,
     `script-src ${scriptSources.join(' ')}`,
     `style-src ${styleSources.join(' ')}`,
     ...(styleAttributeSources ? [`style-src-attr ${styleAttributeSources.join(' ')}`] : []),

@@ -1,4 +1,4 @@
-import type { Session, WebContentsView } from 'electron'
+import type { DownloadItem, Session, WebContents, WebContentsView } from 'electron'
 import type { WebsiteWindowSessionMode } from '../../../shared/contracts/dto'
 import { resolveWebsiteSession, resolveWebsiteSessionPartition } from './websiteWindowSessions'
 
@@ -31,18 +31,49 @@ export function resolveWebsiteViewPartition({
   return { partition, session: resolveWebsiteSession({ sessionMode, profileId }) }
 }
 
-export function configureWebsiteSessionPermissions(
-  configuredSessions: WeakSet<Session>,
-  session: Session,
-): void {
+export function configureWebsiteSessionPermissions({
+  configuredSessions,
+  session,
+  onPermissionCheck,
+  onPermissionRequest,
+  onDownload,
+}: {
+  configuredSessions: WeakSet<Session>
+  session: Session
+  onPermissionCheck?: (contents: WebContents | null, permission: string, origin: string) => boolean
+  onPermissionRequest?: (
+    contents: WebContents,
+    permission: string,
+    origin: string,
+    callback: (granted: boolean) => void,
+  ) => void
+  onDownload?: (contents: WebContents, item: DownloadItem) => void
+}): void {
   if (configuredSessions.has(session)) {
     return
   }
 
   configuredSessions.add(session)
 
-  session.setPermissionRequestHandler((_wc, _permission, callback) => {
+  session.setPermissionCheckHandler((contents, permission, requestingOrigin) => {
+    return onPermissionCheck?.(contents, permission, requestingOrigin) === true
+  })
+
+  session.setPermissionRequestHandler((contents, permission, callback, details) => {
+    const origin =
+      typeof details.requestingUrl === 'string' && details.requestingUrl.length > 0
+        ? details.requestingUrl
+        : contents.getURL()
+    if (onPermissionRequest) {
+      onPermissionRequest(contents, permission, origin, callback)
+      return
+    }
+
     callback(false)
+  })
+
+  session.on('will-download', (_event, item, contents) => {
+    onDownload?.(contents, item)
   })
 }
 

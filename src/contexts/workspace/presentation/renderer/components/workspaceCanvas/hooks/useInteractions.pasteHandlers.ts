@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { BrowserMode } from '@shared/contracts/dto'
 import type {
   ImageNodeData,
   TerminalNodeData,
@@ -25,6 +26,7 @@ export function useWorkspaceCanvasPasteHandlers({
   createImageNode,
   createWebsiteNode,
   standardWindowSizeBucket,
+  browserDefaultMode,
   websiteWindowsEnabled,
   websiteWindowPasteEnabled,
 }: {
@@ -46,6 +48,7 @@ export function useWorkspaceCanvasPasteHandlers({
     placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
   ) => Node<TerminalNodeData> | null
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
   websiteWindowsEnabled: boolean
   websiteWindowPasteEnabled: boolean
 }): {
@@ -97,6 +100,7 @@ export function useWorkspaceCanvasPasteHandlers({
         anchor: flowCenter,
         url: resolved.url,
         standardWindowSizeBucket,
+        browserDefaultMode,
         createWebsiteNode,
         spacesRef,
         nodesRef,
@@ -113,6 +117,7 @@ export function useWorkspaceCanvasPasteHandlers({
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      browserDefaultMode,
       websiteWindowPasteEnabled,
       websiteWindowsEnabled,
     ],

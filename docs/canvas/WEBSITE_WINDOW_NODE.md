@@ -1,13 +1,17 @@
 # Website Window Node
 
-Website Window Node lets a canvas node host a real web page runtime while keeping durable canvas state separate from Electron `webContents` state.
+Website Window Node lets a canvas node host a browser runtime while keeping durable canvas state separate from Electron `webContents` state. The complete browser capability plan and current implementation status live in `docs/canvas/BROWSER_WINDOW_CAPABILITY_SPEC.md`.
 
 ## Current Capabilities
 
 - Create from canvas/pane menu.
 - Create from pasted URL when website window paste is enabled.
-- Navigate, go back, go forward and reload.
-- Persist node URL, pinned flag, session mode, profile id and frame.
+- Navigate, go back, go forward, reload, stop and open the local start page.
+- Support Safari-style start page search, local history, bookmarks, downloads, permission prompts and page find in client-native mode.
+- Support `native` and `iframe` browser modes through Settings. The node toolbar no longer owns mode switching.
+- Default browser nodes use the same footprint as four canonical terminal windows, then clamp normal windows to `90%` of the available canvas viewport.
+- Support configurable default search engines for address-bar and start-page search text.
+- Persist node URL, pinned flag, session mode, profile id, browser mode, fullscreen state, previous frame and current frame.
 - Support session modes: `shared`, `incognito`, `profile`.
 - Manage runtime lifecycle states: `active`, `warm`, `cold`.
 - Capture an in-memory snapshot for cold placeholder.
@@ -29,7 +33,7 @@ Renderer owns:
 - node chrome and canvas placement
 - user intent controls
 - durable node data edits
-- placeholder display
+- start page and placeholder display
 
 Renderer never owns `webContents` or Electron view lifecycle.
 
@@ -48,6 +52,9 @@ Current operations:
 - `websiteWindow.goBack`
 - `websiteWindow.goForward`
 - `websiteWindow.reload`
+- `websiteWindow.stop`
+- `websiteWindow.findInPage`
+- `websiteWindow.stopFindInPage`
 - `websiteWindow.close`
 - `websiteWindow.setPinned`
 - `websiteWindow.setSession`
@@ -60,6 +67,11 @@ Events:
 - `closed`
 - `error`
 - `open-url`
+- `find-result`
+- `download`
+- `permission-request`
+
+Browser profile operations are exposed separately through `browserProfile.*` preload APIs. Those APIs own history, bookmarks, downloads and permission decisions as client-local data. Website nodes now treat Home as a local start page projection rather than a remote homepage URL.
 
 ## Durable State
 
@@ -69,11 +81,15 @@ Persisted node data:
 - `pinned`
 - `sessionMode`
 - `profileId`
+- `browserMode` for sync/WebUI fallback semantics. Desktop clients use Settings as the runtime mode owner.
+- `isFullscreen`
+- `previousFrame`
 - node frame and canvas metadata
 
 Not persisted:
 
 - `webContents`
+- browser cookies/cache, history, bookmarks, downloads and permission decisions in shared workspace state
 - DOM / JS heap
 - current scroll position or form state
 - in-memory snapshot image
@@ -104,10 +120,15 @@ Pinned nodes and `keepAliveHosts` influence discard behavior but do not make bro
 - Website runtime is hosted by Main-managed Electron views.
 - Renderer communicates through validated IPC.
 - Electron security baseline remains `contextIsolation: true`, `nodeIntegration: false`, and sandboxed web content where applicable.
+- Full native browser capability exists only in the desktop/client runtime.
+- WebUI-created browser nodes default to iframe mode.
+- WebUI renders synced native nodes as a client-only placeholder and only switches to iframe after explicit user action.
+- iframe mode uses an explicit app `frame-src` CSP allowance and the strongest compatible sandbox found for the fallback path, including `allow-same-origin` and user-activated top navigation. It also rewrites Google search/home iframe sources to `igu=1` where applicable, but cannot bypass remote `X-Frame-Options`, CSP `frame-ancestors`, login, cookie or browser embedding policy.
 
 ## Verification Anchors
 
 - `tests/e2e/workspace-canvas.website-window.spec.ts`
 - `tests/e2e/workspace-canvas.website-window.freeze.spec.ts`
 - `tests/e2e/workspace-canvas.website-window.device-pixel-ratio.spec.ts`
+- `tests/e2e/workspace-canvas.website-window.iframe.spec.ts`
 - `src/app/main/websiteWindow/WebsiteWindowManager.ts`

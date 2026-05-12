@@ -259,11 +259,13 @@ const CORE_SEARCH_ENTRY_DEFINITIONS: Array<
     anchorId: 'settings-section-website-windows',
     keywordKeys: [
       'settingsPanel.experimental.websiteWindowEnabledLabel',
+      'settingsPanel.experimental.websiteWindowDefaultModeLabel',
+      'settingsPanel.experimental.browserSearchEngineLabel',
       'settingsPanel.experimental.websiteWindowPasteLabel',
       'settingsPanel.experimental.websiteWindowMaxActiveLabel',
       'settingsPanel.experimental.websiteWindowKeepAliveHostsLabel',
     ],
-    keywords: ['website', 'webview', 'paste', 'keep alive', '网页', '粘贴'],
+    keywords: ['website', 'browser', 'webview', 'iframe', 'search engine', '网页', '浏览器'],
   },
   {
     id: 'shortcuts.disable-terminal',
