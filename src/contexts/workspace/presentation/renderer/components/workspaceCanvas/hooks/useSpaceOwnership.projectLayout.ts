@@ -13,6 +13,7 @@ import {
 } from './useSpaceOwnership.helpers'
 import { resolveSpaceAtPoint } from './useSpaceOwnership.drop.helpers'
 import { resolveBoundedSpaceNodeLayout } from './useSpaceOwnership.projectLayout.bounded'
+import { resolveNearestNonOverlappingRectWithinBounds } from './useSpaceOwnership.projectLayout.bounded.placeRect'
 import { buildOwningSpaceIdByNodeId } from './workspaceLayoutPolicy'
 
 export interface ProjectedNodeDragLayout {
@@ -28,6 +29,20 @@ function buildSpaceRectItems(spaces: WorkspaceSpaceState[]): LayoutItem[] {
       id: space.id,
       kind: 'space' as const,
       groupId: space.id,
+      rect: { ...space.rect! },
+    }))
+}
+
+function buildChildSpaceObstacleItems(
+  spaces: WorkspaceSpaceState[],
+  parentSpaceId: string,
+): LayoutItem[] {
+  return spaces
+    .filter(space => (space.parentSpaceId ?? null) === parentSpaceId && Boolean(space.rect))
+    .map(space => ({
+      id: space.id,
+      kind: 'space' as const,
+      groupId: `space:${space.id}`,
       rect: { ...space.rect! },
     }))
 }
@@ -85,6 +100,55 @@ function applyDelta(nodes: Array<Node<TerminalNodeData>>, delta: { dx: number; d
       y: node.position.y + delta.dy,
     },
   }))
+}
+
+function resolveDraggedNodesWithinTargetSpace({
+  draggedNodes,
+  dropRect,
+  targetSpaceRect,
+  obstacleItems,
+  directions,
+}: {
+  draggedNodes: Array<Node<TerminalNodeData>>
+  dropRect: WorkspaceSpaceRect
+  targetSpaceRect: WorkspaceSpaceRect
+  obstacleItems: LayoutItem[]
+  directions: LayoutDirection[]
+}): Array<Node<TerminalNodeData>> {
+  if (obstacleItems.length === 0) {
+    const { dx, dy } = resolveDeltaToKeepRectInsideRect(
+      dropRect,
+      targetSpaceRect,
+      SPACE_NODE_PADDING,
+    )
+    return applyDelta(draggedNodes, { dx, dy })
+  }
+
+  const placedDropRect = resolveNearestNonOverlappingRectWithinBounds({
+    desired: dropRect,
+    obstacles: obstacleItems.map(item => item.rect),
+    bounds: {
+      left: targetSpaceRect.x + SPACE_NODE_PADDING,
+      top: targetSpaceRect.y + SPACE_NODE_PADDING,
+      right: targetSpaceRect.x + targetSpaceRect.width - SPACE_NODE_PADDING,
+      bottom: targetSpaceRect.y + targetSpaceRect.height - SPACE_NODE_PADDING,
+    },
+    directions,
+  })
+
+  if (!placedDropRect) {
+    const { dx, dy } = resolveDeltaToKeepRectInsideRect(
+      dropRect,
+      targetSpaceRect,
+      SPACE_NODE_PADDING,
+    )
+    return applyDelta(draggedNodes, { dx, dy })
+  }
+
+  return applyDelta(draggedNodes, {
+    dx: placedDropRect.x - dropRect.x,
+    dy: placedDropRect.y - dropRect.y,
+  })
 }
 
 export function projectWorkspaceNodeDragLayout({
@@ -196,13 +260,14 @@ export function projectWorkspaceNodeDragLayout({
     node => !draggedNodeIdSet.has(node.id) && owningSpaceIdByNodeId.get(node.id) === targetSpaceId,
   )
 
-  const { dx: baseDx, dy: baseDy } = resolveDeltaToKeepRectInsideRect(
+  const childSpaceObstacleItems = buildChildSpaceObstacleItems(spaces, targetSpaceId)
+  const constrainedDraggedNodes = resolveDraggedNodesWithinTargetSpace({
+    draggedNodes,
     dropRect,
     targetSpaceRect,
-    SPACE_NODE_PADDING,
-  )
-
-  const constrainedDraggedNodes = applyDelta(draggedNodes, { dx: baseDx, dy: baseDy })
+    obstacleItems: childSpaceObstacleItems,
+    directions,
+  })
 
   const pinnedNodeIds = constrainedDraggedNodes.map(node => node.id)
 
@@ -226,8 +291,20 @@ export function projectWorkspaceNodeDragLayout({
       gap: 0,
     })
 
+  const projected =
+    childSpaceObstacleItems.length > 0
+      ? pushAwayLayout({
+          items: [...childSpaceObstacleItems, ...pushed],
+          pinnedGroupIds: [...pinnedNodeIds, ...childSpaceObstacleItems.map(item => item.groupId)],
+          sourceGroupIds: [...pinnedNodeIds, ...childSpaceObstacleItems.map(item => item.groupId)],
+          directions,
+          gap: 0,
+          bounds: { rect: targetSpaceRect, padding: SPACE_NODE_PADDING },
+        })
+      : pushed
+
   const nextNodePositionById = new Map(
-    pushed
+    projected
       .filter(item => item.kind === 'node')
       .map(item => [item.id, { x: item.rect.x, y: item.rect.y }]),
   )

@@ -126,6 +126,15 @@ function applyProjectedPositions(
   })
 }
 
+function nodeRect(node: Node<TerminalNodeData>): WorkspaceSpaceRect {
+  return {
+    x: node.position.x,
+    y: node.position.y,
+    width: node.data.width,
+    height: node.data.height,
+  }
+}
+
 describe('projectWorkspaceNodeDragLayout', () => {
   it('resolves the target space using pointer-based dropFlowPoint for single-node drags', () => {
     const spaceRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 200, height: 200 }
@@ -168,6 +177,70 @@ describe('projectWorkspaceNodeDragLayout', () => {
     })
 
     expect(withPointer?.targetSpaceId).toBe('space-1')
+  })
+
+  it('blocks parent-owned node drags at child-space edges until the pointer enters the child', () => {
+    const parentRect: WorkspaceSpaceRect = { x: 0, y: 0, width: 800, height: 500 }
+    const childRect: WorkspaceSpaceRect = { x: 320, y: 120, width: 240, height: 180 }
+    const parent: WorkspaceSpaceState = {
+      id: 'parent',
+      name: 'Parent',
+      directoryPath: '/tmp',
+      targetMountId: null,
+      nodeIds: ['drag'],
+      rect: parentRect,
+    }
+    const child: WorkspaceSpaceState = {
+      id: 'child',
+      name: 'Child',
+      directoryPath: '/tmp/child',
+      targetMountId: null,
+      parentSpaceId: 'parent',
+      nodeIds: [],
+      rect: childRect,
+    }
+    const drag = {
+      ...baseNode,
+      id: 'drag',
+      data: { ...baseNode.data, title: 'drag', width: 120, height: 100 },
+      position: { x: 120, y: 160 },
+    }
+    const nodes: Array<Node<TerminalNodeData>> = [drag]
+    const desiredOverChild = new Map([['drag', { x: 260, y: 160 }]])
+
+    const blockedAtChildEdge = projectWorkspaceNodeDragLayout({
+      nodes,
+      spaces: [parent, child],
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desiredOverChild,
+      dragDx: 140,
+      dragDy: 0,
+      dropFlowPoint: { x: 300, y: 210 },
+    })
+
+    expect(blockedAtChildEdge?.targetSpaceId).toBe('parent')
+    const parentScopedNodes = applyProjectedPositions(
+      nodes,
+      blockedAtChildEdge!.nextNodePositionById,
+    )
+    expect(intersects(nodeRect(parentScopedNodes[0]!), childRect)).toBe(false)
+
+    const allowedInsideChild = projectWorkspaceNodeDragLayout({
+      nodes,
+      spaces: [parent, child],
+      draggedNodeIds: ['drag'],
+      draggedNodePositionById: desiredOverChild,
+      dragDx: 140,
+      dragDy: 0,
+      dropFlowPoint: { x: 360, y: 210 },
+    })
+
+    expect(allowedInsideChild?.targetSpaceId).toBe('child')
+    const childScopedNodes = applyProjectedPositions(
+      nodes,
+      allowedInsideChild!.nextNodePositionById,
+    )
+    assertInsideSpace(childScopedNodes, childRect, 'child scoped drag')
   })
 
   it('keeps root drags outside spaces without moving space-owned nodes', () => {
