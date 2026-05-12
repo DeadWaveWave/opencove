@@ -273,11 +273,10 @@ export const zhCNSettingsPanel = {
       '把网页作为原生画布节点嵌入显示。该功能保持可选开启，便于继续打磨生命周期与性能策略。',
     websiteWindowEnabledLabel: '启用网页窗口',
     websiteWindowEnabledHelp: '开启后允许网页节点渲染实时网页内容。',
-    websiteWindowDefaultModeLabel: '默认浏览器模式',
-    websiteWindowDefaultModeHelp:
-      '选择客户端浏览器节点使用原生浏览器运行时，还是 iframe 降级模式。',
-    websiteWindowModeNative: '原生浏览器',
-    websiteWindowModeIframe: 'iframe 降级',
+    websiteWindowDefaultModeLabel: '默认打开方式',
+    websiteWindowDefaultModeHelp: '选择完整桌面浏览器，或更简单的网页兼容查看器。',
+    websiteWindowModeNative: '完整浏览器',
+    websiteWindowModeIframe: '网页兼容查看器',
     browserSearchEngineLabel: '默认搜索引擎',
     browserSearchEngineHelp: '地址栏和起始页搜索框会用它处理搜索文本。',
     browserSearchEngine: {

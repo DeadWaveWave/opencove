@@ -71,7 +71,7 @@ describe('SettingsPanel browser settings', () => {
 
     fireEvent.click(screen.getByTestId('settings-section-nav-experimental'))
     fireEvent.click(screen.getByTestId('settings-website-window-default-mode-trigger'))
-    fireEvent.click(screen.getByRole('option', { name: 'iframe fallback' }))
+    fireEvent.click(screen.getByRole('option', { name: 'Web-compatible viewer' }))
     fireEvent.click(screen.getByTestId('settings-browser-search-engine-trigger'))
     fireEvent.click(screen.getByRole('option', { name: 'DuckDuckGo' }))
 

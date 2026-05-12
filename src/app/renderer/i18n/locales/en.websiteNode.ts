@@ -24,11 +24,11 @@ export const enWebsiteNode = {
   allowPermission: 'Allow',
   nativeUnavailableTitle: 'Open this browser in the corresponding client',
   nativeUnavailableDetail:
-    'Full browser capability is client-local. Web UI can open this node as an iframe.',
-  openAsIframe: 'Open as iframe',
-  iframeUnavailableTitle: 'This site cannot be shown in iframe mode',
+    'Full browser capability is client-local. Web UI can open this node in the web-compatible viewer.',
+  openAsIframe: 'Open in web-compatible viewer',
+  iframeUnavailableTitle: 'This site cannot be shown in the web-compatible viewer',
   iframeUnavailableDetail:
-    'Some sites block embedded browsers with their own security policy. Use native browser mode in the desktop client for full access.',
+    'Some sites block embedded browsers with their own security policy. Use the full browser in the desktop client for full access.',
   enterFullscreen: 'Full screen',
   exitFullscreen: 'Exit full screen',
   close: 'Close',

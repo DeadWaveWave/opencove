@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## [Unreleased]
 
 ### 🚀 Added
-- Workspace canvas: add full browser-window capability with client-local history, bookmarks, Safari-style start page, Settings-owned native/iframe mode, configurable search engine, downloads, permissions, find, fullscreen, four-terminal default sizing, 90% normal-window constraints, and WebUI iframe fallback. (#246)
+- Workspace canvas: add full browser-window capability with client-local history, bookmarks, Safari-style start page, Settings-owned full-browser/web-compatible viewer modes, configurable search engine, downloads, permissions, find, fullscreen, four-terminal default sizing, 90% normal-window constraints, and WebUI web-compatible viewer support. (#246)
 - Document editor: add VS Code-style shortcut handling for word wrap (`Alt/Option+Z`) and editor-local find (`Cmd/Ctrl+F`) inside Monaco document nodes. (#244)
 - Workspace canvas: add project-scoped reusable roles with prompt-backed creation/edit/delete, provider-selectable role runs, role nodes, and role-to-agent relationship edges. (#242)
 - Diagnostics: add Settings performance snapshots, a header real-time monitor, process-metric fallbacks, and automatic jank records for terminal/agent lag investigation. (#231)

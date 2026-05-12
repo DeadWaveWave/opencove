@@ -25,6 +25,13 @@ describe('buildOpenCoveContentSecurityPolicy', () => {
     expect(styleElemDirective).toBe("style-src-elem 'self' 'unsafe-inline'")
   })
 
+  it('allows website fallback iframe windows to load remote pages', () => {
+    const productionPolicy = buildOpenCoveContentSecurityPolicy(false)
+    const frameDirective = getCspDirective(productionPolicy, 'frame-src')
+
+    expect(frameDirective).toBe("frame-src 'self' http: https:")
+  })
+
   it("keeps 'unsafe-inline' styles in development builds for Vite", () => {
     const developmentPolicy = buildOpenCoveContentSecurityPolicy(true)
     const styleDirective = getCspDirective(developmentPolicy, 'style-src')

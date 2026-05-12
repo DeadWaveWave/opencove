@@ -14,11 +14,11 @@ Status: Implemented and verified for the full browser capability slice, includin
 - Done: Renderer browser chrome for back/forward, reload/stop, home/start page, bookmark star, bookmarks/history/download panels, Ctrl/Cmd+F find bar and fullscreen.
 - Done: Settings controls for default browser mode and default search engine.
 - Done: Safari-style local start page with search, bookmarks/favorites and recent history.
-- Done: WebUI-created nodes default to iframe; synced native nodes render a friendly client-only placeholder and offer explicit iframe downgrade.
-- Done: iframe fallback uses a browser-compatible sandbox, iframe-friendly Google search/home URLs, and an understandable fallback state when the iframe reports a load error. Sites may still block embedding through `X-Frame-Options`, CSP `frame-ancestors`, login, cookie or browser policy.
+- Done: WebUI-created nodes default to iframe; synced native nodes render a friendly client-only placeholder and offer an explicit web-compatible viewer action.
+- Done: iframe fallback uses an explicit app `frame-src` CSP allowance, a browser-compatible sandbox, iframe-friendly Google search/home URLs, and an understandable fallback state when the iframe reports a load error. Sites may still block embedding through `X-Frame-Options`, CSP `frame-ancestors`, login, cookie or browser policy.
 - Done: targeted verification for profile store behavior, sizing/fullscreen helpers, old node normalization, runtime store events, session permission/download hooks, IPC registration and SQLite migrations.
 - Done: final staged line check and full `pnpm pre-commit` passed again on 2026-05-12 after the four-terminal default size and iframe fallback follow-up.
-- Done: follow-up targeted verification for settings normalization, Settings UI controls, address/search target resolution, iframe sandbox/source behavior, browser runtime store events and default browser sizing.
+- Done: follow-up targeted verification for settings normalization, Settings UI controls, address/search target resolution, app CSP `frame-src`, iframe sandbox/source behavior, real Electron iframe rendering, browser runtime store events and default browser sizing.
 
 ## Verification Status
 
@@ -27,8 +27,9 @@ Final implementation verification:
 - `pnpm line-check:staged`: passed.
 - `pnpm exec tsc -p tsconfig.node.json --noEmit --pretty false`: passed.
 - `pnpm exec tsc -p tsconfig.web.json --noEmit --pretty false`: passed.
-- Targeted Vitest for browser profile store, website-window store/view, website node data/frame, iframe fallback helpers, default sizing, IPC registration and persistence migrations: passed.
-- `pnpm pre-commit`: passed, including 136 staged-related Vitest files / 421 tests and Electron E2E with 219 passed, 47 skipped and 1 flaky retry recovered.
+- Targeted Vitest for browser profile store, website-window store/view, website node data/frame, iframe fallback helpers, app CSP, default sizing, IPC registration and persistence migrations: passed.
+- Targeted Electron E2E for iframe-mode content rendering through app CSP and native website-window layout/clip behavior: passed.
+- `pnpm pre-commit`: passed, including 77 staged-related Vitest files / 211 tests and Electron E2E with 221 passed and 47 skipped.
 
 ## Problem Class
 

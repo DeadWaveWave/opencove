@@ -267,11 +267,11 @@ export const enSettingsPanel = {
     websiteWindowEnabledLabel: 'Enable Website Windows',
     websiteWindowEnabledHelp:
       'Turns the feature on and allows website nodes to render live web content.',
-    websiteWindowDefaultModeLabel: 'Default Browser Mode',
+    websiteWindowDefaultModeLabel: 'Default Open Mode',
     websiteWindowDefaultModeHelp:
-      'Choose whether client browser nodes render with the native browser runtime or iframe fallback.',
-    websiteWindowModeNative: 'Native browser',
-    websiteWindowModeIframe: 'iframe fallback',
+      'Choose the full desktop browser or the simpler web-compatible viewer.',
+    websiteWindowModeNative: 'Full browser',
+    websiteWindowModeIframe: 'Web-compatible viewer',
     browserSearchEngineLabel: 'Default Search Engine',
     browserSearchEngineHelp: 'Used by browser address bars and the start page for search text.',
     browserSearchEngine: {

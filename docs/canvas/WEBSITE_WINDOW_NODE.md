@@ -123,11 +123,12 @@ Pinned nodes and `keepAliveHosts` influence discard behavior but do not make bro
 - Full native browser capability exists only in the desktop/client runtime.
 - WebUI-created browser nodes default to iframe mode.
 - WebUI renders synced native nodes as a client-only placeholder and only switches to iframe after explicit user action.
-- iframe mode uses the strongest compatible sandbox found for the fallback path, including `allow-same-origin` and user-activated top navigation. It also rewrites Google search/home iframe sources to `igu=1` where applicable, but cannot bypass remote `X-Frame-Options`, CSP `frame-ancestors`, login, cookie or browser embedding policy.
+- iframe mode uses an explicit app `frame-src` CSP allowance and the strongest compatible sandbox found for the fallback path, including `allow-same-origin` and user-activated top navigation. It also rewrites Google search/home iframe sources to `igu=1` where applicable, but cannot bypass remote `X-Frame-Options`, CSP `frame-ancestors`, login, cookie or browser embedding policy.
 
 ## Verification Anchors
 
 - `tests/e2e/workspace-canvas.website-window.spec.ts`
 - `tests/e2e/workspace-canvas.website-window.freeze.spec.ts`
 - `tests/e2e/workspace-canvas.website-window.device-pixel-ratio.spec.ts`
+- `tests/e2e/workspace-canvas.website-window.iframe.spec.ts`
 - `src/app/main/websiteWindow/WebsiteWindowManager.ts`
