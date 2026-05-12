@@ -84,15 +84,6 @@ export function pushAwayLayout(_input: {
     'y+': preferredDirections.indexOf('y+'),
     'y-': preferredDirections.indexOf('y-'),
   }
-  const groupHasSpace = new Map<string, boolean>()
-  nextItems.forEach(item => {
-    if (item.kind !== 'space') {
-      return
-    }
-
-    groupHasSpace.set(item.groupId, true)
-  })
-
   const bounds = _input.bounds ?? null
   const boundsPadding = Math.max(0, bounds?.padding ?? 0)
   const boundsRect = bounds?.rect ?? null
@@ -208,18 +199,17 @@ export function pushAwayLayout(_input: {
         dy = sourceRect.y - gap - (targetRect.y + targetRect.height)
       }
 
-      const boundsViolation =
-        allowedBounds && !groupHasSpace.get(targetGroupId)
-          ? computeBoundsViolation({
-              bounds: allowedBounds,
-              rect: {
-                x: targetRect.x + dx,
-                y: targetRect.y + dy,
-                width: targetRect.width,
-                height: targetRect.height,
-              },
-            })
-          : 0
+      const boundsViolation = allowedBounds
+        ? computeBoundsViolation({
+            bounds: allowedBounds,
+            rect: {
+              x: targetRect.x + dx,
+              y: targetRect.y + dy,
+              width: targetRect.width,
+              height: targetRect.height,
+            },
+          })
+        : 0
       const manhattan = Math.abs(dx) + Math.abs(dy)
       const euclidean = dx * dx + dy * dy
       const preferredRank = preferredRankByDirection[direction]

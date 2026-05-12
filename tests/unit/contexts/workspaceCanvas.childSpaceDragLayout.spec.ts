@@ -119,6 +119,19 @@ function overlaps(a: WorkspaceSpaceRect, b: WorkspaceSpaceRect): boolean {
   return a.x + a.width > b.x && a.x < b.x + b.width && a.y + a.height > b.y && a.y < b.y + b.height
 }
 
+function rectFromProjectedNode(
+  node: Node<TerminalNodeData>,
+  projectedPosition: { x: number; y: number } | undefined,
+): WorkspaceSpaceRect {
+  const position = projectedPosition ?? node.position
+  return {
+    x: position.x,
+    y: position.y,
+    width: node.data.width,
+    height: node.data.height,
+  }
+}
+
 describe('workspace child space drag layout', () => {
   it('moves child spaces and child-owned nodes with their parent space', () => {
     const parentRect = { x: 100, y: 100, width: 420, height: 320 }
@@ -252,5 +265,43 @@ describe('workspace child space drag layout', () => {
     expect(Math.abs(parentDx) + Math.abs(parentDy)).toBeGreaterThan(0)
     expect(nextChild.x - childRect.x).toBe(parentDx)
     expect(nextChild.y - childRect.y).toBe(parentDy)
+  })
+
+  it('pushes same-parent child spaces and nodes away when a child space is moved', () => {
+    const parentRect = { x: 100, y: 100, width: 760, height: 420 }
+    const movingChildRect = { x: 160, y: 170, width: 180, height: 120 }
+    const siblingChildRect = { x: 380, y: 170, width: 180, height: 120 }
+    const parentNode = makeNode('parent-node', { x: 430, y: 190, width: 120, height: 80 })
+    const spaces = [
+      makeSpace('parent', parentRect, { nodeIds: ['parent-node'] }),
+      makeSpace('moving-child', movingChildRect, { parentSpaceId: 'parent' }),
+      makeSpace('sibling-child', siblingChildRect, { parentSpaceId: 'parent' }),
+    ]
+
+    const projected = projectWorkspaceSpaceDragLayout({
+      dragState: makeMoveDragState({
+        spaceId: 'moving-child',
+        initialRect: movingChildRect,
+        nodes: [parentNode],
+      }),
+      dx: 140,
+      dy: 0,
+      nodes: [parentNode],
+      spaces,
+      resolveResizedRect: resolveResizedSpaceRect,
+    })
+
+    expect(projected).not.toBeNull()
+    const nextMovingChild = rectOf(projected!.nextSpaces, 'moving-child')
+    const nextSiblingChild = rectOf(projected!.nextSpaces, 'sibling-child')
+    const nextParentNode = rectFromProjectedNode(
+      parentNode,
+      projected!.nextNodePositionById.get('parent-node'),
+    )
+
+    expect(nextMovingChild.x).toBe(movingChildRect.x + 140)
+    expect(overlaps(nextMovingChild, nextSiblingChild)).toBe(false)
+    expect(overlaps(nextMovingChild, nextParentNode)).toBe(false)
+    expect(overlaps(nextSiblingChild, nextParentNode)).toBe(false)
   })
 })

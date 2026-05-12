@@ -14,6 +14,7 @@ export function projectWorkspacePushAwayLayout({
   sourceGroupIds,
   directions,
   gap = 0,
+  bounds,
 }: {
   spaces: WorkspaceSpaceState[]
   nodes: Node<TerminalNodeData>[]
@@ -21,6 +22,7 @@ export function projectWorkspacePushAwayLayout({
   sourceGroupIds: string[]
   directions: LayoutDirection[]
   gap?: number
+  bounds?: { rect: WorkspaceSpaceRect; padding?: number }
 }): ProjectedWorkspacePushAwayLayout {
   const pushed = pushAwayLayout({
     items: buildLayoutItems({ spaces, nodes }),
@@ -28,6 +30,7 @@ export function projectWorkspacePushAwayLayout({
     sourceGroupIds,
     directions,
     gap,
+    bounds,
   })
 
   const nextSpaceRectById = new Map(

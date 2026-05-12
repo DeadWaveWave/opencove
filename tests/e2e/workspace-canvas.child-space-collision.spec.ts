@@ -390,4 +390,104 @@ test.describe('Workspace Canvas - Child Space Collision', () => {
       await electronApp.close()
     }
   })
+
+  test('pushes same-parent child spaces and nodes when dragging a child space', async () => {
+    const { electronApp, window } = await launchApp()
+
+    try {
+      await clearAndSeedWorkspace(
+        window,
+        [
+          {
+            id: 'child-local-parent-node',
+            title: 'terminal-child-local-parent-node',
+            position: { x: 570, y: 420 },
+            width: 60,
+            height: 80,
+          },
+        ],
+        {
+          spaces: [
+            {
+              id: 'child-local-parent',
+              name: 'Child Local Parent',
+              directoryPath: testWorkspacePath,
+              nodeIds: ['child-local-parent-node'],
+              rect: { x: 260, y: 200, width: 780, height: 480 },
+            },
+            {
+              id: 'child-local-moving',
+              name: 'Child Local Moving',
+              directoryPath: testWorkspacePath,
+              parentSpaceId: 'child-local-parent',
+              nodeIds: [],
+              rect: { x: 340, y: 300, width: 220, height: 160 },
+            },
+            {
+              id: 'child-local-sibling',
+              name: 'Child Local Sibling',
+              directoryPath: testWorkspacePath,
+              parentSpaceId: 'child-local-parent',
+              nodeIds: [],
+              rect: { x: 650, y: 300, width: 220, height: 160 },
+            },
+          ],
+          activeSpaceId: null,
+        },
+      )
+
+      await fitWorkspaceView(window)
+      const before = await readSnapshot(window)
+      const dragHandle = window.locator(
+        '[data-testid="workspace-space-drag-child-local-moving-top"]',
+      )
+      await expect(dragHandle).toBeVisible()
+      const handleRect = await readLocatorClientRect(dragHandle)
+      const start = {
+        x: handleRect.x + handleRect.width * 0.8,
+        y: handleRect.y + handleRect.height * 0.5,
+      }
+
+      await dragMouse(window, {
+        start,
+        end: { x: start.x + 220, y: start.y },
+        steps: 14,
+      })
+
+      await expect
+        .poll(async () => {
+          const after = await readSnapshot(window)
+          const parent = after.spaces['child-local-parent']
+          const moving = after.spaces['child-local-moving']
+          const sibling = after.spaces['child-local-sibling']
+          const parentNode = after.nodes['child-local-parent-node']
+          if (!parent || !moving || !sibling || !parentNode) {
+            return null
+          }
+
+          return {
+            movingChildMoved: moving.x - before.spaces['child-local-moving'].x > 100,
+            siblingOrNodeMoved:
+              sibling.x !== before.spaces['child-local-sibling'].x ||
+              sibling.y !== before.spaces['child-local-sibling'].y ||
+              parentNode.x !== before.nodes['child-local-parent-node'].x ||
+              parentNode.y !== before.nodes['child-local-parent-node'].y,
+            movingInsideParent: contains(parent, moving, 12),
+            movingClearOfSibling: !overlaps(moving, sibling),
+            movingClearOfParentNode: !overlaps(moving, parentNode),
+            siblingClearOfParentNode: !overlaps(sibling, parentNode),
+          }
+        })
+        .toEqual({
+          movingChildMoved: true,
+          siblingOrNodeMoved: true,
+          movingInsideParent: true,
+          movingClearOfSibling: true,
+          movingClearOfParentNode: true,
+          siblingClearOfParentNode: true,
+        })
+    } finally {
+      await electronApp.close()
+    }
+  })
 })

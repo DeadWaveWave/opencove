@@ -4,6 +4,7 @@ import type { TerminalNodeData, WorkspaceSpaceRect, WorkspaceSpaceState } from '
 import type { SpaceDragState } from '../types'
 import { type LayoutDirection } from '../../../utils/spaceLayout'
 import { projectWorkspacePushAwayLayout } from '../../../utils/workspacePushAwayProjection'
+import { projectChildSpaceMoveWithinParent } from './useSpaceDrag.childProjection'
 
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -97,20 +98,24 @@ export function projectWorkspaceSpaceDragLayout({
     })
 
     if (targetSpace?.parentSpaceId) {
-      return {
-        nextSpaces: draftSpaces,
-        nextNodePositionById: new Map(
-          draftNodes
-            .filter(node => {
-              const ownerSpaceId = owningSpaceIdByNodeId.get(node.id) ?? null
-              return (
-                dragState.initialNodePositions.has(node.id) ||
-                (ownerSpaceId !== null && movedSpaceIds.has(ownerSpaceId))
-              )
-            })
-            .map(node => [node.id, { x: node.position.x, y: node.position.y }]),
-        ),
-      }
+      const projected = projectChildSpaceMoveWithinParent({
+        targetSpaceId: dragState.spaceId,
+        parentSpaceId: targetSpace.parentSpaceId,
+        draftSpaces,
+        previousSpaces: spaces,
+        draftNodes,
+        movedSpaceIds,
+        owningSpaceIdByNodeId,
+        draggedNodeIds: new Set(dragState.initialNodePositions.keys()),
+        directions: resolveMoveDirections(effectiveDx, effectiveDy),
+        childSpaceDragPadding: CHILD_SPACE_DRAG_PADDING,
+      })
+
+      return propagateMovedParentDeltas({
+        projected,
+        previousSpaces: spaces,
+        baselineNodes,
+      })
     }
 
     const projected = projectWorkspacePushAwayLayout({
