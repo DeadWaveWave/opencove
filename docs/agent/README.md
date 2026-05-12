@@ -6,8 +6,12 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 
 - Providers: `claude-code`, `codex`, `opencode`, `gemini`.
 - Provider executable discovery uses `AgentExecutableResolver`.
-- Provider model list, launch paths, session discovery, and AI helper CLI paths must share the same command environment owner.
-- Provider model list and launch paths receive provider-level executable override when configured.
+- Provider model list, session discovery, and AI helper CLI paths use host executable
+  diagnostics from `AgentExecutableResolver`.
+- Interactive agent launch uses the selected terminal profile, matching terminal shell
+  startup semantics for PowerShell, Git Bash, and WSL.
+- Provider-level executable override is passed to both diagnostics/model-list paths and
+  the terminal-profile launch path when configured.
 - Agent launch can run in a Space mount via `session.launchAgentInMount`.
 - Agent session restore participates in worker `session.prepareOrRevive`.
 - Canvas nodes store provider/model/prompt/session metadata; PTY output and presentation belong to Worker runtime.
@@ -19,6 +23,7 @@ Agent nodes launch external AI CLIs through the Worker/session runtime. The publ
 | provider settings | settings context |
 | executable override | settings context |
 | executable resolution result | agent executable resolver, runtime cache |
+| interactive launch runtime | terminal profile resolver |
 | launch intent | agent/session launch path |
 | PTY process | Worker PTY runtime |
 | terminal presentation | Worker stream hub |

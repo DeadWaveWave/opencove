@@ -40,6 +40,7 @@ export interface SpawnTerminalInMountInput {
   args?: string[] | null
   cols?: number | null
   rows?: number | null
+  env?: Record<string, string> | null
 }
 
 export interface SpawnTerminalResult extends PseudoTerminalSession {

@@ -1,18 +1,12 @@
 import { createServer } from 'node:net'
-import process from 'node:process'
-import { resolveAgentCliInvocation } from '../../../../contexts/agent/infrastructure/cli/AgentCliInvocation'
-import { resolveAgentExecutableInvocation } from '../../../../contexts/agent/infrastructure/cli/AgentExecutableResolver'
+import { resolveAgentLaunchSpawn } from '../../../../contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver'
 import { resolveLocalWorkerEndpointRef } from '../../../../contexts/project/application/resolveLocalWorkerEndpointRef'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
-import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
-import { getCommandExecutionEnvironment } from '../../../../platform/os/CommandEnvironmentService'
 import {
   normalizeAgentSettings,
   type AgentProvider,
 } from '../../../../contexts/settings/domain/agentSettings'
 import type { ExecutionContextDto, WorkerEndpointKindDto } from '../../../../shared/contracts/dto'
-
-const terminalProfileResolver = new TerminalProfileResolver()
 
 function normalizeOptionalString(value: unknown): string | null {
   if (value === null || value === undefined) {
@@ -135,42 +129,14 @@ interface ResolvedSessionLaunchSpawn {
 export async function resolveSessionLaunchSpawn(
   input: ResolveSessionLaunchSpawnInput,
 ): Promise<ResolvedSessionLaunchSpawn> {
-  const providerInvocation = input.provider
-    ? await resolveAgentExecutableInvocation({
-        provider: input.provider,
-        args: input.args,
-        overridePath: input.executablePathOverride ?? null,
-      })
-    : null
-
-  const resolvedInvocation =
-    providerInvocation?.invocation ??
-    (await resolveAgentCliInvocation({
-      command: input.command,
-      args: input.args,
-    }))
-  const baseEnv = providerInvocation
-    ? { ...providerInvocation.commandEnvironment.env }
-    : await getCommandExecutionEnvironment()
-  const mergedEnv = input.env ? { ...baseEnv, ...input.env } : baseEnv
-
-  if (input.defaultTerminalProfileId && input.defaultTerminalProfileId.trim().length > 0) {
-    return await terminalProfileResolver.resolveCommandSpawn({
-      cwd: input.workingDirectory,
-      profileId: input.defaultTerminalProfileId,
-      command: resolvedInvocation.command,
-      args: resolvedInvocation.args,
-      useProfile: !input.provider,
-      env: mergedEnv,
-    })
-  }
-
-  return {
-    command: resolvedInvocation.command,
-    args: resolvedInvocation.args,
+  const resolved = await resolveAgentLaunchSpawn({
     cwd: input.workingDirectory,
-    env: mergedEnv,
-    profileId: null,
-    runtimeKind: process.platform === 'win32' ? 'windows' : 'posix',
-  }
+    profileId: input.defaultTerminalProfileId,
+    command: input.command,
+    args: input.args,
+    executablePathOverride: input.executablePathOverride,
+    env: input.env,
+  })
+
+  return resolved
 }

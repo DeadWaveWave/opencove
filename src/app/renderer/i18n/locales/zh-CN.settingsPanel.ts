@@ -106,7 +106,7 @@ export const zhCNSettingsPanel = {
   },
   agentExecutable: {
     title: 'Agent 可执行文件解析',
-    help: '查看 OpenCove 如何解析每个本地 Agent CLI；当自动探测不准确时，可为某个提供方指定显式可执行路径。',
+    help: '查看每个本地 Agent CLI 的宿主侧诊断。Agent 启动会使用所选终端配置，因此宿主探测不可用不一定代表无法启动。',
     overrideLabel: '可执行文件覆盖路径',
     overrideHelp: '可选的本地路径覆盖。一旦设置，OpenCove 会要求该路径必须可成功解析。',
     overridePlaceholder: '/absolute/path/to/executable',

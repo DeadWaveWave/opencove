@@ -22,6 +22,7 @@ export interface ResolveCommandSpawnInput {
   args: string[]
   profileId?: string | null
   env?: NodeJS.ProcessEnv
+  commandEnv?: NodeJS.ProcessEnv
   useProfile?: boolean
 }
 
@@ -261,8 +262,8 @@ export class TerminalProfileResolver {
     const profileId = profile.id
 
     if (profile.runtimeKind === 'wsl') {
-      const envPairs = Object.entries(input.env ?? {}).flatMap(([key, value]) =>
-        typeof value === 'string' ? [`${key}=${value}`] : [],
+      const envPairs = Object.entries(input.commandEnv ?? input.env ?? {}).flatMap(
+        ([key, value]) => (typeof value === 'string' ? [`${key}=${value}`] : []),
       )
       return {
         command: shellSpawn.command,

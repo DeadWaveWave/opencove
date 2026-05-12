@@ -288,6 +288,43 @@ describe('TerminalProfileResolver', () => {
     })
   })
 
+  it('injects only explicit command env into WSL command wrappers', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'win32',
+      env: () => ({ PATH: 'C:\\Windows\\System32', HOST_ONLY: '1' }),
+      homeDir: () => 'C:\\Users\\tester',
+      locateWindowsCommands: async () => [
+        'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+      ],
+      listWslDistros: async () => ['Ubuntu'],
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: 'C:\\repo',
+      profileId: 'wsl:Ubuntu',
+      command: 'claude',
+      args: [],
+      env: {
+        HOST_ONLY: '2',
+        PATH: 'C:\\Windows\\System32;C:\\Users\\tester\\bin',
+      },
+      commandEnv: {
+        OPENCOVE_OPENCODE_SERVER_PORT: '5173',
+      },
+    })
+
+    expect(result.args).toEqual([
+      '--distribution',
+      'Ubuntu',
+      '--cd',
+      '/mnt/c/repo',
+      'env',
+      'OPENCOVE_OPENCODE_SERVER_PORT=5173',
+      'claude',
+    ])
+    expect(result.env.HOST_ONLY).toBe('2')
+  })
+
   it('can bypass Windows profiles for host-resolved agent commands', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',

@@ -68,7 +68,7 @@ Renderer 不拥有恢复判定。它消费 worker result，展示 placeholder/re
 | terminal session metadata | durable fact | terminal/session owner | spawn/prepare/kill | SQLite/runtime registry |
 | terminal presentation snapshot | runtime state | Worker stream hub | PTY output reduction | Worker runtime |
 | PTY alive/exited | runtime observation | Worker runtime | PTY callbacks | none |
-| provider availability | runtime observation | agent executable resolver | resolver query/probe | recompute |
+| provider availability | runtime observation | agent executable resolver | host diagnostics query/probe | recompute |
 | node badge | UI projection | renderer | derived only | derived |
 
 ## Boundary Rules

@@ -69,7 +69,7 @@ afterEach(() => {
 })
 
 describe('IPC approved workspace guards on Windows', () => {
-  it('bypasses the default terminal profile for host-resolved Windows agent shims', async () => {
+  it('launches Windows agents through the selected terminal profile', async () => {
     vi.resetModules()
     Object.defineProperty(process, 'platform', {
       value: 'win32',
@@ -82,30 +82,6 @@ describe('IPC approved workspace guards on Windows', () => {
     try {
       const { handlers, ipcMain } = createIpcHarness()
       vi.doMock('electron', () => ({ ipcMain }))
-      vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentExecutableResolver', () => ({
-        resolveAgentExecutableInvocation: vi.fn(async ({ provider, args }) => ({
-          executable: {
-            provider,
-            toolId: provider,
-            command: 'codex',
-            executablePath: 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
-            source: 'process_path',
-            status: 'resolved',
-            diagnostics: [],
-          },
-          invocation: {
-            command: 'cmd.exe',
-            args: ['/d', '/c', 'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd', ...args],
-          },
-          commandEnvironment: {
-            env: { PATH: 'C:\\Users\\deadwave\\AppData\\Roaming\\npm' },
-            shellPath: null,
-            source: 'process_env',
-            diagnostics: [],
-          },
-        })),
-        disposeAgentExecutableResolver: vi.fn(),
-      }))
       vi.doMock('node:child_process', () => {
         const execFile = vi.fn((file, args, options, callback) => {
           const cb = typeof options === 'function' ? options : callback
@@ -155,30 +131,22 @@ describe('IPC approved workspace guards on Windows', () => {
 
       expect(runtime.spawnSession).toHaveBeenCalledWith(
         expect.objectContaining({
-          command: 'cmd.exe',
+          command: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
           cwd: 'C:\\approved',
-          args: [
-            '/d',
-            '/c',
-            'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
-            '--dangerously-bypass-approvals-and-sandbox',
-            'hello',
-          ],
+          args: expect.arrayContaining(['-NoLogo', '-Command']),
         }),
+      )
+      const spawnCall = vi.mocked(runtime.spawnSession).mock.calls[0]?.[0]
+      expect(spawnCall?.args[2]).toContain(
+        "& 'codex' '--dangerously-bypass-approvals-and-sandbox' 'hello'",
       )
 
       expect(result).toEqual(
         expect.objectContaining({
-          command: 'cmd.exe',
-          profileId: null,
+          command: 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
+          profileId: 'powershell',
           runtimeKind: 'windows',
-          args: [
-            '/d',
-            '/c',
-            'C:\\Users\\deadwave\\AppData\\Roaming\\npm\\codex.cmd',
-            '--dangerously-bypass-approvals-and-sandbox',
-            'hello',
-          ],
+          args: expect.arrayContaining(['-NoLogo', '-Command']),
         }),
       )
     } finally {

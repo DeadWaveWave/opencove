@@ -18,15 +18,13 @@ import type { IpcRegistrationDisposable } from '../../../../app/main/ipc/types'
 import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import { buildAgentLaunchCommand } from '../../infrastructure/cli/AgentCommandFactory'
 import { resolveAgentCliInvocation } from '../../infrastructure/cli/AgentCliInvocation'
+import { resolveAgentLaunchSpawn } from '../../infrastructure/cli/AgentLaunchSpawnResolver'
 import { listInstalledAgentProviders } from '../../infrastructure/cli/AgentCliAvailability'
 import {
   disposeAgentModelService,
   listAgentModels,
 } from '../../infrastructure/cli/AgentModelService'
-import {
-  disposeAgentExecutableResolver,
-  resolveAgentExecutableInvocation,
-} from '../../infrastructure/cli/AgentExecutableResolver'
+import { disposeAgentExecutableResolver } from '../../infrastructure/cli/AgentExecutableResolver'
 import { listAgentSessions } from '../../infrastructure/cli/AgentSessionCatalog'
 import { captureGeminiSessionDiscoveryCursor } from '../../infrastructure/cli/AgentSessionLocatorProviders'
 import { locateAgentResumeSessionId } from '../../infrastructure/cli/AgentSessionLocator'
@@ -36,7 +34,6 @@ import {
 } from '../../infrastructure/watchers/SessionLastAssistantMessage'
 import { resolveSessionFilePath } from '../../infrastructure/watchers/SessionFileResolver'
 import { ensureOpenCodeEmbeddedTuiConfigPath } from '../../infrastructure/opencode/OpenCodeTuiConfig'
-import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { PtyRuntime } from '../../../terminal/presentation/main-ipc/runtime'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import {
@@ -59,7 +56,6 @@ const HYDRATE_RESUME_RESOLVE_TIMEOUT_MS = 3_000
 const READ_LAST_MESSAGE_RESOLVE_TIMEOUT_MS = 1_500
 const READ_LAST_MESSAGE_FILE_TIMEOUT_MS = 1_500
 const OPENCODE_SERVER_HOSTNAME = '127.0.0.1'
-const terminalProfileResolver = new TerminalProfileResolver()
 
 function resolveOpenCodeEmbeddedXdgStateHome(): string {
   try {
@@ -324,25 +320,17 @@ export function registerAgentIpcHandlers(
           ? { ...(normalized.env ?? {}), ...(internalSessionEnv ?? {}) }
           : undefined
 
-      const providerInvocation = testStub
-        ? null
-        : await resolveAgentExecutableInvocation({
-            provider: normalized.provider,
-            args,
-            overridePath: executablePathOverride,
-          })
-
       const resolvedInvocation = testStub
         ? await resolveAgentCliInvocation({
             command,
             args,
           })
-        : providerInvocation!.invocation
+        : null
 
       const resolvedSpawn = testStub
         ? {
-            command: resolvedInvocation.command,
-            args: resolvedInvocation.args,
+            command: resolvedInvocation!.command,
+            args: resolvedInvocation!.args,
             cwd: normalized.cwd,
             env:
               sessionEnv || testStub.env
@@ -351,18 +339,13 @@ export function registerAgentIpcHandlers(
             profileId: normalized.profileId ?? null,
             runtimeKind: process.platform === 'win32' ? ('windows' as const) : ('posix' as const),
           }
-        : await terminalProfileResolver.resolveCommandSpawn({
+        : await resolveAgentLaunchSpawn({
             cwd: normalized.cwd,
             profileId: normalized.profileId,
-            command: resolvedInvocation.command,
-            args: resolvedInvocation.args,
-            useProfile: false,
-            env: sessionEnv
-              ? {
-                  ...(providerInvocation?.commandEnvironment.env ?? process.env),
-                  ...sessionEnv,
-                }
-              : (providerInvocation?.commandEnvironment.env ?? process.env),
+            command,
+            args,
+            executablePathOverride,
+            env: sessionEnv,
           })
 
       const mergedEnv =

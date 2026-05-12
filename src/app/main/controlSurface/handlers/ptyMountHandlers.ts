@@ -1,4 +1,3 @@
-import process from 'node:process'
 import { fromFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type { ApprovedWorkspaceStore } from '../../../../contexts/workspace/infrastructure/approval/ApprovedWorkspaceStore'
 import { createAppError, OpenCoveAppError } from '../../../../shared/errors/appError'
@@ -7,13 +6,16 @@ import type {
   SpawnTerminalInput,
   SpawnTerminalResult,
 } from '../../../../shared/contracts/dto'
-import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
+import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import type { ControlSurface } from '../controlSurface'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { assertFileUriWithinRootUri } from '../topology/fileUriScope'
 import type { MultiEndpointPtyRuntime } from '../ptyStream/multiEndpointPtyRuntime'
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import { invokeControlSurface } from '../remote/controlSurfaceHttpClient'
+import { normalizeEnvPayload } from '../../ipc/normalize'
+
+const terminalProfileResolver = new TerminalProfileResolver()
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -117,6 +119,7 @@ function normalizeSpawnInMountPayload(payload: unknown): SpawnTerminalInMountInp
     args: normalizeOptionalArgs(payload.args),
     cols: normalizeOptionalPositiveInt(payload.cols),
     rows: normalizeOptionalPositiveInt(payload.rows),
+    env: normalizeEnvPayload(payload.env) ?? null,
   }
 }
 
@@ -207,31 +210,48 @@ export function registerPtyMountHandlers(
           })
         }
 
-        const command = payload.command ?? shell ?? resolveDefaultShell()
-        const args = payload.command ? (payload.args ?? []) : []
+        const resolvedSpawn = payload.command
+          ? await terminalProfileResolver.resolveCommandSpawn({
+              cwd,
+              profileId,
+              command: payload.command,
+              args: payload.args ?? [],
+              env: payload.env ?? undefined,
+              commandEnv: payload.env ?? undefined,
+            })
+          : await terminalProfileResolver.resolveTerminalSpawn({
+              cwd,
+              cols,
+              rows,
+              profileId: profileId ?? undefined,
+              ...(shell ? { shell } : {}),
+              ...(payload.env ? { env: payload.env } : {}),
+            })
+
         const { sessionId } = await deps.ptyRuntime.spawnSession({
-          cwd,
+          cwd: resolvedSpawn.cwd,
           cols,
           rows,
-          command,
-          args,
+          command: resolvedSpawn.command,
+          args: resolvedSpawn.args,
+          env: resolvedSpawn.env,
         })
 
         deps.ptyStreamHub.registerSessionMetadata({
           sessionId,
           kind: 'terminal',
           startedAt,
-          cwd,
-          command,
-          args,
+          cwd: resolvedSpawn.cwd,
+          command: resolvedSpawn.command,
+          args: resolvedSpawn.args,
           cols,
           rows,
         })
 
         return {
           sessionId,
-          profileId,
-          runtimeKind: process.platform === 'win32' ? 'windows' : 'posix',
+          profileId: resolvedSpawn.profileId,
+          runtimeKind: resolvedSpawn.runtimeKind,
         }
       }
 
@@ -250,6 +270,7 @@ export function registerPtyMountHandlers(
         ...(shell ? { shell } : {}),
         ...(payload.command ? { command: payload.command } : {}),
         ...(payload.args ? { args: payload.args } : {}),
+        ...(payload.env ? { env: payload.env } : {}),
       }
 
       const remoteResult = await invokeRemoteValue<SpawnTerminalResult>({

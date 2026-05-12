@@ -79,6 +79,11 @@ export function createIssueReportService(deps: {
         defaultModel: resolveAgentModel(settings, settings.defaultProvider),
         defaultTerminalProfileId: settings.defaultTerminalProfileId,
         agentFullAccess: settings.agentFullAccess,
+        runtimeEnvironment: {
+          launchOwner: 'terminal_profile',
+          availabilityScope: 'host_executable_discovery',
+          availabilityIsLaunchGate: false,
+        },
         executableOverrides: Object.fromEntries(
           AGENT_PROVIDERS.map(provider => [
             provider,

@@ -234,29 +234,15 @@ describe('IPC approved workspace guards', () => {
     try {
       const { handlers, ipcMain } = createIpcHarness()
       vi.doMock('electron', () => ({ ipcMain }))
-      vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentExecutableResolver', () => ({
-        resolveAgentExecutableInvocation: vi.fn(async ({ provider, args }) => ({
-          executable: {
-            provider,
-            toolId: provider,
-            command: 'codex',
-            executablePath: 'codex',
-            source: 'process_path',
-            status: 'resolved',
-            diagnostics: [],
-          },
-          invocation: {
-            command: 'codex',
-            args,
-          },
-          commandEnvironment: {
-            env: { PATH: '/shell/bin' },
-            shellPath: '/bin/zsh',
-            source: 'shell_env',
-            diagnostics: [],
-          },
+      vi.doMock('../../../src/contexts/agent/infrastructure/cli/AgentLaunchSpawnResolver', () => ({
+        resolveAgentLaunchSpawn: vi.fn(async ({ cwd, command, args, env }) => ({
+          command,
+          args,
+          cwd,
+          env: env ?? { PATH: '/shell/bin' },
+          profileId: null,
+          runtimeKind: 'posix',
         })),
-        disposeAgentExecutableResolver: vi.fn(),
       }))
 
       const runtime = createPtyRuntimeMock()

@@ -1,5 +1,6 @@
 import process from 'node:process'
 import { resolveDefaultShell } from '../../../../platform/process/pty/defaultShell'
+import { TerminalProfileResolver } from '../../../../platform/terminal/TerminalProfileResolver'
 import { createAppError } from '../../../../shared/errors/appError'
 import { toFileUri } from '../../../../contexts/filesystem/domain/fileUri'
 import type {
@@ -23,6 +24,9 @@ import { resolveSpaceWorkingDirectoryFromStore } from './resolveSpaceWorkingDire
 import type { PtyStreamHub } from '../ptyStream/ptyStreamHub'
 import type { WorkerTopologyStore } from '../topology/topologyStore'
 import { resolveSpaceMountContext } from '../../../../contexts/space/application/resolveSpaceMountContext'
+import { normalizeEnvPayload } from '../../ipc/normalize'
+
+const terminalProfileResolver = new TerminalProfileResolver()
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -168,6 +172,7 @@ function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
   const shell = normalizeOptionalString(payload.shell)
   const command = normalizeOptionalString(payload.command)
   const args = normalizeOptionalArgs(payload.args)
+  const env = normalizeEnvPayload(payload.env)
 
   return {
     cwd,
@@ -175,6 +180,7 @@ function normalizePtySpawnPayload(payload: unknown): SpawnTerminalInput {
     ...(shell ? { shell } : {}),
     ...(command ? { command } : {}),
     ...(args ? { args } : {}),
+    ...(env ? { env } : {}),
     cols,
     rows,
   }
@@ -331,22 +337,24 @@ export function registerSessionStreamingHandlers(
       const rows = payload.rows ?? 24
 
       const runtime = payload.runtime ?? 'shell'
-      const fallbackCommand =
-        runtime === 'node'
-          ? process.platform === 'win32'
-            ? 'node.exe'
-            : 'node'
-          : resolveDefaultShell()
-
-      const spawnCommand = payload.command ?? fallbackCommand
+      const spawnCommand =
+        payload.command ??
+        (runtime === 'node' ? (process.platform === 'win32' ? 'node.exe' : 'node') : null)
       const spawnArgs = payload.command ? (payload.args ?? []) : []
 
-      const resolvedSpawn = await resolveSessionLaunchSpawn({
-        workingDirectory,
-        defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
-        command: spawnCommand,
-        args: spawnArgs,
-      })
+      const resolvedSpawn = spawnCommand
+        ? await resolveSessionLaunchSpawn({
+            workingDirectory,
+            defaultTerminalProfileId: agentSettings.defaultTerminalProfileId,
+            command: spawnCommand,
+            args: spawnArgs,
+          })
+        : await terminalProfileResolver.resolveTerminalSpawn({
+            cwd: workingDirectory,
+            profileId: agentSettings.defaultTerminalProfileId ?? undefined,
+            cols,
+            rows,
+          })
 
       const { sessionId } = await deps.ptyRuntime.spawnSession({
         cwd: resolvedSpawn.cwd,
@@ -405,31 +413,47 @@ export function registerSessionStreamingHandlers(
         })
       }
 
-      const command = payload.command ?? payload.shell ?? resolveDefaultShell()
-      const args = payload.command ? (payload.args ?? []) : []
+      const resolvedSpawn = payload.command
+        ? await resolveSessionLaunchSpawn({
+            workingDirectory: payload.cwd,
+            defaultTerminalProfileId: payload.profileId ?? null,
+            command: payload.command,
+            args: payload.args ?? [],
+            ...(payload.env ? { env: payload.env } : {}),
+          })
+        : await terminalProfileResolver.resolveTerminalSpawn({
+            cwd: payload.cwd,
+            profileId: payload.profileId,
+            shell: payload.shell,
+            cols: payload.cols,
+            rows: payload.rows,
+            ...(payload.env ? { env: payload.env } : {}),
+          })
+
       const { sessionId } = await deps.ptyRuntime.spawnSession({
-        cwd: payload.cwd,
+        cwd: resolvedSpawn.cwd,
         cols: payload.cols,
         rows: payload.rows,
-        command,
-        args,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
+        ...(resolvedSpawn.env ? { env: resolvedSpawn.env } : {}),
       })
 
       deps.ptyStreamHub.registerSessionMetadata({
         sessionId,
         kind: 'terminal',
         startedAt: new Date().toISOString(),
-        cwd: payload.cwd,
-        command,
-        args,
+        cwd: resolvedSpawn.cwd,
+        command: resolvedSpawn.command,
+        args: resolvedSpawn.args,
         cols: payload.cols,
         rows: payload.rows,
       })
 
       return {
         sessionId,
-        profileId: payload.profileId ?? null,
-        runtimeKind: process.platform === 'win32' ? 'windows' : 'posix',
+        profileId: resolvedSpawn.profileId,
+        runtimeKind: resolvedSpawn.runtimeKind,
       }
     },
     defaultErrorCode: 'terminal.spawn_failed',
