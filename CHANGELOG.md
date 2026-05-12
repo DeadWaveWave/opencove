@@ -79,6 +79,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Spaces: allow empty Spaces (no last-node warning/auto-close), add pane context menu action to create an empty Space, and allow archiving a Space without saving its history. (#171)
 
 ### 🐞 Fixed
+- Agent: launch interactive agent CLIs through terminal profiles instead of host PATH preflight, so agent runtime environments match OpenCove terminals and Windows host diagnostics no longer block valid launches. (#250)
 - Workspace canvas: block nodes at Child Space edges until the drag pointer enters the child, preventing pre-entry overlap and ownership drift. (#245)
 - Workspace canvas: browser download panels now merge live runtime download events with persisted records, so in-progress and incognito downloads stay visible before persistence catches up. (#246)
 - Mounts: route generic Space-based agent/terminal launches through the resolved mount, repair stale Space bindings, and keep node-control space resolution aligned with the same mount-aware context rules. (#241)
