@@ -154,10 +154,14 @@ export function projectWorkspaceSpaceDragLayout({
     }
   }
 
+  const pinnedResizeGroupIds = [
+    dragState.spaceId,
+    ...collectDescendantSpaceIds(spaces, dragState.spaceId),
+  ]
   const projected = projectWorkspacePushAwayLayout({
     spaces: draftSpaces,
     nodes: baselineNodes,
-    pinnedGroupIds: [dragState.spaceId],
+    pinnedGroupIds: pinnedResizeGroupIds,
     sourceGroupIds: [dragState.spaceId],
     directions: resolveResizeDirections(dragState.initialRect, nextRect),
     gap: 0,
@@ -357,14 +361,10 @@ function propagateMovedParentDeltas({
         continue
       }
 
-      if (!rectEquals(previousDescendant.rect, nextDescendant.rect)) {
-        continue
-      }
-
       const movedRect = {
-        ...nextDescendant.rect,
-        x: nextDescendant.rect.x + dx,
-        y: nextDescendant.rect.y + dy,
+        ...previousDescendant.rect,
+        x: previousDescendant.rect.x + dx,
+        y: previousDescendant.rect.y + dy,
       }
       nextSpaceById.set(descendantSpaceId, { ...nextDescendant, rect: movedRect })
       nextSpaces = nextSpaces.map(space =>
