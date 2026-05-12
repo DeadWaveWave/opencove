@@ -40,6 +40,11 @@ describe('useWebsiteWindowStore', () => {
       finalUpdate: true,
     })
     store.applyEvent({
+      type: 'find-request',
+      nodeId: 'web-1',
+      requestId: 42,
+    })
+    store.applyEvent({
       type: 'download',
       nodeId: 'web-1',
       downloadId: 'download-1',
@@ -61,6 +66,7 @@ describe('useWebsiteWindowStore', () => {
 
     expect(useWebsiteWindowStore.getState().runtimeByNodeId['web-1']).toMatchObject({
       findResult: { matches: 5, activeMatchOrdinal: 2 },
+      findRequestId: 42,
       downloads: [{ downloadId: 'download-1', filename: 'file.zip' }],
       permissionRequests: [{ requestId: 'permission-1', permission: 'media' }],
     })

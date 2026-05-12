@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { JSX } from 'react'
-import { Bookmark, Clock, Download, Home, Search, Star } from 'lucide-react'
+import { Bookmark, Clock, Download, Home, Star } from 'lucide-react'
 import { useTranslation } from '@app/renderer/i18n'
 import type {
   BrowserBookmark,
@@ -19,8 +19,6 @@ import {
 } from './WebsiteNode.browserPanel'
 import { mergeBrowserDownloadRecords } from './WebsiteNode.browserDownloads'
 
-const FALLBACK_HOME_URL = 'https://www.google.com/'
-
 type BrowserPanel = WebsiteNodeBrowserPanelKind | null
 
 export interface WebsiteNodeBrowserToolsProps {
@@ -34,6 +32,7 @@ export interface WebsiteNodeBrowserToolsProps {
   browserMode: BrowserMode
   nativeApiAvailable: boolean
   findResult: WebsiteWindowFindResultEvent | null
+  findRequestId: number
   downloads: WebsiteWindowDownloadEvent[]
   permissionRequests: WebsiteWindowPermissionRequestEvent[]
   onNavigate: (url: string) => void
@@ -70,6 +69,7 @@ export function WebsiteNodeBrowserTools({
   browserMode,
   nativeApiAvailable,
   findResult,
+  findRequestId,
   downloads,
   permissionRequests,
   onNavigate,
@@ -87,6 +87,7 @@ export function WebsiteNodeBrowserTools({
   const [activeBookmark, setActiveBookmark] = useState<BrowserBookmark | null>(null)
   const [findOpen, setFindOpen] = useState(false)
   const [findQuery, setFindQuery] = useState('')
+  const findInputRef = useRef<HTMLInputElement | null>(null)
   const [rememberPermission, setRememberPermission] = useState(true)
   const [dismissedPermissionIds, setDismissedPermissionIds] = useState<Set<string>>(() => new Set())
 
@@ -145,28 +146,8 @@ export function WebsiteNodeBrowserTools({
   }, [browserApi, displayUrl, scope])
 
   const navigateHome = useCallback(() => {
-    if (!browserApi) {
-      onNavigate(FALLBACK_HOME_URL)
-      return
-    }
-
-    void browserApi
-      .getHomepage(scope)
-      .then(result => {
-        onNavigate(result.url)
-      })
-      .catch(() => {
-        onNavigate(FALLBACK_HOME_URL)
-      })
-  }, [browserApi, onNavigate, scope])
-
-  const setCurrentAsHome = useCallback(() => {
-    if (!browserApi || displayUrl.length === 0) {
-      return
-    }
-
-    void browserApi.setHomepage({ ...scope, url: displayUrl }).catch(() => undefined)
-  }, [browserApi, displayUrl, scope])
+    onNavigate('')
+  }, [onNavigate])
 
   const toggleBookmark = useCallback(() => {
     if (!browserApi || displayUrl.length === 0) {
@@ -229,6 +210,23 @@ export function WebsiteNodeBrowserTools({
     setFindQuery('')
     void websiteApi?.stopFindInPage?.({ nodeId }).catch(() => undefined)
   }, [nodeId, websiteApi])
+
+  useEffect(() => {
+    if (findRequestId <= 0 || !nativeApiAvailable || browserMode !== 'native') {
+      return
+    }
+
+    setFindOpen(true)
+  }, [browserMode, findRequestId, nativeApiAvailable])
+
+  useEffect(() => {
+    if (!findOpen) {
+      return
+    }
+
+    findInputRef.current?.focus()
+    findInputRef.current?.select()
+  }, [findOpen])
 
   const respondPermission = useCallback(
     (requestId: string, decision: 'allow' | 'deny') => {
@@ -325,20 +323,6 @@ export function WebsiteNodeBrowserTools({
           <Download aria-hidden="true" />
         </button>
 
-        <button
-          type="button"
-          className={`website-node__tool-button ${findOpen ? 'website-node__tool-button--active' : ''}`}
-          onClick={event => {
-            event.stopPropagation()
-            setFindOpen(value => !value)
-          }}
-          disabled={!nativeApiAvailable || browserMode !== 'native'}
-          aria-label={t('websiteNode.find')}
-          title={t('websiteNode.find')}
-        >
-          <Search aria-hidden="true" />
-        </button>
-
         {findOpen ? (
           <form
             className="website-node__find"
@@ -349,6 +333,7 @@ export function WebsiteNodeBrowserTools({
             }}
           >
             <input
+              ref={findInputRef}
               className="website-node__find-input"
               value={findQuery}
               placeholder={t('websiteNode.findPlaceholder')}
@@ -371,18 +356,6 @@ export function WebsiteNodeBrowserTools({
             </button>
           </form>
         ) : null}
-
-        <button
-          type="button"
-          className="website-node__panel-action website-node__panel-action--home"
-          onClick={event => {
-            event.stopPropagation()
-            setCurrentAsHome()
-          }}
-          disabled={!browserApi || displayUrl.length === 0}
-        >
-          {t('websiteNode.setHome')}
-        </button>
       </div>
 
       {activePanel ? (

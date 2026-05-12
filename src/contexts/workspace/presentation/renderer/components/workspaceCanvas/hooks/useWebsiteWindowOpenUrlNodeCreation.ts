@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { BrowserMode } from '@shared/contracts/dto'
 import {
   WEBSITE_WINDOW_OPEN_URL_EVENT_NAME,
   type WebsiteWindowOpenUrlEventDetail,
@@ -18,6 +19,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
   onSpacesChange,
   createWebsiteNode,
   standardWindowSizeBucket,
+  browserDefaultMode,
   enabled,
 }: {
   canvasRef: React.RefObject<HTMLDivElement | null>
@@ -32,6 +34,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
     placement?: { targetSpaceRect?: WorkspaceSpaceState['rect'] | null },
   ) => Node<TerminalNodeData> | null
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
   enabled: boolean
 }): void {
   useEffect(() => {
@@ -71,6 +74,7 @@ export function useWebsiteWindowOpenUrlNodeCreation({
         anchor: baseAnchor,
         url: detail.url,
         standardWindowSizeBucket,
+        browserDefaultMode,
         createWebsiteNode,
         spacesRef,
         nodesRef,
@@ -93,5 +97,6 @@ export function useWebsiteWindowOpenUrlNodeCreation({
     setNodes,
     spacesRef,
     standardWindowSizeBucket,
+    browserDefaultMode,
   ])
 }

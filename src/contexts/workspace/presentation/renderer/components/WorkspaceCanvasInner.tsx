@@ -47,6 +47,7 @@ export function WorkspaceCanvasInner({
     onRequestPersistFlush,
     onShowMessage,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    browserDefaultMode: agentSettings.browserDefaultMode,
   })
   const nodeDragSession = workspaceCanvasHooks.useWorkspaceCanvasNodeDragSession({
     workspaceId,
@@ -249,6 +250,7 @@ export function WorkspaceCanvasInner({
     onSpacesChange,
     nodesRef: nodeStore.nodesRef,
     standardWindowSizeBucket: agentSettings.standardWindowSizeBucket,
+    browserDefaultMode: agentSettings.browserDefaultMode,
     createNodeForSession: nodeStore.createNodeForSession,
     createNoteNode: nodeStore.createNoteNode,
     onShowMessage,

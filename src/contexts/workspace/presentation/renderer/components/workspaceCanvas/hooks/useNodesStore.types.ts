@@ -40,6 +40,7 @@ export interface UseWorkspaceCanvasNodesStoreParams {
   onShowMessage?: ShowWorkspaceCanvasMessage
   onNodeCreated?: (nodeId: string) => void
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
 }
 
 export interface UseWorkspaceCanvasNodeCreationParams {
@@ -50,6 +51,7 @@ export interface UseWorkspaceCanvasNodeCreationParams {
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
 }
 
 export interface UseWorkspaceCanvasNodesStoreResult {

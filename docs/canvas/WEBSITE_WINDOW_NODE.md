@@ -6,9 +6,10 @@ Website Window Node lets a canvas node host a browser runtime while keeping dura
 
 - Create from canvas/pane menu.
 - Create from pasted URL when website window paste is enabled.
-- Navigate, go back, go forward, reload, stop and go home.
-- Support homepage, local history, bookmarks, downloads, permission prompts and page find in client-native mode.
-- Support `native` and `iframe` browser modes.
+- Navigate, go back, go forward, reload, stop and open the local start page.
+- Support Safari-style start page search, local history, bookmarks, downloads, permission prompts and page find in client-native mode.
+- Support `native` and `iframe` browser modes through Settings. The node toolbar no longer owns mode switching.
+- Support configurable default search engines for address-bar and start-page search text.
 - Persist node URL, pinned flag, session mode, profile id, browser mode, fullscreen state, previous frame and current frame.
 - Support session modes: `shared`, `incognito`, `profile`.
 - Manage runtime lifecycle states: `active`, `warm`, `cold`.
@@ -31,7 +32,7 @@ Renderer owns:
 - node chrome and canvas placement
 - user intent controls
 - durable node data edits
-- placeholder display
+- start page and placeholder display
 
 Renderer never owns `webContents` or Electron view lifecycle.
 
@@ -69,7 +70,7 @@ Events:
 - `download`
 - `permission-request`
 
-Browser profile operations are exposed separately through `browserProfile.*` preload APIs. Those APIs own homepage, history, bookmarks, downloads and permission decisions as client-local data.
+Browser profile operations are exposed separately through `browserProfile.*` preload APIs. Those APIs own history, bookmarks, downloads and permission decisions as client-local data. Website nodes now treat Home as a local start page projection rather than a remote homepage URL.
 
 ## Durable State
 
@@ -79,7 +80,7 @@ Persisted node data:
 - `pinned`
 - `sessionMode`
 - `profileId`
-- `browserMode`
+- `browserMode` for sync/WebUI fallback semantics. Desktop clients use Settings as the runtime mode owner.
 - `isFullscreen`
 - `previousFrame`
 - node frame and canvas metadata

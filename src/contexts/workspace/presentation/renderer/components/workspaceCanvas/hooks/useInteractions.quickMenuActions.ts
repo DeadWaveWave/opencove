@@ -15,6 +15,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     | 'workspaceId'
     | 'websiteWindowsEnabled'
     | 'standardWindowSizeBucket'
+    | 'browserDefaultMode'
     | 'createWebsiteNode'
     | 'createNoteNode'
     | 'spacesRef'
@@ -37,6 +38,7 @@ export function useWorkspaceCanvasQuickMenuActions(
     workspaceId,
     websiteWindowsEnabled,
     standardWindowSizeBucket,
+    browserDefaultMode,
     createWebsiteNode,
     createNoteNode,
     spacesRef,
@@ -68,6 +70,7 @@ export function useWorkspaceCanvasQuickMenuActions(
         createWebsiteNodeAtFlowPosition({
           anchor,
           standardWindowSizeBucket,
+          browserDefaultMode,
           url: command.url,
           createWebsiteNode,
           spacesRef,
@@ -118,6 +121,7 @@ export function useWorkspaceCanvasQuickMenuActions(
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      browserDefaultMode,
       websiteWindowsEnabled,
       workspacePath,
       workspaceId,

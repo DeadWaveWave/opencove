@@ -37,6 +37,7 @@ export function useWorkspaceCanvasNodesStore({
   onShowMessage,
   onNodeCreated,
   standardWindowSizeBucket,
+  browserDefaultMode,
 }: UseWorkspaceCanvasNodesStoreParams): UseWorkspaceCanvasNodesStoreResult {
   const reactFlow = useReactFlow<Node<TerminalNodeData>, Edge>()
   const nodesRef = useRef(nodes)
@@ -445,6 +446,7 @@ export function useWorkspaceCanvasNodesStore({
     onNodeCreated: onNodeCreated ?? fallbackOnNodeCreated,
     setNodes,
     standardWindowSizeBucket,
+    browserDefaultMode,
   })
 
   return {

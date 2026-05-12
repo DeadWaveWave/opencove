@@ -1,6 +1,7 @@
 import { useMemo, type MutableRefObject, type ReactElement } from 'react'
 import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
+import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 import type { NodeFrame, WorkspaceSpaceState } from '../../types'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
@@ -27,6 +28,8 @@ interface WorkspaceCanvasNodeTypesParams {
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
   agentProviderOrder: AgentProvider[]
   defaultProvider: AgentProvider
+  browserDefaultMode: BrowserMode
+  browserSearchEngine: BrowserSearchEngineId
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
@@ -85,6 +88,8 @@ export function useWorkspaceCanvasNodeTypes({
   terminalDisplayCalibration,
   agentProviderOrder,
   defaultProvider,
+  browserDefaultMode,
+  browserSearchEngine,
   selectNode,
   clearNodeSelectionRef,
   closeNodeRef,
@@ -195,6 +200,8 @@ export function useWorkspaceCanvasNodeTypes({
           setWebsiteSessionRef={setWebsiteSessionRef}
           setWebsiteModeRef={setWebsiteModeRef}
           setWebsiteFullscreenRef={setWebsiteFullscreenRef}
+          browserDefaultMode={browserDefaultMode}
+          browserSearchEngine={browserSearchEngine}
         />
       )
     }
@@ -273,6 +280,8 @@ export function useWorkspaceCanvasNodeTypes({
     terminalDisplayCalibration,
     agentProviderOrder,
     defaultProvider,
+    browserDefaultMode,
+    browserSearchEngine,
     updateNoteTextRef,
     renameNoteTitleRef,
     updateRoleProviderRef,

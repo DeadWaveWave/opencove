@@ -3,6 +3,7 @@ import { WebsiteNode } from '../WebsiteNode'
 import type { NodeFrame, Point, TerminalNodeData } from '../../types'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 
 export function WorkspaceCanvasWebsiteNodeType({
   data,
@@ -17,6 +18,8 @@ export function WorkspaceCanvasWebsiteNodeType({
   setWebsiteSessionRef,
   setWebsiteModeRef,
   setWebsiteFullscreenRef,
+  browserDefaultMode,
+  browserSearchEngine,
 }: {
   data: TerminalNodeData
   id: string
@@ -39,6 +42,8 @@ export function WorkspaceCanvasWebsiteNodeType({
       isFullscreen: boolean,
     ) => void
   >
+  browserDefaultMode: BrowserMode
+  browserSearchEngine: BrowserSearchEngineId
 }): ReactElement | null {
   const labelColor =
     (data as TerminalNodeData & { effectiveLabelColor?: LabelColor | null }).effectiveLabelColor ??
@@ -57,6 +62,8 @@ export function WorkspaceCanvasWebsiteNodeType({
       sessionMode={data.website.sessionMode}
       profileId={data.website.profileId}
       browserMode={data.website.browserMode ?? 'native'}
+      browserDefaultMode={browserDefaultMode}
+      browserSearchEngine={browserSearchEngine}
       isFullscreen={data.website.isFullscreen === true}
       previousFrame={data.website.previousFrame ?? null}
       labelColor={labelColor}

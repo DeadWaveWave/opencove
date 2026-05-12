@@ -2,19 +2,22 @@
 
 本规格定义画布内 Browser Window Node 的目标能力边界。它基于现有 Website Window Node 演进：继续保持画布节点、浏览器运行时和持久化浏览器数据的 owner 清晰分离，同时把客户端内置浏览器提升到接近系统浏览器的完整体验。
 
-Status: Implemented and verified for the initial full browser capability slice. The remaining exclusions are browser plugins/extensions, password/autofill sync, full DevTools productization, and unsandboxed local file browsing.
+Status: Implemented and verified for the full browser capability slice, including Settings-owned runtime mode, Safari-style local start page and configurable default search engine. The remaining exclusions are browser plugins/extensions, password/autofill sync, full DevTools productization, and unsandboxed local file browsing.
 
 ## Implementation Status
 
 - Done: SQLite schema version `9` with browser profile settings, history, bookmarks, downloads and permission decision tables.
-- Done: client-local `BrowserProfileStore` and IPC/preload surface for homepage, history, bookmarks, downloads and permission responses.
+- Done: client-local `BrowserProfileStore` and IPC/preload surface for local start-page projection, history, bookmarks, downloads and permission responses.
 - Done: Website node data normalization for `browserMode`, `isFullscreen` and `previousFrame`.
 - Done: normal browser window size clamp at `90%` of the available canvas viewport, with explicit canvas fullscreen and restore.
 - Done: native runtime support for navigation history fallback, stop, find-in-page, favicon state, download events and permission request events.
-- Done: Renderer browser chrome for back/forward, reload/stop, home, bookmark star, bookmarks/history/download panels, find bar, mode switch and fullscreen.
+- Done: Renderer browser chrome for back/forward, reload/stop, home/start page, bookmark star, bookmarks/history/download panels, Ctrl/Cmd+F find bar and fullscreen.
+- Done: Settings controls for default browser mode and default search engine.
+- Done: Safari-style local start page with search, bookmarks/favorites and recent history.
 - Done: WebUI-created nodes default to iframe; synced native nodes render a friendly client-only placeholder and offer explicit iframe downgrade.
 - Done: targeted verification for profile store behavior, sizing/fullscreen helpers, old node normalization, runtime store events, session permission/download hooks, IPC registration and SQLite migrations.
 - Done: final staged line check and full `pnpm pre-commit` passed on 2026-05-12.
+- Done: follow-up targeted verification for settings normalization, Settings UI controls, address/search target resolution and browser runtime store events.
 
 ## Verification Status
 
@@ -55,14 +58,15 @@ OpenCove 当前不清晰的承诺是：画布内网页节点已经能导航和�
 - 导航：地址栏、URL 规范化、Back、Forward、Reload、Stop、Home。
 - 历史记录：记录访问、搜索、打开、删除单条、清空范围。
 - 书签：添加、删除、重命名、搜索、打开，当前页星标状态。
-- 主页：默认主页、用户配置主页、新建浏览器节点和 Home 按钮使用主页。
+- 主页：Home 按钮和空 URL 的新建浏览器节点显示本地起始页。起始页应像 Safari Start Page 一样提供搜索入口、书签/常用项和最近访问入口，而不是直接导航到某个外部 URL。
+- 搜索引擎：用户可以在设置中选择默认搜索引擎。地址栏和起始页搜索框对非 URL 输入使用该搜索引擎。
 - 下载：开始、进度、完成、失败、在系统中显示、取消。
 - 权限：摄像头、麦克风、地理位置、通知等权限请求必须走应用内确认。
 - 页面内查找：find next/previous、匹配计数、关闭查找。
 - 新窗口：`target=_blank`、`window.open` 等应创建新的画布浏览器节点或 iframe fallback，而不是逃逸到不可控窗口。
 - 标题和图标：显示当前页面标题、favicon、加载状态和错误状态。
 - 全屏：浏览器节点支持显式全屏模式。
-- 运行时切换：客户端支持 native browser mode 和 iframe mode 之间切换。
+- 运行时切换：客户端通过 Settings 选择默认 browser mode。节点内不显示每个窗口的 native/iframe 切换控件；WebUI placeholder 的显式 iframe 降级动作仍保留。
 
 不包含：
 
@@ -80,7 +84,7 @@ Browser Window Node 有两个渲染模式：
 
 Mode rules:
 
-- 客户端可以创建 `native` 或 `iframe` 节点，并允许用户在两者间显式切换。
+- 客户端通过 Settings 选择 `native` 或 `iframe` 作为默认浏览器模式。新建节点使用该偏好；客户端渲染现有节点时也尊重该偏好。
 - WebUI 不能创建或运行 `native` 节点。
 - 如果一个 `native` 节点由客户端创建并同步到 WebUI，WebUI 必须显示用户友好的占位提示，例如“此浏览器窗口正在桌面客户端中运行，请在对应客户端查看”。
 - WebUI 用户想在 WebUI 打开浏览器窗口时，必须降级为 `iframe` 节点。
@@ -113,7 +117,7 @@ Workspace node data should include:
 - `pinned`: 是否保持运行时。
 - `sessionMode`: `shared`、`incognito` 或 `profile`。
 - `profileId`: profile mode 下的 profile id。
-- `browserMode`: `native` 或 `iframe`。
+- `browserMode`: `native` 或 `iframe`。该字段保留为同步和 WebUI 降级语义；桌面客户端的实际渲染模式优先使用 Settings 中的默认浏览器模式。
 - `isFullscreen`: 是否处于画布全屏。
 - `previousFrame`: 全屏前的 frame，用于退出恢复。
 
@@ -122,8 +126,13 @@ Browser profile data should include:
 - history entries: URL、title、favicon、lastVisitedAt、visitCount、profile scope。
 - bookmarks: id、URL、title、favicon、createdAt、updatedAt、folder/order。
 - downloads: id、URL、filename、savePath、state、receivedBytes、totalBytes、startedAt、endedAt。
-- homepage setting: profile/global homepage URL and fallback behavior。
+- start page data projection: profile/global bookmarks and recent history shown on the local start page。
 - permission decisions: origin、permission、decision、updatedAt、profile scope。
+
+App settings should include:
+
+- default browser mode: `native` or `iframe` for desktop/client rendering.
+- default search engine: engine id used by address/search inputs for non-URL queries.
 
 Incognito rules:
 
@@ -147,7 +156,7 @@ Browser profile store owns:
 - history durable truth。
 - bookmarks durable truth。
 - downloads metadata durable truth。
-- homepage setting。
+- start page source data such as bookmarks and recent history。
 - permission decisions。
 
 Workspace persistence owns:
@@ -161,6 +170,7 @@ Workspace persistence owns:
 Renderer owns:
 
 - address input draft。
+- local start page projection and search-box draft。
 - transient menu/popover state。
 - derived star/loading/error presentation。
 - iframe runtime projection in WebUI or client iframe mode。
@@ -175,7 +185,7 @@ WebUI owns no native runtime state. It can only render placeholders or iframe mo
 | Back/Forward | Full | iframe/browser-limited | Placeholder only | iframe/browser-limited |
 | History | Full durable | Explicit navigation only where observable | Read-only prompt | Explicit navigation only where observable |
 | Bookmarks | Full | Full UI store support | Can manage bookmarks, cannot view native runtime | Full UI store support |
-| Homepage | Full | Full | Prompt action only | Full |
+| Start page/Home | Full | Full | Prompt action only | Full |
 | Downloads | Full Electron download flow | Browser default or unsupported | Not available | Browser default or unsupported |
 | Permissions | App-mediated | Browser-mediated or unsupported | Not available | Browser-mediated or unsupported |
 | Find in page | Full | Browser-limited or custom unavailable | Not available | Browser-limited or custom unavailable |
@@ -192,12 +202,17 @@ WebUI owns no native runtime state. It can only render placeholders or iframe mo
 6. Permission requests default to deny unless the user grants them through an app-mediated decision.
 7. IPC and Control Surface payloads for browser capabilities must be runtime validated.
 8. iframe mode must surface capability limits instead of pretending to be a full browser.
+9. Address/search input normalization is deterministic: valid `http(s)` or likely host input becomes a URL; other non-empty text becomes a search URL through the selected default search engine.
+10. Page find UI appears from node-scoped `Ctrl/Cmd+F`; it is not exposed as a persistent toolbar button.
 
 ## Acceptance Criteria
 
 Client native:
 
-- A user can create a browser node, navigate pages, go back/forward, reload/stop, go home, bookmark the current page, open history, search history and restore after restart.
+- A user can create a browser node, navigate pages, go back/forward, reload/stop, open the local start page with Home, bookmark the current page, open history, search history and restore after restart.
+- A user can select the default browser mode and default search engine in Settings.
+- In desktop/client rendering, switching the default browser mode in Settings affects browser nodes without requiring a per-node toolbar selector.
+- Pressing `Ctrl/Cmd+F` while operating a native browser node opens the page-find bar.
 - Download progress and completion are visible in-app.
 - Permission requests show an app-level prompt and respect saved decisions.
 - New windows become canvas browser nodes.
@@ -208,12 +223,12 @@ WebUI:
 
 - A synced client-native node displays a clear prompt that it must be viewed in the corresponding client.
 - Creating/opening a browser from WebUI uses iframe mode.
-- iframe mode supports address navigation, homepage, bookmark UI and best-effort back/forward where possible.
+- iframe mode supports address navigation, start page, bookmark UI and best-effort back/forward where possible.
 - iframe failures caused by browser embedding policies are shown as understandable in-app states.
 
 Cross-runtime:
 
-- Client can switch a browser node between native and iframe modes.
+- Client can switch the browser runtime between native and iframe modes from Settings.
 - Switching modes preserves URL, frame, bookmarks and applicable profile data.
 - Incognito semantics remain separate from shared/profile sessions.
 
@@ -280,7 +295,7 @@ Open product decision before coding:
 
 Step 1: Browser data model and persistence.
 
-- Add browser domain types for `BrowserProfileId`, `BrowserMode`, `BrowserHistoryEntry`, `BrowserBookmark`, `BrowserDownloadRecord`, `BrowserPermissionDecision` and homepage settings.
+- Add browser domain types for `BrowserProfileId`, `BrowserMode`, `BrowserHistoryEntry`, `BrowserBookmark`, `BrowserDownloadRecord`, `BrowserPermissionDecision` and any remaining profile preferences needed by the start page.
 - Add SQLite tables for browser history, bookmarks, downloads and permission decisions.
 - Bump `DB_SCHEMA_VERSION` and make migration idempotent.
 - Add normalize/read/write APIs behind a browser profile store boundary.
@@ -306,7 +321,9 @@ Step 3: Native browser runtime services.
 Step 4: Renderer browser chrome and panels.
 
 - Evolve `WebsiteNode` into a mode-aware Browser Window UI.
-- Add toolbar controls: back, forward, reload/stop, home, address, bookmark star, history/bookmarks/downloads/find, mode switch, fullscreen.
+- Add toolbar controls: back, forward, reload/stop, home/start page, address, bookmark star, history/bookmarks/downloads and fullscreen.
+- Open page find through node-scoped `Ctrl/Cmd+F` instead of a persistent toolbar button.
+- Put native/iframe runtime preference in Settings, not in each node toolbar.
 - Add compact toolbar layout for small clamped sizes.
 - Add permission prompt and download/status UI using app in-message/modal patterns, not `alert`.
 - Add i18n keys in `en.ts` and `zh-CN.ts`.
@@ -346,10 +363,10 @@ Step 8: Final verification and handoff.
 
 Lowest meaningful layers:
 
-- Unit: URL normalization, search fallback, homepage resolution, `90%` clamp, fullscreen frame restore, incognito history exclusion.
+- Unit: URL normalization, search fallback, start-page resolution, `90%` clamp, fullscreen frame restore, incognito history exclusion.
 - Contract: browser IPC payload validation, mode switch commands, bookmark/history/download payload shape.
 - Integration: SQLite migration from existing website nodes, profile-scoped history/bookmark persistence, permission decision persistence.
-- E2E client: navigation, history, bookmarks, homepage, new window, download, permission prompt, fullscreen, restart recovery and size clamp.
+- E2E client: navigation, history, bookmarks, start page, new window, download, permission prompt, fullscreen, restart recovery and size clamp.
 - E2E WebUI: native synced placeholder, explicit iframe downgrade, iframe navigation and blocked iframe error state.
 
 Final Large implementation must pass the repository pre-commit workflow after staging the change, including the E2E layer required for user-visible behavior.

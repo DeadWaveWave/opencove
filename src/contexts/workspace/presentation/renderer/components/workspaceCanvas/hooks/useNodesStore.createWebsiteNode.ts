@@ -3,6 +3,7 @@ import type { Node } from '@xyflow/react'
 import type { MutableRefObject } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
+import type { BrowserMode } from '@shared/contracts/dto'
 import type { Point, TerminalNodeData, WebsiteNodeData, WorkspaceSpaceState } from '../../../types'
 import { resolveDefaultWebsiteWindowSize } from '../constants'
 import type { NodePlacementOptions, ShowWorkspaceCanvasMessage } from '../types'
@@ -20,6 +21,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   onNodeCreated,
   setNodes,
   standardWindowSizeBucket,
+  browserDefaultMode,
 }: {
   nodesRef: MutableRefObject<Node<TerminalNodeData>[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
@@ -28,6 +30,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
   onNodeCreated?: (nodeId: string) => void
   setNodes: UseWorkspaceCanvasNodesStoreResult['setNodes']
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
 }): (
   anchor: Point,
   website: WebsiteNodeData,
@@ -37,7 +40,10 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
 
   return useCallback(
     (anchor: Point, website: WebsiteNodeData, placementOptions?: NodePlacementOptions) => {
-      const websiteData = createWebsiteNodeData(website)
+      const websiteData = createWebsiteNodeData({
+        browserMode: browserDefaultMode,
+        ...website,
+      })
       const defaultSize = resolveDefaultWebsiteWindowSize(standardWindowSizeBucket)
       const resolvedPlacement = resolveNodesPlacement({
         anchor,
@@ -112,6 +118,7 @@ export function useWorkspaceCanvasWebsiteNodeCreation({
       setNodes,
       spacesRef,
       standardWindowSizeBucket,
+      browserDefaultMode,
       t,
     ],
   )

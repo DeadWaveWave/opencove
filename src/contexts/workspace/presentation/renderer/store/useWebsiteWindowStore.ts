@@ -19,6 +19,7 @@ export type WebsiteWindowRuntimeState = {
   snapshotDataUrl: string | null
   errorMessage: string | null
   findResult: WebsiteWindowFindResultEvent | null
+  findRequestId: number
   downloads: WebsiteWindowDownloadEvent[]
   permissionRequests: WebsiteWindowPermissionRequestEvent[]
 }
@@ -43,6 +44,7 @@ function resolveDefaultRuntime(): WebsiteWindowRuntimeState {
     snapshotDataUrl: null,
     errorMessage: null,
     findResult: null,
+    findRequestId: 0,
     downloads: [],
     permissionRequests: [],
   }
@@ -92,25 +94,32 @@ export const useWebsiteWindowStore = create<WebsiteWindowStoreState>(set => ({
                     ...previous,
                     findResult: event,
                   }
-                : event.type === 'download'
+                : event.type === 'find-request'
                   ? {
                       ...previous,
-                      downloads: [
-                        event,
-                        ...previous.downloads.filter(item => item.downloadId !== event.downloadId),
-                      ].slice(0, 5),
+                      findRequestId: event.requestId,
                     }
-                  : event.type === 'permission-request'
+                  : event.type === 'download'
                     ? {
                         ...previous,
-                        permissionRequests: [
+                        downloads: [
                           event,
-                          ...previous.permissionRequests.filter(
-                            item => item.requestId !== event.requestId,
+                          ...previous.downloads.filter(
+                            item => item.downloadId !== event.downloadId,
                           ),
-                        ],
+                        ].slice(0, 5),
                       }
-                    : previous
+                    : event.type === 'permission-request'
+                      ? {
+                          ...previous,
+                          permissionRequests: [
+                            event,
+                            ...previous.permissionRequests.filter(
+                              item => item.requestId !== event.requestId,
+                            ),
+                          ],
+                        }
+                      : previous
 
       runtimeByNodeId[event.nodeId] = next
       return { runtimeByNodeId }

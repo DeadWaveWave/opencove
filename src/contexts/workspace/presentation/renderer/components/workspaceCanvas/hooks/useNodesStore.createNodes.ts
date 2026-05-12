@@ -45,6 +45,7 @@ export function useWorkspaceCanvasNodeCreation({
   onNodeCreated,
   setNodes,
   standardWindowSizeBucket,
+  browserDefaultMode,
 }: UseWorkspaceCanvasNodeCreationParams) {
   const { t } = useTranslation()
   const notifyNodeCreated = useCallback(
@@ -472,6 +473,7 @@ export function useWorkspaceCanvasNodeCreation({
     onNodeCreated,
     setNodes,
     standardWindowSizeBucket,
+    browserDefaultMode,
   })
 
   return {

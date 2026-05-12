@@ -25,6 +25,8 @@ describe('agent settings normalization', () => {
     expect(DEFAULT_AGENT_SETTINGS.canvasInputMode).toBe('auto')
     expect(DEFAULT_AGENT_SETTINGS.canvasWheelBehavior).toBe('zoom')
     expect(DEFAULT_AGENT_SETTINGS.canvasWheelZoomModifier).toBe('primary')
+    expect(DEFAULT_AGENT_SETTINGS.browserDefaultMode).toBe('native')
+    expect(DEFAULT_AGENT_SETTINGS.browserSearchEngine).toBe('google')
     expect(DEFAULT_AGENT_SETTINGS.defaultTerminalWindowScalePercent).toBe(80)
     expect(DEFAULT_AGENT_SETTINGS.terminalFontSize).toBe(13)
     expect(DEFAULT_AGENT_SETTINGS.terminalDisplayAutoReferenceEnabled).toBe(true)

@@ -119,6 +119,12 @@ export interface WebsiteWindowFindResultEvent {
   finalUpdate: boolean
 }
 
+export interface WebsiteWindowFindRequestEvent {
+  type: 'find-request'
+  nodeId: string
+  requestId: number
+}
+
 export interface WebsiteWindowDownloadEvent {
   type: 'download'
   nodeId: string | null
@@ -147,5 +153,6 @@ export type WebsiteWindowEventPayload =
   | WebsiteWindowErrorEvent
   | WebsiteWindowOpenUrlEvent
   | WebsiteWindowFindResultEvent
+  | WebsiteWindowFindRequestEvent
   | WebsiteWindowDownloadEvent
   | WebsiteWindowPermissionRequestEvent

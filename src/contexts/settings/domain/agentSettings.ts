@@ -1,14 +1,8 @@
 import type {
-  AppUpdateChannel,
-  AppUpdatePolicy,
-  WebsiteWindowPolicy,
-} from '../../../shared/contracts/dto'
-import type {
   AgentCustomModelByProvider,
   AgentCustomModelEnabledByProvider,
   AgentCustomModelOptionsByProvider,
 } from './agentSettings.customModels'
-import type { AgentExecutablePathOverrideByProvider } from './agentSettings.executables'
 import { normalizeAgentExecutablePathOverrideByProvider } from './agentSettings.executables'
 import {
   AGENT_PROVIDERS,
@@ -16,26 +10,20 @@ import {
   isValidProvider,
   normalizeAgentProviderOrder,
   type AgentProvider,
-  type TaskTitleAgentProvider,
 } from './agentSettings.providers'
-import { normalizeFocusNodeTargetZoom, type FocusNodeTargetZoom } from './focusNodeTargetZoom'
-import { isValidUiLanguage, isValidUiTheme, type UiLanguage, type UiTheme } from './uiSettings'
+import { normalizeFocusNodeTargetZoom } from './focusNodeTargetZoom'
+import { isValidUiLanguage, isValidUiTheme } from './uiSettings'
 import {
   isValidUpdateChannel,
   isValidUpdatePolicy,
   normalizeUpdatePolicyForChannel,
 } from './updateSettings'
-import type { KeybindingOverrides } from './keybindings'
 import { normalizeKeybindingOverrides } from './keybindings'
 import {
   isValidCanvasInputMode,
   isValidCanvasWheelBehavior,
   isValidCanvasWheelZoomModifier,
   isValidStandardWindowSizeBucket,
-  type CanvasInputMode,
-  type CanvasWheelBehavior,
-  type CanvasWheelZoomModifier,
-  type StandardWindowSizeBucket,
 } from './canvasSettings'
 import {
   isRecord,
@@ -45,25 +33,19 @@ import {
   normalizeUniqueStringArray,
   normalizeUniqueStringArrayWithFallback,
 } from './settingsNormalization'
-import type { TaskPromptTemplate, TaskPromptTemplatesByWorkspaceId } from './taskPromptTemplates'
 import {
   normalizeTaskPromptTemplates,
   normalizeTaskPromptTemplatesByWorkspaceId,
 } from './taskPromptTemplates'
-import type { QuickCommand } from './quickCommands'
 import { normalizeQuickCommands } from './quickCommands'
-import type { QuickPhrase } from './quickPhrases'
 import { normalizeQuickPhrases } from './quickPhrases'
-import type { AgentEnvByProvider } from './agentEnv'
 import { normalizeAgentEnvByProvider } from './agentEnv'
-import type { ProjectRolesByWorkspaceId } from './projectRoles'
 import { normalizeProjectRolesByWorkspaceId } from './projectRoles'
 import { normalizeWebsiteWindowPolicy } from './websiteWindowSettings'
+import { normalizeBrowserMode, normalizeBrowserSearchEngineId } from './browserSettings'
 import { DEFAULT_AGENT_SETTINGS } from './agentSettings.defaults'
-import {
-  normalizeTerminalDisplayReference,
-  type TerminalDisplayReference,
-} from './terminalDisplayCalibration'
+import { normalizeTerminalDisplayReference } from './terminalDisplayCalibration'
+import type { AgentSettings, TaskTitleProvider } from './agentSettings.types'
 
 export {
   FOCUS_NODE_TARGET_ZOOM_STEP,
@@ -84,7 +66,7 @@ export type {
   TaskTitleAgentProvider,
   WorktreeNameSuggestionAgentProvider,
 } from './agentSettings.providers'
-export type TaskTitleProvider = 'default' | TaskTitleAgentProvider
+export type { AgentSettings, TaskTitleProvider, TerminalProfileId } from './agentSettings.types'
 export {
   CANVAS_INPUT_MODES,
   CANVAS_WHEEL_BEHAVIORS,
@@ -106,7 +88,6 @@ export {
 } from './uiSettings'
 export type { UiLanguage, UiTheme, UiThemeBaseScheme, UiThemeDescriptor } from './uiSettings'
 
-export type TerminalProfileId = string | null
 export type { TerminalDisplayReference } from './terminalDisplayCalibration'
 export const MIN_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 60
 export const MAX_DEFAULT_TERMINAL_WINDOW_SCALE_PERCENT = 120
@@ -142,62 +123,6 @@ export {
   resolveWorktreeNameSuggestionProvider,
 } from './agentSettings.resolvers'
 
-export interface AgentSettings {
-  language: UiLanguage
-  uiTheme: UiTheme
-  isPrimarySidebarCollapsed: boolean
-  workspaceSearchPanelWidth: number
-  defaultProvider: AgentProvider
-  agentProviderOrder: AgentProvider[]
-  agentFullAccess: boolean
-  defaultTerminalProfileId: TerminalProfileId
-  agentExecutablePathOverrideByProvider: AgentExecutablePathOverrideByProvider<AgentProvider>
-  customModelEnabledByProvider: AgentCustomModelEnabledByProvider<AgentProvider>
-  customModelByProvider: AgentCustomModelByProvider<AgentProvider>
-  customModelOptionsByProvider: AgentCustomModelOptionsByProvider<AgentProvider>
-  taskTitleProvider: TaskTitleProvider
-  taskTitleModel: string
-  taskTagOptions: string[]
-  taskPromptTemplates: TaskPromptTemplate[]
-  taskPromptTemplatesByWorkspaceId: TaskPromptTemplatesByWorkspaceId
-  projectRolesByWorkspaceId: ProjectRolesByWorkspaceId
-  quickCommands: QuickCommand[]
-  quickPhrases: QuickPhrase[]
-  agentEnvByProvider: AgentEnvByProvider
-  focusNodeOnClick: boolean
-  focusNodeTargetZoom: FocusNodeTargetZoom
-  focusNodeUseVisibleCanvasCenter: boolean
-  systemNotificationsEnabled: boolean
-  standbyBannerEnabled: boolean
-  standbyBannerShowTask: boolean
-  standbyBannerShowSpace: boolean
-  standbyBannerShowBranch: boolean
-  standbyBannerShowPullRequest: boolean
-  disableAppShortcutsWhenTerminalFocused: boolean
-  keybindings: KeybindingOverrides
-  canvasInputMode: CanvasInputMode
-  canvasWheelBehavior: CanvasWheelBehavior
-  canvasWheelZoomModifier: CanvasWheelZoomModifier
-  standardWindowSizeBucket: StandardWindowSizeBucket
-  websiteWindowPolicy: WebsiteWindowPolicy
-  experimentalWebsiteWindowPasteEnabled: boolean
-  experimentalRemoteWorkersEnabled: boolean
-  defaultTerminalWindowScalePercent: number
-  terminalFontSize: number
-  terminalFontFamily: string | null
-  terminalDisplayAutoReferenceEnabled: boolean
-  terminalDisplayCalibrationCompensationEnabled: boolean
-  terminalDisplayReference: TerminalDisplayReference | null
-  uiFontSize: number
-  performanceMonitorHeaderButtonEnabled: boolean
-  githubPullRequestsEnabled: boolean
-  updatePolicy: AppUpdatePolicy
-  updateChannel: AppUpdateChannel
-  releaseNotesSeenVersion: string | null
-  hideWorktreeMismatchDropWarning: boolean
-  archiveSpaceDeleteWorktreeByDefault: boolean
-  archiveSpaceDeleteBranchByDefault: boolean
-}
 export { DEFAULT_AGENT_SETTINGS }
 
 function isValidTaskTitleProvider(value: unknown): value is TaskTitleProvider {
@@ -357,6 +282,14 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     value.websiteWindowPolicy,
     DEFAULT_AGENT_SETTINGS.websiteWindowPolicy,
   )
+  const browserDefaultMode = normalizeBrowserMode(
+    value.browserDefaultMode,
+    DEFAULT_AGENT_SETTINGS.browserDefaultMode,
+  )
+  const browserSearchEngine = normalizeBrowserSearchEngineId(
+    value.browserSearchEngine,
+    DEFAULT_AGENT_SETTINGS.browserSearchEngine,
+  )
   const experimentalWebsiteWindowPasteEnabled =
     normalizeBoolean(value.experimentalWebsiteWindowPasteEnabled) ??
     DEFAULT_AGENT_SETTINGS.experimentalWebsiteWindowPasteEnabled
@@ -469,6 +402,8 @@ export function normalizeAgentSettings(value: unknown): AgentSettings {
     canvasWheelZoomModifier,
     standardWindowSizeBucket,
     websiteWindowPolicy,
+    browserDefaultMode,
+    browserSearchEngine,
     experimentalWebsiteWindowPasteEnabled,
     experimentalRemoteWorkersEnabled,
     defaultTerminalWindowScalePercent,

@@ -1,4 +1,5 @@
 import type { Edge, Node, ReactFlowInstance } from '@xyflow/react'
+import type { BrowserMode } from '@shared/contracts/dto'
 import type { StandardWindowSizeBucket } from '@contexts/settings/domain/agentSettings'
 import type {
   ImageNodeData,
@@ -54,6 +55,7 @@ export interface UseWorkspaceCanvasInteractionsParams {
   onSpacesChange: (spaces: WorkspaceSpaceState[]) => void
   nodesRef: React.MutableRefObject<Node<TerminalNodeData>[]>
   standardWindowSizeBucket: StandardWindowSizeBucket
+  browserDefaultMode: BrowserMode
   createNodeForSession: (input: CreateNodeInput) => Promise<Node<TerminalNodeData> | null>
   createNoteNode: (
     anchor: Point,

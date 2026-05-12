@@ -8,6 +8,8 @@ import { resolveBrowserWindowScaleFactor } from './websiteWindowScaleFactor'
 import { openExternalIfSafe } from './websiteWindowSecurity'
 import { resolveWebsiteNavigationUrl } from './websiteWindowUrl'
 
+let nextFindRequestId = 1
+
 function resolveWebsiteOwnerWindowScaleFactor(contents: WebContents): number {
   const ownerWindow = BrowserWindow.fromWebContents(contents)
   return resolveBrowserWindowScaleFactor(ownerWindow)
@@ -149,6 +151,24 @@ export function registerWebsiteWebContentsRuntimeListeners({
     })
   }
 
+  const handleBeforeInputEvent = (event: Electron.Event, input: Electron.Input) => {
+    const isFindShortcut =
+      (input.control || input.meta) &&
+      !input.alt &&
+      typeof input.key === 'string' &&
+      input.key.toLowerCase() === 'f'
+    if (!isFindShortcut) {
+      return
+    }
+
+    event.preventDefault()
+    emit({
+      type: 'find-request',
+      nodeId,
+      requestId: nextFindRequestId++,
+    })
+  }
+
   const handleFailLoad = (_event: Electron.Event, _errorCode: number, errorDescription: string) => {
     emit({ type: 'error', nodeId, message: errorDescription || 'Page load failed' })
     publishState()
@@ -169,6 +189,7 @@ export function registerWebsiteWebContentsRuntimeListeners({
   contents.on('page-title-updated', handleTitleUpdated)
   contents.on('page-favicon-updated', handleFaviconUpdated)
   contents.on('found-in-page', handleFoundInPage)
+  contents.on('before-input-event', handleBeforeInputEvent)
   contents.on('did-fail-load', handleFailLoad)
   contents.on('zoom-changed', handleZoomChanged)
 
@@ -182,6 +203,7 @@ export function registerWebsiteWebContentsRuntimeListeners({
     contents.removeListener('page-title-updated', handleTitleUpdated)
     contents.removeListener('page-favicon-updated', handleFaviconUpdated)
     contents.removeListener('found-in-page', handleFoundInPage)
+    contents.removeListener('before-input-event', handleBeforeInputEvent)
     contents.removeListener('did-fail-load', handleFailLoad)
     contents.removeListener('zoom-changed', handleZoomChanged)
   }

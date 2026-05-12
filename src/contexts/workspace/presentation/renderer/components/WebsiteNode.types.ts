@@ -1,4 +1,5 @@
 import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
+import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 import type { LabelColor } from '@shared/types/labelColor'
 import type { NodeFrame, Point } from '../types'
 
@@ -16,6 +17,8 @@ export interface WebsiteNodeProps {
   sessionMode: WebsiteWindowSessionMode
   profileId: string | null
   browserMode: BrowserMode
+  browserDefaultMode: BrowserMode
+  browserSearchEngine: BrowserSearchEngineId
   isFullscreen: boolean
   previousFrame: NodeFrame | null
   labelColor: LabelColor | null

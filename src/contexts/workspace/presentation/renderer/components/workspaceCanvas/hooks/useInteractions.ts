@@ -16,12 +16,10 @@ import {
   shouldFocusNodeFromClickTarget,
 } from './useInteractions.eventTargets'
 import { resolveMouseClientPoint } from './useInteractions.clientPoint'
-import {
-  createNoteNodeFromPaneContextMenu,
-  createWebsiteNodeFromPaneContextMenu,
-} from './useInteractions.paneNodeCreation'
+import { createNoteNodeFromPaneContextMenu } from './useInteractions.paneNodeCreation'
 import { useIgnoredPaneClick } from './useIgnoredPaneClick'
 import type { UseWorkspaceCanvasInteractionsParams } from './useInteractions.types'
+import { useWebsiteNodeContextMenuCreation } from './useInteractions.websiteContextMenu'
 import { useWebsiteWindowOpenUrlNodeCreation } from './useWebsiteWindowOpenUrlNodeCreation'
 
 export function useWorkspaceCanvasInteractions({
@@ -53,6 +51,7 @@ export function useWorkspaceCanvasInteractions({
   onSpacesChange,
   nodesRef,
   standardWindowSizeBucket,
+  browserDefaultMode,
   createNodeForSession,
   createNoteNode,
   onShowMessage,
@@ -404,23 +403,8 @@ export function useWorkspaceCanvasInteractions({
     spacesRef,
     standardWindowSizeBucket,
   ])
-  const createWebsiteNodeFromContextMenu = useCallback(() => {
-    if (!websiteWindowsEnabled) {
-      return
-    }
-
-    createWebsiteNodeFromPaneContextMenu({
-      contextMenu,
-      url: '',
-      createWebsiteNode,
-      standardWindowSizeBucket,
-      spacesRef,
-      nodesRef,
-      setNodes,
-      onSpacesChange,
-      setContextMenu,
-    })
-  }, [
+  const createWebsiteNodeFromContextMenu = useWebsiteNodeContextMenuCreation({
+    browserDefaultMode,
     contextMenu,
     createWebsiteNode,
     nodesRef,
@@ -430,13 +414,14 @@ export function useWorkspaceCanvasInteractions({
     spacesRef,
     standardWindowSizeBucket,
     websiteWindowsEnabled,
-  ])
+  })
   const { runQuickCommand, insertQuickPhrase } = useWorkspaceCanvasQuickMenuActions({
     contextMenu,
     setContextMenu,
     workspaceId,
     websiteWindowsEnabled,
     standardWindowSizeBucket,
+    browserDefaultMode,
     terminalFontSize,
     createWebsiteNode,
     createNoteNode,
@@ -460,6 +445,7 @@ export function useWorkspaceCanvasInteractions({
     createImageNode,
     createWebsiteNode,
     standardWindowSizeBucket,
+    browserDefaultMode,
     websiteWindowsEnabled,
     websiteWindowPasteEnabled,
   })
@@ -474,6 +460,7 @@ export function useWorkspaceCanvasInteractions({
     setNodes,
     spacesRef,
     standardWindowSizeBucket,
+    browserDefaultMode,
   })
 
   return {

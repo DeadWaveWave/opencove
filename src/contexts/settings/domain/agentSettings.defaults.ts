@@ -4,6 +4,7 @@ import { DEFAULT_AGENT_ENV_BY_PROVIDER } from './agentEnv'
 import { DEFAULT_AGENT_EXECUTABLE_PATH_OVERRIDE_BY_PROVIDER } from './agentSettings.executables'
 import { DEFAULT_UI_LANGUAGE } from './uiSettings'
 import { DEFAULT_WEBSITE_WINDOW_POLICY } from './websiteWindowSettings'
+import { DEFAULT_BROWSER_MODE, DEFAULT_BROWSER_SEARCH_ENGINE } from './browserSettings'
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   language: DEFAULT_UI_LANGUAGE,
@@ -58,6 +59,8 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   canvasWheelZoomModifier: 'primary',
   standardWindowSizeBucket: 'regular',
   websiteWindowPolicy: DEFAULT_WEBSITE_WINDOW_POLICY,
+  browserDefaultMode: DEFAULT_BROWSER_MODE,
+  browserSearchEngine: DEFAULT_BROWSER_SEARCH_ENGINE,
   experimentalWebsiteWindowPasteEnabled: false,
   experimentalRemoteWorkersEnabled: false,
   defaultTerminalWindowScalePercent: 80,
