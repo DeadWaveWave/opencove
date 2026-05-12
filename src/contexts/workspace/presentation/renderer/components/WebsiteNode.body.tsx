@@ -7,6 +7,7 @@ import type {
 } from '@shared/contracts/dto'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
 import { WebsiteNodeHomePage } from './WebsiteNode.homePage'
+import { WebsiteNodeIframe } from './WebsiteNode.iframe'
 import { WebsiteNodeNativePlaceholder } from './WebsiteNode.nativePlaceholder'
 
 export function WebsiteNodeBody({
@@ -58,12 +59,7 @@ export function WebsiteNodeBody({
           <WebsiteNodeNativePlaceholder onOpenAsIframe={onOpenAsIframe} />
         ) : null}
         {effectiveBrowserMode === 'iframe' && hasPageUrl ? (
-          <iframe
-            className="website-node__iframe"
-            src={url}
-            title={displayTitle}
-            sandbox="allow-downloads allow-forms allow-modals allow-popups allow-popups-to-escape-sandbox allow-scripts"
-          />
+          <WebsiteNodeIframe url={url} displayTitle={displayTitle} />
         ) : null}
         {!showsNativePlaceholder && !hasPageUrl ? (
           <WebsiteNodeHomePage

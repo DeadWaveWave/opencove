@@ -21,6 +21,9 @@ describe('browser settings helpers', () => {
     expect(resolveBrowserNavigationTarget('opencove', 'bing')).toBe(
       'https://www.bing.com/search?q=opencove',
     )
+    expect(resolveBrowserNavigationTarget('opencove', 'google')).toBe(
+      'https://www.google.com/search?igu=1&q=opencove',
+    )
     expect(resolveBrowserSearchUrl('canvas browser', 'brave')).toBe(
       'https://search.brave.com/search?q=canvas%20browser',
     )

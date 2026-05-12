@@ -9,15 +9,16 @@ Status: Implemented and verified for the full browser capability slice, includin
 - Done: SQLite schema version `9` with browser profile settings, history, bookmarks, downloads and permission decision tables.
 - Done: client-local `BrowserProfileStore` and IPC/preload surface for local start-page projection, history, bookmarks, downloads and permission responses.
 - Done: Website node data normalization for `browserMode`, `isFullscreen` and `previousFrame`.
-- Done: normal browser window size clamp at `90%` of the available canvas viewport, with explicit canvas fullscreen and restore.
+- Done: default browser window size is the same footprint as four canonical terminal windows, with normal-window clamp at `90%` of the available canvas viewport plus explicit canvas fullscreen and restore.
 - Done: native runtime support for navigation history fallback, stop, find-in-page, favicon state, download events and permission request events.
 - Done: Renderer browser chrome for back/forward, reload/stop, home/start page, bookmark star, bookmarks/history/download panels, Ctrl/Cmd+F find bar and fullscreen.
 - Done: Settings controls for default browser mode and default search engine.
 - Done: Safari-style local start page with search, bookmarks/favorites and recent history.
 - Done: WebUI-created nodes default to iframe; synced native nodes render a friendly client-only placeholder and offer explicit iframe downgrade.
+- Done: iframe fallback uses a browser-compatible sandbox, iframe-friendly Google search/home URLs, and an understandable fallback state when the iframe reports a load error. Sites may still block embedding through `X-Frame-Options`, CSP `frame-ancestors`, login, cookie or browser policy.
 - Done: targeted verification for profile store behavior, sizing/fullscreen helpers, old node normalization, runtime store events, session permission/download hooks, IPC registration and SQLite migrations.
-- Done: final staged line check and full `pnpm pre-commit` passed on 2026-05-12.
-- Done: follow-up targeted verification for settings normalization, Settings UI controls, address/search target resolution and browser runtime store events.
+- Done: final staged line check and full `pnpm pre-commit` passed again on 2026-05-12 after the four-terminal default size and iframe fallback follow-up.
+- Done: follow-up targeted verification for settings normalization, Settings UI controls, address/search target resolution, iframe sandbox/source behavior, browser runtime store events and default browser sizing.
 
 ## Verification Status
 
@@ -26,8 +27,8 @@ Final implementation verification:
 - `pnpm line-check:staged`: passed.
 - `pnpm exec tsc -p tsconfig.node.json --noEmit --pretty false`: passed.
 - `pnpm exec tsc -p tsconfig.web.json --noEmit --pretty false`: passed.
-- Targeted Vitest for browser profile store, website-window store/view, website node data/frame, IPC registration and persistence migrations: passed.
-- `pnpm pre-commit`: passed, including 158 staged-related Vitest files / 460 tests and Electron E2E with 219 passed, 47 skipped and 1 flaky retry recovered.
+- Targeted Vitest for browser profile store, website-window store/view, website node data/frame, iframe fallback helpers, default sizing, IPC registration and persistence migrations: passed.
+- `pnpm pre-commit`: passed, including 136 staged-related Vitest files / 421 tests and Electron E2E with 219 passed, 47 skipped and 1 flaky retry recovered.
 
 ## Problem Class
 
@@ -96,6 +97,7 @@ Mode rules:
 普通窗口模式：
 
 - Browser Window Node 的屏幕占用不得超过当前可用画布视口宽高的 `90%`。
+- 新建 Browser Window Node 的默认尺寸等于 `2 x 2` 个 canonical Terminal Window 的占位面积。
 - 约束必须覆盖新建、恢复、手动 resize、程序化 resize、Arrange、从链接打开新窗口和 WebUI iframe 降级创建。
 - `90%` 以可操作画布区域为基准，不以整个 OS 屏幕为基准。应扣除 app header、sidebar 和其它常驻 chrome。
 - 如果 canonical size 或旧数据恢复尺寸超过上限，启动或 hydration 时必须 clamp。

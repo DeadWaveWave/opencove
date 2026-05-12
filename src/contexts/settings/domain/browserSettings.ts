@@ -14,7 +14,7 @@ export const DEFAULT_BROWSER_SEARCH_ENGINE: BrowserSearchEngineId = 'google'
 export const DEFAULT_BROWSER_MODE: BrowserMode = 'native'
 
 const SEARCH_URL_BY_ENGINE: Record<BrowserSearchEngineId, string> = {
-  google: 'https://www.google.com/search?q=',
+  google: 'https://www.google.com/search?igu=1&q=',
   duckduckgo: 'https://duckduckgo.com/?q=',
   bing: 'https://www.bing.com/search?q=',
   brave: 'https://search.brave.com/search?q=',

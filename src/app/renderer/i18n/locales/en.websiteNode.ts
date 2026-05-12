@@ -26,6 +26,9 @@ export const enWebsiteNode = {
   nativeUnavailableDetail:
     'Full browser capability is client-local. Web UI can open this node as an iframe.',
   openAsIframe: 'Open as iframe',
+  iframeUnavailableTitle: 'This site cannot be shown in iframe mode',
+  iframeUnavailableDetail:
+    'Some sites block embedded browsers with their own security policy. Use native browser mode in the desktop client for full access.',
   enterFullscreen: 'Full screen',
   exitFullscreen: 'Exit full screen',
   close: 'Close',

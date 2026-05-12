@@ -4,6 +4,7 @@ import {
   resolveDefaultNoteWindowSize,
   resolveDefaultTerminalWindowSize,
   resolveDefaultTaskWindowSize,
+  resolveDefaultWebsiteWindowSize,
 } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import { resolveDefaultAgentLaunchGeometry } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/hooks/agentLaunchGeometry'
 import { resolveNodePlacementAnchorFromViewportCenter } from '../../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/helpers'
@@ -25,6 +26,11 @@ describe('workspace canvas default sizing', () => {
       height: 788,
     })
 
+    expect(resolveDefaultWebsiteWindowSize('large')).toEqual({
+      width: 1140,
+      height: 788,
+    })
+
     expect(resolveDefaultNoteWindowSize('large')).toEqual({
       width: 276,
       height: 188,
@@ -41,6 +47,11 @@ describe('workspace canvas default sizing', () => {
       width: 468,
       height: 660,
     })
+
+    expect(resolveDefaultWebsiteWindowSize('compact')).toEqual({
+      width: 948,
+      height: 660,
+    })
   })
 
   it('defaults to the regular bucket when none is provided', () => {
@@ -51,6 +62,11 @@ describe('workspace canvas default sizing', () => {
 
     expect(resolveDefaultAgentWindowSize()).toEqual({
       width: 516,
+      height: 724,
+    })
+
+    expect(resolveDefaultWebsiteWindowSize()).toEqual({
+      width: 1044,
       height: 724,
     })
   })

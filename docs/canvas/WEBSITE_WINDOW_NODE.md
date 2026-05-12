@@ -9,6 +9,7 @@ Website Window Node lets a canvas node host a browser runtime while keeping dura
 - Navigate, go back, go forward, reload, stop and open the local start page.
 - Support Safari-style start page search, local history, bookmarks, downloads, permission prompts and page find in client-native mode.
 - Support `native` and `iframe` browser modes through Settings. The node toolbar no longer owns mode switching.
+- Default browser nodes use the same footprint as four canonical terminal windows, then clamp normal windows to `90%` of the available canvas viewport.
 - Support configurable default search engines for address-bar and start-page search text.
 - Persist node URL, pinned flag, session mode, profile id, browser mode, fullscreen state, previous frame and current frame.
 - Support session modes: `shared`, `incognito`, `profile`.
@@ -122,6 +123,7 @@ Pinned nodes and `keepAliveHosts` influence discard behavior but do not make bro
 - Full native browser capability exists only in the desktop/client runtime.
 - WebUI-created browser nodes default to iframe mode.
 - WebUI renders synced native nodes as a client-only placeholder and only switches to iframe after explicit user action.
+- iframe mode uses the strongest compatible sandbox found for the fallback path, including `allow-same-origin` and user-activated top navigation. It also rewrites Google search/home iframe sources to `igu=1` where applicable, but cannot bypass remote `X-Frame-Options`, CSP `frame-ancestors`, login, cookie or browser embedding policy.
 
 ## Verification Anchors
 
