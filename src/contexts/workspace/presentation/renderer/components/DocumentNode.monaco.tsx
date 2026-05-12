@@ -17,6 +17,7 @@ type MonacoModule = typeof import('monaco-editor/esm/vs/editor/editor.api.js')
 type MonacoEditorInstance =
   import('monaco-editor/esm/vs/editor/editor.api.js').editor.IStandaloneCodeEditor
 type MonacoTextModel = import('monaco-editor/esm/vs/editor/editor.api.js').editor.ITextModel
+type DocumentNodeWordWrapMode = 'on' | 'off'
 
 type MonacoEnvironmentTarget = typeof globalThis & {
   MonacoEnvironment?: {
@@ -44,6 +45,7 @@ const BASIC_LANGUAGE_LOADERS: Record<string, () => Promise<unknown>> = {
 
 const loadedLanguageIds = new Map<string, Promise<void>>()
 let monacoModulePromise: Promise<MonacoModule> | null = null
+let monacoEditorContributionsPromise: Promise<void> | null = null
 
 function ensureMonacoEnvironment(): void {
   const target = globalThis as MonacoEnvironmentTarget
@@ -84,6 +86,17 @@ async function loadMonacoModule(): Promise<MonacoModule> {
   return await monacoModulePromise
 }
 
+async function ensureDocumentNodeEditorContributions(): Promise<void> {
+  if (!monacoEditorContributionsPromise) {
+    monacoEditorContributionsPromise =
+      import('monaco-editor/esm/vs/editor/contrib/find/browser/findController.js').then(
+        () => undefined,
+      )
+  }
+
+  return await monacoEditorContributionsPromise
+}
+
 function getCurrentDocumentNodeMonacoThemeId(): string {
   if (typeof document === 'undefined') {
     return DOCUMENT_NODE_MONACO_DARK_THEME
@@ -110,6 +123,14 @@ async function ensureDocumentNodeLanguage(languageId: string): Promise<void> {
   }
 
   await promise
+}
+
+function resolveDocumentNodeWordWrapMode(
+  monaco: MonacoModule,
+  editor: MonacoEditorInstance,
+): DocumentNodeWordWrapMode {
+  const wrappingInfo = editor.getOption(monaco.editor.EditorOption.wrappingInfo)
+  return wrappingInfo.wrappingColumn === -1 ? 'off' : 'on'
 }
 
 export function resolveDocumentNodeLanguageId(uri: string): string {
@@ -222,6 +243,7 @@ export function DocumentNodeMonacoEditor({
   const { t } = useTranslation()
   const languageId = useMemo(() => resolveDocumentNodeLanguageId(uri), [uri])
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
+  const [wordWrapMode, setWordWrapMode] = useState<DocumentNodeWordWrapMode>('off')
   const hostRef = useRef<HTMLDivElement | null>(null)
   const editorRef = useRef<MonacoEditorInstance | null>(null)
   const modelRef = useRef<MonacoTextModel | null>(null)
@@ -238,9 +260,10 @@ export function DocumentNodeMonacoEditor({
 
     const attachEditor = async (): Promise<void> => {
       try {
-        const [monaco] = await Promise.all([
-          loadMonacoModule(),
+        const monaco = await loadMonacoModule()
+        await Promise.all([
           ensureDocumentNodeLanguage(languageId),
+          ensureDocumentNodeEditorContributions(),
         ])
 
         if (disposed || !hostRef.current) {
@@ -269,6 +292,12 @@ export function DocumentNodeMonacoEditor({
 
         editorRef.current = editor
 
+        const syncWordWrapMode = (): void => {
+          setWordWrapMode(resolveDocumentNodeWordWrapMode(monaco, editor))
+        }
+
+        syncWordWrapMode()
+
         const input = hostRef.current.querySelector('textarea.inputarea')
         if (input instanceof HTMLTextAreaElement) {
           input.setAttribute('data-testid', 'document-node-editor-input')
@@ -283,18 +312,35 @@ export function DocumentNodeMonacoEditor({
           onContentChangeRef.current(model.getValue())
         })
 
-        editor.onKeyDown(event => {
-          const browserEvent = event.browserEvent
-          const isSaveShortcut =
-            browserEvent.key.toLowerCase() === 's' && (browserEvent.metaKey || browserEvent.ctrlKey)
-
-          if (!isSaveShortcut) {
+        editor.onDidChangeConfiguration(event => {
+          if (!event.hasChanged(monaco.editor.EditorOption.wrappingInfo)) {
             return
           }
 
-          browserEvent.preventDefault()
-          browserEvent.stopPropagation()
-          onSaveShortcutRef.current()
+          syncWordWrapMode()
+        })
+
+        editor.addAction({
+          id: 'opencove.document.save',
+          label: 'Save',
+          keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
+          run: () => {
+            onSaveShortcutRef.current()
+          },
+        })
+
+        editor.addAction({
+          id: 'editor.action.toggleWordWrap',
+          label: 'View: Toggle Word Wrap',
+          keybindings: [monaco.KeyMod.Alt | monaco.KeyCode.KeyZ],
+          run: () => {
+            const currentMode = resolveDocumentNodeWordWrapMode(monaco, editor)
+            editor.updateOptions({
+              wordWrapOverride2: currentMode === 'on' ? 'off' : 'on',
+            })
+
+            setWordWrapMode(resolveDocumentNodeWordWrapMode(monaco, editor))
+          },
         })
 
         setStatus('ready')
@@ -306,6 +352,7 @@ export function DocumentNodeMonacoEditor({
     }
 
     setStatus('loading')
+    setWordWrapMode('off')
     void attachEditor()
 
     return () => {
@@ -392,7 +439,12 @@ export function DocumentNodeMonacoEditor({
   }
 
   return (
-    <div className="document-node__monaco-shell" data-testid="document-node-editor">
+    <div
+      className="document-node__monaco-shell"
+      data-cove-focus-scope="document-editor"
+      data-testid="document-node-editor"
+      data-word-wrap={wordWrapMode}
+    >
       <div ref={hostRef} className="document-node__monaco nodrag nowheel" />
       {status !== 'ready' ? (
         <div className="document-node__editor-loading" role="status">
