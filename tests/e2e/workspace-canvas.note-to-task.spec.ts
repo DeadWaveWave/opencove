@@ -1,9 +1,12 @@
 import { expect, test } from '@playwright/test'
+import { readFile, rm } from 'node:fs/promises'
+import path from 'node:path'
 import { resolveDefaultTaskWindowSize } from '../../src/contexts/workspace/presentation/renderer/components/workspaceCanvas/constants'
 import {
   clearAndSeedWorkspace,
   clickHeaderDragSurface,
   launchApp,
+  testWorkspacePath,
 } from './workspace-canvas.helpers'
 import { readSeededWorkspaceLayout, rectsOverlap } from './workspace-canvas.arrange.shared'
 
@@ -164,6 +167,99 @@ test.describe('Workspace Canvas - Note to Task', () => {
       await noteNode.click({ position: { x: 48, y: 64 } })
       await expect(window.locator('.workspace-context-menu')).toHaveCount(0)
     } finally {
+      await electronApp.close()
+    }
+  })
+
+  test('uses note action menu to save markdown, set color, and convert to task', async () => {
+    const { electronApp, window } = await launchApp()
+    const noteText = 'Download body\nSecond line'
+    const noteTitle = 'note-menu-download-e2e'
+    const savedMarkdownPath = path.join(testWorkspacePath, `${noteTitle}.md`)
+
+    await rm(savedMarkdownPath, { force: true })
+
+    try {
+      await clearAndSeedWorkspace(window, [
+        {
+          id: 'note-action-menu',
+          title: noteTitle,
+          position: { x: 880, y: 420 },
+          width: 420,
+          height: 280,
+          kind: 'note',
+          task: {
+            text: noteText,
+          },
+        },
+      ])
+
+      const noteNode = window.locator('.note-node').first()
+      await expect(noteNode).toBeVisible()
+
+      const moreButton = noteNode.locator('[data-testid="note-node-more"]')
+      await expect(moreButton).toBeVisible()
+      await moreButton.click()
+
+      await expect(window.locator('[data-testid="note-node-menu"]')).toBeVisible()
+      await expect(window.locator('[data-testid="note-node-menu-save-markdown"]')).toBeVisible()
+      await expect(window.locator('[data-testid="note-node-menu-convert-to-task"]')).toBeVisible()
+      await expect(window.locator('[data-testid="note-node-menu-label-color"]')).toBeVisible()
+
+      await window.locator('[data-testid="note-node-menu-save-markdown"]').click()
+      await expect
+        .poll(async () => {
+          return await readFile(savedMarkdownPath, 'utf8').catch(() => null)
+        })
+        .toBe(noteText)
+
+      await moreButton.click()
+      await window.locator('[data-testid="note-node-menu-label-color"]').click()
+      await expect(window.locator('[data-testid="note-node-menu-label-color-menu"]')).toBeVisible()
+      await window.locator('[data-testid="note-node-menu-label-color-blue"]').click()
+
+      const noteHeader = noteNode.locator('.note-node__header')
+      await expect(noteHeader.locator('.cove-label-dot')).toHaveAttribute(
+        'data-cove-label-color',
+        'blue',
+      )
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async nodeId => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return null
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                nodes?: Array<{
+                  id?: string
+                  labelColorOverride?: unknown
+                }>
+              }>
+            }
+
+            const node = parsed.workspaces?.[0]?.nodes?.find(item => item.id === nodeId) ?? null
+            return typeof node?.labelColorOverride === 'string' ? node.labelColorOverride : null
+          }, 'note-action-menu')
+        })
+        .toBe('blue')
+
+      await moreButton.click()
+      await window.locator('[data-testid="note-node-menu-convert-to-task"]').click()
+
+      await expect(window.locator('[data-testid="note-node-menu"]')).toHaveCount(0)
+      await expect(window.locator('.note-node')).toHaveCount(0)
+
+      const taskNode = window.locator('.task-node').first()
+      await expect(taskNode).toBeVisible()
+      await expect(
+        taskNode.locator('[data-testid="task-node-inline-requirement-input"]'),
+      ).toHaveValue(noteText)
+    } finally {
+      await rm(savedMarkdownPath, { force: true })
       await electronApp.close()
     }
   })

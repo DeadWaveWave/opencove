@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react'
 import type { Node } from '@xyflow/react'
 import type { AgentSettings } from '@contexts/settings/domain/agentSettings'
+import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import { useTerminalClientDisplayCalibration } from '@contexts/settings/presentation/renderer/terminalDisplayCalibrationStorage'
 import { resolveTerminalDisplayCalibrationCompensation } from '@contexts/settings/domain/terminalDisplayCalibration'
 import type { TerminalNodeData, WorkspaceSpaceState } from '../../../types'
@@ -18,6 +19,8 @@ export function useWorkspaceCanvasComposedNodeTypes({
   workspacePath,
   agentSettings,
   actionRefs,
+  convertNoteToTask,
+  setNodeLabelColorOverride,
 }: {
   setNodes: (
     updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
@@ -31,6 +34,8 @@ export function useWorkspaceCanvasComposedNodeTypes({
   workspacePath: string
   agentSettings: AgentSettings
   actionRefs: WorkspaceCanvasActionRefs
+  convertNoteToTask: (nodeId: string) => boolean
+  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
 }) {
   const savedTerminalDisplayCalibration = useTerminalClientDisplayCalibration({
     terminalFontSize: agentSettings.terminalFontSize,
@@ -62,6 +67,8 @@ export function useWorkspaceCanvasComposedNodeTypes({
     browserDefaultMode: agentSettings.browserDefaultMode,
     browserSearchEngine: agentSettings.browserSearchEngine,
     selectNode,
+    convertNoteToTask,
+    setNodeLabelColorOverride,
     ...actionRefs,
   })
 }

@@ -2,6 +2,7 @@ import { useMemo, type MutableRefObject, type ReactElement } from 'react'
 import type { BrowserMode, WebsiteWindowSessionMode } from '@shared/contracts/dto'
 import type { AgentProvider } from '@contexts/settings/domain/agentSettings'
 import type { BrowserSearchEngineId } from '@contexts/settings/domain/browserSettings'
+import type { NodeLabelColorOverride } from '@shared/types/labelColor'
 import type { NodeFrame, WorkspaceSpaceState } from '../../types'
 import type { TerminalClientDisplayCalibration } from '@contexts/settings/domain/terminalDisplayCalibration'
 import { WorkspaceCanvasDocumentNodeType } from './nodeTypes.document'
@@ -31,6 +32,8 @@ interface WorkspaceCanvasNodeTypesParams {
   browserDefaultMode: BrowserMode
   browserSearchEngine: BrowserSearchEngineId
   selectNode: (nodeId: string, options?: { toggle?: boolean }) => void
+  convertNoteToTask: (nodeId: string) => boolean
+  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
   clearNodeSelectionRef: MutableRefObject<() => void>
   closeNodeRef: MutableRefObject<(nodeId: string) => Promise<void>>
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
@@ -91,6 +94,8 @@ export function useWorkspaceCanvasNodeTypes({
   browserDefaultMode,
   browserSearchEngine,
   selectNode,
+  convertNoteToTask,
+  setNodeLabelColorOverride,
   clearNodeSelectionRef,
   closeNodeRef,
   resizeNodeRef,
@@ -244,6 +249,8 @@ export function useWorkspaceCanvasNodeTypes({
             resizeNodeRef={resizeNodeRef}
             updateNoteTextRef={updateNoteTextRef}
             renameNoteTitleRef={renameNoteTitleRef}
+            convertNoteToTask={convertNoteToTask}
+            setNodeLabelColorOverride={setNodeLabelColorOverride}
             normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
           />
         )
@@ -282,8 +289,10 @@ export function useWorkspaceCanvasNodeTypes({
     defaultProvider,
     browserDefaultMode,
     browserSearchEngine,
+    convertNoteToTask,
     updateNoteTextRef,
     renameNoteTitleRef,
+    setNodeLabelColorOverride,
     updateRoleProviderRef,
     updateRoleInputRef,
     runRoleRef,

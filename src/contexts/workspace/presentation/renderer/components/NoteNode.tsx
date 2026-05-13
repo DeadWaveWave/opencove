@@ -1,10 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { JSX } from 'react'
 import { useTranslation } from '@app/renderer/i18n'
-import { Download } from 'lucide-react'
 import { toErrorMessage } from '@app/renderer/shell/utils/format'
 import type { NodeFrame, Point } from '../types'
-import type { LabelColor } from '@shared/types/labelColor'
+import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
@@ -12,6 +11,7 @@ import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
 import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
 import { normalizeMarkdownFileName, saveNoteAsMarkdownFile } from './NoteNode.markdown'
 import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
+import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
 
 interface NoteNodeInteractionOptions {
   normalizeViewport?: boolean
@@ -24,6 +24,7 @@ interface NoteNodeProps {
   title: string
   text: string
   labelColor?: LabelColor | null
+  labelColorOverride?: NodeLabelColorOverride
   position: Point
   width: number
   height: number
@@ -33,6 +34,8 @@ interface NoteNodeProps {
   onResize: (frame: NodeFrame) => void
   onTitleChange: (title: string) => void
   onTextChange: (text: string) => void
+  onConvertToTask: () => void
+  onSetLabelColorOverride: (labelColorOverride: NodeLabelColorOverride) => void
   onInteractionStart?: (options?: NoteNodeInteractionOptions) => void
 }
 
@@ -40,6 +43,7 @@ export function NoteNode({
   title,
   text,
   labelColor,
+  labelColorOverride = null,
   position,
   width,
   height,
@@ -49,6 +53,8 @@ export function NoteNode({
   onResize,
   onTitleChange,
   onTextChange,
+  onConvertToTask,
+  onSetLabelColorOverride,
   onInteractionStart,
 }: NoteNodeProps): JSX.Element {
   const { t } = useTranslation()
@@ -88,17 +94,10 @@ export function NoteNode({
   )
 
   const saveMarkdown = useCallback(async (): Promise<void> => {
-    const rawName = window.prompt(t('noteNode.saveMarkdownPrompt'), t('noteNode.defaultFileName'))
-    if (rawName === null) {
-      return
-    }
-
-    const fileName = normalizeMarkdownFileName(rawName)
-    if (!fileName) {
-      setSaveError(t('noteNode.invalidFileName'))
-      setSavedMarkdownPath(null)
-      return
-    }
+    const fileName =
+      normalizeMarkdownFileName(resolvedTitle) ??
+      normalizeMarkdownFileName(t('noteNode.defaultFileName')) ??
+      'note.md'
 
     const directoryPath = saveDirectoryPath.trim()
     if (!directoryPath) {
@@ -131,7 +130,9 @@ export function NoteNode({
     } finally {
       setIsSavingMarkdown(false)
     }
-  }, [saveDirectoryPath, saveMountId, t, text])
+  }, [resolvedTitle, saveDirectoryPath, saveMountId, t, text])
+
+  const canConvertToTask = text.trim().length > 0
 
   return (
     <div
@@ -199,22 +200,14 @@ export function NoteNode({
           data-testid="note-node-header-drag-surface"
           aria-hidden="true"
         />
-        <button
-          type="button"
-          className="note-node__action nodrag"
-          onPointerDown={event => {
-            event.stopPropagation()
-          }}
-          onClick={event => {
-            event.stopPropagation()
-            void saveMarkdown()
-          }}
-          disabled={isSavingMarkdown}
-          aria-label={t('noteNode.saveMarkdown')}
-          title={t('noteNode.saveMarkdown')}
-        >
-          <Download aria-hidden="true" />
-        </button>
+        <NoteNodeActionsMenu
+          isSavingMarkdown={isSavingMarkdown}
+          canConvertToTask={canConvertToTask}
+          labelColorOverride={labelColorOverride}
+          onSaveMarkdown={saveMarkdown}
+          onConvertToTask={onConvertToTask}
+          onSetLabelColorOverride={onSetLabelColorOverride}
+        />
         <button
           type="button"
           className="note-node__close nodrag"

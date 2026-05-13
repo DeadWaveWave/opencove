@@ -1,7 +1,7 @@
 import type { MutableRefObject, ReactElement } from 'react'
 import { NoteNode } from '../NoteNode'
 import type { NodeFrame, TerminalNodeData, WorkspaceSpaceState } from '../../types'
-import type { LabelColor } from '@shared/types/labelColor'
+import type { LabelColor, NodeLabelColorOverride } from '@shared/types/labelColor'
 import { useNodePosition } from './nodePosition'
 
 export function WorkspaceCanvasNoteNodeType({
@@ -15,6 +15,8 @@ export function WorkspaceCanvasNoteNodeType({
   resizeNodeRef,
   updateNoteTextRef,
   renameNoteTitleRef,
+  convertNoteToTask,
+  setNodeLabelColorOverride,
   normalizeViewportForTerminalInteractionRef,
 }: {
   data: TerminalNodeData
@@ -27,6 +29,8 @@ export function WorkspaceCanvasNoteNodeType({
   resizeNodeRef: MutableRefObject<(nodeId: string, desiredFrame: NodeFrame) => void>
   updateNoteTextRef: MutableRefObject<(nodeId: string, text: string) => void>
   renameNoteTitleRef: MutableRefObject<(nodeId: string, title: string) => void>
+  convertNoteToTask: (nodeId: string) => boolean
+  setNodeLabelColorOverride: (nodeIds: string[], labelColorOverride: NodeLabelColorOverride) => void
   normalizeViewportForTerminalInteractionRef: MutableRefObject<(nodeId: string) => void>
 }): ReactElement | null {
   const nodePosition = useNodePosition(id)
@@ -49,6 +53,7 @@ export function WorkspaceCanvasNoteNodeType({
       title={data.title}
       text={data.note.text}
       labelColor={labelColor}
+      labelColorOverride={data.labelColorOverride ?? null}
       position={nodePosition}
       width={data.width}
       height={data.height}
@@ -63,6 +68,12 @@ export function WorkspaceCanvasNoteNodeType({
       }}
       onTitleChange={title => {
         renameNoteTitleRef.current(id, title)
+      }}
+      onConvertToTask={() => {
+        convertNoteToTask(id)
+      }}
+      onSetLabelColorOverride={labelColorOverride => {
+        setNodeLabelColorOverride([id], labelColorOverride)
       }}
       onInteractionStart={options => {
         if (options?.clearSelection === true) {
