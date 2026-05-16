@@ -1,6 +1,3 @@
-import { toFileUri } from '@contexts/filesystem/domain/fileUri'
-import type { MountAwareFilesystemApi } from '../utils/mountAwareFilesystemApi'
-
 const WINDOWS_RESERVED_NAMES = new Set([
   'con',
   'prn',
@@ -45,32 +42,4 @@ export function normalizeMarkdownFileName(input: string): string | null {
   }
 
   return withExtension
-}
-
-export function joinFileSystemPath(directoryPath: string, fileName: string): string {
-  const separator = directoryPath.includes('\\') && !directoryPath.includes('/') ? '\\' : '/'
-  const trimmedDirectory = directoryPath.replace(/[\\/]+$/g, '')
-
-  if (!trimmedDirectory) {
-    return fileName
-  }
-
-  return `${trimmedDirectory}${separator}${fileName}`
-}
-
-export async function saveNoteAsMarkdownFile({
-  filesystemApi,
-  directoryPath,
-  fileName,
-  text,
-}: {
-  filesystemApi: Pick<MountAwareFilesystemApi, 'writeFileText'>
-  directoryPath: string
-  fileName: string
-  text: string
-}): Promise<string> {
-  const targetPath = joinFileSystemPath(directoryPath, fileName)
-  const targetUri = toFileUri(targetPath)
-  await filesystemApi.writeFileText({ uri: targetUri, content: text })
-  return targetPath
 }

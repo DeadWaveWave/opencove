@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import path from 'node:path'
 import { IPC_CHANNELS } from '../../../src/shared/contracts/ipc'
 import { invokeHandledIpc } from './ipcTestUtils'
 
@@ -103,5 +104,97 @@ describe('system IPC handlers', () => {
     ).resolves.toEqual({ shown: false })
 
     expect(execFile).not.toHaveBeenCalled()
+  })
+
+  it('saves text downloads under the system Downloads directory without overwriting files', async () => {
+    const mkdir = vi.fn()
+    const writeFile = vi
+      .fn()
+      .mockRejectedValueOnce(Object.assign(new Error('exists'), { code: 'EEXIST' }))
+      .mockResolvedValueOnce(undefined)
+    const { handlers, ipcMain } = createIpcHarness()
+
+    vi.doMock('node:child_process', () => ({
+      execFile: vi.fn(),
+      default: { execFile: vi.fn() },
+    }))
+    vi.doMock('node:fs/promises', () => ({ default: { mkdir, writeFile }, mkdir, writeFile }))
+    vi.doMock('electron', () => ({
+      app: { getPath: vi.fn(() => '/tmp/opencove-downloads') },
+      BrowserWindow: { getAllWindows: vi.fn(() => []) },
+      Notification: { isSupported: vi.fn(() => false) },
+      ipcMain,
+    }))
+
+    const { registerSystemIpcHandlers } =
+      await import('../../../src/contexts/system/presentation/main-ipc/register')
+    registerSystemIpcHandlers()
+
+    const saveHandler = handlers.get(IPC_CHANNELS.systemSaveTextToDownloads)
+    await expect(
+      invokeHandledIpc(saveHandler, null, {
+        fileName: 'note.md',
+        content: 'hello',
+      }),
+    ).resolves.toEqual({
+      fileName: 'note 2.md',
+      path: path.join('/tmp/opencove-downloads', 'note 2.md'),
+    })
+
+    expect(mkdir).toHaveBeenCalledWith('/tmp/opencove-downloads', { recursive: true })
+    expect(writeFile).toHaveBeenNthCalledWith(
+      1,
+      path.join('/tmp/opencove-downloads', 'note.md'),
+      'hello',
+      { encoding: 'utf8', flag: 'wx' },
+    )
+    expect(writeFile).toHaveBeenNthCalledWith(
+      2,
+      path.join('/tmp/opencove-downloads', 'note 2.md'),
+      'hello',
+      { encoding: 'utf8', flag: 'wx' },
+    )
+  })
+
+  it('rejects unsafe download file names', async () => {
+    const { handlers, ipcMain } = createIpcHarness()
+
+    vi.doMock('node:child_process', () => ({
+      execFile: vi.fn(),
+      default: { execFile: vi.fn() },
+    }))
+    vi.doMock('node:fs/promises', () => ({
+      default: { mkdir: vi.fn(), writeFile: vi.fn() },
+      mkdir: vi.fn(),
+      writeFile: vi.fn(),
+    }))
+    vi.doMock('electron', () => ({
+      app: { getPath: vi.fn(() => '/tmp/opencove-downloads') },
+      BrowserWindow: { getAllWindows: vi.fn(() => []) },
+      Notification: { isSupported: vi.fn(() => false) },
+      ipcMain,
+    }))
+
+    const { registerSystemIpcHandlers } =
+      await import('../../../src/contexts/system/presentation/main-ipc/register')
+    registerSystemIpcHandlers()
+
+    const saveHandler = handlers.get(IPC_CHANNELS.systemSaveTextToDownloads)
+    await expect(
+      invokeHandledIpc(saveHandler, null, {
+        fileName: '../note.md',
+        content: 'hello',
+      }),
+    ).rejects.toMatchObject({
+      code: 'common.invalid_input',
+    })
+    await expect(
+      invokeHandledIpc(saveHandler, null, {
+        fileName: 'con.md',
+        content: 'hello',
+      }),
+    ).rejects.toMatchObject({
+      code: 'common.invalid_input',
+    })
   })
 })

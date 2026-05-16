@@ -8,8 +8,7 @@ import { NodeResizeHandles } from './shared/NodeResizeHandles'
 import { useNodeFrameResize } from '../utils/nodeFrameResize'
 import { shouldStopWheelPropagation } from './taskNode/helpers'
 import { resolveCanonicalNodeMinSize } from '../utils/workspaceNodeSizing'
-import { resolveFilesystemApiForMount } from '../utils/mountAwareFilesystemApi'
-import { normalizeMarkdownFileName, saveNoteAsMarkdownFile } from './NoteNode.markdown'
+import { normalizeMarkdownFileName } from './NoteNode.markdown'
 import { InlineNodeTitleEditor } from './shared/InlineNodeTitleEditor'
 import { NoteNodeActionsMenu } from './NoteNodeActionsMenu'
 
@@ -28,8 +27,7 @@ interface NoteNodeProps {
   position: Point
   width: number
   height: number
-  saveDirectoryPath: string
-  saveMountId?: string | null
+  onShowMessage?: (message: string, tone?: 'info' | 'warning' | 'error') => void
   onClose: () => void
   onResize: (frame: NodeFrame) => void
   onTitleChange: (title: string) => void
@@ -47,8 +45,7 @@ export function NoteNode({
   position,
   width,
   height,
-  saveDirectoryPath,
-  saveMountId = null,
+  onShowMessage,
   onClose,
   onResize,
   onTitleChange,
@@ -59,8 +56,6 @@ export function NoteNode({
 }: NoteNodeProps): JSX.Element {
   const { t } = useTranslation()
   const [isSavingMarkdown, setIsSavingMarkdown] = useState(false)
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [savedMarkdownPath, setSavedMarkdownPath] = useState<string | null>(null)
   const resolvedTitle = title.trim().length > 0 ? title : ''
   const { draftFrame, handleResizePointerDown } = useNodeFrameResize({
     position,
@@ -99,38 +94,23 @@ export function NoteNode({
       normalizeMarkdownFileName(t('noteNode.defaultFileName')) ??
       'note.md'
 
-    const directoryPath = saveDirectoryPath.trim()
-    if (!directoryPath) {
-      setSaveError(t('documentNode.filesystemUnavailable'))
-      setSavedMarkdownPath(null)
-      return
-    }
-
-    const filesystemApi = resolveFilesystemApiForMount(saveMountId)
-    if (!filesystemApi) {
-      setSaveError(t('documentNode.filesystemUnavailable'))
-      setSavedMarkdownPath(null)
-      return
-    }
-
     setIsSavingMarkdown(true)
-    setSaveError(null)
-    setSavedMarkdownPath(null)
 
     try {
-      const targetPath = await saveNoteAsMarkdownFile({
-        filesystemApi,
-        directoryPath,
+      const result = await window.opencoveApi.system.saveTextToDownloads({
         fileName,
-        text,
+        content: text,
       })
-      setSavedMarkdownPath(targetPath)
+      onShowMessage?.(t('messages.noteMarkdownDownloaded', { fileName: result.fileName }))
     } catch (error) {
-      setSaveError(toErrorMessage(error))
+      onShowMessage?.(
+        t('messages.noteMarkdownDownloadFailed', { message: toErrorMessage(error) }),
+        'error',
+      )
     } finally {
       setIsSavingMarkdown(false)
     }
-  }, [resolvedTitle, saveDirectoryPath, saveMountId, t, text])
+  }, [onShowMessage, resolvedTitle, t, text])
 
   const canConvertToTask = text.trim().length > 0
 
@@ -239,17 +219,6 @@ export function NoteNode({
           onTextChange(event.target.value)
         }}
       />
-
-      {saveError ? (
-        <div className="note-node__save-status note-node__save-status--error" role="status">
-          {saveError}
-        </div>
-      ) : null}
-      {savedMarkdownPath ? (
-        <div className="note-node__save-status" role="status">
-          {t('noteNode.savedMarkdown', { path: savedMarkdownPath })}
-        </div>
-      ) : null}
 
       <NodeResizeHandles
         classNamePrefix="task-node"

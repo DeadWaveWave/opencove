@@ -25,6 +25,8 @@ export const zhCNMessages = {
   arrangeAllSkippedSpaces_other: '已跳过 {{count}} 个 Space：空间不足，无法整理。',
   arrangeSpaceNoRoom: '该 Space 空间不足，无法整理。请先调整 Space 大小后重试。',
   noteToTaskRequiresContent: '便签内容为空，无法转换为任务。',
+  noteMarkdownDownloaded: '已保存 {{fileName}} 到下载。',
+  noteMarkdownDownloadFailed: '下载便签失败：{{message}}',
   agentLastMessageUnavailable: '当前 Agent 不可用，无法复制最后一条消息。',
   agentLastMessageStartedAtMissing: '当前 Agent 缺少会话时间，无法复制最后一条消息。',
   agentLastMessageEmpty: '当前 Agent 还没有可复制的最后一条消息。',

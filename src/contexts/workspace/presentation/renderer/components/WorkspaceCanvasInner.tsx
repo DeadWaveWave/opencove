@@ -200,6 +200,7 @@ export function WorkspaceCanvasInner({
     selectedSpaceIdsRef: canvasState.selectedSpaceIdsRef,
     spacesRef: canvasState.spacesRef,
     workspacePath,
+    onShowMessage,
     agentSettings,
     actionRefs,
     convertNoteToTask,

@@ -59,6 +59,8 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  SaveTextToDownloadsInput,
+  SaveTextToDownloadsResult,
   ShowSystemNotificationInput,
   ShowSystemNotificationResult,
   TerminalDataEvent,
@@ -318,6 +320,7 @@ export interface OpenCoveApi {
   }
   system: {
     listFonts: () => Promise<ListSystemFontsResult>
+    saveTextToDownloads: (payload: SaveTextToDownloadsInput) => Promise<SaveTextToDownloadsResult>
     showNotification: (
       payload: ShowSystemNotificationInput,
     ) => Promise<ShowSystemNotificationResult>

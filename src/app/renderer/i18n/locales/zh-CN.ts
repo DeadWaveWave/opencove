@@ -286,7 +286,6 @@ export const zhCN = {
     moreActions: '便签操作',
     saveMarkdown: '保存为 Markdown',
     defaultFileName: '便签.md',
-    savedMarkdown: '已保存到 {{path}}',
     resizeWidth: '调整便签宽度',
     resizeHeight: '调整便签高度',
   },

@@ -5,6 +5,7 @@ import { resolveDefaultTaskWindowSize } from '../../src/contexts/workspace/prese
 import {
   clearAndSeedWorkspace,
   clickHeaderDragSurface,
+  createTestUserDataDir,
   launchApp,
   testWorkspacePath,
 } from './workspace-canvas.helpers'
@@ -172,12 +173,13 @@ test.describe('Workspace Canvas - Note to Task', () => {
   })
 
   test('uses note action menu to save markdown, set color, and convert to task', async () => {
-    const { electronApp, window } = await launchApp()
+    const userDataDir = await createTestUserDataDir()
+    const { electronApp, window } = await launchApp({ userDataDir })
     const noteText = 'Download body\nSecond line'
-    const noteTitle = 'note-menu-download-e2e'
-    const savedMarkdownPath = path.join(testWorkspacePath, `${noteTitle}.md`)
-
-    await rm(savedMarkdownPath, { force: true })
+    const noteTitle = `note-menu-download-e2e-${Date.now()}`
+    const expectedFileName = `${noteTitle}.md`
+    const downloadsDirectory = await electronApp.evaluate(({ app }) => app.getPath('downloads'))
+    const expectedDownloadPath = path.join(downloadsDirectory, expectedFileName)
 
     try {
       await clearAndSeedWorkspace(window, [
@@ -207,11 +209,15 @@ test.describe('Workspace Canvas - Note to Task', () => {
       await expect(window.locator('[data-testid="note-node-menu-label-color"]')).toBeVisible()
 
       await window.locator('[data-testid="note-node-menu-save-markdown"]').click()
-      await expect
-        .poll(async () => {
-          return await readFile(savedMarkdownPath, 'utf8').catch(() => null)
-        })
-        .toBe(noteText)
+      await expect(window.locator('[data-testid="app-message"]')).toContainText(expectedFileName)
+      await expect(window.locator('.app-message__text')).toContainText(
+        `Saved ${expectedFileName} to Downloads.`,
+      )
+      await expect(noteNode.locator('.note-node__save-status')).toHaveCount(0)
+      await expect.poll(async () => await readFile(expectedDownloadPath, 'utf8')).toBe(noteText)
+      await expect(
+        readFile(path.join(testWorkspacePath, expectedFileName), 'utf8'),
+      ).rejects.toThrow()
 
       await moreButton.click()
       await window.locator('[data-testid="note-node-menu-label-color"]').click()
@@ -259,8 +265,8 @@ test.describe('Workspace Canvas - Note to Task', () => {
         taskNode.locator('[data-testid="task-node-inline-requirement-input"]'),
       ).toHaveValue(noteText)
     } finally {
-      await rm(savedMarkdownPath, { force: true })
       await electronApp.close()
+      await rm(expectedDownloadPath, { force: true })
     }
   })
 })

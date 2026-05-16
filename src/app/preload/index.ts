@@ -61,6 +61,8 @@ import type {
   SuggestWorktreeNamesInput,
   SuggestWorktreeNamesResult,
   SetWindowChromeThemeInput,
+  SaveTextToDownloadsInput,
+  SaveTextToDownloadsResult,
   ShowSystemNotificationInput,
   ShowSystemNotificationResult,
   TerminalDataEvent,
@@ -416,6 +418,8 @@ const opencoveApi = {
   },
   system: {
     listFonts: (): Promise<ListSystemFontsResult> => invokeIpc(IPC_CHANNELS.systemListFonts),
+    saveTextToDownloads: (payload: SaveTextToDownloadsInput): Promise<SaveTextToDownloadsResult> =>
+      invokeIpc(IPC_CHANNELS.systemSaveTextToDownloads, payload),
     showNotification: (
       payload: ShowSystemNotificationInput,
     ): Promise<ShowSystemNotificationResult> =>

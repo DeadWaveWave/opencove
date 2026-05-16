@@ -121,19 +121,3 @@
   line-height: 1.45;
   font-family: inherit;
 }
-
-.note-node__save-status {
-  max-height: 42px;
-  overflow: hidden;
-  padding: 6px 10px;
-  border-top: 1px solid var(--cove-node-header-border);
-  color: var(--cove-text-muted);
-  background: var(--cove-node-header-surface);
-  font-size: calc(11px * var(--cove-ui-font-scale));
-  line-height: 1.35;
-  text-overflow: ellipsis;
-}
-
-.note-node__save-status--error {
-  color: var(--cove-danger, #f87171);
-}

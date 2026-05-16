@@ -16,7 +16,6 @@ function renderNoteNode(options: {
         position={{ x: 0, y: 0 }}
         width={240}
         height={180}
-        saveDirectoryPath="/tmp"
         onClose={() => undefined}
         onResize={() => undefined}
         onTextChange={() => undefined}

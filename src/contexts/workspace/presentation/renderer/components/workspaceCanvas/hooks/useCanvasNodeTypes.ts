@@ -17,6 +17,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
   selectedSpaceIdsRef,
   spacesRef,
   workspacePath,
+  onShowMessage,
   agentSettings,
   actionRefs,
   convertNoteToTask,
@@ -32,6 +33,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
   selectedSpaceIdsRef: MutableRefObject<string[]>
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
+  onShowMessage?: Parameters<typeof useWorkspaceCanvasNodeTypes>[0]['onShowMessage']
   agentSettings: AgentSettings
   actionRefs: WorkspaceCanvasActionRefs
   convertNoteToTask: (nodeId: string) => boolean
@@ -59,6 +61,7 @@ export function useWorkspaceCanvasComposedNodeTypes({
   return useWorkspaceCanvasNodeTypes({
     spacesRef,
     workspacePath,
+    onShowMessage,
     terminalFontSize: agentSettings.terminalFontSize,
     terminalFontFamily: agentSettings.terminalFontFamily,
     terminalDisplayCalibration,

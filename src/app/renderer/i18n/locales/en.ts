@@ -286,7 +286,6 @@ export const en = {
     moreActions: 'Note actions',
     saveMarkdown: 'Save as Markdown',
     defaultFileName: 'note.md',
-    savedMarkdown: 'Saved to {{path}}',
     resizeWidth: 'Resize note width',
     resizeHeight: 'Resize note height',
   },

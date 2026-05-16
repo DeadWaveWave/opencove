@@ -1,8 +1,12 @@
 import { execFile } from 'node:child_process'
-import { BrowserWindow, Notification, ipcMain } from 'electron'
+import { mkdir, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { app, BrowserWindow, Notification, ipcMain } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   ListSystemFontsResult,
+  SaveTextToDownloadsInput,
+  SaveTextToDownloadsResult,
   ShowSystemNotificationInput,
   ShowSystemNotificationResult,
 } from '../../../../shared/contracts/dto'
@@ -11,6 +15,43 @@ import { registerHandledIpc } from '../../../../app/main/ipc/handle'
 import { createAppError } from '../../../../shared/errors/appError'
 
 const NOTIFY_SEND_TIMEOUT_MS = 5_000
+const MAX_DOWNLOAD_FILE_NAME_LENGTH = 180
+const MAX_DOWNLOAD_TEXT_BYTES = 10 * 1024 * 1024
+const DISALLOWED_DOWNLOAD_FILE_NAME_CHARACTERS = new Set([
+  '<',
+  '>',
+  ':',
+  '"',
+  '/',
+  '\\',
+  '|',
+  '?',
+  '*',
+])
+const WINDOWS_RESERVED_FILE_STEMS = new Set([
+  'con',
+  'prn',
+  'aux',
+  'nul',
+  'com1',
+  'com2',
+  'com3',
+  'com4',
+  'com5',
+  'com6',
+  'com7',
+  'com8',
+  'com9',
+  'lpt1',
+  'lpt2',
+  'lpt3',
+  'lpt4',
+  'lpt5',
+  'lpt6',
+  'lpt7',
+  'lpt8',
+  'lpt9',
+])
 
 const MONOSPACE_KEYWORDS = [
   'mono',
@@ -111,6 +152,136 @@ function normalizeShowSystemNotificationPayload(payload: unknown): ShowSystemNot
   }
 }
 
+function hasUnsafeDownloadFileNameCharacter(value: string): boolean {
+  for (const character of value) {
+    if (DISALLOWED_DOWNLOAD_FILE_NAME_CHARACTERS.has(character) || character.charCodeAt(0) < 32) {
+      return true
+    }
+  }
+
+  return false
+}
+
+function normalizeDownloadFileName(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid fileName for system:save-text-to-downloads.',
+    })
+  }
+
+  const fileName = value.trim()
+  const stem = fileName.slice(0, fileName.length - path.extname(fileName).length).toLowerCase()
+  if (
+    fileName.length === 0 ||
+    fileName.length > MAX_DOWNLOAD_FILE_NAME_LENGTH ||
+    fileName !== path.basename(fileName) ||
+    hasUnsafeDownloadFileNameCharacter(fileName) ||
+    /[. ]$/.test(fileName) ||
+    WINDOWS_RESERVED_FILE_STEMS.has(stem)
+  ) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid fileName for system:save-text-to-downloads.',
+    })
+  }
+
+  return fileName
+}
+
+function normalizeSaveTextToDownloadsPayload(payload: unknown): SaveTextToDownloadsInput {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid payload for system:save-text-to-downloads.',
+    })
+  }
+
+  const record = payload as Record<string, unknown>
+  const fileName = normalizeDownloadFileName(record.fileName)
+  if (typeof record.content !== 'string') {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Invalid content for system:save-text-to-downloads.',
+    })
+  }
+
+  if (Buffer.byteLength(record.content, 'utf8') > MAX_DOWNLOAD_TEXT_BYTES) {
+    throw createAppError('common.invalid_input', {
+      debugMessage: 'Content is too large for system:save-text-to-downloads.',
+    })
+  }
+
+  return {
+    fileName,
+    content: record.content,
+  }
+}
+
+function buildCollisionFileName(fileName: string, attempt: number): string {
+  if (attempt === 0) {
+    return fileName
+  }
+
+  const extension = path.extname(fileName)
+  const stem = fileName.slice(0, fileName.length - extension.length)
+  return `${stem} ${attempt + 1}${extension}`
+}
+
+async function writeTextDownloadCandidate({
+  content,
+  downloadsDirectory,
+  fileName,
+  originalFileName,
+  attempt,
+}: {
+  content: string
+  downloadsDirectory: string
+  fileName: string
+  originalFileName: string
+  attempt: number
+}): Promise<SaveTextToDownloadsResult> {
+  if (attempt >= 100) {
+    throw createAppError('common.unexpected', {
+      debugMessage: 'Unable to choose a unique download file name.',
+    })
+  }
+
+  const targetPath = path.join(downloadsDirectory, fileName)
+  try {
+    await writeFile(targetPath, content, { encoding: 'utf8', flag: 'wx' })
+    return { fileName, path: targetPath }
+  } catch (error) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'code' in error &&
+      (error as NodeJS.ErrnoException).code === 'EEXIST'
+    ) {
+      const nextAttempt = attempt + 1
+      return writeTextDownloadCandidate({
+        content,
+        downloadsDirectory,
+        fileName: buildCollisionFileName(originalFileName, nextAttempt),
+        originalFileName,
+        attempt: nextAttempt,
+      })
+    }
+
+    throw error
+  }
+}
+
+async function saveTextToDownloads(
+  payload: SaveTextToDownloadsInput,
+): Promise<SaveTextToDownloadsResult> {
+  const downloadsDirectory = app.getPath('downloads')
+  await mkdir(downloadsDirectory, { recursive: true })
+  return writeTextDownloadCandidate({
+    content: payload.content,
+    downloadsDirectory,
+    fileName: payload.fileName,
+    originalFileName: payload.fileName,
+    attempt: 0,
+  })
+}
+
 function focusFirstAppWindow(): void {
   const target = BrowserWindow.getAllWindows().find(window => !window.isDestroyed())
   if (!target) {
@@ -180,9 +351,17 @@ export function registerSystemIpcHandlers(): IpcRegistrationDisposable {
     { defaultErrorCode: 'common.unexpected' },
   )
 
+  registerHandledIpc(
+    IPC_CHANNELS.systemSaveTextToDownloads,
+    async (_event, payload): Promise<SaveTextToDownloadsResult> =>
+      saveTextToDownloads(normalizeSaveTextToDownloadsPayload(payload)),
+    { defaultErrorCode: 'common.unexpected' },
+  )
+
   return {
     dispose: () => {
       ipcMain.removeHandler(IPC_CHANNELS.systemListFonts)
+      ipcMain.removeHandler(IPC_CHANNELS.systemSaveTextToDownloads)
       ipcMain.removeHandler(IPC_CHANNELS.systemShowNotification)
     },
   }

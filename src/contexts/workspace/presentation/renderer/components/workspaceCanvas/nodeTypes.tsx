@@ -16,6 +16,7 @@ import { useNodePosition } from './nodePosition'
 import type {
   QuickUpdateTaskRequirement,
   QuickUpdateTaskTitle,
+  ShowWorkspaceCanvasMessage,
   UpdateNodeScrollback,
   UpdateTaskStatus,
 } from './types'
@@ -24,6 +25,7 @@ import type { WorkspaceCanvasNodeTypeProps } from './nodeTypes.types'
 interface WorkspaceCanvasNodeTypesParams {
   spacesRef: MutableRefObject<WorkspaceSpaceState[]>
   workspacePath: string
+  onShowMessage?: ShowWorkspaceCanvasMessage
   terminalFontSize: number
   terminalFontFamily: string | null
   terminalDisplayCalibration: TerminalClientDisplayCalibration | null
@@ -86,6 +88,7 @@ interface WorkspaceCanvasNodeTypesParams {
 export function useWorkspaceCanvasNodeTypes({
   spacesRef,
   workspacePath,
+  onShowMessage,
   terminalFontSize,
   terminalFontFamily,
   terminalDisplayCalibration,
@@ -241,8 +244,6 @@ export function useWorkspaceCanvasNodeTypes({
           <WorkspaceCanvasNoteNodeType
             data={data}
             id={id}
-            spacesRef={spacesRef}
-            workspacePath={workspacePath}
             selectNode={selectNode}
             clearNodeSelectionRef={clearNodeSelectionRef}
             closeNodeRef={closeNodeRef}
@@ -252,6 +253,7 @@ export function useWorkspaceCanvasNodeTypes({
             convertNoteToTask={convertNoteToTask}
             setNodeLabelColorOverride={setNodeLabelColorOverride}
             normalizeViewportForTerminalInteractionRef={normalizeViewportForTerminalInteractionRef}
+            onShowMessage={onShowMessage}
           />
         )
       },
@@ -282,6 +284,7 @@ export function useWorkspaceCanvasNodeTypes({
     selectNode,
     spacesRef,
     workspacePath,
+    onShowMessage,
     terminalFontSize,
     terminalFontFamily,
     terminalDisplayCalibration,
