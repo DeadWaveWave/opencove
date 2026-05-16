@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process'
 import os from 'node:os'
 import process from 'node:process'
 import type { ListTerminalProfilesResult, SpawnTerminalInput } from '../../shared/contracts/dto'
+import { removeElectronRunAsNode } from '../os/ElectronControlEnvironment'
 import {
   buildPowerShellExecArgs,
   findProfileById,
@@ -171,7 +172,7 @@ export class TerminalProfileResolver {
 
   public async resolveTerminalSpawn(input: SpawnTerminalInput): Promise<ResolvedTerminalSpawn> {
     const env = withTerminalCapabilityEnv(
-      { ...this.deps.env(), ...(input.env ?? {}) },
+      removeElectronRunAsNode({ ...this.deps.env(), ...(input.env ?? {}) }),
       this.deps.platform,
     )
 
@@ -223,10 +224,10 @@ export class TerminalProfileResolver {
   ): Promise<ResolvedTerminalSpawn> {
     const command = input.command.trim()
     const args = [...input.args]
-    const env = {
+    const env = removeElectronRunAsNode({
       ...this.deps.env(),
       ...(input.env ?? {}),
-    }
+    })
     const resolvedEnv = withTerminalCapabilityEnv(env, this.deps.platform)
 
     if (this.deps.platform !== 'win32') {

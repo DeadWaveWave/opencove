@@ -4,6 +4,7 @@ import {
   sanitizeCapturedShellEnvironment,
   type ShellEnvironmentSnapshot,
 } from './ShellEnvironmentService'
+import { removeElectronRunAsNode } from './ElectronControlEnvironment'
 import { mergeCommandPath } from './CommandPathSegments'
 import { resolveHomeDirectory } from './HomeDirectory'
 
@@ -58,7 +59,7 @@ function normalizeProcessCommandEnvironment(env: NodeJS.ProcessEnv): {
   env: NodeJS.ProcessEnv
   diagnostics: string[]
 } {
-  const nextEnv = { ...env }
+  const nextEnv = removeElectronRunAsNode(env)
   if (process.platform !== 'win32') {
     return {
       env: nextEnv,

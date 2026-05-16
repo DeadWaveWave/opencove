@@ -1,5 +1,6 @@
 import { execFile } from 'node:child_process'
 import process from 'node:process'
+import { removeElectronRunAsNode } from './ElectronControlEnvironment'
 
 const SHELL_ENV_MARKER = '__OPENCOVE_SHELL_ENV_MARKER__'
 const SHELL_CAPTURE_TIMEOUT_MS = 2_000
@@ -91,7 +92,7 @@ async function captureEnvironmentFromShell(
         timeout: SHELL_CAPTURE_TIMEOUT_MS,
         windowsHide: true,
         env: {
-          ...process.env,
+          ...removeElectronRunAsNode(process.env),
           ...SHELL_ENV_CAPTURE_PROTECTIVE_ENV,
         },
       },
@@ -116,7 +117,7 @@ async function captureEnvironmentFromShell(
           return
         }
 
-        resolveCapture({ env: parsed, diagnostics: [] })
+        resolveCapture({ env: sanitizeCapturedShellEnvironment(parsed), diagnostics: [] })
       },
     )
   })
@@ -127,7 +128,7 @@ async function resolveShellEnvironmentSnapshot(
 ): Promise<ShellEnvironmentSnapshot> {
   if (process.platform === 'win32') {
     return {
-      env: { ...process.env },
+      env: removeElectronRunAsNode(process.env),
       shellPath: null,
       source: 'process_env',
       diagnostics: ['Windows uses the current process environment without shell capture.'],
@@ -171,7 +172,7 @@ async function resolveShellEnvironmentSnapshot(
 
   diagnostics.push('Falling back to the current process environment.')
   return {
-    env: { ...process.env },
+    env: removeElectronRunAsNode(process.env),
     shellPath: primaryShell,
     source: 'process_env',
     diagnostics,
@@ -209,7 +210,7 @@ export function sanitizeCapturedShellEnvironment(
   capturedEnv: NodeJS.ProcessEnv,
   baseEnv: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
-  const sanitized = cloneEnv(capturedEnv)
+  const sanitized = removeElectronRunAsNode(cloneEnv(capturedEnv))
 
   for (const [key, value] of Object.entries(SHELL_ENV_CAPTURE_PROTECTIVE_ENV)) {
     const originalValue = baseEnv[key]

@@ -49,6 +49,7 @@ describe('CommandEnvironmentService', () => {
       env: {
         PATH: '/shell/bin',
         LANG: 'en_US.UTF-8',
+        ELECTRON_RUN_AS_NODE: '1',
         DISABLE_AUTO_UPDATE: 'true',
         ZSH_TMUX_AUTOSTARTED: 'true',
         ZSH_TMUX_AUTOSTART: 'false',
@@ -77,12 +78,14 @@ describe('CommandEnvironmentService', () => {
     process.env.NODE_ENV = 'production'
     process.env.OPENCOVE_TRUST_PROCESS_ENV = '1'
     process.env.PATH = '/process/bin'
+    process.env.ELECTRON_RUN_AS_NODE = '1'
 
     const { getCommandEnvironmentSnapshot } = await importCommandEnvironmentService()
     const snapshot = await getCommandEnvironmentSnapshot()
 
     expect(snapshot.source).toBe('process_env')
     expect(snapshot.env.PATH).toBe('/process/bin')
+    expect(snapshot.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
     expect(snapshot.diagnostics).toEqual([
       'Launch marker requested the current process environment for command execution.',
     ])

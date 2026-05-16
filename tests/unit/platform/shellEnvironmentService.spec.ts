@@ -60,6 +60,28 @@ describe('ShellEnvironmentService', () => {
     expect(snapshot.diagnostics).toEqual([])
   })
 
+  it('strips Electron-as-Node control env from shell capture', async () => {
+    setPlatform('darwin')
+    process.env.SHELL = '/bin/zsh'
+    process.env.ELECTRON_RUN_AS_NODE = '1'
+
+    execFileMock.mockImplementation((_file, _args, options, callback) => {
+      expect((options as { env?: NodeJS.ProcessEnv }).env?.ELECTRON_RUN_AS_NODE).toBeUndefined()
+      callback?.(
+        null,
+        `${SHELL_ENV_MARKER}PATH=/shell/bin\nELECTRON_RUN_AS_NODE=1\n${SHELL_ENV_MARKER}`,
+        '',
+      )
+      return {} as ReturnType<typeof execFileMock>
+    })
+
+    const { getShellEnvironmentSnapshot } = await importShellEnvironmentService()
+    const snapshot = await getShellEnvironmentSnapshot()
+
+    expect(snapshot.env.PATH).toBe('/shell/bin')
+    expect(snapshot.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+  })
+
   it('falls back to a secondary shell when the primary shell capture fails', async () => {
     setPlatform('darwin')
     process.env.SHELL = '/bin/zsh'

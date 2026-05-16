@@ -61,7 +61,7 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "node scripts/run-electron-vite-dev.mjs",
     "build": "node scripts/run-electron-vite-build.mjs",
     "check": "tsc -b tsconfig.node.json tsconfig.web.json --noEmit",
     "preview": "electron-vite preview",

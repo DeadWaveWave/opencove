@@ -13,6 +13,25 @@ describe('TerminalProfileResolver', () => {
     })
   })
 
+  it('strips Electron-as-Node control env from POSIX terminal sessions', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'darwin',
+      env: () => ({
+        PATH: '/usr/bin',
+        ELECTRON_RUN_AS_NODE: '1',
+      }),
+    })
+
+    const result = await resolver.resolveTerminalSpawn({
+      cwd: '/repo',
+      cols: 80,
+      rows: 24,
+    })
+
+    expect(result.env.PATH).toBe('/usr/bin')
+    expect(result.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
+  })
+
   it('lists detected Windows profiles and keeps PowerShell as the stable default', async () => {
     const resolver = new TerminalProfileResolver({
       platform: 'win32',
@@ -286,6 +305,28 @@ describe('TerminalProfileResolver', () => {
       profileId: 'wsl:Ubuntu',
       runtimeKind: 'wsl',
     })
+  })
+
+  it('strips Electron-as-Node control env from command sessions', async () => {
+    const resolver = new TerminalProfileResolver({
+      platform: 'darwin',
+      env: () => ({
+        PATH: '/usr/bin',
+        ELECTRON_RUN_AS_NODE: '1',
+      }),
+    })
+
+    const result = await resolver.resolveCommandSpawn({
+      cwd: '/repo',
+      command: 'codex',
+      args: [],
+      env: {
+        ELECTRON_RUN_AS_NODE: '1',
+      },
+    })
+
+    expect(result.env.PATH).toBe('/usr/bin')
+    expect(result.env.ELECTRON_RUN_AS_NODE).toBeUndefined()
   })
 
   it('injects only explicit command env into WSL command wrappers', async () => {
