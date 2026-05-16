@@ -167,7 +167,7 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
         position: { x: 260, y: 200 },
       })
 
-      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+      await window.locator('[data-testid="workspace-context-create-space"]').click()
 
       await expect(window.locator('.workspace-space-region')).toHaveCount(1)
       await expect(window.locator('.terminal-node')).toHaveCount(0)
@@ -210,7 +210,7 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
     }
   })
 
-  test('does not offer empty space creation from the pane menu when right-clicking inside a space', async () => {
+  test('creates a child space from the same create-space menu item inside a space', async () => {
     const { electronApp, window } = await launchApp()
 
     try {
@@ -232,10 +232,46 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
 
       await openPaneContextMenuInSpace(window, pane, 'context-space-guard')
 
-      await expect(
-        window.locator('[data-testid="workspace-context-create-empty-space"]'),
-      ).toHaveCount(0)
+      await expect(window.locator('[data-testid="workspace-context-create-space"]')).toBeVisible()
       await expect(window.locator('[data-testid="workspace-context-new-terminal"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-context-create-space"]').click()
+
+      await expect(window.locator('.workspace-space-region--child')).toBeVisible()
+
+      await expect
+        .poll(async () => {
+          return await window.evaluate(async () => {
+            const raw = await window.opencoveApi.persistence.readWorkspaceStateRaw()
+            if (!raw) {
+              return { rootSpaces: 0, childSpaces: 0, childNodeIdsCount: null }
+            }
+
+            const parsed = JSON.parse(raw) as {
+              workspaces?: Array<{
+                spaces?: Array<{
+                  id?: string
+                  parentSpaceId?: string | null
+                  nodeIds?: string[]
+                }>
+              }>
+            }
+
+            const spaces = parsed.workspaces?.[0]?.spaces ?? []
+            const child = spaces.find(space => space.parentSpaceId === 'context-space-guard')
+
+            return {
+              rootSpaces: spaces.filter(space => !space.parentSpaceId).length,
+              childSpaces: spaces.filter(space => space.parentSpaceId === 'context-space-guard')
+                .length,
+              childNodeIdsCount: child?.nodeIds?.length ?? null,
+            }
+          })
+        })
+        .toEqual({
+          rootSpaces: 1,
+          childSpaces: 1,
+          childNodeIdsCount: 0,
+        })
     } finally {
       await electronApp.close()
     }
@@ -259,7 +295,7 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
       await expect(pane).toBeVisible()
 
       await openPaneContextMenuAtFlowPoint(window, pane, { x: 210, y: 170 })
-      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+      await window.locator('[data-testid="workspace-context-create-space"]').click()
 
       const canonicalSizes = await resolveCanonicalNodeSizes(window)
 
@@ -350,7 +386,7 @@ test.describe('Workspace Canvas - Context Menu Note Create', () => {
       }))
 
       await openPaneContextMenuAtFlowPoint(window, pane, { x: 220, y: 200 })
-      await window.locator('[data-testid="workspace-context-create-empty-space"]').click()
+      await window.locator('[data-testid="workspace-context-create-space"]').click()
 
       const spaceRegion = window.locator('.workspace-space-region').first()
       await expect(spaceRegion).toHaveCount(1)

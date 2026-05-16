@@ -121,7 +121,6 @@ export function WorkspaceCanvasView({
   insertQuickPhrase,
   openQuickMenuSettings,
   createSpaceFromSelectedNodes,
-  createChildSpaceFromSelectedNodes,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
   spaceTargetMountPicker,
@@ -428,7 +427,6 @@ export function WorkspaceCanvasView({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
-        createChildSpaceFromSelectedNodes={createChildSpaceFromSelectedNodes}
         createChildSpaceInParent={createChildSpaceInParent}
         createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}

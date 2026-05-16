@@ -30,7 +30,6 @@ export function WorkspaceCanvasMenus({
   arrangeCanvas,
   arrangeInSpace,
   createSpaceFromSelectedNodes,
-  createChildSpaceFromSelectedNodes,
   createChildSpaceInParent,
   createEmptySpaceAtPoint,
   clearNodeSelection,
@@ -74,7 +73,6 @@ export function WorkspaceCanvasMenus({
   | 'arrangeCanvas'
   | 'arrangeInSpace'
   | 'createSpaceFromSelectedNodes'
-  | 'createChildSpaceFromSelectedNodes'
   | 'createChildSpaceInParent'
   | 'createEmptySpaceAtPoint'
   | 'clearNodeSelection'
@@ -131,7 +129,6 @@ export function WorkspaceCanvasMenus({
         arrangeCanvas={arrangeCanvas}
         arrangeInSpace={arrangeInSpace}
         createSpaceFromSelectedNodes={createSpaceFromSelectedNodes}
-        createChildSpaceFromSelectedNodes={createChildSpaceFromSelectedNodes}
         createChildSpaceInParent={createChildSpaceInParent}
         createEmptySpaceAtPoint={createEmptySpaceAtPoint}
         clearNodeSelection={clearNodeSelection}
@@ -144,7 +141,6 @@ export function WorkspaceCanvasMenus({
         menu={spaceActionMenu}
         availableOpeners={availablePathOpeners}
         canArrange={canArrangeActiveSpace}
-        canCreateChildSpace={activeMenuSpace !== null && !activeMenuSpace.parentSpaceId}
         canCreateWorktree={
           activeMenuSpace !== null &&
           !activeMenuSpace.parentSpaceId &&
@@ -162,11 +158,6 @@ export function WorkspaceCanvasMenus({
         onArchive={() => {
           if (activeMenuSpace) {
             openSpaceArchive(activeMenuSpace.id)
-          }
-        }}
-        onCreateChildSpace={() => {
-          if (activeMenuSpace) {
-            createChildSpaceInParent(activeMenuSpace.id)
           }
         }}
         onCopyPath={() => {

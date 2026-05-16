@@ -4,7 +4,6 @@ import { useTranslation } from '@app/renderer/i18n'
 
 export function WorkspaceContextSelectionMenuContent({
   createSpaceFromSelectedNodes,
-  createChildSpaceFromSelectedNodes,
   openLabelColorSubmenu,
   labelColorButtonRef,
   canConvertSelectedNoteToTask,
@@ -14,7 +13,6 @@ export function WorkspaceContextSelectionMenuContent({
   closeContextMenu,
 }: {
   createSpaceFromSelectedNodes: () => void
-  createChildSpaceFromSelectedNodes: () => void
   openLabelColorSubmenu: () => void
   labelColorButtonRef: React.RefObject<HTMLButtonElement | null>
   canConvertSelectedNoteToTask: boolean
@@ -35,16 +33,6 @@ export function WorkspaceContextSelectionMenuContent({
         <Group className="workspace-context-menu__icon" aria-hidden="true" />
         <span className="workspace-context-menu__label">
           {t('workspaceContextMenu.createSpaceWithSelected')}
-        </span>
-      </button>
-      <button
-        type="button"
-        data-testid="workspace-selection-create-child-space"
-        onClick={createChildSpaceFromSelectedNodes}
-      >
-        <Group className="workspace-context-menu__icon" aria-hidden="true" />
-        <span className="workspace-context-menu__label">
-          {t('workspaceContextMenu.createChildSpaceWithSelected')}
         </span>
       </button>
       {canConvertSelectedNoteToTask ? (

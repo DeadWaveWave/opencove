@@ -14,6 +14,7 @@ import { sanitizeSpaces, validateSpaceTransfer } from '../helpers'
 import { resolveDefaultAgentWindowSize } from '../constants'
 import { resolveNodesPlacement } from './useNodesStore.resolvePlacement'
 import { createSpaceFromSelectedNodesWithMounts } from './useSpaces.createSpaceSelection'
+import { resolveSelectedChildSpaceParent } from './useSpaces.createChildSpace'
 import {
   computeSpaceRectFromNodes,
   pushAwayLayout,
@@ -21,12 +22,10 @@ import {
   SPACE_MIN_SIZE,
   type LayoutItem,
 } from '../../../utils/spaceLayout'
-
 type SetNodes = (
   updater: (prevNodes: Node<TerminalNodeData>[]) => Node<TerminalNodeData>[],
   options?: { syncLayout?: boolean },
 ) => void
-
 export function useWorkspaceCanvasCreateSpace({
   workspaceId,
   workspacePath,
@@ -43,6 +42,7 @@ export function useWorkspaceCanvasCreateSpace({
   setSpaceTargetMountPicker,
   cancelSpaceRename,
   onShowMessage,
+  createChildSpaceInParent,
 }: {
   workspaceId: string
   workspacePath: string
@@ -61,6 +61,10 @@ export function useWorkspaceCanvasCreateSpace({
   >
   cancelSpaceRename: () => void
   onShowMessage?: ShowWorkspaceCanvasMessage
+  createChildSpaceInParent: (
+    parentSpaceId: string,
+    options?: { anchor?: { x: number; y: number } | null; nodeIds?: string[] },
+  ) => string | null
 }): {
   createSpaceFromSelectedNodes: () => void
   createEmptySpaceAtPoint: (point: { x: number; y: number }) => string | null
@@ -72,7 +76,6 @@ export function useWorkspaceCanvasCreateSpace({
   }) => void
 } {
   const { t } = useTranslation()
-
   const resolveDefaultSpaceName = useCallback((): string => {
     const usedNames = new Set(spacesRef.current.map(space => space.name.toLowerCase()))
     let nextNumber = spacesRef.current.length + 1
@@ -357,19 +360,26 @@ export function useWorkspaceCanvasCreateSpace({
     ],
   )
 
-  const createSpaceWithTargetMount = useCallback(
-    (payload: {
-      nodeIds: string[]
-      rect: WorkspaceSpaceRect | null
-      targetMountId: string
-      directoryPath: string
-    }) => {
-      createSpace(payload)
-    },
-    [createSpace],
-  )
-
   const createSpaceFromSelectedNodes = useCallback(() => {
+    const selectedIds =
+      selectedNodeIdsRef.current.length > 0
+        ? selectedNodeIdsRef.current
+        : reactFlow
+            .getNodes()
+            .filter(node => node.selected)
+            .map(node => node.id)
+    const selectedNodeIdSet = new Set(selectedIds)
+    const selectedNodes = nodesRef.current.filter(node => selectedNodeIdSet.has(node.id))
+    const selectedParentSpace = resolveSelectedChildSpaceParent({
+      spaces: spacesRef.current,
+      selectedNodes,
+    })
+
+    if (selectedParentSpace) {
+      createChildSpaceInParent(selectedParentSpace.id, { nodeIds: selectedIds })
+      return
+    }
+
     createSpaceFromSelectedNodesWithMounts({
       selectedNodeIdsRef,
       reactFlow,
@@ -385,13 +395,16 @@ export function useWorkspaceCanvasCreateSpace({
     })
   }, [
     cancelSpaceRename,
+    createChildSpaceInParent,
     createSpace,
+    nodesRef,
     onShowMessage,
     reactFlow,
     selectedNodeIdsRef,
     setContextMenu,
     setEmptySelectionPrompt,
     setSpaceTargetMountPicker,
+    spacesRef,
     t,
     workspaceId,
     workspacePath,
@@ -481,6 +494,6 @@ export function useWorkspaceCanvasCreateSpace({
   return {
     createSpaceFromSelectedNodes,
     createEmptySpaceAtPoint,
-    createSpaceWithTargetMount,
+    createSpaceWithTargetMount: createSpace,
   }
 }

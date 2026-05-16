@@ -137,7 +137,7 @@ describe('control surface space handlers', () => {
 
     const childSpace = created.value.childSpace
     expect(childSpace).toMatchObject({
-      name: 'Child Space 1',
+      name: 'Space 1',
       directoryPath: '/repo/packages/app',
       targetMountId: 'mount-1',
       parentSpaceId: 'parent-space',

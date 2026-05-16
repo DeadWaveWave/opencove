@@ -131,10 +131,8 @@ test.describe('Workspace Canvas - Child Space', () => {
       await expect(terminalNode).toBeVisible()
       await clickHeaderDragSurface(terminalNode.locator('.terminal-node__header'))
       await terminalNode.click({ button: 'right' })
-      await expect(
-        window.locator('[data-testid="workspace-selection-create-child-space"]'),
-      ).toBeVisible()
-      await window.locator('[data-testid="workspace-selection-create-child-space"]').click()
+      await expect(window.locator('[data-testid="workspace-selection-create-space"]')).toBeVisible()
+      await window.locator('[data-testid="workspace-selection-create-space"]').click()
 
       await expect(window.locator('.workspace-space-region--child')).toBeVisible()
       await expect(
