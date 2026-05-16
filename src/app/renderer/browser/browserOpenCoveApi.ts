@@ -1,6 +1,8 @@
 import {
   normalizeReadFileBytesResult,
   type ListSystemFontsResult,
+  type SaveTextToDownloadsInput,
+  type SaveTextToDownloadsResult,
   type ShowSystemNotificationInput,
   type ShowSystemNotificationResult,
   type WorkspaceDirectory,
@@ -19,6 +21,7 @@ import {
 } from './browserOpenCoveApi.helpers'
 import { createBrowserPersistenceApi } from './browserOpenCoveApi.persistence'
 import { createBrowserAgentApi } from './browserOpenCoveApi.agent'
+import { saveTextToDownloadsInBrowser } from './browserOpenCoveApi.downloads'
 import {
   WORKSPACE_SELECT_DIRECTORY_REQUEST_EVENT,
   WORKSPACE_SELECT_DIRECTORY_RESPONSE_EVENT,
@@ -383,6 +386,9 @@ export function installBrowserOpenCoveApi(): void {
     },
     system: {
       listFonts: async (): Promise<ListSystemFontsResult> => ({ fonts: [] }),
+      saveTextToDownloads: async (
+        payload: SaveTextToDownloadsInput,
+      ): Promise<SaveTextToDownloadsResult> => await saveTextToDownloadsInBrowser(payload),
       showNotification: async (
         payload: ShowSystemNotificationInput,
       ): Promise<ShowSystemNotificationResult> => {

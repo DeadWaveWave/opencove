@@ -22,7 +22,10 @@ export interface SaveTextToDownloadsInput {
   content: string
 }
 
+export type SaveTextToDownloadsStatus = 'saved' | 'download-started' | 'canceled'
+
 export interface SaveTextToDownloadsResult {
+  status: SaveTextToDownloadsStatus
   fileName: string
-  path: string
+  path: string | null
 }

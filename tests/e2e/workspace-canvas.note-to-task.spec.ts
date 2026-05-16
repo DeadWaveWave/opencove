@@ -174,7 +174,12 @@ test.describe('Workspace Canvas - Note to Task', () => {
 
   test('uses note action menu to save markdown, set color, and convert to task', async () => {
     const userDataDir = await createTestUserDataDir()
-    const { electronApp, window } = await launchApp({ userDataDir })
+    const { electronApp, window } = await launchApp({
+      userDataDir,
+      env: {
+        OPENCOVE_TEST_BYPASS_SAVE_DIALOG: '1',
+      },
+    })
     const noteText = 'Download body\nSecond line'
     const noteTitle = `note-menu-download-e2e-${Date.now()}`
     const expectedFileName = `${noteTitle}.md`
@@ -210,9 +215,7 @@ test.describe('Workspace Canvas - Note to Task', () => {
 
       await window.locator('[data-testid="note-node-menu-save-markdown"]').click()
       await expect(window.locator('[data-testid="app-message"]')).toContainText(expectedFileName)
-      await expect(window.locator('.app-message__text')).toContainText(
-        `Saved ${expectedFileName} to Downloads.`,
-      )
+      await expect(window.locator('.app-message__text')).toContainText(`Saved ${expectedFileName}.`)
       await expect(noteNode.locator('.note-node__save-status')).toHaveCount(0)
       await expect.poll(async () => await readFile(expectedDownloadPath, 'utf8')).toBe(noteText)
       await expect(

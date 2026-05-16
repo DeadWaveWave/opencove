@@ -1,7 +1,8 @@
 import { execFile } from 'node:child_process'
 import { mkdir, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { app, BrowserWindow, Notification, ipcMain } from 'electron'
+import { app, BrowserWindow, Notification, dialog, ipcMain } from 'electron'
+import type { IpcMainInvokeEvent, SaveDialogOptions } from 'electron'
 import { IPC_CHANNELS } from '../../../../shared/contracts/ipc'
 import type {
   ListSystemFontsResult,
@@ -214,72 +215,63 @@ function normalizeSaveTextToDownloadsPayload(payload: unknown): SaveTextToDownlo
   }
 }
 
-function buildCollisionFileName(fileName: string, attempt: number): string {
-  if (attempt === 0) {
-    return fileName
-  }
-
-  const extension = path.extname(fileName)
-  const stem = fileName.slice(0, fileName.length - extension.length)
-  return `${stem} ${attempt + 1}${extension}`
+function shouldBypassSaveDialog(): boolean {
+  return Boolean(process.env.OPENCOVE_TEST_BYPASS_SAVE_DIALOG)
 }
 
-async function writeTextDownloadCandidate({
-  content,
-  downloadsDirectory,
-  fileName,
-  originalFileName,
-  attempt,
-}: {
-  content: string
-  downloadsDirectory: string
-  fileName: string
-  originalFileName: string
-  attempt: number
-}): Promise<SaveTextToDownloadsResult> {
-  if (attempt >= 100) {
-    throw createAppError('common.unexpected', {
-      debugMessage: 'Unable to choose a unique download file name.',
-    })
-  }
-
-  const targetPath = path.join(downloadsDirectory, fileName)
+function resolveSaveDialogParent(event: IpcMainInvokeEvent): BrowserWindow | null {
   try {
-    await writeFile(targetPath, content, { encoding: 'utf8', flag: 'wx' })
-    return { fileName, path: targetPath }
-  } catch (error) {
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      (error as NodeJS.ErrnoException).code === 'EEXIST'
-    ) {
-      const nextAttempt = attempt + 1
-      return writeTextDownloadCandidate({
-        content,
-        downloadsDirectory,
-        fileName: buildCollisionFileName(originalFileName, nextAttempt),
-        originalFileName,
-        attempt: nextAttempt,
-      })
-    }
-
-    throw error
+    return BrowserWindow.fromWebContents(event.sender)
+  } catch {
+    return null
   }
+}
+
+function createSaveTextToDownloadsDialogOptions(fileName: string): SaveDialogOptions {
+  return {
+    defaultPath: path.join(app.getPath('downloads'), fileName),
+    properties: ['createDirectory', 'showOverwriteConfirmation'],
+  }
+}
+
+async function resolveSaveTextToDownloadsPath(
+  event: IpcMainInvokeEvent,
+  fileName: string,
+): Promise<string | null> {
+  const options = createSaveTextToDownloadsDialogOptions(fileName)
+  if (shouldBypassSaveDialog()) {
+    return options.defaultPath ?? path.join(app.getPath('downloads'), fileName)
+  }
+
+  const parent = resolveSaveDialogParent(event)
+  const result = parent
+    ? await dialog.showSaveDialog(parent, options)
+    : await dialog.showSaveDialog(options)
+
+  if (result.canceled || !result.filePath) {
+    return null
+  }
+
+  return result.filePath
 }
 
 async function saveTextToDownloads(
   payload: SaveTextToDownloadsInput,
+  event: IpcMainInvokeEvent,
 ): Promise<SaveTextToDownloadsResult> {
-  const downloadsDirectory = app.getPath('downloads')
-  await mkdir(downloadsDirectory, { recursive: true })
-  return writeTextDownloadCandidate({
-    content: payload.content,
-    downloadsDirectory,
-    fileName: payload.fileName,
-    originalFileName: payload.fileName,
-    attempt: 0,
-  })
+  const targetPath = await resolveSaveTextToDownloadsPath(event, payload.fileName)
+  if (!targetPath) {
+    return { status: 'canceled', fileName: payload.fileName, path: null }
+  }
+
+  await mkdir(path.dirname(targetPath), { recursive: true })
+  await writeFile(targetPath, payload.content, { encoding: 'utf8' })
+
+  return {
+    status: 'saved',
+    fileName: path.basename(targetPath),
+    path: targetPath,
+  }
 }
 
 function focusFirstAppWindow(): void {
@@ -354,7 +346,7 @@ export function registerSystemIpcHandlers(): IpcRegistrationDisposable {
   registerHandledIpc(
     IPC_CHANNELS.systemSaveTextToDownloads,
     async (_event, payload): Promise<SaveTextToDownloadsResult> =>
-      saveTextToDownloads(normalizeSaveTextToDownloadsPayload(payload)),
+      saveTextToDownloads(normalizeSaveTextToDownloadsPayload(payload), _event),
     { defaultErrorCode: 'common.unexpected' },
   )
 

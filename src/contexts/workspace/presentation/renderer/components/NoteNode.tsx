@@ -101,7 +101,15 @@ export function NoteNode({
         fileName,
         content: text,
       })
-      onShowMessage?.(t('messages.noteMarkdownDownloaded', { fileName: result.fileName }))
+      if (result.status === 'canceled') {
+        return
+      }
+
+      const messageKey =
+        result.status === 'download-started'
+          ? 'messages.noteMarkdownDownloadStarted'
+          : 'messages.noteMarkdownSaved'
+      onShowMessage?.(t(messageKey, { fileName: result.fileName }))
     } catch (error) {
       onShowMessage?.(
         t('messages.noteMarkdownDownloadFailed', { message: toErrorMessage(error) }),
