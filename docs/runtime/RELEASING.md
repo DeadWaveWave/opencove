@@ -3,13 +3,15 @@
 ## 本地打包
 
 - 生成安装包：`pnpm build:mac`
+- 生成 macOS Apple Silicon 安装包：`pnpm build:mac:arm64`
+- 生成 macOS Intel 安装包：`pnpm build:mac:x64`
 - 生成 Windows 安装包：`pnpm build:win`
 - 生成 Linux 安装包：`pnpm build:linux`
 - 生成“明确不签名”的安装包：`pnpm build:mac:unsigned`
 
 产物默认在 `dist/`：
-- `*.dmg`
-- `*-mac.zip`
+- `OpenCove-<version>-mac-arm64.dmg` / `OpenCove-<version>-mac-arm64.zip`
+- `OpenCove-<version>-mac-x64.dmg` / `OpenCove-<version>-mac-x64.zip`
 - `*.exe`
 - `*.AppImage` / 其他 Linux 包格式（取决于 electron-builder 实际输出）
 - `opencove-server-<platform>-<arch>.tar.gz`（macOS / Linux standalone CLI / Worker runtime）
@@ -43,7 +45,8 @@
 ## GitHub：打 Tag 自动打包（unsigned）
 
 本仓库已配置 GitHub Actions：当你 push 形如 `v*` 的 tag 时，会自动构建 `macOS / Windows / Linux` 三端产物，并自动创建对应的 GitHub Release。无需手动打包或手动上传产物。上传内容包括：
-- macOS 产物（如 `*.dmg`, `*.zip`）
+- macOS Apple Silicon 产物（`OpenCove-<version>-mac-arm64.dmg` / `.zip`）
+- macOS Intel 产物（`OpenCove-<version>-mac-x64.dmg` / `.zip`）
 - Windows 产物（如 `*.exe`）
 - Linux 产物（如 `*.AppImage`）
 - macOS / Linux standalone server bundle（`opencove-server-<platform>-<arch>.tar.gz`）
@@ -52,7 +55,7 @@
 - stable release 额外包含 latest stable 别名（`opencove-install.*`、`opencove-uninstall.*`）
 - 汇总校验文件 `SHA256SUMS.txt`
 
-注意：macOS 的应用内自动更新依赖稳定的代码签名（Developer ID）。当前 unsigned/ad-hoc 构建在 macOS 上会禁用更新检查；请通过 GitHub Releases 手动下载新版本。
+注意：macOS 的应用内自动更新依赖稳定的代码签名（Developer ID）。当前 unsigned/ad-hoc 构建在 macOS 上会禁用更新检查；请通过 GitHub Releases 手动下载新版本。macOS release 现在使用拆分的 `arm64` / `x64` 单架构安装包，release workflow 不上传单一 `latest-mac.yml`，避免更新 metadata 指向错误架构；恢复 macOS 自动更新前必须先补齐 universal 或按架构分流的更新策略。
 
 其中：
 
@@ -213,7 +216,7 @@ git push origin v0.2.0-nightly.20260312.1
 - `prepare-release` 会在 `major / minor` 版本自动插入 `✨ Highlights` 模板；`patch` 版本不会插入。
 - `nightly` 路径不需要运行 release 准备脚本；只要 push 合规 tag，CI 就会自动打包并发布 GitHub prerelease。
 - 如需手动覆写某个 nightly 的应用内 `What's New`，可新增 `build/release-notes/nightly/v<version>.json`；存在时会优先于自动生成结果。
-- Auto Update 依赖 release assets 中的 channel metadata（如 `latest.yml` / `nightly.yml`），GitHub Actions 会随构建一起上传。
+- Auto Update 依赖 release assets 中的 channel metadata。当前 GitHub Actions 只上传 Windows / Linux 的 `latest*.yml`；macOS 因 unsigned/ad-hoc 构建禁用自动更新，暂不上传 `latest-mac.yml`。
 - 构建命令会自动生成 `release/release-manifest.json`，并将其嵌入安装包，同时作为 GitHub Release asset 上传。
 
 ## Nightly 定时发布（每天 04:00 北京时间）
