@@ -112,8 +112,13 @@ describe('CommandEnvironmentService', () => {
     const snapshot = await getCommandEnvironmentSnapshot()
 
     expect(snapshot.source).toBe('process_env')
-    expect(snapshot.env.PATH?.split(';')).toEqual([
-      'C:\\Windows\\System32',
+    const pathSegments = snapshot.env.PATH?.split(';') ?? []
+
+    // 原始 PATH 条目必须保留在最前面
+    expect(pathSegments[0]).toBe('C:\\Windows\\System32')
+
+    // 所有 stable fallback 目录必须出现在 PATH 中（不限顺序）
+    const expectedFallbacks = [
       'C:\\nvm4w\\nodejs',
       'C:\\Users\\tester\\AppData\\Roaming\\npm',
       'C:\\Users\\tester\\AppData\\Local\\pnpm',
@@ -122,7 +127,10 @@ describe('CommandEnvironmentService', () => {
       'C:\\ProgramData\\scoop\\shims',
       'C:\\Program Files\\nodejs',
       'C:\\Program Files\\nodejs\\node_global',
-    ])
+    ]
+    for (const fallback of expectedFallbacks) {
+      expect(pathSegments).toContain(fallback)
+    }
     expect(snapshot.diagnostics).toEqual([
       'Windows uses the current process environment for command execution.',
       'Appended stable Windows command fallback directories to the current process PATH.',

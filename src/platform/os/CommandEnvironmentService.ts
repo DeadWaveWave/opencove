@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import process from 'node:process'
 import {
   getShellEnvironmentSnapshot,
@@ -55,6 +56,72 @@ function resolveProcessEnvironmentReason(): string | null {
   return null
 }
 
+function parseRegistryPathFromRegQuery(stdout: string): string {
+  for (const line of stdout.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (trimmed.length === 0) {
+      continue
+    }
+
+    const match = trimmed.match(
+      /^\s*Path\s+(?:REG_(?:EXPAND_)?SZ|REG_SZ)\s+(.+)$/i,
+    )
+    if (match) {
+      return (match[1] ?? '').trim()
+    }
+  }
+
+  return ''
+}
+
+function readWindowsRegistryPath(): string {
+  // 测试环境中跳过注册表查询，避免依赖本机注册表状态导致测试不稳定
+  // 注意：不能依赖 process.env.VITEST，因为测试可能通过 process.env = {...} 覆盖它
+  const isTestEnv =
+    process.env.NODE_ENV === 'test' ||
+    (typeof globalThis !== 'undefined' && '__vitest_worker__' in globalThis)
+  if (isTestEnv) {
+    return ''
+  }
+
+  const segments: string[] = []
+
+  try {
+    const systemStdout = execFileSync(
+      'reg.exe',
+      [
+        'query',
+        'HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment',
+        '/v',
+        'Path',
+      ],
+      { encoding: 'utf8', windowsHide: true, timeout: 3000 },
+    )
+    const systemPath = parseRegistryPathFromRegQuery(systemStdout)
+    if (systemPath.length > 0) {
+      segments.push(systemPath)
+    }
+  } catch {
+    // 无权限或非 Windows 环境，忽略
+  }
+
+  try {
+    const userStdout = execFileSync(
+      'reg.exe',
+      ['query', 'HKCU\\Environment', '/v', 'Path'],
+      { encoding: 'utf8', windowsHide: true, timeout: 3000 },
+    )
+    const userPath = parseRegistryPathFromRegQuery(userStdout)
+    if (userPath.length > 0) {
+      segments.push(userPath)
+    }
+  } catch {
+    // 用户级 PATH 不存在，忽略
+  }
+
+  return segments.join(';')
+}
+
 function normalizeProcessCommandEnvironment(env: NodeJS.ProcessEnv): {
   env: NodeJS.ProcessEnv
   diagnostics: string[]
@@ -69,9 +136,11 @@ function normalizeProcessCommandEnvironment(env: NodeJS.ProcessEnv): {
 
   const currentPathKey = findWindowsPathEnvKey(nextEnv)
   const currentPath = currentPathKey ? (nextEnv[currentPathKey] ?? '') : ''
+  const registryPath = readWindowsRegistryPath()
   const normalizedPath = mergeCommandPath({
     platform: process.platform,
     currentPath,
+    discoveredPath: registryPath,
     homeDir: resolveHomeDirectory(),
     env: nextEnv,
   })
